@@ -2,6 +2,8 @@ import type { WebSocket } from 'ws';
 import type { WSEvent, ClientEventName } from '@agent-spaces/shared';
 import { addConnection, broadcastToWorkspace } from './connection-manager.js';
 import { handleTerminalEvent } from './terminal-handler.js';
+import { createMessage } from '../services/message.js';
+import { getChannel } from '../services/channel.js';
 
 type EventHandler = (ws: WebSocket, workspaceId: string, data: unknown) => void;
 
@@ -49,5 +51,14 @@ for (const evt of terminalEvents) {
     handleTerminalEvent(ws, workspaceId, evt, data);
   });
 }
+
+// Register channel handler
+registerHandler('channel.message', (_ws, workspaceId, data) => {
+  const { channelId, content, type } = data as { channelId: string; content: string; type?: string };
+  if (!channelId || !content) return;
+  if (!getChannel(workspaceId, channelId)) return;
+  const message = createMessage(workspaceId, channelId, { senderId: 'user', content, type: type as any });
+  broadcastToWorkspace(workspaceId, 'channel.message', message);
+});
 
 export { broadcastToWorkspace };

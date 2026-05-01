@@ -4,6 +4,7 @@ import { listWorkspaces, getWorkspace, createWorkspace, updateWorkspace, deleteW
 import { ensureDir } from '../storage/json-store.js';
 import { join } from 'node:path';
 import { existsSync, writeFileSync } from 'node:fs';
+import { ensureGeneralChannel } from './channel.js';
 
 const AGENTSPACE_DIRS = ['skills', 'agents', 'tasks', 'cache', 'logs', 'cache/locks'];
 const AGENTSPACE_FILES: Record<string, string> = {
@@ -51,6 +52,7 @@ export function create(input: CreateWorkspaceInput): Workspace {
   ensureDir(agentspaceDir);
   initAgentspace(agentspaceDir);
   createWorkspace(ws);
+  ensureGeneralChannel(id);
   return ws;
 }
 

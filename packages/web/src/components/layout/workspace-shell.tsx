@@ -5,6 +5,8 @@ import { Layout, Model, TabNode, IJsonModel } from "flexlayout-react";
 import "flexlayout-react/style/light.css";
 import { EditorPanel } from "@/components/editor/editor-panel";
 import { TerminalPanel } from "@/components/terminal/terminal-panel";
+import { ChannelList } from "@/components/chat/channel-list";
+import { ChatPanel } from "@/components/chat/chat-panel";
 
 const defaultJson: IJsonModel = {
   global: {
@@ -55,13 +57,13 @@ export function WorkspaceShell({ workspaceId }: WorkspaceShellProps) {
       const comp = node.getComponent();
       switch (comp) {
         case "channel-list":
-          return <Placeholder name="Channels" />;
+          return <ChannelList workspaceId={workspaceId} />;
         case "issue-list":
           return <Placeholder name="Issues" />;
         case "editor":
           return <EditorPanel workspaceId={workspaceId} />;
         case "chat":
-          return <Placeholder name="Chat" />;
+          return <ChatPanel workspaceId={workspaceId} />;
         case "issue-detail":
           return <Placeholder name="Issue Detail" />;
         case "terminal":

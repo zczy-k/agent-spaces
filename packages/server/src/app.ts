@@ -4,6 +4,7 @@ import { createServer } from 'node:http';
 import { WebSocketServer } from 'ws';
 import workspaceRouter from './routes/workspace.js';
 import fileRouter from './routes/file.js';
+import channelRouter from './routes/channel.js';
 import { handleConnection } from './ws/handler.js';
 
 const PORT = parseInt(process.env.PORT || '3100', 10);
@@ -18,6 +19,7 @@ app.get('/api/health', (_req, res) => {
 
 app.use('/api/workspaces', workspaceRouter);
 app.use('/api/workspaces/:id/files', fileRouter);
+app.use('/api/workspaces/:id/channels', channelRouter);
 
 const server = createServer(app);
 

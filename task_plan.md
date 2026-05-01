@@ -4,7 +4,7 @@
 Build the multi-agent collaborative coding workspace, milestone by milestone.
 
 ## Current Phase
-M3 Complete — Ready for M4
+M4 Complete — Ready for M5
 
 ## Phases
 
@@ -18,6 +18,9 @@ M3 Complete — Ready for M4
 - Status: complete
 
 ### M3: Terminal + WebSocket 基础
+- Status: complete
+
+### M4: Channel + Message
 - Status: complete
 
 ## Key Questions

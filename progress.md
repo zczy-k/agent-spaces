@@ -201,3 +201,38 @@
 - Errors:
   - node-pty 1.1.0 在 Node 25.8.1 需要从源码编译 (prebuilt binary 不兼容)
   - @homebridge/node-pty-prebuilt-multiarch 在 arm64 + Node 25 不工作
+
+### M4 Implementation (2026-05-01)
+- **Status:** complete
+- Actions taken:
+  - 创建 Channel Service (CRUD + ensureGeneralChannel)
+  - 创建 Message Service (listMessages with cursor pagination + createMessage)
+  - 创建 Channel Routes (REST: list/create channels, list/send messages)
+  - 注册 WS channel.message handler (client→server→broadcast)
+  - 扩展 shared events 类型 (channel.message, channel.updated)
+  - Workspace 创建时自动建 general channel
+  - 创建 Channel Store (Zustand: channels, messages, CRUD actions)
+  - 创建 ChannelList 组件 (频道列表 + 创建)
+  - 创建 ChatPanel 组件 (消息列表 + 输入框 + WS 实时接收)
+  - 创建 MessageItem 组件 (用户/agent 消息样式 + @mention 高亮)
+  - 接入 workspace-shell 替换 channel-list 和 chat Placeholder
+- Files created:
+  - packages/server/src/services/channel.ts
+  - packages/server/src/services/message.ts
+  - packages/server/src/routes/channel.ts
+  - packages/web/src/stores/channel.ts
+  - packages/web/src/components/chat/channel-list.tsx
+  - packages/web/src/components/chat/chat-panel.tsx
+  - packages/web/src/components/chat/message-item.tsx
+- Files modified:
+  - packages/shared/src/types/events.ts (added channel.message, channel.updated events)
+  - packages/server/src/app.ts (added channel routes)
+  - packages/server/src/services/workspace.ts (auto-create general channel)
+  - packages/server/src/ws/handler.ts (added channel.message WS handler)
+  - packages/web/src/components/layout/workspace-shell.tsx (replaced ChannelList + ChatPanel)
+- Verification:
+  - Server build: clean
+  - Web type-check: clean
+- Errors:
+  - Express Router mergeParams 不推断父路由参数类型 → 用 Request<Params> 泛型
+  - ws.on() 返回值类型不匹配 useEffect cleanup → 包装为 () => unsub()

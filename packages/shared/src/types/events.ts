@@ -44,6 +44,7 @@ export type ClientEventMap = {
   'terminal.input': TerminalInputPayload;
   'terminal.resize': TerminalResizePayload;
   'terminal.close': TerminalClosePayload;
+  'channel.message': { channelId: string; content: string; type?: string };
 };
 
 // ---- Server → Client Event Map ----
@@ -53,6 +54,8 @@ export type ServerEventMap = {
   'terminal.created': TerminalCreatePayload;
   'terminal.output': TerminalOutputPayload;
   'terminal.closed': TerminalClosedPayload;
+  'channel.message': import('./channel.js').Message;
+  'channel.updated': import('./channel.js').Channel;
 };
 
 export type ClientEventName = keyof ClientEventMap;
