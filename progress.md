@@ -19,39 +19,72 @@
   - Added user-supplied technical candidates for dock layout, terminal, Codex, Claude Code, and VSCode inspection/debug integration.
 
 ### Phase 2: Architecture Definition
-- **Status:** pending
+- **Status:** complete
+- **Started:** 2026-05-01 (session 2)
 - Actions taken:
-  - Not started.
-- Files created/modified:
-  - None.
+  - 重新读取 PRD.md 和已有规划文件恢复上下文
+  - 并行启动 4 个后台代理验证候选库 (FlexLayout, xterm.js, Codex/Claude SDK, react-dev-inspector)
+  - 定义 monorepo 包结构 (pnpm workspace: shared, server, web)
+  - 定义全部数据模型 (Workspace, Issue, Task, AgentSession, Channel, Message)
+  - 定义 `.agentspace` 和 `share/` 目录结构
+  - 定义 WebSocket 事件契约 (domain.action 命名，单连接模型)
+  - 定义 Issue/Task/Agent Session 状态转换规则
+  - 定义 REST API 路由表 (workspace, issue, task, channel, file, git, agent)
+  - 定义服务边界 (文件系统、Git、Agent 运行时)
+  - 整理库验证结果和架构决策
+- Files modified:
+  - `findings.md` — 新增 Phase 2 完整架构定义 (2.1-2.11)
+  - `task_plan.md` — Phase 2 标记 complete
 
 ### Phase 3: MVP Scope Breakdown
-- **Status:** pending
+- **Status:** complete
+- **Started:** 2026-05-01 (session 2)
 - Actions taken:
-  - Not started.
-- Files created/modified:
-  - None.
+  - 定义 MVP 边界 (包含/不包含)
+  - 定义第一个可用垂直切片及验收标准
+  - 定义 7 个实现里程碑 (M1-M7)
+- Files modified:
+  - `findings.md` — 新增 Phase 3 MVP 范围拆分 (3.1-3.3)
 
 ### Phase 4: Backend Implementation Plan
-- **Status:** pending
+- **Status:** complete
+- **Started:** 2026-05-01 (session 2)
 - Actions taken:
-  - Not started.
-- Files created/modified:
-  - None.
+  - 规划 Express REST API 路由 (6 组资源)
+  - 规划 WebSocket 事件协议 (Server→Client 16 个, Client→Server 5 个)
+  - 规划 JSON 持久化目录布局
+  - 规划 workspace 绑定和 .agentspace 认领规则
+  - 规划 Agent 编排流程 (Scheduler → Planner → Executor → Reviewer → Hook)
+  - 规划 open-agent-sdk 适配器设计
+  - 规划 xterm.js PTY session 流协议
+  - 规划 Git 服务边界 (simple-git + provider API)
+- Files modified:
+  - `findings.md` — 新增 Phase 4 后端实现计划 (4.1-4.8)
 
 ### Phase 5: Frontend Implementation Plan
-- **Status:** pending
+- **Status:** complete
+- **Started:** 2026-05-01 (session 2)
 - Actions taken:
-  - Not started.
-- Files created/modified:
-  - None.
+  - 规划 Next.js App Router 路由
+  - 规划 FlexLayout 布局 JSON 结构和组件映射
+  - 规划 6 个面板模块 (Channel, Issue, Editor, Terminal, Git, Agent)
+  - 规划 Zustand store 设计 (5 个 store)
+  - 规划 WebSocket 客户端类
+  - 规划 shadcn/ui 组件使用映射
+- Files modified:
+  - `findings.md` — 新增 Phase 5 前端实现计划 (5.1-5.6)
 
 ### Phase 6: Risk, Testing, and Delivery Plan
-- **Status:** pending
+- **Status:** complete
+- **Started:** 2026-05-01 (session 2)
 - Actions taken:
-  - Not started.
-- Files created/modified:
-  - None.
+  - 识别 9 个风险并制定缓解措施
+  - 定义 4 层测试策略 (后端单元/集成/持久化/Agent + 前端组件/Store/E2E)
+  - 定义 4 个端到端测试场景
+  - 定义 M1-M7 交付清单
+  - 记录 5 个需产品决策的未解决问题
+- Files modified:
+  - `findings.md` — 新增 Phase 6 风险/测试/交付计划 (6.1-6.4)
 
 ## Test Results
 | Test | Input | Expected | Actual | Status |
