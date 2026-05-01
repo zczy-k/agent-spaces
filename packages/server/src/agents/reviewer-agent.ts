@@ -27,7 +27,7 @@ export async function runReviewer(
     data: `Reviewing task: ${taskId}`,
   });
 
-  // Use runtime to "review" (mock)
+  // Use runtime to review.
   const runtime = createAgentRuntime();
   const reviewResult = await runtime.execute(
     `Review the following task result:\nSuccess: ${taskResult.success}\nSummary: ${taskResult.summary}`,

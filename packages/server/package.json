@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@agent-spaces/shared": "workspace:*",
+    "@codeany/open-agent-sdk": "^0.2.1",
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "node-pty": "^1.1.0",

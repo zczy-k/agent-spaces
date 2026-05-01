@@ -1,6 +1,5 @@
 /**
  * Planner Agent — receives an issue, decomposes into tasks, assigns Executors.
- * Uses the mock runtime for now (planning is deterministic).
  */
 
 import * as agentService from '../services/agent.js';
@@ -31,7 +30,7 @@ export async function runPlanner(
   }
   ctx.broadcast('issue.status_changed', { issueId, from: 'draft', to: 'planned' });
 
-  // Use runtime to "plan" (mock returns quickly)
+  // Use runtime to plan.
   const runtime = createAgentRuntime();
   const planResult = await runtime.execute(
     `Decompose this issue into tasks: ${issue.title}\n\n${issue.description}`,
@@ -42,7 +41,7 @@ export async function runPlanner(
     ctx.broadcast('agent.output', { agentId: planner.id, data: line });
   }
 
-  // Decompose into 1-3 tasks (mock: single task covering the issue)
+  // Decompose into a single task covering the issue.
   const tasks = [
     taskService.create(workspaceId, issueId, {
       title: `Implement: ${issue.title}`,

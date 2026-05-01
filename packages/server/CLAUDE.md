@@ -64,8 +64,8 @@ Express 5 后端服务，提供 REST API、WebSocket 实时通信、Agent 编排
 Scheduler (10s 轮询)
   -> 发现未完成 Issue -> 唤醒 Planner
   -> Planner: Issue -> 分解 Task -> 分配 Executor
-    -> Executor: mock 执行 -> Hook 触发 Reviewer
-      -> Reviewer: mock 审核 -> approve/changes_requested
+    -> Executor: open-agent-sdk 执行 -> Hook 触发 Reviewer
+      -> Reviewer: open-agent-sdk 审核 -> approve/changes_requested
         -> 更新 Issue 状态
 ```
 
@@ -190,7 +190,7 @@ packages/server/src/
 
 - **Q: node-pty 编译失败？** A: 运行 `npx node-gyp rebuild --directory=node_modules/node-pty`，需要 Xcode Command Line Tools。
 - **Q: 数据存在哪里？** A: 默认 `~/.agent-spaces-data/`，可通过环境变量修改。
-- **Q: Agent 运行时是真实的吗？** A: 当前为 `MockAgentRuntime`，返回确定性模拟结果。设计为可替换为真实 SDK 实现。
+- **Q: Agent 运行时是真实的吗？** A: 当前默认使用 `OpenAgentSdkRuntime`，基于 `@codeany/open-agent-sdk` 进程内执行。
 
 ## 变更记录 (Changelog)
 
