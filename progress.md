@@ -165,3 +165,39 @@
   - File content write: writes and persists to disk
   - .agentspace: creates all subdirectories and claude.md
   - TypeScript: all packages type-check clean
+
+### M3 Implementation (2026-05-01)
+- **Status:** complete
+- Actions taken:
+  - 创建 WebSocket 事件路由系统 (events.ts 扩展, connection-manager, handler, terminal-handler)
+  - 创建 PTY session 管理 (services/pty.ts — create, write, resize, kill)
+  - 创建 WebSocket 客户端 (lib/ws.ts — 自动重连, 事件订阅)
+  - 创建 terminal store (stores/terminal.ts — 多 session 状态管理)
+  - 创建 TerminalInstance 组件 (@xterm/xterm + FitAddon + WebLinksAddon)
+  - 创建 TerminalPanel 组件 (多 tab, 新建/关闭终端)
+  - 接入 workspace-shell 替换 Terminal Placeholder
+  - 修复 node-pty native 编译问题 (node-gyp rebuild)
+- Files created:
+  - packages/server/src/ws/connection-manager.ts
+  - packages/server/src/ws/handler.ts
+  - packages/server/src/ws/terminal-handler.ts
+  - packages/server/src/services/pty.ts
+  - packages/web/src/lib/ws.ts
+  - packages/web/src/stores/terminal.ts
+  - packages/web/src/components/terminal/terminal-instance.tsx
+  - packages/web/src/components/terminal/terminal-panel.tsx
+- Files modified:
+  - packages/shared/src/types/events.ts (扩展 Terminal 事件类型)
+  - packages/server/src/app.ts (使用新 WS handler)
+  - packages/server/package.json (添加 node-pty + postinstall)
+  - packages/web/src/components/layout/workspace-shell.tsx (Terminal → TerminalPanel)
+- Verification:
+  - WebSocket 连接: OK
+  - terminal.create → PTY session 创建: OK
+  - terminal.input → PTY 输入: OK
+  - terminal.output → 前端接收: OK
+  - terminal.close → session 清理: OK
+  - TypeScript: 全栈 type-check clean
+- Errors:
+  - node-pty 1.1.0 在 Node 25.8.1 需要从源码编译 (prebuilt binary 不兼容)
+  - @homebridge/node-pty-prebuilt-multiarch 在 arm64 + Node 25 不工作

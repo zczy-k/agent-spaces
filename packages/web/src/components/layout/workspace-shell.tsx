@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { Layout, Model, TabNode, IJsonModel } from "flexlayout-react";
 import "flexlayout-react/style/light.css";
 import { EditorPanel } from "@/components/editor/editor-panel";
+import { TerminalPanel } from "@/components/terminal/terminal-panel";
 
 const defaultJson: IJsonModel = {
   global: {
@@ -64,7 +65,7 @@ export function WorkspaceShell({ workspaceId }: WorkspaceShellProps) {
         case "issue-detail":
           return <Placeholder name="Issue Detail" />;
         case "terminal":
-          return <Placeholder name="Terminal" />;
+          return <TerminalPanel workspaceId={workspaceId} />;
         case "git":
           return <Placeholder name="Git" />;
         default:

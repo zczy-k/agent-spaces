@@ -4,6 +4,7 @@ import { createServer } from 'node:http';
 import { WebSocketServer } from 'ws';
 import workspaceRouter from './routes/workspace.js';
 import fileRouter from './routes/file.js';
+import { handleConnection } from './ws/handler.js';
 
 const PORT = parseInt(process.env.PORT || '3100', 10);
 
@@ -31,22 +32,7 @@ wss.on('connection', (ws, req) => {
     return;
   }
 
-  ws.send(JSON.stringify({
-    event: 'connected',
-    workspaceId,
-    timestamp: new Date().toISOString(),
-    data: { workspaceId },
-  }));
-
-  ws.on('message', (raw) => {
-    try {
-      const msg = JSON.parse(raw.toString());
-      // TODO: route by msg.event to handlers
-      console.log(`[WS] ${workspaceId}:`, msg.event);
-    } catch {
-      console.error('[WS] invalid message');
-    }
-  });
+  handleConnection(ws, workspaceId);
 });
 
 server.listen(PORT, () => {
