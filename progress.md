@@ -99,14 +99,45 @@
 | 2026-05-01 22:32:12 CST | None | 1 | No errors encountered. |
 | 2026-05-01 22:34:40 CST | None | 1 | Supplemental library notes added without errors. |
 
+### M7 Implementation (2026-05-02)
+- **Status:** complete
+- Actions taken:
+  - 添加 simple-git 依赖到 server
+  - 创建 Git shared types (GitFileStatus, GitStatusResult, GitLogEntry, GitDiffResult)
+  - 创建 Git adapter (status, diff, log via simple-git)
+  - 创建 Git routes (GET /api/workspaces/:id/git/status|diff|log)
+  - 注册 git 路由到 app.ts
+  - 创建 Git Zustand store (loadStatus, loadDiffs, loadLog, selectFile)
+  - 创建 DiffViewer 组件 (Monaco DiffEditor, 自动语言检测)
+  - 创建 GitPanel 组件 (文件列表 + diff 查看 + 刷新)
+  - 集成 GitPanel 到 workspace-shell (替换 Placeholder)
+  - Smoke test: Git status/diff/log API 全部通过
+- Files created:
+  - packages/shared/src/types/git.ts
+  - packages/server/src/adapters/git.ts
+  - packages/server/src/routes/git.ts
+  - packages/web/src/stores/git.ts
+  - packages/web/src/components/git/diff-viewer.tsx
+  - packages/web/src/components/git/git-panel.tsx
+- Files modified:
+  - packages/shared/src/types/index.ts (added git re-export)
+  - packages/server/package.json (added simple-git)
+  - packages/server/src/app.ts (added git routes)
+  - packages/web/src/components/layout/workspace-shell.tsx (replaced Git Placeholder → GitPanel)
+- Verification:
+  - TypeScript: 全栈 type-check clean
+  - Git status API: 返回 branch, files (modified/added/deleted/untracked), ahead/behind
+  - Git diff API: 返回 oldContent + newContent per file
+  - Git log API: 返回 hash, message, author, date
+
 ## 5-Question Reboot Check
 | Question | Answer |
 |----------|--------|
-| Where am I? | M6 complete, ready for M7 |
-| Where am I going? | M7: Git Diff + Integration Testing |
+| Where am I? | M7 complete — all milestones delivered |
+| Where am I going? | All 7 milestones complete |
 | What's the goal? | Build the multi-agent collaborative coding workspace, milestone by milestone |
-| What have I learned? | Issue/Task CRUD + state machine backend ready from M5. Frontend stores follow same pattern as channel store. New shadcn uses base-ui (render prop, no asChild). |
-| What have I done? | M6: task routes, issue/task stores, IssueList + IssueDetail components, WS event integration |
+| What have I learned? | simple-git provides clean Node.js git API. Monaco DiffEditor handles side-by-side diff natively. |
+| What have I done? | M7: git adapter, git routes, git store, DiffViewer, GitPanel, integrated to shell |
 
 ### M1 Implementation (2026-05-01)
 - **Status:** complete

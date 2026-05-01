@@ -9,6 +9,7 @@ import { ChannelList } from "@/components/chat/channel-list";
 import { ChatPanel } from "@/components/chat/chat-panel";
 import { IssueList } from "@/components/issue/issue-list";
 import { IssueDetail } from "@/components/issue/issue-detail";
+import { GitPanel } from "@/components/git/git-panel";
 import { getWS } from "@/lib/ws";
 import { useIssueStore } from "@/stores/issue";
 import { useTaskStore } from "@/stores/task";
@@ -98,7 +99,7 @@ export function WorkspaceShell({ workspaceId }: WorkspaceShellProps) {
         case "terminal":
           return <TerminalPanel workspaceId={workspaceId} />;
         case "git":
-          return <Placeholder name="Git" />;
+          return <GitPanel workspaceId={workspaceId} />;
         default:
           return <Placeholder name={node.getName()} />;
       }

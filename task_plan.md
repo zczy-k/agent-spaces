@@ -4,7 +4,7 @@
 Build the multi-agent collaborative coding workspace, milestone by milestone.
 
 ## Current Phase
-M6 Complete — Ready for M7
+M7 Complete — All milestones delivered
 
 ## Phases
 
@@ -40,6 +40,14 @@ M6 Complete — Ready for M7
   - [x] M6.2: Issue + Task Zustand stores
   - [x] M6.3: IssueList + IssueDetail components
   - [x] M6.4: WS event integration (real-time issue/task updates)
+
+### M7: Git Diff + Integration Testing
+- Status: complete
+- Sub-phases:
+  - [x] M7.1: Git adapter + routes (backend — status, diff, log)
+  - [x] M7.2: Git Zustand store (frontend)
+  - [x] M7.3: GitPanel + DiffViewer components (Monaco Diff Editor)
+  - [x] M7.4: Integration into workspace-shell + E2E smoke test
 
 ## Key Questions
 (See findings.md for full list)
