@@ -1,12 +1,18 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { Layout, Model, TabNode, IJsonModel } from "flexlayout-react";
 import "flexlayout-react/style/light.css";
 import { EditorPanel } from "@/components/editor/editor-panel";
 import { TerminalPanel } from "@/components/terminal/terminal-panel";
 import { ChannelList } from "@/components/chat/channel-list";
 import { ChatPanel } from "@/components/chat/chat-panel";
+import { IssueList } from "@/components/issue/issue-list";
+import { IssueDetail } from "@/components/issue/issue-detail";
+import { getWS } from "@/lib/ws";
+import { useIssueStore } from "@/stores/issue";
+import { useTaskStore } from "@/stores/task";
+import type { Issue, Task } from "@agent-spaces/shared";
 
 const defaultJson: IJsonModel = {
   global: {
@@ -52,6 +58,29 @@ interface WorkspaceShellProps {
 }
 
 export function WorkspaceShell({ workspaceId }: WorkspaceShellProps) {
+  const issueStore = useIssueStore();
+  const taskStore = useTaskStore();
+
+  useEffect(() => {
+    const ws = getWS(workspaceId);
+    const unsubs = [
+      ws.on('issue.created', (data) => issueStore.upsertIssue(data as Issue)),
+      ws.on('issue.updated', (data) => issueStore.upsertIssue(data as Issue)),
+      ws.on('issue.status_changed', () => {
+        issueStore.loadIssues(workspaceId);
+      }),
+      ws.on('task.created', (data) => taskStore.upsertTask(data as Task)),
+      ws.on('task.updated', (data) => taskStore.upsertTask(data as Task)),
+      ws.on('task.status_changed', () => {
+        const activeIssueId = useIssueStore.getState().activeIssueId;
+        if (activeIssueId) {
+          taskStore.loadTasks(workspaceId, activeIssueId);
+        }
+      }),
+    ];
+    return () => unsubs.forEach((u) => u());
+  }, [workspaceId]);
+
   const factory = useCallback(
     (node: TabNode) => {
       const comp = node.getComponent();
@@ -59,13 +88,13 @@ export function WorkspaceShell({ workspaceId }: WorkspaceShellProps) {
         case "channel-list":
           return <ChannelList workspaceId={workspaceId} />;
         case "issue-list":
-          return <Placeholder name="Issues" />;
+          return <IssueList workspaceId={workspaceId} />;
         case "editor":
           return <EditorPanel workspaceId={workspaceId} />;
         case "chat":
           return <ChatPanel workspaceId={workspaceId} />;
         case "issue-detail":
-          return <Placeholder name="Issue Detail" />;
+          return <IssueDetail workspaceId={workspaceId} />;
         case "terminal":
           return <TerminalPanel workspaceId={workspaceId} />;
         case "git":

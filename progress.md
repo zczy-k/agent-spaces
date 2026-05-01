@@ -102,11 +102,11 @@
 ## 5-Question Reboot Check
 | Question | Answer |
 |----------|--------|
-| Where am I? | M5 complete, ready for M6 |
-| Where am I going? | M6: Issue + Task Management (UI panels, state machine, CRUD) |
+| Where am I? | M6 complete, ready for M7 |
+| Where am I going? | M7: Git Diff + Integration Testing |
 | What's the goal? | Build the multi-agent collaborative coding workspace, milestone by milestone |
-| What have I learned? | Agent orchestration chain: Scheduler → Planner → Executor → Reviewer, connected via hooks. Mock runtime simulates execution for MVP. |
-| What have I done? | M5: agent system core — storage, services, 4 agent roles, hook chain, WS events, REST routes |
+| What have I learned? | Issue/Task CRUD + state machine backend ready from M5. Frontend stores follow same pattern as channel store. New shadcn uses base-ui (render prop, no asChild). |
+| What have I done? | M6: task routes, issue/task stores, IssueList + IssueDetail components, WS event integration |
 
 ### M1 Implementation (2026-05-01)
 - **Status:** complete
