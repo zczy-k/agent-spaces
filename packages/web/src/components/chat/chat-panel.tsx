@@ -156,7 +156,7 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
         {/* Messages */}
         <div className="flex-1 overflow-y-auto py-2">
           {msgs.map((msg) => (
-            <MessageItem key={msg.id} message={msg} onEdit={handleEditMessage} onDelete={handleDeleteMessage} />
+            <MessageItem key={msg.id} message={msg} workspaceId={workspaceId} onEdit={handleEditMessage} onDelete={handleDeleteMessage} />
           ))}
           <div ref={bottomRef} />
         </div>

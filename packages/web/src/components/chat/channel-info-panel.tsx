@@ -141,6 +141,8 @@ export function ChannelInfoPanel({ workspaceId, channel, agents, allChannels }: 
         open={memberInfoOpen}
         onOpenChange={setMemberInfoOpen}
         memberName={selectedMember}
+        channelId={channel.id}
+        workspaceId={workspaceId}
         channels={memberChannels(selectedMember)}
       />
 

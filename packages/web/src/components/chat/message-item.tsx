@@ -7,6 +7,7 @@ import { MemberInfoDialog } from './member-info-dialog';
 
 interface MessageItemProps {
   message: Message;
+  workspaceId: string;
   onEdit?: (message: Message) => void;
   onDelete?: (message: Message) => void;
 }
@@ -31,7 +32,7 @@ function Avatar({ senderId, onClick }: { senderId: string; onClick?: () => void 
   );
 }
 
-export function MessageItem({ message, onEdit, onDelete }: MessageItemProps) {
+export function MessageItem({ message, workspaceId, onEdit, onDelete }: MessageItemProps) {
   const isUser = message.senderId === 'user';
   const time = new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const [copied, setCopied] = useState(false);
@@ -87,7 +88,7 @@ export function MessageItem({ message, onEdit, onDelete }: MessageItemProps) {
           </button>
         </div>
       </div>
-      <MemberInfoDialog open={memberDialogOpen} onOpenChange={setMemberDialogOpen} memberName={message.senderId} />
+      <MemberInfoDialog open={memberDialogOpen} onOpenChange={setMemberDialogOpen} memberName={message.senderId} channelId={message.channelId} workspaceId={workspaceId} />
     </div>
   );
 }
