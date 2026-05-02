@@ -36,7 +36,7 @@ export default function WorkspacePage({ params }: { params: Promise<{ id: string
 
   if (error) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+      <div className="h-full flex flex-col items-center justify-center gap-4">
         <p className="text-destructive">{error}</p>
         <Link href="/" className="text-sm underline">
           Back to home
@@ -47,14 +47,14 @@ export default function WorkspacePage({ params }: { params: Promise<{ id: string
 
   if (!workspace) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-muted-foreground">
+      <div className="h-full flex items-center justify-center text-muted-foreground">
         Loading...
       </div>
     );
   }
 
   return (
-    <div className="h-screen w-screen flex flex-col">
+    <div className="h-full flex flex-col">
       <WorkspaceTabs />
       <div className="flex-1 overflow-hidden">
         <WorkspaceShell workspaceId={workspace.id} />

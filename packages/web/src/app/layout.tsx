@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { DM_Sans, Outfit, Poppins } from "next/font/google";
 import { DevInspector } from "@/components/dev-inspector";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { DashboardSidebar } from "@/components/sidebar/app-sidebar";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -36,9 +38,14 @@ export default function RootLayout({
       lang="zh-CN"
       className={`${dmSans.variable} ${outfit.variable} ${poppins.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans">
+      <body className="min-h-full font-sans">
         <DevInspector />
-        {children}
+        <SidebarProvider>
+          <DashboardSidebar />
+          <main className="flex-1 overflow-hidden">
+            {children}
+          </main>
+        </SidebarProvider>
       </body>
     </html>
   );

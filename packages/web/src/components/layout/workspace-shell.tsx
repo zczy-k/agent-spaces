@@ -120,7 +120,7 @@ export function WorkspaceShell({ workspaceId }: WorkspaceShellProps) {
   );
 
   return (
-    <div className="h-screen w-screen">
+    <div className="h-full w-full">
       <Layout model={model} factory={factory} />
     </div>
   );
