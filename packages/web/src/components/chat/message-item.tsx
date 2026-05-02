@@ -4,7 +4,7 @@ import { useCallback, useState } from 'react';
 import type { Message } from '@agent-spaces/shared';
 import { Copy, Pencil, Trash2, Check } from 'lucide-react';
 import { MemberInfoDialog } from './member-info-dialog';
-import { Markdown } from '@/components/ui/markdown';
+import { MessageParts } from './message-parts';
 
 interface MessageItemProps {
   message: Message;
@@ -62,7 +62,7 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete }: MessageI
           <span className="text-[10px] text-muted-foreground">{time}</span>
         </div>
         <div className={`text-sm rounded-lg px-3 py-2 ${isUser ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-          {isUser ? renderContent(message.content) : <Markdown content={message.content} />}
+          <MessageParts message={message} isUser={isUser} />
         </div>
         <div className="flex items-center gap-0.5 h-6 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
@@ -93,13 +93,6 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete }: MessageI
       <MemberInfoDialog open={memberDialogOpen} onOpenChange={setMemberDialogOpen} memberName={message.senderId} channelId={message.channelId} workspaceId={workspaceId} />
     </div>
   );
-}
-
-function renderContent(content: string) {
-  if (isHTML(content)) {
-    return <span className="tiptap tiptap-message" dangerouslySetInnerHTML={{ __html: content }} />;
-  }
-  return <span className="whitespace-pre-wrap break-words">{content}</span>;
 }
 
 function isHTML(str: string): boolean {

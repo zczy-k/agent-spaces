@@ -1,8 +1,6 @@
 "use client"
 
-import type { LanguageModelUsage } from "ai"
-import { type ComponentProps, createContext, useContext } from "react"
-import { getUsage } from "tokenlens"
+import { type ComponentProps, createContext, isValidElement, useContext } from "react"
 import { Button } from "@/components/ui/button"
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
 import { Progress } from "@/components/ui/progress"
@@ -15,6 +13,16 @@ const ICON_CENTER = 12
 const ICON_STROKE_WIDTH = 2
 
 type ModelId = string
+
+interface LanguageModelUsage {
+  inputTokens?: number
+  outputTokens?: number
+  totalTokens?: number
+  cachedInputTokens?: number
+  reasoningTokens?: number
+  inputTokenDetails?: unknown
+  outputTokenDetails?: unknown
+}
 
 interface ContextSchema {
   usedTokens: number
@@ -101,14 +109,16 @@ export const ContextTrigger = ({ children, ...props }: ContextTriggerProps) => {
     maximumFractionDigits: 1,
   }).format(usedPercent)
 
+  const customTrigger = isValidElement(children) ? children : undefined
+
   return (
-    <HoverCardTrigger asChild>
-      {children ?? (
-        <Button type="button" variant="ghost" {...props}>
+    <HoverCardTrigger render={customTrigger ?? <Button type="button" variant="ghost" {...props} />}>
+      {!customTrigger ? (
+        <>
           <span className="font-medium text-muted-foreground">{renderedPercent}</span>
           <ContextIcon />
-        </Button>
-      )}
+        </>
+      ) : null}
     </HoverCardTrigger>
   )
 }
@@ -174,15 +184,7 @@ export const ContextContentFooter = ({
   ...props
 }: ContextContentFooterProps) => {
   const { modelId, usage } = useContextValue()
-  const costUSD = modelId
-    ? getUsage({
-        modelId,
-        usage: {
-          input: usage?.inputTokens ?? 0,
-          output: usage?.outputTokens ?? 0,
-        },
-      }).costUSD?.totalUSD
-    : undefined
+  const costUSD = estimateCost(modelId, usage)
   const totalCost = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
@@ -220,12 +222,7 @@ export const ContextInputUsage = ({ className, children, ...props }: ContextInpu
     return null
   }
 
-  const inputCost = modelId
-    ? getUsage({
-        modelId,
-        usage: { input: inputTokens, output: 0 },
-      }).costUSD?.totalUSD
-    : undefined
+  const inputCost = estimateCost(modelId, { inputTokens })
   const inputCostText = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
@@ -253,12 +250,7 @@ export const ContextOutputUsage = ({ className, children, ...props }: ContextOut
     return null
   }
 
-  const outputCost = modelId
-    ? getUsage({
-        modelId,
-        usage: { input: 0, output: outputTokens },
-      }).costUSD?.totalUSD
-    : undefined
+  const outputCost = estimateCost(modelId, { outputTokens })
   const outputCostText = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
@@ -290,12 +282,7 @@ export const ContextReasoningUsage = ({
     return null
   }
 
-  const reasoningCost = modelId
-    ? getUsage({
-        modelId,
-        usage: { reasoningTokens },
-      }).costUSD?.totalUSD
-    : undefined
+  const reasoningCost = estimateCost(modelId, { reasoningTokens })
   const reasoningCostText = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
@@ -323,12 +310,7 @@ export const ContextCacheUsage = ({ className, children, ...props }: ContextCach
     return null
   }
 
-  const cacheCost = modelId
-    ? getUsage({
-        modelId,
-        usage: { cacheReads: cacheTokens, input: 0, output: 0 },
-      }).costUSD?.totalUSD
-    : undefined
+  const cacheCost = estimateCost(modelId, { cachedInputTokens: cacheTokens })
   const cacheCostText = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
@@ -352,6 +334,11 @@ const TokensWithCost = ({ tokens, costText }: { tokens?: number; costText?: stri
     {costText ? <span className="ml-2 text-muted-foreground">• {costText}</span> : null}
   </span>
 )
+
+function estimateCost(modelId?: string, usage?: LanguageModelUsage): number | undefined {
+  if (!modelId || !usage) return undefined
+  return undefined
+}
 
 /** Demo component for preview */
 export default function ContextDemo() {

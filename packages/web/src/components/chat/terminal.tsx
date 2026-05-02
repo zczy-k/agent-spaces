@@ -1,6 +1,5 @@
 "use client"
 
-import Ansi from "ansi-to-react"
 import { CheckIcon, CopyIcon, TerminalIcon, Trash2Icon } from "lucide-react"
 import {
   type ComponentProps,
@@ -33,7 +32,7 @@ import {
  */
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { Shimmer } from "./shimmer"
+import { Shimmer } from "@/components/ui/shimmer"
 
 interface TerminalContextType {
   output: string
@@ -125,7 +124,7 @@ export const TerminalStatus = ({ className, children, ...props }: TerminalStatus
 
   return (
     <div className={cn("flex items-center gap-2 text-xs text-zinc-400", className)} {...props}>
-      {children ?? <Shimmer className="w-16" />}
+      {children ?? <Shimmer className="w-16">Running...</Shimmer>}
     </div>
   )
 }
@@ -238,7 +237,7 @@ export const TerminalContent = ({ className, children, ...props }: TerminalConte
     >
       {children ?? (
         <pre className="whitespace-pre-wrap break-words">
-          <Ansi>{output}</Ansi>
+          {stripAnsi(output)}
           {isStreaming && (
             <span className="ml-0.5 inline-block h-4 w-2 animate-pulse bg-zinc-100" />
           )}
@@ -246,6 +245,10 @@ export const TerminalContent = ({ className, children, ...props }: TerminalConte
       )}
     </div>
   )
+}
+
+function stripAnsi(value: string): string {
+  return value.replace(/\u001b\[[0-9;]*m/g, "")
 }
 
 /** Demo component for preview */

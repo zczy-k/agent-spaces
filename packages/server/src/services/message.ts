@@ -28,7 +28,16 @@ export function listMessages(workspaceId: string, channelId: string, opts: Messa
 export function createMessage(
   workspaceId: string,
   channelId: string,
-  data: { senderId: string; content: string; type?: Message['type']; senderRole?: string; status?: Message['status'] },
+  data: {
+    senderId: string;
+    content: string;
+    type?: Message['type'];
+    senderRole?: string;
+    status?: Message['status'];
+    attachments?: Message['attachments'];
+    parts?: Message['parts'];
+    metadata?: Message['metadata'];
+  },
 ): Message {
   const path = messageFilePath(workspaceId, channelId);
   const messages = readJsonFile<Message[]>(path) || [];
@@ -40,6 +49,9 @@ export function createMessage(
     content: data.content,
     type: data.type || 'text',
     status: data.status,
+    attachments: data.attachments,
+    parts: data.parts,
+    metadata: data.metadata,
     createdAt: new Date().toISOString(),
   };
   messages.push(message);
@@ -51,7 +63,7 @@ export function updateMessage(
   workspaceId: string,
   channelId: string,
   messageId: string,
-  data: Partial<Pick<Message, 'content' | 'status' | 'senderRole' | 'type'>>,
+  data: Partial<Pick<Message, 'content' | 'status' | 'senderRole' | 'type' | 'attachments' | 'parts' | 'metadata'>>,
 ): Message | null {
   const path = messageFilePath(workspaceId, channelId);
   const messages = readJsonFile<Message[]>(path) || [];

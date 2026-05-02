@@ -12,7 +12,7 @@ interface ChannelStore {
   updateChannel: (workspaceId: string, channelId: string, data: Partial<Pick<Channel, 'name' | 'type' | 'members'>>) => Promise<void>;
   setActiveChannel: (id: string) => void;
   loadMessages: (workspaceId: string, channelId: string) => Promise<void>;
-  sendMessage: (workspaceId: string, channelId: string, content: string, mentions?: string[]) => void;
+  sendMessage: (workspaceId: string, channelId: string, content: string, mentions?: string[], attachments?: Message['attachments']) => void;
   addMessage: (channelId: string, message: Message) => void;
   updateMessage: (channelId: string, message: Message) => void;
   deleteMessage: (channelId: string, messageId: string) => void;
@@ -59,9 +59,9 @@ export const useChannelStore = create<ChannelStore>((set) => ({
     set((s) => ({ messages: { ...s.messages, [channelId]: msgs } }));
   },
 
-  sendMessage: (workspaceId, channelId, content, mentions = []) => {
+  sendMessage: (workspaceId, channelId, content, mentions = [], attachments = []) => {
     const ws = getWS(workspaceId);
-    ws.send('channel.message', { channelId, content, mentions });
+    ws.send('channel.message', { channelId, content, mentions, attachments });
   },
 
   addMessage: (channelId, message) => {

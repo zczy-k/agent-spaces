@@ -83,7 +83,7 @@ export type AgentToolsProps = ComponentProps<typeof Accordion>
 export const AgentTools = memo(({ className, ...props }: AgentToolsProps) => (
   <div className={cn("space-y-2", className)}>
     <span className="font-medium text-muted-foreground text-sm">Tools</span>
-    <Accordion className="rounded-md border" type="multiple" {...props} />
+    <Accordion className="rounded-md border" multiple {...props} />
   </div>
 ))
 
@@ -172,7 +172,7 @@ export default function AgentDemo() {
             You are a helpful research assistant. Search the web for information and provide
             accurate, well-sourced answers.
           </AgentInstructions>
-          <AgentTools type="multiple">
+          <AgentTools multiple>
             {sampleTools.map((tool, index) => (
               <AgentTool key={index} tool={tool} value={`tool-${index}`} />
             ))}

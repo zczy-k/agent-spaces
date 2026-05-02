@@ -3,7 +3,7 @@
 import { ChevronDownIcon, PaperclipIcon } from "lucide-react"
 import type { ComponentProps } from "react"
 import { Button } from "@/components/ui/button"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { Collapsible, CollapsibleContent, CollapsibleTriggerAsChild } from "@/components/ui/collapsible"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 
@@ -174,7 +174,7 @@ export const QueueSectionTrigger = ({
   className,
   ...props
 }: QueueSectionTriggerProps) => (
-  <CollapsibleTrigger asChild>
+  <CollapsibleTriggerAsChild>
     <button
       className={cn(
         "group flex w-full items-center justify-between rounded-md bg-muted/40 px-3 py-2 text-left font-medium text-muted-foreground text-sm transition-colors hover:bg-muted",
@@ -185,7 +185,7 @@ export const QueueSectionTrigger = ({
     >
       {children}
     </button>
-  </CollapsibleTrigger>
+  </CollapsibleTriggerAsChild>
 )
 
 // QueueSectionLabel - label content with icon and count

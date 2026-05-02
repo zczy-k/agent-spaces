@@ -110,9 +110,9 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [msgs.length]);
 
-  const handleSend = useCallback((content: string, mentions: string[]) => {
+  const handleSend = useCallback((content: string, mentions: string[], attachments?: Message['attachments']) => {
     if (!activeChannelId) return;
-    sendMessage(workspaceId, activeChannelId, content, mentions);
+    sendMessage(workspaceId, activeChannelId, content, mentions, attachments);
   }, [workspaceId, activeChannelId, sendMessage]);
 
   const isProcessing = msgs.length > 0

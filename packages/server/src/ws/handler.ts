@@ -1,5 +1,5 @@
 import type { WebSocket } from 'ws';
-import type { WSEvent, ClientEventName, Message } from '@agent-spaces/shared';
+import type { WSEvent, ClientEventName, Message, MessagePart, MessageTokenUsage } from '@agent-spaces/shared';
 import { addConnection, broadcastToWorkspace } from './connection-manager.js';
 import { handleTerminalEvent } from './terminal-handler.js';
 import { createMessage, updateMessage, listMessages } from '../services/message.js';
@@ -83,15 +83,21 @@ for (const evt of terminalEvents) {
 
 // Register channel handler
 registerHandler('channel.message', (_ws, workspaceId, data) => {
-  const { channelId, content, type, mentions } = data as {
+  const { channelId, content, type, mentions, attachments } = data as {
     channelId: string;
     content: string;
     type?: string;
     mentions?: string[];
+    attachments?: Message['attachments'];
   };
-  if (!channelId || !content) return;
+  if (!channelId || (!content && !attachments?.length)) return;
   if (!getChannel(workspaceId, channelId)) return;
-  const message = createMessage(workspaceId, channelId, { senderId: 'user', content, type: type as any });
+  const message = createMessage(workspaceId, channelId, {
+    senderId: 'user',
+    content,
+    type: attachments?.length ? 'attachment' : type as any,
+    attachments,
+  });
   broadcastToWorkspace(workspaceId, 'channel.message', message);
 
   const agentIds = [...new Set([...(mentions || []), ...extractMentionIds(content)].filter(Boolean))];
@@ -118,12 +124,45 @@ async function runMentionedAgent(
     to: 'active',
   });
 
+  const configDir = agentService.getAgentConfigDir(workspaceId, preset);
+  const mcpServers = agentService.getMcpServers(preset.mcps);
+  const skills = agentService.getAvailableSkillNames(configDir, preset.skills);
   const pending = createMessage(workspaceId, channelId, {
     senderId: preset.name || preset.role,
     senderRole: preset.role,
     content: 'Agent is processing...',
     type: 'text',
     status: 'pending',
+    metadata: {
+      agentSessionId: session.id,
+      runtime: preset.runtimeKind,
+      model: preset.modelId,
+    },
+    parts: [
+      {
+        id: `subagent-${session.id}`,
+        type: 'subagent',
+        name: preset.name || preset.role,
+        model: preset.modelId,
+        instructions: preset.systemPrompt,
+        tools: [
+          ...Object.keys(mcpServers ?? {}).map((name) => ({
+            name,
+            description: `MCP server: ${name}`,
+          })),
+          ...skills.map((name) => ({
+            name,
+            description: `Skill: ${name}`,
+          })),
+        ],
+      },
+      {
+        id: `reasoning-${session.id}`,
+        type: 'reasoning',
+        text: 'Preparing agent runtime and loading conversation context...',
+        status: 'streaming',
+      },
+    ],
   });
   broadcastToWorkspace(workspaceId, 'channel.message', pending);
 
@@ -136,9 +175,6 @@ async function runMentionedAgent(
       baseURL: preset.apiBase,
     });
     const history = listMessages(workspaceId, channelId, { limit: 20 });
-    const configDir = agentService.getAgentConfigDir(workspaceId, preset);
-    const mcpServers = agentService.getMcpServers(preset.mcps);
-    const skills = agentService.getAvailableSkillNames(configDir, preset.skills);
     const result = await runtime.execute(buildAgentPrompt(preset.systemPrompt, prompt, history, {
       mcpServers: Object.keys(mcpServers ?? {}),
       skills,
@@ -170,6 +206,24 @@ async function runMentionedAgent(
       content: result.success ? result.output.join('\n') : result.error || result.output.join('\n'),
       type: 'text',
       status: result.success ? 'completed' : 'error',
+      metadata: {
+        agentSessionId: session.id,
+        runtime: preset.runtimeKind,
+        model: preset.modelId,
+        summary: result.summary,
+      },
+      parts: buildAgentMessageParts({
+        sessionId: session.id,
+        presetName: preset.name || preset.role,
+        role: preset.role,
+        model: preset.modelId,
+        systemPrompt: preset.systemPrompt,
+        mcpServers: Object.keys(mcpServers ?? {}),
+        skills,
+        output: result.output,
+        success: result.success,
+        error: result.error,
+      }),
     });
     if (reply) broadcastToWorkspace(workspaceId, 'channel.message.updated', reply);
   } catch (err) {
@@ -180,9 +234,147 @@ async function runMentionedAgent(
       content: error,
       type: 'text',
       status: 'error',
+      parts: buildAgentMessageParts({
+        sessionId: session.id,
+        presetName: preset.name || preset.role,
+        role: preset.role,
+        model: preset.modelId,
+        systemPrompt: preset.systemPrompt,
+        mcpServers: Object.keys(mcpServers ?? {}),
+        skills,
+        output: [error],
+        success: false,
+        error,
+      }),
     });
     if (reply) broadcastToWorkspace(workspaceId, 'channel.message.updated', reply);
   }
+}
+
+function buildAgentMessageParts(input: {
+  sessionId: string;
+  presetName: string;
+  role: string;
+  model?: string;
+  systemPrompt?: string;
+  mcpServers: string[];
+  skills: string[];
+  output: string[];
+  success: boolean;
+  error?: string;
+}): MessagePart[] {
+  const lines = input.output.filter((line) => line.trim());
+  const toolLines = lines.filter(isToolLikeLine);
+  const reasoningLines = lines.filter((line) => !isToolLikeLine(line) && !isFinalAnswerLine(line));
+  const finalText = lines.filter(isFinalAnswerLine).join('\n') || lines.at(-1) || '';
+  const usage = extractUsage(lines);
+  const parts: MessagePart[] = [
+    {
+      id: `subagent-${input.sessionId}`,
+      type: 'subagent',
+      name: input.presetName,
+      model: input.model,
+      instructions: input.systemPrompt,
+      tools: [
+        ...input.mcpServers.map((name) => ({ name, description: `MCP server: ${name}` })),
+        ...input.skills.map((name) => ({ name, description: `Skill: ${name}` })),
+      ],
+    },
+  ];
+
+  if (reasoningLines.length > 0) {
+    parts.push({
+      id: `reasoning-${input.sessionId}`,
+      type: 'reasoning',
+      text: reasoningLines.join('\n'),
+      status: 'completed',
+    });
+  }
+
+  if (toolLines.length > 0) {
+    parts.push({
+      id: `tools-${input.sessionId}`,
+      type: 'todo',
+      todos: toolLines.slice(0, 20).map((line, index) => ({
+        id: `tool-${index}`,
+        title: line,
+        status: 'completed',
+      })),
+    });
+  }
+
+  for (const terminal of extractTerminalBlocks(lines, input.sessionId)) {
+    parts.push(terminal);
+  }
+
+  if (usage.totalTokens || usage.inputTokens || usage.outputTokens || usage.reasoningTokens) {
+    parts.push({
+      id: `context-${input.sessionId}`,
+      type: 'context',
+      usedTokens: usage.totalTokens ?? (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0),
+      maxTokens: 128_000,
+      modelId: input.model,
+      usage,
+    });
+  }
+
+  if (input.error) {
+    parts.push({
+      id: `terminal-error-${input.sessionId}`,
+      type: 'terminal',
+      output: input.error,
+      status: 'error',
+    });
+  }
+
+  if (finalText && finalText !== input.error) {
+    parts.push({
+      id: `text-${input.sessionId}`,
+      type: 'text',
+      text: finalText,
+    });
+  }
+
+  return parts;
+}
+
+function isToolLikeLine(line: string): boolean {
+  return /^(Using|Read|Write|Edit|Bash|Search|Grep|Glob|Todo|Task|Web|Fetch|Claude Code initialized|.+ running \(\d+s\))/i.test(line.trim());
+}
+
+function isFinalAnswerLine(line: string): boolean {
+  return !isToolLikeLine(line) && !/^(\[.*\]|Agent runtime configuration:|Conversation history:)/.test(line.trim());
+}
+
+function extractUsage(lines: string[]): MessageTokenUsage {
+  const usage: MessageTokenUsage = {};
+  for (const line of lines) {
+    const lower = line.toLowerCase();
+    if (!lower.includes('token')) continue;
+    const input = line.match(/\bin(?:put)?[=:\s]+([\d,]+)/i)?.[1];
+    const output = line.match(/\bout(?:put)?[=:\s]+([\d,]+)/i)?.[1];
+    const total = line.match(/\btokens?[=:\s]+([\d,]+)/i)?.[1];
+    if (input) usage.inputTokens = Number(input.replace(/,/g, ''));
+    if (output) usage.outputTokens = Number(output.replace(/,/g, ''));
+    if (total) usage.totalTokens = Number(total.replace(/,/g, ''));
+  }
+  return usage;
+}
+
+function extractTerminalBlocks(lines: string[], sessionId: string): MessagePart[] {
+  return lines
+    .map((line, index): MessagePart | null => {
+      const match = line.match(/^(?:Bash|Shell|Command):?\s*(.*)$/i);
+      if (!match) return null;
+      return {
+        id: `terminal-${sessionId}-${index}`,
+        type: 'terminal',
+        command: match[1],
+        output: line,
+        status: 'completed',
+      };
+    })
+    .filter((part): part is MessagePart => Boolean(part));
 }
 
 function buildAgentPrompt(

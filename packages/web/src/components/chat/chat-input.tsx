@@ -34,14 +34,22 @@ import { useDropzone } from "react-dropzone";
 import { ComposerShell } from "@/components/composer/composer-shell";
 import { createSuggestionRenderer } from "@/components/composer/create-suggestion-renderer";
 import { createSlashExtension } from "@/components/composer/create-slash-extension";
-import type { AgentConfig } from "@agent-spaces/shared";
+import type { AgentConfig, Attachment as MessageAttachment } from "@agent-spaces/shared";
+import {
+  Attachment,
+  AttachmentInfo,
+  AttachmentPreview,
+  AttachmentRemove,
+  Attachments,
+  type AttachmentData,
+} from "./attachments";
 
 type MentionedAgent = Pick<AgentConfig, "id" | "name" | "role" | "description" | "enabled" | "mcps" | "skills">;
 
 interface ChatInputProps {
   channelName: string;
   agents: MentionedAgent[];
-  onSend: (message: string, mentions: string[]) => void;
+  onSend: (message: string, mentions: string[], attachments?: MessageAttachment[]) => void;
   isProcessing?: boolean;
   onStop?: () => void;
 }
@@ -52,6 +60,8 @@ export interface ChatInputHandle {
 
 export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput({ channelName, agents, onSend, isProcessing = false, onStop }, ref) {
   const [mentionedAgentIds, setMentionedAgentIds] = useState<string[]>([]);
+  const [attachments, setAttachments] = useState<LocalAttachment[]>([]);
+  const [submitting, setSubmitting] = useState(false);
   const [autoMode, setAutoMode] = useState(false);
   const isProcessingRef = useRef(isProcessing);
   const onSendRef = useRef(onSend);
@@ -82,23 +92,54 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     onSendRef.current = onSend;
   }, [onSend]);
 
-  const submitCurrentMessage = useCallback(() => {
+  const submitCurrentMessage = useCallback(async () => {
     const currentEditor = editorRef.current;
-    if (!currentEditor || isProcessingRef.current) return;
+    if (!currentEditor || isProcessingRef.current || submitting) return;
     const text = currentEditor.getText().trim();
-    if (!text) return;
+    if (!text && attachments.length === 0) return;
     const mentions = collectMentionIds(currentEditor.getJSON());
-    onSendRef.current(currentEditor.getHTML(), mentions);
-    currentEditor.commands.clearContent();
-    setMentionedAgentIds([]);
-  }, []);
+    setSubmitting(true);
+    try {
+      const uploaded = await Promise.all(attachments.map(uploadAttachment));
+      onSendRef.current(text ? currentEditor.getHTML() : "", mentions, uploaded);
+      currentEditor.commands.clearContent();
+      setAttachments((prev) => {
+        prev.forEach((item) => URL.revokeObjectURL(item.preview));
+        return [];
+      });
+      setMentionedAgentIds([]);
+    } finally {
+      setSubmitting(false);
+    }
+  }, [attachments, submitting]);
 
   const { getRootProps, getInputProps, open: openFilePicker } = useDropzone({
     noClick: true,
     noKeyboard: true,
     multiple: true,
-    onDrop: () => {},
+    accept: {
+      "image/*": [],
+      "application/pdf": [".pdf"],
+      "application/msword": [".doc"],
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
+      "text/*": [".txt", ".md", ".csv", ".json"],
+    },
+    onDrop: (files) => {
+      setAttachments((prev) => [
+        ...prev,
+        ...files.map((file) => ({
+          file,
+          preview: URL.createObjectURL(file),
+        })),
+      ]);
+    },
   });
+
+  useEffect(() => {
+    return () => {
+      attachments.forEach((item) => URL.revokeObjectURL(item.preview));
+    };
+  }, [attachments]);
 
   const mentionExtension = useMemo(
     () =>
@@ -199,10 +240,20 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     submitCurrentMessage();
   }, [submitCurrentMessage]);
 
-  const canSubmit = useEditorState({
+  const hasText = useEditorState({
     editor,
     selector: (ctx) => !!ctx.editor?.getText().trim(),
   });
+  const canSubmit = (Boolean(hasText) || attachments.length > 0) && !submitting;
+
+  const removeAttachment = useCallback((index: number) => {
+    setAttachments((prev) => {
+      const next = [...prev];
+      const [removed] = next.splice(index, 1);
+      if (removed) URL.revokeObjectURL(removed.preview);
+      return next;
+    });
+  }, []);
 
   const chatActions = (
     <>
@@ -249,14 +300,29 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     <div className="border-t px-4 py-2">
       <ComposerShell
         editor={editor}
-        canSubmit={Boolean(canSubmit)}
+        canSubmit={canSubmit}
         onSubmit={handleSubmit}
         onStop={onStop}
-        isProcessing={isProcessing}
+        isProcessing={isProcessing || submitting}
         actions={chatActions}
         dropzoneProps={getRootProps()}
         hiddenInput={<input {...getInputProps()} data-chat-file-input="" />}
       />
+      {attachments.length > 0 && (
+        <Attachments variant="inline" className="mt-2 justify-start">
+          {attachments.map((item, index) => (
+            <Attachment
+              key={`${item.file.name}-${item.file.lastModified}-${index}`}
+              data={localAttachmentToData(item)}
+              onRemove={() => removeAttachment(index)}
+            >
+              <AttachmentPreview />
+              <AttachmentInfo />
+              <AttachmentRemove />
+            </Attachment>
+          ))}
+        </Attachments>
+      )}
 
       <div className="flex items-center gap-0 pt-2">
         <DropdownMenu>
@@ -311,6 +377,41 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     </div>
   );
 });
+
+type LocalAttachment = {
+  file: File;
+  preview: string;
+};
+
+async function uploadAttachment(item: LocalAttachment): Promise<MessageAttachment> {
+  const formData = new FormData();
+  formData.append("file", item.file);
+  const res = await fetch("/api/upload", {
+    method: "POST",
+    body: formData,
+  });
+  if (!res.ok) {
+    throw new Error(`Upload failed: ${item.file.name}`);
+  }
+  const uploaded = await res.json() as { name: string; size: number; type: string; url: string };
+  return {
+    name: uploaded.name,
+    path: uploaded.url,
+    url: uploaded.url,
+    type: uploaded.type,
+    size: uploaded.size,
+  };
+}
+
+function localAttachmentToData(item: LocalAttachment): AttachmentData {
+  return {
+    id: `${item.file.name}-${item.file.lastModified}`,
+    type: "file",
+    filename: item.file.name,
+    mediaType: item.file.type,
+    url: item.preview,
+  };
+}
 
 function collectMentionIds(node: JSONContent): string[] {
   const ids = new Set<string>();

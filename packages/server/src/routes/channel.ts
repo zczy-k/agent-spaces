@@ -54,10 +54,10 @@ router.get('/:channelId/messages', (req: Request<ChannelParams>, res: Response) 
 // POST /api/workspaces/:id/channels/:channelId/messages
 router.post('/:channelId/messages', (req: Request<ChannelParams>, res: Response) => {
   const { id, channelId } = req.params;
-  const { content, type } = req.body;
-  if (!content) { res.status(400).json({ error: 'content required' }); return; }
+  const { content, type, attachments } = req.body;
+  if (!content && !attachments?.length) { res.status(400).json({ error: 'content required' }); return; }
   if (!getChannel(id, channelId!)) { res.status(404).json({ error: 'channel not found' }); return; }
-  const message = createMessage(id, channelId!, { senderId: 'user', content, type });
+  const message = createMessage(id, channelId!, { senderId: 'user', content, type, attachments });
   broadcastToWorkspace(id, 'channel.message', message);
   res.status(201).json(message);
 });

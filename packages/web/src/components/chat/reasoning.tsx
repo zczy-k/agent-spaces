@@ -1,13 +1,12 @@
 "use client"
 
-import { useControllableState } from "@radix-ui/react-use-controllable-state"
 import { BrainIcon, ChevronDownIcon } from "lucide-react"
 import type { ComponentProps, ReactNode } from "react"
-import { createContext, memo, useContext, useEffect, useState } from "react"
-import { Streamdown } from "streamdown"
+import { createContext, memo, useCallback, useContext, useEffect, useRef, useState } from "react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { cn } from "@/lib/utils"
-import { Shimmer } from "@/components/ai/shimmer"
+import { Shimmer } from "@/components/ui/shimmer"
+import { Markdown } from "@/components/ui/markdown"
 
 interface ReasoningContextValue {
   isStreaming: boolean
@@ -48,30 +47,33 @@ export const Reasoning = memo(
     children,
     ...props
   }: ReasoningProps) => {
-    const [isOpen, setIsOpen] = useControllableState({
-      prop: open,
-      defaultProp: defaultOpen,
-      onChange: onOpenChange,
-    })
-    const [duration, setDuration] = useControllableState({
-      prop: durationProp,
-      defaultProp: undefined,
-    })
+    const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen)
+    const isOpen = open ?? uncontrolledOpen
+    const setIsOpen = useCallback((nextOpen: boolean) => {
+      setUncontrolledOpen(nextOpen)
+      onOpenChange?.(nextOpen)
+    }, [onOpenChange])
+    const [duration, setDuration] = useState<number | undefined>(durationProp)
 
     const [hasAutoClosed, setHasAutoClosed] = useState(false)
-    const [startTime, setStartTime] = useState<number | null>(null)
+    const startTimeRef = useRef<number | null>(null)
 
-    // Track duration when streaming starts and ends
     useEffect(() => {
-      if (isStreaming) {
-        if (startTime === null) {
-          setStartTime(Date.now())
-        }
-      } else if (startTime !== null) {
-        setDuration(Math.ceil((Date.now() - startTime) / MS_IN_S))
-        setStartTime(null)
+      if (isStreaming && startTimeRef.current === null) {
+        startTimeRef.current = Date.now()
       }
-    }, [isStreaming, startTime, setDuration])
+      if (!isStreaming && startTimeRef.current !== null) {
+        const elapsed = Math.ceil((Date.now() - startTimeRef.current) / MS_IN_S)
+        startTimeRef.current = null
+        window.setTimeout(() => setDuration(elapsed), 0)
+      }
+    }, [isStreaming])
+
+    useEffect(() => {
+      if (durationProp !== undefined) {
+        window.setTimeout(() => setDuration(durationProp), 0)
+      }
+    }, [durationProp])
 
     // Auto-open when streaming starts, auto-close when streaming ends (once only)
     useEffect(() => {
@@ -86,9 +88,9 @@ export const Reasoning = memo(
       }
     }, [isStreaming, isOpen, defaultOpen, setIsOpen, hasAutoClosed])
 
-    const handleOpenChange = (newOpen: boolean) => {
+    const handleOpenChange = useCallback((newOpen: boolean) => {
       setIsOpen(newOpen)
-    }
+    }, [setIsOpen])
 
     return (
       <ReasoningContext.Provider value={{ isStreaming, isOpen, setIsOpen, duration }}>
@@ -163,7 +165,7 @@ export const ReasoningContent = memo(({ className, children, ...props }: Reasoni
     )}
     {...props}
   >
-    <Streamdown {...props}>{children}</Streamdown>
+    <Markdown content={children} />
   </CollapsibleContent>
 ))
 
@@ -178,7 +180,7 @@ export default function ReasoningDemo() {
       <Reasoning defaultOpen={true} duration={12}>
         <ReasoningTrigger />
         <ReasoningContent>
-          Let me think through this step by step... First, I need to consider the user's
+          Let me think through this step by step... First, I need to consider the user&apos;s
           requirements. They want a solution that is both efficient and maintainable. Looking at the
           codebase, I can see several potential approaches: 1. **Refactor the existing module** -
           This would minimize disruption 2. **Create a new abstraction layer** - More work but

@@ -12,10 +12,23 @@ function CollapsibleTrigger({ ...props }: CollapsiblePrimitive.Trigger.Props) {
   )
 }
 
+function CollapsibleTriggerAsChild({
+  children,
+  ...props
+}: Omit<CollapsiblePrimitive.Trigger.Props, "render"> & { children: React.ReactElement }) {
+  return (
+    <CollapsiblePrimitive.Trigger
+      data-slot="collapsible-trigger"
+      render={children}
+      {...props}
+    />
+  )
+}
+
 function CollapsibleContent({ ...props }: CollapsiblePrimitive.Panel.Props) {
   return (
     <CollapsiblePrimitive.Panel data-slot="collapsible-content" {...props} />
   )
 }
 
-export { Collapsible, CollapsibleTrigger, CollapsibleContent }
+export { Collapsible, CollapsibleTrigger, CollapsibleTriggerAsChild, CollapsibleContent }
