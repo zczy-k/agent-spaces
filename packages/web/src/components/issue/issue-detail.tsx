@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarGroup } from '@/components/ui/avatar';
 import { Play, RotateCcw, XCircle, User, Clock, GitBranch, PanelRightOpen, PanelRightClose, Info, Users, UserPlus } from 'lucide-react';
 import { AddMemberDialog } from '@/components/chat/add-member-dialog';
+import { IssueMessage } from '@/components/issue/issue-message';
 import { useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -229,6 +230,18 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     useIssueStore.getState().upsertIssue(updated);
   };
 
+  const handleDeleteMessage = async (channelId: string, messageId: string) => {
+    await fetch(`/api/workspaces/${workspaceId}/channels/${channelId}/messages/${messageId}`, { method: 'DELETE' });
+  };
+
+  const handleUpdateMessage = async (wsId: string, channelId: string, messageId: string, content: string) => {
+    await fetch(`/api/workspaces/${wsId}/channels/${channelId}/messages/${messageId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content }),
+    });
+  };
+
   return (
     <div className="flex h-full">
       {/* 左侧：主内容区 */}
@@ -363,35 +376,13 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
             )}
 
             {channelMessages.map((c) => (
-              <div key={c.id} className="py-3 border-b last:border-b-0">
-                <div className="flex items-start gap-2.5">
-                  <div className={`flex items-center justify-center h-7 w-7 rounded-full text-xs font-medium shrink-0 ${
-                    c.senderId === 'user'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground'
-                  }`}>
-                    {c.senderId === 'user' ? <User className="h-3.5 w-3.5" /> : c.senderId[0]}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-medium">
-                        {c.senderId === 'user' ? 'You' : c.senderId}
-                      </span>
-                      {c.senderRole && (
-                        <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
-                          {c.senderRole}
-                        </span>
-                      )}
-                      <span className="text-[10px] text-muted-foreground">
-                        {new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                    <div className="text-sm whitespace-pre-wrap break-words">
-                      {c.content}
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <IssueMessage
+                key={c.id}
+                message={c}
+                workspaceId={workspaceId}
+                onDelete={handleDeleteMessage}
+                onUpdate={handleUpdateMessage}
+              />
             ))}
           </div>
         </div>
