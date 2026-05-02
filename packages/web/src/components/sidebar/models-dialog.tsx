@@ -39,9 +39,11 @@ function groupByProvider(models: LLMModel[]): Record<string, LLMModel[]> {
 export function ModelsDialog({
   open,
   onOpenChange,
+  initialProvider,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialProvider?: string;
 }) {
   const [models, setModels] = useState<LLMModel[]>([]);
   const [selected, setSelected] = useState<LLMModel | null>(null);
@@ -60,6 +62,21 @@ export function ModelsDialog({
       .catch(() => setError("Failed to load models"))
       .finally(() => setLoading(false));
   }, [open]);
+
+  // When initialProvider is set, open add form with that provider pre-selected
+  useEffect(() => {
+    if (open && initialProvider && !draft) {
+      setSelected(null);
+      setDraft({
+        modelId: "",
+        name: "",
+        provider: initialProvider,
+        vision: false,
+        reasoning: false,
+        embedding: false,
+      });
+    }
+  }, [open, initialProvider]);
 
   const handleBack = () => { setSelected(null); setDraft(null); };
 

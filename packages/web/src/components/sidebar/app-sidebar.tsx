@@ -77,6 +77,7 @@ export function DashboardSidebar() {
   const [providersDialogOpen, setProvidersDialogOpen] = useState(false);
   const [wsDialogOpen, setWsDialogOpen] = useState(false);
   const [editingWs, setEditingWs] = useState<Workspace | null>(null);
+  const [modelsDialogProvider, setModelsDialogProvider] = useState<string | undefined>(undefined);
   const agentWorkspaceId = currentWorkspaceId ?? workspaces[0]?.id;
 
   const refreshWorkspaces = () => {
@@ -217,8 +218,15 @@ export function DashboardSidebar() {
       </SidebarFooter>
       <AgentDialog open={agentDialogOpen} onOpenChange={setAgentDialogOpen} workspaceId={agentWorkspaceId} />
       <SettingsDialog open={settingsDialogOpen} onOpenChange={setSettingsDialogOpen} />
-      <ModelsDialog open={modelsDialogOpen} onOpenChange={setModelsDialogOpen} />
-      <ProvidersDialog open={providersDialogOpen} onOpenChange={setProvidersDialogOpen} />
+      <ModelsDialog open={modelsDialogOpen} onOpenChange={setModelsDialogOpen} initialProvider={modelsDialogProvider} />
+      <ProvidersDialog
+        open={providersDialogOpen}
+        onOpenChange={setProvidersDialogOpen}
+        onAddModel={(providerName) => {
+          setModelsDialogProvider(providerName);
+          setModelsDialogOpen(true);
+        }}
+      />
       <WorkspaceDialog
         open={wsDialogOpen}
         onOpenChange={setWsDialogOpen}

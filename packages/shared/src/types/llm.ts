@@ -13,7 +13,6 @@ export interface LLMProvider {
   name: string;
   apiBase: string;
   apiKey: string;
-  models: string[];
   createdAt: string;
   updatedAt: string;
 }
