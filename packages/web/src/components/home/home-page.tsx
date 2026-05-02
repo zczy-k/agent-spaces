@@ -43,18 +43,6 @@ export function HomePage({ initialWorkspaces }: { initialWorkspaces: Workspace[]
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="max-w-6xl mx-auto px-6 pt-20 pb-16">
-        <h1 className="font-heading text-5xl font-semibold leading-[1.10] text-foreground max-w-2xl">
-          Multi-Agent
-          <br />
-          Collaborative Coding
-        </h1>
-        <p className="mt-4 text-lg text-muted-foreground leading-relaxed max-w-xl">
-          Create workspaces, bind local code directories, and let AI agents plan, execute, review, and merge — together.
-        </p>
-      </section>
-
       {/* Workspace Grid */}
       <section className="max-w-6xl mx-auto px-6 pb-20">
         {workspaces.length === 0 ? (

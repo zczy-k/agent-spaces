@@ -27,130 +27,24 @@ import {
   IconWorld,
 } from "@tabler/icons-react";
 import { useMemo, useState } from "react";
-import { ReactRenderer, useEditor } from "@tiptap/react";
+import { useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import Mention from "@tiptap/extension-mention";
-import { Extension, type Editor, type JSONContent } from "@tiptap/core";
-import Suggestion from "@tiptap/suggestion";
-import tippy, { type Instance } from "tippy.js";
+import type { Editor, JSONContent } from "@tiptap/core";
 import { useDropzone } from "react-dropzone";
 
-import { COMMANDS } from "@/lib/commands";
-import { SuggestionList } from "@/components/composer/suggestion-list";
 import { ComposerShell } from "@/components/composer/composer-shell";
+import { createSuggestionRenderer } from "@/components/composer/create-suggestion-renderer";
+import { createSlashExtension } from "@/components/composer/create-slash-extension";
 import type { AgentConfig } from "@agent-spaces/shared";
 
 type MentionedAgent = Pick<AgentConfig, "id" | "name" | "role" | "description" | "enabled">;
-type EditorRange = { from: number; to: number };
-type SuggestionRendererProps = {
-  editor: Editor;
-  clientRect?: (() => DOMRect | null) | null;
-  items: Array<Record<string, unknown>>;
-  command: (item: Record<string, unknown>) => void;
-};
 
 interface ChatInputProps {
   channelName: string;
   agents: MentionedAgent[];
   onSend: (message: string, mentions: string[]) => void;
-}
-
-function createSuggestionRenderer() {
-  let component: ReactRenderer | null = null;
-  let popup: Instance[] | null = null;
-
-  return {
-    onStart(props: SuggestionRendererProps) {
-      component = new ReactRenderer(SuggestionList, {
-        props,
-        editor: props.editor,
-      });
-      if (!props.clientRect) return;
-      popup = tippy("body", {
-        getReferenceClientRect: props.clientRect,
-        appendTo: () => document.body,
-        content: component.element,
-        showOnCreate: true,
-        interactive: true,
-        trigger: "manual",
-        placement: "bottom-start",
-      });
-    },
-    onUpdate(props: SuggestionRendererProps) {
-      component?.updateProps(props);
-      if (popup?.[0] && props.clientRect) {
-        popup[0].setProps({ getReferenceClientRect: props.clientRect });
-      }
-    },
-    onKeyDown(props: { event: KeyboardEvent }) {
-      if (component?.ref && typeof component.ref === 'object' && 'onKeyDown' in component.ref) {
-        return (component.ref as { onKeyDown: (props: { event: KeyboardEvent }) => boolean }).onKeyDown(props);
-      }
-      return false;
-    },
-    onExit() {
-      popup?.[0]?.destroy();
-      component?.destroy();
-    },
-  };
-}
-
-function createSlashExtension(openFilePicker: () => void) {
-  return Extension.create({
-    name: "slashCommand",
-    addOptions() {
-      return {
-        suggestion: {
-          char: "/",
-          items: ({ query }: { query: string }) => {
-            const keyword = query.toLowerCase();
-            return COMMANDS.filter((item) =>
-              `${item.title} ${item.description}`.toLowerCase().includes(keyword)
-            ).map((item) => ({
-              id: item.id,
-              title: item.title,
-              description: item.description,
-            }));
-          },
-          command: ({
-            editor,
-            range,
-            props,
-          }: {
-            editor: Editor;
-            range: EditorRange;
-            props: { id: string; title: string; description: string };
-          }) => {
-            editor.chain().focus().deleteRange(range).run();
-            switch (props.id) {
-              case "heading1":
-                editor.chain().focus().toggleHeading({ level: 1 }).run();
-                break;
-              case "blockquote":
-                editor.chain().focus().toggleBlockquote().run();
-                break;
-              case "divider":
-                editor.chain().focus().setHorizontalRule().run();
-                break;
-              case "attach":
-                openFilePicker();
-                break;
-            }
-          },
-          render: () => createSuggestionRenderer(),
-        },
-      };
-    },
-    addProseMirrorPlugins() {
-      return [
-        Suggestion({
-          editor: this.editor,
-          ...this.options.suggestion,
-        }),
-      ];
-    },
-  });
 }
 
 export function ChatInput({ channelName, agents, onSend }: ChatInputProps) {
@@ -191,7 +85,7 @@ export function ChatInput({ channelName, agents, onSend }: ChatInputProps) {
             props,
           }: {
             editor: Editor;
-            range: EditorRange;
+            range: { from: number; to: number };
             props: Record<string, unknown>;
           }) => {
             editor

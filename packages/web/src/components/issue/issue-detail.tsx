@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useIssueStore } from '@/stores/issue';
 import { useTaskStore } from '@/stores/task';
 import { Badge } from '@/components/ui/badge';
@@ -9,8 +9,11 @@ import { Play, RotateCcw, XCircle, User, Clock, GitBranch } from 'lucide-react';
 import { useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
+import Mention from '@tiptap/extension-mention';
 import { ComposerShell } from '@/components/composer/composer-shell';
-import type { IssueStatus, TaskStatus } from '@agent-spaces/shared';
+import { createSuggestionRenderer } from '@/components/composer/create-suggestion-renderer';
+import { createSlashExtension } from '@/components/composer/create-slash-extension';
+import type { IssueStatus, TaskStatus, AgentConfig } from '@agent-spaces/shared';
 
 const ISSUE_STATUS_LABEL: Record<IssueStatus, string> = {
   draft: 'Draft',
@@ -102,6 +105,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const { issues, activeIssueId, startIssue } = useIssueStore();
   const { tasks, loadTasks, retryTask, cancelTask } = useTaskStore();
   const [comments, setComments] = useState<MockComment[]>(MOCK_COMMENTS);
+  const [agents, setAgents] = useState<AgentConfig[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const issue = issues.find((i) => i.id === activeIssueId);
@@ -112,16 +116,65 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     }
   }, [issue, workspaceId, loadTasks]);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(`/api/workspaces/${workspaceId}/agents/presets`, { signal: controller.signal })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(await res.text());
+        return res.json() as Promise<AgentConfig[]>;
+      })
+      .then(setAgents)
+      .catch((err) => {
+        if (err.name !== 'AbortError') setAgents([]);
+      });
+    return () => controller.abort();
+  }, [workspaceId]);
+
+  const mentionExtension = useMemo(
+    () =>
+      Mention.configure({
+        HTMLAttributes: { class: 'mention' },
+        suggestion: {
+          char: '@',
+          items: ({ query }: { query: string }) => {
+            const keyword = query.toLowerCase();
+            return agents
+              .filter((agent) =>
+                agent.enabled !== false &&
+                `${agent.name} ${agent.role} ${agent.description || ''}`.toLowerCase().includes(keyword)
+              )
+              .slice(0, 6)
+              .map((agent) => ({
+                id: agent.id,
+                label: agent.name || agent.role,
+                description: `${agent.role}${agent.description ? ` · ${agent.description}` : ''}`,
+              }));
+          },
+          command: ({ editor, range, props }: { editor: any; range: { from: number; to: number }; props: Record<string, unknown> }) => {
+            editor.chain().focus().insertContentAt(range, [{ type: 'mention', attrs: props }]).run();
+          },
+          render: () => createSuggestionRenderer(),
+        },
+      }),
+    [agents]
+  );
+
+  const slashExtension = useMemo(() => createSlashExtension(), []);
+
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
       StarterKit,
-      Placeholder.configure({ placeholder: 'Write a comment...' }),
+      Placeholder.configure({ placeholder: 'Write a comment... 支持 @mention，输入 / 打开命令' }),
+      mentionExtension,
+      slashExtension,
     ],
     editorProps: {
       attributes: { class: 'tiptap tiptap-chat' },
       handleKeyDown: (_view, event) => {
         if (event.key === 'Enter' && !event.shiftKey) {
+          const hasPopup = document.querySelector('.suggestion-menu');
+          if (hasPopup) return false;
           event.preventDefault();
           handleSendComment();
           return true;
