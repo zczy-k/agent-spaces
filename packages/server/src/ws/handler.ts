@@ -135,7 +135,7 @@ async function runMentionedAgent(
       baseURL: preset.apiBase,
     });
     const history = listMessages(workspaceId, channelId, { limit: 20 });
-    const result = await runtime.execute(buildAgentPrompt(preset.systemPrompt, prompt, history), preset.workingDir || process.cwd(), {
+    const result = await runtime.execute(buildAgentPrompt(preset.systemPrompt, prompt, history), agentService.resolveWorkingDir(workspaceId, preset), {
       maxTurns: 6,
       tools: agentService.getAllowedTools(preset.mcps),
       sandboxDirs: preset.sandboxDirs,

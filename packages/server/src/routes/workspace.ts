@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import * as wsService from '../services/workspace.js';
+import * as agentService from '../services/agent.js';
 
 const router = Router();
 
@@ -24,6 +25,31 @@ router.get('/:id', (req, res) => {
     return;
   }
   res.json(ws);
+});
+
+router.get('/:id/agent-templates', (req, res) => {
+  const ws = wsService.getById(req.params.id);
+  if (!ws) {
+    res.status(404).json({ error: 'Workspace not found' });
+    return;
+  }
+  const workspaceAgentIds = new Set((ws.agents || []).map((agent) => agent.id));
+  res.json(agentService.listTemplates().filter((agent) => !workspaceAgentIds.has(agent.id)));
+});
+
+router.post('/:id/agents/from-templates', (req, res) => {
+  const { agentIds } = req.body as { agentIds?: string[] };
+  if (!Array.isArray(agentIds) || agentIds.length === 0) {
+    res.status(400).json({ error: 'agentIds are required' });
+    return;
+  }
+
+  const added = agentService.addTemplatesToWorkspace(req.params.id, agentIds);
+  if (!added) {
+    res.status(404).json({ error: 'Workspace not found' });
+    return;
+  }
+  res.status(201).json(added);
 });
 
 router.put('/:id', (req, res) => {

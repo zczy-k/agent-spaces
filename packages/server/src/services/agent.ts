@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid';
-import { copyFileSync, cpSync, existsSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, cpSync, existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, extname, join } from 'node:path';
 import type { AgentConfig, AgentSession, AgentSessionStatus } from '@agent-spaces/shared';
 import {
@@ -36,6 +36,48 @@ export function listPresets(workspaceId: string): AgentConfig[] | null {
   const ws = getWorkspace(workspaceId);
   if (!ws) return null;
   return ws.agents || [];
+}
+
+export function listTemplates(): AgentConfig[] {
+  const root = getGlobalAgentTemplatesDir();
+  if (!existsSync(root)) return [];
+
+  return readdirSync(root, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => readAgentTemplate(entry.name))
+    .filter((template): template is AgentConfig => Boolean(template));
+}
+
+export function addTemplatesToWorkspace(workspaceId: string, templateIds: string[]): AgentConfig[] | null {
+  const ws = getWorkspace(workspaceId);
+  if (!ws) return null;
+
+  const existingIds = new Set((ws.agents || []).map((agent) => agent.id));
+  const added: AgentConfig[] = [];
+
+  for (const templateId of templateIds) {
+    if (existingIds.has(templateId)) continue;
+    const template = readAgentTemplate(templateId);
+    if (!template) continue;
+
+    const workspaceAgentDir = getWorkspaceAgentDir(ws.agentspaceDir, templateId);
+    const preset: AgentConfig = {
+      ...template,
+      id: templateId,
+      workingDir: workspaceAgentDir,
+    };
+    writeWorkspaceAgentCopy(preset, ws.agentspaceDir);
+    ws.agents = [...(ws.agents || []), preset];
+    existingIds.add(templateId);
+    added.push(preset);
+  }
+
+  if (added.length > 0) {
+    ws.updatedAt = new Date().toISOString();
+    updateWorkspace(ws);
+  }
+
+  return added;
 }
 
 export async function testConnection(
@@ -321,7 +363,7 @@ export function createPreset(
   };
 
   writeAgentTemplate(preset, data.skills as SkillInput[] | undefined);
-  if (!workingDir) copyAgentTemplateToWorkspace(preset.id, ws.agentspaceDir);
+  if (!workingDir) writeWorkspaceAgentCopy(preset, ws.agentspaceDir);
 
   ws.agents = [...(ws.agents || []), preset];
   ws.updatedAt = now;
@@ -367,8 +409,21 @@ export function getAllowedTools(mcps?: AgentConfig['mcps']): string[] | undefine
   return Object.keys(servers);
 }
 
+export function resolveWorkingDir(workspaceId: string, preset: AgentConfig): string {
+  if (preset.workingDir?.trim()) return preset.workingDir;
+  const ws = getWorkspace(workspaceId);
+  if (!ws) return process.cwd();
+  const workspaceAgentDir = getWorkspaceAgentDir(ws.agentspaceDir, preset.id);
+  ensureDir(workspaceAgentDir);
+  return workspaceAgentDir;
+}
+
 function getGlobalAgentTemplateDir(agentId: string): string {
-  return join(getDataDir(), 'agent-templates', agentId);
+  return join(getGlobalAgentTemplatesDir(), agentId);
+}
+
+function getGlobalAgentTemplatesDir(): string {
+  return join(getDataDir(), 'agent-templates');
 }
 
 function getWorkspaceAgentDir(agentspaceDir: string, agentId: string): string {
@@ -424,6 +479,27 @@ function copyAgentTemplateToWorkspace(agentId: string, agentspaceDir: string): v
         copyFileSync(join(skillsDir, file), join(workspaceSkillsDir, file));
       }
     }
+  }
+}
+
+function writeWorkspaceAgentCopy(preset: AgentConfig, agentspaceDir: string): void {
+  copyAgentTemplateToWorkspace(preset.id, agentspaceDir);
+  const workspaceAgentDir = getWorkspaceAgentDir(agentspaceDir, preset.id);
+  const workspacePreset: AgentConfig = {
+    ...preset,
+    workingDir: workspaceAgentDir,
+  };
+  ensureDir(workspaceAgentDir);
+  writeFileSync(join(workspaceAgentDir, 'agent.json'), JSON.stringify(workspacePreset, null, 2), 'utf-8');
+}
+
+function readAgentTemplate(agentId: string): AgentConfig | null {
+  const filePath = join(getGlobalAgentTemplateDir(agentId), 'agent.json');
+  if (!existsSync(filePath)) return null;
+  try {
+    return JSON.parse(readFileSync(filePath, 'utf-8')) as AgentConfig;
+  } catch {
+    return null;
   }
 }
 
