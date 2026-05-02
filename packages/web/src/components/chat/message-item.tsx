@@ -3,6 +3,7 @@
 import { useCallback, useState } from 'react';
 import type { Message } from '@agent-spaces/shared';
 import { Copy, Pencil, Trash2, Check } from 'lucide-react';
+import { MemberInfoDialog } from './member-info-dialog';
 
 interface MessageItemProps {
   message: Message;
@@ -14,13 +15,14 @@ function getInitial(name: string) {
   return name.charAt(0).toUpperCase();
 }
 
-function Avatar({ senderId }: { senderId: string }) {
+function Avatar({ senderId, onClick }: { senderId: string; onClick?: () => void }) {
   const isUser = senderId === 'user';
   const initial = isUser ? 'U' : getInitial(senderId);
 
   return (
     <div
-      className={`flex-shrink-0 flex items-center justify-center h-7 w-7 rounded-full text-xs font-semibold select-none ${
+      onClick={onClick}
+      className={`flex-shrink-0 flex items-center justify-center h-7 w-7 rounded-full text-xs font-semibold select-none cursor-pointer hover:opacity-80 transition-opacity ${
         isUser ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
       }`}
     >
@@ -33,6 +35,7 @@ export function MessageItem({ message, onEdit, onDelete }: MessageItemProps) {
   const isUser = message.senderId === 'user';
   const time = new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const [copied, setCopied] = useState(false);
+  const [memberDialogOpen, setMemberDialogOpen] = useState(false);
 
   const handleCopy = useCallback(async () => {
     await navigator.clipboard.writeText(message.content);
@@ -42,7 +45,7 @@ export function MessageItem({ message, onEdit, onDelete }: MessageItemProps) {
 
   return (
     <div className={`group flex gap-2 px-3 py-1.5 ${isUser ? 'flex-row-reverse' : ''}`}>
-      <Avatar senderId={message.senderId} />
+      <Avatar senderId={message.senderId} onClick={() => setMemberDialogOpen(true)} />
       <div className={`flex flex-col min-w-0 max-w-[75%] ${isUser ? 'items-end' : 'items-start'}`}>
         <div className="flex items-center gap-2 mb-0.5">
           <span className="text-xs font-medium text-foreground">
@@ -84,6 +87,7 @@ export function MessageItem({ message, onEdit, onDelete }: MessageItemProps) {
           </button>
         </div>
       </div>
+      <MemberInfoDialog open={memberDialogOpen} onOpenChange={setMemberDialogOpen} memberName={message.senderId} />
     </div>
   );
 }

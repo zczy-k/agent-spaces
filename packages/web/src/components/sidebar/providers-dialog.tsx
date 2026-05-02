@@ -243,7 +243,7 @@ function ProviderList({
               onClick={e => { e.stopPropagation(); onAddModel(provider.name); }}
             >
               <ExternalLink className="size-3" />
-              Add model in Models dialog
+              Add model
             </Button>
           </div>
         );

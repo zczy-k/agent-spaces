@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type { AgentConfig } from "@agent-spaces/shared";
+import { useEffect, useState, useCallback } from "react";
+import type { AgentConfig, LLMProvider } from "@agent-spaces/shared";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeft,
@@ -36,6 +37,8 @@ import {
   Sparkles,
   MessageSquare,
   Sliders,
+  Database,
+  PenLine,
 } from "lucide-react";
 
 type AgentPreset = AgentConfig & {
@@ -557,6 +560,24 @@ function AgentDetail({
 }) {
   const [newMcp, setNewMcp] = useState("");
   const [newSkill, setNewSkill] = useState("");
+  const [llmProviders, setLlmProviders] = useState<LLMProvider[]>([]);
+  const [modelTab, setModelTab] = useState<string>("manual");
+
+  useEffect(() => {
+    fetch("/api/providers")
+      .then((r) => r.json())
+      .then((data: LLMProvider[]) => setLlmProviders(data))
+      .catch(() => {});
+  }, []);
+
+  const handleSelectProvider = useCallback(
+    (provider: LLMProvider) => {
+      onChange("apiBase", provider.apiBase);
+      onChange("apiKey", provider.apiKey);
+      setModelTab("manual");
+    },
+    [onChange],
+  );
 
   return (
     <div className="flex flex-col gap-5 p-5">
@@ -638,6 +659,80 @@ function AgentDetail({
 
       {/* Model Config */}
       <Section icon={<Sliders className="size-3.5" />} title="Model">
+        <Tabs value={modelTab} onValueChange={setModelTab}>
+          <TabsList className="h-7 w-full">
+            <TabsTrigger value="preset" className="gap-1 text-xs flex-1">
+              <Database className="size-3" />
+              Preset
+            </TabsTrigger>
+            <TabsTrigger value="manual" className="gap-1 text-xs flex-1">
+              <PenLine className="size-3" />
+              Manual
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="preset" className="mt-2">
+            {llmProviders.length === 0 ? (
+              <div className="text-xs text-muted-foreground py-2">No providers configured. Add one in LLM settings first.</div>
+            ) : (
+              <div className="grid grid-cols-1 gap-1 max-h-48 overflow-y-auto">
+                {llmProviders.map((provider) => (
+                  <button
+                    key={provider.id}
+                    type="button"
+                    className={cn(
+                      "flex items-center justify-between rounded-md border px-2.5 py-1.5 text-xs hover:bg-muted/50 transition-colors",
+                      agent.apiBase === provider.apiBase && agent.apiKey === provider.apiKey && "border-primary bg-primary/5",
+                    )}
+                    onClick={() => handleSelectProvider(provider)}
+                  >
+                    <div className="flex flex-col items-start gap-0.5">
+                      <span className="font-medium">{provider.name}</span>
+                      <span className="text-[10px] text-muted-foreground font-mono">{provider.apiBase || "No base URL"}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+          <TabsContent value="manual" className="mt-2 space-y-2.5">
+            <FieldGroup label="Model">
+              <SearchSelect
+                value={agent.modelId}
+                onChange={(v) => onChange("modelId", v)}
+                options={MODEL_OPTIONS.map((m) => ({ value: m }))}
+                placeholder="Select model..."
+                searchPlaceholder="Search or type custom model..."
+              />
+            </FieldGroup>
+            <FieldGroup label="API Message Type">
+              <SearchSelect
+                value={agent.modelProvider}
+                onChange={(v) => onChange("modelProvider", v as NonNullable<AgentConfig["modelProvider"]>)}
+                options={PROVIDER_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
+                placeholder="Select API message type..."
+                searchPlaceholder="Search API message type..."
+                allowCustom={false}
+              />
+            </FieldGroup>
+            <FieldGroup label="API Base">
+              <Input
+                value={agent.apiBase}
+                onChange={(e) => onChange("apiBase", e.target.value)}
+                placeholder="https://api.example.com/v1"
+                className="h-7 text-xs"
+              />
+            </FieldGroup>
+            <FieldGroup label="API Key">
+              <Input
+                type="password"
+                value={agent.apiKey}
+                onChange={(e) => onChange("apiKey", e.target.value)}
+                placeholder="sk-..."
+                className="h-7 text-xs"
+              />
+            </FieldGroup>
+          </TabsContent>
+        </Tabs>
         <div className="flex items-center justify-between gap-3">
           <div className="text-xs text-muted-foreground">Validate provider credentials before saving.</div>
           <Button
@@ -674,42 +769,6 @@ function AgentDetail({
             )}
           </div>
         )}
-        <FieldGroup label="Model">
-          <SearchSelect
-            value={agent.modelId}
-            onChange={(v) => onChange("modelId", v)}
-            options={MODEL_OPTIONS.map((m) => ({ value: m }))}
-            placeholder="Select model..."
-            searchPlaceholder="Search or type custom model..."
-          />
-        </FieldGroup>
-        <FieldGroup label="API Message Type">
-          <SearchSelect
-            value={agent.modelProvider}
-            onChange={(v) => onChange("modelProvider", v as NonNullable<AgentConfig["modelProvider"]>)}
-            options={PROVIDER_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
-            placeholder="Select API message type..."
-            searchPlaceholder="Search API message type..."
-            allowCustom={false}
-          />
-        </FieldGroup>
-        <FieldGroup label="API Base">
-          <Input
-            value={agent.apiBase}
-            onChange={(e) => onChange("apiBase", e.target.value)}
-            placeholder="https://api.example.com/v1"
-            className="h-7 text-xs"
-          />
-        </FieldGroup>
-        <FieldGroup label="API Key">
-          <Input
-            type="password"
-            value={agent.apiKey}
-            onChange={(e) => onChange("apiKey", e.target.value)}
-            placeholder="sk-..."
-            className="h-7 text-xs"
-          />
-        </FieldGroup>
         <div className="grid grid-cols-2 gap-3">
           <FieldGroup label="Temperature">
             <div className="flex items-center gap-2">

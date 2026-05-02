@@ -167,7 +167,7 @@ export function DashboardSidebar() {
       subs: [
         { title: "General", link: "#", onClick: () => setSettingsDialogOpen(true) },
         { title: "Agents", link: "#", icon: <Bot className="size-3.5" />, onClick: () => setAgentDialogOpen(true) },
-        { title: "Models", link: "#", icon: <Brain className="size-3.5" />, onClick: () => setModelsDialogOpen(true) },
+        { title: "Models", link: "#", icon: <Brain className="size-3.5" />, onClick: () => { setModelsDialogProvider(undefined); setModelsDialogOpen(true); } },
         { title: "Providers", link: "#", icon: <Server className="size-3.5" />, onClick: () => setProvidersDialogOpen(true) },
       ],
     },
