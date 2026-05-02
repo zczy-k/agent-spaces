@@ -41,6 +41,7 @@ import {
 type AgentPreset = AgentConfig & {
   name: string;
   description: string;
+  modelProvider: NonNullable<AgentConfig["modelProvider"]>;
   modelId: string;
   apiBase: string;
   apiKey: string;
@@ -79,6 +80,12 @@ const MODEL_OPTIONS = [
   "claude-sonnet-4-6",
   "claude-haiku-4-5-20251001",
 ];
+const PROVIDER_OPTIONS: Array<{ value: NonNullable<AgentConfig["modelProvider"]>; label: string }> = [
+  { value: "anthropic-messages", label: "Anthropic Messages" },
+  { value: "openai-chat-completions", label: "OpenAI Chat Completions" },
+  { value: "openai-responses", label: "OpenAI Responses API" },
+  { value: "gemini-generate-content", label: "Gemini Native generateContent" },
+];
 const ROLE_OPTIONS: AgentRole[] = ["scheduler", "planner", "executor", "reviewer"];
 
 const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
@@ -86,6 +93,7 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     name: "Scheduler",
     role: "scheduler",
     description: "任务调度者，负责任务分发和协调",
+    modelProvider: "anthropic-messages",
     modelId: "claude-sonnet-4-6",
     apiBase: "",
     apiKey: "",
@@ -102,6 +110,7 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     name: "Planner",
     role: "planner",
     description: "策划者，负责分解任务和制定计划",
+    modelProvider: "anthropic-messages",
     modelId: "claude-opus-4-7",
     apiBase: "",
     apiKey: "",
@@ -118,6 +127,7 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     name: "Executor",
     role: "executor",
     description: "执行者，负责代码编写和修改",
+    modelProvider: "anthropic-messages",
     modelId: "claude-sonnet-4-6",
     apiBase: "",
     apiKey: "",
@@ -134,6 +144,7 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     name: "Reviewer",
     role: "reviewer",
     description: "审核者，负责代码审查和质量把关",
+    modelProvider: "anthropic-messages",
     modelId: "claude-opus-4-7",
     apiBase: "",
     apiKey: "",
@@ -153,6 +164,7 @@ function normalizeAgent(agent: AgentConfig): AgentPreset {
     ...agent,
     name: agent.name || "New Agent",
     description: agent.description || "",
+    modelProvider: agent.modelProvider || "anthropic-messages",
     modelId: agent.modelId || "claude-sonnet-4-6",
     apiBase: agent.apiBase || "",
     apiKey: agent.apiKey || "",
@@ -642,6 +654,16 @@ function AgentDetail({
             options={MODEL_OPTIONS.map((m) => ({ value: m }))}
             placeholder="Select model..."
             searchPlaceholder="Search or type custom model..."
+          />
+        </FieldGroup>
+        <FieldGroup label="API Message Type">
+          <SearchSelect
+            value={agent.modelProvider}
+            onChange={(v) => onChange("modelProvider", v as NonNullable<AgentConfig["modelProvider"]>)}
+            options={PROVIDER_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
+            placeholder="Select API message type..."
+            searchPlaceholder="Search API message type..."
+            allowCustom={false}
           />
         </FieldGroup>
         <FieldGroup label="API Base">

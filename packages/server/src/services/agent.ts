@@ -59,19 +59,12 @@ export async function testConnection(
   const timeout = setTimeout(() => controller.abort(), 15_000);
 
   try {
-    const requestUrl =
-      provider === 'anthropic-messages'
-        ? joinUrl(apiBase, '/messages')
-        : joinUrl(apiBase, '/chat/completions');
+    const requestUrl = getConnectionTestUrl(provider, apiBase, model);
     debug.requestUrl = requestUrl;
 
     console.info('[agent:test-connection] request', debug);
 
-    const response = await (
-      provider === 'anthropic-messages'
-        ? testAnthropicConnection(requestUrl, apiKey, model, controller.signal)
-        : testOpenAIConnection(requestUrl, apiKey, model, controller.signal)
-    );
+    const response = await testProviderConnection(provider, requestUrl, apiKey, model, controller.signal);
 
     if (!response.ok) {
       const { message, body } = await readErrorMessage(response);
@@ -117,7 +110,26 @@ export async function testConnection(
   }
 }
 
-async function testOpenAIConnection(
+async function testProviderConnection(
+  provider: NonNullable<AgentConfig['modelProvider']>,
+  requestUrl: string,
+  apiKey: string,
+  model: string,
+  signal: AbortSignal,
+): Promise<Response> {
+  switch (provider) {
+    case 'anthropic-messages':
+      return testAnthropicMessagesConnection(requestUrl, apiKey, model, signal);
+    case 'openai-responses':
+      return testOpenAIResponsesConnection(requestUrl, apiKey, model, signal);
+    case 'gemini-generate-content':
+      return testGeminiGenerateContentConnection(requestUrl, apiKey, signal);
+    case 'openai-chat-completions':
+      return testOpenAIChatCompletionsConnection(requestUrl, apiKey, model, signal);
+  }
+}
+
+async function testOpenAIChatCompletionsConnection(
   requestUrl: string,
   apiKey: string,
   model: string,
@@ -139,7 +151,29 @@ async function testOpenAIConnection(
   });
 }
 
-async function testAnthropicConnection(
+async function testOpenAIResponsesConnection(
+  requestUrl: string,
+  apiKey: string,
+  model: string,
+  signal: AbortSignal,
+): Promise<Response> {
+  return fetch(requestUrl, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model,
+      input: 'Reply with OK.',
+      max_output_tokens: 8,
+      temperature: 0,
+    }),
+    signal,
+  });
+}
+
+async function testAnthropicMessagesConnection(
   requestUrl: string,
   apiKey: string,
   model: string,
@@ -162,12 +196,65 @@ async function testAnthropicConnection(
   });
 }
 
-function inferProvider(apiBase?: string): 'anthropic-messages' | 'openai-completions' {
-  return apiBase?.includes('anthropic.com') ? 'anthropic-messages' : 'openai-completions';
+async function testGeminiGenerateContentConnection(
+  requestUrl: string,
+  apiKey: string,
+  signal: AbortSignal,
+): Promise<Response> {
+  return fetch(requestUrl, {
+    method: 'POST',
+    headers: {
+      'x-goog-api-key': apiKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: 'Reply with OK.' }] }],
+      generationConfig: {
+        temperature: 0,
+        maxOutputTokens: 8,
+      },
+    }),
+    signal,
+  });
+}
+
+function inferProvider(apiBase?: string): NonNullable<AgentConfig['modelProvider']> {
+  if (apiBase?.includes('anthropic.com')) return 'anthropic-messages';
+  if (apiBase?.includes('generativelanguage.googleapis.com')) return 'gemini-generate-content';
+  return 'openai-chat-completions';
+}
+
+function getConnectionTestUrl(
+  provider: NonNullable<AgentConfig['modelProvider']>,
+  apiBase: string,
+  model: string,
+): string {
+  switch (provider) {
+    case 'anthropic-messages':
+      return getAnthropicMessagesUrl(apiBase);
+    case 'openai-chat-completions':
+      return joinUrl(apiBase, '/chat/completions');
+    case 'openai-responses':
+      return joinUrl(apiBase, '/responses');
+    case 'gemini-generate-content':
+      return joinUrl(apiBase, `/models/${encodeURIComponent(model)}:generateContent`);
+  }
 }
 
 function joinUrl(base: string, path: string): string {
   return `${base.replace(/\/+$/, '')}${path}`;
+}
+
+function getAnthropicMessagesUrl(apiBase: string): string {
+  try {
+    const url = new URL(apiBase);
+    if (url.hostname === 'api.anthropic.com' && !url.pathname.endsWith('/messages')) {
+      return joinUrl(apiBase, '/messages');
+    }
+  } catch {
+    // Fall through to using the user-provided value so the debug output exposes the bad URL.
+  }
+  return apiBase;
 }
 
 function maskApiKey(apiKey?: string): string | undefined {

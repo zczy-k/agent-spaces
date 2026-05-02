@@ -15,7 +15,7 @@ export interface AgentConfig {
   name: string;
   role: 'scheduler' | 'planner' | 'executor' | 'reviewer';
   description?: string;
-  modelProvider?: string;
+  modelProvider?: 'anthropic-messages' | 'openai-chat-completions' | 'openai-responses' | 'gemini-generate-content';
   modelId?: string;
   apiBase?: string;
   apiKey?: string;

@@ -5,7 +5,57 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import '@xterm/xterm/css/xterm.css';
+import { useTheme } from 'next-themes';
 import { getWS } from '@/lib/ws';
+
+const TERM_THEMES = {
+  light: {
+    background: '#ffffff',
+    foreground: '#222222',
+    cursor: '#1456f0',
+    cursorAccent: '#ffffff',
+    selectionBackground: 'rgba(20, 86, 240, 0.2)',
+    black: '#222222',
+    red: '#ef4444',
+    green: '#16a34a',
+    yellow: '#ca8a04',
+    blue: '#1456f0',
+    magenta: '#ea5ec1',
+    cyan: '#0891b2',
+    white: '#e5e7eb',
+    brightBlack: '#45515e',
+    brightRed: '#f87171',
+    brightGreen: '#22c55e',
+    brightYellow: '#eab308',
+    brightBlue: '#3b82f6',
+    brightMagenta: '#f472b6',
+    brightCyan: '#06b6d4',
+    brightWhite: '#f9fafb',
+  },
+  dark: {
+    background: '#0f1117',
+    foreground: '#e5e7eb',
+    cursor: '#3b82f6',
+    cursorAccent: '#0f1117',
+    selectionBackground: 'rgba(59, 130, 246, 0.25)',
+    black: '#0f1117',
+    red: '#ef4444',
+    green: '#22c55e',
+    yellow: '#eab308',
+    blue: '#3b82f6',
+    magenta: '#ea5ec1',
+    cyan: '#06b6d4',
+    white: '#e5e7eb',
+    brightBlack: '#8b8fa3',
+    brightRed: '#f87171',
+    brightGreen: '#4ade80',
+    brightYellow: '#facc15',
+    brightBlue: '#60a5fa',
+    brightMagenta: '#f472b6',
+    brightCyan: '#22d3ee',
+    brightWhite: '#f9fafb',
+  },
+};
 
 interface TerminalInstanceProps {
   sessionId: string;
@@ -16,6 +66,7 @@ export function TerminalInstance({ sessionId, workspaceId }: TerminalInstancePro
   const termRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
+  const { resolvedTheme } = useTheme();
 
   const handleOutput = useCallback((data: unknown) => {
     const { sessionId: sid, data: output } = data as { sessionId: string; data: string };
@@ -31,11 +82,7 @@ export function TerminalInstance({ sessionId, workspaceId }: TerminalInstancePro
       cursorBlink: true,
       fontSize: 13,
       fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-      theme: {
-        background: '#1e1e2e',
-        foreground: '#cdd6f4',
-        cursor: '#f5e0dc',
-      },
+      theme: resolvedTheme === 'dark' ? TERM_THEMES.dark : TERM_THEMES.light,
     });
 
     const fit = new FitAddon();
@@ -83,6 +130,12 @@ export function TerminalInstance({ sessionId, workspaceId }: TerminalInstancePro
       xterm.dispose();
     };
   }, [sessionId, workspaceId, handleOutput]);
+
+  // Sync theme without recreating terminal
+  useEffect(() => {
+    if (!xtermRef.current || !resolvedTheme) return;
+    xtermRef.current.options.theme = resolvedTheme === 'dark' ? TERM_THEMES.dark : TERM_THEMES.light;
+  }, [resolvedTheme]);
 
   return <div ref={termRef} className="h-full w-full" />;
 }

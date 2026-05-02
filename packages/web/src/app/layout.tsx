@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { DM_Sans, Outfit, Poppins } from "next/font/google";
+import { ThemeProvider } from "next-themes";
 import { DevInspector } from "@/components/dev-inspector";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { DashboardSidebar } from "@/components/sidebar/app-sidebar";
@@ -37,15 +38,18 @@ export default function RootLayout({
     <html
       lang="zh-CN"
       className={`${dmSans.variable} ${outfit.variable} ${poppins.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
       <body className="min-h-full font-sans">
-        <DevInspector />
-        <SidebarProvider>
-          <DashboardSidebar />
-          <SidebarInset>
-            {children}
-          </SidebarInset>
-        </SidebarProvider>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <DevInspector />
+          <SidebarProvider>
+            <DashboardSidebar />
+            <SidebarInset>
+              {children}
+            </SidebarInset>
+          </SidebarProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

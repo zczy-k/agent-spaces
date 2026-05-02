@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/sidebar/logo";
 import { AgentDialog } from "@/components/sidebar/agent-dialog";
+import { SettingsDialog } from "@/components/sidebar/settings-dialog";
 import type { Route } from "./nav-main";
 import DashboardNavigation from "@/components/sidebar/nav-main";
 import { NotificationsPopover } from "@/components/sidebar/nav-notifications";
@@ -68,6 +69,7 @@ export function DashboardSidebar() {
   const currentWorkspaceId = pathname.match(/^\/workspace\/([^/]+)/)?.[1];
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [agentDialogOpen, setAgentDialogOpen] = useState(false);
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const [wsDialogOpen, setWsDialogOpen] = useState(false);
   const [editingWs, setEditingWs] = useState<Workspace | null>(null);
   const agentWorkspaceId = currentWorkspaceId ?? workspaces[0]?.id;
@@ -162,7 +164,7 @@ export function DashboardSidebar() {
       icon: <Settings className="size-4" />,
       link: "#",
       subs: [
-        { title: "General", link: "#" },
+        { title: "General", link: "#", onClick: () => setSettingsDialogOpen(true) },
         { title: "Agents", link: "#", icon: <Bot className="size-3.5" />, onClick: () => setAgentDialogOpen(true) },
       ],
     },
@@ -212,6 +214,7 @@ export function DashboardSidebar() {
         <TeamSwitcher teams={teams} />
       </SidebarFooter>
       <AgentDialog open={agentDialogOpen} onOpenChange={setAgentDialogOpen} workspaceId={agentWorkspaceId} />
+      <SettingsDialog open={settingsDialogOpen} onOpenChange={setSettingsDialogOpen} />
       <WorkspaceDialog
         open={wsDialogOpen}
         onOpenChange={setWsDialogOpen}
