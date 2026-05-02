@@ -46,3 +46,23 @@ export function createMessage(
   writeJsonFile(path, messages);
   return message;
 }
+
+export function updateMessage(
+  workspaceId: string,
+  channelId: string,
+  messageId: string,
+  data: Partial<Pick<Message, 'content' | 'status' | 'senderRole' | 'type'>>,
+): Message | null {
+  const path = messageFilePath(workspaceId, channelId);
+  const messages = readJsonFile<Message[]>(path) || [];
+  const index = messages.findIndex((message) => message.id === messageId);
+  if (index === -1) return null;
+
+  const updated: Message = {
+    ...messages[index],
+    ...data,
+  };
+  messages[index] = updated;
+  writeJsonFile(path, messages);
+  return updated;
+}

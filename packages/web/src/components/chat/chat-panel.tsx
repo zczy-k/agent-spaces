@@ -28,7 +28,7 @@ interface ChatPanelProps {
 }
 
 export function ChatPanel({ workspaceId }: ChatPanelProps) {
-  const { activeChannelId, channels, messages, loadMessages, sendMessage, addMessage, updateChannel } = useChannelStore();
+  const { activeChannelId, channels, messages, loadMessages, sendMessage, addMessage, updateMessage, updateChannel } = useChannelStore();
   const bottomRef = useRef<HTMLDivElement>(null);
   const [infoOpen, setInfoOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -72,8 +72,17 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
         addMessage(msg.channelId, data as Message);
       }
     });
-    return () => { unsub(); };
-  }, [workspaceId, activeChannelId, addMessage]);
+    const unsubUpdate = ws.on('channel.message.updated', (data: unknown) => {
+      const msg = data as { channelId: string; id: string };
+      if (msg.channelId === activeChannelId) {
+        updateMessage(msg.channelId, data as Message);
+      }
+    });
+    return () => {
+      unsub();
+      unsubUpdate();
+    };
+  }, [workspaceId, activeChannelId, addMessage, updateMessage]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });

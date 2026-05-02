@@ -1,0 +1,287 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import type { LLMModel } from "@agent-spaces/shared";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  ArrowLeft,
+  Brain,
+  Plus,
+  Trash2,
+} from "lucide-react";
+
+const PROVIDERS = ["Anthropic", "OpenAI", "Google", "DeepSeek", "Meta", "Mistral", "Other"];
+
+const CAP_BADGES: Record<string, { label: string; cls: string }> = {
+  vision: { label: "Vision", cls: "bg-blue-500/10 text-blue-600 border-blue-200" },
+  reasoning: { label: "Reasoning", cls: "bg-purple-500/10 text-purple-600 border-purple-200" },
+  embedding: { label: "Embedding", cls: "bg-green-500/10 text-green-600 border-green-200" },
+};
+
+function groupByProvider(models: LLMModel[]): Record<string, LLMModel[]> {
+  const groups: Record<string, LLMModel[]> = {};
+  for (const m of models) {
+    const p = m.provider || "Other";
+    (groups[p] ??= []).push(m);
+  }
+  return groups;
+}
+
+export function ModelsDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const [models, setModels] = useState<LLMModel[]>([]);
+  const [selected, setSelected] = useState<LLMModel | null>(null);
+  const [draft, setDraft] = useState<Partial<LLMModel> | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setLoading(true);
+    setError(null);
+    fetch("/api/models")
+      .then(r => r.json())
+      .then((data: LLMModel[]) => setModels(data))
+      .catch(() => setError("Failed to load models"))
+      .finally(() => setLoading(false));
+  }, [open]);
+
+  const handleBack = () => { setSelected(null); setDraft(null); };
+
+  const handleAdd = () => {
+    setSelected(null);
+    setDraft({ modelId: "", name: "", provider: "Other", vision: false, reasoning: false, embedding: false });
+  };
+
+  const handleEdit = (m: LLMModel) => {
+    setSelected(m);
+    setDraft({ ...m });
+  };
+
+  const handleSave = async () => {
+    if (!draft || !draft.modelId || !draft.name) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const isNew = !selected;
+      const res = await fetch(isNew ? "/api/models" : `/api/models/${selected!.id}`, {
+        method: isNew ? "POST" : "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(draft),
+      });
+      if (!res.ok) throw new Error();
+      const saved: LLMModel = await res.json();
+      setModels(prev => isNew ? [...prev, saved] : prev.map(m => m.id === saved.id ? saved : m));
+      handleBack();
+    } catch {
+      setError("Failed to save model");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this model?")) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/models/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      setModels(prev => prev.filter(m => m.id !== id));
+      if (selected?.id === id) handleBack();
+    } catch {
+      setError("Failed to delete model");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updateDraft = (key: string, value: unknown) => {
+    setDraft(prev => prev ? { ...prev, [key]: value } : prev);
+  };
+
+  const groups = groupByProvider(models);
+
+  return (
+    <Dialog open={open} onOpenChange={o => { if (!o) handleBack(); onOpenChange(o); }}>
+      <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col p-0 gap-0">
+        <div className="flex items-center gap-3 border-b px-5 py-4">
+          {draft && (
+            <Button variant="ghost" size="icon-sm" onClick={handleBack}>
+              <ArrowLeft className="size-4" />
+            </Button>
+          )}
+          <DialogHeader className="flex-1 space-y-0">
+            <DialogTitle className="text-base">
+              {draft ? (selected ? "Edit Model" : "Add Model") : "Models"}
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              {draft ? "Configure model properties and capabilities" : "Manage available LLM models"}
+            </DialogDescription>
+          </DialogHeader>
+          {!draft && (
+            <Button variant="outline" size="sm" onClick={handleAdd}>
+              <Plus className="size-3.5" />
+              Add
+            </Button>
+          )}
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          {error && (
+            <div className="mx-5 mt-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              {error}
+            </div>
+          )}
+          {loading ? (
+            <div className="py-12 text-center text-sm text-muted-foreground">Loading models...</div>
+          ) : draft ? (
+            <ModelForm draft={draft} onChange={updateDraft} />
+          ) : (
+            <ModelList groups={groups} onEdit={handleEdit} onDelete={handleDelete} />
+          )}
+        </div>
+
+        {draft && (
+          <div className="flex justify-end gap-2 border-t px-5 py-3">
+            <Button variant="outline" size="sm" onClick={handleBack} disabled={saving}>Cancel</Button>
+            <Button size="sm" onClick={handleSave} disabled={saving || !draft.modelId || !draft.name}>
+              {saving ? "Saving..." : "Save"}
+            </Button>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ModelList({
+  groups,
+  onEdit,
+  onDelete,
+}: {
+  groups: Record<string, LLMModel[]>;
+  onEdit: (m: LLMModel) => void;
+  onDelete: (id: string) => void;
+}) {
+  const order = ["Anthropic", "OpenAI", "Google", "DeepSeek", "Meta", "Mistral", "Other"];
+  const sorted = Object.keys(groups).sort((a, b) => order.indexOf(a) - order.indexOf(b) || a.localeCompare(b));
+
+  return (
+    <div className="flex flex-col p-4 gap-4">
+      {sorted.map(provider => (
+        <div key={provider}>
+          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 px-1">
+            {provider}
+          </div>
+          <div className="flex flex-col gap-0.5">
+            {groups[provider].map(model => (
+              <div
+                key={model.id}
+                className="group flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-muted/50 cursor-pointer transition-colors"
+                onClick={() => onEdit(model)}
+              >
+                <Brain className="size-4 text-muted-foreground shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm font-medium">{model.name}</span>
+                  <span className="text-[11px] text-muted-foreground font-mono ml-2">{model.modelId}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  {(["vision", "reasoning", "embedding"] as const).map(cap =>
+                    model[cap] ? (
+                      <Badge key={cap} variant="outline" className={`text-[10px] h-5 px-1.5 ${CAP_BADGES[cap].cls}`}>
+                        {CAP_BADGES[cap].label}
+                      </Badge>
+                    ) : null
+                  )}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={e => { e.stopPropagation(); onDelete(model.id); }}
+                >
+                  <Trash2 className="size-3 text-destructive" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+      {sorted.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+          <Brain className="size-10 mb-2 opacity-30" />
+          <p className="text-sm">No models yet</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ModelForm({
+  draft,
+  onChange,
+}: {
+  draft: Partial<LLMModel>;
+  onChange: (key: string, value: unknown) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-5 p-5">
+      <div className="flex flex-col gap-2.5">
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Details</div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground">Model ID</label>
+          <Input value={draft.modelId || ""} onChange={e => onChange("modelId", e.target.value)} placeholder="e.g. gpt-4o" />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground">Display Name</label>
+          <Input value={draft.name || ""} onChange={e => onChange("name", e.target.value)} placeholder="e.g. GPT-4o" />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground">Provider</label>
+          <select
+            value={draft.provider || "Other"}
+            onChange={e => onChange("provider", e.target.value)}
+            className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring dark:bg-input/30"
+          >
+            {PROVIDERS.map(p => <option key={p} value={p}>{p}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2.5">
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Capabilities</div>
+        <div className="flex flex-col gap-2">
+          {(["vision", "reasoning", "embedding"] as const).map(cap => (
+            <label key={cap} className="flex items-center gap-3 rounded-lg border px-3 py-2 cursor-pointer hover:bg-muted/50">
+              <input
+                type="checkbox"
+                checked={Boolean(draft[cap])}
+                onChange={e => onChange(cap, e.target.checked)}
+                className="rounded"
+              />
+              <Badge variant="outline" className={`text-[10px] h-5 px-1.5 pointer-events-none ${CAP_BADGES[cap].cls}`}>
+                {CAP_BADGES[cap].label}
+              </Badge>
+              <span className="text-sm">{cap.charAt(0).toUpperCase() + cap.slice(1)}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

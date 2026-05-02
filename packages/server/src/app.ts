@@ -9,6 +9,7 @@ import issueRouter from './routes/issue.js';
 import agentRouter from './routes/agent.js';
 import taskRouter from './routes/task.js';
 import gitRouter from './routes/git.js';
+import llmRouter from './routes/llm.js';
 import { handleConnection } from './ws/handler.js';
 import { startScheduler, stopScheduler } from './agents/scheduler-agent.js';
 
@@ -29,6 +30,7 @@ app.use('/api/workspaces/:id/issues', issueRouter);
 app.use('/api/workspaces/:id/agents', agentRouter);
 app.use('/api/workspaces/:id/tasks', taskRouter);
 app.use('/api/workspaces/:id/git', gitRouter);
+app.use('/api', llmRouter);
 
 const server = createServer(app);
 

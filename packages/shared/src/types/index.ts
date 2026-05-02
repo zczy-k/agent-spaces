@@ -6,3 +6,4 @@ export * from './channel.js';
 export * from './events.js';
 export * from './file.js';
 export * from './git.js';
+export * from './llm.js';

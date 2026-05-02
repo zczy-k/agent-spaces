@@ -11,21 +11,37 @@ const CHECK_INTERVAL = 10_000; // 10s
 const timers = new Map<string, NodeJS.Timeout>();
 
 export function startScheduler(workspaceId: string, ctx: AgentContext): void {
-  if (timers.has(workspaceId)) return;
+  if (timers.has(workspaceId)) {
+    console.log(`[scheduler:${workspaceId}] already running, skip`);
+    return;
+  }
+
+  console.log(`[scheduler:${workspaceId}] started (interval=${CHECK_INTERVAL}ms)`);
 
   const tick = async () => {
-    const unfinished = issueService.list(workspaceId).filter(
+    const allIssues = issueService.list(workspaceId);
+    const unfinished = allIssues.filter(
       (i) => i.status === 'draft' || i.status === 'changes_requested',
     );
 
-    if (unfinished.length === 0) return;
+    if (unfinished.length === 0) {
+      console.log(`[scheduler:${workspaceId}] tick: no unfinished issues (total=${allIssues.length})`);
+      return;
+    }
+
+    console.log(`[scheduler:${workspaceId}] tick: ${unfinished.length} unfinished issue(s):`,
+      unfinished.map((i) => ({ id: i.id, title: i.title, status: i.status })));
 
     const activePlanner = agentService.findActiveByRole(workspaceId, 'planner');
-    if (activePlanner) return;
+    if (activePlanner) {
+      console.log(`[scheduler:${workspaceId}] planner already active (sessionId=${activePlanner.id}), waiting`);
+      return;
+    }
 
     const nextIssue = unfinished[0];
+    console.log(`[scheduler:${workspaceId}] waking planner for issue "${nextIssue.title}" (${nextIssue.id})`);
     runPlanner(workspaceId, nextIssue.id, ctx).catch((err) => {
-      console.error(`[scheduler] planner error for issue ${nextIssue.id}:`, err);
+      console.error(`[scheduler:${workspaceId}] planner error for issue ${nextIssue.id}:`, err);
     });
   };
 
@@ -38,5 +54,6 @@ export function stopScheduler(workspaceId: string): void {
   if (timer) {
     clearInterval(timer);
     timers.delete(workspaceId);
+    console.log(`[scheduler:${workspaceId}] stopped`);
   }
 }

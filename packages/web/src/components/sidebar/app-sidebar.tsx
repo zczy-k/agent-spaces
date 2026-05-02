@@ -17,11 +17,15 @@ import {
   FolderOpen,
   Settings,
   Bot,
+  Brain,
+  Server,
   Pencil,
   Trash2,
 } from "lucide-react";
 import { Logo } from "@/components/sidebar/logo";
 import { AgentDialog } from "@/components/sidebar/agent-dialog";
+import { ModelsDialog } from "@/components/sidebar/models-dialog";
+import { ProvidersDialog } from "@/components/sidebar/providers-dialog";
 import { SettingsDialog } from "@/components/sidebar/settings-dialog";
 import type { Route } from "./nav-main";
 import DashboardNavigation from "@/components/sidebar/nav-main";
@@ -69,6 +73,8 @@ export function DashboardSidebar() {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [agentDialogOpen, setAgentDialogOpen] = useState(false);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+  const [modelsDialogOpen, setModelsDialogOpen] = useState(false);
+  const [providersDialogOpen, setProvidersDialogOpen] = useState(false);
   const [wsDialogOpen, setWsDialogOpen] = useState(false);
   const [editingWs, setEditingWs] = useState<Workspace | null>(null);
   const agentWorkspaceId = currentWorkspaceId ?? workspaces[0]?.id;
@@ -160,6 +166,8 @@ export function DashboardSidebar() {
       subs: [
         { title: "General", link: "#", onClick: () => setSettingsDialogOpen(true) },
         { title: "Agents", link: "#", icon: <Bot className="size-3.5" />, onClick: () => setAgentDialogOpen(true) },
+        { title: "Models", link: "#", icon: <Brain className="size-3.5" />, onClick: () => setModelsDialogOpen(true) },
+        { title: "Providers", link: "#", icon: <Server className="size-3.5" />, onClick: () => setProvidersDialogOpen(true) },
       ],
     },
   ], [workspaces, setAgentDialogOpen]);
@@ -209,6 +217,8 @@ export function DashboardSidebar() {
       </SidebarFooter>
       <AgentDialog open={agentDialogOpen} onOpenChange={setAgentDialogOpen} workspaceId={agentWorkspaceId} />
       <SettingsDialog open={settingsDialogOpen} onOpenChange={setSettingsDialogOpen} />
+      <ModelsDialog open={modelsDialogOpen} onOpenChange={setModelsDialogOpen} />
+      <ProvidersDialog open={providersDialogOpen} onOpenChange={setProvidersDialogOpen} />
       <WorkspaceDialog
         open={wsDialogOpen}
         onOpenChange={setWsDialogOpen}

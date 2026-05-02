@@ -2,7 +2,7 @@ import type { WebSocket } from 'ws';
 import type { WSEvent, ClientEventName } from '@agent-spaces/shared';
 import { addConnection, broadcastToWorkspace } from './connection-manager.js';
 import { handleTerminalEvent } from './terminal-handler.js';
-import { createMessage } from '../services/message.js';
+import { createMessage, updateMessage } from '../services/message.js';
 import { getChannel } from '../services/channel.js';
 import { startScheduler } from '../agents/scheduler-agent.js';
 import * as agentService from '../services/agent.js';
@@ -156,26 +156,22 @@ async function runMentionedAgent(
       error: result.error,
     });
 
-    const reply = createMessage(workspaceId, channelId, {
-      senderId: preset.name || preset.role,
-      senderRole: preset.role,
+    const reply = updateMessage(workspaceId, channelId, pending.id, {
       content: result.success ? result.summary : result.error || result.summary,
       type: 'text',
       status: result.success ? 'completed' : 'error',
     });
-    broadcastToWorkspace(workspaceId, 'channel.message', reply);
+    if (reply) broadcastToWorkspace(workspaceId, 'channel.message.updated', reply);
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);
     agentService.complete(workspaceId, session.id, error);
     broadcastToWorkspace(workspaceId, 'agent.error', { agentId: session.id, error });
-    const reply = createMessage(workspaceId, channelId, {
-      senderId: preset.name || preset.role,
-      senderRole: preset.role,
+    const reply = updateMessage(workspaceId, channelId, pending.id, {
       content: error,
       type: 'text',
       status: 'error',
     });
-    broadcastToWorkspace(workspaceId, 'channel.message', reply);
+    if (reply) broadcastToWorkspace(workspaceId, 'channel.message.updated', reply);
   }
 }
 
