@@ -9,7 +9,7 @@ import {
 } from '../storage/agent-store.js';
 import { getWorkspace, updateWorkspace } from '../storage/workspace-store.js';
 
-const VALID_ROLES: AgentConfig['role'][] = ['scheduler', 'planner', 'executor', 'reviewer'];
+const VALID_ROLES: AgentConfig['role'][] = ['scheduler', 'planner', 'executor', 'reviewer', 'custom'];
 
 export interface AgentConnectionTestResult {
   success: boolean;

@@ -13,7 +13,7 @@ export interface Workspace {
 export interface AgentConfig {
   id: string;
   name: string;
-  role: 'scheduler' | 'planner' | 'executor' | 'reviewer';
+  role: 'scheduler' | 'planner' | 'executor' | 'reviewer' | 'custom';
   description?: string;
   modelProvider?: 'anthropic-messages' | 'openai-chat-completions' | 'openai-responses' | 'gemini-generate-content';
   modelId?: string;

@@ -504,6 +504,7 @@
 .mention {
   display: inline-block;
   padding: 0 6px;
+  margin: 0 5px;
   border-radius: 999px;
   background: #dbeafe;
   color: #1d4ed8;

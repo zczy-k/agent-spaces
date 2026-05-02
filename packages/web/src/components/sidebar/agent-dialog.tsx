@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import type { AgentConfig, LLMProvider } from "@agent-spaces/shared";
+import type { AgentConfig, LLMModel, LLMProvider } from "@agent-spaces/shared";
 import {
   Dialog,
   DialogContent,
@@ -21,7 +21,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeft,
@@ -37,8 +36,6 @@ import {
   Sparkles,
   MessageSquare,
   Sliders,
-  Database,
-  PenLine,
 } from "lucide-react";
 
 type AgentPreset = AgentConfig & {
@@ -76,20 +73,16 @@ const ROLE_COLORS: Record<string, string> = {
   planner: "bg-purple-500/10 text-purple-600 border-purple-200",
   executor: "bg-green-500/10 text-green-600 border-green-200",
   reviewer: "bg-orange-500/10 text-orange-600 border-orange-200",
+  custom: "bg-gray-500/10 text-gray-600 border-gray-200"
 };
 
-const MODEL_OPTIONS = [
-  "claude-opus-4-7",
-  "claude-sonnet-4-6",
-  "claude-haiku-4-5-20251001",
-];
 const PROVIDER_OPTIONS: Array<{ value: NonNullable<AgentConfig["modelProvider"]>; label: string }> = [
   { value: "anthropic-messages", label: "Anthropic Messages" },
   { value: "openai-chat-completions", label: "OpenAI Chat Completions" },
   { value: "openai-responses", label: "OpenAI Responses API" },
   { value: "gemini-generate-content", label: "Gemini Native generateContent" },
 ];
-const ROLE_OPTIONS: AgentRole[] = ["scheduler", "planner", "executor", "reviewer"];
+const ROLE_OPTIONS: AgentRole[] = ["scheduler", "planner", "executor", "reviewer", "custom"];
 
 const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
   scheduler: {
@@ -158,6 +151,22 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
       "你是审核者 Agent。负责审查代码质量、安全性和可维护性。提供具体的改进建议，确保代码符合最佳实践。",
     temperature: 0.2,
     maxTokens: 8192,
+    enabled: true,
+  },
+  custom: {
+    name: "Custom Agent",
+    role: "custom",
+    description: "",
+    modelProvider: "anthropic-messages",
+    modelId: "",
+    apiBase: "",
+    apiKey: "",
+    workingDir: "/workspace",
+    mcps: [],
+    skills: [],
+    systemPrompt: "",
+    temperature: 0.3,
+    maxTokens: 4096,
     enabled: true,
   },
 };
@@ -368,8 +377,7 @@ export function AgentDialog({
   };
 
   const updateDraft = <K extends keyof AgentPreset>(key: K, value: AgentPreset[K]) => {
-    if (!editDraft) return;
-    setEditDraft({ ...editDraft, [key]: value });
+    setEditDraft((prev) => (prev ? { ...prev, [key]: value } : prev));
   };
 
   const addToArray = (key: "mcps" | "skills", value: string) => {
@@ -560,13 +568,18 @@ function AgentDetail({
 }) {
   const [newMcp, setNewMcp] = useState("");
   const [newSkill, setNewSkill] = useState("");
+  const [llmModels, setLlmModels] = useState<LLMModel[]>([]);
   const [llmProviders, setLlmProviders] = useState<LLMProvider[]>([]);
-  const [modelTab, setModelTab] = useState<string>("manual");
+  const [dynamicModelOptions, setDynamicModelOptions] = useState<Array<{ value: string; label: string }>>([]);
 
   useEffect(() => {
     fetch("/api/providers")
       .then((r) => r.json())
       .then((data: LLMProvider[]) => setLlmProviders(data))
+      .catch(() => {});
+    fetch("/api/models")
+      .then((r) => r.json())
+      .then((data: LLMModel[]) => setLlmModels(data.filter((m) => !m.embedding)))
       .catch(() => {});
   }, []);
 
@@ -574,9 +587,10 @@ function AgentDetail({
     (provider: LLMProvider) => {
       onChange("apiBase", provider.apiBase);
       onChange("apiKey", provider.apiKey);
-      setModelTab("manual");
+      const providerModels = llmModels.filter((m) => m.provider === provider.name);
+      setDynamicModelOptions(providerModels.map((m) => ({ value: m.modelId, label: m.name })));
     },
-    [onChange],
+    [llmModels, onChange],
   );
 
   return (
@@ -659,80 +673,57 @@ function AgentDetail({
 
       {/* Model Config */}
       <Section icon={<Sliders className="size-3.5" />} title="Model">
-        <Tabs value={modelTab} onValueChange={setModelTab}>
-          <TabsList className="h-7 w-full">
-            <TabsTrigger value="preset" className="gap-1 text-xs flex-1">
-              <Database className="size-3" />
-              Preset
-            </TabsTrigger>
-            <TabsTrigger value="manual" className="gap-1 text-xs flex-1">
-              <PenLine className="size-3" />
-              Manual
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="preset" className="mt-2">
-            {llmProviders.length === 0 ? (
-              <div className="text-xs text-muted-foreground py-2">No providers configured. Add one in LLM settings first.</div>
-            ) : (
-              <div className="grid grid-cols-1 gap-1 max-h-48 overflow-y-auto">
-                {llmProviders.map((provider) => (
-                  <button
-                    key={provider.id}
-                    type="button"
-                    className={cn(
-                      "flex items-center justify-between rounded-md border px-2.5 py-1.5 text-xs hover:bg-muted/50 transition-colors",
-                      agent.apiBase === provider.apiBase && agent.apiKey === provider.apiKey && "border-primary bg-primary/5",
-                    )}
-                    onClick={() => handleSelectProvider(provider)}
-                  >
-                    <div className="flex flex-col items-start gap-0.5">
-                      <span className="font-medium">{provider.name}</span>
-                      <span className="text-[10px] text-muted-foreground font-mono">{provider.apiBase || "No base URL"}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-          <TabsContent value="manual" className="mt-2 space-y-2.5">
-            <FieldGroup label="Model">
-              <SearchSelect
-                value={agent.modelId}
-                onChange={(v) => onChange("modelId", v)}
-                options={MODEL_OPTIONS.map((m) => ({ value: m }))}
-                placeholder="Select model..."
-                searchPlaceholder="Search or type custom model..."
-              />
-            </FieldGroup>
-            <FieldGroup label="API Message Type">
-              <SearchSelect
-                value={agent.modelProvider}
-                onChange={(v) => onChange("modelProvider", v as NonNullable<AgentConfig["modelProvider"]>)}
-                options={PROVIDER_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
-                placeholder="Select API message type..."
-                searchPlaceholder="Search API message type..."
-                allowCustom={false}
-              />
-            </FieldGroup>
-            <FieldGroup label="API Base">
-              <Input
-                value={agent.apiBase}
-                onChange={(e) => onChange("apiBase", e.target.value)}
-                placeholder="https://api.example.com/v1"
-                className="h-7 text-xs"
-              />
-            </FieldGroup>
-            <FieldGroup label="API Key">
-              <Input
-                type="password"
-                value={agent.apiKey}
-                onChange={(e) => onChange("apiKey", e.target.value)}
-                placeholder="sk-..."
-                className="h-7 text-xs"
-              />
-            </FieldGroup>
-          </TabsContent>
-        </Tabs>
+        <div className="space-y-2.5">
+          <FieldGroup label="Provider">
+            <SearchSelect
+              value={llmProviders.find((p) => p.apiBase === agent.apiBase && p.apiKey === agent.apiKey)?.name || ""}
+              onChange={(v) => {
+                const provider = llmProviders.find((p) => p.name === v);
+                if (provider) handleSelectProvider(provider);
+              }}
+              options={llmProviders.map((p) => ({ value: p.name, label: p.name }))}
+              placeholder="Select provider..."
+              searchPlaceholder="Search provider..."
+              allowCustom={false}
+            />
+          </FieldGroup>
+          <FieldGroup label="Model">
+            <SearchSelect
+              value={agent.modelId}
+              onChange={(v) => onChange("modelId", v)}
+              options={dynamicModelOptions.length > 0 ? dynamicModelOptions : [{ value: agent.modelId || "", label: agent.modelId || "Select a provider first..." }]}
+              placeholder="Select model..."
+              searchPlaceholder="Search or type custom model..."
+            />
+          </FieldGroup>
+          <FieldGroup label="API Message Type">
+            <SearchSelect
+              value={agent.modelProvider}
+              onChange={(v) => onChange("modelProvider", v as NonNullable<AgentConfig["modelProvider"]>)}
+              options={PROVIDER_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
+              placeholder="Select API message type..."
+              searchPlaceholder="Search API message type..."
+              allowCustom={false}
+            />
+          </FieldGroup>
+          <FieldGroup label="API Base">
+            <Input
+              value={agent.apiBase}
+              onChange={(e) => onChange("apiBase", e.target.value)}
+              placeholder="https://api.example.com/v1"
+              className="h-7 text-xs"
+            />
+          </FieldGroup>
+          <FieldGroup label="API Key">
+            <Input
+              type="password"
+              value={agent.apiKey}
+              onChange={(e) => onChange("apiKey", e.target.value)}
+              placeholder="sk-..."
+              className="h-7 text-xs"
+            />
+          </FieldGroup>
+        </div>
         <div className="flex items-center justify-between gap-3">
           <div className="text-xs text-muted-foreground">Validate provider credentials before saving.</div>
           <Button
