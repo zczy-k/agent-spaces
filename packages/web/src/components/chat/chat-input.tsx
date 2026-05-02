@@ -30,7 +30,12 @@ import {
 } from "@tabler/icons-react";
 import { useRef, useState } from "react";
 
-export default function Ai03() {
+interface ChatInputProps {
+  channelName: string;
+  onSend: (message: string) => void;
+}
+
+export function ChatInput({ channelName, onSend }: ChatInputProps) {
   const [input, setInput] = useState("");
   const [selectedModel, setSelectedModel] = useState("Local");
   const [selectedAgent, setSelectedAgent] = useState("Agent");
@@ -38,21 +43,29 @@ export default function Ai03() {
   const [autoMode, setAutoMode] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (input.trim()) {
+  const handleSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!input.trim()) return;
+    onSend(input.trim());
+    setInput("");
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
     }
   };
 
   return (
-    <div className="w-xl">
+    <div className="border-t px-4 py-2">
       <div className="bg-background border border-border rounded-2xl overflow-hidden">
         <input
           ref={fileInputRef}
           type="file"
           multiple
           className="sr-only"
-          onChange={(e) => {}}
+          onChange={() => {}}
         />
 
         <div className="px-3 pt-3 pb-2 grow">
@@ -60,7 +73,8 @@ export default function Ai03() {
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask anything"
+              onKeyDown={handleKeyDown}
+              placeholder={`Message #${channelName}...`}
               className="w-full bg-transparent! p-0 border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 text-foreground placeholder-muted-foreground resize-none border-none outline-none text-sm min-h-10 max-h-[25vh]"
               rows={1}
               onInput={(e) => {

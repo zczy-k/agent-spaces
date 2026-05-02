@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid';
-import type { AgentSession, AgentSessionStatus } from '@agent-spaces/shared';
+import type { AgentConfig, AgentSession, AgentSessionStatus } from '@agent-spaces/shared';
 import {
   listAgentSessions,
   getAgentSession,
@@ -7,6 +7,90 @@ import {
   updateAgentSession,
   deleteAgentSession,
 } from '../storage/agent-store.js';
+import { getWorkspace, updateWorkspace } from '../storage/workspace-store.js';
+
+const VALID_ROLES: AgentConfig['role'][] = ['scheduler', 'planner', 'executor', 'reviewer'];
+
+export function listPresets(workspaceId: string): AgentConfig[] | null {
+  const ws = getWorkspace(workspaceId);
+  if (!ws) return null;
+  return ws.agents || [];
+}
+
+export function createPreset(
+  workspaceId: string,
+  data: Omit<Partial<AgentConfig>, 'id'>,
+): AgentConfig | null {
+  const ws = getWorkspace(workspaceId);
+  if (!ws) return null;
+
+  const now = new Date().toISOString();
+  const preset: AgentConfig = {
+    id: uuid(),
+    name: data.name?.trim() || 'New Agent',
+    role: data.role && VALID_ROLES.includes(data.role) ? data.role : 'executor',
+    description: data.description || '',
+    modelProvider: data.modelProvider,
+    modelId: data.modelId || 'claude-sonnet-4-6',
+    workingDir: data.workingDir || '/workspace',
+    mcps: data.mcps || [],
+    skills: data.skills || [],
+    systemPrompt: data.systemPrompt || '',
+    temperature: data.temperature ?? 0.3,
+    maxTokens: data.maxTokens ?? 4096,
+    sandboxDirs: data.sandboxDirs,
+    maxRetries: data.maxRetries,
+    enabled: data.enabled ?? true,
+  };
+
+  ws.agents = [...(ws.agents || []), preset];
+  ws.updatedAt = now;
+  updateWorkspace(ws);
+  return preset;
+}
+
+export function updatePreset(
+  workspaceId: string,
+  presetId: string,
+  data: Partial<AgentConfig>,
+): AgentConfig | null {
+  const ws = getWorkspace(workspaceId);
+  if (!ws) return null;
+
+  const index = (ws.agents || []).findIndex((preset) => preset.id === presetId);
+  if (index === -1) return null;
+
+  const existing = ws.agents[index];
+  const role = data.role && VALID_ROLES.includes(data.role) ? data.role : existing.role;
+  const updated: AgentConfig = {
+    ...existing,
+    ...data,
+    id: existing.id,
+    role,
+    name: data.name?.trim() || existing.name || 'New Agent',
+    mcps: data.mcps || [],
+    skills: data.skills || [],
+    enabled: data.enabled ?? existing.enabled ?? true,
+  };
+
+  ws.agents[index] = updated;
+  ws.updatedAt = new Date().toISOString();
+  updateWorkspace(ws);
+  return updated;
+}
+
+export function deletePreset(workspaceId: string, presetId: string): boolean | null {
+  const ws = getWorkspace(workspaceId);
+  if (!ws) return null;
+
+  const before = (ws.agents || []).length;
+  ws.agents = (ws.agents || []).filter((preset) => preset.id !== presetId);
+  if (ws.agents.length === before) return false;
+
+  ws.updatedAt = new Date().toISOString();
+  updateWorkspace(ws);
+  return true;
+}
 
 export function list(workspaceId: string): AgentSession[] {
   return listAgentSessions(workspaceId);

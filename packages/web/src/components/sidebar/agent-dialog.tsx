@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import type { AgentConfig } from "@agent-spaces/shared";
 import {
   Dialog,
   DialogContent,
@@ -27,79 +28,17 @@ import {
   Sliders,
 } from "lucide-react";
 
-// Mock data
-const MOCK_AGENTS: AgentPreset[] = [
-  {
-    id: "1",
-    name: "Scheduler",
-    role: "scheduler",
-    description: "任务调度者，负责任务分发和协调",
-    model: "claude-sonnet-4-6",
-    workingDir: "/workspace",
-    mcps: ["code-review-graph", "fetch"],
-    skills: ["planning", "task-split"],
-    systemPrompt:
-      "你是调度者 Agent。负责接收用户任务，分析任务类型，分发给合适的执行者。你需要跟踪任务状态，确保所有子任务按时完成。",
-    temperature: 0.3,
-    maxTokens: 4096,
-  },
-  {
-    id: "2",
-    name: "Planner",
-    role: "planner",
-    description: "策划者，负责分解任务和制定计划",
-    model: "claude-opus-4-7",
-    workingDir: "/workspace",
-    mcps: ["code-review-graph"],
-    skills: ["refactoring", "tdd"],
-    systemPrompt:
-      "你是策划者 Agent。负责将复杂任务分解为可执行的子任务，制定详细的实施计划，识别潜在风险和依赖关系。",
-    temperature: 0.5,
-    maxTokens: 8192,
-  },
-  {
-    id: "3",
-    name: "Executor",
-    role: "executor",
-    description: "执行者，负责代码编写和修改",
-    model: "claude-sonnet-4-6",
-    workingDir: "/workspace/src",
-    mcps: ["code-review-graph", "fetch"],
-    skills: ["coding", "debugging", "testing"],
-    systemPrompt:
-      "你是执行者 Agent。根据计划编写高质量的代码，遵循项目编码规范，编写必要的测试。完成后提交审核。",
-    temperature: 0.2,
-    maxTokens: 16384,
-  },
-  {
-    id: "4",
-    name: "Reviewer",
-    role: "reviewer",
-    description: "审核者，负责代码审查和质量把关",
-    model: "claude-opus-4-7",
-    workingDir: "/workspace",
-    mcps: ["code-review-graph"],
-    skills: ["code-review", "security-audit"],
-    systemPrompt:
-      "你是审核者 Agent。负责审查代码质量、安全性和可维护性。提供具体的改进建议，确保代码符合最佳实践。",
-    temperature: 0.2,
-    maxTokens: 8192,
-  },
-];
-
-interface AgentPreset {
-  id: string;
+type AgentPreset = AgentConfig & {
   name: string;
-  role: string;
   description: string;
-  model: string;
+  modelId: string;
   workingDir: string;
   mcps: string[];
   skills: string[];
   systemPrompt: string;
   temperature: number;
   maxTokens: number;
-}
+};
 
 const ROLE_COLORS: Record<string, string> = {
   scheduler: "bg-blue-500/10 text-blue-600 border-blue-200",
@@ -113,11 +52,77 @@ const MODEL_OPTIONS = [
   "claude-sonnet-4-6",
   "claude-haiku-4-5-20251001",
 ];
+const ROLE_OPTIONS: AgentConfig["role"][] = ["scheduler", "planner", "executor", "reviewer"];
 
-export function AgentDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
-  const [agents, setAgents] = useState<AgentPreset[]>(MOCK_AGENTS);
+function normalizeAgent(agent: AgentConfig): AgentPreset {
+  return {
+    ...agent,
+    name: agent.name || "New Agent",
+    description: agent.description || "",
+    modelId: agent.modelId || "claude-sonnet-4-6",
+    workingDir: agent.workingDir || "/workspace",
+    mcps: agent.mcps || [],
+    skills: agent.skills || [],
+    systemPrompt: agent.systemPrompt || "",
+    temperature: agent.temperature ?? 0.3,
+    maxTokens: agent.maxTokens ?? 4096,
+    enabled: agent.enabled ?? true,
+  };
+}
+
+function newAgentDraft(): Omit<AgentPreset, "id"> {
+  return {
+    name: "New Agent",
+    role: "executor",
+    description: "",
+    modelId: "claude-sonnet-4-6",
+    workingDir: "/workspace",
+    mcps: [],
+    skills: [],
+    systemPrompt: "",
+    temperature: 0.3,
+    maxTokens: 4096,
+    enabled: true,
+  };
+}
+
+export function AgentDialog({
+  open,
+  onOpenChange,
+  workspaceId,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  workspaceId?: string;
+}) {
+  const [agents, setAgents] = useState<AgentPreset[]>([]);
   const [selectedAgent, setSelectedAgent] = useState<AgentPreset | null>(null);
   const [editDraft, setEditDraft] = useState<AgentPreset | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open || !workspaceId) return;
+
+    const controller = new AbortController();
+    queueMicrotask(() => {
+      setLoading(true);
+      setError(null);
+    });
+    fetch(`/api/workspaces/${workspaceId}/agents/presets`, { signal: controller.signal })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(await res.text());
+        return res.json() as Promise<AgentConfig[]>;
+      })
+      .then((data) => setAgents(data.map(normalizeAgent)))
+      .catch((err) => {
+        if (err.name !== "AbortError") setError("Failed to load agent presets");
+      })
+      .finally(() => setLoading(false));
+
+    return () => controller.abort();
+  }, [open, workspaceId]);
 
   const handleSelectAgent = (agent: AgentPreset) => {
     setSelectedAgent(agent);
@@ -125,38 +130,77 @@ export function AgentDialog({ open, onOpenChange }: { open: boolean; onOpenChang
   };
 
   const handleBack = () => {
-    if (editDraft && selectedAgent) {
-      setAgents((prev) =>
-        prev.map((a) => (a.id === editDraft.id ? { ...editDraft } : a))
-      );
-    }
     setSelectedAgent(null);
     setEditDraft(null);
   };
 
-  const handleAddAgent = () => {
-    const newAgent: AgentPreset = {
-      id: Date.now().toString(),
-      name: "New Agent",
-      role: "executor",
-      description: "",
-      model: "claude-sonnet-4-6",
-      workingDir: "/workspace",
-      mcps: [],
-      skills: [],
-      systemPrompt: "",
-      temperature: 0.3,
-      maxTokens: 4096,
-    };
-    setAgents((prev) => [...prev, newAgent]);
-    handleSelectAgent(newAgent);
-  };
+  const handleSave = async () => {
+    if (!workspaceId || !editDraft) return;
 
-  const handleDeleteAgent = (id: string) => {
-    setAgents((prev) => prev.filter((a) => a.id !== id));
-    if (selectedAgent?.id === id) {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/workspaces/${workspaceId}/agents/presets/${editDraft.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editDraft),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const saved = normalizeAgent(await res.json());
+      setAgents((prev) => prev.map((agent) => (agent.id === saved.id ? saved : agent)));
       setSelectedAgent(null);
       setEditDraft(null);
+    } catch {
+      setError("Failed to save agent preset");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAddAgent = async () => {
+    if (!workspaceId) {
+      setError("Open a workspace before adding agent presets");
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/workspaces/${workspaceId}/agents/presets`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newAgentDraft()),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const created = normalizeAgent(await res.json());
+      setAgents((prev) => [...prev, created]);
+      handleSelectAgent(created);
+    } catch {
+      setError("Failed to add agent preset");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteAgent = async (id: string) => {
+    if (!workspaceId) return;
+
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/workspaces/${workspaceId}/agents/presets/${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setAgents((prev) => prev.filter((a) => a.id !== id));
+      if (selectedAgent?.id === id) {
+        setSelectedAgent(null);
+        setEditDraft(null);
+      }
+    } catch {
+      setError("Failed to delete agent preset");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -200,7 +244,7 @@ export function AgentDialog({ open, onOpenChange }: { open: boolean; onOpenChang
             </DialogDescription>
           </DialogHeader>
           {!selectedAgent && (
-            <Button variant="outline" size="sm" onClick={handleAddAgent}>
+            <Button variant="outline" size="sm" onClick={handleAddAgent} disabled={saving || !workspaceId}>
               <Plus className="size-3.5" />
               Add
             </Button>
@@ -209,7 +253,19 @@ export function AgentDialog({ open, onOpenChange }: { open: boolean; onOpenChang
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto">
-          {!selectedAgent ? (
+          {error && (
+            <div className="mx-5 mt-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              {error}
+            </div>
+          )}
+          {!workspaceId ? (
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <Bot className="size-10 mb-2 opacity-30" />
+              <p className="text-sm">No workspace selected</p>
+            </div>
+          ) : loading ? (
+            <div className="py-12 text-center text-sm text-muted-foreground">Loading agent presets...</div>
+          ) : !selectedAgent ? (
             <AgentList
               agents={agents}
               onSelect={handleSelectAgent}
@@ -228,11 +284,11 @@ export function AgentDialog({ open, onOpenChange }: { open: boolean; onOpenChang
         {/* Footer */}
         {selectedAgent && (
           <div className="flex justify-end gap-2 border-t px-5 py-3">
-            <Button variant="outline" size="sm" onClick={handleBack}>
+            <Button variant="outline" size="sm" onClick={handleBack} disabled={saving}>
               Cancel
             </Button>
-            <Button size="sm" onClick={handleBack}>
-              Save
+            <Button size="sm" onClick={handleSave} disabled={saving}>
+              {saving ? "Saving..." : "Save"}
             </Button>
           </div>
         )}
@@ -270,7 +326,7 @@ function AgentList({
             </div>
             <p className="text-xs text-muted-foreground truncate">{agent.description || "No description"}</p>
           </div>
-          <span className="text-[10px] text-muted-foreground font-mono">{agent.model.split("-").slice(0, 2).join("-")}</span>
+          <span className="text-[10px] text-muted-foreground font-mono">{agent.modelId.split("-").slice(0, 2).join("-")}</span>
           <Button
             variant="ghost"
             size="icon-xs"
@@ -313,7 +369,15 @@ function AgentDetail({
           <Input value={agent.name} onChange={(e) => onChange("name", e.target.value)} />
         </FieldGroup>
         <FieldGroup label="Role">
-          <Input value={agent.role} onChange={(e) => onChange("role", e.target.value)} />
+          <select
+            value={agent.role}
+            onChange={(e) => onChange("role", e.target.value as AgentConfig["role"])}
+            className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring dark:bg-input/30"
+          >
+            {ROLE_OPTIONS.map((role) => (
+              <option key={role} value={role}>{role}</option>
+            ))}
+          </select>
         </FieldGroup>
         <FieldGroup label="Description">
           <Input value={agent.description} onChange={(e) => onChange("description", e.target.value)} />
@@ -379,8 +443,8 @@ function AgentDetail({
       <Section icon={<Sliders className="size-3.5" />} title="Model">
         <FieldGroup label="Model">
           <select
-            value={agent.model}
-            onChange={(e) => onChange("model", e.target.value)}
+            value={agent.modelId}
+            onChange={(e) => onChange("modelId", e.target.value)}
             className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring dark:bg-input/30"
           >
             {MODEL_OPTIONS.map((m) => (

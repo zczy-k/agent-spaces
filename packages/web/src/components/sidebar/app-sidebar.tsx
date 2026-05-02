@@ -61,8 +61,10 @@ export function DashboardSidebar() {
   const pathname = usePathname();
   const isCollapsed = state === "collapsed";
   const isWorkspace = pathname.startsWith("/workspace/");
+  const currentWorkspaceId = pathname.match(/^\/workspace\/([^/]+)/)?.[1];
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [agentDialogOpen, setAgentDialogOpen] = useState(false);
+  const agentWorkspaceId = currentWorkspaceId ?? workspaces[0]?.id;
 
   useEffect(() => {
     fetch("/api/workspaces")
@@ -146,7 +148,7 @@ export function DashboardSidebar() {
       <SidebarFooter className="mx-2 mb-2 rounded-xl border border-border bg-card p-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <TeamSwitcher teams={teams} />
       </SidebarFooter>
-      <AgentDialog open={agentDialogOpen} onOpenChange={setAgentDialogOpen} />
+      <AgentDialog open={agentDialogOpen} onOpenChange={setAgentDialogOpen} workspaceId={agentWorkspaceId} />
     </Sidebar>
   );
 }
