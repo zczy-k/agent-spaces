@@ -136,12 +136,17 @@ async function runMentionedAgent(
       baseURL: preset.apiBase,
     });
     const history = listMessages(workspaceId, channelId, { limit: 20 });
-    const result = await runtime.execute(buildAgentPrompt(preset.systemPrompt, prompt, history), agentService.resolveWorkingDir(workspaceId, preset), {
+    const configDir = agentService.getAgentConfigDir(workspaceId, preset);
+    const mcpServers = agentService.getMcpServers(preset.mcps);
+    const skills = agentService.getAvailableSkillNames(configDir, preset.skills);
+    const result = await runtime.execute(buildAgentPrompt(preset.systemPrompt, prompt, history, {
+      mcpServers: Object.keys(mcpServers ?? {}),
+      skills,
+    }), agentService.resolveWorkingDir(workspaceId, preset), {
       maxTurns: 6,
-      tools: agentService.getAllowedTools(preset.mcps),
-      mcpServers: agentService.getMcpServers(preset.mcps),
-      skills: preset.skills,
-      configDir: agentService.getAgentConfigDir(workspaceId, preset),
+      mcpServers,
+      skills,
+      configDir,
       sandboxDirs: preset.sandboxDirs,
     });
 
@@ -180,10 +185,24 @@ async function runMentionedAgent(
   }
 }
 
-function buildAgentPrompt(systemPrompt: string | undefined, userPrompt: string, history: Message[] = []): string {
+function buildAgentPrompt(
+  systemPrompt: string | undefined,
+  userPrompt: string,
+  history: Message[] = [],
+  runtimeConfig?: { mcpServers: string[]; skills: string[] },
+): string {
   const parts: string[] = [];
   const trimmedSystemPrompt = systemPrompt?.trim();
   if (trimmedSystemPrompt) parts.push(trimmedSystemPrompt);
+
+  if (runtimeConfig) {
+    parts.push([
+      'Agent runtime configuration:',
+      `- MCP servers configured for this agent: ${runtimeConfig.mcpServers.length ? runtimeConfig.mcpServers.join(', ') : 'none'}`,
+      `- Skills configured for this agent: ${runtimeConfig.skills.length ? runtimeConfig.skills.join(', ') : 'none'}`,
+      'When asked what MCP servers or skills you have, answer from this configuration only. Do not infer availability from provider-side function names or hidden runtime internals.',
+    ].join('\n'));
+  }
 
   if (history.length > 0) {
     parts.push('Conversation history:');

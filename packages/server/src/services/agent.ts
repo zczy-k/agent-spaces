@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid';
-import { copyFileSync, cpSync, existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, cpSync, existsSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { basename, extname, join } from 'node:path';
 import type { AgentConfig, AgentSession, AgentSessionStatus } from '@agent-spaces/shared';
 import {
@@ -430,6 +430,17 @@ export function getAgentConfigDir(workspaceId: string, preset: AgentConfig): str
   const workspaceAgentDir = getWorkspaceAgentDir(ws.agentspaceDir, preset.id);
   ensureWorkspaceAgentCopy(preset, ws.agentspaceDir);
   return workspaceAgentDir;
+}
+
+export function getAvailableSkillNames(agentDir: string | undefined, skills?: string[]): string[] {
+  if (!agentDir || !Array.isArray(skills)) return [];
+  return skills
+    .map((skill) => skill.trim().replace(/\.md$/i, ''))
+    .filter((skill) => {
+      if (!skill) return false;
+      const skillFile = join(agentDir, 'skills', `${skill}.md`);
+      return existsSync(skillFile) && statSync(skillFile).size > 0;
+    });
 }
 
 export function resolveWorkingDir(workspaceId: string, preset: AgentConfig): string {

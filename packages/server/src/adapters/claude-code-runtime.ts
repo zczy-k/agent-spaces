@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { extname } from 'node:path';
 import { join } from 'node:path';
 import { query } from '@anthropic-ai/claude-agent-sdk';
@@ -31,8 +31,9 @@ export class ClaudeCodeRuntime implements AgentRuntime {
     const agentDir = options?.configDir;
     const configDir = agentDir ? join(agentDir, '.claude') : undefined;
     if (configDir) prepareConfigDir(configDir, agentDir);
+    const skillNames = normalizeSkillNames(options?.skills, configDir);
 
-    d(`starting | cwd=${cwd} model=${this.config.model ?? 'default'} permissionMode=${permissionMode} maxTurns=${options?.maxTurns ?? '∞'} tools=${options?.tools?.join(',') ?? 'claude_code'} mcpServers=${Object.keys(options?.mcpServers ?? {}).join(',') || '-'} skills=${options?.skills?.join(',') || '-'} configDir=${configDir ?? 'default'} sandboxDirs=${options?.sandboxDirs?.join(',') ?? '-'}`);
+    d(`starting | cwd=${cwd} model=${this.config.model ?? 'default'} permissionMode=${permissionMode} maxTurns=${options?.maxTurns ?? '∞'} tools=claude_code mcpServers=${Object.keys(options?.mcpServers ?? {}).join(',') || '-'} skills=${skillNames.join(',') || '-'} configDir=${configDir ?? 'default'} sandboxDirs=${options?.sandboxDirs?.join(',') ?? '-'}`);
     d(`prompt: ${prompt.slice(0, 300)}${prompt.length > 300 ? '...' : ''}`);
 
     try {
@@ -40,11 +41,14 @@ export class ClaudeCodeRuntime implements AgentRuntime {
         cwd,
         model: this.config.model,
         maxTurns: options?.maxTurns,
-        allowedTools: options?.tools,
         tools: { type: 'preset', preset: 'claude_code' },
         mcpServers: normalizeMcpServers(options?.mcpServers),
-        skills: normalizeSkillNames(options?.skills),
+        skills: skillNames,
+        managedSettings: {
+          strictPluginOnlyCustomization: ['mcp'],
+        },
         settingSources: [],
+        strictMcpConfig: true,
         additionalDirectories: options?.sandboxDirs,
         permissionMode,
         allowDangerouslySkipPermissions: permissionMode === 'bypassPermissions' ? true : undefined,
@@ -135,11 +139,11 @@ function normalizeMcpServers(servers?: Record<string, unknown>): Record<string, 
   return servers as Record<string, McpServerConfig>;
 }
 
-function normalizeSkillNames(skills?: string[]): string[] {
+function normalizeSkillNames(skills?: string[], configDir?: string): string[] {
   if (!Array.isArray(skills)) return [];
   return skills
     .map((skill) => skill.trim().replace(/\.md$/i, ''))
-    .filter(Boolean);
+    .filter((skill) => Boolean(skill) && hasSkillContent(skill, configDir));
 }
 
 function prepareConfigDir(configDir: string, agentDir?: string): void {
@@ -156,6 +160,13 @@ function prepareConfigDir(configDir: string, agentDir?: string): void {
     if (extname(file).toLowerCase() !== '.md') continue;
     copyFileSync(join(sourceSkillsDir, file), join(targetSkillsDir, file));
   }
+}
+
+function hasSkillContent(skill: string, configDir?: string): boolean {
+  if (!configDir) return true;
+  const skillFile = join(configDir, 'skills', `${skill}.md`);
+  if (!existsSync(skillFile)) return false;
+  return statSync(skillFile).size > 0;
 }
 
 function normalizePermissionMode(permissionMode?: AgentRuntimeConfig['permissionMode']): PermissionMode {
