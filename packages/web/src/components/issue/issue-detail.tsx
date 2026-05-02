@@ -475,9 +475,6 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
               </TabsContent>
 
               <TabsContent value="members" className="p-4 mt-0 space-y-1">
-                {members.length === 0 && (
-                  <p className="text-sm text-muted-foreground py-4 text-center">暂无成员</p>
-                )}
                 {members.map((member) => (
                   <div key={member} className="flex items-center gap-2 py-1.5">
                     <Avatar size="sm">
