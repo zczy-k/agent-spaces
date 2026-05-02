@@ -36,9 +36,13 @@ import {
   Sparkles,
   MessageSquare,
   Sliders,
+  Upload,
 } from "lucide-react";
 
-type AgentPreset = AgentConfig & {
+type McpDraft = Record<string, unknown>;
+type SkillDraft = { name: string; content?: string };
+
+type AgentPreset = Omit<AgentConfig, "mcps" | "skills"> & {
   name: string;
   description: string;
   modelProvider: NonNullable<AgentConfig["modelProvider"]>;
@@ -46,8 +50,8 @@ type AgentPreset = AgentConfig & {
   apiBase: string;
   apiKey: string;
   workingDir: string;
-  mcps: string[];
-  skills: string[];
+  mcps: McpDraft;
+  skills: SkillDraft[];
   systemPrompt: string;
   temperature: number;
   maxTokens: number;
@@ -84,6 +88,16 @@ const PROVIDER_OPTIONS: Array<{ value: NonNullable<AgentConfig["modelProvider"]>
 ];
 const ROLE_OPTIONS: AgentRole[] = ["scheduler", "planner", "executor", "reviewer", "custom"];
 
+function defaultMcpConfig(names: string[]): McpDraft {
+  return {
+    mcpServers: Object.fromEntries(names.map((name) => [name, {}])),
+  };
+}
+
+function defaultSkills(names: string[]): SkillDraft[] {
+  return names.map((name) => ({ name: `${name}.md`, content: `# ${name}\n` }));
+}
+
 const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
   scheduler: {
     name: "Scheduler",
@@ -93,9 +107,9 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     modelId: "claude-sonnet-4-6",
     apiBase: "",
     apiKey: "",
-    workingDir: "/workspace",
-    mcps: ["code-review-graph", "fetch"],
-    skills: ["planning", "task-split"],
+    workingDir: "",
+    mcps: defaultMcpConfig(["code-review-graph", "fetch"]),
+    skills: defaultSkills(["planning", "task-split"]),
     systemPrompt:
       "你是调度者 Agent。负责接收用户任务，分析任务类型，分发给合适的执行者。你需要跟踪任务状态，确保所有子任务按时完成。",
     temperature: 0.3,
@@ -110,9 +124,9 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     modelId: "claude-opus-4-7",
     apiBase: "",
     apiKey: "",
-    workingDir: "/workspace",
-    mcps: ["code-review-graph"],
-    skills: ["refactoring", "tdd"],
+    workingDir: "",
+    mcps: defaultMcpConfig(["code-review-graph"]),
+    skills: defaultSkills(["refactoring", "tdd"]),
     systemPrompt:
       "你是策划者 Agent。负责将复杂任务分解为可执行的子任务，制定详细的实施计划，识别潜在风险和依赖关系。",
     temperature: 0.5,
@@ -128,8 +142,8 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     apiBase: "",
     apiKey: "",
     workingDir: "/workspace/src",
-    mcps: ["code-review-graph", "fetch"],
-    skills: ["coding", "debugging", "testing"],
+    mcps: defaultMcpConfig(["code-review-graph", "fetch"]),
+    skills: defaultSkills(["coding", "debugging", "testing"]),
     systemPrompt:
       "你是执行者 Agent。根据计划编写高质量的代码，遵循项目编码规范，编写必要的测试。完成后提交审核。",
     temperature: 0.2,
@@ -144,9 +158,9 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     modelId: "claude-opus-4-7",
     apiBase: "",
     apiKey: "",
-    workingDir: "/workspace",
-    mcps: ["code-review-graph"],
-    skills: ["code-review", "security-audit"],
+    workingDir: "",
+    mcps: defaultMcpConfig(["code-review-graph"]),
+    skills: defaultSkills(["code-review", "security-audit"]),
     systemPrompt:
       "你是审核者 Agent。负责审查代码质量、安全性和可维护性。提供具体的改进建议，确保代码符合最佳实践。",
     temperature: 0.2,
@@ -161,8 +175,8 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     modelId: "",
     apiBase: "",
     apiKey: "",
-    workingDir: "/workspace",
-    mcps: [],
+    workingDir: "",
+    mcps: {},
     skills: [],
     systemPrompt: "",
     temperature: 0.3,
@@ -180,9 +194,9 @@ function normalizeAgent(agent: AgentConfig): AgentPreset {
     modelId: agent.modelId || "claude-sonnet-4-6",
     apiBase: agent.apiBase || "",
     apiKey: agent.apiKey || "",
-    workingDir: agent.workingDir || "/workspace",
-    mcps: agent.mcps || [],
-    skills: agent.skills || [],
+    workingDir: agent.workingDir || "",
+    mcps: normalizeMcpDraft(agent.mcps),
+    skills: normalizeSkillDrafts(agent.skills),
     systemPrompt: agent.systemPrompt || "",
     temperature: agent.temperature ?? 0.3,
     maxTokens: agent.maxTokens ?? 4096,
@@ -190,12 +204,33 @@ function normalizeAgent(agent: AgentConfig): AgentPreset {
   };
 }
 
+function normalizeMcpDraft(mcps: AgentConfig["mcps"] | undefined): McpDraft {
+  if (!mcps) return {};
+  return mcps;
+}
+
+function normalizeSkillDrafts(skills: AgentConfig["skills"] | SkillDraft[] | undefined): SkillDraft[] {
+  if (!Array.isArray(skills)) return [];
+  return skills.map((skill) => {
+    if (typeof skill === "string") return { name: skill.endsWith(".md") ? skill : `${skill}.md` };
+    return skill;
+  });
+}
+
+type AgentPresetPayload = Omit<AgentPreset, "id">;
+
+function serializeAgent(agent: AgentPreset): AgentPresetPayload {
+  const { id: _id, ...body } = agent;
+  void _id;
+  return body;
+}
+
 function newAgentDraft(role: AgentRole): AgentPreset {
   return {
     id: `draft-${role}-${Date.now()}`,
     ...ROLE_TEMPLATES[role],
-    mcps: [...ROLE_TEMPLATES[role].mcps],
-    skills: [...ROLE_TEMPLATES[role].skills],
+    mcps: structuredClone(ROLE_TEMPLATES[role].mcps),
+    skills: ROLE_TEMPLATES[role].skills.map((skill) => ({ ...skill })),
   };
 }
 
@@ -210,7 +245,7 @@ function newEmptyAgent(): AgentPreset {
     apiBase: "",
     apiKey: "",
     workingDir: "",
-    mcps: [],
+    mcps: {},
     skills: [],
     systemPrompt: "",
     temperature: 0.3,
@@ -281,7 +316,7 @@ export function AgentDialog({
     setError(null);
     try {
       const isDraft = isDraftAgent(editDraft);
-      const { id, ...createBody } = editDraft;
+      const createBody = serializeAgent(editDraft);
       const res = await fetch(
         isDraft
           ? `/api/workspaces/${workspaceId}/agents/presets`
@@ -292,7 +327,6 @@ export function AgentDialog({
           body: JSON.stringify(isDraft ? createBody : editDraft),
         },
       );
-      void id;
       if (!res.ok) throw new Error(await res.text());
       const saved = normalizeAgent(await res.json());
       setAgents((prev) =>
@@ -380,14 +414,23 @@ export function AgentDialog({
     setEditDraft((prev) => (prev ? { ...prev, [key]: value } : prev));
   };
 
-  const addToArray = (key: "mcps" | "skills", value: string) => {
-    if (!editDraft || !value.trim()) return;
-    updateDraft(key, [...editDraft[key], value.trim()]);
+  const updateMcpConfig = (value: McpDraft) => {
+    updateDraft("mcps", value);
   };
 
-  const removeFromArray = (key: "mcps" | "skills", index: number) => {
+  const addSkillFiles = (files: SkillDraft[]) => {
     if (!editDraft) return;
-    updateDraft(key, editDraft[key].filter((_, i) => i !== index));
+    const existingNames = new Set(editDraft.skills.map((skill) => skill.name));
+    updateDraft("skills", [
+      ...editDraft.skills.filter((skill) => !files.some((file) => file.name === skill.name)),
+      ...files.filter((file) => file.name && !existingNames.has(file.name)),
+      ...files.filter((file) => existingNames.has(file.name)),
+    ]);
+  };
+
+  const removeSkill = (index: number) => {
+    if (!editDraft) return;
+    updateDraft("skills", editDraft.skills.filter((_, i) => i !== index));
   };
 
   return (
@@ -472,12 +515,14 @@ export function AgentDialog({
             />
           ) : editDraft ? (
             <AgentDetail
+              key={editDraft.id}
               agent={editDraft}
               testing={testing}
               testResult={testResult}
               onChange={updateDraft}
-              onAddToArray={addToArray}
-              onRemoveFromArray={removeFromArray}
+              onMcpChange={updateMcpConfig}
+              onAddSkillFiles={addSkillFiles}
+              onRemoveSkill={removeSkill}
               onTestConnection={handleTestConnection}
             />
           ) : null}
@@ -554,20 +599,22 @@ function AgentDetail({
   testing,
   testResult,
   onChange,
-  onAddToArray,
-  onRemoveFromArray,
+  onMcpChange,
+  onAddSkillFiles,
+  onRemoveSkill,
   onTestConnection,
 }: {
   agent: AgentPreset;
   testing: boolean;
   testResult: ConnectionTestResult | null;
   onChange: <K extends keyof AgentPreset>(key: K, value: AgentPreset[K]) => void;
-  onAddToArray: (key: "mcps" | "skills", value: string) => void;
-  onRemoveFromArray: (key: "mcps" | "skills", index: number) => void;
+  onMcpChange: (value: McpDraft) => void;
+  onAddSkillFiles: (files: SkillDraft[]) => void;
+  onRemoveSkill: (index: number) => void;
   onTestConnection: () => void;
 }) {
-  const [newMcp, setNewMcp] = useState("");
-  const [newSkill, setNewSkill] = useState("");
+  const [mcpJson, setMcpJson] = useState(() => JSON.stringify(agent.mcps, null, 2));
+  const [mcpError, setMcpError] = useState<string | null>(null);
   const [llmModels, setLlmModels] = useState<LLMModel[]>([]);
   const [llmProviders, setLlmProviders] = useState<LLMProvider[]>([]);
   const [dynamicModelOptions, setDynamicModelOptions] = useState<Array<{ value: string; label: string }>>([]);
@@ -592,6 +639,30 @@ function AgentDetail({
     },
     [llmModels, onChange],
   );
+
+  const handleMcpJsonChange = (value: string) => {
+    setMcpJson(value);
+    try {
+      const parsed = JSON.parse(value) as McpDraft;
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        throw new Error("MCP config must be a JSON object");
+      }
+      setMcpError(null);
+      onMcpChange(parsed);
+    } catch (err) {
+      setMcpError(err instanceof Error ? err.message : "Invalid JSON");
+    }
+  };
+
+  const handleSkillUpload = async (files: FileList | null) => {
+    if (!files?.length) return;
+    const markdownFiles = Array.from(files).filter((file) => file.name.toLowerCase().endsWith(".md"));
+    const next = await Promise.all(markdownFiles.map(async (file) => ({
+      name: file.name,
+      content: await file.text(),
+    })));
+    onAddSkillFiles(next);
+  };
 
   return (
     <div className="flex flex-col gap-5 p-5">
@@ -633,22 +704,15 @@ function AgentDetail({
 
       {/* MCP Servers */}
       <Section icon={<Wrench className="size-3.5" />} title="MCP Servers">
-        <div className="flex flex-wrap gap-1.5 mb-2">
-          {agent.mcps.map((mcp, i) => (
-            <Badge key={i} variant="secondary" className="gap-1 pr-1">
-              {mcp}
-              <button type="button" onClick={() => onRemoveFromArray("mcps", i)} className="hover:text-destructive">
-                <X className="size-2.5" />
-              </button>
-            </Badge>
-          ))}
-        </div>
-        <div className="flex gap-2">
-          <Input value={newMcp} onChange={(e) => setNewMcp(e.target.value)} placeholder="Add MCP server..." className="flex-1 h-7 text-xs" onKeyDown={(e) => { if (e.key === "Enter") { onAddToArray("mcps", newMcp); setNewMcp(""); } }} />
-          <Button variant="outline" size="xs" onClick={() => { onAddToArray("mcps", newMcp); setNewMcp(""); }}>
-            <Plus className="size-3" />
-          </Button>
-        </div>
+        <Textarea
+          value={mcpJson}
+          onChange={(e) => handleMcpJsonChange(e.target.value)}
+          placeholder={'{\n  "mcpServers": {}\n}'}
+          className="min-h-28 font-mono text-xs"
+        />
+        {mcpError && (
+          <div className="text-xs text-destructive">{mcpError}</div>
+        )}
       </Section>
 
       {/* Skills */}
@@ -656,19 +720,27 @@ function AgentDetail({
         <div className="flex flex-wrap gap-1.5 mb-2">
           {agent.skills.map((skill, i) => (
             <Badge key={i} variant="outline" className="gap-1 pr-1">
-              {skill}
-              <button type="button" onClick={() => onRemoveFromArray("skills", i)} className="hover:text-destructive">
+              {skill.name}
+              <button type="button" onClick={() => onRemoveSkill(i)} className="hover:text-destructive">
                 <X className="size-2.5" />
               </button>
             </Badge>
           ))}
         </div>
-        <div className="flex gap-2">
-          <Input value={newSkill} onChange={(e) => setNewSkill(e.target.value)} placeholder="Add skill..." className="flex-1 h-7 text-xs" onKeyDown={(e) => { if (e.key === "Enter") { onAddToArray("skills", newSkill); setNewSkill(""); } }} />
-          <Button variant="outline" size="xs" onClick={() => { onAddToArray("skills", newSkill); setNewSkill(""); }}>
-            <Plus className="size-3" />
-          </Button>
-        </div>
+        <label className="flex h-8 cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-input text-xs text-muted-foreground hover:bg-muted/50">
+          <Upload className="size-3.5" />
+          Upload Markdown skills
+          <input
+            type="file"
+            accept=".md,text/markdown"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              void handleSkillUpload(e.target.files);
+              e.target.value = "";
+            }}
+          />
+        </label>
       </Section>
 
       {/* Model Config */}

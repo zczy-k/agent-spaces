@@ -74,8 +74,9 @@ export class OpenAgentSdkRuntime implements AgentRuntime {
       const elapsed = Date.now() - startTime;
       const inputTokens = result.usage.input_tokens;
       const outputTokens = result.usage.output_tokens;
-      const cacheRead = (result.usage as Record<string, unknown>).cache_read_input_tokens ?? 0;
-      const cacheCreation = (result.usage as Record<string, unknown>).cache_creation_input_tokens ?? 0;
+      const usage = result.usage as unknown as Record<string, unknown>;
+      const cacheRead = usage.cache_read_input_tokens ?? 0;
+      const cacheCreation = usage.cache_creation_input_tokens ?? 0;
 
       output.push(result.text);
       d(`done ${elapsed}ms | turns=${result.num_turns} tokens=${inputTokens + outputTokens} (in=${inputTokens} out=${outputTokens})${Number(cacheRead) > 0 || Number(cacheCreation) > 0 ? ` cache=(read=${cacheRead},create=${cacheCreation})` : ''}`);

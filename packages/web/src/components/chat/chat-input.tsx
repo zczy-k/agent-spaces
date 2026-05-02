@@ -66,7 +66,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   }, [agents, mentionedAgentIds]);
 
   const activeAgent = mentionedAgents[0];
-  const activeMcps = activeAgent?.mcps ?? [];
+  const activeMcps = getMcpLabels(activeAgent?.mcps);
   const activeSkills = activeAgent?.skills ?? [];
   const tools = useMemo(() => [
     { label: "Code Interpreter", icon: IconCode },
@@ -249,7 +249,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     <div className="border-t px-4 py-2">
       <ComposerShell
         editor={editor}
-        canSubmit={canSubmit}
+        canSubmit={Boolean(canSubmit)}
         onSubmit={handleSubmit}
         onStop={onStop}
         isProcessing={isProcessing}
@@ -325,4 +325,11 @@ function collectMentionIds(node: JSONContent): string[] {
   };
   walk(node);
   return [...ids];
+}
+
+function getMcpLabels(mcps: AgentConfig["mcps"] | undefined): string[] {
+  if (!mcps) return [];
+  const servers = (mcps as { mcpServers?: unknown }).mcpServers;
+  if (!servers || typeof servers !== "object" || Array.isArray(servers)) return [];
+  return Object.keys(servers);
 }

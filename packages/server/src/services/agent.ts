@@ -1,4 +1,6 @@
 import { v4 as uuid } from 'uuid';
+import { copyFileSync, cpSync, existsSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { basename, extname, join } from 'node:path';
 import type { AgentConfig, AgentSession, AgentSessionStatus } from '@agent-spaces/shared';
 import {
   listAgentSessions,
@@ -8,8 +10,12 @@ import {
   deleteAgentSession,
 } from '../storage/agent-store.js';
 import { getWorkspace, updateWorkspace } from '../storage/workspace-store.js';
+import { ensureDir, getDataDir } from '../storage/json-store.js';
 
 const VALID_ROLES: AgentConfig['role'][] = ['scheduler', 'planner', 'executor', 'reviewer', 'custom'];
+
+type SkillInput = string | { name?: string; content?: string };
+type McpConfig = Record<string, unknown>;
 
 export interface AgentConnectionTestResult {
   success: boolean;
@@ -292,8 +298,10 @@ export function createPreset(
   if (!ws) return null;
 
   const now = new Date().toISOString();
+  const id = uuid();
+  const workingDir = data.workingDir?.trim();
   const preset: AgentConfig = {
-    id: uuid(),
+    id,
     name: data.name?.trim() || 'New Agent',
     role: data.role && VALID_ROLES.includes(data.role) ? data.role : 'executor',
     description: data.description || '',
@@ -301,9 +309,9 @@ export function createPreset(
     modelId: data.modelId || 'claude-sonnet-4-6',
     apiBase: data.apiBase || '',
     apiKey: data.apiKey || '',
-    workingDir: data.workingDir || '/workspace',
-    mcps: data.mcps || [],
-    skills: data.skills || [],
+    workingDir: workingDir || getWorkspaceAgentDir(ws.agentspaceDir, id),
+    mcps: normalizeMcpConfig(data.mcps),
+    skills: normalizeSkillNames(data.skills),
     systemPrompt: data.systemPrompt || '',
     temperature: data.temperature ?? 0.3,
     maxTokens: data.maxTokens ?? 4096,
@@ -311,6 +319,9 @@ export function createPreset(
     maxRetries: data.maxRetries,
     enabled: data.enabled ?? true,
   };
+
+  writeAgentTemplate(preset, data.skills as SkillInput[] | undefined);
+  if (!workingDir) copyAgentTemplateToWorkspace(preset.id, ws.agentspaceDir);
 
   ws.agents = [...(ws.agents || []), preset];
   ws.updatedAt = now;
@@ -337,15 +348,89 @@ export function updatePreset(
     id: existing.id,
     role,
     name: data.name?.trim() || existing.name || 'New Agent',
-    mcps: data.mcps || [],
-    skills: data.skills || [],
+    mcps: normalizeMcpConfig(data.mcps),
+    skills: normalizeSkillNames(data.skills),
     enabled: data.enabled ?? existing.enabled ?? true,
   };
+  writeAgentTemplate(updated, data.skills as SkillInput[] | undefined);
 
   ws.agents[index] = updated;
   ws.updatedAt = new Date().toISOString();
   updateWorkspace(ws);
   return updated;
+}
+
+export function getAllowedTools(mcps?: AgentConfig['mcps']): string[] | undefined {
+  if (!mcps) return undefined;
+  const servers = (mcps as { mcpServers?: unknown }).mcpServers;
+  if (!servers || typeof servers !== 'object' || Array.isArray(servers)) return undefined;
+  return Object.keys(servers);
+}
+
+function getGlobalAgentTemplateDir(agentId: string): string {
+  return join(getDataDir(), 'agent-templates', agentId);
+}
+
+function getWorkspaceAgentDir(agentspaceDir: string, agentId: string): string {
+  return join(agentspaceDir, 'agents', agentId);
+}
+
+function normalizeMcpConfig(mcps?: AgentConfig['mcps']): McpConfig {
+  if (!mcps) return {};
+  return mcps;
+}
+
+function normalizeSkillNames(skills?: AgentConfig['skills'] | SkillInput[]): string[] {
+  if (!Array.isArray(skills)) return [];
+  return skills
+    .map((skill) => typeof skill === 'string' ? skill : skill.name)
+    .filter((name): name is string => Boolean(name?.trim()))
+    .map((name) => name.trim());
+}
+
+function writeAgentTemplate(preset: AgentConfig, skillInputs?: SkillInput[]): void {
+  const dir = getGlobalAgentTemplateDir(preset.id);
+  const skillsDir = join(dir, 'skills');
+  ensureDir(skillsDir);
+
+  writeFileSync(join(dir, 'agent.json'), JSON.stringify(preset, null, 2), 'utf-8');
+  writeFileSync(join(dir, 'mcp.json'), JSON.stringify(preset.mcps ?? {}, null, 2), 'utf-8');
+
+  if (skillInputs?.some((skill) => typeof skill !== 'string')) {
+    rmSync(skillsDir, { recursive: true, force: true });
+    ensureDir(skillsDir);
+    for (const skill of skillInputs) {
+      if (typeof skill === 'string' || !skill.name?.trim()) continue;
+      const filename = sanitizeMarkdownFilename(skill.name);
+      writeFileSync(join(skillsDir, filename), skill.content ?? '', 'utf-8');
+    }
+  }
+}
+
+function copyAgentTemplateToWorkspace(agentId: string, agentspaceDir: string): void {
+  const sourceDir = getGlobalAgentTemplateDir(agentId);
+  const targetDir = getWorkspaceAgentDir(agentspaceDir, agentId);
+  ensureDir(targetDir);
+
+  if (!existsSync(sourceDir)) return;
+  cpSync(sourceDir, targetDir, { recursive: true, force: true });
+
+  const skillsDir = join(targetDir, 'skills');
+  if (existsSync(skillsDir)) {
+    const workspaceSkillsDir = join(agentspaceDir, 'skills');
+    ensureDir(workspaceSkillsDir);
+    for (const file of readdirSync(skillsDir)) {
+      if (extname(file).toLowerCase() === '.md') {
+        copyFileSync(join(skillsDir, file), join(workspaceSkillsDir, file));
+      }
+    }
+  }
+}
+
+function sanitizeMarkdownFilename(name: string): string {
+  const raw = basename(name).replace(/\.md$/i, '');
+  const safe = raw.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'skill';
+  return `${safe}.md`;
 }
 
 export function deletePreset(workspaceId: string, presetId: string): boolean | null {

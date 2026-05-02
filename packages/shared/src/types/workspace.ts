@@ -20,7 +20,7 @@ export interface AgentConfig {
   apiBase?: string;
   apiKey?: string;
   workingDir?: string;
-  mcps?: string[];
+  mcps?: Record<string, unknown>;
   skills?: string[];
   systemPrompt?: string;
   temperature?: number;
