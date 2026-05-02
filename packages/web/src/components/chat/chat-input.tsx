@@ -31,7 +31,9 @@ import { useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import Mention from "@tiptap/extension-mention";
+import type { MentionNodeAttrs } from "@tiptap/extension-mention";
 import type { Editor, JSONContent } from "@tiptap/core";
+import type { Range } from "@tiptap/core";
 import { useDropzone } from "react-dropzone";
 
 import { ComposerShell } from "@/components/composer/composer-shell";
@@ -85,8 +87,8 @@ export function ChatInput({ channelName, agents, onSend }: ChatInputProps) {
             props,
           }: {
             editor: Editor;
-            range: { from: number; to: number };
-            props: Record<string, unknown>;
+            range: Range;
+            props: MentionNodeAttrs;
           }) => {
             editor
               .chain()
@@ -105,33 +107,36 @@ export function ChatInput({ channelName, agents, onSend }: ChatInputProps) {
     [openFilePicker]
   );
 
-  const editor = useEditor({
-    immediatelyRender: false,
-    extensions: [
-      StarterKit,
-      Placeholder.configure({
-        placeholder: `Message #${channelName}...  支持 @mention，输入 / 打开命令`,
-      }),
-      mentionExtension,
-      slashExtension,
-    ],
-    editorProps: {
-      attributes: {
-        class: "tiptap tiptap-chat",
+  const editor = useEditor(
+    {
+      immediatelyRender: false,
+      extensions: [
+        StarterKit,
+        Placeholder.configure({
+          placeholder: `Message #${channelName}...  支持 @mention，输入 / 打开命令`,
+        }),
+        mentionExtension,
+        slashExtension,
+      ],
+      editorProps: {
+        attributes: {
+          class: "tiptap tiptap-chat",
+        },
+        handleKeyDown: (view, event) => {
+          if (event.key === "Enter" && !event.shiftKey) {
+            const hasPopup = document.querySelector('.suggestion-menu');
+            if (hasPopup) return false;
+            event.preventDefault();
+            handleSubmit();
+            return true;
+          }
+          return false;
+        },
       },
-      handleKeyDown: (view, event) => {
-        if (event.key === "Enter" && !event.shiftKey) {
-          const hasPopup = document.querySelector('.suggestion-menu');
-          if (hasPopup) return false;
-          event.preventDefault();
-          handleSubmit();
-          return true;
-        }
-        return false;
-      },
+      content: "",
     },
-    content: "",
-  });
+    [mentionExtension, slashExtension, channelName],
+  );
 
   const handleSubmit = () => {
     if (!editor) return;

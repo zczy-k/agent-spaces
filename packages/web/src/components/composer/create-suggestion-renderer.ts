@@ -1,15 +1,10 @@
 import { ReactRenderer } from '@tiptap/react';
 import tippy, { type Instance } from 'tippy.js';
-import type { Editor } from '@tiptap/core';
+import type { SuggestionProps } from '@tiptap/suggestion';
 
 import { SuggestionList } from './suggestion-list';
 
-type SuggestionRendererProps = {
-  editor: Editor;
-  clientRect?: (() => DOMRect | null) | null;
-  items: Array<Record<string, unknown>>;
-  command: (item: Record<string, unknown>) => void;
-};
+type SuggestionRendererProps = SuggestionProps<Record<string, unknown>>;
 
 export function createSuggestionRenderer() {
   let component: ReactRenderer | null = null;
@@ -22,8 +17,9 @@ export function createSuggestionRenderer() {
         editor: props.editor,
       });
       if (!props.clientRect) return;
+      const getReferenceClientRect = () => props.clientRect?.() ?? new DOMRect();
       popup = tippy('body', {
-        getReferenceClientRect: props.clientRect,
+        getReferenceClientRect,
         appendTo: () => document.body,
         content: component.element,
         showOnCreate: true,
@@ -35,7 +31,7 @@ export function createSuggestionRenderer() {
     onUpdate(props: SuggestionRendererProps) {
       component?.updateProps(props);
       if (popup?.[0] && props.clientRect) {
-        popup[0].setProps({ getReferenceClientRect: props.clientRect });
+        popup[0].setProps({ getReferenceClientRect: () => props.clientRect?.() ?? new DOMRect() });
       }
     },
     onKeyDown(props: { event: KeyboardEvent }) {
