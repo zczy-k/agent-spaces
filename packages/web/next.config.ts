@@ -8,8 +8,8 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: projectRoot,
   },
-  webpack(config, { dev, isServer }) {
-    if (dev && !isServer) {
+  webpack(config, { dev }) {
+    if (dev) {
       config.module.rules.push({
         test: /\.[jt]sx?$/,
         include: path.join(projectRoot, "src"),

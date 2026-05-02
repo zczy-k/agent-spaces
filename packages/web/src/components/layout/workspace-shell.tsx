@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
-import { Layout, Model, TabNode, IJsonModel } from "flexlayout-react";
+import { useCallback, useEffect, useState } from "react";
+import { Layout, Model, TabNode, IJsonModel, Actions } from "flexlayout-react";
 import "flexlayout-react/style/light.css";
 import { EditorPanel } from "@/components/editor/editor-panel";
 import { TerminalPanel } from "@/components/terminal/terminal-panel";
@@ -39,15 +39,15 @@ const defaultJson: IJsonModel = {
         children: [
           { type: "tab", name: "Channels", component: "channel-list" },
           { type: "tab", name: "Issues", component: "issue-list" },
+          { type: "tab", name: "Editor", component: "editor" },
         ],
       },
       {
         type: "tabset",
         weight: 0.75,
         children: [
-          { type: "tab", name: "Editor", component: "editor" },
           { type: "tab", name: "Chat", component: "chat" },
-          { type: "tab", name: "Issue Detail", component: "issue-detail" },
+          { type: "tab", name: "Issue Detail", component: "issue-detail", id: "issue-detail" },
         ],
       },
     ],
@@ -61,6 +61,18 @@ interface WorkspaceShellProps {
 export function WorkspaceShell({ workspaceId }: WorkspaceShellProps) {
   const issueStore = useIssueStore();
   const taskStore = useTaskStore();
+  const activeIssueId = useIssueStore((s) => s.activeIssueId);
+  const [model] = useState(() => Model.fromJson(defaultJson));
+
+  // 点击 issue 时自动切换到 Issue Detail tab
+  useEffect(() => {
+    if (activeIssueId) {
+      const node = model.getNodeById("issue-detail");
+      if (node && node instanceof TabNode) {
+        model.doAction(Actions.selectTab(node.getId()));
+      }
+    }
+  }, [activeIssueId, model]);
 
   useEffect(() => {
     const ws = getWS(workspaceId);
@@ -106,8 +118,6 @@ export function WorkspaceShell({ workspaceId }: WorkspaceShellProps) {
     },
     [workspaceId],
   );
-
-  const model = Model.fromJson(defaultJson);
 
   return (
     <div className="h-screen w-screen">
