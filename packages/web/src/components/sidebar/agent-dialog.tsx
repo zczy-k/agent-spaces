@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { AgentConfig } from "@agent-spaces/shared";
 import {
   Dialog,
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { SearchSelect } from "@/components/ui/search-select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -610,15 +611,13 @@ function AgentDetail({
           </div>
         )}
         <FieldGroup label="Model">
-          <select
+          <SearchSelect
             value={agent.modelId}
-            onChange={(e) => onChange("modelId", e.target.value)}
-            className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring dark:bg-input/30"
-          >
-            {MODEL_OPTIONS.map((m) => (
-              <option key={m} value={m}>{m}</option>
-            ))}
-          </select>
+            onChange={(v) => onChange("modelId", v)}
+            options={MODEL_OPTIONS.map((m) => ({ value: m }))}
+            placeholder="Select model..."
+            searchPlaceholder="Search or type custom model..."
+          />
         </FieldGroup>
         <FieldGroup label="API Base">
           <Input

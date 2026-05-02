@@ -57,12 +57,12 @@ export type Route = {
 export default function DashboardNavigation({ routes }: { routes: Route[] }) {
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
-  const [openCollapsible, setOpenCollapsible] = useState<string | null>(null);
+  const [openSet, setOpenSet] = useState<Set<string>>(new Set());
 
   return (
     <SidebarMenu>
       {routes.map((route) => {
-        const isOpen = !isCollapsed && openCollapsible === route.id;
+        const isOpen = !isCollapsed && openSet.has(route.id);
         const hasSubRoutes = !!route.subs?.length;
         const hasHeaderMenu = !!route.headerMenuItems?.length;
         const useCollapsible = hasSubRoutes || hasHeaderMenu;
@@ -73,7 +73,12 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
               <Collapsible
                 open={isOpen}
                 onOpenChange={(open) =>
-                  setOpenCollapsible(open ? route.id : null)
+                  setOpenSet((prev) => {
+                    const next = new Set(prev);
+                    if (open) next.add(route.id);
+                    else next.delete(route.id);
+                    return next;
+                  })
                 }
                 className="w-full"
               >
