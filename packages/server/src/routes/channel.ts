@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from 'express';
 import { listChannels, createChannel, getChannel, updateChannel, deleteChannel } from '../services/channel.js';
-import { listMessages, createMessage, updateMessage, deleteMessage } from '../services/message.js';
+import { listMessages, createMessage, updateMessage, deleteMessage, clearMessages } from '../services/message.js';
 import { broadcastToWorkspace } from '../ws/handler.js';
 
 const router = Router({ mergeParams: true });
@@ -79,6 +79,15 @@ router.delete('/:channelId/messages/:messageId', (req: Request<ChannelParams & {
   const ok = deleteMessage(id, channelId!, messageId!);
   if (!ok) { res.status(404).json({ error: 'message not found' }); return; }
   broadcastToWorkspace(id, 'channel.message.deleted', { channelId, messageId });
+  res.status(204).end();
+});
+
+// DELETE /api/workspaces/:id/channels/:channelId/messages
+router.delete('/:channelId/messages', (req: Request<ChannelParams>, res: Response) => {
+  const { id, channelId } = req.params;
+  const ok = clearMessages(id, channelId!);
+  if (!ok) { res.status(404).json({ error: 'no messages to clear' }); return; }
+  broadcastToWorkspace(id, 'channel.messages.cleared', { channelId });
   res.status(204).end();
 });
 

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 import * as issueService from '../services/issue.js';
+import { getWorkspace } from '../storage/workspace-store.js';
 
 const router = Router({ mergeParams: true });
 
@@ -38,7 +39,7 @@ router.put('/:issueId', (req: Request<{ id: string; issueId: string }>, res: Res
   const { title, description, status, members } = req.body;
   if (title) issue.title = title;
   if (description) issue.description = description;
-  if (members) issue.members = members;
+  if (members) issue.members = normalizeIssueMembers(req.params.id, members);
   if (status) {
     const updated = issueService.updateStatus(req.params.id, req.params.issueId, status);
     res.json(updated);
@@ -57,3 +58,17 @@ router.post('/:issueId/start', (req: Request<{ id: string; issueId: string }>, r
 });
 
 export default router;
+
+function normalizeIssueMembers(workspaceId: string, members: string[]): string[] {
+  const agentIds = new Set((getWorkspace(workspaceId)?.agents || []).map((agent) => agent.id));
+  const normalized: string[] = [];
+  const seen = new Set<string>();
+
+  for (const member of members) {
+    if (!agentIds.has(member) || seen.has(member)) continue;
+    seen.add(member);
+    normalized.push(member);
+  }
+
+  return normalized;
+}

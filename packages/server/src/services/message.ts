@@ -80,3 +80,11 @@ export function deleteMessage(
   writeJsonFile(path, messages);
   return true;
 }
+
+export function clearMessages(workspaceId: string, channelId: string): boolean {
+  const path = messageFilePath(workspaceId, channelId);
+  const messages = readJsonFile<Message[]>(path) || [];
+  if (messages.length === 0) return false;
+  writeJsonFile(path, []);
+  return true;
+}

@@ -26,13 +26,14 @@ interface ChatPanelProps {
 }
 
 export function ChatPanel({ workspaceId }: ChatPanelProps) {
-  const { activeChannelId, channels, messages, loadMessages, sendMessage, addMessage, updateMessage, deleteMessage } = useChannelStore();
+  const { activeChannelId, channels, messages, loadMessages, sendMessage, addMessage, updateMessage, deleteMessage, clearMessages } = useChannelStore();
   const bottomRef = useRef<HTMLDivElement>(null);
   const [infoOpen, setInfoOpen] = useState(false);
   const [agents, setAgents] = useState<AgentConfig[]>([]);
   const [editingMsg, setEditingMsg] = useState<Message | null>(null);
   const [editContent, setEditContent] = useState('');
   const [deletingMsg, setDeletingMsg] = useState<Message | null>(null);
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
 
   const channel = channels.find((c) => c.id === activeChannelId);
   const msgs = activeChannelId ? (messages[activeChannelId] || []) : [];
@@ -91,10 +92,19 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
         deleteMessage(msg.channelId, msg.messageId);
       }
     });
+    const unsubCleared = ws.on('channel.messages.cleared', (data: unknown) => {
+      const msg = data as { channelId: string };
+      if (msg.channelId === activeChannelId) {
+        useChannelStore.setState((s) => ({
+          messages: { ...s.messages, [activeChannelId]: [] },
+        }));
+      }
+    });
     return () => {
       unsub();
       unsubUpdate();
       unsubDelete();
+      unsubCleared();
     };
   }, [workspaceId, activeChannelId, addMessage, updateMessage, deleteMessage]);
 
@@ -163,6 +173,14 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
           <Button
             variant="ghost"
             size="icon-sm"
+            onClick={() => setClearConfirmOpen(true)}
+            disabled={msgs.length === 0}
+          >
+            <Trash2 className="size-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
             onClick={() => setInfoOpen(!infoOpen)}
           >
             {infoOpen ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}
@@ -222,6 +240,25 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
             <DialogClose render={<Button variant="outline" />}>取消</DialogClose>
             <Button variant="destructive" onClick={confirmDelete}>
               <Trash2 className="size-3.5" />删除
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 清空频道消息确认 Dialog */}
+      <Dialog open={clearConfirmOpen} onOpenChange={setClearConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>清空频道消息</DialogTitle>
+            <DialogDescription>确认清空 #{channel?.name} 的所有消息？此操作不可撤销。</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" />}>取消</DialogClose>
+            <Button variant="destructive" onClick={async () => {
+              if (channel) await clearMessages(workspaceId, channel.id);
+              setClearConfirmOpen(false);
+            }}>
+              <Trash2 className="size-3.5" />清空
             </Button>
           </DialogFooter>
         </DialogContent>

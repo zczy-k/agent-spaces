@@ -98,6 +98,8 @@ export type ServerEventMap = {
   'terminal.closed': TerminalClosedPayload;
   'channel.message': import('./channel.js').Message;
   'channel.message.updated': import('./channel.js').Message;
+  'channel.message.deleted': { channelId: string; messageId: string };
+  'channel.messages.cleared': { channelId: string };
   'channel.updated': import('./channel.js').Channel;
   'agent.started': import('./agent.js').AgentSession;
   'agent.status_changed': AgentStatusChangedPayload;

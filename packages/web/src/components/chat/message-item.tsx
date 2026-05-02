@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import type { Message } from '@agent-spaces/shared';
 import { Copy, Pencil, Trash2, Check } from 'lucide-react';
 import { MemberInfoDialog } from './member-info-dialog';
+import { Markdown } from '@/components/ui/markdown';
 
 interface MessageItemProps {
   message: Message;
@@ -60,7 +61,7 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete }: MessageI
           <span className="text-[10px] text-muted-foreground">{time}</span>
         </div>
         <div className={`text-sm rounded-lg px-3 py-2 ${isUser ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-          {renderContent(message.content)}
+          {isUser ? renderContent(message.content) : <Markdown content={message.content} />}
         </div>
         <div className="flex items-center gap-0.5 h-6 opacity-0 group-hover:opacity-100 transition-opacity">
           <button

@@ -14,9 +14,11 @@ import { useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Mention from '@tiptap/extension-mention';
+import type { Editor } from '@tiptap/core';
 import { ComposerShell } from '@/components/composer/composer-shell';
 import { createSuggestionRenderer } from '@/components/composer/create-suggestion-renderer';
 import { createSlashExtension } from '@/components/composer/create-slash-extension';
+import { getAgentDisplayName, getMemberDisplayName, normalizeChannelMembersToAgentIds } from '@/lib/agent-members';
 import type { IssueStatus, TaskStatus, AgentConfig } from '@agent-spaces/shared';
 
 const ISSUE_STATUS_LABEL: Record<IssueStatus, string> = {
@@ -156,7 +158,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                 description: `${agent.role}${agent.description ? ` · ${agent.description}` : ''}`,
               }));
           },
-          command: ({ editor, range, props }: { editor: any; range: { from: number; to: number }; props: Record<string, unknown> }) => {
+          command: ({ editor, range, props }: { editor: Editor; range: { from: number; to: number }; props: Record<string, unknown> }) => {
             editor.chain().focus().insertContentAt(range, [{ type: 'mention', attrs: props }]).run();
           },
           render: () => createSuggestionRenderer(),
@@ -219,14 +221,23 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
 
   const issueTasks = tasks.filter((t) => t.issueId === issue.id);
   const members = issue.members ?? [];
-  const agentNames = agents.filter((a) => a.enabled !== false).map((a) => a.name || a.role);
-  const candidateMembers = agentNames.filter((m) => !members.includes(m));
+  const enabledAgents = agents.filter((agent) => agent.enabled !== false);
+  const memberIds = new Set(members);
+  const candidateMembers = enabledAgents
+    .filter((agent) => !memberIds.has(agent.id))
+    .map((agent) => ({
+      id: agent.id,
+      label: getAgentDisplayName(agent),
+      description: agent.role,
+    }));
 
   const handleAddMembers = async (newMembers: string[]) => {
     const res = await fetch(`/api/workspaces/${workspaceId}/issues/${issue.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ members: [...members, ...newMembers] }),
+      body: JSON.stringify({
+        members: normalizeChannelMembersToAgentIds(enabledAgents, [...members, ...newMembers]).filter((member) => member !== 'user'),
+      }),
     });
     const updated = await res.json();
     useIssueStore.getState().upsertIssue(updated);
@@ -259,7 +270,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                   <AvatarGroup>
                     {members.slice(0, 4).map((member) => (
                       <Avatar key={member} size="sm">
-                        <AvatarFallback>{member[0]}</AvatarFallback>
+                        <AvatarFallback>{getMemberDisplayName(enabledAgents, member)[0]}</AvatarFallback>
                       </Avatar>
                     ))}
                   </AvatarGroup>
@@ -478,9 +489,12 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                 {members.map((member) => (
                   <div key={member} className="flex items-center gap-2 py-1.5">
                     <Avatar size="sm">
-                      <AvatarFallback>{member[0]}</AvatarFallback>
+                      <AvatarFallback>{getMemberDisplayName(enabledAgents, member)[0]}</AvatarFallback>
                     </Avatar>
-                    <span className="text-sm">{member}</span>
+                    <div className="min-w-0">
+                      <p className="text-sm truncate">{getMemberDisplayName(enabledAgents, member)}</p>
+                      <p className="text-xs text-muted-foreground truncate">{member}</p>
+                    </div>
                   </div>
                 ))}
                 <Button
