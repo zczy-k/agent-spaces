@@ -29,6 +29,7 @@ import {
   Trash2,
   X,
   Cpu,
+  PlugZap,
   FolderOpen,
   Wrench,
   Sparkles,
@@ -178,6 +179,8 @@ export function AgentDialog({
   const [editDraft, setEditDraft] = useState<AgentPreset | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -210,6 +213,7 @@ export function AgentDialog({
   const handleBack = () => {
     setSelectedAgent(null);
     setEditDraft(null);
+    setTestResult(null);
   };
 
   const handleSave = async () => {
@@ -244,6 +248,33 @@ export function AgentDialog({
       setError("Failed to save agent preset");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleTestConnection = async () => {
+    if (!workspaceId || !editDraft) return;
+
+    setTesting(true);
+    setTestResult(null);
+    setError(null);
+    try {
+      const res = await fetch(`/api/workspaces/${workspaceId}/agents/presets/test-connection`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editDraft),
+      });
+      const data = await res.json() as { success?: boolean; message?: string; error?: string };
+      setTestResult({
+        success: Boolean(data.success),
+        message: data.message || data.error || "Connection test failed",
+      });
+    } catch (err) {
+      setTestResult({
+        success: false,
+        message: err instanceof Error ? err.message : "Connection test failed",
+      });
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -377,9 +408,12 @@ export function AgentDialog({
           ) : editDraft ? (
             <AgentDetail
               agent={editDraft}
+              testing={testing}
+              testResult={testResult}
               onChange={updateDraft}
               onAddToArray={addToArray}
               onRemoveFromArray={removeFromArray}
+              onTestConnection={handleTestConnection}
             />
           ) : null}
         </div>
@@ -452,14 +486,20 @@ function AgentList({
 
 function AgentDetail({
   agent,
+  testing,
+  testResult,
   onChange,
   onAddToArray,
   onRemoveFromArray,
+  onTestConnection,
 }: {
   agent: AgentPreset;
+  testing: boolean;
+  testResult: { success: boolean; message: string } | null;
   onChange: <K extends keyof AgentPreset>(key: K, value: AgentPreset[K]) => void;
   onAddToArray: (key: "mcps" | "skills", value: string) => void;
   onRemoveFromArray: (key: "mcps" | "skills", index: number) => void;
+  onTestConnection: () => void;
 }) {
   const [newMcp, setNewMcp] = useState("");
   const [newSkill, setNewSkill] = useState("");
@@ -544,6 +584,31 @@ function AgentDetail({
 
       {/* Model Config */}
       <Section icon={<Sliders className="size-3.5" />} title="Model">
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-xs text-muted-foreground">Validate provider credentials before saving.</div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onTestConnection}
+            disabled={testing || !agent.apiBase || !agent.apiKey || !agent.modelId}
+          >
+            <PlugZap className="size-3.5" />
+            {testing ? "Testing..." : "Test"}
+          </Button>
+        </div>
+        {testResult && (
+          <div
+            className={cn(
+              "rounded-md border px-3 py-2 text-xs",
+              testResult.success
+                ? "border-green-500/30 bg-green-500/10 text-green-700"
+                : "border-destructive/30 bg-destructive/10 text-destructive",
+            )}
+          >
+            {testResult.message}
+          </div>
+        )}
         <FieldGroup label="Model">
           <select
             value={agent.modelId}

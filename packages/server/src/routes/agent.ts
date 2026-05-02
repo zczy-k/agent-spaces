@@ -23,6 +23,15 @@ router.post('/presets', (req: Request<{ id: string }>, res: Response) => {
   res.status(201).json(preset);
 });
 
+router.post('/presets/test-connection', async (req: Request<{ id: string }>, res: Response) => {
+  const result = await agentService.testConnection(req.params.id, req.body as Partial<AgentConfig>);
+  if (!result) {
+    res.status(404).json({ error: 'workspace not found' });
+    return;
+  }
+  res.status(result.success ? 200 : 400).json(result);
+});
+
 router.put('/presets/:presetId', (req: Request<{ id: string; presetId: string }>, res: Response) => {
   const preset = agentService.updatePreset(req.params.id, req.params.presetId, req.body as Partial<AgentConfig>);
   if (!preset) {

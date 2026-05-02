@@ -39,12 +39,19 @@ export type SubMenuItem = {
   }[];
 };
 
+export type HeaderMenuItem = {
+  label: string;
+  icon?: React.ReactNode;
+  onClick: () => void;
+};
+
 export type Route = {
   id: string;
   title: string;
   icon?: React.ReactNode;
   link: string;
   subs?: SubMenuItem[];
+  headerMenuItems?: HeaderMenuItem[];
 };
 
 export default function DashboardNavigation({ routes }: { routes: Route[] }) {
@@ -57,10 +64,12 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
       {routes.map((route) => {
         const isOpen = !isCollapsed && openCollapsible === route.id;
         const hasSubRoutes = !!route.subs?.length;
+        const hasHeaderMenu = !!route.headerMenuItems?.length;
+        const useCollapsible = hasSubRoutes || hasHeaderMenu;
 
         return (
           <SidebarMenuItem key={route.id}>
-            {hasSubRoutes ? (
+            {useCollapsible ? (
               <Collapsible
                 open={isOpen}
                 onOpenChange={(open) =>
@@ -68,25 +77,44 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
                 }
                 className="w-full"
               >
-                <CollapsibleTrigger render={<SidebarMenuButton className={cn(
-                                              "flex w-full items-center rounded-lg px-2 transition-colors",
-                                              isOpen
-                                                ? "bg-sidebar-muted text-foreground"
-                                                : "text-muted-foreground hover:bg-sidebar-muted hover:text-foreground",
-                                              isCollapsed && "justify-center"
-                                            )} />}>{route.icon}{!isCollapsed && (
-                                              <span className="ml-2 flex-1 text-sm font-medium">
-                                                {route.title}
-                                              </span>
-                                            )}{!isCollapsed && hasSubRoutes && (
-                                              <span className="ml-auto">
-                                                {isOpen ? (
-                                                  <ChevronUp className="size-4" />
-                                                ) : (
-                                                  <ChevronDown className="size-4" />
-                                                )}
-                                              </span>
-                                            )}</CollapsibleTrigger>
+                <div className="flex items-center w-full">
+                  <CollapsibleTrigger render={<SidebarMenuButton className={cn(
+                                                "flex flex-1 items-center rounded-lg px-2 transition-colors",
+                                                isOpen
+                                                  ? "bg-sidebar-muted text-foreground"
+                                                  : "text-muted-foreground hover:bg-sidebar-muted hover:text-foreground",
+                                                isCollapsed && "justify-center"
+                                              )} />}>{route.icon}{!isCollapsed && (
+                                                <span className="ml-2 flex-1 text-sm font-medium">
+                                                  {route.title}
+                                                </span>
+                                              )}{!isCollapsed && hasSubRoutes && (
+                                                <span className="ml-auto">
+                                                  {isOpen ? (
+                                                    <ChevronUp className="size-4" />
+                                                  ) : (
+                                                    <ChevronDown className="size-4" />
+                                                  )}
+                                                </span>
+                                              )}</CollapsibleTrigger>
+                  {!isCollapsed && hasHeaderMenu && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        className="flex items-center justify-center rounded-md p-0.5 hover:bg-sidebar-accent cursor-pointer"
+                      >
+                        <MoreHorizontal className="size-3.5 text-muted-foreground" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" side="right">
+                        {route.headerMenuItems!.map((item) => (
+                          <DropdownMenuItem key={item.label} onClick={item.onClick}>
+                            {item.icon}
+                            {item.label}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
 
                 {!isCollapsed && (
                   <CollapsibleContent>

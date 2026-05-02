@@ -11,10 +11,131 @@ import { getWorkspace, updateWorkspace } from '../storage/workspace-store.js';
 
 const VALID_ROLES: AgentConfig['role'][] = ['scheduler', 'planner', 'executor', 'reviewer'];
 
+export interface AgentConnectionTestResult {
+  success: boolean;
+  message: string;
+  status?: number;
+}
+
 export function listPresets(workspaceId: string): AgentConfig[] | null {
   const ws = getWorkspace(workspaceId);
   if (!ws) return null;
   return ws.agents || [];
+}
+
+export async function testConnection(
+  workspaceId: string,
+  data: Partial<AgentConfig>,
+): Promise<AgentConnectionTestResult | null> {
+  const ws = getWorkspace(workspaceId);
+  if (!ws) return null;
+
+  const apiBase = data.apiBase?.trim();
+  const apiKey = data.apiKey?.trim();
+  const model = data.modelId?.trim();
+  const provider = data.modelProvider || inferProvider(apiBase);
+
+  if (!apiBase) return { success: false, message: 'apiBase is required' };
+  if (!apiKey) return { success: false, message: 'apiKey is required' };
+  if (!model) return { success: false, message: 'modelId is required' };
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
+
+  try {
+    const response =
+      provider === 'anthropic-messages'
+        ? await testAnthropicConnection(apiBase, apiKey, model, controller.signal)
+        : await testOpenAIConnection(apiBase, apiKey, model, controller.signal);
+
+    if (!response.ok) {
+      return {
+        success: false,
+        status: response.status,
+        message: await readErrorMessage(response),
+      };
+    }
+
+    return {
+      success: true,
+      status: response.status,
+      message: 'Connection test succeeded',
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return {
+      success: false,
+      message: message === 'This operation was aborted' ? 'Connection test timed out' : message,
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function testOpenAIConnection(
+  apiBase: string,
+  apiKey: string,
+  model: string,
+  signal: AbortSignal,
+): Promise<Response> {
+  return fetch(joinUrl(apiBase, '/chat/completions'), {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: 'user', content: 'Reply with OK.' }],
+      max_tokens: 8,
+      temperature: 0,
+    }),
+    signal,
+  });
+}
+
+async function testAnthropicConnection(
+  apiBase: string,
+  apiKey: string,
+  model: string,
+  signal: AbortSignal,
+): Promise<Response> {
+  return fetch(joinUrl(apiBase, '/messages'), {
+    method: 'POST',
+    headers: {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: 'user', content: 'Reply with OK.' }],
+      max_tokens: 8,
+      temperature: 0,
+    }),
+    signal,
+  });
+}
+
+function inferProvider(apiBase?: string): 'anthropic-messages' | 'openai-completions' {
+  return apiBase?.includes('anthropic.com') ? 'anthropic-messages' : 'openai-completions';
+}
+
+function joinUrl(base: string, path: string): string {
+  return `${base.replace(/\/+$/, '')}${path}`;
+}
+
+async function readErrorMessage(response: Response): Promise<string> {
+  const text = await response.text();
+  if (!text) return `Connection test failed with status ${response.status}`;
+
+  try {
+    const json = JSON.parse(text) as { error?: { message?: string } | string; message?: string };
+    if (typeof json.error === 'string') return json.error;
+    return json.error?.message || json.message || text;
+  } catch {
+    return text;
+  }
 }
 
 export function createPreset(
