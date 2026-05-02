@@ -21,6 +21,7 @@ export function create(workspaceId: string, input: CreateIssueInput): Issue {
     status: 'draft',
     tasks: [],
     assignedAgents: [],
+    members: [],
     createdAt: now,
     updatedAt: now,
   };

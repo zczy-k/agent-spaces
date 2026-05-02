@@ -35,9 +35,10 @@ router.put('/:issueId', (req: Request<{ id: string; issueId: string }>, res: Res
     res.status(404).json({ error: 'issue not found' });
     return;
   }
-  const { title, description, status } = req.body;
+  const { title, description, status, members } = req.body;
   if (title) issue.title = title;
   if (description) issue.description = description;
+  if (members) issue.members = members;
   if (status) {
     const updated = issueService.updateStatus(req.params.id, req.params.issueId, status);
     res.json(updated);

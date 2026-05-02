@@ -18,6 +18,7 @@ export interface Issue {
   planFile?: string;
   tasks: string[];
   assignedAgents: string[];
+  members: string[];
   branch?: string;
   prUrl?: string;
   createdAt: string;
