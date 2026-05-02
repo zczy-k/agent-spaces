@@ -21,7 +21,7 @@ import {
   IconWand,
   IconWorld,
 } from "@tabler/icons-react";
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type ReactNode } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -36,7 +36,7 @@ import { createSuggestionRenderer } from "@/components/composer/create-suggestio
 import { createSlashExtension } from "@/components/composer/create-slash-extension";
 import type { AgentConfig } from "@agent-spaces/shared";
 
-type MentionedAgent = Pick<AgentConfig, "id" | "name" | "role" | "description" | "enabled" | "mcps" | "skills" | "modelProvider" | "modelId" | "workingDir" | "sandboxDirs">;
+type MentionedAgent = Pick<AgentConfig, "id" | "name" | "role" | "description" | "enabled" | "mcps" | "skills">;
 
 interface ChatInputProps {
   channelName: string;
@@ -68,7 +68,11 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const activeAgent = mentionedAgents[0];
   const activeMcps = activeAgent?.mcps ?? [];
   const activeSkills = activeAgent?.skills ?? [];
-  const activeTools = useMemo(() => getAgentTools(activeAgent), [activeAgent]);
+  const tools = useMemo(() => [
+    { label: "Code Interpreter", icon: IconCode },
+    { label: "Web Search", icon: IconWorld },
+    { label: "Chat History", icon: IconHistory },
+  ], []);
 
   useEffect(() => {
     isProcessingRef.current = isProcessing;
@@ -200,31 +204,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     selector: (ctx) => !!ctx.editor?.getText().trim(),
   });
 
-  const agentConfig = activeAgent ? (
-    <div className="rounded-lg border border-border/70 bg-muted/35 px-2.5 py-2 text-xs">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="truncate font-medium text-foreground">
-            {activeAgent.name || activeAgent.role}
-          </div>
-          <div className="truncate text-muted-foreground">
-            {activeAgent.description || activeAgent.role}
-          </div>
-        </div>
-        {mentionedAgents.length > 1 ? (
-          <span className="shrink-0 rounded-full bg-background px-2 py-0.5 text-[10px] text-muted-foreground">
-            +{mentionedAgents.length - 1}
-          </span>
-        ) : null}
-      </div>
-      <div className="mt-2 grid gap-1.5 sm:grid-cols-3">
-        <AgentConfigRow icon={<IconPlug size={14} />} label="MCP" values={activeMcps} empty="None" />
-        <AgentConfigRow icon={<IconPuzzle size={14} />} label="Skill" values={activeSkills} empty="None" />
-        <AgentConfigRow icon={<IconTools size={14} />} label="Tools" values={activeTools} empty="Default" />
-      </div>
-    </div>
-  ) : null;
-
   const chatActions = (
     <>
       <DropdownMenu>
@@ -275,7 +254,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         onStop={onStop}
         isProcessing={isProcessing}
         actions={chatActions}
-        agentConfig={agentConfig}
         dropzoneProps={getRootProps()}
         hiddenInput={<input {...getInputProps()} data-chat-file-input="" />}
       />
@@ -316,18 +294,14 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         </DropdownMenu>
 
         <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="ghost" size="sm" className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs" />}><IconTools className="size-3" /><span>Tools{activeTools.length ? ` ${activeTools.length}` : ""}</span><IconChevronDown className="size-3" /></DropdownMenuTrigger>
+          <DropdownMenuTrigger render={<Button variant="ghost" size="sm" className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs" />}><IconTools className="size-3" /><span>Tools</span><IconChevronDown className="size-3" /></DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5 bg-popover border-border">
             <DropdownMenuGroup className="space-y-1">
-              {activeTools.length ? activeTools.map((tool) => (
-                <DropdownMenuItem key={tool} className="rounded-[calc(1rem-6px)] text-xs">
-                  <IconTools size={16} className="opacity-60" />{tool}
+              {tools.map(({ label, icon: Icon }) => (
+                <DropdownMenuItem key={label} className="rounded-[calc(1rem-6px)] text-xs">
+                  <Icon size={16} className="opacity-60" />{label}
                 </DropdownMenuItem>
-              )) : (
-                <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs text-muted-foreground">
-                  <IconTools size={16} className="opacity-60" />Default tools
-                </DropdownMenuItem>
-              )}
+              ))}
             </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -337,30 +311,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     </div>
   );
 });
-
-function AgentConfigRow({ icon, label, values, empty }: { icon: ReactNode; label: string; values: string[]; empty: string }) {
-  return (
-    <div className="min-w-0 rounded-md bg-background/70 px-2 py-1.5">
-      <div className="flex items-center gap-1.5 text-[10px] uppercase text-muted-foreground">
-        {icon}
-        <span>{label}</span>
-      </div>
-      <div className="mt-1 truncate text-foreground">
-        {values.length ? values.join(", ") : empty}
-      </div>
-    </div>
-  );
-}
-
-function getAgentTools(agent?: MentionedAgent): string[] {
-  if (!agent) return [];
-  return [
-    agent.modelId ? `Model: ${agent.modelId}` : null,
-    agent.modelProvider ? `Provider: ${agent.modelProvider}` : null,
-    agent.workingDir ? `Dir: ${agent.workingDir}` : null,
-    agent.sandboxDirs?.length ? `Sandbox: ${agent.sandboxDirs.length}` : null,
-  ].filter((value): value is string => Boolean(value));
-}
 
 function collectMentionIds(node: JSONContent): string[] {
   const ids = new Set<string>();

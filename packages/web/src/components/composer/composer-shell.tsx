@@ -12,7 +12,6 @@ interface ComposerShellProps {
   onStop?: () => void;
   isProcessing?: boolean;
   actions?: ReactNode;
-  agentConfig?: ReactNode;
   className?: string;
   dropzoneProps?: Record<string, unknown>;
   hiddenInput?: ReactNode;
@@ -25,7 +24,6 @@ export function ComposerShell({
   onStop,
   isProcessing = false,
   actions,
-  agentConfig,
   className,
   dropzoneProps,
   hiddenInput,
@@ -40,11 +38,6 @@ export function ComposerShell({
         <div className="px-3 pt-3 pb-2">
           <EditorContent editor={editor} />
         </div>
-        {agentConfig ? (
-          <div className="px-2 pb-2">
-            {agentConfig}
-          </div>
-        ) : null}
         <div className="flex items-center justify-between px-2 pb-2">
           <div className="flex items-center gap-1">{actions}</div>
           {isProcessing ? (
