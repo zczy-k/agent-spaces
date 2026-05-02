@@ -12,8 +12,9 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { SearchSelect } from '@/components/ui/search-select';
 import { X } from 'lucide-react';
+import { getMemberDisplayName } from '@/lib/agent-members';
 
-import type { Channel } from '@agent-spaces/shared';
+import type { AgentConfig, Channel } from '@agent-spaces/shared';
 
 const channelTypeOptions = [
   { value: 'general', label: 'General' },
@@ -26,17 +27,20 @@ interface ChannelDialogProps {
   onOpenChange: (open: boolean) => void;
   workspaceId: string;
   channel?: Channel | null;
+  agents?: AgentConfig[];
   onSubmit: (data: { name: string; type: Channel['type']; members: string[] }) => void;
 }
 
-export function ChannelDialog({ open, onOpenChange, channel, onSubmit }: ChannelDialogProps) {
+export function ChannelDialog({ open, onOpenChange, channel, agents = [], onSubmit }: ChannelDialogProps) {
   const [name, setName] = useState('');
   const [type, setType] = useState<Channel['type']>('general');
   const [members, setMembers] = useState<string[]>([]);
   const [memberInput, setMemberInput] = useState('');
 
   useEffect(() => {
-    if (open) {
+    if (!open) return;
+
+    queueMicrotask(() => {
       if (channel) {
         setName(channel.name);
         setType(channel.type);
@@ -47,7 +51,7 @@ export function ChannelDialog({ open, onOpenChange, channel, onSubmit }: Channel
         setMembers(['user']);
       }
       setMemberInput('');
-    }
+    });
   }, [open, channel]);
 
   const addMember = () => {
@@ -115,7 +119,7 @@ export function ChannelDialog({ open, onOpenChange, channel, onSubmit }: Channel
             <div className="flex flex-wrap gap-1.5">
               {members.map((m) => (
                 <span key={m} className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs">
-                  {m}
+                  {getMemberDisplayName(agents, m)}
                   <button type="button" onClick={() => removeMember(m)} className="hover:text-destructive">
                     <X className="size-3" />
                   </button>

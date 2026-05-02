@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Status, StatusIndicator, StatusLabel } from '@/components/ui/status-badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Hash, Bot, AlertCircle, Info, Users, Pencil, UserPlus, Trash2 } from 'lucide-react';
 import { ChannelDialog } from './channel-dialog';
@@ -12,6 +11,7 @@ import { MemberCard } from './member-card';
 import { MemberInfoDialog } from './member-info-dialog';
 import { AddMemberDialog } from './add-member-dialog';
 import { useChannelStore } from '@/stores/channel';
+import { getAgentDisplayName, getMemberDisplayName, normalizeChannelMembersToAgentIds } from '@/lib/agent-members';
 
 import type { AgentConfig, Channel } from '@agent-spaces/shared';
 
@@ -29,7 +29,7 @@ interface ChannelInfoPanelProps {
 }
 
 export function ChannelInfoPanel({ workspaceId, channel, agents, allChannels }: ChannelInfoPanelProps) {
-  const { channels, updateChannel, deleteChannel } = useChannelStore();
+  const { updateChannel, deleteChannel } = useChannelStore();
   const [editOpen, setEditOpen] = useState(false);
   const [memberInfoOpen, setMemberInfoOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState('');
@@ -37,13 +37,21 @@ export function ChannelInfoPanel({ workspaceId, channel, agents, allChannels }: 
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const typeConf = channelTypeStatus[channel.type];
-  const agentNames = agents.filter((a) => a.enabled !== false).map((a) => a.name || a.role);
-  const allMembers = [...new Set([...allChannels.flatMap((c) => c.members), ...agentNames])];
-  const candidateMembers = allMembers.filter((m) => !channel.members.includes(m));
-  const memberChannels = (name: string) => allChannels.filter((c) => c.members.includes(name)).map((c) => c.name);
+  const enabledAgents = agents.filter((agent) => agent.enabled !== false);
+  const channelAgentIds = new Set(channel.members);
+  const candidateMembers = enabledAgents
+    .filter((agent) => !channelAgentIds.has(agent.id))
+    .map((agent) => ({
+      id: agent.id,
+      label: getAgentDisplayName(agent),
+      description: agent.role,
+    }));
+  const memberChannels = (member: string) => allChannels.filter((c) => c.members.includes(member)).map((c) => c.name);
 
   const handleAddMembers = (newMembers: string[]) => {
-    updateChannel(workspaceId, channel.id, { members: [...channel.members, ...newMembers] });
+    updateChannel(workspaceId, channel.id, {
+      members: normalizeChannelMembersToAgentIds(enabledAgents, [...channel.members, ...newMembers]),
+    });
   };
 
   const handleDelete = async () => {
@@ -101,7 +109,8 @@ export function ChannelInfoPanel({ workspaceId, channel, agents, allChannels }: 
             {channel.members.map((member) => (
               <MemberCard
                 key={member}
-                name={member}
+                name={getMemberDisplayName(enabledAgents, member)}
+                description={member !== 'user' ? member : undefined}
                 onClick={() => { setSelectedMember(member); setMemberInfoOpen(true); }}
               />
             ))}
@@ -134,13 +143,18 @@ export function ChannelInfoPanel({ workspaceId, channel, agents, allChannels }: 
         onOpenChange={setEditOpen}
         workspaceId={workspaceId}
         channel={channel}
-        onSubmit={(data) => updateChannel(workspaceId, channel.id, data)}
+        agents={agents}
+        onSubmit={(data) => updateChannel(workspaceId, channel.id, {
+          ...data,
+          members: normalizeChannelMembersToAgentIds(enabledAgents, data.members),
+        })}
       />
 
       <MemberInfoDialog
         open={memberInfoOpen}
         onOpenChange={setMemberInfoOpen}
         memberName={selectedMember}
+        displayName={getMemberDisplayName(enabledAgents, selectedMember)}
         channelId={channel.id}
         workspaceId={workspaceId}
         channels={memberChannels(selectedMember)}

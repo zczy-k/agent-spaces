@@ -15,12 +15,13 @@ interface MemberInfoDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   memberName: string;
+  displayName?: string;
   channelId: string;
   workspaceId: string;
   channels?: string[];
 }
 
-export function MemberInfoDialog({ open, onOpenChange, memberName, channelId, workspaceId, channels = [] }: MemberInfoDialogProps) {
+export function MemberInfoDialog({ open, onOpenChange, memberName, displayName, channelId, workspaceId, channels = [] }: MemberInfoDialogProps) {
   const [removing, setRemoving] = useState(false);
   const { channels: allChannels, updateChannel } = useChannelStore();
 
@@ -49,11 +50,11 @@ export function MemberInfoDialog({ open, onOpenChange, memberName, channelId, wo
         </DialogHeader>
         <div className="flex items-center gap-3 pt-2">
           <div className="flex items-center justify-center size-12 rounded-full bg-muted text-lg font-medium">
-            {memberName[0]?.toUpperCase() || <User className="size-5 text-muted-foreground" />}
+            {(displayName || memberName)[0]?.toUpperCase() || <User className="size-5 text-muted-foreground" />}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{memberName}</p>
-            <p className="text-xs text-muted-foreground">成员</p>
+            <p className="text-sm font-medium truncate">{displayName || memberName}</p>
+            <p className="text-xs text-muted-foreground">{memberName === 'user' ? '成员' : memberName}</p>
           </div>
         </div>
         {channels.length > 0 && (

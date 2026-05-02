@@ -11,6 +11,7 @@ import { PanelRightOpen, PanelRightClose, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { ChannelInfoPanel } from './channel-info-panel';
+import { findAgentById } from '@/lib/agent-members';
 
 import type { AgentConfig, Channel, Message } from '@agent-spaces/shared';
 
@@ -38,16 +39,17 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
 
   const mentionAgents = useMemo(() => {
     const enabledAgents = agents.filter((agent) => agent.enabled !== false);
-    if (!channel) return enabledAgents;
+    if (!channel) return [];
 
-    const memberNames = new Set(channel.members.filter((member) => member !== 'user'));
-    if (memberNames.size === 0) return enabledAgents;
-
-    const channelAgents = enabledAgents.filter((agent) =>
-      memberNames.has(agent.id) || memberNames.has(agent.name || agent.role) || memberNames.has(agent.role),
-    );
-
-    return channelAgents.length > 0 ? channelAgents : enabledAgents;
+    const seen = new Set<string>();
+    return channel.members
+      .filter((member) => member !== 'user')
+      .map((member) => findAgentById(enabledAgents, member))
+      .filter((agent): agent is AgentConfig => {
+        if (!agent || seen.has(agent.id)) return false;
+        seen.add(agent.id);
+        return true;
+      });
   }, [channel, agents]);
 
   useEffect(() => {

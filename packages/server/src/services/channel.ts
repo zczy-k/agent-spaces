@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { readJsonFile, writeJsonFile, ensureDir, getDataDir } from '../storage/json-store.js';
 import { rmSync } from 'node:fs';
 import type { Channel } from '@agent-spaces/shared';
+import { getWorkspace } from '../storage/workspace-store.js';
 
 function workspaceDir(workspaceId: string) {
   return join(getDataDir(), 'workspaces', workspaceId);
@@ -31,7 +32,7 @@ export function createChannel(workspaceId: string, data: { name: string; type: C
     workspaceId,
     name: data.name,
     type: data.type,
-    members: data.members || ['user'],
+    members: normalizeMembers(workspaceId, data.members),
     createdAt: new Date().toISOString(),
   };
   channels.push(channel);
@@ -46,9 +47,24 @@ export function updateChannel(workspaceId: string, channelId: string, data: Part
   if (idx === -1) return null;
   if (data.name !== undefined) channels[idx].name = data.name;
   if (data.type !== undefined) channels[idx].type = data.type;
-  if (data.members !== undefined) channels[idx].members = data.members;
+  if (data.members !== undefined) channels[idx].members = normalizeMembers(workspaceId, data.members);
   writeJsonFile(channelsPath(workspaceId), channels);
   return channels[idx];
+}
+
+function normalizeMembers(workspaceId: string, members: string[] = ['user']): string[] {
+  const agentIds = new Set((getWorkspace(workspaceId)?.agents || []).map((agent) => agent.id));
+  const normalized: string[] = [];
+  const seen = new Set<string>();
+
+  for (const member of members) {
+    if (member !== 'user' && !agentIds.has(member)) continue;
+    if (seen.has(member)) continue;
+    seen.add(member);
+    normalized.push(member);
+  }
+
+  return normalized.includes('user') ? normalized : ['user', ...normalized];
 }
 
 export function deleteChannel(workspaceId: string, channelId: string): boolean {

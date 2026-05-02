@@ -6,8 +6,9 @@ import { Hash, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ChannelDialog } from './channel-dialog';
+import { normalizeChannelMembersToAgentIds } from '@/lib/agent-members';
 
-import type { Channel } from '@agent-spaces/shared';
+import type { AgentConfig, Channel } from '@agent-spaces/shared';
 
 interface ChannelListProps {
   workspaceId: string;
@@ -16,13 +17,34 @@ interface ChannelListProps {
 export function ChannelList({ workspaceId }: ChannelListProps) {
   const { channels, activeChannelId, loadChannels, createChannel, setActiveChannel } = useChannelStore();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [agents, setAgents] = useState<AgentConfig[]>([]);
 
   useEffect(() => {
     loadChannels(workspaceId);
   }, [workspaceId, loadChannels]);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(`/api/workspaces/${workspaceId}/agents/presets`, { signal: controller.signal })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(await res.text());
+        return res.json() as Promise<AgentConfig[]>;
+      })
+      .then(setAgents)
+      .catch((err) => {
+        if (err.name !== 'AbortError') setAgents([]);
+      });
+
+    return () => controller.abort();
+  }, [workspaceId]);
+
   const handleSubmit = async (data: { name: string; type: Channel['type']; members: string[] }) => {
-    await createChannel(workspaceId, data.name, data.type);
+    await createChannel(
+      workspaceId,
+      data.name,
+      data.type,
+      normalizeChannelMembersToAgentIds(agents, data.members),
+    );
   };
 
   return (
@@ -53,6 +75,7 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         workspaceId={workspaceId}
+        agents={agents}
         onSubmit={handleSubmit}
       />
     </div>
