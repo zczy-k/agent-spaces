@@ -6,6 +6,12 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -15,22 +21,30 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import type React from "react";
 import { useState } from "react";
+
+export type SubMenuItem = {
+  title: string;
+  link: string;
+  icon?: React.ReactNode;
+  onClick?: () => void;
+  menuItems?: {
+    label: string;
+    icon?: React.ReactNode;
+    variant?: "default" | "destructive";
+    onClick: () => void;
+  }[];
+};
 
 export type Route = {
   id: string;
   title: string;
   icon?: React.ReactNode;
   link: string;
-  subs?: {
-    title: string;
-    link: string;
-    icon?: React.ReactNode;
-    onClick?: () => void;
-  }[];
+  subs?: SubMenuItem[];
 };
 
 export default function DashboardNavigation({ routes }: { routes: Route[] }) {
@@ -82,17 +96,42 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
                           key={`${route.id}-${subRoute.title}`}
                           className="h-auto"
                         >
-                          <SidebarMenuSubButton
-                          render={
-                            subRoute.onClick
-                              ? <button
-                                  type="button"
-                                  onClick={subRoute.onClick}
-                                  className="flex w-full items-center rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-muted hover:text-foreground"
-                                />
-                              : <Link href={subRoute.link} prefetch={true} className="flex items-center rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-muted hover:text-foreground" />
-                          }
-                        >{subRoute.title}</SidebarMenuSubButton>
+                          <div className="group/sub relative flex items-center">
+                            <SidebarMenuSubButton
+                            render={
+                              subRoute.onClick
+                                ? <button
+                                    type="button"
+                                    onClick={subRoute.onClick}
+                                    className="flex w-full items-center rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-muted hover:text-foreground"
+                                  />
+                                : <Link href={subRoute.link} prefetch={true} className="flex items-center rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-muted hover:text-foreground" />
+                            }
+                          >{subRoute.title}</SidebarMenuSubButton>
+
+                          {subRoute.menuItems && subRoute.menuItems.length > 0 && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger
+                                className="absolute right-1 flex items-center justify-center rounded-md p-0.5 opacity-0 group-hover/sub:opacity-100 hover:bg-sidebar-muted transition-opacity cursor-pointer"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MoreHorizontal className="size-3.5 text-muted-foreground" />
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" side="right">
+                                {subRoute.menuItems.map((item) => (
+                                  <DropdownMenuItem
+                                    key={item.label}
+                                    variant={item.variant}
+                                    onClick={item.onClick}
+                                  >
+                                    {item.icon}
+                                    {item.label}
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                          </div>
                         </SidebarMenuSubItem>
                       ))}
                     </SidebarMenuSub>

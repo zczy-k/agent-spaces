@@ -17,6 +17,8 @@ export interface AgentConfig {
   description?: string;
   modelProvider?: string;
   modelId?: string;
+  apiBase?: string;
+  apiKey?: string;
   workingDir?: string;
   mcps?: string[];
   skills?: string[];

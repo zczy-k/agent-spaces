@@ -16,6 +16,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Status, StatusIndicator, StatusLabel } from '@/components/ui/status-badge';
 import { Settings, Hash, Bot, AlertCircle, Info, Users } from 'lucide-react';
+
 import type { Channel } from '@agent-spaces/shared';
 
 const channelTypeStatus: Record<Channel['type'], { label: string; status: 'online' | 'offline' | 'maintenance' | 'degraded' }> = {
@@ -106,24 +107,6 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
           <DialogHeader className="px-4 pt-4 pb-2">
             <DialogTitle>频道设置</DialogTitle>
             <DialogDescription>管理频道信息和成员</DialogDescription>
-            <div className="flex gap-1 pt-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 gap-1.5 text-xs"
-                onClick={() => document.getElementById('channel-info')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-              >
-                <Info className="size-3" />频道信息
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 gap-1.5 text-xs"
-                onClick={() => document.getElementById('channel-members')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-              >
-                <Users className="size-3" />成员管理
-              </Button>
-            </div>
           </DialogHeader>
           <ScrollArea className="flex-1 px-4 pb-4">
             {/* 频道信息 */}

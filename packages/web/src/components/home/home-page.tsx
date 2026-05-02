@@ -4,26 +4,21 @@ import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Plus, FolderOpen, ArrowRight } from "lucide-react";
+import { WorkspaceDialog } from "@/components/workspace/workspace-dialog";
 import type { Workspace } from "@agent-spaces/shared";
 
 export function HomePage({ initialWorkspaces }: { initialWorkspaces: Workspace[] }) {
   const [workspaces, setWorkspaces] = useState<Workspace[]>(initialWorkspaces);
-  const [name, setName] = useState("");
-  const [dir, setDir] = useState("");
-  const [showCreate, setShowCreate] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
-  const create = async () => {
-    if (!name || !dir) return;
+  const handleWsSubmit = async (data: { name: string; boundDirs: string[] }) => {
     const res = await fetch("/api/workspaces", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, boundDirs: [dir] }),
+      body: JSON.stringify(data),
     });
     const ws = await res.json();
     setWorkspaces((prev) => [...prev, ws]);
-    setName("");
-    setDir("");
-    setShowCreate(false);
   };
 
   return (
@@ -38,7 +33,7 @@ export function HomePage({ initialWorkspaces }: { initialWorkspaces: Workspace[]
             <span className="font-heading text-lg font-semibold text-foreground">Agent Spaces</span>
           </div>
           <Button
-            onClick={() => setShowCreate(!showCreate)}
+            onClick={() => setDialogOpen(true)}
             size="sm"
             className="rounded-full px-4"
           >
@@ -59,34 +54,6 @@ export function HomePage({ initialWorkspaces }: { initialWorkspaces: Workspace[]
           Create workspaces, bind local code directories, and let AI agents plan, execute, review, and merge — together.
         </p>
       </section>
-
-      {/* Create Form */}
-      {showCreate && (
-        <section className="max-w-6xl mx-auto px-6 pb-10">
-          <div className="rounded-2xl border border-border bg-card p-6 shadow-card">
-            <h3 className="font-heading text-xl font-semibold mb-4">Create Workspace</h3>
-            <div className="flex gap-3">
-              <input
-                className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all w-64"
-                placeholder="Workspace name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && create()}
-              />
-              <input
-                className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all flex-1"
-                placeholder="/path/to/project"
-                value={dir}
-                onChange={(e) => setDir(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && create()}
-              />
-              <Button onClick={create} disabled={!name || !dir} className="rounded-xl px-6">
-                Create
-              </Button>
-            </div>
-          </div>
-        </section>
-      )}
 
       {/* Workspace Grid */}
       <section className="max-w-6xl mx-auto px-6 pb-20">
@@ -120,6 +87,12 @@ export function HomePage({ initialWorkspaces }: { initialWorkspaces: Workspace[]
           </div>
         )}
       </section>
+
+      <WorkspaceDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        onSubmit={handleWsSubmit}
+      />
     </div>
   );
 }

@@ -17,6 +17,8 @@ import {
   FolderOpen,
   Settings,
   Bot,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { Logo } from "@/components/sidebar/logo";
 import { AgentDialog } from "@/components/sidebar/agent-dialog";
@@ -24,6 +26,7 @@ import type { Route } from "./nav-main";
 import DashboardNavigation from "@/components/sidebar/nav-main";
 import { NotificationsPopover } from "@/components/sidebar/nav-notifications";
 import { TeamSwitcher } from "@/components/sidebar/team-switcher";
+import { WorkspaceDialog } from "@/components/workspace/workspace-dialog";
 import type { Workspace } from "@agent-spaces/shared";
 
 const sampleNotifications = [
@@ -64,14 +67,55 @@ export function DashboardSidebar() {
   const currentWorkspaceId = pathname.match(/^\/workspace\/([^/]+)/)?.[1];
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [agentDialogOpen, setAgentDialogOpen] = useState(false);
+  const [wsDialogOpen, setWsDialogOpen] = useState(false);
+  const [editingWs, setEditingWs] = useState<Workspace | null>(null);
   const agentWorkspaceId = currentWorkspaceId ?? workspaces[0]?.id;
 
-  useEffect(() => {
+  const refreshWorkspaces = () => {
     fetch("/api/workspaces")
       .then((r) => r.json())
       .then(setWorkspaces)
       .catch(() => {});
+  };
+
+  useEffect(() => {
+    refreshWorkspaces();
   }, []);
+
+  const handleWsSubmit = async (data: { name: string; boundDirs: string[] }) => {
+    if (editingWs) {
+      const res = await fetch(`/api/workspaces/${editingWs.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const updated = await res.json();
+      setWorkspaces((prev) => prev.map((ws) => (ws.id === updated.id ? updated : ws)));
+    } else {
+      const res = await fetch("/api/workspaces", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const ws = await res.json();
+      setWorkspaces((prev) => [...prev, ws]);
+    }
+  };
+
+  const handleDelete = async (ws: Workspace) => {
+    await fetch(`/api/workspaces/${ws.id}`, { method: "DELETE" });
+    setWorkspaces((prev) => prev.filter((w) => w.id !== ws.id));
+  };
+
+  const openEditDialog = (ws: Workspace) => {
+    setEditingWs(ws);
+    setWsDialogOpen(true);
+  };
+
+  const openCreateDialog = () => {
+    setEditingWs(null);
+    setWsDialogOpen(true);
+  };
 
   const dashboardRoutes: Route[] = useMemo(() => [
     {
@@ -89,6 +133,19 @@ export function DashboardSidebar() {
         title: ws.name,
         link: `/workspace/${ws.id}`,
         icon: <FolderOpen className="size-4" />,
+        menuItems: [
+          {
+            label: "Edit",
+            icon: <Pencil className="size-3.5" />,
+            onClick: () => openEditDialog(ws),
+          },
+          {
+            label: "Delete",
+            icon: <Trash2 className="size-3.5" />,
+            variant: "destructive" as const,
+            onClick: () => handleDelete(ws),
+          },
+        ],
       })),
     },
     {
@@ -99,8 +156,6 @@ export function DashboardSidebar() {
       subs: [
         { title: "General", link: "#" },
         { title: "Agents", link: "#", icon: <Bot className="size-3.5" />, onClick: () => setAgentDialogOpen(true) },
-        { title: "Webhooks", link: "#" },
-        { title: "Custom Fields", link: "#" },
       ],
     },
   ], [workspaces, setAgentDialogOpen]);
@@ -149,6 +204,12 @@ export function DashboardSidebar() {
         <TeamSwitcher teams={teams} />
       </SidebarFooter>
       <AgentDialog open={agentDialogOpen} onOpenChange={setAgentDialogOpen} workspaceId={agentWorkspaceId} />
+      <WorkspaceDialog
+        open={wsDialogOpen}
+        onOpenChange={setWsDialogOpen}
+        workspace={editingWs}
+        onSubmit={handleWsSubmit}
+      />
     </Sidebar>
   );
 }

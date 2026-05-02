@@ -13,10 +13,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeft,
   Bot,
+  ChevronDown,
   Plus,
   Trash2,
   X,
@@ -32,6 +40,8 @@ type AgentPreset = AgentConfig & {
   name: string;
   description: string;
   modelId: string;
+  apiBase: string;
+  apiKey: string;
   workingDir: string;
   mcps: string[];
   skills: string[];
@@ -39,6 +49,8 @@ type AgentPreset = AgentConfig & {
   temperature: number;
   maxTokens: number;
 };
+
+type AgentRole = AgentConfig["role"];
 
 const ROLE_COLORS: Record<string, string> = {
   scheduler: "bg-blue-500/10 text-blue-600 border-blue-200",
@@ -52,7 +64,74 @@ const MODEL_OPTIONS = [
   "claude-sonnet-4-6",
   "claude-haiku-4-5-20251001",
 ];
-const ROLE_OPTIONS: AgentConfig["role"][] = ["scheduler", "planner", "executor", "reviewer"];
+const ROLE_OPTIONS: AgentRole[] = ["scheduler", "planner", "executor", "reviewer"];
+
+const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
+  scheduler: {
+    name: "Scheduler",
+    role: "scheduler",
+    description: "任务调度者，负责任务分发和协调",
+    modelId: "claude-sonnet-4-6",
+    apiBase: "",
+    apiKey: "",
+    workingDir: "/workspace",
+    mcps: ["code-review-graph", "fetch"],
+    skills: ["planning", "task-split"],
+    systemPrompt:
+      "你是调度者 Agent。负责接收用户任务，分析任务类型，分发给合适的执行者。你需要跟踪任务状态，确保所有子任务按时完成。",
+    temperature: 0.3,
+    maxTokens: 4096,
+    enabled: true,
+  },
+  planner: {
+    name: "Planner",
+    role: "planner",
+    description: "策划者，负责分解任务和制定计划",
+    modelId: "claude-opus-4-7",
+    apiBase: "",
+    apiKey: "",
+    workingDir: "/workspace",
+    mcps: ["code-review-graph"],
+    skills: ["refactoring", "tdd"],
+    systemPrompt:
+      "你是策划者 Agent。负责将复杂任务分解为可执行的子任务，制定详细的实施计划，识别潜在风险和依赖关系。",
+    temperature: 0.5,
+    maxTokens: 8192,
+    enabled: true,
+  },
+  executor: {
+    name: "Executor",
+    role: "executor",
+    description: "执行者，负责代码编写和修改",
+    modelId: "claude-sonnet-4-6",
+    apiBase: "",
+    apiKey: "",
+    workingDir: "/workspace/src",
+    mcps: ["code-review-graph", "fetch"],
+    skills: ["coding", "debugging", "testing"],
+    systemPrompt:
+      "你是执行者 Agent。根据计划编写高质量的代码，遵循项目编码规范，编写必要的测试。完成后提交审核。",
+    temperature: 0.2,
+    maxTokens: 16384,
+    enabled: true,
+  },
+  reviewer: {
+    name: "Reviewer",
+    role: "reviewer",
+    description: "审核者，负责代码审查和质量把关",
+    modelId: "claude-opus-4-7",
+    apiBase: "",
+    apiKey: "",
+    workingDir: "/workspace",
+    mcps: ["code-review-graph"],
+    skills: ["code-review", "security-audit"],
+    systemPrompt:
+      "你是审核者 Agent。负责审查代码质量、安全性和可维护性。提供具体的改进建议，确保代码符合最佳实践。",
+    temperature: 0.2,
+    maxTokens: 8192,
+    enabled: true,
+  },
+};
 
 function normalizeAgent(agent: AgentConfig): AgentPreset {
   return {
@@ -60,6 +139,8 @@ function normalizeAgent(agent: AgentConfig): AgentPreset {
     name: agent.name || "New Agent",
     description: agent.description || "",
     modelId: agent.modelId || "claude-sonnet-4-6",
+    apiBase: agent.apiBase || "",
+    apiKey: agent.apiKey || "",
     workingDir: agent.workingDir || "/workspace",
     mcps: agent.mcps || [],
     skills: agent.skills || [],
@@ -70,20 +151,17 @@ function normalizeAgent(agent: AgentConfig): AgentPreset {
   };
 }
 
-function newAgentDraft(): Omit<AgentPreset, "id"> {
+function newAgentDraft(role: AgentRole): AgentPreset {
   return {
-    name: "New Agent",
-    role: "executor",
-    description: "",
-    modelId: "claude-sonnet-4-6",
-    workingDir: "/workspace",
-    mcps: [],
-    skills: [],
-    systemPrompt: "",
-    temperature: 0.3,
-    maxTokens: 4096,
-    enabled: true,
+    id: `draft-${role}-${Date.now()}`,
+    ...ROLE_TEMPLATES[role],
+    mcps: [...ROLE_TEMPLATES[role].mcps],
+    skills: [...ROLE_TEMPLATES[role].skills],
   };
+}
+
+function isDraftAgent(agent: AgentPreset) {
+  return agent.id.startsWith("draft-");
 }
 
 export function AgentDialog({
@@ -140,14 +218,26 @@ export function AgentDialog({
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/agents/presets/${editDraft.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editDraft),
-      });
+      const isDraft = isDraftAgent(editDraft);
+      const { id, ...createBody } = editDraft;
+      const res = await fetch(
+        isDraft
+          ? `/api/workspaces/${workspaceId}/agents/presets`
+          : `/api/workspaces/${workspaceId}/agents/presets/${editDraft.id}`,
+        {
+          method: isDraft ? "POST" : "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(isDraft ? createBody : editDraft),
+        },
+      );
+      void id;
       if (!res.ok) throw new Error(await res.text());
       const saved = normalizeAgent(await res.json());
-      setAgents((prev) => prev.map((agent) => (agent.id === saved.id ? saved : agent)));
+      setAgents((prev) =>
+        isDraft
+          ? [...prev, saved]
+          : prev.map((agent) => (agent.id === saved.id ? saved : agent)),
+      );
       setSelectedAgent(null);
       setEditDraft(null);
     } catch {
@@ -157,33 +247,25 @@ export function AgentDialog({
     }
   };
 
-  const handleAddAgent = async () => {
+  const handleAddAgent = (role: AgentRole) => {
     if (!workspaceId) {
       setError("Open a workspace before adding agent presets");
       return;
     }
 
-    setSaving(true);
+    const draft = newAgentDraft(role);
     setError(null);
-    try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/agents/presets`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newAgentDraft()),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const created = normalizeAgent(await res.json());
-      setAgents((prev) => [...prev, created]);
-      handleSelectAgent(created);
-    } catch {
-      setError("Failed to add agent preset");
-    } finally {
-      setSaving(false);
-    }
+    setSelectedAgent(draft);
+    setEditDraft({ ...draft });
   };
 
   const handleDeleteAgent = async (id: string) => {
     if (!workspaceId) return;
+    if (id.startsWith("draft-")) {
+      setSelectedAgent(null);
+      setEditDraft(null);
+      return;
+    }
 
     setSaving(true);
     setError(null);
@@ -244,10 +326,31 @@ export function AgentDialog({
             </DialogDescription>
           </DialogHeader>
           {!selectedAgent && (
-            <Button variant="outline" size="sm" onClick={handleAddAgent} disabled={saving || !workspaceId}>
-              <Plus className="size-3.5" />
-              Add
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button variant="outline" size="sm" disabled={saving || !workspaceId}>
+                    <Plus className="size-3.5" />
+                    Add
+                    <ChevronDown className="size-3.5" />
+                  </Button>
+                }
+              />
+              <DropdownMenuContent side="bottom" align="end" className="w-44">
+                <DropdownMenuGroup>
+                  {ROLE_OPTIONS.map((role) => (
+                    <DropdownMenuItem
+                      key={role}
+                      className="gap-2"
+                      onClick={() => handleAddAgent(role)}
+                    >
+                      <span className={cn("size-2 rounded-full", ROLE_COLORS[role].split(" ")[0])} />
+                      <span className="capitalize">{role}</span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
 
@@ -451,6 +554,23 @@ function AgentDetail({
               <option key={m} value={m}>{m}</option>
             ))}
           </select>
+        </FieldGroup>
+        <FieldGroup label="API Base">
+          <Input
+            value={agent.apiBase}
+            onChange={(e) => onChange("apiBase", e.target.value)}
+            placeholder="https://api.example.com/v1"
+            className="h-7 text-xs"
+          />
+        </FieldGroup>
+        <FieldGroup label="API Key">
+          <Input
+            type="password"
+            value={agent.apiKey}
+            onChange={(e) => onChange("apiKey", e.target.value)}
+            placeholder="sk-..."
+            className="h-7 text-xs"
+          />
         </FieldGroup>
         <div className="grid grid-cols-2 gap-3">
           <FieldGroup label="Temperature">

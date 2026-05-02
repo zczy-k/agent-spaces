@@ -32,6 +32,8 @@ export function createPreset(
     description: data.description || '',
     modelProvider: data.modelProvider,
     modelId: data.modelId || 'claude-sonnet-4-6',
+    apiBase: data.apiBase || '',
+    apiKey: data.apiKey || '',
     workingDir: data.workingDir || '/workspace',
     mcps: data.mcps || [],
     skills: data.skills || [],
