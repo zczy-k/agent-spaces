@@ -9,8 +9,11 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Status, StatusIndicator, StatusLabel } from '@/components/ui/status-badge';
-import { PanelRightOpen, PanelRightClose, Hash, Bot, AlertCircle, Info, Users, Pencil } from 'lucide-react';
+import { PanelRightOpen, PanelRightClose, Hash, Bot, AlertCircle, Info, Users, Pencil, UserPlus } from 'lucide-react';
 import { ChannelDialog } from './channel-dialog';
+import { MemberCard } from './member-card';
+import { MemberInfoDialog } from './member-info-dialog';
+import { AddMemberDialog } from './add-member-dialog';
 
 import type { Channel } from '@agent-spaces/shared';
 
@@ -29,6 +32,14 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const [infoOpen, setInfoOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [memberInfoOpen, setMemberInfoOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState('');
+  const [addMemberOpen, setAddMemberOpen] = useState(false);
+
+  // 收集候选成员：所有频道成员去重 + workspace agents，排除当前频道已有成员
+  const allMembers = [...new Set(channels.flatMap((c) => c.members))];
+  const candidateMembers = allMembers.filter((m) => !channel.members.includes(m));
+  const memberChannels = (name: string) => channels.filter((c) => c.members.includes(name)).map((c) => c.name);
   const channel = channels.find((c) => c.id === activeChannelId);
   const msgs = activeChannelId ? (messages[activeChannelId] || []) : [];
 
@@ -149,13 +160,20 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
                   <p className="text-sm text-muted-foreground py-4 text-center">暂无成员</p>
                 )}
                 {channel.members.map((member) => (
-                  <div key={member} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted">
-                    <div className="flex items-center justify-center size-7 rounded-full bg-muted text-xs font-medium">
-                      {member[0]?.toUpperCase() || '?'}
-                    </div>
-                    <span className="text-sm">{member}</span>
-                  </div>
+                  <MemberCard
+                    key={member}
+                    name={member}
+                    onClick={() => { setSelectedMember(member); setMemberInfoOpen(true); }}
+                  />
                 ))}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full mt-2 text-xs text-muted-foreground"
+                  onClick={() => setAddMemberOpen(true)}
+                >
+                  <UserPlus className="size-3.5 mr-1" />添加成员
+                </Button>
               </TabsContent>
             </ScrollArea>
           </Tabs>
@@ -168,6 +186,22 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
         workspaceId={workspaceId}
         channel={channel}
         onSubmit={(data) => updateChannel(workspaceId, channel.id, data)}
+      />
+
+      <MemberInfoDialog
+        open={memberInfoOpen}
+        onOpenChange={setMemberInfoOpen}
+        memberName={selectedMember}
+        channels={memberChannels(selectedMember)}
+      />
+
+      <AddMemberDialog
+        open={addMemberOpen}
+        onOpenChange={setAddMemberOpen}
+        candidates={candidateMembers}
+        onAdd={(newMembers) => updateChannel(workspaceId, channel.id, {
+          members: [...channel.members, ...newMembers],
+        })}
       />
     </div>
   );
