@@ -66,3 +66,17 @@ export function updateMessage(
   writeJsonFile(path, messages);
   return updated;
 }
+
+export function deleteMessage(
+  workspaceId: string,
+  channelId: string,
+  messageId: string,
+): boolean {
+  const path = messageFilePath(workspaceId, channelId);
+  const messages = readJsonFile<Message[]>(path) || [];
+  const index = messages.findIndex((message) => message.id === messageId);
+  if (index === -1) return false;
+  messages.splice(index, 1);
+  writeJsonFile(path, messages);
+  return true;
+}

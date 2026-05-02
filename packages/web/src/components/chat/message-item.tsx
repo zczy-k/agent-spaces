@@ -1,18 +1,49 @@
 'use client';
 
+import { useCallback, useState } from 'react';
 import type { Message } from '@agent-spaces/shared';
+import { Copy, Pencil, Trash2, Check } from 'lucide-react';
 
 interface MessageItemProps {
   message: Message;
+  onEdit?: (message: Message) => void;
+  onDelete?: (message: Message) => void;
 }
 
-export function MessageItem({ message }: MessageItemProps) {
-  const isUser = message.senderId === 'user';
-  const time = new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+function getInitial(name: string) {
+  return name.charAt(0).toUpperCase();
+}
+
+function Avatar({ senderId }: { senderId: string }) {
+  const isUser = senderId === 'user';
+  const initial = isUser ? 'U' : getInitial(senderId);
 
   return (
-    <div className={`flex gap-2 px-3 py-1.5 ${isUser ? 'flex-row-reverse' : ''}`}>
-      <div className={`flex flex-col max-w-[75%] ${isUser ? 'items-end' : 'items-start'}`}>
+    <div
+      className={`flex-shrink-0 flex items-center justify-center h-7 w-7 rounded-full text-xs font-semibold select-none ${
+        isUser ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+      }`}
+    >
+      {initial}
+    </div>
+  );
+}
+
+export function MessageItem({ message, onEdit, onDelete }: MessageItemProps) {
+  const isUser = message.senderId === 'user';
+  const time = new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(async () => {
+    await navigator.clipboard.writeText(message.content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [message.content]);
+
+  return (
+    <div className={`group flex gap-2 px-3 py-1.5 ${isUser ? 'flex-row-reverse' : ''}`}>
+      <Avatar senderId={message.senderId} />
+      <div className={`flex flex-col min-w-0 max-w-[75%] ${isUser ? 'items-end' : 'items-start'}`}>
         <div className="flex items-center gap-2 mb-0.5">
           <span className="text-xs font-medium text-foreground">
             {isUser ? 'You' : message.senderId}
@@ -25,14 +56,39 @@ export function MessageItem({ message }: MessageItemProps) {
           <span className="text-[10px] text-muted-foreground">{time}</span>
         </div>
         <div className={`text-sm rounded-lg px-3 py-2 ${isUser ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-          {renderContent(message.content, message.type)}
+          {renderContent(message.content)}
+        </div>
+        <div className="flex items-center gap-0.5 h-6 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={handleCopy}
+            className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            title="复制"
+          >
+            {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+          </button>
+          {isUser && (
+            <button
+              onClick={() => onEdit?.(message)}
+              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              title="编辑"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+          )}
+          <button
+            onClick={() => onDelete?.(message)}
+            className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors"
+            title="删除"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-function renderContent(content: string, type?: Message['type']) {
+function renderContent(content: string) {
   if (isHTML(content)) {
     return <span className="tiptap tiptap-message" dangerouslySetInnerHTML={{ __html: content }} />;
   }

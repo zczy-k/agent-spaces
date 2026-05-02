@@ -28,7 +28,7 @@ interface ChatPanelProps {
 }
 
 export function ChatPanel({ workspaceId }: ChatPanelProps) {
-  const { activeChannelId, channels, messages, loadMessages, sendMessage, addMessage, updateMessage, updateChannel } = useChannelStore();
+  const { activeChannelId, channels, messages, loadMessages, sendMessage, addMessage, updateMessage, deleteMessage, updateChannel } = useChannelStore();
   const bottomRef = useRef<HTMLDivElement>(null);
   const [infoOpen, setInfoOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -78,11 +78,18 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
         updateMessage(msg.channelId, data as Message);
       }
     });
+    const unsubDelete = ws.on('channel.message.deleted', (data: unknown) => {
+      const msg = data as { channelId: string; messageId: string };
+      if (msg.channelId === activeChannelId) {
+        deleteMessage(msg.channelId, msg.messageId);
+      }
+    });
     return () => {
       unsub();
       unsubUpdate();
+      unsubDelete();
     };
-  }, [workspaceId, activeChannelId, addMessage, updateMessage]);
+  }, [workspaceId, activeChannelId, addMessage, updateMessage, deleteMessage]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -92,6 +99,23 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
     if (!activeChannelId) return;
     sendMessage(workspaceId, activeChannelId, content, mentions);
   }, [workspaceId, activeChannelId, sendMessage]);
+
+  const handleEditMessage = useCallback(async (msg: Message) => {
+    const newContent = prompt('编辑消息', msg.content);
+    if (!newContent || newContent === msg.content) return;
+    await fetch(`/api/workspaces/${workspaceId}/channels/${msg.channelId}/messages/${msg.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: newContent }),
+    });
+  }, [workspaceId]);
+
+  const handleDeleteMessage = useCallback(async (msg: Message) => {
+    if (!confirm('确认删除这条消息？')) return;
+    await fetch(`/api/workspaces/${workspaceId}/channels/${msg.channelId}/messages/${msg.id}`, {
+      method: 'DELETE',
+    });
+  }, [workspaceId]);
 
   if (!channel) {
     return (
@@ -132,7 +156,7 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
         {/* Messages */}
         <div className="flex-1 overflow-y-auto py-2">
           {msgs.map((msg) => (
-            <MessageItem key={msg.id} message={msg} />
+            <MessageItem key={msg.id} message={msg} onEdit={handleEditMessage} onDelete={handleDeleteMessage} />
           ))}
           <div ref={bottomRef} />
         </div>

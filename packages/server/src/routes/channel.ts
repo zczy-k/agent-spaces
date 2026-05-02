@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from 'express';
 import { listChannels, createChannel, getChannel, updateChannel } from '../services/channel.js';
-import { listMessages, createMessage } from '../services/message.js';
+import { listMessages, createMessage, updateMessage, deleteMessage } from '../services/message.js';
 import { broadcastToWorkspace } from '../ws/handler.js';
 
 const router = Router({ mergeParams: true });
@@ -51,6 +51,26 @@ router.post('/:channelId/messages', (req: Request<ChannelParams>, res: Response)
   const message = createMessage(id, channelId!, { senderId: 'user', content, type });
   broadcastToWorkspace(id, 'channel.message', message);
   res.status(201).json(message);
+});
+
+// PUT /api/workspaces/:id/channels/:channelId/messages/:messageId
+router.put('/:channelId/messages/:messageId', (req: Request<ChannelParams & { messageId: string }>, res: Response) => {
+  const { id, channelId, messageId } = req.params;
+  const { content } = req.body;
+  if (!content) { res.status(400).json({ error: 'content required' }); return; }
+  const message = updateMessage(id, channelId!, messageId!, { content });
+  if (!message) { res.status(404).json({ error: 'message not found' }); return; }
+  broadcastToWorkspace(id, 'channel.message.updated', message);
+  res.json(message);
+});
+
+// DELETE /api/workspaces/:id/channels/:channelId/messages/:messageId
+router.delete('/:channelId/messages/:messageId', (req: Request<ChannelParams & { messageId: string }>, res: Response) => {
+  const { id, channelId, messageId } = req.params;
+  const ok = deleteMessage(id, channelId!, messageId!);
+  if (!ok) { res.status(404).json({ error: 'message not found' }); return; }
+  broadcastToWorkspace(id, 'channel.message.deleted', { channelId, messageId });
+  res.status(204).end();
 });
 
 export default router;

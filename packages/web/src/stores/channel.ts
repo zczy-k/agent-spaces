@@ -15,6 +15,7 @@ interface ChannelStore {
   sendMessage: (workspaceId: string, channelId: string, content: string, mentions?: string[]) => void;
   addMessage: (channelId: string, message: Message) => void;
   updateMessage: (channelId: string, message: Message) => void;
+  deleteMessage: (channelId: string, messageId: string) => void;
 }
 
 export const useChannelStore = create<ChannelStore>((set) => ({
@@ -77,6 +78,15 @@ export const useChannelStore = create<ChannelStore>((set) => ({
         [channelId]: (s.messages[channelId] || []).map((item) =>
           item.id === message.id ? message : item,
         ),
+      },
+    }));
+  },
+
+  deleteMessage: (channelId, messageId) => {
+    set((s) => ({
+      messages: {
+        ...s.messages,
+        [channelId]: (s.messages[channelId] || []).filter((item) => item.id !== messageId),
       },
     }));
   },

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Inspector, gotoServerEditor } from "react-dev-inspector";
+import { MousePointer2 } from "lucide-react";
 
 type ReactFiber = {
   return?: ReactFiber | null;
@@ -124,9 +125,9 @@ export function DevInspector() {
         onClick={() => setActive((value) => !value)}
         aria-pressed={active}
         title="Inspect React component source"
-        className="fixed bottom-3 right-3 z-[2147483647] h-8 rounded border border-border bg-background px-2 text-xs font-medium shadow hover:bg-muted"
+        className="fixed bottom-3 right-3 z-[2147483647] flex h-8 w-8 items-center justify-center rounded border border-border bg-background shadow hover:bg-muted"
       >
-        {active ? "Inspecting" : "Inspect"}
+        <MousePointer2 className={active ? "text-primary" : "text-muted-foreground"} size={16} />
       </button>
     </>
   );
