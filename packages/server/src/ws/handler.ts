@@ -1,8 +1,8 @@
 import type { WebSocket } from 'ws';
-import type { WSEvent, ClientEventName } from '@agent-spaces/shared';
+import type { WSEvent, ClientEventName, Message } from '@agent-spaces/shared';
 import { addConnection, broadcastToWorkspace } from './connection-manager.js';
 import { handleTerminalEvent } from './terminal-handler.js';
-import { createMessage, updateMessage } from '../services/message.js';
+import { createMessage, updateMessage, listMessages } from '../services/message.js';
 import { getChannel } from '../services/channel.js';
 import { startScheduler } from '../agents/scheduler-agent.js';
 import * as agentService from '../services/agent.js';
@@ -134,7 +134,8 @@ async function runMentionedAgent(
       apiKey: preset.apiKey,
       baseURL: preset.apiBase,
     });
-    const result = await runtime.execute(buildAgentPrompt(preset.systemPrompt, prompt), preset.workingDir || process.cwd(), {
+    const history = listMessages(workspaceId, channelId, { limit: 20 });
+    const result = await runtime.execute(buildAgentPrompt(preset.systemPrompt, prompt, history), preset.workingDir || process.cwd(), {
       maxTurns: 6,
       tools: preset.mcps,
       sandboxDirs: preset.sandboxDirs,
@@ -175,10 +176,21 @@ async function runMentionedAgent(
   }
 }
 
-function buildAgentPrompt(systemPrompt: string | undefined, userPrompt: string): string {
+function buildAgentPrompt(systemPrompt: string | undefined, userPrompt: string, history: Message[] = []): string {
+  const parts: string[] = [];
   const trimmedSystemPrompt = systemPrompt?.trim();
-  if (!trimmedSystemPrompt) return userPrompt;
-  return `${trimmedSystemPrompt}\n\nUser message:\n${userPrompt}`;
+  if (trimmedSystemPrompt) parts.push(trimmedSystemPrompt);
+
+  if (history.length > 0) {
+    parts.push('Conversation history:');
+    for (const msg of history) {
+      const role = msg.senderId === 'user' ? 'User' : (msg.senderRole || msg.senderId);
+      parts.push(`[${role}]: ${stripHtml(msg.content)}`);
+    }
+  }
+
+  parts.push(`User message:\n${userPrompt}`);
+  return parts.join('\n\n');
 }
 
 function stripHtml(content: string): string {

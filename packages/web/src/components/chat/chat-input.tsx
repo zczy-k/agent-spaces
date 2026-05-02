@@ -10,23 +10,18 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import {
-  IconBolt,
   IconChevronDown,
-  IconCircle,
-  IconCircleDashed,
-  IconCloud,
   IconCode,
-  IconDeviceLaptop,
   IconHistory,
   IconPaperclip,
+  IconPlug,
   IconPlus,
-  IconProgress,
-  IconRobot,
-  IconUser,
+  IconPuzzle,
+  IconTools,
   IconWand,
   IconWorld,
 } from "@tabler/icons-react";
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type ReactNode } from "react";
 import { useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -41,7 +36,7 @@ import { createSuggestionRenderer } from "@/components/composer/create-suggestio
 import { createSlashExtension } from "@/components/composer/create-slash-extension";
 import type { AgentConfig } from "@agent-spaces/shared";
 
-type MentionedAgent = Pick<AgentConfig, "id" | "name" | "role" | "description" | "enabled">;
+type MentionedAgent = Pick<AgentConfig, "id" | "name" | "role" | "description" | "enabled" | "mcps" | "skills" | "modelProvider" | "modelId" | "workingDir" | "sandboxDirs">;
 
 interface ChatInputProps {
   channelName: string;
@@ -56,13 +51,24 @@ export interface ChatInputHandle {
 }
 
 export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput({ channelName, agents, onSend, isProcessing = false, onStop }, ref) {
-  const [selectedModel, setSelectedModel] = useState("Local");
-  const [selectedAgent, setSelectedAgent] = useState("Agent");
-  const [selectedPerformance, setSelectedPerformance] = useState("High");
+  const [mentionedAgentIds, setMentionedAgentIds] = useState<string[]>([]);
   const [autoMode, setAutoMode] = useState(false);
   const isProcessingRef = useRef(isProcessing);
   const onSendRef = useRef(onSend);
   const editorRef = useRef<Editor | null>(null);
+
+  const mentionedAgents = useMemo(() => {
+    if (mentionedAgentIds.length === 0) return [];
+    const byId = new Map(agents.map((agent) => [agent.id, agent]));
+    return mentionedAgentIds
+      .map((id) => byId.get(id))
+      .filter((agent): agent is MentionedAgent => Boolean(agent));
+  }, [agents, mentionedAgentIds]);
+
+  const activeAgent = mentionedAgents[0];
+  const activeMcps = activeAgent?.mcps ?? [];
+  const activeSkills = activeAgent?.skills ?? [];
+  const activeTools = useMemo(() => getAgentTools(activeAgent), [activeAgent]);
 
   useEffect(() => {
     isProcessingRef.current = isProcessing;
@@ -80,6 +86,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     const mentions = collectMentionIds(currentEditor.getJSON());
     onSendRef.current(currentEditor.getHTML(), mentions);
     currentEditor.commands.clearContent();
+    setMentionedAgentIds([]);
   }, []);
 
   const { getRootProps, getInputProps, open: openFilePicker } = useDropzone({
@@ -163,6 +170,12 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         },
       },
       content: "",
+      onUpdate: ({ editor }) => {
+        setMentionedAgentIds(collectMentionIds(editor.getJSON()));
+      },
+      onCreate: ({ editor }) => {
+        setMentionedAgentIds(collectMentionIds(editor.getJSON()));
+      },
     },
     [mentionExtension, slashExtension, channelName, submitCurrentMessage],
   );
@@ -186,6 +199,31 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     editor,
     selector: (ctx) => !!ctx.editor?.getText().trim(),
   });
+
+  const agentConfig = activeAgent ? (
+    <div className="rounded-lg border border-border/70 bg-muted/35 px-2.5 py-2 text-xs">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="truncate font-medium text-foreground">
+            {activeAgent.name || activeAgent.role}
+          </div>
+          <div className="truncate text-muted-foreground">
+            {activeAgent.description || activeAgent.role}
+          </div>
+        </div>
+        {mentionedAgents.length > 1 ? (
+          <span className="shrink-0 rounded-full bg-background px-2 py-0.5 text-[10px] text-muted-foreground">
+            +{mentionedAgents.length - 1}
+          </span>
+        ) : null}
+      </div>
+      <div className="mt-2 grid gap-1.5 sm:grid-cols-3">
+        <AgentConfigRow icon={<IconPlug size={14} />} label="MCP" values={activeMcps} empty="None" />
+        <AgentConfigRow icon={<IconPuzzle size={14} />} label="Skill" values={activeSkills} empty="None" />
+        <AgentConfigRow icon={<IconTools size={14} />} label="Tools" values={activeTools} empty="Default" />
+      </div>
+    </div>
+  ) : null;
 
   const chatActions = (
     <>
@@ -237,52 +275,59 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         onStop={onStop}
         isProcessing={isProcessing}
         actions={chatActions}
+        agentConfig={agentConfig}
         dropzoneProps={getRootProps()}
         hiddenInput={<input {...getInputProps()} data-chat-file-input="" />}
       />
 
       <div className="flex items-center gap-0 pt-2">
         <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="ghost" size="sm" className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs" />}><IconDeviceLaptop className="size-3" /><span>{selectedModel}</span><IconChevronDown className="size-3" /></DropdownMenuTrigger>
+          <DropdownMenuTrigger render={<Button variant="ghost" size="sm" className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs" />}><IconPlug className="size-3" /><span>MCP{activeMcps.length ? ` ${activeMcps.length}` : ""}</span><IconChevronDown className="size-3" /></DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5 bg-popover border-border">
             <DropdownMenuGroup className="space-y-1">
-              <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs" onClick={() => setSelectedModel("Local")}>
-                <IconDeviceLaptop size={16} className="opacity-60" />Local
-              </DropdownMenuItem>
-              <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs" onClick={() => setSelectedModel("Cloud")}>
-                <IconCloud size={16} className="opacity-60" />Cloud
-              </DropdownMenuItem>
+              {activeMcps.length ? activeMcps.map((mcp) => (
+                <DropdownMenuItem key={mcp} className="rounded-[calc(1rem-6px)] text-xs">
+                  <IconPlug size={16} className="opacity-60" />{mcp}
+                </DropdownMenuItem>
+              )) : (
+                <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs text-muted-foreground">
+                  <IconPlug size={16} className="opacity-60" />No MCP configured
+                </DropdownMenuItem>
+              )}
             </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
 
         <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="ghost" size="sm" className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs" />}><IconUser className="size-3" /><span>{selectedAgent}</span><IconChevronDown className="size-3" /></DropdownMenuTrigger>
+          <DropdownMenuTrigger render={<Button variant="ghost" size="sm" className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs" />}><IconPuzzle className="size-3" /><span>Skill{activeSkills.length ? ` ${activeSkills.length}` : ""}</span><IconChevronDown className="size-3" /></DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5 bg-popover border-border">
             <DropdownMenuGroup className="space-y-1">
-              <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs" onClick={() => setSelectedAgent("Agent")}>
-                <IconUser size={16} className="opacity-60" />Agent
-              </DropdownMenuItem>
-              <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs" onClick={() => setSelectedAgent("Assistant")}>
-                <IconRobot size={16} className="opacity-60" />Assistant
-              </DropdownMenuItem>
+              {activeSkills.length ? activeSkills.map((skill) => (
+                <DropdownMenuItem key={skill} className="rounded-[calc(1rem-6px)] text-xs">
+                  <IconPuzzle size={16} className="opacity-60" />{skill}
+                </DropdownMenuItem>
+              )) : (
+                <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs text-muted-foreground">
+                  <IconPuzzle size={16} className="opacity-60" />No skills configured
+                </DropdownMenuItem>
+              )}
             </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
 
         <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="ghost" size="sm" className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs" />}><IconBolt className="size-3" /><span>{selectedPerformance}</span><IconChevronDown className="size-3" /></DropdownMenuTrigger>
+          <DropdownMenuTrigger render={<Button variant="ghost" size="sm" className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs" />}><IconTools className="size-3" /><span>Tools{activeTools.length ? ` ${activeTools.length}` : ""}</span><IconChevronDown className="size-3" /></DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5 bg-popover border-border">
             <DropdownMenuGroup className="space-y-1">
-              <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs" onClick={() => setSelectedPerformance("High")}>
-                <IconCircle size={16} className="opacity-60" />High
-              </DropdownMenuItem>
-              <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs" onClick={() => setSelectedPerformance("Medium")}>
-                <IconProgress size={16} className="opacity-60" />Medium
-              </DropdownMenuItem>
-              <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs" onClick={() => setSelectedPerformance("Low")}>
-                <IconCircleDashed size={16} className="opacity-60" />Low
-              </DropdownMenuItem>
+              {activeTools.length ? activeTools.map((tool) => (
+                <DropdownMenuItem key={tool} className="rounded-[calc(1rem-6px)] text-xs">
+                  <IconTools size={16} className="opacity-60" />{tool}
+                </DropdownMenuItem>
+              )) : (
+                <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs text-muted-foreground">
+                  <IconTools size={16} className="opacity-60" />Default tools
+                </DropdownMenuItem>
+              )}
             </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -292,6 +337,30 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     </div>
   );
 });
+
+function AgentConfigRow({ icon, label, values, empty }: { icon: ReactNode; label: string; values: string[]; empty: string }) {
+  return (
+    <div className="min-w-0 rounded-md bg-background/70 px-2 py-1.5">
+      <div className="flex items-center gap-1.5 text-[10px] uppercase text-muted-foreground">
+        {icon}
+        <span>{label}</span>
+      </div>
+      <div className="mt-1 truncate text-foreground">
+        {values.length ? values.join(", ") : empty}
+      </div>
+    </div>
+  );
+}
+
+function getAgentTools(agent?: MentionedAgent): string[] {
+  if (!agent) return [];
+  return [
+    agent.modelId ? `Model: ${agent.modelId}` : null,
+    agent.modelProvider ? `Provider: ${agent.modelProvider}` : null,
+    agent.workingDir ? `Dir: ${agent.workingDir}` : null,
+    agent.sandboxDirs?.length ? `Sandbox: ${agent.sandboxDirs.length}` : null,
+  ].filter((value): value is string => Boolean(value));
+}
 
 function collectMentionIds(node: JSONContent): string[] {
   const ids = new Set<string>();
