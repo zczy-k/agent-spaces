@@ -33,12 +33,12 @@ export function MessageItem({ message }: MessageItemProps) {
 }
 
 function renderContent(content: string, type?: Message['type']) {
-  if (type === 'mention') {
-    return <span dangerouslySetInnerHTML={{ __html: highlightMentions(content) }} />;
+  if (isHTML(content)) {
+    return <span className="tiptap tiptap-message" dangerouslySetInnerHTML={{ __html: content }} />;
   }
   return <span className="whitespace-pre-wrap break-words">{content}</span>;
 }
 
-function highlightMentions(text: string): string {
-  return text.replace(/@(\w+)/g, '<span class="font-semibold text-primary">@$1</span>');
+function isHTML(str: string): boolean {
+  return /<[a-z][\s\S]*>/i.test(str);
 }

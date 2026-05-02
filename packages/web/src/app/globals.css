@@ -448,6 +448,20 @@
   font-size: 14px;
 }
 
+.tiptap-message {
+  min-height: unset;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.tiptap-message p {
+  margin: 0;
+}
+
+.tiptap-message p + p {
+  margin-top: 6px;
+}
+
 .tiptap p {
   margin: 0 0 10px;
   line-height: 1.7;

@@ -201,6 +201,7 @@ export function ChatInput({ channelName, onSend }: ChatInputProps) {
   );
 
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit,
       Placeholder.configure({
@@ -215,6 +216,8 @@ export function ChatInput({ channelName, onSend }: ChatInputProps) {
       },
       handleKeyDown: (view, event) => {
         if (event.key === "Enter" && !event.shiftKey) {
+          const hasPopup = document.querySelector('.suggestion-menu');
+          if (hasPopup) return false;
           event.preventDefault();
           handleSubmit();
           return true;
