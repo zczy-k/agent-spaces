@@ -141,23 +141,6 @@ async function runMentionedAgent(
     },
     parts: [
       {
-        id: `subagent-${session.id}`,
-        type: 'subagent',
-        name: preset.name || preset.role,
-        model: preset.modelId,
-        instructions: preset.systemPrompt,
-        tools: [
-          ...Object.keys(mcpServers ?? {}).map((name) => ({
-            name,
-            description: `MCP server: ${name}`,
-          })),
-          ...skills.map((name) => ({
-            name,
-            description: `Skill: ${name}`,
-          })),
-        ],
-      },
-      {
         id: `reasoning-${session.id}`,
         type: 'reasoning',
         text: 'Preparing agent runtime and loading conversation context...',
@@ -271,19 +254,7 @@ function buildAgentMessageParts(input: {
   const reasoningLines = lines.filter((line) => !isToolLikeLine(line) && !isFinalAnswerLine(line));
   const finalText = lines.filter(isFinalAnswerLine).join('\n') || lines.at(-1) || '';
   const usage = extractUsage(lines);
-  const parts: MessagePart[] = [
-    {
-      id: `subagent-${input.sessionId}`,
-      type: 'subagent',
-      name: input.presetName,
-      model: input.model,
-      instructions: input.systemPrompt,
-      tools: [
-        ...input.mcpServers.map((name) => ({ name, description: `MCP server: ${name}` })),
-        ...input.skills.map((name) => ({ name, description: `Skill: ${name}` })),
-      ],
-    },
-  ];
+  const parts: MessagePart[] = [];
 
   if (reasoningLines.length > 0) {
     parts.push({
@@ -295,15 +266,26 @@ function buildAgentMessageParts(input: {
   }
 
   if (toolLines.length > 0) {
-    parts.push({
-      id: `tools-${input.sessionId}`,
-      type: 'todo',
-      todos: toolLines.slice(0, 20).map((line, index) => ({
+    const todos = toolLines
+      .filter((line) => !isSubagentToolLine(line))
+      .slice(0, 20)
+      .map((line, index) => ({
         id: `tool-${index}`,
         title: line,
-        status: 'completed',
-      })),
-    });
+        status: 'completed' as const,
+      }));
+
+    if (todos.length > 0) {
+      parts.push({
+        id: `tools-${input.sessionId}`,
+        type: 'todo',
+        todos,
+      });
+    }
+  }
+
+  for (const subagent of extractSubagentBlocks(lines, input.sessionId)) {
+    parts.push(subagent);
   }
 
   for (const terminal of extractTerminalBlocks(lines, input.sessionId)) {
@@ -342,11 +324,15 @@ function buildAgentMessageParts(input: {
 }
 
 function isToolLikeLine(line: string): boolean {
-  return /^(Using|Read|Write|Edit|Bash|Search|Grep|Glob|Todo|Task|Web|Fetch|Claude Code initialized|.+ running \(\d+s\))/i.test(line.trim());
+  return /^(Using|Tool:|Read|Write|Edit|MultiEdit|Bash|Search|Grep|Glob|Todo|Task|Web|Fetch|Claude Code initialized|.+ running \(\d+s\))/i.test(line.trim());
 }
 
 function isFinalAnswerLine(line: string): boolean {
   return !isToolLikeLine(line) && !/^(\[.*\]|Agent runtime configuration:|Conversation history:)/.test(line.trim());
+}
+
+function isSubagentToolLine(line: string): boolean {
+  return /^Tool:\s*Task\b/i.test(line.trim());
 }
 
 function extractUsage(lines: string[]): MessageTokenUsage {
@@ -367,7 +353,7 @@ function extractUsage(lines: string[]): MessageTokenUsage {
 function extractTerminalBlocks(lines: string[], sessionId: string): MessagePart[] {
   return lines
     .map((line, index): MessagePart | null => {
-      const match = line.match(/^(?:Bash|Shell|Command):?\s*(.*)$/i);
+      const match = line.match(/^(?:Tool:\s*)?(?:Bash|Shell|Command):?\s*(.*)$/i);
       if (!match) return null;
       return {
         id: `terminal-${sessionId}-${index}`,
@@ -375,6 +361,23 @@ function extractTerminalBlocks(lines: string[], sessionId: string): MessagePart[
         command: match[1],
         output: line,
         status: 'completed',
+      };
+    })
+    .filter((part): part is MessagePart => Boolean(part));
+}
+
+function extractSubagentBlocks(lines: string[], sessionId: string): MessagePart[] {
+  return lines
+    .map((line, index): MessagePart | null => {
+      const match = line.match(/^Tool:\s*Task\b\s*(.*)$/i);
+      if (!match) return null;
+      const name = line.match(/\bdescription=(["'])(.*?)\1/i)?.[2] || `Subagent ${index + 1}`;
+      const prompt = line.match(/\bprompt=(["'])(.*?)\1/i)?.[2];
+      return {
+        id: `subagent-${sessionId}-${index}`,
+        type: 'subagent',
+        name,
+        instructions: prompt,
       };
     })
     .filter((part): part is MessagePart => Boolean(part));

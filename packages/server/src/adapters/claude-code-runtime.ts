@@ -220,17 +220,46 @@ function formatAssistantMessage(content: unknown): string | null {
 
   const parts = content.flatMap((block) => {
     if (!block || typeof block !== 'object') return [];
-    const typedBlock = block as { type?: string; text?: unknown; name?: unknown };
+    const typedBlock = block as { type?: string; text?: unknown; name?: unknown; input?: unknown };
     if (typedBlock.type === 'text' && typeof typedBlock.text === 'string') {
       return [typedBlock.text];
     }
     if (typedBlock.type === 'tool_use' && typeof typedBlock.name === 'string') {
-      return [`Using ${typedBlock.name}`];
+      return [formatToolUse(typedBlock.name, typedBlock.input)];
     }
     return [];
   });
 
   return parts.length > 0 ? parts.join('\n') : null;
+}
+
+function formatToolUse(name: string, input: unknown): string {
+  const summary = summarizeToolInput(input);
+  return summary ? `Tool: ${name} ${summary}` : `Tool: ${name}`;
+}
+
+function summarizeToolInput(input: unknown): string {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return '';
+  const record = input as Record<string, unknown>;
+  const keys = ['file_path', 'path', 'command', 'pattern', 'query', 'description', 'prompt'];
+  const details = keys.flatMap((key) => {
+    const value = record[key];
+    if (typeof value !== 'string' || !value.trim()) return [];
+    return `${key}=${JSON.stringify(truncate(value.trim(), 140))}`;
+  });
+  if (details.length > 0) return details.join(' ');
+  return JSON.stringify(redactLargeInput(record));
+}
+
+function truncate(value: string, max: number): string {
+  return value.length > max ? `${value.slice(0, max - 3)}...` : value;
+}
+
+function redactLargeInput(input: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(input).map(([key, value]) => {
+    if (typeof value === 'string') return [key, truncate(value, 140)];
+    return [key, value];
+  }));
 }
 
 function countUsageTokens(usage: unknown): number {
