@@ -4,12 +4,11 @@ import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { useChannelStore } from '@/stores/channel';
 import { getWS } from '@/lib/ws';
 import { MessageItem } from './message-item';
-import { ChatInput } from './chat-input';
+import { ChatInput, type ChatInputHandle } from './chat-input';
 import { Button } from '@/components/ui/button';
 import { Status, StatusIndicator, StatusLabel } from '@/components/ui/status-badge';
-import { PanelRightOpen, PanelRightClose, Trash2, StopCircle } from 'lucide-react';
+import { PanelRightOpen, PanelRightClose, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
 import { ChannelInfoPanel } from './channel-info-panel';
 import { findAgentById } from '@/lib/agent-members';
 
@@ -30,10 +29,9 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const [infoOpen, setInfoOpen] = useState(false);
   const [agents, setAgents] = useState<AgentConfig[]>([]);
-  const [editingMsg, setEditingMsg] = useState<Message | null>(null);
-  const [editContent, setEditContent] = useState('');
   const [deletingMsg, setDeletingMsg] = useState<Message | null>(null);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+  const chatInputRef = useRef<ChatInputHandle>(null);
 
   const channel = channels.find((c) => c.id === activeChannelId);
   const msgs = activeChannelId ? (messages[activeChannelId] || []) : [];
@@ -127,22 +125,9 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
   }, [workspaceId, activeChannelId]);
 
   const handleEditMessage = useCallback((msg: Message) => {
-    setEditContent(msg.content);
-    setEditingMsg(msg);
+    const plainText = /<[a-z][\s\S]*>/i.test(msg.content) ? msg.content.replace(/<[^>]*>/g, '') : msg.content;
+    chatInputRef.current?.setContent(plainText);
   }, []);
-
-  const submitEdit = useCallback(async () => {
-    if (!editingMsg || !editContent.trim() || editContent === editingMsg.content) {
-      setEditingMsg(null);
-      return;
-    }
-    await fetch(`/api/workspaces/${workspaceId}/channels/${editingMsg.channelId}/messages/${editingMsg.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: editContent }),
-    });
-    setEditingMsg(null);
-  }, [workspaceId, editingMsg, editContent]);
 
   const handleDeleteMessage = useCallback((msg: Message) => {
     setDeletingMsg(msg);
@@ -205,7 +190,7 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
         </div>
 
         {/* Input */}
-        <ChatInput channelName={channel.name} agents={mentionAgents} onSend={handleSend} isProcessing={isProcessing} onStop={handleStop} />
+        <ChatInput ref={chatInputRef} channelName={channel.name} agents={mentionAgents} onSend={handleSend} isProcessing={isProcessing} onStop={handleStop} />
       </div>
 
       {/* 右侧：信息面板 */}
@@ -217,26 +202,6 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
           allChannels={channels}
         />
       )}
-
-      {/* 编辑消息 Dialog */}
-      <Dialog open={!!editingMsg} onOpenChange={(open) => { if (!open) setEditingMsg(null); }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>编辑消息</DialogTitle>
-            <DialogDescription>修改消息内容后点击保存。</DialogDescription>
-          </DialogHeader>
-          <Textarea
-            value={editContent}
-            onChange={(e) => setEditContent(e.target.value)}
-            rows={4}
-            className="min-h-20"
-          />
-          <DialogFooter>
-            <DialogClose render={<Button variant="outline" />}>取消</DialogClose>
-            <Button onClick={submitEdit}>保存</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* 删除确认 Dialog */}
       <Dialog open={!!deletingMsg} onOpenChange={(open) => { if (!open) setDeletingMsg(null); }}>

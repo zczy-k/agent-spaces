@@ -26,7 +26,7 @@ import {
   IconWand,
   IconWorld,
 } from "@tabler/icons-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -51,7 +51,11 @@ interface ChatInputProps {
   onStop?: () => void;
 }
 
-export function ChatInput({ channelName, agents, onSend, isProcessing = false, onStop }: ChatInputProps) {
+export interface ChatInputHandle {
+  setContent: (html: string) => void;
+}
+
+export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput({ channelName, agents, onSend, isProcessing = false, onStop }, ref) {
   const [selectedModel, setSelectedModel] = useState("Local");
   const [selectedAgent, setSelectedAgent] = useState("Agent");
   const [selectedPerformance, setSelectedPerformance] = useState("High");
@@ -167,6 +171,13 @@ export function ChatInput({ channelName, agents, onSend, isProcessing = false, o
     editorRef.current = editor;
   }, [editor]);
 
+  useImperativeHandle(ref, () => ({
+    setContent: (html: string) => {
+      editor?.commands.setContent(html);
+      editor?.commands.focus('end');
+    },
+  }), [editor]);
+
   const handleSubmit = useCallback(() => {
     submitCurrentMessage();
   }, [submitCurrentMessage]);
@@ -280,7 +291,7 @@ export function ChatInput({ channelName, agents, onSend, isProcessing = false, o
       </div>
     </div>
   );
-}
+});
 
 function collectMentionIds(node: JSONContent): string[] {
   const ids = new Set<string>();

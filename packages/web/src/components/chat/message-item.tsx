@@ -40,7 +40,8 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete }: MessageI
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
 
   const handleCopy = useCallback(async () => {
-    await navigator.clipboard.writeText(message.content);
+    const text = isHTML(message.content) ? message.content.replace(/<[^>]*>/g, '') : message.content;
+    await navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }, [message.content]);
