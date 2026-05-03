@@ -123,10 +123,10 @@ export const FileTreeFolder = ({
   return (
     <FileTreeFolderContext.Provider value={{ path, name, isExpanded }}>
       <Collapsible onOpenChange={() => togglePath(path)} open={isExpanded}>
-        <div className={cn("group", className)} role="treeitem" tabIndex={0} {...props}>
+        <div className={cn("group/folder relative", className)} role="treeitem" tabIndex={0} {...props}>
           <CollapsibleTrigger
             className={cn(
-              "flex w-full items-center gap-1 rounded px-2 py-1 text-left transition-colors hover:bg-muted/50",
+              "flex w-full items-center gap-1 rounded px-2 py-1 pr-16 text-left transition-colors hover:bg-muted/50",
               isSelected && "bg-muted",
             )}
             onClick={() => onFileSelect?.(path)}
@@ -145,15 +145,15 @@ export const FileTreeFolder = ({
               )}
             </FileTreeIcon>
             <FileTreeName>{name}</FileTreeName>
-            <FileTreeActions>
-              <button onClick={handleReveal} className="p-0.5 rounded hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity" title="Reveal in Finder">
-                <ExternalLink className="size-3 text-muted-foreground" />
-              </button>
-              <button onClick={() => onDelete?.(path)} className="p-0.5 rounded hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity" title="Delete">
-                <Trash2 className="size-3 text-muted-foreground hover:text-destructive" />
-              </button>
-            </FileTreeActions>
           </CollapsibleTrigger>
+          <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1 invisible group-hover/folder:visible" onClick={e => e.stopPropagation()}>
+            <button onClick={handleReveal} className="p-0.5 rounded hover:bg-accent" title="Reveal in Finder">
+              <ExternalLink className="size-3 text-muted-foreground" />
+            </button>
+            <button onClick={() => onDelete?.(path)} className="p-0.5 rounded hover:bg-accent" title="Delete">
+              <Trash2 className="size-3 text-muted-foreground hover:text-destructive" />
+            </button>
+          </div>
           <CollapsibleContent>
             <div className="ml-4 border-l pl-2">{children}</div>
           </CollapsibleContent>
@@ -198,7 +198,7 @@ export const FileTreeFile = ({
     <FileTreeFileContext.Provider value={{ path, name }}>
       <div
         className={cn(
-          "group flex cursor-pointer items-center gap-1 rounded px-2 py-1 transition-colors hover:bg-muted/50",
+          "group/file flex cursor-pointer items-center gap-1 rounded px-2 py-1 transition-colors hover:bg-muted/50",
           isSelected && "bg-muted",
           className,
         )}
@@ -220,10 +220,10 @@ export const FileTreeFile = ({
             </FileTreeIcon>
             <FileTreeName>{name}</FileTreeName>
             <FileTreeActions>
-              <button onClick={handleReveal} className="p-0.5 rounded hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity" title="Reveal in Finder">
+              <button onClick={handleReveal} className="p-0.5 rounded hover:bg-accent" title="Reveal in Finder">
                 <ExternalLink className="size-3 text-muted-foreground" />
               </button>
-              <button onClick={() => onDelete?.(path)} className="p-0.5 rounded hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity" title="Delete">
+              <button onClick={() => onDelete?.(path)} className="p-0.5 rounded hover:bg-accent" title="Delete">
                 <Trash2 className="size-3 text-muted-foreground hover:text-destructive" />
               </button>
             </FileTreeActions>
@@ -245,7 +245,7 @@ export const FileTreeIcon = ({ className, children, ...props }: FileTreeIconProp
 export type FileTreeNameProps = HTMLAttributes<HTMLSpanElement>
 
 export const FileTreeName = ({ className, children, ...props }: FileTreeNameProps) => (
-  <span className={cn("truncate", className)} {...props}>
+  <span className={cn("truncate flex-1 min-w-0", className)} {...props}>
     {children}
   </span>
 )
@@ -254,7 +254,7 @@ export type FileTreeActionsProps = HTMLAttributes<HTMLDivElement>
 
 export const FileTreeActions = ({ className, children, ...props }: FileTreeActionsProps) => (
   <div
-    className={cn("ml-auto flex items-center gap-1", className)}
+    className={cn("ml-auto flex items-center gap-1 shrink-0 invisible group-hover/file:visible", className)}
     onClick={e => e.stopPropagation()}
     onKeyDown={e => e.stopPropagation()}
     role="group"
