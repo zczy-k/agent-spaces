@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronRightIcon, FileIcon, FolderIcon, FolderOpenIcon } from "lucide-react"
+import { ChevronRightIcon, FileIcon, FolderIcon, FolderOpenIcon, Trash2, ExternalLink } from "lucide-react"
 import { createContext, type HTMLAttributes, type ReactNode, useContext, useState } from "react"
 /**
  * @title React AI File Tree
@@ -30,6 +30,8 @@ interface FileTreeContextType {
   togglePath: (path: string) => void
   selectedPath?: string
   onFileSelect?: (path: string) => void
+  workspaceId?: string
+  onDelete?: (path: string) => void
 }
 
 const FileTreeContext = createContext<FileTreeContextType>({
@@ -43,6 +45,8 @@ export type FileTreeProps = HTMLAttributes<HTMLDivElement> & {
   selectedPath?: string
   onFileSelect?: (path: string) => void
   onExpandedChange?: (expanded: Set<string>) => void
+  workspaceId?: string
+  onDelete?: (path: string) => void
 }
 
 export const FileTree = ({
@@ -51,6 +55,8 @@ export const FileTree = ({
   selectedPath,
   onFileSelect,
   onExpandedChange,
+  workspaceId,
+  onDelete,
   className,
   children,
   ...props
@@ -70,7 +76,7 @@ export const FileTree = ({
   }
 
   return (
-    <FileTreeContext.Provider value={{ expandedPaths, togglePath, selectedPath, onFileSelect }}>
+    <FileTreeContext.Provider value={{ expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete }}>
       <div
         className={cn("rounded-lg border bg-background font-mono text-sm", className)}
         role="tree"
@@ -106,14 +112,18 @@ export const FileTreeFolder = ({
   children,
   ...props
 }: FileTreeFolderProps) => {
-  const { expandedPaths, togglePath, selectedPath, onFileSelect } = useContext(FileTreeContext)
+  const { expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete } = useContext(FileTreeContext)
   const isExpanded = expandedPaths.has(path)
   const isSelected = selectedPath === path
+
+  const handleReveal = () => {
+    fetch(`/api/workspaces/${workspaceId}/files/reveal?path=${encodeURIComponent(path)}`, { method: 'POST' })
+  }
 
   return (
     <FileTreeFolderContext.Provider value={{ path, name, isExpanded }}>
       <Collapsible onOpenChange={() => togglePath(path)} open={isExpanded}>
-        <div className={cn("", className)} role="treeitem" tabIndex={0} {...props}>
+        <div className={cn("group", className)} role="treeitem" tabIndex={0} {...props}>
           <CollapsibleTrigger
             className={cn(
               "flex w-full items-center gap-1 rounded px-2 py-1 text-left transition-colors hover:bg-muted/50",
@@ -135,6 +145,14 @@ export const FileTreeFolder = ({
               )}
             </FileTreeIcon>
             <FileTreeName>{name}</FileTreeName>
+            <FileTreeActions>
+              <button onClick={handleReveal} className="p-0.5 rounded hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity" title="Reveal in Finder">
+                <ExternalLink className="size-3 text-muted-foreground" />
+              </button>
+              <button onClick={() => onDelete?.(path)} className="p-0.5 rounded hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity" title="Delete">
+                <Trash2 className="size-3 text-muted-foreground hover:text-destructive" />
+              </button>
+            </FileTreeActions>
           </CollapsibleTrigger>
           <CollapsibleContent>
             <div className="ml-4 border-l pl-2">{children}</div>
@@ -169,14 +187,18 @@ export const FileTreeFile = ({
   children,
   ...props
 }: FileTreeFileProps) => {
-  const { selectedPath, onFileSelect } = useContext(FileTreeContext)
+  const { selectedPath, onFileSelect, workspaceId, onDelete } = useContext(FileTreeContext)
   const isSelected = selectedPath === path
+
+  const handleReveal = () => {
+    fetch(`/api/workspaces/${workspaceId}/files/reveal?path=${encodeURIComponent(path)}`, { method: 'POST' })
+  }
 
   return (
     <FileTreeFileContext.Provider value={{ path, name }}>
       <div
         className={cn(
-          "flex cursor-pointer items-center gap-1 rounded px-2 py-1 transition-colors hover:bg-muted/50",
+          "group flex cursor-pointer items-center gap-1 rounded px-2 py-1 transition-colors hover:bg-muted/50",
           isSelected && "bg-muted",
           className,
         )}
@@ -197,6 +219,14 @@ export const FileTreeFile = ({
               {icon ?? <FileIcon className="size-4 text-muted-foreground" />}
             </FileTreeIcon>
             <FileTreeName>{name}</FileTreeName>
+            <FileTreeActions>
+              <button onClick={handleReveal} className="p-0.5 rounded hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity" title="Reveal in Finder">
+                <ExternalLink className="size-3 text-muted-foreground" />
+              </button>
+              <button onClick={() => onDelete?.(path)} className="p-0.5 rounded hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity" title="Delete">
+                <Trash2 className="size-3 text-muted-foreground hover:text-destructive" />
+              </button>
+            </FileTreeActions>
           </>
         )}
       </div>

@@ -30,6 +30,11 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
     loadTree(workspaceId);
   }, [workspaceId, loadTree]);
 
+  const handleDelete = async (path: string) => {
+    await fetch(`/api/workspaces/${workspaceId}/files?path=${encodeURIComponent(path)}`, { method: 'DELETE' });
+    loadTree(workspaceId);
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-2 py-1.5 border-b text-xs font-medium text-muted-foreground">
@@ -54,6 +59,8 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
             setSelectedPath(path);
             openFile(workspaceId, path);
           }}
+          workspaceId={workspaceId}
+          onDelete={handleDelete}
         >
           <FileTreeNodes nodes={tree} />
         </FileTree>

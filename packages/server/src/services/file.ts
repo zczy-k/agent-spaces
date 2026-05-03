@@ -1,4 +1,4 @@
-import { readdir, stat, readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readdir, stat, readFile, writeFile, mkdir, rm } from 'node:fs/promises';
 import { join, relative, extname } from 'node:path';
 import type { FileNode } from '@agent-spaces/shared';
 import type { Workspace } from '@agent-spaces/shared';
@@ -72,6 +72,18 @@ export async function writeFileContent(workspace: Workspace, relPath: string, co
   try {
     await mkdir(join(abs, '..'), { recursive: true });
     await writeFile(abs, content, 'utf-8');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function deletePath(workspace: Workspace, relPath: string): Promise<boolean> {
+  const abs = resolvePath(workspace, relPath);
+  if (!abs) return false;
+
+  try {
+    await rm(abs, { recursive: true, force: true });
     return true;
   } catch {
     return false;

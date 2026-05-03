@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { exec } from 'child_process';
 import * as wsService from '../services/workspace.js';
 import * as agentService from '../services/agent.js';
 
@@ -67,6 +68,31 @@ router.delete('/:id', (req, res) => {
     return;
   }
   res.status(204).end();
+});
+
+router.post('/:id/reveal', (req, res) => {
+  const ws = wsService.getById(req.params.id);
+  if (!ws) {
+    res.status(404).json({ error: 'Workspace not found' });
+    return;
+  }
+  const dir = ws.boundDirs?.[0];
+  if (!dir) {
+    res.status(400).json({ error: 'Workspace has no bound directory' });
+    return;
+  }
+  const cmd = process.platform === 'darwin'
+    ? `open "${dir}"`
+    : process.platform === 'win32'
+      ? `explorer "${dir}"`
+      : `xdg-open "${dir}"`;
+  exec(cmd, (err) => {
+    if (err) {
+      res.status(500).json({ error: 'Failed to reveal directory' });
+      return;
+    }
+    res.json({ success: true });
+  });
 });
 
 export default router;

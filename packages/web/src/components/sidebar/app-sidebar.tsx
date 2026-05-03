@@ -21,6 +21,7 @@ import {
   Server,
   Pencil,
   Trash2,
+  FolderSearch,
 } from "lucide-react";
 import { Logo } from "@/components/sidebar/logo";
 import { AgentDialog } from "@/components/sidebar/agent-dialog";
@@ -149,6 +150,11 @@ export function DashboardSidebar() {
             label: "Edit",
             icon: <Pencil className="size-3.5" />,
             onClick: () => openEditDialog(ws),
+          },
+          {
+            label: "Open",
+            icon: <FolderSearch className="size-3.5" />,
+            onClick: () => fetch(`/api/workspaces/${ws.id}/reveal`, { method: 'POST' }),
           },
           {
             label: "Delete",
