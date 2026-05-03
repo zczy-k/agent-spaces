@@ -44,6 +44,12 @@ interface PendingQuestionRun {
   question: string;
 }
 
+interface RunMentionedAgentOptions {
+  messageId?: string;
+  seedOutput?: string[];
+  seedQuestions?: PendingAskUserQuestion[];
+}
+
 function ensureScheduler(workspaceId: string, ctx: AgentContext) {
   if (!activeSchedulers.has(workspaceId)) {
     activeSchedulers.add(workspaceId);
@@ -167,6 +173,7 @@ registerHandler('channel.answer_question', (_ws, workspaceId, data) => {
   pendingQuestionRuns.delete(key);
   if (!pending) return;
 
+  const seedQuestion = questionFromAnsweredPart(updatedParts, questionId);
   void runMentionedAgent(
     workspaceId,
     channelId,
@@ -177,6 +184,11 @@ registerHandler('channel.answer_question', (_ws, workspaceId, data) => {
       `Answer: ${trimmed}`,
       'Continue from this answer and complete the original task.',
     ].join('\n'),
+    {
+      messageId,
+      seedOutput: normalizeOutputLines([message.content]),
+      seedQuestions: seedQuestion ? [seedQuestion] : [],
+    },
   );
 });
 
@@ -185,6 +197,7 @@ async function runMentionedAgent(
   channelId: string,
   agentConfigId: string,
   prompt: string,
+  options: RunMentionedAgentOptions = {},
 ) {
   const preset = agentService.listPresets(workspaceId)?.find((agent) => agent.id === agentConfigId);
   if (!preset || preset.enabled === false) return;
@@ -203,28 +216,42 @@ async function runMentionedAgent(
   const skills = agentService.getAvailableSkillNames(configDir, preset.skills);
   const workspace = wsService.getById(workspaceId);
   const startTime = Date.now();
-  const pending = createMessage(workspaceId, channelId, {
-    senderId: preset.id,
-    senderRole: preset.role,
-    content: 'Agent is processing...',
-    type: 'text',
-    status: 'streaming',
-    metadata: {
-      agentSessionId: session.id,
-      runtime: preset.runtimeKind,
-      model: preset.modelId,
-      duration: 0,
-    },
-    parts: [
-      {
-        id: `reasoning-${session.id}`,
-        type: 'reasoning',
-        text: 'Preparing agent runtime and loading conversation context...',
-        status: 'streaming',
+  const existingMessage = options.messageId
+    ? listMessages(workspaceId, channelId).find((message) => message.id === options.messageId)
+    : undefined;
+  const pending = existingMessage
+    ? updateMessage(workspaceId, channelId, existingMessage.id, {
+      status: 'streaming',
+      metadata: {
+        ...existingMessage.metadata,
+        agentSessionId: session.id,
+        runtime: preset.runtimeKind,
+        model: preset.modelId,
+        duration: 0,
       },
-    ],
-  });
-  broadcastToWorkspace(workspaceId, 'channel.message', pending);
+    }) ?? existingMessage
+    : createMessage(workspaceId, channelId, {
+      senderId: preset.id,
+      senderRole: preset.role,
+      content: 'Agent is processing...',
+      type: 'text',
+      status: 'streaming',
+      metadata: {
+        agentSessionId: session.id,
+        runtime: preset.runtimeKind,
+        model: preset.modelId,
+        duration: 0,
+      },
+      parts: [
+        {
+          id: `reasoning-${session.id}`,
+          type: 'reasoning',
+          text: 'Preparing agent runtime and loading conversation context...',
+          status: 'streaming',
+        },
+      ],
+    });
+  broadcastToWorkspace(workspaceId, existingMessage ? 'channel.message.updated' : 'channel.message', pending);
 
   let activeRun: ActiveChannelRun | undefined;
   try {
@@ -243,8 +270,8 @@ async function runMentionedAgent(
     };
     trackChannelRun(workspaceId, channelId, activeRun);
     const history = listMessages(workspaceId, channelId, { limit: 20 });
-    const liveOutput: string[] = [];
-    const askUserQuestions: PendingAskUserQuestion[] = [];
+    const liveOutput: string[] = [...(options.seedOutput ?? [])];
+    const askUserQuestions: PendingAskUserQuestion[] = [...(options.seedQuestions ?? [])];
     const toolDetails = new Map<string, ToolDetail>();
     const toolUseDetailIds = new Map<string, string>();
     let lastLiveUpdate = 0;
@@ -357,28 +384,11 @@ async function runMentionedAgent(
     broadcastLiveParts(true);
     if (activeRun.stopped) return;
 
-    if (liveOutput.length === 0) {
-      for (const line of result.output) {
-        broadcastToWorkspace(workspaceId, 'agent.output', { agentId: session.id, data: line });
-      }
-    }
-
-    agentService.complete(workspaceId, session.id, result.success ? undefined : result.error);
-    broadcastToWorkspace(workspaceId, 'agent.completed', {
-      agentId: session.id,
-      result: {
-        success: result.success,
-        summary: result.summary,
-        artifacts: result.artifacts,
-        error: result.error,
-      },
-      error: result.error,
-    });
-
     const displayOutput = liveOutput.length > 0 ? liveOutput : result.output;
-    if (!result.success && askUserQuestions.some((question) => !question.answer) && isAskUserQuestionError(result.error || displayOutput.join('\n'))) {
+    if (shouldWaitForUserAnswer(askUserQuestions, result.summary, result.error, displayOutput)) {
+      const waitingOutput = stripAskUserQuestionErrorLines(liveOutput);
       const waiting = updateMessage(workspaceId, channelId, pending.id, {
-        content: liveOutput.join('\n') || pending.content,
+        content: waitingOutput.join('\n') || pending.content,
         type: 'text',
         status: 'waiting_for_user',
         metadata: {
@@ -397,15 +407,40 @@ async function runMentionedAgent(
           systemPrompt: preset.systemPrompt,
           mcpServers: Object.keys(mcpServers ?? {}),
           skills,
-          output: liveOutput,
+          output: waitingOutput,
           toolDetails,
           askUserQuestions,
           success: true,
         }),
       });
       if (waiting) broadcastToWorkspace(workspaceId, 'channel.message.updated', waiting);
+      agentService.updateStatus(workspaceId, session.id, 'blocked');
+      broadcastToWorkspace(workspaceId, 'agent.status_changed', {
+        agentId: session.id,
+        from: 'active',
+        to: 'blocked',
+      });
       return;
     }
+
+    if (liveOutput.length === 0) {
+      for (const line of result.output) {
+        broadcastToWorkspace(workspaceId, 'agent.output', { agentId: session.id, data: line });
+      }
+    }
+
+    agentService.complete(workspaceId, session.id, result.success ? undefined : result.error);
+    broadcastToWorkspace(workspaceId, 'agent.completed', {
+      agentId: session.id,
+      result: {
+        success: result.success,
+        summary: result.summary,
+        artifacts: result.artifacts,
+        error: result.error,
+      },
+      error: result.error,
+    });
+
     const reply = updateMessage(workspaceId, channelId, pending.id, {
       content: result.success ? displayOutput.join('\n') : result.error || displayOutput.join('\n'),
       type: 'text',
@@ -536,7 +571,7 @@ export function markInactiveChannelRunsStopped(workspaceId: string, channelId: s
 
   const stopped: Message[] = [];
   for (const message of listMessages(workspaceId, channelId)) {
-    if (message.status !== 'pending' && message.status !== 'streaming' && message.status !== 'waiting_for_user') continue;
+    if (message.status !== 'pending' && message.status !== 'streaming') continue;
     const updated = updateMessage(workspaceId, channelId, message.id, {
       content: message.content || 'Stopped by user',
       status: 'error',
@@ -636,10 +671,18 @@ function buildAgentMessageParts(input: {
 }
 
 function normalizeOutputLines(output: string[]): string[] {
-  return output
+  const lines = output
     .flatMap((line) => line.split(/\r?\n/))
     .map((line) => line.trimEnd())
     .filter((line) => line.trim());
+
+  const seenInitLines = new Set<string>();
+  return lines.filter((line) => {
+    if (!/^Claude Code initialized\b/i.test(line)) return true;
+    if (seenInitLines.has(line)) return false;
+    seenInitLines.add(line);
+    return true;
+  });
 }
 
 function findFinalTextRange(lines: string[]): { start: number; end: number } | null {
@@ -995,6 +1038,34 @@ function parseAskUserQuestion(toolUseId: string, input: unknown): PendingAskUser
     question,
     choices,
   };
+}
+
+function questionFromAnsweredPart(parts: Message['parts'] | undefined, questionId: string): PendingAskUserQuestion | undefined {
+  const part = parts?.find((item) => item.type === 'ask_user_question' && item.id === questionId);
+  if (!part || part.type !== 'ask_user_question') return undefined;
+  return {
+    id: part.id,
+    toolUseId: part.toolUseId,
+    question: part.question,
+    choices: part.choices ?? [],
+    answer: part.answer,
+  };
+}
+
+function shouldWaitForUserAnswer(
+  questions: PendingAskUserQuestion[],
+  summary: string | undefined,
+  error: string | undefined,
+  output: string[],
+): boolean {
+  if (!questions.some((question) => !question.answer)) return false;
+  if (summary === 'Waiting for user answer') return true;
+  const text = [error ?? '', ...output].join('\n');
+  return !text.trim() || isAskUserQuestionError(text);
+}
+
+function stripAskUserQuestionErrorLines(output: string[]): string[] {
+  return output.filter((line) => !isAskUserQuestionError(line));
 }
 
 function isAskUserQuestionError(error: string): boolean {

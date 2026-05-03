@@ -68,18 +68,36 @@ export class ClaudeCodeRuntime implements AgentRuntime {
       let turns = 0;
       let tokenCount = 0;
       let error: string | undefined;
+      const pendingAskUserQuestionToolIds = new Set<string>();
+      let waitingForUserAnswer = false;
 
       for await (const message of this.activeQuery) {
-        logToolDebug(message, d);
-        for (const toolUse of extractToolUseEvents(message)) {
-          options?.onEvent?.({ type: 'tool_use', ...toolUse });
+        const toolUses = extractToolUseEvents(message);
+        for (const toolUse of toolUses) {
+          if (toolUse.name === 'AskUserQuestion') {
+            pendingAskUserQuestionToolIds.add(toolUse.id);
+          }
         }
         const toolResult = extractToolResultEvent(message);
-        if (toolResult) {
+        const suppressAskUserQuestionResult = Boolean(
+          toolResult
+          && isAskUserQuestionAutoResult(toolResult.result)
+          && (pendingAskUserQuestionToolIds.size > 0
+            || (toolResult.toolUseId ? pendingAskUserQuestionToolIds.has(toolResult.toolUseId) : false)),
+        );
+        if (suppressAskUserQuestionResult) {
+          waitingForUserAnswer = true;
+        }
+
+        logToolDebug(message, d, { suppressAskUserQuestionResult });
+        for (const toolUse of toolUses) {
+          options?.onEvent?.({ type: 'tool_use', ...toolUse });
+        }
+        if (toolResult && !suppressAskUserQuestionResult) {
           options?.onEvent?.({ type: 'tool_result', ...toolResult });
         }
         const line = formatMessage(message);
-        if (line) {
+        if (line && !isAskUserQuestionAutoResult(line)) {
           output.push(line);
           options?.onEvent?.({ type: 'output', line });
         }
@@ -88,7 +106,9 @@ export class ClaudeCodeRuntime implements AgentRuntime {
           turns = message.num_turns;
           tokenCount = countUsageTokens(message.usage);
           if (message.subtype === 'success') {
-            resultText = message.result;
+            if (!isAskUserQuestionAutoResult(message.result)) {
+              resultText = message.result;
+            }
           } else {
             error = message.errors.join('\n') || message.subtype;
           }
@@ -96,6 +116,16 @@ export class ClaudeCodeRuntime implements AgentRuntime {
       }
 
       const elapsed = Date.now() - startTime;
+      if (waitingForUserAnswer && (!error || isAskUserQuestionAutoResult(error))) {
+        d(`waiting for user answer ${elapsed}ms | turns=${turns} tokens=${tokenCount}`);
+        return {
+          success: true,
+          summary: 'Waiting for user answer',
+          artifacts: [],
+          output,
+        };
+      }
+
       if (error) {
         d(`failed ${elapsed}ms | turns=${turns} tokens=${tokenCount} | ${error}`);
         return {
@@ -323,7 +353,11 @@ function extractToolResultEvent(message: SDKMessage): { toolUseId?: string; resu
   return null;
 }
 
-function logToolDebug(message: SDKMessage, d: (message: string) => void): void {
+function logToolDebug(
+  message: SDKMessage,
+  d: (message: string) => void,
+  options: { suppressAskUserQuestionResult?: boolean } = {},
+): void {
   switch (message.type) {
     case 'assistant':
       logAssistantToolUses(message.message.content, d);
@@ -331,6 +365,7 @@ function logToolDebug(message: SDKMessage, d: (message: string) => void): void {
     case 'user': {
       const toolResult = (message as { tool_use_result?: unknown }).tool_use_result;
       if (toolResult !== undefined) {
+        if (options.suppressAskUserQuestionResult) return;
         d(`tool result | parent=${message.parent_tool_use_id ?? '-'} result=${summarizeToolResult(toolResult)}`);
       }
       return;
@@ -402,6 +437,12 @@ function summarizeToolResult(result: unknown): string {
   if (typeof result === 'string') return JSON.stringify(truncate(result, 240));
   if (!result || typeof result !== 'object') return JSON.stringify(result);
   return JSON.stringify(redactLargeInput(result as Record<string, unknown>));
+}
+
+function isAskUserQuestionAutoResult(result: unknown): boolean {
+  if (typeof result === 'string') return /Answer questions\?/i.test(result);
+  if (!result || typeof result !== 'object') return false;
+  return /Answer questions\?/i.test(JSON.stringify(result));
 }
 
 function countUsageTokens(usage: unknown): number {

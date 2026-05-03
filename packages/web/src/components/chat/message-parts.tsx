@@ -1,7 +1,7 @@
 "use client"
 
 import type { Message, MessagePart } from "@agent-spaces/shared"
-import { CheckCircle2Icon, ChevronDownIcon, CircleIcon, FileTextIcon, MessageSquareTextIcon } from "lucide-react"
+import { CheckCircle2Icon, ChevronDownIcon, CircleIcon, FileTextIcon, HelpCircleIcon, MessageSquareTextIcon } from "lucide-react"
 import { useState } from "react"
 import { Markdown } from "@/components/ui/markdown"
 import { Loader } from "@/components/ui/loader"
@@ -17,7 +17,6 @@ import {
   AgentTool,
   AgentTools,
 } from "./subagent"
-import { AskUserQuestion } from "./ask-user-question"
 import {
   Attachment,
   AttachmentInfo,
@@ -227,17 +226,29 @@ function MessagePartView({ part, message, workspaceId }: { part: MessagePart; me
         </Agent>
       )
     case "ask_user_question":
-      return (
-        <AskUserQuestion
-          question={part.question}
-          choices={part.choices}
-          status={part.status}
-          answer={part.answer}
-        />
-      )
+      if (part.status !== "answered" && !part.answer) return null
+      return <AnsweredQuestionSummary question={part.question} answer={part.answer ?? ""} />
     default:
       return null
   }
+}
+
+function AnsweredQuestionSummary({
+  question,
+  answer,
+}: {
+  question: string
+  answer: string
+}) {
+  return (
+    <div className="not-prose flex items-start gap-2 rounded-md border bg-muted/30 px-3 py-2 text-sm">
+      <HelpCircleIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-muted-foreground">{question}</div>
+        <div className="font-medium">{answer}</div>
+      </div>
+    </div>
+  )
 }
 
 function AiMessageStep({
