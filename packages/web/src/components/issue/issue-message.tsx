@@ -29,6 +29,7 @@ export function IssueMessage({ message, workspaceId, onDelete, onUpdate }: Issue
   }, [isUser, workspaceId, ensure]);
 
   const senderName = isUser ? 'You' : (agent?.name || message.senderId);
+  const userAvatarUrl = typeof window !== 'undefined' ? localStorage.getItem('userAvatarUrl') : null;
 
   useEffect(() => {
     if (editing && inputRef.current) {
@@ -71,6 +72,7 @@ export function IssueMessage({ message, workspaceId, onDelete, onUpdate }: Issue
         <AgentIcon
           agentId={isUser ? undefined : message.senderId}
           name={senderName}
+          avatarUrl={isUser ? userAvatarUrl || undefined : undefined}
           className="size-7 rounded-full"
         />
         <div className="flex-1 min-w-0">

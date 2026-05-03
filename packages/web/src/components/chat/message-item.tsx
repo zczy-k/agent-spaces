@@ -26,6 +26,7 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete }: MessageI
   }, [isUser, workspaceId, ensure]);
 
   const senderName = isUser ? 'You' : (agent?.name || message.senderId);
+  const userAvatarUrl = typeof window !== 'undefined' ? localStorage.getItem('userAvatarUrl') : null;
   const time = new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const [copied, setCopied] = useState(false);
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
@@ -61,6 +62,7 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete }: MessageI
       <AgentIcon
         agentId={isUser ? undefined : message.senderId}
         name={senderName}
+        avatarUrl={isUser ? userAvatarUrl || undefined : undefined}
         onClick={() => setMemberDialogOpen(true)}
         className="size-7 rounded-full"
       />

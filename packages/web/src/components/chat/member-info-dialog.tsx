@@ -29,6 +29,7 @@ export function MemberInfoDialog({ open, onOpenChange, memberName, displayName, 
   const agents = useAgentStore((s) => s.agents);
   const agent = memberName !== 'user' ? agents.find((a) => a.id === memberName) : undefined;
   const resolvedName = displayName || agent?.name || memberName;
+  const userAvatarUrl = memberName === 'user' && typeof window !== 'undefined' ? localStorage.getItem('userAvatarUrl') : null;
 
   const channel = allChannels.find((c) => c.id === channelId);
   const isMember = channel?.members.includes(memberName);
@@ -57,6 +58,7 @@ export function MemberInfoDialog({ open, onOpenChange, memberName, displayName, 
           <AgentIcon
             agentId={memberName !== 'user' ? memberName : undefined}
             name={resolvedName}
+            avatarUrl={userAvatarUrl || undefined}
             className="size-12 rounded-full"
           />
           <div className="flex-1 min-w-0">

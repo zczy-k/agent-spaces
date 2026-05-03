@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useTheme } from "@/components/theme-provider";
 import {
   Dialog,
@@ -9,7 +10,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { Sun, Moon, Monitor } from "lucide-react";
+import { Sun, Moon, Monitor, User } from "lucide-react";
 
 const THEME_OPTIONS = [
   { value: "light", label: "Light", icon: Sun },
@@ -25,6 +26,38 @@ export function SettingsDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const { theme, setTheme } = useTheme();
+  const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    setUserAvatarUrl(localStorage.getItem("userAvatarUrl"));
+  }, [open]);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const res = await fetch("/api/upload/avatar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dataUrl: reader.result, filename: "user.jpg" }),
+        });
+        const data = await res.json();
+        if (data.url) {
+          localStorage.setItem("userAvatarUrl", data.url);
+          setUserAvatarUrl(data.url);
+        }
+      } catch { /* ignore */ }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  const handleRemove = () => {
+    localStorage.removeItem("userAvatarUrl");
+    setUserAvatarUrl(null);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -34,6 +67,32 @@ export function SettingsDialog({
           <DialogDescription className="text-xs">Customize your workspace appearance</DialogDescription>
         </DialogHeader>
         <div className="p-5 flex flex-col gap-5">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2.5 block">
+              User Avatar
+            </label>
+            <div className="flex items-center gap-3">
+              <div className={cn("size-12 rounded-full overflow-hidden border border-input flex items-center justify-center", userAvatarUrl ? "" : "bg-muted")}>
+                {userAvatarUrl ? (
+                  <img src={userAvatarUrl} alt="User" className="size-full object-cover" />
+                ) : (
+                  <User className="size-5 text-muted-foreground" />
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-primary cursor-pointer hover:underline">
+                  Upload
+                  <input type="file" accept="image/*" className="hidden" onChange={handleUpload} />
+                </label>
+                {userAvatarUrl && (
+                  <button type="button" className="text-xs text-destructive hover:underline" onClick={handleRemove}>
+                    Remove
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2.5 block">
               Theme

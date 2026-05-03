@@ -347,7 +347,7 @@ function ToolStep({
           ) : null}
         </div>
       }
-      description={chain.command}
+      description={chain.command ?? chain.description}
       status={status}
     >
       {open ? (

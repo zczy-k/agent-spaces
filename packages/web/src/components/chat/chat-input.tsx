@@ -303,6 +303,28 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           }
           return false;
         },
+        handlePaste: (_view, event) => {
+          const html = event.clipboardData?.getData("text/html");
+          if (html?.includes('data-type="mention"')) return false;
+          const text = event.clipboardData?.getData("text/plain");
+          if (!text || !/@\S+/.test(text)) return false;
+          const allAgents = agentsRef.current;
+          if (allAgents.length === 0) return false;
+          const regex = /@(\S+)/g;
+          let m: RegExpExecArray | null;
+          let hasMatch = false;
+          while ((m = regex.exec(text)) !== null) {
+            if (allAgents.some((a) => a.name === m![1] || a.id === m![1] || a.role === m![1])) {
+              hasMatch = true;
+              break;
+            }
+          }
+          if (!hasMatch) return false;
+          const ed = editorRef.current;
+          if (!ed) return false;
+          ed.commands.insertContent(buildContentWithMentions(text, allAgents));
+          return true;
+        },
       },
       content: "",
       onUpdate: ({ editor }) => {

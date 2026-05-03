@@ -660,6 +660,11 @@ function summarizeToolLine(line: string, workspaceRoot?: string): {
         command,
       };
     }
+    // Glob/Grep/Search: extract path + pattern + glob for header
+    const searchSummary = extractSearchParams(trimmed, toolName, workspaceRoot);
+    if (searchSummary) {
+      return { ...searchSummary, toolName };
+    }
     const todoCount = extractTodoCount(trimmed);
     if (todoCount !== undefined) {
       return {
@@ -674,6 +679,52 @@ function summarizeToolLine(line: string, workspaceRoot?: string): {
   }
 
   return { title: trimmed };
+}
+
+function extractSearchParams(
+  line: string,
+  toolName: string,
+  workspaceRoot?: string,
+): { title: string; description?: string } | null {
+  if (!/^(Glob|Grep|Search|SemanticSearch|WebSearch|WebFetch|Fetch)$/i.test(toolName)) return null;
+
+  const pattern = extractQuotedField(line, 'pattern') ?? extractQuotedField(line, 'query');
+  const glob = extractQuotedField(line, 'glob');
+  const searchPath = toWorkspaceRelativePath(extractQuotedField(line, 'path'), workspaceRoot);
+  const url = extractQuotedField(line, 'url');
+  const label = humanizeToolName(toolName);
+
+  // WebSearch/WebFetch/Fetch: show url or query
+  if (/^(WebSearch|WebFetch|Fetch)$/i.test(toolName)) {
+    if (url) return { title: `${label} ${truncate(url, 60)}` };
+    if (pattern) return { title: `${label} ${truncate(pattern, 60)}` };
+    return { title: label };
+  }
+
+  // Glob: "Find files **/*.ts in src/components"
+  if (/^Glob$/i.test(toolName)) {
+    const parts: string[] = [];
+    if (pattern) parts.push(truncate(pattern, 50));
+    else if (glob) parts.push(truncate(glob, 50));
+    const title = parts.length ? `${label} ${parts.join(' ')}` : label;
+    const descParts: string[] = [];
+    if (pattern && glob) descParts.push(`glob: ${glob}`);
+    if (searchPath) descParts.push(`in ${searchPath}`);
+    return { title, description: descParts.length ? descParts.join(', ') : undefined };
+  }
+
+  // Grep/Search/SemanticSearch: "Search pomodoro|timer in src/"
+  const parts: string[] = [];
+  if (pattern) parts.push(truncate(pattern, 40));
+  const title = parts.length ? `${label} ${parts.join(' ')}` : label;
+  const descParts: string[] = [];
+  if (glob) descParts.push(`glob: ${glob}`);
+  if (searchPath) descParts.push(`in ${searchPath}`);
+  return { title, description: descParts.length ? descParts.join(', ') : undefined };
+}
+
+function truncate(str: string, max: number): string {
+  return str.length > max ? `${str.slice(0, max - 3)}...` : str;
 }
 
 function extractToolName(line: string): string | undefined {
@@ -692,6 +743,11 @@ function humanizeToolName(toolName: string): string {
     TodoWrite: 'Update todos',
     Grep: 'Search',
     Glob: 'Find files',
+    Search: 'Search',
+    SemanticSearch: 'Semantic search',
+    WebSearch: 'Web search',
+    WebFetch: 'Fetch',
+    Fetch: 'Fetch',
     Task: 'Run subagent',
   };
   return labels[toolName] ?? toolName.replace(/([a-z])([A-Z])/g, '$1 $2');
