@@ -213,6 +213,10 @@ async function runMentionedAgent(
         content: liveOutput.join('\n') || pending.content,
         status: 'streaming',
         parts,
+        metadata: {
+          ...pending.metadata,
+          duration: Date.now() - startTime,
+        },
       });
       if (live) broadcastToWorkspace(workspaceId, 'channel.message.updated', live);
     };

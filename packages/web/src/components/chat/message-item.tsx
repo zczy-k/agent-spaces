@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Message } from '@agent-spaces/shared';
-import { Copy, Pencil, Trash2, Check } from 'lucide-react';
+import { Copy, Pencil, Trash2, Check, Clock } from 'lucide-react';
 import { MemberInfoDialog } from './member-info-dialog';
 import { MessageParts } from './message-parts';
 
@@ -39,6 +39,25 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete }: MessageI
   const [copied, setCopied] = useState(false);
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
 
+  const isStreaming = message.status === 'streaming' || message.status === 'pending';
+  const [elapsed, setElapsed] = useState(() =>
+    message.metadata?.duration ?? 0
+  );
+
+  useEffect(() => {
+    if (!isStreaming && message.metadata?.duration != null) {
+      setElapsed(message.metadata.duration);
+      return;
+    }
+    if (!isStreaming) return;
+    const start = new Date(message.createdAt).getTime();
+    setElapsed(Date.now() - start);
+    const timer = setInterval(() => setElapsed(Date.now() - start), 1000);
+    return () => clearInterval(timer);
+  }, [message.metadata?.duration, message.createdAt, isStreaming]);
+
+  const showDuration = !isUser && (isStreaming || message.status === 'completed' || message.status === 'error') && elapsed > 0;
+
   const handleCopy = useCallback(async () => {
     const text = isHTML(message.content) ? message.content.replace(/<[^>]*>/g, '') : message.content;
     await navigator.clipboard.writeText(text);
@@ -63,6 +82,15 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete }: MessageI
         </div>
         <div className={`text-sm rounded-lg px-3 py-2 ${isUser ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
           <MessageParts message={message} isUser={isUser} workspaceId={workspaceId} />
+          {showDuration && (
+            <div className="flex items-center justify-end gap-1 mt-1 pt-1 border-t border-border/30">
+              <Clock className="h-3 w-3 text-muted-foreground" />
+              <span className="text-[10px] text-muted-foreground">
+                {formatDuration(elapsed)}
+                {isStreaming && <span className="animate-pulse ml-0.5">...</span>}
+              </span>
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-0.5 h-6 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
@@ -97,4 +125,14 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete }: MessageI
 
 function isHTML(str: string): boolean {
   return /<[a-z][\s\S]*>/i.test(str);
+}
+
+function formatDuration(ms: number): string {
+  const s = Math.floor(ms / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  if (m < 60) return `${m}m ${sec}s`;
+  const h = Math.floor(m / 60);
+  return `${h}h ${m % 60}m`;
 }
