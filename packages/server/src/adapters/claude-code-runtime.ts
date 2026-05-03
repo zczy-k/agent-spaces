@@ -1,4 +1,5 @@
 import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { extname } from 'node:path';
 import { join } from 'node:path';
 import { query } from '@anthropic-ai/claude-agent-sdk';
@@ -32,8 +33,9 @@ export class ClaudeCodeRuntime implements AgentRuntime {
     const configDir = agentDir ? join(agentDir, '.claude') : undefined;
     if (configDir) prepareConfigDir(configDir, agentDir);
     const skillNames = normalizeSkillNames(options?.skills, configDir);
+    const claudeExecutable = resolveBundledClaudeExecutable();
 
-    d(`starting | cwd=${cwd} model=${this.config.model ?? 'default'} permissionMode=${permissionMode} maxTurns=${options?.maxTurns ?? '∞'} tools=claude_code mcpServers=${Object.keys(options?.mcpServers ?? {}).join(',') || '-'} skills=${skillNames.join(',') || '-'} configDir=${configDir ?? 'default'} sandboxDirs=${options?.sandboxDirs?.join(',') ?? '-'}`);
+    d(`starting | cwd=${cwd} model=${this.config.model ?? 'default'} permissionMode=${permissionMode} maxTurns=${options?.maxTurns ?? '∞'} tools=claude_code mcpServers=${Object.keys(options?.mcpServers ?? {}).join(',') || '-'} skills=${skillNames.join(',') || '-'} configDir=${configDir ?? 'default'} sandboxDirs=${options?.sandboxDirs?.join(',') ?? '-'} claudeExecutable=${claudeExecutable ?? 'sdk-default'}`);
     d(`prompt: ${prompt.slice(0, 300)}${prompt.length > 300 ? '...' : ''}`);
 
     try {
@@ -41,6 +43,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
         cwd,
         model: this.config.model,
         maxTurns: options?.maxTurns,
+        pathToClaudeCodeExecutable: claudeExecutable,
         tools: { type: 'preset', preset: 'claude_code' },
         mcpServers: normalizeMcpServers(options?.mcpServers),
         skills: skillNames,
@@ -67,8 +70,12 @@ export class ClaudeCodeRuntime implements AgentRuntime {
       let error: string | undefined;
 
       for await (const message of this.activeQuery) {
+        logToolDebug(message, d);
         const line = formatMessage(message);
-        if (line) output.push(line);
+        if (line) {
+          output.push(line);
+          options?.onEvent?.({ type: 'output', line });
+        }
 
         if (message.type === 'result') {
           turns = message.num_turns;
@@ -137,6 +144,45 @@ function buildEnv(config: AgentRuntimeConfig, configDir?: string): Record<string
 function normalizeMcpServers(servers?: Record<string, unknown>): Record<string, McpServerConfig> | undefined {
   if (!servers || Object.keys(servers).length === 0) return undefined;
   return servers as Record<string, McpServerConfig>;
+}
+
+function resolveBundledClaudeExecutable(): string | undefined {
+  const require = createRequire(import.meta.url);
+  const packageName = getBundledClaudePackageName();
+  if (!packageName) return undefined;
+
+  try {
+    return require.resolve(`${packageName}/claude`);
+  } catch {
+    return undefined;
+  }
+}
+
+function getBundledClaudePackageName(): string | undefined {
+  const platform = process.platform;
+  const arch = process.arch;
+
+  if (platform === 'darwin') {
+    if (arch === 'arm64') return '@anthropic-ai/claude-agent-sdk-darwin-arm64';
+    if (arch === 'x64') return '@anthropic-ai/claude-agent-sdk-darwin-x64';
+  }
+
+  if (platform === 'linux') {
+    if (arch === 'arm64') return isMuslRuntime() ? '@anthropic-ai/claude-agent-sdk-linux-arm64-musl' : '@anthropic-ai/claude-agent-sdk-linux-arm64';
+    if (arch === 'x64') return isMuslRuntime() ? '@anthropic-ai/claude-agent-sdk-linux-x64-musl' : '@anthropic-ai/claude-agent-sdk-linux-x64';
+  }
+
+  if (platform === 'win32') {
+    if (arch === 'arm64') return '@anthropic-ai/claude-agent-sdk-win32-arm64';
+    if (arch === 'x64') return '@anthropic-ai/claude-agent-sdk-win32-x64';
+  }
+
+  return undefined;
+}
+
+function isMuslRuntime(): boolean {
+  const report = process.report?.getReport() as { header?: { glibcVersionRuntime?: string } } | undefined;
+  return !report?.header?.glibcVersionRuntime;
 }
 
 function normalizeSkillNames(skills?: string[], configDir?: string): string[] {
@@ -233,6 +279,52 @@ function formatAssistantMessage(content: unknown): string | null {
   return parts.length > 0 ? parts.join('\n') : null;
 }
 
+function logToolDebug(message: SDKMessage, d: (message: string) => void): void {
+  switch (message.type) {
+    case 'assistant':
+      logAssistantToolUses(message.message.content, d);
+      return;
+    case 'user': {
+      const toolResult = (message as { tool_use_result?: unknown }).tool_use_result;
+      if (toolResult !== undefined) {
+        d(`tool result | parent=${message.parent_tool_use_id ?? '-'} result=${summarizeToolResult(toolResult)}`);
+      }
+      return;
+    }
+    case 'tool_progress':
+      d(`tool progress | id=${message.tool_use_id} name=${message.tool_name} elapsed=${message.elapsed_time_seconds}s parent=${message.parent_tool_use_id ?? '-'}`);
+      return;
+    case 'tool_use_summary':
+      d(`tool summary | ids=${message.preceding_tool_use_ids.join(',') || '-'} summary=${truncate(message.summary, 240)}`);
+      return;
+    case 'system':
+      if (message.subtype === 'task_started') {
+        d(`subagent started | ${truncate(message.description, 240)}`);
+      } else if (message.subtype === 'task_progress') {
+        d(`subagent progress | ${truncate(message.summary || message.description, 240)}`);
+      } else if (message.subtype === 'task_notification') {
+        d(`subagent notification | ${truncate(message.summary, 240)}`);
+      } else if (message.subtype === 'local_command_output') {
+        d(`local command output | ${truncate(message.content, 240)}`);
+      }
+      return;
+    default:
+      return;
+  }
+}
+
+function logAssistantToolUses(content: unknown, d: (message: string) => void): void {
+  if (!Array.isArray(content)) return;
+
+  for (const block of content) {
+    if (!block || typeof block !== 'object') continue;
+    const typedBlock = block as { type?: string; id?: unknown; name?: unknown; input?: unknown };
+    if (typedBlock.type !== 'tool_use' || typeof typedBlock.name !== 'string') continue;
+    const id = typeof typedBlock.id === 'string' ? typedBlock.id : '-';
+    d(`tool use | id=${id} name=${typedBlock.name} input=${summarizeToolInput(typedBlock.input) || '-'}`);
+  }
+}
+
 function formatToolUse(name: string, input: unknown): string {
   const summary = summarizeToolInput(input);
   return summary ? `Tool: ${name} ${summary}` : `Tool: ${name}`;
@@ -260,6 +352,12 @@ function redactLargeInput(input: Record<string, unknown>): Record<string, unknow
     if (typeof value === 'string') return [key, truncate(value, 140)];
     return [key, value];
   }));
+}
+
+function summarizeToolResult(result: unknown): string {
+  if (typeof result === 'string') return JSON.stringify(truncate(result, 240));
+  if (!result || typeof result !== 'object') return JSON.stringify(result);
+  return JSON.stringify(redactLargeInput(result as Record<string, unknown>));
 }
 
 function countUsageTokens(usage: unknown): number {

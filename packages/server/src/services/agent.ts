@@ -1,6 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import { copyFileSync, cpSync, existsSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { basename, extname, join } from 'node:path';
+import { basename, extname, isAbsolute, join, normalize, relative } from 'node:path';
 import type { AgentConfig, AgentSession, AgentSessionStatus } from '@agent-spaces/shared';
 import {
   listAgentSessions,
@@ -444,12 +444,42 @@ export function getAvailableSkillNames(agentDir: string | undefined, skills?: st
 }
 
 export function resolveWorkingDir(workspaceId: string, preset: AgentConfig): string {
-  if (preset.workingDir?.trim()) return preset.workingDir;
   const ws = getWorkspace(workspaceId);
+  const mappedWorkingDir = resolveWorkspacePath(ws?.boundDirs, preset.workingDir);
+  if (mappedWorkingDir) return mappedWorkingDir;
+
   if (!ws) return process.cwd();
   const workspaceAgentDir = getWorkspaceAgentDir(ws.agentspaceDir, preset.id);
   ensureWorkspaceAgentCopy(preset, ws.agentspaceDir);
   return workspaceAgentDir;
+}
+
+function resolveWorkspacePath(boundDirs: string[] | undefined, workingDir?: string): string | undefined {
+  const raw = workingDir?.trim();
+  if (!raw) return undefined;
+
+  if (raw === '/workspace' || raw.startsWith('/workspace/')) {
+    const root = boundDirs?.[0];
+    if (!root) return undefined;
+    const suffix = raw.slice('/workspace'.length).replace(/^\/+/, '');
+    const mapped = suffix ? join(root, suffix) : root;
+    return existsSync(mapped) ? mapped : root;
+  }
+
+  if (!isAbsolute(raw)) {
+    const root = boundDirs?.[0];
+    if (!root) return undefined;
+    const mapped = join(root, raw);
+    return existsSync(mapped) ? mapped : undefined;
+  }
+
+  if (existsSync(raw)) return raw;
+
+  const root = boundDirs?.[0];
+  if (!root) return undefined;
+  const rootRelative = relative(normalize(root), normalize(raw));
+  if (!rootRelative.startsWith('..') && rootRelative !== '') return root;
+  return undefined;
 }
 
 function getGlobalAgentTemplateDir(agentId: string): string {

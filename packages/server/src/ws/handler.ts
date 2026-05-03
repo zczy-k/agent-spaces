@@ -133,7 +133,7 @@ async function runMentionedAgent(
     senderRole: preset.role,
     content: 'Agent is processing...',
     type: 'text',
-    status: 'pending',
+    status: 'streaming',
     metadata: {
       agentSessionId: session.id,
       runtime: preset.runtimeKind,
@@ -160,20 +160,55 @@ async function runMentionedAgent(
     });
     const history = listMessages(workspaceId, channelId, { limit: 20 });
     const workspace = wsService.getById(workspaceId);
+    const liveOutput: string[] = [];
+    let lastLiveUpdate = 0;
+    const broadcastLiveParts = (force = false) => {
+      const now = Date.now();
+      if (!force && now - lastLiveUpdate < 120) return;
+      lastLiveUpdate = now;
+      const parts = buildAgentMessageParts({
+        sessionId: session.id,
+        presetName: preset.name || preset.role,
+        role: preset.role,
+        model: preset.modelId,
+        systemPrompt: preset.systemPrompt,
+        mcpServers: Object.keys(mcpServers ?? {}),
+        skills,
+        output: liveOutput,
+        success: true,
+      });
+      if (parts.length === 0) return;
+
+      const live = updateMessage(workspaceId, channelId, pending.id, {
+        content: liveOutput.join('\n') || pending.content,
+        status: 'streaming',
+        parts,
+      });
+      if (live) broadcastToWorkspace(workspaceId, 'channel.message.updated', live);
+    };
     const result = await runtime.execute(buildAgentPrompt(preset.systemPrompt, prompt, history, {
       mcpServers: Object.keys(mcpServers ?? {}),
       skills,
       boundDirs: workspace?.boundDirs,
     }), agentService.resolveWorkingDir(workspaceId, preset), {
-      maxTurns: 6,
+      maxTurns: 100,
       mcpServers,
       skills,
       configDir,
       sandboxDirs: preset.sandboxDirs,
+      onEvent: (event) => {
+        if (event.type !== 'output') return;
+        liveOutput.push(event.line);
+        broadcastToWorkspace(workspaceId, 'agent.output', { agentId: session.id, data: event.line });
+        broadcastLiveParts();
+      },
     });
+    broadcastLiveParts(true);
 
-    for (const line of result.output) {
-      broadcastToWorkspace(workspaceId, 'agent.output', { agentId: session.id, data: line });
+    if (liveOutput.length === 0) {
+      for (const line of result.output) {
+        broadcastToWorkspace(workspaceId, 'agent.output', { agentId: session.id, data: line });
+      }
     }
 
     agentService.complete(workspaceId, session.id, result.success ? undefined : result.error);

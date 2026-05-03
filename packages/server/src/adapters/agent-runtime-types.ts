@@ -20,6 +20,12 @@ export interface AgentRunOptions {
   skills?: string[];
   configDir?: string;
   sandboxDirs?: string[];
+  onEvent?: (event: AgentRuntimeEvent) => void;
+}
+
+export interface AgentRuntimeEvent {
+  type: 'output';
+  line: string;
 }
 
 export type AgentRuntimeKind = 'open-agent-sdk' | 'claude-code';
