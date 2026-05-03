@@ -54,6 +54,13 @@ Complete
 - [x] Verify targeted builds/lint.
 - **Status:** complete
 
+### Phase 9: Monaco Detail Viewer
+- [x] Add read-only Monaco code block component.
+- [x] Render JSON input/output through read-only Monaco instead of plain pre blocks.
+- [x] Render Edit/MultiEdit details through `DiffViewer`.
+- [x] Verify targeted frontend lint and shared/server builds.
+- **Status:** complete
+
 ## Key Questions
 1. Where is queue used? Answer: only `message-parts.tsx` imports it for `todo` parts.
 2. Why does duplicate final text appear? Likely because live stream parts already include final text, then completion rebuilds parts from `result.output`, which can include the same assistant output again.

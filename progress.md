@@ -87,6 +87,20 @@
   - `packages/server/src/ws/handler.ts`
   - `packages/web/src/components/chat/message-parts.tsx`
 
+### Phase 9: Monaco Detail Viewer
+- **Status:** complete
+- Actions taken:
+  - Added a read-only Monaco-based `ReadonlyCodeBlock` for tool detail sections.
+  - Replaced plain text detail rendering with structured Input/Output viewers.
+  - Added Edit/MultiEdit detail rendering through `DiffViewer`.
+  - Edit diff uses `old_string/new_string` or `edits[]`; when tool output includes full file content, that content is used as the modified side.
+  - Re-ran targeted frontend lint and shared/server builds.
+- Files created/modified:
+  - `packages/web/src/components/chat/readonly-code-block.tsx`
+  - `packages/web/src/components/chat/message-parts.tsx`
+  - `task_plan.md`
+  - `progress.md`
+
 ## Test Results
 | Test | Input | Expected | Actual | Status |
 |------|-------|----------|--------|--------|
@@ -96,6 +110,8 @@
 | Targeted chat lint after concise tool UI | `pnpm --filter @agent-spaces/web exec eslint src/components/chat/message-parts.tsx src/components/chat/message-item.tsx src/components/chat/chain-of-thought.tsx` | No lint errors in touched chat files | Succeeded | pass |
 | Tool detail output build | `pnpm --filter @agent-spaces/shared build && pnpm --filter @agent-spaces/server build` | TypeScript compile succeeds | Succeeded | pass |
 | Tool detail output lint | `pnpm --filter @agent-spaces/web exec eslint src/components/chat/message-parts.tsx src/components/chat/message-item.tsx src/components/chat/chain-of-thought.tsx` | No lint errors in touched chat files | Succeeded | pass |
+| Monaco detail viewer lint | `pnpm --filter @agent-spaces/web exec eslint src/components/chat/message-parts.tsx src/components/chat/message-item.tsx src/components/chat/readonly-code-block.tsx src/components/chat/chain-of-thought.tsx` | No lint errors in touched chat files | Succeeded | pass |
+| Monaco detail viewer server compatibility | `pnpm --filter @agent-spaces/shared build && pnpm --filter @agent-spaces/server build` | Existing server/shared types still compile | Succeeded | pass |
 | Full web lint | `pnpm --filter @agent-spaces/web lint` | No lint errors | Failed on existing unrelated lint errors in inspect-source-loader, composer, commit, providers/models dialog, etc. | blocked |
 | Web typecheck | `pnpm --filter @agent-spaces/web exec tsc --noEmit` | No TS errors | Failed on existing unrelated TS errors in dashboard icons, timeline imports, commit/task collapsible typing, etc.; the prior chain-of-thought missing dependency error was fixed. | blocked |
 

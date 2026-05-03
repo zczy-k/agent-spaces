@@ -46,6 +46,8 @@ export interface MessageTodo {
   title: string;
   description?: string;
   status?: 'pending' | 'completed';
+  kind?: 'tool' | 'message';
+  text?: string;
   toolName?: string;
   filePath?: string;
   command?: string;

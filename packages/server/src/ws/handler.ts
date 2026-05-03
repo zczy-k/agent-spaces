@@ -323,34 +323,19 @@ function buildAgentMessageParts(input: {
   error?: string;
 }): MessagePart[] {
   const lines = input.output.filter((line) => line.trim());
-  const toolLines = lines.filter(isToolLikeLine);
-  const reasoningLines = lines.filter((line) => !isToolLikeLine(line) && !isFinalAnswerLine(line));
-  const finalText = lines.filter(isFinalAnswerLine).join('\n') || lines.at(-1) || '';
+  const finalTextIndex = findFinalTextIndex(lines);
+  const finalText = finalTextIndex >= 0 ? lines[finalTextIndex] : '';
   const usage = extractUsage(lines);
   const parts: MessagePart[] = [];
 
-  if (reasoningLines.length > 0) {
+  const chainItems = buildChainItems(lines, finalTextIndex, input.workspaceRoot, input.toolDetails);
+
+  if (chainItems.length > 0) {
     parts.push({
-      id: `reasoning-${input.sessionId}`,
-      type: 'reasoning',
-      text: reasoningLines.join('\n'),
-      status: 'completed',
+      id: `chain-${input.sessionId}`,
+      type: 'todo',
+      todos: chainItems,
     });
-  }
-
-  if (toolLines.length > 0) {
-    const todos = toolLines
-      .filter((line) => !isSubagentToolLine(line))
-      .slice(0, 20)
-      .map((line, index) => buildToolTodo(line, index, input.workspaceRoot, input.toolDetails));
-
-    if (todos.length > 0) {
-      parts.push({
-        id: `tools-${input.sessionId}`,
-        type: 'todo',
-        todos,
-      });
-    }
   }
 
   for (const subagent of extractSubagentBlocks(lines, input.sessionId)) {
@@ -390,6 +375,54 @@ function buildAgentMessageParts(input: {
   }
 
   return parts;
+}
+
+function findFinalTextIndex(lines: string[]): number {
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    const line = lines[index];
+    if (isFinalAnswerLine(line)) return index;
+  }
+  return -1;
+}
+
+function buildChainItems(
+  lines: string[],
+  finalTextIndex: number,
+  workspaceRoot?: string,
+  toolDetails?: Map<string, ToolDetail>,
+): MessageTodo[] {
+  let toolIndex = 0;
+  let messageIndex = 0;
+  const items: MessageTodo[] = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    if (index === finalTextIndex) continue;
+    const line = lines[index];
+    if (isSubagentToolLine(line)) continue;
+    if (isToolLikeLine(line)) {
+      items.push(buildToolTodo(line, toolIndex, workspaceRoot, toolDetails));
+      toolIndex += 1;
+      continue;
+    }
+    if (isFinalAnswerLine(line)) {
+      items.push({
+        id: `message-${messageIndex}`,
+        title: summarizeMessageTitle(line),
+        text: line,
+        kind: 'message',
+        status: 'completed',
+      });
+      messageIndex += 1;
+    }
+  }
+
+  return items.slice(0, 40);
+}
+
+function summarizeMessageTitle(text: string): string {
+  const normalized = text.trim().replace(/\s+/g, ' ');
+  if (!normalized) return 'AI message';
+  return normalized.length > 80 ? `${normalized.slice(0, 77)}...` : normalized;
 }
 
 function isToolLikeLine(line: string): boolean {

@@ -7,6 +7,7 @@ import { Markdown } from "@/components/ui/markdown"
 import { Loader } from "@/components/ui/loader"
 import { Button } from "@/components/ui/button"
 import { useEditorStore } from "@/stores/editor"
+import { DiffViewer } from "@/components/git/diff-viewer"
 import {
   Agent,
   AgentContent,
@@ -51,6 +52,7 @@ import {
   ChainOfThoughtStep,
 } from "./chain-of-thought"
 import { Terminal } from "./terminal"
+import { ReadonlyCodeBlock } from "./readonly-code-block"
 
 interface MessagePartsProps {
   message: Message
@@ -107,10 +109,22 @@ function MessagePartView({ part, message, workspaceId }: { part: MessagePart; me
     case "todo":
       return (
         <ChainOfThought defaultOpen className="max-w-none">
-          <ChainOfThoughtHeader>{part.todos.length} tool {part.todos.length === 1 ? "use" : "uses"}</ChainOfThoughtHeader>
+          <ChainOfThoughtHeader>{part.todos.length} chain {part.todos.length === 1 ? "step" : "steps"}</ChainOfThoughtHeader>
           <ChainOfThoughtContent>
             {part.todos.map((todo) => {
               const completed = todo.status === "completed"
+              if (todo.kind === "message") {
+                return (
+                  <ChainOfThoughtStep
+                    key={todo.id}
+                    icon={MessageSquareTextIcon}
+                    label="AI message"
+                    status={completed ? "complete" : "active"}
+                  >
+                    <Markdown content={todo.text ?? todo.title} />
+                  </ChainOfThoughtStep>
+                )
+              }
               return (
                 <ToolStep
                   key={todo.id}
@@ -240,7 +254,7 @@ function ToolStep({
 }) {
   const openFile = useEditorStore((state) => state.openFile)
   const [open, setOpen] = useState(false)
-  const [detail, setDetail] = useState<string | null>(null)
+  const [detail, setDetail] = useState<ToolDetailData | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -261,8 +275,8 @@ function ToolStep({
         `/api/workspaces/${workspaceId}/channels/${message.channelId}/messages/${message.id}/tool-details/${todo.detailId}`,
       )
       if (!res.ok) throw new Error(await res.text())
-      const data = await res.json() as { raw?: string; input?: unknown; output?: unknown }
-      setDetail(formatToolDetail(data))
+      const data = await res.json() as ToolDetailData
+      setDetail(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load details.")
     } finally {
@@ -303,14 +317,89 @@ function ToolStep({
         </button>
       ) : null}
       {open ? (
-        <div className="max-h-72 overflow-auto rounded-md border bg-muted/40 p-2">
-          <pre className="whitespace-pre-wrap break-words text-xs text-muted-foreground">
-            {loading ? "Loading details..." : error ?? detail ?? "No details available."}
-          </pre>
+        <div className="space-y-2">
+          {loading ? (
+            <div className="rounded-md border bg-muted/40 p-2 text-muted-foreground text-xs">Loading details...</div>
+          ) : error ? (
+            <div className="rounded-md border bg-muted/40 p-2 text-destructive text-xs">{error}</div>
+          ) : detail ? (
+            <ToolDetailView detail={detail} toolName={todo.toolName} filePath={todo.filePath} />
+          ) : (
+            <div className="rounded-md border bg-muted/40 p-2 text-muted-foreground text-xs">No details available.</div>
+          )}
         </div>
       ) : null}
     </ChainOfThoughtStep>
   )
+}
+
+interface ToolDetailData {
+  raw?: string
+  input?: unknown
+  output?: unknown
+}
+
+function ToolDetailView({
+  detail,
+  toolName,
+  filePath,
+}: {
+  detail: ToolDetailData
+  toolName?: string
+  filePath?: string
+}) {
+  const editDiff = buildEditDiff(detail.input, detail.output, filePath)
+  if (editDiff && /^(Edit|MultiEdit)$/i.test(toolName ?? "")) {
+    return (
+      <div className="h-80 overflow-hidden rounded-md border bg-background">
+        <DiffViewer
+          oldContent={editDiff.oldContent}
+          newContent={editDiff.newContent}
+          path={editDiff.path}
+        />
+      </div>
+    )
+  }
+
+  const sections = buildDetailSections(detail)
+  if (sections.length === 0 && detail.raw) {
+    return <ReadonlyCodeBlock title="Raw" value={detail.raw} language="plaintext" />
+  }
+
+  return (
+    <div className="space-y-2">
+      {sections.map((section) => (
+        <ReadonlyCodeBlock
+          key={section.title}
+          title={section.title}
+          value={section.value}
+          language={section.language}
+          height={section.height}
+        />
+      ))}
+    </div>
+  )
+}
+
+function buildDetailSections(detail: ToolDetailData) {
+  const sections: Array<{ title: string; value: string; language: string; height?: number }> = []
+  if (detail.input !== undefined) {
+    sections.push({
+      title: "Input",
+      value: formatDetailValue(detail.input),
+      language: isJsonValue(detail.input) ? "json" : "plaintext",
+      height: 180,
+    })
+  }
+  if (detail.output !== undefined) {
+    sections.push({
+      title: "Output",
+      value: formatDetailValue(detail.output),
+      language: isJsonValue(detail.output) ? "json" : "plaintext",
+      height: 220,
+    })
+  }
+  return sections
 }
 
 function fileName(path: string) {
@@ -321,21 +410,68 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
 
-function formatToolDetail(detail: { raw?: string; input?: unknown; output?: unknown }) {
-  const sections: string[] = []
-  if (detail.input !== undefined) {
-    sections.push(`Input\n${formatDetailValue(detail.input)}`)
-  }
-  if (detail.output !== undefined) {
-    sections.push(`Output\n${formatDetailValue(detail.output)}`)
-  }
-  if (sections.length > 0) return sections.join("\n\n")
-  return detail.raw ?? ""
-}
-
 function formatDetailValue(value: unknown) {
   if (typeof value === "string") return value
   return JSON.stringify(value, null, 2)
+}
+
+function isJsonValue(value: unknown) {
+  return typeof value !== "string"
+}
+
+function buildEditDiff(input: unknown, output: unknown, fallbackPath?: string) {
+  if (!input || typeof input !== "object") return null
+  const record = input as Record<string, unknown>
+  const path = stringValue(record.file_path) ?? stringValue(record.path) ?? fallbackPath ?? "edit"
+  const outputContent = extractOutputFileContent(output)
+
+  const oldString = stringValue(record.old_string)
+  const newString = stringValue(record.new_string)
+  if (oldString !== undefined && newString !== undefined) {
+    return {
+      path,
+      oldContent: oldString,
+      newContent: outputContent ?? newString,
+    }
+  }
+
+  const edits = Array.isArray(record.edits) ? record.edits : []
+  if (edits.length > 0) {
+    const oldContent = edits
+      .map((edit, index) => {
+        if (!edit || typeof edit !== "object") return `#${index + 1}`
+        return stringValue((edit as Record<string, unknown>).old_string) ?? `#${index + 1}`
+      })
+      .join("\n\n")
+    const newContent = outputContent ?? edits
+      .map((edit, index) => {
+        if (!edit || typeof edit !== "object") return `#${index + 1}`
+        return stringValue((edit as Record<string, unknown>).new_string) ?? `#${index + 1}`
+      })
+      .join("\n\n")
+
+    return { path, oldContent, newContent }
+  }
+
+  return null
+}
+
+function extractOutputFileContent(output: unknown) {
+  if (!output || typeof output !== "object") return undefined
+  const record = output as Record<string, unknown>
+  const directContent = stringValue(record.content)
+  if (directContent !== undefined) return directContent
+
+  const file = record.file
+  if (file && typeof file === "object") {
+    return stringValue((file as Record<string, unknown>).content)
+  }
+
+  return undefined
+}
+
+function stringValue(value: unknown) {
+  return typeof value === "string" ? value : undefined
 }
 
 function normalizeApproval(id: string, approval: Extract<MessagePart, { type: "confirmation" }>["approval"]) {
