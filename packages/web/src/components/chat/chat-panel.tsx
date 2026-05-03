@@ -12,6 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { ChannelInfoPanel } from './channel-info-panel';
 import { MessageNavigator } from './message-navigator';
 import { findAgentById } from '@/lib/agent-members';
+import { AgentIcon } from '@/components/common/agent-icon';
+import { AvatarGroup, AvatarGroupCount } from '@/components/ui/avatar';
 
 import type { AgentConfig, Channel, Message } from '@agent-spaces/shared';
 
@@ -20,6 +22,22 @@ const channelTypeStatus: Record<Channel['type'], { label: string; status: 'onlin
   issue: { label: 'Issue', status: 'degraded' },
   agent: { label: 'Agent', status: 'maintenance' },
 };
+
+const MAX_VISIBLE = 4;
+
+function ChannelMemberAvatars({ members }: { members: string[] }) {
+  const visible = members.filter((m) => m !== 'user').slice(0, MAX_VISIBLE);
+  const remaining = members.length - visible.length - (members.includes('user') ? 1 : 0);
+
+  return (
+    <AvatarGroup className="ml-1 [&>[data-slot=avatar]]:size-5">
+      {visible.map((agentId) => (
+        <AgentIcon key={agentId} agentId={agentId} className="size-5 rounded-full" />
+      ))}
+      {remaining > 0 && <AvatarGroupCount className="!size-5 text-[10px]">+{remaining}</AvatarGroupCount>}
+    </AvatarGroup>
+  );
+}
 
 interface ChatPanelProps {
   workspaceId: string;
@@ -181,7 +199,7 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
             <StatusIndicator />
             <StatusLabel>{typeConf.label}</StatusLabel>
           </Status>
-          <span className="text-xs text-muted-foreground">{channel.members.length} members</span>
+          <ChannelMemberAvatars members={channel.members} />
           <div className="flex-1" />
           <Button
             variant="ghost"

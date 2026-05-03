@@ -19,6 +19,13 @@ type Attachment = {
   preview: string;
 };
 
+function stripSimpleParagraphs(html: string): string {
+  if (!html) return html;
+  const stripped = html.replace(/<\/?p>/g, "");
+  if (/<[^>]+>/.test(stripped)) return html;
+  return html.replace(/<\/p>\s*<p>/g, "\n").replace(/<\/?p>/g, "");
+}
+
 function createSuggestionRenderer() {
   let component: ReactRenderer | null = null;
   let popup: any = null;
@@ -278,7 +285,7 @@ export function ComposerEditor({
       );
 
       await onSubmit({
-        content: editor.getHTML(),
+        content: stripSimpleParagraphs(editor.getHTML()),
         attachments: uploaded,
       });
 

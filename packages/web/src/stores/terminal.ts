@@ -10,6 +10,7 @@ interface TerminalState {
   sessions: TerminalSession[];
   activeId: string | null;
   ws: WorkspaceWS | null;
+  _initialized: boolean;
 
   init: (ws: WorkspaceWS) => void;
   createSession: () => void;
@@ -23,15 +24,21 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
   sessions: [],
   activeId: null,
   ws: null,
+  _initialized: false,
 
   init: (ws) => {
-    set({ ws });
+    const state = get();
+    if (state._initialized && state.ws === ws) return;
+    set({ ws, _initialized: true });
     ws.on('terminal.created', (data) => {
       const { sessionId, cwd } = data as { sessionId: string; cwd: string };
-      set((s) => ({
-        sessions: [...s.sessions, { id: sessionId, cwd }],
-        activeId: sessionId,
-      }));
+      set((s) => {
+        if (s.sessions.some((t) => t.id === sessionId)) return s;
+        return {
+          sessions: [...s.sessions, { id: sessionId, cwd }],
+          activeId: sessionId,
+        };
+      });
     });
     ws.on('terminal.closed', (data) => {
       const { sessionId } = data as { sessionId: string };

@@ -58,17 +58,24 @@ export function TerminalPanel({ workspaceId }: TerminalPanelProps) {
       </div>
 
       {/* Terminal content */}
-      <div className="flex-1 overflow-hidden">
-        {activeSession ? (
-          <TerminalInstance
-            key={activeSession.id}
-            sessionId={activeSession.id}
-            workspaceId={workspaceId}
-          />
-        ) : (
+      <div className="flex-1 overflow-hidden relative">
+        {sessions.length === 0 ? (
           <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
             No terminal session
           </div>
+        ) : (
+          sessions.map((session) => (
+            <div
+              key={session.id}
+              className="absolute inset-0"
+              style={{ display: activeId === session.id ? 'block' : 'none' }}
+            >
+              <TerminalInstance
+                sessionId={session.id}
+                workspaceId={workspaceId}
+              />
+            </div>
+          ))
         )}
       </div>
     </div>

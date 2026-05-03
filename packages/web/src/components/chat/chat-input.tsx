@@ -154,7 +154,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     }
     try {
       const uploaded = await Promise.all(attachments.map(uploadAttachment));
-      onSendRef.current(text ? currentEditor.getHTML() : "", mentions, uploaded);
+      onSendRef.current(text ? stripSimpleParagraphs(currentEditor.getHTML()) : "", mentions, uploaded);
       currentEditor.commands.clearContent();
       setAttachments((prev) => {
         prev.forEach((item) => URL.revokeObjectURL(item.preview));
@@ -701,6 +701,13 @@ function collectMentionIds(node: JSONContent): string[] {
   };
   walk(node);
   return [...ids];
+}
+
+function stripSimpleParagraphs(html: string): string {
+  if (!html) return html;
+  const stripped = html.replace(/<\/?p>/g, "");
+  if (/<[^>]+>/.test(stripped)) return html;
+  return html.replace(/<\/p>\s*<p>/g, "\n").replace(/<\/?p>/g, "");
 }
 
 function getMcpLabels(mcps: AgentConfig["mcps"] | undefined): string[] {
