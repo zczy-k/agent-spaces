@@ -223,8 +223,9 @@ async function runMentionedAgent(
       error: result.error,
     });
 
+    const displayOutput = liveOutput.length > 0 ? liveOutput : result.output;
     const reply = updateMessage(workspaceId, channelId, pending.id, {
-      content: result.success ? result.output.join('\n') : result.error || result.output.join('\n'),
+      content: result.success ? displayOutput.join('\n') : result.error || displayOutput.join('\n'),
       type: 'text',
       status: result.success ? 'completed' : 'error',
       metadata: {
@@ -241,7 +242,7 @@ async function runMentionedAgent(
         systemPrompt: preset.systemPrompt,
         mcpServers: Object.keys(mcpServers ?? {}),
         skills,
-        output: result.output,
+        output: displayOutput,
         success: result.success,
         error: result.error,
       }),

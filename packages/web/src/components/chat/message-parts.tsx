@@ -1,7 +1,7 @@
 "use client"
 
 import type { Message, MessagePart } from "@agent-spaces/shared"
-import { ListChecksIcon } from "lucide-react"
+import { CheckCircle2Icon, CircleIcon, MessageSquareTextIcon } from "lucide-react"
 import { Markdown } from "@/components/ui/markdown"
 import { Loader } from "@/components/ui/loader"
 import {
@@ -42,18 +42,11 @@ import {
   ContextTrigger,
 } from "./context"
 import {
-  Queue,
-  QueueItem,
-  QueueItemContent,
-  QueueItemDescription,
-  QueueItemIndicator,
-  QueueList,
-  QueueSection,
-  QueueSectionContent,
-  QueueSectionLabel,
-  QueueSectionTrigger,
-} from "./queue"
-import { Reasoning, ReasoningContent, ReasoningTrigger } from "./reasoning"
+  ChainOfThought,
+  ChainOfThoughtContent,
+  ChainOfThoughtHeader,
+  ChainOfThoughtStep,
+} from "./chain-of-thought"
 import { Terminal } from "./terminal"
 
 interface MessagePartsProps {
@@ -90,38 +83,40 @@ function MessagePartView({ part }: { part: MessagePart }) {
       return <Markdown content={part.text} />
     case "reasoning":
       return (
-        <Reasoning isStreaming={part.status === "streaming"} duration={part.duration}>
-          <ReasoningTrigger />
-          <ReasoningContent>{part.text}</ReasoningContent>
-        </Reasoning>
+        <ChainOfThought defaultOpen={part.status === "streaming"} className="max-w-none">
+          <ChainOfThoughtHeader>
+            {part.status === "streaming" ? "Agent is thinking" : "AI intermediate output"}
+          </ChainOfThoughtHeader>
+          <ChainOfThoughtContent>
+            <ChainOfThoughtStep
+              icon={MessageSquareTextIcon}
+              label={part.status === "streaming" ? "Streaming response" : "Intermediate message"}
+              status={part.status === "streaming" ? "active" : "complete"}
+            >
+              <Markdown content={part.text} />
+            </ChainOfThoughtStep>
+          </ChainOfThoughtContent>
+        </ChainOfThought>
       )
     case "todo":
       return (
-        <Queue>
-          <QueueSection defaultOpen>
-            <QueueSectionTrigger>
-              <QueueSectionLabel count={part.todos.length} label="steps" icon={<ListChecksIcon className="size-4" />} />
-            </QueueSectionTrigger>
-            <QueueSectionContent>
-              <QueueList>
-                {part.todos.map((todo) => {
-                  const completed = todo.status === "completed"
-                  return (
-                    <QueueItem key={todo.id}>
-                      <div className="flex items-center gap-2">
-                        <QueueItemIndicator completed={completed} />
-                        <QueueItemContent completed={completed}>{todo.title}</QueueItemContent>
-                      </div>
-                      {todo.description ? (
-                        <QueueItemDescription completed={completed}>{todo.description}</QueueItemDescription>
-                      ) : null}
-                    </QueueItem>
-                  )
-                })}
-              </QueueList>
-            </QueueSectionContent>
-          </QueueSection>
-        </Queue>
+        <ChainOfThought defaultOpen className="max-w-none">
+          <ChainOfThoughtHeader>{part.todos.length} tool {part.todos.length === 1 ? "use" : "uses"}</ChainOfThoughtHeader>
+          <ChainOfThoughtContent>
+            {part.todos.map((todo) => {
+              const completed = todo.status === "completed"
+              return (
+                <ChainOfThoughtStep
+                  key={todo.id}
+                  icon={completed ? CheckCircle2Icon : CircleIcon}
+                  label={todo.title}
+                  description={todo.description}
+                  status={completed ? "complete" : "active"}
+                />
+              )
+            })}
+          </ChainOfThoughtContent>
+        </ChainOfThought>
       )
     case "terminal":
       return (

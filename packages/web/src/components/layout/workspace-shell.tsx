@@ -10,7 +10,9 @@ import { ChannelList } from "@/components/chat/channel-list";
 import { ChatPanel } from "@/components/chat/chat-panel";
 import { IssueList } from "@/components/issue/issue-list";
 import { IssueDetail } from "@/components/issue/issue-detail";
-import { GitPanel } from "@/components/git/git-panel";
+import { GitChangesPanel } from "@/components/git/git-changes-panel";
+import { GitCommitsPanel } from "@/components/git/git-commits-panel";
+import { GitGraphPanel } from "@/components/git/git-graph-panel";
 import { getWS } from "@/lib/ws";
 import { useIssueStore } from "@/stores/issue";
 import { useTaskStore } from "@/stores/task";
@@ -26,7 +28,9 @@ const tabIcons: Record<string, React.ReactNode> = {
   "chat": <MessageSquare size={16} />,
   "issue-detail": <FileText size={16} />,
   "terminal": <TerminalSquare size={16} />,
-  "git": <GitBranch size={16} />,
+  "git-changes": <GitBranch size={16} />,
+  "git-commits": <GitBranch size={16} />,
+  "git-graph": <GitBranch size={16} />,
 };
 
 const defaultJson: IJsonModel = {
@@ -41,7 +45,9 @@ const defaultJson: IJsonModel = {
       location: "bottom",
       children: [
         { type: "tab", name: "Terminal", component: "terminal" },
-        { type: "tab", name: "Git", component: "git" },
+        { type: "tab", name: "Changes", component: "git-changes" },
+        { type: "tab", name: "Commits", component: "git-commits" },
+        { type: "tab", name: "Graph", component: "git-graph" },
       ],
     },
   ],
@@ -150,8 +156,12 @@ export function WorkspaceShell({ workspaceId }: WorkspaceShellProps) {
           return <IssueDetail workspaceId={workspaceId} />;
         case "terminal":
           return <TerminalPanel workspaceId={workspaceId} />;
-        case "git":
-          return <GitPanel workspaceId={workspaceId} />;
+        case "git-changes":
+          return <GitChangesPanel workspaceId={workspaceId} />;
+        case "git-commits":
+          return <GitCommitsPanel workspaceId={workspaceId} />;
+        case "git-graph":
+          return <GitGraphPanel workspaceId={workspaceId} />;
         default:
           return <Placeholder name={node.getName()} />;
       }

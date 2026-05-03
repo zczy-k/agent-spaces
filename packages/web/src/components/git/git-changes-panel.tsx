@@ -24,7 +24,7 @@ const statusLabels: Record<string, string> = {
   untracked: "U",
 };
 
-export function GitPanel({ workspaceId }: GitPanelProps) {
+export function GitChangesPanel({ workspaceId }: GitPanelProps) {
   const { status, diffs, selectedFile, loading, loadStatus, loadDiffs, selectFile } = useGitStore();
 
   const refresh = useCallback(() => {

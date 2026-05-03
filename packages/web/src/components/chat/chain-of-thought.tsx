@@ -1,16 +1,13 @@
 "use client"
 
-import { useControllableState } from "@radix-ui/react-use-controllable-state"
 import {
   BrainIcon,
   ChevronDownIcon,
   DotIcon,
-  ImageIcon,
   type LucideIcon,
-  SearchIcon,
 } from "lucide-react"
 import type { ComponentProps, ReactNode } from "react"
-import { createContext, memo, useContext, useMemo } from "react"
+import { createContext, memo, useCallback, useContext, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { cn } from "@/lib/utils"
@@ -45,11 +42,17 @@ export const ChainOfThought = memo(
     children,
     ...props
   }: ChainOfThoughtProps) => {
-    const [isOpen, setIsOpen] = useControllableState({
-      prop: open,
-      defaultProp: defaultOpen,
-      onChange: onOpenChange,
-    })
+    const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen)
+    const isOpen = open ?? uncontrolledOpen
+    const setIsOpen = useCallback(
+      (nextOpen: boolean) => {
+        if (open === undefined) {
+          setUncontrolledOpen(nextOpen)
+        }
+        onOpenChange?.(nextOpen)
+      },
+      [onOpenChange, open],
+    )
 
     const chainOfThoughtContext = useMemo(() => ({ isOpen, setIsOpen }), [isOpen, setIsOpen])
 
@@ -203,12 +206,3 @@ ChainOfThoughtSearchResults.displayName = "ChainOfThoughtSearchResults"
 ChainOfThoughtSearchResult.displayName = "ChainOfThoughtSearchResult"
 ChainOfThoughtContent.displayName = "ChainOfThoughtContent"
 ChainOfThoughtImage.displayName = "ChainOfThoughtImage"
-
-import { Image } from "@/components/ai/image"
-
-const exampleImage = {
-  base64:
-    "iVBORw0KGgoAAAANSUhEUgAAASwAAADICAYAAABS39xVAAAACXBIWXMAABYlAAAWJQFJUiTwAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAABLkSURBVHgB7d1rUxvXGQfw5+xqJXQBCRACgSE4tsEXsJvGaduknU7TTt9m0neZaT/AdNq+yxfoh+hMp9O0SdO0TemkjePYsbExNuYiQCAJSavdPX3OauViISSwJFbw/DEwWqF9zln2t+ecPXtWABEREREREREREREREREREREREREREdFl",
-  mediaType: "image/png" as const,
-  uint8Array: new Uint8Array([]),
-}
