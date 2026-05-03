@@ -101,6 +101,20 @@
   - `task_plan.md`
   - `progress.md`
 
+### Phase 10: Repeated Edit Detail Matching
+- **Status:** complete
+- Actions taken:
+  - Confirmed repeated Edit calls can produce identical compact tool lines while their saved tool detail records remain unique.
+  - Fixed chain item detail lookup to consume matching details by raw-line occurrence order during each message build.
+  - Documented the distinction between `tool_result` output association and chain item `detailId` backfill.
+  - Ran server build.
+- Files created/modified:
+  - `packages/server/src/ws/handler.ts`
+  - `docs/ai-message-rendering.md`
+  - `task_plan.md`
+  - `findings.md`
+  - `progress.md`
+
 ## Test Results
 | Test | Input | Expected | Actual | Status |
 |------|-------|----------|--------|--------|
@@ -112,6 +126,7 @@
 | Tool detail output lint | `pnpm --filter @agent-spaces/web exec eslint src/components/chat/message-parts.tsx src/components/chat/message-item.tsx src/components/chat/chain-of-thought.tsx` | No lint errors in touched chat files | Succeeded | pass |
 | Monaco detail viewer lint | `pnpm --filter @agent-spaces/web exec eslint src/components/chat/message-parts.tsx src/components/chat/message-item.tsx src/components/chat/readonly-code-block.tsx src/components/chat/chain-of-thought.tsx` | No lint errors in touched chat files | Succeeded | pass |
 | Monaco detail viewer server compatibility | `pnpm --filter @agent-spaces/shared build && pnpm --filter @agent-spaces/server build` | Existing server/shared types still compile | Succeeded | pass |
+| Repeated edit detail matching build | `pnpm --filter @agent-spaces/server build` | Server TypeScript compile succeeds | Succeeded | pass |
 | Full web lint | `pnpm --filter @agent-spaces/web lint` | No lint errors | Failed on existing unrelated lint errors in inspect-source-loader, composer, commit, providers/models dialog, etc. | blocked |
 | Web typecheck | `pnpm --filter @agent-spaces/web exec tsc --noEmit` | No TS errors | Failed on existing unrelated TS errors in dashboard icons, timeline imports, commit/task collapsible typing, etc.; the prior chain-of-thought missing dependency error was fixed. | blocked |
 

@@ -61,6 +61,13 @@ Complete
 - [x] Verify targeted frontend lint and shared/server builds.
 - **Status:** complete
 
+### Phase 10: Repeated Edit Detail Matching
+- [x] Reproduce root cause from code: repeated identical tool lines all matched the first saved detail.
+- [x] Match chain item detail ids by raw-line occurrence order within a message build.
+- [x] Update rendering documentation.
+- [x] Verify server build.
+- **Status:** complete
+
 ## Key Questions
 1. Where is queue used? Answer: only `message-parts.tsx` imports it for `todo` parts.
 2. Why does duplicate final text appear? Likely because live stream parts already include final text, then completion rebuilds parts from `result.output`, which can include the same assistant output again.
@@ -71,6 +78,7 @@ Complete
 | Keep `todo` message part type | Avoids shared schema churn and server/client compatibility risk. |
 | Render `todo` via `ChainOfThought` | Matches user request to stop using queue component while showing tool usage in each chain. |
 | Use live output as final display source when available | The UI has already streamed these parts; rebuilding from `result.output` can duplicate final text. |
+| Consume matching tool details by occurrence order | Repeated identical Edit lines should map to distinct tool detail records instead of the first raw-line match. |
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
@@ -79,3 +87,4 @@ Complete
 ## Notes
 - User specifically wants each chain to show tool usage including non-summary intermediate AI output.
 - Follow-up request: make tool chain display concise and intuitive, do not show raw JSON by default, support read-file links opening in editor tabs, and lazy-load detailed edit contents via query API.
+- Follow-up bug: repeated agent Edit calls against one file showed the same detail because chain item detail lookup matched the first identical raw tool line.

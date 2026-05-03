@@ -19,6 +19,7 @@
 - Editor file tabs are opened through `useEditorStore.openFile(workspaceId, path)`; chat can call this directly and does not need to modify `editor-tabs.tsx`.
 - File API expects paths relative to the workspace root, so server tool summaries normalize absolute `file_path` values under `workspace.boundDirs[0]`.
 - Claude runtime can expose full tool input before formatting; storing this via a new `tool_use` runtime event supports lazy detail fetching without streaming raw edit JSON to the UI.
+- Repeated `Tool: Edit file_path="..."` lines can be text-identical because the compact display line intentionally omits the actual edit body. The saved `ToolDetail` ids are unique by SDK tool use id, but `buildChainItems` previously recovered a chain item's `detailId` by returning the first detail whose `raw` matched the line. That made every repeated identical Edit line point at the first detail.
 
 ## Technical Decisions
 | Decision | Rationale |
@@ -29,6 +30,7 @@
 | Build final parts from `liveOutput` when present | Prevents completion from injecting a second copy of output already streamed. |
 | Store full tool input in separate tool detail storage | Keeps message parts lightweight while allowing edit/detail inspection on demand. |
 | Only show detail links when a saved detail exists | Avoids 404 detail buttons for old messages or runtimes that do not emit structured tool events. |
+| Match detail ids by occurrence order for identical raw tool lines | Preserves compact display lines while keeping repeated Edit details distinct. |
 
 ## Issues Encountered
 | Issue | Resolution |

@@ -552,6 +552,7 @@ function buildChainItems(
   let toolIndex = 0;
   let messageIndex = 0;
   const items: MessageChain[] = [];
+  const toolDetailMatchCounts = new Map<string, number>();
 
   for (let index = 0; index < lines.length; index += 1) {
     if (finalTextRange && index >= finalTextRange.start && index <= finalTextRange.end) continue;
@@ -559,7 +560,7 @@ function buildChainItems(
     if (finalText && isSameMessageText(line, finalText)) continue;
     if (isSubagentToolLine(line)) continue;
     if (isToolLikeLine(line)) {
-      items.push(buildToolTodo(line, toolIndex, workspaceRoot, toolDetails));
+      items.push(buildToolTodo(line, toolIndex, workspaceRoot, toolDetails, toolDetailMatchCounts));
       toolIndex += 1;
       continue;
     }
@@ -604,9 +605,15 @@ function isSubagentToolLine(line: string): boolean {
   return /^Tool:\s*Task\b/i.test(line.trim());
 }
 
-function buildToolTodo(line: string, index: number, workspaceRoot?: string, toolDetails?: Map<string, ToolDetail>): MessageChain {
+function buildToolTodo(
+  line: string,
+  index: number,
+  workspaceRoot?: string,
+  toolDetails?: Map<string, ToolDetail>,
+  toolDetailMatchCounts?: Map<string, number>,
+): MessageChain {
   const summary = summarizeToolLine(line, workspaceRoot);
-  const detailId = findToolDetailId(line, toolDetails);
+  const detailId = findToolDetailId(line, toolDetails, toolDetailMatchCounts);
 
   return {
     id: `tool-${index}`,
@@ -715,10 +722,21 @@ function toWorkspaceRelativePath(path: string | undefined, workspaceRoot?: strin
   return path.slice(workspaceRoot.length).replace(/^[/\\]/, '');
 }
 
-function findToolDetailId(line: string, toolDetails?: Map<string, ToolDetail>): string | undefined {
+function findToolDetailId(
+  line: string,
+  toolDetails?: Map<string, ToolDetail>,
+  matchCounts?: Map<string, number>,
+): string | undefined {
   if (!toolDetails) return undefined;
+  const targetMatchIndex = matchCounts?.get(line) ?? 0;
+  let matchIndex = 0;
   for (const [id, detail] of toolDetails) {
-    if (detail.raw === line) return id;
+    if (detail.raw !== line) continue;
+    if (matchIndex === targetMatchIndex) {
+      matchCounts?.set(line, targetMatchIndex + 1);
+      return id;
+    }
+    matchIndex += 1;
   }
   return undefined;
 }

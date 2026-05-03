@@ -154,6 +154,12 @@ GET /api/workspaces/:id/channels/:channelId/messages/:messageId/tool-details/:de
 3. 同一个文件被多次 Edit 时，按倒序匹配最近一个还没有 output 的 detail，避免多次编辑都显示同一份结果。
 4. 仍匹配不到时，挂到最近一个还没有 output 的工具 detail。
 
+`tool_use` 展示详情回填规则：
+
+- 前端 chain item 只保存 `detailId`，展开时再查询完整详情。
+- 构建 chain item 时，可能出现多条完全相同的工具展示行，例如多次 `Edit file_path="..."`。
+- 因此不能只按 `raw` 工具行查找第一条 detail；同一次消息构建中会按 `raw` 出现顺序依次消费匹配的 detail，让第 N 条相同工具行指向第 N 条 tool detail。
+
 前端详情展示：
 
 - JSON input/output 使用 `readonly-code-block.tsx`，基于 Monaco Editor 只读展示。
