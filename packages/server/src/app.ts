@@ -2,6 +2,10 @@ import express from 'express';
 import cors from 'cors';
 import { createServer } from 'node:http';
 import { WebSocketServer } from 'ws';
+import { existsSync, mkdirSync } from 'node:fs';
+import { writeFile, mkdir } from 'node:fs/promises';
+import { join, dirname, extname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import workspaceRouter from './routes/workspace.js';
 import fileRouter from './routes/file.js';
 import channelRouter from './routes/channel.js';
@@ -13,14 +17,40 @@ import llmRouter from './routes/llm.js';
 import { handleConnection } from './ws/handler.js';
 import { startScheduler, stopScheduler } from './agents/scheduler-agent.js';
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.PORT || '3100', 10);
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
+// Serve static files from public/
+app.use('/public', express.static(join(__dirname, '..', 'public')));
+
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Avatar upload
+app.post('/api/upload/avatar', async (req, res) => {
+  const { dataUrl, filename } = req.body as { dataUrl?: string; filename?: string };
+  if (!dataUrl || !dataUrl.startsWith('data:')) {
+    res.status(400).json({ error: 'Invalid dataUrl' });
+    return;
+  }
+  const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+  if (!match) {
+    res.status(400).json({ error: 'Invalid base64 data' });
+    return;
+  }
+  const [, mime, base64] = match;
+  const ext = mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : 'jpg';
+  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const name = filename ? `${id}-${filename.replace(/[^a-zA-Z0-9._-]/g, '_')}` : `${id}.${ext}`;
+  const avatarsDir = join(__dirname, '..', 'public', 'avatars');
+  if (!existsSync(avatarsDir)) mkdirSync(avatarsDir, { recursive: true });
+  await writeFile(join(avatarsDir, name), Buffer.from(base64, 'base64'));
+  res.json({ url: `/public/avatars/${name}` });
 });
 
 app.use('/api/workspaces', workspaceRouter);

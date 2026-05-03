@@ -136,9 +136,8 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
   }, [workspaceId, activeChannelId, stopProcessingMessages]);
 
   const handleEditMessage = useCallback((msg: Message) => {
-    const plainText = /<[a-z][\s\S]*>/i.test(msg.content) ? msg.content.replace(/<[^>]*>/g, '') : msg.content;
-    chatInputRef.current?.setContent(plainText);
-  }, []);
+    chatInputRef.current?.setContent(msg.content, mentionAgents);
+  }, [mentionAgents]);
 
   const handleDeleteMessage = useCallback((msg: Message) => {
     setDeletingMsg(msg);

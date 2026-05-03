@@ -64,7 +64,7 @@ interface ChatInputProps {
 }
 
 export interface ChatInputHandle {
-  setContent: (html: string) => void;
+  setContent: (html: string, agents?: MentionedAgent[]) => void;
 }
 
 export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput(
@@ -349,9 +349,22 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   useImperativeHandle(
     ref,
     () => ({
-      setContent: (html: string) => {
-        editor?.commands.setContent(html, { emitUpdate: false });
-        editor?.commands.focus("end");
+      setContent: (html: string, agents?: MentionedAgent[]) => {
+        if (!editor) return;
+        // TipTap HTML with mention nodes — set directly
+        if (html.includes('data-type="mention"')) {
+          editor.commands.setContent(html, { emitUpdate: false });
+        } else {
+          // Plain text or HTML without mentions — strip tags and restore @mentions
+          const plainText = /<[a-z][\s\S]*>/i.test(html) ? html.replace(/<[^>]*>/g, '') : html;
+          const allAgents = agents ?? agentsRef.current;
+          if (allAgents.length > 0 && /@\S+/.test(plainText)) {
+            editor.commands.setContent(buildContentWithMentions(plainText, allAgents), { emitUpdate: false });
+          } else {
+            editor.commands.setContent(plainText, { emitUpdate: false });
+          }
+        }
+        editor.commands.focus("end");
       },
     }),
     [editor]
@@ -673,4 +686,54 @@ function getMcpLabels(mcps: AgentConfig["mcps"] | undefined): string[] {
   const servers = (mcps as { mcpServers?: unknown }).mcpServers;
   if (!servers || typeof servers !== "object" || Array.isArray(servers)) return [];
   return Object.keys(servers);
+}
+
+function buildContentWithMentions(
+  text: string,
+  agents: Pick<AgentConfig, "id" | "name" | "role">[]
+): JSONContent {
+  if (!text) return { type: "doc", content: [{ type: "paragraph" }] };
+
+  const lines = text.split("\n");
+  const paragraphs: JSONContent[] = lines.map((line) => {
+    const inline = parseInlineMentions(line, agents);
+    return { type: "paragraph", content: inline.length > 0 ? inline : undefined };
+  });
+
+  return { type: "doc", content: paragraphs };
+}
+
+function parseInlineMentions(
+  text: string,
+  agents: Pick<AgentConfig, "id" | "name" | "role">[]
+): JSONContent[] {
+  const result: JSONContent[] = [];
+  const regex = /@(\S+)/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      result.push({ type: "text", text: text.slice(lastIndex, match.index) });
+    }
+    const name = match[1];
+    const agent = agents.find(
+      (a) => a.name === name || a.id === name || a.role === name
+    );
+    if (agent) {
+      result.push({
+        type: "mention",
+        attrs: { id: agent.id, label: agent.name || agent.role },
+      });
+    } else {
+      result.push({ type: "text", text: match[0] });
+    }
+    lastIndex = regex.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    result.push({ type: "text", text: text.slice(lastIndex) });
+  }
+
+  return result;
 }

@@ -37,6 +37,7 @@ import {
   MessageSquare,
   Sliders,
   Upload,
+  ImageIcon,
 } from "lucide-react";
 
 type McpDraft = Record<string, unknown>;
@@ -45,6 +46,7 @@ type SkillDraft = { name: string; content?: string };
 type AgentPreset = Omit<AgentConfig, "mcps" | "skills"> & {
   name: string;
   description: string;
+  avatarUrl: string;
   modelProvider: NonNullable<AgentConfig["modelProvider"]>;
   modelId: string;
   apiBase: string;
@@ -92,6 +94,20 @@ const RUNTIME_OPTIONS: Array<{ value: NonNullable<AgentConfig["runtimeKind"]>; l
 ];
 const ROLE_OPTIONS: AgentRole[] = ["scheduler", "planner", "executor", "reviewer", "custom"];
 
+const PROVIDER_ICON_MAP: Record<string, string> = {
+  "anthropic-messages": "anthropic",
+  "openai-chat-completions": "openai",
+  "openai-responses": "openai",
+  "gemini-generate-content": "gemini",
+};
+
+function getProviderIconUrl(agent: { avatarUrl?: string; modelProvider?: string; apiBase?: string }): string {
+  if (agent.avatarUrl) return agent.avatarUrl;
+  const iconName = PROVIDER_ICON_MAP[agent.modelProvider ?? ""];
+  if (iconName) return `/public/provider-icons/${iconName}.svg`;
+  return "";
+}
+
 function defaultMcpConfig(names: string[]): McpDraft {
   return {
     mcpServers: Object.fromEntries(names.map((name) => [name, {}])),
@@ -107,6 +123,7 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     name: "Scheduler",
     role: "scheduler",
     description: "任务调度者，负责任务分发和协调",
+    avatarUrl: "",
     runtimeKind: "open-agent-sdk",
     modelProvider: "anthropic-messages",
     modelId: "claude-sonnet-4-6",
@@ -125,6 +142,7 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     name: "Planner",
     role: "planner",
     description: "策划者，负责分解任务和制定计划",
+    avatarUrl: "",
     runtimeKind: "open-agent-sdk",
     modelProvider: "anthropic-messages",
     modelId: "claude-opus-4-7",
@@ -143,6 +161,7 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     name: "Executor",
     role: "executor",
     description: "执行者，负责代码编写和修改",
+    avatarUrl: "",
     runtimeKind: "open-agent-sdk",
     modelProvider: "anthropic-messages",
     modelId: "claude-sonnet-4-6",
@@ -161,6 +180,7 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     name: "Reviewer",
     role: "reviewer",
     description: "审核者，负责代码审查和质量把关",
+    avatarUrl: "",
     runtimeKind: "open-agent-sdk",
     modelProvider: "anthropic-messages",
     modelId: "claude-opus-4-7",
@@ -179,6 +199,7 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     name: "Custom Agent",
     role: "custom",
     description: "",
+    avatarUrl: "",
     runtimeKind: "open-agent-sdk",
     modelProvider: "anthropic-messages",
     modelId: "",
@@ -199,6 +220,7 @@ function normalizeAgent(agent: AgentConfig): AgentPreset {
     ...agent,
     name: agent.name || "New Agent",
     description: agent.description || "",
+    avatarUrl: agent.avatarUrl || "",
     runtimeKind: agent.runtimeKind || "open-agent-sdk",
     modelProvider: agent.modelProvider || "anthropic-messages",
     modelId: agent.modelId || "claude-sonnet-4-6",
@@ -250,6 +272,7 @@ function newEmptyAgent(): AgentPreset {
     name: "",
     role: "executor",
     description: "",
+    avatarUrl: "",
     runtimeKind: "open-agent-sdk",
     modelProvider: "anthropic-messages",
     modelId: "",
@@ -566,14 +589,20 @@ function AgentList({
 }) {
   return (
     <div className="flex flex-col p-2">
-      {agents.map((agent) => (
+      {agents.map((agent) => {
+        const iconUrl = getProviderIconUrl(agent);
+        return (
         <div
           key={agent.id}
           className="group flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-muted/50 cursor-pointer transition-colors"
           onClick={() => onSelect(agent)}
         >
-          <div className={cn("flex size-8 items-center justify-center rounded-lg", ROLE_COLORS[agent.role] ?? "bg-muted")}>
-            <Bot className="size-4" />
+          <div className={cn("flex size-8 items-center justify-center rounded-lg overflow-hidden", iconUrl ? "bg-transparent" : ROLE_COLORS[agent.role] ?? "bg-muted")}>
+            {iconUrl ? (
+              <img src={iconUrl} alt={agent.name} className="size-full object-cover rounded-lg" />
+            ) : (
+              <Bot className="size-4" />
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
@@ -594,7 +623,8 @@ function AgentList({
             <Trash2 className="size-3 text-destructive" />
           </Button>
         </div>
-      ))}
+        );
+      })}
       {agents.length === 0 && (
         <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
           <Bot className="size-10 mb-2 opacity-30" />
@@ -679,20 +709,73 @@ function AgentDetail({
     <div className="flex flex-col gap-5 p-5">
       {/* Basic Info */}
       <Section icon={<MessageSquare className="size-3.5" />} title="Basic">
-        <FieldGroup label="Name">
-          <Input value={agent.name} onChange={(e) => onChange("name", e.target.value)} />
-        </FieldGroup>
-        <FieldGroup label="Role">
-          <select
-            value={agent.role}
-            onChange={(e) => onChange("role", e.target.value as AgentConfig["role"])}
-            className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring dark:bg-input/30"
-          >
-            {ROLE_OPTIONS.map((role) => (
-              <option key={role} value={role}>{role}</option>
-            ))}
-          </select>
-        </FieldGroup>
+        <div className="flex items-start gap-4">
+          <div className="flex flex-col items-center gap-1.5">
+            <div className={cn("size-16 rounded-xl overflow-hidden border border-input flex items-center justify-center", agent.avatarUrl ? "" : "bg-muted")}>
+              {agent.avatarUrl ? (
+                <img src={agent.avatarUrl} alt={agent.name} className="size-full object-cover" />
+              ) : (() => {
+                const iconUrl = getProviderIconUrl(agent);
+                return iconUrl ? (
+                  <img src={iconUrl} alt="" className="size-10 object-contain" />
+                ) : (
+                  <ImageIcon className="size-6 text-muted-foreground" />
+                );
+              })()}
+            </div>
+            <label className="text-[10px] text-primary cursor-pointer hover:underline">
+              Upload
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = async () => {
+                    try {
+                      const res = await fetch("/api/upload/avatar", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ dataUrl: reader.result, filename: file.name }),
+                      });
+                      const data = await res.json();
+                      if (data.url) onChange("avatarUrl", data.url);
+                    } catch { /* ignore */ }
+                  };
+                  reader.readAsDataURL(file);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+            {agent.avatarUrl && (
+              <button
+                type="button"
+                className="text-[10px] text-destructive hover:underline"
+                onClick={() => onChange("avatarUrl", "")}
+              >
+                Remove
+              </button>
+            )}
+          </div>
+          <div className="flex-1 flex flex-col gap-2.5">
+            <FieldGroup label="Name">
+              <Input value={agent.name} onChange={(e) => onChange("name", e.target.value)} />
+            </FieldGroup>
+            <FieldGroup label="Role">
+              <select
+                value={agent.role}
+                onChange={(e) => onChange("role", e.target.value as AgentConfig["role"])}
+                className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring dark:bg-input/30"
+              >
+                {ROLE_OPTIONS.map((role) => (
+                  <option key={role} value={role}>{role}</option>
+                ))}
+              </select>
+            </FieldGroup>
+          </div>
+        </div>
         <FieldGroup label="Description">
           <Input value={agent.description} onChange={(e) => onChange("description", e.target.value)} />
         </FieldGroup>

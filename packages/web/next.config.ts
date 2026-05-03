@@ -34,6 +34,10 @@ const nextConfig: NextConfig = {
         source: "/ws",
         destination: "http://localhost:3100/ws",
       },
+      {
+        source: "/public/:path*",
+        destination: "http://localhost:3100/public/:path*",
+      },
     ];
   },
   transpilePackages: ["flexlayout-react"],

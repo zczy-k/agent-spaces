@@ -26,6 +26,7 @@ export interface AgentConfig {
   systemPrompt?: string;
   temperature?: number;
   maxTokens?: number;
+  avatarUrl?: string;
   sandboxDirs?: string[];
   maxRetries?: number;
   enabled: boolean;
