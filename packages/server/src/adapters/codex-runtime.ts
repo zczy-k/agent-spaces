@@ -42,7 +42,7 @@ export class CodexRuntime implements AgentRuntime {
     const codexHome = agentDir ? join(agentDir, '.codex') : undefined;
     if (codexHome) prepareCodexHome(codexHome, agentDir);
     const skillNames = normalizeSkillNames(options?.skills, codexHome);
-    const configOverrides = buildCodexConfig(options, skillNames);
+    const configOverrides = buildCodexConfig(this.config, options, skillNames);
     const sandboxMode = normalizeSandboxMode(this.config.permissionMode);
     const approvalPolicy = normalizeApprovalPolicy(this.config.permissionMode);
 
@@ -52,7 +52,7 @@ export class CodexRuntime implements AgentRuntime {
     try {
       const codex = new Codex({
         apiKey: this.config.apiKey,
-        baseUrl: this.config.baseURL,
+        baseUrl: shouldUseCodexOpenAIBaseUrl(this.config) ? this.config.baseURL : undefined,
         config: configOverrides,
         env: buildEnv(this.config, codexHome),
       });
@@ -159,14 +159,50 @@ function buildEnv(config: AgentRuntimeConfig, codexHome?: string): Record<string
   });
 }
 
-function buildCodexConfig(options: AgentRunOptions | undefined, skillNames: string[]): CodexConfigObject {
+function buildCodexConfig(
+  runtimeConfig: AgentRuntimeConfig,
+  options: AgentRunOptions | undefined,
+  skillNames: string[],
+): CodexConfigObject {
   const config: CodexConfigObject = {};
+  Object.assign(config, buildCodexProviderConfig(runtimeConfig));
   const mcpServers = normalizeMcpServers(options?.mcpServers);
   if (mcpServers) config.mcp_servers = mcpServers as CodexConfigValue;
   if (skillNames.length > 0) {
     config.skills = { enabled: skillNames };
   }
   return removeUndefined(config) as CodexConfigObject;
+}
+
+function buildCodexProviderConfig(runtimeConfig: AgentRuntimeConfig): CodexConfigObject {
+  if (!runtimeConfig.baseURL || shouldUseCodexOpenAIBaseUrl(runtimeConfig)) return {};
+
+  const providerName = sanitizeCodexProviderName(runtimeConfig.provider);
+  return {
+    model_provider: providerName,
+    model_providers: {
+      [providerName]: removeUndefined({
+        name: providerName,
+        base_url: runtimeConfig.baseURL,
+        wire_api: normalizeCodexWireApi(runtimeConfig.provider),
+      }) as CodexConfigValue,
+    },
+  };
+}
+
+function shouldUseCodexOpenAIBaseUrl(runtimeConfig: AgentRuntimeConfig): boolean {
+  return !runtimeConfig.provider || runtimeConfig.provider === 'openai-chat-completions';
+}
+
+function sanitizeCodexProviderName(provider?: AgentRuntimeConfig['provider']): string {
+  const raw = String(provider || 'custom').trim().toLowerCase();
+  return raw.replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'custom';
+}
+
+function normalizeCodexWireApi(provider?: AgentRuntimeConfig['provider']): string | undefined {
+  if (provider === 'openai-responses') return 'responses';
+  if (provider === 'openai-chat-completions') return 'chat';
+  return undefined;
 }
 
 function normalizeMcpServers(servers?: Record<string, unknown>): Record<string, unknown> | undefined {
