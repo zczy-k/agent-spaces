@@ -5,6 +5,11 @@ export interface Channel {
   type: 'general' | 'issue' | 'agent';
   issueId?: string;
   members: string[];
+  pinnedMentionId?: string;
+  draft?: {
+    content: string;
+    updatedAt: string;
+  };
   createdAt: string;
 }
 

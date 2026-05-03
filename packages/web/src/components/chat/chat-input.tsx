@@ -14,6 +14,8 @@ import {
   IconCode,
   IconHistory,
   IconPaperclip,
+  IconPin,
+  IconPinFilled,
   IconPlug,
   IconPlus,
   IconPuzzle,
@@ -34,7 +36,8 @@ import { useDropzone } from "react-dropzone";
 import { ComposerShell } from "@/components/composer/composer-shell";
 import { createSuggestionRenderer } from "@/components/composer/create-suggestion-renderer";
 import { createSlashExtension } from "@/components/composer/create-slash-extension";
-import type { AgentConfig, Attachment as MessageAttachment } from "@agent-spaces/shared";
+import type { AgentConfig, Attachment as MessageAttachment, Channel } from "@agent-spaces/shared";
+import { useChannelStore } from "@/stores/channel";
 import {
   Attachment,
   AttachmentInfo,
@@ -48,6 +51,9 @@ type MentionedAgent = Pick<AgentConfig, "id" | "name" | "role" | "description" |
 
 interface ChatInputProps {
   channelName: string;
+  channelId: string;
+  workspaceId: string;
+  channel: Channel;
   agents: MentionedAgent[];
   onSend: (message: string, mentions: string[], attachments?: MessageAttachment[]) => void;
   isProcessing?: boolean;
@@ -58,7 +64,10 @@ export interface ChatInputHandle {
   setContent: (html: string) => void;
 }
 
-export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput({ channelName, agents, onSend, isProcessing = false, onStop }, ref) {
+export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput(
+  { channelName, channelId, workspaceId, channel, agents, onSend, isProcessing = false, onStop },
+  ref
+) {
   const [mentionedAgentIds, setMentionedAgentIds] = useState<string[]>([]);
   const [attachments, setAttachments] = useState<LocalAttachment[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -66,6 +75,11 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const isProcessingRef = useRef(isProcessing);
   const onSendRef = useRef(onSend);
   const editorRef = useRef<Editor | null>(null);
+  const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const { saveDraft, clearDraft, updateChannel } = useChannelStore();
+  const pinnedMentionId = channel.pinnedMentionId;
+  const isPinned = pinnedMentionId === mentionedAgentIds[0] && !!pinnedMentionId;
 
   const mentionedAgents = useMemo(() => {
     if (mentionedAgentIds.length === 0) return [];
@@ -78,11 +92,14 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const activeAgent = mentionedAgents[0];
   const activeMcps = getMcpLabels(activeAgent?.mcps);
   const activeSkills = activeAgent?.skills ?? [];
-  const tools = useMemo(() => [
-    { label: "Code Interpreter", icon: IconCode },
-    { label: "Web Search", icon: IconWorld },
-    { label: "Chat History", icon: IconHistory },
-  ], []);
+  const tools = useMemo(
+    () => [
+      { label: "Code Interpreter", icon: IconCode },
+      { label: "Web Search", icon: IconWorld },
+      { label: "Chat History", icon: IconHistory },
+    ],
+    []
+  );
 
   useEffect(() => {
     isProcessingRef.current = isProcessing;
@@ -91,6 +108,21 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   useEffect(() => {
     onSendRef.current = onSend;
   }, [onSend]);
+
+  // Save draft with debounce
+  const scheduleDraftSave = useCallback(
+    (content: string) => {
+      if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+      draftTimerRef.current = setTimeout(() => {
+        if (content.trim()) {
+          saveDraft(workspaceId, channelId, content);
+        } else {
+          clearDraft(workspaceId, channelId);
+        }
+      }, 1000);
+    },
+    [workspaceId, channelId, saveDraft, clearDraft]
+  );
 
   const submitCurrentMessage = useCallback(async () => {
     const currentEditor = editorRef.current;
@@ -108,10 +140,11 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         return [];
       });
       setMentionedAgentIds([]);
+      clearDraft(workspaceId, channelId);
     } finally {
       setSubmitting(false);
     }
-  }, [attachments, submitting]);
+  }, [attachments, submitting, workspaceId, channelId, clearDraft]);
 
   const { getRootProps, getInputProps, open: openFilePicker } = useDropzone({
     noClick: true,
@@ -141,6 +174,33 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     };
   }, [attachments]);
 
+  // Remove all existing mentions from editor, keep only the last one
+  const removeExistingMentions = useCallback((editor: Editor, keepId?: string) => {
+    const { tr } = editor.state;
+    let removed = false;
+    const nodesToRemove: { pos: number; nodeSize: number }[] = [];
+
+    editor.state.doc.descendants((node, pos) => {
+      if (node.type.name === "mention") {
+        const nodeId = node.attrs?.id;
+        if (nodeId !== keepId) {
+          nodesToRemove.push({ pos, nodeSize: node.nodeSize });
+        }
+      }
+    });
+
+    // Remove from end to start to preserve positions
+    for (let i = nodesToRemove.length - 1; i >= 0; i--) {
+      const { pos, nodeSize } = nodesToRemove[i];
+      tr.delete(pos, pos + nodeSize);
+      removed = true;
+    }
+
+    if (removed) {
+      editor.view.dispatch(tr);
+    }
+  }, []);
+
   const mentionExtension = useMemo(
     () =>
       Mention.configure({
@@ -149,10 +209,12 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           char: "@",
           items: ({ query }: { query: string }) => {
             const keyword = query.toLowerCase();
-            return agents.filter((agent) =>
-              agent.enabled !== false &&
-              `${agent.name} ${agent.role} ${agent.description || ""}`.toLowerCase().includes(keyword)
-            )
+            return agents
+              .filter(
+                (agent) =>
+                  agent.enabled !== false &&
+                  `${agent.name} ${agent.role} ${agent.description || ""}`.toLowerCase().includes(keyword)
+              )
               .slice(0, 6)
               .map((agent) => ({
                 id: agent.id,
@@ -169,6 +231,8 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             range: Range;
             props: MentionNodeAttrs;
           }) => {
+            // Remove existing mentions first (single mention only)
+            removeExistingMentions(editor, props.id as string);
             editor
               .chain()
               .focus()
@@ -178,13 +242,14 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           render: () => createSuggestionRenderer(),
         },
       }),
-    [agents]
+    [agents, removeExistingMentions]
   );
 
   const slashExtension = useMemo(
-    () => createSlashExtension(() => {
-      document.querySelector<HTMLInputElement>("[data-chat-file-input]")?.click();
-    }),
+    () =>
+      createSlashExtension(() => {
+        document.querySelector<HTMLInputElement>("[data-chat-file-input]")?.click();
+      }),
     []
   );
 
@@ -205,7 +270,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         },
         handleKeyDown: (_view, event) => {
           if (event.key === "Enter" && !event.shiftKey) {
-            const hasPopup = document.querySelector('.suggestion-menu');
+            const hasPopup = document.querySelector(".suggestion-menu");
             if (hasPopup) return false;
             event.preventDefault();
             submitCurrentMessage();
@@ -216,25 +281,49 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       },
       content: "",
       onUpdate: ({ editor }) => {
-        setMentionedAgentIds(collectMentionIds(editor.getJSON()));
+        const ids = collectMentionIds(editor.getJSON());
+        setMentionedAgentIds(ids);
+        scheduleDraftSave(editor.getHTML());
       },
       onCreate: ({ editor }) => {
-        setMentionedAgentIds(collectMentionIds(editor.getJSON()));
+        // Restore pinned mention or draft
+        const draft = channel.draft;
+        const pinnedId = channel.pinnedMentionId;
+
+        if (draft?.content) {
+          editor.commands.setContent(draft.content);
+          setMentionedAgentIds(collectMentionIds(editor.getJSON()));
+        } else if (pinnedId) {
+          const agent = agents.find((a) => a.id === pinnedId);
+          if (agent) {
+            editor.commands.setContent([
+              { type: "mention", attrs: { id: agent.id, label: agent.name || agent.role } },
+              { type: "text", text: " " },
+            ]);
+            setMentionedAgentIds([agent.id]);
+          }
+        } else {
+          setMentionedAgentIds(collectMentionIds(editor.getJSON()));
+        }
       },
     },
-    [mentionExtension, slashExtension, channelName, submitCurrentMessage],
+    [mentionExtension, slashExtension, channelName, submitCurrentMessage]
   );
 
   useEffect(() => {
     editorRef.current = editor;
   }, [editor]);
 
-  useImperativeHandle(ref, () => ({
-    setContent: (html: string) => {
-      editor?.commands.setContent(html);
-      editor?.commands.focus('end');
-    },
-  }), [editor]);
+  useImperativeHandle(
+    ref,
+    () => ({
+      setContent: (html: string) => {
+        editor?.commands.setContent(html);
+        editor?.commands.focus("end");
+      },
+    }),
+    [editor]
+  );
 
   const handleSubmit = useCallback(() => {
     submitCurrentMessage();
@@ -255,10 +344,28 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     });
   }, []);
 
+  const togglePin = useCallback(() => {
+    const currentMentionId = mentionedAgentIds[0];
+    if (!currentMentionId) return;
+
+    const newPinnedId = isPinned ? undefined : currentMentionId;
+    updateChannel(workspaceId, channelId, { pinnedMentionId: newPinnedId });
+  }, [mentionedAgentIds, isPinned, workspaceId, channelId, updateChannel]);
+
   const chatActions = (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger render={<Button variant="ghost" size="sm" className="h-7 w-7 p-0 rounded-full border border-border hover:bg-accent" />}><IconPlus className="size-3" /></DropdownMenuTrigger>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0 rounded-full border border-border hover:bg-accent"
+            />
+          }
+        >
+          <IconPlus className="size-3" />
+        </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5">
           <DropdownMenuGroup className="space-y-1">
             <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs" onClick={openFilePicker}>
@@ -298,6 +405,26 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
 
   return (
     <div className="border-t px-4 py-2">
+      {/* Mention indicator with pin */}
+      {activeAgent && (
+        <div className="flex items-center gap-1 mb-1.5">
+          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
+            @{activeAgent.name || activeAgent.role}
+          </span>
+          <button
+            type="button"
+            onClick={togglePin}
+            className={cn(
+              "inline-flex items-center justify-center size-5 rounded-full hover:bg-accent transition-colors",
+              isPinned ? "text-primary" : "text-muted-foreground"
+            )}
+            title={isPinned ? "取消固定" : "固定此 Agent"}
+          >
+            {isPinned ? <IconPinFilled className="size-3" /> : <IconPin className="size-3" />}
+          </button>
+        </div>
+      )}
+
       <ComposerShell
         editor={editor}
         canSubmit={canSubmit}
@@ -326,16 +453,32 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
 
       <div className="flex items-center gap-0 pt-2">
         <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="ghost" size="sm" className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs" />}><IconPlug className="size-3" /><span>MCP{activeMcps.length ? ` ${activeMcps.length}` : ""}</span><IconChevronDown className="size-3" /></DropdownMenuTrigger>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs"
+              />
+            }
+          >
+            <IconPlug className="size-3" />
+            <span>MCP{activeMcps.length ? ` ${activeMcps.length}` : ""}</span>
+            <IconChevronDown className="size-3" />
+          </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5 bg-popover border-border">
             <DropdownMenuGroup className="space-y-1">
-              {activeMcps.length ? activeMcps.map((mcp) => (
-                <DropdownMenuItem key={mcp} className="rounded-[calc(1rem-6px)] text-xs">
-                  <IconPlug size={16} className="opacity-60" />{mcp}
-                </DropdownMenuItem>
-              )) : (
+              {activeMcps.length ? (
+                activeMcps.map((mcp) => (
+                  <DropdownMenuItem key={mcp} className="rounded-[calc(1rem-6px)] text-xs">
+                    <IconPlug size={16} className="opacity-60" />
+                    {mcp}
+                  </DropdownMenuItem>
+                ))
+              ) : (
                 <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs text-muted-foreground">
-                  <IconPlug size={16} className="opacity-60" />No MCP configured
+                  <IconPlug size={16} className="opacity-60" />
+                  No MCP configured
                 </DropdownMenuItem>
               )}
             </DropdownMenuGroup>
@@ -343,16 +486,32 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         </DropdownMenu>
 
         <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="ghost" size="sm" className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs" />}><IconPuzzle className="size-3" /><span>Skill{activeSkills.length ? ` ${activeSkills.length}` : ""}</span><IconChevronDown className="size-3" /></DropdownMenuTrigger>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs"
+              />
+            }
+          >
+            <IconPuzzle className="size-3" />
+            <span>Skill{activeSkills.length ? ` ${activeSkills.length}` : ""}</span>
+            <IconChevronDown className="size-3" />
+          </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5 bg-popover border-border">
             <DropdownMenuGroup className="space-y-1">
-              {activeSkills.length ? activeSkills.map((skill) => (
-                <DropdownMenuItem key={skill} className="rounded-[calc(1rem-6px)] text-xs">
-                  <IconPuzzle size={16} className="opacity-60" />{skill}
-                </DropdownMenuItem>
-              )) : (
+              {activeSkills.length ? (
+                activeSkills.map((skill) => (
+                  <DropdownMenuItem key={skill} className="rounded-[calc(1rem-6px)] text-xs">
+                    <IconPuzzle size={16} className="opacity-60" />
+                    {skill}
+                  </DropdownMenuItem>
+                ))
+              ) : (
                 <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs text-muted-foreground">
-                  <IconPuzzle size={16} className="opacity-60" />No skills configured
+                  <IconPuzzle size={16} className="opacity-60" />
+                  No skills configured
                 </DropdownMenuItem>
               )}
             </DropdownMenuGroup>
@@ -360,12 +519,25 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         </DropdownMenu>
 
         <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="ghost" size="sm" className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs" />}><IconTools className="size-3" /><span>Tools</span><IconChevronDown className="size-3" /></DropdownMenuTrigger>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs"
+              />
+            }
+          >
+            <IconTools className="size-3" />
+            <span>Tools</span>
+            <IconChevronDown className="size-3" />
+          </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5 bg-popover border-border">
             <DropdownMenuGroup className="space-y-1">
               {tools.map(({ label, icon: Icon }) => (
                 <DropdownMenuItem key={label} className="rounded-[calc(1rem-6px)] text-xs">
-                  <Icon size={16} className="opacity-60" />{label}
+                  <Icon size={16} className="opacity-60" />
+                  {label}
                 </DropdownMenuItem>
               ))}
             </DropdownMenuGroup>
@@ -393,7 +565,7 @@ async function uploadAttachment(item: LocalAttachment): Promise<MessageAttachmen
   if (!res.ok) {
     throw new Error(`Upload failed: ${item.file.name}`);
   }
-  const uploaded = await res.json() as { name: string; size: number; type: string; url: string };
+  const uploaded = (await res.json()) as { name: string; size: number; type: string; url: string };
   return {
     name: uploaded.name,
     path: uploaded.url,

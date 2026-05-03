@@ -1,12 +1,13 @@
 "use client"
 
 import type { Message, MessagePart } from "@agent-spaces/shared"
-import { CheckCircle2Icon, CircleIcon, FileTextIcon, MessageSquareTextIcon } from "lucide-react"
+import { CheckCircle2Icon, ChevronDownIcon, CircleIcon, FileTextIcon, MessageSquareTextIcon } from "lucide-react"
 import { useState } from "react"
 import { Markdown } from "@/components/ui/markdown"
 import { Loader } from "@/components/ui/loader"
 import { Button } from "@/components/ui/button"
 import { useEditorStore } from "@/stores/editor"
+import { cn } from "@/lib/utils"
 import { DiffViewer } from "@/components/git/diff-viewer"
 import {
   Agent,
@@ -108,21 +109,18 @@ function MessagePartView({ part, message, workspaceId }: { part: MessagePart; me
       )
     case "todo":
       return (
-        <ChainOfThought defaultOpen className="max-w-none">
+        <ChainOfThought defaultOpen={message.status === "pending"} className="max-w-none">
           <ChainOfThoughtHeader>{part.todos.length} chain {part.todos.length === 1 ? "step" : "steps"}</ChainOfThoughtHeader>
           <ChainOfThoughtContent>
             {part.todos.map((todo) => {
               const completed = todo.status === "completed"
               if (todo.kind === "message") {
                 return (
-                  <ChainOfThoughtStep
+                  <AiMessageStep
                     key={todo.id}
-                    icon={MessageSquareTextIcon}
-                    label="AI message"
+                    text={todo.text ?? todo.title}
                     status={completed ? "complete" : "active"}
-                  >
-                    <Markdown content={todo.text ?? todo.title} />
-                  </ChainOfThoughtStep>
+                  />
                 )
               }
               return (
@@ -241,6 +239,39 @@ function MessagePartView({ part, message, workspaceId }: { part: MessagePart; me
   }
 }
 
+function AiMessageStep({
+  text,
+  status,
+}: {
+  text: string
+  status: "complete" | "active"
+}) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <ChainOfThoughtStep
+      icon={MessageSquareTextIcon}
+      label={
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span>AI message</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="ml-auto size-5"
+            onClick={() => setOpen(!open)}
+          >
+            <ChevronDownIcon className={cn("size-3.5 transition-transform", open && "rotate-180")} />
+          </Button>
+        </div>
+      }
+      status={status}
+    >
+      {open ? <Markdown content={text} /> : null}
+    </ChainOfThoughtStep>
+  )
+}
+
 function ToolStep({
   todo,
   message,
@@ -302,20 +333,22 @@ function ToolStep({
               <span className="max-w-52 truncate">{todo.filePath}</span>
             </Button>
           ) : null}
+          {todo.detailId ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="ml-auto size-5"
+              onClick={handleToggleDetail}
+            >
+              <ChevronDownIcon className={cn("size-3.5 transition-transform", open && "rotate-180")} />
+            </Button>
+          ) : null}
         </div>
       }
       description={todo.command}
       status={status}
     >
-      {todo.detailId ? (
-        <button
-          type="button"
-          className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          onClick={handleToggleDetail}
-        >
-          {open ? "Hide details" : "View details"}
-        </button>
-      ) : null}
       {open ? (
         <div className="space-y-2">
           {loading ? (

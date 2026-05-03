@@ -9,7 +9,7 @@ interface ChannelStore {
 
   loadChannels: (workspaceId: string) => Promise<void>;
   createChannel: (workspaceId: string, name: string, type?: Channel['type'], members?: string[]) => Promise<void>;
-  updateChannel: (workspaceId: string, channelId: string, data: Partial<Pick<Channel, 'name' | 'type' | 'members'>>) => Promise<void>;
+  updateChannel: (workspaceId: string, channelId: string, data: Partial<Pick<Channel, 'name' | 'type' | 'members' | 'pinnedMentionId' | 'draft'>>) => Promise<void>;
   setActiveChannel: (id: string) => void;
   loadMessages: (workspaceId: string, channelId: string) => Promise<void>;
   sendMessage: (workspaceId: string, channelId: string, content: string, mentions?: string[], attachments?: Message['attachments']) => void;
@@ -18,6 +18,8 @@ interface ChannelStore {
   deleteMessage: (channelId: string, messageId: string) => void;
   clearMessages: (workspaceId: string, channelId: string) => Promise<void>;
   deleteChannel: (workspaceId: string, channelId: string) => Promise<void>;
+  saveDraft: (workspaceId: string, channelId: string, content: string) => Promise<void>;
+  clearDraft: (workspaceId: string, channelId: string) => Promise<void>;
 }
 
 export const useChannelStore = create<ChannelStore>((set) => ({
@@ -111,6 +113,29 @@ export const useChannelStore = create<ChannelStore>((set) => ({
         activeChannelId: s.activeChannelId === channelId ? (channels[0]?.id ?? null) : s.activeChannelId,
         messages: rest,
       };
+    });
+  },
+
+  saveDraft: async (workspaceId, channelId, content) => {
+    const draft = { content, updatedAt: new Date().toISOString() };
+    set((s) => ({
+      channels: s.channels.map((c) => (c.id === channelId ? { ...c, draft } : c)),
+    }));
+    await fetch(`/api/workspaces/${workspaceId}/channels/${channelId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ draft }),
+    });
+  },
+
+  clearDraft: async (workspaceId, channelId) => {
+    set((s) => ({
+      channels: s.channels.map((c) => (c.id === channelId ? { ...c, draft: undefined } : c)),
+    }));
+    await fetch(`/api/workspaces/${workspaceId}/channels/${channelId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ draft: null }),
     });
   },
 }));

@@ -41,13 +41,15 @@ export function createChannel(workspaceId: string, data: { name: string; type: C
   return channel;
 }
 
-export function updateChannel(workspaceId: string, channelId: string, data: Partial<Pick<Channel, 'name' | 'type' | 'members'>>): Channel | null {
+export function updateChannel(workspaceId: string, channelId: string, data: Partial<Pick<Channel, 'name' | 'type' | 'members' | 'pinnedMentionId' | 'draft'>>): Channel | null {
   const channels = listChannels(workspaceId);
   const idx = channels.findIndex((c) => c.id === channelId);
   if (idx === -1) return null;
   if (data.name !== undefined) channels[idx].name = data.name;
   if (data.type !== undefined) channels[idx].type = data.type;
   if (data.members !== undefined) channels[idx].members = normalizeMembers(workspaceId, data.members);
+  if (Object.hasOwn(data, 'pinnedMentionId')) channels[idx].pinnedMentionId = data.pinnedMentionId;
+  if (Object.hasOwn(data, 'draft')) channels[idx].draft = data.draft;
   writeJsonFile(channelsPath(workspaceId), channels);
   return channels[idx];
 }
