@@ -146,6 +146,7 @@ async function runMentionedAgent(
   const mcpServers = agentService.getMcpServers(preset.mcps);
   const skills = agentService.getAvailableSkillNames(configDir, preset.skills);
   const workspace = wsService.getById(workspaceId);
+  const startTime = Date.now();
   const pending = createMessage(workspaceId, channelId, {
     senderId: preset.name || preset.role,
     senderRole: preset.role,
@@ -156,6 +157,7 @@ async function runMentionedAgent(
       agentSessionId: session.id,
       runtime: preset.runtimeKind,
       model: preset.modelId,
+      duration: 0,
     },
     parts: [
       {
@@ -254,6 +256,9 @@ async function runMentionedAgent(
             createdAt: new Date().toISOString(),
           });
           saveToolDetails(workspaceId, channelId, Array.from(toolDetails.values()));
+          liveOutput.push(event.line);
+          broadcastToWorkspace(workspaceId, 'agent.output', { agentId: session.id, data: event.line });
+          broadcastLiveParts();
           return;
         }
         if (event.type === 'tool_result') {
@@ -302,6 +307,7 @@ async function runMentionedAgent(
         runtime: preset.runtimeKind,
         model: preset.modelId,
         summary: result.summary,
+        duration: Date.now() - startTime,
       },
       parts: buildAgentMessageParts({
         sessionId: session.id,
@@ -328,6 +334,12 @@ async function runMentionedAgent(
       content: error,
       type: 'text',
       status: 'error',
+      metadata: {
+        agentSessionId: session.id,
+        runtime: preset.runtimeKind,
+        model: preset.modelId,
+        duration: Date.now() - startTime,
+      },
       parts: buildAgentMessageParts({
         sessionId: session.id,
         workspaceRoot: workspace?.boundDirs?.[0],
@@ -447,13 +459,15 @@ function buildAgentMessageParts(input: {
   success: boolean;
   error?: string;
 }): MessagePart[] {
-  const lines = input.output.filter((line) => line.trim());
-  const finalTextIndex = findFinalTextIndex(lines);
-  const finalText = finalTextIndex >= 0 ? lines[finalTextIndex] : '';
+  const lines = normalizeOutputLines(input.output);
+  const finalTextRange = findFinalTextRange(lines);
+  const finalText = finalTextRange
+    ? lines.slice(finalTextRange.start, finalTextRange.end + 1).join('\n').trim()
+    : '';
   const usage = extractUsage(lines);
   const parts: MessagePart[] = [];
 
-  const chainItems = buildChainItems(lines, finalTextIndex, finalText, input.workspaceRoot, input.toolDetails);
+  const chainItems = buildChainItems(lines, finalTextRange, finalText, input.workspaceRoot, input.toolDetails);
 
   if (chainItems.length > 0) {
     parts.push({
@@ -499,17 +513,34 @@ function buildAgentMessageParts(input: {
   return parts;
 }
 
-function findFinalTextIndex(lines: string[]): number {
+function normalizeOutputLines(output: string[]): string[] {
+  return output
+    .flatMap((line) => line.split(/\r?\n/))
+    .map((line) => line.trimEnd())
+    .filter((line) => line.trim());
+}
+
+function findFinalTextRange(lines: string[]): { start: number; end: number } | null {
+  let end = -1;
   for (let index = lines.length - 1; index >= 0; index -= 1) {
-    const line = lines[index];
-    if (isFinalAnswerLine(line)) return index;
+    if (isFinalAnswerLine(lines[index])) {
+      end = index;
+      break;
+    }
   }
-  return -1;
+  if (end < 0) return null;
+
+  let start = end;
+  for (let index = end - 1; index >= 0; index -= 1) {
+    if (!isFinalAnswerLine(lines[index])) break;
+    start = index;
+  }
+  return { start, end };
 }
 
 function buildChainItems(
   lines: string[],
-  finalTextIndex: number,
+  finalTextRange: { start: number; end: number } | null,
   finalText: string,
   workspaceRoot?: string,
   toolDetails?: Map<string, ToolDetail>,
@@ -519,7 +550,7 @@ function buildChainItems(
   const items: MessageChain[] = [];
 
   for (let index = 0; index < lines.length; index += 1) {
-    if (index === finalTextIndex) continue;
+    if (finalTextRange && index >= finalTextRange.start && index <= finalTextRange.end) continue;
     const line = lines[index];
     if (finalText && isSameMessageText(line, finalText)) continue;
     if (isSubagentToolLine(line)) continue;

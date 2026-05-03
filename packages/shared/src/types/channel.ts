@@ -94,4 +94,5 @@ export interface MessageMetadata {
   runtime?: string;
   model?: string;
   summary?: string;
+  duration?: number;
 }

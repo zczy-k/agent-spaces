@@ -273,12 +273,9 @@ function formatAssistantMessage(content: unknown): string | null {
 
   const parts = content.flatMap((block) => {
     if (!block || typeof block !== 'object') return [];
-    const typedBlock = block as { type?: string; text?: unknown; name?: unknown; input?: unknown };
+    const typedBlock = block as { type?: string; text?: unknown };
     if (typedBlock.type === 'text' && typeof typedBlock.text === 'string') {
       return [typedBlock.text];
-    }
-    if (typedBlock.type === 'tool_use' && typeof typedBlock.name === 'string') {
-      return [formatToolUse(typedBlock.name, typedBlock.input)];
     }
     return [];
   });

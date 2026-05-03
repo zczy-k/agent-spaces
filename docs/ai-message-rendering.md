@@ -119,7 +119,7 @@ chain 构造和工具调用解析集中在：
 - chain 按 runtime 输出顺序包含两类 step：
   - `kind: "message"`：AI 中间输出，用 Markdown 显示在 chain 内。
   - `kind: "tool"` 或未设置 kind：工具调用，显示精简摘要和可懒加载详情。
-- 最后一条非工具 AI 输出被视为最终结论，只进入 `text` part，不再加入 chain。
+- 最后一段连续的非工具 AI 输出会合并为最终结论，只进入 `text` part，不再加入 chain，避免流式恢复时只显示最新一行。
 - 如果 runtime 重复追加同一段最终结论，后端会按内容归一化去重，避免 chain 最后一条 AI message 和最终 Markdown 重复。
 - 普通工具调用会被压缩成精简摘要，例如 `Read timer.js`、`Update 2 todos`、`Run command`，不会直接展示原始 JSON 参数。
 - Read/Edit/Write 等文件工具会把 workspace 内绝对路径归一为相对路径；前端点击文件路径时调用 `useEditorStore.openFile(workspaceId, path)`，从而在 editor tabs 中打开文件。
@@ -176,7 +176,7 @@ GET /api/workspaces/:id/channels/:channelId/messages/:messageId/tool-details/:de
 2. 再按顺序渲染 `message.parts`
 3. `chain` part 渲染统一 chain，包含 AI 中间消息和工具 step
 4. `text` part 渲染最终结论 Markdown
-5. 如果没有 `text` part，则回退渲染 `message.content`
+5. 只有完全没有 `parts` 的旧消息才回退渲染 `message.content`；已有结构化 `parts` 时不再把整段 `content` 当 Markdown 渲染，避免工具调用 JSON 泄露到正文。
 6. 如果消息仍在 pending/streaming 且没有 parts，则显示 loader
 
 ## UI 组件映射

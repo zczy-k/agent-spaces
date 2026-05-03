@@ -64,6 +64,7 @@ interface MessagePartsProps {
 export function MessageParts({ message, isUser, workspaceId }: MessagePartsProps) {
   const parts = message.parts ?? []
   const hasTextPart = parts.some((part) => part.type === "text")
+  const shouldRenderLegacyContent = parts.length === 0 && message.content
 
   return (
     <div className="space-y-3">
@@ -73,7 +74,7 @@ export function MessageParts({ message, isUser, workspaceId }: MessagePartsProps
       {parts.length > 0 ? parts.map((part) => (
         <MessagePartView key={part.id} part={part} message={message} workspaceId={workspaceId} />
       )) : null}
-      {!hasTextPart && message.content ? (
+      {!hasTextPart && shouldRenderLegacyContent ? (
         isUser ? <UserContent content={message.content} /> : <Markdown content={message.content} />
       ) : null}
       {message.status === "pending" && parts.length === 0 ? (
