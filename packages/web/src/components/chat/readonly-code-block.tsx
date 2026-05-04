@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic"
 import "@/lib/monaco-loader"
+import { useTheme } from "@/components/theme-provider"
 
 const MonacoEditor = dynamic(
   () => import("@monaco-editor/react").then((mod) => mod.default),
@@ -28,6 +29,7 @@ export function ReadonlyCodeBlock({
   title,
   height = 220,
 }: ReadonlyCodeBlockProps) {
+  const { resolvedTheme } = useTheme()
   return (
     <div className="overflow-hidden rounded-md border bg-background">
       {title ? (
@@ -52,7 +54,7 @@ export function ReadonlyCodeBlock({
             folding: false,
             overviewRulerLanes: 0,
           }}
-          theme="vs"
+          theme={resolvedTheme === "dark" ? "vs-dark" : "vs"}
         />
       </div>
     </div>

@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import "@/lib/monaco-loader";
 import { useEditorStore } from "@/stores/editor";
 import { EditorTabs } from "./editor-tabs";
+import { useTheme } from "@/components/theme-provider";
 
 const MonacoEditor = dynamic(
   () => import("@monaco-editor/react").then((mod) => mod.default),
@@ -16,6 +17,7 @@ interface CodeEditorProps {
 
 export function CodeEditor({ workspaceId }: CodeEditorProps) {
   const { openFiles, activeFilePath, updateContent, saveFile } = useEditorStore();
+  const { resolvedTheme } = useTheme();
 
   const activeFile = openFiles.find((f) => f.path === activeFilePath);
 
@@ -49,7 +51,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
               padding: { top: 8 },
               renderLineHighlight: "gutter",
             }}
-            theme="vs-dark"
+            theme={resolvedTheme === "dark" ? "vs-dark" : "vs"}
           />
         ) : (
           <div className="flex items-center justify-center h-full text-muted-foreground text-sm">

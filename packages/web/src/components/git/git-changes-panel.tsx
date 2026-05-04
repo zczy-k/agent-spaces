@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import { Button } from "@/components/ui/button";
 import { DiffViewer } from "./diff-viewer";
 import { GitNotInitialized } from "./git-not-initialized";
+import { useTheme } from "@/components/theme-provider";
 
 const MonacoEditor = dynamic(
   () => import("@monaco-editor/react").then((mod) => mod.default),
@@ -39,6 +40,7 @@ const statusLabels: Record<string, string> = {
 export function GitChangesPanel({ workspaceId }: GitPanelProps) {
   const { status, diffs, selectedFile, loading, notGitRepo, branches, loadStatus, loadDiffs, loadBranches, commit, discard, discardAll, checkout, selectFile } = useGitStore();
   const openFile = useEditorStore((s) => s.openFile);
+  const { resolvedTheme } = useTheme();
   const [commitMsg, setCommitMsg] = useState("");
   const [committing, setCommitting] = useState(false);
   const [branchOpen, setBranchOpen] = useState(false);
@@ -359,7 +361,7 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
                 padding: { top: 8 },
                 lineNumbers: "on",
               }}
-              theme="vs-dark"
+              theme={resolvedTheme === "dark" ? "vs-dark" : "vs"}
             />
           </div>
           <DialogFooter>
