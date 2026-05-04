@@ -8,7 +8,7 @@ import * as issueService from '../services/issue.js';
 import * as workspaceService from '../services/workspace.js';
 import { runPlanner } from './planner-agent.js';
 
-const CHECK_INTERVAL = 10_000; // 10s
+const CHECK_INTERVAL = 10 * 60 *1000; // 10m
 const timers = new Map<string, NodeJS.Timeout>();
 
 export function startScheduler(workspaceId: string, ctx: AgentContext): void {

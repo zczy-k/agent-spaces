@@ -4,6 +4,7 @@ import { addConnection, broadcastToWorkspace } from './connection-manager.js';
 import { handleTerminalEvent } from './terminal-handler.js';
 import { createMessage, updateMessage, listMessages } from '../services/message.js';
 import { getChannel, updateChannel } from '../services/channel.js';
+import * as issueService from '../services/issue.js';
 import { startScheduler } from '../agents/scheduler-agent.js';
 import * as agentService from '../services/agent.js';
 import * as wsService from '../services/workspace.js';
@@ -223,6 +224,8 @@ async function runMentionedAgent(
   const mcpServers = agentService.getMcpServers(preset.mcps);
   const skills = agentService.getAvailableSkillNames(configDir, preset.skills);
   const workspace = wsService.getById(workspaceId);
+  const channel = getChannel(workspaceId, channelId);
+  const issue = channel?.issueId ? issueService.getById(workspaceId, channel.issueId) : null;
   const startTime = Date.now();
   const existingMessage = options.messageId
     ? listMessages(workspaceId, channelId).find((message) => message.id === options.messageId)
@@ -297,6 +300,7 @@ async function runMentionedAgent(
         systemPrompt: preset.systemPrompt,
         mcpServers: Object.keys(mcpServers ?? {}),
         skills,
+        builtInTools: buildBuiltInTools(channel, issue),
         output: liveOutput,
         toolDetails,
         askUserQuestions,
@@ -320,6 +324,7 @@ async function runMentionedAgent(
       mcpServers: Object.keys(mcpServers ?? {}),
       skills,
       boundDirs: workspace?.boundDirs,
+      builtInTools: buildBuiltInTools(channel, issue),
     }), agentService.resolveWorkingDir(workspaceId, preset), {
       maxTurns: 100,
       mcpServers,
@@ -470,6 +475,7 @@ async function runMentionedAgent(
         systemPrompt: preset.systemPrompt,
         mcpServers: Object.keys(mcpServers ?? {}),
         skills,
+        builtInTools: buildBuiltInTools(channel, issue),
         output: displayOutput,
         toolDetails,
         askUserQuestions,
@@ -502,6 +508,7 @@ async function runMentionedAgent(
         systemPrompt: preset.systemPrompt,
         mcpServers: Object.keys(mcpServers ?? {}),
         skills,
+        builtInTools: buildBuiltInTools(channel, issue),
         output: [error],
         toolDetails: new Map(),
         askUserQuestions: [],
@@ -608,6 +615,7 @@ function buildAgentMessageParts(input: {
   systemPrompt?: string;
   mcpServers: string[];
   skills: string[];
+  builtInTools?: BuiltInToolContext[];
   output: string[];
   toolDetails?: Map<string, ToolDetail>;
   askUserQuestions?: PendingAskUserQuestion[];
@@ -1136,7 +1144,7 @@ function buildAgentPrompt(
   systemPrompt: string | undefined,
   userPrompt: string,
   history: Message[] = [],
-  runtimeConfig?: { mcpServers: string[]; skills: string[]; boundDirs?: string[] },
+  runtimeConfig?: { mcpServers: string[]; skills: string[]; boundDirs?: string[]; builtInTools?: BuiltInToolContext[] },
 ): string {
   const parts: string[] = [];
   const trimmedSystemPrompt = systemPrompt?.trim();
@@ -1147,9 +1155,13 @@ function buildAgentPrompt(
       'Agent runtime configuration:',
       `- MCP servers configured for this agent: ${runtimeConfig.mcpServers.length ? runtimeConfig.mcpServers.join(', ') : 'none'}`,
       `- Skills configured for this agent: ${runtimeConfig.skills.length ? runtimeConfig.skills.join(', ') : 'none'}`,
+      `- Built-in tools configured for this channel: ${runtimeConfig.builtInTools?.length ? runtimeConfig.builtInTools.map((tool) => tool.name).join(', ') : 'none'}`,
     ];
     if (runtimeConfig.boundDirs?.length) {
       configLines.push(`- Code directories (boundDirs): ${runtimeConfig.boundDirs.join(', ')}`);
+    }
+    if (runtimeConfig.builtInTools?.length) {
+      configLines.push(...formatBuiltInToolContext(runtimeConfig.builtInTools));
     }
     configLines.push('When asked what MCP servers or skills you have, answer from this configuration only. Do not infer availability from provider-side function names or hidden runtime internals.');
     parts.push(configLines.join('\n'));
@@ -1165,6 +1177,49 @@ function buildAgentPrompt(
 
   parts.push(`User message:\n${userPrompt}`);
   return parts.join('\n\n');
+}
+
+interface BuiltInToolContext {
+  name: string;
+  description: string;
+  issueId?: string;
+  issueTitle?: string;
+}
+
+function buildBuiltInTools(channel: ReturnType<typeof getChannel>, issue: ReturnType<typeof issueService.getById>): BuiltInToolContext[] {
+  if (channel?.type !== 'issue' || !channel.issueId) return [];
+
+  const issueTitle = issue?.title ?? channel.name;
+  return [
+    {
+      name: 'CreateCurrentChannelIssue',
+      description: 'Create or update the issue bound to the current issue channel. Use only the current channel issue id.',
+      issueId: channel.issueId,
+      issueTitle,
+    },
+    {
+      name: 'ViewCurrentChannelIssue',
+      description: 'View the issue bound to the current issue channel. Use only the current channel issue id.',
+      issueId: channel.issueId,
+      issueTitle,
+    },
+  ];
+}
+
+function formatBuiltInToolContext(tools: BuiltInToolContext[]): string[] {
+  const firstIssueTool = tools.find((tool) => tool.issueId);
+  const lines = [
+    'Built-in issue tool rules:',
+    '- The current channel is already bound to an issue. Do not create or view unrelated issue ids from this channel.',
+  ];
+  if (firstIssueTool?.issueId) {
+    lines.push(`- Current channel issue id: ${firstIssueTool.issueId}`);
+    lines.push(`- Current channel issue title: ${firstIssueTool.issueTitle || 'Untitled issue'}`);
+  }
+  for (const tool of tools) {
+    lines.push(`- ${tool.name}: ${tool.description}`);
+  }
+  return lines;
 }
 
 function stripHtml(content: string): string {

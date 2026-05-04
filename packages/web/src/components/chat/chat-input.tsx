@@ -17,6 +17,7 @@ import {
   IconHistory,
   IconLoader2,
   IconPaperclip,
+  IconFileText,
   IconPin,
   IconPinFilled,
   IconPlug,
@@ -106,9 +107,18 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const activeSkills = activeAgent?.skills ?? [];
   const tools = useMemo(
     () => [
-    
+      {
+        label: "Create Current Issue",
+        icon: IconPlus,
+        enabled: channel.type === "issue" && Boolean(channel.issueId),
+      },
+      {
+        label: "View Current Issue",
+        icon: IconFileText,
+        enabled: channel.type === "issue" && Boolean(channel.issueId),
+      },
     ],
-    []
+    [channel.issueId, channel.type]
   );
 
   useEffect(() => {
@@ -604,8 +614,12 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5 bg-popover border-border">
             <DropdownMenuGroup className="space-y-1">
-              {tools.map(({ label, icon: Icon }) => (
-                <DropdownMenuItem key={label} className="rounded-[calc(1rem-6px)] text-xs">
+              {tools.map(({ label, icon: Icon, enabled }) => (
+                <DropdownMenuItem
+                  key={label}
+                  disabled={!enabled}
+                  className="rounded-[calc(1rem-6px)] text-xs"
+                >
                   <Icon size={16} className="opacity-60" />
                   {label}
                 </DropdownMenuItem>

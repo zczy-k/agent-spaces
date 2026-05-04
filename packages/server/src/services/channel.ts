@@ -25,13 +25,17 @@ export function getChannel(workspaceId: string, channelId: string): Channel | un
   return listChannels(workspaceId).find((c) => c.id === channelId);
 }
 
-export function createChannel(workspaceId: string, data: { name: string; type: Channel['type']; members?: string[] }): Channel {
+export function createChannel(
+  workspaceId: string,
+  data: { name: string; type: Channel['type']; members?: string[]; issueId?: string },
+): Channel {
   const channels = listChannels(workspaceId);
   const channel: Channel = {
     id: uuid(),
     workspaceId,
     name: data.name,
     type: data.type,
+    issueId: data.issueId,
     members: normalizeMembers(workspaceId, data.members),
     createdAt: new Date().toISOString(),
   };
@@ -41,12 +45,17 @@ export function createChannel(workspaceId: string, data: { name: string; type: C
   return channel;
 }
 
-export function updateChannel(workspaceId: string, channelId: string, data: Partial<Pick<Channel, 'name' | 'type' | 'members' | 'pinnedMentionId' | 'draft' | 'todos'>>): Channel | null {
+export function updateChannel(
+  workspaceId: string,
+  channelId: string,
+  data: Partial<Pick<Channel, 'name' | 'type' | 'issueId' | 'members' | 'pinnedMentionId' | 'draft' | 'todos'>>,
+): Channel | null {
   const channels = listChannels(workspaceId);
   const idx = channels.findIndex((c) => c.id === channelId);
   if (idx === -1) return null;
   if (data.name !== undefined) channels[idx].name = data.name;
   if (data.type !== undefined) channels[idx].type = data.type;
+  if (Object.hasOwn(data, 'issueId')) channels[idx].issueId = data.issueId;
   if (data.members !== undefined) channels[idx].members = normalizeMembers(workspaceId, data.members);
   if (Object.hasOwn(data, 'pinnedMentionId')) channels[idx].pinnedMentionId = data.pinnedMentionId;
   if (Object.hasOwn(data, 'draft')) channels[idx].draft = data.draft;

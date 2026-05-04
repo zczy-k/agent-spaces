@@ -141,3 +141,14 @@ Object.keys(mcps.mcpServers)
 ```
 
 If `mcpServers` is missing or invalid, no explicit allowed tools list is produced.
+
+## Built-In Issue Tools
+
+Issue channels have two built-in tool capabilities exposed in the chat UI and agent runtime context:
+
+- `CreateCurrentChannelIssue`
+- `ViewCurrentChannelIssue`
+
+These tools are scoped to the issue bound to the current channel. Creating an issue also creates an issue channel, and the channel stores the same `issueId` so later create/view operations use the bound issue id instead of an arbitrary issue id.
+
+For legacy issues that already have a channel id but the channel is missing `issueId`, reading the issue list or issue detail repairs the channel binding.

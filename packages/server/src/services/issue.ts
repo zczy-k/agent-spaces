@@ -4,10 +4,15 @@ import { listIssues, getIssue, createIssue, updateIssue, deleteIssue } from '../
 import * as channelService from '../services/channel.js';
 
 function ensureChannel(workspaceId: string, issue: Issue): void {
-  if (issue.channelId) return;
+  if (issue.channelId) {
+    channelService.updateChannel(workspaceId, issue.channelId, { type: 'issue', issueId: issue.id });
+    return;
+  }
+
   const channel = channelService.createChannel(workspaceId, {
     name: issue.title,
     type: 'issue',
+    issueId: issue.id,
     members: ['user'],
   });
   issue.channelId = channel.id;
@@ -32,6 +37,7 @@ export function create(workspaceId: string, input: CreateIssueInput): Issue {
   const channel = channelService.createChannel(workspaceId, {
     name: input.title,
     type: 'issue',
+    issueId,
     members: ['user'],
   });
   const issue: Issue = {
@@ -47,7 +53,6 @@ export function create(workspaceId: string, input: CreateIssueInput): Issue {
     createdAt: now,
     updatedAt: now,
   };
-  channelService.updateChannel(workspaceId, channel.id, { name: input.title });
   createIssue(issue);
   return issue;
 }
