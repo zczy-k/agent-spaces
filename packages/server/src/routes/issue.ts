@@ -2,6 +2,7 @@ import { Router } from 'express';
 import type { Request, Response } from 'express';
 import * as issueService from '../services/issue.js';
 import * as issueCommentService from '../services/issue-comment.js';
+import * as channelService from '../services/channel.js';
 import { getWorkspace } from '../storage/workspace-store.js';
 
 const router = Router({ mergeParams: true });
@@ -13,12 +14,12 @@ router.get('/', (req: Request<{ id: string }>, res: Response) => {
 });
 
 router.post('/', (req: Request<{ id: string }>, res: Response) => {
-  const { title, description } = req.body;
+  const { title, description, members } = req.body;
   if (!title) {
     res.status(400).json({ error: 'title is required' });
     return;
   }
-  const issue = issueService.create(req.params.id, { title, description: description || '' });
+  const issue = issueService.create(req.params.id, { title, description: description || '', members });
   res.status(201).json(issue);
 });
 
@@ -40,7 +41,12 @@ router.put('/:issueId', (req: Request<{ id: string; issueId: string }>, res: Res
   const { title, description, status, members } = req.body;
   if (title) issue.title = title;
   if (description !== undefined) issue.description = description;
-  if (members) issue.members = normalizeIssueMembers(req.params.id, members);
+  if (members) {
+    issue.members = normalizeIssueMembers(req.params.id, members);
+    if (issue.channelId) {
+      channelService.updateChannel(req.params.id, issue.channelId, { members: ['user', ...issue.members] });
+    }
+  }
   if (status) {
     const updated = issueService.updateStatus(req.params.id, req.params.issueId, status, { title: issue.title, description: issue.description });
     res.json(updated);

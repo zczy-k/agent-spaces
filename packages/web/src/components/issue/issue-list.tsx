@@ -2,14 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { useIssueStore } from '@/stores/issue';
+import { useAgentStore } from '@/stores/agent';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { Plus, CircleDot, Pencil, Trash2 } from 'lucide-react';
+import { CreateIssueDialog } from './create-issue-dialog';
 import { EditIssueDialog } from './edit-issue-dialog';
 import type { Issue, IssueStatus } from '@agent-spaces/shared';
 
@@ -48,21 +47,17 @@ interface IssueListProps {
 
 export function IssueList({ workspaceId }: IssueListProps) {
   const { issues, activeIssueId, loading, loadIssues, createIssue, updateIssue, deleteIssue, setActiveIssue } = useIssueStore();
-  const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState('');
-  const [desc, setDesc] = useState('');
+  const { agents, ensure: ensureAgents } = useAgentStore();
+  const [createOpen, setCreateOpen] = useState(false);
   const [editingIssue, setEditingIssue] = useState<Issue | null>(null);
 
   useEffect(() => {
     loadIssues(workspaceId);
-  }, [workspaceId, loadIssues]);
+    ensureAgents(workspaceId);
+  }, [workspaceId, loadIssues, ensureAgents]);
 
-  const handleCreate = async () => {
-    if (!title.trim()) return;
-    await createIssue(workspaceId, title.trim(), desc.trim());
-    setTitle('');
-    setDesc('');
-    setOpen(false);
+  const handleCreate = async (data: { title: string; description: string; members: string[] }) => {
+    await createIssue(workspaceId, data.title, data.description, data.members);
   };
 
   const grouped = GROUP_ORDER
@@ -80,33 +75,9 @@ export function IssueList({ workspaceId }: IssueListProps) {
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between p-2 border-b">
         <span className="text-sm font-medium">Issues</span>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger render={<Button variant="ghost" size="icon" className="h-6 w-6" />}>
-              <Plus className="h-4 w-4" />
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create Issue</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3">
-              <Input
-                placeholder="Title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-              />
-              <Textarea
-                placeholder="Description (optional)"
-                value={desc}
-                onChange={(e) => setDesc(e.target.value)}
-                rows={3}
-              />
-              <Button onClick={handleCreate} disabled={!title.trim()}>
-                Create
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setCreateOpen(true)}>
+          <Plus className="h-4 w-4" />
+        </Button>
       </div>
 
       <ScrollArea className="flex-1">
@@ -154,11 +125,19 @@ export function IssueList({ workspaceId }: IssueListProps) {
         ))}
       </ScrollArea>
 
+      <CreateIssueDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        agents={agents}
+        onSubmit={handleCreate}
+      />
+
       {editingIssue && (
         <EditIssueDialog
           issue={editingIssue}
           open={!!editingIssue}
           onOpenChange={(open) => { if (!open) setEditingIssue(null); }}
+          agents={agents}
           onSave={async (data) => {
             await updateIssue(workspaceId, editingIssue.id, data);
             setEditingIssue(null);

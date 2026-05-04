@@ -5,8 +5,9 @@ import * as channelService from '../services/channel.js';
 import * as taskService from '../services/task.js';
 
 function ensureChannel(workspaceId: string, issue: Issue): void {
+  const channelMembers = ['user', ...(issue.members || [])];
   if (issue.channelId) {
-    channelService.updateChannel(workspaceId, issue.channelId, { type: 'issue', issueId: issue.id });
+    channelService.updateChannel(workspaceId, issue.channelId, { type: 'issue', issueId: issue.id, members: channelMembers });
     return;
   }
 
@@ -14,7 +15,7 @@ function ensureChannel(workspaceId: string, issue: Issue): void {
     name: issue.title,
     type: 'issue',
     issueId: issue.id,
-    members: ['user'],
+    members: channelMembers,
   });
   issue.channelId = channel.id;
   updateIssue(issue);
@@ -35,11 +36,12 @@ export function getById(workspaceId: string, issueId: string): Issue | null {
 export function create(workspaceId: string, input: CreateIssueInput): Issue {
   const now = new Date().toISOString();
   const issueId = uuid();
+  const channelMembers = ['user', ...(input.members || [])];
   const channel = channelService.createChannel(workspaceId, {
     name: input.title,
     type: 'issue',
     issueId,
-    members: ['user'],
+    members: channelMembers,
   });
   const issue: Issue = {
     id: issueId,
@@ -50,7 +52,7 @@ export function create(workspaceId: string, input: CreateIssueInput): Issue {
     status: 'draft',
     tasks: [],
     assignedAgents: [],
-    members: [],
+    members: input.members || [],
     createdAt: now,
     updatedAt: now,
   };

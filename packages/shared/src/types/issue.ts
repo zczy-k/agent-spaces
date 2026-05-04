@@ -52,4 +52,5 @@ export interface IssueComment {
 export interface CreateIssueInput {
   title: string;
   description: string;
+  members?: string[];
 }

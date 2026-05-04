@@ -1,51 +1,44 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { useState } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { X } from 'lucide-react';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { getMemberDisplayName } from '@/lib/agent-members';
-import type { Issue, IssueStatus, AgentConfig } from '@agent-spaces/shared';
 
-const STATUS_OPTIONS: { value: IssueStatus; label: string }[] = [
-  { value: 'draft', label: 'Draft' },
-  { value: 'planned', label: 'Planned' },
-  { value: 'in_progress', label: 'In Progress' },
-  { value: 'review_pending', label: 'Review Pending' },
-  { value: 'changes_requested', label: 'Changes Requested' },
-  { value: 'approved', label: 'Approved' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'archived', label: 'Archived' },
-];
+import type { AgentConfig } from '@agent-spaces/shared';
 
-interface EditIssueDialogProps {
-  issue: Issue;
+interface CreateIssueDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   agents?: AgentConfig[];
-  onSave: (data: { title: string; description: string; status: IssueStatus; members: string[] }) => Promise<void>;
+  onSubmit: (data: { title: string; description: string; members: string[] }) => void;
 }
 
-export function EditIssueDialog({ issue, open, onOpenChange, agents = [], onSave }: EditIssueDialogProps) {
-  const [title, setTitle] = useState(issue.title);
-  const [description, setDescription] = useState(issue.description);
-  const [status, setStatus] = useState<IssueStatus>(issue.status);
-  const [members, setMembers] = useState<string[]>(issue.members || []);
+export function CreateIssueDialog({ open, onOpenChange, agents = [], onSubmit }: CreateIssueDialogProps) {
+  const [title, setTitle] = useState('');
+  const [desc, setDesc] = useState('');
+  const [members, setMembers] = useState<string[]>(['user']);
   const [memberQuery, setMemberQuery] = useState('');
-  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (open) {
-      setTitle(issue.title);
-      setDescription(issue.description);
-      setStatus(issue.status);
-      setMembers(issue.members?.length ? [...issue.members] : []);
+  const handleClose = (val: boolean) => {
+    if (!val) {
+      setTitle('');
+      setDesc('');
+      setMembers(['user']);
       setMemberQuery('');
     }
-  }, [open, issue]);
+    onOpenChange(val);
+  };
 
   const toggleMember = (id: string) => {
     setMembers((prev) =>
@@ -53,15 +46,10 @@ export function EditIssueDialog({ issue, open, onOpenChange, agents = [], onSave
     );
   };
 
-  const handleSave = async () => {
+  const handleSubmit = () => {
     if (!title.trim()) return;
-    setSaving(true);
-    try {
-      await onSave({ title: title.trim(), description: description.trim(), status, members });
-      onOpenChange(false);
-    } finally {
-      setSaving(false);
-    }
+    onSubmit({ title: title.trim(), description: desc.trim(), members });
+    handleClose(false);
   };
 
   const filtered = agents.filter((a) =>
@@ -69,39 +57,25 @@ export function EditIssueDialog({ issue, open, onOpenChange, agents = [], onSave
   );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>编辑议题</DialogTitle>
-          <DialogDescription>修改议题信息、状态和成员</DialogDescription>
+          <DialogTitle>创建议题</DialogTitle>
+          <DialogDescription>创建一个新的议题并指定成员</DialogDescription>
         </DialogHeader>
-        <div className="space-y-3">
+        <div className="space-y-3 pt-2">
           <Input
-            placeholder="Title"
+            placeholder="标题"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && !saving && handleSave()}
+            onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
           />
           <Textarea
-            placeholder="Description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            placeholder="描述（可选）"
+            value={desc}
+            onChange={(e) => setDesc(e.target.value)}
             rows={3}
           />
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">Status</label>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value as IssueStatus)}
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            >
-              {STATUS_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
 
           <div className="space-y-2">
             <label className="text-sm font-medium">成员</label>
@@ -110,7 +84,7 @@ export function EditIssueDialog({ issue, open, onOpenChange, agents = [], onSave
               onChange={(e) => setMemberQuery(e.target.value)}
               placeholder="搜索 Agent..."
             />
-            <div className="max-h-36 overflow-y-auto space-y-0.5">
+            <div className="max-h-40 overflow-y-auto space-y-0.5">
               {filtered.length === 0 && (
                 <p className="text-sm text-muted-foreground py-2 text-center">无可用 Agent</p>
               )}
@@ -159,11 +133,9 @@ export function EditIssueDialog({ issue, open, onOpenChange, agents = [], onSave
           </div>
 
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave} disabled={!title.trim() || saving}>
-              {saving ? 'Saving...' : 'Save'}
+            <Button variant="outline" onClick={() => handleClose(false)}>取消</Button>
+            <Button onClick={handleSubmit} disabled={!title.trim()}>
+              创建
             </Button>
           </div>
         </div>
