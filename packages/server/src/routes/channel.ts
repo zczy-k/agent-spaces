@@ -28,8 +28,11 @@ router.post('/', (req: Request<ChannelParams>, res: Response) => {
 // PUT /api/workspaces/:id/channels/:channelId
 router.put('/:channelId', (req: Request<ChannelParams>, res: Response) => {
   const { id, channelId } = req.params;
-  const { name, type, issueId, members, pinnedMentionId, draft, todos } = req.body;
-  const channel = updateChannel(id, channelId!, { name, type, issueId, members, pinnedMentionId, draft, todos });
+  const patch: Parameters<typeof updateChannel>[2] = {};
+  for (const key of ['name', 'type', 'issueId', 'members', 'pinnedMentionId', 'draft', 'todos'] as const) {
+    if (Object.hasOwn(req.body, key)) patch[key] = req.body[key];
+  }
+  const channel = updateChannel(id, channelId!, patch);
   if (!channel) { res.status(404).json({ error: 'channel not found' }); return; }
   broadcastToWorkspace(id, 'channel.updated', channel);
   res.json(channel);

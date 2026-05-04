@@ -1,5 +1,5 @@
 import type { WebSocket } from 'ws';
-import type { MessageChain, WSEvent, ClientEventName, Message, MessagePart, MessageTokenUsage } from '@agent-spaces/shared';
+import type { Channel, MessageChain, WSEvent, ClientEventName, Message, MessagePart, MessageTokenUsage } from '@agent-spaces/shared';
 import { addConnection, broadcastToWorkspace } from './connection-manager.js';
 import { handleTerminalEvent } from './terminal-handler.js';
 import { createMessage, updateMessage, listMessages } from '../services/message.js';
@@ -226,8 +226,7 @@ async function runMentionedAgent(
   const mcpServers = agentService.getMcpServers(preset.mcps);
   const skills = agentService.getAvailableSkillNames(configDir, preset.skills);
   const workspace = wsService.getById(workspaceId);
-  const channel = getChannel(workspaceId, channelId);
-  const issue = channel?.issueId ? issueService.getById(workspaceId, channel.issueId) : null;
+  const { channel, issue } = resolveIssueChannelContext(workspaceId, channelId);
   const functionTools = createIssueFunctionTools(workspaceId, channel);
   const startTime = Date.now();
   const existingMessage = options.messageId
@@ -548,6 +547,19 @@ async function runMentionedAgent(
   } finally {
     untrackChannelRun(workspaceId, channelId, session.id);
   }
+}
+
+function resolveIssueChannelContext(
+  workspaceId: string,
+  channelId: string,
+): { channel: Channel | undefined; issue: ReturnType<typeof issueService.getById> } {
+  let channel = getChannel(workspaceId, channelId);
+  let issue = channel?.issueId ? issueService.getById(workspaceId, channel.issueId) : null;
+  if (issue || channel?.type !== 'issue') return { channel, issue };
+
+  issue = issueService.list(workspaceId).find((item) => item.channelId === channelId) ?? null;
+  channel = getChannel(workspaceId, channelId);
+  return { channel, issue };
 }
 
 function isAgentSpacesIssueTool(name: string | undefined): boolean {
