@@ -41,6 +41,8 @@ const defaultJson: IJsonModel = {
     tabSetEnableTabStrip: true,
     borderEnableDrop: true,
     tabEnableClose: false,
+    tabEnableRename: false,
+    tabSetEnableMaximize: false,
   },
   borders: [
     {
@@ -82,9 +84,10 @@ const defaultJson: IJsonModel = {
 
 interface WorkspaceShellProps {
   workspaceId: string;
+  boundDirs: string[];
 }
 
-export function WorkspaceShell({ workspaceId }: WorkspaceShellProps) {
+export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) {
   const issueStore = useIssueStore();
   const taskStore = useTaskStore();
   const activeIssueId = useIssueStore((s) => s.activeIssueId);
@@ -161,7 +164,7 @@ export function WorkspaceShell({ workspaceId }: WorkspaceShellProps) {
         case "issue-detail":
           return <IssueDetail workspaceId={workspaceId} />;
         case "terminal":
-          return <TerminalPanel workspaceId={workspaceId} />;
+          return <TerminalPanel workspaceId={workspaceId} boundDirs={boundDirs} />;
         case "git-changes":
           return <GitChangesPanel workspaceId={workspaceId} />;
         case "git-commits":

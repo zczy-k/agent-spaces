@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
-import { Plus, ChevronDown, X } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Plus, ChevronDown, X, FolderOpen } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { useTerminalStore } from '@/stores/terminal';
 import { getWS } from '@/lib/ws';
 import { TerminalInstance } from './terminal-instance';
@@ -28,16 +30,42 @@ function getShellLabel(shell?: string) {
 
 interface TerminalPanelProps {
   workspaceId: string;
+  boundDirs: string[];
 }
 
-export function TerminalPanel({ workspaceId }: TerminalPanelProps) {
+export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
   const { sessions, activeId, init, createSession, setActive, removeSession } = useTerminalStore();
+
+  const [dirPickerOpen, setDirPickerOpen] = useState(false);
+  const [pendingShell, setPendingShell] = useState<string | undefined>(undefined);
+
+  const resolveCwd = useCallback((): string | undefined => {
+    if (boundDirs.length === 0) return undefined;
+    if (boundDirs.length === 1) return boundDirs[0];
+    return undefined; // multiple dirs — need picker
+  }, [boundDirs]);
+
+  const handleCreateSession = useCallback((shell?: string) => {
+    const cwd = resolveCwd();
+    if (cwd === undefined && boundDirs.length > 1) {
+      setPendingShell(shell);
+      setDirPickerOpen(true);
+      return;
+    }
+    createSession(shell, cwd);
+  }, [resolveCwd, boundDirs.length, createSession]);
+
+  const handleDirSelect = useCallback((dir: string) => {
+    setDirPickerOpen(false);
+    createSession(pendingShell, dir);
+    setPendingShell(undefined);
+  }, [pendingShell, createSession]);
 
   useEffect(() => {
     const ws = getWS(workspaceId);
     init(ws);
     if (sessions.length === 0) {
-      createSession();
+      handleCreateSession();
     }
   }, [workspaceId]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -81,7 +109,7 @@ export function TerminalPanel({ workspaceId }: TerminalPanelProps) {
             {SHELL_OPTIONS.map((opt) => (
               <DropdownMenuItem
                 key={opt.value}
-                onClick={() => createSession(opt.value)}
+                onClick={() => handleCreateSession(opt.value)}
                 className="text-xs"
               >
                 {opt.label}
@@ -112,6 +140,30 @@ export function TerminalPanel({ workspaceId }: TerminalPanelProps) {
           ))
         )}
       </div>
+
+      {/* Directory picker dialog */}
+      <Dialog open={dirPickerOpen} onOpenChange={setDirPickerOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Select Working Directory</DialogTitle>
+            <DialogDescription>
+              This workspace has multiple bound directories. Choose one as the terminal&apos;s initial working directory.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2 py-2">
+            {boundDirs.map((dir) => (
+              <button
+                key={dir}
+                onClick={() => handleDirSelect(dir)}
+                className="flex items-center gap-2 px-3 py-2 text-sm text-left rounded-md border border-border hover:bg-accent hover:text-accent-foreground transition-colors"
+              >
+                <FolderOpen size={14} className="shrink-0 text-muted-foreground" />
+                <span className="truncate font-mono text-xs">{dir}</span>
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

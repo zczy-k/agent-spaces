@@ -14,7 +14,7 @@ interface TerminalState {
   _initialized: boolean;
 
   init: (ws: WorkspaceWS) => void;
-  createSession: (shell?: string) => void;
+  createSession: (shell?: string, cwd?: string) => void;
   setActive: (id: string) => void;
   removeSession: (id: string) => void;
   sendInput: (id: string, data: string) => void;
@@ -53,9 +53,9 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
     });
   },
 
-  createSession: (shell?: string) => {
+  createSession: (shell?: string, cwd?: string) => {
     const { ws } = get();
-    ws?.send('terminal.create', { sessionId: crypto.randomUUID(), shell });
+    ws?.send('terminal.create', { sessionId: crypto.randomUUID(), shell, cwd });
   },
 
   setActive: (id) => set({ activeId: id }),

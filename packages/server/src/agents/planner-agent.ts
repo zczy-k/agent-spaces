@@ -171,13 +171,23 @@ async function runExecutor(
 
   agentService.assignTask(workspaceId, executor.id, taskId);
 
+  console.log(
+    `[executor] starting runtime workspaceId=${workspaceId} taskId=${taskId} issueId=${issueId} executorAgentId=${executor.id} runtime=open-agent-sdk(default) sandboxDirs=${JSON.stringify(task.sandboxDirs ?? [])}`,
+  );
   const runtime = createAgentRuntime();
   ctx.broadcast('agent.output', { agentId: executor.id, data: `Executing task: ${task.title}` });
+  ctx.broadcast('agent.output', {
+    agentId: executor.id,
+    data: '[debug] executor runtime=open-agent-sdk(default); hook:onExecutorComplete should run after this executor finishes',
+  });
 
   const result = await runtime.execute(
     `${task.title}\n\n${task.description}`,
     '',
     { sandboxDirs: task.sandboxDirs },
+  );
+  console.log(
+    `[executor] runtime completed workspaceId=${workspaceId} taskId=${taskId} issueId=${issueId} executorAgentId=${executor.id} success=${result.success} summary=${JSON.stringify(result.summary)}`,
   );
 
   for (const line of result.output) {
@@ -190,5 +200,6 @@ async function runExecutor(
   ctx.broadcast('agent.completed', { agentId: executor.id, result });
 
   // Hook: executor complete → triggers reviewer
+  console.log(`[executor] invoking hook:onExecutorComplete taskId=${taskId} issueId=${issueId}`);
   await onExecutorComplete(workspaceId, taskId, issueId, result, ctx);
 }

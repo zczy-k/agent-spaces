@@ -44,7 +44,7 @@ export default function WorkspacePage({ params }: { params: Promise<{ id: string
     <div className="h-full flex flex-col">
       <WorkspaceTabs />
       <div className="flex-1 overflow-hidden">
-        <WorkspaceShell workspaceId={workspace.id} />
+        <WorkspaceShell workspaceId={workspace.id} boundDirs={workspace.boundDirs} />
       </div>
     </div>
   );
