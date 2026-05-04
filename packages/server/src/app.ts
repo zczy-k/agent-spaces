@@ -16,6 +16,7 @@ import gitRouter from './routes/git.js';
 import llmRouter from './routes/llm.js';
 import { handleConnection } from './ws/handler.js';
 import { startScheduler, stopScheduler } from './agents/scheduler-agent.js';
+import { recoverRunningWorkOnStartup } from './services/issue-retry.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.PORT || '3100', 10);
@@ -81,6 +82,7 @@ wss.on('connection', (ws, req) => {
 server.listen(PORT, () => {
   console.log(`[server] listening on http://localhost:${PORT}`);
   console.log(`[server] websocket on ws://localhost:${PORT}/ws?workspaceId=...`);
+  recoverRunningWorkOnStartup();
 });
 
 // Start scheduler for all workspaces (lazy: started on first WS connection)

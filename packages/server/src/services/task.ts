@@ -89,6 +89,36 @@ export function updateStatus(
   return task;
 }
 
+export function markRunningTasksFailed(workspaceId: string, reason: string): Task[] {
+  const running = list(workspaceId).filter((task) => task.status === 'running' || task.status === 'retrying');
+  return running.map((task) => updateStatus(workspaceId, task.id, 'failed', {
+    result: {
+      success: false,
+      summary: reason,
+      artifacts: [],
+      error: reason,
+    },
+  })).filter((task): task is Task => Boolean(task));
+}
+
+export function resetForRetry(
+  workspaceId: string,
+  taskId: string,
+  options: { incrementRetry?: boolean; resetRetryCount?: boolean } = {},
+): Task | null {
+  const task = getTask(workspaceId, taskId);
+  if (!task) return null;
+
+  const retryCount = options.resetRetryCount
+    ? 0
+    : options.incrementRetry ? (task.retryCount ?? 0) + 1 : (task.retryCount ?? 0);
+  return updateStatus(workspaceId, taskId, 'pending', {
+    retryCount,
+    assignedAgentId: undefined,
+    result: undefined,
+  });
+}
+
 export function assignAgent(
   workspaceId: string,
   taskId: string,

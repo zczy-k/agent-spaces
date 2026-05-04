@@ -20,6 +20,10 @@ export interface Issue {
   tasks: string[];
   assignedAgents: string[];
   members: string[];
+  retryCount: number;
+  maxRetries: number;
+  retryPaused?: boolean;
+  lastError?: string;
   branch?: string;
   prUrl?: string;
   createdAt: string;

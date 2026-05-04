@@ -7,6 +7,7 @@ import * as agentService from '../services/agent.js';
 import * as issueService from '../services/issue.js';
 import * as workspaceService from '../services/workspace.js';
 import { runPlanner } from './planner-agent.js';
+import { retryErrorIssues } from '../services/issue-retry.js';
 
 const CHECK_INTERVAL = 10 * 60 *1000; // 10m
 const timers = new Map<string, NodeJS.Timeout>();
@@ -26,6 +27,8 @@ export function startScheduler(workspaceId: string, ctx: AgentContext): void {
       console.log(`[scheduler:${workspaceId}] auto-processing disabled for this workspace, skip`);
       return;
     }
+
+    await retryErrorIssues(workspaceId, ctx);
 
     const allIssues = issueService.list(workspaceId);
     const unfinished = allIssues.filter(

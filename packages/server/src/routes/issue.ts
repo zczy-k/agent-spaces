@@ -8,6 +8,7 @@ import { broadcastToWorkspace } from '../ws/handler.js';
 import { getWorkspace } from '../storage/workspace-store.js';
 import { runPlanner } from '../agents/planner-agent.js';
 import * as agentService from '../services/agent.js';
+import { retryIssue } from '../services/issue-retry.js';
 
 const router = Router({ mergeParams: true });
 
@@ -90,6 +91,31 @@ router.post('/:issueId/start', (req: Request<{ id: string; issueId: string }>, r
   runPlanner(workspaceId, issueId, ctx).catch((err) => {
     console.error(`[issue-start] planner error for issue ${issueId}:`, err);
   });
+});
+
+router.post('/:issueId/resume', async (req: Request<{ id: string; issueId: string }>, res: Response) => {
+  const workspaceId = req.params.id;
+  const { issueId } = req.params;
+  const issue = issueService.getById(workspaceId, issueId);
+  if (!issue) {
+    res.status(404).json({ error: 'issue not found' });
+    return;
+  }
+
+  const ctx = {
+    workspaceId,
+    broadcast: (event: string, data: unknown) => broadcastToWorkspace(workspaceId, event, data),
+    getSession: (sessionId: string) => agentService.getById(workspaceId, sessionId),
+    updateSessionStatus: (sessionId: string, status: AgentSessionStatus, extra?: Record<string, unknown>) =>
+      agentService.updateStatus(workspaceId, sessionId, status, extra),
+  };
+
+  const result = await retryIssue(workspaceId, issueId, ctx, { manual: true });
+  if (!result.issue) {
+    res.status(404).json({ error: 'issue not found' });
+    return;
+  }
+  res.json(result.issue);
 });
 
 router.delete('/:issueId', (req: Request<{ id: string; issueId: string }>, res: Response) => {

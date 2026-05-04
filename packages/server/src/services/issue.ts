@@ -5,6 +5,7 @@ import * as channelService from '../services/channel.js';
 import * as taskService from '../services/task.js';
 
 function ensureChannel(workspaceId: string, issue: Issue): void {
+  ensureRetryDefaults(workspaceId, issue);
   const channelMembers = ['user', ...(issue.members || [])];
   if (issue.channelId) {
     channelService.updateChannel(workspaceId, issue.channelId, { type: 'issue', issueId: issue.id, members: channelMembers });
@@ -19,6 +20,19 @@ function ensureChannel(workspaceId: string, issue: Issue): void {
   });
   issue.channelId = channel.id;
   updateIssue(issue);
+}
+
+function ensureRetryDefaults(workspaceId: string, issue: Issue): void {
+  let changed = false;
+  if (issue.retryCount === undefined) {
+    issue.retryCount = 0;
+    changed = true;
+  }
+  if (issue.maxRetries === undefined) {
+    issue.maxRetries = 3;
+    changed = true;
+  }
+  if (changed) updateIssue({ ...issue, workspaceId });
 }
 
 export function list(workspaceId: string, status?: IssueStatus): Issue[] {
@@ -53,6 +67,8 @@ export function create(workspaceId: string, input: CreateIssueInput): Issue {
     tasks: [],
     assignedAgents: [],
     members: input.members || [],
+    retryCount: 0,
+    maxRetries: 3,
     createdAt: now,
     updatedAt: now,
   };
@@ -80,6 +96,8 @@ export function createForChannel(
     tasks: [],
     assignedAgents: [],
     members: [],
+    retryCount: 0,
+    maxRetries: 3,
     createdAt: now,
     updatedAt: now,
   };
@@ -104,6 +122,46 @@ export function updateStatus(
   issue.status = status;
   issue.updatedAt = new Date().toISOString();
   if (extra) Object.assign(issue, extra);
+  updateIssue(issue);
+  return issue;
+}
+
+export function markError(
+  workspaceId: string,
+  issueId: string,
+  error?: string,
+): Issue | null {
+  return updateStatus(workspaceId, issueId, 'error', {
+    lastError: error,
+  });
+}
+
+export function prepareRetry(
+  workspaceId: string,
+  issueId: string,
+  options: { manual?: boolean } = {},
+): Issue | null {
+  const issue = getIssue(workspaceId, issueId);
+  if (!issue) return null;
+
+  if (options.manual) {
+    issue.retryCount = 0;
+    issue.retryPaused = false;
+  } else {
+    const retryCount = issue.retryCount ?? 0;
+    const maxRetries = issue.maxRetries ?? 3;
+    if (retryCount >= maxRetries) {
+      issue.retryPaused = true;
+      issue.updatedAt = new Date().toISOString();
+      updateIssue(issue);
+      return issue;
+    }
+    issue.retryCount = retryCount + 1;
+  }
+
+  issue.status = 'in_progress';
+  issue.lastError = undefined;
+  issue.updatedAt = new Date().toISOString();
   updateIssue(issue);
   return issue;
 }

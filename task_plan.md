@@ -423,3 +423,21 @@ git -C "g:/agent_spaces" diff -- "packages/shared/src/types/task.ts" "packages/s
 6. Wire scheduler continuation:
    - executor completion should call dependency scheduler after task done/review done.
 7. Run builds.
+
+## New Phase - Agent Error Retry and Restart Recovery
+
+User requirement:
+- Agent/runtime failure should retry the task up to three times.
+- After task retries exceed three, mark task failed/error and set issue status to `error`.
+- On server startup, all `running` tasks should become failed and any `in_progress` issue should become `error`.
+- A service should retry `error` issues up to three times.
+- After issue retries exceed three, pause automatic retries.
+- Frontend issue detail should allow manually resuming failed tasks.
+
+Planned implementation:
+1. Inspect current services/routes/UI. Status: complete.
+2. Add issue retry metadata and service helpers. Status: complete.
+3. Add task retry handling in issue task controller. Status: complete.
+4. Add startup recovery and error issue retry service. Status: complete.
+5. Add issue-detail manual resume action. Status: complete.
+6. Build/test and document results. Status: complete.

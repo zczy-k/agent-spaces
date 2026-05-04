@@ -216,6 +216,45 @@ scheduleRunnableIssueTasks(workspaceId, issueId, ctx)
 
 当前策略是串行执行同一轮 runnable tasks，避免多个 executor/reviewer 的 issue comment 在时间线上交错，也降低共享工作区写冲突风险。依赖图仍用于判断哪些 task 可以开始；只是实际启动时按顺序执行。
 
+## 失败重试与重启恢复
+
+Task 和 Issue 都有独立的重试计数：
+
+```ts
+Task.retryCount / Task.maxRetries
+Issue.retryCount / Issue.maxRetries / Issue.retryPaused
+```
+
+Executor agent 运行失败时：
+
+```text
+task running
+  -> failed
+  -> retryCount < maxRetries: reset to pending and schedule again
+  -> retryCount >= maxRetries: keep failed and set issue error
+```
+
+Issue 进入 `error` 后，scheduler 会在后续 tick 中调用 error issue retry service：
+
+```text
+issue error
+  -> retryCount < maxRetries: reset failed tasks to pending, issue -> in_progress, continue scheduling
+  -> retryCount >= maxRetries: set retryPaused=true, stop automatic retries
+```
+
+手动恢复入口：
+
+- 后端：`POST /api/workspaces/:workspaceId/issues/:issueId/resume`
+- 前端：issue detail 在 `error` 状态显示 `Resume failed tasks`
+- 单个 failed task 仍可点击 retry，后端会把该 task 恢复为 `pending` 并立即重新调度。
+
+服务器启动恢复：
+
+1. `app.ts` 启动后调用 recovery service。
+2. 所有状态为 `running` 或 `retrying` 的 task 会被标记为 `failed`。
+3. 所有状态为 `in_progress` 的 issue 会被切换为 `error`。
+4. 后续由 scheduler 的 error issue retry service 继续自动恢复，超过三次后暂停。
+
 ## Executor 阶段
 
 Executor 由 `runIssueTask()` 启动。

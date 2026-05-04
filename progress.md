@@ -67,3 +67,23 @@ Working tree currently has partial code changes:
 ?? progress.md
 ?? task_plan.md
 ```
+
+## Retry/Recovery Session - 2026-05-04
+
+- Started implementing agent error retry and server restart recovery requirements.
+- Confirmed existing `Task` has `retryCount`/`maxRetries`, while `Issue` currently only has `status: 'error'` and no issue-level retry counters.
+- Current `runIssueTask()` marks runtime failures as `failed`, completes the agent, calls executor hook, and immediately re-enters scheduling; no retry path exists yet.
+- Current server app only starts scheduler lazily/exported; no boot recovery pass exists.
+
+## Retry/Recovery Session Results
+
+- Added issue-level retry metadata to shared `Issue` and default initialization/backfill in issue service.
+- Added `issue-retry` service for startup recovery, automatic error issue retry, and manual issue resume.
+- Startup recovery now marks `running`/`retrying` tasks failed and `in_progress` issues error.
+- Scheduler now retries `error` issues up to issue `maxRetries`, then sets `retryPaused`.
+- Executor task failure now retries the task up to task `maxRetries`; only after exhaustion does it mark the issue error.
+- Task retry route now resets failed tasks to `pending` and triggers scheduling instead of leaving them in `retrying`.
+- Added issue resume API and issue-detail action for manually resuming failed tasks.
+- Updated `docs/issue-agent-automation.md` with retry/recovery flow.
+- Verification: `pnpm --filter @agent-spaces/shared build && pnpm --filter @agent-spaces/server build && pnpm --filter @agent-spaces/web build` passed.
+- Verification: `git diff --check` passed.

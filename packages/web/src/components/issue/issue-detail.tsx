@@ -167,7 +167,7 @@ interface IssueDetailProps {
 }
 
 export function IssueDetail({ workspaceId }: IssueDetailProps) {
-  const { issues, activeIssueId, startIssue, updateIssue, deleteIssue } = useIssueStore();
+  const { issues, activeIssueId, startIssue, resumeIssue, updateIssue, deleteIssue } = useIssueStore();
   const { tasks, loadTasks, retryTask, cancelTask, createTask, updateTask, deleteTask } = useTaskStore();
   const agents = useAgentStore((s) => s.agents);
   const ensureAgents = useAgentStore((s) => s.ensure);
@@ -483,6 +483,19 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                 <Play className="h-3 w-3 mr-1" />
                 Start
               </Button>
+            </div>
+          )}
+          {issue.status === 'error' && (
+            <div className="mt-2 flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={() => resumeIssue(workspaceId, issue.id)}>
+                <RotateCcw className="h-3 w-3 mr-1" />
+                Resume failed tasks
+              </Button>
+              {issue.retryPaused && (
+                <span className="text-[11px] text-muted-foreground">
+                  Automatic retry paused after {issue.retryCount}/{issue.maxRetries} attempts.
+                </span>
+              )}
             </div>
           )}
         </div>

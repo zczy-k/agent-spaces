@@ -142,15 +142,22 @@ export async function runIssueTask(
 
   const executorPreset = findExecutorForTask(workspaceId, issue, task);
   if (!executorPreset) {
+    const missingExecutorResult = {
+      success: false,
+      summary: 'No executor agent configured in issue channel members',
+      artifacts: [],
+      error: 'No executor member found for issue channel',
+    };
     const failed = taskService.updateStatus(workspaceId, taskId, 'failed', {
       result: {
         success: false,
-        summary: 'No executor agent configured in issue channel members',
+        summary: missingExecutorResult.summary,
         artifacts: [],
-        error: 'No executor member found for issue channel',
+        error: missingExecutorResult.error,
       },
     });
     broadcastTaskUpdate(ctx, failed, task.status);
+    await handleTaskFailure(workspaceId, issueId, taskId, missingExecutorResult, ctx);
     return;
   }
 
@@ -215,6 +222,11 @@ export async function runIssueTask(
 
   agentService.complete(workspaceId, executor.id, result.success ? undefined : result.error || result.summary);
   ctx.broadcast('agent.completed', { agentId: executor.id, result });
+
+  if (!result.success) {
+    await handleTaskFailure(workspaceId, issueId, taskId, result, ctx);
+    return;
+  }
 
   await onExecutorComplete(workspaceId, taskId, issueId, result, ctx);
   await scheduleRunnableIssueTasks(workspaceId, issueId, ctx);
@@ -363,6 +375,37 @@ function updateIssueStatus(
   ctx.broadcast('issue.status_changed', { issueId, from: issue.status, to: status });
   ctx.broadcast('issue.updated', updated);
   return updated;
+}
+
+async function handleTaskFailure(
+  workspaceId: string,
+  issueId: string,
+  taskId: string,
+  result: TaskResult,
+  ctx: AgentContext,
+): Promise<void> {
+  const task = taskService.getById(workspaceId, taskId);
+  if (!task) return;
+
+  if ((task.retryCount ?? 0) < (task.maxRetries ?? 3)) {
+    const reset = taskService.resetForRetry(workspaceId, taskId, { incrementRetry: true });
+    if (reset) {
+      ctx.broadcast('task.status_changed', { taskId, from: task.status, to: reset.status });
+      ctx.broadcast('task.updated', reset);
+      ctx.broadcast('task.output', {
+        taskId,
+        data: `Retrying task after agent error (${reset.retryCount}/${reset.maxRetries}).`,
+      });
+    }
+    await scheduleRunnableIssueTasks(workspaceId, issueId, ctx);
+    return;
+  }
+
+  const issue = issueService.getById(workspaceId, issueId);
+  const updated = issueService.markError(workspaceId, issueId, result.error || result.summary || 'Task failed after retries');
+  if (!updated) return;
+  ctx.broadcast('issue.status_changed', { issueId, from: issue?.status ?? 'in_progress', to: 'error' });
+  ctx.broadcast('issue.updated', updated);
 }
 
 function broadcastTaskUpdate(ctx: AgentContext, task: Task | null, from: TaskStatus): void {
