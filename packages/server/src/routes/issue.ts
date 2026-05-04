@@ -1,10 +1,13 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
+import type { AgentSessionStatus } from '@agent-spaces/shared';
 import * as issueService from '../services/issue.js';
 import * as issueCommentService from '../services/issue-comment.js';
 import * as channelService from '../services/channel.js';
 import { broadcastToWorkspace } from '../ws/handler.js';
 import { getWorkspace } from '../storage/workspace-store.js';
+import { runPlanner } from '../agents/planner-agent.js';
+import * as agentService from '../services/agent.js';
 
 const router = Router({ mergeParams: true });
 
@@ -64,12 +67,29 @@ router.put('/:issueId', (req: Request<{ id: string; issueId: string }>, res: Res
 });
 
 router.post('/:issueId/start', (req: Request<{ id: string; issueId: string }>, res: Response) => {
-  const issue = issueService.updateStatus(req.params.id, req.params.issueId, 'planned');
+  const workspaceId = req.params.id;
+  const { issueId } = req.params;
+  const before = issueService.getById(workspaceId, issueId);
+  const issue = issueService.updateStatus(workspaceId, issueId, 'planned');
   if (!issue) {
     res.status(404).json({ error: 'issue not found' });
     return;
   }
+  broadcastToWorkspace(workspaceId, 'issue.status_changed', { issueId, from: before?.status ?? 'draft', to: 'planned' });
+  broadcastToWorkspace(workspaceId, 'issue.updated', issue);
   res.json(issue);
+
+  // trigger planner
+  const ctx = {
+    workspaceId,
+    broadcast: (event: string, data: unknown) => broadcastToWorkspace(workspaceId, event, data),
+    getSession: (sessionId: string) => agentService.getById(workspaceId, sessionId),
+    updateSessionStatus: (sessionId: string, status: AgentSessionStatus, extra?: Record<string, unknown>) =>
+      agentService.updateStatus(workspaceId, sessionId, status, extra),
+  };
+  runPlanner(workspaceId, issueId, ctx).catch((err) => {
+    console.error(`[issue-start] planner error for issue ${issueId}:`, err);
+  });
 });
 
 router.delete('/:issueId', (req: Request<{ id: string; issueId: string }>, res: Response) => {

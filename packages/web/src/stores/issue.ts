@@ -67,7 +67,7 @@ export const useIssueStore = create<IssueStore>((set, get) => ({
       body: JSON.stringify({ title, description, members }),
     });
     const issue: Issue = await res.json();
-    set((s) => ({ issues: [...s.issues, issue] }));
+    get().upsertIssue(issue);
   },
 
   setActiveIssue: (id) => {

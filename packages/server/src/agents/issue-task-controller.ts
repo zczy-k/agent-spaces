@@ -387,6 +387,7 @@ function buildTaskSyncPrompt(issue: Issue, input: PlannerTaskSyncInput): string 
     'First call ViewCurrentChannelIssue with the current channel id to load the shared issue context, comments, tasks, channel members, and valid assignable agent config ids.',
     'Use ReplaceIssueTasks to write tasks. Do not rely on private planner-only context.',
     'Create coarse-grained, independently deliverable tasks. Default to a single implementation task for one cohesive issue.',
+    'NEVER create review/audit/审查 tasks. The review phase is handled automatically by the system after all implementation tasks complete — do not include it as a task.',
     'Split into multiple tasks only when the issue clearly requires major cross-area work, such as separate frontend and backend changes, database/API contract changes plus UI changes, or independent workstreams that different executors can complete without stepping on each other.',
     'Do not split by tiny implementation steps such as "update types", "add route", "adjust UI text", "run tests", or "write docs" unless that item is itself a substantial deliverable.',
     'Each task description should include the relevant implementation scope and expected verification, so executor agents do not need a separate task for every small step.',

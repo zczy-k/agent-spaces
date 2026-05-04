@@ -214,14 +214,15 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
               <ExternalLink className="size-4" />
             </Button>
           )}
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => setClearConfirmOpen(true)}
-            disabled={msgs.length === 0}
-          >
-            <Trash2 className="size-4" />
-          </Button>
+          {msgs.length > 0 && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => setClearConfirmOpen(true)}
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon-sm"
