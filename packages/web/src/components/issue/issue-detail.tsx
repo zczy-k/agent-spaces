@@ -10,9 +10,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AvatarGroup } from '@/components/ui/avatar';
 import { AgentIcon } from '@/components/common/agent-icon';
-import { Play, RotateCcw, XCircle, User, Clock, GitBranch, PanelRightOpen, PanelRightClose, Info, Users, UserPlus } from 'lucide-react';
+import { Play, RotateCcw, XCircle, User, Clock, GitBranch, PanelRightOpen, PanelRightClose, Info, Users, UserPlus, Plus, Pencil, Trash2 } from 'lucide-react';
 import { AddMemberDialog } from '@/components/chat/add-member-dialog';
 import { IssueMessage } from '@/components/issue/issue-message';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -21,7 +24,7 @@ import { ComposerShell } from '@/components/composer/composer-shell';
 import { createSuggestionRenderer } from '@/components/composer/create-suggestion-renderer';
 import { createSlashExtension } from '@/components/composer/create-slash-extension';
 import { getAgentDisplayName, getMemberDisplayName, normalizeChannelMembersToAgentIds } from '@/lib/agent-members';
-import type { IssueComment, IssueStatus, TaskStatus } from '@agent-spaces/shared';
+import type { IssueComment, IssueStatus, Task, TaskStatus } from '@agent-spaces/shared';
 import { getWS } from '@/lib/ws';
 
 const ISSUE_STATUS_LABEL: Record<IssueStatus, string> = {
@@ -68,18 +71,133 @@ const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
   cancelled: 'Cancelled',
 };
 
+/* ------------------------------------------------------------------ */
+/*  TaskRow – inline editing + delete for pending tasks               */
+/* ------------------------------------------------------------------ */
+
+function TaskRow({
+  task,
+  workspaceId,
+  onRetry,
+  onCancel,
+  onUpdate,
+  onDelete,
+  canEdit,
+}: {
+  task: Task;
+  workspaceId: string;
+  onRetry: (wsId: string, taskId: string) => void;
+  onCancel: (wsId: string, taskId: string) => void;
+  onUpdate: (wsId: string, taskId: string, data: { title?: string; description?: string }) => void;
+  onDelete: (wsId: string, taskId: string) => void;
+  canEdit: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draftTitle, setDraftTitle] = useState(task.title);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.setSelectionRange(draftTitle.length, draftTitle.length);
+    }
+  }, [editing, draftTitle.length]);
+
+  const handleSave = () => {
+    const trimmed = draftTitle.trim();
+    if (!trimmed || trimmed === task.title) {
+      setEditing(false);
+      setDraftTitle(task.title);
+      return;
+    }
+    onUpdate(workspaceId, task.id, { title: trimmed });
+    setEditing(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSave();
+    }
+    if (e.key === 'Escape') {
+      setEditing(false);
+      setDraftTitle(task.title);
+    }
+  };
+
+  const isPending = task.status === 'pending';
+  const showActions = canEdit && isPending;
+
+  return (
+    <div className="flex items-center gap-2 p-2 rounded-md border text-sm group">
+      <Badge variant={TASK_STATUS_COLOR[task.status]} className="text-[10px] shrink-0">
+        {TASK_STATUS_LABEL[task.status]}
+      </Badge>
+      {editing ? (
+        <input
+          ref={inputRef}
+          value={draftTitle}
+          onChange={(e) => setDraftTitle(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onBlur={handleSave}
+          className="flex-1 bg-transparent outline-none text-sm min-w-0"
+        />
+      ) : (
+        <span className="flex-1 truncate">{task.title}</span>
+      )}
+      {showActions && !editing && (
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={() => { setEditing(true); setDraftTitle(task.title); }}
+          >
+            <Pencil className="h-3 w-3" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 text-destructive hover:text-destructive"
+            onClick={() => onDelete(workspaceId, task.id)}
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </div>
+      )}
+      {task.status === 'failed' && (
+        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onRetry(workspaceId, task.id)}>
+          <RotateCcw className="h-3 w-3" />
+        </Button>
+      )}
+      {(isPending || task.status === 'running' || task.status === 'retrying') && (
+        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onCancel(workspaceId, task.id)}>
+          <XCircle className="h-3 w-3" />
+        </Button>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  IssueDetail                                                        */
+/* ------------------------------------------------------------------ */
+
 interface IssueDetailProps {
   workspaceId: string;
 }
 
 export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const { issues, activeIssueId, startIssue } = useIssueStore();
-  const { tasks, loadTasks, retryTask, cancelTask } = useTaskStore();
+  const { tasks, loadTasks, retryTask, cancelTask, createTask, updateTask, deleteTask } = useTaskStore();
   const agents = useAgentStore((s) => s.agents);
   const ensureAgents = useAgentStore((s) => s.ensure);
   const [infoOpen, setInfoOpen] = useState(false);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [comments, setComments] = useState<IssueComment[]>([]);
+  const [createTaskOpen, setCreateTaskOpen] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskDesc, setNewTaskDesc] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const issue = issues.find((i) => i.id === activeIssueId);
@@ -211,6 +329,8 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
       description: agent.role,
     }));
 
+  const canCreateTask = issue.status === 'draft' || issue.status === 'planned';
+
   const handleAddMembers = async (newMembers: string[]) => {
     const res = await fetch(`/api/workspaces/${workspaceId}/issues/${issue.id}`, {
       method: 'PUT',
@@ -237,6 +357,22 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     if (!res.ok) return;
     const updated: IssueComment = await res.json();
     setComments((current) => current.map((comment) => (comment.id === updated.id ? updated : comment)));
+  };
+
+  const handleCreateTask = async () => {
+    if (!newTaskTitle.trim()) return;
+    await createTask(workspaceId, issue.id, newTaskTitle.trim(), newTaskDesc.trim());
+    setNewTaskTitle('');
+    setNewTaskDesc('');
+    setCreateTaskOpen(false);
+  };
+
+  const handleUpdateTask = async (wsId: string, taskId: string, data: { title?: string; description?: string }) => {
+    await updateTask(wsId, taskId, data);
+  };
+
+  const handleDeleteTask = async (wsId: string, taskId: string) => {
+    await deleteTask(wsId, taskId);
   };
 
   return (
@@ -309,43 +445,55 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
 
           {/* Tasks */}
           <div className="p-4 pb-2">
-            <h3 className="text-sm font-medium mb-2">
-              Tasks ({issueTasks.length})
-            </h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-medium">
+                Tasks ({issueTasks.length})
+              </h3>
+              {canCreateTask && (
+                <Dialog open={createTaskOpen} onOpenChange={setCreateTaskOpen}>
+                  <DialogTrigger render={<Button variant="ghost" size="icon" className="h-6 w-6" />}>
+                    <Plus className="h-4 w-4" />
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Add Task</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                      <Input
+                        placeholder="Task title"
+                        value={newTaskTitle}
+                        onChange={(e) => setNewTaskTitle(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleCreateTask()}
+                      />
+                      <Textarea
+                        placeholder="Description (optional)"
+                        value={newTaskDesc}
+                        onChange={(e) => setNewTaskDesc(e.target.value)}
+                        rows={3}
+                      />
+                      <Button onClick={handleCreateTask} disabled={!newTaskTitle.trim()} size="sm">
+                        Add Task
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              )}
+            </div>
             {issueTasks.length === 0 ? (
               <div className="text-sm text-muted-foreground">No tasks yet</div>
             ) : (
               <div className="space-y-1">
                 {issueTasks.map((task) => (
-                  <div
+                  <TaskRow
                     key={task.id}
-                    className="flex items-center gap-2 p-2 rounded-md border text-sm"
-                  >
-                    <Badge variant={TASK_STATUS_COLOR[task.status]} className="text-[10px]">
-                      {TASK_STATUS_LABEL[task.status]}
-                    </Badge>
-                    <span className="flex-1 truncate">{task.title}</span>
-                    {task.status === 'failed' && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => retryTask(workspaceId, task.id)}
-                      >
-                        <RotateCcw className="h-3 w-3" />
-                      </Button>
-                    )}
-                    {(task.status === 'pending' || task.status === 'running' || task.status === 'retrying') && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => cancelTask(workspaceId, task.id)}
-                      >
-                        <XCircle className="h-3 w-3" />
-                      </Button>
-                    )}
-                  </div>
+                    task={task}
+                    workspaceId={workspaceId}
+                    onRetry={retryTask}
+                    onCancel={cancelTask}
+                    onUpdate={handleUpdateTask}
+                    onDelete={handleDeleteTask}
+                    canEdit={canCreateTask}
+                  />
                 ))}
               </div>
             )}

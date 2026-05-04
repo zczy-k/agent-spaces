@@ -858,6 +858,7 @@ function summarizeToolLine(line: string, workspaceRoot?: string): {
 } {
   const trimmed = line.trim();
   const toolName = extractToolName(trimmed);
+  const inputDescription = extractQuotedField(trimmed, 'description');
   const filePath = toWorkspaceRelativePath(
     extractQuotedField(trimmed, 'file_path') ?? extractQuotedField(trimmed, 'path'),
     workspaceRoot,
@@ -869,7 +870,7 @@ function summarizeToolLine(line: string, workspaceRoot?: string): {
     if (filePath) {
       return {
         title: `${humanizeToolName(toolName)} ${baseName ?? filePath}`,
-        description: filePath,
+        description: inputDescription ?? filePath,
         toolName,
         filePath,
       };
@@ -877,7 +878,7 @@ function summarizeToolLine(line: string, workspaceRoot?: string): {
     if (command) {
       return {
         title: `${humanizeToolName(toolName)} command`,
-        description: command,
+        description: inputDescription,
         toolName,
         command,
       };

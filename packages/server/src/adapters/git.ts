@@ -2,6 +2,8 @@ import { simpleGit, type SimpleGit, type StatusResult } from 'simple-git';
 import type { GitStatusResult, GitFileStatus, GitLogEntry, GitDiffResult } from '@agent-spaces/shared';
 import type { Workspace } from '@agent-spaces/shared';
 import { getWorkspace } from '../storage/workspace-store.js';
+import { writeFile, readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
 const gitInstances = new Map<string, SimpleGit>();
 
@@ -193,12 +195,51 @@ export async function gitCheckout(workspaceId: string, branch: string): Promise<
   await git.checkout(branch);
 }
 
+const DEFAULT_GITIGNORE = `node_modules/
+dist/
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Coverage
+coverage/
+
+# Agent Spaces
+.agentspace/
+`;
+
 export async function gitInit(workspaceId: string): Promise<void> {
   const ws = getWorkspace(workspaceId);
   if (!ws) throw new Error('Workspace not found');
 
-  const git = simpleGit(ws.boundDirs[0]);
+  const rootDir = ws.boundDirs[0];
+  const git = simpleGit(rootDir);
   await git.init();
+
+  const gitignorePath = join(rootDir, '.gitignore');
+  try {
+    const existing = await readFile(gitignorePath, 'utf-8');
+    if (!existing.includes('.agentspace')) {
+      await writeFile(gitignorePath, existing.trimEnd() + '\n\n# Agent Spaces\n.agentspace/\n', 'utf-8');
+    }
+  } catch {
+    await writeFile(gitignorePath, DEFAULT_GITIGNORE, 'utf-8');
+  }
+
   // 清除缓存的实例，强制下次使用新实例
   gitInstances.delete(workspaceId);
 }

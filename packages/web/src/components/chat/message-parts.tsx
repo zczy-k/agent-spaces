@@ -358,6 +358,11 @@ function ToolStep({
       label={
         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
           <span>{chain.filePath ? chain.title.replace(new RegExp(`\\s+${escapeRegExp(fileName(chain.filePath))}$`), "") : chain.title}</span>
+          {chain.description ? (
+            <span className="min-w-0 max-w-72 truncate text-muted-foreground text-xs">
+              {chain.description}
+            </span>
+          ) : null}
           {chain.filePath ? (
             <Button
               type="button"
@@ -383,7 +388,7 @@ function ToolStep({
           ) : null}
         </div>
       }
-      description={chain.command ?? chain.description}
+      description={chain.command}
       status={status}
     >
       {open ? (

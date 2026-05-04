@@ -1,5 +1,5 @@
 import { readdir, stat, readFile, writeFile, mkdir, rm } from 'node:fs/promises';
-import { join, relative, extname } from 'node:path';
+import { join, resolve, relative, isAbsolute } from 'node:path';
 import type { FileNode } from '@agent-spaces/shared';
 import type { Workspace } from '@agent-spaces/shared';
 import { getWorkspace } from '../storage/workspace-store.js';
@@ -7,8 +7,10 @@ import { getWorkspace } from '../storage/workspace-store.js';
 const IGNORED_DIRS = new Set(['.git', 'node_modules', '.next', '.DS_Store']);
 
 export function resolvePath(workspace: Workspace, relPath: string): string | null {
-  const abs = join(workspace.boundDirs[0], relPath);
-  if (!abs.startsWith(workspace.boundDirs[0])) return null;
+  const base = resolve(workspace.boundDirs[0]);
+  const abs = resolve(base, relPath);
+  const rel = relative(base, abs);
+  if (rel.startsWith('..') || isAbsolute(rel)) return null;
   return abs;
 }
 
