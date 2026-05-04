@@ -73,6 +73,13 @@ export function updateStatus(
   return issue;
 }
 
+export function save(workspaceId: string, issue: Issue): Issue {
+  if (issue.workspaceId !== workspaceId) throw new Error('issue workspace mismatch');
+  issue.updatedAt = new Date().toISOString();
+  updateIssue(issue);
+  return issue;
+}
+
 export function addTask(workspaceId: string, issueId: string, taskId: string): Issue | null {
   const issue = getIssue(workspaceId, issueId);
   if (!issue) return null;

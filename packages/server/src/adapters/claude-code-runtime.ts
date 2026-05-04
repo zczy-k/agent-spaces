@@ -2,19 +2,22 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } fr
 import { createRequire } from 'node:module';
 import { extname } from 'node:path';
 import { join } from 'node:path';
-import { query } from '@anthropic-ai/claude-agent-sdk';
+import { createSdkMcpServer, query, tool } from '@anthropic-ai/claude-agent-sdk';
 import type { McpServerConfig, Options, PermissionMode, Query, SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 import { createServer as createHttpServer } from 'node:http';
 import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 import { createServer as createNetServer } from 'node:net';
 import type { AddressInfo } from 'node:net';
 import type {
+  AgentFunctionTool,
   AgentRunOptions,
   AgentRunResult,
   AgentRuntime,
   AgentRuntimeConfig,
 } from './agent-runtime-types.js';
 import { summarizeResult } from './agent-runtime-types.js';
+
+const require = createRequire(import.meta.url);
 
 /**
  * Runtime backed by Anthropic's Claude Agent SDK.
@@ -54,7 +57,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
         maxTurns: options?.maxTurns,
         pathToClaudeCodeExecutable: claudeExecutable,
         tools: { type: 'preset', preset: 'claude_code' },
-        mcpServers: normalizeMcpServers(options?.mcpServers),
+        mcpServers: normalizeMcpServers(options?.mcpServers, options?.functionTools),
         skills: skillNames,
         managedSettings: {
           strictPluginOnlyCustomization: ['mcp'],
@@ -881,13 +884,82 @@ function buildEnv(
   };
 }
 
-function normalizeMcpServers(servers?: Record<string, unknown>): Record<string, McpServerConfig> | undefined {
-  if (!servers || Object.keys(servers).length === 0) return undefined;
-  return servers as Record<string, McpServerConfig>;
+function normalizeMcpServers(
+  servers?: Record<string, unknown>,
+  functionTools?: AgentFunctionTool[],
+): Record<string, McpServerConfig> | undefined {
+  if ((!servers || Object.keys(servers).length === 0) && !functionTools?.length) return undefined;
+  const normalized = { ...(servers ?? {}) } as Record<string, McpServerConfig>;
+  if (functionTools?.length) {
+    normalized['agent-spaces'] = createSdkMcpServer({
+      name: 'agent-spaces',
+      version: '0.1.0',
+      alwaysLoad: true,
+      tools: functionTools.map(createSdkTool),
+    });
+  }
+  return normalized;
+}
+
+function createSdkTool(functionTool: AgentFunctionTool) {
+  return tool(
+    functionTool.name,
+    functionTool.description,
+    jsonSchemaToZodRawShape(functionTool.inputSchema),
+    async (args) => ({
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify(await functionTool.execute(args), null, 2),
+        },
+      ],
+    }),
+    { annotations: toSdkToolAnnotations(functionTool), alwaysLoad: true },
+  );
+}
+
+function toSdkToolAnnotations(functionTool: AgentFunctionTool) {
+  if (!functionTool.annotations) return undefined;
+  return {
+    readOnlyHint: functionTool.annotations.readOnly,
+    destructiveHint: functionTool.annotations.destructive,
+    openWorldHint: functionTool.annotations.openWorld,
+  };
+}
+
+function jsonSchemaToZodRawShape(schema: Record<string, unknown>): Record<string, any> {
+  const properties = schema.properties && typeof schema.properties === 'object'
+    ? schema.properties as Record<string, Record<string, unknown>>
+    : {};
+  const required = new Set(Array.isArray(schema.required) ? schema.required.map(String) : []);
+  const shape: Record<string, any> = {};
+  for (const [name, property] of Object.entries(properties)) {
+    const field = jsonSchemaPropertyToZod(property);
+    shape[name] = required.has(name) ? field : field.optional();
+  }
+  return shape;
+}
+
+function jsonSchemaPropertyToZod(property: Record<string, unknown>): any {
+  const zod = require('zod');
+  switch (property.type) {
+    case 'number':
+      return zod.number();
+    case 'integer':
+      return zod.number().int();
+    case 'boolean':
+      return zod.boolean();
+    case 'array':
+      return zod.array(zod.unknown());
+    case 'object':
+      return zod.record(zod.string(), zod.unknown());
+    case 'string':
+    default:
+      return zod.string();
+  }
 }
 
 function resolveBundledClaudeExecutable(): string | undefined {
-  const require = createRequire(import.meta.url);
   const packageName = getBundledClaudePackageName();
   if (!packageName) return undefined;
 

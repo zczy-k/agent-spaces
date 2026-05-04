@@ -5,6 +5,7 @@ import { handleTerminalEvent } from './terminal-handler.js';
 import { createMessage, updateMessage, listMessages } from '../services/message.js';
 import { getChannel, updateChannel } from '../services/channel.js';
 import * as issueService from '../services/issue.js';
+import { createIssueFunctionTools } from '../services/builtin-tools.js';
 import { startScheduler } from '../agents/scheduler-agent.js';
 import * as agentService from '../services/agent.js';
 import * as wsService from '../services/workspace.js';
@@ -226,6 +227,7 @@ async function runMentionedAgent(
   const workspace = wsService.getById(workspaceId);
   const channel = getChannel(workspaceId, channelId);
   const issue = channel?.issueId ? issueService.getById(workspaceId, channel.issueId) : null;
+  const functionTools = createIssueFunctionTools(workspaceId, channel);
   const startTime = Date.now();
   const existingMessage = options.messageId
     ? listMessages(workspaceId, channelId).find((message) => message.id === options.messageId)
@@ -300,7 +302,7 @@ async function runMentionedAgent(
         systemPrompt: preset.systemPrompt,
         mcpServers: Object.keys(mcpServers ?? {}),
         skills,
-        builtInTools: buildBuiltInTools(channel, issue),
+        builtInTools: buildBuiltInTools(functionTools, channel, issue),
         output: liveOutput,
         toolDetails,
         askUserQuestions,
@@ -324,9 +326,10 @@ async function runMentionedAgent(
       mcpServers: Object.keys(mcpServers ?? {}),
       skills,
       boundDirs: workspace?.boundDirs,
-      builtInTools: buildBuiltInTools(channel, issue),
+      builtInTools: buildBuiltInTools(functionTools, channel, issue),
     }), agentService.resolveWorkingDir(workspaceId, preset), {
       maxTurns: 100,
+      functionTools,
       mcpServers,
       skills,
       configDir,
@@ -382,6 +385,12 @@ async function runMentionedAgent(
             : undefined;
           if (askedQuestion) return;
           const detail = findToolDetailForResult(event.toolUseId, event.result, toolUseDetailIds, toolDetails, workspace?.boundDirs?.[0]);
+          if (detail && isAgentSpacesIssueTool(detail.raw || detail.title)) {
+            const updatedChannel = getChannel(workspaceId, channelId);
+            if (updatedChannel) broadcastToWorkspace(workspaceId, 'channel.updated', updatedChannel);
+            const updatedIssue = updatedChannel?.issueId ? issueService.getById(workspaceId, updatedChannel.issueId) : null;
+            if (updatedIssue) broadcastToWorkspace(workspaceId, 'issue.updated', updatedIssue);
+          }
           if (detail) {
             detail.output = event.result;
             detail.updatedAt = new Date().toISOString();
@@ -475,7 +484,7 @@ async function runMentionedAgent(
         systemPrompt: preset.systemPrompt,
         mcpServers: Object.keys(mcpServers ?? {}),
         skills,
-        builtInTools: buildBuiltInTools(channel, issue),
+        builtInTools: buildBuiltInTools(functionTools, channel, issue),
         output: displayOutput,
         toolDetails,
         askUserQuestions,
@@ -508,7 +517,7 @@ async function runMentionedAgent(
         systemPrompt: preset.systemPrompt,
         mcpServers: Object.keys(mcpServers ?? {}),
         skills,
-        builtInTools: buildBuiltInTools(channel, issue),
+        builtInTools: buildBuiltInTools(functionTools, channel, issue),
         output: [error],
         toolDetails: new Map(),
         askUserQuestions: [],
@@ -520,6 +529,10 @@ async function runMentionedAgent(
   } finally {
     untrackChannelRun(workspaceId, channelId, session.id);
   }
+}
+
+function isAgentSpacesIssueTool(name: string | undefined): boolean {
+  return Boolean(name && /(?:agent-spaces\.)?(?:CreateCurrentChannelIssue|ViewCurrentChannelIssue)/.test(name));
 }
 
 function channelRunKey(workspaceId: string, channelId: string): string {
@@ -1186,31 +1199,28 @@ interface BuiltInToolContext {
   issueTitle?: string;
 }
 
-function buildBuiltInTools(channel: ReturnType<typeof getChannel>, issue: ReturnType<typeof issueService.getById>): BuiltInToolContext[] {
-  if (channel?.type !== 'issue' || !channel.issueId) return [];
+function buildBuiltInTools(
+  functionTools: ReturnType<typeof createIssueFunctionTools>,
+  channel: ReturnType<typeof getChannel>,
+  issue: ReturnType<typeof issueService.getById>,
+): BuiltInToolContext[] {
+  if (!functionTools.length || channel?.type !== 'issue' || !channel.issueId) return [];
 
   const issueTitle = issue?.title ?? channel.name;
-  return [
-    {
-      name: 'CreateCurrentChannelIssue',
-      description: 'Create or update the issue bound to the current issue channel. Use only the current channel issue id.',
-      issueId: channel.issueId,
-      issueTitle,
-    },
-    {
-      name: 'ViewCurrentChannelIssue',
-      description: 'View the issue bound to the current issue channel. Use only the current channel issue id.',
-      issueId: channel.issueId,
-      issueTitle,
-    },
-  ];
+  return functionTools.map((functionTool) => ({
+    name: functionTool.name,
+    description: functionTool.description,
+    issueId: channel.issueId,
+    issueTitle,
+  }));
 }
 
 function formatBuiltInToolContext(tools: BuiltInToolContext[]): string[] {
   const firstIssueTool = tools.find((tool) => tool.issueId);
   const lines = [
     'Built-in issue tool rules:',
-    '- The current channel is already bound to an issue. Do not create or view unrelated issue ids from this channel.',
+    '- These are real function-call tools exposed through the agent-spaces MCP server.',
+    '- The current channel is already bound to an issue. Tool calls must use that issue id.',
   ];
   if (firstIssueTool?.issueId) {
     lines.push(`- Current channel issue id: ${firstIssueTool.issueId}`);

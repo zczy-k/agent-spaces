@@ -16,6 +16,7 @@ export interface AgentRuntime {
 export interface AgentRunOptions {
   maxTurns?: number;
   tools?: string[];
+  functionTools?: AgentFunctionTool[];
   mcpServers?: Record<string, unknown>;
   skills?: string[];
   configDir?: string;
@@ -27,6 +28,18 @@ export type AgentRuntimeEvent =
   | { type: 'output'; line: string }
   | { type: 'tool_use'; id: string; name: string; input?: unknown; line: string }
   | { type: 'tool_result'; toolUseId?: string; result: unknown };
+
+export interface AgentFunctionTool {
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+  annotations?: {
+    readOnly?: boolean;
+    destructive?: boolean;
+    openWorld?: boolean;
+  };
+  execute: (input: unknown) => Promise<unknown>;
+}
 
 export type AgentRuntimeKind = 'open-agent-sdk' | 'claude-code' | 'codex';
 
