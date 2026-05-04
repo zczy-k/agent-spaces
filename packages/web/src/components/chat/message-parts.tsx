@@ -1,7 +1,7 @@
 "use client"
 
 import type { Message, MessagePart } from "@agent-spaces/shared"
-import { CheckCircle2Icon, ChevronDownIcon, CircleIcon, FileTextIcon, HelpCircleIcon, MessageSquareTextIcon } from "lucide-react"
+import { CheckIcon, CheckCircle2Icon, ChevronDownIcon, CircleIcon, CopyIcon, FileTextIcon, HelpCircleIcon, MessageSquareTextIcon } from "lucide-react"
 import { useState } from "react"
 import { Markdown } from "@/components/ui/markdown"
 import { Loader } from "@/components/ui/loader"
@@ -325,17 +325,15 @@ function ToolStep({
   const [detail, setDetail] = useState<ToolDetailData | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   const handleOpenFile = async () => {
     if (!chain.filePath) return
     await openFile(workspaceId, chain.filePath)
   }
 
-  const handleToggleDetail = async () => {
-    const nextOpen = !open
-    setOpen(nextOpen)
-    if (!nextOpen || detail || loading || !chain.detailId) return
-
+  const loadDetail = async () => {
+    if (detail || !chain.detailId) return detail
     setLoading(true)
     setError(null)
     try {
@@ -345,18 +343,37 @@ function ToolStep({
       if (!res.ok) throw new Error(await res.text())
       const data = await res.json() as ToolDetailData
       setDetail(data)
+      return data
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load details.")
+      return null
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleToggleDetail = async () => {
+    const nextOpen = !open
+    setOpen(nextOpen)
+    if (!nextOpen || loading) return
+    await loadDetail()
+  }
+
+  const handleCopy = async () => {
+    const data = detail ?? await loadDetail()
+    const text = data ? formatToolCopyText(data) : chain.command ?? chain.title
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch { /* clipboard unavailable */ }
   }
 
   return (
     <ChainOfThoughtStep
       icon={status === "complete" ? CheckCircle2Icon : CircleIcon}
       label={
-        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+        <div className="group/tool-step flex min-w-0 flex-wrap items-center gap-1.5">
           <span>{chain.filePath ? chain.title.replace(new RegExp(`\\s+${escapeRegExp(fileName(chain.filePath))}$`), "") : chain.title}</span>
           {chain.description ? (
             <span className="min-w-0 max-w-72 truncate text-muted-foreground text-xs">
@@ -375,12 +392,21 @@ function ToolStep({
               <span className="max-w-52 truncate">{chain.filePath}</span>
             </Button>
           ) : null}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="ml-auto size-5 shrink-0 opacity-0 transition-opacity group-hover/tool-step:opacity-100 focus-visible:opacity-100"
+            onClick={handleCopy}
+          >
+            {copied ? <CheckIcon className="size-3 text-green-500" /> : <CopyIcon className="size-3" />}
+          </Button>
           {chain.detailId ? (
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="ml-auto size-5"
+              className="size-5 shrink-0"
               onClick={handleToggleDetail}
             >
               <ChevronDownIcon className={cn("size-3.5 transition-transform", open && "rotate-180")} />
@@ -412,6 +438,11 @@ interface ToolDetailData {
   raw?: string
   input?: unknown
   output?: unknown
+}
+
+function formatToolCopyText(detail: ToolDetailData) {
+  if (detail.raw) return detail.raw
+  return JSON.stringify({ input: detail.input, output: detail.output }, null, 2)
 }
 
 function ToolDetailView({

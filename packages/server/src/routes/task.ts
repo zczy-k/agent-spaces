@@ -17,10 +17,6 @@ router.post('/', (req: Request<{ id: string }>, res: Response) => {
     res.status(404).json({ error: 'issue not found' });
     return;
   }
-  if (issue.status !== 'draft' && issue.status !== 'planned') {
-    res.status(409).json({ error: 'tasks can only be added to draft or planned issues' });
-    return;
-  }
 
   const task = taskService.create(req.params.id, issueId, {
     title,
@@ -69,8 +65,8 @@ router.delete('/:taskId', (req: Request<{ id: string; taskId: string }>, res: Re
     res.status(404).json({ error: 'task not found' });
     return;
   }
-  if (task.status !== 'pending') {
-    res.status(409).json({ error: 'only pending tasks can be deleted' });
+  if (task.status === 'running') {
+    res.status(409).json({ error: 'running tasks cannot be deleted' });
     return;
   }
 

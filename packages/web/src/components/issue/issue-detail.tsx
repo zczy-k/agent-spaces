@@ -72,7 +72,7 @@ const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
 };
 
 /* ------------------------------------------------------------------ */
-/*  TaskRow – inline editing + delete for pending tasks               */
+/*  TaskRow                                                            */
 /* ------------------------------------------------------------------ */
 
 function TaskRow({
@@ -80,96 +80,53 @@ function TaskRow({
   workspaceId,
   onRetry,
   onCancel,
-  onUpdate,
+  onEdit,
   onDelete,
-  canEdit,
 }: {
   task: Task;
   workspaceId: string;
   onRetry: (wsId: string, taskId: string) => void;
   onCancel: (wsId: string, taskId: string) => void;
-  onUpdate: (wsId: string, taskId: string, data: { title?: string; description?: string }) => void;
+  onEdit: (task: Task) => void;
   onDelete: (wsId: string, taskId: string) => void;
-  canEdit: boolean;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [draftTitle, setDraftTitle] = useState(task.title);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (editing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.setSelectionRange(draftTitle.length, draftTitle.length);
-    }
-  }, [editing, draftTitle.length]);
-
-  const handleSave = () => {
-    const trimmed = draftTitle.trim();
-    if (!trimmed || trimmed === task.title) {
-      setEditing(false);
-      setDraftTitle(task.title);
-      return;
-    }
-    onUpdate(workspaceId, task.id, { title: trimmed });
-    setEditing(false);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleSave();
-    }
-    if (e.key === 'Escape') {
-      setEditing(false);
-      setDraftTitle(task.title);
-    }
-  };
-
   const isPending = task.status === 'pending';
-  const showActions = canEdit && isPending;
 
   return (
     <div className="flex items-center gap-2 p-2 rounded-md border text-sm group">
       <Badge variant={TASK_STATUS_COLOR[task.status]} className="text-[10px] shrink-0">
         {TASK_STATUS_LABEL[task.status]}
       </Badge>
-      {editing ? (
-        <input
-          ref={inputRef}
-          value={draftTitle}
-          onChange={(e) => setDraftTitle(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onBlur={handleSave}
-          className="flex-1 bg-transparent outline-none text-sm min-w-0"
-        />
-      ) : (
-        <span className="flex-1 truncate">{task.title}</span>
+      <span className="flex-1 truncate">{task.title}</span>
+      {/* Edit button – pending tasks only */}
+      {isPending && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={() => onEdit(task)}
+        >
+          <Pencil className="h-3 w-3" />
+        </Button>
       )}
-      {showActions && !editing && (
-        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
-            onClick={() => { setEditing(true); setDraftTitle(task.title); }}
-          >
-            <Pencil className="h-3 w-3" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 text-destructive hover:text-destructive"
-            onClick={() => onDelete(workspaceId, task.id)}
-          >
-            <Trash2 className="h-3 w-3" />
-          </Button>
-        </div>
+      {/* Delete button – pending, cancelled, or done */}
+      {(isPending || task.status === 'cancelled' || task.status === 'done') && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className={`h-6 w-6 text-destructive hover:text-destructive ${isPending ? 'opacity-0 group-hover:opacity-100 transition-opacity' : ''}`}
+          onClick={() => onDelete(workspaceId, task.id)}
+        >
+          <Trash2 className="h-3 w-3" />
+        </Button>
       )}
+      {/* Retry – failed tasks */}
       {task.status === 'failed' && (
         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onRetry(workspaceId, task.id)}>
           <RotateCcw className="h-3 w-3" />
         </Button>
       )}
+      {/* Cancel – active tasks */}
       {(isPending || task.status === 'running' || task.status === 'retrying') && (
         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onCancel(workspaceId, task.id)}>
           <XCircle className="h-3 w-3" />
@@ -195,7 +152,8 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const [infoOpen, setInfoOpen] = useState(false);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [comments, setComments] = useState<IssueComment[]>([]);
-  const [createTaskOpen, setCreateTaskOpen] = useState(false);
+  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDesc, setNewTaskDesc] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -329,7 +287,6 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
       description: agent.role,
     }));
 
-  const canCreateTask = issue.status === 'draft' || issue.status === 'planned';
 
   const handleAddMembers = async (newMembers: string[]) => {
     const res = await fetch(`/api/workspaces/${workspaceId}/issues/${issue.id}`, {
@@ -361,14 +318,29 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
 
   const handleCreateTask = async () => {
     if (!newTaskTitle.trim()) return;
-    await createTask(workspaceId, issue.id, newTaskTitle.trim(), newTaskDesc.trim());
+    if (editingTask) {
+      await updateTask(workspaceId, editingTask.id, { title: newTaskTitle.trim(), description: newTaskDesc.trim() });
+    } else {
+      await createTask(workspaceId, issue.id, newTaskTitle.trim(), newTaskDesc.trim());
+    }
     setNewTaskTitle('');
     setNewTaskDesc('');
-    setCreateTaskOpen(false);
+    setEditingTask(null);
+    setTaskDialogOpen(false);
   };
 
-  const handleUpdateTask = async (wsId: string, taskId: string, data: { title?: string; description?: string }) => {
-    await updateTask(wsId, taskId, data);
+  const handleOpenTaskDialog = () => {
+    setEditingTask(null);
+    setNewTaskTitle('');
+    setNewTaskDesc('');
+    setTaskDialogOpen(true);
+  };
+
+  const handleOpenEditDialog = (task: Task) => {
+    setEditingTask(task);
+    setNewTaskTitle(task.title);
+    setNewTaskDesc(task.description);
+    setTaskDialogOpen(true);
   };
 
   const handleDeleteTask = async (wsId: string, taskId: string) => {
@@ -376,9 +348,9 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   };
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full overflow-hidden">
       {/* 左侧：主内容区 */}
-      <div className="flex flex-col flex-1 min-w-0">
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <div ref={scrollRef} className="flex-1 overflow-y-auto">
           {/* Header */}
           <div className="p-4 pb-3 border-b">
@@ -449,14 +421,13 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
               <h3 className="text-sm font-medium">
                 Tasks ({issueTasks.length})
               </h3>
-              {canCreateTask && (
-                <Dialog open={createTaskOpen} onOpenChange={setCreateTaskOpen}>
-                  <DialogTrigger render={<Button variant="ghost" size="icon" className="h-6 w-6" />}>
+              <Dialog open={taskDialogOpen} onOpenChange={(open) => { setTaskDialogOpen(open); if (!open) setEditingTask(null); }}>
+                  <DialogTrigger render={<Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleOpenTaskDialog} />}>
                     <Plus className="h-4 w-4" />
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>Add Task</DialogTitle>
+                      <DialogTitle>{editingTask ? 'Edit Task' : 'Add Task'}</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-3">
                       <Input
@@ -472,12 +443,11 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                         rows={3}
                       />
                       <Button onClick={handleCreateTask} disabled={!newTaskTitle.trim()} size="sm">
-                        Add Task
+                        {editingTask ? 'Save' : 'Add Task'}
                       </Button>
                     </div>
                   </DialogContent>
                 </Dialog>
-              )}
             </div>
             {issueTasks.length === 0 ? (
               <div className="text-sm text-muted-foreground">No tasks yet</div>
@@ -490,9 +460,8 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                     workspaceId={workspaceId}
                     onRetry={retryTask}
                     onCancel={cancelTask}
-                    onUpdate={handleUpdateTask}
+                    onEdit={handleOpenEditDialog}
                     onDelete={handleDeleteTask}
-                    canEdit={canCreateTask}
                   />
                 ))}
               </div>
@@ -546,9 +515,9 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
 
       {/* 右侧：信息面板 */}
       {infoOpen && (
-        <div className="w-72 border-l flex flex-col">
-          <Tabs defaultValue="info" className="flex flex-col flex-1">
-            <TabsList className="w-full rounded-none border-b bg-transparent h-9 p-0">
+        <div className="w-72 border-l flex flex-col h-full overflow-hidden">
+          <Tabs defaultValue="info" className="flex flex-col flex-1 min-h-0">
+            <TabsList className="w-full rounded-none border-b bg-transparent h-9 p-0 shrink-0">
               <TabsTrigger value="info" className="flex-1 gap-1.5 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
                 <Info className="size-3.5" />信息
               </TabsTrigger>
@@ -556,7 +525,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                 <Users className="size-3.5" />成员
               </TabsTrigger>
             </TabsList>
-            <ScrollArea className="flex-1">
+            <ScrollArea className="min-h-0 flex-1">
               <TabsContent value="info" className="p-4 mt-0 space-y-4">
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between py-1 border-b">
