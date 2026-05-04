@@ -441,8 +441,10 @@ interface ToolDetailData {
 }
 
 function formatToolCopyText(detail: ToolDetailData) {
-  if (detail.raw) return detail.raw
-  return JSON.stringify({ input: detail.input, output: detail.output }, null, 2)
+  if (detail.input !== undefined || detail.output !== undefined) {
+    return JSON.stringify({ input: detail.input, output: detail.output }, null, 2)
+  }
+  return detail.raw ?? ""
 }
 
 function ToolDetailView({
