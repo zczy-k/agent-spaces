@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import type { Message } from '@agent-spaces/shared';
+import { findAgentById } from '@/stores/agent';
 
 interface MessageNavigatorProps {
   messages: Message[];
@@ -86,7 +87,7 @@ export function MessageNavigator({ messages }: MessageNavigatorProps) {
           style={{ top: popoverY, transform: 'translateY(-50%)' }}
         >
           <div className="flex items-center gap-1.5 mb-1">
-            <span className="font-medium text-xs">{messages[activeIndex].senderId === 'user' ? 'You' : messages[activeIndex].senderId}</span>
+            <span className="font-medium text-xs">{messages[activeIndex].senderId === 'user' ? 'You' : (findAgentById(messages[activeIndex].senderId)?.name ?? messages[activeIndex].senderId)}</span>
             <span className="text-[10px] text-muted-foreground">
               {new Date(messages[activeIndex].createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>

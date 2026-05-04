@@ -88,8 +88,10 @@ export function WorkspaceShell({ workspaceId }: WorkspaceShellProps) {
   const issueStore = useIssueStore();
   const taskStore = useTaskStore();
   const activeIssueId = useIssueStore((s) => s.activeIssueId);
+  const issueSelectSeq = useIssueStore((s) => s.issueSelectSeq);
   const activeFilePath = useEditorStore((s) => s.activeFilePath);
   const activeChannelId = useChannelStore((s) => s.activeChannelId);
+  const channelSelectSeq = useChannelStore((s) => s.channelSelectSeq);
   const [model] = useState(() => Model.fromJson(defaultJson));
 
   // 点击 issue 时自动切换到 Issue Detail tab
@@ -100,7 +102,7 @@ export function WorkspaceShell({ workspaceId }: WorkspaceShellProps) {
         model.doAction(Actions.selectTab(node.getId()));
       }
     }
-  }, [activeIssueId, model]);
+  }, [issueSelectSeq, activeIssueId, model]);
 
   // 选中 channel 时自动切换到 Chat tab
   useEffect(() => {
@@ -110,7 +112,7 @@ export function WorkspaceShell({ workspaceId }: WorkspaceShellProps) {
         model.doAction(Actions.selectTab(node.getId()));
       }
     }
-  }, [activeChannelId, model]);
+  }, [channelSelectSeq, activeChannelId, model]);
 
   // 打开文件时自动切换到 Code Editor tab
   useEffect(() => {

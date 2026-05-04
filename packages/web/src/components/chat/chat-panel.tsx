@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { useChannelStore } from '@/stores/channel';
+import { useAgentStore } from '@/stores/agent';
 import { getWS } from '@/lib/ws';
 import { MessageItem } from './message-item';
 import { ChatInput, type ChatInputHandle } from './chat-input';
@@ -55,10 +56,12 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
   const { activeChannelId, channels, messages, loadMessages, sendMessage, addMessage, updateMessage, stopProcessingMessages, deleteMessage, clearMessages } = useChannelStore();
   const bottomRef = useRef<HTMLDivElement>(null);
   const [infoOpen, setInfoOpen] = useState(false);
-  const [agents, setAgents] = useState<AgentConfig[]>([]);
   const [deletingMsg, setDeletingMsg] = useState<Message | null>(null);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const chatInputRef = useRef<ChatInputHandle>(null);
+
+  const agents = useAgentStore((s) => s.agents);
+  const ensureAgents = useAgentStore((s) => s.ensure);
 
   const channel = channels.find((c) => c.id === activeChannelId);
   const msgs = useMemo(
@@ -84,22 +87,8 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
 
   useEffect(() => {
     if (activeChannelId) loadMessages(workspaceId, activeChannelId);
-  }, [activeChannelId, workspaceId, loadMessages]);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetch(`/api/workspaces/${workspaceId}/agents/presets`, { signal: controller.signal })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(await res.text());
-        return res.json() as Promise<AgentConfig[]>;
-      })
-      .then(setAgents)
-      .catch((err) => {
-        if (err.name !== 'AbortError') setAgents([]);
-      });
-
-    return () => controller.abort();
-  }, [workspaceId]);
+    ensureAgents(workspaceId);
+  }, [activeChannelId, workspaceId, loadMessages, ensureAgents]);
 
   useEffect(() => {
     const ws = getWS(workspaceId);

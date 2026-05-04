@@ -4,6 +4,8 @@ import type { Issue, IssueStatus } from '@agent-spaces/shared';
 interface IssueStore {
   issues: Issue[];
   activeIssueId: string | null;
+  /** 每次 setActiveIssue 递增，用于触发 tab 切换 */
+  issueSelectSeq: number;
   loading: boolean;
 
   loadIssues: (workspaceId: string) => Promise<void>;
@@ -20,6 +22,7 @@ interface IssueStore {
 export const useIssueStore = create<IssueStore>((set, get) => ({
   issues: [],
   activeIssueId: null,
+  issueSelectSeq: 0,
   loading: false,
 
   loadIssues: async (workspaceId) => {
@@ -43,7 +46,7 @@ export const useIssueStore = create<IssueStore>((set, get) => ({
     set((s) => ({ issues: [...s.issues, issue] }));
   },
 
-  setActiveIssue: (id) => set({ activeIssueId: id }),
+  setActiveIssue: (id) => set((s) => ({ activeIssueId: id, issueSelectSeq: s.issueSelectSeq + 1 })),
 
   updateIssueStatus: async (workspaceId, issueId, status) => {
     await fetch(`/api/workspaces/${workspaceId}/issues/${issueId}`, {

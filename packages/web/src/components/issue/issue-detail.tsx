@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useIssueStore } from '@/stores/issue';
 import { useTaskStore } from '@/stores/task';
 import { useChannelStore } from '@/stores/channel';
+import { useAgentStore } from '@/stores/agent';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -77,7 +78,8 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const { issues, activeIssueId, startIssue } = useIssueStore();
   const { tasks, loadTasks, retryTask, cancelTask } = useTaskStore();
   const { messages, loadMessages, sendMessage, addMessage, updateMessage, deleteMessage } = useChannelStore();
-  const [agents, setAgents] = useState<AgentConfig[]>([]);
+  const agents = useAgentStore((s) => s.agents);
+  const ensureAgents = useAgentStore((s) => s.ensure);
   const [infoOpen, setInfoOpen] = useState(false);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -92,18 +94,8 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   }, [issue, workspaceId, loadTasks, loadMessages]);
 
   useEffect(() => {
-    const controller = new AbortController();
-    fetch(`/api/workspaces/${workspaceId}/agents/presets`, { signal: controller.signal })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(await res.text());
-        return res.json() as Promise<AgentConfig[]>;
-      })
-      .then(setAgents)
-      .catch((err) => {
-        if (err.name !== 'AbortError') setAgents([]);
-      });
-    return () => controller.abort();
-  }, [workspaceId]);
+    ensureAgents(workspaceId);
+  }, [workspaceId, ensureAgents]);
 
   useEffect(() => {
     if (!issue?.channelId) return;

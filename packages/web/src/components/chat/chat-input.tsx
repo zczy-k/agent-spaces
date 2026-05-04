@@ -106,9 +106,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const activeSkills = activeAgent?.skills ?? [];
   const tools = useMemo(
     () => [
-      { label: "Code Interpreter", icon: IconCode },
-      { label: "Web Search", icon: IconWorld },
-      { label: "Chat History", icon: IconHistory },
+    
     ],
     []
   );

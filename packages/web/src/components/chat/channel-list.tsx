@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useChannelStore } from '@/stores/channel';
+import { useAgentStore } from '@/stores/agent';
 import { Bot, Hash, MessageCircle, AlertCircle, Plus, Pencil, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +16,7 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 
-import type { AgentConfig, Channel, Message } from '@agent-spaces/shared';
+import type {  Channel, Message } from '@agent-spaces/shared';
 
 const typeBadge: Record<Channel['type'], { label: string; className: string; icon: typeof Hash }> = {
   general: { label: 'General', className: 'bg-muted text-muted-foreground', icon: Hash },
@@ -41,28 +42,13 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
   } = useChannelStore();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
-  const [agents, setAgents] = useState<AgentConfig[]>([]);
+  const agents = useAgentStore((s) => s.agents);
+  const ensureAgents = useAgentStore((s) => s.ensure);
 
   useEffect(() => {
     loadChannels(workspaceId);
-  }, [workspaceId, loadChannels]);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetch(`/api/workspaces/${workspaceId}/agents/presets`, { signal: controller.signal })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(await res.text());
-        return res.json() as Promise<AgentConfig[]>;
-      })
-      .then(setAgents)
-      .catch((err) => {
-        if (err.name !== 'AbortError') setAgents([]);
-      });
-
-    return () => controller.abort();
-  }, [workspaceId]);
-
-  const agentMap = useMemo(() => new Map(agents.map((a) => [a.id, a])), [agents]);
+    ensureAgents(workspaceId);
+  }, [workspaceId, loadChannels, ensureAgents]);
 
   const handleSubmit = async (data: { name: string; type: Channel['type']; members: string[] }) => {
     const memberIds = normalizeChannelMembersToAgentIds(agents, data.members);

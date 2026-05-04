@@ -5,6 +5,8 @@ import { getWS } from '@/lib/ws';
 interface ChannelStore {
   channels: Channel[];
   activeChannelId: string | null;
+  /** 每次 setActiveChannel 递增，用于触发 tab 切换 */
+  channelSelectSeq: number;
   messages: Record<string, Message[]>;
 
   loadChannels: (workspaceId: string) => Promise<void>;
@@ -26,6 +28,7 @@ interface ChannelStore {
 export const useChannelStore = create<ChannelStore>((set) => ({
   channels: [],
   activeChannelId: null,
+  channelSelectSeq: 0,
   messages: {},
 
   loadChannels: async (workspaceId) => {
@@ -54,7 +57,7 @@ export const useChannelStore = create<ChannelStore>((set) => ({
     set((s) => ({ channels: s.channels.map((c) => (c.id === channelId ? updated : c)) }));
   },
 
-  setActiveChannel: (id) => set({ activeChannelId: id }),
+  setActiveChannel: (id) => set((s) => ({ activeChannelId: id, channelSelectSeq: s.channelSelectSeq + 1 })),
 
   loadMessages: async (workspaceId, channelId) => {
     const res = await fetch(`/api/workspaces/${workspaceId}/channels/${channelId}/messages`);

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import type { AgentConfig, LLMModel, LLMProvider } from "@agent-spaces/shared";
 import { AgentIcon } from "@/components/common/agent-icon";
+import { useAgentStore } from "@/stores/agent";
 import {
   Dialog,
   DialogContent,
@@ -160,7 +161,7 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     modelId: "claude-sonnet-4-6",
     apiBase: "",
     apiKey: "",
-    workingDir: "/workspace/src",
+    workingDir: "",
     mcps: defaultMcpConfig([]),
     skills: defaultSkills(["coding", "debugging", "testing"]),
     systemPrompt:
@@ -370,6 +371,7 @@ export function AgentDialog({
           ? [...prev, saved]
           : prev.map((agent) => (agent.id === saved.id ? saved : agent)),
       );
+      useAgentStore.getState().ensure(workspaceId);
       setSelectedAgent(null);
       setEditDraft(null);
     } catch {
@@ -435,6 +437,7 @@ export function AgentDialog({
       });
       if (!res.ok) throw new Error(await res.text());
       setAgents((prev) => prev.filter((a) => a.id !== id));
+      useAgentStore.getState().ensure(workspaceId);
       if (selectedAgent?.id === id) {
         setSelectedAgent(null);
         setEditDraft(null);
