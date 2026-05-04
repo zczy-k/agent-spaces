@@ -104,7 +104,7 @@ const RUNTIME_OPTIONS: Array<{ value: NonNullable<AgentConfig["runtimeKind"]>; l
   { value: "codex", label: "Codex" },
 ];
 const ROLE_OPTIONS: AgentRole[] = ["scheduler", "planner", "executor", "reviewer", "custom"];
-const DEFAULT_AGENT_TOOLS: BuiltInAgentToolName[] = BUILT_IN_AGENT_TOOLS.map((tool) => tool.name);
+const DEFAULT_AGENT_TOOLS: BuiltInAgentToolName[] = (BUILT_IN_AGENT_TOOLS ?? []).map((tool) => tool.name);
 const ANTHROPIC_BRIDGE_PROVIDERS = new Set<AgentConfig["modelProvider"]>([
   "openai-responses-to-anthropic-messages",
   "openai-chat-completions-to-anthropic-messages",
@@ -246,7 +246,7 @@ function normalizeAgent(agent: AgentConfig): AgentPreset {
 
 function normalizeToolDrafts(tools: AgentConfig["tools"] | undefined): BuiltInAgentToolName[] {
   if (!Array.isArray(tools)) return DEFAULT_AGENT_TOOLS;
-  const valid = new Set(BUILT_IN_AGENT_TOOLS.map((tool) => tool.name));
+  const valid = new Set((BUILT_IN_AGENT_TOOLS ?? []).map((tool) => tool.name));
   return tools.filter((tool): tool is BuiltInAgentToolName => valid.has(tool));
 }
 
@@ -762,7 +762,7 @@ function AgentDetail({
     } else {
       selected.add(toolName);
     }
-    onChange("tools", BUILT_IN_AGENT_TOOLS.map((tool) => tool.name).filter((name) => selected.has(name)));
+    onChange("tools", (BUILT_IN_AGENT_TOOLS ?? []).map((tool) => tool.name).filter((name) => selected.has(name)));
   };
 
   return (
@@ -876,7 +876,7 @@ function AgentDetail({
       {/* Tools */}
       <Section icon={<Wrench className="size-3.5" />} title="Tools">
         <div className="grid gap-2">
-          {BUILT_IN_AGENT_TOOLS.map((tool) => (
+          {(BUILT_IN_AGENT_TOOLS ?? []).map((tool) => (
             <label
               key={tool.name}
               className="flex cursor-pointer items-start gap-2 rounded-lg border border-input px-3 py-2 hover:bg-muted/50"

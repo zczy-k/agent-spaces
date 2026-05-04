@@ -61,7 +61,7 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete }: MessageI
         onClick={() => setMemberDialogOpen(true)}
         className="size-7 rounded-full"
       />
-      <div className={`flex flex-col min-w-0 max-w-[75%] ${isUser ? 'items-end' : 'items-start'}`}>
+      <div className={`flex flex-col min-w-0 w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
         <div className="flex items-center gap-2 mb-0.5">
           <span className="text-xs font-medium text-foreground">
             {senderName}

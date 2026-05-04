@@ -1,6 +1,6 @@
 {
-  "version": "1.1.0",
-  "timestamp": "2026-05-02T23:43:41+08:00",
+  "version": "1.2.0",
+  "timestamp": "2026-05-04T21:04:42+08:00",
   "project": {
     "name": "agent-spaces",
     "type": "pnpm-monorepo",
@@ -17,14 +17,15 @@
       "entry": "src/index.ts",
       "types": [
         "Workspace", "AgentConfig", "CreateWorkspaceInput",
-        "Issue", "IssueStatus", "CreateIssueInput",
+        "Issue", "IssueStatus", "IssueComment", "CreateIssueInput",
         "Task", "TaskStatus", "TaskResult",
         "AgentSession", "AgentSessionStatus",
-        "Channel", "Message", "Attachment",
+        "Channel", "TodoItem", "Message", "Attachment", "MessagePart", "MessageChain", "MessageApproval", "MessageTokenUsage", "MessageTool", "MessageMetadata",
         "FileNode",
         "GitFileStatus", "GitStatusResult", "GitLogEntry", "GitDiffResult",
         "WSEvent", "ClientEventMap", "ServerEventMap",
-        "LLMModel", "LLMProvider"
+        "LLMModel", "LLMProvider",
+        "BUILT_IN_AGENT_TOOLS", "BuiltInAgentToolName"
       ],
       "api": [],
       "tests": [],
@@ -33,12 +34,15 @@
         "packages/shared/src/types/events.ts",
         "packages/shared/src/types/workspace.ts",
         "packages/shared/src/types/agent.ts",
+        "packages/shared/src/types/channel.ts",
+        "packages/shared/src/types/issue.ts",
+        "packages/shared/src/types/tool.ts",
         "packages/shared/src/types/llm.ts"
       ],
       "claudeMd": "packages/shared/CLAUDE.md",
       "coverage": {
-        "scanned": 11,
-        "total": 11,
+        "scanned": 12,
+        "total": 12,
         "percentage": 100,
         "gaps": []
       }
@@ -48,17 +52,19 @@
       "path": "packages/server",
       "packageId": "@agent-spaces/server",
       "language": "TypeScript",
-      "role": "Express REST API + WebSocket + Agent 编排 + PTY + Git + LLM 管理 + Agent Preset",
+      "role": "Express REST API + WebSocket + 三运行时 Agent 编排 + PTY + Git + LLM 管理 + Agent Preset + Function Call Tools + Anthropic Bridge + Issue 评论 + 工具详情持久化",
       "entry": "src/app.ts",
       "types": [],
       "api": [
         "GET /api/health",
+        "POST /api/upload/avatar",
         "GET|POST /api/workspaces",
         "GET|PUT|DELETE /api/workspaces/:id",
         "GET /api/workspaces/:id/files/tree",
         "GET|PUT /api/workspaces/:id/files/content",
         "GET|POST /api/workspaces/:id/channels",
         "GET|POST /api/workspaces/:id/channels/:channelId/messages",
+        "GET /api/workspaces/:id/channels/:channelId/messages/:messageId/tool-details/:detailId",
         "GET|POST /api/workspaces/:id/issues",
         "GET|PUT /api/workspaces/:id/issues/:issueId",
         "POST /api/workspaces/:id/issues/:issueId/start",
@@ -110,6 +116,12 @@
           "kind": "claude-code",
           "sdk": "@anthropic-ai/claude-agent-sdk",
           "file": "src/adapters/claude-code-runtime.ts"
+        },
+        {
+          "name": "CodexRuntime",
+          "kind": "codex",
+          "sdk": "@openai/codex-sdk",
+          "file": "src/adapters/codex-runtime.ts"
         }
       ],
       "tests": [],
@@ -118,12 +130,16 @@
         "packages/server/src/agents/scheduler-agent.ts",
         "packages/server/src/agents/planner-agent.ts",
         "packages/server/src/agents/reviewer-agent.ts",
+        "packages/server/src/agents/issue-task-controller.ts",
+        "packages/server/src/agents/issue-agent-progress.ts",
+        "packages/server/src/agents/agent-message-parts.ts",
         "packages/server/src/agents/agent-context.ts",
         "packages/server/src/hooks/agent-hooks.ts",
         "packages/server/src/adapters/agent-runtime.ts",
         "packages/server/src/adapters/agent-runtime-types.ts",
         "packages/server/src/adapters/open-agent-sdk-runtime.ts",
         "packages/server/src/adapters/claude-code-runtime.ts",
+        "packages/server/src/adapters/codex-runtime.ts",
         "packages/server/src/adapters/git.ts",
         "packages/server/src/ws/handler.ts",
         "packages/server/src/ws/connection-manager.ts",
@@ -132,13 +148,18 @@
         "packages/server/src/storage/llm-store.ts",
         "packages/server/src/services/agent.ts",
         "packages/server/src/services/workspace.ts",
+        "packages/server/src/services/builtin-tools.ts",
+        "packages/server/src/services/issue-comment.ts",
+        "packages/server/src/services/tool-detail.ts",
+        "packages/server/src/services/issue.ts",
+        "packages/server/src/services/task.ts",
         "packages/server/src/routes/agent.ts",
         "packages/server/src/routes/llm.ts"
       ],
       "claudeMd": "packages/server/CLAUDE.md",
       "coverage": {
-        "scanned": 37,
-        "total": 37,
+        "scanned": 50,
+        "total": 50,
         "percentage": 100,
         "gaps": []
       }
@@ -148,7 +169,7 @@
       "path": "packages/web",
       "packageId": "@agent-spaces/web",
       "language": "TypeScript/TSX",
-      "role": "Next.js 前端 SPA（IDE 布局 + 编辑器 + 终端 + TipTap 聊天 + Git + Agent 管理）",
+      "role": "Next.js 前端 SPA（IDE 布局 + 编辑器 + 终端 + 结构化 AI 消息渲染 + TipTap 聊天 + Git + Agent 管理）",
       "entry": "src/app/layout.tsx",
       "types": [],
       "api": [],
@@ -161,17 +182,32 @@
         "packages/web/src/components/layout/workspace-shell.tsx",
         "packages/web/src/components/layout/workspace-tabs.tsx",
         "packages/web/src/components/editor/editor-panel.tsx",
+        "packages/web/src/components/editor/file-icon.tsx",
         "packages/web/src/components/terminal/terminal-panel.tsx",
         "packages/web/src/components/chat/chat-panel.tsx",
         "packages/web/src/components/chat/chat-input.tsx",
+        "packages/web/src/components/chat/message-parts.tsx",
+        "packages/web/src/components/chat/message-navigator.tsx",
+        "packages/web/src/components/chat/message-item.tsx",
+        "packages/web/src/components/chat/chain-of-thought.tsx",
+        "packages/web/src/components/chat/readonly-code-block.tsx",
+        "packages/web/src/components/chat/ask-user-question.tsx",
+        "packages/web/src/components/chat/subagent.tsx",
+        "packages/web/src/components/chat/attachments.tsx",
+        "packages/web/src/components/common/agent-icon.tsx",
         "packages/web/src/components/composer/composer-editor.tsx",
         "packages/web/src/components/sidebar/app-sidebar.tsx",
         "packages/web/src/components/sidebar/agent-dialog.tsx",
         "packages/web/src/components/sidebar/models-dialog.tsx",
         "packages/web/src/components/sidebar/providers-dialog.tsx",
+        "packages/web/src/components/issue/issue-list.tsx",
+        "packages/web/src/components/issue/issue-detail.tsx",
+        "packages/web/src/components/issue/edit-issue-dialog.tsx",
         "packages/web/src/components/git/git-panel.tsx",
+        "packages/web/src/components/git/diff-viewer.tsx",
         "packages/web/src/components/home/home-page.tsx",
         "packages/web/src/components/workspace/workspace-dialog.tsx",
+        "packages/web/src/stores/agent.ts",
         "packages/web/src/stores/editor.ts",
         "packages/web/src/stores/terminal.ts",
         "packages/web/src/stores/channel.ts",
@@ -186,14 +222,12 @@
       ],
       "claudeMd": "packages/web/CLAUDE.md",
       "coverage": {
-        "scanned": 90,
-        "total": 95,
+        "scanned": 100,
+        "total": 105,
         "percentage": 95,
         "gaps": [
-          "packages/web/src/app/timeline-component-05/page.tsx（辅助页面，未读取）",
-          "packages/web/src/app/dashboard-shell-01/page.tsx（辅助页面，未读取）",
-          "packages/web/src/components/shadcn-studio/blocks/（7个参考组件块，未逐一读取）",
-          "packages/web/src/components/timeline/（版本时间线组件，未逐一读取）"
+          "packages/web/src/components/shadcn-studio/blocks/（7个参考组件块，非核心功能）",
+          "packages/web/src/components/timeline/（版本时间线组件，非核心功能）"
         ]
       }
     }
@@ -202,6 +236,26 @@
     {
       "path": "docs/agent-lifecycle.md",
       "description": "Agent Preset 创建、更新、工作空间导入、运行时工作目录行为的详细文档"
+    },
+    {
+      "path": "docs/issue-agent-automation.md",
+      "description": "Issue 自动化编排链路详细文档（Scheduler -> Planner -> TaskCreator -> Executor -> Reviewer）"
+    },
+    {
+      "path": "docs/codex-runtime-limitations.md",
+      "description": "Codex 运行时的已知限制、解决方法和排障清单"
+    },
+    {
+      "path": "docs/anthropic-bridge.md",
+      "description": "Anthropic Messages 到 OpenAI Chat/Responses 的协议中转说明"
+    },
+    {
+      "path": "docs/function-call-tools.md",
+      "description": "服务器端 Function Call 工具层文档"
+    },
+    {
+      "path": "docs/ai-message-rendering.md",
+      "description": "AI 消息结构化渲染链路文档（MessagePart/chain/tool-detail/diff）"
     },
     {
       "path": "PRD.md",
@@ -224,9 +278,9 @@
     "CLAUDE.md"
   ],
   "scanCoverage": {
-    "totalSourceFiles": 143,
-    "scannedFiles": 138,
-    "coveragePercentage": 97,
+    "totalSourceFiles": 162,
+    "scannedFiles": 155,
+    "coveragePercentage": 96,
     "ignoredDirectories": [
       "node_modules",
       ".next",
@@ -236,11 +290,16 @@
     ],
     "truncated": false,
     "gapDetails": [
-      "web 模块有 5 个辅助/参考页面未读取（timeline-component-05, dashboard-shell-01, shadcn-studio blocks）",
-      "这些为 UI 参考组件，非核心功能路径"
+      "web 模块 shadcn-studio/blocks 和 timeline 组件未逐一读取（非核心功能，UI 参考用）",
+      "server 模块 claude-code-runtime.ts 超过 1000 行，只读取了头部和关键函数签名"
     ]
   },
   "nextSteps": {
-    "description": "全部核心模块已完整扫描，web 模块有少量 UI 参考组件未深读",
+    "description": "全部核心模块已完整扫描。建议后续关注：",
+    "suggestions": [
+      "claude-code-runtime.ts 完整逻辑（Anthropic Bridge 实现、SDK message loop 事件映射）",
+      "ws/handler.ts 完整的 runMentionedAgent 实现（实时消息 Parts 更新逻辑）",
+      "前端 message-parts.tsx 完整渲染逻辑（所有 MessagePart 类型的 UI 映射）"
+    ]
   }
 }

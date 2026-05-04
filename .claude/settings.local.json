@@ -3,5 +3,9 @@
     "allow": [
       "mcp__shadcnVue__get_add_command_for_items"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "code-review-graph"
+  ],
+  "enableAllProjectMcpServers": true
 }
