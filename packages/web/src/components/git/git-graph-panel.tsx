@@ -3,13 +3,16 @@
 import { useEffect, useCallback, useMemo } from "react";
 import { GitCommit, GitBranch as BranchIcon } from "lucide-react";
 import { useGitStore } from "@/stores/git";
+import { GitNotInitialized } from "./git-not-initialized";
 
 interface GitGraphPanelProps {
   workspaceId: string;
 }
 
 export function GitGraphPanel({ workspaceId }: GitGraphPanelProps) {
-  const { log, status, loadLog, loadStatus } = useGitStore();
+  const { log, status, loading, error, loadLog, loadStatus } = useGitStore();
+
+  const isNotGitRepo = !loading && !!error && error.includes("not a git repository");
 
   const refresh = useCallback(() => {
     loadLog(workspaceId);
@@ -19,6 +22,17 @@ export function GitGraphPanel({ workspaceId }: GitGraphPanelProps) {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  if (isNotGitRepo) {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="flex items-center px-2 py-1.5 border-b">
+          <span className="text-xs font-medium text-muted-foreground">Graph</span>
+        </div>
+        <GitNotInitialized workspaceId={workspaceId} onInitialized={refresh} />
+      </div>
+    );
+  }
 
   const branch = status?.branch ?? "—";
   const ahead = status?.ahead ?? 0;

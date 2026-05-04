@@ -5,6 +5,7 @@ import { FileCode, RotateCcw, RefreshCw, Trash2, ChevronDown, GitBranch } from "
 import { useGitStore } from "@/stores/git";
 import { useEditorStore } from "@/stores/editor";
 import { DiffViewer } from "./diff-viewer";
+import { GitNotInitialized } from "./git-not-initialized";
 
 interface GitPanelProps {
   workspaceId: string;
@@ -27,11 +28,13 @@ const statusLabels: Record<string, string> = {
 };
 
 export function GitChangesPanel({ workspaceId }: GitPanelProps) {
-  const { status, diffs, selectedFile, loading, branches, loadStatus, loadDiffs, loadBranches, commit, discard, discardAll, checkout, selectFile } = useGitStore();
+  const { status, diffs, selectedFile, loading, error, branches, loadStatus, loadDiffs, loadBranches, commit, discard, discardAll, checkout, selectFile } = useGitStore();
   const openFile = useEditorStore((s) => s.openFile);
   const [commitMsg, setCommitMsg] = useState("");
   const [committing, setCommitting] = useState(false);
   const [branchOpen, setBranchOpen] = useState(false);
+
+  const isNotGitRepo = !loading && !!error && error.includes("not a git repository");
 
   const refresh = useCallback(() => {
     loadStatus(workspaceId);
@@ -99,6 +102,17 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
     },
     [handleCommit],
   );
+
+  if (isNotGitRepo) {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="flex items-center px-2 py-1.5 border-b">
+          <span className="text-xs font-medium text-muted-foreground">Changes</span>
+        </div>
+        <GitNotInitialized workspaceId={workspaceId} onInitialized={refresh} />
+      </div>
+    );
+  }
 
   const selectedDiff = diffs.find((d) => d.path === selectedFile);
   const hasFiles = (status?.files.length ?? 0) > 0;

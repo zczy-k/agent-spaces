@@ -6,7 +6,7 @@
     "dev": "tsx watch src/app.ts",
     "build": "tsc",
     "start": "node dist/app.js",
-    "postinstall": "node -e \"require('node-pty')\" 2>/dev/null || npx node-gyp rebuild --directory=node_modules/node-pty"
+    "postinstall": "node -e \"try{require('node-pty')}catch(e){if(!require('fs').existsSync('node_modules/node-pty/prebuilds')){process.exit(1)}}\""
   },
   "dependencies": {
     "@agent-spaces/shared": "workspace:*",

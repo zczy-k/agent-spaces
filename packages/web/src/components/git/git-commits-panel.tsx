@@ -2,13 +2,16 @@
 
 import { useEffect, useCallback } from "react";
 import { useGitStore } from "@/stores/git";
+import { GitNotInitialized } from "./git-not-initialized";
 
 interface GitCommitsPanelProps {
   workspaceId: string;
 }
 
 export function GitCommitsPanel({ workspaceId }: GitCommitsPanelProps) {
-  const { log, loading, loadLog } = useGitStore();
+  const { log, loading, error, loadLog } = useGitStore();
+
+  const isNotGitRepo = !loading && !!error && error.includes("not a git repository");
 
   const refresh = useCallback(() => {
     loadLog(workspaceId);
@@ -17,6 +20,17 @@ export function GitCommitsPanel({ workspaceId }: GitCommitsPanelProps) {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  if (isNotGitRepo) {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="flex items-center px-2 py-1.5 border-b">
+          <span className="text-xs font-medium text-muted-foreground">Commits</span>
+        </div>
+        <GitNotInitialized workspaceId={workspaceId} onInitialized={refresh} />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full">

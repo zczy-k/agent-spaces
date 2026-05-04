@@ -14,6 +14,7 @@ interface GitState {
   loadDiffs: (workspaceId: string, filePath?: string) => Promise<void>;
   loadLog: (workspaceId: string) => Promise<void>;
   loadBranches: (workspaceId: string) => Promise<void>;
+  initRepo: (workspaceId: string) => Promise<void>;
   commit: (workspaceId: string, message: string) => Promise<void>;
   discard: (workspaceId: string, filePath: string) => Promise<void>;
   discardAll: (workspaceId: string) => Promise<void>;
@@ -73,6 +74,16 @@ export const useGitStore = create<GitState>((set) => ({
       if (!res.ok) throw new Error(await res.text());
       const data: GitBranch[] = await res.json();
       set({ branches: data });
+    } catch (err: any) {
+      set({ error: err.message });
+    }
+  },
+
+  initRepo: async (workspaceId) => {
+    try {
+      const res = await fetch(`/api/workspaces/${workspaceId}/git/init`, { method: 'POST' });
+      if (!res.ok) throw new Error(await res.text());
+      set({ error: null });
     } catch (err: any) {
       set({ error: err.message });
     }

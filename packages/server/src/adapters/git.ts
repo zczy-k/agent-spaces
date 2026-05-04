@@ -192,3 +192,13 @@ export async function gitCheckout(workspaceId: string, branch: string): Promise<
   const git = getGit(ws);
   await git.checkout(branch);
 }
+
+export async function gitInit(workspaceId: string): Promise<void> {
+  const ws = getWorkspace(workspaceId);
+  if (!ws) throw new Error('Workspace not found');
+
+  const git = simpleGit(ws.boundDirs[0]);
+  await git.init();
+  // 清除缓存的实例，强制下次使用新实例
+  gitInstances.delete(workspaceId);
+}

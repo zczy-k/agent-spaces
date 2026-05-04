@@ -21,6 +21,10 @@ const nextConfig: NextConfig = {
           },
         ],
       });
+
+      // Fix pnpm monorepo symlink path mismatch for react-dev-inspector
+      config.snapshot ??= {};
+      config.snapshot.managedPaths = [];
     }
 
     return config;

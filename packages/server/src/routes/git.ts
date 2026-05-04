@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from 'express';
-import { gitStatus, gitDiff, gitLog, gitCommit, gitDiscard, gitDiscardAll, gitBranches, gitCheckout } from '../adapters/git.js';
+import { gitStatus, gitDiff, gitLog, gitCommit, gitDiscard, gitDiscardAll, gitBranches, gitCheckout, gitInit } from '../adapters/git.js';
 
 const router = Router({ mergeParams: true });
 
@@ -86,6 +86,15 @@ router.post('/checkout', async (req: Request<{ id: string }>, res: Response) => 
       return;
     }
     await gitCheckout(req.params.id, branch);
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/init', async (req: Request<{ id: string }>, res: Response) => {
+  try {
+    await gitInit(req.params.id);
     res.json({ ok: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
