@@ -9,7 +9,7 @@ import { ChatInput, type ChatInputHandle } from './chat-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Status, StatusIndicator, StatusLabel } from '@/components/ui/status-badge';
-import { HelpCircleIcon, PanelRightOpen, PanelRightClose, SendIcon, Trash2 } from 'lucide-react';
+import { HelpCircleIcon, PanelRightOpen, PanelRightClose, SendIcon, Trash2, ExternalLink } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { ChannelInfoPanel } from './channel-info-panel';
 import { MessageNavigator } from './message-navigator';
@@ -17,6 +17,7 @@ import { findAgentById } from '@/lib/agent-members';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { AvatarGroup, AvatarGroupCount } from '@/components/ui/avatar';
 
+import { useIssueStore } from '@/stores/issue';
 import type { AgentConfig, Channel, Message } from '@agent-spaces/shared';
 
 const channelTypeStatus: Record<Channel['type'], { label: string; status: 'online' | 'offline' | 'maintenance' | 'degraded' }> = {
@@ -203,6 +204,16 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
           </Status>
           <ChannelMemberAvatars members={channel.members} />
           <div className="flex-1" />
+          {channel.issueId && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => useIssueStore.getState().setActiveIssue(channel.issueId!)}
+              title="查看关联议题"
+            >
+              <ExternalLink className="size-4" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon-sm"

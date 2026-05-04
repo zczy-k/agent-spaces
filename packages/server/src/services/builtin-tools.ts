@@ -1,6 +1,7 @@
-import type { Channel, Issue } from '@agent-spaces/shared';
+import type { Channel, Issue, IssueComment } from '@agent-spaces/shared';
 import type { AgentFunctionTool } from '../adapters/agent-runtime-types.js';
 import * as issueService from './issue.js';
+import * as issueCommentService from './issue-comment.js';
 import * as channelService from './channel.js';
 
 const boundIssueInputSchema = {
@@ -48,7 +49,7 @@ export function createIssueFunctionTools(workspaceId: string, channel: Channel |
     },
     {
       name: 'ViewCurrentChannelIssue',
-      description: 'View the issue bound to the current issue channel. The issueId must be the current channel issue id.',
+      description: 'View the issue and comments bound to the current issue channel. The issueId must be the current channel issue id.',
       inputSchema: boundIssueInputSchema,
       annotations: { readOnly: true, openWorld: false },
       execute: async (input) => viewBoundIssue(workspaceId, channel, input),
@@ -63,11 +64,16 @@ export function isBuiltInIssueToolName(name: string): boolean {
     || name === 'agent-spaces.ViewCurrentChannelIssue';
 }
 
-function viewBoundIssue(workspaceId: string, channel: Channel, input: unknown): Issue {
+type IssueWithComments = Issue & { comments: IssueComment[] };
+
+function viewBoundIssue(workspaceId: string, channel: Channel, input: unknown): IssueWithComments {
   assertBoundIssueId(channel, input);
   const issue = issueService.getById(workspaceId, channel.issueId!);
   if (!issue) throw new Error(`Bound issue not found: ${channel.issueId}`);
-  return issue;
+  return {
+    ...issue,
+    comments: issueCommentService.listIssueComments(workspaceId, issue.id),
+  };
 }
 
 function createOrUpdateBoundIssue(workspaceId: string, channel: Channel, input: unknown): Issue {

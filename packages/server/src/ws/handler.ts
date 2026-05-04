@@ -5,7 +5,6 @@ import { handleTerminalEvent } from './terminal-handler.js';
 import { createMessage, updateMessage, listMessages } from '../services/message.js';
 import { getChannel, updateChannel } from '../services/channel.js';
 import * as issueService from '../services/issue.js';
-import * as issueCommentService from '../services/issue-comment.js';
 import { createIssueFunctionTools } from '../services/builtin-tools.js';
 import { startScheduler } from '../agents/scheduler-agent.js';
 import * as agentService from '../services/agent.js';
@@ -493,24 +492,6 @@ async function runMentionedAgent(
       }),
     });
     if (reply) broadcastToWorkspace(workspaceId, 'channel.message.updated', reply);
-    if (reply && channel?.issueId) {
-      const comment = issueCommentService.createIssueComment(workspaceId, channel.issueId, {
-        senderId: preset.id,
-        senderRole: preset.role,
-        content: result.summary || reply.content,
-        source: 'agent_progress',
-        metadata: {
-          channelId,
-          messageId: reply.id,
-          agentSessionId: session.id,
-          runtime: preset.runtimeKind,
-          model: preset.modelId,
-          summary: result.summary,
-          duration: Date.now() - startTime,
-        },
-      });
-      if (comment) broadcastToWorkspace(workspaceId, 'issue.updated', issueService.getById(workspaceId, channel.issueId));
-    }
   } catch (err) {
     if (activeRun?.stopped) return;
     const error = err instanceof Error ? err.message : String(err);
