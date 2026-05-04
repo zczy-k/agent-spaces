@@ -121,7 +121,7 @@ function MessagePartView({ part, message, workspaceId }: { part: MessagePart; me
           <ChainOfThoughtHeader loading={part.status === "streaming"}>
             {part.status === "streaming" ? "Agent is thinking" : "AI intermediate output"}
           </ChainOfThoughtHeader>
-          <ChainOfThoughtContent>
+          <ChainOfThoughtContent className="max-h-[300px] overflow-y-auto">
             <ChainOfThoughtStep
               icon={MessageSquareTextIcon}
               label={part.status === "streaming" ? "Streaming response" : "Intermediate message"}
@@ -136,7 +136,7 @@ function MessagePartView({ part, message, workspaceId }: { part: MessagePart; me
       return (
         <ChainOfThought defaultOpen={message.status === "pending"} className="max-w-none">
           <ChainOfThoughtHeader loading={message.status === "pending" || message.status === "streaming"}>{part.chains.length} chain {part.chains.length === 1 ? "step" : "steps"}</ChainOfThoughtHeader>
-          <ChainOfThoughtContent>
+          <ChainOfThoughtContent className="max-h-[300px] overflow-y-auto">
             {part.chains.map((chain) => {
               const completed = chain.status === "completed"
               if (chain.kind === "message") {

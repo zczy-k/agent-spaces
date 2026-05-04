@@ -8,9 +8,11 @@ import * as issueCommentService from '../services/issue-comment.js';
 import * as messageService from '../services/message.js';
 import * as taskService from '../services/task.js';
 import { createAgentRuntime } from '../adapters/agent-runtime.js';
+import type { AgentConfig } from '@agent-spaces/shared';
 import type { AgentContext } from './agent-context.js';
 import { onExecutorComplete } from '../hooks/agent-hooks.js';
 import * as wsService from '../services/workspace.js';
+import * as channelService from '../services/channel.js';
 import { broadcastToWorkspace } from '../ws/connection-manager.js';
 
 export async function runPlanner(
@@ -18,52 +20,53 @@ export async function runPlanner(
   issueId: string,
   ctx: AgentContext,
 ): Promise<void> {
-  // Create planner session
-  const planner = agentService.create(workspaceId, 'planner');
+  const issue = issueService.getById(workspaceId, issueId);
+  if (!issue) {
+    console.warn(`[planner] issue not found workspaceId=${workspaceId} issueId=${issueId}`);
+    return;
+  }
+
+  const plannerPreset = findIssueMemberAgent(workspaceId, issue, 'planner');
+  if (!plannerPreset) {
+    console.warn(`[planner] no planner member found workspaceId=${workspaceId} issueId=${issueId} channelId=${issue.channelId}`);
+    return;
+  }
+
+  const planner = agentService.getOrCreateSessionForConfig(workspaceId, plannerPreset);
   ctx.broadcast('agent.started', planner);
+  const plannerFromStatus = planner.status;
   agentService.updateStatus(workspaceId, planner.id, 'active');
-  ctx.broadcast('agent.status_changed', { agentId: planner.id, from: 'idle', to: 'active' });
+  issueService.addAgent(workspaceId, issueId, plannerPreset.id);
+  ctx.broadcast('agent.status_changed', { agentId: planner.id, from: plannerFromStatus, to: 'active' });
 
   ctx.broadcast('agent.output', { agentId: planner.id, data: `Planning issue: ${issueId}` });
 
   // Move issue to planned
-  const issue = issueService.updateStatus(workspaceId, issueId, 'planned');
-  if (!issue) {
-    agentService.complete(workspaceId, planner.id, 'Issue not found');
-    return;
-  }
+  const plannedIssue = issueService.updateStatus(workspaceId, issueId, 'planned');
+  if (!plannedIssue) return;
   ctx.broadcast('issue.status_changed', { issueId, from: 'draft', to: 'planned' });
 
   // Use runtime to plan.
-  const plannerPreset = agentService.listPresets(workspaceId)?.find(
-    (agent) => agent.role === 'planner' && agent.enabled !== false,
-  );
-  const runtime = plannerPreset ? createAgentRuntime({
-    kind: plannerPreset.runtimeKind,
-    provider: plannerPreset.modelProvider,
-    model: plannerPreset.modelId,
-    apiKey: plannerPreset.apiKey,
-    baseURL: plannerPreset.apiBase,
-  }) : createAgentRuntime();
+  const runtime = createRuntimeForPreset(plannerPreset);
   const workspace = wsService.getById(workspaceId);
   const planResult = await runtime.execute(
-    buildPlannerPrompt(issue),
-    plannerPreset ? agentService.resolveWorkingDir(workspaceId, plannerPreset) : '',
-    plannerPreset ? {
+    buildPlannerPrompt(plannedIssue),
+    agentService.resolveWorkingDir(workspaceId, plannerPreset),
+    {
       maxTurns: 100,
       mcpServers: agentService.getMcpServers(plannerPreset.mcps),
       skills: agentService.getAvailableSkillNames(agentService.getAgentConfigDir(workspaceId, plannerPreset), plannerPreset.skills),
       configDir: agentService.getAgentConfigDir(workspaceId, plannerPreset),
       sandboxDirs: plannerPreset.sandboxDirs,
-    } : undefined,
+    },
   );
 
   for (const line of planResult.output) {
     ctx.broadcast('agent.output', { agentId: planner.id, data: line });
   }
-  persistIssueAgentMessage(workspaceId, issue, planner.id, 'planner', planResult.summary, planResult.output, {
-    runtime: plannerPreset?.runtimeKind,
-    model: plannerPreset?.modelId,
+  persistIssueAgentMessage(workspaceId, plannedIssue, plannerPreset.id, 'planner', planResult.summary, planResult.output, {
+    runtime: plannerPreset.runtimeKind,
+    model: plannerPreset.modelId,
     workspaceRoot: workspace?.boundDirs?.[0],
   });
 
@@ -92,6 +95,27 @@ export async function runPlanner(
   for (const task of tasks) {
     await runExecutor(workspaceId, task.id, issueId, ctx);
   }
+}
+
+function findIssueMemberAgent(
+  workspaceId: string,
+  issue: NonNullable<ReturnType<typeof issueService.getById>>,
+  role: AgentConfig['role'],
+): AgentConfig | null {
+  const channel = channelService.getChannel(workspaceId, issue.channelId);
+  if (!channel) return null;
+
+  return agentService.findEnabledPresetByRoleInMembers(workspaceId, channel.members, role);
+}
+
+function createRuntimeForPreset(preset: AgentConfig) {
+  return createAgentRuntime({
+    kind: preset.runtimeKind,
+    provider: preset.modelProvider,
+    model: preset.modelId,
+    apiKey: preset.apiKey,
+    baseURL: preset.apiBase,
+  });
 }
 
 function buildPlannerPrompt(issue: NonNullable<ReturnType<typeof issueService.getById>>): string {
@@ -156,11 +180,34 @@ async function runExecutor(
   issueId: string,
   ctx: AgentContext,
 ): Promise<void> {
-  const executor = agentService.create(workspaceId, 'executor');
+  const issue = issueService.getById(workspaceId, issueId);
+  if (!issue) {
+    console.warn(`[executor] issue not found workspaceId=${workspaceId} issueId=${issueId} taskId=${taskId}`);
+    return;
+  }
+
+  const executorPreset = findIssueMemberAgent(workspaceId, issue, 'executor');
+  if (!executorPreset) {
+    console.warn(`[executor] no executor member found workspaceId=${workspaceId} issueId=${issueId} channelId=${issue.channelId} taskId=${taskId}`);
+    taskService.updateStatus(workspaceId, taskId, 'failed', {
+      result: {
+        success: false,
+        summary: 'No executor agent configured in issue channel members',
+        artifacts: [],
+        error: 'No executor member found for issue channel',
+      },
+    });
+    ctx.broadcast('task.status_changed', { taskId, from: 'pending', to: 'failed' });
+    return;
+  }
+
+  const executor = agentService.getOrCreateSessionForConfig(workspaceId, executorPreset);
   ctx.broadcast('agent.started', executor);
 
+  const executorFromStatus = executor.status;
   agentService.updateStatus(workspaceId, executor.id, 'active');
-  ctx.broadcast('agent.status_changed', { agentId: executor.id, from: 'idle', to: 'active' });
+  issueService.addAgent(workspaceId, issueId, executorPreset.id);
+  ctx.broadcast('agent.status_changed', { agentId: executor.id, from: executorFromStatus, to: 'active' });
 
   const task = taskService.assignAgent(workspaceId, taskId, executor.id);
   if (!task) {
@@ -172,19 +219,25 @@ async function runExecutor(
   agentService.assignTask(workspaceId, executor.id, taskId);
 
   console.log(
-    `[executor] starting runtime workspaceId=${workspaceId} taskId=${taskId} issueId=${issueId} executorAgentId=${executor.id} runtime=open-agent-sdk(default) sandboxDirs=${JSON.stringify(task.sandboxDirs ?? [])}`,
+    `[executor] starting runtime workspaceId=${workspaceId} taskId=${taskId} issueId=${issueId} executorAgentId=${executor.id} agentConfigId=${executorPreset.id} runtime=${executorPreset.runtimeKind ?? 'open-agent-sdk'} sandboxDirs=${JSON.stringify(task.sandboxDirs ?? executorPreset.sandboxDirs ?? [])}`,
   );
-  const runtime = createAgentRuntime();
+  const runtime = createRuntimeForPreset(executorPreset);
   ctx.broadcast('agent.output', { agentId: executor.id, data: `Executing task: ${task.title}` });
   ctx.broadcast('agent.output', {
     agentId: executor.id,
-    data: '[debug] executor runtime=open-agent-sdk(default); hook:onExecutorComplete should run after this executor finishes',
+    data: `[debug] executor agentConfigId=${executorPreset.id} runtime=${executorPreset.runtimeKind ?? 'open-agent-sdk'}; hook:onExecutorComplete should run after this executor finishes`,
   });
 
   const result = await runtime.execute(
     `${task.title}\n\n${task.description}`,
-    '',
-    { sandboxDirs: task.sandboxDirs },
+    agentService.resolveWorkingDir(workspaceId, executorPreset),
+    {
+      maxTurns: 100,
+      mcpServers: agentService.getMcpServers(executorPreset.mcps),
+      skills: agentService.getAvailableSkillNames(agentService.getAgentConfigDir(workspaceId, executorPreset), executorPreset.skills),
+      configDir: agentService.getAgentConfigDir(workspaceId, executorPreset),
+      sandboxDirs: task.sandboxDirs ?? executorPreset.sandboxDirs,
+    },
   );
   console.log(
     `[executor] runtime completed workspaceId=${workspaceId} taskId=${taskId} issueId=${issueId} executorAgentId=${executor.id} success=${result.success} summary=${JSON.stringify(result.summary)}`,

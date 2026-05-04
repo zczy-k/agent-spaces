@@ -45,6 +45,17 @@ export function listPresets(workspaceId: string): AgentConfig[] | null {
   return ws.agents || [];
 }
 
+export function findEnabledPresetByRoleInMembers(
+  workspaceId: string,
+  memberIds: string[],
+  role: AgentConfig['role'],
+): AgentConfig | null {
+  const members = new Set(memberIds);
+  return (listPresets(workspaceId) ?? []).find(
+    (agent) => members.has(agent.id) && agent.role === role && agent.enabled !== false,
+  ) ?? null;
+}
+
 export function listTemplates(): AgentConfig[] {
   const root = getGlobalAgentTemplatesDir();
   if (!existsSync(root)) return [];
@@ -650,6 +661,24 @@ export function create(
   };
   createAgentSession(session);
   return session;
+}
+
+export function getOrCreateSessionForConfig(
+  workspaceId: string,
+  config: AgentConfig,
+): AgentSession {
+  const existing = listAgentSessions(workspaceId).find(
+    (session) =>
+      session.agentConfigId === config.id &&
+      session.role === config.role &&
+      (session.status === 'idle' || session.status === 'completed' || session.status === 'crashed'),
+  );
+  if (!existing) return create(workspaceId, config.role, config.id);
+
+  return updateStatus(workspaceId, existing.id, 'idle', {
+    currentTaskId: undefined,
+    error: undefined,
+  }) ?? existing;
 }
 
 export function updateStatus(
