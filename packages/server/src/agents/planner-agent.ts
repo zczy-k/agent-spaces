@@ -4,16 +4,17 @@
 
 import * as agentService from '../services/agent.js';
 import * as issueService from '../services/issue.js';
-import * as issueCommentService from '../services/issue-comment.js';
 import * as messageService from '../services/message.js';
 import { createAgentRuntime } from '../adapters/agent-runtime.js';
-import type { AgentConfig, MessagePart } from '@agent-spaces/shared';
+import type { AgentConfig } from '@agent-spaces/shared';
 import type { AgentContext } from './agent-context.js';
 import * as wsService from '../services/workspace.js';
 import * as channelService from '../services/channel.js';
 import { broadcastToWorkspace } from '../ws/connection-manager.js';
 import { createAgentMessagePartsTracker } from './agent-message-parts.js';
 import { syncIssueTasksAfterPlanning } from './issue-task-controller.js';
+import { completeIssueAgentProgress, createIssueAgentProgress } from './issue-agent-progress.js';
+import { createIssueFunctionTools } from '../services/builtin-tools.js';
 
 export async function runPlanner(
   workspaceId: string,
@@ -85,6 +86,7 @@ export async function runPlanner(
     {
       maxTurns: 100,
       mcpServers: agentService.getMcpServers(plannerPreset.mcps),
+      functionTools: createPlannerIssueTools(workspaceId, plannedIssue, plannerPreset),
       skills: agentService.getAvailableSkillNames(agentService.getAgentConfigDir(workspaceId, plannerPreset), plannerPreset.skills),
       configDir: agentService.getAgentConfigDir(workspaceId, plannerPreset),
       sandboxDirs: plannerPreset.sandboxDirs,
@@ -155,6 +157,7 @@ function createRuntimeForPreset(preset: AgentConfig) {
 function buildPlannerPrompt(issue: NonNullable<ReturnType<typeof issueService.getById>>, plannerPreset: AgentConfig): string {
   return [
     plannerPreset.systemPrompt?.trim(),
+    'Before planning, call ViewCurrentChannelIssue to load the latest issue context and comments for this channel.',
     '',
     'Current issue context:',
     `- Issue id: ${issue.id}`,
@@ -164,98 +167,15 @@ function buildPlannerPrompt(issue: NonNullable<ReturnType<typeof issueService.ge
     `- Description: ${issue.description || '(empty)'}`,
   ].filter(Boolean).join('\n');
 }
-function createIssueAgentProgress(
+
+function createPlannerIssueTools(
   workspaceId: string,
   issue: NonNullable<ReturnType<typeof issueService.getById>>,
   preset: AgentConfig,
-  agentSessionId: string,
-  metadata: { runtime?: string; model?: string },
-): {
-  message: ReturnType<typeof messageService.createMessage>;
-  comment: NonNullable<ReturnType<typeof issueCommentService.createIssueComment>> | null;
-} {
-  const content = `${preset.name || preset.role} is processing...`;
-  const message = messageService.createMessage(workspaceId, issue.channelId, {
+) {
+  const channel = channelService.getChannel(workspaceId, issue.channelId);
+  return createIssueFunctionTools(workspaceId, channel, {
     senderId: preset.id,
     senderRole: preset.role,
-    content,
-    type: 'text',
-    status: 'streaming',
-    metadata: {
-      agentSessionId,
-      runtime: metadata.runtime,
-      model: metadata.model,
-      summary: content,
-      duration: 0,
-    },
-  });
-  broadcastToWorkspace(workspaceId, 'channel.message', message);
-
-  const comment = issueCommentService.createIssueComment(workspaceId, issue.id, {
-    senderId: preset.id,
-    senderRole: preset.role,
-    content,
-    source: 'agent_progress',
-    metadata: {
-      channelId: issue.channelId,
-      messageId: message.id,
-      agentSessionId,
-      runtime: metadata.runtime,
-      model: metadata.model,
-      summary: content,
-      duration: 0,
-    },
-  });
-  if (comment) broadcastToWorkspace(workspaceId, 'issue.updated', issueService.getById(workspaceId, issue.id));
-
-  return { message, comment };
-}
-
-function completeIssueAgentProgress(
-  workspaceId: string,
-  issue: NonNullable<ReturnType<typeof issueService.getById>>,
-  progress: ReturnType<typeof createIssueAgentProgress>,
-  summary: string,
-  output: string[],
-  metadata: {
-    runtime?: string;
-    model?: string;
-    duration: number;
-    messageStatus: 'completed' | 'error';
-    parts: MessagePart[];
-  },
-): void {
-  const content = output.join('\n').trim() || summary;
-  if (!content.trim()) return;
-
-  const message = messageService.updateMessage(workspaceId, issue.channelId, progress.message.id, {
-    content,
-    type: 'text',
-    status: metadata.messageStatus,
-    metadata: {
-      ...progress.message.metadata,
-      runtime: metadata.runtime,
-      model: metadata.model,
-      summary,
-      duration: metadata.duration,
-    },
-    parts: metadata.parts,
-  });
-  if (message) broadcastToWorkspace(workspaceId, 'channel.message.updated', message);
-
-  const comment = progress.comment
-    ? issueCommentService.updateIssueComment(workspaceId, issue.id, progress.comment.id, {
-    content: summary || content,
-    metadata: {
-      ...progress.comment.metadata,
-      channelId: issue.channelId,
-      messageId: progress.message.id,
-      runtime: metadata.runtime,
-      model: metadata.model,
-      summary,
-      duration: metadata.duration,
-    },
-  })
-    : null;
-  if (comment) broadcastToWorkspace(workspaceId, 'issue.updated', issueService.getById(workspaceId, issue.id));
+  }, ['ViewCurrentChannelIssue', 'AddCurrentChannelComment']);
 }

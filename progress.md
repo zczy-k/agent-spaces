@@ -43,6 +43,15 @@ Working tree currently has partial code changes:
 - `pnpm --filter "@agent-spaces/web" build` passed.
 - `git -C "g:/agent_spaces" diff --check` passed.
 
+## Follow-up Fixes
+
+- Added shared `issue-agent-progress.ts` so planner, task creator, executor, and reviewer all create issue detail placeholders/comments.
+- Fixed agent progress completion to store full output in issue comments instead of replacing it with truncated runtime summary.
+- Removed private `ViewIssueTaskPlanningContext`; task creator now uses `ViewCurrentChannelIssue` plus `ReplaceIssueTasks`.
+- Added `ViewCurrentChannelIssue`/`AddCurrentChannelComment` function tools to planner, task creator, executor, and reviewer prompts.
+- Changed git commit message input from single-line input to textarea so multiline/full commit messages can be submitted.
+- Expanded `ViewCurrentChannelIssue` to return issue, comments, tasks, channel metadata, assignable agents, and valid agent config ids.
+
 ## Last Known Git Status
 
 ```text

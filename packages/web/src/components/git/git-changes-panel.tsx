@@ -220,13 +220,13 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
         {/* Commit input */}
         {hasFiles && (
           <div className="border-t p-2 space-y-1.5">
-            <input
-              type="text"
+            <textarea
               value={commitMsg}
               onChange={(e) => setCommitMsg(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Commit message (⌘+Enter)"
-              className="w-full text-xs px-2 py-1 border rounded bg-background"
+              rows={3}
+              className="w-full resize-none text-xs px-2 py-1 border rounded bg-background"
               disabled={committing}
             />
             <button

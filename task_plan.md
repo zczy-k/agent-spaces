@@ -369,6 +369,17 @@ Potential improvements before finalizing:
 
 Implementation and compile verification are complete for the requested backend orchestration refactor.
 
+## Follow-up Issues From Manual Test
+
+Status: implemented, awaiting verification.
+
+- Commit message was truncated because the Git panel used a single-line input. It now uses a textarea.
+- Agents did not share issue context consistently. Planner, task creator, executor, and reviewer now receive `ViewCurrentChannelIssue` and prompts explicitly require calling it first.
+- Removed `ViewIssueTaskPlanningContext` from task creator tools.
+- `ViewCurrentChannelIssue` now returns full issue context: issue, comments, tasks, channel metadata, assignable agents, and valid agent config ids.
+- Planner was the only agent with issue detail placeholder/comment flow. A shared progress helper now covers planner, task creator, executor, and reviewer.
+- Planner comment completion now writes full agent output instead of truncated summary.
+
 ## Verification Completed
 
 ```powershell

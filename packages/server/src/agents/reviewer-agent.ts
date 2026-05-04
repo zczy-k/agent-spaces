@@ -9,6 +9,8 @@ import * as channelService from '../services/channel.js';
 import { createAgentRuntime } from '../adapters/agent-runtime.js';
 import type { AgentContext } from './agent-context.js';
 import type { AgentConfig, TaskResult } from '@agent-spaces/shared';
+import { createIssueFunctionTools } from '../services/builtin-tools.js';
+import { completeIssueAgentProgress, createIssueAgentProgress } from './issue-agent-progress.js';
 
 export async function runReviewer(
   workspaceId: string,
@@ -45,6 +47,12 @@ export async function runReviewer(
     data: `Reviewing task: ${taskId}`,
   });
 
+  const startTime = Date.now();
+  const progress = createIssueAgentProgress(workspaceId, issue, reviewerPreset, reviewer.id, {
+    runtime: reviewerPreset.runtimeKind,
+    model: reviewerPreset.modelId,
+  });
+
   // Use runtime to review.
   const runtime = createAgentRuntime({
     kind: reviewerPreset.runtimeKind,
@@ -54,11 +62,12 @@ export async function runReviewer(
     baseURL: reviewerPreset.apiBase,
   });
   const reviewResult = await runtime.execute(
-    `Review the following task result:\nSuccess: ${taskResult.success}\nSummary: ${taskResult.summary}`,
+    buildReviewerPrompt(issue, taskId, taskResult),
     agentService.resolveWorkingDir(workspaceId, reviewerPreset),
     {
       maxTurns: 100,
       mcpServers: agentService.getMcpServers(reviewerPreset.mcps),
+      functionTools: createReviewerIssueTools(workspaceId, issue, reviewerPreset),
       skills: agentService.getAvailableSkillNames(agentService.getAgentConfigDir(workspaceId, reviewerPreset), reviewerPreset.skills),
       configDir: agentService.getAgentConfigDir(workspaceId, reviewerPreset),
       sandboxDirs: reviewerPreset.sandboxDirs,
@@ -68,6 +77,12 @@ export async function runReviewer(
   for (const line of reviewResult.output) {
     ctx.broadcast('agent.output', { agentId: reviewer.id, data: line });
   }
+  completeIssueAgentProgress(workspaceId, issue, progress, reviewResult.summary, reviewResult.output, {
+    runtime: reviewerPreset.runtimeKind,
+    model: reviewerPreset.modelId,
+    duration: Date.now() - startTime,
+    messageStatus: reviewResult.success ? 'completed' : 'error',
+  });
 
   // Mock: always approve for now
   const approved = true;
@@ -109,4 +124,33 @@ function findIssueMemberAgent(
   if (!channel) return null;
 
   return agentService.findEnabledPresetByRoleInMembers(workspaceId, channel.members, role);
+}
+
+function buildReviewerPrompt(issue: NonNullable<ReturnType<typeof issueService.getById>>, taskId: string, taskResult: TaskResult): string {
+  return [
+    'Before reviewing, call ViewCurrentChannelIssue with the current channel id to load the latest shared issue context and comments.',
+    '',
+    'Current issue:',
+    `- Issue id: ${issue.id}`,
+    `- Channel id: ${issue.channelId}`,
+    `- Title: ${issue.title}`,
+    '',
+    'Task result to review:',
+    `- Task id: ${taskId}`,
+    `- Success: ${taskResult.success}`,
+    `- Summary: ${taskResult.summary}`,
+    taskResult.error ? `- Error: ${taskResult.error}` : '',
+  ].filter(Boolean).join('\n');
+}
+
+function createReviewerIssueTools(
+  workspaceId: string,
+  issue: NonNullable<ReturnType<typeof issueService.getById>>,
+  preset: AgentConfig,
+) {
+  const channel = channelService.getChannel(workspaceId, issue.channelId);
+  return createIssueFunctionTools(workspaceId, channel, {
+    senderId: preset.id,
+    senderRole: preset.role,
+  }, ['ViewCurrentChannelIssue', 'AddCurrentChannelComment']);
 }

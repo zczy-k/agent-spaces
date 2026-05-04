@@ -1,8 +1,10 @@
-import { BUILT_IN_AGENT_TOOLS, type BuiltInAgentToolName, type Channel, type Issue, type IssueComment } from '@agent-spaces/shared';
+import { BUILT_IN_AGENT_TOOLS, type AgentConfig, type BuiltInAgentToolName, type Channel, type Issue, type IssueComment, type Task } from '@agent-spaces/shared';
 import type { AgentFunctionTool } from '../adapters/agent-runtime-types.js';
 import * as issueService from './issue.js';
 import * as issueCommentService from './issue-comment.js';
 import * as channelService from './channel.js';
+import * as taskService from './task.js';
+import * as agentService from './agent.js';
 
 interface IssueToolActor {
   senderId: string;
@@ -105,7 +107,14 @@ export function isBuiltInIssueToolName(name: string): boolean {
     || name === 'agent-spaces.AddCurrentChannelComment';
 }
 
-type IssueWithComments = Issue & { comments: IssueComment[] };
+interface CurrentIssueContext {
+  issue: Issue;
+  comments: IssueComment[];
+  tasks: Task[];
+  channel: Pick<Channel, 'id' | 'name' | 'type' | 'issueId' | 'members' | 'pinnedMentionId' | 'todos'>;
+  assignableAgents: Array<Pick<AgentConfig, 'id' | 'name' | 'role' | 'description' | 'enabled' | 'sandboxDirs'>>;
+  validAgentConfigIds: string[];
+}
 
 function createCurrentChannelIssue(workspaceId: string, channel: Channel, input: unknown): Issue {
   const data = assertCurrentChannelId(channel, input);
@@ -124,12 +133,26 @@ function createCurrentChannelIssue(workspaceId: string, channel: Channel, input:
   return issue;
 }
 
-function viewCurrentChannelIssue(workspaceId: string, channel: Channel, input: unknown): IssueWithComments {
+function viewCurrentChannelIssue(workspaceId: string, channel: Channel, input: unknown): CurrentIssueContext {
   assertCurrentChannelId(channel, input);
   const issue = getBoundIssue(workspaceId, channel);
+  const currentChannel = getCurrentChannel(workspaceId, channel);
+  const assignableAgents = getAssignableAgents(workspaceId, currentChannel);
   return {
-    ...issue,
+    issue,
     comments: issueCommentService.listIssueComments(workspaceId, issue.id),
+    tasks: taskService.list(workspaceId, issue.id),
+    channel: {
+      id: currentChannel.id,
+      name: currentChannel.name,
+      type: currentChannel.type,
+      issueId: currentChannel.issueId,
+      members: currentChannel.members,
+      pinnedMentionId: currentChannel.pinnedMentionId,
+      todos: currentChannel.todos,
+    },
+    assignableAgents,
+    validAgentConfigIds: assignableAgents.map((agent) => agent.id),
   };
 }
 
@@ -169,6 +192,23 @@ function getCurrentChannel(workspaceId: string, channel: Channel): Channel {
   const currentChannel = channelService.getChannel(workspaceId, channel.id);
   if (!currentChannel) throw new Error(`Current channel not found: ${channel.id}`);
   return currentChannel;
+}
+
+function getAssignableAgents(
+  workspaceId: string,
+  channel: Channel,
+): Array<Pick<AgentConfig, 'id' | 'name' | 'role' | 'description' | 'enabled' | 'sandboxDirs'>> {
+  const members = new Set(channel.members);
+  return (agentService.listPresets(workspaceId) ?? [])
+    .filter((agent) => members.has(agent.id) && agent.enabled !== false)
+    .map((agent) => ({
+      id: agent.id,
+      name: agent.name,
+      role: agent.role,
+      description: agent.description,
+      enabled: agent.enabled,
+      sandboxDirs: agent.sandboxDirs,
+    }));
 }
 
 function assertCurrentChannelId(channel: Channel, input: unknown): Record<string, unknown> {

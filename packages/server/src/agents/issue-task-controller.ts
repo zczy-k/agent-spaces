@@ -7,6 +7,8 @@ import * as channelService from '../services/channel.js';
 import * as issueService from '../services/issue.js';
 import * as taskService from '../services/task.js';
 import { onExecutorComplete } from '../hooks/agent-hooks.js';
+import { createIssueFunctionTools } from '../services/builtin-tools.js';
+import { completeIssueAgentProgress, createIssueAgentProgress } from './issue-agent-progress.js';
 
 const ACTIVE_TASK_STATUSES: TaskStatus[] = ['running', 'retrying', 'waiting_review'];
 
@@ -48,6 +50,11 @@ export async function syncIssueTasksAfterPlanning(
   ctx.broadcast('agent.status_changed', { agentId: taskSyncAgent.id, from: fromStatus, to: 'active' });
   ctx.broadcast('agent.output', { agentId: taskSyncAgent.id, data: `Syncing issue tasks: ${issueId}` });
 
+  const startTime = Date.now();
+  const progress = createIssueAgentProgress(workspaceId, issue, taskSyncPreset, taskSyncAgent.id, {
+    runtime: taskSyncPreset.runtimeKind,
+    model: taskSyncPreset.modelId,
+  });
   const runtime = createRuntimeForPreset(taskSyncPreset);
   const result = await runtime.execute(
     buildTaskSyncPrompt(issue, input),
@@ -55,7 +62,7 @@ export async function syncIssueTasksAfterPlanning(
     {
       maxTurns: 20,
       mcpServers: undefined,
-      functionTools: createTaskSyncTools(workspaceId, issueId, ctx),
+      functionTools: createTaskSyncTools(workspaceId, issue, taskSyncPreset, ctx),
       skills: [],
       configDir: agentService.getAgentConfigDir(workspaceId, taskSyncPreset),
       sandboxDirs: taskSyncPreset.sandboxDirs,
@@ -65,6 +72,12 @@ export async function syncIssueTasksAfterPlanning(
   for (const line of result.output) {
     ctx.broadcast('agent.output', { agentId: taskSyncAgent.id, data: line });
   }
+  completeIssueAgentProgress(workspaceId, issue, progress, result.summary, result.output, {
+    runtime: taskSyncPreset.runtimeKind,
+    model: taskSyncPreset.modelId,
+    duration: Date.now() - startTime,
+    messageStatus: result.success ? 'completed' : 'error',
+  });
 
   agentService.complete(workspaceId, taskSyncAgent.id, result.success ? undefined : result.error || result.summary);
   ctx.broadcast('agent.completed', { agentId: taskSyncAgent.id, result });
@@ -155,6 +168,11 @@ export async function runIssueTask(
   agentService.assignTask(workspaceId, executor.id, taskId);
 
   const runtime = createRuntimeForPreset(executorPreset);
+  const startTime = Date.now();
+  const progress = createIssueAgentProgress(workspaceId, issue, executorPreset, executor.id, {
+    runtime: executorPreset.runtimeKind,
+    model: executorPreset.modelId,
+  });
   ctx.broadcast('agent.output', { agentId: executor.id, data: `Executing task: ${runningTask.title}` });
   ctx.broadcast('agent.output', {
     agentId: executor.id,
@@ -162,11 +180,12 @@ export async function runIssueTask(
   });
 
   const result = await runtime.execute(
-    `${runningTask.title}\n\n${runningTask.description}`,
+    buildExecutorPrompt(issue, runningTask),
     agentService.resolveWorkingDir(workspaceId, executorPreset),
     {
       maxTurns: 100,
       mcpServers: agentService.getMcpServers(executorPreset.mcps),
+      functionTools: createCurrentIssueTools(workspaceId, issue, executorPreset),
       skills: agentService.getAvailableSkillNames(agentService.getAgentConfigDir(workspaceId, executorPreset), executorPreset.skills),
       configDir: agentService.getAgentConfigDir(workspaceId, executorPreset),
       sandboxDirs: runningTask.sandboxDirs ?? executorPreset.sandboxDirs,
@@ -177,6 +196,12 @@ export async function runIssueTask(
     ctx.broadcast('agent.output', { agentId: executor.id, data: line });
     ctx.broadcast('task.output', { taskId, data: line });
   }
+  completeIssueAgentProgress(workspaceId, issue, progress, result.summary, result.output, {
+    runtime: executorPreset.runtimeKind,
+    model: executorPreset.modelId,
+    duration: Date.now() - startTime,
+    messageStatus: result.success ? 'completed' : 'error',
+  });
 
   if (!result.success) {
     const failedTask = taskService.updateStatus(workspaceId, taskId, 'failed', { result });
@@ -200,34 +225,12 @@ export async function continueIssueTaskScheduling(
 
 function createTaskSyncTools(
   workspaceId: string,
-  issueId: string,
+  issue: Issue,
+  preset: AgentConfig,
   ctx: AgentContext,
 ): AgentFunctionTool[] {
   return [
-    {
-      name: 'ViewIssueTaskPlanningContext',
-      description: 'Read the current issue, existing tasks, channel members, and valid assignable agent config ids.',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          issueId: { type: 'string' },
-        },
-        required: ['issueId'],
-        additionalProperties: false,
-      },
-      annotations: { readOnly: true, openWorld: false },
-      execute: async (input) => {
-        assertIssueId(issueId, input);
-        const issue = requireIssue(workspaceId, issueId);
-        const assignableAgents = getIssueAssignableAgentViews(workspaceId, issue);
-        return {
-          issue,
-          existingTasks: taskService.list(workspaceId, issueId),
-          channelMembers: assignableAgents,
-          validAgentConfigIds: assignableAgents.map((agent) => agent.id),
-        };
-      },
-    },
+    ...createCurrentIssueTools(workspaceId, issue, preset),
     {
       name: 'ReplaceIssueTasks',
       description: 'Replace current non-running issue tasks. Use stable task keys and dependsOnKeys; the controller maps keys to stored task ids.',
@@ -257,10 +260,10 @@ function createTaskSyncTools(
       },
       annotations: { destructive: true, openWorld: false },
       execute: async (input) => {
-        assertIssueId(issueId, input);
+        assertIssueId(issue.id, input);
         const data = input as { tasks?: unknown };
         const tasks = parseTaskDrafts(data.tasks);
-        return replaceIssueTasksFromDrafts(workspaceId, issueId, ctx, tasks);
+        return replaceIssueTasksFromDrafts(workspaceId, issue.id, ctx, tasks);
       },
     },
   ];
@@ -337,16 +340,6 @@ function getIssueMemberPresets(workspaceId: string, issue: Issue): AgentConfig[]
     .filter((agent) => members.has(agent.id) && agent.enabled !== false);
 }
 
-function getIssueAssignableAgentViews(workspaceId: string, issue: Issue): Array<Pick<AgentConfig, 'id' | 'name' | 'role' | 'description' | 'sandboxDirs'>> {
-  return getIssueMemberPresets(workspaceId, issue).map((agent) => ({
-    id: agent.id,
-    name: agent.name,
-    role: agent.role,
-    description: agent.description,
-    sandboxDirs: agent.sandboxDirs,
-  }));
-}
-
 function updateIssueStatus(
   workspaceId: string,
   issueId: string,
@@ -386,8 +379,9 @@ function createRuntimeForPreset(preset: AgentConfig) {
 function buildTaskSyncPrompt(issue: Issue, input: PlannerTaskSyncInput): string {
   return [
     'You are the issue task synchronization controller.',
-    'Use only the provided function tools to inspect context and replace issue tasks.',
-    'Create focused implementation tasks with stable keys. Assign only valid agentConfigId values from the planning context. Express task dependencies with dependsOnKeys.',
+    'First call ViewCurrentChannelIssue with the current channel id to load the shared issue context, comments, tasks, channel members, and valid assignable agent config ids.',
+    'Use ReplaceIssueTasks to write tasks. Do not rely on private planner-only context.',
+    'Create focused implementation tasks with stable keys. Assign only valid agentConfigId values from ViewCurrentChannelIssue.validAgentConfigIds. Express task dependencies with dependsOnKeys.',
     '',
     'Current issue:',
     `- Issue id: ${issue.id}`,
@@ -400,6 +394,30 @@ function buildTaskSyncPrompt(issue: Issue, input: PlannerTaskSyncInput): string 
     `Summary: ${input.planSummary || '(empty)'}`,
     input.planOutput.join('\n').trim(),
   ].filter(Boolean).join('\n');
+}
+
+function buildExecutorPrompt(issue: Issue, task: Task): string {
+  return [
+    'Before executing, call ViewCurrentChannelIssue with the current channel id to load the latest shared issue context and comments.',
+    '',
+    'Current issue:',
+    `- Issue id: ${issue.id}`,
+    `- Channel id: ${issue.channelId}`,
+    `- Title: ${issue.title}`,
+    '',
+    'Current task:',
+    `- Task id: ${task.id}`,
+    `- Title: ${task.title}`,
+    `- Description: ${task.description}`,
+  ].join('\n');
+}
+
+function createCurrentIssueTools(workspaceId: string, issue: Issue, preset: AgentConfig): AgentFunctionTool[] {
+  const channel = channelService.getChannel(workspaceId, issue.channelId);
+  return createIssueFunctionTools(workspaceId, channel, {
+    senderId: preset.id,
+    senderRole: preset.role,
+  }, ['ViewCurrentChannelIssue', 'AddCurrentChannelComment']);
 }
 
 function parseTaskDrafts(value: unknown): TaskDraft[] {
