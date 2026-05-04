@@ -26,6 +26,27 @@ export interface Issue {
   updatedAt: string;
 }
 
+export interface IssueComment {
+  id: string;
+  issueId: string;
+  workspaceId: string;
+  senderId: string;
+  senderRole?: string;
+  content: string;
+  source?: 'user' | 'agent_progress';
+  metadata?: {
+    channelId?: string;
+    messageId?: string;
+    agentSessionId?: string;
+    runtime?: string;
+    model?: string;
+    summary?: string;
+    duration?: number;
+  };
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export interface CreateIssueInput {
   title: string;
   description: string;

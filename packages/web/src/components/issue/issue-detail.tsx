@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useIssueStore } from '@/stores/issue';
 import { useTaskStore } from '@/stores/task';
-import { useChannelStore } from '@/stores/channel';
 import { useAgentStore } from '@/stores/agent';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,12 +17,11 @@ import { useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Mention from '@tiptap/extension-mention';
-import type { Editor } from '@tiptap/core';
 import { ComposerShell } from '@/components/composer/composer-shell';
 import { createSuggestionRenderer } from '@/components/composer/create-suggestion-renderer';
 import { createSlashExtension } from '@/components/composer/create-slash-extension';
 import { getAgentDisplayName, getMemberDisplayName, normalizeChannelMembersToAgentIds } from '@/lib/agent-members';
-import type { IssueStatus, TaskStatus, AgentConfig, Message } from '@agent-spaces/shared';
+import type { IssueComment, IssueStatus, TaskStatus } from '@agent-spaces/shared';
 import { getWS } from '@/lib/ws';
 
 const ISSUE_STATUS_LABEL: Record<IssueStatus, string> = {
@@ -77,50 +75,43 @@ interface IssueDetailProps {
 export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const { issues, activeIssueId, startIssue } = useIssueStore();
   const { tasks, loadTasks, retryTask, cancelTask } = useTaskStore();
-  const { messages, loadMessages, sendMessage, addMessage, updateMessage, deleteMessage } = useChannelStore();
   const agents = useAgentStore((s) => s.agents);
   const ensureAgents = useAgentStore((s) => s.ensure);
   const [infoOpen, setInfoOpen] = useState(false);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
+  const [comments, setComments] = useState<IssueComment[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const issue = issues.find((i) => i.id === activeIssueId);
 
+  const loadComments = useCallback(async (targetIssueId: string) => {
+    const res = await fetch(`/api/workspaces/${workspaceId}/issues/${targetIssueId}/comments`);
+    if (!res.ok) return;
+    const nextComments: IssueComment[] = await res.json();
+    setComments(nextComments);
+  }, [workspaceId]);
+
   useEffect(() => {
     if (issue) {
       loadTasks(workspaceId, issue.id);
-      if (issue.channelId) loadMessages(workspaceId, issue.channelId);
+      void Promise.resolve().then(() => loadComments(issue.id));
     }
-  }, [issue, workspaceId, loadTasks, loadMessages]);
+  }, [issue, workspaceId, loadTasks, loadComments]);
 
   useEffect(() => {
     ensureAgents(workspaceId);
   }, [workspaceId, ensureAgents]);
 
   useEffect(() => {
-    if (!issue?.channelId) return;
+    if (!issue) return;
     const ws = getWS(workspaceId);
-    const channelId = issue.channelId;
-    const unsub = ws.on('channel.message', (data: unknown) => {
-      const msg = data as { channelId: string };
-      if (msg.channelId === channelId) addMessage(channelId, data as Message);
+    const issueId = issue.id;
+    const unsubIssueUpdated = ws.on('issue.updated', (data: unknown) => {
+      const updatedIssue = data as { id?: string };
+      if (updatedIssue.id === issueId) loadComments(issueId);
     });
-    const unsubUpdate = ws.on('channel.message.updated', (data: unknown) => {
-      const msg = data as { channelId: string };
-      if (msg.channelId === channelId) updateMessage(channelId, data as Message);
-    });
-    const unsubDelete = ws.on('channel.message.deleted', (data: unknown) => {
-      const msg = data as { channelId: string; messageId: string };
-      if (msg.channelId === channelId) deleteMessage(channelId, msg.messageId);
-    });
-    const unsubCleared = ws.on('channel.messages.cleared', (data: unknown) => {
-      const msg = data as { channelId: string };
-      if (msg.channelId === channelId) {
-        useChannelStore.setState((s) => ({ messages: { ...s.messages, [channelId]: [] } }));
-      }
-    });
-    return () => { unsub(); unsubUpdate(); unsubDelete(); unsubCleared(); };
-  }, [issue, workspaceId, addMessage, updateMessage, deleteMessage]);
+    return () => { unsubIssueUpdated(); };
+  }, [issue, workspaceId, loadComments]);
 
   const mentionExtension = useMemo(
     () =>
@@ -179,15 +170,24 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   });
 
   const handleSendComment = useCallback(() => {
-    if (!editor || !issue?.channelId) return;
+    if (!editor || !issue) return;
     const text = editor.getText().trim();
     if (!text) return;
-    sendMessage(workspaceId, issue.channelId, text);
-    editor.commands.clearContent();
-    setTimeout(() => {
-      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-    }, 50);
-  }, [editor, issue, workspaceId, sendMessage]);
+    void fetch(`/api/workspaces/${workspaceId}/issues/${issue.id}/comments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: text }),
+    })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const comment: IssueComment = await res.json();
+        setComments((current) => [...current, comment]);
+        editor.commands.clearContent();
+        setTimeout(() => {
+          scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+        }, 50);
+      });
+  }, [editor, issue, workspaceId]);
 
   const canSubmit = !!editor?.getText().trim();
 
@@ -200,7 +200,6 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   }
 
   const issueTasks = tasks.filter((t) => t.issueId === issue.id);
-  const channelMessages = Array.isArray(messages[issue.channelId]) ? messages[issue.channelId] : [];
   const members = issue.members ?? [];
   const enabledAgents = agents.filter((agent) => agent.enabled !== false);
   const memberIds = new Set(members);
@@ -224,16 +223,20 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     useIssueStore.getState().upsertIssue(updated);
   };
 
-  const handleDeleteMessage = async (channelId: string, messageId: string) => {
-    await fetch(`/api/workspaces/${workspaceId}/channels/${channelId}/messages/${messageId}`, { method: 'DELETE' });
+  const handleDeleteComment = async (commentId: string) => {
+    await fetch(`/api/workspaces/${workspaceId}/issues/${issue.id}/comments/${commentId}`, { method: 'DELETE' });
+    setComments((current) => current.filter((comment) => comment.id !== commentId));
   };
 
-  const handleUpdateMessage = async (wsId: string, channelId: string, messageId: string, content: string) => {
-    await fetch(`/api/workspaces/${wsId}/channels/${channelId}/messages/${messageId}`, {
+  const handleUpdateComment = async (wsId: string, commentId: string, content: string) => {
+    const res = await fetch(`/api/workspaces/${wsId}/issues/${issue.id}/comments/${commentId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content }),
     });
+    if (!res.ok) return;
+    const updated: IssueComment = await res.json();
+    setComments((current) => current.map((comment) => (comment.id === updated.id ? updated : comment)));
   };
 
   return (
@@ -350,7 +353,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
 
           {/* Comments */}
           <div className="px-4 pt-2 pb-4 border-t">
-            <h3 className="text-sm font-medium mb-3">Comments ({channelMessages.length})</h3>
+            <h3 className="text-sm font-medium mb-3">Comments ({comments.length})</h3>
             {issue.description && (
               <div className="pb-3 border-b">
                 <div className="flex items-start gap-2.5">
@@ -372,13 +375,13 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
               </div>
             )}
 
-            {channelMessages.map((c) => (
+            {comments.map((comment) => (
               <IssueMessage
-                key={c.id}
-                message={c}
+                key={comment.id}
+                comment={comment}
                 workspaceId={workspaceId}
-                onDelete={handleDeleteMessage}
-                onUpdate={handleUpdateMessage}
+                onDelete={handleDeleteComment}
+                onUpdate={handleUpdateComment}
               />
             ))}
           </div>

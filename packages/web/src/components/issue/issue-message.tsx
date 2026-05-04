@@ -1,34 +1,34 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { User, Pencil, Copy, Trash2, Check } from 'lucide-react';
+import { Pencil, Copy, Trash2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { useAgentStore } from '@/stores/agent';
-import type { Message } from '@agent-spaces/shared';
+import type { IssueComment } from '@agent-spaces/shared';
 
 interface IssueMessageProps {
-  message: Message;
+  comment: IssueComment;
   workspaceId: string;
-  onDelete: (channelId: string, messageId: string) => void;
-  onUpdate: (workspaceId: string, channelId: string, messageId: string, content: string) => void;
+  onDelete: (commentId: string) => void;
+  onUpdate: (workspaceId: string, commentId: string, content: string) => void;
 }
 
-export function IssueMessage({ message, workspaceId, onDelete, onUpdate }: IssueMessageProps) {
+export function IssueMessage({ comment, workspaceId, onDelete, onUpdate }: IssueMessageProps) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(message.content);
+  const [draft, setDraft] = useState(comment.content);
   const [copied, setCopied] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const isUser = message.senderId === 'user';
+  const isUser = comment.senderId === 'user';
   const agents = useAgentStore((s) => s.agents);
   const ensure = useAgentStore((s) => s.ensure);
-  const agent = !isUser ? agents.find((a) => a.id === message.senderId) : undefined;
+  const agent = !isUser ? agents.find((a) => a.id === comment.senderId) : undefined;
 
   useEffect(() => {
     if (!isUser && workspaceId) ensure(workspaceId);
   }, [isUser, workspaceId, ensure]);
 
-  const senderName = isUser ? 'You' : (agent?.name || message.senderId);
+  const senderName = isUser ? 'You' : (agent?.name || comment.senderId);
   const userAvatarUrl = typeof window !== 'undefined' ? localStorage.getItem('userAvatarUrl') : null;
 
   useEffect(() => {
@@ -39,19 +39,19 @@ export function IssueMessage({ message, workspaceId, onDelete, onUpdate }: Issue
   }, [editing, draft.length]);
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(message.content);
+    await navigator.clipboard.writeText(comment.content);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
 
   const handleSave = () => {
     const trimmed = draft.trim();
-    if (!trimmed || trimmed === message.content) {
+    if (!trimmed || trimmed === comment.content) {
       setEditing(false);
-      setDraft(message.content);
+      setDraft(comment.content);
       return;
     }
-    onUpdate(workspaceId, message.channelId, message.id, trimmed);
+    onUpdate(workspaceId, comment.id, trimmed);
     setEditing(false);
   };
 
@@ -62,7 +62,7 @@ export function IssueMessage({ message, workspaceId, onDelete, onUpdate }: Issue
     }
     if (e.key === 'Escape') {
       setEditing(false);
-      setDraft(message.content);
+      setDraft(comment.content);
     }
   };
 
@@ -70,7 +70,7 @@ export function IssueMessage({ message, workspaceId, onDelete, onUpdate }: Issue
     <div className="py-3 border-b last:border-b-0 group">
       <div className="flex items-start gap-2.5">
         <AgentIcon
-          agentId={isUser ? undefined : message.senderId}
+          agentId={isUser ? undefined : comment.senderId}
           name={senderName}
           avatarUrl={isUser ? userAvatarUrl || undefined : undefined}
           className="size-7 rounded-full"
@@ -78,13 +78,13 @@ export function IssueMessage({ message, workspaceId, onDelete, onUpdate }: Issue
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs font-medium">{senderName}</span>
-            {message.senderRole && (
+            {comment.senderRole && (
               <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
-                {message.senderRole}
+                {comment.senderRole}
               </span>
             )}
             <span className="text-[10px] text-muted-foreground">
-              {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {new Date(comment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
           </div>
           {editing ? (
@@ -98,20 +98,20 @@ export function IssueMessage({ message, workspaceId, onDelete, onUpdate }: Issue
             />
           ) : (
             <div className="text-sm whitespace-pre-wrap break-words">
-              {message.content}
+              {comment.content}
             </div>
           )}
         </div>
         {/* Action buttons */}
         {!editing && (
           <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setEditing(true); setDraft(message.content); }}>
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setEditing(true); setDraft(comment.content); }}>
               <Pencil className="h-3 w-3" />
             </Button>
             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleCopy}>
               {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
             </Button>
-            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => onDelete(message.channelId, message.id)}>
+            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => onDelete(comment.id)}>
               <Trash2 className="h-3 w-3" />
             </Button>
           </div>
