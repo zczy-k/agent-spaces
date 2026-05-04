@@ -8,6 +8,7 @@ export interface Workspace {
   activeChannels: string[];
   activeIssues: string[];
   agents: AgentConfig[];
+  autoProcessIssues?: boolean;
 }
 
 export interface AgentConfig {

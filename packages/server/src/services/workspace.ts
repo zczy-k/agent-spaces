@@ -56,7 +56,7 @@ export function create(input: CreateWorkspaceInput): Workspace {
   return ws;
 }
 
-export function update(id: string, data: Partial<Pick<Workspace, 'name' | 'boundDirs'>>): Workspace | null {
+export function update(id: string, data: Partial<Pick<Workspace, 'name' | 'boundDirs' | 'autoProcessIssues'>>): Workspace | null {
   const ws = getWorkspace(id);
   if (!ws) return null;
 

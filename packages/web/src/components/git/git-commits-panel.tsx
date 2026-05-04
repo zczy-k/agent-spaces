@@ -31,7 +31,7 @@ export function GitCommitsPanel({ workspaceId }: GitCommitsPanelProps) {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full rounded-t-xl bg-[#fafafa]">
       <div className="flex items-center justify-between px-2 py-1.5 border-b">
         <span className="text-xs font-medium text-muted-foreground">
           Commits{log.length > 0 && ` (${log.length})`}

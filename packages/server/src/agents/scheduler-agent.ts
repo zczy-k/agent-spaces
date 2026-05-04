@@ -5,6 +5,7 @@
 import type { AgentContext } from './agent-context.js';
 import * as agentService from '../services/agent.js';
 import * as issueService from '../services/issue.js';
+import * as workspaceService from '../services/workspace.js';
 import { runPlanner } from './planner-agent.js';
 
 const CHECK_INTERVAL = 10_000; // 10s
@@ -19,6 +20,13 @@ export function startScheduler(workspaceId: string, ctx: AgentContext): void {
   console.log(`[scheduler:${workspaceId}] started (interval=${CHECK_INTERVAL}ms)`);
 
   const tick = async () => {
+    // 检查 workspace 是否关闭了自动处理
+    const workspace = workspaceService.getById(workspaceId);
+    if (workspace && workspace.autoProcessIssues === false) {
+      console.log(`[scheduler:${workspaceId}] auto-processing disabled for this workspace, skip`);
+      return;
+    }
+
     const allIssues = issueService.list(workspaceId);
     const unfinished = allIssues.filter(
       (i) => i.status === 'draft' || i.status === 'changes_requested',

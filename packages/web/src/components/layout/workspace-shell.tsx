@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Layout, Model, TabNode, IJsonModel, Actions, ITabRenderValues } from "flexlayout-react";
-import { Hash, ListChecks, FolderOpen, Code2, MessageSquare, FileText, TerminalSquare, GitBranch, FileDiff, GitCommitHorizontal, Network } from "lucide-react";
+import { Hash, ListChecks, FolderOpen, Code2, MessageSquare, FileText, TerminalSquare, GitBranch, FileDiff, GitCommitHorizontal, Network, Settings2 } from "lucide-react";
 import { EditorPanel } from "@/components/editor/editor-panel";
 import { CodeEditor } from "@/components/editor/code-editor";
 import { TerminalPanel } from "@/components/terminal/terminal-panel";
@@ -13,6 +13,7 @@ import { IssueDetail } from "@/components/issue/issue-detail";
 import { GitChangesPanel } from "@/components/git/git-changes-panel";
 import { GitCommitsPanel } from "@/components/git/git-commits-panel";
 import { GitGraphPanel } from "@/components/git/git-graph-panel";
+import { ProjectSettingsPanel } from "@/components/settings/project-settings-panel";
 import { getWS } from "@/lib/ws";
 import { useIssueStore } from "@/stores/issue";
 import { useTaskStore } from "@/stores/task";
@@ -32,6 +33,7 @@ const tabIcons: Record<string, React.ReactNode> = {
   "git-changes": <FileDiff size={16} />,
   "git-commits": <GitCommitHorizontal size={16} />,
   "git-graph": <Network size={16} />,
+  "project-settings": <Settings2 size={16} />,
 };
 
 const defaultJson: IJsonModel = {
@@ -62,6 +64,7 @@ const defaultJson: IJsonModel = {
           { type: "tab", name: "Channels", component: "channel-list" },
           { type: "tab", name: "Issues", component: "issue-list" },
           { type: "tab", name: "Editor", component: "editor" },
+          { type: "tab", name: "Settings", component: "project-settings" },
         ],
       },
       {
@@ -163,6 +166,8 @@ export function WorkspaceShell({ workspaceId }: WorkspaceShellProps) {
           return <GitCommitsPanel workspaceId={workspaceId} />;
         case "git-graph":
           return <GitGraphPanel workspaceId={workspaceId} />;
+        case "project-settings":
+          return <ProjectSettingsPanel workspaceId={workspaceId} />;
         default:
           return <Placeholder name={node.getName()} />;
       }
