@@ -28,9 +28,10 @@ export async function runReviewer(
   const reviewerPreset = findIssueMemberAgent(workspaceId, issue, 'reviewer');
   if (!reviewerPreset) {
     console.warn(`[reviewer] no reviewer member found workspaceId=${workspaceId} issueId=${issueId} channelId=${issue.channelId} taskId=${taskId}`);
-    const waitingTask = taskService.updateStatus(workspaceId, taskId, 'waiting_review', { result: taskResult });
-    ctx.broadcast('task.status_changed', { taskId, from: 'running', to: 'waiting_review' });
-    if (waitingTask) ctx.broadcast('task.updated', waitingTask);
+    const currentTask = taskService.getById(workspaceId, taskId);
+    const doneTask = taskService.updateStatus(workspaceId, taskId, 'done', { result: taskResult });
+    ctx.broadcast('task.status_changed', { taskId, from: currentTask?.status ?? 'running', to: 'done' });
+    if (doneTask) ctx.broadcast('task.updated', doneTask);
     return;
   }
 

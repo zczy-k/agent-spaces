@@ -304,7 +304,7 @@ Reviewer 由 `packages/server/src/agents/reviewer-agent.ts` 实现。
 选择 agent 的规则：
 
 1. 查找 issue channel members 中启用的 `reviewer` preset。
-2. 如果没有 reviewer，任务进入 `waiting_review`。
+2. 如果没有 reviewer，任务直接标记为 `done`，调度器继续执行后继任务。
 
 Reviewer 执行步骤：
 

@@ -105,6 +105,21 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
         </Button>
       </div>
       <div className="flex-1 overflow-y-auto">
+        {channels.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full gap-3 px-4 text-center">
+            <div className="rounded-full bg-muted p-3">
+              <MessageCircle className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">暂无频道</p>
+              <p className="text-xs text-muted-foreground mt-0.5">创建一个频道开始对话</p>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => setDialogOpen(true)}>
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              添加频道
+            </Button>
+          </div>
+        ) : null}
         {channels.map((ch) => {
           const preview = lastMsgPreview(messages[ch.id]);
           const badge = typeBadge[ch.type];

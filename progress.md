@@ -103,3 +103,10 @@ Working tree currently has partial code changes:
 - Task replacement/deletion/startup recovery treat `reviewing` as active.
 - Issue detail now displays `Reviewing` and exposes active-task cancel control for it.
 - Verification: full shared/server/web build passed and `git diff --check` passed.
+
+## Reviewer Missing Fallback
+
+- User reported tasks stuck in `waiting_review` when no reviewer agent is configured.
+- Changed reviewer fallback: no reviewer now marks the task `done` using executor result instead of `waiting_review`.
+- Updated issue automation docs to reflect direct completion without reviewer.
+- Verification: `pnpm --filter @agent-spaces/server build` and `git diff --check` passed.

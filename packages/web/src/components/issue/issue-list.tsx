@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from '@/components/ui/context-menu';
-import { Plus, CircleDot, Pencil, Trash2 } from 'lucide-react';
+import { Plus, CircleDot, Pencil, Trash2, CircleAlert } from 'lucide-react';
 import { CreateIssueDialog } from './create-issue-dialog';
 import { EditIssueDialog } from './edit-issue-dialog';
 import type { Issue, IssueStatus } from '@agent-spaces/shared';
@@ -82,7 +82,19 @@ export function IssueList({ workspaceId }: IssueListProps) {
 
       <ScrollArea className="flex-1">
         {grouped.length === 0 && (
-          <div className="p-4 text-sm text-muted-foreground">No issues yet</div>
+          <div className="flex flex-col items-center justify-center h-full gap-3 px-4 text-center py-12">
+            <div className="rounded-full bg-muted p-3">
+              <CircleAlert className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">暂无议题</p>
+              <p className="text-xs text-muted-foreground mt-0.5">创建一个议题开始协作</p>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => setCreateOpen(true)}>
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              添加议题
+            </Button>
+          </div>
         )}
         {grouped.map((group) => (
           <div key={group.status}>
