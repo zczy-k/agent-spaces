@@ -61,10 +61,10 @@ const defaultJson: IJsonModel = {
         type: "tabset",
         weight: 0.25,
         children: [
+          { type: "tab", name: "Settings", component: "project-settings" },
           { type: "tab", name: "Channels", component: "channel-list" },
           { type: "tab", name: "Issues", component: "issue-list" },
           { type: "tab", name: "Editor", component: "editor" },
-          { type: "tab", name: "Settings", component: "project-settings" },
         ],
       },
       {

@@ -134,7 +134,7 @@ export function ProvidersDialog({
             </DialogDescription>
           </DialogHeader>
           {!draft && (
-            <Button variant="outline" size="sm" onClick={handleAdd}>
+            <Button variant="outline" size="sm" onClick={handleAdd} className="mr-6">
               <Plus className="size-3.5" />
               Add
             </Button>

@@ -23,7 +23,7 @@ export function GitGraphPanel({ workspaceId }: GitGraphPanelProps) {
 
   if (notGitRepo) {
     return (
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col h-full overflow-hidden rounded-t-xl bg-background">
         <div className="flex items-center px-2 py-1.5 border-b">
           <span className="text-xs font-medium text-muted-foreground">Graph</span>
         </div>
@@ -37,7 +37,7 @@ export function GitGraphPanel({ workspaceId }: GitGraphPanelProps) {
   const behind = status?.behind ?? 0;
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-hidden rounded-t-xl bg-background">
       <div className="flex items-center justify-between px-2 py-1.5 border-b">
         <div className="flex items-center gap-2 text-xs">
           <BranchIcon size={14} />

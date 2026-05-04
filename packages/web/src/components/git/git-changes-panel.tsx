@@ -116,7 +116,7 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
   const hasFiles = (status?.files.length ?? 0) > 0;
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full overflow-hidden rounded-t-xl bg-background">
       {/* File list */}
       <div className="w-64 border-r flex flex-col bg-muted/20">
         <div className="flex items-center gap-1 px-2 py-1.5 border-b">

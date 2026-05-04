@@ -279,7 +279,10 @@ function ModelForm({
         <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Details</div>
         <div className="flex flex-col gap-1">
           <label className="text-xs text-muted-foreground">Model ID</label>
-          <Input value={draft.modelId || ""} onChange={e => onChange("modelId", e.target.value)} placeholder="e.g. gpt-4o" />
+          <Input value={draft.modelId || ""} onChange={e => {
+            onChange("modelId", e.target.value);
+            if (!draft.name) onChange("name", e.target.value);
+          }} placeholder="e.g. gpt-4o" />
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-xs text-muted-foreground">Display Name</label>
