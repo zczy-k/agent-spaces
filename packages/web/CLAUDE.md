@@ -130,7 +130,21 @@ packages/web/src/
       channel-dialog.tsx          # 频道对话框
       channel-info-panel.tsx      # 频道信息面板
       message-item.tsx            # 消息条目（头像 + 发送者 + 时间 + 操作）
-      message-parts.tsx           # 结构化消息 Parts 渲染（chain/tool-detail/diff/text/terminal/confirmation/context/subagent/ask_user_question）
+      message-parts.tsx           # 结构化消息 Parts 渲染主入口（640 行），8 种 Part 类型分发
+                                     - text: Markdown 渲染
+                                     - reasoning: ChainOfThought 展示（max-h-300px 可滚动）
+                                     - chain: 工具调用步骤 + AI 消息步骤（AiMessageStep/ToolStep）
+                                     - terminal: 命令输出（error 红色边框）
+                                     - confirmation: 审批流程（Accept/Reject 按钮）
+                                     - context: Token 用量统计（input/output/cached/reasoning）
+                                     - subagent: 子 Agent 调用详情
+                                     - ask_user_question: 已回答提问摘要卡片
+                                     关键设计:
+                                     - 文本去重: dedupeRepeatedTextBlock 二分折叠法（O(n log n)）
+                                     - 工具详情懒加载: 首次展开时 GET API 获取，缓存到 state
+                                     - 工具渲染智能分发: Bash->Terminal, Edit->DiffViewer, 其他->Input/Output 代码块
+                                     - chain 默认展开由 message.status==="pending" 决定（全局感知）
+                                     - 遗留兼容: parts 为空时回退到 content 渲染
       message-navigator.tsx       # 消息快速导航器
       add-member-dialog.tsx       # 添加成员（Agent）对话框
       member-card.tsx             # 成员卡片
@@ -239,6 +253,6 @@ packages/web/
 
 | 时间 | 操作 | 说明 |
 |------|------|------|
-| 2026-05-04T21:04:42+08:00 | 增量更新 | 新增 agent store、message-parts 结构化渲染（chain/tool-detail/diff/ask-user-question/readonly-code-block）、message-navigator、edit-issue-dialog、agent-icon；chat 组件从 14 个扩展到 23 个；issue 组件新增 edit-issue-dialog；支持三运行时配置、Anthropic Bridge、头像上传 |
+| 2026-05-04T21:04:42+08:00 | 增量更新+补扫 | 新增 agent store、message-parts 结构化渲染（补扫 message-parts.tsx 640 行完整 8 类型分发+懒加载+去重算法+智能工具渲染分发）、message-navigator、edit-issue-dialog、agent-icon；chat 组件从 14 个扩展到 23 个；支持三运行时配置、Anthropic Bridge、头像上传 |
 | 2026-05-02T23:43:41 | 增量更新 | 补充 TipTap 富文本编辑器、Agent 对话框、LLM 管理对话框、composer 组件、workspace 对话框、DESIGN.md 设计规范、30+ UI 组件清单、完整代码结构 |
 | 2026-05-02T01:07:33 | 初始化 | init-architect 首次扫描生成 |

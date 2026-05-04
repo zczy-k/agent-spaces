@@ -57,9 +57,11 @@ Express 5 后端服务，提供 REST API、WebSocket 实时通信、三运行时
 
 连接地址：`ws://localhost:3100/ws?workspaceId=<id>`
 
-**客户端 -> 服务端事件**（7 个）：
+**客户端 -> 服务端事件**（9 个）：
 - `terminal.create` / `terminal.input` / `terminal.resize` / `terminal.close`
 - `channel.message`（支持 mentions 字段触发 @agent）
+- `channel.stop`（停止频道所有活跃 Agent 运行）
+- `channel.answer_question`（回答 Agent 提问，触发断点续跑）
 - `agent.start` / `agent.stop`
 
 **服务端 -> 客户端事件**（20 个）：
@@ -84,11 +86,45 @@ Express 5 后端服务，提供 REST API、WebSocket 实时通信、三运行时
 
 **运行时事件**：`AgentRuntimeEvent` 支持 `output`（普通输出行）、`tool_use`（工具调用详情）、`tool_result`（工具执行结果）三类事件，供结构化消息渲染使用。
 
-### Anthropic Bridge
+### Anthropic Bridge（深度）
 
-ClaudeCodeRuntime 内置协议中转能力，支持通过 Claude Code SDK 调用非 Anthropic 模型：
-- `openai-chat-completions-to-anthropic-messages`：Anthropic Messages <-> OpenAI Chat Completions
-- `openai-responses-to-anthropic-messages`：Anthropic Messages <-> OpenAI Responses
+ClaudeCodeRuntime（`claude-code-runtime.ts`，1231 行）内置本地 HTTP 反向代理，解决 Claude Agent SDK 只发送 Anthropic Messages 格式的问题。
+
+**架构**：
+- 引用计数式 Bridge 复用：相同配置的 Bridge 服务器只创建一个实例，端口从 3080 起分配
+- `startClaudeAdapterIfNeeded()` -> `createAnthropicBridgeServer()` -> `handleAnthropicBridgeRequest()`
+- `execute()` 完成后通过 `release()` 减引用，最后一个引用释放时关闭服务器
+
+**请求转换管道**（Anthropic -> OpenAI）：
+```
+POST /v1/messages (Anthropic 格式)
+  -> handleAnthropicBridgeRequest() [L316]
+  -> convertAnthropicToOpenAI() [L476]
+    -> normalizeSystemPrompt(): system string/array -> string
+    -> convertAnthropicMessage(): 逐条转换（text/tool_use/tool_result/prefill 各有处理）
+    -> max_tokens: 1 -> 32（避免截断）
+    -> tools/tool_choice 映射
+  -> 分支 A: Chat Completions -> /chat/completions
+  -> 分支 B: Responses API -> convertOpenAIChatRequestToResponses() [L559] -> /responses
+```
+
+**响应转换管道**（OpenAI -> Anthropic）：
+```
+上游响应
+  -> convertResponsesToAnthropic() [L679] 或 convertChatCompletionsToAnthropic() [L698]
+  -> 若原始请求 stream=true: sendAnthropicStream() [L802] 拆分为 SSE 事件序列（伪流式）
+```
+
+**关键限制**：
+- **伪流式**：等待上游完整响应后再拆分为 SSE，无逐 token 流式延迟
+- `isAssistantPrefill()` 使用硬编码字符列表检测 prefill，可能误判
+- `stop_reason` 映射不完整（缺少 `content_filter` 等）
+- `convertAnthropicMessage` 可能打破 OpenAI tool 消息顺序约束
+- Bridge 服务器无 graceful shutdown
+
+**支持两种模式**：
+- `openai-chat-completions-to-anthropic-messages`：Anthropic <-> OpenAI Chat Completions
+- `openai-responses-to-anthropic-messages`：Anthropic <-> OpenAI Responses API
 
 详见 `docs/anthropic-bridge.md`。
 
@@ -103,9 +139,31 @@ Scheduler (定时 tick)
           -> Reviewer: ViewCurrentChannelIssue + 审核 -> 依赖调度
             -> 所有 Task done -> Issue completed
 
-频道 @mention 触发:
+频道 @mention 触发（runMentionedAgent 深度流程，`handler.ts` L205-540）:
   channel.message (含 mentions)
-    -> runMentionedAgent() -> AgentRuntime.execute() -> 结构化消息实时推送
+    -> runMentionedAgent()
+      阶段 1: 前置校验（查找 Preset、创建 Session、广播 agent.started）
+      阶段 2: 创建/复用消息（初始 parts 含 reasoning 部件）
+      阶段 3: 创建 Runtime + trackChannelRun
+      阶段 4: 执行 + 实时更新（broadcastLiveParts 120ms 节流）
+        onEvent 事件处理:
+          - tool_use + AskUserQuestion -> 拦截，注册 pendingQuestionRuns，Agent 阻塞等待用户
+          - tool_use + TodoWrite -> 拦截，同步 todos 到 Channel
+          - tool_use (其他) -> 保存 ToolDetail，追加 liveOutput
+          - tool_result (Issue 工具) -> 广播 channel.updated / issue.created / issue.updated
+          - output -> 追加 liveOutput，广播 agent.output
+      阶段 5 完成:
+        路径 A: 等待用户回答 -> 消息 status=waiting_for_user, Agent=blocked
+        路径 B: 成功 -> agent.completed, 最终 buildAgentMessageParts, status=completed
+        路径 C: 异常 -> agent.error, 构建 terminal error 部件, status=error
+      阶段 6: untrackChannelRun 清理
+
+  消息 Parts 构建管线（buildAgentMessageParts, L647-726）:
+    原始输出行 -> normalizeOutputLines -> findFinalTextRange
+      -> buildChainItems（工具调用 + AI 消息 -> chain 部件）
+      -> extractSubagentBlocks（Task 工具 -> subagent 部件）
+      -> extractUsage（token -> context 部件）
+      -> 最终文本 -> text 部件
 ```
 
 **编排关键变更**：
@@ -261,7 +319,7 @@ packages/server/src/
     agent-runtime.ts              # Agent 运行时工厂（按 kind 创建运行时，3 种）
     agent-runtime-types.ts        # Agent 运行时接口定义（AgentRuntime, AgentRunResult, AgentRuntimeEvent, AgentFunctionTool, AgentRuntimeKind）
     open-agent-sdk-runtime.ts     # @codeany/open-agent-sdk 运行时实现
-    claude-code-runtime.ts        # @anthropic-ai/claude-agent-sdk 运行时实现 + Anthropic Bridge
+    claude-code-runtime.ts        # @anthropic-ai/claude-agent-sdk 运行时实现（1231 行）+ Anthropic Bridge 完整协议转换
     codex-runtime.ts              # @openai/codex-sdk 运行时实现（Codex CLI 包装）
   agents/
     agent-context.ts              # Agent 上下文接口（broadcast, getSession, updateSessionStatus）
@@ -272,7 +330,7 @@ packages/server/src/
     agent-message-parts.ts        # 结构化消息 Parts 构建（chain/tool-detail/usage/text 解析）
     reviewer-agent.ts             # 审核者（审核执行结果）
   ws/
-    handler.ts                    # WebSocket 事件路由 + @mention 触发 Agent + 实时消息 Parts 更新
+    handler.ts                    # WebSocket 事件路由中心（1342 行）+ @mention 触发 Agent + 实时消息 Parts 构建
     terminal-handler.ts           # 终端事件处理
     connection-manager.ts         # WebSocket 连接管理 + 广播
   hooks/
@@ -299,6 +357,6 @@ packages/server/src/
 
 | 时间 | 操作 | 说明 |
 |------|------|------|
-| 2026-05-04T21:04:42+08:00 | 增量更新 | 三运行时（新增 CodexRuntime + @openai/codex-sdk）、Anthropic Bridge 协议中转、Issue 自动化编排链路重构（TaskCreator + 依赖调度 + IssueComment + AgentProgress + AgentMessageParts）、Function Call Tools 内置工具层、工具详情持久化、头像上传 API、代码结构大幅更新（新增 7 个文件） |
+| 2026-05-04T21:04:42+08:00 | 增量更新+补扫 | 三运行时（新增 CodexRuntime + @openai/codex-sdk）、Anthropic Bridge 协议中转（补扫 claude-code-runtime.ts 1231 行完整转换管道）、runMentionedAgent 深度流程（补扫 handler.ts 1342 行 6 阶段执行流程+消息 Parts 构建管线）、Issue 自动化编排链路重构、Function Call Tools 内置工具层、工具详情持久化、头像上传 API、WebSocket 事件补全（新增 channel.stop/channel.answer_question） |
 | 2026-05-02T23:43:41 | 增量更新 | 补充双运行时架构、Agent Preset 系统、LLM 管理、@mention 触发、连接测试、API 路由全量更新、代码结构更新 |
 | 2026-05-02T01:07:33 | 初始化 | init-architect 首次扫描生成 |

@@ -387,13 +387,18 @@ export function AgentDialog({
         },
       );
       if (!res.ok) throw new Error(await res.text());
-      const saved = normalizeAgent(await res.json());
+      const raw = (await res.json()) as AgentConfig;
+      const saved = normalizeAgent(raw);
       setAgents((prev) =>
         isDraft
           ? [...prev, saved]
           : prev.map((agent) => (agent.id === saved.id ? saved : agent)),
       );
-      useAgentStore.getState().ensure(workspaceId);
+      useAgentStore.setState((state) => ({
+        agents: isDraft
+          ? [...state.agents, raw]
+          : state.agents.map((a) => (a.id === raw.id ? raw : a)),
+      }));
       setSelectedAgent(null);
       setEditDraft(null);
     } catch {
@@ -459,7 +464,9 @@ export function AgentDialog({
       });
       if (!res.ok) throw new Error(await res.text());
       setAgents((prev) => prev.filter((a) => a.id !== id));
-      useAgentStore.getState().ensure(workspaceId);
+      useAgentStore.setState((state) => ({
+        agents: state.agents.filter((a) => a.id !== id),
+      }));
       if (selectedAgent?.id === id) {
         setSelectedAgent(null);
         setEditDraft(null);
