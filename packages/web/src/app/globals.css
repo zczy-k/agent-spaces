@@ -222,6 +222,12 @@
   margin-top: 6px;
 }
 
+/* Border tab bar — match tabset header style */
+.flexlayout__border_inner {
+  border-radius: 12px 12px 0 0;
+  background-color: #fafafa;
+}
+
 .flexlayout__border_top {
   border-bottom: none !important;
   margin-bottom: 6px;
@@ -257,6 +263,10 @@
   background-color: #1a1b23 !important;
   border-color: rgba(255, 255, 255, 0.08);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.dark .flexlayout__border_inner {
+  background-color: #1e1f2b;
 }
 
 .dark .flexlayout__splitter:hover {

@@ -37,7 +37,7 @@ export function GitGraphPanel({ workspaceId }: GitGraphPanelProps) {
   const behind = status?.behind ?? 0;
 
   return (
-    <div className="flex flex-col h-full rounded-t-xl bg-[#fafafa]">
+    <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-2 py-1.5 border-b">
         <div className="flex items-center gap-2 text-xs">
           <BranchIcon size={14} />
