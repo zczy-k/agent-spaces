@@ -1176,7 +1176,12 @@ function buildAgentPrompt(
   systemPrompt: string | undefined,
   userPrompt: string,
   history: Message[] = [],
-  runtimeConfig?: { mcpServers: string[]; skills: string[]; boundDirs?: string[]; builtInTools?: BuiltInToolContext[] },
+  runtimeConfig?: {
+    mcpServers: string[];
+    skills: string[];
+    boundDirs?: string[];
+    builtInTools?: BuiltInToolContext[];
+  },
 ): string {
   const parts: string[] = [];
   const trimmedSystemPrompt = systemPrompt?.trim();
@@ -1187,7 +1192,8 @@ function buildAgentPrompt(
       'Agent runtime configuration:',
       `- MCP servers configured for this agent: ${runtimeConfig.mcpServers.length ? runtimeConfig.mcpServers.join(', ') : 'none'}`,
       `- Skills configured for this agent: ${runtimeConfig.skills.length ? runtimeConfig.skills.join(', ') : 'none'}`,
-      `- Built-in tools configured for this channel: ${runtimeConfig.builtInTools?.length ? runtimeConfig.builtInTools.map((tool) => tool.name).join(', ') : 'none'}`,
+      '- Runtime tools available through Claude Code: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, Task, TodoWrite, WebFetch, WebSearch',
+      `- Agent Spaces channel tools configured for this channel: ${runtimeConfig.builtInTools?.length ? runtimeConfig.builtInTools.map((tool) => tool.name).join(', ') : 'none'}`,
     ];
     if (runtimeConfig.boundDirs?.length) {
       configLines.push(`- Code directories (boundDirs): ${runtimeConfig.boundDirs.join(', ')}`);
@@ -1195,7 +1201,16 @@ function buildAgentPrompt(
     if (runtimeConfig.builtInTools?.length) {
       configLines.push(...formatBuiltInToolContext(runtimeConfig.builtInTools));
     }
-    configLines.push('When asked what MCP servers or skills you have, answer from this configuration only. Do not infer availability from provider-side function names or hidden runtime internals.');
+    if (isIssueContextLookup(userPrompt)) {
+      configLines.push(
+        'Current issue lookup rule:',
+        '- The user is asking for the current channel issue.',
+        '- If Agent Spaces channel tools include ViewCurrentChannelIssue, call that function tool first and answer from the tool result.',
+        '- Do not use Bash, Glob, Grep, or project files to infer the current channel issue.',
+        '- If no Agent Spaces channel issue tool is configured, say this channel is not bound to an issue or the issue tool is unavailable.',
+      );
+    }
+    configLines.push('When asked what MCP servers, skills, runtime tools, or Agent Spaces channel tools you have, answer from this configuration only. Do not infer availability from provider-side function names or hidden runtime internals.');
     parts.push(configLines.join('\n'));
   }
 
@@ -1209,6 +1224,11 @@ function buildAgentPrompt(
 
   parts.push(`User message:\n${userPrompt}`);
   return parts.join('\n\n');
+}
+
+function isIssueContextLookup(userPrompt: string): boolean {
+  const text = stripHtml(userPrompt).toLowerCase();
+  return /当前频道.*议题|议题内容|current channel.*issue|issue.*current channel/.test(text);
 }
 
 interface BuiltInToolContext {

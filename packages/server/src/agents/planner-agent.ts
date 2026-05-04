@@ -4,10 +4,14 @@
 
 import * as agentService from '../services/agent.js';
 import * as issueService from '../services/issue.js';
+import * as issueCommentService from '../services/issue-comment.js';
+import * as messageService from '../services/message.js';
 import * as taskService from '../services/task.js';
 import { createAgentRuntime } from '../adapters/agent-runtime.js';
 import type { AgentContext } from './agent-context.js';
 import { onExecutorComplete } from '../hooks/agent-hooks.js';
+import * as wsService from '../services/workspace.js';
+import { broadcastToWorkspace } from '../ws/connection-manager.js';
 
 export async function runPlanner(
   workspaceId: string,
@@ -31,15 +35,37 @@ export async function runPlanner(
   ctx.broadcast('issue.status_changed', { issueId, from: 'draft', to: 'planned' });
 
   // Use runtime to plan.
-  const runtime = createAgentRuntime();
+  const plannerPreset = agentService.listPresets(workspaceId)?.find(
+    (agent) => agent.role === 'planner' && agent.enabled !== false,
+  );
+  const runtime = plannerPreset ? createAgentRuntime({
+    kind: plannerPreset.runtimeKind,
+    provider: plannerPreset.modelProvider,
+    model: plannerPreset.modelId,
+    apiKey: plannerPreset.apiKey,
+    baseURL: plannerPreset.apiBase,
+  }) : createAgentRuntime();
+  const workspace = wsService.getById(workspaceId);
   const planResult = await runtime.execute(
-    `Decompose this issue into tasks: ${issue.title}\n\n${issue.description}`,
-    '',
+    buildPlannerPrompt(issue),
+    plannerPreset ? agentService.resolveWorkingDir(workspaceId, plannerPreset) : '',
+    plannerPreset ? {
+      maxTurns: 100,
+      mcpServers: agentService.getMcpServers(plannerPreset.mcps),
+      skills: agentService.getAvailableSkillNames(agentService.getAgentConfigDir(workspaceId, plannerPreset), plannerPreset.skills),
+      configDir: agentService.getAgentConfigDir(workspaceId, plannerPreset),
+      sandboxDirs: plannerPreset.sandboxDirs,
+    } : undefined,
   );
 
   for (const line of planResult.output) {
     ctx.broadcast('agent.output', { agentId: planner.id, data: line });
   }
+  persistIssueAgentMessage(workspaceId, issue, planner.id, 'planner', planResult.summary, planResult.output, {
+    runtime: plannerPreset?.runtimeKind,
+    model: plannerPreset?.modelId,
+    workspaceRoot: workspace?.boundDirs?.[0],
+  });
 
   // Decompose into a single task covering the issue.
   const tasks = [
@@ -66,6 +92,62 @@ export async function runPlanner(
   for (const task of tasks) {
     await runExecutor(workspaceId, task.id, issueId, ctx);
   }
+}
+
+function buildPlannerPrompt(issue: NonNullable<ReturnType<typeof issueService.getById>>): string {
+  return [
+    '你是策划者 Agent。请基于下面的议题内容制定执行计划。',
+    '',
+    'Current issue context:',
+    `- Issue id: ${issue.id}`,
+    `- Title: ${issue.title}`,
+    `- Status: ${issue.status}`,
+    `- Description: ${issue.description || '(empty)'}`,
+    '',
+    '请直接基于上述议题内容输出计划。不要声称无法查看当前议题；议题内容已经在 prompt 中提供。',
+  ].join('\n');
+}
+
+function persistIssueAgentMessage(
+  workspaceId: string,
+  issue: NonNullable<ReturnType<typeof issueService.getById>>,
+  senderId: string,
+  senderRole: string,
+  summary: string,
+  output: string[],
+  metadata: { runtime?: string; model?: string; workspaceRoot?: string },
+): void {
+  const content = output.join('\n').trim() || summary;
+  if (!content.trim()) return;
+
+  const message = messageService.createMessage(workspaceId, issue.channelId, {
+    senderId,
+    senderRole,
+    content,
+    type: 'text',
+    status: 'completed',
+    metadata: {
+      runtime: metadata.runtime,
+      model: metadata.model,
+      summary,
+    },
+  });
+  broadcastToWorkspace(workspaceId, 'channel.message', message);
+
+  const comment = issueCommentService.createIssueComment(workspaceId, issue.id, {
+    senderId,
+    senderRole,
+    content: summary || content,
+    source: 'agent_progress',
+    metadata: {
+      channelId: issue.channelId,
+      messageId: message.id,
+      runtime: metadata.runtime,
+      model: metadata.model,
+      summary,
+    },
+  });
+  if (comment) broadcastToWorkspace(workspaceId, 'issue.updated', issueService.getById(workspaceId, issue.id));
 }
 
 async function runExecutor(

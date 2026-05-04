@@ -150,6 +150,9 @@ export class ClaudeCodeRuntime implements AgentRuntime {
       }
 
       const text = resultText || output.at(-1) || '';
+      if (text.trim()) {
+        d(`final message | ${truncate(text.trim(), 2000)}`);
+      }
       d(`done ${elapsed}ms | turns=${turns} tokens=${tokenCount}`);
 
       return {
