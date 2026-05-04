@@ -59,10 +59,10 @@ import {
 } from "./attachments";
 
 type MentionedAgent = Pick<AgentConfig, "id" | "name" | "role" | "description" | "enabled" | "mcps" | "skills" | "tools">;
-type DisplayTodoItem = TodoItem & { title?: string };
+type DisplayTodoItem = TodoItem & { title?: string; content?: string };
 
 function getTodoTitle(todo: DisplayTodoItem) {
-  return todo.subject || todo.title || "Untitled todo";
+  return todo.subject || todo.title || todo.activeForm || todo.content || "Untitled todo";
 }
 
 interface ChatInputProps {
@@ -646,8 +646,8 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5 bg-popover border-border">
               <DropdownMenuGroup className="space-y-0.5">
-                {channel.todos.map((todo) => (
-                  <DropdownMenuItem key={todo.id} className="rounded-[calc(1rem-6px)] text-xs gap-2" onSelect={(e) => e.preventDefault()}>
+                {channel.todos.map((todo, index) => (
+                  <DropdownMenuItem key={todo.id || `${getTodoTitle(todo)}-${index}`} className="rounded-[calc(1rem-6px)] text-xs gap-2" onSelect={(e) => e.preventDefault()}>
                     {todo.status === 'completed' ? (
                       <IconCircleCheck size={14} className="text-green-500 shrink-0" />
                     ) : todo.status === 'in_progress' ? (

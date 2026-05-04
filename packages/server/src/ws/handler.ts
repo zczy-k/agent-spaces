@@ -352,10 +352,10 @@ async function runMentionedAgent(
           if (event.name === 'TodoWrite' && event.input && typeof event.input === 'object') {
             const input = event.input as { todos?: unknown[] };
             if (Array.isArray(input.todos)) {
-              const todos = input.todos.map((t: any) => ({
-                id: String(t.id ?? ''),
-                subject: String(t.subject ?? t.title ?? ''),
-                description: t.description ? String(t.description) : undefined,
+              const todos = input.todos.map((t: any, index) => ({
+                id: String(t.id ?? t.activeForm ?? t.subject ?? t.title ?? t.content ?? index),
+                subject: String(t.subject ?? t.title ?? t.activeForm ?? t.content ?? ''),
+                description: t.description || t.content ? String(t.description ?? t.content) : undefined,
                 status: (['pending', 'in_progress', 'completed'].includes(t.status) ? t.status : 'pending') as 'pending' | 'in_progress' | 'completed',
                 activeForm: t.activeForm ? String(t.activeForm) : undefined,
               }));
