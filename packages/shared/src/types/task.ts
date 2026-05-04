@@ -14,7 +14,9 @@ export interface Task {
   title: string;
   description: string;
   status: TaskStatus;
+  agentConfigId?: string;
   assignedAgentId?: string;
+  dependsOnTaskIds?: string[];
   sandboxDirs?: string[];
   executionLog?: string;
   diffFiles?: string[];

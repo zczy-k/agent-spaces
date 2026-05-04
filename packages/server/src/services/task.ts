@@ -14,7 +14,7 @@ export function getById(workspaceId: string, taskId: string): Task | null {
 export function create(
   workspaceId: string,
   issueId: string,
-  data: { title: string; description: string; sandboxDirs?: string[] },
+  data: { title: string; description: string; agentConfigId?: string; dependsOnTaskIds?: string[]; sandboxDirs?: string[] },
 ): Task {
   const now = new Date().toISOString();
   const task: Task = {
@@ -24,6 +24,8 @@ export function create(
     title: data.title,
     description: data.description,
     status: 'pending',
+    agentConfigId: data.agentConfigId,
+    dependsOnTaskIds: normalizeTaskIds(data.dependsOnTaskIds),
     sandboxDirs: data.sandboxDirs,
     retryCount: 0,
     maxRetries: 3,
@@ -37,7 +39,7 @@ export function create(
 export function update(
   workspaceId: string,
   taskId: string,
-  data: { title?: string; description?: string },
+  data: { title?: string; description?: string; agentConfigId?: string; dependsOnTaskIds?: string[]; sandboxDirs?: string[] },
 ): Task | null {
   const task = getTask(workspaceId, taskId);
   if (!task) return null;
@@ -45,9 +47,30 @@ export function update(
 
   if (data.title !== undefined) task.title = data.title;
   if (data.description !== undefined) task.description = data.description;
+  if (Object.hasOwn(data, 'agentConfigId')) task.agentConfigId = data.agentConfigId;
+  if (data.dependsOnTaskIds !== undefined) task.dependsOnTaskIds = normalizeTaskIds(data.dependsOnTaskIds);
+  if (Object.hasOwn(data, 'sandboxDirs')) task.sandboxDirs = data.sandboxDirs;
   task.updatedAt = new Date().toISOString();
   updateTask(task);
   return task;
+}
+
+export function replaceIssueTasks(
+  workspaceId: string,
+  issueId: string,
+  data: Array<{ title: string; description: string; agentConfigId?: string; dependsOnTaskIds?: string[]; sandboxDirs?: string[] }>,
+): Task[] {
+  const existing = list(workspaceId, issueId);
+  const removable = existing.filter((task) => task.status !== 'running');
+  for (const task of removable) deleteTask(workspaceId, task.id);
+
+  return data.map((task) => create(workspaceId, issueId, {
+    title: task.title,
+    description: task.description,
+    agentConfigId: task.agentConfigId,
+    dependsOnTaskIds: task.dependsOnTaskIds,
+    sandboxDirs: task.sandboxDirs,
+  }));
 }
 
 export function updateStatus(
@@ -104,4 +127,10 @@ export function remove(workspaceId: string, taskId: string): boolean {
   if (!task) return false;
   deleteTask(workspaceId, taskId);
   return true;
+}
+
+function normalizeTaskIds(ids: string[] | undefined): string[] | undefined {
+  if (!Array.isArray(ids)) return undefined;
+  const normalized = ids.map((id) => id.trim()).filter(Boolean);
+  return [...new Set(normalized)];
 }

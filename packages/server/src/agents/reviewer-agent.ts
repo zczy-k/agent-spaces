@@ -1,5 +1,5 @@
 /**
- * Reviewer Agent — reviews diff of completed task, outputs approve/changes_requested/reject.
+ * Reviewer Agent reviews completed task output.
  */
 
 import * as agentService from '../services/agent.js';
@@ -26,8 +26,9 @@ export async function runReviewer(
   const reviewerPreset = findIssueMemberAgent(workspaceId, issue, 'reviewer');
   if (!reviewerPreset) {
     console.warn(`[reviewer] no reviewer member found workspaceId=${workspaceId} issueId=${issueId} channelId=${issue.channelId} taskId=${taskId}`);
-    taskService.updateStatus(workspaceId, taskId, 'waiting_review', { result: taskResult });
+    const waitingTask = taskService.updateStatus(workspaceId, taskId, 'waiting_review', { result: taskResult });
     ctx.broadcast('task.status_changed', { taskId, from: 'running', to: 'waiting_review' });
+    if (waitingTask) ctx.broadcast('task.updated', waitingTask);
     return;
   }
 
@@ -78,31 +79,24 @@ export async function runReviewer(
   });
 
   if (approved) {
-    // Mark task as done
-    taskService.updateStatus(workspaceId, taskId, 'done', { result: taskResult });
+    const doneTask = taskService.updateStatus(workspaceId, taskId, 'done', { result: taskResult });
     ctx.broadcast('task.status_changed', { taskId, from: 'running', to: 'done' });
+    if (doneTask) ctx.broadcast('task.updated', doneTask);
 
-    // Move issue to review_pending → approved
-    issueService.updateStatus(workspaceId, issueId, 'review_pending');
-    ctx.broadcast('issue.status_changed', { issueId, from: 'in_progress', to: 'review_pending' });
-
-    issueService.updateStatus(workspaceId, issueId, 'approved');
-    ctx.broadcast('issue.status_changed', { issueId, from: 'review_pending', to: 'approved' });
-
-    // Notify channel
     ctx.broadcast('agent.output', {
       agentId: reviewer.id,
-      data: `Issue ${issueId} approved. All tasks completed.`,
+      data: `Task ${taskId} approved.`,
     });
   } else {
-    // Request changes
-    taskService.updateStatus(workspaceId, taskId, 'failed', {
+    const failedTask = taskService.updateStatus(workspaceId, taskId, 'failed', {
       result: { ...taskResult, error: 'Changes requested by reviewer' },
     });
     ctx.broadcast('task.status_changed', { taskId, from: 'running', to: 'failed' });
+    if (failedTask) ctx.broadcast('task.updated', failedTask);
 
-    issueService.updateStatus(workspaceId, issueId, 'changes_requested');
+    const changedIssue = issueService.updateStatus(workspaceId, issueId, 'changes_requested');
     ctx.broadcast('issue.status_changed', { issueId, from: 'in_progress', to: 'changes_requested' });
+    if (changedIssue) ctx.broadcast('issue.updated', changedIssue);
   }
 }
 

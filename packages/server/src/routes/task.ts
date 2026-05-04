@@ -6,7 +6,7 @@ import * as issueService from '../services/issue.js';
 const router = Router({ mergeParams: true });
 
 router.post('/', (req: Request<{ id: string }>, res: Response) => {
-  const { issueId, title, description, sandboxDirs } = req.body;
+  const { issueId, title, description, agentConfigId, dependsOnTaskIds, sandboxDirs } = req.body;
   if (!issueId || !title) {
     res.status(400).json({ error: 'issueId and title are required' });
     return;
@@ -21,6 +21,8 @@ router.post('/', (req: Request<{ id: string }>, res: Response) => {
   const task = taskService.create(req.params.id, issueId, {
     title,
     description: description || '',
+    agentConfigId,
+    dependsOnTaskIds,
     sandboxDirs,
   });
 
@@ -45,13 +47,13 @@ router.get('/:taskId', (req: Request<{ id: string; taskId: string }>, res: Respo
 });
 
 router.put('/:taskId', (req: Request<{ id: string; taskId: string }>, res: Response) => {
-  const { title, description } = req.body;
-  if (!title && description === undefined) {
-    res.status(400).json({ error: 'title or description is required' });
+  const { title, description, agentConfigId, dependsOnTaskIds, sandboxDirs } = req.body;
+  if (!title && description === undefined && agentConfigId === undefined && dependsOnTaskIds === undefined && sandboxDirs === undefined) {
+    res.status(400).json({ error: 'title, description, agentConfigId, dependsOnTaskIds, or sandboxDirs is required' });
     return;
   }
 
-  const task = taskService.update(req.params.id, req.params.taskId, { title, description });
+  const task = taskService.update(req.params.id, req.params.taskId, { title, description, agentConfigId, dependsOnTaskIds, sandboxDirs });
   if (!task) {
     res.status(404).json({ error: 'task not found or not editable (must be pending)' });
     return;

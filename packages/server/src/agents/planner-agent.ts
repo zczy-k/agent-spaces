@@ -1,20 +1,19 @@
 /**
- * Planner Agent — receives an issue, decomposes into tasks, assigns Executors.
+ * Planner Agent receives an issue and delegates task orchestration.
  */
 
 import * as agentService from '../services/agent.js';
 import * as issueService from '../services/issue.js';
 import * as issueCommentService from '../services/issue-comment.js';
 import * as messageService from '../services/message.js';
-import * as taskService from '../services/task.js';
 import { createAgentRuntime } from '../adapters/agent-runtime.js';
 import type { AgentConfig, MessagePart } from '@agent-spaces/shared';
 import type { AgentContext } from './agent-context.js';
-import { onExecutorComplete } from '../hooks/agent-hooks.js';
 import * as wsService from '../services/workspace.js';
 import * as channelService from '../services/channel.js';
 import { broadcastToWorkspace } from '../ws/connection-manager.js';
 import { createAgentMessagePartsTracker } from './agent-message-parts.js';
+import { syncIssueTasksAfterPlanning } from './issue-task-controller.js';
 
 export async function runPlanner(
   workspaceId: string,
@@ -45,7 +44,8 @@ export async function runPlanner(
   // Move issue to planned
   const plannedIssue = issueService.updateStatus(workspaceId, issueId, 'planned');
   if (!plannedIssue) return;
-  ctx.broadcast('issue.status_changed', { issueId, from: 'draft', to: 'planned' });
+  ctx.broadcast('issue.status_changed', { issueId, from: issue.status, to: 'planned' });
+  ctx.broadcast('issue.updated', plannedIssue);
 
   // Use runtime to plan.
   const runtime = createRuntimeForPreset(plannerPreset);
@@ -80,7 +80,7 @@ export async function runPlanner(
     },
   });
   const planResult = await runtime.execute(
-    buildPlannerPrompt(plannedIssue),
+    buildPlannerPrompt(plannedIssue, plannerPreset),
     agentService.resolveWorkingDir(workspaceId, plannerPreset),
     {
       maxTurns: 100,
@@ -112,31 +112,23 @@ export async function runPlanner(
     }),
   });
 
-  // Decompose into a single task covering the issue.
-  const tasks = [
-    taskService.create(workspaceId, issueId, {
-      title: `Implement: ${issue.title}`,
-      description: issue.description,
-    }),
-  ];
-
-  for (const task of tasks) {
-    issueService.addTask(workspaceId, issueId, task.id);
-    ctx.broadcast('task.created', task);
-  }
-
-  // Move issue to in_progress
-  issueService.updateStatus(workspaceId, issueId, 'in_progress');
-  ctx.broadcast('issue.status_changed', { issueId, from: 'planned', to: 'in_progress' });
-
   // Complete planner
-  agentService.complete(workspaceId, planner.id);
-  ctx.broadcast('agent.completed', { agentId: planner.id, result: { success: true, summary: `Planned ${tasks.length} tasks`, artifacts: [] } });
+  agentService.complete(workspaceId, planner.id, planResult.success ? undefined : planResult.error || planResult.summary);
+  ctx.broadcast('agent.completed', { agentId: planner.id, result: planResult });
 
-  // Start executors for each task (sequentially for now)
-  for (const task of tasks) {
-    await runExecutor(workspaceId, task.id, issueId, ctx);
+  if (!planResult.success) {
+    const erroredIssue = issueService.updateStatus(workspaceId, issueId, 'error');
+    ctx.broadcast('issue.status_changed', { issueId, from: 'planned', to: 'error' });
+    if (erroredIssue) ctx.broadcast('issue.updated', erroredIssue);
+    return;
   }
+
+  await syncIssueTasksAfterPlanning(workspaceId, issueId, {
+    plannerPreset,
+    plannerSessionId: planner.id,
+    planSummary: planResult.summary,
+    planOutput: tracker.output.length ? tracker.output : planResult.output,
+  }, ctx);
 }
 
 function findIssueMemberAgent(
@@ -160,20 +152,18 @@ function createRuntimeForPreset(preset: AgentConfig) {
   });
 }
 
-function buildPlannerPrompt(issue: NonNullable<ReturnType<typeof issueService.getById>>): string {
+function buildPlannerPrompt(issue: NonNullable<ReturnType<typeof issueService.getById>>, plannerPreset: AgentConfig): string {
   return [
-    '你是策划者 Agent。请基于下面的议题内容制定执行计划。',
+    plannerPreset.systemPrompt?.trim(),
     '',
     'Current issue context:',
     `- Issue id: ${issue.id}`,
+    `- Channel id: ${issue.channelId}`,
     `- Title: ${issue.title}`,
     `- Status: ${issue.status}`,
     `- Description: ${issue.description || '(empty)'}`,
-    '',
-    '请直接基于上述议题内容输出计划。不要声称无法查看当前议题；议题内容已经在 prompt 中提供。',
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 }
-
 function createIssueAgentProgress(
   workspaceId: string,
   issue: NonNullable<ReturnType<typeof issueService.getById>>,
@@ -268,87 +258,4 @@ function completeIssueAgentProgress(
   })
     : null;
   if (comment) broadcastToWorkspace(workspaceId, 'issue.updated', issueService.getById(workspaceId, issue.id));
-}
-
-async function runExecutor(
-  workspaceId: string,
-  taskId: string,
-  issueId: string,
-  ctx: AgentContext,
-): Promise<void> {
-  const issue = issueService.getById(workspaceId, issueId);
-  if (!issue) {
-    console.warn(`[executor] issue not found workspaceId=${workspaceId} issueId=${issueId} taskId=${taskId}`);
-    return;
-  }
-
-  const executorPreset = findIssueMemberAgent(workspaceId, issue, 'executor');
-  if (!executorPreset) {
-    console.warn(`[executor] no executor member found workspaceId=${workspaceId} issueId=${issueId} channelId=${issue.channelId} taskId=${taskId}`);
-    taskService.updateStatus(workspaceId, taskId, 'failed', {
-      result: {
-        success: false,
-        summary: 'No executor agent configured in issue channel members',
-        artifacts: [],
-        error: 'No executor member found for issue channel',
-      },
-    });
-    ctx.broadcast('task.status_changed', { taskId, from: 'pending', to: 'failed' });
-    return;
-  }
-
-  const executor = agentService.getOrCreateSessionForConfig(workspaceId, executorPreset);
-  ctx.broadcast('agent.started', executor);
-
-  const executorFromStatus = executor.status;
-  agentService.updateStatus(workspaceId, executor.id, 'active');
-  issueService.addAgent(workspaceId, issueId, executorPreset.id);
-  ctx.broadcast('agent.status_changed', { agentId: executor.id, from: executorFromStatus, to: 'active' });
-
-  const task = taskService.assignAgent(workspaceId, taskId, executor.id);
-  if (!task) {
-    agentService.complete(workspaceId, executor.id, 'Task not found');
-    return;
-  }
-  ctx.broadcast('task.status_changed', { taskId, from: 'pending', to: 'running' });
-
-  agentService.assignTask(workspaceId, executor.id, taskId);
-
-  console.log(
-    `[executor] starting runtime workspaceId=${workspaceId} taskId=${taskId} issueId=${issueId} executorAgentId=${executor.id} agentConfigId=${executorPreset.id} runtime=${executorPreset.runtimeKind ?? 'open-agent-sdk'} sandboxDirs=${JSON.stringify(task.sandboxDirs ?? executorPreset.sandboxDirs ?? [])}`,
-  );
-  const runtime = createRuntimeForPreset(executorPreset);
-  ctx.broadcast('agent.output', { agentId: executor.id, data: `Executing task: ${task.title}` });
-  ctx.broadcast('agent.output', {
-    agentId: executor.id,
-    data: `[debug] executor agentConfigId=${executorPreset.id} runtime=${executorPreset.runtimeKind ?? 'open-agent-sdk'}; hook:onExecutorComplete should run after this executor finishes`,
-  });
-
-  const result = await runtime.execute(
-    `${task.title}\n\n${task.description}`,
-    agentService.resolveWorkingDir(workspaceId, executorPreset),
-    {
-      maxTurns: 100,
-      mcpServers: agentService.getMcpServers(executorPreset.mcps),
-      skills: agentService.getAvailableSkillNames(agentService.getAgentConfigDir(workspaceId, executorPreset), executorPreset.skills),
-      configDir: agentService.getAgentConfigDir(workspaceId, executorPreset),
-      sandboxDirs: task.sandboxDirs ?? executorPreset.sandboxDirs,
-    },
-  );
-  console.log(
-    `[executor] runtime completed workspaceId=${workspaceId} taskId=${taskId} issueId=${issueId} executorAgentId=${executor.id} success=${result.success} summary=${JSON.stringify(result.summary)}`,
-  );
-
-  for (const line of result.output) {
-    ctx.broadcast('agent.output', { agentId: executor.id, data: line });
-    ctx.broadcast('task.output', { taskId, data: line });
-  }
-
-  // Complete executor
-  agentService.complete(workspaceId, executor.id);
-  ctx.broadcast('agent.completed', { agentId: executor.id, result });
-
-  // Hook: executor complete → triggers reviewer
-  console.log(`[executor] invoking hook:onExecutorComplete taskId=${taskId} issueId=${issueId}`);
-  await onExecutorComplete(workspaceId, taskId, issueId, result, ctx);
 }

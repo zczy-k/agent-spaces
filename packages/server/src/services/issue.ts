@@ -117,7 +117,17 @@ export function addTask(workspaceId: string, issueId: string, taskId: string): I
   const issue = getIssue(workspaceId, issueId);
   if (!issue) return null;
 
-  issue.tasks.push(taskId);
+  if (!issue.tasks.includes(taskId)) issue.tasks.push(taskId);
+  issue.updatedAt = new Date().toISOString();
+  updateIssue(issue);
+  return issue;
+}
+
+export function replaceTasks(workspaceId: string, issueId: string, taskIds: string[]): Issue | null {
+  const issue = getIssue(workspaceId, issueId);
+  if (!issue) return null;
+
+  issue.tasks = [...new Set(taskIds.map((id) => id.trim()).filter(Boolean))];
   issue.updatedAt = new Date().toISOString();
   updateIssue(issue);
   return issue;
