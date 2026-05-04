@@ -10,22 +10,22 @@ import type { IssueComment } from '@agent-spaces/shared';
 
 interface IssueMessageProps {
   comment: IssueComment;
+  expanded: boolean;
   workspaceId: string;
   onDelete: (commentId: string) => void;
   onUpdate: (workspaceId: string, commentId: string, content: string) => void;
+  onExpandedChange?: (commentId: string, expanded: boolean) => void;
 }
 
-export function IssueMessage({ comment, workspaceId, onDelete, onUpdate }: IssueMessageProps) {
+export function IssueMessage({ comment, expanded, workspaceId, onDelete, onUpdate, onExpandedChange }: IssueMessageProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(comment.content);
   const [copied, setCopied] = useState(false);
-  const [expanded, setExpanded] = useState(false);
   const [overflowing, setOverflowing] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const isUser = comment.senderId === 'user';
   const agents = useAgentStore((s) => s.agents);
-  const ensure = useAgentStore((s) => s.ensure);
   const agent = !isUser ? agents.find((a) => a.id === comment.senderId) : undefined;
   const setActiveChannel = useChannelStore((s) => s.setActiveChannel);
   const loadMessages = useChannelStore((s) => s.loadMessages);
@@ -35,15 +35,16 @@ export function IssueMessage({ comment, workspaceId, onDelete, onUpdate }: Issue
   const taskId = comment.metadata?.taskId;
 
   useEffect(() => {
-    if (!isUser && workspaceId) ensure(workspaceId);
-  }, [isUser, workspaceId, ensure]);
+    setDraft(comment.content);
+    setEditing(false);
+  }, [comment.id, comment.content]);
 
   useEffect(() => {
     const el = contentRef.current;
     if (el) {
       setOverflowing(el.scrollHeight > 300);
     }
-  }, [comment.content]);
+  }, [comment.content, expanded]);
 
   const senderName = isUser ? 'You' : (agent?.name || comment.senderId);
   const userAvatarUrl = typeof window !== 'undefined' ? localStorage.getItem('userAvatarUrl') : null;
@@ -150,7 +151,7 @@ export function IssueMessage({ comment, workspaceId, onDelete, onUpdate }: Issue
             <div className="relative">
               <div
                 ref={contentRef}
-                className={`text-sm whitespace-pre-wrap break-words ${overflowing && !expanded ? 'max-h-[300px] overflow-hidden' : ''}`}
+                className={`text-sm whitespace-pre-wrap break-words ${!expanded ? 'max-h-[300px] overflow-hidden' : ''}`}
               >
                 {comment.content}
               </div>
@@ -160,7 +161,9 @@ export function IssueMessage({ comment, workspaceId, onDelete, onUpdate }: Issue
                     variant="ghost"
                     size="sm"
                     className="h-6 text-xs text-muted-foreground hover:text-foreground"
-                    onClick={() => setExpanded(true)}
+                    onClick={() => {
+                      onExpandedChange?.(comment.id, true);
+                    }}
                   >
                     展开更多
                   </Button>
@@ -171,7 +174,9 @@ export function IssueMessage({ comment, workspaceId, onDelete, onUpdate }: Issue
                   variant="ghost"
                   size="sm"
                   className="h-6 mt-1 text-xs text-muted-foreground hover:text-foreground"
-                  onClick={() => setExpanded(false)}
+                  onClick={() => {
+                    onExpandedChange?.(comment.id, false);
+                  }}
                 >
                   收起
                 </Button>

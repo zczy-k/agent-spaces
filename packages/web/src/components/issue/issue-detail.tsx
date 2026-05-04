@@ -11,7 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AvatarGroup } from '@/components/ui/avatar';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { Play, RotateCcw, XCircle, User, Clock, GitBranch, PanelRightOpen, PanelRightClose, Info, Users, UserPlus, Plus, Pencil, Trash2 } from 'lucide-react';
-import { List, AutoSizer, CellMeasurer, CellMeasurerCache } from 'react-virtualized';
+import { List, AutoSizer } from 'react-virtualized';
+import type { ListInstance } from 'react-virtualized';
 import { AddMemberDialog } from '@/components/chat/add-member-dialog';
 import { IssueMessage } from '@/components/issue/issue-message';
 import { EditIssueDialog } from '@/components/issue/edit-issue-dialog';
@@ -72,6 +73,25 @@ const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
   failed: 'Failed',
   cancelled: 'Cancelled',
 };
+
+const COLLAPSED_COMMENT_CONTENT_HEIGHT = 300;
+const COMMENT_ROW_BASE_HEIGHT = 56;
+const COMMENT_LINE_HEIGHT = 20;
+
+function estimateCommentRowHeight(comment: IssueComment, width: number, expanded: boolean) {
+  const availableTextWidth = Math.max(180, width - 150);
+  const charsPerLine = Math.max(24, Math.floor(availableTextWidth / 7));
+  const lineCount = comment.content
+    .split('\n')
+    .reduce((total, line) => total + Math.max(1, Math.ceil(line.length / charsPerLine)), 0);
+  const contentHeight = lineCount * COMMENT_LINE_HEIGHT;
+
+  if (expanded) {
+    return COMMENT_ROW_BASE_HEIGHT + contentHeight + 30;
+  }
+
+  return COMMENT_ROW_BASE_HEIGHT + Math.min(COLLAPSED_COMMENT_CONTENT_HEIGHT, contentHeight);
+}
 
 /* ------------------------------------------------------------------ */
 /*  TaskRow                                                            */
@@ -159,13 +179,8 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDesc, setNewTaskDesc] = useState('');
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const listRef = useRef<any>(null);
-  const cacheRef = useRef(new CellMeasurerCache({
-    fixedWidth: true,
-    defaultHeight: 100,
-    minHeight: 40,
-  }));
+  const [expandedCommentIds, setExpandedCommentIds] = useState<Set<string>>(() => new Set());
+  const listRef = useRef<ListInstance | null>(null);
 
   const issue = issues.find((i) => i.id === activeIssueId);
 
@@ -199,8 +214,8 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   }, [issue, workspaceId, loadComments]);
 
   useEffect(() => {
-    cacheRef.current.clearAll();
-  }, [comments]);
+    listRef.current?.recomputeRowHeights();
+  }, [comments, expandedCommentIds]);
 
   const mentionExtension = useMemo(
     () =>
@@ -318,6 +333,18 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     setComments((current) => current.filter((comment) => comment.id !== commentId));
   };
 
+  const handleCommentExpandedChange = useCallback((commentId: string, expanded: boolean) => {
+    setExpandedCommentIds((current) => {
+      const next = new Set(current);
+      if (expanded) {
+        next.add(commentId);
+      } else {
+        next.delete(commentId);
+      }
+      return next;
+    });
+  }, []);
+
   const handleUpdateComment = async (wsId: string, commentId: string, content: string) => {
     const res = await fetch(`/api/workspaces/${wsId}/issues/${issue.id}/comments/${commentId}`, {
       method: 'PUT',
@@ -361,24 +388,21 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rowRenderer = useCallback(({ index, key, parent, style }: any) => (
-    <CellMeasurer
-      cache={cacheRef.current}
-      columnIndex={0}
-      key={key}
-      parent={parent}
-      rowIndex={index}
-    >
-      <div style={style} className="px-4">
+  const rowRenderer = useCallback(({ index, key, style }: any) => {
+    const comment = comments[index];
+    return (
+      <div key={key} style={style} className="px-4">
         <IssueMessage
-          comment={comments[index]}
+          comment={comment}
+          expanded={expandedCommentIds.has(comment.id)}
           workspaceId={workspaceId}
           onDelete={handleDeleteComment}
           onUpdate={handleUpdateComment}
+          onExpandedChange={handleCommentExpandedChange}
         />
       </div>
-    </CellMeasurer>
-  ), [comments, workspaceId, handleDeleteComment, handleUpdateComment]);
+    );
+  }, [comments, expandedCommentIds, workspaceId, handleDeleteComment, handleUpdateComment, handleCommentExpandedChange]);
 
   return (
     <div className="flex h-full overflow-hidden">
@@ -439,7 +463,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
               <Clock className="h-3 w-3" />
               Updated {new Date(issue.updatedAt).toLocaleDateString()}
             </span>
-            {issue.branch && (
+            {issue.branch && (  
               <span className="flex items-center gap-1">
                 <GitBranch className="h-3 w-3" />
                 {issue.branch}
@@ -550,8 +574,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                     height={height}
                     width={width}
                     rowCount={comments.length}
-                    rowHeight={cacheRef.current.rowHeight}
-                    deferredMeasurementCache={cacheRef.current}
+                    rowHeight={({ index }) => estimateCommentRowHeight(comments[index], width, expandedCommentIds.has(comments[index].id))}
                     rowRenderer={rowRenderer}
                     overscanRowCount={5}
                   />

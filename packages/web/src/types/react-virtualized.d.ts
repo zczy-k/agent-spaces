@@ -20,30 +20,15 @@ declare module 'react-virtualized' {
     width: number;
     rowCount: number;
     rowHeight: number | ((params: { index: number }) => number);
-    deferredMeasurementCache?: unknown;
     rowRenderer: (props: ListRowProps) => ReactNode;
     overscanRowCount?: number;
   }
 
   export const List: ComponentType<ListProps>;
 
-  export interface CellMeasurerProps {
-    cache: CellMeasurerCache;
-    columnIndex: number;
-    parent: unknown;
-    rowIndex: number;
-    children: ReactNode;
+  export interface ListInstance {
+    scrollToRow(index: number): void;
+    recomputeRowHeights(index?: number): void;
   }
 
-  export const CellMeasurer: ComponentType<CellMeasurerProps>;
-
-  export class CellMeasurerCache {
-    constructor(options?: {
-      fixedWidth?: boolean;
-      defaultHeight?: number;
-      minHeight?: number;
-    });
-    clearAll(): void;
-    rowHeight(params: { index: number }): number;
-  }
 }

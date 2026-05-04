@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useAgentStore } from '@/stores/agent';
 
@@ -92,14 +92,8 @@ export interface AgentIconProps {
 }
 
 export function AgentIcon({ agentId, name, avatarUrl, apiBase, className, onClick }: AgentIconProps) {
-  const workspaceId = useWorkspaceId();
   const agents = useAgentStore((s) => s.agents);
-  const ensure = useAgentStore((s) => s.ensure);
   const [imgError, setImgError] = useState(false);
-
-  useEffect(() => {
-    if (agentId && workspaceId) ensure(workspaceId);
-  }, [agentId, workspaceId, ensure]);
 
   const agent = agentId ? agents.find((a) => a.id === agentId) : undefined;
   const displayName = name || agent?.name || agentId || '?';
@@ -126,10 +120,4 @@ export function AgentIcon({ agentId, name, avatarUrl, apiBase, className, onClic
       )}
     </div>
   );
-}
-
-function useWorkspaceId() {
-  const path = typeof window !== 'undefined' ? window.location.pathname : '';
-  const match = path.match(/\/workspace\/([^/]+)/);
-  return match?.[1] ?? '';
 }

@@ -18,12 +18,7 @@ interface MessageItemProps {
 export function MessageItem({ message, workspaceId, onEdit, onDelete }: MessageItemProps) {
   const isUser = message.senderId === 'user';
   const agents = useAgentStore((s) => s.agents);
-  const ensure = useAgentStore((s) => s.ensure);
   const agent = !isUser ? agents.find((a) => a.id === message.senderId) : undefined;
-
-  useEffect(() => {
-    if (!isUser && workspaceId) ensure(workspaceId);
-  }, [isUser, workspaceId, ensure]);
 
   const senderName = isUser ? 'You' : (agent?.name || message.senderId);
   const userAvatarUrl = typeof window !== 'undefined' ? localStorage.getItem('userAvatarUrl') : null;
