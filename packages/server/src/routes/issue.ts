@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 import * as issueService from '../services/issue.js';
 import * as issueCommentService from '../services/issue-comment.js';
 import * as channelService from '../services/channel.js';
+import { broadcastToWorkspace } from '../ws/handler.js';
 import { getWorkspace } from '../storage/workspace-store.js';
 
 const router = Router({ mergeParams: true });
@@ -20,6 +21,9 @@ router.post('/', (req: Request<{ id: string }>, res: Response) => {
     return;
   }
   const issue = issueService.create(req.params.id, { title, description: description || '', members });
+  const channel = issue.channelId ? channelService.getChannel(req.params.id, issue.channelId) : null;
+  if (channel) broadcastToWorkspace(req.params.id, 'channel.updated', channel);
+  broadcastToWorkspace(req.params.id, 'issue.created', issue);
   res.status(201).json(issue);
 });
 
@@ -44,15 +48,18 @@ router.put('/:issueId', (req: Request<{ id: string; issueId: string }>, res: Res
   if (members) {
     issue.members = normalizeIssueMembers(req.params.id, members);
     if (issue.channelId) {
-      channelService.updateChannel(req.params.id, issue.channelId, { members: ['user', ...issue.members] });
+      const updatedChannel = channelService.updateChannel(req.params.id, issue.channelId, { members: ['user', ...issue.members] });
+      if (updatedChannel) broadcastToWorkspace(req.params.id, 'channel.updated', updatedChannel);
     }
   }
   if (status) {
     const updated = issueService.updateStatus(req.params.id, req.params.issueId, status, { title: issue.title, description: issue.description });
+    broadcastToWorkspace(req.params.id, 'issue.updated', updated);
     res.json(updated);
     return;
   }
   const saved = issueService.save(req.params.id, issue);
+  broadcastToWorkspace(req.params.id, 'issue.updated', saved);
   res.json(saved);
 });
 

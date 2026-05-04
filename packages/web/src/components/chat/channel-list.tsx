@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { ChannelDialog } from './channel-dialog';
 import { normalizeChannelMembersToAgentIds } from '@/lib/agent-members';
+import { getWS } from '@/lib/ws';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -49,6 +50,24 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
     loadChannels(workspaceId);
     ensureAgents(workspaceId);
   }, [workspaceId, loadChannels, ensureAgents]);
+
+  // WS: 自动同步频道变更（新建/更新）
+  useEffect(() => {
+    const ws = getWS(workspaceId);
+    const unsub = ws.on('channel.updated', (data: unknown) => {
+      const ch = data as Channel;
+      useChannelStore.setState((s) => {
+        const idx = s.channels.findIndex((c) => c.id === ch.id);
+        if (idx >= 0) {
+          const copy = [...s.channels];
+          copy[idx] = ch;
+          return { channels: copy };
+        }
+        return { channels: [...s.channels, ch] };
+      });
+    });
+    return unsub;
+  }, [workspaceId]);
 
   const handleSubmit = async (data: { name: string; type: Channel['type']; members: string[] }) => {
     const memberIds = normalizeChannelMembersToAgentIds(agents, data.members);
