@@ -8,6 +8,7 @@ interface UpdateIssueInput {
 }
 
 interface IssueStore {
+  workspaceId: string | null;
   issues: Issue[];
   activeIssueId: string | null;
   /** 每次 setActiveIssue 递增，用于触发 tab 切换 */
@@ -26,7 +27,18 @@ interface IssueStore {
   removeIssue: (id: string) => void;
 }
 
+const STORAGE_KEY_PREFIX = 'agent-spaces:issue:';
+
+function getStoredActiveId(workspaceId: string, issues: Issue[]): string | null {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_PREFIX + workspaceId);
+    if (saved && issues.some((i) => i.id === saved)) return saved;
+  } catch { /* ignore */ }
+  return null;
+}
+
 export const useIssueStore = create<IssueStore>((set, get) => ({
+  workspaceId: null,
   issues: [],
   activeIssueId: null,
   issueSelectSeq: 0,
@@ -37,7 +49,8 @@ export const useIssueStore = create<IssueStore>((set, get) => ({
     try {
       const res = await fetch(`/api/workspaces/${workspaceId}/issues`);
       const issues: Issue[] = await res.json();
-      set({ issues, loading: false });
+      const activeIssueId = getStoredActiveId(workspaceId, issues);
+      set({ workspaceId, issues, activeIssueId, loading: false });
     } catch {
       set({ loading: false });
     }
@@ -53,7 +66,13 @@ export const useIssueStore = create<IssueStore>((set, get) => ({
     set((s) => ({ issues: [...s.issues, issue] }));
   },
 
-  setActiveIssue: (id) => set((s) => ({ activeIssueId: id, issueSelectSeq: s.issueSelectSeq + 1 })),
+  setActiveIssue: (id) => {
+    const { workspaceId } = useIssueStore.getState();
+    if (workspaceId && id) {
+      try { localStorage.setItem(STORAGE_KEY_PREFIX + workspaceId, id); } catch { /* ignore */ }
+    }
+    set((s) => ({ activeIssueId: id, issueSelectSeq: s.issueSelectSeq + 1 }));
+  },
 
   updateIssue: async (workspaceId, issueId, input) => {
     const res = await fetch(`/api/workspaces/${workspaceId}/issues/${issueId}`, {

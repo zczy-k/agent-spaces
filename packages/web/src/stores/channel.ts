@@ -3,6 +3,7 @@ import type { Channel, Message, TodoItem } from '@agent-spaces/shared';
 import { getWS } from '@/lib/ws';
 
 interface ChannelStore {
+  workspaceId: string | null;
   channels: Channel[];
   activeChannelId: string | null;
   /** 每次 setActiveChannel 递增，用于触发 tab 切换 */
@@ -25,7 +26,18 @@ interface ChannelStore {
   clearDraft: (workspaceId: string, channelId: string) => Promise<void>;
 }
 
+const STORAGE_KEY_PREFIX = 'agent-spaces:channel:';
+
+function getStoredActiveId(workspaceId: string, channels: Channel[]): string | null {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_PREFIX + workspaceId);
+    if (saved && channels.some((c) => c.id === saved)) return saved;
+  } catch { /* ignore */ }
+  return channels[0]?.id ?? null;
+}
+
 export const useChannelStore = create<ChannelStore>((set) => ({
+  workspaceId: null,
   channels: [],
   activeChannelId: null,
   channelSelectSeq: 0,
@@ -34,7 +46,8 @@ export const useChannelStore = create<ChannelStore>((set) => ({
   loadChannels: async (workspaceId) => {
     const res = await fetch(`/api/workspaces/${workspaceId}/channels`);
     const channels: Channel[] = await res.json();
-    set({ channels, activeChannelId: channels[0]?.id ?? null });
+    const activeChannelId = getStoredActiveId(workspaceId, channels);
+    set({ workspaceId, channels, activeChannelId });
   },
 
   createChannel: async (workspaceId, name, type = 'general', members) => {
@@ -57,7 +70,13 @@ export const useChannelStore = create<ChannelStore>((set) => ({
     set((s) => ({ channels: s.channels.map((c) => (c.id === channelId ? updated : c)) }));
   },
 
-  setActiveChannel: (id) => set((s) => ({ activeChannelId: id, channelSelectSeq: s.channelSelectSeq + 1 })),
+  setActiveChannel: (id) => {
+    const { workspaceId } = useChannelStore.getState();
+    if (workspaceId) {
+      try { localStorage.setItem(STORAGE_KEY_PREFIX + workspaceId, id); } catch { /* ignore */ }
+    }
+    set((s) => ({ activeChannelId: id, channelSelectSeq: s.channelSelectSeq + 1 }));
+  },
 
   loadMessages: async (workspaceId, channelId) => {
     const res = await fetch(`/api/workspaces/${workspaceId}/channels/${channelId}/messages`);
