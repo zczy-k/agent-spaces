@@ -51,6 +51,8 @@ Working tree currently has partial code changes:
 - Added `ViewCurrentChannelIssue`/`AddCurrentChannelComment` function tools to planner, task creator, executor, and reviewer prompts.
 - Changed git commit message input from single-line input to textarea so multiline/full commit messages can be submitted.
 - Expanded `ViewCurrentChannelIssue` to return issue, comments, tasks, channel metadata, assignable agents, and valid agent config ids.
+- Added `docs/issue-agent-automation.md` documenting the current issue agent automation flow.
+- Tightened task creator prompt and docs so task generation defaults to coarse-grained deliverables, splitting only for major cross-area or truly independent workstreams.
 
 ## Last Known Git Status
 

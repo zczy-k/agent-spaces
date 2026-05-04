@@ -19,7 +19,10 @@ export function IssueMessage({ comment, workspaceId, onDelete, onUpdate }: Issue
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(comment.content);
   const [copied, setCopied] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [overflowing, setOverflowing] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const isUser = comment.senderId === 'user';
   const agents = useAgentStore((s) => s.agents);
   const ensure = useAgentStore((s) => s.ensure);
@@ -32,6 +35,13 @@ export function IssueMessage({ comment, workspaceId, onDelete, onUpdate }: Issue
   useEffect(() => {
     if (!isUser && workspaceId) ensure(workspaceId);
   }, [isUser, workspaceId, ensure]);
+
+  useEffect(() => {
+    const el = contentRef.current;
+    if (el) {
+      setOverflowing(el.scrollHeight > 300);
+    }
+  }, [comment.content]);
 
   const senderName = isUser ? 'You' : (agent?.name || comment.senderId);
   const userAvatarUrl = typeof window !== 'undefined' ? localStorage.getItem('userAvatarUrl') : null;
@@ -125,8 +135,35 @@ export function IssueMessage({ comment, workspaceId, onDelete, onUpdate }: Issue
               className="w-full text-sm bg-muted/50 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-primary min-h-[60px]"
             />
           ) : (
-            <div className="text-sm whitespace-pre-wrap break-words">
-              {comment.content}
+            <div className="relative">
+              <div
+                ref={contentRef}
+                className={`text-sm whitespace-pre-wrap break-words ${overflowing && !expanded ? 'max-h-[300px] overflow-hidden' : ''}`}
+              >
+                {comment.content}
+              </div>
+              {overflowing && !expanded && (
+                <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-background to-transparent flex items-end justify-center pb-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs text-muted-foreground hover:text-foreground"
+                    onClick={() => setExpanded(true)}
+                  >
+                    展开更多
+                  </Button>
+                </div>
+              )}
+              {expanded && overflowing && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 mt-1 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => setExpanded(false)}
+                >
+                  收起
+                </Button>
+              )}
             </div>
           )}
         </div>
