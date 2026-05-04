@@ -64,14 +64,13 @@ Creation flow:
    - `agent.json`
    - `mcp.json`
    - `skills/*.md`
-4. If `workingDir` is empty, the server also copies the template into the workspace:
+4. If `workingDir` is empty, the server also copies the template into the workspace as config storage:
    - `{workspace.agentspaceDir}/agents/{agentId}`
-5. For empty `workingDir`, the preset saved in `workspace.agents` uses:
-   - `{workspace.agentspaceDir}/agents/{agentId}`
+5. For empty `workingDir`, the preset saved in `workspace.agents` keeps `workingDir` empty.
 6. Uploaded skill markdown files are also copied into:
    - `{workspace.agentspaceDir}/skills`
 
-If `workingDir` is provided, the server preserves that explicit path and does not replace it with the workspace agent directory.
+If `workingDir` is provided, the server preserves that explicit path. Runtime config files and skills are still read from the workspace agent config copy.
 
 ## Updating An Agent Preset
 
@@ -127,10 +126,10 @@ Runtime behavior:
 
 1. If `preset.workingDir` is set, runtime uses it.
 2. If `preset.workingDir` is empty, runtime resolves to:
-   - `{workspace.agentspaceDir}/agents/{agentId}`
+   - `workspace.boundDirs[0]`
 3. If the workspace cannot be found, runtime falls back to `process.cwd()`.
 
-This prevents empty `workingDir` presets from accidentally running in the server package directory during normal workspace execution.
+This keeps coding agents in the actual project directory by default. Agent config, MCP files, and skills remain stored under `.agentspace`.
 
 ## MCP Runtime Tool Selection
 

@@ -48,6 +48,7 @@ export async function runPlanner(
   // Use runtime to plan.
   const runtime = createRuntimeForPreset(plannerPreset);
   const workspace = wsService.getById(workspaceId);
+  const plannerWorkingDir = agentService.resolveWorkingDir(workspaceId, plannerPreset);
   const startTime = Date.now();
   const progress = createIssueAgentProgress(workspaceId, plannedIssue, plannerPreset, planner.id, {
     runtime: plannerPreset.runtimeKind,
@@ -65,8 +66,8 @@ export async function runPlanner(
     },
   });
   const planResult = await runtime.execute(
-    buildPlannerPrompt(plannedIssue, plannerPreset),
-    agentService.resolveWorkingDir(workspaceId, plannerPreset),
+    buildPlannerPrompt(plannedIssue, plannerPreset, plannerWorkingDir),
+    plannerWorkingDir,
     {
       maxTurns: 100,
       mcpServers: agentService.getMcpServers(plannerPreset.mcps),
@@ -138,10 +139,12 @@ function createRuntimeForPreset(preset: AgentConfig) {
   });
 }
 
-function buildPlannerPrompt(issue: NonNullable<ReturnType<typeof issueService.getById>>, plannerPreset: AgentConfig): string {
+function buildPlannerPrompt(issue: NonNullable<ReturnType<typeof issueService.getById>>, plannerPreset: AgentConfig, workingDir: string): string {
   return [
     plannerPreset.systemPrompt?.trim(),
     'Before planning, call ViewCurrentChannelIssue to load the latest issue context and comments for this channel.',
+    `The current workspace working directory is: ${workingDir}`,
+    'Plan work as changes to files under this workspace unless the issue explicitly says otherwise.',
     '',
     'Current issue context:',
     `- Issue id: ${issue.id}`,

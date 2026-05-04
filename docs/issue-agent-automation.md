@@ -272,13 +272,14 @@ Executor 由 `runIssueTask()` 启动。
 2. 调用 `taskService.assignAgent()`，将 task 状态更新为 `running`，并写入 `assignedAgentId`。
 3. 创建 issue detail 进度占位和 channel message。
 4. runtime prompt 明确要求先调用 `ViewCurrentChannelIssue`。
-5. 执行 task title/description。
-6. 将 agent 输出写入：
+5. runtime prompt 明确写入当前 workspace working directory，并要求产物写在该目录下，不能默认写到 `/tmp`。
+6. 执行 task title/description。
+7. 将 agent 输出写入：
    - `agent.output`
    - `task.output`
    - issue progress comment
-7. executor 完成后触发 `onExecutorComplete()`。
-8. reviewer 完成后重新调用 `scheduleRunnableIssueTasks()`，启动后继任务。
+8. executor 完成后触发 `onExecutorComplete()`。
+9. reviewer 完成后重新调用 `scheduleRunnableIssueTasks()`，启动后继任务。
 
 Executor 可用的 issue function tools：
 
@@ -310,11 +311,12 @@ Reviewer 执行步骤：
 1. 创建或复用 reviewer session。
 2. 创建 issue detail 进度占位和 channel message。
 3. runtime prompt 明确要求先调用 `ViewCurrentChannelIssue`。
-4. 执行 review。
-5. 当前实现仍是 mock approve：
+4. runtime prompt 明确写入当前 workspace working directory，并要求审查该目录下的产物；默认将 `/tmp` 产物视为位置错误。
+5. 执行 review。
+6. 当前实现仍是 mock approve：
    - approve 时 task 标记为 `done`
    - reject/changes_requested 分支保留，但当前不会走到
-6. 广播 `task.status_changed` 和 `task.updated`。
+7. 广播 `task.status_changed` 和 `task.updated`。
 
 Reviewer 不再直接把整个 issue 更新为 `approved`。issue 是否完成由 dependency scheduler 根据所有 task 状态决定。
 

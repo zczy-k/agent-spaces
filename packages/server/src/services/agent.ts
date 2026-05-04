@@ -380,7 +380,7 @@ export function createPreset(
     modelId: data.modelId || 'claude-sonnet-4-6',
     apiBase: data.apiBase || '',
     apiKey: data.apiKey || '',
-    workingDir: workingDir || getWorkspaceAgentDir(ws.agentspaceDir, id),
+    workingDir: workingDir || '',
     mcps: normalizeMcpConfig(data.mcps),
     skills: normalizeSkillNames(data.skills),
     tools: normalizeToolNames(data.tools ?? BUILT_IN_AGENT_TOOLS.map((tool) => tool.name)),
@@ -479,9 +479,7 @@ export function resolveWorkingDir(workspaceId: string, preset: AgentConfig): str
   if (mappedWorkingDir) return mappedWorkingDir;
 
   if (!ws) return process.cwd();
-  const workspaceAgentDir = getWorkspaceAgentDir(ws.agentspaceDir, preset.id);
-  ensureWorkspaceAgentCopy(preset, ws.agentspaceDir);
-  return workspaceAgentDir;
+  return ws.boundDirs[0] || process.cwd();
 }
 
 function resolveWorkspacePath(boundDirs: string[] | undefined, workingDir?: string): string | undefined {

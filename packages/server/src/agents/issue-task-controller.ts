@@ -51,6 +51,7 @@ export async function syncIssueTasksAfterPlanning(
   ctx.broadcast('agent.output', { agentId: taskSyncAgent.id, data: `Syncing issue tasks: ${issueId}` });
 
   const startTime = Date.now();
+  const taskSyncWorkingDir = agentService.resolveWorkingDir(workspaceId, taskSyncPreset);
   const progress = createIssueAgentProgress(workspaceId, issue, taskSyncPreset, taskSyncAgent.id, {
     runtime: taskSyncPreset.runtimeKind,
     model: taskSyncPreset.modelId,
@@ -67,8 +68,8 @@ export async function syncIssueTasksAfterPlanning(
   });
   const runtime = createRuntimeForPreset(taskSyncPreset);
   const result = await runtime.execute(
-    buildTaskSyncPrompt(issue, input),
-    agentService.resolveWorkingDir(workspaceId, taskSyncPreset),
+    buildTaskSyncPrompt(issue, input, taskSyncWorkingDir),
+    taskSyncWorkingDir,
     {
       maxTurns: 20,
       mcpServers: undefined,
@@ -223,7 +224,7 @@ export async function runIssueTask(
   });
 
   const result = await runtime.execute(
-    buildExecutorPrompt(issue, runningTask),
+    buildExecutorPrompt(issue, runningTask, executorWorkingDir),
     executorWorkingDir,
     {
       maxTurns: 100,
@@ -466,10 +467,12 @@ function createRuntimeForPreset(preset: AgentConfig) {
   });
 }
 
-function buildTaskSyncPrompt(issue: Issue, input: PlannerTaskSyncInput): string {
+function buildTaskSyncPrompt(issue: Issue, input: PlannerTaskSyncInput, workingDir: string): string {
   return [
     'You are the issue task synchronization controller.',
     'First call ViewCurrentChannelIssue with the current channel id to load the shared issue context, comments, tasks, channel members, and valid assignable agent config ids.',
+    `The current workspace working directory is: ${workingDir}`,
+    'All implementation tasks must be scoped to this workspace unless the issue explicitly says otherwise.',
     'Use ReplaceIssueTasks to write tasks. Do not rely on private planner-only context.',
     'Create coarse-grained, independently deliverable tasks. Default to a single implementation task for one cohesive issue.',
     'NEVER create review/audit/审查 tasks. The review phase is handled automatically by the system after all implementation tasks complete — do not include it as a task.',
@@ -491,9 +494,12 @@ function buildTaskSyncPrompt(issue: Issue, input: PlannerTaskSyncInput): string 
   ].filter(Boolean).join('\n');
 }
 
-function buildExecutorPrompt(issue: Issue, task: Task): string {
+function buildExecutorPrompt(issue: Issue, task: Task, workingDir: string): string {
   return [
     'Before executing, call ViewCurrentChannelIssue with the current channel id to load the latest shared issue context and comments.',
+    `The current workspace working directory is: ${workingDir}`,
+    'Create and modify project files under this working directory. Do not place deliverables in /tmp unless the task explicitly asks for temporary scratch output.',
+    'When reporting created files, use paths under the workspace working directory.',
     '',
     'Current issue:',
     `- Issue id: ${issue.id}`,

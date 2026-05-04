@@ -80,7 +80,7 @@ export async function runReviewer(
     baseURL: reviewerPreset.apiBase,
   });
   const reviewResult = await runtime.execute(
-    buildReviewerPrompt(issue, taskId, taskResult),
+    buildReviewerPrompt(issue, taskId, taskResult, reviewerWorkingDir),
     reviewerWorkingDir,
     {
       maxTurns: 100,
@@ -155,9 +155,11 @@ function findIssueMemberAgent(
   return agentService.findEnabledPresetByRoleInMembers(workspaceId, channel.members, role);
 }
 
-function buildReviewerPrompt(issue: NonNullable<ReturnType<typeof issueService.getById>>, taskId: string, taskResult: TaskResult): string {
+function buildReviewerPrompt(issue: NonNullable<ReturnType<typeof issueService.getById>>, taskId: string, taskResult: TaskResult, workingDir: string): string {
   return [
     'Before reviewing, call ViewCurrentChannelIssue with the current channel id to load the latest shared issue context and comments.',
+    `The current workspace working directory is: ${workingDir}`,
+    'Review files under this working directory. Treat deliverables outside it, especially in /tmp, as misplaced unless the task explicitly asked for temporary output.',
     '',
     'Current issue:',
     `- Issue id: ${issue.id}`,
