@@ -1,27 +1,36 @@
 import { getActiveServer } from './server';
 
 const TOKEN_KEY = 'agent-spaces-token';
+const VERIFIED_KEY = 'agent-spaces-auth-verified';
 
 export function getToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem(TOKEN_KEY) || getActiveServer()?.secret || null;
+  const stored = localStorage.getItem(TOKEN_KEY);
+  if (stored !== null) return stored;
+  const serverSecret = getActiveServer()?.secret;
+  if (serverSecret !== undefined) return serverSecret;
+  return null;
 }
 
 export function setToken(token: string) {
   localStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem(VERIFIED_KEY, '1');
 }
 
 export function removeToken() {
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(VERIFIED_KEY);
 }
 
 export function isAuthenticated(): boolean {
-  return !!getToken();
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem(VERIFIED_KEY) === '1';
 }
 
 export function authHeaders(): HeadersInit {
   const token = getToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  if (token === null) return {};
+  return { Authorization: `Bearer ${token}` };
 }
 
 export async function fetchWithAuth(input: string, init?: RequestInit) {

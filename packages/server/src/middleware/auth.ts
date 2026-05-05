@@ -1,21 +1,16 @@
 import type { Request, Response, NextFunction } from 'express';
-
-const SECRET = process.env.AGENT_SPACES_SECRET;
+import { getSecret } from '../services/auth-store.js';
 
 export function authMiddleware(req: Request, res: Response, next: NextFunction) {
-  if (!SECRET) return next();
+  const secret = getSecret();
 
   const openPaths = ['/api/health', '/api/auth/login', '/api/auth/check'];
   if (openPaths.includes(req.path)) return next();
 
   const auth = req.headers.authorization;
-  if (!auth?.startsWith('Bearer ')) {
+  const token = auth?.startsWith('Bearer ') ? auth.slice(7) : '';
+  if (token !== secret) {
     res.status(401).json({ error: 'Unauthorized' });
-    return;
-  }
-
-  if (auth.slice(7) !== SECRET) {
-    res.status(403).json({ error: 'Invalid secret' });
     return;
   }
 
@@ -23,7 +18,6 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
 }
 
 export function verifyToken(token: string | null): boolean {
-  if (!SECRET) return true;
-  if (!token) return false;
-  return token === SECRET;
+  const secret = getSecret();
+  return token === secret;
 }

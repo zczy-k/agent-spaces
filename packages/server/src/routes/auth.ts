@@ -1,37 +1,39 @@
 import { Router } from 'express';
+import { getSecret, setSecret } from '../services/auth-store.js';
 
 const router = Router();
 
-const SECRET = process.env.AGENT_SPACES_SECRET;
-
 router.post('/login', (req, res) => {
-  if (!SECRET) {
-    res.json({ ok: true, noSecret: true });
-    return;
-  }
-
   const { secret } = req.body as { secret?: string };
-  if (!secret || secret !== SECRET) {
+  const currentSecret = getSecret();
+
+  if ((secret ?? '') !== currentSecret) {
     res.status(403).json({ error: 'Invalid secret' });
     return;
   }
 
-  res.json({ ok: true, token: SECRET });
+  res.json({ ok: true, token: currentSecret });
 });
 
 router.get('/check', (req, res) => {
-  if (!SECRET) {
-    res.json({ authenticated: true, noSecret: true });
-    return;
-  }
-
+  const currentSecret = getSecret();
   const auth = req.headers.authorization;
-  if (!auth?.startsWith('Bearer ') || auth.slice(7) !== SECRET) {
-    res.status(401).json({ authenticated: false });
+  const token = auth?.startsWith('Bearer ') ? auth.slice(7) : '';
+
+  res.json({ authenticated: token === currentSecret, secretSet: currentSecret !== '' });
+});
+
+router.post('/change-secret', (req, res) => {
+  const { newSecret, currentToken } = req.body as { newSecret?: string; currentToken?: string };
+  const currentSecret = getSecret();
+
+  if ((currentToken ?? '') !== currentSecret) {
+    res.status(403).json({ error: 'Unauthorized' });
     return;
   }
 
-  res.json({ authenticated: true });
+  setSecret(newSecret ?? '');
+  res.json({ ok: true });
 });
 
 export default router;

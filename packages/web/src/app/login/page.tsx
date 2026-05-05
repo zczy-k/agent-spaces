@@ -13,7 +13,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-    if (!secret.trim()) return;
     setLoading(true);
     setError("");
 
@@ -21,18 +20,13 @@ export default function LoginPage() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ secret: secret.trim() }),
+        body: JSON.stringify({ secret }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
         setError(data.error || "Login failed");
-        return;
-      }
-
-      if (data.noSecret) {
-        router.push("/");
         return;
       }
 
@@ -55,14 +49,14 @@ export default function LoginPage() {
         <div className="space-y-4">
           <Input
             type="password"
-            placeholder="Secret key"
+            placeholder="Secret key (leave empty if not set)"
             value={secret}
             onChange={(e) => setSecret(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleLogin()}
             autoFocus
           />
           {error && <p className="text-sm text-destructive">{error}</p>}
-          <Button className="w-full" onClick={handleLogin} disabled={!secret.trim() || loading}>
+          <Button className="w-full" onClick={handleLogin} disabled={loading}>
             {loading ? "Verifying..." : "Login"}
           </Button>
         </div>

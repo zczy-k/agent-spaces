@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { getToken } from "@/lib/auth";
+import { isAuthenticated, getToken } from "@/lib/auth";
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -15,20 +15,21 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const token = getToken();
-    if (!token) {
+    if (!isAuthenticated()) {
       router.replace("/login");
       return;
     }
 
+    const token = getToken();
     fetch("/api/auth/check", {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      headers: token !== null ? { Authorization: `Bearer ${token}` } : {},
     })
-      .then((res) => {
-        if (!res.ok) {
-          router.replace("/login");
-        } else {
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.authenticated) {
           setChecked(true);
+        } else {
+          router.replace("/login");
         }
       })
       .catch(() => router.replace("/login"));
