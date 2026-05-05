@@ -13,10 +13,10 @@ import { completeIssueAgentProgress, createIssueAgentProgress, createIssueAgentP
 const ACTIVE_TASK_STATUSES: TaskStatus[] = ['running', 'reviewing', 'retrying', 'waiting_review'];
 
 export interface PlannerTaskSyncInput {
-  plannerPreset: AgentConfig;
-  plannerSessionId: string;
-  planSummary: string;
-  planOutput: string[];
+  plannerPreset?: AgentConfig;
+  plannerSessionId?: string;
+  planSummary?: string;
+  planOutput?: string[];
 }
 
 interface TaskDraft {
@@ -40,7 +40,12 @@ export async function syncIssueTasksAfterPlanning(
     return;
   }
 
-  const taskSyncPreset = findIssueMemberAgent(workspaceId, issue, 'custom') ?? input.plannerPreset;
+  const taskSyncPreset = findTaskCreatorForIssue(workspaceId, issue, input.plannerPreset);
+  if (!taskSyncPreset) {
+    console.warn(`[issue-task-controller] no task creator or executor member found workspaceId=${workspaceId} issueId=${issueId}`);
+    updateIssueStatus(workspaceId, issueId, 'error', ctx);
+    return;
+  }
   const taskSyncAgent = agentService.getOrCreateSessionForConfig(workspaceId, taskSyncPreset);
   ctx.broadcast('agent.started', taskSyncAgent);
 
@@ -119,7 +124,7 @@ export async function syncIssueTasksAfterPlanning(
       {
         key: 'implementation',
         title: `Implement: ${issue.title}`,
-        description: issue.description || input.planSummary || input.planOutput.join('\n'),
+        description: issue.description || input.planSummary || input.planOutput?.join('\n') || `Implement issue: ${issue.title}`,
       },
     ]);
     console.warn(`[issue-task-controller] task sync produced no tasks; created fallback count=${fallbackTasks.length}`);
@@ -394,6 +399,16 @@ function findExecutorForTask(
   return assignable.find((agent) => agent.role === 'executor') ?? null;
 }
 
+function findTaskCreatorForIssue(
+  workspaceId: string,
+  issue: Issue,
+  plannerPreset?: AgentConfig,
+): AgentConfig | null {
+  return findIssueMemberAgent(workspaceId, issue, 'custom')
+    ?? plannerPreset
+    ?? findIssueMemberAgent(workspaceId, issue, 'executor');
+}
+
 function findIssueMemberAgent(
   workspaceId: string,
   issue: Issue,
@@ -502,7 +517,7 @@ function buildTaskSyncPrompt(issue: Issue, input: PlannerTaskSyncInput, workingD
     '',
     'Planner result:',
     `Summary: ${input.planSummary || '(empty)'}`,
-    input.planOutput.join('\n').trim(),
+    input.planOutput?.join('\n').trim(),
   ].filter(Boolean).join('\n');
 }
 

@@ -3,10 +3,9 @@
  */
 
 import type { AgentContext } from './agent-context.js';
-import * as agentService from '../services/agent.js';
 import * as issueService from '../services/issue.js';
 import * as workspaceService from '../services/workspace.js';
-import { runPlanner } from './planner-agent.js';
+import { hasActiveIssueAutomation, runIssueAutomation } from './issue-agent-runner.js';
 import { retryErrorIssues } from '../services/issue-retry.js';
 
 const CHECK_INTERVAL = 10 * 60 *1000; // 10m
@@ -43,16 +42,15 @@ export function startScheduler(workspaceId: string, ctx: AgentContext): void {
     console.log(`[scheduler:${workspaceId}] tick: ${unfinished.length} unfinished issue(s):`,
       unfinished.map((i) => ({ id: i.id, title: i.title, status: i.status })));
 
-    const activePlanner = agentService.findActiveByRole(workspaceId, 'planner');
-    if (activePlanner) {
-      console.log(`[scheduler:${workspaceId}] planner already active (sessionId=${activePlanner.id}), waiting`);
+    if (hasActiveIssueAutomation(workspaceId)) {
+      console.log(`[scheduler:${workspaceId}] issue automation already active, waiting`);
       return;
     }
 
     const nextIssue = unfinished[0];
-    console.log(`[scheduler:${workspaceId}] waking planner for issue "${nextIssue.title}" (${nextIssue.id})`);
-    runPlanner(workspaceId, nextIssue.id, ctx).catch((err) => {
-      console.error(`[scheduler:${workspaceId}] planner error for issue ${nextIssue.id}:`, err);
+    console.log(`[scheduler:${workspaceId}] running automation for issue "${nextIssue.title}" (${nextIssue.id})`);
+    runIssueAutomation(workspaceId, nextIssue.id, ctx).catch((err) => {
+      console.error(`[scheduler:${workspaceId}] issue automation error for issue ${nextIssue.id}:`, err);
     });
   };
 

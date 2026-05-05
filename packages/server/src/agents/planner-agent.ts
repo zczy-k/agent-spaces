@@ -26,7 +26,11 @@ export async function runPlanner(
 
   const plannerPreset = findIssueMemberAgent(workspaceId, issue, 'planner');
   if (!plannerPreset) {
-    console.warn(`[planner] no planner member found workspaceId=${workspaceId} issueId=${issueId} channelId=${issue.channelId}`);
+    console.warn(`[planner] no planner member found; continuing with task creator workspaceId=${workspaceId} issueId=${issueId} channelId=${issue.channelId}`);
+    await syncIssueTasksAfterPlanning(workspaceId, issueId, {
+      planSummary: '',
+      planOutput: [],
+    }, ctx);
     return;
   }
 

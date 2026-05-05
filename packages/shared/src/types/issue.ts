@@ -47,6 +47,7 @@ export interface IssueComment {
     summary?: string;
     duration?: number;
     taskId?: string;
+    mentions?: string[];
     phase?: 'planner' | 'task_creator' | 'executor' | 'reviewer';
   };
   createdAt: string;

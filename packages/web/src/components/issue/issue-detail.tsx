@@ -29,6 +29,7 @@ import { createSlashExtension } from '@/components/composer/create-slash-extensi
 import { getAgentDisplayName, getMemberDisplayName, normalizeChannelMembersToAgentIds } from '@/lib/agent-members';
 import type { IssueComment, IssueStatus, Task, TaskStatus } from '@agent-spaces/shared';
 import { getWS } from '@/lib/ws';
+import type { JSONContent } from '@tiptap/react';
 
 const ISSUE_STATUS_LABEL: Record<IssueStatus, string> = {
   draft: 'Draft',
@@ -258,10 +259,11 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     if (!editor || !issue) return;
     const text = editor.getText().trim();
     if (!text) return;
+    const mentions = collectMentionIds(editor.getJSON());
     void fetch(`/api/workspaces/${workspaceId}/issues/${issue.id}/comments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: text }),
+      body: JSON.stringify({ content: text, mentions }),
     })
       .then(async (res) => {
         if (!res.ok) return;
@@ -743,4 +745,19 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
       )}
     </div>
   );
+}
+
+function collectMentionIds(node: JSONContent): string[] {
+  const ids = new Set<string>();
+  const walk = (current: JSONContent) => {
+    if (!current) return;
+    if (current.type === 'mention' && typeof current.attrs?.id === 'string') {
+      ids.add(current.attrs.id);
+    }
+    if (Array.isArray(current.content)) {
+      for (const child of current.content) walk(child);
+    }
+  };
+  walk(node);
+  return [...ids];
 }

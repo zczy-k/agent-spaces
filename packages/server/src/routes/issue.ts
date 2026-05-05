@@ -6,9 +6,9 @@ import * as issueCommentService from '../services/issue-comment.js';
 import * as channelService from '../services/channel.js';
 import { broadcastToWorkspace } from '../ws/handler.js';
 import { getWorkspace } from '../storage/workspace-store.js';
-import { runPlanner } from '../agents/planner-agent.js';
 import * as agentService from '../services/agent.js';
 import { retryIssue } from '../services/issue-retry.js';
+import { hasActiveIssueAutomation, runIssueAutomation, shouldForcePlannerFromMentions } from '../agents/issue-agent-runner.js';
 
 const router = Router({ mergeParams: true });
 
@@ -80,7 +80,7 @@ router.post('/:issueId/start', (req: Request<{ id: string; issueId: string }>, r
   broadcastToWorkspace(workspaceId, 'issue.updated', issue);
   res.json(issue);
 
-  // trigger planner
+  // trigger issue automation
   const ctx = {
     workspaceId,
     broadcast: (event: string, data: unknown) => broadcastToWorkspace(workspaceId, event, data),
@@ -88,8 +88,8 @@ router.post('/:issueId/start', (req: Request<{ id: string; issueId: string }>, r
     updateSessionStatus: (sessionId: string, status: AgentSessionStatus, extra?: Record<string, unknown>) =>
       agentService.updateStatus(workspaceId, sessionId, status, extra),
   };
-  runPlanner(workspaceId, issueId, ctx).catch((err) => {
-    console.error(`[issue-start] planner error for issue ${issueId}:`, err);
+  runIssueAutomation(workspaceId, issueId, ctx).catch((err) => {
+    console.error(`[issue-start] automation error for issue ${issueId}:`, err);
   });
 });
 
@@ -137,22 +137,58 @@ router.get('/:issueId/comments', (req: Request<{ id: string; issueId: string }>,
 });
 
 router.post('/:issueId/comments', (req: Request<{ id: string; issueId: string }>, res: Response) => {
+  const workspaceId = req.params.id;
+  const { issueId } = req.params;
   const content = typeof req.body.content === 'string' ? req.body.content.trim() : '';
+  const mentions: string[] = Array.isArray(req.body.mentions)
+    ? [...new Set<string>(req.body.mentions.filter((mention: unknown): mention is string => typeof mention === 'string' && Boolean(mention.trim())).map((mention: string) => mention.trim()))]
+    : [];
   if (!content) {
     res.status(400).json({ error: 'content is required' });
     return;
   }
 
-  const comment = issueCommentService.createIssueComment(req.params.id, req.params.issueId, {
+  const issue = issueService.getById(workspaceId, issueId);
+  if (!issue) {
+    res.status(404).json({ error: 'issue not found' });
+    return;
+  }
+
+  const comment = issueCommentService.createIssueComment(workspaceId, issueId, {
     senderId: 'user',
     content,
     source: 'user',
+    metadata: mentions.length ? { mentions } : undefined,
   });
   if (!comment) {
     res.status(404).json({ error: 'issue not found' });
     return;
   }
+
+  if (issue.status !== 'draft') {
+    const updatedIssue = issueService.updateStatus(workspaceId, issueId, 'draft');
+    if (updatedIssue) {
+      broadcastToWorkspace(workspaceId, 'issue.status_changed', { issueId, from: issue.status, to: updatedIssue.status });
+      broadcastToWorkspace(workspaceId, 'issue.updated', updatedIssue);
+    }
+  }
+
   res.status(201).json(comment);
+
+  if (!hasActiveIssueAutomation(workspaceId)) {
+    const ctx = {
+      workspaceId,
+      broadcast: (event: string, data: unknown) => broadcastToWorkspace(workspaceId, event, data),
+      getSession: (sessionId: string) => agentService.getById(workspaceId, sessionId),
+      updateSessionStatus: (sessionId: string, status: AgentSessionStatus, extra?: Record<string, unknown>) =>
+        agentService.updateStatus(workspaceId, sessionId, status, extra),
+    };
+    runIssueAutomation(workspaceId, issueId, ctx, {
+      forcePlanner: shouldForcePlannerFromMentions(workspaceId, mentions),
+    }).catch((err) => {
+      console.error(`[issue-comment] automation error for issue ${issueId}:`, err);
+    });
+  }
 });
 
 router.put('/:issueId/comments/:commentId', (req: Request<{ id: string; issueId: string; commentId: string }>, res: Response) => {
