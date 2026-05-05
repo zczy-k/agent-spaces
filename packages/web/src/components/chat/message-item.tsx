@@ -71,6 +71,11 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete }: MessageI
               {message.senderRole}
             </span>
           )}
+          {message.metadata?.model && (
+            <span className="text-[10px] font-mono text-muted-foreground">
+              {message.metadata.model}
+            </span>
+          )}
           <span className="text-[10px] text-muted-foreground">{time}</span>
         </div>
         <div className={`text-sm rounded-lg px-3 py-2 ${isUser ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>

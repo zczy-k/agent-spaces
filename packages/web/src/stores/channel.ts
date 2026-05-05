@@ -58,7 +58,7 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
       body: JSON.stringify({ name, type, members }),
     });
     const channel: Channel = await res.json();
-    set((s) => ({ channels: [...s.channels, channel] }));
+    set((s) => ({ channels: [...s.channels, channel], activeChannelId: channel.id }));
   },
 
   updateChannel: async (workspaceId, channelId, data) => {

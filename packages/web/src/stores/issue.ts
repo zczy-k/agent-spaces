@@ -69,6 +69,7 @@ export const useIssueStore = create<IssueStore>((set, get) => ({
     });
     const issue: Issue = await res.json();
     get().upsertIssue(issue);
+    get().setActiveIssue(issue.id);
   },
 
   setActiveIssue: (id) => {
