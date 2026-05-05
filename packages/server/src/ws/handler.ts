@@ -24,6 +24,8 @@ const handlers = new Map<string, EventHandler>();
 const activeSchedulers = new Set<string>();
 const activeChannelRuns = new Map<string, Map<string, ActiveChannelRun>>();
 const pendingQuestionRuns = new Map<string, PendingQuestionRun>();
+const workspaceGlobalPrompts = new Map<string, string>();
+const DEFAULT_GLOBAL_PROMPT = '结果使用中文回复';
 
 interface ActiveChannelRun {
   agentId: string;
@@ -44,12 +46,14 @@ interface PendingAskUserQuestion {
 interface PendingQuestionRun {
   agentConfigId: string;
   question: string;
+  globalPrompt?: string;
 }
 
 interface RunMentionedAgentOptions {
   messageId?: string;
   seedOutput?: string[];
   seedQuestions?: PendingAskUserQuestion[];
+  globalPrompt?: string;
 }
 
 function ensureScheduler(workspaceId: string, ctx: AgentContext) {
@@ -129,15 +133,18 @@ for (const evt of terminalEvents) {
 
 // Register channel handler
 registerHandler('channel.message', (_ws, workspaceId, data) => {
-  const { channelId, content, type, mentions, attachments } = data as {
+  const { channelId, content, type, mentions, attachments, globalPrompt } = data as {
     channelId: string;
     content: string;
     type?: string;
     mentions?: string[];
     attachments?: Message['attachments'];
+    globalPrompt?: string;
   };
   if (!channelId || (!content && !attachments?.length)) return;
   if (!getChannel(workspaceId, channelId)) return;
+  const normalizedGlobalPrompt = normalizeGlobalPrompt(globalPrompt);
+  workspaceGlobalPrompts.set(workspaceId, normalizedGlobalPrompt);
   const message = createMessage(workspaceId, channelId, {
     senderId: 'user',
     content,
@@ -148,7 +155,9 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
 
   const agentIds = [...new Set([...(mentions || []), ...extractMentionIds(content)].filter(Boolean))];
   for (const agentId of agentIds) {
-    void runMentionedAgent(workspaceId, channelId, agentId, stripHtml(content));
+    void runMentionedAgent(workspaceId, channelId, agentId, stripHtml(content), {
+      globalPrompt: normalizedGlobalPrompt,
+    });
   }
 });
 
@@ -201,6 +210,7 @@ registerHandler('channel.answer_question', (_ws, workspaceId, data) => {
       messageId,
       seedOutput: normalizeOutputLines([message.content]),
       seedQuestions: seedQuestion ? [seedQuestion] : [],
+      globalPrompt: pending.globalPrompt,
     },
   );
 });
@@ -332,7 +342,7 @@ async function runMentionedAgent(
       skills,
       boundDirs: workspace?.boundDirs,
       builtInTools: buildBuiltInTools(functionTools, channel, issue),
-    }), agentService.resolveWorkingDir(workspaceId, preset), {
+    }, options.globalPrompt ?? workspaceGlobalPrompts.get(workspaceId)), agentService.resolveWorkingDir(workspaceId, preset), {
       maxTurns: 100,
       functionTools,
       mcpServers,
@@ -347,6 +357,7 @@ async function runMentionedAgent(
             pendingQuestionRuns.set(questionRunKey(workspaceId, channelId, pending.id, question.id), {
               agentConfigId,
               question: question.question,
+              globalPrompt: options.globalPrompt ?? workspaceGlobalPrompts.get(workspaceId),
             });
             broadcastLiveParts(true);
             return;
@@ -1275,6 +1286,7 @@ function buildAgentPrompt(
     boundDirs?: string[];
     builtInTools?: BuiltInToolContext[];
   },
+  globalPrompt?: string,
 ): string {
   const parts: string[] = [];
   const trimmedSystemPrompt = systemPrompt?.trim();
@@ -1317,7 +1329,17 @@ function buildAgentPrompt(
   }
 
   parts.push(`User message:\n${userPrompt}`);
-  return parts.join('\n\n');
+  return prependGlobalPrompt(parts.join('\n\n'), globalPrompt);
+}
+
+function normalizeGlobalPrompt(globalPrompt?: string): string {
+  return globalPrompt ?? DEFAULT_GLOBAL_PROMPT;
+}
+
+function prependGlobalPrompt(prompt: string, globalPrompt?: string): string {
+  const trimmedGlobalPrompt = normalizeGlobalPrompt(globalPrompt).trim();
+  if (!trimmedGlobalPrompt) return prompt;
+  return `${trimmedGlobalPrompt}\n\n${prompt}`;
 }
 
 function isIssueContextLookup(userPrompt: string): boolean {

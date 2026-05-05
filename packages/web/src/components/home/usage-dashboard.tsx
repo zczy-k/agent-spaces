@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { ArrowDown, ArrowUp, ChevronLeftIcon, ChevronRightIcon, Clock3, Cpu, DollarSign, TrendingUp, Zap, type LucideIcon } from "lucide-react"
 import type { ColumnDef, PaginationState } from "@tanstack/react-table"
 import {
@@ -14,11 +14,15 @@ import {
 import type { AgentUsageDashboard as AgentUsageDashboardData, AgentUsageRecord } from "@agent-spaces/shared"
 import { Label, Pie, PieChart } from "recharts"
 
+import { differenceInDays, subDays } from "date-fns"
+
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
 import { Card } from "@/components/ui/card"
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem } from "@/components/ui/pagination"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { usePagination } from "@/hooks/use-pagination"
 import { cn } from "@/lib/utils"
@@ -144,9 +148,41 @@ const columns: ColumnDef<AgentUsageRecord>[] = [
   },
 ]
 
+// ── period types ──
+
+type PeriodKey = 'today' | '7d' | '30d' | '1y' | 'custom'
+
+const PERIOD_OPTIONS: Array<{ key: PeriodKey; label: string; days: number }> = [
+  { key: 'today', label: '今日', days: 1 },
+  { key: '7d', label: '7 天', days: 7 },
+  { key: '30d', label: '30 天', days: 30 },
+  { key: '1y', label: '1 年', days: 365 },
+]
+
 // ── main component ──
 
-export function UsageDashboard({ data }: { data: AgentUsageDashboardData | null }) {
+export function UsageDashboard() {
+  const [period, setPeriod] = useState<PeriodKey>('30d')
+  const [customRange, setCustomRange] = useState<{ from: Date; to: Date } | undefined>()
+  const [data, setData] = useState<AgentUsageDashboardData | null>(null)
+
+  const fetchDays = useCallback(() => {
+    if (period === 'custom' && customRange) {
+      return differenceInDays(customRange.to, customRange.from) + 1
+    }
+    return PERIOD_OPTIONS.find(p => p.key === period)?.days ?? 30
+  }, [period, customRange])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    const days = fetchDays()
+    fetch(`/api/agents/usage/dashboard?days=${days}`, { signal: controller.signal })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((d) => setData(d))
+      .catch(() => setData(null))
+    return () => controller.abort()
+  }, [fetchDays])
+
   const totals = data?.totals ?? {
     requests: 0,
     inputTokens: 0,
@@ -165,12 +201,41 @@ export function UsageDashboard({ data }: { data: AgentUsageDashboardData | null 
     <Card className="col-span-full gap-0 overflow-hidden rounded-lg py-0">
       <div className="flex items-center gap-3 border-b px-4 py-3">
         <span className="font-medium text-sm">Agent Usage</span>
-        <Badge variant="secondary" className="h-5 rounded-full font-normal text-[10px]">
-          {data?.periodLabel ?? "No data"}
-        </Badge>
-        <div className="ml-auto flex items-center gap-1.5">
-          <TrendingUp className="size-3 text-emerald-500" />
-          <span className="text-muted-foreground text-xs">SQLite billing ledger</span>
+        <div className="flex items-center gap-1">
+          {PERIOD_OPTIONS.map(opt => (
+            <Badge
+              key={opt.key}
+              variant={period === opt.key ? 'default' : 'secondary'}
+              className="h-5 cursor-pointer rounded-full font-normal text-[10px] transition-colors"
+              onClick={() => { setPeriod(opt.key); setCustomRange(undefined) }}
+            >
+              {opt.label}
+            </Badge>
+          ))}
+          <Popover>
+            <PopoverTrigger render={
+              <Badge
+                variant={period === 'custom' ? 'default' : 'secondary'}
+                className="h-5 cursor-pointer rounded-full font-normal text-[10px] transition-colors"
+              >
+                自定义
+              </Badge>
+            } />
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="range"
+                defaultMonth={customRange?.from ?? subDays(new Date(), 30)}
+                selected={customRange ? { from: customRange.from, to: customRange.to } : undefined}
+                onSelect={(range) => {
+                  if (range?.from && range?.to) {
+                    setCustomRange({ from: range.from, to: range.to })
+                    setPeriod('custom')
+                  }
+                }}
+                numberOfMonths={2}
+              />
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 

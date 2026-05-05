@@ -2,11 +2,10 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { Hash, ListChecks, FolderOpen, Code2, MessageSquare, TerminalSquare, FileDiff, GitCommitHorizontal, Network, Settings2, PanelLeft } from "lucide-react";
+import { Hash, ListChecks, FolderOpen, Code2, MessageSquare, TerminalSquare, FileDiff, GitCommitHorizontal, Network, Settings2 } from "lucide-react";
 import { WorkspaceShell } from "@/components/layout/workspace-shell";
 import { useMobilePanelStore } from "@/stores/mobile-panel";
 import { useWorkspaceStore } from "@/stores/workspace";
-import { useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import type { Workspace } from "@agent-spaces/shared";
 
@@ -30,7 +29,6 @@ export default function WorkspacePage({ params }: { params: Promise<{ id: string
   const [error, setError] = useState<string | null>(null);
   const { activePanel, setActivePanel } = useMobilePanelStore();
   const upsertWorkspace = useWorkspaceStore((state) => state.upsertWorkspace);
-  const { toggleSidebar } = useSidebar();
 
   useEffect(() => {
     fetch(`/api/workspaces/${id}`)
@@ -68,12 +66,6 @@ export default function WorkspacePage({ params }: { params: Promise<{ id: string
     <div className="h-full min-h-0 flex flex-col overflow-hidden">
       <div className="relative shrink-0 bg-background">
         <div className="flex items-center h-10 border-b px-1 gap-0.5 shrink-0 overflow-x-auto md:hidden">
-          <button
-            onClick={() => toggleSidebar()}
-            className="flex items-center justify-center size-8 rounded-md text-muted-foreground hover:bg-accent/50 transition-colors shrink-0"
-          >
-            <PanelLeft size={16} />
-          </button>
           {mobileTabItems.map((tab) => {
             const Icon = tab.icon;
             return (

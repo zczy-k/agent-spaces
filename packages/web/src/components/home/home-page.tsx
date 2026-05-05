@@ -5,26 +5,16 @@ import { useEffect, useState } from 'react'
 import { UsageDashboard } from '@/components/home/usage-dashboard'
 import { WorkspaceDialog } from '@/components/workspace/workspace-dialog'
 import { useWorkspaceStore } from '@/stores/workspace'
-import type { AgentUsageDashboard as AgentUsageDashboardData, Workspace } from '@agent-spaces/shared'
+import type { Workspace } from '@agent-spaces/shared'
 
 export function HomePage({ initialWorkspaces }: { initialWorkspaces: Workspace[] }) {
   const setWorkspaces = useWorkspaceStore((store) => store.setWorkspaces)
   const upsertWorkspace = useWorkspaceStore((store) => store.upsertWorkspace)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [usage, setUsage] = useState<AgentUsageDashboardData | null>(null)
 
   useEffect(() => {
     setWorkspaces(initialWorkspaces)
   }, [initialWorkspaces, setWorkspaces])
-
-  useEffect(() => {
-    const controller = new AbortController()
-    fetch('/api/agents/usage/dashboard?days=30', { signal: controller.signal })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => setUsage(data))
-      .catch(() => setUsage(null))
-    return () => controller.abort()
-  }, [])
 
   const handleWsSubmit = async (data: { name: string; boundDirs: string[] }) => {
     const res = await fetch('/api/workspaces', {
@@ -39,7 +29,7 @@ export function HomePage({ initialWorkspaces }: { initialWorkspaces: Workspace[]
   return (
     <div className='flex min-h-dvh w-full flex-col'>
       <main className='mx-auto size-full max-w-7xl flex-1 px-4 py-6 sm:px-6'>
-        <UsageDashboard data={usage} />
+        <UsageDashboard />
       </main>
 
       <WorkspaceDialog
