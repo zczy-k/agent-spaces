@@ -100,7 +100,13 @@ export async function syncIssueTasksAfterPlanning(
     }),
   });
 
-  agentService.complete(workspaceId, taskSyncAgent.id, result.success ? undefined : result.error || result.summary);
+  agentService.complete(workspaceId, taskSyncAgent.id, result.success ? undefined : result.error || result.summary, {
+    runtime: taskSyncPreset.runtimeKind,
+    model: taskSyncPreset.modelId,
+    summary: result.summary,
+    output: taskSyncTracker.output.length ? taskSyncTracker.output : result.output,
+    durationMs: Date.now() - startTime,
+  });
   ctx.broadcast('agent.completed', { agentId: taskSyncAgent.id, result });
 
   if (!result.success) {
@@ -263,7 +269,13 @@ export async function runIssueTask(
     broadcastTaskUpdate(ctx, failedTask, 'running');
   }
 
-  agentService.complete(workspaceId, executor.id, result.success ? undefined : result.error || result.summary);
+  agentService.complete(workspaceId, executor.id, result.success ? undefined : result.error || result.summary, {
+    runtime: executorPreset.runtimeKind,
+    model: executorPreset.modelId,
+    summary: result.summary,
+    output: executorTracker.output.length ? executorTracker.output : result.output,
+    durationMs: Date.now() - startTime,
+  });
   ctx.broadcast('agent.completed', { agentId: executor.id, result });
 
   if (!result.success) {

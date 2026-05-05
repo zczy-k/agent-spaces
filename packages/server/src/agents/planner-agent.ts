@@ -100,7 +100,13 @@ export async function runPlanner(
   });
 
   // Complete planner
-  agentService.complete(workspaceId, planner.id, planResult.success ? undefined : planResult.error || planResult.summary);
+  agentService.complete(workspaceId, planner.id, planResult.success ? undefined : planResult.error || planResult.summary, {
+    runtime: plannerPreset.runtimeKind,
+    model: plannerPreset.modelId,
+    summary: planResult.summary,
+    output: tracker.output.length ? tracker.output : planResult.output,
+    durationMs: Date.now() - startTime,
+  });
   ctx.broadcast('agent.completed', { agentId: planner.id, result: planResult });
 
   if (!planResult.success) {

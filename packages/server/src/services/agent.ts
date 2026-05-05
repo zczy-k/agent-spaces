@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { copyFileSync, cpSync, existsSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { basename, extname, isAbsolute, join, normalize, relative } from 'node:path';
-import type { AgentConfig, AgentSession, AgentSessionStatus } from '@agent-spaces/shared';
+import type { AgentConfig, AgentSession, AgentSessionStatus, AgentUsageDashboard, MessageTokenUsage } from '@agent-spaces/shared';
 import { BUILT_IN_AGENT_TOOLS } from '@agent-spaces/shared';
 import {
   listAgentSessions,
@@ -9,9 +9,12 @@ import {
   createAgentSession,
   updateAgentSession,
   deleteAgentSession,
+  getAgentUsageDashboard,
+  recordAgentUsage,
 } from '../storage/agent-store.js';
 import { getWorkspace, updateWorkspace } from '../storage/workspace-store.js';
 import { ensureDir, getDataDir } from '../storage/json-store.js';
+import { extractUsageFromOutput } from '../storage/usage.js';
 
 const VALID_ROLES: AgentConfig['role'][] = ['scheduler', 'planner', 'executor', 'reviewer', 'commit', 'custom'];
 const VALID_RUNTIME_KINDS: NonNullable<AgentConfig['runtimeKind']>[] = ['open-agent-sdk', 'claude-code', 'codex'];
@@ -23,6 +26,15 @@ const ANTHROPIC_BRIDGE_PROVIDERS: Array<NonNullable<AgentConfig['modelProvider']
 
 type SkillInput = string | { name?: string; content?: string };
 type McpConfig = Record<string, unknown>;
+
+export interface AgentCompletionDetails {
+  runtime?: string;
+  model?: string;
+  summary?: string;
+  output?: string[];
+  durationMs?: number;
+  usage?: MessageTokenUsage;
+}
 
 export interface AgentConnectionTestResult {
   success: boolean;
@@ -707,11 +719,26 @@ export function complete(
   workspaceId: string,
   sessionId: string,
   error?: string,
+  details?: AgentCompletionDetails,
 ): AgentSession | null {
-  return updateStatus(workspaceId, sessionId, error ? 'crashed' : 'completed', {
+  const session = updateStatus(workspaceId, sessionId, error ? 'crashed' : 'completed', {
     currentTaskId: undefined,
     error,
   });
+  if (!session) return null;
+
+  const usage = details?.usage ?? extractUsageFromOutput(details?.output ?? []);
+  if (usage.totalTokens || usage.inputTokens || usage.outputTokens || usage.cachedInputTokens || usage.reasoningTokens) {
+    recordAgentUsage({
+      session,
+      runtime: details?.runtime,
+      model: details?.model,
+      summary: details?.summary,
+      durationMs: details?.durationMs,
+      usage,
+    });
+  }
+  return session;
 }
 
 export function remove(workspaceId: string, sessionId: string): boolean {
@@ -728,4 +755,8 @@ export function findActiveByRole(
   return listAgentSessions(workspaceId).find(
     (s) => s.role === role && (s.status === 'active' || s.status === 'idle'),
   );
+}
+
+export function usageDashboard(days?: number): AgentUsageDashboard {
+  return getAgentUsageDashboard(days);
 }

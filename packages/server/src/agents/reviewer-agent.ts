@@ -117,7 +117,13 @@ export async function runReviewer(
   // Mock: always approve for now
   const approved = true;
 
-  agentService.complete(workspaceId, reviewer.id);
+  agentService.complete(workspaceId, reviewer.id, undefined, {
+    runtime: reviewerPreset.runtimeKind,
+    model: reviewerPreset.modelId,
+    summary: reviewResult.summary,
+    output: reviewerTracker.output.length ? reviewerTracker.output : reviewResult.output,
+    durationMs: Date.now() - startTime,
+  });
   ctx.broadcast('agent.completed', {
     agentId: reviewer.id,
     result: { success: true, summary: approved ? 'Approved' : 'Changes requested', artifacts: [] },

@@ -5,6 +5,11 @@ import * as agentService from '../services/agent.js';
 
 const router = Router({ mergeParams: true });
 
+router.get('/usage/dashboard', (req: Request, res: Response) => {
+  const days = Number(req.query.days ?? 30);
+  res.json(agentService.usageDashboard(Number.isFinite(days) ? days : 30));
+});
+
 router.get('/presets', (req: Request<{ id: string }>, res: Response) => {
   const presets = agentService.listPresets(req.params.id);
   if (!presets) {

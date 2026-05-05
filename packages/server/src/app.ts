@@ -61,6 +61,7 @@ app.use('/api/workspaces/:id/issues', issueRouter);
 app.use('/api/workspaces/:id/agents', agentRouter);
 app.use('/api/workspaces/:id/tasks', taskRouter);
 app.use('/api/workspaces/:id/git', gitRouter);
+app.use('/api/agents', agentRouter);
 app.use('/api', llmRouter);
 
 const server = createServer(app);

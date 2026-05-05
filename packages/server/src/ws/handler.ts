@@ -463,7 +463,13 @@ async function runMentionedAgent(
       }
     }
 
-    agentService.complete(workspaceId, session.id, result.success ? undefined : result.error);
+    agentService.complete(workspaceId, session.id, result.success ? undefined : result.error, {
+      runtime: preset.runtimeKind,
+      model: preset.modelId,
+      summary: result.summary,
+      output: displayOutput,
+      durationMs: Date.now() - startTime,
+    });
     broadcastToWorkspace(workspaceId, 'agent.completed', {
       agentId: session.id,
       result: {
@@ -507,7 +513,13 @@ async function runMentionedAgent(
   } catch (err) {
     if (activeRun?.stopped) return;
     const error = err instanceof Error ? err.message : String(err);
-    agentService.complete(workspaceId, session.id, error);
+    agentService.complete(workspaceId, session.id, error, {
+      runtime: preset.runtimeKind,
+      model: preset.modelId,
+      summary: error,
+      output: [error],
+      durationMs: Date.now() - startTime,
+    });
     broadcastToWorkspace(workspaceId, 'agent.error', { agentId: session.id, error });
     const reply = updateMessage(workspaceId, channelId, pending.id, {
       content: error,

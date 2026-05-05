@@ -16,6 +16,8 @@ export async function runCommitAgent(workspaceId: string): Promise<string> {
 
   const commitAgent = findCommitAgent(workspaceId);
   if (!commitAgent) throw new Error('No commit agent configured. Add a commit-type agent preset.');
+  const session = agentService.getOrCreateSessionForConfig(workspaceId, commitAgent);
+  agentService.updateStatus(workspaceId, session.id, 'active');
 
   const runtime = createAgentRuntime({
     kind: commitAgent.runtimeKind,
@@ -37,6 +39,13 @@ export async function runCommitAgent(workspaceId: string): Promise<string> {
       systemPrompt,
     },
   );
+
+  agentService.complete(workspaceId, session.id, result.success ? undefined : result.error, {
+    runtime: commitAgent.runtimeKind,
+    model: commitAgent.modelId,
+    summary: result.summary,
+    output: result.output,
+  });
 
   if (!result.success) {
     throw new Error(result.error || 'Commit agent failed');
