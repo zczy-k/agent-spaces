@@ -11,3 +11,4 @@ server.tar
 .gitignore
 web.tar
 packages/server/web/
+packages/server/agent_spaces/

@@ -25,6 +25,7 @@ export function buildEnv(
     ANTHROPIC_DEFAULT_SONNET_MODEL: usesAnthropicBridge ? undefined : config.model || process.env.ANTHROPIC_DEFAULT_SONNET_MODEL,
     ANTHROPIC_DEFAULT_HAIKU_MODEL: usesAnthropicBridge ? undefined : config.model || process.env.ANTHROPIC_DEFAULT_HAIKU_MODEL,
     CLAUDE_AGENT_SDK_CLIENT_APP: process.env.CLAUDE_AGENT_SDK_CLIENT_APP || 'agent-spaces/server',
+    IS_SANDBOX: '1',
   };
 }
 
@@ -182,10 +183,6 @@ export function normalizePermissionMode(permissionMode?: AgentRuntimeConfig['per
     return permissionMode;
   }
   return 'bypassPermissions';
-}
-
-export function isRootUser(): boolean {
-  return typeof process.getuid === 'function' && process.getuid() === 0;
 }
 
 export function normalizeAdditionalDirectories(cwd: string, sandboxDirs?: string[]): string[] {
