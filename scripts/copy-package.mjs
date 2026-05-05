@@ -21,6 +21,7 @@ const prod = {
   main: 'app.js',
   scripts: { start: 'node app.js' },
   dependencies: deps,
+  pnpm: { overrides: { zod: '^3.24.0' } },
   engines: pkg.engines,
 };
 
