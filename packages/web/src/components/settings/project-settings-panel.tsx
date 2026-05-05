@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useChannelStore } from '@/stores/channel';
 import { useIssueStore } from '@/stores/issue';
 import { FolderOpen, Hash, ListChecks, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import type { Workspace } from '@agent-spaces/shared';
 
 interface ProjectSettingsPanelProps {
@@ -72,9 +73,18 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt }),
       });
+      if (!res.ok) {
+        const error = await res.json().catch(() => null);
+        throw new Error(error?.error || 'Failed to save workspace prompt');
+      }
       const data: { prompt: string } = await res.json();
       setPrompt(data.prompt);
       setSavedPrompt(data.prompt);
+      toast.success('Workspace prompt saved');
+    } catch (err) {
+      toast.error('Failed to save workspace prompt', {
+        description: err instanceof Error ? err.message : undefined,
+      });
     } finally {
       setSavingPrompt(false);
     }
