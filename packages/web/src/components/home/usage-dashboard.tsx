@@ -1,11 +1,150 @@
 "use client"
 
-import { ArrowDown, ArrowUp, Clock3, Cpu, DollarSign, TrendingUp, Zap, type LucideIcon } from "lucide-react"
-import type { AgentUsageDashboard as AgentUsageDashboardData } from "@agent-spaces/shared"
+import { useState } from "react"
+import { ArrowDown, ArrowUp, ChevronLeftIcon, ChevronRightIcon, Clock3, Cpu, DollarSign, TrendingUp, Zap, type LucideIcon } from "lucide-react"
+import type { ColumnDef, PaginationState } from "@tanstack/react-table"
+import {
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable
+} from "@tanstack/react-table"
+import type { AgentUsageDashboard as AgentUsageDashboardData, AgentUsageRecord } from "@agent-spaces/shared"
+import { Label, Pie, PieChart } from "recharts"
 
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem } from "@/components/ui/pagination"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { usePagination } from "@/hooks/use-pagination"
 import { cn } from "@/lib/utils"
+
+// ── model -> provider icon mapping ──
+
+const MODEL_ICON_MAP: Array<[RegExp, string]> = [
+  [/claude/i, 'anthropic'],
+  [/gpt|o1-|o3-|o4-|chatgpt/i, 'openai'],
+  [/gemini/i, 'gemini'],
+  [/deepseek/i, 'deepseek'],
+  [/qwen/i, 'alibaba'],
+  [/glm|chatglm/i, 'zhipu'],
+  [/moonshot|kimi/i, 'kimi'],
+  [/doubao/i, 'doubao'],
+  [/llama/i, 'meta'],
+  [/mistral/i, 'mistral'],
+  [/codestral/i, 'mistral'],
+]
+
+function getModelIconUrl(model?: string): string {
+  if (!model) return ''
+  for (const [re, icon] of MODEL_ICON_MAP) {
+    if (re.test(model)) return `/static/provider-icons/${icon}.svg`
+  }
+  return ''
+}
+
+// ── table columns ──
+
+const columns: ColumnDef<AgentUsageRecord>[] = [
+  {
+    accessorKey: 'role',
+    header: 'Agent',
+    cell: ({ row }) => {
+      const { role, runtime } = row.original
+      return (
+        <div className="flex flex-col gap-0.5">
+          <span className="font-medium text-xs capitalize">{role}</span>
+          {runtime && <span className="text-muted-foreground text-[10px]">{runtime}</span>}
+        </div>
+      )
+    }
+  },
+  {
+    accessorKey: 'model',
+    header: 'Model',
+    cell: ({ row }) => {
+      const model = row.original.model
+      const iconUrl = getModelIconUrl(model)
+      return (
+        <div className="flex items-center gap-2">
+          {iconUrl ? (
+            <img src={iconUrl} alt="" className="size-4 shrink-0 rounded-sm" />
+          ) : (
+            <span className="flex size-4 shrink-0 items-center justify-center rounded-sm bg-muted text-[9px] font-semibold">
+              {model?.charAt(0).toUpperCase() ?? '?'}
+            </span>
+          )}
+          <span className="truncate text-xs max-w-40">{model || 'unknown'}</span>
+        </div>
+      )
+    }
+  },
+  {
+    accessorKey: 'summary',
+    header: 'Summary',
+    cell: ({ row }) => (
+      <span className="line-clamp-2 text-xs text-muted-foreground max-w-64">
+        {row.original.summary || '—'}
+      </span>
+    )
+  },
+  {
+    accessorKey: 'totalCostUsd',
+    header: 'Cost',
+    cell: ({ row }) => {
+      const { inputCostUsd, outputCostUsd, totalCostUsd } = row.original
+      return (
+        <div className="flex flex-col gap-0.5 font-mono text-xs tabular-nums">
+          <span>{formatCurrency(totalCostUsd)}</span>
+          <span className="text-muted-foreground text-[10px]">
+            {formatCurrency(inputCostUsd)} in / {formatCurrency(outputCostUsd)} out
+          </span>
+        </div>
+      )
+    }
+  },
+  {
+    accessorKey: 'status',
+    header: 'Status',
+    cell: ({ row }) => {
+      const status = row.original.status
+      const colorMap: Record<string, string> = {
+        completed: 'bg-emerald-500/10 text-emerald-600',
+        active: 'bg-blue-500/10 text-blue-600',
+        idle: 'bg-muted text-muted-foreground',
+        blocked: 'bg-amber-500/10 text-amber-600',
+        crashed: 'bg-red-500/10 text-red-600',
+      }
+      return (
+        <Badge className={cn('rounded-sm px-1.5 text-[10px] capitalize', colorMap[status] ?? 'bg-muted text-muted-foreground')}>
+          {status}
+        </Badge>
+      )
+    }
+  },
+  {
+    accessorKey: 'durationMs',
+    header: 'Duration',
+    cell: ({ row }) => {
+      const { startedAt, completedAt } = row.original
+      const ms = new Date(completedAt).getTime() - new Date(startedAt).getTime()
+      return <span className="font-mono text-xs tabular-nums">{formatDuration(Number.isFinite(ms) && ms > 0 ? ms : 0)}</span>
+    }
+  },
+  {
+    accessorKey: 'completedAt',
+    header: 'Time',
+    cell: ({ row }) => (
+      <span className="text-muted-foreground text-xs">{formatRelative(row.original.completedAt)}</span>
+    )
+  },
+]
+
+// ── main component ──
 
 export function UsageDashboard({ data }: { data: AgentUsageDashboardData | null }) {
   const totals = data?.totals ?? {
@@ -81,7 +220,16 @@ export function UsageDashboard({ data }: { data: AgentUsageDashboardData | null 
             ) : byModel.map((item, index) => (
               <div key={item.model} className="rounded-md px-2 py-1.5 transition-colors hover:bg-muted/50">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="min-w-0 truncate text-xs">{item.model}</span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    {(() => { const iconUrl = getModelIconUrl(item.model); return iconUrl ? (
+                      <img src={iconUrl} alt="" className="size-4 shrink-0 rounded-sm" />
+                    ) : (
+                      <span className="flex size-4 shrink-0 items-center justify-center rounded-sm bg-muted text-[9px] font-semibold">
+                        {item.model?.charAt(0).toUpperCase() ?? '?'}
+                      </span>
+                    )})()}
+                    <span className="truncate text-xs">{item.model}</span>
+                  </div>
                   <span className="font-mono text-xs font-semibold tabular-nums">{formatCurrency(item.costUsd)}</span>
                 </div>
                 <div className="mt-1 h-1 overflow-hidden rounded-full bg-muted">
@@ -96,40 +244,154 @@ export function UsageDashboard({ data }: { data: AgentUsageDashboardData | null 
         </div>
       </div>
 
-      <div className="grid md:grid-cols-2">
-        <div className="border-b p-4 md:border-r md:border-b-0">
-          <span className="font-medium text-xs">Token Mix</span>
-          <div className="mt-4 space-y-4">
-            <UsageBar label="Input" value={totals.inputTokens} total={totals.totalTokens} />
-            <UsageBar label="Output" value={totals.outputTokens} total={totals.totalTokens} muted />
-          </div>
+      <div className="grid border-b lg:grid-cols-2">
+        <div className="border-b p-4 lg:border-r lg:border-b-0">
+          <span className="font-medium text-xs">Token Distribution</span>
+          <TokenPieChart inputTokens={totals.inputTokens} outputTokens={totals.outputTokens} />
         </div>
         <div className="p-4">
-          <span className="font-medium text-xs">Recent Agent Runs</span>
-          <div className="mt-3">
-            {recent.length === 0 ? (
-              <p className="text-muted-foreground text-xs">Usage appears here after an agent run completes.</p>
-            ) : recent.map((item, index) => (
-              <div key={item.id} className={cn("py-2", index < recent.length - 1 && "border-b")}>
-                <div className="flex items-start justify-between gap-2">
-                  <span className="min-w-0 flex-1 truncate text-xs">{item.summary || item.role}</span>
-                  <span className="shrink-0 font-mono text-xs font-semibold tabular-nums">{formatCurrency(item.totalCostUsd)}</span>
-                </div>
-                <div className="mt-1 flex min-w-0 items-center gap-2">
-                  <Badge variant="outline" className="h-4 max-w-32 rounded-full font-mono text-[9px]">
-                    <span className="truncate">{item.model || "unknown"}</span>
-                  </Badge>
-                  <span className="font-mono text-[10px] text-muted-foreground tabular-nums">{formatTokens(item.totalTokens)} tok</span>
-                  <span className="text-[10px] text-muted-foreground">{formatRelative(item.completedAt)}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+          <span className="font-medium text-xs">Cost Distribution</span>
+          <CostPieChart byModel={byModel} totalCost={totals.totalCostUsd} />
         </div>
       </div>
+
+      <AgentRunsTable data={recent} />
     </Card>
   )
 }
+
+// ── agent runs datatable ──
+
+function AgentRunsTable({ data }: { data: AgentUsageRecord[] }) {
+  const pageSize = 5
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize })
+
+  const table = useReactTable({
+    data,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    onPaginationChange: setPagination,
+    state: { pagination }
+  })
+
+  const { pages, showLeftEllipsis, showRightEllipsis } = usePagination({
+    currentPage: table.getState().pagination.pageIndex + 1,
+    totalPages: table.getPageCount(),
+    paginationItemsToDisplay: 2
+  })
+
+  if (data.length === 0) {
+    return (
+      <div className="p-6 text-center text-xs text-muted-foreground">
+        Usage appears here after an agent run completes.
+      </div>
+    )
+  }
+
+  return (
+    <div className="w-full">
+      <div className="border-b">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map(hg => (
+              <TableRow key={hg.id}>
+                {hg.headers.map(header => (
+                  <TableHead key={header.id} className="text-muted-foreground h-10 first:pl-4">
+                    {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map(row => (
+                <TableRow key={row.id}>
+                  {row.getVisibleCells().map(cell => (
+                    <TableCell key={cell.id} className="first:pl-4 py-2.5">
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-24 text-center">
+                  No results.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <div className="flex items-center justify-between gap-3 px-6 py-3 max-sm:flex-col md:max-lg:flex-col">
+        <p className="text-muted-foreground text-sm whitespace-nowrap" aria-live="polite">
+          Showing{' '}
+          <span>
+            {table.getState().pagination.pageIndex * pageSize + 1} to{' '}
+            {Math.min((table.getState().pagination.pageIndex + 1) * pageSize, table.getRowCount())}
+          </span>{' '}
+          of <span>{table.getRowCount()}</span> entries
+        </p>
+        <Pagination className="mx-0 ml-auto w-auto justify-end">
+          <PaginationContent>
+            <PaginationItem>
+              <Button
+                className="disabled:pointer-events-none disabled:opacity-50"
+                variant="ghost"
+                onClick={() => table.previousPage()}
+                disabled={!table.getCanPreviousPage()}
+                aria-label="Go to previous page"
+              >
+                <ChevronLeftIcon aria-hidden="true" />
+                Previous
+              </Button>
+            </PaginationItem>
+            {showLeftEllipsis && (
+              <PaginationItem><PaginationEllipsis /></PaginationItem>
+            )}
+            {pages.map(page => {
+              const isActive = page === table.getState().pagination.pageIndex + 1
+              return (
+                <PaginationItem key={page}>
+                  <Button
+                    size="icon"
+                    className={cn(!isActive && 'bg-primary/10 text-primary hover:bg-primary/20')}
+                    onClick={() => table.setPageIndex(page - 1)}
+                    aria-current={isActive ? 'page' : undefined}
+                  >
+                    {page}
+                  </Button>
+                </PaginationItem>
+              )
+            })}
+            {showRightEllipsis && (
+              <PaginationItem><PaginationEllipsis /></PaginationItem>
+            )}
+            <PaginationItem>
+              <Button
+                className="disabled:pointer-events-none disabled:opacity-50"
+                variant="ghost"
+                onClick={() => table.nextPage()}
+                disabled={!table.getCanNextPage()}
+                aria-label="Go to next page"
+              >
+                Next
+                <ChevronRightIcon aria-hidden="true" />
+              </Button>
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      </div>
+    </div>
+  )
+}
+
+// ── sub-components ──
 
 function Metric({ label, value, helper, icon: Icon, last }: { label: string; value: string; helper: string; icon: LucideIcon; last?: boolean }) {
   return (
@@ -156,18 +418,91 @@ function Legend({ className, label }: { className: string; label: string }) {
   )
 }
 
-function UsageBar({ label, value, total, muted }: { label: string; value: number; total: number; muted?: boolean }) {
-  const pct = total ? Math.round((value / total) * 100) : 0
+// ── pie charts ──
+
+const tokenPieConfig = {
+  input: { label: "Input", color: "var(--primary)" },
+  output: { label: "Output", color: "color-mix(in oklab, var(--primary) 40%, transparent)" },
+} satisfies ChartConfig
+
+function TokenPieChart({ inputTokens, outputTokens }: { inputTokens: number; outputTokens: number }) {
+  const total = inputTokens + outputTokens
+  const data = [
+    { key: "input", value: inputTokens, fill: "var(--color-input)" },
+    { key: "output", value: outputTokens, fill: "var(--color-output)" },
+  ]
   return (
-    <div>
-      <div className="flex items-center justify-between">
-        <span className="text-muted-foreground text-[10px]">{label} tokens</span>
-        <span className="font-mono text-[10px] text-muted-foreground tabular-nums">{pct}%</span>
+    <div className="mt-2">
+      <ChartContainer config={tokenPieConfig} className="mx-auto h-40 w-full">
+        <PieChart margin={{ top: 0, bottom: 0, left: 0, right: 0 }}>
+          <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+          <Pie data={data} dataKey="value" nameKey="key" startAngle={90} endAngle={450} innerRadius={48} outerRadius={68} paddingAngle={2}>
+            <Label
+              content={({ viewBox }) => {
+                if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                  return (
+                    <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
+                      <tspan x={viewBox.cx} y={(viewBox.cy || 0) - 8} className="fill-card-foreground text-sm font-medium">
+                        {formatTokens(total)}
+                      </tspan>
+                      <tspan x={viewBox.cx} y={(viewBox.cy || 0) + 10} className="fill-muted-foreground text-[10px]">
+                        tokens
+                      </tspan>
+                    </text>
+                  )
+                }
+              }}
+            />
+          </Pie>
+        </PieChart>
+      </ChartContainer>
+      <div className="flex items-center justify-center gap-4">
+        <Legend className="bg-primary" label={`Input ${total ? Math.round((inputTokens / total) * 100) : 0}%`} />
+        <Legend className="bg-primary/40" label={`Output ${total ? Math.round((outputTokens / total) * 100) : 0}%`} />
       </div>
-      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
-        <div className={cn("h-full rounded-full", muted ? "bg-foreground/40" : "bg-foreground")} style={{ width: `${pct}%` }} />
+    </div>
+  )
+}
+
+function CostPieChart({ byModel, totalCost }: { byModel: Array<{ model: string; costUsd: number }>; totalCost: number }) {
+  if (byModel.length === 0) {
+    return <p className="mt-4 text-center text-xs text-muted-foreground">No cost data yet.</p>
+  }
+  const top = byModel.slice(0, 5)
+  const data = top.map((item) => ({ key: item.model, value: item.costUsd }))
+  return (
+    <div className="mt-2">
+      <ChartContainer config={tokenPieConfig} className="mx-auto h-40 w-full">
+        <PieChart margin={{ top: 0, bottom: 0, left: 0, right: 0 }}>
+          <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+          <Pie data={data} dataKey="value" nameKey="key" startAngle={90} endAngle={450} innerRadius={48} outerRadius={68} paddingAngle={2}>
+            <Label
+              content={({ viewBox }) => {
+                if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                  return (
+                    <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
+                      <tspan x={viewBox.cx} y={(viewBox.cy || 0) - 8} className="fill-card-foreground text-sm font-medium">
+                        {formatCurrency(totalCost)}
+                      </tspan>
+                      <tspan x={viewBox.cx} y={(viewBox.cy || 0) + 10} className="fill-muted-foreground text-[10px]">
+                        total cost
+                      </tspan>
+                    </text>
+                  )
+                }
+              }}
+            />
+          </Pie>
+        </PieChart>
+      </ChartContainer>
+      <div className="mt-1 space-y-0.5">
+        {top.map((item) => (
+          <div key={item.model} className="flex items-center justify-between px-1">
+            <span className="truncate text-[10px]">{item.model}</span>
+            <span className="font-mono text-[10px] tabular-nums">{formatCurrency(item.costUsd)}</span>
+          </div>
+        ))}
       </div>
-      <div className="mt-0.5 font-mono text-[9px] text-muted-foreground tabular-nums">{formatNumber(value)}</div>
     </div>
   )
 }
@@ -179,6 +514,8 @@ function EmptyBars() {
     </div>
   )
 }
+
+// ── formatters ──
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat("en-US").format(value)
