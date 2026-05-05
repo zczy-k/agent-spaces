@@ -27,19 +27,14 @@ export async function runCommitAgent(workspaceId: string): Promise<string> {
 
   const workingDir = agentService.resolveWorkingDir(workspaceId, commitAgent);
   const systemPrompt = commitAgent.systemPrompt?.trim() || DEFAULT_SYSTEM_PROMPT;
+  const truncatedDiff = diff.length > 8000 ? diff.substring(0, 8000) + '\n... (truncated)' : diff;
 
   const result = await runtime.execute(
-    `${systemPrompt}\n\nGenerate a commit message for these changes:\n\n${diff.substring(0, 8000)}`,
+    `Generate a commit message for these changes:\n\n${truncatedDiff}`,
     workingDir,
     {
       maxTurns: 1,
-      mcpServers: agentService.getMcpServers(commitAgent.mcps),
-      configDir: agentService.getAgentConfigDir(workspaceId, commitAgent),
-      skills: agentService.getAvailableSkillNames(
-        agentService.getAgentConfigDir(workspaceId, commitAgent),
-        commitAgent.skills,
-      ),
-      sandboxDirs: commitAgent.sandboxDirs,
+      systemPrompt,
     },
   );
 

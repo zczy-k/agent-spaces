@@ -35,6 +35,7 @@ export class OpenAgentSdkRuntime implements AgentRuntime {
         apiKey: this.config.apiKey,
         baseURL: this.config.baseURL,
         cwd,
+        systemPrompt: options?.systemPrompt,
         maxTurns: options?.maxTurns,
         allowedTools: options?.tools,
         additionalDirectories: options?.sandboxDirs,

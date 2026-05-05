@@ -21,6 +21,7 @@ export interface AgentRunOptions {
   skills?: string[];
   configDir?: string;
   sandboxDirs?: string[];
+  systemPrompt?: string;
   onEvent?: (event: AgentRuntimeEvent) => void;
 }
 
