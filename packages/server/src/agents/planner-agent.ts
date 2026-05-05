@@ -160,6 +160,7 @@ function buildPlannerPrompt(issue: NonNullable<ReturnType<typeof issueService.ge
     'Before planning, call ViewCurrentChannelIssue to load the latest issue context and comments for this channel.',
     `The current workspace working directory is: ${workingDir}`,
     'Plan work as changes to files under this workspace unless the issue explicitly says otherwise.',
+    'For Bash commands that inspect files under this working directory, prefer relative paths instead of absolute paths.',
     '',
     'Current issue context:',
     `- Issue id: ${issue.id}`,

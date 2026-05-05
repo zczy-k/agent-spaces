@@ -1,6 +1,6 @@
 import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { extname } from 'node:path';
+import { extname, isAbsolute, resolve } from 'node:path';
 import { join } from 'node:path';
 import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import type { McpServerConfig, PermissionMode } from '@anthropic-ai/claude-agent-sdk';
@@ -186,4 +186,18 @@ export function normalizePermissionMode(permissionMode?: AgentRuntimeConfig['per
 
 export function isRootUser(): boolean {
   return typeof process.getuid === 'function' && process.getuid() === 0;
+}
+
+export function normalizeAdditionalDirectories(cwd: string, sandboxDirs?: string[]): string[] {
+  const seen = new Set<string>();
+  const dirs = [cwd, ...(sandboxDirs ?? [])]
+    .map((dir) => dir.trim())
+    .filter(Boolean)
+    .map((dir) => isAbsolute(dir) ? resolve(dir) : resolve(cwd, dir));
+
+  return dirs.filter((dir) => {
+    if (seen.has(dir)) return false;
+    seen.add(dir);
+    return true;
+  });
 }

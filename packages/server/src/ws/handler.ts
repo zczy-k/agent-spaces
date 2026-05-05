@@ -1336,6 +1336,7 @@ function buildAgentPrompt(
     if (runtimeConfig.boundDirs?.length) {
       configLines.push(`- Code directories (boundDirs): ${runtimeConfig.boundDirs.join(', ')}`);
     }
+    configLines.push('- For Bash commands that create or modify files under the current working directory, use relative paths such as `mkdir -p css js` instead of absolute paths.');
     if (runtimeConfig.builtInTools?.length) {
       configLines.push(...formatBuiltInToolContext(runtimeConfig.builtInTools));
     }

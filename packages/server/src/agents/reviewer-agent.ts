@@ -172,6 +172,7 @@ function buildReviewerPrompt(issue: NonNullable<ReturnType<typeof issueService.g
     'Before reviewing, call ViewCurrentChannelIssue with the current channel id to load the latest shared issue context and comments.',
     `The current workspace working directory is: ${workingDir}`,
     'Review files under this working directory. Treat deliverables outside it, especially in /tmp, as misplaced unless the task explicitly asked for temporary output.',
+    'For Bash commands that inspect files under this working directory, prefer relative paths instead of absolute paths.',
     '',
     'Current issue:',
     `- Issue id: ${issue.id}`,
