@@ -3,7 +3,13 @@ import { exec } from 'child_process';
 import * as wsService from '../services/workspace.js';
 import * as agentService from '../services/agent.js';
 import { readWorkspacePrompt, writeWorkspacePrompt } from '../services/workspace-prompt.js';
-import { sendTestNotification, startWorkspaceNotificationService, stopWorkspaceNotificationService } from '../services/notification-hub.js';
+import {
+  getWeChatLoginQRCode,
+  pollWeChatLoginStatus,
+  sendTestNotification,
+  startWorkspaceNotificationService,
+  stopWorkspaceNotificationService,
+} from '../services/notification-hub.js';
 
 const router = Router();
 
@@ -121,6 +127,21 @@ router.post('/:id/notifications/test', async (req, res) => {
     res.status(400).json({
       sent: false,
       reason: err instanceof Error ? err.message : 'Failed to send test notification',
+    });
+  }
+});
+
+router.post('/:id/notifications/wechat/qr', async (req, res) => {
+  try {
+    const poll = req.query.poll === '1' || req.query.poll === 'true';
+    const refresh = req.query.refresh === '1' || req.query.refresh === 'true';
+    const result = poll
+      ? await pollWeChatLoginStatus(req.params.id)
+      : await getWeChatLoginQRCode(req.params.id, refresh);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({
+      error: err instanceof Error ? err.message : 'Failed to get WeChat QR code',
     });
   }
 });

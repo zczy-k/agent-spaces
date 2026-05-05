@@ -1,40 +1,26 @@
 # Findings & Decisions
 
 ## Requirements
-- Move persisted agent execution records from per-workspace `workspaces/{workspaceId}/agents` JSON storage toward user-level `{user}/.agent-spaces-data/agents`.
-- Replace JSON storage for agent records with SQLite.
-- After each agent run completes, record input and output token usage/cost information in the database.
-- Build a shadcn-style usage/billing dashboard based on `/Users/Zhuanz/Downloads/dashboard.html`.
-- Render the dashboard in `packages/web/src/components/home/home-page.tsx`.
+- 根据 `docs/bot-notification-workflow.md` 扩展现有 workspace 通知体系。
+- 参考 `/Users/Zhuanz/Downloads/wx-robot-ilink-main` 接入微信 iLink robot。
+- 在 `packages/web/src/components/settings/project-settings-panel.tsx` 的 WeChat tab 展示配置二维码。
 
 ## Research Findings
-- Initial files inspected:
-  - `packages/server/src/adapters/agent-runtime.ts` is only the runtime factory.
-  - `/Users/Zhuanz/Downloads/dashboard.html` is a compact Usage Dashboard layout with header, metric tiles, daily input/output token bars, cost by model, and recent high-cost queries.
-  - `packages/web/src/components/home/home-page.tsx` currently renders workspace cards and has unused/commented dashboard demo imports.
-- `packages/server/src/storage/agent-store.ts` was the old per-workspace JSON-backed store writing under `workspaces/{workspaceId}/agents`.
-- `packages/server/src/adapters/codex-runtime.ts` emits usage lines in the form `[Usage] tokens=... input=... output=... reasoning=...`.
-- Agent completion paths include chat websocket runs, issue planner/task creator/executor/reviewer, and commit agent.
-- `node:sqlite` works in the local Node v25.8.1 runtime.
+- Shared 类型目前已有 `NotificationProvider = 'lark' | 'wechat'`，但 `WorkspaceNotificationSettings` 只有 `lark` 配置。
+- 后端 `packages/server/src/services/notification-hub.ts` 只有 `LarkNotificationAdapter`，`startWorkspaceNotificationService()` 对 `wechat` 返回 unsupported。
+- 现有抽象 `BotAdapter` 只要求 `start/stop/send/hasRecipients`，适合新增 WeChat adapter。
+- 设置面板 WeChat tab 目前只显示 “reserved/todo” 文案。
+- wx 参考项目关键接口：
+  - `GET https://ilinkai.weixin.qq.com/ilink/bot/get_bot_qrcode?bot_type=3`
+  - `GET .../ilink/bot/get_qrcode_status?qrcode=...`，header `iLink-App-ClientVersion: 1`
+  - 确认后返回 `bot_token`、`baseurl`、`ilink_bot_id`、`ilink_user_id`
+  - `POST ilink/bot/getupdates` 长轮询收消息
+  - `POST ilink/bot/sendmessage` 发送文本
+- 参考项目按 `from_user_id` 记录上下文 token；本项目可以按 workspace 存 `userIds` 作为主动通知收件人。
 
 ## Technical Decisions
 | Decision | Rationale |
 |----------|-----------|
-| Use `node:sqlite` | Available locally, keeps the repo dependency set unchanged. |
-| Central SQLite file at `~/.agent-spaces-data/agents/agents.sqlite` | Satisfies requested move away from per-workspace JSON agent records. |
-| Keep legacy JSON migration on first SQLite open | Existing sessions remain visible without destructive moves. |
-| Record usage from runtime output lines at `agentService.complete` | Centralizes completed-run accounting with minimal changes to runtime adapters. |
-
-## Issues Encountered
-| Issue | Resolution |
-|-------|------------|
-| Shared types were not visible to server build until `@agent-spaces/shared` was built | Ran shared build before server build. |
-| SQLite binding rejects `undefined` | Convert optional values to `null` before SQL binding. |
-
-## Resources
-- `packages/server/src/adapters/agent-runtime.ts`
-- `packages/web/src/components/home/home-page.tsx`
-- `/Users/Zhuanz/Downloads/dashboard.html`
-- `packages/server/src/storage/agent-store.ts`
-- `packages/server/src/storage/usage.ts`
-- `packages/web/src/components/home/usage-dashboard.tsx`
+| Persist WeChat token/baseUrl/accountId/userIds in `workspace.notificationSettings.wechat` | Matches existing Lark persistence model and enables service restart recovery. |
+| Add a QR status endpoint under workspace notifications routes | Frontend needs to fetch QR and poll login status without starting service manually. |
+| Keep WeChat adapter platform-only and reuse `isBuiltInCommand/buildCommandResponse/runBotAgent` | Aligns notification workflow doc. |

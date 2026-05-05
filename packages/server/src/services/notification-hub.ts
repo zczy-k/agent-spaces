@@ -1,4 +1,5 @@
 import * as Lark from '@larksuiteoapi/node-sdk';
+import crypto from 'node:crypto';
 import type { AgentConfig, TaskResult, Workspace, WorkspaceNotificationSettings } from '@agent-spaces/shared';
 import * as workspaceService from './workspace.js';
 import * as issueService from './issue.js';
@@ -29,6 +30,21 @@ interface BotAdapter {
 
 const adapters = new Map<string, BotAdapter>();
 const larkChatIdsByWorkspace = new Map<string, Set<string>>();
+const recentLarkMessageIdsByWorkspace = new Map<string, Map<string, number>>();
+const LARK_MESSAGE_DEDUPE_TTL_MS = 5 * 60 * 1000;
+const WECHAT_BASE_URL = 'https://ilinkai.weixin.qq.com';
+const WECHAT_BOT_TYPE = '3';
+const WECHAT_API_TIMEOUT_MS = 15_000;
+const WECHAT_QR_STATUS_TIMEOUT_MS = 8_000;
+const WECHAT_LONG_POLL_TIMEOUT_MS = 35_000;
+const WECHAT_RETRY_DELAY_MS = 2_000;
+const WECHAT_BACKOFF_DELAY_MS = 30_000;
+const WECHAT_MAX_CONSECUTIVE_FAILURES = 5;
+const recentWechatMessageIdsByWorkspace = new Map<string, Map<string, number>>();
+const wechatUserIdsByWorkspace = new Map<string, Set<string>>();
+const wechatContextTokensByWorkspace = new Map<string, Map<string, string>>();
+const wechatLoginSessions = new Map<string, WeChatQRCodeSession>();
+const WECHAT_MESSAGE_DEDUPE_TTL_MS = 5 * 60 * 1000;
 
 export async function startWorkspaceNotificationService(workspaceId: string): Promise<{ started: boolean; provider?: string }> {
   const workspace = workspaceService.getById(workspaceId);
@@ -43,6 +59,14 @@ export async function startWorkspaceNotificationService(workspaceId: string): Pr
     adapters.set(workspaceId, adapter);
     persistServiceRunning(workspaceId, true);
     return { started: true, provider: 'lark' };
+  }
+
+  if (settings.provider === 'wechat') {
+    const adapter = new WeChatNotificationAdapter(workspace, settings);
+    await adapter.start();
+    adapters.set(workspaceId, adapter);
+    persistServiceRunning(workspaceId, true);
+    return { started: true, provider: 'wechat' };
   }
 
   return { started: false, provider: settings.provider };
@@ -84,7 +108,8 @@ export async function sendTestNotification(workspaceId: string): Promise<{ sent:
   }
   if (!adapter) return { sent: false, reason: 'Notification adapter is unavailable' };
   if (!adapter.hasRecipients()) {
-    return { sent: false, reason: 'No Feishu chat is registered yet. Send any message to the bot first.' };
+    const provider = workspace.notificationSettings.provider === 'wechat' ? 'WeChat user' : 'Feishu chat';
+    return { sent: false, reason: `No ${provider} is registered yet. Send any message to the bot first.` };
   }
 
   await adapter.send({
@@ -98,6 +123,93 @@ export async function sendTestNotification(workspaceId: string): Promise<{ sent:
     },
   });
   return { sent: true };
+}
+
+export async function getWeChatLoginQRCode(workspaceId: string, forceRefresh = false): Promise<WeChatLoginQRCodeResult> {
+  const workspace = workspaceService.getById(workspaceId);
+  if (!workspace) throw new Error('Workspace not found');
+  const settings = workspace.notificationSettings;
+  if (!forceRefresh && settings?.wechat?.token && settings.wechat.accountId) {
+    return {
+      status: 'confirmed',
+      accountId: settings.wechat.accountId,
+      userId: settings.wechat.userId,
+      baseUrl: settings.wechat.baseUrl,
+      workspace,
+    };
+  }
+
+  if (forceRefresh) wechatLoginSessions.delete(workspaceId);
+  const existing = wechatLoginSessions.get(workspaceId);
+  if (existing && Date.now() - existing.createdAt < 2 * 60_000) {
+    return {
+      status: 'wait',
+      qrcode: existing.qrcode,
+      qrcodeImgContent: existing.qrcodeImgContent,
+    };
+  }
+
+  const qr = await fetchWeChatQRCode();
+  wechatLoginSessions.set(workspaceId, {
+    qrcode: qr.qrcode,
+    qrcodeImgContent: qr.qrcode_img_content,
+    createdAt: Date.now(),
+  });
+  return {
+    status: 'wait',
+    qrcode: qr.qrcode,
+    qrcodeImgContent: qr.qrcode_img_content,
+  };
+}
+
+export async function pollWeChatLoginStatus(workspaceId: string): Promise<WeChatLoginQRCodeResult> {
+  const session = wechatLoginSessions.get(workspaceId);
+  if (!session) return getWeChatLoginQRCode(workspaceId);
+
+  const status = await fetchWeChatQRCodeStatus(session.qrcode);
+  if (status.status === 'confirmed') {
+    if (!status.bot_token || !status.ilink_bot_id) {
+      throw new Error('WeChat login confirmed but token or bot id is missing');
+    }
+    const workspace = workspaceService.getById(workspaceId);
+    const settings = workspace?.notificationSettings ?? {
+      enabled: true,
+      provider: 'wechat' as const,
+      events: ['issue_started', 'issue_completed', 'issue_task_completed'] as const,
+    };
+    const baseUrl = status.baseurl || WECHAT_BASE_URL;
+    const updated = workspaceService.update(workspaceId, {
+      notificationSettings: {
+        ...settings,
+        provider: 'wechat',
+        wechat: {
+          ...settings.wechat,
+          token: status.bot_token,
+          baseUrl,
+          accountId: status.ilink_bot_id,
+          userId: status.ilink_user_id,
+        },
+      },
+    });
+    wechatLoginSessions.delete(workspaceId);
+    return {
+      status: 'confirmed',
+      accountId: updated?.notificationSettings?.wechat?.accountId,
+      userId: updated?.notificationSettings?.wechat?.userId,
+      baseUrl: updated?.notificationSettings?.wechat?.baseUrl,
+      workspace: updated ?? undefined,
+    };
+  }
+
+  if (status.status === 'expired') {
+    wechatLoginSessions.delete(workspaceId);
+  }
+
+  return {
+    status: status.status,
+    qrcode: session.qrcode,
+    qrcodeImgContent: session.qrcodeImgContent,
+  };
 }
 
 export function publishWorkspaceEvent(workspaceId: string, wsEvent: string, data: unknown): void {
@@ -214,6 +326,149 @@ function isTaskDoneStatus(status?: string): boolean {
   return status === 'done' || status === 'failed' || status === 'cancelled';
 }
 
+class WeChatNotificationAdapter implements BotAdapter {
+  private running = false;
+  private credentials: WeChatCredentials;
+  private getUpdatesBuf = '';
+
+  constructor(
+    private workspace: Workspace,
+    settings: WorkspaceNotificationSettings,
+  ) {
+    const token = settings.wechat?.token?.trim();
+    const baseUrl = settings.wechat?.baseUrl?.trim() || WECHAT_BASE_URL;
+    const accountId = settings.wechat?.accountId?.trim();
+    if (!token || !accountId) {
+      throw new Error('WeChat login is required. Scan the QR code first.');
+    }
+    this.credentials = {
+      token,
+      baseUrl,
+      accountId,
+      userId: settings.wechat?.userId,
+    };
+    this.getUpdatesBuf = settings.wechat?.getUpdatesBuf ?? '';
+    if (settings.wechat?.userIds?.length) {
+      wechatUserIdsByWorkspace.set(workspace.id, new Set(settings.wechat.userIds));
+    }
+  }
+
+  async start(): Promise<void> {
+    if (this.running) return;
+    this.running = true;
+    void this.pollLoop();
+  }
+
+  async stop(): Promise<void> {
+    this.running = false;
+  }
+
+  async send(envelope: BroadcastEnvelope): Promise<void> {
+    const userIds = wechatUserIdsByWorkspace.get(this.workspace.id);
+    if (!userIds?.size) return;
+
+    const text = [
+      formatLarkTitle(envelope),
+      '',
+      formatLarkContent(envelope),
+    ].filter(Boolean).join('\n');
+
+    for (const userId of userIds) {
+      await sendWeChatTextMessage(
+        this.credentials.baseUrl,
+        this.credentials.token,
+        userId,
+        text,
+        getWeChatContextToken(this.workspace.id, userId),
+      );
+    }
+  }
+
+  hasRecipients(): boolean {
+    return Boolean(wechatUserIdsByWorkspace.get(this.workspace.id)?.size);
+  }
+
+  private async pollLoop(): Promise<void> {
+    let failures = 0;
+    while (this.running) {
+      try {
+        const resp = await getWeChatUpdates(
+          this.credentials.baseUrl,
+          this.credentials.token,
+          this.getUpdatesBuf,
+        );
+
+        if (resp.ret !== undefined && resp.ret !== 0) {
+          failures++;
+          console.error(`[notification] WeChat getupdates failed workspaceId=${this.workspace.id} ret=${resp.ret} errcode=${resp.errcode} errmsg=${resp.errmsg}`);
+          await sleep(failures >= WECHAT_MAX_CONSECUTIVE_FAILURES ? WECHAT_BACKOFF_DELAY_MS : WECHAT_RETRY_DELAY_MS);
+          if (failures >= WECHAT_MAX_CONSECUTIVE_FAILURES) failures = 0;
+          continue;
+        }
+
+        failures = 0;
+        if (resp.get_updates_buf && resp.get_updates_buf !== this.getUpdatesBuf) {
+          this.getUpdatesBuf = resp.get_updates_buf;
+          persistWeChatGetUpdatesBuf(this.workspace.id, this.getUpdatesBuf);
+        }
+
+        for (const msg of resp.msgs ?? []) {
+          await this.handleMessage(msg);
+        }
+      } catch (err) {
+        failures++;
+        console.error(`[notification] WeChat polling error workspaceId=${this.workspace.id}:`, err);
+        await sleep(failures >= WECHAT_MAX_CONSECUTIVE_FAILURES ? WECHAT_BACKOFF_DELAY_MS : WECHAT_RETRY_DELAY_MS);
+        if (failures >= WECHAT_MAX_CONSECUTIVE_FAILURES) failures = 0;
+      }
+    }
+  }
+
+  private async handleMessage(msg: WeChatMessage): Promise<void> {
+    if (msg.message_type !== WeChatMessageType.USER) return;
+    if (isDuplicateWeChatMessage(this.workspace.id, msg)) return;
+
+    const fromUser = msg.from_user_id;
+    if (!fromUser) return;
+
+    const userIds = wechatUserIdsByWorkspace.get(this.workspace.id) ?? new Set<string>();
+    userIds.add(fromUser);
+    wechatUserIdsByWorkspace.set(this.workspace.id, userIds);
+    persistWeChatUserIds(this.workspace.id, Array.from(userIds));
+
+    if (msg.context_token) {
+      setWeChatContextToken(this.workspace.id, fromUser, msg.context_token);
+    }
+
+    const text = extractWeChatTextFromMessage(msg).trim();
+    if (!text) return;
+    if (isBuiltInCommand(text)) {
+      await this.reply(fromUser, buildCommandResponse(this.workspace.id, text));
+      return;
+    }
+
+    const botAgent = getConfiguredBotAgent(this.workspace.id);
+    if (!botAgent) {
+      await this.reply(fromUser, '请先设置agent');
+      return;
+    }
+
+    await this.reply(fromUser, `${botAgent.name} working...`);
+    const reply = await runBotAgent(this.workspace.id, botAgent, text);
+    await this.reply(fromUser, reply);
+  }
+
+  private async reply(to: string, text: string): Promise<void> {
+    await sendWeChatTextMessage(
+      this.credentials.baseUrl,
+      this.credentials.token,
+      to,
+      text,
+      getWeChatContextToken(this.workspace.id, to),
+    );
+  }
+}
+
 class LarkNotificationAdapter implements BotAdapter {
   private client: Lark.Client;
   private wsClient: Lark.WSClient;
@@ -274,17 +529,20 @@ class LarkNotificationAdapter implements BotAdapter {
     return Boolean(larkChatIdsByWorkspace.get(this.workspace.id)?.size);
   }
 
-  private async handleMessage(data: {
-    message?: { chat_id?: string; content?: string };
-  }): Promise<void> {
+  private async handleMessage(data: LarkMessageReceiveEvent): Promise<void> {
     const chatId = data.message?.chat_id;
     if (!chatId) return;
+    if (isDuplicateLarkMessage(this.workspace.id, data)) return;
+    if (data.sender?.sender_type && data.sender.sender_type !== 'user') return;
+    if (data.message?.message_type && data.message.message_type !== 'text') return;
+
     const chatIds = larkChatIdsByWorkspace.get(this.workspace.id) ?? new Set<string>();
     chatIds.add(chatId);
     larkChatIdsByWorkspace.set(this.workspace.id, chatIds);
     persistLarkChatIds(this.workspace.id, Array.from(chatIds));
 
     const text = parseLarkText(data.message?.content);
+    if (!text) return;
     if (isBuiltInCommand(text)) {
       await this.sendCard(chatId, 'Agent Spaces', buildCommandResponse(this.workspace.id, text));
       return;
@@ -296,7 +554,7 @@ class LarkNotificationAdapter implements BotAdapter {
       return;
     }
 
-    await this.sendCard(chatId, 'Agent Spaces', `${botAgent.name} agent正在处理...`);
+    await this.sendCard(chatId, 'Agent Spaces', `${botAgent.name} working...`);
     const reply = await runBotAgent(this.workspace.id, botAgent, text);
     await this.sendCard(chatId, botAgent.name, reply);
   }
@@ -316,6 +574,124 @@ class LarkNotificationAdapter implements BotAdapter {
   }
 }
 
+interface LarkMessageReceiveEvent {
+  event_id?: string;
+  header?: { event_id?: string };
+  sender?: { sender_type?: string };
+  message?: {
+    chat_id?: string;
+    content?: string;
+    message_id?: string;
+    message_type?: string;
+    create_time?: string;
+  };
+}
+
+interface WeChatQRCodeSession {
+  qrcode: string;
+  qrcodeImgContent: string;
+  createdAt: number;
+}
+
+export interface WeChatLoginQRCodeResult {
+  status: 'wait' | 'scaned' | 'confirmed' | 'expired';
+  qrcode?: string;
+  qrcodeImgContent?: string;
+  accountId?: string;
+  userId?: string;
+  baseUrl?: string;
+  workspace?: Workspace;
+}
+
+interface WeChatQRCodeResponse {
+  qrcode: string;
+  qrcode_img_content: string;
+}
+
+interface WeChatQRCodeStatusResponse {
+  status: 'wait' | 'scaned' | 'confirmed' | 'expired';
+  bot_token?: string;
+  ilink_bot_id?: string;
+  baseurl?: string;
+  ilink_user_id?: string;
+}
+
+interface WeChatCredentials {
+  token: string;
+  baseUrl: string;
+  accountId: string;
+  userId?: string;
+}
+
+const WeChatMessageType = {
+  USER: 1,
+  BOT: 2,
+} as const;
+
+const WeChatMessageItemType = {
+  TEXT: 1,
+} as const;
+
+const WeChatMessageState = {
+  FINISH: 2,
+} as const;
+
+interface WeChatMessageItem {
+  type?: number;
+  text_item?: { text?: string };
+  ref_msg?: { title?: string; message_item?: WeChatMessageItem };
+}
+
+interface WeChatMessage {
+  seq?: number;
+  message_id?: number;
+  from_user_id?: string;
+  to_user_id?: string;
+  client_id?: string;
+  create_time_ms?: number;
+  session_id?: string;
+  message_type?: number;
+  message_state?: number;
+  item_list?: WeChatMessageItem[];
+  context_token?: string;
+}
+
+interface WeChatGetUpdatesResponse {
+  ret?: number;
+  errcode?: number;
+  errmsg?: string;
+  msgs?: WeChatMessage[];
+  get_updates_buf?: string;
+  longpolling_timeout_ms?: number;
+}
+
+function isDuplicateLarkMessage(workspaceId: string, data: LarkMessageReceiveEvent): boolean {
+  const id = data.message?.message_id
+    ?? buildFallbackLarkMessageId(data)
+    ?? data.header?.event_id
+    ?? data.event_id;
+  if (!id) return false;
+
+  const now = Date.now();
+  const seen = recentLarkMessageIdsByWorkspace.get(workspaceId) ?? new Map<string, number>();
+  for (const [key, timestamp] of seen) {
+    if (now - timestamp > LARK_MESSAGE_DEDUPE_TTL_MS) seen.delete(key);
+  }
+  recentLarkMessageIdsByWorkspace.set(workspaceId, seen);
+
+  if (seen.has(id)) return true;
+  seen.set(id, now);
+  return false;
+}
+
+function buildFallbackLarkMessageId(data: LarkMessageReceiveEvent): string | undefined {
+  const chatId = data.message?.chat_id;
+  const content = data.message?.content;
+  const createTime = data.message?.create_time;
+  if (!chatId || !content) return undefined;
+  return `${chatId}:${createTime ?? ''}:${content}`;
+}
+
 function parseLarkText(content?: string): string {
   if (!content) return '';
   try {
@@ -324,6 +700,158 @@ function parseLarkText(content?: string): string {
   } catch {
     return content.trim();
   }
+}
+
+async function fetchWeChatQRCode(): Promise<WeChatQRCodeResponse> {
+  const res = await fetch(`${WECHAT_BASE_URL}/ilink/bot/get_bot_qrcode?bot_type=${WECHAT_BOT_TYPE}`);
+  if (!res.ok) throw new Error(`Failed to get WeChat QR code: ${res.status}`);
+  return await res.json() as WeChatQRCodeResponse;
+}
+
+async function fetchWeChatQRCodeStatus(qrcode: string): Promise<WeChatQRCodeStatusResponse> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), WECHAT_QR_STATUS_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${WECHAT_BASE_URL}/ilink/bot/get_qrcode_status?qrcode=${encodeURIComponent(qrcode)}`, {
+      headers: { 'iLink-App-ClientVersion': '1' },
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    if (!res.ok) throw new Error(`Failed to poll WeChat QR code status: ${res.status}`);
+    return await res.json() as WeChatQRCodeStatusResponse;
+  } catch (err) {
+    clearTimeout(timer);
+    if (err instanceof Error && err.name === 'AbortError') return { status: 'wait' };
+    throw err;
+  }
+}
+
+function randomWechatUin(): string {
+  const uint32 = crypto.randomBytes(4).readUInt32BE(0);
+  return Buffer.from(String(uint32), 'utf-8').toString('base64');
+}
+
+function buildWeChatHeaders(token?: string): Record<string, string> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    AuthorizationType: 'ilink_bot_token',
+    'X-WECHAT-UIN': randomWechatUin(),
+  };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return headers;
+}
+
+async function postWeChatApi<T>(
+  baseUrl: string,
+  endpoint: string,
+  body: Record<string, unknown>,
+  token?: string,
+  timeoutMs = WECHAT_API_TIMEOUT_MS,
+): Promise<T> {
+  const url = new URL(endpoint, baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`);
+  const bodyStr = JSON.stringify(body);
+  const headers = buildWeChatHeaders(token);
+  headers['Content-Length'] = String(Buffer.byteLength(bodyStr, 'utf-8'));
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url.toString(), {
+      method: 'POST',
+      headers,
+      body: bodyStr,
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    const text = await res.text();
+    if (!res.ok) throw new Error(`WeChat API ${endpoint} responded ${res.status}: ${text}`);
+    return JSON.parse(text) as T;
+  } catch (err) {
+    clearTimeout(timer);
+    if (err instanceof Error && err.name === 'AbortError' && endpoint === 'ilink/bot/getupdates') {
+      return { ret: 0, msgs: [], get_updates_buf: (body.get_updates_buf as string | undefined) ?? '' } as T;
+    }
+    throw err;
+  }
+}
+
+async function getWeChatUpdates(baseUrl: string, token: string, buf: string): Promise<WeChatGetUpdatesResponse> {
+  return postWeChatApi<WeChatGetUpdatesResponse>(
+    baseUrl,
+    'ilink/bot/getupdates',
+    { get_updates_buf: buf },
+    token,
+    WECHAT_LONG_POLL_TIMEOUT_MS,
+  );
+}
+
+async function sendWeChatTextMessage(
+  baseUrl: string,
+  token: string,
+  to: string,
+  text: string,
+  contextToken?: string,
+): Promise<void> {
+  const clientId = `bot-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  await postWeChatApi(
+    baseUrl,
+    'ilink/bot/sendmessage',
+    {
+      msg: {
+        from_user_id: '',
+        to_user_id: to,
+        client_id: clientId,
+        message_type: WeChatMessageType.BOT,
+        message_state: WeChatMessageState.FINISH,
+        item_list: text
+          ? [{ type: WeChatMessageItemType.TEXT, text_item: { text } }]
+          : undefined,
+        context_token: contextToken,
+      } satisfies WeChatMessage,
+    },
+    token,
+  );
+}
+
+function extractWeChatTextFromMessage(msg: WeChatMessage): string {
+  for (const item of msg.item_list ?? []) {
+    if (item.type !== WeChatMessageItemType.TEXT || !item.text_item?.text) continue;
+    const refTitle = item.ref_msg?.title;
+    return refTitle ? `[引用: ${refTitle}]\n${item.text_item.text}` : item.text_item.text;
+  }
+  return '';
+}
+
+function isDuplicateWeChatMessage(workspaceId: string, msg: WeChatMessage): boolean {
+  const id = msg.message_id
+    ? String(msg.message_id)
+    : `${msg.from_user_id ?? ''}:${msg.create_time_ms ?? ''}:${extractWeChatTextFromMessage(msg)}`;
+  if (!id.replace(/:/g, '')) return false;
+
+  const now = Date.now();
+  const seen = recentWechatMessageIdsByWorkspace.get(workspaceId) ?? new Map<string, number>();
+  for (const [key, timestamp] of seen) {
+    if (now - timestamp > WECHAT_MESSAGE_DEDUPE_TTL_MS) seen.delete(key);
+  }
+  recentWechatMessageIdsByWorkspace.set(workspaceId, seen);
+
+  if (seen.has(id)) return true;
+  seen.set(id, now);
+  return false;
+}
+
+function getWeChatContextToken(workspaceId: string, userId: string): string | undefined {
+  return wechatContextTokensByWorkspace.get(workspaceId)?.get(userId);
+}
+
+function setWeChatContextToken(workspaceId: string, userId: string, contextToken: string): void {
+  const tokens = wechatContextTokensByWorkspace.get(workspaceId) ?? new Map<string, string>();
+  tokens.set(userId, contextToken);
+  wechatContextTokensByWorkspace.set(workspaceId, tokens);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function buildCommandResponse(workspaceId: string, text: string): string {
@@ -428,8 +956,15 @@ function buildBotPrompt(message: string): string {
 
 function formatBotFinalMessage(result: { success: boolean; summary: string; output: string[]; error?: string }): string {
   if (!result.success) return result.error || result.summary || '处理失败';
-  const finalOutput = result.output.map((line) => line.trim()).filter(Boolean).at(-1);
+  const finalOutput = result.output
+    .map((line) => line.trim())
+    .filter((line) => line && !isUsageLine(line))
+    .at(-1);
   return finalOutput || result.summary || '处理完成';
+}
+
+function isUsageLine(line: string): boolean {
+  return /^\[usage\]\s+tokens=/i.test(line);
 }
 
 function formatLarkTitle(envelope: BroadcastEnvelope): string {
@@ -449,6 +984,36 @@ function persistLarkChatIds(workspaceId: string, chatIds: string[]): void {
       lark: {
         ...settings.lark,
         chatIds: [...new Set(chatIds)],
+      },
+    },
+  });
+}
+
+function persistWeChatUserIds(workspaceId: string, userIds: string[]): void {
+  const workspace = workspaceService.getById(workspaceId);
+  const settings = workspace?.notificationSettings;
+  if (!workspace || !settings) return;
+  workspaceService.update(workspaceId, {
+    notificationSettings: {
+      ...settings,
+      wechat: {
+        ...settings.wechat,
+        userIds: [...new Set(userIds)],
+      },
+    },
+  });
+}
+
+function persistWeChatGetUpdatesBuf(workspaceId: string, getUpdatesBuf: string): void {
+  const workspace = workspaceService.getById(workspaceId);
+  const settings = workspace?.notificationSettings;
+  if (!workspace || !settings) return;
+  workspaceService.update(workspaceId, {
+    notificationSettings: {
+      ...settings,
+      wechat: {
+        ...settings.wechat,
+        getUpdatesBuf,
       },
     },
   });

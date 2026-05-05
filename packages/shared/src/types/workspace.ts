@@ -29,6 +29,14 @@ export interface WorkspaceNotificationSettings {
     appSecret?: string;
     chatIds?: string[];
   };
+  wechat?: {
+    token?: string;
+    baseUrl?: string;
+    accountId?: string;
+    userId?: string;
+    userIds?: string[];
+    getUpdatesBuf?: string;
+  };
 }
 
 export interface AgentConfig {

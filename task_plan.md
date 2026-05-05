@@ -1,57 +1,51 @@
-# Task Plan: Agent Usage Billing
+# Task Plan: WeChat Bot Notification Integration
 
 ## Goal
-Persist completed agent run usage in SQLite under the user data directory and show a shadcn-style billing dashboard on the home page.
+接入 wx robot iLink 到现有 workspace 通知后端，并在项目设置面板 WeChat tab 展示扫码配置二维码。
 
 ## Current Phase
-Phase 5
+Complete
 
 ## Phases
 
 ### Phase 1: Discovery
-- [x] Understand user intent
-- [x] Identify current agent storage, runtime result, API, and web patterns
-- [x] Document findings in findings.md
+- [x] Read notification workflow doc
+- [x] Inspect existing Lark notification adapter/backend routes
+- [x] Inspect wx-robot-ilink reference project
+- [x] Document findings
 - **Status:** complete
 
-### Phase 2: Backend Design
-- [x] Decide SQLite schema and data directory layout
-- [x] Define API contract for dashboard data
-- [x] Document decisions
+### Phase 2: Backend Implementation
+- [x] Extend shared workspace notification settings for WeChat credentials and QR state
+- [x] Add WeChat iLink adapter/auth/API helpers inside notification hub
+- [x] Add backend endpoint for WeChat QR login/status
+- [x] Wire start/test behavior for WeChat provider
 - **Status:** complete
 
-### Phase 3: Backend Implementation
-- [x] Add SQLite-backed agent run and usage storage
-- [x] Record usage when agent execution completes
-- [x] Expose billing statistics API
+### Phase 3: Frontend Implementation
+- [x] Replace WeChat todo UI at project settings lines 384-388
+- [x] Fetch and display WeChat QR code/status
+- [x] Enable Start/Test controls for WeChat after login
 - **Status:** complete
 
-### Phase 4: Frontend Implementation
-- [x] Add shadcn-style usage dashboard component
-- [x] Fetch and render real billing stats in home page
-- **Status:** complete
-
-### Phase 5: Verification
-- [x] Run typecheck/build or targeted tests
-- [x] Fix issues found
-- [x] Summarize changes
+### Phase 4: Verification
+- [x] Run targeted typecheck/build
+- [x] Fix issues
+- [x] Summarize changed files
 - **Status:** complete
 
 ## Key Questions
-1. Where are agent records currently read/written?
-2. Which runtime result fields contain input/output usage?
-3. Which package already provides SQLite support, if any?
-4. What API shape should the home dashboard consume?
+1. What fields should be persisted for WeChat iLink login?
+2. How should QR login be exposed safely in API?
+3. How to reuse existing bot-agent command flow across Lark and WeChat?
 
 ## Decisions Made
 | Decision | Rationale |
 |----------|-----------|
-| Use `node:sqlite` DatabaseSync | Node 25 supports it and avoids adding native third-party dependencies. |
-| Store agent sessions and usage under `~/.agent-spaces-data/agents/agents.sqlite` | Matches requested user-level agent storage and centralizes usage across workspaces. |
-| Estimate costs from known model family defaults | Existing runtime outputs tokens but not authoritative billing costs. This gives useful dashboard estimates without requiring provider billing APIs. |
+| Reuse existing `BotAdapter` and command/bot-agent helpers | Keeps platform I/O separate from issue/task/agent logic per docs. |
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
 |-------|---------|------------|
-| `curl` URL globbed by zsh because of `?days=7` | 1 | Reran with the URL quoted. |
-| Node SQLite cannot bind `undefined` parameters | 1 | Normalized optional SQL values to `null` before binding. |
+| Server build failed because `sleep` helper was missing | 1 | Added local promise-based `sleep(ms)` helper for WeChat poll backoff. |
+| Web build/typecheck blocked by pre-existing `code-editor.tsx` and `models-dialog.tsx` errors | 1 | Verified settings panel with ESLint and recorded unrelated build blockers. |
