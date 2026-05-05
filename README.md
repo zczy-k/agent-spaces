@@ -36,6 +36,8 @@
 
 ## 快速开始
 
+### 开发模式
+
 ```bash
 # 安装依赖
 pnpm install
@@ -47,11 +49,18 @@ pnpm dev
 - 前端：http://localhost:3000
 - 后端：http://localhost:3100
 
-## 构建
+### 生产包部署
 
 ```bash
+# 本机或 CI 构建
 pnpm build
+
+# 将 packages/server/dist 上传到服务器后，在 dist 目录内执行
+npm run setup
+npm run start
 ```
+
+生产包会在 `npm run setup` 时安装运行依赖；`npm run start` 会在 `PORT` 指定端口启动 API、WebSocket 和已打包的前端页面，默认访问 http://localhost:3100。
 
 ## 环境变量
 

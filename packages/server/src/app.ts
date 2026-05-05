@@ -29,13 +29,20 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.PORT || '3100', 10);
 const IS_PROD = process.env.NODE_ENV === 'production';
 
+const resolveRuntimeDir = (name: string) => {
+  const currentDir = join(__dirname, name);
+  if (existsSync(currentDir)) return currentDir;
+  return join(__dirname, '..', name);
+};
+
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use('/api', authMiddleware);
 
 // Serve static files from public/
-app.use('/public', express.static(join(__dirname, '..', 'public')));
+const publicDir = resolveRuntimeDir('public');
+app.use('/public', express.static(publicDir));
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -59,7 +66,7 @@ app.post('/api/upload/avatar', async (req, res) => {
   const ext = mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : 'jpg';
   const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const name = filename ? `${id}-${filename.replace(/[^a-zA-Z0-9._-]/g, '_')}` : `${id}.${ext}`;
-  const avatarsDir = join(__dirname, '..', 'public', 'avatars');
+  const avatarsDir = join(publicDir, 'avatars');
   if (!existsSync(avatarsDir)) mkdirSync(avatarsDir, { recursive: true });
   await writeFile(join(avatarsDir, name), Buffer.from(base64, 'base64'));
   res.json({ url: `/static/avatars/${name}` });
@@ -78,10 +85,10 @@ app.use('/api/folder', folderRouter);
 
 // Serve static web frontend in production (after API routes, before catch-all)
 if (IS_PROD) {
-  const webDir = join(__dirname, '..', 'web');
+  const webDir = resolveRuntimeDir('web');
   if (existsSync(webDir)) {
     // /static/* -> public/* (avatar URLs etc.)
-    app.use('/static', express.static(join(__dirname, '..', 'public')));
+    app.use('/static', express.static(publicDir));
     // web static assets (_next, monaco, etc.)
     app.use(express.static(webDir));
 
