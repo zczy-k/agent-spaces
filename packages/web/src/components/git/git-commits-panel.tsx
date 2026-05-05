@@ -139,7 +139,7 @@ export function GitCommitsPanel({ workspaceId }: GitCommitsPanelProps) {
             >
               <div className="flex items-center gap-2">
                 {isRemoteHead && (
-                  <GitCommitHorizontal size={13} className="shrink-0 text-blue-500" title="Remote tracking branch" />
+                  <span title="Remote tracking branch"><GitCommitHorizontal size={13} className="shrink-0 text-blue-500" /></span>
                 )}
                 <code className="text-xs font-mono text-blue-600 shrink-0">
                   {entry.hash.slice(0, 7)}
