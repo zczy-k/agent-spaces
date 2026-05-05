@@ -352,9 +352,10 @@ function ModelForm({
               step={1}
               value={contextIdx}
               onValueChange={(idx) => {
-                setContextIdx(idx);
-                if (idx < CONTEXT_OPTIONS.length) {
-                  onChange("maxContextTokens", CONTEXT_OPTIONS[idx].value);
+                const i = idx as number;
+                setContextIdx(i);
+                if (i < CONTEXT_OPTIONS.length) {
+                  onChange("maxContextTokens", CONTEXT_OPTIONS[i].value);
                 }
               }}
               className="flex-1"

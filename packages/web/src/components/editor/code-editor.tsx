@@ -7,16 +7,20 @@ import { EditorTabs } from "./editor-tabs";
 import { useTheme } from "@/components/theme-provider";
 
 if (typeof window !== "undefined" && !navigator.clipboard?.write) {
-  navigator.clipboard = {
-    ...navigator.clipboard,
-    writeText: navigator.clipboard?.writeText ?? ((text: string) => Promise.resolve()),
-    write: (items: ClipboardItem[]) => {
-      const textItem = items[0]?.getType("text/plain");
-      return textItem
-        ? textItem.then((blob) => blob.text()).then((text) => navigator.clipboard.writeText(text))
-        : Promise.resolve();
+  Object.defineProperty(navigator, "clipboard", {
+    value: {
+      ...navigator.clipboard,
+      writeText: navigator.clipboard?.writeText ?? ((text: string) => Promise.resolve()),
+      write: (items: ClipboardItem[]) => {
+        const textItem = items[0]?.getType("text/plain");
+        return textItem
+          ? textItem.then((blob) => blob.text()).then((text) => navigator.clipboard.writeText(text))
+          : Promise.resolve();
+      },
     },
-  } as Clipboard;
+    writable: true,
+    configurable: true,
+  });
 }
 
 const MonacoEditor = dynamic(

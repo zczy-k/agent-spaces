@@ -1,19 +1,18 @@
-FROM node:22-slim
+FROM node:22
 
 RUN npm config set registry https://registry.npmmirror.com && \
     npm install -g pnpm
 
-RUN apt-get update && \
-    apt-get install -y python3 make g++ git && \
-    rm -rf /var/lib/apt/lists/*
-
 WORKDIR /app
 
-COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY .npmrc pnpm-workspace.yaml package.json pnpm-lock.yaml tsconfig.base.json ./
 COPY packages/shared/ packages/shared/
 COPY packages/server/ packages/server/
 
-RUN pnpm install --frozen-lockfile && \
+ENV CI=true
+
+RUN node -e "const p=JSON.parse(require('fs').readFileSync('package.json','utf8'));p.pnpm={onlyBuiltDependencies:['esbuild','node-pty','protobufjs']};require('fs').writeFileSync('package.json',JSON.stringify(p,null,2))" && \
+    pnpm install --frozen-lockfile && \
     pnpm --filter @agent-spaces/shared build && \
     pnpm --filter @agent-spaces/server build && \
     rm -rf packages/shared/src packages/server/src && \
