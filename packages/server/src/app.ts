@@ -80,9 +80,11 @@ wss.on('connection', (ws, req) => {
   handleConnection(ws, workspaceId);
 });
 
-server.listen(PORT, () => {
-  console.log(`[server] listening on http://localhost:${PORT}`);
-  console.log(`[server] websocket on ws://localhost:${PORT}/ws?workspaceId=...`);
+const HOST = process.env.HOST || '0.0.0.0';
+
+server.listen(PORT, HOST, () => {
+  console.log(`[server] listening on http://${HOST}:${PORT}`);
+  console.log(`[server] websocket on ws://${HOST}:${PORT}/ws?workspaceId=...`);
   recoverRunningWorkOnStartup();
 });
 

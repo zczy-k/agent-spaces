@@ -120,7 +120,7 @@ function TaskRow({
         <Button
           variant="ghost"
           size="icon"
-          className={`h-6 w-6 text-destructive hover:text-destructive ${isPending ? 'opacity-0 group-hover:opacity-100 transition-opacity' : ''}`}
+          className="h-6 w-6 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
           onClick={() => onDelete(workspaceId, task.id)}
         >
           <Trash2 className="h-3 w-3" />

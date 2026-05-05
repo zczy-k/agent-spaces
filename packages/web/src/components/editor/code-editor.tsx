@@ -6,6 +6,19 @@ import { useEditorStore } from "@/stores/editor";
 import { EditorTabs } from "./editor-tabs";
 import { useTheme } from "@/components/theme-provider";
 
+if (typeof window !== "undefined" && !navigator.clipboard?.write) {
+  navigator.clipboard = {
+    ...navigator.clipboard,
+    writeText: navigator.clipboard?.writeText ?? ((text: string) => Promise.resolve()),
+    write: (items: ClipboardItem[]) => {
+      const textItem = items[0]?.getType("text/plain");
+      return textItem
+        ? textItem.then((blob) => blob.text()).then((text) => navigator.clipboard.writeText(text))
+        : Promise.resolve();
+    },
+  } as Clipboard;
+}
+
 const MonacoEditor = dynamic(
   () => import("@monaco-editor/react").then((mod) => mod.default),
   { ssr: false, loading: () => <div className="flex items-center justify-center h-full text-muted-foreground text-sm">Loading editor...</div> }
