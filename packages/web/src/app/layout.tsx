@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
 import { DM_Sans, Outfit, Poppins } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
-import { DevInspector } from "@/components/dev-inspector";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { AuthGuard } from "@/components/auth-guard";
+import { AppShell } from "@/components/app-shell";
 import { Toaster } from "sonner";
-import { DashboardSidebar } from "@/components/sidebar/app-sidebar";
-import { WorkspaceTabs } from "@/components/layout/workspace-tabs";
 import "flexlayout-react/style/light.css";
 import "tippy.js/dist/tippy.css";
 import "./globals.css";
@@ -46,15 +44,10 @@ export default function RootLayout({
     >
       <body className="h-full overflow-hidden font-sans">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          <DevInspector />
-          <SidebarProvider>
-            <DashboardSidebar />
-            <SidebarInset>
-              <WorkspaceTabs />
-              {children}
-            </SidebarInset>
-          </SidebarProvider>
-          <Toaster richColors position="bottom-right" />
+          <AuthGuard>
+            <AppShell>{children}</AppShell>
+            <Toaster richColors position="bottom-right" />
+          </AuthGuard>
         </ThemeProvider>
       </body>
     </html>

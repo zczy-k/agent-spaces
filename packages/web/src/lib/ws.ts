@@ -1,5 +1,6 @@
 import type { ServerEventName, ClientEventName, WSEvent } from '@agent-spaces/shared';
 import { getActiveServerUrl } from './server';
+import { getToken } from './auth';
 
 type EventHandler = (data: unknown) => void;
 
@@ -11,13 +12,15 @@ export class WorkspaceWS {
 
   constructor(readonly workspaceId: string) {
     const serverUrl = getActiveServerUrl();
+    const token = getToken();
+    const tokenParam = token ? `&token=${encodeURIComponent(token)}` : '';
     if (serverUrl) {
       const wsProtocol = serverUrl.startsWith('https') ? 'wss' : 'ws';
       const wsBase = serverUrl.replace(/^https?/, wsProtocol);
-      this.url = `${wsBase}/ws?workspaceId=${workspaceId}`;
+      this.url = `${wsBase}/ws?workspaceId=${workspaceId}${tokenParam}`;
     } else {
       const port = process.env.NEXT_PUBLIC_WS_PORT || '3100';
-      this.url = `ws://localhost:${port}/ws?workspaceId=${workspaceId}`;
+      this.url = `ws://localhost:${port}/ws?workspaceId=${workspaceId}${tokenParam}`;
     }
   }
 

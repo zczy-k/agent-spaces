@@ -46,12 +46,14 @@ export function ServerSwitcher() {
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [name, setName] = React.useState("");
   const [url, setUrl] = React.useState("");
+  const [secret, setSecret] = React.useState("");
 
   // Manager dialog
   const [managerOpen, setManagerOpen] = React.useState(false);
   const [mgrEditId, setMgrEditId] = React.useState<string | null>(null);
   const [mgrName, setMgrName] = React.useState("");
   const [mgrUrl, setMgrUrl] = React.useState("");
+  const [mgrSecret, setMgrSecret] = React.useState("");
 
   const activeServer = servers.find((s) => s.id === activeId) || servers[0];
 
@@ -78,6 +80,7 @@ export function ServerSwitcher() {
     setEditingId(null);
     setName("");
     setUrl("");
+    setSecret("");
     setFormOpen(true);
   };
 
@@ -86,12 +89,12 @@ export function ServerSwitcher() {
     let u = url.trim().replace(/\/$/, "");
     if (!/^https?:\/\//.test(u)) u = "http://" + u;
     if (editingId) {
-      const updated = servers.map((s) => (s.id === editingId ? { ...s, name: name.trim(), url: u } : s));
+      const updated = servers.map((s) => (s.id === editingId ? { ...s, name: name.trim(), url: u, secret: secret.trim() || undefined } : s));
       setServers(updated);
       saveServers(updated);
       if (editingId === activeId) setActiveServerCookie(u);
     } else {
-      const server: ServerConfig = { id: Date.now().toString(), name: name.trim(), url: u };
+      const server: ServerConfig = { id: Date.now().toString(), name: name.trim(), url: u, secret: secret.trim() || undefined };
       const updated = [...servers, server];
       setServers(updated);
       saveServers(updated);
@@ -104,19 +107,21 @@ export function ServerSwitcher() {
     setMgrEditId(server.id);
     setMgrName(server.name);
     setMgrUrl(server.url);
+    setMgrSecret(server.secret || "");
   };
 
   const cancelMgrEdit = () => {
     setMgrEditId(null);
     setMgrName("");
     setMgrUrl("");
+    setMgrSecret("");
   };
 
   const saveMgrEdit = () => {
     if (!mgrName.trim() || !mgrUrl.trim()) return;
     let u = mgrUrl.trim().replace(/\/$/, "");
     if (!/^https?:\/\//.test(u)) u = "http://" + u;
-    const updated = servers.map((s) => (s.id === mgrEditId ? { ...s, name: mgrName.trim(), url: u } : s));
+    const updated = servers.map((s) => (s.id === mgrEditId ? { ...s, name: mgrName.trim(), url: u, secret: mgrSecret.trim() || undefined } : s));
     setServers(updated);
     saveServers(updated);
     if (mgrEditId === activeId) setActiveServerCookie(u);
@@ -127,7 +132,7 @@ export function ServerSwitcher() {
     if (!mgrName.trim() || !mgrUrl.trim()) return;
     let u = mgrUrl.trim().replace(/\/$/, "");
     if (!/^https?:\/\//.test(u)) u = "http://" + u;
-    const server: ServerConfig = { id: Date.now().toString(), name: mgrName.trim(), url: u };
+    const server: ServerConfig = { id: Date.now().toString(), name: mgrName.trim(), url: u, secret: mgrSecret.trim() || undefined };
     const updated = [...servers, server];
     setServers(updated);
     saveServers(updated);
@@ -228,6 +233,16 @@ export function ServerSwitcher() {
                 onKeyDown={(e) => e.key === "Enter" && saveForm()}
               />
             </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Secret</label>
+              <Input
+                type="password"
+                value={secret}
+                onChange={(e) => setSecret(e.target.value)}
+                placeholder="Optional API secret"
+                onKeyDown={(e) => e.key === "Enter" && saveForm()}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setFormOpen(false)}>Cancel</Button>
@@ -320,6 +335,15 @@ export function ServerSwitcher() {
                     value={mgrUrl}
                     onChange={(e) => setMgrUrl(e.target.value)}
                     placeholder="http://..."
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    className="h-8 text-sm flex-1"
+                    type="password"
+                    value={mgrSecret}
+                    onChange={(e) => setMgrSecret(e.target.value)}
+                    placeholder="Secret (optional)"
                     onKeyDown={(e) => e.key === "Enter" && addFromManager()}
                   />
                 </div>

@@ -14,6 +14,8 @@ import agentRouter from './routes/agent.js';
 import taskRouter from './routes/task.js';
 import gitRouter from './routes/git.js';
 import llmRouter from './routes/llm.js';
+import authRouter from './routes/auth.js';
+import { authMiddleware, verifyToken } from './middleware/auth.js';
 import { handleConnection } from './ws/handler.js';
 import { startScheduler, stopScheduler } from './agents/scheduler-agent.js';
 import { recoverRunningWorkOnStartup } from './services/issue-retry.js';
@@ -25,6 +27,7 @@ const PORT = parseInt(process.env.PORT || '3100', 10);
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
+app.use('/api', authMiddleware);
 
 // Serve static files from public/
 app.use('/public', express.static(join(__dirname, '..', 'public')));
@@ -32,6 +35,8 @@ app.use('/public', express.static(join(__dirname, '..', 'public')));
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+app.use('/api/auth', authRouter);
 
 // Avatar upload
 app.post('/api/upload/avatar', async (req, res) => {
@@ -75,6 +80,12 @@ wss.on('connection', (ws, req) => {
 
   if (!workspaceId) {
     ws.close(4001, 'workspaceId required');
+    return;
+  }
+
+  const token = url.searchParams.get('token');
+  if (!verifyToken(token)) {
+    ws.close(4003, 'Unauthorized');
     return;
   }
 

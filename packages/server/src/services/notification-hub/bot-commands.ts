@@ -55,6 +55,10 @@ async function executeCommand(input: BuildCommandResponseInput): Promise<string>
     return `Switched workspace:\n${formatWorkspaceDetail(workspace)}`;
   }
 
+  if (command === '/agents') {
+    return formatAgentList(workspaceId);
+  }
+
   if (command === '/issues') {
     return formatIssueList(workspaceId);
   }
@@ -65,13 +69,15 @@ async function executeCommand(input: BuildCommandResponseInput): Promise<string>
       const description = args.slice(2).join(' ').trim();
       if (!title) return 'Usage: /issue new [title] [desc]';
       const issue = issueService.create(workspaceId, { title, description });
+      const issues = issueService.list(workspaceId);
+      const issueIndex = issues.findIndex((i) => i.id === issue.id);
       botCommandContexts.set(input.conversationId, { ...context, workspaceId, issueId: issue.id });
-      return `Created issue:\n${formatIssueDetail(workspaceId, issue.id)}`;
+      return `Created issue #${issueIndex}:\n${formatIssueDetail(workspaceId, issue.id)}`;
     }
 
     if (args[0] === 'start') {
       const issue = getCurrentIssue(workspaceId, context.issueId);
-      if (!issue) return 'No current issue. Use /issue [id] first.';
+      if (!issue) return 'No current issue. Use /issue [id/index] first.';
       const updated = issueService.updateStatus(workspaceId, issue.id, 'planned');
       if (updated) startIssueAutomation(workspaceId, issue.id);
       return updated ? `Issue started:\n${formatIssueSummary(updated)}` : 'Issue not found.';
@@ -79,20 +85,35 @@ async function executeCommand(input: BuildCommandResponseInput): Promise<string>
 
     if (args[0] === 'close') {
       const issue = getCurrentIssue(workspaceId, context.issueId);
-      if (!issue) return 'No current issue. Use /issue [id] first.';
+      if (!issue) return 'No current issue. Use /issue [id/index] first.';
       const updated = issueService.markError(workspaceId, issue.id, 'Closed from bot command.');
       return updated ? `Issue closed as failed:\n${formatIssueSummary(updated)}` : 'Issue not found.';
     }
 
+    if (args[0] && args[1] === 'agent') {
+      const issue = resolveIssue(workspaceId, args[0]);
+      if (!issue) return `Issue not found: ${args[0]}`;
+      const agentIds = args[2]?.split(',').map((s) => s.trim()).filter(Boolean);
+      if (!agentIds?.length) return 'Usage: /issue [id/index] agent agent_id,agent_id,...';
+      const presets = agentService.listPresets(workspaceId) ?? [];
+      const presetIds = new Set(presets.map((p) => p.id));
+      const invalid = agentIds.filter((id) => !presetIds.has(id));
+      if (invalid.length) return `Agent not found: ${invalid.join(', ')}`;
+      issue.assignedAgents = agentIds;
+      issueService.save(workspaceId, issue);
+      botCommandContexts.set(input.conversationId, { ...context, workspaceId, issueId: issue.id });
+      return `Set agents for "${issue.title}": ${agentIds.join(', ')}`;
+    }
+
     if (args[0]) {
-      const issue = issueService.getById(workspaceId, args[0]);
+      const issue = resolveIssue(workspaceId, args[0]);
       if (!issue) return `Issue not found: ${args[0]}`;
       botCommandContexts.set(input.conversationId, { ...context, workspaceId, issueId: issue.id });
       return `Entered issue:\n${formatIssueDetail(workspaceId, issue.id)}`;
     }
 
     const issue = getCurrentIssue(workspaceId, context.issueId);
-    return issue ? formatIssueDetail(workspaceId, issue.id) : 'No current issue. Use /issue [id] first.';
+    return issue ? formatIssueDetail(workspaceId, issue.id) : 'No current issue. Use /issue [id/index] first.';
   }
 
   if (command === '/task') {
@@ -228,12 +249,33 @@ function formatWorkspaceDetail(workspace: Workspace, currentIssueId?: string): s
   ].filter(Boolean).join('\n');
 }
 
+function resolveIssue(workspaceId: string, idOrIndex: string): NonNullable<ReturnType<typeof issueService.getById>> | null {
+  const byId = issueService.getById(workspaceId, idOrIndex);
+  if (byId) return byId;
+  const index = Number(idOrIndex);
+  if (Number.isInteger(index) && index >= 0) {
+    const issues = issueService.list(workspaceId)
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+    return issues[index] ?? null;
+  }
+  return null;
+}
+
+function formatAgentList(workspaceId: string): string {
+  const agents = agentService.listPresets(workspaceId) ?? [];
+  if (!agents.length) return 'No agents.';
+  return [
+    'Agents:',
+    ...agents.map((agent, i) => `#${i} ${agent.name} (${agent.id})${agent.role ? ` [${agent.role}]` : ''}`),
+  ].join('\n');
+}
+
 function formatIssueList(workspaceId: string): string {
   const issues = issueService.list(workspaceId);
   if (!issues.length) return 'No issues.';
   return issues
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
-    .map((issue) => `- ${formatIssueSummary(issue)}`)
+    .map((issue, i) => `#${i} ${formatIssueSummary(issue)}`)
     .join('\n');
 }
 
@@ -312,10 +354,12 @@ function buildCommandHelp(): string {
     '/workspace',
     '/workspaces',
     '/workspac [id]',
+    '/agents',
     '/issues',
     '/issue',
-    '/issue [id]',
+    '/issue [id/index]',
     '/issue new [title] [desc]',
+    '/issue [id/index] agent agent_id,agent_id,...',
     '/issue start',
     '/issue close',
     '/task',

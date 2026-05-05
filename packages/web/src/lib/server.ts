@@ -2,6 +2,7 @@ export type ServerConfig = {
   id: string;
   name: string;
   url: string;
+  secret?: string;
 };
 
 const STORAGE_KEY = "agent-spaces-servers";
