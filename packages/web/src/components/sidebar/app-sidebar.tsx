@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
   Sidebar,
@@ -33,6 +33,7 @@ import DashboardNavigation from "@/components/sidebar/nav-main";
 import { NotificationsPopover } from "@/components/sidebar/nav-notifications";
 import { ServerSwitcher } from "@/components/sidebar/server-switcher";
 import { WorkspaceDialog } from "@/components/workspace/workspace-dialog";
+import { useWorkspaceStore } from "@/stores/workspace";
 import type { Workspace } from "@agent-spaces/shared";
 
 const sampleNotifications = [
@@ -65,7 +66,10 @@ export function DashboardSidebar() {
   const isCollapsed = state === "collapsed";
   const isWorkspace = pathname.startsWith("/workspace/");
   const currentWorkspaceId = pathname.match(/^\/workspace\/([^/]+)/)?.[1];
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const workspaces = useWorkspaceStore((store) => store.workspaces);
+  const setWorkspaces = useWorkspaceStore((store) => store.setWorkspaces);
+  const upsertWorkspace = useWorkspaceStore((store) => store.upsertWorkspace);
+  const removeWorkspace = useWorkspaceStore((store) => store.removeWorkspace);
   const [agentDialogOpen, setAgentDialogOpen] = useState(false);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const [modelsDialogOpen, setModelsDialogOpen] = useState(false);
@@ -75,16 +79,16 @@ export function DashboardSidebar() {
   const [modelsDialogProvider, setModelsDialogProvider] = useState<string | undefined>(undefined);
   const agentWorkspaceId = currentWorkspaceId ?? workspaces[0]?.id;
 
-  const refreshWorkspaces = () => {
+  const refreshWorkspaces = useCallback(() => {
     fetch("/api/workspaces")
       .then((r) => r.json())
       .then(setWorkspaces)
       .catch(() => {});
-  };
+  }, [setWorkspaces]);
 
   useEffect(() => {
     refreshWorkspaces();
-  }, []);
+  }, [refreshWorkspaces]);
 
   const handleWsSubmit = async (data: { name: string; boundDirs: string[] }) => {
     if (editingWs) {
@@ -94,7 +98,7 @@ export function DashboardSidebar() {
         body: JSON.stringify(data),
       });
       const updated = await res.json();
-      setWorkspaces((prev) => prev.map((ws) => (ws.id === updated.id ? updated : ws)));
+      upsertWorkspace(updated);
     } else {
       const res = await fetch("/api/workspaces", {
         method: "POST",
@@ -102,13 +106,13 @@ export function DashboardSidebar() {
         body: JSON.stringify(data),
       });
       const ws = await res.json();
-      setWorkspaces((prev) => [...prev, ws]);
+      upsertWorkspace(ws);
     }
   };
 
   const handleDelete = async (ws: Workspace) => {
     await fetch(`/api/workspaces/${ws.id}`, { method: "DELETE" });
-    setWorkspaces((prev) => prev.filter((w) => w.id !== ws.id));
+    removeWorkspace(ws.id);
   };
 
   const openEditDialog = (ws: Workspace) => {
@@ -121,7 +125,7 @@ export function DashboardSidebar() {
     setWsDialogOpen(true);
   };
 
-  const dashboardRoutes: Route[] = useMemo(() => [
+  const dashboardRoutes: Route[] = [
     {
       id: "home",
       title: "Home",
@@ -171,7 +175,7 @@ export function DashboardSidebar() {
         { title: "Providers", link: "#", icon: <Server className="size-3.5" />, onClick: () => setProvidersDialogOpen(true) },
       ],
     },
-  ], [workspaces, setAgentDialogOpen]);
+  ];
 
   return (
     <Sidebar

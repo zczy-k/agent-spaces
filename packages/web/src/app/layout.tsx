@@ -3,6 +3,7 @@ import { DM_Sans, Outfit, Poppins } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { DevInspector } from "@/components/dev-inspector";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { Toaster } from "sonner";
 import { DashboardSidebar } from "@/components/sidebar/app-sidebar";
 import "flexlayout-react/style/light.css";
 import "tippy.js/dist/tippy.css";
@@ -51,6 +52,7 @@ export default function RootLayout({
               {children}
             </SidebarInset>
           </SidebarProvider>
+          <Toaster richColors position="bottom-right" />
         </ThemeProvider>
       </body>
     </html>

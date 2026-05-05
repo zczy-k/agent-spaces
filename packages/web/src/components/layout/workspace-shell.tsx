@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Layout, Model, TabNode, IJsonModel, Actions, ITabRenderValues } from "flexlayout-react";
-import { Hash, ListChecks, FolderOpen, Code2, MessageSquare, FileText, TerminalSquare, GitBranch, FileDiff, GitCommitHorizontal, Network, Settings2 } from "lucide-react";
+import { Layout, Model, TabNode, IJsonModel, Actions, ITabRenderValues, Action } from "flexlayout-react";
+import { Hash, ListChecks, FolderOpen, Code2, MessageSquare, FileText, TerminalSquare, FileDiff, GitCommitHorizontal, Network, Settings2 } from "lucide-react";
 import { EditorPanel } from "@/components/editor/editor-panel";
 import { CodeEditor } from "@/components/editor/code-editor";
 import { TerminalPanel } from "@/components/terminal/terminal-panel";
@@ -190,7 +190,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
       }),
     ];
     return () => unsubs.forEach((u) => u());
-  }, [workspaceId]);
+  }, [issueStore, taskStore, workspaceId]);
 
   const factory = useCallback(
     (node: TabNode) => {
@@ -222,7 +222,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
           return <Placeholder name={node.getName()} />;
       }
     },
-    [workspaceId],
+    [boundDirs, workspaceId],
   );
 
   const onRenderTab = useCallback((node: TabNode, renderValues: ITabRenderValues) => {
@@ -260,7 +260,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   }, [gitStatus]);
 
   const onModelChange = useCallback(
-    (_model: Model, action: { type: string; data: Record<string, any> }) => {
+    (_model: Model, action: Action) => {
       if (action.type !== Actions.SELECT_TAB) return;
       const node = _model.getNodeById(action.data.tabNode);
       if (!node || !(node instanceof TabNode)) return;
@@ -292,14 +292,14 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
 
   if (isMobile) {
     return (
-      <div className="h-full w-full">
+      <div className="relative h-full w-full">
         <MobilePanelRenderer panel={activePanel} workspaceId={workspaceId} boundDirs={boundDirs} />
       </div>
     );
   }
 
   return (
-    <div className="h-full w-full">
+    <div className="relative h-full w-full">
       <Layout model={model} factory={factory} onRenderTab={onRenderTab} onModelChange={onModelChange} />
     </div>
   );

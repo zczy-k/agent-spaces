@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { DiffViewer } from "./diff-viewer";
 import { GitNotInitialized } from "./git-not-initialized";
 import { useTheme } from "@/components/theme-provider";
+import { toast } from "sonner";
 
 const MonacoEditor = dynamic(
   () => import("@monaco-editor/react").then((mod) => mod.default),
@@ -126,7 +127,7 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
       const data = await res.json();
       if (data.message) setCommitMsg(data.message);
     } catch (err: any) {
-      console.error('Generate commit message failed:', err.message);
+      toast.error(err.message || 'Failed to generate commit message');
     } finally {
       setGenerating(false);
     }

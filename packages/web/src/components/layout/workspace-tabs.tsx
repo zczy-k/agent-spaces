@@ -1,26 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { Workspace } from "@agent-spaces/shared";
+import { useWorkspaceStore } from "@/stores/workspace";
 
 export function WorkspaceTabs() {
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const workspaces = useWorkspaceStore((state) => state.workspaces);
   const router = useRouter();
   const pathname = usePathname();
 
   const activeId = pathname.startsWith("/workspace/")
     ? pathname.split("/workspace/")[1]
     : null;
-
-  useEffect(() => {
-    fetch("/api/workspaces")
-      .then((r) => r.json())
-      .then(setWorkspaces)
-      .catch(() => {});
-  }, []);
 
   if (workspaces.length === 0) return null;
 

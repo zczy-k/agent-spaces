@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import {
   CalendarX2Icon,
@@ -18,6 +18,7 @@ import StatisticsCard from '@/components/shadcn-studio/blocks/statistics-card-01
 import TotalEarningCard from '@/components/shadcn-studio/blocks/widget-total-earning'
 import TransactionDatatable, { type Item } from '@/components/shadcn-studio/blocks/datatable-transaction'
 import { WorkspaceDialog } from '@/components/workspace/workspace-dialog'
+import { useWorkspaceStore } from '@/stores/workspace'
 import type { Workspace } from '@agent-spaces/shared'
 
 const StatisticsCardData = [
@@ -162,8 +163,14 @@ const transactionData: Item[] = [
 ]
 
 export function HomePage({ initialWorkspaces }: { initialWorkspaces: Workspace[] }) {
-  const [workspaces, setWorkspaces] = useState<Workspace[]>(initialWorkspaces)
+  const workspaces = useWorkspaceStore((store) => store.workspaces)
+  const setWorkspaces = useWorkspaceStore((store) => store.setWorkspaces)
+  const upsertWorkspace = useWorkspaceStore((store) => store.upsertWorkspace)
   const [dialogOpen, setDialogOpen] = useState(false)
+
+  useEffect(() => {
+    setWorkspaces(initialWorkspaces)
+  }, [initialWorkspaces, setWorkspaces])
 
   const handleWsSubmit = async (data: { name: string; boundDirs: string[] }) => {
     const res = await fetch('/api/workspaces', {
@@ -172,7 +179,7 @@ export function HomePage({ initialWorkspaces }: { initialWorkspaces: Workspace[]
       body: JSON.stringify(data)
     })
     const ws = await res.json()
-    setWorkspaces((prev) => [...prev, ws])
+    upsertWorkspace(ws)
   }
 
   return (
