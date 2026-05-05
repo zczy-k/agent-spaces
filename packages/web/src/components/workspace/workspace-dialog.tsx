@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import type { AgentConfig, Workspace } from "@agent-spaces/shared";
 import { AddMemberDialog, type AddMemberCandidate } from "@/components/chat/add-member-dialog";
 import { Bot, Plus, X } from "lucide-react";
+import { FolderPicker } from "@/components/ui/folder-picker";
 
 interface WorkspaceDialogProps {
   open: boolean;
@@ -114,12 +115,10 @@ function WorkspaceDialogContent({ open, onOpenChange, workspace, onSubmit, onAge
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !loading && handleSubmit()}
           />
-          <input
-            className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-            placeholder="/path/to/project"
+          <FolderPicker
             value={dir}
-            onChange={(e) => setDir(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !loading && handleSubmit()}
+            onChange={setDir}
+            placeholder="/path/to/project"
           />
           {isEdit && (
             <div className="rounded-xl border border-border p-3">

@@ -11,15 +11,19 @@ const handle = app.getRequestHandler();
 
 await app.prepare();
 
-http
-  .createServer((req, res) => {
+const server = http.createServer((req, res) => {
     if (dev) {
       launchEditorMiddleware(req, res, () => handle(req, res));
       return;
     }
 
     handle(req, res);
-  })
-  .listen(port, hostname, () => {
-    console.log(`> Ready on http://${hostname}:${port}`);
   });
+
+if (dev) {
+  server.on("upgrade", app.getUpgradeHandler());
+}
+
+server.listen(port, hostname, () => {
+  console.log(`> Ready on http://${hostname}:${port}`);
+});

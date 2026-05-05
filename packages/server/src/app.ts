@@ -15,6 +15,7 @@ import taskRouter from './routes/task.js';
 import gitRouter from './routes/git.js';
 import llmRouter from './routes/llm.js';
 import authRouter from './routes/auth.js';
+import folderRouter from './routes/folder.js';
 import { authMiddleware, verifyToken } from './middleware/auth.js';
 import { handleConnection } from './ws/handler.js';
 import { startScheduler, stopScheduler } from './agents/scheduler-agent.js';
@@ -69,6 +70,7 @@ app.use('/api/workspaces/:id/tasks', taskRouter);
 app.use('/api/workspaces/:id/git', gitRouter);
 app.use('/api/agents', agentRouter);
 app.use('/api', llmRouter);
+app.use('/api/folder', folderRouter);
 
 const server = createServer(app);
 
