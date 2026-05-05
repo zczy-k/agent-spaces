@@ -22,16 +22,19 @@ export interface WorkspaceNotificationSettings {
   enabled: boolean;
   provider: NotificationProvider;
   events: NotificationEventKey[];
+  serviceRunning?: boolean;
+  botAgentId?: string;
   lark?: {
     appId?: string;
     appSecret?: string;
+    chatIds?: string[];
   };
 }
 
 export interface AgentConfig {
   id: string;
   name: string;
-  role: 'scheduler' | 'planner' | 'executor' | 'reviewer' | 'commit' | 'custom';
+  role: 'scheduler' | 'planner' | 'executor' | 'reviewer' | 'commit' | 'custom' | 'bot';
   description?: string;
   runtimeKind?: 'open-agent-sdk' | 'claude-code' | 'codex';
   modelProvider?: 'anthropic-messages' | 'openai-chat-completions' | 'openai-responses' | 'openai-responses-to-anthropic-messages' | 'openai-chat-completions-to-anthropic-messages' | 'gemini-generate-content';

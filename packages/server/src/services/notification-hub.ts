@@ -1,15 +1,17 @@
 import * as Lark from '@larksuiteoapi/node-sdk';
-import type { Issue, Task, TaskResult, Workspace, WorkspaceNotificationSettings } from '@agent-spaces/shared';
+import type { AgentConfig, TaskResult, Workspace, WorkspaceNotificationSettings } from '@agent-spaces/shared';
 import * as workspaceService from './workspace.js';
 import * as issueService from './issue.js';
 import * as taskService from './task.js';
+import * as agentService from './agent.js';
+import { createAgentRuntime } from '../adapters/agent-runtime.js';
+import { getThinkingRuntimeConfig } from './llm-model-config.js';
 
 export type NotificationBroadcastEvent =
   | 'issuse_status_change'
   | 'issue_status_change'
   | 'issue_task_start'
-  | 'issue_task_done'
-  | 'issue_task_output';
+  | 'issue_task_done';
 
 interface BroadcastEnvelope {
   event: NotificationBroadcastEvent;
@@ -22,6 +24,7 @@ interface BotAdapter {
   start(): Promise<void>;
   stop(): Promise<void>;
   send(envelope: BroadcastEnvelope): Promise<void>;
+  hasRecipients(): boolean;
 }
 
 const adapters = new Map<string, BotAdapter>();
@@ -38,6 +41,7 @@ export async function startWorkspaceNotificationService(workspaceId: string): Pr
     const adapter = new LarkNotificationAdapter(workspace, settings);
     await adapter.start();
     adapters.set(workspaceId, adapter);
+    persistServiceRunning(workspaceId, true);
     return { started: true, provider: 'lark' };
   }
 
@@ -46,9 +50,54 @@ export async function startWorkspaceNotificationService(workspaceId: string): Pr
 
 export async function stopWorkspaceNotificationService(workspaceId: string): Promise<void> {
   const adapter = adapters.get(workspaceId);
-  if (!adapter) return;
-  adapters.delete(workspaceId);
-  await adapter.stop();
+  if (adapter) {
+    adapters.delete(workspaceId);
+    await adapter.stop();
+  }
+  persistServiceRunning(workspaceId, false);
+}
+
+export async function startPersistedNotificationServices(): Promise<void> {
+  for (const workspace of workspaceService.getAll()) {
+    const settings = workspace.notificationSettings;
+    if (!settings?.enabled || !settings.serviceRunning) continue;
+    try {
+      await startWorkspaceNotificationService(workspace.id);
+      console.log(`[notification] restored ${settings.provider} service workspaceId=${workspace.id}`);
+    } catch (err) {
+      console.error(`[notification] failed to restore service workspaceId=${workspace.id}:`, err);
+    }
+  }
+}
+
+export async function sendTestNotification(workspaceId: string): Promise<{ sent: boolean; reason?: string }> {
+  const workspace = workspaceService.getById(workspaceId);
+  if (!workspace?.notificationSettings?.enabled) {
+    return { sent: false, reason: 'Notification service is not enabled' };
+  }
+
+  let adapter = adapters.get(workspaceId);
+  if (!adapter) {
+    const started = await startWorkspaceNotificationService(workspaceId);
+    if (!started.started) return { sent: false, reason: 'Notification service is not running' };
+    adapter = adapters.get(workspaceId);
+  }
+  if (!adapter) return { sent: false, reason: 'Notification adapter is unavailable' };
+  if (!adapter.hasRecipients()) {
+    return { sent: false, reason: 'No Feishu chat is registered yet. Send any message to the bot first.' };
+  }
+
+  await adapter.send({
+    event: 'issue_status_change',
+    workspaceId,
+    timestamp: new Date().toISOString(),
+    data: {
+      title: 'Notification test',
+      status: 'test',
+      message: 'Agent Spaces notification service is connected.',
+    },
+  });
+  return { sent: true };
 }
 
 export function publishWorkspaceEvent(workspaceId: string, wsEvent: string, data: unknown): void {
@@ -85,7 +134,6 @@ function buildNotificationEnvelope(workspaceId: string, wsEvent: string, data: u
         status: issue.status,
         tasks: taskService.list(workspaceId, issue.id),
         issue,
-        queryCommands: buildQueryCommands(workspaceId, issue.id),
       },
     };
   }
@@ -113,7 +161,6 @@ function buildNotificationEnvelope(workspaceId: string, wsEvent: string, data: u
           to: payload.to,
           task,
           issue,
-          queryCommands: buildQueryCommands(workspaceId, issue.id),
         },
       };
     }
@@ -134,38 +181,24 @@ function buildNotificationEnvelope(workspaceId: string, wsEvent: string, data: u
           result: task.result,
           task,
           issue,
-          queryCommands: buildQueryCommands(workspaceId, issue.id),
         },
       };
     }
   }
 
-  if (wsEvent === 'task.output' && shouldNotify(workspaceId, 'issue_started')) {
-    const payload = data as { taskId?: string; data?: string };
-    if (!payload.taskId || !payload.data) return null;
-    const task = taskService.getById(workspaceId, payload.taskId);
-    if (!task) return null;
-    const issue = issueService.getById(workspaceId, task.issueId);
-    if (!issue) return null;
-    return {
-      event: 'issue_task_output',
-      workspaceId,
-      timestamp: new Date().toISOString(),
-      data: {
-        issueId: issue.id,
-        channelId: issue.channelId,
-        taskId: task.id,
-        title: task.title,
-        output: payload.data,
-        assignedAgentId: task.assignedAgentId,
-        task,
-        issue,
-        queryCommands: buildQueryCommands(workspaceId, issue.id),
-      },
-    };
-  }
-
   return null;
+}
+
+function persistServiceRunning(workspaceId: string, serviceRunning: boolean): void {
+  const workspace = workspaceService.getById(workspaceId);
+  const settings = workspace?.notificationSettings;
+  if (!workspace || !settings || settings.serviceRunning === serviceRunning) return;
+  workspaceService.update(workspaceId, {
+    notificationSettings: {
+      ...settings,
+      serviceRunning,
+    },
+  });
 }
 
 function shouldNotify(workspaceId: string, event: NonNullable<WorkspaceNotificationSettings['events']>[number]): boolean {
@@ -179,14 +212,6 @@ function isIssueStartStatus(status?: string): boolean {
 
 function isTaskDoneStatus(status?: string): boolean {
   return status === 'done' || status === 'failed' || status === 'cancelled';
-}
-
-function buildQueryCommands(workspaceId: string, issueId?: string): Record<string, string> {
-  return {
-    newIssue: `/new_issue workspace=${workspaceId}`,
-    issueList: `/issue_list workspace=${workspaceId}`,
-    issueDetail: issueId ? `/issue_detail workspace=${workspaceId} issue=${issueId}` : `/issue_detail workspace=${workspaceId} issue=`,
-  };
 }
 
 class LarkNotificationAdapter implements BotAdapter {
@@ -206,6 +231,9 @@ class LarkNotificationAdapter implements BotAdapter {
     const baseConfig = { appId, appSecret };
     this.client = new Lark.Client(baseConfig);
     this.wsClient = new Lark.WSClient({ ...baseConfig, loggerLevel: Lark.LoggerLevel.info });
+    if (settings.lark?.chatIds?.length) {
+      larkChatIdsByWorkspace.set(workspace.id, new Set(settings.lark.chatIds));
+    }
   }
 
   async start(): Promise<void> {
@@ -242,6 +270,10 @@ class LarkNotificationAdapter implements BotAdapter {
     }
   }
 
+  hasRecipients(): boolean {
+    return Boolean(larkChatIdsByWorkspace.get(this.workspace.id)?.size);
+  }
+
   private async handleMessage(data: {
     message?: { chat_id?: string; content?: string };
   }): Promise<void> {
@@ -250,15 +282,32 @@ class LarkNotificationAdapter implements BotAdapter {
     const chatIds = larkChatIdsByWorkspace.get(this.workspace.id) ?? new Set<string>();
     chatIds.add(chatId);
     larkChatIdsByWorkspace.set(this.workspace.id, chatIds);
+    persistLarkChatIds(this.workspace.id, Array.from(chatIds));
 
     const text = parseLarkText(data.message?.content);
-    const content = buildCommandResponse(this.workspace.id, text);
+    if (isBuiltInCommand(text)) {
+      await this.sendCard(chatId, 'Agent Spaces', buildCommandResponse(this.workspace.id, text));
+      return;
+    }
+
+    const botAgent = getConfiguredBotAgent(this.workspace.id);
+    if (!botAgent) {
+      await this.sendCard(chatId, 'Agent Spaces', '请先设置agent');
+      return;
+    }
+
+    await this.sendCard(chatId, 'Agent Spaces', `${botAgent.name} agent正在处理...`);
+    const reply = await runBotAgent(this.workspace.id, botAgent, text);
+    await this.sendCard(chatId, botAgent.name, reply);
+  }
+
+  private async sendCard(chatId: string, title: string, content: string): Promise<void> {
     await this.client.im.v1.message.create({
       params: { receive_id_type: 'chat_id' },
       data: {
         receive_id: chatId,
         content: Lark.messageCard.defaultCard({
-          title: 'Agent Spaces',
+          title,
           content,
         }),
         msg_type: 'interactive',
@@ -307,12 +356,102 @@ function buildCommandResponse(workspaceId: string, text: string): string {
   ].join('\n');
 }
 
+function isBuiltInCommand(text: string): boolean {
+  const command = text.trim().split(/\s+/, 1)[0];
+  return command === '/new_issue'
+    || command === '/issue_list'
+    || command === '/issue_detail'
+    || command === '/help'
+    || command.startsWith('/');
+}
+
+function getConfiguredBotAgent(workspaceId: string): AgentConfig | null {
+  const workspace = workspaceService.getById(workspaceId);
+  const botAgentId = workspace?.notificationSettings?.botAgentId;
+  if (!botAgentId) return null;
+  return (agentService.listPresets(workspaceId) ?? [])
+    .find((agent) => agent.id === botAgentId && agent.role === 'bot' && agent.enabled !== false) ?? null;
+}
+
+async function runBotAgent(workspaceId: string, preset: AgentConfig, message: string): Promise<string> {
+  const session = agentService.getOrCreateSessionForConfig(workspaceId, preset);
+  agentService.updateStatus(workspaceId, session.id, 'active');
+  const startedAt = Date.now();
+  const runtime = createAgentRuntime({
+    kind: preset.runtimeKind,
+    provider: preset.modelProvider,
+    model: preset.modelId,
+    apiKey: preset.apiKey,
+    baseURL: preset.apiBase,
+    ...getThinkingRuntimeConfig(preset),
+  });
+  const workingDir = agentService.resolveWorkingDir(workspaceId, preset);
+
+  try {
+    const result = await runtime.execute(
+      buildBotPrompt(message),
+      workingDir,
+      {
+        maxTurns: 20,
+        mcpServers: agentService.getMcpServers(preset.mcps),
+        skills: agentService.getAvailableSkillNames(agentService.getAgentConfigDir(workspaceId, preset), preset.skills),
+        configDir: agentService.getAgentConfigDir(workspaceId, preset),
+        sandboxDirs: preset.sandboxDirs,
+        systemPrompt: preset.systemPrompt,
+      },
+    );
+    agentService.complete(workspaceId, session.id, result.success ? undefined : result.error || result.summary, {
+      runtime: preset.runtimeKind,
+      model: preset.modelId,
+      summary: result.summary,
+      output: result.output,
+      durationMs: Date.now() - startedAt,
+      usage: result.usage,
+      costUsd: result.costUsd,
+    });
+    return formatBotFinalMessage(result);
+  } catch (err) {
+    const error = err instanceof Error ? err.message : String(err);
+    agentService.updateStatus(workspaceId, session.id, 'crashed', { error });
+    return `处理失败：${error}`;
+  }
+}
+
+function buildBotPrompt(message: string): string {
+  return [
+    'User message from external chat platform:',
+    message,
+    '',
+    'Reply to the user directly. Output only the final reply.',
+  ].join('\n');
+}
+
+function formatBotFinalMessage(result: { success: boolean; summary: string; output: string[]; error?: string }): string {
+  if (!result.success) return result.error || result.summary || '处理失败';
+  const finalOutput = result.output.map((line) => line.trim()).filter(Boolean).at(-1);
+  return finalOutput || result.summary || '处理完成';
+}
+
 function formatLarkTitle(envelope: BroadcastEnvelope): string {
   const title = typeof envelope.data.title === 'string' ? envelope.data.title : 'Issue update';
-  if (envelope.event === 'issue_task_output') return `Task output: ${title}`;
   if (envelope.event === 'issue_task_start') return `Task started: ${title}`;
   if (envelope.event === 'issue_task_done') return `Task done: ${title}`;
   return `Issue status: ${title}`;
+}
+
+function persistLarkChatIds(workspaceId: string, chatIds: string[]): void {
+  const workspace = workspaceService.getById(workspaceId);
+  const settings = workspace?.notificationSettings;
+  if (!workspace || !settings) return;
+  workspaceService.update(workspaceId, {
+    notificationSettings: {
+      ...settings,
+      lark: {
+        ...settings.lark,
+        chatIds: [...new Set(chatIds)],
+      },
+    },
+  });
 }
 
 function formatLarkContent(envelope: BroadcastEnvelope): string {
@@ -322,11 +461,8 @@ function formatLarkContent(envelope: BroadcastEnvelope): string {
     envelope.data.issueId ? `Issue: ${envelope.data.issueId}` : '',
     envelope.data.taskId ? `Task: ${envelope.data.taskId}` : '',
     envelope.data.to ? `Status: ${String(envelope.data.from ?? '')} -> ${String(envelope.data.to)}` : '',
-    envelope.data.output ? `Output:\n${truncate(String(envelope.data.output), 3000)}` : '',
+    envelope.data.message ? String(envelope.data.message) : '',
     formatResult(envelope.data.result as TaskResult | undefined),
-    '',
-    'Commands:',
-    ...Object.values(envelope.data.queryCommands as Record<string, string> | undefined ?? {}),
   ];
   return lines.filter(Boolean).join('\n');
 }
@@ -338,8 +474,4 @@ function formatResult(result?: TaskResult): string {
     result.summary ? `Summary: ${result.summary}` : '',
     result.error ? `Error: ${result.error}` : '',
   ].filter(Boolean).join('\n');
-}
-
-function truncate(value: string, maxLength: number): string {
-  return value.length > maxLength ? `${value.slice(0, maxLength)}...` : value;
 }

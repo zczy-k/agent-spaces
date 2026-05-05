@@ -17,6 +17,7 @@ import llmRouter from './routes/llm.js';
 import { handleConnection } from './ws/handler.js';
 import { startScheduler, stopScheduler } from './agents/scheduler-agent.js';
 import { recoverRunningWorkOnStartup } from './services/issue-retry.js';
+import { startPersistedNotificationServices } from './services/notification-hub.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.PORT || '3100', 10);
@@ -86,6 +87,9 @@ server.listen(PORT, HOST, () => {
   console.log(`[server] listening on http://${HOST}:${PORT}`);
   console.log(`[server] websocket on ws://${HOST}:${PORT}/ws?workspaceId=...`);
   recoverRunningWorkOnStartup();
+  startPersistedNotificationServices().catch((err) => {
+    console.error('[notification] failed to restore persisted services:', err);
+  });
 });
 
 // Start scheduler for all workspaces (lazy: started on first WS connection)

@@ -18,7 +18,7 @@ import { listChannels, updateChannel } from './channel.js';
 import { ensureDir, getDataDir } from '../storage/json-store.js';
 import { extractUsageFromOutput } from '../storage/usage.js';
 
-const VALID_ROLES: AgentConfig['role'][] = ['scheduler', 'planner', 'executor', 'reviewer', 'commit', 'custom'];
+const VALID_ROLES: AgentConfig['role'][] = ['scheduler', 'planner', 'executor', 'reviewer', 'commit', 'custom', 'bot'];
 const VALID_RUNTIME_KINDS: NonNullable<AgentConfig['runtimeKind']>[] = ['open-agent-sdk', 'claude-code', 'codex'];
 const VALID_TOOL_NAMES = new Set(BUILT_IN_AGENT_TOOLS.map((tool) => tool.name));
 const ANTHROPIC_BRIDGE_PROVIDERS: Array<NonNullable<AgentConfig['modelProvider']>> = [

@@ -10,9 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { useChannelStore } from '@/stores/channel';
 import { useIssueStore } from '@/stores/issue';
-import { Bell, FolderOpen, Hash, ListChecks, Loader2, Send } from 'lucide-react';
+import { AgentDialog } from '@/components/sidebar/agent-dialog';
+import { Bell, Bot, FolderOpen, Hash, ListChecks, Loader2, Send } from 'lucide-react';
 import { toast } from 'sonner';
-import type { NotificationEventKey, NotificationProvider, Workspace, WorkspaceNotificationSettings } from '@agent-spaces/shared';
+import type { AgentConfig, NotificationEventKey, NotificationProvider, Workspace, WorkspaceNotificationSettings } from '@agent-spaces/shared';
 
 interface ProjectSettingsPanelProps {
   workspaceId: string;
@@ -27,6 +28,8 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
   const [savingPrompt, setSavingPrompt] = useState(false);
   const [savingNotifications, setSavingNotifications] = useState(false);
   const [startingNotifications, setStartingNotifications] = useState(false);
+  const [testingNotifications, setTestingNotifications] = useState(false);
+  const [agentDialogOpen, setAgentDialogOpen] = useState(false);
   const [notificationDraft, setNotificationDraft] = useState<WorkspaceNotificationSettings>(defaultNotificationSettings());
 
   const channels = useChannelStore((s) => s.channels);
@@ -54,6 +57,7 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
   const autoProcessIssues = workspace?.autoProcessIssues !== false;
   const promptChanged = prompt !== savedPrompt;
   const notificationSettings = notificationDraft;
+  const botAgents = (workspace?.agents ?? []).filter((agent) => agent.role === 'bot' && agent.enabled !== false);
 
   const handleToggleAutoProcess = async (checked: boolean) => {
     if (!workspace || saving) return;
@@ -144,6 +148,10 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
     patchNotifications({ events: Array.from(events) });
   };
 
+  const handleBotAgentChange = (agentId: string) => {
+    patchNotifications({ botAgentId: agentId || undefined });
+  };
+
   const handleStartNotifications = async () => {
     if (startingNotifications) return;
     setStartingNotifications(true);
@@ -157,6 +165,13 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
         const error = await res.json().catch(() => null);
         throw new Error(error?.error || 'Failed to start notification service');
       }
+      const result: { workspace?: Workspace } = await res.json();
+      if (result.workspace) {
+        setWorkspace(result.workspace);
+        setNotificationDraft(result.workspace.notificationSettings ?? defaultNotificationSettings());
+      } else {
+        setNotificationDraft({ ...notificationSettings, serviceRunning: true });
+      }
       toast.success('Notification service started');
     } catch (err) {
       toast.error('Failed to start notification service', {
@@ -164,6 +179,55 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
       });
     } finally {
       setStartingNotifications(false);
+    }
+  };
+
+  const handleStopNotifications = async () => {
+    if (startingNotifications) return;
+    setStartingNotifications(true);
+    try {
+      const res = await fetch(`/api/workspaces/${workspaceId}/notifications/stop`, {
+        method: 'POST',
+      });
+      if (!res.ok) {
+        const error = await res.json().catch(() => null);
+        throw new Error(error?.error || 'Failed to stop notification service');
+      }
+      const result: { workspace?: Workspace } = await res.json();
+      if (result.workspace) {
+        setWorkspace(result.workspace);
+        setNotificationDraft(result.workspace.notificationSettings ?? defaultNotificationSettings());
+      } else {
+        setNotificationDraft({ ...notificationSettings, serviceRunning: false });
+      }
+      toast.success('Notification service stopped');
+    } catch (err) {
+      toast.error('Failed to stop notification service', {
+        description: err instanceof Error ? err.message : undefined,
+      });
+    } finally {
+      setStartingNotifications(false);
+    }
+  };
+
+  const handleTestNotifications = async () => {
+    if (testingNotifications) return;
+    setTestingNotifications(true);
+    try {
+      const res = await fetch(`/api/workspaces/${workspaceId}/notifications/test`, {
+        method: 'POST',
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(data?.reason || data?.error || 'Failed to send test notification');
+      }
+      toast.success('Test notification sent');
+    } catch (err) {
+      toast.error('Failed to send test notification', {
+        description: err instanceof Error ? err.message : undefined,
+      });
+    } finally {
+      setTestingNotifications(false);
     }
   };
 
@@ -240,7 +304,7 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
                   Message Notifications
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  Push issue progress and task output to external chat platforms
+                  Push issue progress and final task results to external chat platforms
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -293,15 +357,28 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
                         disabled={startingNotifications}
                       />
                     </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={handleStartNotifications}
-                      disabled={startingNotifications || savingNotifications || !notificationSettings.lark?.appId || !notificationSettings.lark?.appSecret}
-                    >
-                      {startingNotifications ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Send className="mr-2 h-3.5 w-3.5" />}
-                      Start Service
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={notificationSettings.serviceRunning ? 'outline' : 'default'}
+                        onClick={notificationSettings.serviceRunning ? handleStopNotifications : handleStartNotifications}
+                        disabled={startingNotifications || savingNotifications || !notificationSettings.lark?.appId || !notificationSettings.lark?.appSecret}
+                      >
+                        {startingNotifications ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Send className="mr-2 h-3.5 w-3.5" />}
+                        {notificationSettings.serviceRunning ? 'Stop Service' : 'Start Service'}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={handleTestNotifications}
+                        disabled={testingNotifications || savingNotifications || !notificationSettings.serviceRunning}
+                      >
+                        {testingNotifications && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                        Test Send
+                      </Button>
+                    </div>
                   </TabsContent>
 
                   <TabsContent value="wechat" className="pt-2">
@@ -310,6 +387,29 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
                     </div>
                   </TabsContent>
                 </Tabs>
+
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                    <Bot className="h-3.5 w-3.5" />
+                    Bot Agent
+                  </div>
+                  <div className="flex gap-2">
+                    <select
+                      value={notificationSettings.botAgentId ?? ''}
+                      onChange={(event) => handleBotAgentChange(event.target.value)}
+                      disabled={savingNotifications}
+                      className="h-8 min-w-0 flex-1 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring dark:bg-input/30"
+                    >
+                      <option value="">No agent selected</option>
+                      {botAgents.map((agent: AgentConfig) => (
+                        <option key={agent.id} value={agent.id}>{agent.name}</option>
+                      ))}
+                    </select>
+                    <Button type="button" size="sm" variant="outline" onClick={() => setAgentDialogOpen(true)}>
+                      Manage
+                    </Button>
+                  </div>
+                </div>
 
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
@@ -364,6 +464,23 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
           </div>
         </div>
       </div>
+      <AgentDialog
+        open={agentDialogOpen}
+        onOpenChange={(open) => {
+          setAgentDialogOpen(open);
+          if (!open) {
+            fetch(`/api/workspaces/${workspaceId}`)
+              .then((res) => res.json())
+              .then((updated: Workspace) => {
+                setWorkspace(updated);
+                setNotificationDraft(updated.notificationSettings ?? defaultNotificationSettings());
+              })
+              .catch(() => undefined);
+          }
+        }}
+        workspaceId={workspaceId}
+        roleFilter="bot"
+      />
     </ScrollArea>
   );
 }

@@ -3,7 +3,7 @@ import { exec } from 'child_process';
 import * as wsService from '../services/workspace.js';
 import * as agentService from '../services/agent.js';
 import { readWorkspacePrompt, writeWorkspacePrompt } from '../services/workspace-prompt.js';
-import { startWorkspaceNotificationService } from '../services/notification-hub.js';
+import { sendTestNotification, startWorkspaceNotificationService, stopWorkspaceNotificationService } from '../services/notification-hub.js';
 
 const router = Router();
 
@@ -95,10 +95,32 @@ router.post('/:id/notifications/start', async (req, res) => {
       res.status(400).json({ error: 'Notification service is not enabled or provider is unsupported', ...result });
       return;
     }
-    res.json(result);
+    res.json({ ...result, workspace: wsService.getById(req.params.id) });
   } catch (err) {
     res.status(400).json({
       error: err instanceof Error ? err.message : 'Failed to start notification service',
+    });
+  }
+});
+
+router.post('/:id/notifications/stop', async (req, res) => {
+  await stopWorkspaceNotificationService(req.params.id);
+  const ws = wsService.getById(req.params.id);
+  res.json({ stopped: true, workspace: ws });
+});
+
+router.post('/:id/notifications/test', async (req, res) => {
+  try {
+    const result = await sendTestNotification(req.params.id);
+    if (!result.sent) {
+      res.status(400).json(result);
+      return;
+    }
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({
+      sent: false,
+      reason: err instanceof Error ? err.message : 'Failed to send test notification',
     });
   }
 });

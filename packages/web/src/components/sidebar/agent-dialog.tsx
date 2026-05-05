@@ -88,7 +88,8 @@ const ROLE_COLORS: Record<string, string> = {
   executor: "bg-green-500/10 text-green-600 border-green-200",
   reviewer: "bg-orange-500/10 text-orange-600 border-orange-200",
   commit: "bg-pink-500/10 text-pink-600 border-pink-200",
-  custom: "bg-gray-500/10 text-gray-600 border-gray-200"
+  custom: "bg-gray-500/10 text-gray-600 border-gray-200",
+  bot: "bg-cyan-500/10 text-cyan-600 border-cyan-200",
 };
 
 const PROVIDER_OPTIONS: Array<{ value: NonNullable<AgentConfig["modelProvider"]>; label: string }> = [
@@ -104,7 +105,7 @@ const RUNTIME_OPTIONS: Array<{ value: NonNullable<AgentConfig["runtimeKind"]>; l
   { value: "claude-code", label: "Claude Code" },
   { value: "codex", label: "Codex" },
 ];
-const ROLE_OPTIONS: AgentRole[] = ["scheduler", "planner", "executor", "reviewer", "commit", "custom"];
+const ROLE_OPTIONS: AgentRole[] = ["scheduler", "planner", "executor", "reviewer", "commit", "custom", "bot"];
 const DEFAULT_AGENT_TOOLS: BuiltInAgentToolName[] = (BUILT_IN_AGENT_TOOLS ?? []).map((tool) => tool.name);
 const ANTHROPIC_BRIDGE_PROVIDERS = new Set<AgentConfig["modelProvider"]>([
   "openai-responses-to-anthropic-messages",
@@ -241,6 +242,26 @@ const ROLE_TEMPLATES: Record<AgentRole, Omit<AgentPreset, "id">> = {
     maxTokens: 4096,
     enabled: true,
   },
+  bot: {
+    name: "Bot Agent",
+    role: "bot",
+    description: "消息机器人，负责处理外部聊天平台中的用户消息",
+    avatarUrl: "",
+    runtimeKind: "open-agent-sdk",
+    modelProvider: "anthropic-messages",
+    modelId: "claude-sonnet-4-6",
+    apiBase: "",
+    apiKey: "",
+    workingDir: "",
+    mcps: {},
+    skills: [],
+    tools: DEFAULT_AGENT_TOOLS,
+    systemPrompt:
+      "你是 Agent Spaces 的消息机器人。你会简洁回答来自外部聊天平台的用户消息。不要执行危险操作；需要用户提供更多信息时直接询问。",
+    temperature: 0.3,
+    maxTokens: 4096,
+    enabled: true,
+  },
 };
 
 function normalizeAgent(agent: AgentConfig): AgentPreset {
@@ -342,10 +363,12 @@ export function AgentDialog({
   open,
   onOpenChange,
   workspaceId,
+  roleFilter,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   workspaceId?: string;
+  roleFilter?: AgentRole | AgentRole[];
 }) {
   const [agents, setAgents] = useState<AgentPreset[]>([]);
   const [selectedAgent, setSelectedAgent] = useState<AgentPreset | null>(null);
@@ -355,6 +378,11 @@ export function AgentDialog({
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<ConnectionTestResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const roleFilterSet = roleFilter
+    ? new Set(Array.isArray(roleFilter) ? roleFilter : [roleFilter])
+    : null;
+  const visibleAgents = roleFilterSet ? agents.filter((agent) => roleFilterSet.has(agent.role)) : agents;
+  const addRoleOptions = roleFilterSet ? ROLE_OPTIONS.filter((role) => roleFilterSet.has(role)) : ROLE_OPTIONS;
 
   useEffect(() => {
     if (!open || !workspaceId) return;
@@ -581,13 +609,15 @@ export function AgentDialog({
               />
               <DropdownMenuContent side="bottom" align="end" className="w-44">
                 <DropdownMenuGroup>
-                  <DropdownMenuItem
-                    className="gap-2"
-                    onClick={() => handleAddAgent("empty")}
-                  >
-                    <span className="size-2 rounded-full bg-muted" />
-                    <span>Empty</span>
-                  </DropdownMenuItem>
+                  {!roleFilterSet && (
+                    <DropdownMenuItem
+                      className="gap-2"
+                      onClick={() => handleAddAgent("empty")}
+                    >
+                      <span className="size-2 rounded-full bg-muted" />
+                      <span>Empty</span>
+                    </DropdownMenuItem>
+                  )}
                   {ROLE_OPTIONS.map((role) => (
                     <DropdownMenuItem
                       key={role}
@@ -620,7 +650,7 @@ export function AgentDialog({
             <div className="py-12 text-center text-sm text-muted-foreground">Loading agent presets...</div>
           ) : !selectedAgent ? (
             <AgentList
-              agents={agents}
+              agents={visibleAgents}
               onSelect={handleSelectAgent}
               onDelete={handleDeleteAgent}
             />
@@ -628,6 +658,7 @@ export function AgentDialog({
             <AgentDetail
               key={editDraft.id}
               agent={editDraft}
+              roleOptions={addRoleOptions}
               testing={testing}
               testResult={testResult}
               onChange={updateAgentDraft}
@@ -710,6 +741,7 @@ function AgentList({
 
 function AgentDetail({
   agent,
+  roleOptions,
   testing,
   testResult,
   onChange,
@@ -719,6 +751,7 @@ function AgentDetail({
   onTestConnection,
 }: {
   agent: AgentPreset;
+  roleOptions: AgentRole[];
   testing: boolean;
   testResult: ConnectionTestResult | null;
   onChange: <K extends keyof AgentPreset>(key: K, value: AgentPreset[K]) => void;
@@ -842,7 +875,7 @@ function AgentDetail({
                 onChange={(e) => onChange("role", e.target.value as AgentConfig["role"])}
                 className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring dark:bg-input/30"
               >
-                {ROLE_OPTIONS.map((role) => (
+                {roleOptions.map((role) => (
                   <option key={role} value={role}>{role}</option>
                 ))}
               </select>
