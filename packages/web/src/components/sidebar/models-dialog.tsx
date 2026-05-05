@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { LLMModel, LLMProvider } from "@agent-spaces/shared";
+import type { LLMModel } from "@agent-spaces/shared";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +18,7 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
+import { useLLMStore } from "@/stores/llm";
 
 const CAP_BADGES: Record<string, { label: string; cls: string }> = {
   vision: { label: "Vision", cls: "bg-blue-500/10 text-blue-600 border-blue-200" },
@@ -43,8 +44,8 @@ export function ModelsDialog({
   onOpenChange: (open: boolean) => void;
   initialProvider?: string;
 }) {
-  const [models, setModels] = useState<LLMModel[]>([]);
-  const [providers, setProviders] = useState<LLMProvider[]>([]);
+  const { models, providers, ensure, addModel, updateModel, removeModel } = useLLMStore();
+  const providerNames = providers.map(p => p.name);
   const [selected, setSelected] = useState<LLMModel | null>(null);
   const [draft, setDraft] = useState<Partial<LLMModel> | null>(null);
   const [loading, setLoading] = useState(false);
@@ -55,19 +56,9 @@ export function ModelsDialog({
     if (!open) return;
     setLoading(true);
     setError(null);
-    Promise.all([
-      fetch("/api/models").then(r => r.json()),
-      fetch("/api/providers").then(r => r.json()),
-    ])
-      .then(([models, prov]: [LLMModel[], LLMProvider[]]) => {
-        setModels(models);
-        setProviders(prov);
-      })
-      .catch(() => setError("Failed to load models"))
-      .finally(() => setLoading(false));
-  }, [open]);
+    ensure().finally(() => setLoading(false));
+  }, [open, ensure]);
 
-  // When initialProvider is set, open add form with that provider pre-selected
   useEffect(() => {
     if (open && initialProvider && !draft) {
       setSelected(null);
@@ -116,7 +107,7 @@ export function ModelsDialog({
       });
       if (!res.ok) throw new Error();
       const saved: LLMModel = await res.json();
-      setModels(prev => isNew ? [...prev, saved] : prev.map(m => m.id === saved.id ? saved : m));
+      if (isNew) addModel(saved); else updateModel(saved);
       handleBack();
     } catch {
       setError("Failed to save model");
@@ -131,7 +122,7 @@ export function ModelsDialog({
     try {
       const res = await fetch(`/api/models/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
-      setModels(prev => prev.filter(m => m.id !== id));
+      removeModel(id);
       if (selected?.id === id) handleBack();
     } catch {
       setError("Failed to delete model");
@@ -180,9 +171,9 @@ export function ModelsDialog({
           {loading ? (
             <div className="py-12 text-center text-sm text-muted-foreground">Loading models...</div>
           ) : draft ? (
-            <ModelForm draft={draft} providerNames={providers.map(p => p.name)} onChange={updateDraft} />
+            <ModelForm draft={draft} providerNames={providerNames} onChange={updateDraft} />
           ) : (
-            <ModelList groups={groups} providerNames={providers.map(p => p.name)} onEdit={handleEdit} onDelete={handleDelete} />
+            <ModelList groups={groups} providerNames={providerNames} onEdit={handleEdit} onDelete={handleDelete} />
           )}
         </div>
 
@@ -214,7 +205,6 @@ function ModelList({
   const sorted = Object.keys(groups).sort((a, b) => {
     const ai = order.indexOf(a);
     const bi = order.indexOf(b);
-    // known providers first (sorted by their order), unknown ones last
     if (ai >= 0 && bi >= 0) return ai - bi;
     if (ai >= 0) return -1;
     if (bi >= 0) return 1;

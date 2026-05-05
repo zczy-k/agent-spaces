@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useLLMStore } from "@/stores/llm";
 import {
   BUILT_IN_AGENT_TOOLS,
   type AgentConfig,
@@ -730,20 +731,12 @@ function AgentDetail({
 }) {
   const [mcpJson, setMcpJson] = useState(() => JSON.stringify(agent.mcps, null, 2));
   const [mcpError, setMcpError] = useState<string | null>(null);
-  const [llmModels, setLlmModels] = useState<LLMModel[]>([]);
-  const [llmProviders, setLlmProviders] = useState<LLMProvider[]>([]);
   const [dynamicModelOptions, setDynamicModelOptions] = useState<Array<{ value: string; label: string }>>([]);
 
-  useEffect(() => {
-    fetch("/api/providers")
-      .then((r) => r.json())
-      .then((data: LLMProvider[]) => setLlmProviders(data))
-      .catch(() => {});
-    fetch("/api/models")
-      .then((r) => r.json())
-      .then((data: LLMModel[]) => setLlmModels(data.filter((m) => !m.embedding)))
-      .catch(() => {});
-  }, []);
+  const { models: allLlmModels, providers: llmProviders, ensure: ensureLLM } = useLLMStore();
+  const llmModels = allLlmModels.filter((m) => !m.embedding);
+
+  useEffect(() => { ensureLLM(); }, [ensureLLM]);
 
   const handleSelectProvider = useCallback(
     (provider: LLMProvider) => {
