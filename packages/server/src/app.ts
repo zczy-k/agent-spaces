@@ -1,3 +1,6 @@
+import { config as loadDotenv } from 'dotenv';
+loadDotenv();
+
 import express from 'express';
 import cors from 'cors';
 import { createServer } from 'node:http';

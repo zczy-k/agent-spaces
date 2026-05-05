@@ -9,11 +9,31 @@ import { broadcastToWorkspace } from '../ws/connection-manager.js';
 
 const gitInstances = new Map<string, SimpleGit>();
 
+function getGitOptions(): Partial<import('simple-git').SimpleGitOptions> {
+  const proxy = process.env.HTTPS_PROXY || process.env.https_proxy
+    || process.env.HTTP_PROXY || process.env.http_proxy;
+  const config: string[] = [];
+  if (proxy) {
+    config.push(`http.proxy=${proxy}`, `https.proxy=${proxy}`);
+  }
+  return config.length ? { config } : {};
+}
+
 function getGit(workspace: Workspace): SimpleGit {
   const existing = gitInstances.get(workspace.id);
   if (existing) return existing;
 
-  const git = simpleGit(workspace.boundDirs[0]);
+  const git = simpleGit(workspace.boundDirs[0], getGitOptions());
+  git.outputHandler((_binary, stdout, stderr) => {
+    stderr.on('data', (chunk: Buffer) => {
+      const text = chunk.toString().trim();
+      if (text) console.log(`[git:${workspace.id}] ${text}`);
+    });
+    stdout.on('data', (chunk: Buffer) => {
+      const text = chunk.toString().trim();
+      if (text) console.log(`[git:${workspace.id}] ${text}`);
+    });
+  });
   gitInstances.set(workspace.id, git);
   return git;
 }
@@ -280,7 +300,7 @@ export async function gitInit(workspaceId: string): Promise<void> {
   if (!ws) throw new Error('Workspace not found');
 
   const rootDir = ws.boundDirs[0];
-  const git = simpleGit(rootDir);
+  const git = simpleGit(rootDir, getGitOptions());
   await git.init();
 
   const gitignorePath = join(rootDir, '.gitignore');
@@ -320,14 +340,18 @@ export async function gitClone(
     throw new Error(`目录 ${cloneDir} 已存在`);
   }
 
-  const git = simpleGit();
+  const git = simpleGit(getGitOptions());
   git.outputHandler((_binary, stdout, stderr) => {
     stderr.on('data', (chunk: Buffer) => {
       const text = chunk.toString();
+      console.log(`[git:clone] ${text.trim()}`);
       const parsed = parseCloneProgress(text);
       if (parsed) onProgress(parsed);
     });
-    stdout.on('data', () => {});
+    stdout.on('data', (chunk: Buffer) => {
+      const text = chunk.toString().trim();
+      if (text) console.log(`[git:clone] ${text}`);
+    });
   });
 
   await git.clone(url, cloneDir, ['--progress']);

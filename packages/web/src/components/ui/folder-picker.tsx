@@ -112,7 +112,9 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
 
       setCreating(false);
       setNewFolderName("");
-      browse(currentPath);
+      onChange(newPath);
+      setCurrentPath(newPath);
+      setOpen(false);
     } catch (err: any) {
       setError(err.message);
     }
