@@ -5,7 +5,7 @@ import type { AgentRunOptions, AgentRunResult, AgentRuntime, AgentRuntimeConfig 
 import { summarizeResult } from '../agent-runtime-types.js';
 import { normalizePermissionMode, normalizeSkillNames, prepareConfigDir, resolveBundledClaudeExecutable, buildEnv, normalizeMcpServers } from './sdk-config.js';
 import { startClaudeAdapterIfNeeded, getClaudeCodeModel } from './adapter-pool.js';
-import { extractToolUseEvents, extractToolResultEvent, logToolDebug, formatMessage, isAskUserQuestionAutoResult, countUsageTokens, truncate } from './message-format.js';
+import { extractToolUseEvents, extractToolResultEvent, logToolDebug, formatMessage, isAskUserQuestionAutoResult, countUsageTokens, formatUsageLine } from './message-format.js';
 
 export class ClaudeCodeRuntime implements AgentRuntime {
   private abortController: AbortController | null = null;
@@ -19,7 +19,8 @@ export class ClaudeCodeRuntime implements AgentRuntime {
     const output: string[] = [];
     const cwd = workingDir || process.cwd();
     const startTime = Date.now();
-    const d = (msg: string) => console.log(`[claude-code] ${msg}`);
+    const MAX_LOG = 500;
+    const d = (msg: string) => console.log(`[claude-code] ${msg.length > MAX_LOG ? msg.slice(0, MAX_LOG) + '...' : msg}`);
     const permissionMode = normalizePermissionMode(this.config.permissionMode);
     const agentDir = options?.configDir;
     const configDir = agentDir ? join(agentDir, '.claude') : undefined;
@@ -64,6 +65,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
       let turns = 0;
       let tokenCount = 0;
       let error: string | undefined;
+      let usageLine: string | null = null;
       const pendingAskUserQuestionToolIds = new Set<string>();
       let waitingForUserAnswer = false;
 
@@ -101,6 +103,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
         if (message.type === 'result') {
           turns = message.num_turns;
           tokenCount = countUsageTokens(message.usage);
+          usageLine = formatUsageLine(message.usage);
           if (message.subtype === 'success') {
             if (!isAskUserQuestionAutoResult(message.result)) {
               resultText = message.result;
@@ -114,6 +117,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
       const elapsed = Date.now() - startTime;
       if (waitingForUserAnswer && (!error || isAskUserQuestionAutoResult(error))) {
         d(`waiting for user answer ${elapsed}ms | turns=${turns} tokens=${tokenCount}`);
+        if (usageLine) output.push(usageLine);
         return {
           success: true,
           summary: 'Waiting for user answer',
@@ -124,6 +128,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
 
       if (error) {
         d(`failed ${elapsed}ms | turns=${turns} tokens=${tokenCount} | ${error}`);
+        if (usageLine) output.push(usageLine);
         return {
           success: false,
           summary: 'Claude Code execution failed',
@@ -135,15 +140,18 @@ export class ClaudeCodeRuntime implements AgentRuntime {
 
       const text = resultText || output.at(-1) || '';
       if (text.trim()) {
-        d(`final message | ${truncate(text.trim(), 2000)}`);
+        d(`final message | ${text.trim()}`);
       }
       d(`done ${elapsed}ms | turns=${turns} tokens=${tokenCount}`);
+
+      const finalOutput = resultText && !output.includes(resultText) ? [...output, resultText] : output;
+      if (usageLine && !finalOutput.includes(usageLine)) finalOutput.push(usageLine);
 
       return {
         success: true,
         summary: summarizeResult(text),
         artifacts: [],
-        output: resultText && !output.includes(resultText) ? [...output, resultText] : output,
+        output: finalOutput,
       };
     } catch (err) {
       const elapsed = Date.now() - startTime;

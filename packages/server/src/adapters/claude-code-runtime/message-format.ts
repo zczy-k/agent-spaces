@@ -181,7 +181,41 @@ export function isAskUserQuestionAutoResult(result: unknown): boolean {
 }
 
 export function countUsageTokens(usage: unknown): number {
-  if (!usage || typeof usage === 'object') return 0;
+  if (!usage || typeof usage !== 'object') return 0;
   const values = Object.values(usage as Record<string, unknown>);
   return values.reduce<number>((total, value) => total + (typeof value === 'number' ? value : 0), 0);
+}
+
+export function formatUsageLine(usage: unknown): string | null {
+  const normalized = normalizeUsage(usage);
+  if (!normalized) return null;
+  return [
+    `[Usage] tokens=${normalized.totalTokens}`,
+    `input=${normalized.inputTokens}`,
+    `output=${normalized.outputTokens}`,
+    `cached=${normalized.cachedInputTokens}`,
+  ].join(' ');
+}
+
+function normalizeUsage(usage: unknown): {
+  inputTokens: number;
+  outputTokens: number;
+  cachedInputTokens: number;
+  totalTokens: number;
+} | null {
+  if (!usage || typeof usage !== 'object') return null;
+  const record = usage as Record<string, unknown>;
+  const inputTokens = numberValue(record.input_tokens);
+  const outputTokens = numberValue(record.output_tokens);
+  const cachedInputTokens =
+    numberValue(record.cache_read_input_tokens)
+    + numberValue(record.cache_creation_input_tokens)
+    + numberValue(record.cached_input_tokens);
+  const totalTokens = inputTokens + outputTokens + cachedInputTokens;
+  if (totalTokens === 0) return null;
+  return { inputTokens, outputTokens, cachedInputTokens, totalTokens };
+}
+
+function numberValue(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
 }
