@@ -1,15 +1,18 @@
-import { WorkspacesPage } from "@/components/workspaces/workspaces-page"
+"use client";
 
-async function getWorkspaces() {
-  const serverUrl = process.env.SERVER_URL || "http://localhost:3100"
-  const res = await fetch(`${serverUrl}/api/workspaces`, {
-    cache: "no-store",
-  })
-  if (!res.ok) return []
-  return res.json()
-}
+import { useEffect, useState } from "react";
+import { WorkspacesPage } from "@/components/workspaces/workspaces-page";
+import { authHeaders } from "@/lib/auth";
+import type { Workspace } from "@agent-spaces/shared";
 
-export default async function Page() {
-  const workspaces = await getWorkspaces()
-  return <WorkspacesPage initialWorkspaces={workspaces} />
+export default function Page() {
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+
+  useEffect(() => {
+    fetch("/api/workspaces", { headers: authHeaders() })
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setWorkspaces);
+  }, []);
+
+  return <WorkspacesPage initialWorkspaces={workspaces} />;
 }

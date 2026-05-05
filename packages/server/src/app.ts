@@ -5,9 +5,9 @@ import express from 'express';
 import cors from 'cors';
 import { createServer } from 'node:http';
 import { WebSocketServer } from 'ws';
-import { existsSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { writeFile, mkdir } from 'node:fs/promises';
-import { join, dirname, extname } from 'node:path';
+import { join, dirname, extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import workspaceRouter from './routes/workspace.js';
 import fileRouter from './routes/file.js';
@@ -27,6 +27,7 @@ import { startPersistedNotificationServices } from './services/notification-hub/
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.PORT || '3100', 10);
+const IS_PROD = process.env.NODE_ENV === 'production';
 
 const app = express();
 app.use(cors());
@@ -74,6 +75,37 @@ app.use('/api/workspaces/:id/git', gitRouter);
 app.use('/api/agents', agentRouter);
 app.use('/api', llmRouter);
 app.use('/api/folder', folderRouter);
+
+// Serve static web frontend in production (after API routes, before catch-all)
+if (IS_PROD) {
+  const webDir = join(__dirname, '..', 'web');
+  if (existsSync(webDir)) {
+    // /static/* -> public/* (avatar URLs etc.)
+    app.use('/static', express.static(join(__dirname, '..', 'public')));
+    // web static assets (_next, monaco, etc.)
+    app.use(express.static(webDir));
+
+    // SPA fallback: serve correct HTML for each route
+    const indexHtml = join(webDir, 'index.html');
+    const workspaceHtml = join(webDir, 'workspace', '_.html');
+
+    // /workspace/* -> workspace SPA page
+    if (existsSync(workspaceHtml)) {
+      app.get('/workspace/:id', (_req, res) => {
+        res.sendFile(workspaceHtml);
+      });
+    }
+
+    // Everything else -> root index.html
+    app.use((_req, res) => {
+      res.sendFile(indexHtml);
+    });
+
+    console.log(`[server] serving web frontend from ${webDir}`);
+  } else {
+    console.warn('[server] web frontend not found at', webDir, '- run \`pnpm build\` first');
+  }
+}
 
 const server = createServer(app);
 
