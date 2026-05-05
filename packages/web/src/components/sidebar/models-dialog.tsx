@@ -26,6 +26,16 @@ const CAP_BADGES: Record<string, { label: string; cls: string }> = {
   embedding: { label: "Embedding", cls: "bg-green-500/10 text-green-600 border-green-200" },
 };
 
+const CONTEXT_OPTIONS = [
+  { label: "8K", value: 8_192 },
+  { label: "16K", value: 16_384 },
+  { label: "32K", value: 32_768 },
+  { label: "64K", value: 65_536 },
+  { label: "128K", value: 128_000 },
+  { label: "200K", value: 200_000 },
+  { label: "1M", value: 1_000_000 },
+];
+
 function groupByProvider(models: LLMModel[]): Record<string, LLMModel[]> {
   const groups: Record<string, LLMModel[]> = {};
   for (const m of models) {
@@ -67,6 +77,7 @@ export function ModelsDialog({
         name: "",
         provider: initialProvider,
         cost: { inputPerMillion: 0, outputPerMillion: 0 },
+        maxContextTokens: 128_000,
         vision: false,
         reasoning: false,
         embedding: false,
@@ -83,6 +94,7 @@ export function ModelsDialog({
       name: "",
       provider: "Other",
       cost: { inputPerMillion: 0, outputPerMillion: 0 },
+      maxContextTokens: 128_000,
       vision: false,
       reasoning: false,
       embedding: false,
@@ -234,6 +246,11 @@ function ModelList({
                       ${formatCost(model.cost.inputPerMillion)}/${formatCost(model.cost.outputPerMillion)}
                     </span>
                   ) : null}
+                  {model.maxContextTokens ? (
+                    <span className="ml-2 text-[11px] text-muted-foreground font-mono">
+                      {formatTokenLimit(model.maxContextTokens)} ctx
+                    </span>
+                  ) : null}
                 </div>
                 <div className="flex items-center gap-1">
                   {(["vision", "reasoning", "embedding"] as const).map(cap =>
@@ -307,6 +324,39 @@ function ModelForm({
       </div>
 
       <div className="flex flex-col gap-2.5">
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Context</div>
+        <div className="grid gap-3 sm:grid-cols-[1fr_1fr]">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">Common limit</label>
+            <select
+              value={getContextSelectValue(draft.maxContextTokens)}
+              onChange={e => {
+                if (e.target.value === "custom") return;
+                onChange("maxContextTokens", parseTokenLimit(e.target.value));
+              }}
+              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring dark:bg-input/30"
+            >
+              {CONTEXT_OPTIONS.map(option => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">Max context tokens</label>
+            <Input
+              type="number"
+              min="1"
+              step="1"
+              value={draft.maxContextTokens ?? ""}
+              onChange={e => onChange("maxContextTokens", parseOptionalTokenLimit(e.target.value))}
+              placeholder="128000"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2.5">
         <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Cost</div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1">
@@ -371,8 +421,31 @@ function parseCost(value: string): number {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 }
 
+function parseTokenLimit(value: string): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 128_000;
+}
+
+function parseOptionalTokenLimit(value: string): number | undefined {
+  if (!value.trim()) return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : undefined;
+}
+
+function getContextSelectValue(value?: number): string {
+  if (!value) return "custom";
+  return CONTEXT_OPTIONS.some(option => option.value === value) ? String(value) : "custom";
+}
+
 function formatCost(value: number): string {
   return new Intl.NumberFormat("en-US", {
     maximumFractionDigits: 4,
+  }).format(value);
+}
+
+function formatTokenLimit(value: number): string {
+  return new Intl.NumberFormat("en-US", {
+    notation: "compact",
+    maximumFractionDigits: 1,
   }).format(value);
 }

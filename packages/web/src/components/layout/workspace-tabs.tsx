@@ -39,11 +39,6 @@ export function WorkspaceTabs() {
           )}
         >
           <span className="max-w-[160px] truncate">{ws.name}</span>
-          {activeId === ws.id && (
-            <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
-              active
-            </Badge>
-          )}
         </button>
       ))}
     </div>

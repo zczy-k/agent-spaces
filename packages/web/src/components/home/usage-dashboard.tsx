@@ -24,8 +24,9 @@ import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } f
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem } from "@/components/ui/pagination"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { usePagination } from "@/hooks/use-pagination"
-import { cn } from "@/lib/utils"
+import { cn, textColorClass, textToColor } from "@/lib/utils"
 
 // ── model -> provider icon mapping ──
 
@@ -78,7 +79,7 @@ const columns: ColumnDef<AgentUsageRecord>[] = [
           {iconUrl ? (
             <img src={iconUrl} alt="" className="size-4 shrink-0 rounded-sm" />
           ) : (
-            <span className="flex size-4 shrink-0 items-center justify-center rounded-sm bg-muted text-[9px] font-semibold">
+            <span className={cn("flex size-4 shrink-0 items-center justify-center rounded-sm text-[9px] font-semibold", textColorClass(model ?? '?'))}>
               {model?.charAt(0).toUpperCase() ?? '?'}
             </span>
           )}
@@ -104,9 +105,14 @@ const columns: ColumnDef<AgentUsageRecord>[] = [
       return (
         <div className="flex flex-col gap-0.5 font-mono text-xs tabular-nums">
           <span>{formatCurrency(totalCostUsd)}</span>
-          <span className="text-muted-foreground text-[10px]">
-            {formatCurrency(inputCostUsd)} in / {formatCurrency(outputCostUsd)} out
-          </span>
+          <Tooltip>
+            <TooltipTrigger render={<span className="text-muted-foreground text-[10px] cursor-default" />}>
+                {formatTokens(row.original.inputTokens)} in / {formatTokens(row.original.outputTokens)} out
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">
+              Total: {formatTokens(row.original.totalTokens)} · Cache hit: {row.original.inputTokens > 0 ? Math.round((row.original.cachedInputTokens / row.original.inputTokens) * 100) : 0}%
+            </TooltipContent>
+          </Tooltip>
         </div>
       )
     }
@@ -213,7 +219,7 @@ export function UsageDashboard() {
             </Badge>
           ))}
           <Popover>
-            <PopoverTrigger render={
+            <PopoverTrigger nativeButton={false} render={
               <Badge
                 variant={period === 'custom' ? 'default' : 'secondary'}
                 className="h-5 cursor-pointer rounded-full font-normal text-[10px] transition-colors"
@@ -289,7 +295,7 @@ export function UsageDashboard() {
                     {(() => { const iconUrl = getModelIconUrl(item.model); return iconUrl ? (
                       <img src={iconUrl} alt="" className="size-4 shrink-0 rounded-sm" />
                     ) : (
-                      <span className="flex size-4 shrink-0 items-center justify-center rounded-sm bg-muted text-[9px] font-semibold">
+                      <span className={cn("flex size-4 shrink-0 items-center justify-center rounded-sm text-[9px] font-semibold", textColorClass(item.model ?? '?'))}>
                         {item.model?.charAt(0).toUpperCase() ?? '?'}
                       </span>
                     )})()}
@@ -534,10 +540,13 @@ function CostPieChart({ byModel, totalCost }: { byModel: Array<{ model: string; 
     return <p className="mt-4 text-center text-xs text-muted-foreground">No cost data yet.</p>
   }
   const top = byModel.slice(0, 5)
-  const data = top.map((item) => ({ key: item.model, value: item.costUsd }))
+  const data = top.map((item) => ({ key: item.model, value: item.costUsd, fill: textToColor(item.model) }))
+  const costPieConfig = Object.fromEntries(
+    top.map((item) => [item.model, { label: item.model, color: textToColor(item.model) }])
+  ) satisfies ChartConfig
   return (
     <div className="mt-2">
-      <ChartContainer config={tokenPieConfig} className="mx-auto h-40 w-full">
+      <ChartContainer config={costPieConfig} className="mx-auto h-40 w-full">
         <PieChart margin={{ top: 0, bottom: 0, left: 0, right: 0 }}>
           <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
           <Pie data={data} dataKey="value" nameKey="key" startAngle={90} endAngle={450} innerRadius={48} outerRadius={68} paddingAngle={2}>

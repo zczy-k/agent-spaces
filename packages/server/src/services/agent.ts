@@ -13,6 +13,8 @@ import {
   recordAgentUsage,
 } from '../storage/agent-store.js';
 import { getWorkspace, updateWorkspace } from '../storage/workspace-store.js';
+import { listIssues, updateIssue } from '../storage/issue-store.js';
+import { listChannels, updateChannel } from './channel.js';
 import { ensureDir, getDataDir } from '../storage/json-store.js';
 import { extractUsageFromOutput } from '../storage/usage.js';
 
@@ -644,6 +646,27 @@ export function deletePreset(workspaceId: string, presetId: string): boolean | n
 
   ws.updatedAt = new Date().toISOString();
   updateWorkspace(ws);
+
+  // Remove agent from all channels' members
+  for (const ch of listChannels(workspaceId)) {
+    if (ch.members.includes(presetId)) {
+      updateChannel(workspaceId, ch.id, { members: ch.members.filter((m) => m !== presetId) });
+    }
+  }
+
+  // Remove agent from all issues' members and assignedAgents
+  for (const issue of listIssues(workspaceId)) {
+    const membersChanged = issue.members.includes(presetId);
+    const assignedChanged = issue.assignedAgents.includes(presetId);
+    if (membersChanged || assignedChanged) {
+      updateIssue({
+        ...issue,
+        members: membersChanged ? issue.members.filter((m) => m !== presetId) : issue.members,
+        assignedAgents: assignedChanged ? issue.assignedAgents.filter((a) => a !== presetId) : issue.assignedAgents,
+      });
+    }
+  }
+
   return true;
 }
 

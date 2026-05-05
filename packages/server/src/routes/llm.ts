@@ -9,7 +9,7 @@ router.get('/models', (_req, res) => {
 });
 
 router.post('/models', (req, res) => {
-  const { modelId, name, provider, vision, reasoning, embedding, cost } = req.body;
+  const { modelId, name, provider, vision, reasoning, embedding, cost, maxContextTokens } = req.body;
   if (!modelId || !name || !provider) {
     res.status(400).json({ error: 'modelId, name, and provider are required' });
     return;
@@ -19,6 +19,7 @@ router.post('/models', (req, res) => {
     name,
     provider,
     cost: normalizeModelCost(cost),
+    maxContextTokens: normalizeTokenLimit(maxContextTokens),
     vision: Boolean(vision),
     reasoning: Boolean(reasoning),
     embedding: Boolean(embedding),
@@ -31,6 +32,7 @@ router.put('/models/:id', (req, res) => {
     ...req.body,
   };
   if ('cost' in body) body.cost = normalizeModelCost(body.cost);
+  if ('maxContextTokens' in body) body.maxContextTokens = normalizeTokenLimit(body.maxContextTokens);
   const model = store.updateModel(req.params.id, body);
   if (!model) {
     res.status(404).json({ error: 'Model not found' });
@@ -99,4 +101,10 @@ function normalizeModelCost(cost: unknown) {
 function toNonNegativeNumber(value: unknown): number {
   const number = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(number) && number >= 0 ? number : 0;
+}
+
+function normalizeTokenLimit(value: unknown): number | undefined {
+  const number = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(number) || number <= 0) return undefined;
+  return Math.floor(number);
 }

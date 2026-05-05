@@ -2,11 +2,12 @@
 
 import type { Message, MessagePart } from "@agent-spaces/shared"
 import { CheckIcon, CheckCircle2Icon, ChevronDownIcon, CircleIcon, CopyIcon, FileTextIcon, HelpCircleIcon, MessageSquareTextIcon } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Markdown } from "@/components/ui/markdown"
 import { Loader } from "@/components/ui/loader"
 import { Button } from "@/components/ui/button"
 import { useEditorStore } from "@/stores/editor"
+import { useLLMStore } from "@/stores/llm"
 import { cn } from "@/lib/utils"
 import { DiffViewer } from "@/components/git/diff-viewer"
 import {
@@ -89,13 +90,24 @@ export function MessageParts({ message, isUser, workspaceId }: MessagePartsProps
 
 export function MessageContextUsage({ message }: { message: Message }) {
   const part = message.parts?.find((item) => item.type === "context")
+  const models = useLLMStore((state) => state.models)
+  const ensureModels = useLLMStore((state) => state.ensure)
+  const configuredModel = part?.modelId
+    ? models.find((model) => model.modelId === part.modelId || model.name === part.modelId)
+    : undefined
+  const maxTokens = configuredModel?.maxContextTokens ?? part?.maxTokens
 
-  if (!part) return null
+  useEffect(() => {
+    if (!part) return
+    void ensureModels()
+  }, [ensureModels, part])
+
+  if (!part || !maxTokens) return null
 
   return (
     <Context
       usedTokens={part.usedTokens}
-      maxTokens={part.maxTokens}
+      maxTokens={maxTokens}
       modelId={part.modelId}
       usage={{
         inputTokens: part.usage?.inputTokens ?? 0,

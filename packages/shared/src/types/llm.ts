@@ -4,6 +4,7 @@ export interface LLMModel {
   name: string;
   provider: string;
   cost?: LLMModelCost;
+  maxContextTokens?: number;
   vision: boolean;
   reasoning: boolean;
   embedding: boolean;
