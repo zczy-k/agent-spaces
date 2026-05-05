@@ -22,11 +22,26 @@ const prod = {
   main: 'app.js',
   scripts: { start: 'node app.js' },
   dependencies: deps,
-  pnpm: { onlyBuiltDependencies: ['node-pty', 'protobufjs'] },
+  pnpm: {
+    overrides: {
+      zod: '^4.0.0',
+    },
+    onlyBuiltDependencies: ['node-pty', 'protobufjs'],
+  },
   engines: pkg.engines,
 };
 
 writeFileSync(dst, JSON.stringify(prod, null, 2) + '\n');
+writeFileSync(
+  resolve(root, 'packages/server/dist/.npmrc'),
+  [
+    'shamefully-hoist=true',
+    'strict-peer-dependencies=false',
+    'only-built-dependencies[]=node-pty',
+    'only-built-dependencies[]=protobufjs',
+    '',
+  ].join('\n'),
+);
 
 // Copy shared/dist into server/dist/shared so file:./shared resolves
 const sharedDistDir = resolve(root, 'packages/server/dist/shared');
