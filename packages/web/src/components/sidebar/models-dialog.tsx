@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft,
@@ -325,33 +326,36 @@ function ModelForm({
 
       <div className="flex flex-col gap-2.5">
         <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Context</div>
-        <div className="grid gap-3 sm:grid-cols-[1fr_1fr]">
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-muted-foreground">Common limit</label>
-            <select
-              value={getContextSelectValue(draft.maxContextTokens)}
-              onChange={e => {
-                if (e.target.value === "custom") return;
-                onChange("maxContextTokens", parseTokenLimit(e.target.value));
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground">Max context tokens</label>
+          <div className="flex items-center gap-3">
+            <Slider
+              min={0}
+              max={CONTEXT_OPTIONS.length}
+              step={1}
+              value={getContextSliderIndex(draft.maxContextTokens)}
+              onValueChange={(idx) => {
+                if (idx < CONTEXT_OPTIONS.length) {
+                  onChange("maxContextTokens", CONTEXT_OPTIONS[idx].value);
+                }
               }}
-              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring dark:bg-input/30"
-            >
-              {CONTEXT_OPTIONS.map(option => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-              <option value="custom">Custom</option>
-            </select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-muted-foreground">Max context tokens</label>
-            <Input
-              type="number"
-              min="1"
-              step="1"
-              value={draft.maxContextTokens ?? ""}
-              onChange={e => onChange("maxContextTokens", parseOptionalTokenLimit(e.target.value))}
-              placeholder="128000"
+              className="flex-1"
             />
+            {getContextSliderIndex(draft.maxContextTokens) < CONTEXT_OPTIONS.length ? (
+              <span className="text-sm tabular-nums min-w-[3.5rem] text-right">
+                {CONTEXT_OPTIONS[getContextSliderIndex(draft.maxContextTokens)].label}
+              </span>
+            ) : (
+              <Input
+                type="number"
+                min="1"
+                step="1"
+                value={draft.maxContextTokens ?? ""}
+                onChange={e => onChange("maxContextTokens", parseOptionalTokenLimit(e.target.value))}
+                placeholder="128000"
+                className="h-7 w-24 text-sm tabular-nums"
+              />
+            )}
           </div>
         </div>
       </div>
@@ -432,9 +436,10 @@ function parseOptionalTokenLimit(value: string): number | undefined {
   return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : undefined;
 }
 
-function getContextSelectValue(value?: number): string {
-  if (!value) return "custom";
-  return CONTEXT_OPTIONS.some(option => option.value === value) ? String(value) : "custom";
+function getContextSliderIndex(value?: number): number {
+  if (!value) return CONTEXT_OPTIONS.length;
+  const idx = CONTEXT_OPTIONS.findIndex(o => o.value === value);
+  return idx >= 0 ? idx : CONTEXT_OPTIONS.length;
 }
 
 function formatCost(value: number): string {
