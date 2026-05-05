@@ -4,9 +4,8 @@
   "scripts": {
     "dev": "concurrently -n server,web -c blue,green \"pnpm --filter @agent-spaces/server dev\" \"pnpm --filter @agent-spaces/web dev\"",
     "build": "pnpm --filter @agent-spaces/shared build && pnpm --filter @agent-spaces/server build && pnpm --filter @agent-spaces/web build && node scripts/copy-web.mjs",
-    "build:docker:web": "docker build -f Dockerfile.web -t agent-spaces-web:latest .",
-    "build:docker:server": "docker build -f Dockerfile.server -t agent-spaces-server:latest .",
-    "build:docker": "pnpm build:docker:server && pnpm build:docker:web",
+    "build:docker": "docker build -f Dockerfile.server -t agent-spaces-server:latest .",
+    "up": "docker compose up -d --build",
     "lint": "pnpm -r lint",
     "clean": "rm -rf packages/*/dist packages/*/.next packages/server/web"
   },
