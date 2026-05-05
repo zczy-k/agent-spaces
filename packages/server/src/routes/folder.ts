@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from 'express';
-import { readdir, stat } from 'node:fs/promises';
+import { readdir, stat, mkdir } from 'node:fs/promises';
 import { join, resolve, sep } from 'node:path';
 import { homedir } from 'node:os';
 
@@ -47,6 +47,23 @@ router.get('/browse', async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     res.status(400).json({ error: err.message || 'Cannot read directory' });
+  }
+});
+
+router.post('/create', async (req: Request, res: Response) => {
+  const { path: rawPath } = req.body as { path?: string };
+  if (!rawPath) {
+    res.status(400).json({ error: 'path is required' });
+    return;
+  }
+
+  const dirPath = resolve(rawPath.replace(/^~[/\\]/, homedir() + sep));
+
+  try {
+    await mkdir(dirPath, { recursive: true });
+    res.json({ path: dirPath });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || 'Failed to create directory' });
   }
 });
 

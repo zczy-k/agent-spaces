@@ -210,29 +210,27 @@ function WorkspaceDialogContent({ open, onOpenChange, workspace, onSubmit, onAge
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !loading && handleSubmit()}
           />
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <FolderPicker
-                value={dir}
-                onChange={setDir}
-                placeholder="/path/to/project"
-              />
-            </div>
-            {!isEdit && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="shrink-0 gap-1.5"
-                onClick={() => setCloneDialogOpen(true)}
-                disabled={!dir}
-                title={!dir ? "请先选择目标文件夹" : "从 Git 仓库克隆"}
-              >
-                <Download className="size-4" />
-                Git Clone
-              </Button>
-            )}
+          <div>
+            <FolderPicker
+              value={dir}
+              onChange={setDir}
+              placeholder="/path/to/project"
+            />
           </div>
+          {!isEdit && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full gap-1.5"
+              onClick={() => setCloneDialogOpen(true)}
+              disabled={!dir}
+              title={!dir ? "请先选择目标文件夹" : "从 Git 仓库克隆"}
+            >
+              <Download className="size-4" />
+              从 Git 创建
+            </Button>
+          )}
           {isEdit && (
             <div className="rounded-xl border border-border p-3">
               <div className="mb-2 flex items-center justify-between gap-3">
