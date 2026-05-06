@@ -23,4 +23,10 @@ if (existsSync(serverDistWeb)) {
 }
 cpSync(webOut, serverDistWeb, { recursive: true });
 
-console.log('[copy-web] packages/web/out -> packages/server/web + packages/server/dist/web');
+const tauriWeb = resolve(root, 'packages/tauri/web');
+if (existsSync(tauriWeb)) {
+  rmSync(tauriWeb, { recursive: true, force: true });
+}
+cpSync(webOut, tauriWeb, { recursive: true });
+
+console.log('[copy-web] packages/web/out -> packages/server/web + packages/server/dist/web + packages/tauri/web');
