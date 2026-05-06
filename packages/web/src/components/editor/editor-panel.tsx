@@ -6,6 +6,7 @@ import { useEditorStore } from "@/stores/editor";
 import type { FileNode } from "@agent-spaces/shared";
 import { RefreshCw } from "lucide-react";
 import { FileIconImg, FolderIconImg } from "./file-icon";
+import { useTranslations } from 'next-intl';
 
 function FileTreeNodes({ nodes }: { nodes: FileNode[] }) {
   return nodes.map((node) =>
@@ -25,6 +26,7 @@ interface EditorPanelProps {
 
 export function EditorPanel({ workspaceId }: EditorPanelProps) {
   const { tree, treeLoading, loadTree, openFile } = useEditorStore();
+  const t = useTranslations('editor');
   const [selectedPath, setSelectedPath] = useState<string>();
 
   useEffect(() => {
@@ -39,7 +41,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-2 py-1.5 border-b text-xs font-medium text-muted-foreground">
-        <span>EXPLORER</span>
+        <span>{t('explorer')}</span>
         <button
           onClick={() => loadTree(workspaceId)}
           className="p-0.5 hover:bg-accent rounded"
@@ -51,7 +53,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
       <div className="flex-1 overflow-auto py-1">
         {tree.length === 0 && !treeLoading && (
           <div className="px-2 py-4 text-xs text-muted-foreground text-center">
-            No files found
+            {t('noFiles')}
           </div>
         )}
         {tree.length > 0 && (

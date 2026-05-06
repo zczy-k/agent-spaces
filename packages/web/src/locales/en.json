@@ -406,5 +406,18 @@
       "hoursAgo": "{n}h ago",
       "daysAgo": "{n}d ago"
     }
+  },
+  "editor": {
+    "explorer": "EXPLORER",
+    "noFiles": "No files found",
+    "revealInFinder": "Reveal in Finder",
+    "loadingEditor": "Loading editor...",
+    "openFileToEdit": "Open a file to start editing"
+  },
+  "terminal": {
+    "newTerminal": "New Terminal",
+    "noSession": "No terminal session",
+    "selectWorkingDirectory": "Select Working Directory",
+    "selectWorkingDirectoryDescription": "This workspace has multiple bound directories. Select which one to use for this terminal."
   }
 }

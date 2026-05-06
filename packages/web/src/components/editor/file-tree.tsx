@@ -24,6 +24,7 @@ import { createContext, type HTMLAttributes, type ReactNode, useContext, useStat
  */
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { cn } from "@/lib/utils"
+import { useTranslations } from 'next-intl'
 
 interface FileTreeContextType {
   expandedPaths: Set<string>
@@ -117,6 +118,8 @@ export const FileTreeFolder = ({
   const { expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete } = useContext(FileTreeContext)
   const isExpanded = expandedPaths.has(path)
   const isSelected = selectedPath === path
+  const t = useTranslations('editor')
+  const tc = useTranslations('common')
 
   const handleReveal = () => {
     fetch(`/api/workspaces/${workspaceId}/files/reveal?path=${encodeURIComponent(path)}`, { method: 'POST' })
@@ -149,10 +152,10 @@ export const FileTreeFolder = ({
               <FileTreeName>{name}</FileTreeName>
             </CollapsibleTrigger>
             <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1 invisible group-hover/folder:visible" onClick={e => e.stopPropagation()}>
-              <button onClick={handleReveal} className="p-0.5 rounded hover:bg-accent" title="Reveal in Finder">
+              <button onClick={handleReveal} className="p-0.5 rounded hover:bg-accent" title={t('revealInFinder')}>
                 <ExternalLink className="size-3 text-muted-foreground" />
               </button>
-              <button onClick={() => onDelete?.(path)} className="p-0.5 rounded hover:bg-accent" title="Delete">
+              <button onClick={() => onDelete?.(path)} className="p-0.5 rounded hover:bg-accent" title={tc('delete')}>
                 <Trash2 className="size-3 text-muted-foreground hover:text-destructive" />
               </button>
             </div>
@@ -192,6 +195,8 @@ export const FileTreeFile = ({
 }: FileTreeFileProps) => {
   const { selectedPath, onFileSelect, workspaceId, onDelete } = useContext(FileTreeContext)
   const isSelected = selectedPath === path
+  const t = useTranslations('editor')
+  const tc = useTranslations('common')
 
   const handleReveal = () => {
     fetch(`/api/workspaces/${workspaceId}/files/reveal?path=${encodeURIComponent(path)}`, { method: 'POST' })
@@ -223,10 +228,10 @@ export const FileTreeFile = ({
             </FileTreeIcon>
             <FileTreeName>{name}</FileTreeName>
             <FileTreeActions>
-              <button onClick={handleReveal} className="p-0.5 rounded hover:bg-accent" title="Reveal in Finder">
+              <button onClick={handleReveal} className="p-0.5 rounded hover:bg-accent" title={t('revealInFinder')}>
                 <ExternalLink className="size-3 text-muted-foreground" />
               </button>
-              <button onClick={() => onDelete?.(path)} className="p-0.5 rounded hover:bg-accent" title="Delete">
+              <button onClick={() => onDelete?.(path)} className="p-0.5 rounded hover:bg-accent" title={tc('delete')}>
                 <Trash2 className="size-3 text-muted-foreground hover:text-destructive" />
               </button>
             </FileTreeActions>

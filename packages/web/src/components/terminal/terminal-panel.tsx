@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useTerminalStore } from '@/stores/terminal';
 import { getWS } from '@/lib/ws';
 import { TerminalInstance } from './terminal-instance';
+import { useTranslations } from 'next-intl';
 
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent);
 
@@ -35,6 +36,7 @@ interface TerminalPanelProps {
 
 export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
   const { sessions, activeId, init, createSession, setActive, removeSession } = useTerminalStore();
+  const t = useTranslations('terminal');
 
   const [dirPickerOpen, setDirPickerOpen] = useState(false);
   const [pendingShell, setPendingShell] = useState<string | undefined>(undefined);
@@ -98,7 +100,7 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
             render={
               <button
                 className="flex items-center gap-0.5 h-6 px-1.5 text-muted-foreground hover:text-foreground transition-colors"
-                title="New Terminal"
+                title={t('newTerminal')}
               >
                 <Plus size={14} />
                 <ChevronDown size={10} />
@@ -123,7 +125,7 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
       <div className="flex-1 overflow-hidden relative">
         {sessions.length === 0 ? (
           <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-            No terminal session
+            {t('noSession')}
           </div>
         ) : (
           sessions.map((session) => (
@@ -145,9 +147,9 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
       <Dialog open={dirPickerOpen} onOpenChange={setDirPickerOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Select Working Directory</DialogTitle>
+            <DialogTitle>{t('selectWorkingDirectory')}</DialogTitle>
             <DialogDescription>
-              This workspace has multiple bound directories. Choose one as the terminal&apos;s initial working directory.
+              {t('selectWorkingDirectoryDescription')}
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-2 py-2">

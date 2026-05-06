@@ -406,5 +406,18 @@
       "hoursAgo": "{n} 小时前",
       "daysAgo": "{n} 天前"
     }
+  },
+  "editor": {
+    "explorer": "资源管理器",
+    "noFiles": "未找到文件",
+    "revealInFinder": "在 Finder 中显示",
+    "loadingEditor": "编辑器加载中...",
+    "openFileToEdit": "打开文件开始编辑"
+  },
+  "terminal": {
+    "newTerminal": "新建终端",
+    "noSession": "无终端会话",
+    "selectWorkingDirectory": "选择工作目录",
+    "selectWorkingDirectoryDescription": "此工作空间绑定了多个目录。请选择用于此终端的目录。"
   }
 }

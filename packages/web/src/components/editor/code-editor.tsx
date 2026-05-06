@@ -5,6 +5,7 @@ import "@/lib/monaco-loader";
 import { useEditorStore } from "@/stores/editor";
 import { EditorTabs } from "./editor-tabs";
 import { useTheme } from "@/components/theme-provider";
+import { useTranslations } from 'next-intl';
 
 if (typeof window !== "undefined" && !navigator.clipboard?.write) {
   Object.defineProperty(navigator, "clipboard", {
@@ -23,9 +24,14 @@ if (typeof window !== "undefined" && !navigator.clipboard?.write) {
   });
 }
 
+function EditorLoadingFallback() {
+  const t = useTranslations('editor');
+  return <div className="flex items-center justify-center h-full text-muted-foreground text-sm">{t('loadingEditor')}</div>;
+}
+
 const MonacoEditor = dynamic(
   () => import("@monaco-editor/react").then((mod) => mod.default),
-  { ssr: false, loading: () => <div className="flex items-center justify-center h-full text-muted-foreground text-sm">Loading editor...</div> }
+  { ssr: false, loading: () => <EditorLoadingFallback /> }
 );
 
 interface CodeEditorProps {
@@ -35,6 +41,7 @@ interface CodeEditorProps {
 export function CodeEditor({ workspaceId }: CodeEditorProps) {
   const { openFiles, activeFilePath, updateContent, saveFile } = useEditorStore();
   const { resolvedTheme } = useTheme();
+  const t = useTranslations('editor');
 
   const activeFile = openFiles.find((f) => f.path === activeFilePath);
 
@@ -72,7 +79,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
           />
         ) : (
           <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-            Open a file to start editing
+            {t('openFileToEdit')}
           </div>
         )}
       </div>
