@@ -58,9 +58,7 @@ function DialogContent({
         )}
         {...props}
       >
-        <div onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}>
-          {children}
-        </div>
+        {children}
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"

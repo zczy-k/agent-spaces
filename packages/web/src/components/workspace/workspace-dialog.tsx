@@ -202,7 +202,7 @@ function WorkspaceDialogContent({ open, onOpenChange, workspace, onSubmit, onAge
             placeholder={t('dialog.namePlaceholder')}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !loading && handleSubmit()}
+            onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
           />
           <div>
             <FolderPicker
@@ -284,7 +284,7 @@ function WorkspaceDialogContent({ open, onOpenChange, workspace, onSubmit, onAge
             placeholder="https://github.com/user/repo.git"
             value={cloneUrl}
             onChange={(e) => setCloneUrl(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !cloneLoading && cloneUrl && handleClone()}
+            onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
             disabled={cloneLoading}
           />
           <p className="text-xs text-muted-foreground">

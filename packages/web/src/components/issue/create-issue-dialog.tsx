@@ -71,7 +71,7 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], onSubmit }:
             placeholder={t('create.titlePlaceholder')}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+            onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
           />
           <Textarea
             placeholder={t('create.descriptionPlaceholder')}

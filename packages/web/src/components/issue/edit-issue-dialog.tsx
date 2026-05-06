@@ -77,7 +77,7 @@ export function EditIssueDialog({ issue, open, onOpenChange, agents = [], onSave
             placeholder={t('edit.titlePlaceholder')}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && !saving && handleSave()}
+            onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
           />
           <Textarea
             placeholder={t('edit.descriptionPlaceholder')}

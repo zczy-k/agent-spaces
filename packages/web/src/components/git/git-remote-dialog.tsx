@@ -49,7 +49,7 @@ export function GitRemoteDialog({ open, onOpenChange, onSubmit }: GitRemoteDialo
               onChange={(e) => setUrl(e.target.value)}
               placeholder={t('urlPlaceholder')}
               className="h-8 text-xs"
-              onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+              onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
             />
           </div>
         </div>

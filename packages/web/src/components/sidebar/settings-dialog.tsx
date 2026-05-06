@@ -174,7 +174,7 @@ export function SettingsDialog({
                 placeholder={t('newSecretPlaceholder')}
                 value={newSecret}
                 onChange={(e) => { setNewSecret(e.target.value); setSecretSaved(false); }}
-                onKeyDown={(e) => e.key === "Enter" && handleChangeSecret()}
+                onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
               />
               <Button size="sm" onClick={handleChangeSecret} disabled={secretSaved}>
                 {secretSaved ? tc('saved') : tc('save')}

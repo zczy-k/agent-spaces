@@ -492,7 +492,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                       placeholder={t('detail.taskTitlePlaceholder')}
                       value={newTaskTitle}
                       onChange={(e) => setNewTaskTitle(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleCreateTask()}
+                      onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
                     />
                     <Textarea
                       placeholder={t('detail.taskDescriptionPlaceholder')}

@@ -85,7 +85,7 @@ export function ServerManagerDialog({ open, onOpenChange, servers, activeId, onU
               {editId === server.id ? (
                 <>
                   <Input className="h-7 text-sm flex-1" value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" autoFocus />
-                  <Input className="h-7 text-sm flex-[1.5]" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="http://..." onKeyDown={(e) => e.key === "Enter" && saveEdit()} />
+                  <Input className="h-7 text-sm flex-[1.5]" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="http://..." onKeyDown={(e) => e.key === "Enter" && e.preventDefault()} />
                   <Button size="sm" variant="ghost" onClick={saveEdit} className="h-7 px-2">{tc("save")}</Button>
                   <Button size="sm" variant="ghost" onClick={cancelEdit} className="h-7 px-2">{tc("cancel")}</Button>
                 </>
@@ -128,7 +128,7 @@ export function ServerManagerDialog({ open, onOpenChange, servers, activeId, onU
                 value={newSecret}
                 onChange={(e) => setNewSecret(e.target.value)}
                 placeholder={t("server.secretOptionalPlaceholder")}
-                onKeyDown={(e) => e.key === "Enter" && addServer()}
+                onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
               />
             </div>
           </div>

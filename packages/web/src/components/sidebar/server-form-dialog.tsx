@@ -80,7 +80,7 @@ export function ServerFormDialog({ open, onOpenChange, editingId, servers, onSav
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="http://192.168.1.100:3100"
-              onKeyDown={(e) => e.key === "Enter" && saveForm()}
+              onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
             />
           </div>
           <div className="space-y-2">
@@ -90,7 +90,7 @@ export function ServerFormDialog({ open, onOpenChange, editingId, servers, onSav
               value={secret}
               onChange={(e) => setSecret(e.target.value)}
               placeholder={t("server.secretPlaceholder")}
-              onKeyDown={(e) => e.key === "Enter" && saveForm()}
+              onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
             />
           </div>
         </div>
