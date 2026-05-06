@@ -3,6 +3,7 @@
 import type { Message, MessagePart } from "@agent-spaces/shared"
 import { CheckIcon, CheckCircle2Icon, ChevronDownIcon, CircleIcon, CopyIcon, FileTextIcon, HelpCircleIcon, MessageSquareTextIcon } from "lucide-react"
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { Markdown } from "@/components/ui/markdown"
 import { Loader } from "@/components/ui/loader"
 import { Button } from "@/components/ui/button"
@@ -62,6 +63,7 @@ interface MessagePartsProps {
 }
 
 export function MessageParts({ message, isUser, workspaceId }: MessagePartsProps) {
+  const t = useTranslations('chat')
   const messageParts = message.parts ?? []
   const parts = messageParts.filter((part) => part.type !== "context")
   const hasTextPart = parts.some((part) => part.type === "text")
@@ -81,7 +83,7 @@ export function MessageParts({ message, isUser, workspaceId }: MessagePartsProps
       {message.status === "pending" && parts.length === 0 ? (
         <div className="flex items-center gap-2 text-muted-foreground">
           <Loader size={14} />
-          <span>Agent is processing...</span>
+          <span>{t('messageParts.agentProcessing')}</span>
         </div>
       ) : null}
     </div>
@@ -164,6 +166,8 @@ function normalizeDisplayText(text: string) {
 }
 
 function MessagePartView({ part, message, workspaceId }: { part: MessagePart; message: Message; workspaceId: string }) {
+  const t = useTranslations('chat')
+
   switch (part.type) {
     case "text":
       return <Markdown content={part.text} />
@@ -171,12 +175,12 @@ function MessagePartView({ part, message, workspaceId }: { part: MessagePart; me
       return (
         <ChainOfThought defaultOpen={part.status === "streaming"} className="max-w-none">
           <ChainOfThoughtHeader loading={part.status === "streaming"}>
-            {part.status === "streaming" ? "Agent is thinking" : "AI intermediate output"}
+            {part.status === "streaming" ? t('messageParts.agentThinking') : t('messageParts.aiIntermediateOutput')}
           </ChainOfThoughtHeader>
           <ChainOfThoughtContent className="max-h-[300px] overflow-y-auto">
             <ChainOfThoughtStep
               icon={MessageSquareTextIcon}
-              label={part.status === "streaming" ? "Streaming response" : "Intermediate message"}
+              label={part.status === "streaming" ? t('messageParts.streamingResponse') : t('messageParts.intermediateMessage')}
               status={part.status === "streaming" ? "active" : "complete"}
             >
               <Markdown content={part.text} />
@@ -187,7 +191,7 @@ function MessagePartView({ part, message, workspaceId }: { part: MessagePart; me
     case "chain":
       return (
         <ChainOfThought defaultOpen={message.status === "pending"} className="max-w-none">
-          <ChainOfThoughtHeader loading={message.status === "pending" || message.status === "streaming"}>{part.chains.length} chain {part.chains.length === 1 ? "step" : "steps"}</ChainOfThoughtHeader>
+          <ChainOfThoughtHeader loading={message.status === "pending" || message.status === "streaming"}>{t('messageParts.chainSteps', { count: part.chains.length })}</ChainOfThoughtHeader>
           <ChainOfThoughtContent className="max-h-[300px] overflow-y-auto">
             {part.chains.map((chain) => {
               const completed = chain.status === "completed"
@@ -237,8 +241,8 @@ function MessagePartView({ part, message, workspaceId }: { part: MessagePart; me
             <ConfirmationRejected>{part.approval?.reason ?? part.title}</ConfirmationRejected>
           </ConfirmationTitle>
           <ConfirmationActions>
-            <ConfirmationAction variant="outline">Reject</ConfirmationAction>
-            <ConfirmationAction>Approve</ConfirmationAction>
+            <ConfirmationAction variant="outline">{t('messageParts.reject')}</ConfirmationAction>
+            <ConfirmationAction>{t('messageParts.approve')}</ConfirmationAction>
           </ConfirmationActions>
         </Confirmation>
       )
@@ -254,7 +258,7 @@ function MessagePartView({ part, message, workspaceId }: { part: MessagePart; me
               {part.instructions ? <AgentInstructions>{part.instructions}</AgentInstructions> : null}
               {part.output ? (
                 <div className="space-y-2">
-                  <span className="font-medium text-muted-foreground text-sm">Result</span>
+                  <span className="font-medium text-muted-foreground text-sm">{t('messageParts.result')}</span>
                   <div className="rounded-md bg-muted/50 p-3 text-sm">
                     <Markdown content={part.output} />
                   </div>
@@ -312,6 +316,7 @@ function AiMessageStep({
   text: string
   status: "complete" | "active"
 }) {
+  const t = useTranslations('chat')
   const [open, setOpen] = useState(false)
 
   return (
@@ -319,7 +324,7 @@ function AiMessageStep({
       icon={MessageSquareTextIcon}
       label={
         <div className="flex min-w-0 items-center gap-1.5">
-          <span>AI message</span>
+          <span>{t('messageParts.aiMessage')}</span>
           <Button
             type="button"
             variant="ghost"
@@ -355,6 +360,7 @@ function ToolStep({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const t = useTranslations('chat')
 
   const handleOpenFile = async () => {
     if (!chain.filePath) return
@@ -374,7 +380,7 @@ function ToolStep({
       setDetail(data)
       return data
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load details.")
+      setError(err instanceof Error ? err.message : t('messageParts.failedToLoadDetails'))
       return null
     } finally {
       setLoading(false)
@@ -449,13 +455,13 @@ function ToolStep({
       {open ? (
         <div className="space-y-2">
           {loading ? (
-            <div className="rounded-md border bg-muted/40 p-2 text-muted-foreground text-xs">Loading details...</div>
+            <div className="rounded-md border bg-muted/40 p-2 text-muted-foreground text-xs">{t('messageParts.loadingDetails')}</div>
           ) : error ? (
             <div className="rounded-md border bg-muted/40 p-2 text-destructive text-xs">{error}</div>
           ) : detail ? (
             <ToolDetailView detail={detail} toolName={chain.toolName} filePath={chain.filePath} />
           ) : (
-            <div className="rounded-md border bg-muted/40 p-2 text-muted-foreground text-xs">No details available.</div>
+            <div className="rounded-md border bg-muted/40 p-2 text-muted-foreground text-xs">{t('messageParts.noDetails')}</div>
           )}
         </div>
       ) : null}
@@ -485,6 +491,8 @@ function ToolDetailView({
   toolName?: string
   filePath?: string
 }) {
+  const t = useTranslations('chat')
+
   if (/^(Bash|Shell|Command)$/i.test(toolName ?? "")) {
     const command = extractCommandFromInput(detail.input)
     const output = typeof detail.output === "string" ? detail.output : JSON.stringify(detail.output ?? "", null, 2)
@@ -508,9 +516,9 @@ function ToolDetailView({
     )
   }
 
-  const sections = buildDetailSections(detail)
+  const sections = buildDetailSections(detail, t)
   if (sections.length === 0 && detail.raw) {
-    return <ReadonlyCodeBlock title="Raw" value={detail.raw} language="plaintext" />
+    return <ReadonlyCodeBlock title={t('messageParts.raw')} value={detail.raw} language="plaintext" />
   }
 
   return (
@@ -535,11 +543,11 @@ function extractCommandFromInput(input: unknown): string | undefined {
   return typeof cmd === "string" ? cmd : undefined
 }
 
-function buildDetailSections(detail: ToolDetailData) {
+function buildDetailSections(detail: ToolDetailData, t: ReturnType<typeof useTranslations>) {
   const sections: Array<{ title: string; value: string; language: string; height?: number }> = []
   if (detail.input !== undefined) {
     sections.push({
-      title: "Input",
+      title: t('messageParts.input'),
       value: formatDetailValue(detail.input),
       language: isJsonValue(detail.input) ? "json" : "plaintext",
       height: 180,
@@ -547,7 +555,7 @@ function buildDetailSections(detail: ToolDetailData) {
   }
   if (detail.output !== undefined) {
     sections.push({
-      title: "Output",
+      title: t('messageParts.output'),
       value: formatDetailValue(detail.output),
       language: isJsonValue(detail.output) ? "json" : "plaintext",
       height: 220,
