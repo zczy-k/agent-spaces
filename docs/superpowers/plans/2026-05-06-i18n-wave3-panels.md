@@ -159,6 +159,10 @@ git commit -m "feat(web): i18n comment-navigator component"
 
 ## Task 2: 改造 Editor 组件（3 个文件）
 
+**跳过文件说明：**
+- `file-icon.tsx` — 纯图标映射组件，无用户可见文本
+- `editor-tabs.tsx` — 渲染动态文件名和关闭图标，无硬编码文本
+
 ### 2a. 改造 editor-panel.tsx
 
 **Files:** Modify `packages/web/src/components/editor/editor-panel.tsx`
@@ -205,7 +209,9 @@ git commit -m "feat(web): i18n editor components (editor-panel, file-tree, code-
 
 ## Task 3: 改造 Git 组件（6 个文件）
 
-注意：`git-panel.tsx` 不存在，跳过。
+**跳过文件说明：**
+- `git-panel.tsx` — 文件不存在于磁盘，spec 中的引用已过时
+- `diff-viewer.tsx` — 纯 Monaco DiffEditor 包装组件，无用户可见硬编码文本
 
 ### 3a. 改造 git-changes-panel.tsx
 
@@ -359,7 +365,10 @@ git commit -m "feat(web): i18n project-settings-panel component"
 
 **Files:** Modify `packages/web/src/components/composer/composer-dialog.tsx`
 
-注意：`composer-shell.tsx` 无硬编码文本，无需改造。
+**跳过文件说明：**
+- `composer-shell.tsx` — 仅渲染编辑器和图标按钮，无可见文本标签
+- `composer-editor.tsx` — TipTap 编辑器包装，无硬编码文本
+- `suggestion-list.tsx` — 动态渲染 mention 建议，无硬编码文本
 
 **需要替换的文本：**
 
@@ -389,3 +398,5 @@ git commit -m "feat(web): i18n composer-dialog component"
 - [ ] 项目设置面板所有表单标签和通知配置正确
 - [ ] Composer 对话框文本正确
 - [ ] 无遗漏的硬编码文本（全局搜索验证）
+- [ ] 统计 en.json 的总 key 数，确认与 spec 估算（约 308 个）基本一致
+- [ ] en.json 和 zh.json 的 key 集合完全一致（无遗漏）

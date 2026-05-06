@@ -174,6 +174,7 @@ git commit -m "feat(web): add en/zh translation files with common and settings n
 'use client';
 
 import { createContext, useCallback, useContext, useSyncExternalStore } from 'react';
+import { useServerInsertedHTML } from 'next/navigation';
 import { NextIntlClientProvider } from 'next-intl';
 import en from '@/locales/en.json';
 import zh from '@/locales/zh.json';
@@ -214,6 +215,16 @@ function getServerSnapshot(): Locale {
 }
 
 export function LocaleProvider({ children }: { children: React.ReactNode }) {
+  // SSR 阶段注入内联脚本，同步设置 html lang 属性，避免语言切换时的 FOUC
+  useServerInsertedHTML(() => (
+    <script
+      key="locale-init"
+      dangerouslySetInnerHTML={{
+        __html: `(function(){try{var l=localStorage.getItem('${STORAGE_KEY}');document.documentElement.lang=(l==='en')?'en':'zh-CN'}catch(e){}})()`,
+      }}
+    />
+  ));
+
   const locale = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   const setLocale = useCallback((newLocale: Locale) => {
@@ -259,6 +270,7 @@ git commit -m "feat(web): add LocaleProvider with useSyncExternalStore pattern"
 在 `layout.tsx` 中：
 1. 添加 import: `import { LocaleProvider } from "@/components/locale-provider";`
 2. 在 ThemeProvider 内侧、AuthGuard 外侧包裹 LocaleProvider
+3. 移除硬编码 `lang="zh-CN"`，改为空字符串（LocaleProvider 的 SSR 脚本会动态设置）
 
 ```typescript
 // layout.tsx 修改后的 import 区域新增:
@@ -280,7 +292,7 @@ import { LocaleProvider } from "@/components/locale-provider";
 - [ ] **Step 2: 验证 dev 启动正常**
 
 ```bash
-cd packages/web && timeout 15 pnpm dev 2>&1 | head -20
+cd packages/web && pnpm build 2>&1 | tail -10
 ```
 
 Expected: 编译成功，无 i18n 相关错误

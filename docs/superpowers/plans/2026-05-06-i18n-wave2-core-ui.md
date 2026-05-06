@@ -4,7 +4,7 @@
 
 **Goal:** 改造侧边栏、登录页、首页、工作空间管理、Agent 配置、LLM 管理等核心 UI 组件的硬编码文本。
 
-**Architecture:** 每个组件添加 `useTranslations('namespace')` hook，翻译 key 按功能域划分。需在 en.json 和 zh.json 中新增 `sidebar`、`login`、`usage`、`workspace`、`workspaces`、`agent`、`models`、`providers` namespace，以及扩展 `common` namespace。
+**Architecture:** 每个组件添加 `useTranslations('namespace')` hook，翻译 key 按功能域划分。需在 en.json 和 zh.json 中新增 `sidebar`、`login`、`home`、`workspace`、`workspaces`、`agent`、`models`、`providers` namespace，以及扩展 `common` namespace。
 
 **Tech Stack:** next-intl useTranslations
 
@@ -15,18 +15,15 @@
 
 ## 前置：扩展 common namespace 和新增核心 UI namespace
 
-在 en.json 的 `common` 中新增以下 key：
+在 en.json 的 `common` 中新增以下 key（注意：`manage` 和 `active` 已在 Wave 1 中存在，仅新增缺失的 key）：
 
 ```json
 {
   "common": {
-    "...existing keys...",
     "saving": "Saving...",
     "you": "You",
     "user": "User",
     "refresh": "Refresh",
-    "manage": "Manage",
-    "active": "Active",
     "new": "New"
   }
 }
@@ -37,13 +34,10 @@ zh.json 对应：
 ```json
 {
   "common": {
-    "...existing keys...",
     "saving": "保存中...",
     "you": "你",
     "user": "用户",
     "refresh": "刷新",
-    "manage": "管理",
-    "active": "活跃",
     "new": "新建"
   }
 }
@@ -59,6 +53,9 @@ git commit -m "feat(web): extend common namespace with additional shared keys"
 ---
 
 ## Task 1: 改造 sidebar 组件（4 个文件）
+
+**跳过文件说明：**
+- `logo.tsx` — 纯 SVG 图标组件，`<title>Logo</title>` 为无障碍标签，不翻译
 
 ### 1a. 改造 app-sidebar.tsx
 
@@ -197,15 +194,15 @@ git commit -m "feat(web): i18n login page"
 
 **需要替换的文本（约 50 处）：**
 
-主要分类：
-- **表格列头**: Agent, Model, Summary, Cost, Status, Duration, Time → `usage.table.*`
-- **时间段筛选**: 今日, 7 天, 30 天, 1 年, 自定义 → `usage.period.*`
-- **指标卡片**: Agent Runs, Tokens Used, Total Cost, Avg Duration → `usage.metric.*`
-- **图表标题**: Daily Token Usage, Cost by Model, Token Distribution, Cost Distribution → `usage.chart.*`
-- **分页文本**: Showing, to, of, entries, Previous, Next → `usage.pagination.*`
-- **相对时间**: just now, m ago, h ago, d ago → `usage.time.*`
-- **空状态**: No completed usage records yet, No results, Usage appears here... → `usage.table.empty*`
-- **图例**: Input, Output, tokens, total cost → `usage.chart.*`
+主要分类（namespace 统一使用 `home`，与 spec 保持一致）：
+- **表格列头**: Agent, Model, Summary, Cost, Status, Duration, Time → `home.table.*`
+- **时间段筛选**: 今日, 7 天, 30 天, 1 年, 自定义 → `home.period.*`
+- **指标卡片**: Agent Runs, Tokens Used, Total Cost, Avg Duration → `home.metric.*`
+- **图表标题**: Daily Token Usage, Cost by Model, Token Distribution, Cost Distribution → `home.chart.*`
+- **分页文本**: Showing, to, of, entries, Previous, Next → `home.pagination.*`
+- **相对时间**: just now, m ago, h ago, d ago → `home.time.*`
+- **空状态**: No completed usage records yet, No results, Usage appears here... → `home.table.empty*`
+- **图例**: Input, Output, tokens, total cost → `home.chart.*`
 
 - [ ] **Step: 替换后验证构建并 Commit**
 
