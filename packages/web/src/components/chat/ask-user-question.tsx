@@ -2,6 +2,7 @@
 
 import { HelpCircleIcon, SendIcon } from "lucide-react"
 import { useState } from "react"
+import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
@@ -22,6 +23,7 @@ export function AskUserQuestion({
   onAnswer,
 }: AskUserQuestionProps) {
   const [draft, setDraft] = useState("")
+  const t = useTranslations('chat')
   const answered = status === "answered" || Boolean(answer)
 
   return (
@@ -66,7 +68,7 @@ export function AskUserQuestion({
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
                   className={cn("h-8 text-sm", choices.length > 0 && "max-w-sm")}
-                  placeholder="Type an answer..."
+                  placeholder={t('askUser.placeholder')}
                 />
                 <Button type="submit" size="icon-sm" disabled={!draft.trim()}>
                   <SendIcon className="size-3.5" />

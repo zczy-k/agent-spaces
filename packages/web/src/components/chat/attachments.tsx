@@ -11,6 +11,7 @@ import {
 } from "lucide-react"
 import type { ComponentProps, HTMLAttributes, ReactNode } from "react"
 import { createContext, useContext, useMemo } from "react"
+import { useTranslations } from "next-intl"
 /**
  * @title React AI Attachments
  * @credit {"name": "Vercel", "url": "https://ai-sdk.dev/elements", "license": {"name": "Apache License 2.0", "url": "https://www.apache.org/licenses/LICENSE-2.0"}}
@@ -92,6 +93,16 @@ export const getAttachmentLabel = (data: AttachmentData): string => {
 
   const category = getMediaCategory(data)
   return data.filename || (category === "image" ? "Image" : "Attachment")
+}
+
+// i18n-aware version for components
+function useAttachmentLabel(data: AttachmentData): string {
+  const t = useTranslations('chat')
+  if (data.type === "source-document") {
+    return data.title || data.filename || t('attachments.source')
+  }
+  const category = getMediaCategory(data)
+  return data.filename || (category === "image" ? t('attachments.image') : t('attachments.attachment'))
 }
 
 // ============================================================================
@@ -297,7 +308,7 @@ export const AttachmentInfo = ({
   ...props
 }: AttachmentInfoProps) => {
   const { data, variant } = useAttachmentContext()
-  const label = getAttachmentLabel(data)
+  const label = useAttachmentLabel(data)
 
   if (variant === "grid") {
     return null
@@ -322,12 +333,14 @@ export type AttachmentRemoveProps = ComponentProps<typeof Button> & {
 }
 
 export const AttachmentRemove = ({
-  label = "Remove",
+  label,
   className,
   children,
   ...props
 }: AttachmentRemoveProps) => {
   const { onRemove, variant } = useAttachmentContext()
+  const t = useTranslations('chat')
+  const removeLabel = label ?? t('attachments.remove')
 
   if (!onRemove) {
     return null
@@ -335,7 +348,7 @@ export const AttachmentRemove = ({
 
   return (
     <Button
-      aria-label={label}
+      aria-label={removeLabel}
       className={cn(
         variant === "grid" && [
           "absolute top-2 right-2 size-6 rounded-full p-0",
@@ -361,7 +374,7 @@ export const AttachmentRemove = ({
       {...props}
     >
       {children ?? <XIcon />}
-      <span className="sr-only">{label}</span>
+      <span className="sr-only">{removeLabel}</span>
     </Button>
   )
 }
@@ -402,11 +415,14 @@ export const AttachmentHoverCardContent = ({
 
 export type AttachmentEmptyProps = HTMLAttributes<HTMLDivElement>
 
-export const AttachmentEmpty = ({ className, children, ...props }: AttachmentEmptyProps) => (
+export const AttachmentEmpty = ({ className, children, ...props }: AttachmentEmptyProps) => {
+  const t = useTranslations('chat')
+  return (
   <div
     className={cn("flex items-center justify-center p-4 text-muted-foreground text-sm", className)}
     {...props}
   >
-    {children ?? "No attachments"}
+    {children ?? t('attachments.noAttachments')}
   </div>
-)
+  )
+}

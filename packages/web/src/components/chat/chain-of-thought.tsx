@@ -8,6 +8,7 @@ import {
 } from "lucide-react"
 import type { ComponentProps, ReactNode } from "react"
 import { createContext, memo, useCallback, useContext, useMemo, useState } from "react"
+import { useTranslations } from "next-intl"
 import { Badge } from "@/components/ui/badge"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Loader } from "@/components/ui/loader"
@@ -74,6 +75,7 @@ export type ChainOfThoughtHeaderProps = ComponentProps<typeof CollapsibleTrigger
 export const ChainOfThoughtHeader = memo(
   ({ className, children, loading, ...props }: ChainOfThoughtHeaderProps) => {
     const { isOpen, setIsOpen } = useChainOfThought()
+    const t = useTranslations('chat')
 
     return (
       <Collapsible onOpenChange={setIsOpen} open={isOpen}>
@@ -85,7 +87,7 @@ export const ChainOfThoughtHeader = memo(
           {...props}
         >
           <BrainIcon className="size-4" />
-          <span className="flex-1 text-left">{children ?? "Chain of Thought"}</span>
+          <span className="flex-1 text-left">{children ?? t('chainOfThought.defaultHeader')}</span>
           {loading && <Loader size={14} />}
           <ChevronDownIcon
             className={cn("size-4 transition-transform", isOpen ? "rotate-180" : "rotate-0")}

@@ -3,6 +3,7 @@
 import { BotIcon } from "lucide-react"
 import type { ComponentProps, HTMLAttributes } from "react"
 import { memo } from "react"
+import { useTranslations } from "next-intl"
 /**
  * @title React AI Agent
  * @credit {"name": "Vercel", "url": "https://ai-sdk.dev/elements", "license": {"name": "Apache License 2.0", "url": "https://www.apache.org/licenses/LICENSE-2.0"}}
@@ -68,24 +69,30 @@ export type AgentInstructionsProps = HTMLAttributes<HTMLDivElement> & {
 }
 
 export const AgentInstructions = memo(
-  ({ className, children, ...props }: AgentInstructionsProps) => (
+  ({ className, children, ...props }: AgentInstructionsProps) => {
+    const t = useTranslations('chat')
+    return (
     <div className={cn("space-y-2", className)} {...props}>
-      <span className="font-medium text-muted-foreground text-sm">Instructions</span>
+      <span className="font-medium text-muted-foreground text-sm">{t('subagent.instructions')}</span>
       <div className="rounded-md bg-muted/50 p-3 text-muted-foreground text-sm">
         <p>{children}</p>
       </div>
     </div>
-  ),
+    )
+  },
 )
 
 export type AgentToolsProps = ComponentProps<typeof Accordion>
 
-export const AgentTools = memo(({ className, ...props }: AgentToolsProps) => (
+export const AgentTools = memo(({ className, ...props }: AgentToolsProps) => {
+  const t = useTranslations('chat')
+  return (
   <div className={cn("space-y-2", className)}>
-    <span className="font-medium text-muted-foreground text-sm">Tools</span>
+    <span className="font-medium text-muted-foreground text-sm">{t('subagent.tools')}</span>
     <Accordion className="rounded-md border" multiple {...props} />
   </div>
-))
+  )
+})
 
 interface ToolSchema {
   description?: string
@@ -99,11 +106,12 @@ export type AgentToolProps = ComponentProps<typeof AccordionItem> & {
 
 export const AgentTool = memo(({ className, tool, value, ...props }: AgentToolProps) => {
   const schema = "jsonSchema" in tool && tool.jsonSchema ? tool.jsonSchema : tool.inputSchema
+  const t = useTranslations('chat')
 
   return (
     <AccordionItem className={cn("border-b last:border-b-0", className)} value={value} {...props}>
       <AccordionTrigger className="px-3 py-2 text-sm hover:no-underline">
-        {tool.description ?? "No description"}
+        {tool.description ?? t('subagent.noDescription')}
       </AccordionTrigger>
       <AccordionContent className="px-3 pb-3">
         <div className="rounded-md bg-muted/50">
@@ -120,14 +128,17 @@ export type AgentOutputProps = HTMLAttributes<HTMLDivElement> & {
   schema: string
 }
 
-export const AgentOutput = memo(({ className, schema, ...props }: AgentOutputProps) => (
+export const AgentOutput = memo(({ className, schema, ...props }: AgentOutputProps) => {
+  const t = useTranslations('chat')
+  return (
   <div className={cn("space-y-2", className)} {...props}>
-    <span className="font-medium text-muted-foreground text-sm">Output Schema</span>
+    <span className="font-medium text-muted-foreground text-sm">{t('subagent.outputSchema')}</span>
     <div className="rounded-md bg-muted/50">
       <pre className="overflow-auto p-3 font-mono text-xs">{schema}</pre>
     </div>
   </div>
-))
+  )
+})
 
 Agent.displayName = "Agent"
 AgentHeader.displayName = "AgentHeader"

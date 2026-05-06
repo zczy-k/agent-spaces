@@ -10,6 +10,7 @@ import {
   useRef,
   useState,
 } from "react"
+import { useTranslations } from "next-intl"
 /**
  * @title React AI Terminal
  * @credit {"name": "Vercel", "url": "https://ai-sdk.dev/elements", "license": {"name": "Apache License 2.0", "url": "https://www.apache.org/licenses/LICENSE-2.0"}}
@@ -106,17 +107,21 @@ export const TerminalHeader = ({ className, children, ...props }: TerminalHeader
 
 export type TerminalTitleProps = HTMLAttributes<HTMLDivElement>
 
-export const TerminalTitle = ({ className, children, ...props }: TerminalTitleProps) => (
+export const TerminalTitle = ({ className, children, ...props }: TerminalTitleProps) => {
+  const t = useTranslations('chat')
+  return (
   <div className={cn("flex items-center gap-2 text-sm text-zinc-400", className)} {...props}>
     <TerminalIcon className="size-4" />
-    {children ?? "Terminal"}
+    {children ?? t('terminal.title')}
   </div>
-)
+  )
+}
 
 export type TerminalStatusProps = HTMLAttributes<HTMLDivElement>
 
 export const TerminalStatus = ({ className, children, ...props }: TerminalStatusProps) => {
   const { isStreaming } = useContext(TerminalContext)
+  const t = useTranslations('chat')
 
   if (!isStreaming) {
     return null
@@ -124,7 +129,7 @@ export const TerminalStatus = ({ className, children, ...props }: TerminalStatus
 
   return (
     <div className={cn("flex items-center gap-2 text-xs text-zinc-400", className)} {...props}>
-      {children ?? <Shimmer className="w-16">Running...</Shimmer>}
+      {children ?? <Shimmer className="w-16">{t('terminal.running')}</Shimmer>}
     </div>
   )
 }
@@ -153,10 +158,11 @@ export const TerminalCopyButton = ({
 }: TerminalCopyButtonProps) => {
   const [isCopied, setIsCopied] = useState(false)
   const { output } = useContext(TerminalContext)
+  const t = useTranslations('chat')
 
   const copyToClipboard = async () => {
     if (typeof window === "undefined" || !navigator?.clipboard?.writeText) {
-      onError?.(new Error("Clipboard API not available"))
+      onError?.(new Error(t('terminal.clipboardUnavailable')))
       return
     }
 

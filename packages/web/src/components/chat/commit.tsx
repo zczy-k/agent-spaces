@@ -2,6 +2,7 @@
 
 import { CheckIcon, CopyIcon, FileIcon, GitCommitIcon, MinusIcon, PlusIcon } from "lucide-react"
 import { type ComponentProps, type HTMLAttributes, useEffect, useRef, useState } from "react"
+import { useTranslations } from "next-intl"
 /**
  * @title React AI Commit
  * @credit {"name": "Vercel", "url": "https://ai-sdk.dev/elements", "license": {"name": "Apache License 2.0", "url": "https://www.apache.org/licenses/LICENSE-2.0"}}
@@ -166,10 +167,11 @@ export const CommitCopyButton = ({
 }: CommitCopyButtonProps) => {
   const [isCopied, setIsCopied] = useState(false)
   const timeoutRef = useRef<number>(0)
+  const t = useTranslations('chat')
 
   const copyToClipboard = async () => {
     if (typeof window === "undefined" || !navigator?.clipboard?.writeText) {
-      onError?.(new Error("Clipboard API not available"))
+      onError?.(new Error(t('commit.clipboardUnavailable')))
       return
     }
 

@@ -1,6 +1,7 @@
 "use client"
 
 import { type ComponentProps, createContext, isValidElement, useContext } from "react"
+import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
 import { Progress } from "@/components/ui/progress"
@@ -184,6 +185,7 @@ export const ContextContentFooter = ({
   ...props
 }: ContextContentFooterProps) => {
   const { modelId, usage } = useContextValue()
+  const t = useTranslations('chat')
   const costUSD = estimateCost(modelId, usage)
   const totalCost = new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -200,7 +202,7 @@ export const ContextContentFooter = ({
     >
       {children ?? (
         <>
-          <span className="text-muted-foreground">Total cost</span>
+          <span className="text-muted-foreground">{t('context.totalCost')}</span>
           <span>{totalCost}</span>
         </>
       )}
@@ -212,6 +214,7 @@ export type ContextInputUsageProps = ComponentProps<"div">
 
 export const ContextInputUsage = ({ className, children, ...props }: ContextInputUsageProps) => {
   const { usage, modelId } = useContextValue()
+  const t = useTranslations('chat')
   const inputTokens = usage?.inputTokens ?? 0
 
   if (children) {
@@ -230,7 +233,7 @@ export const ContextInputUsage = ({ className, children, ...props }: ContextInpu
 
   return (
     <div className={cn("flex items-center justify-between text-xs", className)} {...props}>
-      <span className="text-muted-foreground">Input</span>
+      <span className="text-muted-foreground">{t('context.input')}</span>
       <TokensWithCost costText={inputCostText} tokens={inputTokens} />
     </div>
   )
@@ -240,6 +243,7 @@ export type ContextOutputUsageProps = ComponentProps<"div">
 
 export const ContextOutputUsage = ({ className, children, ...props }: ContextOutputUsageProps) => {
   const { usage, modelId } = useContextValue()
+  const t = useTranslations('chat')
   const outputTokens = usage?.outputTokens ?? 0
 
   if (children) {
@@ -258,7 +262,7 @@ export const ContextOutputUsage = ({ className, children, ...props }: ContextOut
 
   return (
     <div className={cn("flex items-center justify-between text-xs", className)} {...props}>
-      <span className="text-muted-foreground">Output</span>
+      <span className="text-muted-foreground">{t('context.output')}</span>
       <TokensWithCost costText={outputCostText} tokens={outputTokens} />
     </div>
   )
@@ -272,6 +276,7 @@ export const ContextReasoningUsage = ({
   ...props
 }: ContextReasoningUsageProps) => {
   const { usage, modelId } = useContextValue()
+  const t = useTranslations('chat')
   const reasoningTokens = usage?.reasoningTokens ?? 0
 
   if (children) {
@@ -290,7 +295,7 @@ export const ContextReasoningUsage = ({
 
   return (
     <div className={cn("flex items-center justify-between text-xs", className)} {...props}>
-      <span className="text-muted-foreground">Reasoning</span>
+      <span className="text-muted-foreground">{t('context.reasoning')}</span>
       <TokensWithCost costText={reasoningCostText} tokens={reasoningTokens} />
     </div>
   )
@@ -300,6 +305,7 @@ export type ContextCacheUsageProps = ComponentProps<"div">
 
 export const ContextCacheUsage = ({ className, children, ...props }: ContextCacheUsageProps) => {
   const { usage, modelId } = useContextValue()
+  const t = useTranslations('chat')
   const cacheTokens = usage?.cachedInputTokens ?? 0
 
   if (children) {
@@ -318,7 +324,7 @@ export const ContextCacheUsage = ({ className, children, ...props }: ContextCach
 
   return (
     <div className={cn("flex items-center justify-between text-xs", className)} {...props}>
-      <span className="text-muted-foreground">Cache</span>
+      <span className="text-muted-foreground">{t('context.cache')}</span>
       <TokensWithCost costText={cacheCostText} tokens={cacheTokens} />
     </div>
   )
