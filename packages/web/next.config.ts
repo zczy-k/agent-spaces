@@ -1,12 +1,14 @@
 import type { NextConfig } from "next";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import createNextIntlPlugin from "next-intl/plugin";
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 const monorepoRoot = path.resolve(projectRoot, '../..');
 
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
+
 const nextConfig: NextConfig = {
-  output: "export",
   allowedDevOrigins: [
     "127.0.0.1",
     "192.168.*.*",
@@ -54,4 +56,4 @@ const nextConfig: NextConfig = {
   transpilePackages: ["flexlayout-react"],
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig);
