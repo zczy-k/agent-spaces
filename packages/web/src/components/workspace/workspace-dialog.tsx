@@ -20,6 +20,7 @@ import {
   ProgressIndicator,
   ProgressLabel,
 } from "@/components/ui/progress";
+import { useTranslations } from 'next-intl';
 
 interface WorkspaceDialogProps {
   open: boolean;
@@ -38,15 +39,6 @@ interface CloneProgress {
   cloneDir?: string;
 }
 
-const phaseLabel: Record<CloneProgress["phase"], string> = {
-  counting: "计算对象中...",
-  compressing: "压缩中...",
-  receiving: "接收数据中...",
-  resolving: "解析中...",
-  done: "完成",
-  error: "失败",
-};
-
 export function WorkspaceDialog({ open, onOpenChange, workspace, onSubmit, onAgentsChanged }: WorkspaceDialogProps) {
   return (
     <WorkspaceDialogContent
@@ -61,6 +53,8 @@ export function WorkspaceDialog({ open, onOpenChange, workspace, onSubmit, onAge
 }
 
 function WorkspaceDialogContent({ open, onOpenChange, workspace, onSubmit, onAgentsChanged }: WorkspaceDialogProps) {
+  const t = useTranslations('workspace');
+  const tc = useTranslations('common');
   const [name, setName] = useState(workspace?.name ?? "");
   const [dir, setDir] = useState(workspace?.boundDirs[0] ?? "");
   const [loading, setLoading] = useState(false);
@@ -142,14 +136,14 @@ function WorkspaceDialogContent({ open, onOpenChange, workspace, onSubmit, onAge
 
       if (!res.ok) {
         const err = await res.json();
-        setCloneProgress({ phase: "error", progress: 0, error: err.error || "Clone failed" });
+        setCloneProgress({ phase: "error", progress: 0, error: err.error || t('clone.cloneFailed') });
         setCloneLoading(false);
         return;
       }
 
       const reader = res.body?.getReader();
       if (!reader) {
-        setCloneProgress({ phase: "error", progress: 0, error: "No response body" });
+        setCloneProgress({ phase: "error", progress: 0, error: t('clone.noResponseBody') });
         setCloneLoading(false);
         return;
       }
@@ -190,22 +184,22 @@ function WorkspaceDialogContent({ open, onOpenChange, workspace, onSubmit, onAge
       setCloneProgress({ phase: "error", progress: 0, error: err.message });
       setCloneLoading(false);
     }
-  }, [cloneUrl, dir, name]);
+  }, [cloneUrl, dir, name, t]);
 
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit Workspace" : "New Workspace"}</DialogTitle>
+          <DialogTitle>{isEdit ? t('dialog.editTitle') : t('dialog.newTitle')}</DialogTitle>
           <DialogDescription>
-            {isEdit ? "Update workspace settings." : "Create a new workspace bound to a local directory."}
+            {isEdit ? t('dialog.editDescription') : t('dialog.newDescription')}
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3 py-2">
           <input
             className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-            placeholder="Workspace name"
+            placeholder={t('dialog.namePlaceholder')}
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !loading && handleSubmit()}
@@ -225,10 +219,10 @@ function WorkspaceDialogContent({ open, onOpenChange, workspace, onSubmit, onAge
               className="w-full gap-1.5"
               onClick={() => setCloneDialogOpen(true)}
               disabled={!dir}
-              title={!dir ? "请先选择目标文件夹" : "从 Git 仓库克隆"}
+              title={!dir ? t('clone.selectFolderFirst') : t('clone.fromGitTooltip')}
             >
               <Download className="size-4" />
-              从 Git 创建
+              {t('clone.createFromGit')}
             </Button>
           )}
           {isEdit && (
@@ -236,7 +230,7 @@ function WorkspaceDialogContent({ open, onOpenChange, workspace, onSubmit, onAge
               <div className="mb-2 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 text-sm font-medium">
                   <Bot className="size-4 text-muted-foreground" />
-                  Agents
+                  {t('agents')}
                 </div>
                 <Button
                   type="button"
@@ -246,12 +240,12 @@ function WorkspaceDialogContent({ open, onOpenChange, workspace, onSubmit, onAge
                   disabled={agentLoading || agentCandidates.length === 0}
                 >
                   <Plus className="size-3.5" />
-                  Add Agent
+                  {t('addAgent')}
                 </Button>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {workspaceAgents.length === 0 ? (
-                  <span className="text-xs text-muted-foreground">No agents in this workspace</span>
+                  <span className="text-xs text-muted-foreground">{t('noAgents')}</span>
                 ) : (
                   workspaceAgents.map((agent) => (
                     <span key={agent.id} className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs">
@@ -266,10 +260,10 @@ function WorkspaceDialogContent({ open, onOpenChange, workspace, onSubmit, onAge
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-            Cancel
+            {tc('cancel')}
           </Button>
           <Button onClick={handleSubmit} disabled={!name || !dir || loading}>
-            {isEdit ? "Save" : "Create"}
+            {isEdit ? tc('save') : tc('create')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -279,9 +273,9 @@ function WorkspaceDialogContent({ open, onOpenChange, workspace, onSubmit, onAge
     <Dialog open={cloneDialogOpen} onOpenChange={(v) => { if (!cloneLoading) setCloneDialogOpen(v); }}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>从 Git 创建</DialogTitle>
+          <DialogTitle>{t('clone.title')}</DialogTitle>
           <DialogDescription>
-            输入 Git 仓库地址，克隆到选定的文件夹中。
+            {t('clone.description')}
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3 py-2">
@@ -294,13 +288,13 @@ function WorkspaceDialogContent({ open, onOpenChange, workspace, onSubmit, onAge
             disabled={cloneLoading}
           />
           <p className="text-xs text-muted-foreground">
-            将克隆到: {dir}/{cloneUrl ? (cloneUrl.split("/").pop()?.replace(".git", "") || "repo") : "..."}
+            {t('clone.cloneTo')}{dir}/{cloneUrl ? (cloneUrl.split("/").pop()?.replace(".git", "") || "repo") : "..."}
           </p>
 
           {cloneProgress && cloneProgress.phase !== "done" && cloneProgress.phase !== "error" && (
             <div className="space-y-1.5">
               <Progress value={cloneProgress.progress}>
-                <ProgressLabel>{phaseLabel[cloneProgress.phase]}</ProgressLabel>
+                <ProgressLabel>{t(`clone.phase.${cloneProgress.phase}`)}</ProgressLabel>
                 <span className="ml-auto text-sm text-muted-foreground tabular-nums">{cloneProgress.progress}%</span>
                 <ProgressTrack>
                   <ProgressIndicator />
@@ -308,7 +302,7 @@ function WorkspaceDialogContent({ open, onOpenChange, workspace, onSubmit, onAge
               </Progress>
               {cloneProgress.received != null && cloneProgress.total != null && (
                 <p className="text-xs text-muted-foreground">
-                  {cloneProgress.received} / {cloneProgress.total} objects
+                  {cloneProgress.received} / {cloneProgress.total} {t('clone.objects')}
                 </p>
               )}
             </div>
@@ -323,18 +317,18 @@ function WorkspaceDialogContent({ open, onOpenChange, workspace, onSubmit, onAge
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => { if (!cloneLoading) setCloneDialogOpen(false); }} disabled={cloneLoading}>
-            Cancel
+            {tc('cancel')}
           </Button>
           <Button onClick={handleClone} disabled={!cloneUrl || cloneLoading}>
             {cloneLoading ? (
               <>
                 <Loader2 className="size-4 animate-spin" />
-                Cloning...
+                {t('clone.cloning')}
               </>
             ) : (
               <>
                 <Download className="size-4" />
-                Clone
+                {t('clone.clone')}
               </>
             )}
           </Button>
