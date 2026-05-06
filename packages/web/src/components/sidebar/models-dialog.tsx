@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import type { LLMModel } from "@agent-spaces/shared";
 import {
   Dialog,
@@ -22,10 +23,10 @@ import {
 } from "lucide-react";
 import { useLLMStore } from "@/stores/llm";
 
-const CAP_BADGES: Record<string, { label: string; cls: string }> = {
-  vision: { label: "Vision", cls: "bg-blue-500/10 text-blue-600 border-blue-200" },
-  reasoning: { label: "Reasoning", cls: "bg-purple-500/10 text-purple-600 border-purple-200" },
-  embedding: { label: "Embedding", cls: "bg-green-500/10 text-green-600 border-green-200" },
+const CAP_CLS: Record<string, string> = {
+  vision: "bg-blue-500/10 text-blue-600 border-blue-200",
+  reasoning: "bg-purple-500/10 text-purple-600 border-purple-200",
+  embedding: "bg-green-500/10 text-green-600 border-green-200",
 };
 
 const CONTEXT_OPTIONS = [
@@ -59,6 +60,8 @@ export function ModelsDialog({
   onOpenChange: (open: boolean) => void;
   initialProvider?: string;
 }) {
+  const t = useTranslations("models");
+  const tc = useTranslations("common");
   const { models, providers, ensure, addModel, updateModel, removeModel } = useLLMStore();
   const providerNames = providers.map(p => p.name);
   const [selected, setSelected] = useState<LLMModel | null>(null);
@@ -139,14 +142,14 @@ export function ModelsDialog({
       if (isNew) addModel(saved); else updateModel(saved);
       handleBack();
     } catch {
-      setError("Failed to save model");
+      setError(t("error.saveFailed"));
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this model?")) return;
+    if (!confirm(t("confirm.delete"))) return;
     setSaving(true);
     try {
       const res = await fetch(`/api/models/${id}`, { method: "DELETE" });
@@ -154,7 +157,7 @@ export function ModelsDialog({
       removeModel(id);
       if (selected?.id === id) handleBack();
     } catch {
-      setError("Failed to delete model");
+      setError(t("error.deleteFailed"));
     } finally {
       setSaving(false);
     }
@@ -177,16 +180,16 @@ export function ModelsDialog({
           )}
           <DialogHeader className="flex-1 space-y-0">
             <DialogTitle className="text-base">
-              {draft ? (selected ? "Edit Model" : "Add Model") : "Models"}
+              {draft ? (selected ? t("dialog.editTitle") : t("dialog.addTitle")) : t("dialog.title")}
             </DialogTitle>
             <DialogDescription className="text-xs">
-              {draft ? "Configure model properties and capabilities" : "Manage available LLM models"}
+              {draft ? t("dialog.editDescription") : t("dialog.listDescription")}
             </DialogDescription>
           </DialogHeader>
           {!draft && (
             <Button variant="outline" size="sm" onClick={handleAdd} className="mr-6">
               <Plus className="size-3.5" />
-              Add
+              {t("dialog.add")}
             </Button>
           )}
         </div>
@@ -198,7 +201,7 @@ export function ModelsDialog({
             </div>
           )}
           {loading ? (
-            <div className="py-12 text-center text-sm text-muted-foreground">Loading models...</div>
+            <div className="py-12 text-center text-sm text-muted-foreground">{t("dialog.loading")}</div>
           ) : draft ? (
             <ModelForm draft={draft} providerNames={providerNames} onChange={updateDraft} />
           ) : (
@@ -208,9 +211,9 @@ export function ModelsDialog({
 
         {draft && (
           <div className="flex justify-end gap-2 border-t px-5 py-3">
-            <Button variant="outline" size="sm" onClick={handleBack} disabled={saving}>Cancel</Button>
+            <Button variant="outline" size="sm" onClick={handleBack} disabled={saving}>{tc("cancel")}</Button>
             <Button size="sm" onClick={handleSave} disabled={saving || !draft.modelId || !draft.name}>
-              {saving ? "Saving..." : "Save"}
+              {saving ? tc("saving") : tc("save")}
             </Button>
           </div>
         )}
@@ -230,6 +233,7 @@ function ModelList({
   onEdit: (m: LLMModel) => void;
   onDelete: (id: string) => void;
 }) {
+  const t = useTranslations("models");
   const order = providerNames.length > 0 ? providerNames : ["Other"];
   const sorted = Object.keys(groups).sort((a, b) => {
     const ai = order.indexOf(a);
@@ -265,15 +269,15 @@ function ModelList({
                   ) : null}
                   {model.maxContextTokens ? (
                     <span className="ml-2 text-[11px] text-muted-foreground font-mono">
-                      {formatTokenLimit(model.maxContextTokens)} ctx
+                      {formatTokenLimit(model.maxContextTokens)} {t("list.contextAbbr")}
                     </span>
                   ) : null}
                 </div>
                 <div className="flex items-center gap-1">
                   {(["vision", "reasoning", "embedding"] as const).map(cap =>
                     model[cap] ? (
-                      <Badge key={cap} variant="outline" className={`text-[10px] h-5 px-1.5 ${CAP_BADGES[cap].cls}`}>
-                        {CAP_BADGES[cap].label}
+                      <Badge key={cap} variant="outline" className={`text-[10px] h-5 px-1.5 ${CAP_CLS[cap]}`}>
+                        {t(`capability.${cap}`)}
                       </Badge>
                     ) : null
                   )}
@@ -294,7 +298,7 @@ function ModelList({
       {sorted.length === 0 && (
         <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
           <Brain className="size-10 mb-2 opacity-30" />
-          <p className="text-sm">No models yet</p>
+          <p className="text-sm">{t("list.empty")}</p>
         </div>
       )}
     </div>
@@ -310,27 +314,28 @@ function ModelForm({
   providerNames: string[];
   onChange: (key: string, value: unknown) => void;
 }) {
+  const t = useTranslations("models");
   const nameEditedByUser = useRef(false);
   const [contextIdx, setContextIdx] = useState(() => getContextSliderIndex(draft.maxContextTokens));
   const options = providerNames.length > 0 ? providerNames : ["Other"];
   return (
     <div className="flex flex-col gap-5 p-5">
       <div className="flex flex-col gap-2.5">
-        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Details</div>
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("form.details")}</div>
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-muted-foreground">Model ID</label>
+          <label className="text-xs text-muted-foreground">{t("form.modelId")}</label>
           <Input value={draft.modelId || ""} onChange={e => {
             const val = e.target.value;
             onChange("modelId", val);
             if (!nameEditedByUser.current) onChange("name", val);
-          }} placeholder="e.g. gpt-4o" />
+          }} placeholder={t("form.modelIdPlaceholder")} />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-muted-foreground">Display Name</label>
-          <Input value={draft.name || ""} onChange={e => { nameEditedByUser.current = true; onChange("name", e.target.value); }} placeholder="e.g. GPT-4o" />
+          <label className="text-xs text-muted-foreground">{t("form.displayName")}</label>
+          <Input value={draft.name || ""} onChange={e => { nameEditedByUser.current = true; onChange("name", e.target.value); }} placeholder={t("form.displayNamePlaceholder")} />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-muted-foreground">Provider</label>
+          <label className="text-xs text-muted-foreground">{t("form.provider")}</label>
           <select
             value={draft.provider || "Other"}
             onChange={e => onChange("provider", e.target.value)}
@@ -342,9 +347,9 @@ function ModelForm({
       </div>
 
       <div className="flex flex-col gap-2.5">
-        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Context</div>
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("form.context")}</div>
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-muted-foreground">Max context tokens</label>
+          <label className="text-xs text-muted-foreground">{t("form.maxContextTokens")}</label>
           <div className="flex items-center gap-3">
             <Slider
               min={0}
@@ -371,7 +376,7 @@ function ModelForm({
                 step="1"
                 value={draft.maxContextTokens ?? ""}
                 onChange={e => onChange("maxContextTokens", parseOptionalTokenLimit(e.target.value))}
-                placeholder="128000"
+                placeholder={t("form.customContextPlaceholder")}
                 className="h-7 w-24 text-sm tabular-nums"
               />
             )}
@@ -380,11 +385,11 @@ function ModelForm({
       </div>
 
       <div className="flex flex-col gap-2.5">
-        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Thinking</div>
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("form.thinking")}</div>
         <div className="flex items-center justify-between gap-3 rounded-lg border border-input px-3 py-2">
           <div className="min-w-0">
-            <label className="text-sm font-medium">Enable thinking</label>
-            <p className="text-xs text-muted-foreground">Send reasoning/thinking options with model requests.</p>
+            <label className="text-sm font-medium">{t("form.enableThinking")}</label>
+            <p className="text-xs text-muted-foreground">{t("form.enableThinkingHelper")}</p>
           </div>
           <Switch
             checked={draft.thinkingEnabled ?? true}
@@ -392,7 +397,7 @@ function ModelForm({
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-muted-foreground">Effort</label>
+          <label className="text-xs text-muted-foreground">{t("form.effort")}</label>
           <select
             value={draft.thinkingEffort || "medium"}
             onChange={e => onChange("thinkingEffort", e.target.value)}
@@ -407,10 +412,10 @@ function ModelForm({
       </div>
 
       <div className="flex flex-col gap-2.5">
-        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Cost</div>
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("form.cost")}</div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-muted-foreground">Input / 1M tokens</label>
+            <label className="text-xs text-muted-foreground">{t("form.inputPerMillion")}</label>
             <Input
               type="number"
               min="0"
@@ -420,11 +425,11 @@ function ModelForm({
                 inputPerMillion: parseCost(e.target.value),
                 outputPerMillion: draft.cost?.outputPerMillion ?? 0,
               })}
-              placeholder="0.00"
+              placeholder={t("form.costPlaceholder")}
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-muted-foreground">Output / 1M tokens</label>
+            <label className="text-xs text-muted-foreground">{t("form.outputPerMillion")}</label>
             <Input
               type="number"
               min="0"
@@ -434,14 +439,14 @@ function ModelForm({
                 inputPerMillion: draft.cost?.inputPerMillion ?? 0,
                 outputPerMillion: parseCost(e.target.value),
               })}
-              placeholder="0.00"
+              placeholder={t("form.costPlaceholder")}
             />
           </div>
         </div>
       </div>
 
       <div className="flex flex-col gap-2.5">
-        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Capabilities</div>
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("form.capabilities")}</div>
         <div className="flex items-center gap-1.5">
           {(["vision", "reasoning", "embedding"] as const).map(cap => {
             const active = Boolean(draft[cap]);
@@ -452,11 +457,11 @@ function ModelForm({
                 onClick={() => onChange(cap, !active)}
                 className={`rounded-md border px-2 py-1 text-xs font-medium transition-colors cursor-pointer
                   ${active
-                    ? CAP_BADGES[cap].cls
+                    ? CAP_CLS[cap]
                     : "text-muted-foreground border-input hover:bg-muted/50"
                   }`}
               >
-                {CAP_BADGES[cap].label}
+                {t(`capability.${cap}`)}
               </button>
             );
           })}
