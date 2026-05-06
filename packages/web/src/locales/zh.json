@@ -477,5 +477,78 @@
       "initializing": "初始化中...",
       "initialize": "初始化 Git 仓库"
     }
+  },
+  "projectSettings": {
+    "title": "项目设置",
+    "loading": "加载中...",
+    "workspaceNotFound": "未找到工作空间",
+    "info": {
+      "title": "信息",
+      "path": "路径",
+      "channels": "频道",
+      "issues": "议题"
+    },
+    "automation": {
+      "title": "自动化",
+      "autoProcess": "自动处理议题",
+      "autoProcessDescription": "调度者将自动规划和执行开放议题"
+    },
+    "notifications": {
+      "title": "通知",
+      "messageNotifications": "消息通知",
+      "messageNotificationsDescription": "将议题进度和最终任务结果推送到外部聊天平台",
+      "lark": "飞书",
+      "wechat": "微信",
+      "appId": "app_id",
+      "appSecret": "app_secret",
+      "stopService": "停止服务",
+      "startService": "启动服务",
+      "testSend": "测试发送",
+      "saveSuccess": "通知设置已保存",
+      "saveFailed": "保存通知设置失败",
+      "startSuccess": "通知服务已启动",
+      "startFailed": "启动通知服务失败",
+      "stopSuccess": "通知服务已停止",
+      "stopFailed": "停止通知服务失败",
+      "testSuccess": "测试通知已发送",
+      "testFailed": "发送测试通知失败"
+    },
+    "wechat": {
+      "robot": "微信 iLink 机器人",
+      "connected": "已连接：{accountId}",
+      "scanned": "已扫码，请在手机上确认登录。",
+      "expired": "二维码已过期，请刷新获取新的。",
+      "scanQr": "使用微信扫描二维码以授权机器人。",
+      "refreshLogin": "刷新登录",
+      "getQr": "获取二维码",
+      "status": "状态：{status}",
+      "loginUrl": "登录 URL：{url}",
+      "connectedToast": "微信机器人已连接",
+      "pollFailed": "轮询微信二维码状态失败",
+      "getQrFailed": "获取微信二维码失败"
+    },
+    "botAgent": {
+      "title": "Bot Agent",
+      "selectAgent": "未选择 Agent",
+      "manage": "管理"
+    },
+    "events": {
+      "title": "通知事件",
+      "issueStarted": "议题开始",
+      "issueCompleted": "议题完成",
+      "taskCompleted": "任务完成"
+    },
+    "prompt": {
+      "title": "Prompt",
+      "workspacePrompt": "工作空间 Prompt",
+      "description": "应用于此工作空间中的每次 Agent 运行",
+      "savePrompt": "保存 Prompt",
+      "saveSuccess": "工作空间 Prompt 已保存",
+      "saveFailed": "保存工作空间 Prompt 失败"
+    }
+  },
+  "composer": {
+    "openDialog": "打开对话框",
+    "newContent": "新建内容"
   }
 }

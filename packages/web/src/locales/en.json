@@ -477,5 +477,78 @@
       "initializing": "Initializing...",
       "initialize": "Initialize Git Repository"
     }
+  },
+  "projectSettings": {
+    "title": "Project Settings",
+    "loading": "Loading...",
+    "workspaceNotFound": "Workspace not found",
+    "info": {
+      "title": "Info",
+      "path": "Path",
+      "channels": "Channels",
+      "issues": "Issues"
+    },
+    "automation": {
+      "title": "Automation",
+      "autoProcess": "Auto Process Issues",
+      "autoProcessDescription": "Scheduler will automatically plan and execute open issues"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "messageNotifications": "Message Notifications",
+      "messageNotificationsDescription": "Push issue progress and final task results to external chat platforms",
+      "lark": "Feishu",
+      "wechat": "WeChat",
+      "appId": "app_id",
+      "appSecret": "app_secret",
+      "stopService": "Stop Service",
+      "startService": "Start Service",
+      "testSend": "Test Send",
+      "saveSuccess": "Notification settings saved",
+      "saveFailed": "Failed to save notification settings",
+      "startSuccess": "Notification service started",
+      "startFailed": "Failed to start notification service",
+      "stopSuccess": "Notification service stopped",
+      "stopFailed": "Failed to stop notification service",
+      "testSuccess": "Test notification sent",
+      "testFailed": "Failed to send test notification"
+    },
+    "wechat": {
+      "robot": "WeChat iLink Robot",
+      "connected": "Connected: {accountId}",
+      "scanned": "Scanned. Confirm login on your phone.",
+      "expired": "QR code expired. Refresh to get a new one.",
+      "scanQr": "Scan the QR code with WeChat to authorize the robot.",
+      "refreshLogin": "Refresh Login",
+      "getQr": "Get QR",
+      "status": "Status: {status}",
+      "loginUrl": "Login URL: {url}",
+      "connectedToast": "WeChat robot connected",
+      "pollFailed": "Failed to poll WeChat QR status",
+      "getQrFailed": "Failed to get WeChat QR code"
+    },
+    "botAgent": {
+      "title": "Bot Agent",
+      "selectAgent": "No agent selected",
+      "manage": "Manage"
+    },
+    "events": {
+      "title": "Notification Events",
+      "issueStarted": "Issue Started",
+      "issueCompleted": "Issue Completed",
+      "taskCompleted": "Task Completed"
+    },
+    "prompt": {
+      "title": "Prompt",
+      "workspacePrompt": "Workspace Prompt",
+      "description": "Applied to every agent run in this workspace",
+      "savePrompt": "Save Prompt",
+      "saveSuccess": "Workspace prompt saved",
+      "saveFailed": "Failed to save workspace prompt"
+    }
+  },
+  "composer": {
+    "openDialog": "Open Dialog",
+    "newContent": "New Content"
   }
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,8 @@ interface WeChatQRCodeState {
 }
 
 export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps) {
+  const t = useTranslations('projectSettings');
+  const tc = useTranslations('common');
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [prompt, setPrompt] = useState('');
   const [savedPrompt, setSavedPrompt] = useState('');
@@ -95,11 +98,11 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
           if (data.workspace) {
             setWorkspace(data.workspace);
             setNotificationDraft(data.workspace.notificationSettings ?? defaultNotificationSettings());
-            toast.success('WeChat robot connected');
+            toast.success(t('wechat.connectedToast'));
           }
         })
         .catch((err) => {
-          toast.error('Failed to poll WeChat QR status', {
+          toast.error(t('wechat.pollFailed'), {
             description: err instanceof Error ? err.message : undefined,
           });
         })
@@ -143,9 +146,9 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
       const data: { prompt: string } = await res.json();
       setPrompt(data.prompt);
       setSavedPrompt(data.prompt);
-      toast.success('Workspace prompt saved');
+      toast.success(t('prompt.saveSuccess'));
     } catch (err) {
-      toast.error('Failed to save workspace prompt', {
+      toast.error(t('prompt.saveFailed'), {
         description: err instanceof Error ? err.message : undefined,
       });
     } finally {
@@ -171,7 +174,7 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
       setNotificationDraft(updated.notificationSettings ?? defaultNotificationSettings());
       return updated;
     } catch (err) {
-      toast.error('Failed to save notification settings', {
+      toast.error(t('notifications.saveFailed'), {
         description: err instanceof Error ? err.message : undefined,
       });
       return null;
@@ -228,9 +231,9 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
       } else {
         setNotificationDraft({ ...notificationSettings, serviceRunning: true });
       }
-      toast.success('Notification service started');
+      toast.success(t('notifications.startSuccess'));
     } catch (err) {
-      toast.error('Failed to start notification service', {
+      toast.error(t('notifications.startFailed'), {
         description: err instanceof Error ? err.message : undefined,
       });
     } finally {
@@ -256,9 +259,9 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
       } else {
         setNotificationDraft({ ...notificationSettings, serviceRunning: false });
       }
-      toast.success('Notification service stopped');
+      toast.success(t('notifications.stopSuccess'));
     } catch (err) {
-      toast.error('Failed to stop notification service', {
+      toast.error(t('notifications.stopFailed'), {
         description: err instanceof Error ? err.message : undefined,
       });
     } finally {
@@ -277,9 +280,9 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
       if (!res.ok) {
         throw new Error(data?.reason || data?.error || 'Failed to send test notification');
       }
-      toast.success('Test notification sent');
+      toast.success(t('notifications.testSuccess'));
     } catch (err) {
-      toast.error('Failed to send test notification', {
+      toast.error(t('notifications.testFailed'), {
         description: err instanceof Error ? err.message : undefined,
       });
     } finally {
@@ -309,7 +312,7 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
         setNotificationDraft(data.workspace.notificationSettings ?? defaultNotificationSettings());
       }
     } catch (err) {
-      toast.error('Failed to get WeChat QR code', {
+      toast.error(t('wechat.getQrFailed'), {
         description: err instanceof Error ? err.message : undefined,
       });
     } finally {
@@ -321,7 +324,7 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
         <Loader2 className="h-4 w-4 animate-spin mr-2" />
-        Loading...
+        {t('loading')}
       </div>
     );
   }
@@ -329,7 +332,7 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
   if (!workspace) {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-        Workspace not found
+        {t('workspaceNotFound')}
       </div>
     );
   }
@@ -339,32 +342,32 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
       <div className="p-4 space-y-6">
         {/* Header */}
         <div>
-          <h3 className="text-sm font-semibold">Project Settings</h3>
+          <h3 className="text-sm font-semibold">{t('title')}</h3>
           <p className="text-xs text-muted-foreground mt-1">{workspace.name}</p>
         </div>
 
         {/* Basic Info */}
         <div className="space-y-3">
-          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Info</h4>
+          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('info.title')}</h4>
 
-          <InfoRow icon={<FolderOpen size={14} />} label="Path" value={workspace.boundDirs[0] ?? '-'} />
+          <InfoRow icon={<FolderOpen size={14} />} label={t('info.path')} value={workspace.boundDirs[0] ?? '-'} />
 
-          <InfoRow icon={<Hash size={14} />} label="Channels" value={String(channels.length)} />
+          <InfoRow icon={<Hash size={14} />} label={t('info.channels')} value={String(channels.length)} />
 
-          <InfoRow icon={<ListChecks size={14} />} label="Issues" value={String(issues.length)} />
+          <InfoRow icon={<ListChecks size={14} />} label={t('info.issues')} value={String(issues.length)} />
         </div>
 
         {/* Automation */}
         <div className="space-y-3">
-          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Automation</h4>
+          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('automation.title')}</h4>
 
           <div className="flex items-center justify-between rounded-md border px-3 py-2.5">
             <div className="space-y-0.5 pr-4">
               <Label htmlFor="auto-process" className="text-sm font-medium">
-                Auto Process Issues
+                {t('automation.autoProcess')}
               </Label>
               <p className="text-xs text-muted-foreground">
-                Scheduler will automatically plan and execute open issues
+                {t('automation.autoProcessDescription')}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -381,16 +384,16 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
 
         {/* Notifications */}
         <div className="space-y-3">
-          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Notifications</h4>
+          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('notifications.title')}</h4>
 
           <div className="space-y-4 rounded-md border px-3 py-3">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5 pr-4">
                 <Label htmlFor="message-notifications" className="text-sm font-medium">
-                  Message Notifications
+                  {t('notifications.messageNotifications')}
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  Push issue progress and final task results to external chat platforms
+                  {t('notifications.messageNotificationsDescription')}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -411,13 +414,13 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
                   onValueChange={(provider) => patchNotifications({ provider: provider as NotificationProvider })}
                 >
                   <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="lark">Feishu</TabsTrigger>
-                    <TabsTrigger value="wechat">WeChat</TabsTrigger>
+                    <TabsTrigger value="lark">{t('notifications.lark')}</TabsTrigger>
+                    <TabsTrigger value="wechat">{t('notifications.wechat')}</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="lark" className="space-y-3 pt-2">
                     <div className="grid gap-2">
-                      <Label htmlFor="lark-app-id" className="text-xs text-muted-foreground">app_id</Label>
+                      <Label htmlFor="lark-app-id" className="text-xs text-muted-foreground">{t('notifications.appId')}</Label>
                       <Input
                         id="lark-app-id"
                         value={notificationSettings.lark?.appId ?? ''}
@@ -430,7 +433,7 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
                       />
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="lark-app-secret" className="text-xs text-muted-foreground">app_secret</Label>
+                      <Label htmlFor="lark-app-secret" className="text-xs text-muted-foreground">{t('notifications.appSecret')}</Label>
                       <Input
                         id="lark-app-secret"
                         type="password"
@@ -452,7 +455,7 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
                         disabled={startingNotifications || savingNotifications || !notificationSettings.lark?.appId || !notificationSettings.lark?.appSecret}
                       >
                         {startingNotifications ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Send className="mr-2 h-3.5 w-3.5" />}
-                        {notificationSettings.serviceRunning ? 'Stop Service' : 'Start Service'}
+                        {notificationSettings.serviceRunning ? t('notifications.stopService') : t('notifications.startService')}
                       </Button>
                       <Button
                         type="button"
@@ -462,7 +465,7 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
                         disabled={testingNotifications || savingNotifications || !notificationSettings.serviceRunning}
                       >
                         {testingNotifications && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
-                        Test Send
+                        {t('notifications.testSend')}
                       </Button>
                     </div>
                   </TabsContent>
@@ -472,16 +475,16 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 text-sm font-medium">
                           {wechatLoggedIn ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <QrCode className="h-4 w-4" />}
-                          WeChat iLink Robot
+                          {t('wechat.robot')}
                         </div>
                         <p className="mt-1 truncate text-xs text-muted-foreground">
                           {wechatLoggedIn
-                            ? `Connected: ${notificationSettings.wechat?.accountId}`
+                            ? t('wechat.connected', { accountId: notificationSettings.wechat?.accountId ?? '' })
                             : wechatQR.status === 'scaned'
-                              ? 'Scanned. Confirm login on your phone.'
+                              ? t('wechat.scanned')
                               : wechatQR.status === 'expired'
-                                ? 'QR code expired. Refresh to get a new one.'
-                                : 'Scan the QR code with WeChat to authorize the robot.'}
+                                ? t('wechat.expired')
+                                : t('wechat.scanQr')}
                         </p>
                       </div>
                       <Button
@@ -492,7 +495,7 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
                         disabled={loadingWeChatQR || savingNotifications || startingNotifications}
                       >
                         {loadingWeChatQR ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-2 h-3.5 w-3.5" />}
-                        {wechatLoggedIn ? 'Refresh Login' : 'Get QR'}
+                        {wechatLoggedIn ? t('wechat.refreshLogin') : t('wechat.getQr')}
                       </Button>
                     </div>
 
@@ -504,8 +507,8 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
                           className="h-36 w-36 shrink-0 rounded border bg-white p-2"
                         />
                         <div className="min-w-0 space-y-1 text-xs text-muted-foreground">
-                          <p>Status: {wechatQR.status === 'scaned' ? 'scanned' : wechatQR.status}</p>
-                          <p className="break-all">Login URL: {wechatQR.qrcodeImgContent}</p>
+                          <p>{t('wechat.status', { status: wechatQR.status === 'scaned' ? 'scanned' : wechatQR.status })}</p>
+                          <p className="break-all">{t('wechat.loginUrl', { url: wechatQR.qrcodeImgContent })}</p>
                         </div>
                       </div>
                     )}
@@ -519,7 +522,7 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
                         disabled={startingNotifications || savingNotifications || !wechatLoggedIn}
                       >
                         {startingNotifications ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Send className="mr-2 h-3.5 w-3.5" />}
-                        {notificationSettings.serviceRunning ? 'Stop Service' : 'Start Service'}
+                        {notificationSettings.serviceRunning ? t('notifications.stopService') : t('notifications.startService')}
                       </Button>
                       <Button
                         type="button"
@@ -529,7 +532,7 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
                         disabled={testingNotifications || savingNotifications || !notificationSettings.serviceRunning}
                       >
                         {testingNotifications && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
-                        Test Send
+                        {t('notifications.testSend')}
                       </Button>
                     </div>
                   </TabsContent>
@@ -538,7 +541,7 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                     <Bot className="h-3.5 w-3.5" />
-                    Bot Agent
+                    {t('botAgent.title')}
                   </div>
                   <div className="flex gap-2">
                     <select
@@ -547,13 +550,13 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
                       disabled={savingNotifications}
                       className="h-8 min-w-0 flex-1 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring dark:bg-input/30"
                     >
-                      <option value="">No agent selected</option>
+                      <option value="">{t('botAgent.selectAgent')}</option>
                       {botAgents.map((agent: AgentConfig) => (
                         <option key={agent.id} value={agent.id}>{agent.name}</option>
                       ))}
                     </select>
                     <Button type="button" size="sm" variant="outline" onClick={() => setAgentDialogOpen(true)}>
-                      Manage
+                      {tc('manage')}
                     </Button>
                   </div>
                 </div>
@@ -561,7 +564,7 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                     <Bell className="h-3.5 w-3.5" />
-                    Notification Events
+                    {t('events.title')}
                   </div>
                   <div className="grid gap-2">
                     {NOTIFICATION_EVENTS.map((item) => (
@@ -573,7 +576,7 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
                           onChange={(event) => toggleNotificationEvent(item.value, event.target.checked)}
                           disabled={savingNotifications}
                         />
-                        <span>{item.label}</span>
+                        <span>{t(item.labelKey)}</span>
                       </label>
                     ))}
                   </div>
@@ -585,15 +588,15 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
 
         {/* Prompt */}
         <div className="space-y-3">
-          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Prompt</h4>
+          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('prompt.title')}</h4>
 
           <div className="space-y-3 rounded-md border px-3 py-3">
             <div className="space-y-0.5">
               <Label htmlFor="workspace-prompt" className="text-sm font-medium">
-                Workspace Prompt
+                {t('prompt.workspacePrompt')}
               </Label>
               <p className="text-xs text-muted-foreground">
-                Applied to every agent run in this workspace
+                {t('prompt.description')}
               </p>
             </div>
             <Textarea
@@ -605,7 +608,7 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
             <div className="flex justify-end">
               <Button type="button" size="sm" onClick={handleSavePrompt} disabled={savingPrompt || !promptChanged}>
                 {savingPrompt && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
-                Save Prompt
+                {t('prompt.savePrompt')}
               </Button>
             </div>
           </div>
@@ -632,10 +635,10 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
   );
 }
 
-const NOTIFICATION_EVENTS: Array<{ value: NotificationEventKey; label: string }> = [
-  { value: 'issue_started', label: '议题开始' },
-  { value: 'issue_completed', label: '议题结束' },
-  { value: 'issue_task_completed', label: '议题任务完成' },
+const NOTIFICATION_EVENTS: Array<{ value: NotificationEventKey; labelKey: string }> = [
+  { value: 'issue_started', labelKey: 'events.issueStarted' },
+  { value: 'issue_completed', labelKey: 'events.issueCompleted' },
+  { value: 'issue_task_completed', labelKey: 'events.taskCompleted' },
 ];
 
 function defaultNotificationSettings(): WorkspaceNotificationSettings {
