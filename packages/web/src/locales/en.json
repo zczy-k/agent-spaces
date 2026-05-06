@@ -49,6 +49,14 @@
     "newSecretPlaceholder": "New secret key (leave empty to remove)",
     "redirecting": "Redirecting to login..."
   },
+  "login": {
+    "subtitle": "Enter your secret key to continue",
+    "secretPlaceholder": "Secret key (leave empty if not set)",
+    "verifying": "Verifying...",
+    "login": "Login",
+    "loginFailed": "Login failed",
+    "networkError": "Network error"
+  },
   "sidebar": {
     "nav": {
       "home": "Home",

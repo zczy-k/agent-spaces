@@ -49,6 +49,14 @@
     "newSecretPlaceholder": "新的密钥（留空则移除）",
     "redirecting": "正在跳转到登录页..."
   },
+  "login": {
+    "subtitle": "输入密钥以继续",
+    "secretPlaceholder": "密钥（如未设置可留空）",
+    "verifying": "验证中...",
+    "login": "登录",
+    "loginFailed": "登录失败",
+    "networkError": "网络错误"
+  },
   "sidebar": {
     "nav": {
       "home": "首页",

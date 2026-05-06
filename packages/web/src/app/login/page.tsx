@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from 'next-intl';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { setToken } from "@/lib/auth";
 
 export default function LoginPage() {
   const router = useRouter();
+  const t = useTranslations('login');
   const [secret, setSecret] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -26,14 +28,14 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Login failed");
+        setError(data.error || t('loginFailed'));
         return;
       }
 
       setToken(data.token);
       router.push("/");
     } catch {
-      setError("Network error");
+      setError(t('networkError'));
     } finally {
       setLoading(false);
     }
@@ -44,12 +46,12 @@ export default function LoginPage() {
       <div className="w-full max-w-sm space-y-6 p-8">
         <div className="space-y-2 text-center">
           <h1 className="text-2xl font-bold tracking-tight">Agent Spaces</h1>
-          <p className="text-sm text-muted-foreground">Enter your secret key to continue</p>
+          <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
         <div className="space-y-4">
           <Input
             type="password"
-            placeholder="Secret key (leave empty if not set)"
+            placeholder={t('secretPlaceholder')}
             value={secret}
             onChange={(e) => setSecret(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleLogin()}
@@ -57,7 +59,7 @@ export default function LoginPage() {
           />
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button className="w-full" onClick={handleLogin} disabled={loading}>
-            {loading ? "Verifying..." : "Login"}
+            {loading ? t('verifying') : t('login')}
           </Button>
         </div>
       </div>
