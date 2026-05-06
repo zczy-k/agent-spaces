@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { DM_Sans, Outfit, Poppins } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { DevInspector } from "@/components/dev-inspector";
@@ -25,6 +25,13 @@ const poppins = Poppins({
   subsets: ["latin"],
   weight: ["400", "500", "600"],
 });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
 
 export const metadata: Metadata = {
   title: "Agent Spaces",
