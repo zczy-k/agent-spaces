@@ -7,7 +7,7 @@
     "dev": "tauri dev",
     "build": "tauri build",
     "build:macos": "tauri build --target aarch64-apple-darwin",
-    "build:ios": "tauri ios build --target aarch64",
+    "build:ios": "tauri ios build --target aarch64 --no-sign --ci",
     "build:android": "tauri android build --target aarch64",
     "build:android:debug": "tauri android build --debug --target aarch64"
   },

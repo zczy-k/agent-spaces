@@ -85,17 +85,23 @@ jobs:
       - name: Build iOS (unsigned)
         working-directory: packages/tauri
         env:
-          CODE_SIGN_IDENTITY: "-"
+          CODE_SIGN_IDENTITY: ""
           CODE_SIGNING_REQUIRED: "NO"
           CODE_SIGNING_ALLOWED: "NO"
-        run: pnpm build:ios
+          DEVELOPMENT_TEAM: ""
+        run: |
+          pnpm tauri ios build --target aarch64 --no-sign --ci -- \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM=""
 
       - name: Package IPA
         run: |
-          APP_PATH=$(find packages/tauri/src-tauri/gen/apple/build -name "Agent Spaces.app" -path "*/Release-iphoneos/*" | head -1)
+          APP_PATH=$(find packages/tauri/src-tauri/gen/apple -name "Agent Spaces.app" -path "*/Release-iphoneos/*" | head -1)
           if [ -z "$APP_PATH" ]; then
             echo "Could not find built .app"
-            find packages/tauri/src-tauri/gen/apple/build -name "*.app" || true
+            find packages/tauri/src-tauri/gen/apple -name "*.app" || true
             exit 1
           fi
           IPA_DIR=$(mktemp -d)
