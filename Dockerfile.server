@@ -24,8 +24,7 @@ RUN printf '\nonlyBuiltDependencies[]=esbuild\nonlyBuiltDependencies[]=sharp\non
     node scripts/copy-web.mjs && \
     node scripts/copy-package.mjs
 
-RUN pnpm prune --prod && \
-    pnpm store prune && \
+RUN pnpm store prune && \
     rm -rf packages/shared/src packages/server/src packages/web/src packages/web/out packages/web/.next
 
 FROM node:22
