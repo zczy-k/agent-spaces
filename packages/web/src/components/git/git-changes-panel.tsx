@@ -13,6 +13,7 @@ import { GitNotInitialized } from "./git-not-initialized";
 import { GitRemoteDialog } from "./git-remote-dialog";
 import { useTheme } from "@/components/theme-provider";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 
 const MonacoEditor = dynamic(
   () => import("@monaco-editor/react").then((mod) => mod.default),
@@ -40,6 +41,8 @@ const statusLabels: Record<string, string> = {
 };
 
 export function GitChangesPanel({ workspaceId }: GitPanelProps) {
+  const t = useTranslations('git.changes');
+  const tc = useTranslations('common');
   const { status, diffs, selectedFile, loading, notGitRepo, branches, loadStatus, loadDiffs, loadBranches, commit, discard, discardAll, checkout, selectFile, push, pull, getRemotes, addRemote } = useGitStore();
   const openFile = useEditorStore((s) => s.openFile);
   const { resolvedTheme } = useTheme();
@@ -130,7 +133,7 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
       const data = await res.json();
       if (data.message) setCommitMsg(data.message);
     } catch (err: any) {
-      toast.error(err.message || 'Failed to generate commit message');
+      toast.error(err.message || t('failedCommitMessage'));
     } finally {
       setGenerating(false);
     }
@@ -155,13 +158,13 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
       }
       await push(workspaceId);
       await pull(workspaceId);
-      toast.success("Synced successfully");
+      toast.success(t('syncedSuccessfully'));
       refresh();
     } catch (err: any) {
       if (err.message?.includes("No remote")) {
         setRemoteDialogOpen(true);
       } else {
-        toast.error("Sync failed", { description: err.message });
+        toast.error(t('syncFailed'), { description: err.message });
       }
     } finally {
       setSyncing(false);
@@ -170,14 +173,14 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
 
   const handleRemoteSubmit = useCallback(async (name: string, url: string) => {
     await addRemote(workspaceId, name, url);
-    toast.success("Remote added, syncing...");
+    toast.success(t('syncedSuccessfully'));
     try {
       await push(workspaceId);
       await pull(workspaceId);
-      toast.success("Synced successfully");
+      toast.success(t('syncedSuccessfully'));
       refresh();
     } catch (err: any) {
-      toast.error("Sync failed", { description: err.message });
+      toast.error(t('syncFailed'), { description: err.message });
     }
   }, [workspaceId, addRemote, push, pull, refresh]);
 
@@ -243,7 +246,7 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
     return (
       <div className="flex flex-col h-full">
         <div className="flex items-center px-2 py-1.5 border-b">
-          <span className="text-xs font-medium text-muted-foreground">Changes</span>
+          <span className="text-xs font-medium text-muted-foreground">{t('title')}</span>
         </div>
         <GitNotInitialized workspaceId={workspaceId} onInitialized={refresh} />
       </div>
@@ -285,7 +288,7 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
                   </button>
                 ))}
                 {branches.length === 0 && (
-                  <div className="px-2 py-1 text-xs text-muted-foreground">No branches</div>
+                  <div className="px-2 py-1 text-xs text-muted-foreground">{t('noBranches')}</div>
                 )}
               </div>
             )}
@@ -296,7 +299,7 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
             <button
               onClick={handleDiscardAll}
               className="p-1 text-muted-foreground hover:text-destructive"
-              title="Discard all changes"
+              title={t('discardAll')}
             >
               <Trash2 size={13} />
             </button>
@@ -304,14 +307,14 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
           <button
             onClick={refresh}
             className="p-1 text-muted-foreground hover:text-foreground"
-            title="Refresh"
+            title={tc('refresh')}
           >
             <RefreshCw size={13} />
           </button>
           <button
             onClick={openGitignore}
             className="p-1 text-muted-foreground hover:text-foreground"
-            title="Edit .gitignore"
+            title={t('editGitignore')}
           >
             <FileText size={13} />
           </button>
@@ -325,7 +328,7 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
         {/* File list */}
         <div className="flex-1 overflow-auto">
           {loading && !status && (
-            <div className="p-2 text-xs text-muted-foreground">Loading...</div>
+            <div className="p-2 text-xs text-muted-foreground">{tc('loading')}</div>
           )}
           {status?.files.map((f) => (
             <div
@@ -344,14 +347,14 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
                 <button
                   onClick={(e) => handleOpenFile(e, f.path)}
                   className="p-0.5 rounded hover:bg-accent/80"
-                  title="Open file"
+                  title={tc('open')}
                 >
                   <FileCode size={13} />
                 </button>
                 <button
                   onClick={(e) => handleDiscard(e, f.path)}
                   className="p-0.5 rounded hover:bg-accent/80"
-                  title="Discard changes"
+                  title={t('discardAll')}
                 >
                   <RotateCcw size={13} />
                 </button>
@@ -359,7 +362,7 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
             </div>
           ))}
           {status?.clean && (
-            <div className="p-2 text-xs text-muted-foreground">No changes</div>
+            <div className="p-2 text-xs text-muted-foreground">{t('noChanges')}</div>
           )}
         </div>
 
@@ -371,7 +374,7 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
                 value={commitMsg}
                 onChange={(e) => setCommitMsg(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Commit message (⌘+Enter)"
+                placeholder={t('commitMessagePlaceholder')}
                 rows={3}
                 className="w-full resize-none text-xs px-2 pt-1 pr-8 pb-7 border rounded bg-background disabled:opacity-50"
                 disabled={committing || generating}
@@ -391,7 +394,7 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
               disabled={!commitMsg.trim() || committing}
               className="w-full text-xs px-2 py-1 rounded bg-primary text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {committing ? "Committing..." : "Commit"}
+              {committing ? t('committing') : t('commit')}
             </button>
           </div>
         )}
@@ -407,7 +410,7 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
               ) : (
                 <Upload size={13} />
               )}
-              {syncing ? "Syncing..." : "Sync Changes"}
+              {syncing ? t('syncing') : t('syncChanges')}
             </button>
           </div>
         )}
@@ -423,7 +426,7 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
           />
         ) : (
           <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
-            {hasFiles ? "Select a file to view diff" : "No changes to show"}
+            {hasFiles ? t('selectFileDiff') : t('noChangesToShow')}
           </div>
         )}
       </div>
@@ -451,9 +454,9 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
             />
           </div>
           <DialogFooter>
-            <DialogClose render={<Button variant="outline" size="sm" />}>取消</DialogClose>
+            <DialogClose render={<Button variant="outline" size="sm" />}>{tc('cancel')}</DialogClose>
             <Button size="sm" onClick={saveGitignore} disabled={gitignoreSaving}>
-              {gitignoreSaving ? "保存中..." : "保存"}
+              {gitignoreSaving ? tc('saving') : tc('save')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -471,7 +474,7 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
             onClick={() => addToGitignore(ctxMenu.path.split("/").pop()!)}
           >
             <EyeOff size={13} />
-            <span>忽略此文件</span>
+            <span>{t('ignoreThisFile')}</span>
             <span className="ml-auto text-muted-foreground truncate max-w-24">{ctxMenu.path.split("/").pop()}</span>
           </button>
           <button
@@ -483,7 +486,7 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
             }}
           >
             <EyeOff size={13} />
-            <span>忽略文件路径</span>
+            <span>{t('ignoreFilePath', { path: (() => { const i = ctxMenu.path.lastIndexOf("/"); return i >= 0 ? ctxMenu.path.substring(0, i + 1) : ctxMenu.path; })() })}</span>
             <span className="ml-auto text-muted-foreground truncate max-w-24">
               {(() => { const i = ctxMenu.path.lastIndexOf("/"); return i >= 0 ? ctxMenu.path.substring(0, i + 1) : ctxMenu.path; })()}
             </span>

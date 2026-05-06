@@ -419,5 +419,63 @@
     "noSession": "No terminal session",
     "selectWorkingDirectory": "Select Working Directory",
     "selectWorkingDirectoryDescription": "This workspace has multiple bound directories. Select which one to use for this terminal."
+  },
+  "git": {
+    "changes": {
+      "title": "Changes",
+      "staged": "Staged",
+      "unstaged": "Unstaged",
+      "commitMessagePlaceholder": "Commit message (⌘+Enter)",
+      "commit": "Commit",
+      "committing": "Committing...",
+      "syncChanges": "Sync Changes",
+      "syncing": "Syncing...",
+      "discardAll": "Discard all changes",
+      "refresh": "Refresh",
+      "editGitignore": "Edit .gitignore",
+      "noChanges": "No changes",
+      "noBranches": "No branches",
+      "selectFileDiff": "Select a file to view diff",
+      "noChangesToShow": "No changes to show",
+      "ignoreThisFile": "Ignore this file",
+      "ignoreFilePath": "Ignore {path}",
+      "syncedSuccessfully": "Synced successfully",
+      "syncFailed": "Sync failed",
+      "failedCommitMessage": "Failed to generate commit message",
+      "committedSuccessfully": "Committed successfully",
+      "commitFailed": "Commit failed",
+      "discardedSuccessfully": "Changes discarded",
+      "discardFailed": "Discard failed"
+    },
+    "commits": {
+      "title": "Commits",
+      "titleWithCount": "Commits ({count})",
+      "pushNCommits": "Push {count} commits",
+      "pullNCommits": "Pull {count} commits",
+      "noCommits": "No commits",
+      "remoteTrackingBranch": "Remote tracking branch",
+      "pushedSuccessfully": "Pushed successfully",
+      "pushFailed": "Push failed",
+      "pulledSuccessfully": "Pulled successfully",
+      "pullFailed": "Pull failed",
+      "remoteAdded": "Remote added"
+    },
+    "graph": {
+      "title": "Graph"
+    },
+    "remote": {
+      "bindTitle": "Bind Remote Repository",
+      "nameLabel": "Remote name",
+      "namePlaceholder": "origin",
+      "urlLabel": "Remote URL",
+      "urlPlaceholder": "https://github.com/user/repo.git",
+      "adding": "Adding...",
+      "addRemote": "Add Remote"
+    },
+    "notInitialized": {
+      "message": "Not a Git repository",
+      "initializing": "Initializing...",
+      "initialize": "Initialize Git Repository"
+    }
   }
 }

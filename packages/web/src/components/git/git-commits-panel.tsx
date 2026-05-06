@@ -6,6 +6,7 @@ import { useGitStore } from "@/stores/git";
 import { GitNotInitialized } from "./git-not-initialized";
 import { GitRemoteDialog } from "./git-remote-dialog";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 
 interface GitCommitsPanelProps {
   workspaceId: string;
@@ -21,6 +22,8 @@ function SyncBadge({ count, kind }: { count: number; kind: "push" | "pull" }) {
 }
 
 export function GitCommitsPanel({ workspaceId }: GitCommitsPanelProps) {
+  const t = useTranslations('git.commits');
+  const tc = useTranslations('common');
   const { log, loading, notGitRepo, status, loadLog, loadStatus, push, pull, getRemotes, addRemote } = useGitStore();
   const [syncing, setSyncing] = useState<"push" | "pull" | null>(null);
   const [remoteDialogOpen, setRemoteDialogOpen] = useState(false);
@@ -55,7 +58,7 @@ export function GitCommitsPanel({ workspaceId }: GitCommitsPanelProps) {
         setPendingAction(action);
         setRemoteDialogOpen(true);
       } else {
-        toast.error(action === "push" ? "Push failed" : "Pull failed", { description: err.message });
+        toast.error(action === "push" ? t('pushFailed') : t('pullFailed'), { description: err.message });
       }
     } finally {
       setSyncing(null);
@@ -65,17 +68,17 @@ export function GitCommitsPanel({ workspaceId }: GitCommitsPanelProps) {
   const doSync = async (action: "push" | "pull") => {
     if (action === "push") {
       await push(workspaceId);
-      toast.success("Pushed successfully");
+      toast.success(t('pushedSuccessfully'));
     } else {
       await pull(workspaceId);
-      toast.success("Pulled successfully");
+      toast.success(t('pulledSuccessfully'));
     }
     refresh();
   };
 
   const handleRemoteSubmit = async (name: string, url: string) => {
     await addRemote(workspaceId, name, url);
-    toast.success("Remote added");
+    toast.success(t('remoteAdded'));
     if (pendingAction) {
       await doSync(pendingAction);
       setPendingAction(null);
@@ -86,7 +89,7 @@ export function GitCommitsPanel({ workspaceId }: GitCommitsPanelProps) {
     return (
       <div className="flex flex-col h-full overflow-hidden rounded-t-xl bg-background">
         <div className="flex items-center px-2 py-1.5 border-b">
-          <span className="text-xs font-medium text-muted-foreground">Commits</span>
+          <span className="text-xs font-medium text-muted-foreground">{t('title')}</span>
         </div>
         <GitNotInitialized workspaceId={workspaceId} onInitialized={refresh} />
       </div>
@@ -97,14 +100,14 @@ export function GitCommitsPanel({ workspaceId }: GitCommitsPanelProps) {
     <div className="flex flex-col h-full overflow-hidden rounded-t-xl bg-background">
       <div className="flex items-center justify-between px-2 py-1.5 border-b">
         <span className="text-xs font-medium text-muted-foreground">
-          Commits{log.length > 0 && ` (${log.length})`}
+          {log.length > 0 ? t('titleWithCount', { count: log.length }) : t('title')}
         </span>
         <div className="flex items-center gap-1">
           <button
             onClick={() => handleSync("push")}
             disabled={syncing !== null}
             className="relative p-1 text-muted-foreground hover:text-foreground disabled:opacity-50"
-            title={ahead > 0 ? `Push ${ahead} commit${ahead > 1 ? 's' : ''}` : "Push"}
+            title={ahead > 0 ? t('pushNCommits', { count: ahead }) : "Push"}
           >
             {syncing === "push" ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
             <SyncBadge count={ahead} kind="push" />
@@ -113,7 +116,7 @@ export function GitCommitsPanel({ workspaceId }: GitCommitsPanelProps) {
             onClick={() => handleSync("pull")}
             disabled={syncing !== null}
             className="relative p-1 text-muted-foreground hover:text-foreground disabled:opacity-50"
-            title={behind > 0 ? `Pull ${behind} commit${behind > 1 ? 's' : ''}` : "Pull"}
+            title={behind > 0 ? t('pullNCommits', { count: behind }) : "Pull"}
           >
             {syncing === "pull" ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
             <SyncBadge count={behind} kind="pull" />
@@ -122,13 +125,13 @@ export function GitCommitsPanel({ workspaceId }: GitCommitsPanelProps) {
             onClick={refresh}
             className="text-xs text-muted-foreground hover:text-foreground"
           >
-            Refresh
+            {tc('refresh')}
           </button>
         </div>
       </div>
       <div className="flex-1 overflow-auto">
         {loading && !log.length && (
-          <div className="p-2 text-xs text-muted-foreground">Loading...</div>
+          <div className="p-2 text-xs text-muted-foreground">{tc('loading')}</div>
         )}
         {log.map((entry, i) => {
           const isRemoteHead = i === remoteHeadIndex;
@@ -139,7 +142,7 @@ export function GitCommitsPanel({ workspaceId }: GitCommitsPanelProps) {
             >
               <div className="flex items-center gap-2">
                 {isRemoteHead && (
-                  <span title="Remote tracking branch"><GitCommitHorizontal size={13} className="shrink-0 text-blue-500" /></span>
+                  <span title={t('remoteTrackingBranch')}><GitCommitHorizontal size={13} className="shrink-0 text-blue-500" /></span>
                 )}
                 <code className="text-xs font-mono text-blue-600 shrink-0">
                   {entry.hash.slice(0, 7)}
@@ -156,7 +159,7 @@ export function GitCommitsPanel({ workspaceId }: GitCommitsPanelProps) {
           );
         })}
         {!loading && !log.length && (
-          <div className="p-2 text-xs text-muted-foreground">No commits</div>
+          <div className="p-2 text-xs text-muted-foreground">{t('noCommits')}</div>
         )}
       </div>
       <GitRemoteDialog open={remoteDialogOpen} onOpenChange={setRemoteDialogOpen} onSubmit={handleRemoteSubmit} />

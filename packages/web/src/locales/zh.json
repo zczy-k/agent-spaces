@@ -419,5 +419,63 @@
     "noSession": "无终端会话",
     "selectWorkingDirectory": "选择工作目录",
     "selectWorkingDirectoryDescription": "此工作空间绑定了多个目录。请选择用于此终端的目录。"
+  },
+  "git": {
+    "changes": {
+      "title": "更改",
+      "staged": "已暂存",
+      "unstaged": "未暂存",
+      "commitMessagePlaceholder": "提交信息 (⌘+Enter)",
+      "commit": "提交",
+      "committing": "提交中...",
+      "syncChanges": "同步更改",
+      "syncing": "同步中...",
+      "discardAll": "丢弃所有更改",
+      "refresh": "刷新",
+      "editGitignore": "编辑 .gitignore",
+      "noChanges": "暂无更改",
+      "noBranches": "暂无分支",
+      "selectFileDiff": "选择文件查看差异",
+      "noChangesToShow": "没有可显示的更改",
+      "ignoreThisFile": "忽略此文件",
+      "ignoreFilePath": "忽略 {path}",
+      "syncedSuccessfully": "同步成功",
+      "syncFailed": "同步失败",
+      "failedCommitMessage": "生成提交信息失败",
+      "committedSuccessfully": "提交成功",
+      "commitFailed": "提交失败",
+      "discardedSuccessfully": "已丢弃更改",
+      "discardFailed": "丢弃失败"
+    },
+    "commits": {
+      "title": "提交",
+      "titleWithCount": "提交 ({count})",
+      "pushNCommits": "推送 {count} 个提交",
+      "pullNCommits": "拉取 {count} 个提交",
+      "noCommits": "暂无提交",
+      "remoteTrackingBranch": "远程跟踪分支",
+      "pushedSuccessfully": "推送成功",
+      "pushFailed": "推送失败",
+      "pulledSuccessfully": "拉取成功",
+      "pullFailed": "拉取失败",
+      "remoteAdded": "远程仓库已添加"
+    },
+    "graph": {
+      "title": "图谱"
+    },
+    "remote": {
+      "bindTitle": "绑定远程仓库",
+      "nameLabel": "远程名称",
+      "namePlaceholder": "origin",
+      "urlLabel": "远程 URL",
+      "urlPlaceholder": "https://github.com/user/repo.git",
+      "adding": "添加中...",
+      "addRemote": "添加远程仓库"
+    },
+    "notInitialized": {
+      "message": "不是 Git 仓库",
+      "initializing": "初始化中...",
+      "initialize": "初始化 Git 仓库"
+    }
   }
 }

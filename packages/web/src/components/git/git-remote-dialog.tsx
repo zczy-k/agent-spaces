@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useTranslations } from "next-intl";
 
 interface GitRemoteDialogProps {
   open: boolean;
@@ -12,6 +13,8 @@ interface GitRemoteDialogProps {
 }
 
 export function GitRemoteDialog({ open, onOpenChange, onSubmit }: GitRemoteDialogProps) {
+  const t = useTranslations('git.remote');
+  const tc = useTranslations('common');
   const [name, setName] = useState("origin");
   const [url, setUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -32,28 +35,28 @@ export function GitRemoteDialog({ open, onOpenChange, onSubmit }: GitRemoteDialo
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Bind Remote Repository</DialogTitle>
+          <DialogTitle>{t('bindTitle')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Remote name</label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="origin" className="h-8 text-xs" />
+            <label className="text-xs text-muted-foreground mb-1 block">{t('nameLabel')}</label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('namePlaceholder')} className="h-8 text-xs" />
           </div>
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Remote URL</label>
+            <label className="text-xs text-muted-foreground mb-1 block">{t('urlLabel')}</label>
             <Input
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://github.com/user/repo.git"
+              placeholder={t('urlPlaceholder')}
               className="h-8 text-xs"
               onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
             />
           </div>
         </div>
         <DialogFooter>
-          <DialogClose render={<Button variant="outline" size="sm" />}>Cancel</DialogClose>
+          <DialogClose render={<Button variant="outline" size="sm" />}>{tc('cancel')}</DialogClose>
           <Button size="sm" onClick={handleSubmit} disabled={!name.trim() || !url.trim() || submitting}>
-            {submitting ? "Adding..." : "Add Remote"}
+            {submitting ? t('adding') : t('addRemote')}
           </Button>
         </DialogFooter>
       </DialogContent>

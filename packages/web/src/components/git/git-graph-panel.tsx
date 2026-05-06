@@ -4,12 +4,16 @@ import { useEffect, useCallback, useMemo } from "react";
 import { GitCommit, GitBranch as BranchIcon } from "lucide-react";
 import { useGitStore } from "@/stores/git";
 import { GitNotInitialized } from "./git-not-initialized";
+import { useTranslations } from "next-intl";
 
 interface GitGraphPanelProps {
   workspaceId: string;
 }
 
 export function GitGraphPanel({ workspaceId }: GitGraphPanelProps) {
+  const t = useTranslations('git.graph');
+  const tc = useTranslations('common');
+  const th = useTranslations('home.time');
   const { log, status, notGitRepo, loadLog, loadStatus } = useGitStore();
 
   const refresh = useCallback(() => {
@@ -25,7 +29,7 @@ export function GitGraphPanel({ workspaceId }: GitGraphPanelProps) {
     return (
       <div className="flex flex-col h-full overflow-hidden rounded-t-xl bg-background">
         <div className="flex items-center px-2 py-1.5 border-b">
-          <span className="text-xs font-medium text-muted-foreground">Graph</span>
+          <span className="text-xs font-medium text-muted-foreground">{t('title')}</span>
         </div>
         <GitNotInitialized workspaceId={workspaceId} onInitialized={refresh} />
       </div>
@@ -53,7 +57,7 @@ export function GitGraphPanel({ workspaceId }: GitGraphPanelProps) {
           onClick={refresh}
           className="text-xs text-muted-foreground hover:text-foreground"
         >
-          Refresh
+          {tc('refresh')}
         </button>
       </div>
       <div className="flex-1 overflow-auto pl-4">
@@ -77,7 +81,7 @@ export function GitGraphPanel({ workspaceId }: GitGraphPanelProps) {
                   </code>
                   <span className="text-xs text-muted-foreground">{entry.author}</span>
                   <span className="text-xs text-muted-foreground">
-                    {formatRelativeTime(entry.date)}
+                    {formatRelativeTime(entry.date, th)}
                   </span>
                 </div>
               </div>
@@ -85,23 +89,23 @@ export function GitGraphPanel({ workspaceId }: GitGraphPanelProps) {
           );
         })}
         {!log.length && (
-          <div className="p-2 text-xs text-muted-foreground">No commits</div>
+          <div className="p-2 text-xs text-muted-foreground">{tc('noData')}</div>
         )}
       </div>
     </div>
   );
 }
 
-function formatRelativeTime(dateStr: string): string {
+function formatRelativeTime(dateStr: string, t: any): string {
   const now = Date.now();
   const then = new Date(dateStr).getTime();
   const diff = now - then;
   const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 1) return t('justNow');
+  if (minutes < 60) return t('minutesAgo', { n: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return t('hoursAgo', { n: hours });
   const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}d ago`;
+  if (days < 30) return t('daysAgo', { n: days });
   return new Date(dateStr).toLocaleDateString();
 }
