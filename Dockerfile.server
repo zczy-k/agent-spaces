@@ -23,9 +23,7 @@ RUN printf '\nonlyBuiltDependencies[]=esbuild\nonlyBuiltDependencies[]=sharp\non
     node scripts/copy-web.mjs && \
     node scripts/copy-package.mjs
 
-# Prune dev deps: replace workspace:* with file: reference first
-RUN node -e "const fs=require('fs'),p=JSON.parse(fs.readFileSync('packages/server/package.json','utf8'));p.dependencies['@agent-spaces/shared']='file:../shared';fs.writeFileSync('packages/server/package.json',JSON.stringify(p,null,2))" && \
-    pnpm prune --prod && \
+RUN pnpm prune --prod && \
     pnpm store prune && \
     rm -rf packages/shared/src packages/server/src packages/web/src packages/web/out packages/web/.next
 

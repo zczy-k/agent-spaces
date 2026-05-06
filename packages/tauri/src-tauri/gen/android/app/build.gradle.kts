@@ -30,9 +30,9 @@ android {
     signingConfigs {
         create("release") {
             storeFile = file("release-key.jks")
-            storePassword = "agent-spaces"
+            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "agent-spaces"
             keyAlias = "release"
-            keyPassword = "agent-spaces"
+            keyPassword = System.getenv("KEY_PASSWORD") ?: "agent-spaces"
         }
     }
     buildTypes {

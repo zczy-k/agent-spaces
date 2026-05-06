@@ -5,7 +5,11 @@
   "scripts": {
     "tauri": "tauri",
     "dev": "tauri dev",
-    "build": "tauri build"
+    "build": "tauri build",
+    "build:macos": "tauri build --target aarch64-apple-darwin",
+    "build:ios": "tauri ios build --target aarch64",
+    "build:android": "tauri android build --target aarch64",
+    "build:android:debug": "tauri android build --debug --target aarch64"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.1"
