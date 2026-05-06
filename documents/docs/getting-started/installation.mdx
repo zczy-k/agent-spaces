@@ -12,7 +12,18 @@ sidebar_position: 1
 - **pnpm** >= 9
 - **Git**
 
-## 安装步骤
+## 快速安装（推荐）
+
+一行命令安装并启动：
+
+```bash
+npm i @agent-spaces/server -g --registry https://registry.npmmirror.com
+agent-spaces-server
+```
+
+启动后访问 http://localhost:3100 ，使用你设置的 Secret Key 登录。
+
+## 从源码安装
 
 ### 1. 克隆项目
 
@@ -27,38 +38,7 @@ cd agent-spaces
 pnpm install
 ```
 
-### 3. 配置认证密钥
-
-首次使用需要设置 Secret Key，用于登录认证。
-
-创建认证配置文件：
-
-```bash
-mkdir -p ~/.agent-spaces-data
-echo '{"secretKey": "your-secret-key"}' > ~/.agent-spaces-data/auth.json
-```
-
-将 `your-secret-key` 替换为你自己的密钥，这个密钥将用于登录时验证身份。
-
-### 4. 配置 AI 模型（可选但推荐）
-
-根据你想使用的 Agent 运行时，配置对应的 API Key：
-
-**使用 Claude Code 运行时：**
-
-```bash
-export ANTHROPIC_API_KEY=sk-ant-xxx
-```
-
-**使用 OpenAI Codex 运行时：**
-
-```bash
-export CODEX_API_KEY=sk-xxx
-```
-
-也可以在后续的 Agent 预设配置界面中填写 API Key。
-
-### 5. 启动服务
+### 3. 启动服务
 
 ```bash
 pnpm dev
@@ -78,8 +58,6 @@ pnpm dev
 | `PORT` | `3100` | 后端服务端口 |
 | `HOST` | `0.0.0.0` | 后端监听地址 |
 | `AGENT_SPACES_DATA_DIR` | `~/.agent-spaces-data` | 数据存储目录 |
-| `ANTHROPIC_API_KEY` | - | Claude Code 运行时 API Key |
-| `CODEX_API_KEY` | - | Codex 运行时 API Key |
 | `NEXT_PUBLIC_WS_PORT` | `3100` | WebSocket 连接端口 |
 
 ## Docker 部署

@@ -36,6 +36,15 @@
 
 ## 快速开始
 
+### 一键安装（推荐）
+
+```bash
+npm i @agent-spaces/server -g --registry https://registry.npmmirror.com
+agent-spaces-server
+```
+
+启动后访问 http://localhost:3100 。
+
 ### 开发模式
 
 ```bash
@@ -70,9 +79,6 @@ npm run start
 |------|--------|------|
 | `PORT` | `3100` | 后端端口 |
 | `AGENT_SPACES_DATA_DIR` | `~/.agent-spaces-data` | 数据目录 |
-| `ANTHROPIC_API_KEY` | - | Claude Code 运行时 API Key |
-| `ANTHROPIC_BASE_URL` | - | Claude Code 运行时 API Base URL |
-| `CODEX_API_KEY` / `OPENAI_API_KEY` | - | Codex 运行时 API Key |
 | `NEXT_PUBLIC_WS_PORT` | `3100` | WebSocket 端口 |
 
 ## 项目结构

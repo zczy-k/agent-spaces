@@ -28,7 +28,6 @@ import { startPersistedNotificationServices } from './services/notification-hub/
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.PORT || '3100', 10);
-const IS_PROD = process.env.NODE_ENV === 'production';
 
 const resolveRuntimeDir = (name: string) => {
   const currentDir = join(__dirname, name);
@@ -85,34 +84,32 @@ app.use('/api', llmRouter);
 app.use('/api/folder', folderRouter);
 
 // Serve static web frontend in production (after API routes, before catch-all)
-if (IS_PROD) {
-  const webDir = resolveRuntimeDir('web');
-  if (existsSync(webDir)) {
-    // /static/* -> public/* (avatar URLs etc.)
-    app.use('/static', express.static(publicDir));
-    // web static assets (_next, monaco, etc.)
-    app.use(express.static(webDir));
+const webDir = resolveRuntimeDir('web');
+if (existsSync(webDir)) {
+  // /static/* -> public/* (avatar URLs etc.)
+  app.use('/static', express.static(publicDir));
+  // web static assets (_next, monaco, etc.)
+  app.use(express.static(webDir));
 
-    // SPA fallback: serve correct HTML for each route
-    const indexHtml = join(webDir, 'index.html');
-    const workspaceHtml = join(webDir, 'workspace', '_.html');
+  // SPA fallback: serve correct HTML for each route
+  const indexHtml = join(webDir, 'index.html');
+  const workspaceHtml = join(webDir, 'workspace', '_.html');
 
-    // /workspace/* -> workspace SPA page
-    if (existsSync(workspaceHtml)) {
-      app.get('/workspace/:id', (_req, res) => {
-        res.sendFile(workspaceHtml);
-      });
-    }
-
-    // Everything else -> root index.html
-    app.use((_req, res) => {
-      res.sendFile(indexHtml);
+  // /workspace/* -> workspace SPA page
+  if (existsSync(workspaceHtml)) {
+    app.get('/workspace/:id', (_req, res) => {
+      res.sendFile(workspaceHtml);
     });
-
-    console.log(`[server] serving web frontend from ${webDir}`);
-  } else {
-    console.warn('[server] web frontend not found at', webDir, '- run \`pnpm build\` first');
   }
+
+  // Everything else -> root index.html
+  app.use((_req, res) => {
+    res.sendFile(indexHtml);
+  });
+
+  console.log(`[server] serving web frontend from ${webDir}`);
+} else {
+  console.warn('[server] web frontend not found at', webDir, '- run \`pnpm build\` first');
 }
 
 const server = createServer(app);
