@@ -14,6 +14,7 @@ COPY scripts/ scripts/
 
 ENV CI=true
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_STATIC_EXPORT=1
 
 RUN printf '\nonlyBuiltDependencies[]=esbuild\nonlyBuiltDependencies[]=sharp\nonlyBuiltDependencies[]=node-pty\nonlyBuiltDependencies[]=protobufjs\n' >> .npmrc && \
     pnpm install --frozen-lockfile && \

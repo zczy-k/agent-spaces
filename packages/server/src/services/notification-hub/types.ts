@@ -114,6 +114,7 @@ export interface WeChatGetUpdatesResponse {
 export interface BotCommandContext {
   workspaceId?: string;
   issueId?: string;
+  markdown?: boolean;
 }
 
 export interface BuildCommandResponseInput {

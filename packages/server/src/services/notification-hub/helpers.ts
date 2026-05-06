@@ -71,6 +71,19 @@ export function persistWeChatGetUpdatesBuf(workspaceId: string, getUpdatesBuf: s
   });
 }
 
+export function getBotSettings(workspaceId: string): { markdown: boolean } {
+  const settings = workspaceService.getById(workspaceId)?.notificationSettings;
+  return { markdown: settings?.botMarkdown !== false };
+}
+
+export function persistBotMarkdown(workspaceId: string, markdown: boolean): void {
+  const workspace = workspaceService.getById(workspaceId);
+  const settings = workspace?.notificationSettings;
+  if (!workspace || !settings) return;
+  settings.botMarkdown = markdown;
+  workspaceService.update(workspaceId, { notificationSettings: { ...settings } });
+}
+
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }

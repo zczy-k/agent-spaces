@@ -24,6 +24,7 @@ export interface WorkspaceNotificationSettings {
   events: NotificationEventKey[];
   serviceRunning?: boolean;
   botAgentId?: string;
+  botMarkdown?: boolean;
   lark?: {
     appId?: string;
     appSecret?: string;

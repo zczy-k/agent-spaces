@@ -8,6 +8,7 @@ import { gitCommit, gitGenerateCommitMsg, gitPull, gitPush, gitStatus } from '..
 import type { BotCommandContext, BuildCommandResponseInput } from './types.js';
 import { botCommandContexts } from './types.js';
 import { truncateLine } from './format.js';
+import { getBotSettings, persistBotMarkdown } from './helpers.js';
 import { startIssueAutomation, getConfiguredBotAgent } from './bot-agent.js';
 import { hasActiveIssueAutomation } from '../../agents/issue-agent-runner.js';
 
@@ -34,6 +35,13 @@ async function executeCommand(input: BuildCommandResponseInput): Promise<string>
   const workspaceId = context.workspaceId ?? input.defaultWorkspaceId;
 
   if (command === '/workspace') {
+    if (args[0]) {
+      const workspace = resolveWorkspace(args[0]);
+      if (!workspace) return `Workspace not found: ${args[0]}`;
+      const nextContext: BotCommandContext = { workspaceId: workspace.id };
+      botCommandContexts.set(input.conversationId, nextContext);
+      return `Switched workspace:\n${formatWorkspaceDetail(workspace)}`;
+    }
     const workspace = workspaceService.getById(workspaceId);
     return workspace ? formatWorkspaceDetail(workspace, context.issueId) : 'Workspace not found.';
   }
@@ -46,10 +54,9 @@ async function executeCommand(input: BuildCommandResponseInput): Promise<string>
   }
 
   if (command === '/workspac') {
-    const nextWorkspaceId = args[0];
-    if (!nextWorkspaceId) return 'Usage: /workspac [id]';
-    const workspace = workspaceService.getById(nextWorkspaceId);
-    if (!workspace) return `Workspace not found: ${nextWorkspaceId}`;
+    if (!args[0]) return 'Usage: /workspac [id/name]';
+    const workspace = resolveWorkspace(args[0]);
+    if (!workspace) return `Workspace not found: ${args[0]}`;
     const nextContext: BotCommandContext = { workspaceId: workspace.id };
     botCommandContexts.set(input.conversationId, nextContext);
     return `Switched workspace:\n${formatWorkspaceDetail(workspace)}`;
@@ -169,6 +176,22 @@ async function executeCommand(input: BuildCommandResponseInput): Promise<string>
     return 'Pulled from remote git.';
   }
 
+  if (command === '/markdown') {
+    const arg = args[0]?.toLowerCase();
+    const current = getBotSettings(workspaceId).markdown;
+    if (arg === 'on' || arg === 'true' || arg === '1') {
+      persistBotMarkdown(workspaceId, true);
+      botCommandContexts.set(input.conversationId, { ...context, workspaceId, markdown: true });
+      return 'Markdown output: ON';
+    }
+    if (arg === 'off' || arg === 'false' || arg === '0') {
+      persistBotMarkdown(workspaceId, false);
+      botCommandContexts.set(input.conversationId, { ...context, workspaceId, markdown: false });
+      return 'Markdown output: OFF';
+    }
+    return `Markdown output: ${current ? 'ON' : 'OFF'}\nUsage: /markdown [on/off]`;
+  }
+
   if (command === '/help') return buildCommandHelp();
   return buildCommandHelp();
 }
@@ -181,7 +204,8 @@ function getBotCommandContext(conversationId: string, defaultWorkspaceId: string
   const issueId = existing.issueId && issueService.getById(workspaceId, existing.issueId)
     ? existing.issueId
     : undefined;
-  const normalized = { workspaceId, issueId };
+  const markdown = existing.markdown ?? getBotSettings(workspaceId).markdown;
+  const normalized = { workspaceId, issueId, markdown };
   botCommandContexts.set(conversationId, normalized);
   return normalized;
 }
@@ -249,16 +273,24 @@ function formatWorkspaceDetail(workspace: Workspace, currentIssueId?: string): s
   ].filter(Boolean).join('\n');
 }
 
+function resolveWorkspace(idOrName: string): Workspace | null {
+  const byId = workspaceService.getById(idOrName);
+  if (byId) return byId;
+  const lower = idOrName.toLowerCase();
+  const all = workspaceService.getAll();
+  const match = all.find((w) => w.name.toLowerCase().includes(lower));
+  return match ?? null;
+}
+
 function resolveIssue(workspaceId: string, idOrIndex: string): NonNullable<ReturnType<typeof issueService.getById>> | null {
   const byId = issueService.getById(workspaceId, idOrIndex);
   if (byId) return byId;
+  const issues = issueService.list(workspaceId)
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
   const index = Number(idOrIndex);
-  if (Number.isInteger(index) && index >= 0) {
-    const issues = issueService.list(workspaceId)
-      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
-    return issues[index] ?? null;
-  }
-  return null;
+  if (Number.isInteger(index) && index >= 0) return issues[index] ?? null;
+  const lower = idOrIndex.toLowerCase();
+  return issues.find((i) => i.title.toLowerCase().includes(lower)) ?? null;
 }
 
 function formatAgentList(workspaceId: string): string {
@@ -353,7 +385,7 @@ function buildCommandHelp(): string {
     'Supported commands:',
     '/workspace',
     '/workspaces',
-    '/workspac [id]',
+    '/workspace [id/name]  (alias: /workspac)',
     '/agents',
     '/issues',
     '/issue',
@@ -365,6 +397,7 @@ function buildCommandHelp(): string {
     '/task',
     '/comment [msg]',
     '/comments',
+    '/markdown [on/off]',
     '/help',
     '/changes',
     '/commit [desc/auto]',

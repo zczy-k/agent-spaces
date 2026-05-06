@@ -8,7 +8,10 @@ const monorepoRoot = path.resolve(projectRoot, '../..');
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
+const isStaticExport = process.env.NEXT_STATIC_EXPORT === "1";
+
 const nextConfig: NextConfig = {
+  ...(isStaticExport && { output: "export" }),
   allowedDevOrigins: [
     "127.0.0.1",
     "192.168.*.*",
@@ -36,23 +39,25 @@ const nextConfig: NextConfig = {
 
     return config;
   },
-  async rewrites() {
-    const serverUrl = process.env.SERVER_URL || "http://localhost:3100";
-    return [
-      {
-        source: "/api/:path*",
-        destination: `${serverUrl}/api/:path*`,
-      },
-      {
-        source: "/ws",
-        destination: `${serverUrl}/ws`,
-      },
-      {
-        source: "/static/:path*",
-        destination: `${serverUrl}/public/:path*`,
-      },
-    ];
-  },
+  ...(!isStaticExport && {
+    async rewrites() {
+      const serverUrl = process.env.SERVER_URL || "http://localhost:3100";
+      return [
+        {
+          source: "/api/:path*",
+          destination: `${serverUrl}/api/:path*`,
+        },
+        {
+          source: "/ws",
+          destination: `${serverUrl}/ws`,
+        },
+        {
+          source: "/static/:path*",
+          destination: `${serverUrl}/public/:path*`,
+        },
+      ];
+    },
+  }),
   transpilePackages: ["flexlayout-react"],
 };
 
