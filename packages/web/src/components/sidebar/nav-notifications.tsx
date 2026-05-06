@@ -12,6 +12,7 @@ import {
   DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu";
 import { BellIcon } from "lucide-react";
+import { useTranslations } from 'next-intl';
 
 type Notification = {
   id: string;
@@ -26,12 +27,13 @@ export function NotificationsPopover({
 }: {
   notifications: Notification[];
 }) {
+  const t = useTranslations('sidebar');
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="rounded-full" aria-label="Open notifications" />}><BellIcon className="size-5" /></DropdownMenuTrigger>
+      <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="rounded-full" aria-label={t('notifications.openAriaLabel')} />}><BellIcon className="size-5" /></DropdownMenuTrigger>
       <DropdownMenuContent side="right" className="w-80 my-6">
         <DropdownMenuGroup>
-          <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+          <DropdownMenuLabel>{t('notifications.title')}</DropdownMenuLabel>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         {notifications.map(({ id, avatar, fallback, text, time }) => (

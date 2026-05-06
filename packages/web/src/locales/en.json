@@ -27,7 +27,12 @@
     "actions": "Actions",
     "copy": "Copy",
     "copied": "Copied",
-    "create": "Create"
+    "create": "Create",
+    "saving": "Saving...",
+    "you": "You",
+    "user": "User",
+    "refresh": "Refresh",
+    "new": "New"
   },
   "settings": {
     "title": "Settings",
@@ -43,5 +48,42 @@
     "security": "Security",
     "newSecretPlaceholder": "New secret key (leave empty to remove)",
     "redirecting": "Redirecting to login..."
+  },
+  "sidebar": {
+    "nav": {
+      "home": "Home",
+      "workspaces": "Workspaces",
+      "addWorkspace": "Add Workspace",
+      "settings": "Settings",
+      "general": "General",
+      "agents": "Agents",
+      "models": "Models",
+      "providers": "Providers"
+    },
+    "notifications": {
+      "openAriaLabel": "Open notifications",
+      "title": "Notifications",
+      "viewAll": "View all notifications",
+      "sample1": "New order received.",
+      "sample2": "Server upgrade completed.",
+      "sample3": "New user signed up.",
+      "sample1Time": "10m ago",
+      "sample2Time": "1h ago",
+      "sample3Time": "2h ago"
+    },
+    "server": {
+      "servers": "Servers",
+      "addServer": "Add Server",
+      "manageServers": "Manage Servers",
+      "editServer": "Edit Server",
+      "editDescription": "Update server connection details.",
+      "addDescription": "Add an API server to connect to.",
+      "manageDescription": "Add, edit, or remove API server connections.",
+      "url": "URL",
+      "secret": "Secret",
+      "secretPlaceholder": "Optional API secret",
+      "secretOptionalPlaceholder": "Secret (optional)",
+      "newServer": "New Server"
+    }
   }
 }

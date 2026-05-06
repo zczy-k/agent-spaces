@@ -28,6 +28,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronUp, MoreHorizontal, Plus, LayoutGrid } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useState } from "react";
 
@@ -59,6 +60,7 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
   const [openSet, setOpenSet] = useState<Set<string>>(new Set());
+  const tc = useTranslations('common');
 
   return (
     <SidebarMenu>
@@ -127,7 +129,7 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
                         className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground mt-0.5"
                       >
                         <Plus className="size-3.5" />
-                        {route.addLabel ?? "Add"}
+                        {route.addLabel ?? tc('add')}
                       </button>
                     )}
                     {route.manageLink && (
@@ -136,7 +138,7 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
                         className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground mt-0.5"
                       >
                         <LayoutGrid className="size-3.5" />
-                        Manage
+                        {tc('manage')}
                       </Link>
                     )}
                   </PopoverContent>
@@ -226,7 +228,7 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
                             className="flex w-full items-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-muted hover:text-foreground"
                           >
                             <Plus className="size-3.5" />
-                            {route.addLabel ?? "Add"}
+                            {route.addLabel ?? tc('add')}
                           </button>
                         </SidebarMenuSubItem>
                       )}
@@ -237,7 +239,7 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
                             className="flex w-full items-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-muted hover:text-foreground"
                           >
                             <LayoutGrid className="size-3.5" />
-                            Manage
+                            {tc('manage')}
                           </Link>
                         </SidebarMenuSubItem>
                       )}

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   Sidebar,
   SidebarContent,
@@ -37,34 +38,36 @@ import { WorkspaceDialog } from "@/components/workspace/workspace-dialog";
 import { useWorkspaceStore } from "@/stores/workspace";
 import type { Workspace } from "@agent-spaces/shared";
 
-const sampleNotifications = [
-  {
-    id: "1",
-    avatar: "/avatars/01.png",
-    fallback: "OM",
-    text: "New order received.",
-    time: "10m ago",
-  },
-  {
-    id: "2",
-    avatar: "/avatars/02.png",
-    fallback: "JL",
-    text: "Server upgrade completed.",
-    time: "1h ago",
-  },
-  {
-    id: "3",
-    avatar: "/avatars/03.png",
-    fallback: "HH",
-    text: "New user signed up.",
-    time: "2h ago",
-  },
-];
-
 export function DashboardSidebar() {
   const { state } = useSidebar();
   const pathname = usePathname();
   const router = useRouter();
+  const ts = useTranslations('sidebar');
+  const tc = useTranslations('common');
+
+  const sampleNotifications = [
+    {
+      id: "1",
+      avatar: "/avatars/01.png",
+      fallback: "OM",
+      text: ts('notifications.sample1'),
+      time: ts('notifications.sample1Time'),
+    },
+    {
+      id: "2",
+      avatar: "/avatars/02.png",
+      fallback: "JL",
+      text: ts('notifications.sample2'),
+      time: ts('notifications.sample2Time'),
+    },
+    {
+      id: "3",
+      avatar: "/avatars/03.png",
+      fallback: "HH",
+      text: ts('notifications.sample3'),
+      time: ts('notifications.sample3Time'),
+    },
+  ];
   const isCollapsed = state === "collapsed";
   const isWorkspace = pathname.startsWith("/workspace/");
   const currentWorkspaceId = pathname.match(/^\/workspace\/([^/]+)/)?.[1];
@@ -134,17 +137,17 @@ export function DashboardSidebar() {
   const dashboardRoutes: Route[] = [
     {
       id: "home",
-      title: "Home",
+      title: ts('nav.home'),
       icon: <Home className="size-4" />,
       link: "/",
     },
     {
       id: "workspaces",
-      title: "Workspaces",
+      title: ts('nav.workspaces'),
       icon: <FolderOpen className="size-4" />,
       link: "/",
       onAdd: openCreateDialog,
-      addLabel: "Add Workspace",
+      addLabel: ts('nav.addWorkspace'),
       manageLink: "/workspaces",
       subs: [
         ...workspaces.map((ws) => ({
@@ -153,17 +156,17 @@ export function DashboardSidebar() {
           icon: <FolderOpen className="size-4" />,
           menuItems: [
             {
-              label: "Edit",
+              label: tc('edit'),
               icon: <Pencil className="size-3.5" />,
               onClick: () => openEditDialog(ws),
             },
             {
-              label: "Open",
+              label: tc('open'),
               icon: <FolderSearch className="size-3.5" />,
               onClick: () => fetch(`/api/workspaces/${ws.id}/reveal`, { method: 'POST' }),
             },
             {
-              label: "Delete",
+              label: tc('delete'),
               icon: <Trash2 className="size-3.5" />,
               variant: "destructive" as const,
               onClick: () => handleDelete(ws),
@@ -174,14 +177,14 @@ export function DashboardSidebar() {
     },
     {
       id: "settings",
-      title: "Settings",
+      title: ts('nav.settings'),
       icon: <Settings className="size-4" />,
       link: "#",
       subs: [
-        { title: "General", link: "#", onClick: () => setSettingsDialogOpen(true) },
-        { title: "Agents", link: "#", icon: <Bot className="size-3.5" />, onClick: () => setAgentDialogOpen(true) },
-        { title: "Models", link: "#", icon: <Brain className="size-3.5" />, onClick: () => { setModelsDialogProvider(undefined); setModelsDialogOpen(true); } },
-        { title: "Providers", link: "#", icon: <Server className="size-3.5" />, onClick: () => setProvidersDialogOpen(true) },
+        { title: ts('nav.general'), link: "#", onClick: () => setSettingsDialogOpen(true) },
+        { title: ts('nav.agents'), link: "#", icon: <Bot className="size-3.5" />, onClick: () => setAgentDialogOpen(true) },
+        { title: ts('nav.models'), link: "#", icon: <Brain className="size-3.5" />, onClick: () => { setModelsDialogProvider(undefined); setModelsDialogOpen(true); } },
+        { title: ts('nav.providers'), link: "#", icon: <Server className="size-3.5" />, onClick: () => setProvidersDialogOpen(true) },
       ],
     },
   ];

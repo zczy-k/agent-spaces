@@ -27,7 +27,12 @@
     "actions": "操作",
     "copy": "复制",
     "copied": "已复制",
-    "create": "创建"
+    "create": "创建",
+    "saving": "保存中...",
+    "you": "你",
+    "user": "用户",
+    "refresh": "刷新",
+    "new": "新建"
   },
   "settings": {
     "title": "设置",
@@ -43,5 +48,42 @@
     "security": "安全",
     "newSecretPlaceholder": "新的密钥（留空则移除）",
     "redirecting": "正在跳转到登录页..."
+  },
+  "sidebar": {
+    "nav": {
+      "home": "首页",
+      "workspaces": "工作空间",
+      "addWorkspace": "添加工作空间",
+      "settings": "设置",
+      "general": "通用",
+      "agents": "智能体",
+      "models": "模型",
+      "providers": "供应商"
+    },
+    "notifications": {
+      "openAriaLabel": "打开通知",
+      "title": "通知",
+      "viewAll": "查看所有通知",
+      "sample1": "收到新订单。",
+      "sample2": "服务器升级完成。",
+      "sample3": "新用户注册。",
+      "sample1Time": "10分钟前",
+      "sample2Time": "1小时前",
+      "sample3Time": "2小时前"
+    },
+    "server": {
+      "servers": "服务器",
+      "addServer": "添加服务器",
+      "manageServers": "管理服务器",
+      "editServer": "编辑服务器",
+      "editDescription": "更新服务器连接信息。",
+      "addDescription": "添加 API 服务器连接。",
+      "manageDescription": "添加、编辑或移除 API 服务器连接。",
+      "url": "URL",
+      "secret": "密钥",
+      "secretPlaceholder": "可选 API 密钥",
+      "secretOptionalPlaceholder": "密钥（可选）",
+      "newServer": "新服务器"
+    }
   }
 }
