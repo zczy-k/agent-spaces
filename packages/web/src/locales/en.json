@@ -55,7 +55,8 @@
     "verifying": "Verifying...",
     "login": "Login",
     "loginFailed": "Login failed",
-    "networkError": "Network error"
+    "networkError": "Network error",
+    "manageServers": "Manage Servers"
   },
   "workspaces": {
     "title": "Workspaces",

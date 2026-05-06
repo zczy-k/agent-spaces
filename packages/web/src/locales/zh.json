@@ -55,7 +55,8 @@
     "verifying": "验证中...",
     "login": "登录",
     "loginFailed": "登录失败",
-    "networkError": "网络错误"
+    "networkError": "网络错误",
+    "manageServers": "管理服务器"
   },
   "workspaces": {
     "title": "工作空间",

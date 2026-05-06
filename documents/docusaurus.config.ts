@@ -11,7 +11,7 @@ const config: Config = {
     v4: true,
   },
 
-  url: 'https://agent-spaces.dev',
+  url: '/agent_spaces/',
   baseUrl: '/',
 
   organizationName: 'hunmer',

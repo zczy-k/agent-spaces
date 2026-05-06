@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from 'next-intl';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Settings2 } from "lucide-react";
 import { setToken } from "@/lib/auth";
+import { type ServerConfig, loadServers, saveServers, loadActiveId, saveActiveId, setActiveServerCookie } from "@/lib/server";
+import { ServerManagerDialog } from "@/components/sidebar/server-manager-dialog";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,6 +16,9 @@ export default function LoginPage() {
   const [secret, setSecret] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [servers, setServers] = useState<ServerConfig[]>(loadServers);
+  const [activeId, setActiveId] = useState(loadActiveId);
+  const [managerOpen, setManagerOpen] = useState(false);
 
   const handleLogin = async () => {
     setLoading(true);
@@ -61,8 +67,34 @@ export default function LoginPage() {
           <Button className="w-full" onClick={handleLogin} disabled={loading}>
             {loading ? t('verifying') : t('login')}
           </Button>
+          <Button variant="ghost" className="w-full" onClick={() => setManagerOpen(true)}>
+            <Settings2 className="size-4 mr-2" />
+            {t('manageServers')}
+          </Button>
         </div>
       </div>
+
+      <ServerManagerDialog
+        open={managerOpen}
+        onOpenChange={setManagerOpen}
+        servers={servers}
+        activeId={activeId}
+        onUpdate={(updated) => { setServers(updated); saveServers(updated); }}
+        onRemove={(id) => {
+          if (id === "default") return;
+          const updated = servers.filter((s) => s.id !== id);
+          setServers(updated);
+          saveServers(updated);
+          if (activeId === id) {
+            const fallback = updated.find((s) => s.id === "default") || updated[0];
+            if (fallback) {
+              setActiveId(fallback.id);
+              saveActiveId(fallback.id);
+              setActiveServerCookie(fallback.id === "default" ? null : fallback.url);
+            }
+          }
+        }}
+      />
     </div>
   );
 }
