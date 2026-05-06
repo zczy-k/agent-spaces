@@ -29,6 +29,7 @@ import {
   IconWorld,
 } from "@tabler/icons-react";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -61,8 +62,8 @@ import {
 type MentionedAgent = Pick<AgentConfig, "id" | "name" | "role" | "description" | "enabled" | "mcps" | "skills" | "tools">;
 type DisplayTodoItem = TodoItem & { title?: string; content?: string };
 
-function getTodoTitle(todo: DisplayTodoItem) {
-  return todo.subject || todo.title || todo.activeForm || todo.content || "Untitled todo";
+function getTodoTitle(todo: DisplayTodoItem, fallback: string) {
+  return todo.subject || todo.title || todo.activeForm || todo.content || fallback;
 }
 
 interface ChatInputProps {
@@ -84,6 +85,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   { channelName, channelId, workspaceId, channel, agents, onSend, isProcessing = false, onStop },
   ref
 ) {
+  const t = useTranslations('chat');
   const [mentionedAgentIds, setMentionedAgentIds] = useState<string[]>([]);
   const [attachments, setAttachments] = useState<LocalAttachment[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -295,7 +297,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       extensions: [
         StarterKit,
         Placeholder.configure({
-          placeholder: `Message #${channelName}...  支持 @mention，输入 / 打开命令`,
+          placeholder: t('input.placeholder', { channel: channelName }),
         }),
         mentionExtension,
         slashExtension,
@@ -448,19 +450,19 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           <DropdownMenuGroup className="space-y-1">
             <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs" onClick={openFilePicker}>
               <IconPaperclip size={16} className="opacity-60" />
-              Attach Files
+              {t('input.attachFiles')}
             </DropdownMenuItem>
             <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs" onClick={() => {}}>
               <IconCode size={16} className="opacity-60" />
-              Code Interpreter
+              {t('input.codeInterpreter')}
             </DropdownMenuItem>
             <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs" onClick={() => {}}>
               <IconWorld size={16} className="opacity-60" />
-              Web Search
+              {t('input.webSearch')}
             </DropdownMenuItem>
             <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs" onClick={() => {}}>
               <IconHistory size={16} className="opacity-60" />
-              Chat History
+              {t('input.chatHistory')}
             </DropdownMenuItem>
           </DropdownMenuGroup>
         </DropdownMenuContent>
@@ -476,7 +478,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         })}
       >
         <IconWand className="size-3" />
-        <span className="text-xs">Auto</span>
+        <span className="text-xs">{t('input.autoMode')}</span>
       </Button>
     </>
   );
@@ -496,7 +498,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
               "inline-flex items-center justify-center size-5 rounded-full hover:bg-accent transition-colors",
               isPinned ? "text-primary" : "text-muted-foreground"
             )}
-            title={isPinned ? "取消固定" : "固定此 Agent"}
+            title={isPinned ? t('input.unpinAgent') : t('input.pinAgent')}
           >
             {isPinned ? <IconPinFilled className="size-3" /> : <IconPin className="size-3" />}
           </button>
@@ -541,7 +543,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             }
           >
             <IconPlug className="size-3" />
-            <span>MCP{activeMcps.length ? ` ${activeMcps.length}` : ""}</span>
+            <span>{t('input.mcp')}{activeMcps.length ? ` ${activeMcps.length}` : ""}</span>
             <IconChevronDown className="size-3" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5 bg-popover border-border">
@@ -556,7 +558,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
               ) : (
                 <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs text-muted-foreground">
                   <IconPlug size={16} className="opacity-60" />
-                  No MCP configured
+                  {t('input.noMcp')}
                 </DropdownMenuItem>
               )}
             </DropdownMenuGroup>
@@ -574,7 +576,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             }
           >
             <IconPuzzle className="size-3" />
-            <span>Skill{activeSkills.length ? ` ${activeSkills.length}` : ""}</span>
+            <span>{t('input.skill')}{activeSkills.length ? ` ${activeSkills.length}` : ""}</span>
             <IconChevronDown className="size-3" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5 bg-popover border-border">
@@ -589,7 +591,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
               ) : (
                 <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs text-muted-foreground">
                   <IconPuzzle size={16} className="opacity-60" />
-                  No skills configured
+                  {t('input.noSkills')}
                 </DropdownMenuItem>
               )}
             </DropdownMenuGroup>
@@ -607,7 +609,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             }
           >
             <IconTools className="size-3" />
-            <span>Tools{activeTools.length ? ` ${activeTools.length}` : ""}</span>
+            <span>{t('input.tools')}{activeTools.length ? ` ${activeTools.length}` : ""}</span>
             <IconChevronDown className="size-3" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5 bg-popover border-border">
@@ -622,7 +624,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
               ) : (
                 <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs text-muted-foreground">
                   <IconTools size={16} className="opacity-60" />
-                  No tools configured
+                  {t('input.noTools')}
                 </DropdownMenuItem>
               )}
             </DropdownMenuGroup>
@@ -641,13 +643,13 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
               }
             >
               <IconCircleCheck className="size-3" />
-              <span>Todos {channel.todos.length}</span>
+              <span>{t('input.todos')} {channel.todos.length}</span>
               <IconChevronDown className="size-3" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5 bg-popover border-border">
               <DropdownMenuGroup className="space-y-0.5">
                 {channel.todos.map((todo, index) => (
-                  <DropdownMenuItem key={todo.id || `${getTodoTitle(todo)}-${index}`} className="rounded-[calc(1rem-6px)] text-xs gap-2" onSelect={(e) => e.preventDefault()}>
+                  <DropdownMenuItem key={todo.id || `${getTodoTitle(todo, t('untitledTodo'))}-${index}`} className="rounded-[calc(1rem-6px)] text-xs gap-2" onSelect={(e) => e.preventDefault()}>
                     {todo.status === 'completed' ? (
                       <IconCircleCheck size={14} className="text-green-500 shrink-0" />
                     ) : todo.status === 'in_progress' ? (
@@ -656,7 +658,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
                       <IconCircleDashed size={14} className="text-muted-foreground shrink-0" />
                     )}
                     <span className={cn("truncate", todo.status === 'completed' && "line-through text-muted-foreground")}>
-                      {getTodoTitle(todo)}
+                      {getTodoTitle(todo, t('untitledTodo'))}
                     </span>
                   </DropdownMenuItem>
                 ))}
@@ -684,7 +686,7 @@ async function uploadAttachment(item: LocalAttachment): Promise<MessageAttachmen
     body: formData,
   });
   if (!res.ok) {
-    throw new Error(`Upload failed: ${item.file.name}`);
+    throw new Error(`Upload failed: ${item.file.name}`); // i18n handled by caller
   }
   const uploaded = (await res.json()) as { name: string; size: number; type: string; url: string };
   return {
