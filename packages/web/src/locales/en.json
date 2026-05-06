@@ -57,6 +57,11 @@
     "loginFailed": "Login failed",
     "networkError": "Network error"
   },
+  "workspaces": {
+    "title": "Workspaces",
+    "newWorkspace": "New Workspace",
+    "emptyMessage": "No workspaces yet. Create one to get started."
+  },
   "sidebar": {
     "nav": {
       "home": "Home",

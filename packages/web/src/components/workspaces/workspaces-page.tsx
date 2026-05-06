@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { FolderOpen, Plus } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 import { Button } from '@/components/ui/button'
 import { WorkspaceDialog } from '@/components/workspace/workspace-dialog'
@@ -10,6 +11,7 @@ import { useWorkspaceStore } from '@/stores/workspace'
 import type { Workspace } from '@agent-spaces/shared'
 
 export function WorkspacesPage({ initialWorkspaces }: { initialWorkspaces: Workspace[] }) {
+  const t = useTranslations('workspaces')
   const workspaces = useWorkspaceStore((store) => store.workspaces)
   const setWorkspaces = useWorkspaceStore((store) => store.setWorkspaces)
   const upsertWorkspace = useWorkspaceStore((store) => store.upsertWorkspace)
@@ -33,17 +35,17 @@ export function WorkspacesPage({ initialWorkspaces }: { initialWorkspaces: Works
     <div className='flex min-h-dvh w-full flex-col'>
       <main className='mx-auto size-full max-w-7xl flex-1 px-4 py-6 sm:px-6'>
         <div className='mb-6 flex items-center justify-between'>
-          <h1 className='text-2xl font-semibold'>Workspaces</h1>
+          <h1 className='text-2xl font-semibold'>{t('title')}</h1>
           <Button onClick={() => setDialogOpen(true)} size='sm' className='rounded-full px-4'>
             <Plus className='size-3.5' />
-            New Workspace
+            {t('newWorkspace')}
           </Button>
         </div>
         {workspaces.length === 0 ? (
           <div className='rounded-2xl border border-dashed border-border p-16 text-center'>
             <FolderOpen className='size-10 mx-auto text-muted-foreground/40 mb-4' />
             <p className='text-muted-foreground text-sm'>
-              No workspaces yet. Create one to get started.
+              {t('emptyMessage')}
             </p>
           </div>
         ) : (
