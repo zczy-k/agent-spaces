@@ -2,7 +2,6 @@ import type { AgentConfig } from './workspace.js';
 
 export interface WorkflowTemplate {
   id: string;
-  workspaceId: string;
   name: string;
   description?: string;
   nodes: WorkflowNode[];

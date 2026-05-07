@@ -5,16 +5,12 @@ import type { AgentConfig } from '@agent-spaces/shared';
 import { AgentDialog } from '@/components/sidebar/agent-dialog';
 import { Eye } from 'lucide-react';
 
-interface AgentWithWorkspace extends AgentConfig {
-  workspaceId: string;
-}
-
 const ROLE_LABELS: Record<string, string> = {
   agent: 'Agent', scheduler: 'Scheduler', task_creator: 'Task Creator', bot: 'Bot',
 };
 
-function groupByRole(agents: AgentWithWorkspace[]): Record<string, AgentWithWorkspace[]> {
-  const groups: Record<string, AgentWithWorkspace[]> = {};
+function groupByRole(agents: AgentConfig[]): Record<string, AgentConfig[]> {
+  const groups: Record<string, AgentConfig[]> = {};
   for (const agent of agents) {
     if (!agent.enabled) continue;
     const role = agent.role || 'agent';
@@ -24,12 +20,12 @@ function groupByRole(agents: AgentWithWorkspace[]): Record<string, AgentWithWork
   return groups;
 }
 
-export function WorkflowAgentPalette({ agents }: { agents: AgentWithWorkspace[] }) {
+export function WorkflowAgentPalette({ agents }: { agents: AgentConfig[] }) {
   const grouped = groupByRole(agents);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogAgentId, setDialogAgentId] = useState<string | undefined>();
 
-  const openAgentDialog = (agent: AgentWithWorkspace) => {
+  const openAgentDialog = (agent: AgentConfig) => {
     setDialogAgentId(agent.id);
     setDialogOpen(true);
   };
@@ -39,7 +35,7 @@ export function WorkflowAgentPalette({ agents }: { agents: AgentWithWorkspace[] 
     if (!open) setDialogAgentId(undefined);
   };
 
-  const onDragStart = (event: React.DragEvent, agent: AgentWithWorkspace) => {
+  const onDragStart = (event: React.DragEvent, agent: AgentConfig) => {
     event.dataTransfer.setData('application/json', JSON.stringify(agent));
     event.dataTransfer.effectAllowed = 'move';
   };

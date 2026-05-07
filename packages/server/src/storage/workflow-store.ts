@@ -5,44 +5,44 @@ import type { WorkflowTemplate } from '@agent-spaces/shared';
 import { ensureDir, readJsonFile, writeJsonFile, deleteFile, getDataDir } from './json-store.js';
 import path from 'node:path';
 
-function workflowsDir(workspaceId: string) {
-  return path.join(getDataDir(), 'workspaces', workspaceId, 'workflows');
+function workflowsDir() {
+  return path.join(getDataDir(), 'workflows');
 }
 
-function workflowsIndex(workspaceId: string) {
-  return path.join(workflowsDir(workspaceId), 'index.json');
+function workflowsIndex() {
+  return path.join(workflowsDir(), 'index.json');
 }
 
-function workflowFile(workspaceId: string, workflowId: string) {
-  return path.join(workflowsDir(workspaceId), `${workflowId}.json`);
+function workflowFile(workflowId: string) {
+  return path.join(workflowsDir(), `${workflowId}.json`);
 }
 
-export function listWorkflows(workspaceId: string): WorkflowTemplate[] {
-  return readJsonFile<WorkflowTemplate[]>(workflowsIndex(workspaceId)) ?? [];
+export function listWorkflows(): WorkflowTemplate[] {
+  return readJsonFile<WorkflowTemplate[]>(workflowsIndex()) ?? [];
 }
 
-export function getWorkflow(workspaceId: string, workflowId: string): WorkflowTemplate | null {
-  return readJsonFile<WorkflowTemplate>(workflowFile(workspaceId, workflowId));
+export function getWorkflow(workflowId: string): WorkflowTemplate | null {
+  return readJsonFile<WorkflowTemplate>(workflowFile(workflowId));
 }
 
-export function createWorkflow(workspaceId: string, workflow: WorkflowTemplate): void {
-  ensureDir(workflowsDir(workspaceId));
-  writeJsonFile(workflowFile(workspaceId, workflow.id), workflow);
-  const index = listWorkflows(workspaceId);
+export function createWorkflow(workflow: WorkflowTemplate): void {
+  ensureDir(workflowsDir());
+  writeJsonFile(workflowFile(workflow.id), workflow);
+  const index = listWorkflows();
   index.push(workflow);
-  writeJsonFile(workflowsIndex(workspaceId), index);
+  writeJsonFile(workflowsIndex(), index);
 }
 
-export function updateWorkflow(workspaceId: string, workflow: WorkflowTemplate): void {
-  writeJsonFile(workflowFile(workspaceId, workflow.id), workflow);
-  const index = listWorkflows(workspaceId);
+export function updateWorkflow(workflow: WorkflowTemplate): void {
+  writeJsonFile(workflowFile(workflow.id), workflow);
+  const index = listWorkflows();
   const idx = index.findIndex(w => w.id === workflow.id);
   if (idx !== -1) index[idx] = workflow;
-  writeJsonFile(workflowsIndex(workspaceId), index);
+  writeJsonFile(workflowsIndex(), index);
 }
 
-export function deleteWorkflow(workspaceId: string, workflowId: string): void {
-  deleteFile(workflowFile(workspaceId, workflowId));
-  const index = listWorkflows(workspaceId);
-  writeJsonFile(workflowsIndex(workspaceId), index.filter(w => w.id !== workflowId));
+export function deleteWorkflow(workflowId: string): void {
+  deleteFile(workflowFile(workflowId));
+  const index = listWorkflows();
+  writeJsonFile(workflowsIndex(), index.filter(w => w.id !== workflowId));
 }

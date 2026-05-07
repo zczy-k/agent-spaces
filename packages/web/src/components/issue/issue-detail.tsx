@@ -739,7 +739,6 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
           open={editOpen}
           onOpenChange={setEditOpen}
           agents={enabledAgents}
-          workspaceId={workspaceId}
           onSave={async (data) => {
             await updateIssue(workspaceId, issue.id, data);
           }}

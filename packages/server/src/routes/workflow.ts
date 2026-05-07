@@ -1,24 +1,21 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 import * as workflowService from '../services/workflow.js';
-import { broadcastToWorkspace } from '../ws/handler.js';
 
-const router = Router({ mergeParams: true });
+const router = Router();
 
-router.get('/', (req: Request<{ id: string }>, res: Response) => {
+router.get('/', (_req: Request, res: Response) => {
   try {
-    const { id: workspaceId } = req.params;
-    const workflows = workflowService.listWorkflows(workspaceId);
+    const workflows = workflowService.listWorkflows();
     res.json(workflows);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
 
-router.get('/:workflowId', (req: Request<{ id: string; workflowId: string }>, res: Response) => {
+router.get('/:workflowId', (req: Request<{ workflowId: string }>, res: Response) => {
   try {
-    const { id: workspaceId, workflowId } = req.params;
-    const workflow = workflowService.getWorkflow(workspaceId, workflowId);
+    const workflow = workflowService.getWorkflow(req.params.workflowId);
     if (!workflow) {
       res.status(404).json({ error: 'Workflow not found' });
       return;
@@ -29,44 +26,36 @@ router.get('/:workflowId', (req: Request<{ id: string; workflowId: string }>, re
   }
 });
 
-router.post('/', (req: Request<{ id: string }>, res: Response) => {
+router.post('/', (req: Request, res: Response) => {
   try {
-    const { id: workspaceId } = req.params;
-    const workflow = workflowService.createWorkflow(workspaceId, req.body);
-    broadcastToWorkspace(workspaceId, 'workflow.created', { workspaceId, workflow });
+    const workflow = workflowService.createWorkflow(req.body);
     res.status(201).json(workflow);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }
 });
 
-router.put('/:workflowId', (req: Request<{ id: string; workflowId: string }>, res: Response) => {
+router.put('/:workflowId', (req: Request<{ workflowId: string }>, res: Response) => {
   try {
-    const { id: workspaceId, workflowId } = req.params;
-    const workflow = workflowService.updateWorkflow(workspaceId, workflowId, req.body);
-    broadcastToWorkspace(workspaceId, 'workflow.updated', { workspaceId, workflow });
+    const workflow = workflowService.updateWorkflow(req.params.workflowId, req.body);
     res.json(workflow);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }
 });
 
-router.delete('/:workflowId', (req: Request<{ id: string; workflowId: string }>, res: Response) => {
+router.delete('/:workflowId', (req: Request<{ workflowId: string }>, res: Response) => {
   try {
-    const { id: workspaceId, workflowId } = req.params;
-    workflowService.deleteWorkflow(workspaceId, workflowId);
-    broadcastToWorkspace(workspaceId, 'workflow.deleted', { workspaceId, workflowId });
+    workflowService.deleteWorkflow(req.params.workflowId);
     res.status(204).send();
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }
 });
 
-router.post('/:workflowId/duplicate', (req: Request<{ id: string; workflowId: string }>, res: Response) => {
+router.post('/:workflowId/duplicate', (req: Request<{ workflowId: string }>, res: Response) => {
   try {
-    const { id: workspaceId, workflowId } = req.params;
-    const workflow = workflowService.duplicateWorkflow(workspaceId, workflowId);
-    broadcastToWorkspace(workspaceId, 'workflow.created', { workspaceId, workflow });
+    const workflow = workflowService.duplicateWorkflow(req.params.workflowId);
     res.status(201).json(workflow);
   } catch (error: any) {
     res.status(400).json({ error: error.message });

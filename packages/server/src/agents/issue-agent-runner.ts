@@ -25,7 +25,7 @@ export async function runIssueAutomation(
 
   // Workflow template branch
   if (issue.workflowId) {
-    const template = workflowService.getWorkflow(workspaceId, issue.workflowId);
+    const template = workflowService.getWorkflow(issue.workflowId);
     if (template) {
       try {
         createTasksFromWorkflow(workspaceId, issueId, template, ctx);

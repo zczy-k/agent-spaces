@@ -14,9 +14,6 @@ import {
 } from '@xyflow/react';
 import type { WorkflowTemplate, WorkflowNode, WorkflowEdge, AgentConfig } from '@agent-spaces/shared';
 
-interface AgentWithWorkspace extends AgentConfig {
-  workspaceId: string;
-}
 import { useWorkflowStore } from '@/stores/workflow';
 import { WorkflowCanvas, getAutoLayoutedNodes } from './workflow-canvas';
 import { WorkflowAgentPalette } from './workflow-agent-palette';
@@ -28,23 +25,20 @@ type AgentNodeData = WorkflowNode['data'];
 type AgentNode = Node<AgentNodeData, 'agent'>;
 
 function WorkflowEditorInner({
-  workspaceId,
   template,
   onBack,
 }: {
-  workspaceId: string;
   template: WorkflowTemplate | null;
   onBack: () => void;
 }) {
   const { updateWorkflow, createWorkflow } = useWorkflowStore();
 
-  const [allAgents, setAllAgents] = useState<AgentWithWorkspace[]>([]);
+  const [allAgents, setAllAgents] = useState<AgentConfig[]>([]);
 
   useEffect(() => {
     fetch('/api/agents/presets', { headers: authHeaders() })
       .then((r) => (r.ok ? r.json() : []))
-      .then((agents: AgentConfig[]) => agents.map((a) => ({ ...a, workspaceId: '' })))
-      .then((results) => setAllAgents(results))
+      .then((agents: AgentConfig[]) => setAllAgents(agents))
       .catch(() => {});
   }, []);
 
@@ -127,14 +121,14 @@ function WorkflowEditorInner({
       }));
 
       if (templateId) {
-        await updateWorkflow(workspaceId, templateId, {
+        await updateWorkflow(templateId, {
           name,
           description: description || undefined,
           nodes: workflowNodes,
           edges: workflowEdges,
         });
       } else {
-        await createWorkflow(workspaceId, {
+        await createWorkflow({
           name,
           description: description || undefined,
           nodes: workflowNodes,
@@ -145,7 +139,7 @@ function WorkflowEditorInner({
     } finally {
       setIsSaving(false);
     }
-  }, [workspaceId, templateId, name, description, nodes, edges, updateWorkflow, createWorkflow]);
+  }, [templateId, name, description, nodes, edges, updateWorkflow, createWorkflow]);
 
   const handleExport = useCallback(() => {
     const agentMap: Record<string, Omit<AgentConfig, 'apiKey'>> = {};
@@ -220,17 +214,15 @@ function WorkflowEditorInner({
 }
 
 export function WorkflowEditor({
-  workspaceId,
   template,
   onBack,
 }: {
-  workspaceId: string;
   template: WorkflowTemplate | null;
   onBack: () => void;
 }) {
   return (
     <ReactFlowProvider>
-      <WorkflowEditorInner workspaceId={workspaceId} template={template} onBack={onBack} />
+      <WorkflowEditorInner template={template} onBack={onBack} />
     </ReactFlowProvider>
   );
 }

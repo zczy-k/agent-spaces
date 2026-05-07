@@ -7,6 +7,7 @@ import { v4 as uuid } from 'uuid';
 import type { WorkflowTemplate, WorkflowNode, WorkflowEdge, AgentConfig } from '@agent-spaces/shared';
 import * as workflowStore from '../storage/workflow-store.js';
 import { getWorkspace } from '../storage/workspace-store.js';
+import { listTemplates } from './agent.js';
 
 // --- DAG Validation ---
 
@@ -77,9 +78,8 @@ export function validateDAG(template: Pick<WorkflowTemplate, 'nodes' | 'edges'>)
 
 // --- Role Staleness Resolution ---
 
-function resolveStaleRoles(workspaceId: string, nodes: WorkflowNode[]): { nodes: WorkflowNode[]; invalidIds: string[] } {
-  const workspace = getWorkspace(workspaceId);
-  const agentMap = new Map(workspace?.agents.map(a => [a.id, a]) ?? []);
+function resolveStaleRoles(nodes: WorkflowNode[]): { nodes: WorkflowNode[]; invalidIds: string[] } {
+  const agentMap = new Map(listTemplates().map(a => [a.id, a]));
   const invalidIds: string[] = [];
 
   const resolved = nodes.map(node => {
@@ -104,30 +104,28 @@ function resolveStaleRoles(workspaceId: string, nodes: WorkflowNode[]): { nodes:
 
 // --- CRUD (synchronous) ---
 
-export function listWorkflows(workspaceId: string): WorkflowTemplate[] {
-  return workflowStore.listWorkflows(workspaceId);
+export function listWorkflows(): WorkflowTemplate[] {
+  return workflowStore.listWorkflows();
 }
 
-export function getWorkflow(workspaceId: string, workflowId: string): WorkflowTemplate | null {
-  return workflowStore.getWorkflow(workspaceId, workflowId);
+export function getWorkflow(workflowId: string): WorkflowTemplate | null {
+  return workflowStore.getWorkflow(workflowId);
 }
 
 export function createWorkflow(
-  workspaceId: string,
   input: { name: string; description?: string; nodes?: WorkflowNode[]; edges?: WorkflowEdge[]; viewport?: WorkflowTemplate['viewport'] }
 ): WorkflowTemplate {
   const now = new Date().toISOString();
   const nodes = input.nodes ?? [];
   const edges = input.edges ?? [];
 
-  const { nodes: resolvedNodes, invalidIds } = resolveStaleRoles(workspaceId, nodes);
+  const { nodes: resolvedNodes, invalidIds } = resolveStaleRoles(nodes);
   if (invalidIds.length > 0) {
     throw new Error(`Invalid agent references in nodes: ${invalidIds.join(', ')}`);
   }
 
   const template: WorkflowTemplate = {
     id: uuid(),
-    workspaceId,
     name: input.name,
     description: input.description,
     nodes: resolvedNodes,
@@ -140,22 +138,21 @@ export function createWorkflow(
   const error = validateDAG(template);
   if (error) throw new Error(error);
 
-  workflowStore.createWorkflow(workspaceId, template);
+  workflowStore.createWorkflow(template);
   return template;
 }
 
 export function updateWorkflow(
-  workspaceId: string,
   workflowId: string,
   updates: Partial<Pick<WorkflowTemplate, 'name' | 'description' | 'nodes' | 'edges' | 'viewport'>>
 ): WorkflowTemplate {
-  const existing = workflowStore.getWorkflow(workspaceId, workflowId);
+  const existing = workflowStore.getWorkflow(workflowId);
   if (!existing) throw new Error('Workflow not found');
 
   let nodes = updates.nodes ?? existing.nodes;
 
   if (updates.nodes) {
-    const resolved = resolveStaleRoles(workspaceId, updates.nodes);
+    const resolved = resolveStaleRoles(updates.nodes);
     if (resolved.invalidIds.length > 0) {
       throw new Error(`Invalid agent references in nodes: ${resolved.invalidIds.join(', ')}`);
     }
@@ -167,7 +164,6 @@ export function updateWorkflow(
     ...updates,
     nodes,
     id: existing.id,
-    workspaceId: existing.workspaceId,
     createdAt: existing.createdAt,
     updatedAt: new Date().toISOString(),
   };
@@ -177,18 +173,18 @@ export function updateWorkflow(
     if (error) throw new Error(error);
   }
 
-  workflowStore.updateWorkflow(workspaceId, updated);
+  workflowStore.updateWorkflow(updated);
   return updated;
 }
 
-export function deleteWorkflow(workspaceId: string, workflowId: string): void {
-  const existing = workflowStore.getWorkflow(workspaceId, workflowId);
+export function deleteWorkflow(workflowId: string): void {
+  const existing = workflowStore.getWorkflow(workflowId);
   if (!existing) throw new Error('Workflow not found');
-  workflowStore.deleteWorkflow(workspaceId, workflowId);
+  workflowStore.deleteWorkflow(workflowId);
 }
 
-export function duplicateWorkflow(workspaceId: string, workflowId: string): WorkflowTemplate {
-  const existing = workflowStore.getWorkflow(workspaceId, workflowId);
+export function duplicateWorkflow(workflowId: string): WorkflowTemplate {
+  const existing = workflowStore.getWorkflow(workflowId);
   if (!existing) throw new Error('Workflow not found');
 
   const now = new Date().toISOString();
@@ -200,7 +196,7 @@ export function duplicateWorkflow(workspaceId: string, workflowId: string): Work
     updatedAt: now,
   };
 
-  workflowStore.createWorkflow(workspaceId, duplicated);
+  workflowStore.createWorkflow(duplicated);
   return duplicated;
 }
 

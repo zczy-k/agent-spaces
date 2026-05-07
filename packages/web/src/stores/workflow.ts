@@ -6,11 +6,11 @@ interface WorkflowStore {
   currentWorkflow: WorkflowTemplate | null;
   isLoading: boolean;
 
-  loadWorkflows: (workspaceId: string) => Promise<void>;
-  createWorkflow: (workspaceId: string, data: { name: string; description?: string; nodes?: WorkflowNode[]; edges?: WorkflowEdge[] }) => Promise<WorkflowTemplate>;
-  updateWorkflow: (workspaceId: string, id: string, data: Partial<Pick<WorkflowTemplate, 'name' | 'description' | 'nodes' | 'edges' | 'viewport'>>) => Promise<void>;
-  deleteWorkflow: (workspaceId: string, id: string) => Promise<void>;
-  duplicateWorkflow: (workspaceId: string, id: string) => Promise<void>;
+  loadWorkflows: () => Promise<void>;
+  createWorkflow: (data: { name: string; description?: string; nodes?: WorkflowNode[]; edges?: WorkflowEdge[] }) => Promise<WorkflowTemplate>;
+  updateWorkflow: (id: string, data: Partial<Pick<WorkflowTemplate, 'name' | 'description' | 'nodes' | 'edges' | 'viewport'>>) => Promise<void>;
+  deleteWorkflow: (id: string) => Promise<void>;
+  duplicateWorkflow: (id: string) => Promise<void>;
   setCurrentWorkflow: (workflow: WorkflowTemplate | null) => void;
   upsertWorkflow: (workflow: WorkflowTemplate) => void;
   removeWorkflow: (id: string) => void;
@@ -21,10 +21,10 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
   currentWorkflow: null,
   isLoading: false,
 
-  loadWorkflows: async (workspaceId) => {
+  loadWorkflows: async () => {
     set({ isLoading: true });
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/workflows`);
+      const res = await fetch('/api/workflows');
       const workflows: WorkflowTemplate[] = await res.json();
       set({ workflows, isLoading: false });
     } catch {
@@ -32,8 +32,8 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
     }
   },
 
-  createWorkflow: async (workspaceId, data) => {
-    const res = await fetch(`/api/workspaces/${workspaceId}/workflows`, {
+  createWorkflow: async (data) => {
+    const res = await fetch('/api/workflows', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -43,8 +43,8 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
     return workflow;
   },
 
-  updateWorkflow: async (workspaceId, id, data) => {
-    const res = await fetch(`/api/workspaces/${workspaceId}/workflows/${id}`, {
+  updateWorkflow: async (id, data) => {
+    const res = await fetch(`/api/workflows/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -53,13 +53,13 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
     get().upsertWorkflow(workflow);
   },
 
-  deleteWorkflow: async (workspaceId, id) => {
-    await fetch(`/api/workspaces/${workspaceId}/workflows/${id}`, { method: 'DELETE' });
+  deleteWorkflow: async (id) => {
+    await fetch(`/api/workflows/${id}`, { method: 'DELETE' });
     get().removeWorkflow(id);
   },
 
-  duplicateWorkflow: async (workspaceId, id) => {
-    const res = await fetch(`/api/workspaces/${workspaceId}/workflows/${id}/duplicate`, {
+  duplicateWorkflow: async (id) => {
+    const res = await fetch(`/api/workflows/${id}/duplicate`, {
       method: 'POST',
     });
     const workflow: WorkflowTemplate = await res.json();

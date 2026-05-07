@@ -77,7 +77,7 @@ app.use('/api/workspaces', workspaceRouter);
 app.use('/api/workspaces/:id/files', fileRouter);
 app.use('/api/workspaces/:id/channels', channelRouter);
 app.use('/api/workspaces/:id/issues', issueRouter);
-app.use('/api/workspaces/:id/workflows', workflowRouter);
+app.use('/api/workflows', workflowRouter);
 app.use('/api/workspaces/:id/agents', agentRouter);
 app.use('/api/workspaces/:id/tasks', taskRouter);
 app.use('/api/workspaces/:id/git', gitRouter);

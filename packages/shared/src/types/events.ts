@@ -118,9 +118,9 @@ export type ServerEventMap = {
   'task.updated': import('./task.js').Task;
   'task.status_changed': TaskStatusChangedPayload;
   'task.output': TaskOutputPayload;
-  'workflow.created': { workspaceId: string; workflow: WorkflowTemplate };
-  'workflow.updated': { workspaceId: string; workflow: WorkflowTemplate };
-  'workflow.deleted': { workspaceId: string; workflowId: string };
+  'workflow.created': { workflow: WorkflowTemplate };
+  'workflow.updated': { workflow: WorkflowTemplate };
+  'workflow.deleted': { workflowId: string };
 };
 
 export type ClientEventName = keyof ClientEventMap;

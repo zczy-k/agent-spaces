@@ -132,7 +132,6 @@ export function IssueList({ workspaceId }: IssueListProps) {
         open={createOpen}
         onOpenChange={setCreateOpen}
         agents={agents}
-        workspaceId={workspaceId}
         onSubmit={handleCreate}
       />
 
@@ -142,7 +141,6 @@ export function IssueList({ workspaceId }: IssueListProps) {
           open={!!editingIssue}
           onOpenChange={(open) => { if (!open) setEditingIssue(null); }}
           agents={agents}
-          workspaceId={workspaceId}
           onSave={async (data) => {
             await updateIssue(workspaceId, editingIssue.id, data);
             setEditingIssue(null);

@@ -22,11 +22,10 @@ interface EditIssueDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   agents?: AgentConfig[];
-  workspaceId: string;
   onSave: (data: { title: string; description: string; status: IssueStatus; members: string[]; workflowId?: string | null }) => Promise<void>;
 }
 
-export function EditIssueDialog({ issue, open, onOpenChange, agents = [], workspaceId, onSave }: EditIssueDialogProps) {
+export function EditIssueDialog({ issue, open, onOpenChange, agents = [], onSave }: EditIssueDialogProps) {
   const [title, setTitle] = useState(issue.title);
   const [description, setDescription] = useState(issue.description);
   const [status, setStatus] = useState<IssueStatus>(issue.status);
@@ -50,8 +49,8 @@ export function EditIssueDialog({ issue, open, onOpenChange, agents = [], worksp
   }, [open, issue]);
 
   useEffect(() => {
-    if (open) loadWorkflows(workspaceId);
-  }, [open, workspaceId, loadWorkflows]);
+    if (open) loadWorkflows();
+  }, [open, loadWorkflows]);
 
   const toggleMember = (id: string) => {
     setMembers((prev) =>
