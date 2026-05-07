@@ -1,10 +1,11 @@
 import type { AgentContext } from './agent-context.js';
 import { runPlanner } from './planner-agent.js';
-import { scheduleRunnableIssueTasks, syncIssueTasksAfterPlanning } from './issue-task-controller.js';
+import { scheduleRunnableIssueTasks, syncIssueTasksAfterPlanning, createTasksFromWorkflow } from './issue-task-controller.js';
 import * as issueService from '../services/issue.js';
 import * as issueCommentService from '../services/issue-comment.js';
 import * as taskService from '../services/task.js';
 import * as agentService from '../services/agent.js';
+import * as workflowService from '../services/workflow.js';
 
 export interface RunIssueAutomationOptions {
   forcePlanner?: boolean;
@@ -20,6 +21,21 @@ export async function runIssueAutomation(
   if (!issue) {
     console.warn(`[issue-runner] issue not found workspaceId=${workspaceId} issueId=${issueId}`);
     return;
+  }
+
+  // Workflow template branch
+  if (issue.workflowId) {
+    const template = workflowService.getWorkflow(workspaceId, issue.workflowId);
+    if (template) {
+      try {
+        createTasksFromWorkflow(workspaceId, issueId, template, ctx);
+        return;
+      } catch (err: any) {
+        console.warn(`Workflow execution failed for issue ${issueId}: ${err.message}. Falling back to hardcoded pipeline.`);
+      }
+    } else {
+      console.warn(`Workflow template ${issue.workflowId} not found, falling back to hardcoded pipeline`);
+    }
   }
 
   const tasks = taskService.list(workspaceId, issueId);
