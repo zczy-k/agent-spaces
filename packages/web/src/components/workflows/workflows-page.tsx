@@ -102,8 +102,7 @@ export function WorkflowsPage({ workspaces }: { workspaces: Workspace[] }) {
         if (agents) {
           for (const [oldId, agentConfig] of Object.entries(agents)) {
             const { id: _oldId, enabled: _en, ...createBody } = agentConfig;
-            const res = await fetch(`/api/workspaces/${targetWs.id}/agents/presets`, {
-              method: 'POST',
+            const res = await fetch('/api/agents/presets', {              method: 'POST',
               headers: { ...authHeaders(), 'Content-Type': 'application/json' },
               body: JSON.stringify(createBody),
             });
@@ -149,7 +148,7 @@ export function WorkflowsPage({ workspaces }: { workspaces: Workspace[] }) {
       if (agents) {
         for (const [oldId, agentConfig] of Object.entries(agents)) {
           const { id: _oldId, enabled: _en, ...createBody } = agentConfig;
-          const res = await fetch(`/api/workspaces/${targetWs.id}/agents/presets`, {
+          const res = await fetch('/api/agents/presets', {
             method: 'POST',
             headers: { ...authHeaders(), 'Content-Type': 'application/json' },
             body: JSON.stringify(createBody),

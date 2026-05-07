@@ -52,7 +52,7 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
 
   useEffect(() => {
     loadChannels(workspaceId);
-    ensureAgents(workspaceId);
+    ensureAgents();
   }, [workspaceId, loadChannels, ensureAgents]);
 
   // WS: 自动同步频道变更（新建/更新）

@@ -3,32 +3,28 @@ import type { AgentConfig } from '@agent-spaces/shared';
 
 interface AgentStore {
   agents: AgentConfig[];
-  loadedWorkspaceId?: string;
-  loadingWorkspaceId?: string;
-  ensure: (workspaceId: string) => Promise<void>;
+  loaded: boolean;
+  loading: boolean;
+  ensure: () => Promise<void>;
 }
 
-export const useAgentStore = create<AgentStore>(() => ({
+export const useAgentStore = create<AgentStore>((set, get) => ({
   agents: [],
-  loadedWorkspaceId: undefined,
-  loadingWorkspaceId: undefined,
-  ensure: async (workspaceId: string) => {
-    if (!workspaceId) return;
-    const { loadedWorkspaceId, loadingWorkspaceId } = useAgentStore.getState();
-    if (loadedWorkspaceId === workspaceId || loadingWorkspaceId === workspaceId) return;
+  loaded: false,
+  loading: false,
+  ensure: async () => {
+    const { loaded, loading } = get();
+    if (loaded || loading) return;
 
-    useAgentStore.setState({ loadingWorkspaceId: workspaceId });
+    set({ loading: true });
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/agents/presets`);
+      const res = await fetch('/api/agents/presets');
       if (!res.ok) return;
       const data: AgentConfig[] = await res.json();
-      useAgentStore.setState({ agents: data, loadedWorkspaceId: workspaceId });
+      set({ agents: data, loaded: true });
     } catch { /* ignore */ }
     finally {
-      const { loadingWorkspaceId } = useAgentStore.getState();
-      if (loadingWorkspaceId === workspaceId) {
-        useAgentStore.setState({ loadingWorkspaceId: undefined });
-      }
+      set({ loading: false });
     }
   },
 }));

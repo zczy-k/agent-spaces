@@ -628,7 +628,6 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
               .catch(() => undefined);
           }
         }}
-        workspaceId={workspaceId}
         roleFilter="bot"
       />
     </ScrollArea>

@@ -27,11 +27,9 @@ function groupByRole(agents: AgentWithWorkspace[]): Record<string, AgentWithWork
 export function WorkflowAgentPalette({ agents }: { agents: AgentWithWorkspace[] }) {
   const grouped = groupByRole(agents);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogWorkspaceId, setDialogWorkspaceId] = useState('');
   const [dialogAgentId, setDialogAgentId] = useState<string | undefined>();
 
   const openAgentDialog = (agent: AgentWithWorkspace) => {
-    setDialogWorkspaceId(agent.workspaceId);
     setDialogAgentId(agent.id);
     setDialogOpen(true);
   };
@@ -77,7 +75,7 @@ export function WorkflowAgentPalette({ agents }: { agents: AgentWithWorkspace[] 
       {agents.filter(a => a.enabled).length === 0 && (
         <p className="text-xs text-muted-foreground text-center py-4">No agents configured.</p>
       )}
-      <AgentDialog open={dialogOpen} onOpenChange={handleDialogClose} workspaceId={dialogWorkspaceId} initialAgentId={dialogAgentId} />
+      <AgentDialog open={dialogOpen} onOpenChange={handleDialogClose} initialAgentId={dialogAgentId} />
     </div>
   );
 }

@@ -46,13 +46,11 @@ import { AgentDetail } from "./agent-detail";
 export function AgentDialog({
   open,
   onOpenChange,
-  workspaceId,
   roleFilter,
   initialAgentId,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  workspaceId?: string;
   roleFilter?: AgentRole | AgentRole[];
   initialAgentId?: string;
 }) {
@@ -73,14 +71,14 @@ export function AgentDialog({
   const addRoleOptions = roleFilterSet ? ROLE_OPTIONS.filter((role) => roleFilterSet.has(role)) : ROLE_OPTIONS;
 
   useEffect(() => {
-    if (!open || !workspaceId) return;
+    if (!open) return;
 
     const controller = new AbortController();
     queueMicrotask(() => {
       setLoading(true);
       setError(null);
     });
-    fetch(`/api/workspaces/${workspaceId}/agents/presets`, { signal: controller.signal })
+    fetch('/api/agents/presets', { signal: controller.signal })
       .then(async (res) => {
         if (!res.ok) throw new Error(await res.text());
         return res.json() as Promise<AgentConfig[]>;
@@ -102,7 +100,7 @@ export function AgentDialog({
       .finally(() => setLoading(false));
 
     return () => controller.abort();
-  }, [open, workspaceId, initialAgentId, t]);
+  }, [open, initialAgentId, t]);
 
   const handleSelectAgent = (agent: AgentPreset) => {
     setSelectedAgent(agent);
@@ -116,7 +114,7 @@ export function AgentDialog({
   };
 
   const handleSave = async () => {
-    if (!workspaceId || !editDraft) return;
+    if (!editDraft) return;
 
     setSaving(true);
     setError(null);
@@ -125,8 +123,8 @@ export function AgentDialog({
       const createBody = serializeAgent(editDraft);
       const res = await fetch(
         isDraft
-          ? `/api/workspaces/${workspaceId}/agents/presets`
-          : `/api/workspaces/${workspaceId}/agents/presets/${editDraft.id}`,
+          ? '/api/agents/presets'
+          : `/api/agents/presets/${editDraft.id}`,
         {
           method: isDraft ? "POST" : "PUT",
           headers: { "Content-Type": "application/json" },
@@ -156,13 +154,13 @@ export function AgentDialog({
   };
 
   const handleTestConnection = async () => {
-    if (!workspaceId || !editDraft) return;
+    if (!editDraft) return;
 
     setTesting(true);
     setTestResult(null);
     setError(null);
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/agents/presets/test-connection`, {
+      const res = await fetch('/api/agents/presets/test-connection', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(editDraft),
@@ -184,11 +182,6 @@ export function AgentDialog({
   };
 
   const handleAddAgent = (role: BuiltInRole | "empty") => {
-    if (!workspaceId) {
-      setError(t('error.noWorkspace'));
-      return;
-    }
-
     const draft = role === "empty" ? newEmptyAgent() : newAgentDraft(role);
     setError(null);
     setSelectedAgent(draft);
@@ -196,7 +189,6 @@ export function AgentDialog({
   };
 
   const handleDeleteAgent = async (id: string) => {
-    if (!workspaceId) return;
     if (id.startsWith("draft-")) {
       setSelectedAgent(null);
       setEditDraft(null);
@@ -206,7 +198,7 @@ export function AgentDialog({
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/agents/presets/${id}`, {
+      const res = await fetch(`/api/agents/presets/${id}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error(await res.text());
@@ -303,7 +295,7 @@ export function AgentDialog({
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
-                  <Button variant="outline" size="sm" disabled={saving || !workspaceId}>
+                  <Button variant="outline" size="sm" disabled={saving}>
                     <Plus className="size-3.5" />
                     {t('dialog.add')}
                     <ChevronDown className="size-3.5" />
@@ -344,12 +336,7 @@ export function AgentDialog({
               {error}
             </div>
           )}
-          {!workspaceId ? (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <Bot className="size-10 mb-2 opacity-30" />
-              <p className="text-sm">{t('dialog.noWorkspace')}</p>
-            </div>
-          ) : loading ? (
+          {loading ? (
             <div className="py-12 text-center text-sm text-muted-foreground">{t('dialog.loading')}</div>
           ) : !selectedAgent ? (
             <AgentList

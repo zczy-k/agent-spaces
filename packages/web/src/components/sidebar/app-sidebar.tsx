@@ -83,7 +83,6 @@ export function DashboardSidebar() {
   const [wsDialogOpen, setWsDialogOpen] = useState(false);
   const [editingWs, setEditingWs] = useState<Workspace | null>(null);
   const [modelsDialogProvider, setModelsDialogProvider] = useState<string | undefined>(undefined);
-  const agentWorkspaceId = currentWorkspaceId ?? workspaces[0]?.id;
 
   const refreshWorkspaces = useCallback(() => {
     fetch("/api/workspaces")
@@ -234,7 +233,7 @@ export function DashboardSidebar() {
       <SidebarFooter className="mx-2 mb-2 rounded-xl border border-border bg-card p-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <ServerSwitcher />
       </SidebarFooter>
-      <AgentDialog open={agentDialogOpen} onOpenChange={setAgentDialogOpen} workspaceId={agentWorkspaceId} />
+      <AgentDialog open={agentDialogOpen} onOpenChange={setAgentDialogOpen} />
       <SettingsDialog open={settingsDialogOpen} onOpenChange={setSettingsDialogOpen} />
       <ModelsDialog open={modelsDialogOpen} onOpenChange={setModelsDialogOpen} initialProvider={modelsDialogProvider} />
       <ProvidersDialog

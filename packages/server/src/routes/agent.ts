@@ -11,34 +11,69 @@ router.get('/usage/dashboard', (req: Request, res: Response) => {
 });
 
 router.get('/presets', (req: Request<{ id: string }>, res: Response) => {
-  const presets = agentService.listPresets(req.params.id);
-  if (!presets) {
-    res.status(404).json({ error: 'workspace not found' });
+  const workspaceId = req.params.id;
+  if (workspaceId) {
+    const presets = agentService.listPresets(workspaceId);
+    if (!presets) {
+      res.status(404).json({ error: 'workspace not found' });
+      return;
+    }
+    res.json(presets);
     return;
   }
-  res.json(presets);
+  res.json(agentService.listGlobalPresets());
 });
 
 router.post('/presets', (req: Request<{ id: string }>, res: Response) => {
-  const preset = agentService.createPreset(req.params.id, req.body as Omit<Partial<AgentConfig>, 'id'>);
-  if (!preset) {
-    res.status(404).json({ error: 'workspace not found' });
+  const workspaceId = req.params.id;
+  const body = req.body as Omit<Partial<AgentConfig>, 'id'>;
+  if (workspaceId) {
+    const preset = agentService.createPreset(workspaceId, body);
+    if (!preset) {
+      res.status(404).json({ error: 'workspace not found' });
+      return;
+    }
+    res.status(201).json(preset);
     return;
   }
-  res.status(201).json(preset);
+  res.status(201).json(agentService.createGlobalPreset(body));
 });
 
 router.post('/presets/test-connection', async (req: Request<{ id: string }>, res: Response) => {
-  const result = await agentService.testConnection(req.params.id, req.body as Partial<AgentConfig>);
+  const workspaceId = req.params.id;
+  const data = req.body as Partial<AgentConfig>;
+  if (workspaceId) {
+    const result = await agentService.testConnection(workspaceId, data);
+    if (!result) {
+      res.status(404).json({ error: 'workspace not found' });
+      return;
+    }
+    res.status(result.success ? 200 : 400).json(result);
+    return;
+  }
+  // Global: test connection without workspace context
+  const { apiBase, apiKey, modelId, modelProvider } = data;
+  const result = await agentService.testConnection('', { apiBase, apiKey, modelId, modelProvider });
   if (!result) {
-    res.status(404).json({ error: 'workspace not found' });
+    res.status(400).json({ error: 'connection test failed' });
     return;
   }
   res.status(result.success ? 200 : 400).json(result);
 });
 
 router.put('/presets/:presetId', (req: Request<{ id: string; presetId: string }>, res: Response) => {
-  const preset = agentService.updatePreset(req.params.id, req.params.presetId, req.body as Partial<AgentConfig>);
+  const workspaceId = req.params.id;
+  const data = req.body as Partial<AgentConfig>;
+  if (workspaceId) {
+    const preset = agentService.updatePreset(workspaceId, req.params.presetId, data);
+    if (!preset) {
+      res.status(404).json({ error: 'agent preset not found' });
+      return;
+    }
+    res.json(preset);
+    return;
+  }
+  const preset = agentService.updateGlobalPreset(req.params.presetId, data);
   if (!preset) {
     res.status(404).json({ error: 'agent preset not found' });
     return;
@@ -47,11 +82,21 @@ router.put('/presets/:presetId', (req: Request<{ id: string; presetId: string }>
 });
 
 router.delete('/presets/:presetId', (req: Request<{ id: string; presetId: string }>, res: Response) => {
-  const deleted = agentService.deletePreset(req.params.id, req.params.presetId);
-  if (deleted === null) {
-    res.status(404).json({ error: 'workspace not found' });
+  const workspaceId = req.params.id;
+  if (workspaceId) {
+    const deleted = agentService.deletePreset(workspaceId, req.params.presetId);
+    if (deleted === null) {
+      res.status(404).json({ error: 'workspace not found' });
+      return;
+    }
+    if (!deleted) {
+      res.status(404).json({ error: 'agent preset not found' });
+      return;
+    }
+    res.status(204).end();
     return;
   }
+  const deleted = agentService.deleteGlobalPreset(req.params.presetId);
   if (!deleted) {
     res.status(404).json({ error: 'agent preset not found' });
     return;

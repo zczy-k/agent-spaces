@@ -44,7 +44,7 @@ export function IssueList({ workspaceId }: IssueListProps) {
 
   useEffect(() => {
     loadIssues(workspaceId);
-    ensureAgents(workspaceId);
+    ensureAgents();
   }, [workspaceId, loadIssues, ensureAgents]);
 
   const handleCreate = async (data: { title: string; description: string; members: string[] }) => {

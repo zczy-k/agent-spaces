@@ -41,28 +41,10 @@ function WorkflowEditorInner({
   const [allAgents, setAllAgents] = useState<AgentWithWorkspace[]>([]);
 
   useEffect(() => {
-    fetch('/api/workspaces', { headers: authHeaders() })
+    fetch('/api/agents/presets', { headers: authHeaders() })
       .then((r) => (r.ok ? r.json() : []))
-      .then((workspaces: { id: string }[]) =>
-        Promise.all(
-          workspaces.map((ws) =>
-            fetch(`/api/workspaces/${ws.id}/agents/presets`, { headers: authHeaders() })
-              .then((r) => (r.ok ? r.json() : []))
-              .then((agents: AgentConfig[]) => agents.map((a) => ({ ...a, workspaceId: ws.id })))
-              .catch(() => [])
-          )
-        )
-      )
-      .then((results) => {
-        const flat = results.flat() as AgentWithWorkspace[];
-        const seen = new Set<string>();
-        const deduped = flat.filter((a) => {
-          if (seen.has(a.id)) return false;
-          seen.add(a.id);
-          return true;
-        });
-        setAllAgents(deduped);
-      })
+      .then((agents: AgentConfig[]) => agents.map((a) => ({ ...a, workspaceId: '' })))
+      .then((results) => setAllAgents(results))
       .catch(() => {});
   }, []);
 

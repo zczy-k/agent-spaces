@@ -171,8 +171,8 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   }, [issue, workspaceId, loadTasks, loadComments]);
 
   useEffect(() => {
-    ensureAgents(workspaceId);
-  }, [workspaceId, ensureAgents]);
+    ensureAgents();
+  }, [ensureAgents]);
 
   useEffect(() => {
     if (!issue) return;

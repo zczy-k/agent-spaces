@@ -93,7 +93,7 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
 
   useEffect(() => {
     if (activeChannelId) loadMessages(workspaceId, activeChannelId);
-    ensureAgents(workspaceId);
+    ensureAgents();
   }, [activeChannelId, workspaceId, loadMessages, ensureAgents]);
 
   useEffect(() => {

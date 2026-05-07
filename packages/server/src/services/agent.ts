@@ -121,8 +121,10 @@ export async function testConnection(
   workspaceId: string,
   data: Partial<AgentConfig>,
 ): Promise<AgentConnectionTestResult | null> {
-  const ws = getWorkspace(workspaceId);
-  if (!ws) return null;
+  if (workspaceId) {
+    const ws = getWorkspace(workspaceId);
+    if (!ws) return null;
+  }
 
   const apiBase = data.apiBase?.trim();
   const apiKey = data.apiKey?.trim();
@@ -670,6 +672,81 @@ export function deletePreset(workspaceId: string, presetId: string): boolean | n
   }
 
   return true;
+}
+
+export function createGlobalPreset(data: Omit<Partial<AgentConfig>, 'id'>): AgentConfig {
+  const id = uuid();
+  const runtimeKind = data.runtimeKind && VALID_RUNTIME_KINDS.includes(data.runtimeKind)
+    ? data.runtimeKind
+    : 'open-agent-sdk';
+  const requestedModelProvider = normalizeModelProvider(data.modelProvider);
+  const presetRuntimeKind = isAnthropicBridgeProvider(requestedModelProvider) ? 'claude-code' : runtimeKind;
+
+  const preset: AgentConfig = {
+    id,
+    name: data.name?.trim() || 'New Agent',
+    role: isValidRole(data.role) ? data.role.trim() : DEFAULT_AGENT_ROLE,
+    description: data.description || '',
+    runtimeKind: presetRuntimeKind,
+    modelProvider: requestedModelProvider,
+    modelId: data.modelId || 'claude-sonnet-4-6',
+    apiBase: data.apiBase || '',
+    apiKey: data.apiKey || '',
+    workingDir: '',
+    mcps: normalizeMcpConfig(data.mcps),
+    skills: normalizeSkillNames(data.skills),
+    tools: normalizeToolNames(data.tools ?? BUILT_IN_AGENT_TOOLS.map((tool) => tool.name)),
+    systemPrompt: data.systemPrompt || '',
+    temperature: data.temperature ?? 0.3,
+    maxTokens: data.maxTokens ?? 4096,
+    sandboxDirs: data.sandboxDirs,
+    maxRetries: data.maxRetries,
+    enabled: data.enabled ?? true,
+  };
+
+  writeAgentTemplate(preset, data.skills as SkillInput[] | undefined);
+  return preset;
+}
+
+export function updateGlobalPreset(presetId: string, data: Partial<AgentConfig>): AgentConfig | null {
+  const existing = readAgentTemplate(presetId);
+  if (!existing) return null;
+
+  const role = isValidRole(data.role) ? data.role.trim() : existing.role;
+  const runtimeKind = data.runtimeKind && VALID_RUNTIME_KINDS.includes(data.runtimeKind)
+    ? data.runtimeKind
+    : existing.runtimeKind || 'open-agent-sdk';
+  const requestedModelProvider = normalizeModelProvider(data.modelProvider);
+  const updatedRuntimeKind = isAnthropicBridgeProvider(requestedModelProvider) ? 'claude-code' : runtimeKind;
+
+  const updated: AgentConfig = {
+    ...existing,
+    ...data,
+    id: existing.id,
+    role,
+    runtimeKind: updatedRuntimeKind,
+    name: data.name?.trim() || existing.name || 'New Agent',
+    modelProvider: requestedModelProvider,
+    mcps: normalizeMcpConfig(data.mcps),
+    skills: normalizeSkillNames(data.skills),
+    tools: normalizeToolNames(data.tools ?? existing.tools),
+    enabled: data.enabled ?? existing.enabled ?? true,
+  };
+
+  writeAgentTemplate(updated, data.skills as SkillInput[] | undefined);
+  return updated;
+}
+
+export function deleteGlobalPreset(presetId: string): boolean {
+  const templateDir = getGlobalAgentTemplateDir(presetId);
+  if (!existsSync(templateDir)) return false;
+
+  rmSync(templateDir, { recursive: true, force: true });
+  return true;
+}
+
+export function listGlobalPresets(): AgentConfig[] {
+  return listTemplates();
 }
 
 export function list(workspaceId: string): AgentSession[] {
