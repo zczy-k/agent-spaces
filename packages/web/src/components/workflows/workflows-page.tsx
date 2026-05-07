@@ -9,7 +9,9 @@ import { WorkflowMiniPreview } from '@/components/workflow/workflow-mini-preview
 import { WorkflowEditor } from '@/components/workflow/workflow-editor';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Plus, Pencil, Copy, Trash2, Upload } from 'lucide-react';
+import { Plus, Pencil, Copy, Trash2, Upload, FileText } from 'lucide-react';
+import { WorkflowTemplatesDialog } from '@/components/workflows/workflow-templates-dialog';
+import type { WorkflowTemplatePreset } from '@/components/workflows/workflow-templates';
 import { authHeaders } from '@/lib/auth';
 import type { AgentConfig } from '@agent-spaces/shared';
 
@@ -24,6 +26,7 @@ export function WorkflowsPage({ workspaces }: { workspaces: Workspace[] }) {
   const [editingWorkflow, setEditingWorkflow] = useState<WorkflowWithWorkspace | null>(null);
   const [creatingNew, setCreatingNew] = useState(false);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string>('');
+  const [templatesOpen, setTemplatesOpen] = useState(false);
 
   const loadAllWorkflows = useCallback(() => {
     if (workspaces.length === 0) return;
@@ -136,6 +139,49 @@ export function WorkflowsPage({ workspaces }: { workspaces: Workspace[] }) {
     input.click();
   }, [workspaces]);
 
+  const handleImportTemplate = useCallback(
+    async (templateData: WorkflowTemplatePreset['data']) => {
+      if (workspaces.length === 0) return;
+      const targetWs = workspaces[0];
+      const { name, description, nodes, edges, agents } = templateData;
+      const idMap: Record<string, string> = {};
+
+      if (agents) {
+        for (const [oldId, agentConfig] of Object.entries(agents)) {
+          const { id: _oldId, enabled: _en, ...createBody } = agentConfig;
+          const res = await fetch(`/api/workspaces/${targetWs.id}/agents/presets`, {
+            method: 'POST',
+            headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+            body: JSON.stringify(createBody),
+          });
+          if (res.ok) {
+            const created: AgentConfig = await res.json();
+            idMap[oldId] = created.id;
+          }
+        }
+      }
+
+      const remappedNodes = nodes.map((n) => ({
+        ...n,
+        data: {
+          ...n.data,
+          agentConfigId: idMap[n.data.agentConfigId as string] ?? n.data.agentConfigId,
+        },
+      }));
+
+      const res = await fetch(`/api/workspaces/${targetWs.id}/workflows`, {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, description, nodes: remappedNodes, edges }),
+      });
+      if (res.ok) {
+        const wf: WorkflowTemplate = await res.json();
+        setAllWorkflows((prev) => [...prev, { ...wf, workspaceName: targetWs.name }]);
+      }
+    },
+    [workspaces],
+  );
+
   if (editingWorkflow || creatingNew) {
     return (
       <WorkflowEditor
@@ -160,6 +206,9 @@ export function WorkflowsPage({ workspaces }: { workspaces: Workspace[] }) {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setTemplatesOpen(true)} disabled={workspaces.length === 0}>
+            <FileText className="h-4 w-4 mr-1" /> 模版
+          </Button>
           <Button variant="outline" onClick={handleImport} disabled={workspaces.length === 0}>
             <Upload className="h-4 w-4 mr-1" /> 导入
           </Button>
@@ -233,6 +282,12 @@ export function WorkflowsPage({ workspaces }: { workspaces: Workspace[] }) {
           ))}
         </div>
       )}
+
+      <WorkflowTemplatesDialog
+        open={templatesOpen}
+        onOpenChange={setTemplatesOpen}
+        onImport={handleImportTemplate}
+      />
     </div>
   );
 }
