@@ -229,15 +229,15 @@ jobs:
           path: artifacts
 
       - name: List artifacts
-        run: find artifacts -type f | head -30
+        run: find artifacts -type f
 
       - uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
           files: |
-            artifacts/macos/*.dmg
+            artifacts/macos/**/*.dmg
             artifacts/ios/*.ipa
-            artifacts/windows/*.exe
-            artifacts/windows/*.msi
-            artifacts/android/*.apk
-            artifacts/android/*.aab
+            artifacts/windows/**/*.exe
+            artifacts/windows/**/*.msi
+            artifacts/android/**/*.apk
+            artifacts/android/**/*.aab
