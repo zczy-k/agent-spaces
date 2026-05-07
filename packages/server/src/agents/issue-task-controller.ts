@@ -7,6 +7,7 @@ import * as agentService from '../services/agent.js';
 import * as channelService from '../services/channel.js';
 import * as issueService from '../services/issue.js';
 import * as taskService from '../services/task.js';
+import * as workspaceService from '../services/workspace.js';
 import { mapWorkflowToTaskDrafts, validateWorkflowForRun } from '../services/workflow.js';
 import { createIssueFunctionTools } from '../services/builtin-tools.js';
 import { getThinkingRuntimeConfig } from '../services/llm-model-config.js';
@@ -58,7 +59,7 @@ export async function syncIssueTasksAfterPlanning(
   ctx.broadcast('agent.output', { agentId: taskSyncAgent.id, data: `Syncing issue tasks: ${issueId}` });
 
   const startTime = Date.now();
-  const taskSyncWorkingDir = agentService.resolveWorkingDir(workspaceId, taskSyncPreset);
+  const taskSyncWorkingDir = resolveIssueWorkspaceRoot(workspaceId);
   const progress = createIssueAgentProgress(workspaceId, issue, taskSyncPreset, taskSyncAgent.id, {
     runtime: taskSyncPreset.runtimeKind,
     model: taskSyncPreset.modelId,
@@ -217,7 +218,7 @@ export async function runIssueTask(
   agentService.assignTask(workspaceId, taskAgent.id, taskId);
 
   const runtime = createRuntimeForPreset(taskAgentPreset);
-  const agentWorkingDir = agentService.resolveWorkingDir(workspaceId, taskAgentPreset);
+  const agentWorkingDir = resolveIssueWorkspaceRoot(workspaceId);
   const startTime = Date.now();
   const progress = createIssueAgentProgress(workspaceId, issue, taskAgentPreset, taskAgent.id, {
     runtime: taskAgentPreset.runtimeKind,
@@ -562,6 +563,10 @@ function createRuntimeForPreset(preset: AgentConfig) {
     baseURL: preset.apiBase,
     ...getThinkingRuntimeConfig(preset),
   });
+}
+
+function resolveIssueWorkspaceRoot(workspaceId: string): string {
+  return workspaceService.getById(workspaceId)?.boundDirs?.[0] || process.cwd();
 }
 
 function buildTaskSyncPrompt(issue: Issue, input: PlannerTaskSyncInput, workingDir: string): string {

@@ -204,7 +204,13 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
     if (s === 'waiting_for_user') return { label: t('status.waitingForUser'), status: 'degraded' as const };
     if (s === 'streaming' || s === 'pending') return { label: t('status.running'), status: 'maintenance' as const };
     if (s === 'completed') return { label: t('status.success'), status: 'online' as const };
-    if (s === 'error') return { label: t('status.error'), status: 'offline' as const };
+    if (s === 'error') {
+      const lastN = msgs.slice(-3);
+      const allError = lastN.length >= 3 && lastN.every(m => m.status === 'error');
+      return allError
+        ? { label: t('status.error'), status: 'offline' as const }
+        : { label: t('status.running'), status: 'degraded' as const };
+    }
     return { label: t(`channelType.${channel.type}`), status: base.status };
   })();
 
