@@ -5,8 +5,8 @@ import * as processManager from '../services/command-process-manager.js';
 
 const router = Router({ mergeParams: true });
 
-router.get('/', (req: Request, res: Response) => {
-  const workspaceId = req.params?.id;
+router.get('/', (req: Request<{ id: string }>, res: Response) => {
+  const workspaceId = req.params.id;
   if (!workspaceId) { res.status(400).json({ error: 'workspaceId required' }); return; }
   try {
     res.json(commandService.listCommands(workspaceId));
@@ -15,14 +15,14 @@ router.get('/', (req: Request, res: Response) => {
   }
 });
 
-router.get('/processes', (req: Request, res: Response) => {
-  const workspaceId = req.params?.id;
+router.get('/processes', (req: Request<{ id: string }>, res: Response) => {
+  const workspaceId = req.params.id;
   if (!workspaceId) { res.status(400).json({ error: 'workspaceId required' }); return; }
   res.json(processManager.getCommandProcesses(workspaceId));
 });
 
-router.post('/', (req: Request, res: Response) => {
-  const workspaceId = req.params?.id;
+router.post('/', (req: Request<{ id: string }>, res: Response) => {
+  const workspaceId = req.params.id;
   if (!workspaceId) { res.status(400).json({ error: 'workspaceId required' }); return; }
   try {
     const cmd = commandService.createCommand(workspaceId, req.body);
@@ -32,7 +32,7 @@ router.post('/', (req: Request, res: Response) => {
   }
 });
 
-router.put('/:commandId', (req: Request, res: Response) => {
+router.put('/:commandId', (req: Request<{ id: string; commandId: string }>, res: Response) => {
   const { id: workspaceId, commandId } = req.params;
   if (!workspaceId || !commandId) { res.status(400).json({ error: 'workspaceId and commandId required' }); return; }
   try {
@@ -43,7 +43,7 @@ router.put('/:commandId', (req: Request, res: Response) => {
   }
 });
 
-router.delete('/:commandId', (req: Request, res: Response) => {
+router.delete('/:commandId', (req: Request<{ id: string; commandId: string }>, res: Response) => {
   const { id: workspaceId, commandId } = req.params;
   if (!workspaceId || !commandId) { res.status(400).json({ error: 'workspaceId and commandId required' }); return; }
   try {
@@ -58,7 +58,7 @@ router.delete('/:commandId', (req: Request, res: Response) => {
   }
 });
 
-router.post('/:commandId/run', (req: Request, res: Response) => {
+router.post('/:commandId/run', (req: Request<{ id: string; commandId: string }>, res: Response) => {
   const { id: workspaceId, commandId } = req.params;
   if (!workspaceId || !commandId) { res.status(400).json({ error: 'workspaceId and commandId required' }); return; }
   try {
@@ -71,7 +71,7 @@ router.post('/:commandId/run', (req: Request, res: Response) => {
   }
 });
 
-router.post('/:commandId/stop', (req: Request, res: Response) => {
+router.post('/:commandId/stop', (req: Request<{ id: string; commandId: string }>, res: Response) => {
   const { id: workspaceId, commandId } = req.params;
   if (!workspaceId || !commandId) { res.status(400).json({ error: 'workspaceId and commandId required' }); return; }
   try {

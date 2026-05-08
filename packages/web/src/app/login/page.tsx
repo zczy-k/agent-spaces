@@ -94,6 +94,11 @@ export default function LoginPage() {
             }
           }
         }}
+        onSwitch={(server) => {
+          setActiveId(server.id);
+          saveActiveId(server.id);
+          setActiveServerCookie(server.id === "default" ? null : server.url);
+        }}
       />
     </div>
   );

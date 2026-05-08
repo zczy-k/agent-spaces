@@ -39,7 +39,7 @@ export function runCommand(workspaceId: string, commandId: string): string {
   );
 
   const now = new Date().toISOString();
-  const process: CommandProcess = {
+  const cmdProcess: CommandProcess = {
     commandId,
     workspaceId,
     sessionId,
@@ -48,7 +48,7 @@ export function runCommand(workspaceId: string, commandId: string): string {
     restartCount: 0,
   };
 
-  processes.set(commandId, process);
+  processes.set(commandId, cmdProcess);
   sessionIndex.set(sessionId, commandId);
 
   ptyService.write(sessionId, command.command + '\r');
@@ -65,9 +65,9 @@ export function runCommand(workspaceId: string, commandId: string): string {
 }
 
 export function stopCommand(workspaceId: string, commandId: string): void {
-  const process = processes.get(commandId);
-  if (!process) throw new Error('Command not running');
-  console.log(`[command] stopCommand: command=${commandId} session=${process.sessionId}`);
+  const cmdProcess = processes.get(commandId);
+  if (!cmdProcess) throw new Error('Command not running');
+  console.log(`[command] stopCommand: command=${commandId} session=${cmdProcess.sessionId}`);
 
   const timer = restartTimers.get(commandId);
   if (timer) {
@@ -75,8 +75,8 @@ export function stopCommand(workspaceId: string, commandId: string): void {
     restartTimers.delete(commandId);
   }
 
-  ptyService.write(process.sessionId, '\x03');
-  process.status = 'stopping';
+  ptyService.write(cmdProcess.sessionId, '\x03');
+  cmdProcess.status = 'stopping';
 }
 
 function handlePtyExit(sessionId: string, exitCode: number): void {
@@ -84,8 +84,8 @@ function handlePtyExit(sessionId: string, exitCode: number): void {
   if (!commandId) return;
   console.log(`[command] handlePtyExit: session=${sessionId} command=${commandId} exitCode=${exitCode}`);
 
-  const process = processes.get(commandId);
-  if (!process) return;
+  const cmdProcess = processes.get(commandId);
+  if (!cmdProcess) return;
 
   processes.delete(commandId);
   sessionIndex.delete(sessionId);
@@ -95,14 +95,14 @@ function handlePtyExit(sessionId: string, exitCode: number): void {
     restartTimers.delete(commandId);
   }
 
-  const { workspaceId } = process;
+  const { workspaceId } = cmdProcess;
 
   const command = commandService.getCommand(workspaceId, commandId);
-  if (command?.autoRestart === true && process.status !== 'stopping') {
-    const restartCount = process.restartCount + 1;
+  if (command?.autoRestart === true && cmdProcess.status !== 'stopping') {
+    const restartCount = cmdProcess.restartCount + 1;
     broadcastToWorkspace(workspaceId, 'command.restarted', {
       commandId,
-      sessionId: process.sessionId,
+      sessionId: cmdProcess.sessionId,
       restartCount,
       workspaceId,
     });
@@ -131,19 +131,19 @@ export function getCommandProcess(commandId: string): CommandProcess | undefined
 
 export function getCommandProcesses(workspaceId: string): CommandProcess[] {
   const result: CommandProcess[] = [];
-  for (const process of processes.values()) {
-    if (process.workspaceId === workspaceId) result.push(process);
+  for (const cmdProcess of processes.values()) {
+    if (cmdProcess.workspaceId === workspaceId) result.push(cmdProcess);
   }
   return result;
 }
 
 export function cleanup(workspaceId: string): void {
-  for (const [commandId, process] of processes) {
-    if (process.workspaceId === workspaceId) {
+  for (const [commandId, cmdProcess] of processes) {
+    if (cmdProcess.workspaceId === workspaceId) {
       const timer = restartTimers.get(commandId);
       if (timer) clearTimeout(timer);
       restartTimers.delete(commandId);
-      sessionIndex.delete(process.sessionId);
+      sessionIndex.delete(cmdProcess.sessionId);
       processes.delete(commandId);
     }
   }
