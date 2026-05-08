@@ -16,6 +16,7 @@ export function createSession(
   onOutput: (sessionId: string, data: string) => void,
   onExit: (sessionId: string, exitCode: number) => void,
   shell?: string,
+  env?: Record<string, string>,
 ): string {
   const id = uuid();
   const resolvedShell = shell || process.env.SHELL || '/bin/zsh';
@@ -24,7 +25,7 @@ export function createSession(
     cols: 80,
     rows: 24,
     cwd,
-    env: { ...process.env as Record<string, string> },
+    env: { ...(process.env as Record<string, string>), ...env },
   });
 
   ptyProcess.onData((data) => onOutput(id, data));
