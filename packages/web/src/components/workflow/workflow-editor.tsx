@@ -187,9 +187,6 @@ function WorkflowEditorInner({
           className="h-8 text-sm font-medium border-0 shadow-none focus-visible:ring-0 px-1"
           placeholder="Workflow name"
         />
-        <span className="text-xs text-muted-foreground">
-          {nodes.length} agent{nodes.length !== 1 ? 's' : ''}
-        </span>
       </div>
       <div className="flex flex-1 min-h-0">
         <WorkflowAgentPalette agents={allAgents} />
