@@ -577,5 +577,22 @@
     "folderNamePlaceholder": "Folder name",
     "select": "Select",
     "selectDirectory": "Select a directory to check permissions"
+  },
+  "commands": {
+    "title": "Commands",
+    "addCommand": "Add Command",
+    "editCommand": "Edit Command",
+    "name": "Name",
+    "command": "Command",
+    "workingDirectory": "Working Directory",
+    "shell": "Shell",
+    "environmentVariables": "Environment Variables",
+    "autoRestart": "Auto Restart",
+    "run": "Run",
+    "stop": "Stop",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "noCommands": "No commands"
   }
 }
