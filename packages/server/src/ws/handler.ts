@@ -5,7 +5,7 @@ import { handleTerminalEvent } from './terminal-handler.js';
 import { createMessage, updateMessage, listMessages } from '../services/message.js';
 import { getChannel, updateChannel } from '../services/channel.js';
 import * as issueService from '../services/issue.js';
-import { createIssueFunctionTools } from '../services/builtin-tools.js';
+import { createIssueFunctionTools, createCommandFunctionTools } from '../services/builtin-tools.js';
 import { startScheduler } from '../agents/scheduler-agent.js';
 import * as agentService from '../services/agent.js';
 import * as wsService from '../services/workspace.js';
@@ -230,10 +230,13 @@ async function runMentionedAgent(
   const skills = agentService.getAvailableSkillNames(configDir, preset.skills);
   const workspace = wsService.getById(workspaceId);
   const { channel, issue } = resolveIssueChannelContext(workspaceId, channelId);
-  const functionTools = createIssueFunctionTools(workspaceId, channel, {
-    senderId: preset.id,
-    senderRole: preset.role,
-  }, preset.tools);
+  const functionTools = [
+    ...createIssueFunctionTools(workspaceId, channel, {
+      senderId: preset.id,
+      senderRole: preset.role,
+    }, preset.tools),
+    ...createCommandFunctionTools(workspaceId),
+  ];
   const startTime = Date.now();
   const existingMessage = options.messageId
     ? listMessages(workspaceId, channelId).find((message) => message.id === options.messageId)
