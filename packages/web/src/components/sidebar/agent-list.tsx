@@ -4,17 +4,21 @@ import { useTranslations } from "next-intl";
 import { AgentIcon } from "@/components/common/agent-icon";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Bot, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { AgentPreset } from "./agent-shared";
 
 export function AgentList({
   agents,
   onSelect,
   onDelete,
+  onToggleEnabled,
 }: {
   agents: AgentPreset[];
   onSelect: (agent: AgentPreset) => void;
   onDelete: (id: string) => void;
+  onToggleEnabled?: (id: string) => void;
 }) {
   const t = useTranslations('agent');
   return (
@@ -22,7 +26,10 @@ export function AgentList({
       {agents.map((agent) => (
         <div
           key={agent.id}
-          className="group flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-muted/50 cursor-pointer transition-colors"
+          className={cn(
+            "group flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-muted/50 cursor-pointer transition-colors",
+            !agent.enabled && "opacity-50",
+          )}
           onClick={() => onSelect(agent)}
         >
           <AgentIcon
@@ -41,6 +48,12 @@ export function AgentList({
             <p className="text-xs text-muted-foreground truncate">{agent.description || t('list.noDescription')}</p>
           </div>
           <span className="text-[10px] text-muted-foreground font-mono">{agent.modelId.split("-").slice(0, 2).join("-")}</span>
+          <Switch
+            size="sm"
+            checked={agent.enabled}
+            onClick={(e) => e.stopPropagation()}
+            onCheckedChange={() => onToggleEnabled?.(agent.id)}
+          />
           <Button
             variant="ghost"
             size="icon-xs"

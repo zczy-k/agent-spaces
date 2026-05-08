@@ -79,7 +79,7 @@ export function EditIssueDialog({ issue, open, onOpenChange, agents = [], onSave
   };
 
   const filtered = agents.filter((a) =>
-    `${a.name || ''} ${a.role || ''}`.toLowerCase().includes(memberQuery.toLowerCase()),
+    a.enabled !== false && `${a.name || ''} ${a.role || ''}`.toLowerCase().includes(memberQuery.toLowerCase()),
   );
 
   return (

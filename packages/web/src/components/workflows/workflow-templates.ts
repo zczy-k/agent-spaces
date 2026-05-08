@@ -78,6 +78,7 @@ export const workflowTemplates: WorkflowTemplatePreset[] = [
       agents: {
         'tpl-planner': {
           id: 'tpl-planner',
+          templateId: 'code-writing:tpl-planner',
           name: 'Planner',
           role: 'planner',
           description: '策划者，负责分解任务和制定计划',
@@ -106,6 +107,7 @@ export const workflowTemplates: WorkflowTemplatePreset[] = [
         },
         'tpl-executor': {
           id: 'tpl-executor',
+          templateId: 'code-writing:tpl-executor',
           name: 'Executor',
           role: 'executor',
           description: '执行者，负责代码编写和修改',
@@ -126,6 +128,7 @@ export const workflowTemplates: WorkflowTemplatePreset[] = [
         },
         'tpl-reviewer': {
           id: 'tpl-reviewer',
+          templateId: 'code-writing:tpl-reviewer',
           name: 'Reviewer',
           role: 'reviewer',
           description: '审核者，负责代码审查和质量把关',
@@ -146,6 +149,7 @@ export const workflowTemplates: WorkflowTemplatePreset[] = [
         },
         'tpl-commit': {
           id: 'tpl-commit',
+          templateId: 'code-writing:tpl-commit',
           name: 'Commit',
           role: 'commit',
           description: '提交消息生成器，根据 diff 智能生成 commit message',

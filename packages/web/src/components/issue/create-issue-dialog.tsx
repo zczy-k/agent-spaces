@@ -64,7 +64,7 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], onSubmit }:
   };
 
   const filtered = agents.filter((a) =>
-    `${a.name || ''} ${a.role || ''}`.toLowerCase().includes(memberQuery.toLowerCase()),
+    a.enabled !== false && `${a.name || ''} ${a.role || ''}`.toLowerCase().includes(memberQuery.toLowerCase()),
   );
 
   return (

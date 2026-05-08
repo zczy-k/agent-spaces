@@ -94,8 +94,23 @@ export function WorkflowsPage() {
       const { name, description, nodes, edges, agents } = templateData;
       const idMap: Record<string, string> = {};
 
+      // 获取已有 agent，按 templateId 去重
+      const existingRes = await fetch('/api/agents/presets', { headers: authHeaders() });
+      const existingAgents: AgentConfig[] = existingRes.ok ? await existingRes.json() : [];
+      const byTemplateId = new Map<string, string>();
+      for (const agent of existingAgents) {
+        if (agent.templateId) {
+          byTemplateId.set(agent.templateId, agent.id);
+        }
+      }
+
       if (agents) {
         for (const [oldId, agentConfig] of Object.entries(agents)) {
+          // 已有同 templateId 的 agent 则复用，不重复创建
+          if (agentConfig.templateId && byTemplateId.has(agentConfig.templateId)) {
+            idMap[oldId] = byTemplateId.get(agentConfig.templateId)!;
+            continue;
+          }
           const { id: _oldId, enabled: _en, ...createBody } = agentConfig;
           const res = await fetch('/api/agents/presets', {
             method: 'POST',

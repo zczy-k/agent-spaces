@@ -188,6 +188,15 @@ export function AgentDialog({
     setEditDraft({ ...draft });
   };
 
+  const handleToggleEnabled = async (id: string) => {
+    // 同步本地 agents 状态
+    setAgents((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, enabled: !a.enabled } : a)),
+    );
+    // 调用 store 方法（含乐观更新 + API 持久化）
+    await useAgentStore.getState().toggleEnabled(id);
+  };
+
   const handleDeleteAgent = async (id: string) => {
     if (id.startsWith("draft-")) {
       setSelectedAgent(null);
@@ -343,6 +352,7 @@ export function AgentDialog({
               agents={visibleAgents}
               onSelect={handleSelectAgent}
               onDelete={handleDeleteAgent}
+              onToggleEnabled={handleToggleEnabled}
             />
           ) : editDraft ? (
             <AgentDetail

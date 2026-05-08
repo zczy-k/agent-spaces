@@ -410,6 +410,7 @@ export function createPreset(
     maxTokens: data.maxTokens ?? 4096,
     sandboxDirs: data.sandboxDirs,
     maxRetries: data.maxRetries,
+    templateId: data.templateId,
     enabled: data.enabled ?? true,
   };
 

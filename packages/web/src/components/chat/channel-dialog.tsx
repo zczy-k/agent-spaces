@@ -64,7 +64,7 @@ export function ChannelDialog({ open, onOpenChange, channel, agents = [], onSubm
   };
 
   const filtered = agents.filter((a) =>
-    `${a.name || ''} ${a.role || ''}`.toLowerCase().includes(memberQuery.toLowerCase()),
+    a.enabled !== false && `${a.name || ''} ${a.role || ''}`.toLowerCase().includes(memberQuery.toLowerCase()),
   );
 
   const handleSubmit = () => {
