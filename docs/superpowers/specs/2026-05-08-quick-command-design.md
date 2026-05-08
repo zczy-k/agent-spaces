@@ -62,37 +62,45 @@ Synchronous JSON read/write (same pattern as `workflow.ts`):
 
 ### `services/command-process-manager.ts` — Process Lifecycle
 
-In-memory `Map<string, CommandProcess>` keyed by `commandId`.
+Two in-memory maps:
+- `processes: Map<string, CommandProcess>` — keyed by `commandId`
+- `sessionIndex: Map<string, string>` — keyed by `sessionId`, value is `commandId` (reverse lookup)
+- `restartTimers: Map<string, NodeJS.Timeout>` — keyed by `commandId`, for cancelling pending restarts
 
 **`runCommand(workspaceId, commandId)`**:
 1. Look up command definition from command service
 2. Check existing CommandProcess for this commandId — if found, skip (reuse)
 3. Resolve cwd: `command.cwd || workspace.boundDirs[0] || process.env.HOME`
 4. Resolve shell: `command.shell || default`
-5. Call `ptyService.createSession(workspaceId, cwd, onOutput, onExit, shell)`
-6. Store `CommandProcess` mapping: `commandId -> { sessionId, status: 'running', ... }`
-7. `ptyService.write(sessionId, command.command + '\n')` to execute
-8. Broadcast `command.started` event to workspace
-9. Return `sessionId`
+5. Merge env: `{ ...process.env, ...command.env }`
+6. Call `ptyService.createSession(workspaceId, cwd, onOutput, onExit, shell, mergedEnv)`
+7. Store `CommandProcess` in `processes` and `sessionIndex`
+8. `ptyService.write(sessionId, command.command + '\n')` to execute
+9. Broadcast `command.started` event to workspace
+10. Return `sessionId`
 
 **`stopCommand(workspaceId, commandId)`**:
 1. Look up `CommandProcess`
-2. `ptyService.write(sessionId, '\x03')` — send Ctrl+C
-3. Mark `status = 'stopping'`
-4. Broadcast `command.stopped` event to workspace
-5. Do NOT kill terminal — tab stays alive
+2. Cancel any pending restart timer (`clearTimeout`)
+3. `ptyService.write(sessionId, '\x03')` — send Ctrl+C
+4. Mark `status = 'stopping'`
+5. Do NOT broadcast event here — wait for PTY `onExit` to broadcast `command.stopped`
+6. Do NOT kill terminal — tab stays alive
 
 **PTY `onExit` hook**:
-1. Look up `CommandProcess` by `sessionId` (reverse index: `sessionId -> commandId`)
-2. Remove mapping from `Map`
-3. If `autoRestart === true` and `status !== 'stopping'`:
+1. Look up `commandId` via `sessionIndex.get(sessionId)`
+2. Look up `CommandProcess` via `processes.get(commandId)`
+3. Remove from both maps + clear any restart timer
+4. If `autoRestart === true` and `status !== 'stopping'` and command still exists in commands.json:
    - Increment `restartCount`
    - Broadcast `command.restarted` event
-   - `setTimeout(1000)` then call `runCommand()` again
-4. If `status === 'stopping'` or no autoRestart:
+   - `setTimeout(1000)` stored in `restartTimers`, then call `runCommand()` again
+5. If `status === 'stopping'` or no autoRestart:
    - Broadcast `command.stopped` event with `exitCode`
 
 **`getCommandProcesses(workspaceId): CommandProcess[]`**
+
+**`cleanup(workspaceId)`** — called on workspace delete, cancels all timers + removes all mappings for that workspace.
 
 ### `routes/command.ts` — REST API
 
@@ -106,6 +114,7 @@ All routes require auth, nested under workspace:
 | DELETE | `/api/workspaces/:id/commands/:commandId` | Delete command |
 | POST | `/api/workspaces/:id/commands/:commandId/run` | Run command — returns `{ sessionId }` |
 | POST | `/api/workspaces/:id/commands/:commandId/stop` | Stop command |
+| GET | `/api/workspaces/:id/commands/processes` | List running processes (for state recovery on page refresh) |
 
 **Delete guard**: if command has running process, stop it first (send Ctrl+C, remove mapping).
 
@@ -141,7 +150,7 @@ interface CommandStore {
   runningMap: Record<string, { sessionId: string; status: 'running' | 'stopping' }>;
   loaded: boolean;
 
-  load(workspaceId: string): Promise<void>;
+  load(workspaceId: string): Promise<void>;  // fetches commands + running processes
   create(workspaceId: string, input: CreateCommandInput): Promise<void>;
   update(workspaceId: string, id: string, updates: Partial<QuickCommand>): Promise<void>;
   remove(workspaceId: string, id: string): Promise<void>;
@@ -215,6 +224,7 @@ Add `commands` namespace keys to `zh.json` / `en.json`:
 | Create | `server/src/services/command-process-manager.ts` | Process manager (run/stop/autoRestart) |
 | Create | `server/src/routes/command.ts` | REST API (6 endpoints) |
 | Modify | `server/src/app.ts` | Register command route |
+| Modify | `server/src/services/pty.ts` | Add optional `env` param to `createSession` |
 | Modify | `server/src/ws/terminal-handler.ts` | PTY exit -> process manager hook |
 | Modify | `server/src/services/builtin-tools.ts` | 3 new Agent tools |
 | Modify | `shared/src/types/tool.ts` | 3 new BuiltInAgentToolName |
@@ -226,4 +236,4 @@ Add `commands` namespace keys to `zh.json` / `en.json`:
 | Modify | `web/src/locales/zh.json` | Chinese translations |
 | Modify | `web/src/locales/en.json` | English translations |
 
-**Total: 5 new files + 11 modified files.**
+**Total: 5 new files + 12 modified files.**
