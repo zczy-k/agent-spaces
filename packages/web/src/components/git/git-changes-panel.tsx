@@ -62,6 +62,10 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; path: string } | null>(null);
   const ctxMenuRef = useRef<HTMLDivElement>(null);
 
+  // compact layout detection
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isCompact, setIsCompact] = useState(false);
+
   const refresh = useCallback(() => {
     loadStatus(workspaceId);
     loadDiffs(workspaceId);
@@ -242,6 +246,19 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
     return () => document.removeEventListener("click", close);
   }, [ctxMenu]);
 
+  // track container height for compact layout
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setIsCompact(entry.contentRect.height < 300);
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   if (notGitRepo) {
     return (
       <div className="flex flex-col h-full">
@@ -257,9 +274,9 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
   const hasFiles = (status?.files.length ?? 0) > 0;
 
   return (
-    <div className="flex h-full overflow-hidden rounded-t-xl bg-background">
+    <div ref={containerRef} className="flex h-full overflow-hidden rounded-t-xl bg-background">
       {/* File list */}
-      <div className="w-64 border-r flex flex-col bg-muted/20">
+      <div className={`flex flex-col bg-muted/20 border-r ${isCompact ? 'w-40' : 'w-64'}`}>
         <div className="flex items-center gap-1 px-2 py-1.5 border-b">
           {/* Branch selector */}
           <div className="relative flex-1 min-w-0">
@@ -366,8 +383,8 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
           )}
         </div>
 
-        {/* Commit input */}
-        {hasFiles && (
+        {/* Commit input - only shown in non-compact mode */}
+        {!isCompact && hasFiles && (
           <div className="border-t p-2 space-y-1.5">
             <div className="relative">
               <textarea
@@ -415,6 +432,38 @@ export function GitChangesPanel({ workspaceId }: GitPanelProps) {
           </div>
         )}
       </div>
+
+      {/* Commit column - only shown in compact mode (height < 300px) */}
+      {isCompact && hasFiles && (
+        <div className="w-52 border-r flex flex-col p-2 space-y-1.5">
+          <div className="relative flex-1 flex flex-col">
+            <textarea
+              value={commitMsg}
+              onChange={(e) => setCommitMsg(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={t('commitMessagePlaceholder')}
+              className="w-full flex-1 resize-none text-xs px-2 pt-1 pr-8 pb-1 border rounded bg-background disabled:opacity-50"
+              disabled={committing || generating}
+            />
+            <button
+              type="button"
+              onClick={handleGenerateCommit}
+              disabled={generating || committing || !hasFiles}
+              className="absolute top-1.5 right-1.5 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title="AI generate commit message"
+            >
+              {generating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+            </button>
+          </div>
+          <button
+            onClick={handleCommit}
+            disabled={!commitMsg.trim() || committing}
+            className="w-full text-xs px-2 py-1 rounded bg-primary text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {committing ? t('committing') : t('commit')}
+          </button>
+        </div>
+      )}
 
       {/* Diff area */}
       <div className="flex-1">

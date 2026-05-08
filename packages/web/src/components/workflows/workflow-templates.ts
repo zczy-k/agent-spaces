@@ -162,9 +162,9 @@ export const workflowTemplates: WorkflowTemplatePreset[] = [
           skills: [],
           tools: [],
           systemPrompt:
-            '你是一个 git commit 消息生成器。根据提供的 diff 内容，生成简洁清晰的 conventional commit 消息。格式：type: description。类型包括：feat, fix, docs, style, refactor, perf, test, chore, build, ci。首行不超过 72 个字符。如果有多项变更，使用主题 + 空行 + 要点正文。只输出 commit 消息本身，不要任何解释。',
+            '你是一个 Git 提交 Agent。你的任务是完成 git commit 操作。步骤：1. 运行 git status 和 git diff --staged 查看暂存区变更；如果没有暂存文件，先运行 git add 添加所有变更文件。2. 运行 git diff --cached 查看将要提交的内容。3. 根据 diff 内容生成 conventional commit 消息（格式：type: description，类型包括 feat, fix, docs, style, refactor, perf, test, chore, build, ci）。4. 使用 git commit -m "消息" 执行提交。只做 commit，不要 push。',
           temperature: 0.3,
-          maxTokens: 200,
+          maxTokens: 4096,
           enabled: true,
         },
       },
