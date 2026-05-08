@@ -1,13 +1,16 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Plus, ChevronDown, X, FolderOpen } from 'lucide-react';
+import { Plus, ChevronDown, X, FolderOpen, Play, Square, Pencil, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useTerminalStore } from '@/stores/terminal';
+import { useCommandStore } from '@/stores/command';
 import { getWS } from '@/lib/ws';
 import { TerminalInstance } from './terminal-instance';
+import { CommandDialog } from './command-dialog';
+import type { QuickCommand } from '@agent-spaces/shared';
 import { useTranslations } from 'next-intl';
 
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent);
@@ -34,17 +37,50 @@ interface TerminalPanelProps {
   boundDirs: string[];
 }
 
+function CommandListItem({ command, running, onRun, onStop, onEdit, onDelete }: {
+  command: QuickCommand; running: boolean;
+  onRun: () => void; onStop: () => void; onEdit: () => void; onDelete: () => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <div
+      className="flex items-center gap-1 px-2 py-1 text-xs hover:bg-accent group cursor-default"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <button
+        onClick={running ? onStop : onRun}
+        className={`shrink-0 p-0.5 rounded ${running ? 'text-green-500 hover:text-green-600' : 'text-muted-foreground hover:text-foreground'}`}
+      >
+        {running ? <Square size={12} /> : <Play size={12} />}
+      </button>
+      <span className="truncate flex-1 font-mono">{command.name}</span>
+      {running && <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shrink-0" />}
+      {hovered && (
+        <>
+          <button onClick={onEdit} className="shrink-0 p-0.5 text-muted-foreground hover:text-foreground"><Pencil size={11} /></button>
+          <button onClick={onDelete} className="shrink-0 p-0.5 text-muted-foreground hover:text-destructive"><Trash2 size={11} /></button>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
   const { sessions, activeId, init, createSession, setActive, removeSession } = useTerminalStore();
+  const { commands, load: loadCommands, run, stop, remove, update, create, isRunning } = useCommandStore();
   const t = useTranslations('terminal');
+  const tc = useTranslations('commands');
 
   const [dirPickerOpen, setDirPickerOpen] = useState(false);
   const [pendingShell, setPendingShell] = useState<string | undefined>(undefined);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingCommand, setEditingCommand] = useState<QuickCommand | undefined>();
 
   const resolveCwd = useCallback((): string | undefined => {
     if (boundDirs.length === 0) return undefined;
     if (boundDirs.length === 1) return boundDirs[0];
-    return undefined; // multiple dirs — need picker
+    return undefined;
   }, [boundDirs]);
 
   const handleCreateSession = useCallback((shell?: string) => {
@@ -69,6 +105,10 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
     if (sessions.length === 0) {
       handleCreateSession();
     }
+  }, [workspaceId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (workspaceId) loadCommands(workspaceId);
   }, [workspaceId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
@@ -119,28 +159,60 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
+        <div className="flex-1" />
+        <button
+          onClick={() => { setEditingCommand(undefined); setDialogOpen(true); }}
+          className="flex items-center gap-0.5 h-6 px-1.5 text-muted-foreground hover:text-foreground transition-colors"
+          title={tc('addCommand')}
+        >
+          <Plus size={14} />
+        </button>
       </div>
 
-      {/* Terminal content */}
-      <div className="flex-1 overflow-hidden relative">
-        {sessions.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-            {t('noSession')}
+      {/* Content: command sidebar + terminal */}
+      <div className="flex flex-row flex-1 overflow-hidden">
+        {/* Command sidebar */}
+        <div className="w-[200px] flex flex-col border-r border-border shrink-0 overflow-hidden">
+          <div className="flex-1 overflow-y-auto py-1">
+            {commands.length === 0 ? (
+              <div className="text-xs text-muted-foreground text-center py-4">{tc('noCommands')}</div>
+            ) : (
+              commands.map(cmd => (
+                <CommandListItem
+                  key={cmd.id}
+                  command={cmd}
+                  running={isRunning(cmd.id)}
+                  onRun={() => run(workspaceId, cmd.id)}
+                  onStop={() => stop(workspaceId, cmd.id)}
+                  onEdit={() => { setEditingCommand(cmd); setDialogOpen(true); }}
+                  onDelete={() => remove(workspaceId, cmd.id)}
+                />
+              ))
+            )}
           </div>
-        ) : (
-          sessions.map((session) => (
-            <div
-              key={session.id}
-              className="absolute inset-0"
-              style={{ display: activeId === session.id ? 'block' : 'none' }}
-            >
-              <TerminalInstance
-                sessionId={session.id}
-                workspaceId={workspaceId}
-              />
+        </div>
+
+        {/* Terminal content */}
+        <div className="flex-1 overflow-hidden relative">
+          {sessions.length === 0 ? (
+            <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+              {t('noSession')}
             </div>
-          ))
-        )}
+          ) : (
+            sessions.map((session) => (
+              <div
+                key={session.id}
+                className="absolute inset-0"
+                style={{ display: activeId === session.id ? 'block' : 'none' }}
+              >
+                <TerminalInstance
+                  sessionId={session.id}
+                  workspaceId={workspaceId}
+                />
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       {/* Directory picker dialog */}
@@ -166,6 +238,21 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Command dialog */}
+      <CommandDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        command={editingCommand}
+        defaultCwd={boundDirs[0]}
+        onSubmit={async (data) => {
+          if (editingCommand) {
+            await update(workspaceId, editingCommand.id, data);
+          } else {
+            await create(workspaceId, data);
+          }
+        }}
+      />
     </div>
   );
 }
