@@ -1,11 +1,11 @@
 {
-  "version": "1.3.0",
-  "timestamp": "2026-05-05T23:52:43+08:00",
+  "version": "1.4.0",
+  "timestamp": "2026-05-08T17:18:31+08:00",
   "project": {
     "name": "agent-spaces",
     "type": "pnpm-monorepo",
     "language": "TypeScript",
-    "description": "多 Agent 协同编程平台（含认证、通知中心、用量统计、Commit Agent）"
+    "description": "多 Agent 协同编程平台（含 Workflow DAG 可视化编排、i18n 中英文切换、三种 Agent 运行时、通知中心、用量统计）"
   },
   "modules": [
     {
@@ -16,7 +16,7 @@
       "role": "前后端共享类型定义",
       "entry": "src/index.ts",
       "types": [
-        "Workspace", "AgentConfig", "CreateWorkspaceInput",
+        "Workspace", "AgentConfig", "BuiltInAgentRole", "AgentRole", "CreateWorkspaceInput",
         "WorkspaceNotificationSettings", "NotificationProvider", "NotificationEventKey",
         "Issue", "IssueStatus", "IssueComment", "CreateIssueInput",
         "Task", "TaskStatus", "TaskResult",
@@ -26,7 +26,8 @@
         "GitFileStatus", "GitStatusResult", "GitLogEntry", "GitDiffResult",
         "WSEvent", "ClientEventMap", "ServerEventMap",
         "LLMModel", "LLMModelCost", "LLMThinkingEffort", "LLMProvider",
-        "BUILT_IN_AGENT_TOOLS", "BuiltInAgentToolName"
+        "BUILT_IN_AGENT_TOOLS", "BuiltInAgentToolName",
+        "WorkflowTemplate", "WorkflowNode", "WorkflowEdge"
       ],
       "api": [],
       "tests": [],
@@ -41,12 +42,13 @@
         "packages/shared/src/types/llm.ts",
         "packages/shared/src/types/file.ts",
         "packages/shared/src/types/git.ts",
-        "packages/shared/src/types/task.ts"
+        "packages/shared/src/types/task.ts",
+        "packages/shared/src/types/workflow.ts"
       ],
       "claudeMd": "packages/shared/CLAUDE.md",
       "coverage": {
-        "scanned": 12,
-        "total": 12,
+        "scanned": 13,
+        "total": 13,
         "percentage": 100,
         "gaps": []
       }
@@ -56,7 +58,7 @@
       "path": "packages/server",
       "packageId": "@agent-spaces/server",
       "language": "TypeScript",
-      "role": "Express REST API + WebSocket + 认证中间件 + 三运行时 Agent 编排 + 通知中心（飞书/企微） + Commit Agent + SQLite Agent Usage + PTY + Git + LLM 管理 + Agent Preset + Function Call Tools + Anthropic Bridge（7文件子模块） + Issue 评论 + 工具详情持久化",
+      "role": "Express REST API + WebSocket + 认证中间件 + 三运行时 Agent 编排 + Workflow 系统（DAG 校验/CRUD/Task 映射） + 通知中心（飞书/企微） + Commit Agent + SQLite Agent Usage + PTY + Git + LLM 管理 + Agent Preset + Function Call Tools + Anthropic Bridge（7文件子模块） + Issue 评论 + 工具详情持久化",
       "entry": "src/app.ts",
       "types": [],
       "api": [
@@ -97,6 +99,9 @@
         "POST /api/workspaces/:id/notifications/stop",
         "POST /api/workspaces/:id/notifications/test",
         "POST /api/workspaces/:id/notifications/wechat/qr",
+        "GET|POST /api/workflows",
+        "GET|PUT|DELETE /api/workflows/:workflowId",
+        "POST /api/workflows/:workflowId/duplicate",
         "GET /api/agents/usage/dashboard",
         "GET|POST /api/models",
         "PUT|DELETE /api/models/:id",
@@ -119,7 +124,8 @@
           "agent.started", "agent.status_changed", "agent.output",
           "agent.completed", "agent.error",
           "issue.created", "issue.updated", "issue.status_changed",
-          "task.created", "task.updated", "task.status_changed", "task.output"
+          "task.created", "task.updated", "task.status_changed", "task.output",
+          "workflow.created", "workflow.updated", "workflow.deleted"
         ]
       },
       "agentRuntimes": [
@@ -174,6 +180,14 @@
           "src/services/notification-hub/bot-commands.ts"
         ]
       },
+      "workflowSystem": {
+        "files": [
+          "src/routes/workflow.ts",
+          "src/services/workflow.ts",
+          "src/storage/workflow-store.ts"
+        ],
+        "capabilities": ["DAG validation", "Role staleness resolution", "Task mapping", "Runtime validation", "CRUD + duplicate"]
+      },
       "tests": [],
       "importantPaths": [
         "packages/server/src/app.ts",
@@ -181,40 +195,24 @@
         "packages/server/src/routes/auth.ts",
         "packages/server/src/routes/workspace.ts",
         "packages/server/src/routes/agent.ts",
+        "packages/server/src/routes/workflow.ts",
         "packages/server/src/routes/folder.ts",
         "packages/server/src/agents/scheduler-agent.ts",
-        "packages/server/src/agents/planner-agent.ts",
-        "packages/server/src/agents/reviewer-agent.ts",
-        "packages/server/src/agents/commit-agent.ts",
         "packages/server/src/agents/issue-task-controller.ts",
         "packages/server/src/agents/issue-agent-runner.ts",
         "packages/server/src/agents/issue-retry.ts",
         "packages/server/src/agents/issue-agent-progress.ts",
         "packages/server/src/agents/agent-message-parts.ts",
         "packages/server/src/agents/agent-context.ts",
+        "packages/server/src/agents/commit-agent.ts",
         "packages/server/src/hooks/agent-hooks.ts",
         "packages/server/src/adapters/agent-runtime.ts",
         "packages/server/src/adapters/agent-runtime-types.ts",
         "packages/server/src/adapters/open-agent-sdk-runtime.ts",
         "packages/server/src/adapters/codex-runtime.ts",
-        "packages/server/src/adapters/claude-code-runtime/index.ts",
-        "packages/server/src/adapters/claude-code-runtime/sdk-config.ts",
-        "packages/server/src/adapters/claude-code-runtime/adapter-pool.ts",
-        "packages/server/src/adapters/claude-code-runtime/anthropic-bridge.ts",
-        "packages/server/src/adapters/claude-code-runtime/protocol-converter.ts",
-        "packages/server/src/adapters/claude-code-runtime/message-format.ts",
-        "packages/server/src/adapters/claude-code-runtime/types.ts",
+        "packages/server/src/adapters/claude-code-runtime/",
         "packages/server/src/adapters/git.ts",
-        "packages/server/src/ws/handler.ts",
-        "packages/server/src/ws/connection-manager.ts",
-        "packages/server/src/ws/terminal-handler.ts",
-        "packages/server/src/storage/json-store.ts",
-        "packages/server/src/storage/workspace-store.ts",
-        "packages/server/src/storage/agent-store.ts",
-        "packages/server/src/storage/issue-store.ts",
-        "packages/server/src/storage/task-store.ts",
-        "packages/server/src/storage/llm-store.ts",
-        "packages/server/src/storage/usage.ts",
+        "packages/server/src/services/workflow.ts",
         "packages/server/src/services/agent.ts",
         "packages/server/src/services/workspace.ts",
         "packages/server/src/services/workspace-prompt.ts",
@@ -225,12 +223,23 @@
         "packages/server/src/services/task.ts",
         "packages/server/src/services/llm-model-config.ts",
         "packages/server/src/services/auth-store.ts",
-        "packages/server/src/services/notification-hub/"
+        "packages/server/src/services/notification-hub/",
+        "packages/server/src/ws/handler.ts",
+        "packages/server/src/ws/connection-manager.ts",
+        "packages/server/src/ws/terminal-handler.ts",
+        "packages/server/src/storage/workflow-store.ts",
+        "packages/server/src/storage/json-store.ts",
+        "packages/server/src/storage/workspace-store.ts",
+        "packages/server/src/storage/agent-store.ts",
+        "packages/server/src/storage/issue-store.ts",
+        "packages/server/src/storage/task-store.ts",
+        "packages/server/src/storage/llm-store.ts",
+        "packages/server/src/storage/usage.ts"
       ],
       "claudeMd": "packages/server/CLAUDE.md",
       "coverage": {
-        "scanned": 70,
-        "total": 70,
+        "scanned": 73,
+        "total": 73,
         "percentage": 100,
         "gaps": []
       }
@@ -240,7 +249,7 @@
       "path": "packages/web",
       "packageId": "@agent-spaces/web",
       "language": "TypeScript/TSX",
-      "role": "Next.js 前端 SPA（登录 + 工作空间管理 + 用量 Dashboard + 项目设置 + 服务器切换 + IDE 布局 + 编辑器 + 终端 + 结构化 AI 消息渲染 + TipTap 聊天 + Git + Agent 管理 + 移动端适配）",
+      "role": "Next.js 前端 SPA（登录 + 工作空间管理 + Workflow DAG 编辑器 + 用量 Dashboard + 项目设置 + 服务器切换 + IDE 布局 + 编辑器 + 终端 + 结构化 AI 消息渲染 + TipTap 聊天 + Git + Agent 管理 + i18n 中英文 + Native 通知 + 移动端适配）",
       "entry": "src/app/layout.tsx",
       "types": [],
       "api": [],
@@ -250,9 +259,23 @@
         "packages/web/src/app/layout.tsx",
         "packages/web/src/app/login/page.tsx",
         "packages/web/src/app/workspaces/page.tsx",
+        "packages/web/src/app/workflows/page.tsx",
         "packages/web/src/app/workspace/[id]/page.tsx",
-        "packages/web/src/app/api/upload/route.ts",
-        "packages/web/src/app/api/[...path]/route.ts",
+        "packages/web/src/app/workspace/[id]/workspace-client.tsx",
+        "packages/web/src/components/locale-provider.tsx",
+        "packages/web/src/locales/zh.json",
+        "packages/web/src/locales/en.json",
+        "packages/web/src/i18n/request.ts",
+        "packages/web/src/lib/native-notification.ts",
+        "packages/web/src/components/workflow/workflow-editor.tsx",
+        "packages/web/src/components/workflow/workflow-canvas.tsx",
+        "packages/web/src/components/workflow/workflow-agent-node.tsx",
+        "packages/web/src/components/workflow/workflow-agent-palette.tsx",
+        "packages/web/src/components/workflow/workflow-toolbar.tsx",
+        "packages/web/src/components/workflow/workflow-mini-preview.tsx",
+        "packages/web/src/components/workflows/workflows-page.tsx",
+        "packages/web/src/components/workflows/workflow-templates.ts",
+        "packages/web/src/components/workflows/workflow-templates-dialog.tsx",
         "packages/web/src/components/auth-guard.tsx",
         "packages/web/src/components/app-shell.tsx",
         "packages/web/src/components/layout/workspace-shell.tsx",
@@ -277,14 +300,28 @@
         "packages/web/src/components/composer/composer-editor.tsx",
         "packages/web/src/components/sidebar/app-sidebar.tsx",
         "packages/web/src/components/sidebar/agent-dialog.tsx",
+        "packages/web/src/components/sidebar/agent-detail.tsx",
+        "packages/web/src/components/sidebar/agent-list.tsx",
+        "packages/web/src/components/sidebar/agent-shared.tsx",
         "packages/web/src/components/sidebar/models-dialog.tsx",
         "packages/web/src/components/sidebar/providers-dialog.tsx",
         "packages/web/src/components/sidebar/server-switcher.tsx",
+        "packages/web/src/components/sidebar/server-manager-dialog.tsx",
+        "packages/web/src/components/sidebar/server-form-dialog.tsx",
+        "packages/web/src/components/sidebar/settings-dialog.tsx",
         "packages/web/src/components/settings/project-settings-panel.tsx",
         "packages/web/src/components/issue/issue-list.tsx",
         "packages/web/src/components/issue/issue-detail.tsx",
+        "packages/web/src/components/issue/issue-detail-header.tsx",
+        "packages/web/src/components/issue/issue-detail-info-panel.tsx",
+        "packages/web/src/components/issue/issue-detail-tasks-panel.tsx",
+        "packages/web/src/components/issue/issue-detail-comments.tsx",
         "packages/web/src/components/issue/edit-issue-dialog.tsx",
         "packages/web/src/components/issue/create-issue-dialog.tsx",
+        "packages/web/src/components/issue/task-row.tsx",
+        "packages/web/src/components/issue/issue-status-colors.ts",
+        "packages/web/src/components/issue/collect-mention-ids.ts",
+        "packages/web/src/components/issue/comment-navigator.tsx",
         "packages/web/src/components/git/diff-viewer.tsx",
         "packages/web/src/components/git/git-changes-panel.tsx",
         "packages/web/src/components/git/git-commits-panel.tsx",
@@ -293,6 +330,7 @@
         "packages/web/src/components/workspaces/workspaces-page.tsx",
         "packages/web/src/components/workspace/workspace-dialog.tsx",
         "packages/web/src/components/ui/folder-picker.tsx",
+        "packages/web/src/components/ui/drawer.tsx",
         "packages/web/src/stores/agent.ts",
         "packages/web/src/stores/editor.ts",
         "packages/web/src/stores/terminal.ts",
@@ -302,12 +340,14 @@
         "packages/web/src/stores/git.ts",
         "packages/web/src/stores/workspace.ts",
         "packages/web/src/stores/llm.ts",
+        "packages/web/src/stores/workflow.ts",
         "packages/web/src/stores/mobile-panel.ts",
         "packages/web/src/lib/ws.ts",
         "packages/web/src/lib/auth.ts",
         "packages/web/src/lib/server.ts",
         "packages/web/src/lib/agent-members.ts",
         "packages/web/src/lib/monaco-loader.ts",
+        "packages/web/src/lib/native-notification.ts",
         "packages/web/src/proxy.ts",
         "packages/web/next.config.ts",
         "packages/web/DESIGN.md",
@@ -315,8 +355,8 @@
       ],
       "claudeMd": "packages/web/CLAUDE.md",
       "coverage": {
-        "scanned": 141,
-        "total": 141,
+        "scanned": 168,
+        "total": 168,
         "percentage": 100,
         "gaps": []
       }
@@ -330,6 +370,10 @@
     {
       "path": "docs/issue-agent-automation.md",
       "description": "Issue 自动化编排链路详细文档（Scheduler -> Planner -> TaskCreator -> Executor -> Reviewer）"
+    },
+    {
+      "path": "docs/workflow-system.md",
+      "description": "Workflow 系统速读文档：数据模型、DAG 校验、Task 映射、执行语义、修改指南"
     },
     {
       "path": "docs/codex-runtime-limitations.md",
@@ -356,6 +400,34 @@
       "description": "Bot 与 Workspace 通知流程文档（飞书/企微适配器、Bot Agent、命令系统、平台扩展指南）"
     },
     {
+      "path": "docs/superpowers/specs/2026-05-06-i18n-design.md",
+      "description": "i18n 中英文多语言切换设计文档（next-intl 架构、覆盖范围、实施顺序）"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-05-07-workflow-visual-editor-design.md",
+      "description": "Workflow Visual Editor 设计文档（@xyflow/react DAG 编辑器、数据模型、交互设计）"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-05-06-i18n-wave1-infrastructure.md",
+      "description": "i18n 第 1 波实施计划（基础设施）"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-05-06-i18n-wave2-core-ui.md",
+      "description": "i18n 第 2 波实施计划（核心 UI）"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-05-06-i18n-wave3-chat.md",
+      "description": "i18n 第 3 波实施计划（Chat 组件）"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-05-06-i18n-wave3-panels.md",
+      "description": "i18n 第 3 波实施计划（功能面板）"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-05-07-workflow-visual-editor.md",
+      "description": "Workflow Visual Editor 实施计划"
+    },
+    {
       "path": "PRD.md",
       "description": "产品需求文档"
     },
@@ -374,12 +446,11 @@
     ".gitignore",
     "PRD.md",
     "CLAUDE.md",
-    "Dockerfile.server",
-    "Dockerfile.web"
+    "Dockerfile.server"
   ],
   "scanCoverage": {
-    "totalSourceFiles": 223,
-    "scannedFiles": 223,
+    "totalSourceFiles": 254,
+    "scannedFiles": 254,
     "coveragePercentage": 100,
     "ignoredDirectories": [
       "node_modules",
@@ -392,82 +463,91 @@
     "truncated": false,
     "gapDetails": [],
     "moduleBreakdown": {
-      "shared": { "total": 12, "scanned": 12, "percentage": 100 },
-      "server": { "total": 70, "scanned": 70, "percentage": 100 },
-      "web": { "total": 141, "scanned": 141, "percentage": 100 }
+      "shared": { "total": 13, "scanned": 13, "percentage": 100 },
+      "server": { "total": 73, "scanned": 73, "percentage": 100 },
+      "web": { "total": 168, "scanned": 168, "percentage": 100 }
     }
   },
   "changesFromPrevious": {
-    "previousVersion": "1.2.0",
-    "previousTimestamp": "2026-05-04T21:04:42+08:00",
+    "previousVersion": "1.3.0",
+    "previousTimestamp": "2026-05-05T23:52:43+08:00",
     "newFiles": {
+      "shared": [
+        "src/types/workflow.ts (WorkflowTemplate/WorkflowNode/WorkflowEdge)"
+      ],
       "server": [
-        "src/agents/commit-agent.ts",
-        "src/agents/issue-agent-runner.ts",
-        "src/agents/issue-retry.ts (not found, referenced in app.ts)",
-        "src/services/notification-hub/ (12 files)",
-        "src/services/auth-store.ts",
-        "src/services/workspace-prompt.ts",
-        "src/services/llm-model-config.ts",
-        "src/middleware/auth.ts",
-        "src/routes/auth.ts",
-        "src/routes/folder.ts",
-        "src/storage/workspace-store.ts",
-        "src/storage/usage.ts",
-        "src/storage/agent-store.ts (rewritten to SQLite)",
-        "src/types/node-sqlite.d.ts",
-        "src/adapters/claude-code-runtime/ (7 files, split from single file)"
+        "src/routes/workflow.ts (CRUD + duplicate)",
+        "src/services/workflow.ts (DAG validation + role resolution + task mapping + runtime validation)",
+        "src/storage/workflow-store.ts (JSON persistence)"
       ],
       "web": [
-        "src/app/login/page.tsx",
-        "src/app/workspaces/page.tsx",
-        "src/stores/workspace.ts",
-        "src/stores/llm.ts",
-        "src/stores/mobile-panel.ts",
-        "src/lib/auth.ts",
-        "src/lib/server.ts",
-        "src/lib/monaco-loader.ts",
-        "src/components/auth-guard.tsx",
-        "src/components/app-shell.tsx",
-        "src/components/sidebar/server-switcher.tsx",
-        "src/components/settings/project-settings-panel.tsx",
-        "src/components/home/usage-dashboard.tsx",
-        "src/components/workspaces/workspaces-page.tsx",
-        "src/components/common/user-icon.tsx",
-        "src/components/layout/mobile-tab-bar.tsx",
-        "src/components/git/git-changes-panel.tsx",
-        "src/components/git/git-commits-panel.tsx",
-        "src/components/git/git-remote-dialog.tsx",
-        "src/components/git/git-not-initialized.tsx",
-        "src/components/issue/create-issue-dialog.tsx",
-        "src/components/issue/comment-navigator.tsx",
-        "src/components/ui/calendar.tsx",
-        "src/components/ui/slider.tsx",
-        "src/components/ui/context-menu.tsx",
-        "src/components/ui/folder-picker.tsx",
-        "src/components/ui/switch.tsx",
-        "src/components/ui/label.tsx",
-        "src/components/ui/popover.tsx",
-        "src/proxy.ts",
-        "src/types/react-virtualized.d.ts"
+        "src/app/workflows/page.tsx",
+        "src/app/workspace/[id]/workspace-client.tsx",
+        "src/components/locale-provider.tsx",
+        "src/components/workflow/workflow-editor.tsx",
+        "src/components/workflow/workflow-canvas.tsx",
+        "src/components/workflow/workflow-agent-node.tsx",
+        "src/components/workflow/workflow-agent-palette.tsx",
+        "src/components/workflow/workflow-toolbar.tsx",
+        "src/components/workflow/workflow-mini-preview.tsx",
+        "src/components/workflow/workflow-list.tsx",
+        "src/components/workflows/workflows-page.tsx",
+        "src/components/workflows/workflow-templates.ts",
+        "src/components/workflows/workflow-templates-dialog.tsx",
+        "src/components/sidebar/server-manager-dialog.tsx",
+        "src/components/sidebar/server-form-dialog.tsx",
+        "src/components/sidebar/agent-detail.tsx",
+        "src/components/sidebar/agent-list.tsx",
+        "src/components/sidebar/agent-shared.tsx",
+        "src/components/issue/issue-detail-header.tsx",
+        "src/components/issue/issue-detail-info-panel.tsx",
+        "src/components/issue/issue-detail-tasks-panel.tsx",
+        "src/components/issue/issue-detail-comments.tsx",
+        "src/components/issue/task-row.tsx",
+        "src/components/issue/issue-status-colors.ts",
+        "src/components/issue/collect-mention-ids.ts",
+        "src/components/ui/drawer.tsx",
+        "src/i18n/request.ts",
+        "src/locales/zh.json",
+        "src/locales/en.json",
+        "src/lib/native-notification.ts",
+        "src/stores/workflow.ts"
       ],
       "docs": [
-        "docs/model-usage-accounting.md",
-        "docs/bot-notification-workflow.md"
+        "docs/workflow-system.md",
+        "docs/superpowers/specs/2026-05-06-i18n-design.md",
+        "docs/superpowers/specs/2026-05-07-workflow-visual-editor-design.md",
+        "docs/superpowers/plans/2026-05-06-i18n-wave1-infrastructure.md",
+        "docs/superpowers/plans/2026-05-06-i18n-wave2-core-ui.md",
+        "docs/superpowers/plans/2026-05-06-i18n-wave3-chat.md",
+        "docs/superpowers/plans/2026-05-06-i18n-wave3-panels.md",
+        "docs/superpowers/plans/2026-05-07-workflow-visual-editor.md"
       ]
     },
     "typeChanges": {
-      "shared/workspace.ts": "Added WorkspaceNotificationSettings, NotificationProvider, NotificationEventKey; AgentConfig.role added 'commit' | 'bot'",
-      "shared/agent.ts": "Added AgentUsageRecord, AgentUsageDashboard",
-      "shared/llm.ts": "Added LLMModelCost, LLMThinkingEffort"
+      "shared/workspace.ts": "Added BuiltInAgentRole ('agent' | 'scheduler' | 'task_creator' | 'bot') + AgentRole type; NotificationProvider added 'native'; WorkspaceNotificationSettings added native field",
+      "shared/workflow.ts": "New file: WorkflowTemplate + WorkflowNode + WorkflowEdge",
+      "shared/issue.ts": "Issue and CreateIssueInput added workflowId field",
+      "shared/events.ts": "ServerEventMap added workflow.created/updated/deleted events (20->23)"
+    },
+    "dependencyChanges": {
+      "web": {
+        "added": ["@xyflow/react ^12.10.2", "@dagrejs/dagre ^3.0.0", "next-intl ^4.11.0", "react-virtualized ^9.22.6", "vaul ^1.1.2"],
+        "removed": []
+      },
+      "server": {
+        "added": ["zod ^4.0.0"],
+        "removed": []
+      }
     }
   },
   "nextSteps": {
-    "description": "全部核心模块已完整扫描（223/223 文件，100% 覆盖率）。",
+    "description": "全部核心模块已完整扫描（254/254 文件，100% 覆盖率）。",
     "suggestions": [
-      "notification-hub/bot-commands.ts 的命令 registry 重构（当前为 switch-case，建议抽成 BotCommand 接口数组）",
       "ws/handler.ts 1342 行的进一步模块化拆分",
-      "新增测试覆盖优先级：auth middleware、notification-hub adapters、SQLite agent-store CRUD"
+      "新增测试覆盖优先级：Workflow DAG 校验、workflow service CRUD、issue-task-controller 依赖调度",
+      "i18n 翻译 key 完整性校验工具（对比 en.json 和 zh.json）",
+      "Native Notification Adapter 后端集成（当前仅前端抽象层）"
     ]
   }
 }
