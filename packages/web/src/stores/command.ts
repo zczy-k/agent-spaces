@@ -3,6 +3,7 @@ import type { QuickCommand, CommandProcess } from '@agent-spaces/shared';
 import { fetchWithAuth } from '@/lib/auth';
 import { getWS } from '@/lib/ws';
 import { toast } from 'sonner';
+import { useTerminalStore } from '@/stores/terminal';
 
 interface RunningState {
   sessionId: string;
@@ -108,6 +109,8 @@ export const useCommandStore = create<CommandStore>((set, get) => ({
 
     ws.on('command.started', (data) => {
       const { commandId, sessionId } = data as { commandId: string; sessionId: string };
+      const cmd = get().commands.find(c => c.id === commandId);
+      if (cmd) useTerminalStore.getState().setSessionName(sessionId, cmd.name);
       set(s => ({
         runningMap: { ...s.runningMap, [commandId]: { sessionId, status: 'running' } },
       }));

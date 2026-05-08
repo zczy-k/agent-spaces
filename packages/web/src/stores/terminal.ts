@@ -6,6 +6,7 @@ export interface TerminalSession {
   cwd: string;
   shell?: string;
   commandId?: string;
+  name?: string;
 }
 
 interface TerminalState {
@@ -17,6 +18,7 @@ interface TerminalState {
   init: (ws: WorkspaceWS) => void;
   createSession: (shell?: string, cwd?: string) => void;
   setActive: (id: string) => void;
+  setSessionName: (id: string, name: string) => void;
   removeSession: (id: string) => void;
   sendInput: (id: string, data: string) => void;
   resize: (id: string, cols: number, rows: number) => void;
@@ -60,6 +62,10 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
   },
 
   setActive: (id) => set({ activeId: id }),
+
+  setSessionName: (id, name) => set((s) => ({
+    sessions: s.sessions.map((t) => t.id === id ? { ...t, name } : t),
+  })),
 
   removeSession: (id) => {
     const { ws, sessions, activeId } = get();

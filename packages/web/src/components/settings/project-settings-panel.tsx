@@ -354,7 +354,6 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
         {/* Header */}
         <div>
           <h3 className="text-sm font-semibold">{t('title')}</h3>
-          <p className="text-xs text-muted-foreground mt-1">{workspace.name}</p>
         </div>
 
         {/* Basic Info */}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState, useMemo } from 'react';
-import { Plus, ChevronDown, ChevronRight, X, FolderOpen, Play, Square, Pencil, Trash2, Search, Download } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, X, FolderOpen, Play, Pencil, Trash2, Search, Download } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -39,9 +39,9 @@ interface TerminalPanelProps {
   boundDirs: string[];
 }
 
-function CommandListItem({ command, running, onRun, onStop, onEdit, onDelete }: {
+function CommandListItem({ command, running, onRun, onClose, onEdit, onDelete }: {
   command: QuickCommand; running: boolean;
-  onRun: () => void; onStop: () => void; onEdit: () => void; onDelete: () => void;
+  onRun: () => void; onClose: () => void; onEdit: () => void; onDelete: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
   return (
@@ -51,10 +51,10 @@ function CommandListItem({ command, running, onRun, onStop, onEdit, onDelete }: 
       onMouseLeave={() => setHovered(false)}
     >
       <button
-        onClick={running ? onStop : onRun}
-        className={`shrink-0 p-0.5 rounded ${running ? 'text-green-500 hover:text-green-600' : 'text-muted-foreground hover:text-foreground'}`}
+        onClick={running ? onClose : onRun}
+        className={`shrink-0 p-0.5 rounded ${running ? 'text-green-500 hover:text-destructive' : 'text-muted-foreground hover:text-foreground'}`}
       >
-        {running ? <Square size={12} /> : <Play size={12} />}
+        {running ? <X size={12} /> : <Play size={12} />}
       </button>
       <span className="truncate flex-1 font-mono">{command.name}</span>
       {running && <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shrink-0" />}
@@ -70,7 +70,7 @@ function CommandListItem({ command, running, onRun, onStop, onEdit, onDelete }: 
 
 export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
   const { sessions, activeId, init, createSession, setActive, removeSession } = useTerminalStore();
-  const { commands, load: loadCommands, run, stop, remove, update, create, isRunning } = useCommandStore();
+  const { commands, load: loadCommands, run, remove, update, create, isRunning, runningMap } = useCommandStore();
   const t = useTranslations('terminal');
   const tc = useTranslations('commands');
 
@@ -170,8 +170,8 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
                 : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
             }`}
           >
-            <span className="font-mono text-[10px] opacity-60">{getShellLabel(session.shell)}</span>
-            <span>{sessions.indexOf(session) + 1}</span>
+            <span className="font-mono text-[10px] opacity-60">{session.name ?? getShellLabel(session.shell)}</span>
+            {!session.name && <span>{sessions.indexOf(session) + 1}</span>}
             <span
               onClick={(e) => { e.stopPropagation(); removeSession(session.id); }}
               className="ml-1 hover:text-destructive cursor-pointer"
@@ -265,7 +265,10 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
                           command={cmd}
                           running={isRunning(cmd.id)}
                           onRun={() => run(workspaceId, cmd.id)}
-                          onStop={() => stop(workspaceId, cmd.id)}
+                          onClose={() => {
+                            const s = runningMap[cmd.id];
+                            if (s) removeSession(s.sessionId);
+                          }}
                           onEdit={() => { setEditingCommand(cmd); setDialogOpen(true); }}
                           onDelete={() => remove(workspaceId, cmd.id)}
                         />
@@ -299,7 +302,10 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
                           command={cmd}
                           running={isRunning(cmd.id)}
                           onRun={() => run(workspaceId, cmd.id)}
-                          onStop={() => stop(workspaceId, cmd.id)}
+                          onClose={() => {
+                            const s = runningMap[cmd.id];
+                            if (s) removeSession(s.sessionId);
+                          }}
                           onEdit={() => { setEditingCommand(cmd); setDialogOpen(true); }}
                           onDelete={() => remove(workspaceId, cmd.id)}
                         />

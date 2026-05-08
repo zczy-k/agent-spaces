@@ -79,11 +79,11 @@ export const FileTree = ({
   return (
     <FileTreeContext.Provider value={{ expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete }}>
       <div
-        className={cn("rounded-lg border bg-background font-mono text-sm", className)}
+        className={cn("flex flex-col bg-background font-mono text-sm h-full", className)}
         role="tree"
         {...props}
       >
-        <div className="p-2">{children}</div>
+        <div className="p-2 flex-1 min-h-0 overflow-y-auto">{children}</div>
       </div>
     </FileTreeContext.Provider>
   )
