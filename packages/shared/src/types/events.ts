@@ -1,4 +1,5 @@
 import type { WorkflowTemplate } from './workflow.js';
+import type { CommandProcessEvent } from './command.js';
 
 export interface WSEvent<T = unknown> {
   event: string;
@@ -121,6 +122,9 @@ export type ServerEventMap = {
   'workflow.created': { workflow: WorkflowTemplate };
   'workflow.updated': { workflow: WorkflowTemplate };
   'workflow.deleted': { workflowId: string };
+  'command.started': CommandProcessEvent;
+  'command.stopped': CommandProcessEvent;
+  'command.restarted': CommandProcessEvent;
 };
 
 export type ClientEventName = keyof ClientEventMap;

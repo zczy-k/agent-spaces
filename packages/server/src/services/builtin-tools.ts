@@ -5,6 +5,8 @@ import * as issueCommentService from './issue-comment.js';
 import * as channelService from './channel.js';
 import * as taskService from './task.js';
 import * as agentService from './agent.js';
+import * as commandService from './command.js';
+import * as commandProcessManager from './command-process-manager.js';
 
 interface IssueToolActor {
   senderId: string;
@@ -220,4 +222,72 @@ function assertCurrentChannelId(channel: Channel, input: unknown): Record<string
     throw new Error(`channelId must match the current channel id: ${channel.id}`);
   }
   return data;
+}
+
+export function createCommandFunctionTools(workspaceId: string): AgentFunctionTool[] {
+  return [
+    {
+      name: 'ListQuickCommands',
+      description: 'List all quick commands for the workspace with running status.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          workspaceId: { type: 'string', description: 'The workspace ID' },
+        },
+        required: ['workspaceId'],
+        additionalProperties: false,
+      },
+      annotations: { readOnly: true, openWorld: false },
+      execute: async (input) => {
+        const data = input as { workspaceId: string };
+        if (data.workspaceId !== workspaceId) throw new Error('workspaceId mismatch');
+        const commands = commandService.listCommands(workspaceId);
+        const processes = commandProcessManager.getCommandProcesses(workspaceId);
+        const processMap = new Map(processes.map(p => [p.commandId, p]));
+        return commands.map(cmd => ({
+          ...cmd,
+          running: processMap.has(cmd.id) ? processMap.get(cmd.id)!.status : false,
+        }));
+      },
+    },
+    {
+      name: 'RunQuickCommand',
+      description: 'Run a quick command by ID. Returns sessionId.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          workspaceId: { type: 'string' },
+          commandId: { type: 'string' },
+        },
+        required: ['workspaceId', 'commandId'],
+        additionalProperties: false,
+      },
+      annotations: { destructive: false, openWorld: false },
+      execute: async (input) => {
+        const data = input as { workspaceId: string; commandId: string };
+        if (data.workspaceId !== workspaceId) throw new Error('workspaceId mismatch');
+        return { sessionId: commandProcessManager.runCommand(workspaceId, data.commandId) };
+      },
+    },
+    {
+      name: 'StopQuickCommand',
+      description: 'Stop a running quick command by ID.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          workspaceId: { type: 'string' },
+          commandId: { type: 'string' },
+        },
+        required: ['workspaceId', 'commandId'],
+        additionalProperties: false,
+      },
+      annotations: { destructive: false, openWorld: false },
+      execute: async (input) => {
+        const data = input as { workspaceId: string; commandId: string };
+        if (data.workspaceId !== workspaceId) throw new Error('workspaceId mismatch');
+        commandProcessManager.stopCommand(workspaceId, data.commandId);
+        return { stopped: true };
+      },
+    },
+  ];
 }
