@@ -510,7 +510,18 @@
       "stopSuccess": "Notification service stopped",
       "stopFailed": "Failed to stop notification service",
       "testSuccess": "Test notification sent",
-      "testFailed": "Failed to send test notification"
+      "testFailed": "Failed to send test notification",
+      "native": "System",
+      "nativeDescription": "Push issue progress and task results via native OS notifications",
+      "nativePermissionGranted": "Granted",
+      "nativePermissionDenied": "Denied",
+      "nativePermissionDefault": "Not granted",
+      "nativePermissionUnsupported": "Unsupported",
+      "nativeRequestPermission": "Grant Permission",
+      "nativeTestSuccess": "System notification sent",
+      "nativeTestFailed": "Failed to send system notification",
+      "nativePermissionGrantedToast": "Notification permission granted",
+      "nativePermissionDeniedToast": "Notification permission denied"
     },
     "wechat": {
       "robot": "WeChat iLink Robot",

@@ -13,9 +13,15 @@ import { useChannelStore } from '@/stores/channel';
 import { useIssueStore } from '@/stores/issue';
 import { useAgentStore } from '@/stores/agent';
 import { AgentDialog } from '@/components/sidebar/agent-dialog';
-import { Bell, Bot, CheckCircle2, FolderOpen, Hash, ListChecks, Loader2, QrCode, RefreshCw, Send } from 'lucide-react';
+import { Bell, Bot, CheckCircle2, FolderOpen, Hash, ListChecks, Loader2, Monitor, QrCode, RefreshCw, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import type { AgentConfig, NotificationEventKey, NotificationProvider, Workspace, WorkspaceNotificationSettings } from '@agent-spaces/shared';
+import {
+  getNotificationPermission,
+  requestNotificationPermission,
+  sendNativeNotification,
+  type NotificationPermissionStatus,
+} from '@/lib/native-notification';
 
 interface ProjectSettingsPanelProps {
   workspaceId: string;
@@ -44,6 +50,7 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
   const [wechatQR, setWeChatQR] = useState<WeChatQRCodeState>({ status: 'idle' });
   const pollingWeChatQR = useRef(false);
   const [agentDialogOpen, setAgentDialogOpen] = useState(false);
+  const [nativePermission, setNativePermission] = useState<NotificationPermissionStatus>('default');
   const [notificationDraft, setNotificationDraft] = useState<WorkspaceNotificationSettings>(defaultNotificationSettings());
 
   const channels = useChannelStore((s) => s.channels);
@@ -64,6 +71,8 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
         setSavedPrompt(promptData.prompt ?? '');
         setNotificationDraft(ws.notificationSettings ?? defaultNotificationSettings());
         setLoading(false);
+        // Check native notification permission status
+        getNotificationPermission().then(setNativePermission);
       })
       .catch(() => setLoading(false));
   }, [workspaceId, loadChannels, loadIssues]);
@@ -415,9 +424,10 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
                   value={notificationSettings.provider}
                   onValueChange={(provider) => patchNotifications({ provider: provider as NotificationProvider })}
                 >
-                  <TabsList className="grid w-full grid-cols-2">
+                  <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="lark">{t('notifications.lark')}</TabsTrigger>
                     <TabsTrigger value="wechat">{t('notifications.wechat')}</TabsTrigger>
+                    <TabsTrigger value="native">{t('notifications.native')}</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="lark" className="space-y-3 pt-2">
@@ -534,6 +544,69 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
                         disabled={testingNotifications || savingNotifications || !notificationSettings.serviceRunning}
                       >
                         {testingNotifications && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                        {t('notifications.testSend')}
+                      </Button>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="native" className="space-y-3 pt-2">
+                    <p className="text-xs text-muted-foreground">{t('notifications.nativeDescription')}</p>
+
+                    <div className="flex items-center justify-between gap-3 rounded-md border px-3 py-2.5">
+                      <div className="flex items-center gap-2 text-sm">
+                        <Monitor className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">
+                          {nativePermission === 'granted' && (
+                            <span className="flex items-center gap-1.5">
+                              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                              {t('notifications.nativePermissionGranted')}
+                            </span>
+                          )}
+                          {nativePermission === 'denied' && t('notifications.nativePermissionDenied')}
+                          {nativePermission === 'default' && t('notifications.nativePermissionDefault')}
+                          {nativePermission === 'unsupported' && t('notifications.nativePermissionUnsupported')}
+                        </span>
+                      </div>
+
+                      {nativePermission !== 'unsupported' && nativePermission !== 'granted' && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={async () => {
+                            const status = await requestNotificationPermission();
+                            setNativePermission(status);
+                            if (status === 'granted') {
+                              toast.success(t('notifications.nativePermissionGrantedToast'));
+                            } else if (status === 'denied') {
+                              toast.error(t('notifications.nativePermissionDeniedToast'));
+                            }
+                          }}
+                          disabled={nativePermission === 'denied'}
+                        >
+                          {t('notifications.nativeRequestPermission')}
+                        </Button>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={async () => {
+                          try {
+                            await sendNativeNotification(
+                              'Agent Spaces',
+                              t('notifications.nativeTestSuccess'),
+                            );
+                            toast.success(t('notifications.nativeTestSuccess'));
+                          } catch {
+                            toast.error(t('notifications.nativeTestFailed'));
+                          }
+                        }}
+                        disabled={nativePermission !== 'granted'}
+                      >
                         {t('notifications.testSend')}
                       </Button>
                     </div>

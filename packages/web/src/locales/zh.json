@@ -512,7 +512,18 @@
       "stopSuccess": "通知服务已停止",
       "stopFailed": "停止通知服务失败",
       "testSuccess": "测试通知已发送",
-      "testFailed": "发送测试通知失败"
+      "testFailed": "发送测试通知失败",
+      "native": "系统通知",
+      "nativeDescription": "通过操作系统原生通知在本地推送议题进度和任务结果",
+      "nativePermissionGranted": "已授权",
+      "nativePermissionDenied": "已拒绝",
+      "nativePermissionDefault": "未授权",
+      "nativePermissionUnsupported": "不支持",
+      "nativeRequestPermission": "授权通知",
+      "nativeTestSuccess": "系统通知已发送",
+      "nativeTestFailed": "发送系统通知失败",
+      "nativePermissionGrantedToast": "通知权限已授权",
+      "nativePermissionDeniedToast": "通知权限被拒绝"
     },
     "wechat": {
       "robot": "微信 iLink 机器人",

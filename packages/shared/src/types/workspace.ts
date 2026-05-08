@@ -16,7 +16,7 @@ export interface Workspace {
   notificationSettings?: WorkspaceNotificationSettings;
 }
 
-export type NotificationProvider = 'lark' | 'wechat';
+export type NotificationProvider = 'lark' | 'wechat' | 'native';
 
 export type NotificationEventKey = 'issue_started' | 'issue_completed' | 'issue_task_completed';
 
@@ -39,6 +39,9 @@ export interface WorkspaceNotificationSettings {
     userId?: string;
     userIds?: string[];
     getUpdatesBuf?: string;
+  };
+  native?: {
+    permissionGranted?: boolean;
   };
 }
 
