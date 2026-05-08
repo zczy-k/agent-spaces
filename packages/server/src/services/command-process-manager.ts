@@ -49,6 +49,7 @@ export function runCommand(workspaceId: string, commandId: string): string {
 
   ptyService.write(sessionId, command.command + '\n');
 
+  broadcastToWorkspace(workspaceId, 'terminal.created', { sessionId, cwd, shell });
   broadcastToWorkspace(workspaceId, 'command.started', {
     commandId,
     sessionId,
@@ -108,6 +109,7 @@ function handlePtyExit(sessionId: string, exitCode: number): void {
     }, 1000);
     restartTimers.set(commandId, t);
   } else {
+    broadcastToWorkspace(workspaceId, 'terminal.closed', { sessionId, exitCode });
     broadcastToWorkspace(workspaceId, 'command.stopped', {
       commandId,
       exitCode,
