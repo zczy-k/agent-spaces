@@ -30,7 +30,6 @@ export class ZhiPuSubscriptionProvider extends SubscriptionProviderBase {
       method: 'GET',
       headers: {
         'Accept': 'application/json, text/plain, */*',
-        'Authorization': config.cookie,
         'Set-Language': 'zh',
         ...config.headers,
       },

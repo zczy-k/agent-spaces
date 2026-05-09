@@ -605,10 +605,11 @@
       "platform": "平台",
       "label": "名称",
       "labelPlaceholder": "给这个配置取个名字（可选）",
-      "cookiePlaceholder": "粘贴 Cookie 或 Token",
       "loading": "加载中...",
       "resetAt": "重置于",
-      "headers": "请求头 (Headers)"
+      "headers": "请求头 (Headers)",
+      "addHeader": "添加",
+      "noHeaders": "暂无请求头"
     }
   },
   "editor": {

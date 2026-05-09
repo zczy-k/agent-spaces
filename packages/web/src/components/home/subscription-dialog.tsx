@@ -15,17 +15,42 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 
 const PROVIDERS: Array<{ value: SubscriptionProvider; label: string }> = [
   { value: 'zhipu', label: '智谱 (ZhiPu)' },
 ]
 
+const DEFAULT_HEADERS: Record<SubscriptionProvider, Array<{ key: string; value: string }>> = {
+  zhipu: [{ key: 'Authorization', value: '' }],
+}
+
+interface HeaderRow {
+  id: number
+  key: string
+  value: string
+}
+
 interface FormData {
   provider: SubscriptionProvider
   label: string
   cookie: string
-  headers: string
+  headers: HeaderRow[]
+}
+
+let nextHeaderId = 1
+
+function headersToRows(headers?: Record<string, string>): HeaderRow[] {
+  if (!headers || Object.keys(headers).length === 0) return []
+  return Object.entries(headers).map(([key, value]) => ({ id: nextHeaderId++, key, value }))
+}
+
+function rowsToHeaders(rows: HeaderRow[]): Record<string, string> | undefined {
+  const entries = rows.filter(r => r.key.trim()).map(r => [r.key.trim(), r.value] as [string, string])
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined
+}
+
+function getDefaultHeaders(provider: SubscriptionProvider): HeaderRow[] {
+  return DEFAULT_HEADERS[provider]?.map(h => ({ ...h, id: nextHeaderId++ })) ?? []
 }
 
 export function SubscriptionDialog() {
@@ -43,18 +68,16 @@ export function SubscriptionDialog() {
 
   const handleSave = async () => {
     if (!editing) return
-    const parsedHeaders = editing.headers.trim()
-      ? Object.fromEntries(
-          editing.headers.trim().split('\n').filter(Boolean).map(line => {
-            const idx = line.indexOf(':')
-            return idx > 0 ? [line.slice(0, idx).trim(), line.slice(idx + 1).trim()] : null
-          }).filter(Boolean) as [string, string][]
-        )
-      : undefined
+    const body = {
+      provider: editing.provider,
+      label: editing.label || editing.provider,
+      cookie: editing.cookie,
+      headers: rowsToHeaders(editing.headers),
+    }
     const res = await fetch('/api/subscriptions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...editing, headers: parsedHeaders }),
+      body: JSON.stringify(body),
     })
     if (res.ok) {
       setEditing(null)
@@ -67,6 +90,29 @@ export function SubscriptionDialog() {
     await load()
   }
 
+  const updateHeader = (id: number, field: 'key' | 'value', val: string) => {
+    if (!editing) return
+    setEditing({
+      ...editing,
+      headers: editing.headers.map(h => h.id === id ? { ...h, [field]: val } : h),
+    })
+  }
+
+  const addHeader = () => {
+    if (!editing) return
+    setEditing({ ...editing, headers: [...editing.headers, { id: nextHeaderId++, key: '', value: '' }] })
+  }
+
+  const removeHeader = (id: number) => {
+    if (!editing) return
+    setEditing({ ...editing, headers: editing.headers.filter(h => h.id !== id) })
+  }
+
+  const switchProvider = (provider: SubscriptionProvider) => {
+    if (!editing) return
+    setEditing({ ...editing, provider, headers: getDefaultHeaders(provider) })
+  }
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger nativeButton={false} render={
@@ -75,7 +121,7 @@ export function SubscriptionDialog() {
           {t('subscription.addPlatform')}
         </Button>
       } />
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="text-sm">{t('subscription.title')}</DialogTitle>
         </DialogHeader>
@@ -108,7 +154,7 @@ export function SubscriptionDialog() {
                       size="sm"
                       variant={editing.provider === p.value ? 'default' : 'secondary'}
                       className="h-7 text-xs"
-                      onClick={() => setEditing({ ...editing, provider: p.value })}
+                      onClick={() => switchProvider(p.value)}
                     >
                       {p.label}
                     </Button>
@@ -127,30 +173,43 @@ export function SubscriptionDialog() {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs">Cookie / Token</Label>
-                <Input
-                  className="h-8 text-xs font-mono"
-                  value={editing.cookie}
-                  onChange={e => setEditing({ ...editing, cookie: e.target.value })}
-                  placeholder={t('subscription.cookiePlaceholder')}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-xs">{t('subscription.headers')}</Label>
-                <Textarea
-                  className="min-h-20 text-xs font-mono resize-none"
-                  value={editing.headers}
-                  onChange={e => setEditing({ ...editing, headers: e.target.value })}
-                  placeholder={`Bigmodel-Organization: org-xxx\nBigmodel-Project: proj_xxx`}
-                />
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">{t('subscription.headers')}</Label>
+                  <Button variant="ghost" size="sm" className="h-5 text-[10px] gap-0.5 px-1" onClick={addHeader}>
+                    <Plus className="size-2.5" /> {t('subscription.addHeader')}
+                  </Button>
+                </div>
+                <div className="space-y-1.5">
+                  {editing.headers.map(h => (
+                    <div key={h.id} className="flex items-center gap-1.5">
+                      <Input
+                        className="h-7 flex-[2] text-xs font-mono"
+                        value={h.key}
+                        onChange={e => updateHeader(h.id, 'key', e.target.value)}
+                        placeholder="Header-Key"
+                      />
+                      <Input
+                        className="h-7 flex-[3] text-xs font-mono"
+                        value={h.value}
+                        onChange={e => updateHeader(h.id, 'value', e.target.value)}
+                        placeholder="value"
+                      />
+                      <Button variant="ghost" size="icon" className="size-6 shrink-0" onClick={() => removeHeader(h.id)}>
+                        <Trash2 className="size-3 text-muted-foreground" />
+                      </Button>
+                    </div>
+                  ))}
+                  {editing.headers.length === 0 && (
+                    <p className="text-[10px] text-muted-foreground text-center py-1">{t('subscription.noHeaders')}</p>
+                  )}
+                </div>
               </div>
 
               <div className="flex justify-end gap-2">
                 <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditing(null)}>
                   {t('subscription.cancel')}
                 </Button>
-                <Button size="sm" className="h-7 text-xs" onClick={handleSave} disabled={!editing.cookie}>
+                <Button size="sm" className="h-7 text-xs" onClick={handleSave} disabled={!editing.headers.some(h => h.key.trim() && h.value.trim())}>
                   {t('subscription.save')}
                 </Button>
               </div>
@@ -158,7 +217,7 @@ export function SubscriptionDialog() {
           )}
 
           {!editing && (
-            <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1" onClick={() => setEditing({ provider: 'zhipu', label: '', cookie: '', headers: '' })}>
+            <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1" onClick={() => setEditing({ provider: 'zhipu', label: '', cookie: '', headers: getDefaultHeaders('zhipu') })}>
               <Plus className="size-3" />
               {t('subscription.add')}
             </Button>

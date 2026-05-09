@@ -4,8 +4,7 @@ export interface SubscriptionConfig {
   id: string
   provider: SubscriptionProvider
   label: string
-  cookie: string
-  headers?: Record<string, string>
+  headers: Record<string, string>
   createdAt: string
   updatedAt: string
 }

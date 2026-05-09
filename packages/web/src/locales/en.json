@@ -603,10 +603,11 @@
       "platform": "Platform",
       "label": "Label",
       "labelPlaceholder": "Optional name for this config",
-      "cookiePlaceholder": "Paste Cookie or Token",
       "loading": "Loading...",
       "resetAt": "Resets at",
-      "headers": "Extra Headers"
+      "headers": "Extra Headers",
+      "addHeader": "Add",
+      "noHeaders": "No headers"
     }
   },
   "editor": {
