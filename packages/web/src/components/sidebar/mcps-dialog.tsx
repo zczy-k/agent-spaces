@@ -281,8 +281,14 @@ export function McpsDialog({ open, onOpenChange, standalone }: McpsDialogProps) 
       <DialogHeader>
         <div className="flex items-center justify-between pr-8">
           <div>
-            <DialogTitle>{t('title')}</DialogTitle>
-            <DialogDescription>{t('description')}</DialogDescription>
+            {standalone
+              ? <h2 className="text-base font-semibold">{t('title')}</h2>
+              : <DialogTitle>{t('title')}</DialogTitle>
+            }
+            {standalone
+              ? <p className="text-xs text-muted-foreground">{t('description')}</p>
+              : <DialogDescription>{t('description')}</DialogDescription>
+            }
           </div>
           <div className="flex items-center gap-2">
             <Popover open={importOpen} onOpenChange={setImportOpen}>
