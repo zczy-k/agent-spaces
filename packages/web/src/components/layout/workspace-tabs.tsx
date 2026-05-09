@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { tauriNavigate } from "@/lib/navigate";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useSidebar } from "@/components/ui/sidebar";
+import { workspaceIdFromLocation } from "@/lib/routes";
 
 function buildWorkspaceHref(id: string) {
   return `/workspace/${id}`;
@@ -19,8 +20,7 @@ export function WorkspaceTabs() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const activeId = searchParams.get("workspaceId")
-    || (pathname.startsWith("/workspace/") ? pathname.split("/workspace/")[1]?.replace(/\.html$/, "") : null);
+  const activeId = workspaceIdFromLocation(pathname, searchParams.toString());
 
   if (workspaces.length === 0) return null;
 

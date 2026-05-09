@@ -1,5 +1,6 @@
 import { getActiveServer, getActiveServerUrl } from './server';
 import { toStaticHref } from './navigate';
+import { isLoginPath } from './routes';
 
 const TOKEN_KEY = 'agent-spaces-token';
 const VERIFIED_KEY = 'agent-spaces-auth-verified';
@@ -48,7 +49,7 @@ export async function fetchWithAuth(input: string, init?: RequestInit) {
 
   if (res.status === 401 || res.status === 403) {
     removeToken();
-    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+    if (typeof window !== 'undefined' && !isLoginPath(window.location.pathname)) {
       window.location.replace(toStaticHref('/login'));
     }
   }

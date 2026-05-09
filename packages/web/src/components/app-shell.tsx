@@ -5,11 +5,12 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { DashboardSidebar } from "@/components/sidebar/app-sidebar";
 import { WorkspaceTabs } from "@/components/layout/workspace-tabs";
 import { DevInspector } from "@/components/dev-inspector";
+import { isLoginPath } from "@/lib/routes";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  if (pathname === "/login") {
+  if (isLoginPath(pathname)) {
     return <>{children}</>;
   }
 

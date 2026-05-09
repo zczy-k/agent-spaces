@@ -43,6 +43,7 @@ import { ServerSwitcher } from "@/components/sidebar/server-switcher";
 import { WorkspaceDialog } from "@/components/workspace/workspace-dialog";
 import { useWorkspaceStore } from "@/stores/workspace";
 import type { Workspace } from "@agent-spaces/shared";
+import { isWorkspacePath, workspaceIdFromLocation } from "@/lib/routes";
 
 function buildWorkspaceHref(id: string) {
   return `/workspace/${id}`;
@@ -79,9 +80,8 @@ export function DashboardSidebar() {
     },
   ];
   const isCollapsed = state === "collapsed";
-  const isWorkspace = pathname.startsWith("/workspace/");
-  const currentWorkspaceId = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "").get("workspaceId")
-    || pathname.match(/^\/workspace\/([^/]+)/)?.[1]?.replace(/\.html$/, "");
+  const isWorkspace = isWorkspacePath(pathname);
+  const currentWorkspaceId = workspaceIdFromLocation(pathname, typeof window !== "undefined" ? window.location.search : "");
   const workspaces = useWorkspaceStore((store) => store.workspaces);
   const setWorkspaces = useWorkspaceStore((store) => store.setWorkspaces);
   const upsertWorkspace = useWorkspaceStore((store) => store.upsertWorkspace);
