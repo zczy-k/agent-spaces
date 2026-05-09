@@ -123,11 +123,11 @@ export function McpsDialog({ open, onOpenChange, standalone }: McpsDialogProps) 
   }, []);
 
   useEffect(() => {
-    if (open) {
+    if (open || standalone) {
       fetchMcps();
       fetchAgents();
     }
-  }, [open, fetchMcps, fetchAgents]);
+  }, [open, standalone, fetchMcps, fetchAgents]);
 
   const handleToggleFavorite = async (mcp: McpServerInfo) => {
     try {
@@ -275,203 +275,217 @@ export function McpsDialog({ open, onOpenChange, standalone }: McpsDialogProps) 
 
   const showMainDialog = (standalone || open) && !bindDialogMcp && !editMcp;
 
-  return (
+  // Extract main body content (DialogHeader + filters + cards)
+  const mainBody = (
     <>
-      {/* Main MCPs Dialog */}
-      <Dialog open={showMainDialog} onOpenChange={onOpenChange}>
-        <DialogContent className="!w-[80vw] !max-w-[80vw] !h-[80vh] flex flex-col">
-          <DialogHeader>
-            <div className="flex items-center justify-between pr-8">
-              <div>
-                <DialogTitle>{t('title')}</DialogTitle>
-                <DialogDescription>{t('description')}</DialogDescription>
-              </div>
-              <div className="flex items-center gap-2">
-                <Popover open={importOpen} onOpenChange={setImportOpen}>
-                  <PopoverTrigger render={
-                    <Button variant="outline" size="sm">
-                      <Upload className="size-3.5 mr-1" />
-                      {t('import')}
-                    </Button>
-                  } />
-                  <PopoverContent className="w-96" align="end">
-                    <div className="space-y-3">
-                      <p className="text-sm font-medium">{t('importTitle')}</p>
-                      <Textarea
-                        value={importText}
-                        onChange={(e) => { setImportText(e.target.value); setImportError(''); }}
-                        placeholder={'{\n  "mcpServers": {\n    "server-name": {\n      "command": "npx",\n      "args": ["-y", "package"],\n      "env": {}\n    }\n  }\n}'}
-                        className="font-mono text-xs min-h-[180px] resize-none"
-                      />
-                      {importError && (
-                        <p className="text-xs text-destructive">{importError}</p>
-                      )}
-                      <Button
-                        size="sm"
-                        onClick={handleImport}
-                        disabled={!importText.trim()}
-                        className="w-full"
-                      >
-                        {t('importConfirm')}
-                      </Button>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
-          </DialogHeader>
-
-          <div className="flex flex-1 min-h-0 gap-4 pt-2">
-            {/* Left: Filters */}
-            <div className="w-44 shrink-0 space-y-3">
-              <div className="space-y-1">
-                <Button
-                  variant={filterMode === 'all' ? 'secondary' : 'ghost'}
-                  size="sm"
-                  className="w-full justify-start"
-                  onClick={() => { setFilterMode('all'); setFilterAgentId(''); }}
-                >
-                  <Plug className="size-3.5 mr-1.5" />
-                  {t('filterAll')}
+      <DialogHeader>
+        <div className="flex items-center justify-between pr-8">
+          <div>
+            <DialogTitle>{t('title')}</DialogTitle>
+            <DialogDescription>{t('description')}</DialogDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <Popover open={importOpen} onOpenChange={setImportOpen}>
+              <PopoverTrigger render={
+                <Button variant="outline" size="sm">
+                  <Upload className="size-3.5 mr-1" />
+                  {t('import')}
                 </Button>
-                <Button
-                  variant={filterMode === 'favorites' ? 'secondary' : 'ghost'}
-                  size="sm"
-                  className="w-full justify-start"
-                  onClick={() => { setFilterMode('favorites'); setFilterAgentId(''); }}
-                >
-                  <Star className="size-3.5 mr-1.5" />
-                  {t('filterFavorites')}
-                </Button>
-              </div>
-
-              {agents.length > 0 && (
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground px-2">{t('filterByAgent')}</p>
-                  <ScrollArea className="max-h-48">
-                    {agents.map((agent) => (
-                      <Button
-                        key={agent.id}
-                        variant={filterMode === 'agent' && filterAgentId === agent.id ? 'secondary' : 'ghost'}
-                        size="sm"
-                        className="w-full justify-start"
-                        onClick={() => { setFilterMode('agent'); setFilterAgentId(agent.id); }}
-                      >
-                        <AgentIcon agentId={agent.id} name={agent.name} avatarUrl={agent.avatarUrl} className="size-4 mr-1.5 rounded-full" />
-                        <span className="truncate">{agent.name}</span>
-                      </Button>
-                    ))}
-                  </ScrollArea>
+              } />
+              <PopoverContent className="w-96" align="end">
+                <div className="space-y-3">
+                  <p className="text-sm font-medium">{t('importTitle')}</p>
+                  <Textarea
+                    value={importText}
+                    onChange={(e) => { setImportText(e.target.value); setImportError(''); }}
+                    placeholder={'{\n  "mcpServers": {\n    "server-name": {\n      "command": "npx",\n      "args": ["-y", "package"],\n      "env": {}\n    }\n  }\n}'}
+                    className="font-mono text-xs min-h-[180px] resize-none"
+                  />
+                  {importError && (
+                    <p className="text-xs text-destructive">{importError}</p>
+                  )}
+                  <Button
+                    size="sm"
+                    onClick={handleImport}
+                    disabled={!importText.trim()}
+                    className="w-full"
+                  >
+                    {t('importConfirm')}
+                  </Button>
                 </div>
-              )}
-            </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        </div>
+      </DialogHeader>
 
-            {/* Right: MCP cards */}
-            <div className="flex-1 min-w-0 flex flex-col gap-3">
-              <div className="relative">
-                <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={t('search')}
-                  className="pl-8"
-                />
-              </div>
+      <div className="flex flex-1 min-h-0 gap-4 pt-2">
+        {/* Left: Filters */}
+        <div className="w-44 shrink-0 space-y-3">
+          <div className="space-y-1">
+            <Button
+              variant={filterMode === 'all' ? 'secondary' : 'ghost'}
+              size="sm"
+              className="w-full justify-start"
+              onClick={() => { setFilterMode('all'); setFilterAgentId(''); }}
+            >
+              <Plug className="size-3.5 mr-1.5" />
+              {t('filterAll')}
+            </Button>
+            <Button
+              variant={filterMode === 'favorites' ? 'secondary' : 'ghost'}
+              size="sm"
+              className="w-full justify-start"
+              onClick={() => { setFilterMode('favorites'); setFilterAgentId(''); }}
+            >
+              <Star className="size-3.5 mr-1.5" />
+              {t('filterFavorites')}
+            </Button>
+          </div>
 
-              <ScrollArea className="flex-1">
-                {loading ? (
-                  <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
-                    {tc('loading')}
-                  </div>
-                ) : filtered.length === 0 ? (
-                  <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
-                    {t('empty')}
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 gap-3 pr-2">
-                    {filtered.map((mcp) => (
-                      <div
-                        key={mcp.name}
-                        className="rounded-xl border border-border bg-background p-4 hover:bg-accent/30 transition-colors cursor-pointer"
-                        onClick={() => openEditDialog(mcp)}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <Plug className="size-3.5 text-muted-foreground" />
-                              <span className="font-medium text-sm">{mcp.name}</span>
-                              <button
-                                type="button"
-                                className="flex items-center justify-center size-5 rounded hover:bg-accent"
-                                onClick={(e) => { e.stopPropagation(); handleToggleFavorite(mcp); }}
-                              >
-                                {mcp.favorited ? (
-                                  <Star className="size-3.5 text-yellow-500 fill-yellow-500" />
-                                ) : (
-                                  <StarOff className="size-3.5 text-muted-foreground" />
-                                )}
-                              </button>
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                              {mcp.description || mcp.config.command || mcp.config.url || JSON.stringify(mcp.config).slice(0, 100)}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openBindDialog(mcp)}
-                            >
-                              <Rocket className="size-3.5 mr-1" />
-                              {t('apply')}
-                            </Button>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger
-                                render={
-                                  <Button variant="ghost" size="icon" className="size-7" />
-                                }
-                              >
-                                <MoreVertical className="size-3.5" />
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  className="text-destructive focus:text-destructive"
-                                  onClick={() => handleDeleteMcp(mcp)}
-                                >
-                                  <Trash2 className="size-3.5 mr-1.5" />
-                                  {t('delete')}
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </div>
-
-                        {/* Bound agents */}
-                        {mcp.boundAgents.length > 0 && (
-                          <div className="flex items-center gap-1.5 mt-2.5 pt-2.5 border-t border-border/50">
-                            {mcp.boundAgents.map((agent) => (
-                              <AgentIcon
-                                key={agent.id}
-                                agentId={agent.id}
-                                name={agent.name}
-                                avatarUrl={agent.avatarUrl}
-                                className="size-5 rounded-full"
-                              />
-                            ))}
-                            <span className="text-xs text-muted-foreground ml-1">
-                              {mcp.boundAgents.length}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
+          {agents.length > 0 && (
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground px-2">{t('filterByAgent')}</p>
+              <ScrollArea className="max-h-48">
+                {agents.map((agent) => (
+                  <Button
+                    key={agent.id}
+                    variant={filterMode === 'agent' && filterAgentId === agent.id ? 'secondary' : 'ghost'}
+                    size="sm"
+                    className="w-full justify-start"
+                    onClick={() => { setFilterMode('agent'); setFilterAgentId(agent.id); }}
+                  >
+                    <AgentIcon agentId={agent.id} name={agent.name} avatarUrl={agent.avatarUrl} className="size-4 mr-1.5 rounded-full" />
+                    <span className="truncate">{agent.name}</span>
+                  </Button>
+                ))}
               </ScrollArea>
             </div>
+          )}
+        </div>
+
+        {/* Right: MCP cards */}
+        <div className="flex-1 min-w-0 flex flex-col gap-3">
+          <div className="relative">
+            <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t('search')}
+              className="pl-8"
+            />
           </div>
-        </DialogContent>
-      </Dialog>
+
+          <ScrollArea className="flex-1">
+            {loading ? (
+              <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
+                {tc('loading')}
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
+                {t('empty')}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-3 pr-2">
+                {filtered.map((mcp) => (
+                  <div
+                    key={mcp.name}
+                    className="rounded-xl border border-border bg-background p-4 hover:bg-accent/30 transition-colors cursor-pointer"
+                    onClick={() => openEditDialog(mcp)}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <Plug className="size-3.5 text-muted-foreground" />
+                          <span className="font-medium text-sm">{mcp.name}</span>
+                          <button
+                            type="button"
+                            className="flex items-center justify-center size-5 rounded hover:bg-accent"
+                            onClick={(e) => { e.stopPropagation(); handleToggleFavorite(mcp); }}
+                          >
+                            {mcp.favorited ? (
+                              <Star className="size-3.5 text-yellow-500 fill-yellow-500" />
+                            ) : (
+                              <StarOff className="size-3.5 text-muted-foreground" />
+                            )}
+                          </button>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                          {mcp.description || mcp.config.command || mcp.config.url || JSON.stringify(mcp.config).slice(0, 100)}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openBindDialog(mcp)}
+                        >
+                          <Rocket className="size-3.5 mr-1" />
+                          {t('apply')}
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            render={
+                              <Button variant="ghost" size="icon" className="size-7" />
+                            }
+                          >
+                            <MoreVertical className="size-3.5" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => handleDeleteMcp(mcp)}
+                            >
+                              <Trash2 className="size-3.5 mr-1.5" />
+                              {t('delete')}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+
+                    {/* Bound agents */}
+                    {mcp.boundAgents.length > 0 && (
+                      <div className="flex items-center gap-1.5 mt-2.5 pt-2.5 border-t border-border/50">
+                        {mcp.boundAgents.map((agent) => (
+                          <AgentIcon
+                            key={agent.id}
+                            agentId={agent.id}
+                            name={agent.name}
+                            avatarUrl={agent.avatarUrl}
+                            className="size-5 rounded-full"
+                          />
+                        ))}
+                        <span className="text-xs text-muted-foreground ml-1">
+                          {mcp.boundAgents.length}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </div>
+      </div>
+    </>
+  );
+
+  return (
+    <>
+      {/* Main MCPs - standalone or dialog */}
+      {standalone && showMainDialog && (
+        <div className="h-full flex flex-col">
+          {mainBody}
+        </div>
+      )}
+      {!standalone && (
+        <Dialog open={showMainDialog} onOpenChange={onOpenChange}>
+          <DialogContent className="!w-[80vw] !max-w-[80vw] !h-[80vh] flex flex-col">
+            {mainBody}
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Edit MCP Dialog */}
       <Dialog open={!!editMcp} onOpenChange={(v) => { if (!v) setEditMcp(null); }}>
