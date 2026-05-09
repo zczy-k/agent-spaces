@@ -59,12 +59,12 @@ export function WorkspacesPage({ initialWorkspaces }: { initialWorkspaces: Works
                 onClick={() => tauriNavigate(router, `/workspace/${ws.id}`)}
                 className='group rounded-2xl border border-border bg-card p-5 hover:shadow-card-hover transition-all duration-200 block'
               >
-                <div className='flex items-start justify-between'>
-                  <div className='w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center'>
+                <div className='flex items-center gap-3'>
+                  <div className='w-10 h-10 shrink-0 rounded-xl bg-primary/10 flex items-center justify-center'>
                     <FolderOpen className='size-5 text-primary' />
                   </div>
+                  <h3 className='font-heading text-lg font-semibold truncate'>{ws.name}</h3>
                 </div>
-                <h3 className='font-heading text-lg font-semibold mt-3'>{ws.name}</h3>
                 <p className='text-sm text-muted-foreground mt-1 truncate'>
                   {ws.boundDirs.join(', ')}
                 </p>
