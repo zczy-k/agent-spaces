@@ -39,6 +39,7 @@ import { McpsDialog } from "@/components/sidebar/mcps-dialog";
 import type { Route } from "./nav-main";
 import DashboardNavigation from "@/components/sidebar/nav-main";
 import { NotificationsPopover } from "@/components/sidebar/nav-notifications";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { ServerSwitcher } from "@/components/sidebar/server-switcher";
 import { WorkspaceDialog } from "@/components/workspace/workspace-dialog";
 import { useWorkspaceStore } from "@/stores/workspace";
@@ -81,6 +82,7 @@ export function DashboardSidebar() {
   ];
   const isCollapsed = state === "collapsed";
   const isWorkspace = isWorkspacePath(pathname);
+  const isMobile = useIsMobile();
   const currentWorkspaceId = workspaceIdFromLocation(pathname, typeof window !== "undefined" ? window.location.search : "");
   const workspaces = useWorkspaceStore((store) => store.workspaces);
   const setWorkspaces = useWorkspaceStore((store) => store.setWorkspaces);
@@ -198,14 +200,23 @@ export function DashboardSidebar() {
       title: ts('nav.settings'),
       icon: <Settings className="size-4" />,
       link: "#",
-      subs: [
-        { title: ts('nav.general'), link: "#", onClick: () => setSettingsDialogOpen(true) },
-        { title: ts('nav.agents'), link: "#", icon: <Bot className="size-3.5" />, onClick: () => setAgentDialogOpen(true) },
-        { title: ts('nav.skills'), link: "#", icon: <Sparkles className="size-3.5" />, onClick: () => setSkillsDialogOpen(true) },
-        { title: ts('nav.mcps'), link: "#", icon: <Plug className="size-3.5" />, onClick: () => setMcpsDialogOpen(true) },
-        { title: ts('nav.models'), link: "#", icon: <Brain className="size-3.5" />, onClick: () => { setModelsDialogProvider(undefined); setModelsDialogOpen(true); } },
-        { title: ts('nav.providers'), link: "#", icon: <Server className="size-3.5" />, onClick: () => setProvidersDialogOpen(true) },
-      ],
+      subs: isMobile
+        ? [
+            { title: ts('nav.general'), link: "/settings" },
+            { title: ts('nav.agents'), link: "/settings/agents", icon: <Bot className="size-3.5" /> },
+            { title: ts('nav.skills'), link: "/settings/skills", icon: <Sparkles className="size-3.5" /> },
+            { title: ts('nav.mcps'), link: "/settings/mcps", icon: <Plug className="size-3.5" /> },
+            { title: ts('nav.models'), link: "/settings/models", icon: <Brain className="size-3.5" /> },
+            { title: ts('nav.providers'), link: "/settings/providers", icon: <Server className="size-3.5" /> },
+          ]
+        : [
+            { title: ts('nav.general'), link: "#", onClick: () => setSettingsDialogOpen(true) },
+            { title: ts('nav.agents'), link: "#", icon: <Bot className="size-3.5" />, onClick: () => setAgentDialogOpen(true) },
+            { title: ts('nav.skills'), link: "#", icon: <Sparkles className="size-3.5" />, onClick: () => setSkillsDialogOpen(true) },
+            { title: ts('nav.mcps'), link: "#", icon: <Plug className="size-3.5" />, onClick: () => setMcpsDialogOpen(true) },
+            { title: ts('nav.models'), link: "#", icon: <Brain className="size-3.5" />, onClick: () => { setModelsDialogProvider(undefined); setModelsDialogOpen(true); } },
+            { title: ts('nav.providers'), link: "#", icon: <Server className="size-3.5" />, onClick: () => setProvidersDialogOpen(true) },
+          ],
     },
   ];
 

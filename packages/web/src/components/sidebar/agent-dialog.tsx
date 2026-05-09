@@ -48,11 +48,13 @@ export function AgentDialog({
   onOpenChange,
   roleFilter,
   initialAgentId,
+  standalone,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   roleFilter?: AgentRole | AgentRole[];
   initialAgentId?: string;
+  standalone?: boolean;
 }) {
   const t = useTranslations('agent');
   const tc = useTranslations('common');
@@ -276,10 +278,10 @@ export function AgentDialog({
     });
   };
 
-  return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) handleBack(); onOpenChange(o); }}>
-      <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col p-0 gap-0">
-        {/* Header */}
+  const content = (
+    <>
+      {/* Header */}
+      {!standalone && (
         <div className="flex items-center gap-3 border-b px-5 pr-12 py-4">
           {selectedAgent ? (
             <Button variant="ghost" size="icon-sm" onClick={handleBack}>
@@ -337,50 +339,66 @@ export function AgentDialog({
             </DropdownMenu>
           )}
         </div>
+      )}
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto">
-          {error && (
-            <div className="mx-5 mt-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-              {error}
-            </div>
-          )}
-          {loading ? (
-            <div className="py-12 text-center text-sm text-muted-foreground">{t('dialog.loading')}</div>
-          ) : !selectedAgent ? (
-            <AgentList
-              agents={visibleAgents}
-              onSelect={handleSelectAgent}
-              onDelete={handleDeleteAgent}
-              onToggleEnabled={handleToggleEnabled}
-            />
-          ) : editDraft ? (
-            <AgentDetail
-              key={editDraft.id}
-              agent={editDraft}
-              roleOptions={addRoleOptions}
-              testing={testing}
-              testResult={testResult}
-              onChange={updateAgentDraft}
-              onMcpChange={updateMcpConfig}
-              onAddSkillFiles={addSkillFiles}
-              onRemoveSkill={removeSkill}
-              onTestConnection={handleTestConnection}
-            />
-          ) : null}
-        </div>
-
-        {/* Footer */}
-        {selectedAgent && (
-          <div className="flex justify-end gap-2 border-t px-5 py-3">
-            <Button variant="outline" size="sm" onClick={handleBack} disabled={saving}>
-              {tc('cancel')}
-            </Button>
-            <Button size="sm" onClick={handleSave} disabled={saving}>
-              {saving ? tc('saving') : tc('save')}
-            </Button>
+      {/* Body */}
+      <div className={standalone ? "flex-1 overflow-y-auto" : "flex-1 overflow-y-auto"}>
+        {error && (
+          <div className="mx-5 mt-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            {error}
           </div>
         )}
+        {loading ? (
+          <div className="py-12 text-center text-sm text-muted-foreground">{t('dialog.loading')}</div>
+        ) : !selectedAgent ? (
+          <AgentList
+            agents={visibleAgents}
+            onSelect={handleSelectAgent}
+            onDelete={handleDeleteAgent}
+            onToggleEnabled={handleToggleEnabled}
+          />
+        ) : editDraft ? (
+          <AgentDetail
+            key={editDraft.id}
+            agent={editDraft}
+            roleOptions={addRoleOptions}
+            testing={testing}
+            testResult={testResult}
+            onChange={updateAgentDraft}
+            onMcpChange={updateMcpConfig}
+            onAddSkillFiles={addSkillFiles}
+            onRemoveSkill={removeSkill}
+            onTestConnection={handleTestConnection}
+          />
+        ) : null}
+      </div>
+
+      {/* Footer */}
+      {selectedAgent && (
+        <div className="flex justify-end gap-2 border-t px-5 py-3">
+          <Button variant="outline" size="sm" onClick={handleBack} disabled={saving}>
+            {tc('cancel')}
+          </Button>
+          <Button size="sm" onClick={handleSave} disabled={saving}>
+            {saving ? tc('saving') : tc('save')}
+          </Button>
+        </div>
+      )}
+    </>
+  );
+
+  if (standalone) {
+    return (
+      <div className="h-full flex flex-col">
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) handleBack(); onOpenChange(o); }}>
+      <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col p-0 gap-0">
+        {content}
       </DialogContent>
     </Dialog>
   );

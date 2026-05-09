@@ -73,11 +73,12 @@ interface AgentCandidate {
 interface McpsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  standalone?: boolean;
 }
 
 type FilterMode = 'all' | 'favorites' | 'agent';
 
-export function McpsDialog({ open, onOpenChange }: McpsDialogProps) {
+export function McpsDialog({ open, onOpenChange, standalone }: McpsDialogProps) {
   const t = useTranslations('mcps');
   const tc = useTranslations('common');
 
@@ -272,7 +273,7 @@ export function McpsDialog({ open, onOpenChange }: McpsDialogProps) {
     return true;
   });
 
-  const showMainDialog = open && !bindDialogMcp && !editMcp;
+  const showMainDialog = (standalone || open) && !bindDialogMcp && !editMcp;
 
   return (
     <>

@@ -68,6 +68,7 @@ interface AgentCandidate {
 interface SkillsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  standalone?: boolean;
 }
 
 type FilterMode = 'all' | 'favorites' | 'agent';
@@ -80,7 +81,7 @@ interface SkillSyncItem {
   agentMtime: string;
 }
 
-export function SkillsDialog({ open, onOpenChange }: SkillsDialogProps) {
+export function SkillsDialog({ open, onOpenChange, standalone }: SkillsDialogProps) {
   const t = useTranslations('skills');
   const tc = useTranslations('common');
 
@@ -297,7 +298,7 @@ export function SkillsDialog({ open, onOpenChange }: SkillsDialogProps) {
     return true;
   });
 
-  const showMainDialog = open && !bindDialogSkill && !editSkill;
+  const showMainDialog = (standalone || open) && !bindDialogSkill && !editSkill;
 
   return (
     <>
