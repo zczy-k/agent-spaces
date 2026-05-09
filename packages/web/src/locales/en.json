@@ -608,7 +608,8 @@
       "headers": "Extra Headers",
       "addHeader": "Add",
       "noHeaders": "No headers",
-      "cookiePlaceholder": "Paste browser Cookie"
+      "cookiePlaceholder": "Paste browser Cookie",
+      "editTitle": "Edit Subscription"
     }
   },
   "editor": {

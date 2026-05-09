@@ -23,15 +23,24 @@ export class MiniMaxSubscriptionProvider extends SubscriptionProviderBase {
   readonly provider = 'minimax' as const
 
   async fetchQuota(config: SubscriptionConfig): Promise<SubscriptionQuota> {
+    // Auto-extract X-Group-Id from cookie if not in headers
+    const groupId = config.headers?.['X-Group-Id'] ?? config.headers?.['x-group-id']
+      ?? this.extractCookieValue(config.cookie, 'minimax_group_id_v2')
+
     const url = 'https://www.minimaxi.com/v1/api/openplatform/coding_plan/remains'
     const res = await fetch(url, {
       method: 'GET',
       headers: {
         'Accept': 'application/json, text/plain, */*',
+        'Referer': 'https://platform.minimaxi.com/',
+        'Origin': 'https://platform.minimaxi.com',
+        ...(groupId ? { 'X-Group-Id': groupId } : {}),
         ...(config.cookie ? { 'Cookie': config.cookie } : {}),
         ...(config.headers ?? {}),
       },
     })
+
+    console.log(`[subscription:minimax] quota response: ${res.status} ${res.statusText}`)
 
     if (!res.ok) {
       throw new Error(`MiniMax API returned ${res.status}: ${res.statusText}`)
@@ -66,5 +75,11 @@ export class MiniMaxSubscriptionProvider extends SubscriptionProviderBase {
       limits,
       fetchedAt: new Date().toISOString(),
     }
+  }
+
+  private extractCookieValue(cookie: string | undefined, name: string): string | undefined {
+    if (!cookie) return undefined
+    const match = cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`))
+    return match?.[1]
   }
 }

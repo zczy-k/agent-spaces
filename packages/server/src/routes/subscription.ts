@@ -20,6 +20,7 @@ router.get('/:id/quota', async (req: Request<{ id: string }>, res: Response) => 
     const quota = await fetchQuota(config)
     res.json(quota)
   } catch (err: any) {
+    console.error(`[subscription] fetchQuota failed for ${config.provider}/${config.id}:`, err.message ?? err)
     res.status(502).json({ error: err.message ?? 'Failed to fetch quota' })
   }
 })

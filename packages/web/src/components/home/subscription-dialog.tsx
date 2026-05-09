@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label"
 const PROVIDERS: Array<{ value: SubscriptionProvider; label: string; authMode: 'headers' | 'cookie' }> = [
   { value: 'zhipu', label: '智谱 (ZhiPu)', authMode: 'headers' },
   { value: 'minimax', label: 'MiniMax', authMode: 'cookie' },
+  { value: 'aicode', label: 'AI Code', authMode: 'cookie' },
 ]
 
 const DEFAULT_HEADERS: Record<string, Array<{ key: string; value: string }>> = {
@@ -32,6 +33,7 @@ interface HeaderRow {
 }
 
 interface FormData {
+  id?: string
   provider: SubscriptionProvider
   label: string
   cookie: string
@@ -39,6 +41,11 @@ interface FormData {
 }
 
 let nextHeaderId = 1
+
+function headersToRows(headers?: Record<string, string>): HeaderRow[] {
+  if (!headers || Object.keys(headers).length === 0) return []
+  return Object.entries(headers).map(([key, value]) => ({ id: nextHeaderId++, key, value }))
+}
 
 function rowsToHeaders(rows: HeaderRow[]): Record<string, string> | undefined {
   const entries = rows.filter(r => r.key.trim()).map(r => [r.key.trim(), r.value] as [string, string])
@@ -53,7 +60,23 @@ function getAuthMode(provider: SubscriptionProvider): 'headers' | 'cookie' {
   return PROVIDERS.find(p => p.value === provider)?.authMode ?? 'headers'
 }
 
-export function SubscriptionDialog({ onChange }: { onChange?: () => void }) {
+function configToFormData(config: SubscriptionConfig): FormData {
+  return {
+    id: config.id,
+    provider: config.provider,
+    label: config.label,
+    cookie: config.cookie ?? '',
+    headers: headersToRows(config.headers),
+  }
+}
+
+interface SubscriptionDialogProps {
+  onChange?: () => void
+  editConfig?: SubscriptionConfig | null
+  onEditClear?: () => void
+}
+
+export function SubscriptionDialog({ onChange, editConfig, onEditClear }: SubscriptionDialogProps) {
   const t = useTranslations('home')
   const [open, setOpen] = useState(false)
   const [items, setItems] = useState<SubscriptionConfig[]>([])
@@ -64,7 +87,22 @@ export function SubscriptionDialog({ onChange }: { onChange?: () => void }) {
     if (res.ok) setItems(await res.json())
   }, [])
 
+  useEffect(() => {
+    if (editConfig) {
+      setEditing(configToFormData(editConfig))
+      setOpen(true)
+    }
+  }, [editConfig])
+
   useEffect(() => { if (open) load() }, [open, load])
+
+  const handleOpenChange = (val: boolean) => {
+    setOpen(val)
+    if (!val) {
+      setEditing(null)
+      onEditClear?.()
+    }
+  }
 
   const handleSave = async () => {
     if (!editing) return
@@ -78,8 +116,14 @@ export function SubscriptionDialog({ onChange }: { onChange?: () => void }) {
     } else {
       body.headers = rowsToHeaders(editing.headers)
     }
-    const res = await fetch('/api/subscriptions', {
-      method: 'POST',
+
+    const url = editing.id
+      ? `/api/subscriptions/${editing.id}`
+      : '/api/subscriptions'
+    const method = editing.id ? 'PUT' : 'POST'
+
+    const res = await fetch(url, {
+      method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
@@ -119,6 +163,10 @@ export function SubscriptionDialog({ onChange }: { onChange?: () => void }) {
     setEditing({ ...editing, provider, cookie: '', headers: getDefaultHeaders(provider) })
   }
 
+  const startCreate = (provider: SubscriptionProvider = 'zhipu') => {
+    setEditing({ provider, label: '', cookie: '', headers: getDefaultHeaders(provider) })
+  }
+
   const mode = editing ? getAuthMode(editing.provider) : null
   const canSave = editing && (
     mode === 'cookie' ? !!editing.cookie.trim()
@@ -126,7 +174,7 @@ export function SubscriptionDialog({ onChange }: { onChange?: () => void }) {
   )
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger nativeButton render={
         <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs">
           <Plus className="size-3.5" />
@@ -135,23 +183,30 @@ export function SubscriptionDialog({ onChange }: { onChange?: () => void }) {
       } />
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-sm">{t('subscription.title')}</DialogTitle>
+          <DialogTitle className="text-sm">
+            {editing?.id ? t('subscription.editTitle') : t('subscription.title')}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-3">
-          {items.map(item => (
+          {!editing && items.map(item => (
             <div key={item.id} className="flex items-center justify-between rounded-md border px-3 py-2">
               <div className="flex items-center gap-2 min-w-0">
                 <span className="text-xs font-medium">{item.label}</span>
                 <span className="text-[10px] text-muted-foreground capitalize">({item.provider})</span>
               </div>
-              <Button variant="ghost" size="icon" className="size-6" onClick={() => handleDelete(item.id)}>
-                <Trash2 className="size-3 text-muted-foreground" />
-              </Button>
+              <div className="flex items-center gap-0.5">
+                <Button variant="ghost" size="icon" className="size-6" onClick={() => setEditing(configToFormData(item))}>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="size-3 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                </Button>
+                <Button variant="ghost" size="icon" className="size-6" onClick={() => handleDelete(item.id)}>
+                  <Trash2 className="size-3 text-muted-foreground" />
+                </Button>
+              </div>
             </div>
           ))}
 
-          {items.length === 0 && !editing && (
+          {!editing && items.length === 0 && (
             <p className="text-center text-xs text-muted-foreground py-2">{t('subscription.empty')}</p>
           )}
 
@@ -243,7 +298,7 @@ export function SubscriptionDialog({ onChange }: { onChange?: () => void }) {
           )}
 
           {!editing && (
-            <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1" onClick={() => setEditing({ provider: 'zhipu', label: '', cookie: '', headers: getDefaultHeaders('zhipu') })}>
+            <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1" onClick={() => startCreate()}>
               <Plus className="size-3" />
               {t('subscription.add')}
             </Button>
