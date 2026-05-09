@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Settings2 } from "lucide-react";
 import { setToken } from "@/lib/auth";
+import { tauriNavigate } from "@/lib/navigate";
 import { type ServerConfig, loadServers, saveServers, loadActiveId, saveActiveId, setActiveServerCookie } from "@/lib/server";
 import { ServerManagerDialog } from "@/components/sidebar/server-manager-dialog";
 
@@ -39,7 +40,7 @@ export default function LoginPage() {
       }
 
       setToken(data.token);
-      router.push("/");
+      tauriNavigate(router, "/");
     } catch {
       setError(t('networkError'));
     } finally {

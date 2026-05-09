@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "node server.mjs",
     "build": "next build",
+    "build:static": "cross-env NEXT_STATIC_EXPORT=1 next build",
     "start": "next start",
     "lint": "eslint",
     "postinstall": "node -e \"const fs=require('fs'),p=require('path');const src=p.join(__dirname,'node_modules/monaco-editor/min/vs');const dst=p.join(__dirname,'public/monaco/vs');if(fs.existsSync(src)){fs.rmSync(dst,{recursive:true,force:true});fs.cpSync(src,dst,{recursive:true})}\""
@@ -61,6 +62,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cross-env": "^10.1.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "react-dev-inspector": "^2.0.1",

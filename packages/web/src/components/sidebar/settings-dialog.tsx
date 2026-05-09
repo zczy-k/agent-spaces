@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { tauriNavigate } from "@/lib/navigate";
 import { useTheme } from "@/components/theme-provider";
 import { useLocale, type Locale } from "@/components/locale-provider";
 import {
@@ -83,7 +84,7 @@ export function SettingsDialog({
       if (res.ok) {
         setSecretSaved(true);
         removeToken();
-        setTimeout(() => router.push("/login"), 800);
+        setTimeout(() => tauriNavigate(router, "/login"), 800);
       }
     } catch { /* ignore */ }
   };

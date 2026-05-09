@@ -4,6 +4,7 @@ import "@/lib/api-polyfill";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { isAuthenticated, getToken } from "@/lib/auth";
+import { tauriNavigate } from "@/lib/navigate";
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -17,7 +18,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }
 
     if (!isAuthenticated()) {
-      router.replace("/login");
+      tauriNavigate(router, "/login", true);
       return;
     }
 
@@ -30,10 +31,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         if (data.authenticated) {
           setChecked(true);
         } else {
-          router.replace("/login");
+          tauriNavigate(router, "/login", true);
         }
       })
-      .catch(() => router.replace("/login"));
+      .catch(() => tauriNavigate(router, "/login", true));
   }, [pathname, router]);
 
   if (pathname === "/login") return <>{children}</>;

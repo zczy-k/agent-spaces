@@ -3,6 +3,7 @@
 import { useRouter, usePathname } from "next/navigation";
 import { PanelLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { tauriNavigate } from "@/lib/navigate";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useSidebar } from "@/components/ui/sidebar";
 
@@ -30,7 +31,7 @@ export function WorkspaceTabs() {
         {workspaces.map((ws) => (
           <button
             key={ws.id}
-            onClick={() => router.push(`/workspace/${ws.id}`)}
+            onClick={() => tauriNavigate(router, `/workspace/${ws.id}`)}
             className={cn(
               "flex items-center gap-1.5 px-3.5 h-7 text-[13px] font-medium rounded-lg transition-all whitespace-nowrap",
               activeId === ws.id

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { tauriNavigate } from "@/lib/navigate";
 import {
   Sidebar,
   SidebarContent,
@@ -126,7 +127,7 @@ export function DashboardSidebar() {
     removeWorkspace(ws.id);
     if (currentWorkspaceId === ws.id) {
       const remaining = workspaces.filter((w) => w.id !== ws.id);
-      router.push(remaining.length > 0 ? `/workspace/${remaining[0].id}` : "/");
+      tauriNavigate(router, remaining.length > 0 ? `/workspace/${remaining[0].id}` : "/");
     }
   };
 
