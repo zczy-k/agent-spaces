@@ -6,7 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
-import { Info, Users, GitBranch, Trash2, UserPlus } from 'lucide-react';
+import { Info, Users, GitBranch, Trash2, UserPlus, CircleDot } from 'lucide-react';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { AddMemberDialog } from '@/components/chat/add-member-dialog';
 import { getAgentDisplayName, getMemberDisplayName } from '@/lib/agent-members';
@@ -56,6 +56,10 @@ export function IssueDetailInfoPanel({
           <SheetTitle>{t('detail.tabInfo')}</SheetTitle>
           <SheetDescription>{issue.title}</SheetDescription>
         </SheetHeader>
+        <div className="flex items-center gap-2 px-4 h-12 border-b shrink-0">
+          <CircleDot className="size-4 text-muted-foreground shrink-0" />
+          <span className="text-sm font-medium truncate">{issue.title}</span>
+        </div>
         <Tabs defaultValue="info" className="flex flex-col flex-1 min-h-0">
           <TabsList className="w-full rounded-none border-b bg-transparent h-9 p-0 shrink-0">
             <TabsTrigger value="info" className="flex-1 gap-1.5 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">

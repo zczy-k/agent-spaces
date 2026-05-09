@@ -64,6 +64,14 @@ export function ChannelInfoPanel({ workspaceId, channel, agents, allChannels }: 
 
   return (
     <div className="flex flex-col h-full">
+      <div className="flex items-center justify-between px-4 h-12 border-b shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
+          {channel.type === 'agent' ? <Bot className="size-4 text-muted-foreground shrink-0" /> :
+           channel.type === 'issue' ? <AlertCircle className="size-4 text-muted-foreground shrink-0" /> :
+           <Hash className="size-4 text-muted-foreground shrink-0" />}
+          <span className="text-sm font-medium truncate">#{channel.name}</span>
+        </div>
+      </div>
       <Tabs defaultValue="info" className="flex flex-col flex-1 min-h-0">
         <TabsList className="w-full rounded-none border-b bg-transparent h-9 p-0 shrink-0">
           <TabsTrigger value="info" className="flex-1 gap-1.5 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
