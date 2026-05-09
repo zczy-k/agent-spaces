@@ -157,7 +157,7 @@ export function WorkflowsPage() {
 
   return (
     <div className="p-6 h-full overflow-y-auto">
-      <div className="flex items-center justify-between mb-6">
+      <div className="hidden md:flex items-center justify-between mb-6">
         <div>
           <h2 className="text-lg font-semibold">工作流</h2>
           <p className="text-sm text-muted-foreground">

@@ -5,7 +5,7 @@ import {
   ReactFlow,
   Background,
   Controls,
-  MiniMap,
+
   applyNodeChanges,
   applyEdgeChanges,
   addEdge,
@@ -121,7 +121,6 @@ export function WorkflowCanvas({ nodes, edges, onNodesChange, onEdgesChange, onC
       >
         <Background variant={BackgroundVariant.Dots} gap={15} size={1} />
         <Controls />
-        <MiniMap nodeStrokeWidth={3} pannable zoomable className="!bg-muted" />
       </ReactFlow>
     </div>
   );

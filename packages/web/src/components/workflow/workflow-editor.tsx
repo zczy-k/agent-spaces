@@ -19,6 +19,7 @@ import { WorkflowCanvas, getAutoLayoutedNodes } from './workflow-canvas';
 import { WorkflowAgentPalette } from './workflow-agent-palette';
 import { WorkflowToolbar } from './workflow-toolbar';
 import { Input } from '@/components/ui/input';
+import { ArrowLeft } from 'lucide-react';
 import { authHeaders } from '@/lib/auth';
 
 type AgentNodeData = WorkflowNode['data'];
@@ -171,12 +172,12 @@ function WorkflowEditorInner({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-3 border-b px-4 py-2">
+      <div className="hidden md:flex items-center gap-3 border-b px-4 py-2">
         <button
           onClick={onBack}
-          className="text-sm text-muted-foreground hover:text-foreground"
+          className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent"
         >
-          &larr; Back
+          <ArrowLeft className="size-4" />
         </button>
         <Input
           value={name}
