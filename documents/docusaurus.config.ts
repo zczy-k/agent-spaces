@@ -57,7 +57,7 @@ const config: Config = {
       title: 'Agent Spaces',
       logo: {
         alt: 'Agent Spaces Logo',
-        src: 'img/logo.svg',
+        src: 'img/logo.png',
       },
       items: [
         {

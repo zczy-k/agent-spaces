@@ -1,0 +1,84 @@
+---
+sidebar_position: 8
+---
+
+# Workflow 编辑器
+
+Workflow 是 Agent Spaces 的核心编排机制。通过可视化 DAG 编辑器，你可以拖拽 Agent 节点、连线定义执行依赖，灵活编排 Agent 的执行流程。
+
+## 什么是 Workflow？
+
+Workflow 是一个有向无环图（DAG）模板，定义了多个 Agent 之间的执行顺序和依赖关系。每个节点绑定一个具体的 Agent 预设，节点之间的连线定义了执行依赖——上游节点完成后，下游节点才会开始执行。
+
+## Workflow vs 硬编码 Pipeline
+
+早期版本的 Agent Spaces 使用硬编码的 pipeline（Scheduler → Planner → Executor → Reviewer → Commit），Workflow 系统替代了这种固定流程：
+
+- **灵活编排** — 自由定义任意数量的 Agent 节点和依赖关系
+- **可视化编辑** — 所见即所得的 DAG 编辑器
+- **复用模板** — 同一个 Workflow 模板可以用于多个 Issue
+- **并行执行** — 无依赖的节点自动并行执行
+
+## 创建 Workflow 模板
+
+### 1. 进入 Workflow 页面
+
+在左侧导航点击「Workflows」，进入 Workflow 列表页面。
+
+### 2. 创建新模板
+
+点击「创建 Workflow」按钮，进入 DAG 编辑器。
+
+### 3. 添加 Agent 节点
+
+从左侧 Agent 面板拖拽 Agent 预设到画布中。每个节点代表一个 Agent 执行单元。
+
+### 4. 连线定义依赖
+
+从一个节点的输出端口拖拽到另一个节点的输入端口，建立执行依赖关系。系统使用 @dagrejs/dagre 自动布局，保持图形清晰。
+
+### 5. 保存模板
+
+为 Workflow 设置名称和描述，保存后即可在创建 Issue 时选择使用。
+
+## DAG 校验
+
+保存 Workflow 时，系统会自动校验：
+
+- **环检测** — DAG 不能包含环路
+- **重复边** — 两个节点之间不能有多条边
+- **自环** — 节点不能连接到自身
+- **运行时校验** — 节点绑定的 Agent 预设必须存在且配置正确
+
+## Issue 与 Workflow
+
+创建 Issue 时，可以选择一个 Workflow 模板。Issue 启动自动化后：
+
+1. 系统加载选定的 Workflow 模板
+2. 将 Workflow 中的节点映射为可执行的 Task
+3. 按依赖关系拓扑排序调度执行
+4. 无依赖的 Task 并行执行
+5. 所有 Task 完成后，Issue 标记为 completed
+
+如果没有选择 Workflow 模板，Issue 将无法自动执行（进入 error 状态）。
+
+## 迷你预览
+
+在 Issue 列表中，绑定了 Workflow 的 Issue 会显示迷你 DAG 预览，直观展示执行进度。
+
+## Workflow 列表管理
+
+Workflow 列表页面展示所有已创建的模板：
+
+- 查看模板名称、描述、节点数量
+- 编辑已有模板
+- 删除不需要的模板
+- 查看使用该模板的 Issue 数量
+
+## WebSocket 事件
+
+Workflow 的变更通过 WebSocket 实时通知前端：
+
+- `workflow.created` — 新模板创建
+- `workflow.updated` — 模板更新
+- `workflow.deleted` — 模板删除

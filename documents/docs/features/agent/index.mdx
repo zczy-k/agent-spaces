@@ -4,49 +4,45 @@ sidebar_position: 7
 
 # Agent 系统
 
-Agent 是 Agent Spaces 的核心执行单元。不同的 Agent 角色各司其职，协同完成开发任务。
+Agent 是 Agent Spaces 的核心执行单元。不同的 Agent 角色各司其职，通过 Workflow 编排协同完成开发任务。
 
 ## Agent 角色
 
-系统定义了六种 Agent 角色：
+系统定义了四种内置 Agent 角色，并支持自定义角色：
 
-### 调度者（Scheduler）
+### agent
 
-任务分发中心。接收新议题后，调度者判断需要哪些角色参与，并按顺序唤醒对应的 Agent。
+通用执行者。接收任务后阅读代码、搜索上下文、修改文件、运行测试，完成实际的编码工作。这是最常用的角色。
 
-### 策划者（Planner）
+### scheduler
 
-需求分析师。分析议题描述，制定执行计划，将需求拆解为具体的执行步骤和任务。
+调度者。接收新议题后，判断需要哪些角色参与，并按 Workflow 定义的顺序唤醒对应的 Agent。
 
-### 任务创建者（Task Creator）
+### task_creator
 
-计划执行者。将策划者的计划同步为系统中的任务，设定依赖关系和执行顺序。
+任务创建者。将计划同步为系统中的任务，设定依赖关系和执行顺序。
 
-### 执行者（Executor）
-
-代码写手。接收任务后阅读代码、搜索上下文、修改文件、运行测试，完成实际的编码工作。
-
-### 审核者（Reviewer）
-
-代码审查员。检查执行者的代码变更，确保质量、风格和正确性。
-
-### 提交者（Commit）
-
-版本管理。分析代码变更，生成 conventional commit message，执行 Git 提交。
-
-### Bot（可选）
+### bot
 
 外部集成角色。通过飞书或企业微信与外部用户交互，接收命令并返回执行结果。
+
+### 自定义角色
+
+除了内置角色外，你还可以创建自定义角色的 Agent，满足特定的业务需求。例如创建一个专门做代码审查的 Agent，或专门生成文档的 Agent。
+
+> **兼容说明**：旧版角色（planner、executor、reviewer、commit、custom）仍可使用，但不再是公开枚举。建议迁移到新的角色体系。
 
 ## Agent 运行时
 
 每个 Agent 基于特定的 AI 运行时运行：
 
-| 运行时 | 说明 | 适用模型 |
-|--------|------|----------|
-| Claude Code | 基于 Anthropic Claude Agent SDK | Claude 系列模型 |
-| OpenAI Codex | 基于 OpenAI Codex SDK | GPT 系列模型 |
-| Open Agent SDK | 通用 Agent SDK | 多模型支持 |
+| 运行时 | SDK | 适用模型 | 特点 |
+|--------|-----|----------|------|
+| Claude Code | @anthropic-ai/claude-agent-sdk | Claude 系列模型 | 内置 Anthropic Bridge，支持通过 Claude Code SDK 调用非 Anthropic 模型 |
+| OpenAI Codex | @openai/codex-sdk | GPT 系列模型 | 沙盒化执行环境 |
+| Open Agent SDK | @codeany/open-agent-sdk | 多模型支持 | 通用 Agent SDK |
+
+运行时通过工厂函数 `createAgentRuntime()` 按配置切换，无需修改代码即可更换 Agent 的底层运行时。
 
 ## Agent 预设
 
@@ -57,21 +53,42 @@ Agent 预设（Preset）是 Agent 的配置模板。每个预设定义了：
 - **模型** — 具体的 AI 模型
 - **API Key** — 模型访问凭证
 - **系统提示词** — Agent 的行为指引
-- **权限模式** — Agent 的操作权限
+- **权限模式** — Agent 的操作权限（自动批准、需确认等）
 - **MCP 工具** — Agent 可使用的外部工具
 - **技能** — Agent 掌握的特殊能力
+- **沙盒目录** — Agent 可访问的目录范围
+- **最大重试次数** — 执行失败后的重试策略
 
-你可以在项目设置面板中配置 Agent 预设。同一个 Agent 角色可以创建多个预设，使用不同的模型或配置。
+你可以在项目设置面板中配置 Agent 预设。同一个 Agent 角色可以创建多个预设，使用不同的模型或配置。预设支持导入/导出。
 
-## 自动化编排
+## Workflow 驱动编排
 
-当一个议题被创建时，系统按以下链路自动编排：
+Agent 通过 Workflow 实现自动化协作。创建一个 Workflow 模板，将多个 Agent 节点通过 DAG 拓扑连接：
 
-```
-议题创建 → 调度者接收 → 策划者分析 → 任务创建者拆分
-→ 执行者编码 → 审核者检查 → 提交者提交 → 议题关闭
-```
+1. 在 Workflow 编辑器中拖入 Agent 节点
+2. 为每个节点绑定 Agent 预设
+3. 连线定义执行依赖
+4. Issue 选择 Workflow 后，系统自动映射为 Task 执行
 
-每一步的状态变更都通过 WebSocket 实时推送到前端，同时触发通知中心事件。
+详见 [Workflow 编辑器](/docs/features/workflow)。
 
-你也可以通过频道聊天中 @mention Agent 跳过编排流程，直接触发特定 Agent 执行。
+## Function Call Tools
+
+Agent 通过 Function Call Tools 与系统交互，包括：
+
+- 文件读写和搜索
+- 代码编辑
+- 终端命令执行
+- Git 操作
+
+工具层通过 `AgentFunctionTool` 抽象统一管理，不同运行时的 Agent 使用相同的工具接口。
+
+## 实时状态
+
+每一步的状态变更都通过 WebSocket 实时推送到前端，包括：
+
+- Agent 执行状态（启动、运行中、完成、失败）
+- 工具调用详情（输入参数、输出结果、代码 diff）
+- Token 使用量统计
+
+你也可以通过频道聊天中 @mention Agent 跳过 Workflow 编排，直接触发特定 Agent 执行。

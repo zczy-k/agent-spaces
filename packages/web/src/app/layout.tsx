@@ -37,6 +37,10 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "Agent Spaces",
   description: "Multi-agent collaborative coding workspace",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({

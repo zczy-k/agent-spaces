@@ -21,6 +21,7 @@ const sidebars: SidebarsConfig = {
         'features/terminal',
         'features/chat',
         'features/issue-management',
+        'features/workflow',
         'features/git',
         'features/agent/index',
         'features/notifications',

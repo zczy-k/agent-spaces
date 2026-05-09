@@ -1,5 +1,5 @@
 ---
-sidebar_position: 10
+sidebar_position: 11
 ---
 
 # 项目设置
@@ -20,10 +20,11 @@ sidebar_position: 10
 
 配置工作空间级别的通知服务：
 
-- 选择通知渠道（飞书/企业微信）
+- 选择通知渠道（飞书/企业微信/Native）
 - 填写应用凭证
 - 测试连通性
 - 选择需要通知的事件类型
+- 配置 Bot Agent 绑定
 
 详见 [通知中心](/docs/features/notifications)。
 
@@ -32,10 +33,12 @@ sidebar_position: 10
 管理工作空间下的 Agent 预设：
 
 - 添加、编辑、删除 Agent 预设
-- 配置角色、运行时、模型
-- 设置 API Key
+- 配置角色（agent / scheduler / task_creator / bot + 自定义）
+- 选择运行时（Claude Code / Codex / Open Agent SDK）
+- 设置模型和 API Key
 - 自定义系统提示词
 - 配置权限模式（自动批准、需确认等）
+- 设置 MCP 工具和技能
 - 导入/导出预设配置
 
 ## LLM 管理
@@ -46,3 +49,14 @@ sidebar_position: 10
 - 设置模型名称和 API 地址
 - 配置模型单价（用于费用估算）
 - 测试模型连通性
+
+## 语言设置
+
+在设置面板中切换界面语言：
+
+- **中文（简体）** — 默认语言
+- **English** — 英文界面
+
+切换语言即时生效，影响所有界面文本。52 个组件已完成国际化改造。
+
+详见 [安装部署](/docs/getting-started/installation) 了解项目的技术栈详情。

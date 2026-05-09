@@ -1,10 +1,10 @@
 ---
-sidebar_position: 8
+sidebar_position: 9
 ---
 
 # 通知中心
 
-通知中心将 Agent 的状态变更推送到你常用的通讯工具，让你随时随地掌握项目进展。
+通知中心将 Agent 的状态变更推送到你常用的通讯工具或设备，让你随时随地掌握项目进展。
 
 ## 支持的通知渠道
 
@@ -23,6 +23,15 @@ sidebar_position: 8
 1. 在企业微信管理后台创建应用
 2. 在项目设置中配置企业微信通知
 3. 扫码登录后，通知自动推送到企业微信
+
+### Native 通知
+
+支持 Tauri 桌面客户端和浏览器的原生通知：
+
+- **Tauri** — 使用系统原生通知 API，支持 macOS、Windows、Linux
+- **Browser** — 使用 Web Notification API，需用户授权
+
+Native 通知无需额外配置，开箱即用。
 
 ## 通知内容
 
