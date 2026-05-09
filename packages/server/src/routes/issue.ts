@@ -4,7 +4,8 @@ import type { AgentSessionStatus } from '@agent-spaces/shared';
 import * as issueService from '../services/issue.js';
 import * as issueCommentService from '../services/issue-comment.js';
 import * as channelService from '../services/channel.js';
-import { broadcastToWorkspace, stopChannelRuns } from '../ws/handler.js';
+import { broadcastToWorkspace } from '../ws/connection-manager.js';
+import { stopChannelRuns } from '../ws/agent-runner.js';
 
 import * as agentService from '../services/agent.js';
 import { retryIssue } from '../services/issue-retry.js';

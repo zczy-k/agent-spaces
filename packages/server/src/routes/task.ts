@@ -3,7 +3,7 @@ import type { Request, Response } from 'express';
 import * as taskService from '../services/task.js';
 import * as issueService from '../services/issue.js';
 import * as agentService from '../services/agent.js';
-import { broadcastToWorkspace } from '../ws/handler.js';
+import { broadcastToWorkspace } from '../ws/connection-manager.js';
 import { scheduleRunnableIssueTasks } from '../agents/issue-task-controller.js';
 import type { AgentSessionStatus } from '@agent-spaces/shared';
 

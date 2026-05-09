@@ -1,7 +1,8 @@
 import { Router, type Request, type Response } from 'express';
 import { listChannels, createChannel, getChannel, updateChannel, deleteChannel } from '../services/channel.js';
 import { listMessages, createMessage, updateMessage, deleteMessage, clearMessages } from '../services/message.js';
-import { broadcastToWorkspace, hasActiveChannelRuns, markInactiveChannelRunsStopped, stopChannelRuns } from '../ws/handler.js';
+import { broadcastToWorkspace } from '../ws/connection-manager.js';
+import { hasActiveChannelRuns, markInactiveChannelRunsStopped, stopChannelRuns } from '../ws/agent-runner.js';
 import { getToolDetail } from '../services/tool-detail.js';
 
 const router = Router({ mergeParams: true });
