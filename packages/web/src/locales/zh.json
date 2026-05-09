@@ -104,6 +104,7 @@
       "settings": "设置",
       "general": "通用",
       "agents": "智能体",
+      "skills": "技能管理",
       "models": "模型",
       "providers": "供应商",
       "workflows": "工作流"
@@ -606,5 +607,22 @@
     "addSelected": "添加选中命令",
     "customCommands": "自定义命令",
     "folder": "分组"
+  },
+  "skills": {
+    "title": "技能管理",
+    "description": "管理和导入技能文件，绑定到智能体",
+    "import": "导入",
+    "importTitle": "导入技能文件",
+    "importPlaceholder": "拖拽 .md 文件到此处，或点击选择",
+    "importConfirm": "确认导入",
+    "filterAll": "全部技能",
+    "filterFavorites": "收藏",
+    "filterByAgent": "按智能体过滤",
+    "search": "搜索技能...",
+    "empty": "暂无技能",
+    "manageAgents": "管理",
+    "bindTitle": "绑定智能体 - {name}",
+    "bindDescription": "选择要绑定此技能的智能体",
+    "searchAgents": "搜索智能体..."
   }
 }

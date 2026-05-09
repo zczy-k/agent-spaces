@@ -104,6 +104,7 @@
       "settings": "Settings",
       "general": "General",
       "agents": "Agents",
+      "skills": "Skills",
       "models": "Models",
       "providers": "Providers"
     },
@@ -604,5 +605,22 @@
     "addSelected": "Add Selected",
     "customCommands": "Custom Commands",
     "folder": "Folder"
+  },
+  "skills": {
+    "title": "Skills Management",
+    "description": "Manage and import skills, bind to agents",
+    "import": "Import",
+    "importTitle": "Import Skill Files",
+    "importPlaceholder": "Drag .md files here, or click to select",
+    "importConfirm": "Confirm Import",
+    "filterAll": "All Skills",
+    "filterFavorites": "Favorites",
+    "filterByAgent": "Filter by Agent",
+    "search": "Search skills...",
+    "empty": "No skills found",
+    "manageAgents": "Manage",
+    "bindTitle": "Bind Agents - {name}",
+    "bindDescription": "Select agents to bind this skill to",
+    "searchAgents": "Search agents..."
   }
 }
