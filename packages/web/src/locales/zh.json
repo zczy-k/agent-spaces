@@ -607,7 +607,8 @@
       "labelPlaceholder": "给这个配置取个名字（可选）",
       "cookiePlaceholder": "粘贴 Cookie 或 Token",
       "loading": "加载中...",
-      "resetAt": "重置于"
+      "resetAt": "重置于",
+      "headers": "请求头 (Headers)"
     }
   },
   "editor": {

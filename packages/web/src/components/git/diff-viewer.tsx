@@ -5,6 +5,7 @@ import { DiffEditor, type DiffOnMount } from "@monaco-editor/react";
 import { useEffect, useRef } from "react";
 import type { editor } from "monaco-editor";
 import { useTheme } from "@/components/theme-provider";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface DiffViewerProps {
   oldContent: string;
@@ -30,6 +31,7 @@ export function DiffViewer({ oldContent, newContent, path }: DiffViewerProps) {
   const language = detectLanguage(path);
   const editorRef = useRef<editor.IStandaloneDiffEditor | null>(null);
   const { resolvedTheme } = useTheme();
+  const isMobile = useIsMobile();
 
   const handleMount: DiffOnMount = (editor) => {
     editorRef.current = editor;
@@ -59,7 +61,7 @@ export function DiffViewer({ oldContent, newContent, path }: DiffViewerProps) {
           onMount={handleMount}
           options={{
             readOnly: true,
-            renderSideBySide: true,
+            renderSideBySide: !isMobile,
             minimap: { enabled: false },
             scrollBeyondLastLine: false,
             fontSize: 13,

@@ -30,7 +30,7 @@ export function createSubscription(data: Omit<SubscriptionConfig, 'id' | 'create
   return item
 }
 
-export function updateSubscription(id: string, patch: Partial<Pick<SubscriptionConfig, 'label' | 'cookie'>>): SubscriptionConfig | undefined {
+export function updateSubscription(id: string, patch: Partial<Pick<SubscriptionConfig, 'label' | 'cookie' | 'headers'>>): SubscriptionConfig | undefined {
   const items = listSubscriptions()
   const idx = items.findIndex(s => s.id === id)
   if (idx < 0) return undefined

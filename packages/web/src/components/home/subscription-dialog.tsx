@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 
 const PROVIDERS: Array<{ value: SubscriptionProvider; label: string }> = [
   { value: 'zhipu', label: '智谱 (ZhiPu)' },
@@ -24,6 +25,7 @@ interface FormData {
   provider: SubscriptionProvider
   label: string
   cookie: string
+  headers: string
 }
 
 export function SubscriptionDialog() {
@@ -41,10 +43,18 @@ export function SubscriptionDialog() {
 
   const handleSave = async () => {
     if (!editing) return
+    const parsedHeaders = editing.headers.trim()
+      ? Object.fromEntries(
+          editing.headers.trim().split('\n').filter(Boolean).map(line => {
+            const idx = line.indexOf(':')
+            return idx > 0 ? [line.slice(0, idx).trim(), line.slice(idx + 1).trim()] : null
+          }).filter(Boolean) as [string, string][]
+        )
+      : undefined
     const res = await fetch('/api/subscriptions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(editing),
+      body: JSON.stringify({ ...editing, headers: parsedHeaders }),
     })
     if (res.ok) {
       setEditing(null)
@@ -126,6 +136,16 @@ export function SubscriptionDialog() {
                 />
               </div>
 
+              <div className="space-y-1.5">
+                <Label className="text-xs">{t('subscription.headers')}</Label>
+                <Textarea
+                  className="min-h-20 text-xs font-mono resize-none"
+                  value={editing.headers}
+                  onChange={e => setEditing({ ...editing, headers: e.target.value })}
+                  placeholder={`Bigmodel-Organization: org-xxx\nBigmodel-Project: proj_xxx`}
+                />
+              </div>
+
               <div className="flex justify-end gap-2">
                 <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditing(null)}>
                   {t('subscription.cancel')}
@@ -138,7 +158,7 @@ export function SubscriptionDialog() {
           )}
 
           {!editing && (
-            <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1" onClick={() => setEditing({ provider: 'zhipu', label: '', cookie: '' })}>
+            <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1" onClick={() => setEditing({ provider: 'zhipu', label: '', cookie: '', headers: '' })}>
               <Plus className="size-3" />
               {t('subscription.add')}
             </Button>

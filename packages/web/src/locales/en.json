@@ -605,7 +605,8 @@
       "labelPlaceholder": "Optional name for this config",
       "cookiePlaceholder": "Paste Cookie or Token",
       "loading": "Loading...",
-      "resetAt": "Resets at"
+      "resetAt": "Resets at",
+      "headers": "Extra Headers"
     }
   },
   "editor": {
