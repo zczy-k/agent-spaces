@@ -607,7 +607,8 @@
       "resetAt": "Resets at",
       "headers": "Extra Headers",
       "addHeader": "Add",
-      "noHeaders": "No headers"
+      "noHeaders": "No headers",
+      "cookiePlaceholder": "Paste browser Cookie"
     }
   },
   "editor": {

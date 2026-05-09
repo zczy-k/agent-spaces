@@ -28,7 +28,8 @@ export class MiniMaxSubscriptionProvider extends SubscriptionProviderBase {
       method: 'GET',
       headers: {
         'Accept': 'application/json, text/plain, */*',
-        ...config.headers,
+        ...(config.cookie ? { 'Cookie': config.cookie } : {}),
+        ...(config.headers ?? {}),
       },
     })
 

@@ -609,7 +609,8 @@
       "resetAt": "重置于",
       "headers": "请求头 (Headers)",
       "addHeader": "添加",
-      "noHeaders": "暂无请求头"
+      "noHeaders": "暂无请求头",
+      "cookiePlaceholder": "粘贴浏览器 Cookie"
     }
   },
   "editor": {

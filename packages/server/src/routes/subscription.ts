@@ -25,18 +25,18 @@ router.get('/:id/quota', async (req: Request<{ id: string }>, res: Response) => 
 })
 
 router.post('/', (req: Request, res: Response) => {
-  const { provider, label, headers } = req.body as { provider: SubscriptionProvider; label: string; headers: Record<string, string> }
-  if (!provider || !headers || Object.keys(headers).length === 0) {
-    res.status(400).json({ error: 'provider and headers are required' })
+  const { provider, label, headers, cookie } = req.body as { provider: SubscriptionProvider; label: string; headers?: Record<string, string>; cookie?: string }
+  if (!provider || (!headers && !cookie)) {
+    res.status(400).json({ error: 'provider and headers or cookie are required' })
     return
   }
-  const item = store.createSubscription({ provider, label: label || provider, headers })
+  const item = store.createSubscription({ provider, label: label || provider, headers, cookie })
   res.status(201).json(item)
 })
 
 router.put('/:id', (req: Request<{ id: string }>, res: Response) => {
-  const { label, headers } = req.body as { label?: string; headers?: Record<string, string> }
-  const updated = store.updateSubscription(req.params.id, { label, headers })
+  const { label, headers, cookie } = req.body as { label?: string; headers?: Record<string, string>; cookie?: string }
+  const updated = store.updateSubscription(req.params.id, { label, headers, cookie })
   if (!updated) {
     res.status(404).json({ error: 'subscription not found' })
     return

@@ -16,14 +16,13 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-const PROVIDERS: Array<{ value: SubscriptionProvider; label: string }> = [
-  { value: 'zhipu', label: '智谱 (ZhiPu)' },
-  { value: 'minimax', label: 'MiniMax' },
+const PROVIDERS: Array<{ value: SubscriptionProvider; label: string; authMode: 'headers' | 'cookie' }> = [
+  { value: 'zhipu', label: '智谱 (ZhiPu)', authMode: 'headers' },
+  { value: 'minimax', label: 'MiniMax', authMode: 'cookie' },
 ]
 
-const DEFAULT_HEADERS: Record<SubscriptionProvider, Array<{ key: string; value: string }>> = {
+const DEFAULT_HEADERS: Record<string, Array<{ key: string; value: string }>> = {
   zhipu: [{ key: 'Authorization', value: '' }],
-  minimax: [{ key: 'X-Group-Id', value: '' }],
 }
 
 interface HeaderRow {
@@ -41,11 +40,6 @@ interface FormData {
 
 let nextHeaderId = 1
 
-function headersToRows(headers?: Record<string, string>): HeaderRow[] {
-  if (!headers || Object.keys(headers).length === 0) return []
-  return Object.entries(headers).map(([key, value]) => ({ id: nextHeaderId++, key, value }))
-}
-
 function rowsToHeaders(rows: HeaderRow[]): Record<string, string> | undefined {
   const entries = rows.filter(r => r.key.trim()).map(r => [r.key.trim(), r.value] as [string, string])
   return entries.length > 0 ? Object.fromEntries(entries) : undefined
@@ -53,6 +47,10 @@ function rowsToHeaders(rows: HeaderRow[]): Record<string, string> | undefined {
 
 function getDefaultHeaders(provider: SubscriptionProvider): HeaderRow[] {
   return DEFAULT_HEADERS[provider]?.map(h => ({ ...h, id: nextHeaderId++ })) ?? []
+}
+
+function getAuthMode(provider: SubscriptionProvider): 'headers' | 'cookie' {
+  return PROVIDERS.find(p => p.value === provider)?.authMode ?? 'headers'
 }
 
 export function SubscriptionDialog({ onChange }: { onChange?: () => void }) {
@@ -70,11 +68,15 @@ export function SubscriptionDialog({ onChange }: { onChange?: () => void }) {
 
   const handleSave = async () => {
     if (!editing) return
-    const body = {
+    const mode = getAuthMode(editing.provider)
+    const body: Record<string, unknown> = {
       provider: editing.provider,
       label: editing.label || editing.provider,
-      cookie: editing.cookie,
-      headers: rowsToHeaders(editing.headers),
+    }
+    if (mode === 'cookie') {
+      body.cookie = editing.cookie
+    } else {
+      body.headers = rowsToHeaders(editing.headers)
     }
     const res = await fetch('/api/subscriptions', {
       method: 'POST',
@@ -114,8 +116,14 @@ export function SubscriptionDialog({ onChange }: { onChange?: () => void }) {
 
   const switchProvider = (provider: SubscriptionProvider) => {
     if (!editing) return
-    setEditing({ ...editing, provider, headers: getDefaultHeaders(provider) })
+    setEditing({ ...editing, provider, cookie: '', headers: getDefaultHeaders(provider) })
   }
+
+  const mode = editing ? getAuthMode(editing.provider) : null
+  const canSave = editing && (
+    mode === 'cookie' ? !!editing.cookie.trim()
+      : editing.headers.some(h => h.key.trim() && h.value.trim())
+  )
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -147,7 +155,7 @@ export function SubscriptionDialog({ onChange }: { onChange?: () => void }) {
             <p className="text-center text-xs text-muted-foreground py-2">{t('subscription.empty')}</p>
           )}
 
-          {editing && (
+          {editing && mode && (
             <div className="space-y-3 rounded-md border p-3">
               <div className="space-y-1.5">
                 <Label className="text-xs">{t('subscription.platform')}</Label>
@@ -176,44 +184,58 @@ export function SubscriptionDialog({ onChange }: { onChange?: () => void }) {
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs">{t('subscription.headers')}</Label>
-                  <Button variant="ghost" size="sm" className="h-5 text-[10px] gap-0.5 px-1" onClick={addHeader}>
-                    <Plus className="size-2.5" /> {t('subscription.addHeader')}
-                  </Button>
-                </div>
+              {mode === 'cookie' && (
                 <div className="space-y-1.5">
-                  {editing.headers.map(h => (
-                    <div key={h.id} className="flex items-center gap-1.5">
-                      <Input
-                        className="h-7 flex-[2] text-xs font-mono"
-                        value={h.key}
-                        onChange={e => updateHeader(h.id, 'key', e.target.value)}
-                        placeholder="Header-Key"
-                      />
-                      <Input
-                        className="h-7 flex-[3] text-xs font-mono"
-                        value={h.value}
-                        onChange={e => updateHeader(h.id, 'value', e.target.value)}
-                        placeholder="value"
-                      />
-                      <Button variant="ghost" size="icon" className="size-6 shrink-0" onClick={() => removeHeader(h.id)}>
-                        <Trash2 className="size-3 text-muted-foreground" />
-                      </Button>
-                    </div>
-                  ))}
-                  {editing.headers.length === 0 && (
-                    <p className="text-[10px] text-muted-foreground text-center py-1">{t('subscription.noHeaders')}</p>
-                  )}
+                  <Label className="text-xs">Cookie</Label>
+                  <Input
+                    className="h-8 text-xs font-mono"
+                    value={editing.cookie}
+                    onChange={e => setEditing({ ...editing, cookie: e.target.value })}
+                    placeholder={t('subscription.cookiePlaceholder')}
+                  />
                 </div>
-              </div>
+              )}
+
+              {mode === 'headers' && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">{t('subscription.headers')}</Label>
+                    <Button variant="ghost" size="sm" className="h-5 text-[10px] gap-0.5 px-1" onClick={addHeader}>
+                      <Plus className="size-2.5" /> {t('subscription.addHeader')}
+                    </Button>
+                  </div>
+                  <div className="space-y-1.5">
+                    {editing.headers.map(h => (
+                      <div key={h.id} className="flex items-center gap-1.5">
+                        <Input
+                          className="h-7 flex-[2] text-xs font-mono"
+                          value={h.key}
+                          onChange={e => updateHeader(h.id, 'key', e.target.value)}
+                          placeholder="Header-Key"
+                        />
+                        <Input
+                          className="h-7 flex-[3] text-xs font-mono"
+                          value={h.value}
+                          onChange={e => updateHeader(h.id, 'value', e.target.value)}
+                          placeholder="value"
+                        />
+                        <Button variant="ghost" size="icon" className="size-6 shrink-0" onClick={() => removeHeader(h.id)}>
+                          <Trash2 className="size-3 text-muted-foreground" />
+                        </Button>
+                      </div>
+                    ))}
+                    {editing.headers.length === 0 && (
+                      <p className="text-[10px] text-muted-foreground text-center py-1">{t('subscription.noHeaders')}</p>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="flex justify-end gap-2">
                 <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditing(null)}>
                   {t('subscription.cancel')}
                 </Button>
-                <Button size="sm" className="h-7 text-xs" onClick={handleSave} disabled={!editing.headers.some(h => h.key.trim() && h.value.trim())}>
+                <Button size="sm" className="h-7 text-xs" onClick={handleSave} disabled={!canSave}>
                   {t('subscription.save')}
                 </Button>
               </div>
