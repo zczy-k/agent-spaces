@@ -211,7 +211,7 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
           <Popover open={commandPopoverOpen} onOpenChange={setCommandPopoverOpen}>
             <PopoverTrigger
               render={
-                <button className="flex items-center gap-1 h-6 px-1.5 text-muted-foreground hover:text-foreground transition-colors" title={tc('commands')}>
+                <button className="flex items-center gap-1 h-6 px-1.5 text-muted-foreground hover:text-foreground transition-colors" title={tc('title')}>
                   <Terminal size={14} />
                 </button>
               }
