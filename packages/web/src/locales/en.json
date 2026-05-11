@@ -362,9 +362,6 @@
     "input": {
       "placeholder": "Message #{channel}... Use @ to mention agents, / for commands",
       "attachFiles": "Attach Files",
-      "codeInterpreter": "Code Interpreter",
-      "webSearch": "Web Search",
-      "chatHistory": "Chat History",
       "autoMode": "Auto",
       "unpinAgent": "Unpin Agent",
       "pinAgent": "Pin Agent",

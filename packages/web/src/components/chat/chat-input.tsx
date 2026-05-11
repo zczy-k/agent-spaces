@@ -13,9 +13,7 @@ import {
   IconChevronDown,
   IconCircleCheck,
   IconCircleDashed,
-  IconCode,
   IconFileText,
-  IconHistory,
   IconLoader2,
   IconMessageCirclePlus,
   IconPaperclip,
@@ -26,10 +24,8 @@ import {
   IconPuzzle,
   IconTools,
   IconWand,
-  IconWorld,
 } from "@tabler/icons-react";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTranslations } from "next-intl";
 import { useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -386,17 +382,15 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const activateAgent = useCallback((agent: MentionedAgent) => {
     if (!editor) return;
     if (mentionedAgentIds[0] === agent.id) return;
+    // Get text content without the mention node
     removeExistingMentions(editor, agent.id);
-    const doc = editor.getJSON();
-    const hasMention = doc.content?.some?.(
-      (n: JSONContent) => n.type === 'mention' && n.attrs?.id === agent.id
-    );
-    if (!hasMention) {
-      editor.chain().focus().insertContentAt(0, [
-        { type: 'mention', attrs: { id: agent.id, label: agent.name || agent.role } },
-        { type: 'text', text: ' ' },
-      ]).run();
-    }
+    const plainText = editor.getText().trim();
+    // Rebuild content: mention + space + remaining text
+    const content: JSONContent[] = [
+      { type: 'mention', attrs: { id: agent.id, label: agent.name || agent.role } },
+      { type: 'text', text: ' ' + plainText },
+    ];
+    editor.commands.setContent({ type: 'doc', content: [{ type: 'paragraph', content }] }, { emitUpdate: true });
     editor.commands.focus('end');
   }, [editor, mentionedAgentIds, removeExistingMentions]);
 
@@ -496,18 +490,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
               <IconPaperclip size={16} className="opacity-60" />
               {t('input.attachFiles')}
             </DropdownMenuItem>
-            <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs" onClick={() => {}}>
-              <IconCode size={16} className="opacity-60" />
-              {t('input.codeInterpreter')}
-            </DropdownMenuItem>
-            <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs" onClick={() => {}}>
-              <IconWorld size={16} className="opacity-60" />
-              {t('input.webSearch')}
-            </DropdownMenuItem>
-            <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs" onClick={() => {}}>
-              <IconHistory size={16} className="opacity-60" />
-              {t('input.chatHistory')}
-            </DropdownMenuItem>
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -535,48 +517,44 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           {sortedAgents.map((agent) => {
             const isActive = agent.id === activeAgent?.id;
             return (
-              <Tooltip key={agent.id}>
-                <TooltipTrigger
-                  render={
-                    <button
-                      type="button"
-                      onClick={() => activateAgent(agent)}
-                      className={cn(
-                        "shrink-0 rounded-full transition-all",
-                        isActive
-                          ? "ring-2 ring-primary ring-offset-1 ring-offset-background"
-                          : "opacity-60 hover:opacity-100"
-                      )}
-                    />
-                  }
-                >
-                  <AgentIcon
-                    agentId={agent.id}
-                    name={agent.name || agent.role}
-                    avatarUrl={agent.avatarUrl}
-                    className="size-6 rounded-full text-[10px]"
-                  />
-                </TooltipTrigger>
-                <TooltipContent side="top" className="text-xs">
-                  {agent.name || agent.role}
-                </TooltipContent>
-              </Tooltip>
+              <button
+                key={agent.id}
+                type="button"
+                onClick={() => activateAgent(agent)}
+                className={cn(
+                  "shrink-0 inline-flex items-center gap-1 h-6 pl-0.5 pr-1 rounded-full text-xs transition-all",
+                  isActive
+                    ? "bg-primary/10 text-primary border border-primary/30"
+                    : "text-muted-foreground border border-transparent hover:bg-accent"
+                )}
+              >
+                <AgentIcon
+                  agentId={agent.id}
+                  name={agent.name || agent.role}
+                  avatarUrl={agent.avatarUrl}
+                  className="size-5 rounded-full text-[9px]"
+                />
+                <span className="max-w-[80px] truncate">{agent.name || agent.role}</span>
+                {isActive ? (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => { e.stopPropagation(); togglePin(); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); togglePin(); } }}
+                    className={cn(
+                      "inline-flex items-center justify-center size-4 rounded-full hover:bg-primary/20 transition-colors",
+                      isPinned ? "text-primary" : "text-primary/50"
+                    )}
+                    title={isPinned ? t('input.unpinAgent') : t('input.pinAgent')}
+                  >
+                    {isPinned ? <IconPinFilled className="size-2.5" /> : <IconPin className="size-2.5" />}
+                  </span>
+                ) : pinnedMentionId === agent.id ? (
+                  <IconPinFilled className="size-2.5 text-muted-foreground/50" />
+                ) : null}
+              </button>
             );
           })}
-          {/* Pin toggle for active agent */}
-          {activeAgent && (
-            <button
-              type="button"
-              onClick={togglePin}
-              className={cn(
-                "shrink-0 inline-flex items-center justify-center size-5 rounded-full hover:bg-accent transition-colors",
-                isPinned ? "text-primary" : "text-muted-foreground"
-              )}
-              title={isPinned ? t('input.unpinAgent') : t('input.pinAgent')}
-            >
-              {isPinned ? <IconPinFilled className="size-3" /> : <IconPin className="size-3" />}
-            </button>
-          )}
         </div>
       )}
       {/* Single active agent indicator (when only 1 agent) */}

@@ -364,9 +364,6 @@
     "input": {
       "placeholder": "发送消息到 #{channel}... 使用 @ 提及 Agent，输入 / 打开命令",
       "attachFiles": "附件",
-      "codeInterpreter": "代码解释器",
-      "webSearch": "网络搜索",
-      "chatHistory": "聊天记录",
       "autoMode": "自动",
       "unpinAgent": "取消固定",
       "pinAgent": "固定此 Agent",
