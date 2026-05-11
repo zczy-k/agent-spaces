@@ -64,15 +64,50 @@ export function buildAgentPrompt(
   }
 
   if (history.length > 0) {
-    parts.push('Conversation history:');
-    for (const msg of history) {
-      const role = msg.senderId === 'user' ? 'User' : (msg.senderRole || 'Agent');
-      parts.push(`[${role}]: ${stripHtml(msg.content)}`);
-    }
+    const historyLines = formatConversationHistory(history);
+    if (historyLines.length > 0) parts.push(['Conversation history:', ...historyLines].join('\n'));
   }
 
   parts.push(`User message:\n${userPrompt}`);
   return prependWorkspacePrompt(workspaceId, parts.join('\n\n'));
+}
+
+function formatConversationHistory(history: Message[]): string[] {
+  const lines: string[] = [];
+  for (const msg of history) {
+    const role = msg.senderId === 'user' ? 'User' : (msg.senderRole || 'Agent');
+    const text = msg.senderId === 'user' ? stripHtml(msg.content) : getAgentFinalMessage(msg);
+    if (!text.trim()) continue;
+    lines.push(`[${role}]: ${text}`);
+  }
+  return lines;
+}
+
+function getAgentFinalMessage(message: Message): string {
+  const finalTextParts = message.parts
+    ?.filter((part) => part.type === 'text')
+    .map((part) => part.text.trim())
+    .filter(Boolean);
+
+  if (finalTextParts?.length) return finalTextParts.join('\n\n');
+
+  if (message.parts?.length) return '';
+  if (message.status && message.status !== 'completed') return '';
+
+  return stripToolLikeHistoryLines(stripHtml(message.content));
+}
+
+function stripToolLikeHistoryLines(content: string): string {
+  const kept = content.split(/\r?\n/).filter((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return true;
+    return !/^Tool:\s*\w+/i.test(trimmed)
+      && !/^(Read|Write|Edit|MultiEdit|Bash|Grep|Glob|TodoWrite|Task)\b/i.test(trimmed)
+      && !/^Claude Code initialized\b/i.test(trimmed)
+      && !/^(Input|Output|Result|Error):\s*\{/i.test(trimmed);
+  });
+
+  return kept.join('\n').trim();
 }
 
 export function buildBuiltInTools(
