@@ -340,6 +340,55 @@ export function AgentDialog({
           )}
         </div>
       )}
+      {standalone && !selectedAgent && (
+        <div className="flex items-center justify-end px-5 py-3 border-b">
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button variant="outline" size="sm" disabled={saving}>
+                  <Plus className="size-3.5" />
+                  {t('dialog.add')}
+                  <ChevronDown className="size-3.5" />
+                </Button>
+              }
+            />
+            <DropdownMenuContent side="bottom" align="end" className="w-44">
+              <DropdownMenuGroup>
+                {!roleFilterSet && (
+                  <DropdownMenuItem
+                    className="gap-2"
+                    onClick={() => handleAddAgent("empty")}
+                  >
+                    <span className="size-2 rounded-full bg-muted" />
+                    <span>{t('dialog.addEmpty')}</span>
+                  </DropdownMenuItem>
+                )}
+                {ROLE_OPTIONS.map((role) => (
+                  <DropdownMenuItem
+                    key={role}
+                    className="gap-2"
+                    onClick={() => handleAddAgent(role)}
+                  >
+                    <span className={cn("size-2 rounded-full", ROLE_COLORS[role].split(" ")[0])} />
+                    <span className="capitalize">{t(`role.${role}.name`)}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
+      {standalone && selectedAgent && (
+        <div className="flex items-center gap-3 px-5 py-3 border-b">
+          <Button variant="ghost" size="icon-sm" onClick={handleBack}>
+            <ArrowLeft className="size-4" />
+          </Button>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-base font-medium truncate">{editDraft?.name ?? ""}</h2>
+            <p className="text-xs text-muted-foreground">{t('dialog.editDescription')}</p>
+          </div>
+        </div>
+      )}
 
       {/* Body */}
       <div className={standalone ? "flex-1 overflow-y-auto" : "flex-1 overflow-y-auto"}>

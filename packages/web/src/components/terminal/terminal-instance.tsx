@@ -7,6 +7,18 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import '@xterm/xterm/css/xterm.css';
 import { useTheme } from '@/components/theme-provider';
 import { getWS } from '@/lib/ws';
+import { useTerminalStore } from '@/stores/terminal';
+
+// Global registry to persist xterm instances across mount/unmount cycles
+const terminalRegistry = new Map<string, { xterm: Terminal; fit: FitAddon }>();
+
+export function disposeTerminalSession(sessionId: string) {
+  const cached = terminalRegistry.get(sessionId);
+  if (cached) {
+    cached.xterm.dispose();
+    terminalRegistry.delete(sessionId);
+  }
+}
 
 const TERM_THEMES = {
   light: {
@@ -78,27 +90,44 @@ export function TerminalInstance({ sessionId, workspaceId }: TerminalInstancePro
   useEffect(() => {
     if (!termRef.current) return;
 
-    const xterm = new Terminal({
-      cursorBlink: true,
-      fontSize: 13,
-      fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-      theme: resolvedTheme === 'dark' ? TERM_THEMES.dark : TERM_THEMES.light,
-    });
+    const ws = getWS(workspaceId);
+    let xterm: Terminal;
+    let fit: FitAddon;
+    let inputDisposable: ReturnType<Terminal['onData']>;
 
-    const fit = new FitAddon();
-    xterm.loadAddon(fit);
-    xterm.loadAddon(new WebLinksAddon());
-    xterm.open(termRef.current);
+    const cached = terminalRegistry.get(sessionId);
+    if (cached) {
+      // Reuse existing terminal — move DOM element to new container
+      xterm = cached.xterm;
+      fit = cached.fit;
+      if (xterm.element) {
+        termRef.current.appendChild(xterm.element);
+      }
+      requestAnimationFrame(() => fit.fit());
+    } else {
+      // Create new terminal instance
+      xterm = new Terminal({
+        cursorBlink: true,
+        fontSize: 13,
+        fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+        theme: resolvedTheme === 'dark' ? TERM_THEMES.dark : TERM_THEMES.light,
+      });
 
-    requestAnimationFrame(() => fit.fit());
+      fit = new FitAddon();
+      xterm.loadAddon(fit);
+      xterm.loadAddon(new WebLinksAddon());
+      xterm.open(termRef.current);
+
+      requestAnimationFrame(() => fit.fit());
+
+      terminalRegistry.set(sessionId, { xterm, fit });
+    }
 
     xtermRef.current = xterm;
     fitRef.current = fit;
 
-    const ws = getWS(workspaceId);
-
     // Send terminal input to server
-    const inputDisposable = xterm.onData((data) => {
+    inputDisposable = xterm.onData((data) => {
       ws.send('terminal.input', { sessionId, data });
     });
 
@@ -127,7 +156,11 @@ export function TerminalInstance({ sessionId, workspaceId }: TerminalInstancePro
       resizeObserver.disconnect();
       inputDisposable.dispose();
       ws.off('terminal.output', handleOutput);
-      xterm.dispose();
+      // If session was removed from store (user/server closed it), dispose terminal
+      const { sessions } = useTerminalStore.getState();
+      if (!sessions.some(s => s.id === sessionId)) {
+        disposeTerminalSession(sessionId);
+      }
     };
   }, [sessionId, workspaceId, handleOutput]);
 

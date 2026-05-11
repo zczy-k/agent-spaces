@@ -137,6 +137,27 @@ export function ProvidersDialog({
           )}
         </div>
       )}
+      {standalone && !draft && (
+        <div className="flex items-center justify-end px-5 py-3 border-b">
+          <Button variant="outline" size="sm" onClick={handleAdd}>
+            <Plus className="size-3.5" />
+            {t("dialog.add")}
+          </Button>
+        </div>
+      )}
+      {standalone && draft && (
+        <div className="flex items-center gap-3 px-5 py-3 border-b">
+          <Button variant="ghost" size="icon-sm" onClick={handleBack}>
+            <ArrowLeft className="size-4" />
+          </Button>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-base font-medium truncate">
+              {selected ? t("dialog.editTitle") : t("dialog.addTitle")}
+            </h2>
+            <p className="text-xs text-muted-foreground">{t("dialog.editDescription")}</p>
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto">
         {error && (
