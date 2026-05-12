@@ -9,6 +9,14 @@ const STORAGE_KEY = "agent-spaces-servers";
 const ACTIVE_KEY = "agent-spaces-active-server";
 const COOKIE_KEY = "active-server";
 
+function isLocalhost(hostname: string): boolean {
+  return hostname === "localhost" || hostname === "127.0.0.1";
+}
+
+function isTauriHost(hostname: string): boolean {
+  return hostname === "tauri.localhost" || hostname.endsWith(".tauri.localhost");
+}
+
 function getDefaultServerUrl(): string {
   const configuredUrl = process.env.NEXT_PUBLIC_SERVER_URL?.trim();
   if (configuredUrl) return configuredUrl.replace(/\/$/, "");
@@ -17,12 +25,11 @@ function getDefaultServerUrl(): string {
 
   const { hostname, port } = window.location;
 
-  // Tauri or other non-standard hosts: always resolve to localhost:3100
-  if (hostname !== "localhost" && hostname !== "127.0.0.1") {
+  if (isTauriHost(hostname)) {
     return "http://localhost:3100";
   }
 
-  if (port === "3000") {
+  if (isLocalhost(hostname) && port === "3000") {
     return `http://${hostname}:3100`;
   }
 

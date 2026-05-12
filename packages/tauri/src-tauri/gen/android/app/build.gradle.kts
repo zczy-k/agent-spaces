@@ -17,7 +17,7 @@ android {
     compileSdk = 36
     namespace = "com.agent_spaces.app"
     defaultConfig {
-        manifestPlaceholders["usesCleartextTraffic"] = "false"
+        manifestPlaceholders["usesCleartextTraffic"] = "true"
         applicationId = "com.agent_spaces.app"
         minSdk = 24
         targetSdk = 36

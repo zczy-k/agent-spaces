@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Settings2 } from "lucide-react";
-import { setToken } from "@/lib/auth";
+import { fetchWithAuth, setToken } from "@/lib/auth";
 import { tauriNavigate } from "@/lib/navigate";
 import { type ServerConfig, loadServers, saveServers, loadActiveId, saveActiveId, setActiveServerCookie } from "@/lib/server";
 import { ServerManagerDialog } from "@/components/sidebar/server-manager-dialog";
@@ -26,7 +26,7 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const res = await fetch("/api/auth/login", {
+      const res = await fetchWithAuth("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ secret }),
@@ -41,7 +41,8 @@ export default function LoginPage() {
 
       setToken(data.token);
       tauriNavigate(router, "/");
-    } catch {
+    } catch (err) {
+      console.error("[login] network error", err);
       setError(t('networkError'));
     } finally {
       setLoading(false);

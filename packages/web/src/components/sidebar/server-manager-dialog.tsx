@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Check, Pencil, Plus, Server, Trash2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Check, Pencil, Plus, Server, Trash2, Wifi } from "lucide-react";
 import { type ServerConfig } from "@/lib/server";
 import { useTranslations } from "next-intl";
 
@@ -35,6 +36,8 @@ export function ServerManagerDialog({ open, onOpenChange, servers, activeId, onU
   const [newName, setNewName] = React.useState("");
   const [newUrl, setNewUrl] = React.useState("");
   const [newSecret, setNewSecret] = React.useState("");
+  const [diagnostics, setDiagnostics] = React.useState("");
+  const [testingId, setTestingId] = React.useState<string | null>(null);
 
   const startEdit = (server: ServerConfig) => {
     setEditId(server.id);
@@ -72,6 +75,84 @@ export function ServerManagerDialog({ open, onOpenChange, servers, activeId, onU
     setNewSecret("");
   };
 
+  const appendDiagnostic = React.useCallback((line: string) => {
+    console.log(`[server-diagnostic] ${line}`);
+    setDiagnostics((prev) => `${prev}${prev ? "\n" : ""}${line}`);
+  }, []);
+
+  const runDiagnostics = async (server: ServerConfig) => {
+    setTestingId(server.id);
+    setDiagnostics("");
+
+    const baseUrl = server.url.replace(/\/$/, "");
+    const healthUrl = `${baseUrl}/api/health`;
+    const wsUrl = new URL("/ws", baseUrl);
+    wsUrl.protocol = wsUrl.protocol === "https:" ? "wss:" : "ws:";
+    wsUrl.searchParams.set("workspaceId", "__diagnostic__");
+    wsUrl.searchParams.set("token", server.secret || "__diagnostic__");
+
+    appendDiagnostic(`time: ${new Date().toISOString()}`);
+    appendDiagnostic(`window.origin: ${window.location.origin}`);
+    appendDiagnostic(`window.href: ${window.location.href}`);
+    appendDiagnostic(`navigator.onLine: ${navigator.onLine}`);
+    appendDiagnostic(`target: ${baseUrl}`);
+    appendDiagnostic(`health: ${healthUrl}`);
+
+    const startedAt = performance.now();
+    try {
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), 10000);
+      const res = await fetch(healthUrl, {
+        method: "GET",
+        cache: "no-store",
+        mode: "cors",
+        signal: controller.signal,
+      });
+      window.clearTimeout(timer);
+      const text = await res.text();
+      appendDiagnostic(`fetch /api/health: OK ${res.status} ${res.statusText} (${Math.round(performance.now() - startedAt)}ms)`);
+      appendDiagnostic(`fetch response: ${text.slice(0, 500) || "<empty>"}`);
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      appendDiagnostic(`fetch /api/health: FAILED ${err.name}: ${err.message} (${Math.round(performance.now() - startedAt)}ms)`);
+    }
+
+    appendDiagnostic(`websocket: ${wsUrl.toString()}`);
+    await new Promise<void>((resolve) => {
+      const wsStartedAt = performance.now();
+      let settled = false;
+      const finish = (line: string, ws?: WebSocket) => {
+        if (settled) return;
+        settled = true;
+        appendDiagnostic(`${line} (${Math.round(performance.now() - wsStartedAt)}ms)`);
+        try { ws?.close(); } catch {}
+        resolve();
+      };
+
+      try {
+        const ws = new WebSocket(wsUrl.toString());
+        const timer = window.setTimeout(() => finish("websocket: TIMEOUT", ws), 10000);
+        ws.onopen = () => {
+          window.clearTimeout(timer);
+          finish("websocket: OPEN", ws);
+        };
+        ws.onerror = () => {
+          window.clearTimeout(timer);
+          finish("websocket: ERROR", ws);
+        };
+        ws.onclose = (event) => {
+          window.clearTimeout(timer);
+          finish(`websocket: CLOSE code=${event.code} reason=${event.reason || "<empty>"}`, ws);
+        };
+      } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        finish(`websocket: FAILED ${err.name}: ${err.message}`);
+      }
+    });
+
+    setTestingId(null);
+  };
+
   return (
     <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) cancelEdit(); }}>
       <DialogContent className="max-w-md">
@@ -107,6 +188,10 @@ export function ServerManagerDialog({ open, onOpenChange, servers, activeId, onU
                     </Button>
                   )}
                   <>
+                    <Wifi
+                      className="size-3.5 shrink-0 text-muted-foreground cursor-pointer hover:text-foreground"
+                      onClick={() => runDiagnostics(server)}
+                    />
                     <Pencil className="size-3.5 shrink-0 text-muted-foreground cursor-pointer hover:text-foreground" onClick={() => startEdit(server)} />
                     {server.id !== "default" && (
                       <Trash2 className="size-3.5 shrink-0 text-muted-foreground cursor-pointer hover:text-destructive" onClick={() => onRemove(server.id)} />
@@ -141,6 +226,28 @@ export function ServerManagerDialog({ open, onOpenChange, servers, activeId, onU
             </div>
           </div>
         )}
+        <div className="border-t pt-3 mt-2 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="text-xs font-medium text-muted-foreground">Network diagnostics</div>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2 text-xs"
+              disabled={!servers.find((server) => server.id === activeId) || testingId !== null}
+              onClick={() => {
+                const active = servers.find((server) => server.id === activeId);
+                if (active) runDiagnostics(active);
+              }}
+            >
+              {testingId ? "Testing..." : "Test active"}
+            </Button>
+          </div>
+          <Textarea
+            readOnly
+            value={diagnostics || "Tap the Wi-Fi icon next to a server, or use Test active."}
+            className="h-36 resize-none font-mono text-[11px]"
+          />
+        </div>
       </DialogContent>
     </Dialog>
   );
