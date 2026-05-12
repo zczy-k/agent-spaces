@@ -22,8 +22,6 @@ export function WorkspaceTabs() {
 
   const activeId = workspaceIdFromLocation(pathname, searchParams.toString());
 
-  if (workspaces.length === 0) return null;
-
   return (
     <div className="flex items-center h-12 px-3 bg-transparent overflow-x-auto shrink-0">
       <button
