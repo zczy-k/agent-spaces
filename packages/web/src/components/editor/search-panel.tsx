@@ -114,7 +114,7 @@ export function SearchPanel({ workspaceId }: SearchPanelProps) {
             type="text"
             value={query}
             onChange={(e) => handleInput(e.target.value)}
-            placeholder={isFileMode ? t('searchPlaceholder').replace('内容', '名') : t('searchPlaceholder')}
+            placeholder={isFileMode ? t('searchFiles') + '...' : t('searchPlaceholder')}
             className="flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
             spellCheck={false}
           />
@@ -150,7 +150,7 @@ export function SearchPanel({ workspaceId }: SearchPanelProps) {
         <div className="px-2 py-1 text-[10px] text-muted-foreground border-b">
           {isFileMode
             ? `${fileResults.length} 个文件`
-            : t('searchResults').replace('{count}', String(codeTotal)).replace('{files}', String(fileCount))
+            : t('searchResults', { count: codeTotal, files: fileCount })
           }
         </div>
       )}
