@@ -13,8 +13,9 @@ const HALF_SIZE = SIZE / 2;
 export function ConsolePanel() {
   const toggle = useCommandPalette((s) => s.toggle);
   const open = useCommandPalette((s) => s.open);
-  const posRef = useRef({ x: window.innerWidth - SIZE - 20, y: window.innerHeight - SIZE - 28 });
-  const [pos, setPos] = useState(posRef.current);
+  const posRef = useRef({ x: 0, y: 0 });
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const [mounted, setMounted] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const dragging = useRef(false);
   const offset = useRef({ x: 0, y: 0 });
@@ -25,6 +26,13 @@ export function ConsolePanel() {
   const edgeRef = useRef<'left' | 'right'>('right');
   const [hovered, setHovered] = useState(false);
   const snappedEdge = useRef<'left' | 'right' | null>(null);
+
+  useEffect(() => {
+    const initial = { x: window.innerWidth - SIZE - 20, y: window.innerHeight - SIZE - 28 };
+    posRef.current = initial;
+    setPos(initial);
+    setMounted(true);
+  }, []);
 
   const doMinimize = useCallback((edge: 'left' | 'right') => {
     setMinimized(true);
@@ -112,7 +120,15 @@ export function ConsolePanel() {
       setPos(posRef.current);
     }
 
-    if (!moved.current) toggle();
+    if (!moved.current) {
+      const swallow = (e: MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+        document.removeEventListener('click', swallow, true);
+      };
+      document.addEventListener('click', swallow, true);
+      toggle();
+    }
   }, [toggle, doMinimize]);
 
   // Keep position within viewport on resize
@@ -134,7 +150,7 @@ export function ConsolePanel() {
 
   useEffect(() => cancelMinimize, [cancelMinimize]);
 
-  if (open) return null;
+  if (open || !mounted) return null;
 
   return (
     <div

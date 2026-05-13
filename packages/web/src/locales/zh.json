@@ -877,6 +877,8 @@
     "title": "命令面板",
     "description": "搜索并执行命令",
     "placeholder": "输入命令或搜索...",
-    "empty": "未找到匹配结果"
+    "empty": "未找到匹配结果",
+    "noResults": "无搜索结果",
+    "typeKeyword": "输入关键词搜索..."
   }
 }

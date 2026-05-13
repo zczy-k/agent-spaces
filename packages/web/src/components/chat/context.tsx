@@ -130,7 +130,7 @@ export const ContextTrigger = ({ children, ...props }: ContextTriggerProps) => {
   )
 
   if (isMobile) {
-    return <PopoverTrigger>{triggerContent}</PopoverTrigger>
+    return <PopoverTrigger render={triggerContent} />
   }
 
   return <HoverCardTrigger delay={0} closeDelay={0} render={triggerContent} />

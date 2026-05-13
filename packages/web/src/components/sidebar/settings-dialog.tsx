@@ -20,6 +20,7 @@ import { Sun, Moon, Monitor, Languages, RotateCcw } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { UserIcon } from "@/components/common/user-icon";
 import { getToken, removeToken } from "@/lib/auth";
+import { isTauriEnvironment } from "@/lib/native-notification";
 
 export function SettingsDialog({
   open,
@@ -35,21 +36,25 @@ export function SettingsDialog({
   const tc = useTranslations('common');
   const { locale, setLocale } = useLocale();
   const router = useRouter();
-  const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
+  const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem("userAvatarUrl");
+  });
   const [newSecret, setNewSecret] = useState("");
   const [secretSaved, setSecretSaved] = useState(false);
-  const [zoom, setZoom] = useState(100);
+  const [zoom, setZoom] = useState(() => {
+    if (typeof window === "undefined") return 100;
+    const saved = localStorage.getItem("pageZoom");
+    const value = saved ? Number(saved) : 100;
+    return value >= 50 && value <= 200 ? value : 100;
+  });
+  const [showZoomSetting, setShowZoomSetting] = useState(false);
 
   const applyZoom = useCallback((value: number) => {
     localStorage.setItem("pageZoom", String(value));
     setZoom(value);
     window.dispatchEvent(new CustomEvent("zoom-change", { detail: value }));
   }, []);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("pageZoom");
-    if (saved) setZoom(Number(saved));
-  }, [open]);
 
   const themeOptions = [
     { value: "light" as const, label: t("themeLight"), icon: Sun },
@@ -58,7 +63,12 @@ export function SettingsDialog({
   ];
 
   useEffect(() => {
-    setUserAvatarUrl(localStorage.getItem("userAvatarUrl"));
+    const frame = requestAnimationFrame(() => {
+      setUserAvatarUrl(localStorage.getItem("userAvatarUrl"));
+      setShowZoomSetting(isTauriEnvironment());
+    });
+
+    return () => cancelAnimationFrame(frame);
   }, [open]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -173,30 +183,32 @@ export function SettingsDialog({
         </div>
       </div>
 
-      <div>
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2.5 block">
-          {t('zoom')}
-        </label>
-        <div className="flex items-center gap-3">
-          <Slider
-            min={50}
-            max={200}
-            step={10}
-            value={zoom}
-            onValueChange={(v) => applyZoom(v as number)}
-            className="flex-1"
-          />
-          <span className="text-xs font-mono tabular-nums w-10 text-right">{zoom}%</span>
-          <button
-            type="button"
-            onClick={() => applyZoom(100)}
-            className="text-muted-foreground hover:text-foreground transition-colors"
-            title={t('zoomReset')}
-          >
-            <RotateCcw className="size-3.5" />
-          </button>
+      {showZoomSetting && (
+        <div>
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2.5 block">
+            {t('zoom')}
+          </label>
+          <div className="flex items-center gap-3">
+            <Slider
+              min={50}
+              max={200}
+              step={10}
+              value={zoom}
+              onValueChange={(v) => applyZoom(Array.isArray(v) ? v[0] : v)}
+              className="flex-1"
+            />
+            <span className="text-xs font-mono tabular-nums w-10 text-right">{zoom}%</span>
+            <button
+              type="button"
+              onClick={() => applyZoom(100)}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+              title={t('zoomReset')}
+            >
+              <RotateCcw className="size-3.5" />
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       <div>
         <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2.5 block">
