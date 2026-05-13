@@ -8,11 +8,17 @@ interface OpenFile {
   modified: boolean;
 }
 
+interface JumpPosition {
+  line: number;
+  column?: number;
+}
+
 interface EditorState {
   tree: FileNode[];
   treeLoading: boolean;
   openFiles: OpenFile[];
   activeFilePath: string | null;
+  pendingJump: JumpPosition | null;
 
   loadTree: (workspaceId: string) => Promise<void>;
   openFile: (workspaceId: string, path: string) => Promise<void>;
@@ -20,6 +26,8 @@ interface EditorState {
   updateContent: (path: string, content: string) => void;
   closeFile: (path: string) => void;
   setActiveFile: (path: string | null) => void;
+  jumpToPosition: (workspaceId: string, path: string, line: number, column?: number) => Promise<void>;
+  clearPendingJump: () => void;
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
@@ -27,6 +35,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   treeLoading: false,
   openFiles: [],
   activeFilePath: null,
+  pendingJump: null,
 
   loadTree: async (workspaceId) => {
     set({ treeLoading: true });
@@ -97,4 +106,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   setActiveFile: (path) => set({ activeFilePath: path }),
+
+  jumpToPosition: async (workspaceId, path, line, column) => {
+    await get().openFile(workspaceId, path);
+    set({ pendingJump: { line, column } });
+  },
+
+  clearPendingJump: () => set({ pendingJump: null }),
 }));
