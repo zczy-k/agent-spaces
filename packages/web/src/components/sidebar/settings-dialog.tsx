@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { tauriNavigate } from "@/lib/navigate";
@@ -16,7 +16,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { Sun, Moon, Monitor, Languages } from "lucide-react";
+import { Sun, Moon, Monitor, Languages, RotateCcw } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
 import { UserIcon } from "@/components/common/user-icon";
 import { getToken, removeToken } from "@/lib/auth";
 
@@ -37,6 +38,18 @@ export function SettingsDialog({
   const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
   const [newSecret, setNewSecret] = useState("");
   const [secretSaved, setSecretSaved] = useState(false);
+  const [zoom, setZoom] = useState(100);
+
+  const applyZoom = useCallback((value: number) => {
+    document.documentElement.style.zoom = `${value}%`;
+    localStorage.setItem("pageZoom", String(value));
+    setZoom(value);
+  }, []);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("pageZoom");
+    if (saved) setZoom(Number(saved));
+  }, [open]);
 
   const themeOptions = [
     { value: "light" as const, label: t("themeLight"), icon: Sun },
@@ -157,6 +170,31 @@ export function SettingsDialog({
               <span className="text-xs font-medium">{label}</span>
             </button>
           ))}
+        </div>
+      </div>
+
+      <div>
+        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2.5 block">
+          {t('zoom')}
+        </label>
+        <div className="flex items-center gap-3">
+          <Slider
+            min={50}
+            max={200}
+            step={10}
+            value={zoom}
+            onValueChange={(v) => applyZoom(v as number)}
+            className="flex-1"
+          />
+          <span className="text-xs font-mono tabular-nums w-10 text-right">{zoom}%</span>
+          <button
+            type="button"
+            onClick={() => applyZoom(100)}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+            title={t('zoomReset')}
+          >
+            <RotateCcw className="size-3.5" />
+          </button>
         </div>
       </div>
 

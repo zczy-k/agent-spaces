@@ -13,7 +13,8 @@ import { useChannelStore } from '@/stores/channel';
 import { useIssueStore } from '@/stores/issue';
 import { useAgentStore } from '@/stores/agent';
 import { AgentDialog } from '@/components/sidebar/agent-dialog';
-import { Bell, Bot, CheckCircle2, FolderOpen, Hash, ListChecks, Loader2, Monitor, QrCode, RefreshCw, Send } from 'lucide-react';
+import { Bell, Bot, CheckCircle2, FolderOpen, Info, Hash, ListChecks, Loader2, Monitor, QrCode, RefreshCw, Send } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import type { AgentConfig, NotificationEventKey, NotificationProvider, Workspace, WorkspaceNotificationSettings } from '@agent-spaces/shared';
 import {
@@ -673,13 +674,20 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
           <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('prompt.title')}</h4>
 
           <div className="space-y-3 rounded-md border px-3 py-3">
-            <div className="space-y-0.5">
+            <div className="flex items-center gap-1.5">
               <Label htmlFor="workspace-prompt" className="text-sm font-medium">
                 {t('prompt.workspacePrompt')}
               </Label>
-              <p className="text-xs text-muted-foreground">
-                {t('prompt.description')}
-              </p>
+              <TooltipProvider delay={200}>
+                <Tooltip>
+                  <TooltipTrigger className="inline-flex">
+                    <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs">
+                    <p>{t('prompt.description')}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
             <Textarea
               id="workspace-prompt"

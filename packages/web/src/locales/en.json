@@ -47,7 +47,9 @@
     "languageEn": "English",
     "security": "Security",
     "newSecretPlaceholder": "New secret key (leave empty to remove)",
-    "redirecting": "Redirecting to login..."
+    "redirecting": "Redirecting to login...",
+    "zoom": "Page Zoom",
+    "zoomReset": "Reset"
   },
   "login": {
     "subtitle": "Enter your secret key to continue",

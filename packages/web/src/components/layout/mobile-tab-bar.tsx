@@ -28,7 +28,7 @@ export function MobileTabBar() {
   const { activePanel, setActivePanel } = useMobilePanelStore();
 
   return (
-    <div className="relative shrink-0 bg-background">
+    <div className="relative shrink-0 bg-background pt-[env(safe-area-inset-top)]">
       <div className="flex items-center h-10 border-b px-1 gap-0.5 shrink-0 overflow-x-auto md:hidden">
         {mobileTabItems.map((tab, i) => {
           const Icon = tab.icon;

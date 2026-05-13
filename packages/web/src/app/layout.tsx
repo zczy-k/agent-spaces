@@ -5,6 +5,7 @@ import { LocaleProvider } from "@/components/locale-provider";
 import { AuthGuard } from "@/components/auth-guard";
 import { AppShell } from "@/components/app-shell";
 import { ConsolePanel } from "@/components/common/console-panel";
+import { ViewportInsets } from "@/components/viewport-insets";
 import { Toaster } from "sonner";
 import "flexlayout-react/style/light.css";
 import "tippy.js/dist/tippy.css";
@@ -33,6 +34,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  viewportFit: "cover",
 };
 
 export const metadata: Metadata = {
@@ -58,6 +60,7 @@ export default function RootLayout({
       <body className="h-full overflow-hidden font-sans">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <LocaleProvider>
+            <ViewportInsets />
             <AuthGuard>
               <AppShell>{children}</AppShell>
               <Toaster richColors position="bottom-right" />

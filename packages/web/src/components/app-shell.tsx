@@ -17,7 +17,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       <DevInspector />
-      <SidebarProvider className="bg-[#f2f3f5] dark:bg-[#0f1117]">
+      <SidebarProvider className="h-[var(--app-viewport-height)] min-h-0 bg-[#f2f3f5] dark:bg-[#0f1117]">
         <DashboardSidebar />
         <SidebarInset className="!bg-transparent">
           <WorkspaceTabs />

@@ -9,6 +9,13 @@ interface VirtualKeyboardProps {
 
 type Modifier = 'ctrl' | 'alt' | 'shift';
 
+function haptic(style: 'light' | 'medium' | 'heavy' = 'light') {
+  try {
+    const ms = style === 'heavy' ? 30 : style === 'medium' ? 15 : 5;
+    navigator.vibrate?.(ms);
+  } catch { /* not supported */ }
+}
+
 const CTRL_MAP: Record<string, string> = {
   a: '\x01', b: '\x02', c: '\x03', d: '\x04', e: '\x05', f: '\x06', g: '\x07',
   h: '\x08', i: '\x09', j: '\x0a', k: '\x0b', l: '\x0c', m: '\x0d', n: '\x0e',
@@ -28,6 +35,7 @@ export function VirtualKeyboard({ onKey }: VirtualKeyboardProps) {
   const [modifiers, setModifiers] = useState<Set<Modifier>>(new Set());
 
   const toggleMod = useCallback((mod: Modifier) => {
+    haptic('medium');
     setModifiers(prev => {
       const next = new Set(prev);
       if (next.has(mod)) next.delete(mod); else next.add(mod);
@@ -55,6 +63,7 @@ export function VirtualKeyboard({ onKey }: VirtualKeyboardProps) {
     if (alt) data = '\x1b' + data;
 
     onKey(data);
+    haptic();
     setModifiers(new Set());
   }, [modifiers, onKey]);
 
@@ -78,12 +87,12 @@ export function VirtualKeyboard({ onKey }: VirtualKeyboardProps) {
           </button>
         ))}
         {/* Special keys */}
-        <button onClick={() => onKey('\t')} className={keyClass}>Tab</button>
-        <button onClick={() => onKey('\x1b')} className={keyClass}>Esc</button>
-        <button onClick={() => { onKey('\x1b[A'); }} className={keyClass}>↑</button>
-        <button onClick={() => { onKey('\x1b[B'); }} className={keyClass}>↓</button>
-        <button onClick={() => { onKey('\x1b[D'); }} className={keyClass}>←</button>
-        <button onClick={() => { onKey('\x1b[C'); }} className={keyClass}>→</button>
+        <button onClick={() => { haptic(); onKey('\t'); }} className={keyClass}>Tab</button>
+        <button onClick={() => { haptic(); onKey('\x1b'); }} className={keyClass}>Esc</button>
+        <button onClick={() => { haptic(); onKey('\x1b[A'); }} className={keyClass}>↑</button>
+        <button onClick={() => { haptic(); onKey('\x1b[B'); }} className={keyClass}>↓</button>
+        <button onClick={() => { haptic(); onKey('\x1b[D'); }} className={keyClass}>←</button>
+        <button onClick={() => { haptic(); onKey('\x1b[C'); }} className={keyClass}>→</button>
       </div>
 
       {/* Keyboard rows */}
@@ -109,7 +118,7 @@ export function VirtualKeyboard({ onKey }: VirtualKeyboardProps) {
 
       {/* Space bar */}
       <div className="flex gap-0.5">
-        <button onClick={() => handleKey(' ')} className={`${keyClass} flex-[5]`}>Space</button>
+        <button onClick={() => { haptic(); handleKey(' '); }} className={`${keyClass} flex-[5]`}>Space</button>
       </div>
     </div>
   );
