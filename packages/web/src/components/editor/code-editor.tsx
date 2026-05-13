@@ -1,11 +1,18 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useEffect, useRef, useCallback } from "react";
 import "@/lib/monaco-loader";
 import { useEditorStore } from "@/stores/editor";
 import { EditorTabs } from "./editor-tabs";
 import { useTheme } from "@/components/theme-provider";
 import { useTranslations } from 'next-intl';
+import {
+  getOrCreateModel,
+  preloadDirectory,
+  setupLanguageDefaults,
+} from "@/lib/monaco-models";
+import type * as Monaco from 'monaco-editor';
 
 if (typeof window !== "undefined" && !navigator.clipboard?.write) {
   Object.defineProperty(navigator, "clipboard", {
@@ -39,17 +46,53 @@ interface CodeEditorProps {
 }
 
 export function CodeEditor({ workspaceId }: CodeEditorProps) {
-  const { openFiles, activeFilePath, updateContent, saveFile } = useEditorStore();
+  const { openFiles, activeFilePath, updateContent, saveFile, pendingJump, clearPendingJump } = useEditorStore();
   const { resolvedTheme } = useTheme();
   const t = useTranslations('editor');
+  const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
 
   const activeFile = openFiles.find((f) => f.path === activeFilePath);
 
-  const handleSave = () => {
+  const handleSave = useCallback(() => {
     if (activeFilePath) {
       saveFile(workspaceId, activeFilePath);
     }
-  };
+  }, [activeFilePath, saveFile, workspaceId]);
+
+  const handleMount = useCallback((editor: Monaco.editor.IStandaloneCodeEditor, _monaco: typeof Monaco) => {
+    editorRef.current = editor;
+    setupLanguageDefaults();
+
+    editor.addCommand(
+      2048 | 49, // KeyMod.CtrlCmd | KeyCode.KeyS
+      () => handleSave()
+    );
+  }, [handleSave]);
+
+  // Register model + preload directory when active file changes
+  useEffect(() => {
+    if (!activeFile || !activeFilePath) return;
+
+    getOrCreateModel(workspaceId, activeFilePath, activeFile.content);
+    preloadDirectory(workspaceId, activeFilePath);
+  }, [activeFilePath, workspaceId, activeFile]);
+
+  // Handle pending jump from search results
+  useEffect(() => {
+    if (!pendingJump || !editorRef.current) return;
+
+    const { line, column } = pendingJump;
+    const editor = editorRef.current;
+
+    editor.revealLineInCenter(line);
+    editor.setPosition({ lineNumber: line, column: column || 1 });
+    editor.focus();
+    clearPendingJump();
+  }, [pendingJump, clearPendingJump]);
+
+  const modelPath = activeFilePath
+    ? `/${workspaceId}/${activeFilePath}`
+    : undefined;
 
   return (
     <div className="flex flex-col h-full">
@@ -60,14 +103,9 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
             height="100%"
             language={getLanguage(activeFile.path)}
             value={activeFile.content}
+            path={modelPath}
             onChange={(value) => updateContent(activeFile.path, value || "")}
-            onMount={(editor) => {
-              editor.addCommand(
-                // Ctrl+S / Cmd+S
-                2048 | 49, // KeyMod.CtrlCmd | KeyCode.KeyS
-                () => handleSave()
-              );
-            }}
+            onMount={handleMount}
             options={{
               fontSize: 13,
               minimap: { enabled: false },
