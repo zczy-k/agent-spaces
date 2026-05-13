@@ -35,9 +35,9 @@ router.post('/run', async (req: Request, res: Response) => {
     return;
   }
 
-  const workspaceId = body.workspaceId?.trim();
+  const workspaceId = resolveWorkspaceId(body.workspaceId);
   if (!workspaceId) {
-    res.status(400).json({ error: 'workspaceId is required' });
+    res.status(400).json({ error: 'workspaceId is required when no workspace exists' });
     return;
   }
 
@@ -76,7 +76,7 @@ router.post('/run', async (req: Request, res: Response) => {
   let completed = false;
 
   prepareSse(res);
-  writeSse(res, 'session', { session });
+  writeSse(res, 'session', { session, workspaceId });
 
   const runtime = createAgentRuntime({
     kind: preset.runtimeKind,
@@ -88,8 +88,8 @@ router.post('/run', async (req: Request, res: Response) => {
     ...getThinkingRuntimeConfig(preset),
   });
 
-  req.on('close', () => {
-    if (!completed) runtime.stop();
+  res.on('close', () => {
+    if (!completed && !res.writableEnded) runtime.stop();
   });
 
   try {
@@ -169,6 +169,12 @@ function verifyRequestKey(req: Request, body: AgentSseRequestBody): boolean {
     ? req.headers['x-agent-spaces-key']
     : undefined;
   return verifyToken(body.key ?? bearer ?? headerKey ?? null);
+}
+
+function resolveWorkspaceId(workspaceId: string | undefined): string | undefined {
+  const explicit = workspaceId?.trim();
+  if (explicit) return explicit;
+  return workspaceService.getAll()[0]?.id;
 }
 
 function prepareSse(res: Response): void {
