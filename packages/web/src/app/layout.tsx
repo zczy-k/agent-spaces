@@ -7,6 +7,7 @@ import { AppShell } from "@/components/app-shell";
 import { ConsolePanel } from "@/components/common/console-panel";
 import { ViewportInsets } from "@/components/viewport-insets";
 import { ZoomWrapper } from "@/components/zoom-wrapper";
+import { CommandPalette } from "@/components/command-palette";
 import { Toaster } from "sonner";
 import "flexlayout-react/style/light.css";
 import "tippy.js/dist/tippy.css";
@@ -65,6 +66,7 @@ export default function RootLayout({
             <ViewportInsets />
             <AuthGuard>
               <AppShell>{children}</AppShell>
+              <CommandPalette />
               <Toaster richColors position="bottom-right" />
             </AuthGuard>
             <ConsolePanel />

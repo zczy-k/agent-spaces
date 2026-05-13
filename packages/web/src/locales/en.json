@@ -860,5 +860,11 @@
     "editDescription": "Edit MCP server config (JSON)",
     "bindTitle": "Bind Agents - {name}",
     "bindDescription": "Select agents to bind this MCP server to"
+  },
+  "commandPalette": {
+    "title": "Command Palette",
+    "description": "Search and run commands",
+    "placeholder": "Type a command or search...",
+    "empty": "No results found."
   }
 }

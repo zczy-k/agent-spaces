@@ -862,5 +862,11 @@
     "editDescription": "编辑 MCP 服务器配置（JSON）",
     "bindTitle": "绑定智能体 - {name}",
     "bindDescription": "选择要绑定此 MCP 服务器的智能体"
+  },
+  "commandPalette": {
+    "title": "命令面板",
+    "description": "搜索并执行命令",
+    "placeholder": "输入命令或搜索...",
+    "empty": "未找到匹配结果"
   }
 }
