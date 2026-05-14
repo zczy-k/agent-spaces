@@ -84,11 +84,12 @@ export function EditIssueDialog({ issue, open, onOpenChange, agents = [], onSave
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md max-h-[85vh] p-0 gap-0 flex flex-col overflow-hidden">
+        <DialogHeader className="px-4 py-4 shrink-0">
           <DialogTitle>{t('edit.title')}</DialogTitle>
           <DialogDescription>{t('edit.description')}</DialogDescription>
         </DialogHeader>
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-4">
         <div className="space-y-3">
           <Input
             placeholder={t('edit.titlePlaceholder')}
@@ -186,7 +187,7 @@ export function EditIssueDialog({ issue, open, onOpenChange, agents = [], onSave
             )}
           </div>
 
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               {tc('cancel')}
             </Button>
@@ -194,6 +195,7 @@ export function EditIssueDialog({ issue, open, onOpenChange, agents = [], onSave
               {saving ? tc('saving') : tc('save')}
             </Button>
           </div>
+        </div>
         </div>
       </DialogContent>
     </Dialog>

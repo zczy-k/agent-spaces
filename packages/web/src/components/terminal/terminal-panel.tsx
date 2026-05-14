@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { Plus, ChevronDown, ChevronRight, X, FolderOpen, Play, Pencil, Trash2, Search, Download, Terminal, Keyboard, Power, Eraser, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ClipboardPaste } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -110,11 +110,15 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
     setPendingShell(undefined);
   }, [pendingShell, createSession]);
 
+  const initRef = useRef<string | null>(null);
   useEffect(() => {
     const ws = getWS(workspaceId);
     init(ws);
-    if (sessions.length === 0) {
-      handleCreateSession();
+    if (initRef.current !== workspaceId) {
+      initRef.current = workspaceId;
+      if (sessions.length === 0) {
+        handleCreateSession();
+      }
     }
   }, [workspaceId]); // eslint-disable-line react-hooks/exhaustive-deps
 

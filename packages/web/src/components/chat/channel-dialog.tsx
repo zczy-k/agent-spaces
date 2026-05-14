@@ -74,13 +74,14 @@ export function ChannelDialog({ open, onOpenChange, channel, agents = [], onSubm
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md max-h-[85vh] p-0 gap-0 flex flex-col overflow-hidden">
+        <DialogHeader className="px-4 py-4 shrink-0">
           <DialogTitle>{channel ? t('channel.edit') : t('channel.create')}</DialogTitle>
           <DialogDescription>
             {channel ? t('channel.edit') : t('channel.create')}
           </DialogDescription>
         </DialogHeader>
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-4">
         <div className="space-y-4 pt-2">
           <div className="space-y-2">
             <label className="text-sm font-medium">{tc('name')}</label>
@@ -116,6 +117,7 @@ export function ChannelDialog({ open, onOpenChange, channel, agents = [], onSubm
               {channel ? tc('save') : tc('create')}
             </Button>
           </div>
+        </div>
         </div>
       </DialogContent>
     </Dialog>
