@@ -9,6 +9,21 @@ const SNAP_THRESHOLD = 60;
 const MINIMIZE_DELAY = 2000;
 const UNHOVER_DELAY = 2000;
 const HALF_SIZE = SIZE / 2;
+const LS_KEY = "console-panel:pos";
+
+interface SavedPos { x: number; y: number }
+
+function loadPos(): SavedPos | null {
+  try {
+    if (typeof window === "undefined") return null;
+    const raw = localStorage.getItem(LS_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function savePos(pos: SavedPos) {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(pos)); } catch {}
+}
 
 export function ConsolePanel() {
   const toggle = useCommandPalette((s) => s.toggle);
@@ -28,7 +43,11 @@ export function ConsolePanel() {
   const snappedEdge = useRef<'left' | 'right' | null>(null);
 
   useEffect(() => {
-    const initial = { x: window.innerWidth - SIZE - 20, y: window.innerHeight - SIZE - 28 };
+    const saved = loadPos();
+    const fallback = { x: window.innerWidth - SIZE - 20, y: window.innerHeight - SIZE - 28 };
+    const initial = saved
+      ? { x: Math.min(saved.x, window.innerWidth - SIZE), y: Math.min(saved.y, window.innerHeight - SIZE) }
+      : fallback;
     posRef.current = initial;
     setPos(initial);
     setMounted(true);
@@ -56,8 +75,10 @@ export function ConsolePanel() {
     setMinimized(false);
     const w = window.innerWidth;
     const isLeft = posRef.current.x < w / 2;
-    posRef.current = { x: isLeft ? 12 : w - SIZE - 12, y: posRef.current.y };
-    setPos(posRef.current);
+    const restored = { x: isLeft ? 12 : w - SIZE - 12, y: posRef.current.y };
+    posRef.current = restored;
+    setPos(restored);
+    savePos(restored);
   }, [cancelMinimize]);
 
   const onHoverIn = useCallback(() => {
@@ -113,11 +134,13 @@ export function ConsolePanel() {
       posRef.current = snapped;
       setSnapping(true);
       setPos(snapped);
+      savePos(snapped);
       minimizeTimer.current = setTimeout(() => doMinimize(edge), MINIMIZE_DELAY);
     } else {
       snappedEdge.current = null;
       posRef.current = { x, y: clampedY };
       setPos(posRef.current);
+      savePos({ x, y: clampedY });
     }
 
     if (!moved.current) {

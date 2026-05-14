@@ -13,5 +13,5 @@ export interface SearchCommandProvider {
   aliases: string[];
   label: string;
   icon: LucideIcon;
-  search: (keyword: string) => SearchResult[];
+  search: (keyword: string) => SearchResult[] | Promise<SearchResult[]>;
 }

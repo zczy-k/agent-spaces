@@ -2,6 +2,7 @@ import type { SearchCommandProvider } from './types';
 import { channelSearch } from './channel-search';
 import { issueSearch } from './issue-search';
 import { fileSearch } from './file-search';
+import { workspaceSearch } from './workspace-search';
 
 export type { SearchResult, SearchCommandProvider } from './types';
 
@@ -9,6 +10,7 @@ export const searchProviders: SearchCommandProvider[] = [
   channelSearch,
   issueSearch,
   fileSearch,
+  workspaceSearch,
 ];
 
 export function matchProvider(input: string): { provider: SearchCommandProvider; keyword: string } | null {

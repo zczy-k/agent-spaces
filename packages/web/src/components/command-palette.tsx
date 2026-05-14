@@ -41,7 +41,29 @@ export function CommandPalette() {
   }, [open]);
 
   const match = useMemo(() => matchProvider(query), [query]);
-  const searchResults = useMemo(() => match?.provider.search(match.keyword) ?? [], [match]);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  useEffect(() => {
+    const m = matchProvider(query);
+    if (!m || !m.keyword) {
+      setSearchResults([]);
+      setSearchLoading(false);
+      return;
+    }
+
+    const result = m.provider.search(m.keyword);
+    if (result instanceof Promise) {
+      setSearchLoading(true);
+      let stale = false;
+      result.then((r) => { if (!stale) setSearchResults(r); })
+        .finally(() => { if (!stale) setSearchLoading(false); });
+      return () => { stale = true; };
+    } else {
+      setSearchResults(result);
+      setSearchLoading(false);
+    }
+  }, [query]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, typeof commands>();
@@ -78,7 +100,9 @@ export function CommandPalette() {
 
           {showSearch && (
             <CommandGroup heading={match.provider.label}>
-              {searchResults.length === 0 ? (
+              {searchLoading ? (
+                <div className="px-2 py-4 text-center text-sm text-muted-foreground">...</div>
+              ) : searchResults.length === 0 ? (
                 <div className="px-2 py-4 text-center text-sm text-muted-foreground">
                   {t('noResults')}
                 </div>

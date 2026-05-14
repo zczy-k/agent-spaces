@@ -127,16 +127,19 @@ export function FloatingPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // persist
+  // persist (debounced: drag/resize 结束 500ms 后写入)
   useEffect(() => {
     if (!mounted) return;
-    const s = stateRef.current;
-    saveState(id, {
-      x: s.curX, y: s.curY,
-      width: s.curW, height: s.curH,
-      collapsed: s.collapsed, minimized: s.minimized,
-      ballX: s.ballX, ballY: s.ballY,
-    });
+    const timer = setTimeout(() => {
+      const s = stateRef.current;
+      saveState(id, {
+        x: s.curX, y: s.curY,
+        width: s.curW, height: s.curH,
+        collapsed: s.collapsed, minimized: s.minimized,
+        ballX: s.ballX, ballY: s.ballY,
+      });
+    }, 500);
+    return () => clearTimeout(timer);
   }, [curX, curY, curW, curH, collapsed, minimized, ballX, ballY, id, mounted]);
 
   const snapBallToEdge = useCallback((x: number, y: number) => {
