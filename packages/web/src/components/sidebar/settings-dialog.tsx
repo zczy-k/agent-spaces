@@ -121,6 +121,7 @@ export function SettingsDialog({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ avatarUrl: null }),
     }).catch(() => {});
+  };
 
   const handleChangeSecret = async () => {
     const token = getToken();
@@ -354,5 +355,4 @@ export function SettingsDialog({
       </DialogContent>
     </Dialog>
   );
-}
 }
