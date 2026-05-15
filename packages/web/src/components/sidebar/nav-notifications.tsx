@@ -63,7 +63,7 @@ export function NotificationsPopover({ workspaceId }: { workspaceId: string }) {
               </div>
             )}
           </div>
-          <ScrollArea className="max-h-80">
+          <ScrollArea className="h-80 overflow-hidden">
             {recent.length === 0 ? (
               <div className="px-4 py-8 text-center text-sm text-muted-foreground">
                 {t('empty')}

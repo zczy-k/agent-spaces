@@ -12,8 +12,8 @@ const mobileTabItems = [
   { id: "issue-list", icon: ListChecks, group: "issue" },
   { id: "issue-detail", icon: FileDiff, group: "issue" },
   // 编辑器
-  { id: "editor", icon: FolderOpen, group: "editor" },
-  { id: "code-editor", icon: Code2, group: "editor" },
+  { id: "workfolder", icon: FolderOpen, group: "workfolder" },
+  { id: "code-editor", icon: Code2, group: "workfolder" },
   // 工具
   { id: "terminal", icon: TerminalSquare, group: "tools" },
   // Git

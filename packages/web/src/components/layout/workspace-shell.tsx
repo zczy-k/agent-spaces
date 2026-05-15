@@ -31,7 +31,7 @@ import type { Issue, Task, IssueStatusChangedPayload, TaskStatusChangedPayload, 
 const tabIcons: Record<string, React.ReactNode> = {
   "channel-list": <Hash size={16} />,
   "issue-list": <ListChecks size={16} />,
-  "editor": <FolderOpen size={16} />,
+  "workfolder": <FolderOpen size={16} />,
   "code-editor": <Code2 size={16} />,
   "chat": <MessageSquare size={16} />,
   "issue-detail": <FileText size={16} />,
@@ -44,7 +44,7 @@ const tabIcons: Record<string, React.ReactNode> = {
 
 // 右侧 tab → 左侧 tab 同步映射
 const rightToLeftTabMap: Record<string, string> = {
-  "code-editor": "editor",
+  "code-editor": "workfolder",
   "chat": "channel-list",
   "issue-detail": "issue-list",
 };
@@ -79,7 +79,7 @@ const defaultJson: IJsonModel = {
           { type: "tab", name: "Settings", component: "project-settings", id: "project-settings" },
           { type: "tab", name: "Channels", component: "channel-list", id: "channel-list" },
           { type: "tab", name: "Issues", component: "issue-list", id: "issue-list" },
-          { type: "tab", name: "Editor", component: "editor", id: "editor" },
+          { type: "tab", name: "Workfolder", component: "workfolder", id: "workfolder" },
         ],
       },
       {
@@ -236,7 +236,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
           return <ChannelList workspaceId={workspaceId} />;
         case "issue-list":
           return <IssueList workspaceId={workspaceId} />;
-        case "editor":
+        case "workfolder":
           return <EditorPanel workspaceId={workspaceId} />;
         case "code-editor":
           return <CodeEditor workspaceId={workspaceId} />;
@@ -358,7 +358,7 @@ function MobilePanelRenderer({ panel, workspaceId, boundDirs }: { panel: string;
       return <IssueList workspaceId={workspaceId} />;
     case "issue-detail":
       return <IssueDetail workspaceId={workspaceId} />;
-    case "editor":
+    case "workfolder":
       return <EditorPanel workspaceId={workspaceId} />;
     case "code-editor":
       return <CodeEditor workspaceId={workspaceId} />;
