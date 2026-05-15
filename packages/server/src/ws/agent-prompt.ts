@@ -79,6 +79,11 @@ function formatConversationHistory(history: Message[]): string[] {
     const text = msg.senderId === 'user' ? stripHtml(msg.content) : getAgentFinalMessage(msg);
     if (!text.trim()) continue;
     lines.push(`[${role}]: ${text}`);
+    for (const reply of msg.replies ?? []) {
+      const replyRole = reply.senderId === 'user' ? 'User' : (reply.senderRole || 'Agent');
+      const replyText = reply.senderId === 'user' ? stripHtml(reply.content) : getReplyFinalMessage(reply);
+      if (replyText.trim()) lines.push(`[${replyRole} reply]: ${replyText}`);
+    }
   }
   return lines;
 }
@@ -95,6 +100,18 @@ function getAgentFinalMessage(message: Message): string {
   if (message.status && message.status !== 'completed') return '';
 
   return stripToolLikeHistoryLines(stripHtml(message.content));
+}
+
+function getReplyFinalMessage(reply: NonNullable<Message['replies']>[number]): string {
+  const finalTextParts = reply.parts
+    ?.filter((part) => part.type === 'text')
+    .map((part) => part.text.trim())
+    .filter(Boolean);
+
+  if (finalTextParts?.length) return finalTextParts.join('\n\n');
+  if (reply.parts?.length) return '';
+  if (reply.status && reply.status !== 'completed') return '';
+  return stripToolLikeHistoryLines(stripHtml(reply.content));
 }
 
 function stripToolLikeHistoryLines(content: string): string {

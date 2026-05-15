@@ -3,7 +3,7 @@ import type { WSEvent, ClientEventName, Message } from '@agent-spaces/shared';
 import { addConnection, broadcastToWorkspace } from './connection-manager.js';
 import { handleTerminalEvent } from './terminal-handler.js';
 import * as ptyService from '../services/pty.js';
-import { createMessage } from '../services/message.js';
+import { appendMessageReply, createMessage } from '../services/message.js';
 import { getChannel } from '../services/channel.js';
 import * as agentService from '../services/agent.js';
 import { runMentionedAgent, stopChannelRuns, handleAnswerQuestion, ensureScheduler, makeContext } from './agent-runner.js';
@@ -72,15 +72,34 @@ for (const evt of terminalEvents) {
 
 // Register channel handlers
 registerHandler('channel.message', (_ws, workspaceId, data) => {
-  const { channelId, content, type, mentions, attachments } = data as {
+  const { channelId, content, type, mentions, attachments, replyToMessageId } = data as {
     channelId: string;
     content: string;
     type?: string;
     mentions?: string[];
     attachments?: Message['attachments'];
+    replyToMessageId?: string;
   };
   if (!channelId || (!content && !attachments?.length)) return;
   if (!getChannel(workspaceId, channelId)) return;
+  if (replyToMessageId) {
+    const updated = appendMessageReply(workspaceId, channelId, replyToMessageId, {
+      senderId: 'user',
+      content,
+      attachments,
+    });
+    if (!updated) return;
+    broadcastToWorkspace(workspaceId, 'channel.message.updated', updated);
+
+    const agentId = updated.senderId !== 'user' ? updated.senderId : undefined;
+    if (agentId) {
+      void runMentionedAgent(workspaceId, channelId, agentId, stripHtml(content), {
+        messageId: updated.id,
+        appendUserMessage: stripHtml(content),
+      });
+    }
+    return;
+  }
   const message = createMessage(workspaceId, channelId, {
     senderId: 'user',
     content,

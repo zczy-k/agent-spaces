@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { Message } from '@agent-spaces/shared';
-import { Copy, Pencil, Trash2, Check, Clock } from 'lucide-react';
+import { Copy, Pencil, Trash2, Check, Clock, Reply } from 'lucide-react';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { useAgentStore } from '@/stores/agent';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { MemberInfoDialog } from './member-info-dialog';
 import { MessageContextUsage, MessageParts } from './message-parts';
 
@@ -14,9 +15,10 @@ interface MessageItemProps {
   workspaceId: string;
   onEdit?: (message: Message) => void;
   onDelete?: (message: Message) => void;
+  onReply?: (message: Message) => void;
 }
 
-export function MessageItem({ message, workspaceId, onEdit, onDelete }: MessageItemProps) {
+export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }: MessageItemProps) {
   const tc = useTranslations('common');
   const isUser = message.senderId === 'user';
   const agents = useAgentStore((s) => s.agents);
@@ -27,6 +29,7 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete }: MessageI
   const time = new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const [copied, setCopied] = useState(false);
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
+  const replies = message.replies ?? [];
 
   const isStreaming = message.status === 'streaming' || message.status === 'pending' || message.status === 'waiting_for_user';
   const [elapsed, setElapsed] = useState(() =>
@@ -93,7 +96,43 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete }: MessageI
             </div>
           )}
         </div>
+        {replies.length > 0 ? (
+          <div className="mt-1 flex w-full justify-end">
+            <Popover>
+              <PopoverTrigger
+                render={
+                  <button
+                    type="button"
+                    className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                  />
+                }
+              >
+                有 {replies.length} 条回复消息
+              </PopoverTrigger>
+              <PopoverContent align="end" sideOffset={4} className="w-96 max-w-[calc(100vw-2rem)] p-2">
+                <div className="max-h-96 space-y-2 overflow-y-auto pr-1">
+                  {replies.map((reply) => (
+                    <div key={reply.id} className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
+                      <div className="mb-1 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                        <span>{reply.senderId === 'user' ? tc('you') : reply.senderRole || reply.senderId}</span>
+                        <span>{new Date(reply.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                      <div className="whitespace-pre-wrap break-words">{isHTML(reply.content) ? reply.content.replace(/<[^>]*>/g, '') : reply.content}</div>
+                    </div>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        ) : null}
         <div className="flex items-center gap-0.5 h-6 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={() => onReply?.(message)}
+            className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            title="回复"
+          >
+            <Reply className="h-3.5 w-3.5" />
+          </button>
           <button
             onClick={handleCopy}
             className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"

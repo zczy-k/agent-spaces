@@ -73,17 +73,20 @@ interface ChatInputProps {
   channel: Channel;
   agents: MentionedAgent[];
   messages?: Message[];
-  onSend: (message: string, mentions: string[], attachments?: MessageAttachment[]) => void;
+  onSend: (message: string, mentions: string[], attachments?: MessageAttachment[], replyToMessageId?: string) => void;
   isProcessing?: boolean;
   onStop?: () => void;
+  replyTo?: { id: string; label: string } | null;
+  onCancelReply?: () => void;
 }
 
 export interface ChatInputHandle {
   setContent: (html: string, agents?: MentionedAgent[]) => void;
+  focus: () => void;
 }
 
 export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput(
-  { channelName, channelId, workspaceId, channel, agents, messages = [], onSend, isProcessing = false, onStop },
+  { channelName, channelId, workspaceId, channel, agents, messages = [], onSend, isProcessing = false, onStop, replyTo, onCancelReply },
   ref
 ) {
   const t = useTranslations('chat');
@@ -192,19 +195,20 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     }
     try {
       const uploaded = await Promise.all(attachments.map(uploadAttachment));
-      onSendRef.current(text ? stripSimpleParagraphs(currentEditor.getHTML()) : "", mentions, uploaded);
+      onSendRef.current(text ? stripSimpleParagraphs(currentEditor.getHTML()) : "", mentions, uploaded, replyTo?.id);
       currentEditor.commands.clearContent();
       setAttachments((prev) => {
         prev.forEach((item) => URL.revokeObjectURL(item.preview));
         return [];
       });
       setMentionedAgentIds([]);
+      onCancelReply?.();
       clearDraft(workspaceId, channelId);
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
     }
-  }, [attachments, workspaceId, channelId, clearDraft]);
+  }, [attachments, workspaceId, channelId, replyTo?.id, onCancelReply, clearDraft]);
 
   const { getRootProps, getInputProps, open: openFilePicker } = useDropzone({
     noClick: true,
@@ -441,6 +445,9 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         }
         editor.commands.focus("end");
       },
+      focus: () => {
+        editor?.commands.focus("end");
+      },
     }),
     [editor]
   );
@@ -599,6 +606,8 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             actions={chatActions}
             dropzoneProps={getRootProps()}
             hiddenInput={<input {...getInputProps()} data-chat-file-input="" />}
+            replyLabel={replyTo?.label}
+            onCancelReply={onCancelReply}
           />
           {attachments.length > 0 && (
             <Attachments variant="inline" className="mt-2 justify-start">

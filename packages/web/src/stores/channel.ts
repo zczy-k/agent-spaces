@@ -15,7 +15,7 @@ interface ChannelStore {
   updateChannel: (workspaceId: string, channelId: string, data: Partial<Pick<Channel, 'name' | 'type' | 'issueId' | 'members' | 'pinnedMentionId' | 'draft' | 'todos'>>) => Promise<void>;
   setActiveChannel: (id: string) => void;
   loadMessages: (workspaceId: string, channelId: string) => Promise<void>;
-  sendMessage: (workspaceId: string, channelId: string, content: string, mentions?: string[], attachments?: Message['attachments']) => void;
+  sendMessage: (workspaceId: string, channelId: string, content: string, mentions?: string[], attachments?: Message['attachments'], replyToMessageId?: string) => void;
   addMessage: (channelId: string, message: Message) => void;
   updateMessage: (channelId: string, message: Message) => void;
   stopProcessingMessages: (channelId: string) => void;
@@ -91,9 +91,9 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
     set((s) => ({ messages: { ...s.messages, [channelId]: msgs } }));
   },
 
-  sendMessage: (workspaceId, channelId, content, mentions = [], attachments = []) => {
+  sendMessage: (workspaceId, channelId, content, mentions = [], attachments = [], replyToMessageId) => {
     const ws = getWS(workspaceId);
-    ws.send('channel.message', { channelId, content, mentions, attachments });
+    ws.send('channel.message', { channelId, content, mentions, attachments, replyToMessageId });
   },
 
   addMessage: (channelId, message) => {

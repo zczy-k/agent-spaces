@@ -64,6 +64,7 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
   const [infoOpen, setInfoOpen] = useState(false);
   const [deletingMsg, setDeletingMsg] = useState<Message | null>(null);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+  const [replyTo, setReplyTo] = useState<{ id: string; label: string } | null>(null);
   const chatInputRef = useRef<ChatInputHandle>(null);
 
   const agents = useAgentStore((s) => s.agents);
@@ -157,9 +158,9 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
     return () => clearInterval(interval);
   }, [activeChannelId, workspaceId, msgs.length, msgs[msgs.length - 1]?.status, loadMessages]);
 
-  const handleSend = useCallback((content: string, mentions: string[], attachments?: Message['attachments']) => {
+  const handleSend = useCallback((content: string, mentions: string[], attachments?: Message['attachments'], replyToMessageId?: string) => {
     if (!activeChannelId) return;
-    sendMessage(workspaceId, activeChannelId, content, mentions, attachments);
+    sendMessage(workspaceId, activeChannelId, content, mentions, attachments, replyToMessageId);
   }, [workspaceId, activeChannelId, sendMessage]);
 
   const isProcessing = msgs.length > 0
@@ -179,6 +180,12 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
   const handleDeleteMessage = useCallback((msg: Message) => {
     setDeletingMsg(msg);
   }, []);
+
+  const handleReplyMessage = useCallback((msg: Message) => {
+    const targetAgent = msg.senderId === 'user' ? undefined : agents.find((agent) => agent.id === msg.senderId);
+    setReplyTo({ id: msg.id, label: msg.senderId === 'user' ? tc('you') : (targetAgent?.name || msg.senderId) });
+    chatInputRef.current?.focus?.();
+  }, [agents, tc]);
 
   const confirmDelete = useCallback(async () => {
     if (!deletingMsg) return;
@@ -268,7 +275,7 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
           <div className="h-full overflow-y-auto overflow-x-hidden py-2">
             {msgs.map((msg) => (
               <div key={msg.id} id={`msg-${msg.id}`}>
-                <MessageItem message={msg} workspaceId={workspaceId} onEdit={handleEditMessage} onDelete={handleDeleteMessage} />
+                <MessageItem message={msg} workspaceId={workspaceId} onEdit={handleEditMessage} onDelete={handleDeleteMessage} onReply={handleReplyMessage} />
               </div>
             ))}
             <div ref={bottomRef} />
@@ -291,7 +298,7 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
             }}
           />
         ) : null}
-        <ChatInput ref={chatInputRef} channelName={channel.name} channelId={channel.id} workspaceId={workspaceId} channel={channel} agents={mentionAgents} messages={msgs} onSend={handleSend} isProcessing={isProcessing} onStop={handleStop} />
+        <ChatInput ref={chatInputRef} channelName={channel.name} channelId={channel.id} workspaceId={workspaceId} channel={channel} agents={mentionAgents} messages={msgs} onSend={handleSend} isProcessing={isProcessing} onStop={handleStop} replyTo={replyTo} onCancelReply={() => setReplyTo(null)} />
       </div>
 
       {/* 右侧：信息面板 - Drawer */}

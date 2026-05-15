@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import { EditorContent, type Editor } from '@tiptap/react';
 import { Button } from '@/components/ui/button';
-import { Send, Square } from 'lucide-react';
+import { Send, Square, X } from 'lucide-react';
 
 interface ComposerShellProps {
   editor: Editor | null;
@@ -15,6 +15,8 @@ interface ComposerShellProps {
   className?: string;
   dropzoneProps?: Record<string, unknown>;
   hiddenInput?: ReactNode;
+  replyLabel?: string;
+  onCancelReply?: () => void;
 }
 
 export function ComposerShell({
@@ -27,6 +29,8 @@ export function ComposerShell({
   className,
   dropzoneProps,
   hiddenInput,
+  replyLabel,
+  onCancelReply,
 }: ComposerShellProps) {
   return (
     <div className={className}>
@@ -35,6 +39,19 @@ export function ComposerShell({
         {...dropzoneProps}
       >
         {hiddenInput}
+        {replyLabel ? (
+          <div className="flex items-center justify-between gap-2 border-b px-3 py-1.5 text-xs text-muted-foreground">
+            <span className="min-w-0 truncate">回复给 {replyLabel}</span>
+            <button
+              type="button"
+              onClick={onCancelReply}
+              className="inline-flex size-5 shrink-0 items-center justify-center rounded hover:bg-muted hover:text-foreground"
+              title="取消回复"
+            >
+              <X className="size-3" />
+            </button>
+          </div>
+        ) : null}
         <div className="px-3 pt-3 pb-2">
           <EditorContent editor={editor} />
         </div>

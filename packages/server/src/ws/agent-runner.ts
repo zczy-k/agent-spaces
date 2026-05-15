@@ -36,6 +36,7 @@ interface RunMentionedAgentOptions {
   messageId?: string;
   seedOutput?: string[];
   seedQuestions?: PendingAskUserQuestion[];
+  appendUserMessage?: string;
 }
 
 // --- State ---
@@ -293,13 +294,14 @@ export async function runMentionedAgent(
         askUserQuestions,
         success: true,
       });
-      if (parts.length === 0) return;
+      const displayParts = buildContinuationParts(existingMessage?.parts, session.id, options.appendUserMessage, parts);
+      if (displayParts.length === 0) return;
 
       const status = askUserQuestions.some((question) => !question.answer) ? 'waiting_for_user' : 'streaming';
       const live = updateMessage(workspaceId, channelId, pending.id, {
         content: liveOutput.join('\n') || pending.content,
         status,
-        parts,
+        parts: displayParts,
         metadata: {
           ...pending.metadata,
           duration: Date.now() - startTime,
@@ -407,6 +409,21 @@ export async function runMentionedAgent(
     const displayOutput = mergeRuntimeOutput(liveOutput, result.output);
     if (shouldWaitForUserAnswer(askUserQuestions, result.summary, result.error, displayOutput)) {
       const waitingOutput = stripAskUserQuestionErrorLines(liveOutput);
+      const waitingParts = buildContinuationParts(existingMessage?.parts, session.id, options.appendUserMessage, buildAgentMessageParts({
+        sessionId: session.id,
+        workspaceRoot: workspace?.boundDirs?.[0],
+        presetName: preset.name || preset.role,
+        role: preset.role,
+        model: preset.modelId,
+        systemPrompt: preset.systemPrompt,
+        mcpServers: Object.keys(mcpServers ?? {}),
+        skills,
+        output: waitingOutput,
+        reasoning: liveReasoning,
+        toolDetails,
+        askUserQuestions,
+        success: true,
+      }));
       const waiting = updateMessage(workspaceId, channelId, pending.id, {
         content: waitingOutput.join('\n') || pending.content,
         type: 'text',
@@ -418,21 +435,7 @@ export async function runMentionedAgent(
           summary: 'Waiting for user answer',
           duration: Date.now() - startTime,
         },
-        parts: buildAgentMessageParts({
-          sessionId: session.id,
-          workspaceRoot: workspace?.boundDirs?.[0],
-          presetName: preset.name || preset.role,
-          role: preset.role,
-          model: preset.modelId,
-          systemPrompt: preset.systemPrompt,
-          mcpServers: Object.keys(mcpServers ?? {}),
-          skills,
-          output: waitingOutput,
-          reasoning: liveReasoning,
-          toolDetails,
-          askUserQuestions,
-          success: true,
-        }),
+        parts: waitingParts,
       });
       if (waiting) broadcastToWorkspace(workspaceId, 'channel.message.updated', waiting);
       agentService.updateStatus(workspaceId, session.id, 'blocked');
@@ -470,6 +473,24 @@ export async function runMentionedAgent(
       error: result.error,
     });
 
+    const replyParts = buildContinuationParts(existingMessage?.parts, session.id, options.appendUserMessage, buildAgentMessageParts({
+      sessionId: session.id,
+      workspaceRoot: workspace?.boundDirs?.[0],
+      presetName: preset.name || preset.role,
+      role: preset.role,
+      model: preset.modelId,
+      usage: result.usage,
+      systemPrompt: preset.systemPrompt,
+      mcpServers: Object.keys(mcpServers ?? {}),
+      skills,
+      builtInTools: buildBuiltInTools(functionTools, channel, issue),
+      output: displayOutput,
+      reasoning: liveReasoning,
+      toolDetails,
+      askUserQuestions,
+      success: result.success,
+      error: result.error,
+    }));
     const reply = updateMessage(workspaceId, channelId, pending.id, {
       content: result.success ? displayOutput.join('\n') : result.error || displayOutput.join('\n'),
       type: 'text',
@@ -481,24 +502,7 @@ export async function runMentionedAgent(
         summary: result.summary,
         duration: Date.now() - startTime,
       },
-      parts: buildAgentMessageParts({
-        sessionId: session.id,
-        workspaceRoot: workspace?.boundDirs?.[0],
-        presetName: preset.name || preset.role,
-        role: preset.role,
-        model: preset.modelId,
-        usage: result.usage,
-        systemPrompt: preset.systemPrompt,
-        mcpServers: Object.keys(mcpServers ?? {}),
-        skills,
-        builtInTools: buildBuiltInTools(functionTools, channel, issue),
-        output: displayOutput,
-        reasoning: liveReasoning,
-        toolDetails,
-        askUserQuestions,
-        success: result.success,
-        error: result.error,
-      }),
+      parts: replyParts,
     });
     if (reply) broadcastToWorkspace(workspaceId, 'channel.message.updated', reply);
   } catch (err) {
@@ -512,6 +516,23 @@ export async function runMentionedAgent(
       durationMs: Date.now() - startTime,
     });
     broadcastToWorkspace(workspaceId, 'agent.error', { agentId: session.id, error });
+    const errorParts = buildContinuationParts(existingMessage?.parts, session.id, options.appendUserMessage, buildAgentMessageParts({
+      sessionId: session.id,
+      workspaceRoot: workspace?.boundDirs?.[0],
+      presetName: preset.name || preset.role,
+      role: preset.role,
+      model: preset.modelId,
+      systemPrompt: preset.systemPrompt,
+      mcpServers: Object.keys(mcpServers ?? {}),
+      skills,
+      builtInTools: buildBuiltInTools(functionTools, channel, issue),
+      output: [error],
+      reasoning: liveReasoning,
+      toolDetails: new Map(),
+      askUserQuestions: [],
+      success: false,
+      error,
+    }));
     const reply = updateMessage(workspaceId, channelId, pending.id, {
       content: error,
       type: 'text',
@@ -522,23 +543,7 @@ export async function runMentionedAgent(
         model: preset.modelId,
         duration: Date.now() - startTime,
       },
-      parts: buildAgentMessageParts({
-        sessionId: session.id,
-        workspaceRoot: workspace?.boundDirs?.[0],
-        presetName: preset.name || preset.role,
-        role: preset.role,
-        model: preset.modelId,
-        systemPrompt: preset.systemPrompt,
-        mcpServers: Object.keys(mcpServers ?? {}),
-        skills,
-        builtInTools: buildBuiltInTools(functionTools, channel, issue),
-        output: [error],
-        reasoning: liveReasoning,
-        toolDetails: new Map(),
-        askUserQuestions: [],
-        success: false,
-        error,
-      }),
+      parts: errorParts,
     });
     if (reply) broadcastToWorkspace(workspaceId, 'channel.message.updated', reply);
   } finally {
@@ -594,6 +599,22 @@ function untrackChannelRun(workspaceId: string, channelId: string, agentId: stri
   if (!runs) return;
   runs.delete(agentId);
   if (runs.size === 0) activeChannelRuns.delete(key);
+}
+
+function buildContinuationParts(
+  previousParts: Message['parts'] | undefined,
+  sessionId: string,
+  userMessage: string | undefined,
+  nextParts: NonNullable<Message['parts']>,
+): NonNullable<Message['parts']> {
+  if (!userMessage) return nextParts;
+  const appended: NonNullable<Message['parts']> = [{
+    id: `user-message-${sessionId}`,
+    type: 'user_message',
+    text: userMessage,
+    senderName: '用户',
+  }, ...nextParts];
+  return [...(previousParts ?? []), ...appended];
 }
 
 function questionRunKey(workspaceId: string, channelId: string, messageId: string, questionId: string): string {

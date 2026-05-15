@@ -171,6 +171,8 @@ function MessagePartView({ part, message, workspaceId }: { part: MessagePart; me
   switch (part.type) {
     case "text":
       return <Markdown content={part.text} />
+    case "user_message":
+      return <UserReplyPart text={part.text} senderName={part.senderName || "用户"} />
     case "reasoning":
       return (
         <ChainOfThought defaultOpen={part.status === "streaming"} className="max-w-none">
@@ -289,6 +291,15 @@ function MessagePartView({ part, message, workspaceId }: { part: MessagePart; me
     default:
       return null
   }
+}
+
+function UserReplyPart({ text, senderName }: { text: string; senderName: string }) {
+  return (
+    <div className="not-prose rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-sm">
+      <div className="mb-1 text-xs font-medium text-primary">{senderName}：</div>
+      <UserContent content={text} />
+    </div>
+  )
 }
 
 function AnsweredQuestionSummary({
