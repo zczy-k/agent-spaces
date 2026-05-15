@@ -46,7 +46,7 @@ export function CommandPalette() {
 
   useEffect(() => {
     const m = matchProvider(query);
-    if (!m || !m.keyword) {
+    if (!m) {
       setSearchResults([]);
       setSearchLoading(false);
       return;
@@ -78,14 +78,13 @@ export function CommandPalette() {
   const prefixHints = useMemo(() => {
     return searchProviders.map((p) => ({
       id: `hint:${p.prefix}`,
-      label: `${p.prefix} [keyword]`,
+      label: p.prefix,
       description: [...p.aliases].join(', '),
       icon: p.icon,
     }));
   }, []);
 
-  const showSearch = match && match.keyword.length > 0;
-  const showHints = match && match.keyword.length === 0;
+  const showSearch = !!match;
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen} title={t('title')} description={t('description')}>
@@ -107,7 +106,7 @@ export function CommandPalette() {
                   {t('noResults')}
                 </div>
               ) : (
-                searchResults.map((item) => (
+                searchResults.slice(0, 10).map((item) => (
                   <CommandItem
                     key={item.id}
                     value={item.label}
@@ -116,10 +115,10 @@ export function CommandPalette() {
                       item.action();
                     }}
                   >
-                    {item.icon && <item.icon className="size-4" />}
-                    <span>{item.label}</span>
+                    {item.icon && <item.icon className="size-4 shrink-0" />}
+                    <span className="truncate min-w-0">{item.label}</span>
                     {item.description && (
-                      <span className="ml-auto text-xs text-muted-foreground truncate max-w-[200px]">
+                      <span className="ml-auto shrink-0 text-xs text-muted-foreground truncate max-w-[200px]">
                         {item.description}
                       </span>
                     )}
@@ -129,21 +128,13 @@ export function CommandPalette() {
             </CommandGroup>
           )}
 
-          {showHints && (
-            <CommandGroup heading={match.provider.label}>
-              <div className="px-2 py-3 text-sm text-muted-foreground">
-                {t('typeKeyword')}
-              </div>
-            </CommandGroup>
-          )}
-
           {!match && (
             <>
               <CommandGroup heading="Search">
                 {prefixHints.map((hint) => (
                   <CommandItem key={hint.id} value={hint.label} className="data-selected:bg-transparent! [&>svg:last-child]:hidden!" onSelect={() => setQuery(hint.label + ' ')}>
-                    {hint.icon && <hint.icon className="size-4" />}
-                    <span>{hint.label}</span>
+                    {hint.icon && <hint.icon className="size-4 shrink-0" />}
+                    <span className="truncate min-w-0">{hint.label}</span>
                     {hint.description && (
                       <span className="ml-auto text-xs text-muted-foreground text-right shrink-0">
                         {hint.description}

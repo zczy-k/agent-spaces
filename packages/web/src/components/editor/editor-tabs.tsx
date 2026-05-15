@@ -11,14 +11,14 @@ interface EditorTabsProps {
   workspaceId: string;
 }
 
-function getRelativePath(filePath: string, boundDirs: string[]): string {
-  for (const dir of boundDirs) {
-    const normalized = dir.endsWith('/') ? dir : dir + '/';
-    if (filePath.startsWith(normalized)) {
-      return filePath.slice(normalized.length);
-    }
-  }
-  return filePath;
+function getAbsolutePath(relPath: string, boundDirs: string[]): string {
+  if (boundDirs.length === 0) return relPath;
+  const base = boundDirs[0].replace(/\/+$/, '');
+  return base + '/' + relPath;
+}
+
+function getRelativePath(relPath: string, boundDirs: string[]): string {
+  return relPath;
 }
 
 export function EditorTabs({ workspaceId }: EditorTabsProps) {
@@ -33,6 +33,10 @@ export function EditorTabs({ workspaceId }: EditorTabsProps) {
   const handleCopy = async (text: string) => {
     await navigator.clipboard.writeText(text);
     toast.success(t('copied'));
+  };
+
+  const handleRevealInFinder = (relPath: string) => {
+    fetch(`/api/workspaces/${workspaceId}/files/reveal?path=${encodeURIComponent(relPath)}`, { method: 'POST' });
   };
 
   return (
@@ -70,8 +74,11 @@ export function EditorTabs({ workspaceId }: EditorTabsProps) {
             <ContextMenuItem onClick={() => setRevealPath(file.path)}>
               {t('revealInTree')}
             </ContextMenuItem>
+            <ContextMenuItem onClick={() => handleRevealInFinder(file.path)}>
+              {t('revealInFinder')}
+            </ContextMenuItem>
             <ContextMenuSeparator />
-            <ContextMenuItem onClick={() => handleCopy(file.path)}>
+            <ContextMenuItem onClick={() => handleCopy(getAbsolutePath(file.path, boundDirs))}>
               {t('copyFilePath')}
             </ContextMenuItem>
             <ContextMenuItem onClick={() => handleCopy(getRelativePath(file.path, boundDirs))}>

@@ -43,14 +43,14 @@ export function TaskRow({
     <div
       ref={ref}
       className={[
-        'inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg border bg-card group transition-colors hover:bg-accent/30 w-[220px] shrink-0',
+        'inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg border bg-card group transition-colors hover:bg-accent/30 min-w-0',
         isDragging && 'opacity-50 shadow-lg scale-105',
         !isDraggable && 'opacity-70',
       ].filter(Boolean).join(' ')}
       style={{ cursor: isDraggable ? 'grab' : 'default' }}
     >
       <AgentIcon agentId={task.agentConfigId} className="h-6 w-6 shrink-0 rounded" />
-      <span className="text-sm truncate max-w-[160px]">{task.title}</span>
+      <span className="text-sm min-w-0 shrink">{task.title}</span>
       <Badge variant={TASK_STATUS_COLOR[task.status]} className="text-[10px] shrink-0">
         {tTask(`status.${task.status}`)}
       </Badge>

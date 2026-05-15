@@ -16,16 +16,12 @@ export const searchProviders: SearchCommandProvider[] = [
 ];
 
 export function matchProvider(input: string): { provider: SearchCommandProvider; keyword: string } | null {
-  const trimmed = input.trim();
-  if (!trimmed.includes(' ')) return null;
-
-  const spaceIdx = trimmed.indexOf(' ');
-  const prefix = trimmed.slice(0, spaceIdx).toLowerCase();
-  const keyword = trimmed.slice(spaceIdx + 1);
-
   for (const provider of searchProviders) {
-    if (provider.prefix === prefix || provider.aliases.includes(prefix)) {
-      return { provider, keyword };
+    const prefixes = [provider.prefix, ...provider.aliases];
+    for (const p of prefixes) {
+      if (input === p + ' ' || input.startsWith(p + ' ')) {
+        return { provider, keyword: input.slice(p.length + 1) };
+      }
     }
   }
   return null;

@@ -112,6 +112,8 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   const gitStatus = useGitStore((s) => s.status);
   const { activePanel, setActivePanel } = useMobilePanelStore();
   const loadEditorState = useEditorStore((s) => s.loadEditorState);
+  const revealPath = useEditorStore((s) => s.revealPath);
+  const clearRevealPath = useEditorStore((s) => s.clearRevealPath);
   const [model, setModel] = useState(() => {
     try {
       const saved = localStorage.getItem(`flexlayout-${workspaceId}`);
@@ -181,6 +183,19 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
       }
     }
   }, [activeFilePath, model, isMobile, setActivePanel]);
+
+  // 在文件树中显示：切换到 workfolder tab
+  useEffect(() => {
+    if (!revealPath) return;
+    if (isMobile) {
+      setActivePanel("workfolder");
+    } else {
+      const node = model.getNodeById("workfolder");
+      if (node && node instanceof TabNode) {
+        model.doAction(Actions.selectTab(node.getId()));
+      }
+    }
+  }, [revealPath, model, isMobile, setActivePanel]);
 
   // 加载 git 状态
   useEffect(() => {
