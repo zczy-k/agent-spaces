@@ -172,7 +172,7 @@ function WorkflowEditorInner({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="hidden md:flex items-center gap-3 border-b px-4 py-2">
+      <div className="flex items-center gap-3 border-b px-4 py-2">
         <button
           onClick={onBack}
           className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent"

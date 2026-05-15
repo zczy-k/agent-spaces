@@ -649,7 +649,9 @@
     "clearScreen": "Clear",
     "pasteCommand": "Paste Commands",
     "pasteCommandDescription": "Edit commands and confirm to send them line by line to the terminal",
-    "pasteCommandPlaceholder": "One command per line..."
+    "pasteCommandPlaceholder": "One command per line...",
+    "cancel": "Cancel",
+    "confirm": "Confirm"
   },
   "git": {
     "changes": {
