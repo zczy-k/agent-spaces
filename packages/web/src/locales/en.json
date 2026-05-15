@@ -50,7 +50,9 @@
     "redirecting": "Redirecting to login...",
     "zoom": "Page Zoom",
     "zoomReset": "Reset",
-    "showWorkspaceTabs": "Show Workspace Tabs"
+    "showWorkspaceTabs": "Show Workspace Tabs",
+    "layout": "Layout",
+    "resetLayout": "Reset to Default"
   },
   "login": {
     "subtitle": "Enter your secret key to continue",
@@ -638,6 +640,9 @@
     "menuPaste": "Paste",
     "menuFind": "Find",
     "menuReplace": "Replace",
+    "menuView": "View",
+    "menuFullscreen": "Fullscreen",
+    "exitFullscreen": "Exit Fullscreen",
     "enableEdit": "Enable Editing",
     "disableEdit": "Set Read-only"
   },

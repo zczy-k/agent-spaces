@@ -50,7 +50,9 @@
     "redirecting": "正在跳转到登录页...",
     "zoom": "页面缩放",
     "zoomReset": "重置",
-    "showWorkspaceTabs": "显示工作空间标签栏"
+    "showWorkspaceTabs": "显示工作空间标签栏",
+    "layout": "布局",
+    "resetLayout": "恢复默认布局"
   },
   "login": {
     "subtitle": "输入密钥以继续",
@@ -640,6 +642,9 @@
     "menuPaste": "粘贴",
     "menuFind": "查找",
     "menuReplace": "替换",
+    "menuView": "视图",
+    "menuFullscreen": "全屏",
+    "exitFullscreen": "退出全屏",
     "enableEdit": "启用编辑",
     "disableEdit": "设为只读"
   },

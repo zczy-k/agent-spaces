@@ -53,11 +53,13 @@ interface CodeEditorProps {
   workspaceId: string;
 }
 
-function EditorMenuBar({ editorRef, workspaceId, isReadOnly, onToggleReadOnly }: {
+function EditorMenuBar({ editorRef, workspaceId, isReadOnly, onToggleReadOnly, isFullscreen, onToggleFullscreen }: {
   editorRef: React.RefObject<Monaco.editor.IStandaloneCodeEditor | null>;
   workspaceId: string;
   isReadOnly: boolean;
   onToggleReadOnly: () => void;
+  isFullscreen: boolean;
+  onToggleFullscreen: () => void;
 }) {
   const { saveFile, activeFilePath } = useEditorStore();
   const t = useTranslations('editor');
@@ -118,6 +120,18 @@ function EditorMenuBar({ editorRef, workspaceId, isReadOnly, onToggleReadOnly }:
         </DropdownMenuContent>
       </DropdownMenu>
 
+      <DropdownMenu>
+        <DropdownMenuTrigger className="px-3 h-full text-xs hover:bg-accent outline-none cursor-default">
+          {t('menuView')}
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" sideOffset={0}>
+          <DropdownMenuItem onClick={onToggleFullscreen}>
+            {isFullscreen ? t('exitFullscreen') : t('menuFullscreen')}
+            <DropdownMenuShortcut>⌃⌘F</DropdownMenuShortcut>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
       <div className="flex-1" />
       <button
         onClick={onToggleReadOnly}
@@ -136,6 +150,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   const t = useTranslations('editor');
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
   const [isReadOnly, setIsReadOnly] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const activeFile = openFiles.find((f) => f.path === activeFilePath);
 
@@ -186,9 +201,9 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     : undefined;
 
   return (
-    <div className="flex flex-col h-full">
+    <div className={`flex flex-col h-full ${isFullscreen ? 'fixed inset-0 z-50 bg-background' : ''}`}>
       <EditorTabs workspaceId={workspaceId} />
-      <EditorMenuBar editorRef={editorRef} workspaceId={workspaceId} isReadOnly={isReadOnly} onToggleReadOnly={() => setIsReadOnly(r => !r)} />
+      <EditorMenuBar editorRef={editorRef} workspaceId={workspaceId} isReadOnly={isReadOnly} onToggleReadOnly={() => setIsReadOnly(r => !r)} isFullscreen={isFullscreen} onToggleFullscreen={() => setIsFullscreen(f => !f)} />
       <div className="flex-1 min-h-0">
         {activeFile ? (
           <MonacoEditor

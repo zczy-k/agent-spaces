@@ -111,13 +111,22 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   const channelSelectSeq = useChannelStore((s) => s.channelSelectSeq);
   const gitStatus = useGitStore((s) => s.status);
   const { activePanel, setActivePanel } = useMobilePanelStore();
-  const [model] = useState(() => {
+  const [model, setModel] = useState(() => {
     try {
       const saved = localStorage.getItem(`flexlayout-${workspaceId}`);
       if (saved) return Model.fromJson(JSON.parse(saved));
     } catch { /* ignore corrupt data */ }
     return Model.fromJson(defaultJson);
   });
+
+  useEffect(() => {
+    const handler = () => {
+      localStorage.removeItem(`flexlayout-${workspaceId}`);
+      setModel(Model.fromJson(defaultJson));
+    };
+    window.addEventListener("reset-layout", handler);
+    return () => window.removeEventListener("reset-layout", handler);
+  }, [workspaceId]);
 
   // 点击 issue 时自动切换到 Issue Detail tab
   useEffect(() => {
@@ -145,15 +154,25 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
     }
   }, [channelSelectSeq, activeChannelId, model, isMobile, setActivePanel]);
 
-  // 打开文件时自动切换到 Code Editor tab
+  // 打开文件时自动切换到 Code Editor tab，关闭最后一个文件时切换回 Workfolder tab
   useEffect(() => {
-    if (!activeFilePath) return;
-    if (isMobile) {
-      setActivePanel("code-editor");
-    } else {
-      const node = model.getNodeById("code-editor");
-      if (node && node instanceof TabNode) {
-        model.doAction(Actions.selectTab(node.getId()));
+    if (activeFilePath) {
+      if (isMobile) {
+        setActivePanel("code-editor");
+      } else {
+        const node = model.getNodeById("code-editor");
+        if (node && node instanceof TabNode) {
+          model.doAction(Actions.selectTab(node.getId()));
+        }
+      }
+    } else if (useEditorStore.getState().openFiles.length === 0) {
+      if (isMobile) {
+        setActivePanel("workfolder");
+      } else {
+        const node = model.getNodeById("workfolder");
+        if (node && node instanceof TabNode) {
+          model.doAction(Actions.selectTab(node.getId()));
+        }
       }
     }
   }, [activeFilePath, model, isMobile, setActivePanel]);
