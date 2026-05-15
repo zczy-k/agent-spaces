@@ -639,7 +639,9 @@
     "menuCopy": "复制",
     "menuPaste": "粘贴",
     "menuFind": "查找",
-    "menuReplace": "替换"
+    "menuReplace": "替换",
+    "enableEdit": "启用编辑",
+    "disableEdit": "设为只读"
   },
   "terminal": {
     "newTerminal": "新建终端",

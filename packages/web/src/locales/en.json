@@ -637,7 +637,9 @@
     "menuCopy": "Copy",
     "menuPaste": "Paste",
     "menuFind": "Find",
-    "menuReplace": "Replace"
+    "menuReplace": "Replace",
+    "enableEdit": "Enable Editing",
+    "disableEdit": "Set Read-only"
   },
   "terminal": {
     "newTerminal": "New Terminal",

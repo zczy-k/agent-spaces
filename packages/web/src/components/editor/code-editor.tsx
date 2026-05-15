@@ -53,9 +53,11 @@ interface CodeEditorProps {
   workspaceId: string;
 }
 
-function EditorMenuBar({ editorRef, workspaceId }: {
+function EditorMenuBar({ editorRef, workspaceId, isReadOnly, onToggleReadOnly }: {
   editorRef: React.RefObject<Monaco.editor.IStandaloneCodeEditor | null>;
   workspaceId: string;
+  isReadOnly: boolean;
+  onToggleReadOnly: () => void;
 }) {
   const { saveFile, activeFilePath } = useEditorStore();
   const t = useTranslations('editor');
@@ -115,6 +117,15 @@ function EditorMenuBar({ editorRef, workspaceId }: {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <div className="flex-1" />
+      <button
+        onClick={onToggleReadOnly}
+        className="flex items-center gap-1 px-2 h-full text-xs text-muted-foreground hover:text-foreground hover:bg-accent outline-none cursor-default"
+        title={isReadOnly ? t('enableEdit') : t('disableEdit')}
+      >
+        {isReadOnly ? '🔒' : '✏️'}
+      </button>
     </div>
   );
 }
@@ -124,6 +135,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   const { resolvedTheme } = useTheme();
   const t = useTranslations('editor');
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
+  const [isReadOnly, setIsReadOnly] = useState(true);
 
   const activeFile = openFiles.find((f) => f.path === activeFilePath);
 
@@ -142,6 +154,11 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
       () => handleSave()
     );
   }, [handleSave]);
+
+  // Sync readOnly state with Monaco editor
+  useEffect(() => {
+    editorRef.current?.updateOptions({ readOnly: isReadOnly });
+  }, [isReadOnly]);
 
   // Register model + preload directory when active file changes
   useEffect(() => {
@@ -171,7 +188,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   return (
     <div className="flex flex-col h-full">
       <EditorTabs workspaceId={workspaceId} />
-      <EditorMenuBar editorRef={editorRef} workspaceId={workspaceId} />
+      <EditorMenuBar editorRef={editorRef} workspaceId={workspaceId} isReadOnly={isReadOnly} onToggleReadOnly={() => setIsReadOnly(r => !r)} />
       <div className="flex-1 min-h-0">
         {activeFile ? (
           <MonacoEditor
@@ -187,6 +204,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
               scrollBeyondLastLine: false,
               padding: { top: 8 },
               renderLineHighlight: "gutter",
+              readOnly: isReadOnly,
             }}
             theme={resolvedTheme === "dark" ? "vs-dark" : "vs"}
           />
