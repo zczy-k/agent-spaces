@@ -22,7 +22,7 @@ export function EditorTabs({ workspaceId }: EditorTabsProps) {
               ? "bg-background text-foreground"
               : "text-muted-foreground hover:bg-accent"
           }`}
-          onClick={() => setActiveFile(file.path)}
+          onClick={() => setActiveFile(workspaceId, file.path)}
         >
           {file.modified && (
             <span className="size-1.5 rounded-full bg-orange-400 shrink-0" />
@@ -35,7 +35,7 @@ export function EditorTabs({ workspaceId }: EditorTabsProps) {
               if (file.modified) {
                 saveFile(workspaceId, file.path);
               }
-              closeFile(file.path);
+              closeFile(workspaceId, file.path);
             }}
           >
             <X className="size-3" />

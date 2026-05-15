@@ -1,9 +1,12 @@
 import { Router, type Request, type Response } from 'express';
 import { exec } from 'child_process';
 import { resolve, join } from 'path';
+import { existsSync } from 'node:fs';
 import * as fileService from '../services/file.js';
 import * as wsService from '../services/workspace.js';
 import { getDataDir } from '../storage/json-store.js';
+
+const EDITOR_STATE_PATH = '.agentspace/editor-state.json';
 
 const router = Router({ mergeParams: true });
 
@@ -49,6 +52,32 @@ router.delete('/', async (req: Request<{ id: string }>, res: Response) => {
 
   const ok = await fileService.deletePath(ws, path);
   if (!ok) { res.status(500).json({ error: 'Failed to delete' }); return; }
+  res.json({ ok: true });
+});
+
+router.get('/editor-state', async (req: Request<{ id: string }>, res: Response) => {
+  const ws = fileService.getWorkspace(req.params.id);
+  if (!ws) { res.status(404).json({ error: 'Workspace not found' }); return; }
+
+  const result = await fileService.readFileContent(ws, EDITOR_STATE_PATH);
+  if (!result) { res.json({ openFilePaths: [], activeFilePath: null }); return; }
+  try {
+    const state = JSON.parse(result.content);
+    res.json(state);
+  } catch {
+    res.json({ openFilePaths: [], activeFilePath: null });
+  }
+});
+
+router.put('/editor-state', async (req: Request<{ id: string }>, res: Response) => {
+  const ws = fileService.getWorkspace(req.params.id);
+  if (!ws) { res.status(404).json({ error: 'Workspace not found' }); return; }
+
+  const { openFilePaths, activeFilePath } = req.body;
+  if (!Array.isArray(openFilePaths)) { res.status(400).json({ error: 'openFilePaths is required' }); return; }
+
+  const ok = await fileService.writeFileContent(ws, EDITOR_STATE_PATH, JSON.stringify({ openFilePaths, activeFilePath }, null, 2));
+  if (!ok) { res.status(500).json({ error: 'Failed to save editor state' }); return; }
   res.json({ ok: true });
 });
 

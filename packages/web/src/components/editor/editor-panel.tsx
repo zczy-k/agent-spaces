@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { FileTree, FileTreeFolder, FileTreeFile } from "./file-tree";
 import { SearchPanel } from "./search-panel";
 import { useEditorStore } from "@/stores/editor";
@@ -22,6 +22,22 @@ function FileTreeNodes({ nodes }: { nodes: FileNode[] }) {
   );
 }
 
+const STORAGE_KEY_PREFIX = 'agent-spaces:file-tree-expanded:';
+
+function loadExpandedPaths(workspaceId: string): Set<string> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_PREFIX + workspaceId);
+    if (raw) return new Set(JSON.parse(raw));
+  } catch {}
+  return new Set();
+}
+
+function saveExpandedPaths(workspaceId: string, paths: Set<string>) {
+  try {
+    localStorage.setItem(STORAGE_KEY_PREFIX + workspaceId, JSON.stringify([...paths]));
+  } catch {}
+}
+
 interface EditorPanelProps {
   workspaceId: string;
 }
@@ -30,10 +46,17 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
   const { tree, treeLoading, loadTree, openFile } = useEditorStore();
   const t = useTranslations('editor');
   const [selectedPath, setSelectedPath] = useState<string>();
+  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => loadExpandedPaths(workspaceId));
 
   useEffect(() => {
     loadTree(workspaceId);
+    setExpandedPaths(loadExpandedPaths(workspaceId));
   }, [workspaceId, loadTree]);
+
+  const handleExpandedChange = useCallback((newExpanded: Set<string>) => {
+    setExpandedPaths(newExpanded);
+    saveExpandedPaths(workspaceId, newExpanded);
+  }, [workspaceId]);
 
   const handleDelete = async (path: string) => {
     await fetch(`/api/workspaces/${workspaceId}/files?path=${encodeURIComponent(path)}`, { method: 'DELETE' });
@@ -70,6 +93,8 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
             )}
             {tree.length > 0 && (
               <FileTree
+                expanded={expandedPaths}
+                onExpandedChange={handleExpandedChange}
                 selectedPath={selectedPath}
                 onFileSelect={(path) => {
                   setSelectedPath(path);

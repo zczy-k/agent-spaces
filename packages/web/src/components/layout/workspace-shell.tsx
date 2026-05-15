@@ -111,6 +111,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   const channelSelectSeq = useChannelStore((s) => s.channelSelectSeq);
   const gitStatus = useGitStore((s) => s.status);
   const { activePanel, setActivePanel } = useMobilePanelStore();
+  const loadEditorState = useEditorStore((s) => s.loadEditorState);
   const [model, setModel] = useState(() => {
     try {
       const saved = localStorage.getItem(`flexlayout-${workspaceId}`);
@@ -127,6 +128,10 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
     window.addEventListener("reset-layout", handler);
     return () => window.removeEventListener("reset-layout", handler);
   }, [workspaceId]);
+
+  useEffect(() => {
+    loadEditorState(workspaceId);
+  }, [workspaceId, loadEditorState]);
 
   // 点击 issue 时自动切换到 Issue Detail tab
   useEffect(() => {

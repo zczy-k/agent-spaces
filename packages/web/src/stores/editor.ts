@@ -24,10 +24,21 @@ interface EditorState {
   openFile: (workspaceId: string, path: string) => Promise<void>;
   saveFile: (workspaceId: string, path: string) => Promise<void>;
   updateContent: (path: string, content: string) => void;
-  closeFile: (path: string) => void;
-  setActiveFile: (path: string | null) => void;
+  closeFile: (workspaceId: string, path: string) => void;
+  setActiveFile: (workspaceId: string, path: string | null) => void;
   jumpToPosition: (workspaceId: string, path: string, line: number, column?: number) => Promise<void>;
   clearPendingJump: () => void;
+  loadEditorState: (workspaceId: string) => Promise<void>;
+  saveEditorState: (workspaceId: string) => Promise<void>;
+}
+
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+function debouncedSave(workspaceId: string) {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    useEditorStore.getState().saveEditorState(workspaceId);
+  }, 500);
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
@@ -52,6 +63,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const existing = get().openFiles.find((f) => f.path === path);
     if (existing) {
       set({ activeFilePath: path });
+      debouncedSave(workspaceId);
       return;
     }
 
@@ -65,6 +77,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       openFiles: [...s.openFiles, { path, name, content: data.content, modified: false }],
       activeFilePath: path,
     }));
+    debouncedSave(workspaceId);
   },
 
   saveFile: async (workspaceId, path) => {
@@ -92,7 +105,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }));
   },
 
-  closeFile: (path) => {
+  closeFile: (workspaceId, path) => {
     set((s) => {
       const files = s.openFiles.filter((f) => f.path !== path);
       const active =
@@ -103,9 +116,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           : s.activeFilePath;
       return { openFiles: files, activeFilePath: active };
     });
+    debouncedSave(workspaceId);
   },
 
-  setActiveFile: (path) => set({ activeFilePath: path }),
+  setActiveFile: (workspaceId, path) => {
+    set({ activeFilePath: path });
+    debouncedSave(workspaceId);
+  },
 
   jumpToPosition: async (workspaceId, path, line, column) => {
     await get().openFile(workspaceId, path);
@@ -113,4 +130,51 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   clearPendingJump: () => set({ pendingJump: null }),
+
+  loadEditorState: async (workspaceId) => {
+    try {
+      const res = await fetch(`/api/workspaces/${workspaceId}/files/editor-state`);
+      const state = await res.json();
+      const { openFilePaths = [], activeFilePath = null } = state;
+      if (openFilePaths.length === 0) return;
+
+      const openFiles: OpenFile[] = [];
+      for (const path of openFilePaths) {
+        try {
+          const fileRes = await fetch(
+            `/api/workspaces/${workspaceId}/files/content?path=${encodeURIComponent(path)}`
+          );
+          const data = await fileRes.json();
+          const name = path.split('/').pop() || path;
+          openFiles.push({ path, name, content: data.content, modified: false });
+        } catch {
+          // file may have been deleted, skip
+        }
+      }
+      const active = activeFilePath && openFiles.find(f => f.path === activeFilePath)
+        ? activeFilePath
+        : openFiles.length > 0
+          ? openFiles[openFiles.length - 1].path
+          : null;
+      set({ openFiles, activeFilePath: active });
+    } catch {
+      // no saved state, fine
+    }
+  },
+
+  saveEditorState: async (workspaceId) => {
+    const { openFiles, activeFilePath } = get();
+    try {
+      await fetch(`/api/workspaces/${workspaceId}/files/editor-state`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          openFilePaths: openFiles.map(f => f.path),
+          activeFilePath,
+        }),
+      });
+    } catch {
+      // silent fail
+    }
+  },
 }));
