@@ -191,9 +191,10 @@ function MessagePartView({ part, message, workspaceId }: { part: MessagePart; me
         </ChainOfThought>
       )
     case "chain":
+      const visibleChainStepCount = part.chains.filter((chain) => chain.kind !== "message").length
       return (
         <ChainOfThought defaultOpen={message.status === "pending"} className="max-w-none">
-          <ChainOfThoughtHeader loading={message.status === "pending" || message.status === "streaming"}>{t('messageParts.chainSteps', { count: part.chains.length })}</ChainOfThoughtHeader>
+          <ChainOfThoughtHeader loading={message.status === "pending" || message.status === "streaming"}>{t('messageParts.chainSteps', { count: visibleChainStepCount })}</ChainOfThoughtHeader>
           <ChainOfThoughtContent className="max-h-[300px] overflow-y-auto">
             {part.chains.map((chain) => {
               const completed = chain.status === "completed"
@@ -328,6 +329,7 @@ function AiMessageStep({
   status: "complete" | "active"
 }) {
   const t = useTranslations('chat')
+  const shouldFold = countCharacters(text) >= 300
   const [open, setOpen] = useState(false)
 
   return (
@@ -336,22 +338,28 @@ function AiMessageStep({
       label={
         <div className="flex min-w-0 items-center gap-1.5">
           <span>{t('messageParts.aiMessage')}</span>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="ml-auto size-5"
-            onClick={() => setOpen(!open)}
-          >
-            <ChevronDownIcon className={cn("size-3.5 transition-transform", open && "rotate-180")} />
-          </Button>
+          {shouldFold ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="ml-auto size-5"
+              onClick={() => setOpen(!open)}
+            >
+              <ChevronDownIcon className={cn("size-3.5 transition-transform", open && "rotate-180")} />
+            </Button>
+          ) : null}
         </div>
       }
       status={status}
     >
-      {open ? <Markdown content={text} /> : null}
+      {!shouldFold || open ? <Markdown content={text} /> : null}
     </ChainOfThoughtStep>
   )
+}
+
+function countCharacters(text: string) {
+  return Array.from(text.trim()).length
 }
 
 function ToolStep({

@@ -8,9 +8,9 @@ export function formatMessage(message: SDKMessage): string | null {
     case 'result':
       return message.subtype === 'success' ? message.result : message.errors.join('\n');
     case 'system':
-      if (message.subtype === 'init') {
-        return `Claude Code initialized with ${message.model}`;
-      }
+      // if (message.subtype === 'init') {
+      //   return `Claude Code initialized with ${message.model}`;
+      // }
       if (message.subtype === 'task_started') {
         return message.description;
       }

@@ -186,6 +186,7 @@ function normalizeOutputLines(output: string[]): string[] {
 
   const seenInitLines = new Set<string>();
   return lines.filter((line) => {
+    if (isIgnorableToolProgressLine(line)) return false;
     if (!/^Claude Code initialized\b/i.test(line)) return true;
     if (seenInitLines.has(line)) return false;
     seenInitLines.add(line);
@@ -516,6 +517,13 @@ function summarizeMessageTitle(text: string): string {
 
 function isToolLikeLine(line: string): boolean {
   return /^(Using|Tool:|Read|Write|Edit|MultiEdit|Bash|Search|Grep|Glob|Todo|Task|Web|Fetch|Claude Code initialized|Codex initialized|.+ running \(\d+s\))/i.test(line.trim());
+}
+
+function isIgnorableToolProgressLine(line: string): boolean {
+  const trimmed = line.trim();
+  return /^Claude$/i.test(trimmed)
+    || /^reading$/i.test(trimmed)
+    || /^Read\s+running\s+\(\d+s\)$/i.test(trimmed);
 }
 
 function isFinalAnswerLine(line: string): boolean {

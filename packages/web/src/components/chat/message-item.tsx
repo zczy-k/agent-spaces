@@ -87,45 +87,21 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
         </div>
         <div className={`min-w-0 max-w-full text-sm rounded-lg px-3 py-2 ${isUser ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
           <MessageParts message={message} isUser={isUser} workspaceId={workspaceId} />
-          {showDuration && (
-            <div className="flex items-center justify-end gap-1 mt-1 pt-1 border-t border-border/30">
-              <Clock className="h-3 w-3 text-muted-foreground" />
-              <span className="text-[10px] text-muted-foreground">
-                {formatDuration(elapsed)}
-                {isStreaming && <span className="animate-pulse ml-0.5">...</span>}
-              </span>
+          {(replies.length > 0 || showDuration) && (
+            <div className="mt-1 flex items-center justify-between gap-3 border-t border-border/30 pt-1">
+              <MessageRepliesPopover replies={replies} currentUserLabel={tc('you')} />
+              {showDuration ? (
+                <div className="ml-auto flex items-center justify-end gap-1">
+                  <Clock className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-[10px] text-muted-foreground">
+                    {formatDuration(elapsed)}
+                    {isStreaming && <span className="animate-pulse ml-0.5">...</span>}
+                  </span>
+                </div>
+              ) : null}
             </div>
           )}
         </div>
-        {replies.length > 0 ? (
-          <div className="mt-1 flex w-full justify-end">
-            <Popover>
-              <PopoverTrigger
-                render={
-                  <button
-                    type="button"
-                    className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-                  />
-                }
-              >
-                有 {replies.length} 条回复消息
-              </PopoverTrigger>
-              <PopoverContent align="end" sideOffset={4} className="w-96 max-w-[calc(100vw-2rem)] p-2">
-                <div className="max-h-96 space-y-2 overflow-y-auto pr-1">
-                  {replies.map((reply) => (
-                    <div key={reply.id} className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
-                      <div className="mb-1 flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                        <span>{reply.senderId === 'user' ? tc('you') : reply.senderRole || reply.senderId}</span>
-                        <span>{new Date(reply.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                      </div>
-                      <div className="whitespace-pre-wrap break-words">{isHTML(reply.content) ? reply.content.replace(/<[^>]*>/g, '') : reply.content}</div>
-                    </div>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
-          </div>
-        ) : null}
         <div className="flex items-center gap-0.5 h-6 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
             onClick={() => onReply?.(message)}
@@ -166,6 +142,48 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
 
 function isHTML(str: string): boolean {
   return /<[a-z][\s\S]*>/i.test(str);
+}
+
+function MessageRepliesPopover({
+  replies,
+  currentUserLabel,
+}: {
+  replies: NonNullable<Message['replies']>;
+  currentUserLabel: string;
+}) {
+  if (replies.length === 0) {
+    return <span className="min-w-0" />;
+  }
+
+  return (
+    <Popover>
+      <PopoverTrigger
+        render={
+          <button
+            type="button"
+            className="min-w-0 truncate text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+          />
+        }
+      >
+        有 {replies.length} 条回复消息
+      </PopoverTrigger>
+      <PopoverContent align="start" sideOffset={4} className="w-96 max-w-[calc(100vw-2rem)] p-2">
+        <div className="max-h-96 space-y-2 overflow-y-auto pr-1">
+          {replies.map((reply) => (
+            <div key={reply.id} className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
+              <div className="mb-1 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                <span>{reply.senderId === 'user' ? currentUserLabel : reply.senderRole || reply.senderId}</span>
+                <span>{new Date(reply.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+              <div className="whitespace-pre-wrap break-words">
+                {isHTML(reply.content) ? reply.content.replace(/<[^>]*>/g, '') : reply.content}
+              </div>
+            </div>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 function formatDuration(ms: number): string {
