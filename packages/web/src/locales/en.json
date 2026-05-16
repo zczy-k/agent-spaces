@@ -51,6 +51,7 @@
     "zoom": "Page Zoom",
     "zoomReset": "Reset",
     "showWorkspaceTabs": "Show Workspace Tabs",
+    "autoActivateWorkspace": "Auto-open last workspace on startup",
     "layout": "Layout",
     "resetLayout": "Reset to Default",
     "speech": "Speech Recognition",

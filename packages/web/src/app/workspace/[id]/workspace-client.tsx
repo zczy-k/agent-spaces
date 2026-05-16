@@ -39,6 +39,7 @@ export function WorkspaceClient() {
       .then((workspace: Workspace) => {
         setWorkspace(workspace);
         upsertWorkspace(workspace);
+        localStorage.setItem("lastWorkspaceId", id);
       })
       .catch((e) => setError(e.message));
   }, [id, upsertWorkspace]);

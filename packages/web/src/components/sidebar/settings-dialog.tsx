@@ -69,6 +69,10 @@ export function SettingsDialog({
     const saved = localStorage.getItem("showWorkspaceTabs");
     return saved === null ? true : saved !== "false";
   });
+  const [autoActivate, setAutoActivate] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("autoActivateWorkspace") === "true";
+  });
 
   const applyZoom = useCallback((value: number) => {
     localStorage.setItem("pageZoom", String(value));
@@ -190,6 +194,20 @@ export function SettingsDialog({
                   setShowTabs(checked);
                   localStorage.setItem("showWorkspaceTabs", String(checked));
                   window.dispatchEvent(new CustomEvent("workspace-tabs-visibility", { detail: checked }));
+                }}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                {t('autoActivateWorkspace')}
+              </label>
+              <Switch
+                size="sm"
+                checked={autoActivate}
+                onCheckedChange={(checked) => {
+                  setAutoActivate(checked);
+                  localStorage.setItem("autoActivateWorkspace", String(checked));
                 }}
               />
             </div>

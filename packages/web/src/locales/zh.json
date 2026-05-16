@@ -51,6 +51,7 @@
     "zoom": "页面缩放",
     "zoomReset": "重置",
     "showWorkspaceTabs": "显示工作空间标签栏",
+    "autoActivateWorkspace": "启动时自动打开上一次工作空间",
     "layout": "布局",
     "resetLayout": "恢复默认布局",
     "speech": "语音识别",
