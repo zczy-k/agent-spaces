@@ -687,6 +687,10 @@
     "fileTooLargeTitle": "文件过大",
     "fileTooLargeDesc": "文件 \"{name}\" 大小为 {size}，可能导致编辑器卡顿。是否继续打开？",
     "openAnyway": "仍然打开",
+    "deleteFileTitle": "删除文件",
+    "deleteFileDesc": "确定要删除文件 \"{name}\" 吗？此操作不可撤销。",
+    "deleteFolderTitle": "删除文件夹",
+    "deleteFolderDesc": "确定要删除文件夹 \"{name}\" 及其所有内容吗？此操作不可撤销。",
     "allFiles": "所有文件",
     "recentlyAdded": "最近添加",
     "recentlyOpened": "最近打开"

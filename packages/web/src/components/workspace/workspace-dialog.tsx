@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useAgentStore } from "@/stores/agent";
 import type { Workspace } from "@agent-spaces/shared";
 import { Download, Loader2, AlertCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { FolderPicker } from "@/components/ui/folder-picker";
 import {
   Progress,
@@ -152,8 +153,8 @@ function WorkspaceDialogContent({ open, onOpenChange, workspace, onSubmit }: Wor
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3 py-2">
-          <input
-            className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+          <Input
+            className="rounded-xl py-2.5"
             placeholder={t('dialog.namePlaceholder')}
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -217,8 +218,8 @@ function WorkspaceDialogContent({ open, onOpenChange, workspace, onSubmit }: Wor
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3 py-2">
-          <input
-            className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+          <Input
+            className="rounded-xl py-2.5"
             placeholder="https://github.com/user/repo.git"
             value={cloneUrl}
             onChange={(e) => setCloneUrl(e.target.value)}

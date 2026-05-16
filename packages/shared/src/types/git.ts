@@ -10,6 +10,8 @@ export interface GitStatusResult {
   ahead: number;
   behind: number;
   clean: boolean;
+  insertions: number;
+  deletions: number;
 }
 
 export interface GitLogEntry {

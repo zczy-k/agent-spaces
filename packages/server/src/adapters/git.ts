@@ -59,6 +59,8 @@ function mapStatus(raw: StatusResult): GitStatusResult {
     ahead: raw.ahead,
     behind: raw.behind,
     clean: raw.isClean(),
+    insertions: 0,
+    deletions: 0,
   };
 }
 
@@ -78,7 +80,37 @@ export async function gitStatus(workspaceId: string): Promise<GitStatusResult> {
 
   const git = getGit(ws);
   const raw = await git.status();
-  return mapStatus(raw);
+  const result = mapStatus(raw);
+
+  if (!result.clean) {
+    try {
+      // Tracked changes: modified/deleted/renamed
+      const trackedStat = await git.diff(['--shortstat']);
+      let insertions = 0, deletions = 0;
+      const mIns = trackedStat.match(/(\d+) insertion/);
+      const mDel = trackedStat.match(/(\d+) deletion/);
+      if (mIns) insertions += parseInt(mIns[1]);
+      if (mDel) deletions += parseInt(mDel[1]);
+
+      // Staged new files: --cached --shortstat
+      const stagedStat = await git.diff(['--cached', '--shortstat']);
+      const sIns = stagedStat.match(/(\d+) insertion/);
+      const sDel = stagedStat.match(/(\d+) deletion/);
+      if (sIns) insertions += parseInt(sIns[1]);
+      if (sDel) deletions += parseInt(sDel[1]);
+
+      result.insertions = insertions;
+      result.deletions = deletions;
+    } catch {
+      result.insertions = 0;
+      result.deletions = 0;
+    }
+  } else {
+    result.insertions = 0;
+    result.deletions = 0;
+  }
+
+  return result;
 }
 
 export async function gitDiff(workspaceId: string, filePath?: string): Promise<GitDiffResult[]> {

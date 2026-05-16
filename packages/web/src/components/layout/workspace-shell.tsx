@@ -312,14 +312,22 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
 
     let badge: React.ReactNode = null;
     if (comp === 'git-changes' && gitStatus && !gitStatus.clean) {
+      const hasStat = gitStatus.insertions > 0 || gitStatus.deletions > 0;
       badge = (
-        <span className="ml-0.5 text-[10px] font-medium text-orange-500 leading-none">
-          {gitStatus.files.length}
+        <span className="ml-1 text-[10px] font-medium leading-none flex items-center gap-0.5">
+          {hasStat ? (
+            <>
+              {gitStatus.insertions > 0 && <span className="text-green-600">+{gitStatus.insertions}</span>}
+              {gitStatus.deletions > 0 && <span className="text-red-500">-{gitStatus.deletions}</span>}
+            </>
+          ) : (
+            <span className="text-orange-500">{gitStatus.files.length}</span>
+          )}
         </span>
       );
     } else if (comp === 'git-commits' && gitStatus && gitStatus.ahead > 0) {
       badge = (
-        <span className="ml-0.5 text-[10px] font-medium text-blue-500 leading-none">
+        <span className="ml-1 text-[10px] font-medium text-blue-400 leading-none">
           ↑{gitStatus.ahead}
         </span>
       );

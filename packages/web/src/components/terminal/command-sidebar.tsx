@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Plus, ChevronDown, ChevronRight, X, Search, Download, Play, Pencil, Trash2 } from 'lucide-react';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
+import { Input } from '@/components/ui/input';
 import type { QuickCommand } from '@agent-spaces/shared';
 
 function CommandListItem({ command, running, onRun, onClose, onEdit, onDelete }: {
@@ -67,11 +68,11 @@ export function CommandSidebar({
       <div className="flex items-center gap-1 px-1.5 py-1.5 border-b border-border">
         <div className="flex items-center gap-1 flex-1 bg-muted rounded px-1.5 py-0.5">
           <Search size={12} className="text-muted-foreground shrink-0" />
-          <input
+          <Input
             value={search}
             onChange={e => onSearchChange(e.target.value)}
             placeholder={tc('searchPlaceholder')}
-            className="flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground min-w-0"
+            className="h-5 bg-transparent text-xs border-0 focus-visible:ring-0 focus-visible:border-0 px-1 min-w-0"
           />
           {search && (
             <button onClick={() => onSearchChange('')} className="text-muted-foreground hover:text-foreground">

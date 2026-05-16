@@ -5,4 +5,5 @@ export interface FileNode {
   children?: FileNode[];
   size?: number;
   modifiedAt?: string;
+  ignored?: boolean;
 }

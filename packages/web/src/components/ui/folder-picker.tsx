@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations } from 'next-intl';
 import { File, Folder, FolderOpen, ChevronRight, ArrowUp, Home, Loader2, FolderPlus, Check, X, ShieldCheck, ShieldAlert, ShieldOff } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 
 interface BrowseEntry {
   name: string;
@@ -189,8 +190,8 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
   return (
     <div className={cn("relative", className)}>
       <div className="flex gap-1.5">
-        <input
-          className="flex-1 rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+        <Input
+          className="rounded-xl py-2.5"
           placeholder={placeholder}
           value={value}
           onChange={handleInputChange}
@@ -232,8 +233,8 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
             >
               <ArrowUp className="size-3.5" />
             </button>
-            <input
-              className="flex-1 truncate rounded-md bg-muted px-2.5 py-1 text-xs text-muted-foreground font-mono outline-none focus:bg-background focus:ring-1 focus:ring-primary transition-colors"
+            <Input
+              className="truncate bg-muted text-xs text-muted-foreground font-mono focus-visible:bg-background h-7"
               value={currentPath}
               onChange={(e) => setCurrentPath(e.target.value)}
               onKeyDown={(e) => {
@@ -266,9 +267,9 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
           {creating && (
             <div className="flex items-center gap-1.5 border-b border-border px-3 py-1.5">
               <FolderPlus className="size-4 text-muted-foreground shrink-0" />
-              <input
+              <Input
                 ref={newFolderInputRef}
-                className="flex-1 rounded-md border border-border bg-background px-2 py-1 text-sm outline-none focus:border-primary"
+                className="flex-1 h-7 text-sm"
                 placeholder={t('folderNamePlaceholder')}
                 value={newFolderName}
                 onChange={(e) => setNewFolderName(e.target.value)}

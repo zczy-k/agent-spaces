@@ -685,6 +685,10 @@
     "fileTooLargeTitle": "Large File",
     "fileTooLargeDesc": "File \"{name}\" is {size}, which may cause the editor to lag. Open anyway?",
     "openAnyway": "Open Anyway",
+    "deleteFileTitle": "Delete File",
+    "deleteFileDesc": "Are you sure you want to delete \"{name}\"? This action cannot be undone.",
+    "deleteFolderTitle": "Delete Folder",
+    "deleteFolderDesc": "Are you sure you want to delete \"{name}\" and all its contents? This action cannot be undone.",
     "allFiles": "All Files",
     "recentlyAdded": "Recently Added",
     "recentlyOpened": "Recently Opened"

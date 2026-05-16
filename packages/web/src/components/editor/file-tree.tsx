@@ -23,7 +23,7 @@ import { createContext, type HTMLAttributes, type ReactNode, useContext, useStat
  * ]
  */
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem } from "@/components/ui/context-menu"
+import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from "@/components/ui/context-menu"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -47,6 +47,7 @@ interface FileTreeContextType {
   loadedDirs?: Set<string>
   boundDir?: string
   fileSizeMap?: Record<string, number>
+  ignoredPaths?: Set<string>
 }
 
 const FileTreeContext = createContext<FileTreeContextType>({
@@ -74,6 +75,7 @@ export type FileTreeProps = HTMLAttributes<HTMLDivElement> & {
   boundDir?: string
   fileSizeMap?: Record<string, number>
   refreshInterval?: number
+  ignoredPaths?: Set<string>
 }
 
 export const FileTree = ({
@@ -96,6 +98,7 @@ export const FileTree = ({
   boundDir,
   fileSizeMap,
   refreshInterval,
+  ignoredPaths,
   className,
   children,
   ...props
@@ -123,7 +126,7 @@ export const FileTree = ({
   }, [refreshInterval, onLoadDirectory, expandedPaths])
 
   return (
-    <FileTreeContext.Provider value={{ expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete, onImport, onCopyPath, onCreateFile, onCreateFolder, onRename, onMove, onCopyItem, onLoadDirectory, loadedDirs, boundDir, fileSizeMap }}>
+    <FileTreeContext.Provider value={{ expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete, onImport, onCopyPath, onCreateFile, onCreateFolder, onRename, onMove, onCopyItem, onLoadDirectory, loadedDirs, boundDir, fileSizeMap, ignoredPaths }}>
       <div
         className={cn("flex flex-col bg-background font-mono text-sm h-full", className)}
         role="tree"
@@ -151,12 +154,14 @@ export type FileTreeFolderProps = HTMLAttributes<HTMLDivElement> & {
   path: string
   name: string
   folderIcon?: (isOpen: boolean) => ReactNode
+  ignored?: boolean
 }
 
 export const FileTreeFolder = ({
   path,
   name,
   folderIcon,
+  ignored,
   className,
   children,
   ...props
@@ -167,6 +172,7 @@ export const FileTreeFolder = ({
   const isLoading = loadedDirs?.has(path)
   const t = useTranslations('editor')
   const tc = useTranslations('common')
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
 
   const handleOpenChange = () => {
     const willExpand = !isExpanded
@@ -191,6 +197,7 @@ export const FileTreeFolder = ({
                   className={cn(
                     "flex w-full items-center gap-1 rounded px-2 py-1 pr-16 text-left transition-colors hover:bg-muted/50",
                     isSelected && "bg-muted",
+                    ignored && "opacity-50",
                   )}
                 >
                   <ChevronRightIcon
@@ -213,7 +220,7 @@ export const FileTreeFolder = ({
                   <button onClick={handleReveal} className="p-0.5 rounded hover:bg-accent" title={t('revealInFinder')}>
                     <ExternalLink className="size-3 text-muted-foreground" />
                   </button>
-                  <button onClick={() => onDelete?.(path)} className="p-0.5 rounded hover:bg-accent" title={tc('delete')}>
+                  <button onClick={() => setDeleteConfirmOpen(true)} className="p-0.5 rounded hover:bg-accent" title={tc('delete')}>
                     <Trash2 className="size-3 text-muted-foreground hover:text-destructive" />
                   </button>
                 </div>
@@ -258,6 +265,23 @@ export const FileTreeFolder = ({
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Trash2 className="size-5 text-destructive" />
+              {t('deleteFolderTitle')}
+            </DialogTitle>
+          </DialogHeader>
+          <DialogDescription>
+            {t('deleteFolderDesc', { name })}
+          </DialogDescription>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>{tc('cancel')}</Button>
+            <Button variant="destructive" onClick={() => { setDeleteConfirmOpen(false); onDelete?.(path) }}>{tc('delete')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </FileTreeFolderContext.Provider>
   )
 }
@@ -276,12 +300,14 @@ export type FileTreeFileProps = HTMLAttributes<HTMLDivElement> & {
   path: string
   name: string
   icon?: ReactNode
+  ignored?: boolean
 }
 
 export const FileTreeFile = ({
   path,
   name,
   icon,
+  ignored,
   className,
   children,
   ...props
@@ -291,6 +317,7 @@ export const FileTreeFile = ({
   const t = useTranslations('editor')
   const tc = useTranslations('common')
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
 
   const fileSize = fileSizeMap?.[path]
   const isLargeFile = fileSize != null && fileSize > 1024 * 1024
@@ -326,6 +353,7 @@ export const FileTreeFile = ({
             className={cn(
               "group/file flex cursor-pointer items-center gap-1 rounded px-2 py-1 transition-colors hover:bg-muted/50",
               isSelected && "bg-muted",
+              ignored && "opacity-50",
               className,
             )}
             onClick={handleSelect}
@@ -349,7 +377,7 @@ export const FileTreeFile = ({
                   <button onClick={handleReveal} className="p-0.5 rounded hover:bg-accent" title={t('revealInFinder')}>
                     <ExternalLink className="size-3 text-muted-foreground" />
                   </button>
-                  <button onClick={() => onDelete?.(path)} className="p-0.5 rounded hover:bg-accent" title={tc('delete')}>
+                  <button onClick={() => setDeleteConfirmOpen(true)} className="p-0.5 rounded hover:bg-accent" title={tc('delete')}>
                     <Trash2 className="size-3 text-muted-foreground hover:text-destructive" />
                   </button>
                 </FileTreeActions>
@@ -390,6 +418,23 @@ export const FileTreeFile = ({
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirmOpen(false)}>{tc('cancel')}</Button>
             <Button onClick={handleConfirmOpen}>{t('openAnyway')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Trash2 className="size-5 text-destructive" />
+              {t('deleteFileTitle')}
+            </DialogTitle>
+          </DialogHeader>
+          <DialogDescription>
+            {t('deleteFileDesc', { name })}
+          </DialogDescription>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>{tc('cancel')}</Button>
+            <Button variant="destructive" onClick={() => { setDeleteConfirmOpen(false); onDelete?.(path) }}>{tc('delete')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

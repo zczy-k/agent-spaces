@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 import { Check, ChevronDown, Plus } from "lucide-react";
 
 export interface SearchSelectOption {
@@ -75,11 +76,11 @@ export function SearchSelect({
 
       {open && (
         <div className="absolute inset-x-0 top-full z-50 mt-1 rounded-lg border bg-popover p-1 shadow-md">
-          <input
+          <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={searchPlaceholder}
-            className="h-7 w-full rounded-md border border-input bg-transparent px-2 text-xs outline-none focus-visible:border-ring dark:bg-input/30"
+            className="h-7 text-xs"
             onKeyDown={(e) => {
               if (e.key === "Enter" && allowCustom && query.trim()) {
                 e.preventDefault();

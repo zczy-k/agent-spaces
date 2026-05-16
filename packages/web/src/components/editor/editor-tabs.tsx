@@ -6,6 +6,7 @@ import { useWorkspaceStore } from "@/stores/workspace";
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from "@/components/ui/context-menu";
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
+import { FileIconImg } from "./file-icon";
 
 interface EditorTabsProps {
   workspaceId: string;
@@ -52,6 +53,7 @@ export function EditorTabs({ workspaceId }: EditorTabsProps) {
               }`}
               onClick={() => setActiveFile(workspaceId, file.path)}
             >
+              <FileIconImg name={file.name} />
               {file.modified && (
                 <span className="size-1.5 rounded-full bg-orange-400 shrink-0" />
               )}

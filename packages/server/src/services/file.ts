@@ -31,7 +31,7 @@ export async function readTree(workspace: Workspace, relPath = '', depth = Infin
     const fullPath = join(dirPath, entry.name);
     const entryRelPath = relPath ? `${relPath}/${entry.name}` : entry.name;
 
-    if (ig.isIgnored(entryRelPath, entry.name, entry.isDirectory())) continue;
+    const isIgnored = ig.isIgnored(entryRelPath, entry.name, entry.isDirectory());
 
     const s = await stat(fullPath);
 
@@ -40,6 +40,7 @@ export async function readTree(workspace: Workspace, relPath = '', depth = Infin
         name: entry.name,
         path: entryRelPath,
         type: 'directory',
+        ignored: isIgnored || undefined,
         children: depth > 1 ? await readTree(workspace, entryRelPath, depth - 1) : undefined,
       });
     } else {
@@ -47,6 +48,7 @@ export async function readTree(workspace: Workspace, relPath = '', depth = Infin
         name: entry.name,
         path: entryRelPath,
         type: 'file',
+        ignored: isIgnored || undefined,
         size: s.size,
         modifiedAt: s.mtime.toISOString(),
       });

@@ -6,6 +6,7 @@ import { useEditorStore } from "@/stores/editor";
 import { useTranslations } from "next-intl";
 import type { CodeSearchResult } from "@agent-spaces/shared";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 
 interface SearchPanelProps {
   workspaceId: string;
@@ -93,12 +94,12 @@ export function SearchPanel({ workspaceId }: SearchPanelProps) {
       <div className="px-2 py-1.5 border-b space-y-1">
         <div className="flex items-center gap-1">
           <Search className="size-3.5 text-muted-foreground shrink-0" />
-          <input
+          <Input
             type="text"
             value={query}
             onChange={(e) => handleInput(e.target.value)}
             placeholder={t('searchPlaceholder')}
-            className="flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+            className="h-6 bg-transparent text-xs border-0 focus-visible:ring-0 focus-visible:border-0 px-1"
             spellCheck={false}
           />
           {loading && <Loader2 className="size-3 animate-spin text-muted-foreground" />}

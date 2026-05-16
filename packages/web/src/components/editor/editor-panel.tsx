@@ -78,11 +78,11 @@ function collectAllFiles(nodes: FileNode[]): FileNode[] {
 function FileTreeNodes({ nodes }: { nodes: FileNode[] }) {
   return nodes.map((node) =>
     node.type === "directory" ? (
-      <FileTreeFolder key={node.path} path={node.path} name={node.name} folderIcon={(isOpen) => <FolderIconImg name={node.name} isOpen={isOpen} />}>
+      <FileTreeFolder key={node.path} path={node.path} name={node.name} ignored={node.ignored} folderIcon={(isOpen) => <FolderIconImg name={node.name} isOpen={isOpen} />}>
         {node.children && <FileTreeNodes nodes={node.children} />}
       </FileTreeFolder>
     ) : (
-      <FileTreeFile key={node.path} path={node.path} name={node.name} icon={<FileIconImg name={node.name} />} />
+      <FileTreeFile key={node.path} path={node.path} name={node.name} icon={<FileIconImg name={node.name} />} ignored={node.ignored} />
     ),
   );
 }
@@ -267,12 +267,12 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
           <div className="flex items-center gap-1 px-2 py-1 border-b shrink-0">
             <div className="flex items-center flex-1 gap-1 px-1.5 py-0.5 rounded bg-muted/50">
               <Search className="size-3 text-muted-foreground shrink-0" />
-              <input
+              <Input
                 type="text"
                 value={fileSearch}
                 onChange={(e) => setFileSearch(e.target.value)}
                 placeholder={t('searchFiles') + '...'}
-                className="flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+                className="h-6 bg-transparent text-xs border-0 focus-visible:ring-0 focus-visible:border-0 px-1"
                 spellCheck={false}
               />
               {fileSearch && (
