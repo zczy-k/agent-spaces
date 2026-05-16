@@ -150,10 +150,10 @@ if (existsSync(webDir)) {
 
 const server = createServer(app);
 
-const wss = new WebSocketServer({ server, path: '/ws' });
+const wss = new WebSocketServer({ noServer: true });
 
 // Speech recognition WebSocket on /ws/speech
-const speechWss = new WebSocketServer({ server, path: '/ws/speech' });
+const speechWss = new WebSocketServer({ noServer: true });
 speechWss.on('connection', (ws, req) => {
   const token = new URL(req.url || '', `http://localhost:${PORT}`).searchParams.get('token');
   if (!verifyToken(token)) {
@@ -180,6 +180,26 @@ wss.on('connection', (ws, req) => {
   }
 
   handleConnection(ws, workspaceId);
+});
+
+server.on('upgrade', (req, socket, head) => {
+  const { pathname } = new URL(req.url || '/', `http://localhost:${PORT}`);
+
+  if (pathname === '/ws') {
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      wss.emit('connection', ws, req);
+    });
+    return;
+  }
+
+  if (pathname === '/ws/speech') {
+    speechWss.handleUpgrade(req, socket, head, (ws) => {
+      speechWss.emit('connection', ws, req);
+    });
+    return;
+  }
+
+  socket.destroy();
 });
 
 const HOST = process.env.HOST || '0.0.0.0';
