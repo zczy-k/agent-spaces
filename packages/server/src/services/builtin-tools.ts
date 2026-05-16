@@ -1,4 +1,4 @@
-import { BUILT_IN_AGENT_TOOLS, type AgentConfig, type BuiltInAgentToolName, type Channel, type Issue, type IssueComment, type Task } from '@agent-spaces/shared';
+import { BUILT_IN_AGENT_TOOLS, type AgentConfig, type BuiltInAgentToolName, type Channel, type Issue, type IssueComment, type IssueStatus, type Task } from '@agent-spaces/shared';
 import type { AgentFunctionTool } from '../adapters/agent-runtime-types.js';
 import * as issueService from './issue.js';
 import * as issueCommentService from './issue-comment.js';
@@ -12,6 +12,18 @@ interface IssueToolActor {
   senderId: string;
   senderRole?: string;
 }
+
+const issueStatuses = [
+  'draft',
+  'planned',
+  'in_progress',
+  'review_pending',
+  'changes_requested',
+  'approved',
+  'completed',
+  'archived',
+  'error',
+] as const satisfies readonly IssueStatus[];
 
 const currentChannelInputSchema = {
   type: 'object',
@@ -39,6 +51,11 @@ const createIssueInputSchema = {
     description: {
       type: 'string',
       description: 'Issue description to create for the current channel.',
+    },
+    status: {
+      type: 'string',
+      enum: issueStatuses,
+      description: 'Issue status to create. Use completed when creating a finished issue report. Defaults to draft.',
     },
   },
   required: ['channelId', 'title'],
@@ -152,14 +169,23 @@ function createCurrentChannelIssue(workspaceId: string, channel: Channel, input:
 
   const title = typeof data.title === 'string' ? data.title.trim() : '';
   const description = typeof data.description === 'string' ? data.description.trim() : '';
+  const status = parseIssueStatus(data.status);
   if (!title) throw new Error('title is required.');
 
-  const issue = issueService.createForChannel(workspaceId, currentChannel.id, { title, description });
+  const issue = issueService.createForChannel(workspaceId, currentChannel.id, { title, description, status });
   if (!issue) throw new Error(`Current channel not found: ${currentChannel.id}`);
   channel.issueId = issue.id;
   channel.type = 'issue';
   channel.name = title;
   return issue;
+}
+
+function parseIssueStatus(status: unknown): IssueStatus | undefined {
+  if (status === undefined) return undefined;
+  if (typeof status !== 'string' || !issueStatuses.includes(status as IssueStatus)) {
+    throw new Error(`status must be one of: ${issueStatuses.join(', ')}.`);
+  }
+  return status as IssueStatus;
 }
 
 function viewCurrentChannelIssue(workspaceId: string, channel: Channel, input: unknown): CurrentIssueContext {

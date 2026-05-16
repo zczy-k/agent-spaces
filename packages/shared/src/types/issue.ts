@@ -57,6 +57,7 @@ export interface IssueComment {
 export interface CreateIssueInput {
   title: string;
   description: string;
+  status?: IssueStatus;
   members?: string[];
   workflowId?: string;
 }

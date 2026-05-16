@@ -172,7 +172,14 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
 
   // Sync readOnly state with Monaco editor
   useEffect(() => {
-    editorRef.current?.updateOptions({ readOnly: isReadOnly });
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.updateOptions({ readOnly: isReadOnly, domReadOnly: isReadOnly });
+    // Mobile: prevent keyboard popup in read-only mode
+    const textarea = editor.getDomNode()?.querySelector('textarea');
+    if (textarea) {
+      textarea.inputMode = isReadOnly ? 'none' : 'text';
+    }
   }, [isReadOnly]);
 
   // Register model + preload directory when active file changes
