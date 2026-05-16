@@ -20,12 +20,22 @@ interface AddMemberDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   candidates: MemberCandidate[];
+  defaultSelected?: string[];
   onAdd: (members: string[]) => void;
 }
 
-export function AddMemberDialog({ open, onOpenChange, candidates, onAdd }: AddMemberDialogProps) {
+export function AddMemberDialog({ open, onOpenChange, candidates, defaultSelected, onAdd }: AddMemberDialogProps) {
   const [selected, setSelected] = useState<string[]>([]);
   const [dialogKey, setDialogKey] = useState(0);
+
+  // Track whether we've initialized for this open cycle
+  const [initialized, setInitialized] = useState(false);
+
+  // When dialog opens, reset selected to defaultSelected
+  if (open && !initialized) {
+    setSelected(defaultSelected ?? []);
+    setInitialized(true);
+  }
 
   const toggle = (id: string) => {
     setSelected((prev) =>
@@ -42,6 +52,7 @@ export function AddMemberDialog({ open, onOpenChange, candidates, onAdd }: AddMe
   const handleClose = (val: boolean) => {
     if (!val) {
       setSelected([]);
+      setInitialized(false);
       setDialogKey((k) => k + 1);
     }
     onOpenChange(val);
@@ -51,8 +62,8 @@ export function AddMemberDialog({ open, onOpenChange, candidates, onAdd }: AddMe
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>添加成员</DialogTitle>
-          <DialogDescription>选择要添加到频道的成员</DialogDescription>
+          <DialogTitle>管理成员</DialogTitle>
+          <DialogDescription>选择或取消选择频道成员</DialogDescription>
         </DialogHeader>
         <div className="space-y-3 pt-2">
           <MemberPicker
@@ -66,7 +77,7 @@ export function AddMemberDialog({ open, onOpenChange, candidates, onAdd }: AddMe
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="outline" onClick={() => handleClose(false)}>取消</Button>
             <Button onClick={handleConfirm} disabled={selected.length === 0}>
-              <UserPlus className="size-3.5 mr-1" />添加 ({selected.length})
+              <UserPlus className="size-3.5 mr-1" />确认 ({selected.length})
             </Button>
           </div>
         </div>

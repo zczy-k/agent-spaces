@@ -41,19 +41,16 @@ export function ChannelInfoPanel({ workspaceId, channel, agents, allChannels }: 
 
   const typeConf = channelTypeStatus[channel.type];
   const enabledAgents = agents.filter((agent) => agent.enabled !== false);
-  const channelAgentIds = new Set(channel.members);
-  const candidateMembers = enabledAgents
-    .filter((agent) => !channelAgentIds.has(agent.id))
-    .map((agent) => ({
-      id: agent.id,
-      label: getAgentDisplayName(agent),
-      description: agent.role,
-    }));
+  const candidateMembers = enabledAgents.map((agent) => ({
+    id: agent.id,
+    label: getAgentDisplayName(agent),
+    description: agent.role,
+  }));
   const memberChannels = (member: string) => allChannels.filter((c) => c.members.includes(member)).map((c) => c.name);
 
   const handleAddMembers = (newMembers: string[]) => {
     updateChannel(workspaceId, channel.id, {
-      members: normalizeChannelMembersToAgentIds(enabledAgents, [...channel.members, ...newMembers]),
+      members: normalizeChannelMembersToAgentIds(enabledAgents, newMembers),
     });
   };
 
@@ -176,6 +173,7 @@ export function ChannelInfoPanel({ workspaceId, channel, agents, allChannels }: 
         open={addMemberOpen}
         onOpenChange={setAddMemberOpen}
         candidates={candidateMembers}
+        defaultSelected={channel.members}
         onAdd={handleAddMembers}
       />
 
