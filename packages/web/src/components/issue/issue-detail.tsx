@@ -247,6 +247,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
           resumeIssue={resumeIssue}
           members={members}
           enabledAgents={enabledAgents}
+          issueTasks={issueTasks}
         />
 
         <IssueDetailTasksPanel

@@ -9,7 +9,7 @@ import { useMobilePanelStore } from '@/stores/mobile-panel';
 import { useChannelStore } from '@/stores/channel';
 import { getMemberDisplayName } from '@/lib/agent-members';
 import { ISSUE_STATUS_COLOR } from './issue-status-colors';
-import type { AgentConfig, Issue } from '@agent-spaces/shared';
+import type { AgentConfig, Issue, Task } from '@agent-spaces/shared';
 
 interface IssueDetailHeaderProps {
   issue: Issue;
@@ -21,6 +21,7 @@ interface IssueDetailHeaderProps {
   resumeIssue: (wsId: string, issueId: string) => void;
   members: string[];
   enabledAgents: AgentConfig[];
+  issueTasks: Task[];
 }
 
 export function IssueDetailHeader({
@@ -33,6 +34,7 @@ export function IssueDetailHeader({
   resumeIssue,
   members,
   enabledAgents,
+  issueTasks,
 }: IssueDetailHeaderProps) {
   return (
     <div className="shrink-0 p-4 pb-3 border-b">
@@ -105,7 +107,7 @@ export function IssueDetailHeader({
       )}
       {issue.status === 'draft' && (
         <div className="mt-2">
-          <Button size="sm" variant="outline" onClick={() => startIssue(workspaceId, issue.id)}>
+          <Button size="sm" variant="outline" disabled={issueTasks.length === 0} onClick={() => startIssue(workspaceId, issue.id)}>
             <Play className="h-3 w-3 mr-1" />
             {t('detail.start')}
           </Button>

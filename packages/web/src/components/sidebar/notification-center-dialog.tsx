@@ -131,7 +131,7 @@ export function NotificationCenterDialog({
         )}
         {notifications.length > 0 && (
           <div className="px-6 py-3 border-t shrink-0 flex justify-end">
-            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-destructive" onClick={() => clearAll(workspaceId)}>
+            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-destructive" onClick={() => { clearAll(workspaceId); onOpenChange(false); }}>
               <Trash2Icon className="size-3.5" />
               {t('clearAll')}
             </Button>
