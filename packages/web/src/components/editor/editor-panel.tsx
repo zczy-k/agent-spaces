@@ -6,7 +6,7 @@ import { SearchPanel } from "./search-panel";
 import { ImportFileDialog } from "./import-file-dialog";
 import { useEditorStore } from "@/stores/editor";
 import type { FileNode } from "@agent-spaces/shared";
-import { RefreshCw, Ellipsis, Upload, Copy, FolderPlus, FilePlus } from "lucide-react";
+import { RefreshCw, Ellipsis, Upload, Copy, FolderPlus, FilePlus, Search, X } from "lucide-react";
 import { FileIconImg, FolderIconImg } from "./file-icon";
 import { useTranslations } from 'next-intl';
 import { toast } from "sonner";
@@ -16,6 +16,37 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useWorkspaceStore } from "@/stores/workspace";
+
+function filterTreeByName(nodes: FileNode[], query: string): FileNode[] {
+  if (!query) return nodes;
+  const lower = query.toLowerCase();
+  const result: FileNode[] = [];
+  for (const node of nodes) {
+    if (node.type === 'directory') {
+      const filteredChildren = node.children ? filterTreeByName(node.children, query) : [];
+      if (filteredChildren.length > 0) {
+        result.push({ ...node, children: filteredChildren });
+      }
+    } else if (node.name.toLowerCase().includes(lower)) {
+      result.push(node);
+    }
+  }
+  return result;
+}
+
+function collectAllDirPaths(nodes: FileNode[]): string[] {
+  const paths: string[] = [];
+  const walk = (list: FileNode[]) => {
+    for (const node of list) {
+      if (node.type === 'directory') {
+        paths.push(node.path);
+        if (node.children) walk(node.children);
+      }
+    }
+  };
+  walk(nodes);
+  return paths;
+}
 
 function buildFileSizeMap(nodes: FileNode[]): Record<string, number> {
   const map: Record<string, number> = {};
@@ -74,7 +105,15 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importTargetPath, setImportTargetPath] = useState('');
   const [nameDialog, setNameDialog] = useState<{ open: boolean; mode: 'file' | 'folder'; targetDir: string; value: string }>({ open: false, mode: 'file', targetDir: '', value: '' });
+  const [fileSearch, setFileSearch] = useState('');
+  const filteredTree = useMemo(() => filterTreeByName(tree, fileSearch), [tree, fileSearch]);
   const fileSizeMap = useMemo(() => buildFileSizeMap(tree), [tree]);
+
+  // 搜索时自动展开所有目录
+  const effectiveExpanded = useMemo(() => {
+    if (!fileSearch) return expandedPaths;
+    return new Set(collectAllDirPaths(filteredTree));
+  }, [fileSearch, filteredTree, expandedPaths]);
 
   const handleNameConfirm = useCallback(() => {
     const { mode, targetDir, value } = nameDialog;
@@ -140,7 +179,23 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
         </TabsList>
 
         <TabsContent value="files" className="flex-1 min-h-0 mt-0">
-          <div className="flex items-center justify-end px-2 py-1 border-b gap-1">
+          <div className="flex items-center gap-1 px-2 py-1 border-b">
+            <div className="flex items-center flex-1 gap-1 px-1.5 py-0.5 rounded bg-muted/50">
+              <Search className="size-3 text-muted-foreground shrink-0" />
+              <input
+                type="text"
+                value={fileSearch}
+                onChange={(e) => setFileSearch(e.target.value)}
+                placeholder={t('searchFiles') + '...'}
+                className="flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+                spellCheck={false}
+              />
+              {fileSearch && (
+                <button onClick={() => setFileSearch('')} className="p-0.5 hover:bg-accent rounded">
+                  <X className="size-3 text-muted-foreground" />
+                </button>
+              )}
+            </div>
             <DropdownMenu>
               <DropdownMenuTrigger className="p-0.5 hover:bg-accent rounded">
                 <Ellipsis className="size-3" />
@@ -185,7 +240,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
             )}
             {tree.length > 0 && (
               <FileTree
-                expanded={expandedPaths}
+                expanded={effectiveExpanded}
                 onExpandedChange={handleExpandedChange}
                 selectedPath={selectedPath}
                 onFileSelect={(path) => {
@@ -201,7 +256,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
                 boundDir={boundDir}
                 fileSizeMap={fileSizeMap}
               >
-                <FileTreeNodes nodes={tree} />
+                <FileTreeNodes nodes={filteredTree} />
               </FileTree>
             )}
           </div>

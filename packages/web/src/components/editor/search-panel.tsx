@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Search, CaseSensitive, Regex, FolderSearch, ChevronRight, ChevronDown, File, Loader2 } from "lucide-react";
+import { Search, CaseSensitive, Regex, ChevronRight, ChevronDown, File, Loader2 } from "lucide-react";
 import { useEditorStore } from "@/stores/editor";
 import { useTranslations } from "next-intl";
-import type { CodeSearchResult, FileSearchResult } from "@agent-spaces/shared";
+import type { CodeSearchResult } from "@agent-spaces/shared";
 import { cn } from "@/lib/utils";
 
 interface SearchPanelProps {
@@ -21,11 +21,9 @@ export function SearchPanel({ workspaceId }: SearchPanelProps) {
   const [query, setQuery] = useState("");
   const [isRegex, setIsRegex] = useState(false);
   const [isCaseSensitive, setIsCaseSensitive] = useState(false);
-  const [isFileMode, setIsFileMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [codeResults, setCodeResults] = useState<GroupedResults>({});
   const [codeTotal, setCodeTotal] = useState(0);
-  const [fileResults, setFileResults] = useState<FileSearchResult[]>([]);
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -33,47 +31,36 @@ export function SearchPanel({ workspaceId }: SearchPanelProps) {
     if (!q.trim()) {
       setCodeResults({});
       setCodeTotal(0);
-      setFileResults([]);
       return;
     }
 
     setLoading(true);
     try {
-      if (isFileMode) {
-        const res = await fetch(`/api/workspaces/${workspaceId}/search/files?q=${encodeURIComponent(q)}`);
-        const data = await res.json();
-        setFileResults(data.results || []);
-        setCodeResults({});
-        setCodeTotal(0);
-      } else {
-        const params = new URLSearchParams({
-          q,
-          regex: String(isRegex),
-          caseSensitive: String(isCaseSensitive),
-        });
-        const res = await fetch(`/api/workspaces/${workspaceId}/search/code?${params}`);
-        const data = await res.json();
-        const results: CodeSearchResult[] = data.results || [];
+      const params = new URLSearchParams({
+        q,
+        regex: String(isRegex),
+        caseSensitive: String(isCaseSensitive),
+      });
+      const res = await fetch(`/api/workspaces/${workspaceId}/search/code?${params}`);
+      const data = await res.json();
+      const results: CodeSearchResult[] = data.results || [];
 
-        const grouped: GroupedResults = {};
-        for (const r of results) {
-          if (!grouped[r.file]) grouped[r.file] = [];
-          grouped[r.file].push(r);
-        }
-
-        setCodeResults(grouped);
-        setCodeTotal(results.length);
-        setFileResults([]);
-        setExpandedFiles(new Set(Object.keys(grouped)));
+      const grouped: GroupedResults = {};
+      for (const r of results) {
+        if (!grouped[r.file]) grouped[r.file] = [];
+        grouped[r.file].push(r);
       }
+
+      setCodeResults(grouped);
+      setCodeTotal(results.length);
+      setExpandedFiles(new Set(Object.keys(grouped)));
     } catch {
       setCodeResults({});
       setCodeTotal(0);
-      setFileResults([]);
     } finally {
       setLoading(false);
     }
-  }, [workspaceId, isRegex, isCaseSensitive, isFileMode]);
+  }, [workspaceId, isRegex, isCaseSensitive]);
 
   const handleInput = useCallback((value: string) => {
     setQuery(value);
@@ -83,7 +70,7 @@ export function SearchPanel({ workspaceId }: SearchPanelProps) {
 
   useEffect(() => {
     if (query.trim()) doSearch(query);
-  }, [isRegex, isCaseSensitive, isFileMode]);
+  }, [isRegex, isCaseSensitive]);
 
   const toggleFile = (file: string) => {
     setExpandedFiles((prev) => {
@@ -98,10 +85,6 @@ export function SearchPanel({ workspaceId }: SearchPanelProps) {
     jumpToPosition(workspaceId, file, line, column);
   };
 
-  const handleFileClick = (path: string) => {
-    jumpToPosition(workspaceId, path, 1);
-  };
-
   const fileCount = Object.keys(codeResults).length;
 
   return (
@@ -114,7 +97,7 @@ export function SearchPanel({ workspaceId }: SearchPanelProps) {
             type="text"
             value={query}
             onChange={(e) => handleInput(e.target.value)}
-            placeholder={isFileMode ? t('searchFiles') + '...' : t('searchPlaceholder')}
+            placeholder={t('searchPlaceholder')}
             className="flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
             spellCheck={false}
           />
@@ -135,77 +118,52 @@ export function SearchPanel({ workspaceId }: SearchPanelProps) {
           >
             <Regex className="size-3" />
           </button>
-          <button
-            onClick={() => setIsFileMode(!isFileMode)}
-            className={cn("p-1 rounded text-xs", isFileMode ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}
-            title={t('searchFiles')}
-          >
-            <FolderSearch className="size-3" />
-          </button>
         </div>
       </div>
 
       {/* Results summary */}
-      {!loading && query.trim() && (codeTotal > 0 || fileResults.length > 0) && (
+      {!loading && query.trim() && codeTotal > 0 && (
         <div className="px-2 py-1 text-[10px] text-muted-foreground border-b">
-          {isFileMode
-            ? `${fileResults.length} 个文件`
-            : t('searchResults', { count: codeTotal, files: fileCount })
-          }
+          {t('searchResults', { count: codeTotal, files: fileCount })}
         </div>
       )}
 
       {/* Results list */}
       <div className="flex-1 overflow-auto">
-        {isFileMode ? (
-          <div className="py-1">
-            {fileResults.map((f) => (
+        <div className="py-1">
+          {Object.entries(codeResults).map(([file, matches]) => (
+            <div key={file}>
               <button
-                key={f.path}
-                onClick={() => handleFileClick(f.path)}
-                className="w-full flex items-center gap-1.5 px-2 py-0.5 text-xs hover:bg-accent/50 text-left"
+                onClick={() => toggleFile(file)}
+                className="w-full flex items-center gap-1 px-2 py-0.5 text-xs font-medium hover:bg-accent/50"
               >
+                {expandedFiles.has(file) ? (
+                  <ChevronDown className="size-3 text-muted-foreground shrink-0" />
+                ) : (
+                  <ChevronRight className="size-3 text-muted-foreground shrink-0" />
+                )}
                 <File className="size-3 text-muted-foreground shrink-0" />
-                <span className="truncate">{f.path}</span>
+                <span className="truncate">{file}</span>
+                <span className="text-muted-foreground ml-auto shrink-0">({matches.length})</span>
               </button>
-            ))}
-          </div>
-        ) : (
-          <div className="py-1">
-            {Object.entries(codeResults).map(([file, matches]) => (
-              <div key={file}>
+
+              {expandedFiles.has(file) && matches.map((m, i) => (
                 <button
-                  onClick={() => toggleFile(file)}
-                  className="w-full flex items-center gap-1 px-2 py-0.5 text-xs font-medium hover:bg-accent/50"
+                  key={i}
+                  onClick={() => handleResultClick(m.file, m.line, m.column)}
+                  className="w-full flex items-start gap-2 pl-6 pr-2 py-0.5 text-xs hover:bg-accent/50 text-left font-mono"
                 >
-                  {expandedFiles.has(file) ? (
-                    <ChevronDown className="size-3 text-muted-foreground shrink-0" />
-                  ) : (
-                    <ChevronRight className="size-3 text-muted-foreground shrink-0" />
-                  )}
-                  <File className="size-3 text-muted-foreground shrink-0" />
-                  <span className="truncate">{file}</span>
-                  <span className="text-muted-foreground ml-auto shrink-0">({matches.length})</span>
+                  <span className="text-muted-foreground w-8 text-right shrink-0">{m.line}</span>
+                  <span className="truncate">
+                    <HighlightMatch text={m.text} start={m.matchStart} length={m.matchLength} />
+                  </span>
                 </button>
+              ))}
+            </div>
+          ))}
+        </div>
 
-                {expandedFiles.has(file) && matches.map((m, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handleResultClick(m.file, m.line, m.column)}
-                    className="w-full flex items-start gap-2 pl-6 pr-2 py-0.5 text-xs hover:bg-accent/50 text-left font-mono"
-                  >
-                    <span className="text-muted-foreground w-8 text-right shrink-0">{m.line}</span>
-                    <span className="truncate">
-                      <HighlightMatch text={m.text} start={m.matchStart} length={m.matchLength} />
-                    </span>
-                  </button>
-                ))}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {!loading && query.trim() && codeTotal === 0 && fileResults.length === 0 && (
+        {!loading && query.trim() && codeTotal === 0 && (
           <div className="px-2 py-4 text-xs text-muted-foreground text-center">{t('noResults')}</div>
         )}
         {!loading && codeTotal >= 200 && (
