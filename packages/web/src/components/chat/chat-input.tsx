@@ -565,7 +565,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       {!collapsed && (
         <div className="border-t px-4 py-2">
           {/* Agent quick bar */}
-          {sortedAgents.length > 1 && (
+          {sortedAgents.length > 0 && (
             <div className="flex items-center gap-1 mb-1.5 overflow-x-auto scrollbar-none">
               {sortedAgents.map((agent) => {
                 const isActive = agent.id === activeAgent?.id;
@@ -608,25 +608,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
                   </button>
                 );
               })}
-            </div>
-          )}
-          {/* Single active agent indicator (when only 1 agent) */}
-          {sortedAgents.length <= 1 && activeAgent && (
-            <div className="flex items-center gap-1 mb-1.5">
-              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
-                @{activeAgent.name || activeAgent.role}
-              </span>
-              <button
-                type="button"
-                onClick={togglePin}
-                className={cn(
-                  "inline-flex items-center justify-center size-5 rounded-full hover:bg-accent transition-colors",
-                  isPinned ? "text-primary" : "text-muted-foreground"
-                )}
-                title={isPinned ? t('input.unpinAgent') : t('input.pinAgent')}
-              >
-                {isPinned ? <IconPinFilled className="size-3" /> : <IconPin className="size-3" />}
-              </button>
             </div>
           )}
 
