@@ -6,7 +6,10 @@ import android.os.Bundle
 import android.webkit.JavascriptInterface
 import android.webkit.WebSettings
 import android.webkit.WebView
+import android.view.WindowManager
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 
 class MainActivity : TauriActivity() {
     private var statusBarTheme = "light"
@@ -16,6 +19,7 @@ class MainActivity : TauriActivity() {
 
         statusBarTheme = if (isSystemDarkTheme()) "dark" else "light"
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         applyStatusBarTheme(statusBarTheme)
     }
 
@@ -23,6 +27,11 @@ class MainActivity : TauriActivity() {
         super.onWebViewCreate(webView)
         webView.settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         webView.addJavascriptInterface(StatusBarBridge(this), "AgentSpacesStatusBar")
+        ViewCompat.setOnApplyWindowInsetsListener(webView) { _, insets ->
+            dispatchNativeInsets(webView, insets)
+            insets
+        }
+        ViewCompat.requestApplyInsets(webView)
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -43,6 +52,34 @@ class MainActivity : TauriActivity() {
 
     private fun isSystemDarkTheme(): Boolean {
         return (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+    }
+
+    private fun dispatchNativeInsets(webView: WebView, insets: WindowInsetsCompat) {
+        val density = resources.displayMetrics.density
+        val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+        val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+        val keyboardPx = if (insets.isVisible(WindowInsetsCompat.Type.ime())) {
+            maxOf(0, ime.bottom - systemBars.bottom)
+        } else {
+            0
+        }
+        val topDp = systemBars.top / density
+        val keyboardDp = keyboardPx / density
+        val script = """
+            (function () {
+              window.__agentSpacesNativeInsets = {
+                top: $topDp,
+                keyboard: $keyboardDp
+              };
+              window.dispatchEvent(new CustomEvent('agent-spaces-native-insets', {
+                detail: window.__agentSpacesNativeInsets
+              }));
+            })();
+        """.trimIndent()
+
+        webView.post {
+            webView.evaluateJavascript(script, null)
+        }
     }
 
     class StatusBarBridge(private val activity: MainActivity) {

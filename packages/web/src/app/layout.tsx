@@ -58,10 +58,10 @@ export default function RootLayout({
   return (
     <html
       lang=""
-      className={`${dmSans.variable} ${outfit.variable} ${poppins.variable} h-dvh overflow-hidden antialiased`}
+      className={`${dmSans.variable} ${outfit.variable} ${poppins.variable} h-[var(--app-content-height)] overflow-hidden antialiased`}
       suppressHydrationWarning
     >
-      <body className="h-full overflow-hidden font-sans">
+      <body className="h-[var(--app-content-height)] overflow-hidden font-sans">
         <ZoomWrapper>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <LocaleProvider>
