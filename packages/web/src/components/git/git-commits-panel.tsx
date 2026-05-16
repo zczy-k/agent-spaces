@@ -79,6 +79,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
     createTag, getCommitDiff, getRemoteUrl, getMergeBase,
   } = useGitStore();
   const openFile = useEditorStore((s) => s.openFile);
+  const openCommitDiff = useEditorStore((s) => s.openCommitDiff);
   const { activeChannelId, sendMessage } = useChannelStore();
   const agents = useAgentStore((s) => s.agents);
 
@@ -278,7 +279,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
   const handleOpenChanges = async (entry: { hash: string; message: string }) => {
     try {
       const diffs = await getCommitDiff(workspaceId, entry.hash);
-      if (diffs.length > 0) { selectFile(diffs[0].path); useGitStore.setState({ diffs }); }
+      if (diffs.length > 0) { openCommitDiff(workspaceId, entry.hash, entry.message, diffs); }
     } catch (err: unknown) { toast.error(t('contextMenu.failed'), { description: errMsg(err) }); }
   };
 

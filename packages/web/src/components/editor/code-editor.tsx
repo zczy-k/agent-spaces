@@ -3,10 +3,11 @@
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useCallback, useState } from "react";
 import "@/lib/monaco-loader";
-import { useEditorStore } from "@/stores/editor";
+import { useEditorStore, isCommitDiffPath, getCommitHashFromPath } from "@/stores/editor";
 import { EditorTabs } from "./editor-tabs";
 import { useTheme } from "@/components/theme-provider";
 import { useTranslations } from 'next-intl';
+import { CommitDiffViewer } from "@/components/git/commit-diff-viewer";
 import {
   getOrCreateModel,
   preloadDirectory,
@@ -145,7 +146,7 @@ function EditorMenuBar({ editorRef, workspaceId, isReadOnly, onToggleReadOnly, i
 }
 
 export function CodeEditor({ workspaceId }: CodeEditorProps) {
-  const { openFiles, activeFilePath, updateContent, saveFile, pendingJump, clearPendingJump } = useEditorStore();
+  const { openFiles, activeFilePath, updateContent, saveFile, pendingJump, clearPendingJump, commitDiffs } = useEditorStore();
   const { resolvedTheme } = useTheme();
   const t = useTranslations('editor');
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
@@ -154,6 +155,8 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   const activeFile = openFiles.find((f) => f.path === activeFilePath);
+  const isCommitDiff = activeFilePath ? isCommitDiffPath(activeFilePath) : false;
+  const commitDiffData = isCommitDiff && activeFilePath ? commitDiffs[getCommitHashFromPath(activeFilePath)] : null;
 
   const handleSave = useCallback(() => {
     if (activeFilePath) {
@@ -261,7 +264,9 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
       <EditorTabs workspaceId={workspaceId} />
       <EditorMenuBar editorRef={editorRef} workspaceId={workspaceId} isReadOnly={isReadOnly} onToggleReadOnly={() => setIsReadOnly(r => !r)} isFullscreen={isFullscreen} onToggleFullscreen={() => setIsFullscreen(f => !f)} />
       <div ref={editorContainerRef} className="flex-1 min-h-0">
-        {activeFile ? (
+        {isCommitDiff && commitDiffData ? (
+          <CommitDiffViewer diffs={commitDiffData.diffs} message={commitDiffData.message} />
+        ) : activeFile ? (
           <MonacoEditor
             height="100%"
             language={getLanguage(activeFile.path)}

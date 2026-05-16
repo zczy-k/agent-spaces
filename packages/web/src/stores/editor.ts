@@ -1,11 +1,21 @@
 import { create } from 'zustand';
-import type { FileNode } from '@agent-spaces/shared';
+import type { FileNode, GitDiffResult } from '@agent-spaces/shared';
 
 interface OpenFile {
   path: string;
   name: string;
   content: string;
   modified: boolean;
+}
+
+export const COMMIT_DIFF_PREFIX = '__commit_diff__:';
+
+export function isCommitDiffPath(path: string): boolean {
+  return path.startsWith(COMMIT_DIFF_PREFIX);
+}
+
+export function getCommitHashFromPath(path: string): string {
+  return path.slice(COMMIT_DIFF_PREFIX.length);
 }
 
 interface JumpPosition {
@@ -21,6 +31,7 @@ interface EditorState {
   activeFilePath: string | null;
   pendingJump: JumpPosition | null;
   revealPath: string | null;
+  commitDiffs: Record<string, { diffs: GitDiffResult[]; message: string }>;
 
   loadTree: (workspaceId: string) => Promise<void>;
   loadDirectory: (workspaceId: string, dirPath: string) => Promise<void>;
@@ -35,6 +46,8 @@ interface EditorState {
   clearRevealPath: () => void;
   loadEditorState: (workspaceId: string) => Promise<void>;
   saveEditorState: (workspaceId: string) => Promise<void>;
+  openCommitDiff: (workspaceId: string, hash: string, message: string, diffs: GitDiffResult[]) => void;
+  closeCommitDiff: (workspaceId: string, hash: string) => void;
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -54,6 +67,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   activeFilePath: null,
   pendingJump: null,
   revealPath: null,
+  commitDiffs: {},
 
   loadTree: async (workspaceId) => {
     set({ treeLoading: true });
@@ -155,7 +169,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
             ? files[files.length - 1].path
             : null
           : s.activeFilePath;
-      return { openFiles: files, activeFilePath: active };
+      const newCommitDiffs = { ...s.commitDiffs };
+      if (isCommitDiffPath(path)) {
+        delete newCommitDiffs[getCommitHashFromPath(path)];
+      }
+      return { openFiles: files, activeFilePath: active, commitDiffs: newCommitDiffs };
     });
     debouncedSave(workspaceId);
   },
@@ -208,17 +226,39 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   saveEditorState: async (workspaceId) => {
     const { openFiles, activeFilePath } = get();
+    const realFiles = openFiles.filter(f => !isCommitDiffPath(f.path));
+    const realActive = activeFilePath && !isCommitDiffPath(activeFilePath) ? activeFilePath : null;
     try {
       await fetch(`/api/workspaces/${workspaceId}/files/editor-state`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          openFilePaths: openFiles.map(f => f.path),
-          activeFilePath,
+          openFilePaths: realFiles.map(f => f.path),
+          activeFilePath: realActive,
         }),
       });
     } catch {
       // silent fail
     }
+  },
+
+  openCommitDiff: (workspaceId, hash, message, diffs) => {
+    const path = COMMIT_DIFF_PREFIX + hash;
+    set((s) => {
+      const existing = s.openFiles.find((f) => f.path === path);
+      if (existing) {
+        return { activeFilePath: path, commitDiffs: { ...s.commitDiffs, [hash]: { diffs, message } } };
+      }
+      return {
+        openFiles: [...s.openFiles, { path, name: hash.slice(0, 7), content: '', modified: false }],
+        activeFilePath: path,
+        commitDiffs: { ...s.commitDiffs, [hash]: { diffs, message } },
+      };
+    });
+  },
+
+  closeCommitDiff: (workspaceId, hash) => {
+    const path = COMMIT_DIFF_PREFIX + hash;
+    get().closeFile(workspaceId, path);
   },
 }));

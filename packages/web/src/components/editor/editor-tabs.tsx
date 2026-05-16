@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { X } from "lucide-react";
-import { useEditorStore } from "@/stores/editor";
+import { X, GitCommitHorizontal } from "lucide-react";
+import { useEditorStore, isCommitDiffPath, getCommitHashFromPath } from "@/stores/editor";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from "@/components/ui/context-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -26,7 +26,7 @@ function getRelativePath(relPath: string, boundDirs: string[]): string {
 }
 
 export function EditorTabs({ workspaceId }: EditorTabsProps) {
-  const { openFiles, activeFilePath, setActiveFile, closeFile, saveFile, setRevealPath } = useEditorStore();
+  const { openFiles, activeFilePath, setActiveFile, closeFile, saveFile, setRevealPath, commitDiffs } = useEditorStore();
   const workspaces = useWorkspaceStore((s) => s.workspaces);
   const workspace = workspaces.find((w) => w.id === workspaceId);
   const boundDirs = workspace?.boundDirs ?? [];
@@ -80,11 +80,19 @@ export function EditorTabs({ workspaceId }: EditorTabsProps) {
                 }`}
                 onClick={() => setActiveFile(workspaceId, file.path)}
               >
-                <FileIconImg name={file.name} />
+                {isCommitDiffPath(file.path) ? (
+                  <GitCommitHorizontal size={14} className="text-blue-500 shrink-0" />
+                ) : (
+                  <FileIconImg name={file.name} />
+                )}
                 {file.modified && (
                   <span className="size-1.5 rounded-full bg-orange-400 shrink-0" />
                 )}
-                <span className="truncate max-w-32">{file.name}</span>
+                <span className="truncate max-w-32">
+                  {isCommitDiffPath(file.path)
+                    ? commitDiffs[getCommitHashFromPath(file.path)]?.message?.split("\n")[0]?.slice(0, 30) || file.name
+                    : file.name}
+                </span>
                 <button
                   className="ml-1 hover:bg-accent rounded p-0.5"
                   onClick={(e) => handleClose(e, file)}

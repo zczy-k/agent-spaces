@@ -28,6 +28,11 @@
       }
     }
   },
+  "plugins": {
+    "http": {
+      "all": true
+    }
+  },
   "bundle": {
     "active": true,
     "targets": "all",
