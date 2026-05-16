@@ -142,12 +142,14 @@ interface FileTreeFolderContextType {
   path: string
   name: string
   isExpanded: boolean
+  ignored: boolean
 }
 
 const FileTreeFolderContext = createContext<FileTreeFolderContextType>({
   path: "",
   name: "",
   isExpanded: false,
+  ignored: false,
 })
 
 export type FileTreeFolderProps = HTMLAttributes<HTMLDivElement> & {
@@ -167,7 +169,9 @@ export const FileTreeFolder = ({
   ...props
 }: FileTreeFolderProps) => {
   const { expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete, onImport, onCopyPath, onCreateFile, onCreateFolder, onRename, onMove, onCopyItem, onLoadDirectory, loadedDirs, boundDir } = useContext(FileTreeContext)
+  const parentFolder = useContext(FileTreeFolderContext)
   const isExpanded = expandedPaths.has(path)
+  const isIgnored = ignored || parentFolder.ignored
   const isSelected = selectedPath === path
   const isLoading = loadedDirs?.has(path)
   const t = useTranslations('editor')
@@ -187,7 +191,7 @@ export const FileTreeFolder = ({
   }
 
   return (
-    <FileTreeFolderContext.Provider value={{ path, name, isExpanded }}>
+    <FileTreeFolderContext.Provider value={{ path, name, isExpanded, ignored: isIgnored }}>
       <ContextMenu>
         <Collapsible onOpenChange={handleOpenChange} open={isExpanded}>
           <div className={className} role="treeitem" tabIndex={0} {...props}>
