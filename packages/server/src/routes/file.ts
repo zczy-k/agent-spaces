@@ -119,6 +119,30 @@ router.post('/reveal', async (req: Request<{ id: string }>, res: Response) => {
   });
 });
 
+router.post('/rename', async (req: Request<{ id: string }>, res: Response) => {
+  const ws = fileService.getWorkspace(req.params.id);
+  if (!ws) { res.status(404).json({ error: 'Workspace not found' }); return; }
+
+  const { oldPath, newPath } = req.body;
+  if (!oldPath || !newPath) { res.status(400).json({ error: 'oldPath and newPath are required' }); return; }
+
+  const ok = await fileService.renamePath(ws, oldPath, newPath);
+  if (!ok) { res.status(500).json({ error: 'Failed to rename' }); return; }
+  res.json({ ok: true });
+});
+
+router.post('/copy', async (req: Request<{ id: string }>, res: Response) => {
+  const ws = fileService.getWorkspace(req.params.id);
+  if (!ws) { res.status(404).json({ error: 'Workspace not found' }); return; }
+
+  const { srcPath, destPath } = req.body;
+  if (!srcPath || !destPath) { res.status(400).json({ error: 'srcPath and destPath are required' }); return; }
+
+  const ok = await fileService.copyPath(ws, srcPath, destPath);
+  if (!ok) { res.status(500).json({ error: 'Failed to copy' }); return; }
+  res.json({ ok: true });
+});
+
 router.post('/import-url', async (req: Request<{ id: string }>, res: Response) => {
   const ws = fileService.getWorkspace(req.params.id);
   if (!ws) { res.status(404).json({ error: 'Workspace not found' }); return; }

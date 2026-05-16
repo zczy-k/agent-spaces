@@ -117,6 +117,8 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importTargetPath, setImportTargetPath] = useState('');
   const [nameDialog, setNameDialog] = useState<{ open: boolean; mode: 'file' | 'folder'; targetDir: string; value: string }>({ open: false, mode: 'file', targetDir: '', value: '' });
+  const [renameDialog, setRenameDialog] = useState<{ open: boolean; path: string; value: string }>({ open: false, path: '', value: '' });
+  const [moveDialog, setMoveDialog] = useState<{ open: boolean; path: string; value: string; mode: 'move' | 'copy' }>({ open: false, path: '', value: '', mode: 'move' });
   const [fileSearch, setFileSearch] = useState('');
   const [bottomTab, setBottomTab] = useState<'all' | 'recent' | 'open'>('all');
   const filteredTree = useMemo(() => filterTreeByName(tree, fileSearch), [tree, fileSearch]);
@@ -168,6 +170,47 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
     await fetch(`/api/workspaces/${workspaceId}/files?path=${encodeURIComponent(path)}`, { method: 'DELETE' });
     loadTree(workspaceId);
   };
+
+  const handleRename = useCallback((path: string) => {
+    const name = path.split('/').pop() || '';
+    setRenameDialog({ open: true, path, value: name });
+  }, []);
+
+  const handleRenameConfirm = useCallback(async () => {
+    const { path: oldPath, value } = renameDialog;
+    if (!value.trim() || value.trim() === oldPath.split('/').pop()) { setRenameDialog(p => ({ ...p, open: false })); return; }
+    const dir = oldPath.substring(0, oldPath.lastIndexOf('/'));
+    const newPath = dir ? `${dir}/${value.trim()}` : value.trim();
+    const res = await fetch(`/api/workspaces/${workspaceId}/files/rename`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ oldPath, newPath }),
+    });
+    if (res.ok) { loadTree(workspaceId); setRenameDialog(p => ({ ...p, open: false })); }
+  }, [renameDialog, workspaceId, loadTree]);
+
+  const handleMove = useCallback((path: string) => {
+    const dir = path.substring(0, path.lastIndexOf('/'));
+    setMoveDialog({ open: true, path, value: dir, mode: 'move' });
+  }, []);
+
+  const handleCopy = useCallback((path: string) => {
+    const dir = path.substring(0, path.lastIndexOf('/'));
+    setMoveDialog({ open: true, path, value: dir, mode: 'copy' });
+  }, []);
+
+  const handleMoveConfirm = useCallback(async () => {
+    const { path: srcPath, value, mode } = moveDialog;
+    if (!value.trim()) return;
+    const name = srcPath.split('/').pop() || '';
+    const destPath = value.trim() === '' ? name : `${value.trim()}/${name}`;
+    const endpoint = mode === 'copy' ? '/files/copy' : '/files/rename';
+    const body = mode === 'copy' ? { srcPath, destPath } : { oldPath: srcPath, newPath: destPath };
+    const res = await fetch(`/api/workspaces/${workspaceId}${endpoint}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (res.ok) { loadTree(workspaceId); setMoveDialog(p => ({ ...p, open: false })); }
+  }, [moveDialog, workspaceId, loadTree]);
 
   useEffect(() => {
     if (!revealPath) return;
@@ -277,6 +320,9 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
                     onCopyPath={(path) => { navigator.clipboard.writeText(boundDir ? boundDir.replace(/\/+$/, '') + '/' + path : path); toast.success(t('copied')); }}
                     onCreateFile={(targetDir) => openNameDialog('file', targetDir)}
                     onCreateFolder={(targetDir) => openNameDialog('folder', targetDir)}
+                    onRename={handleRename}
+                    onMove={handleMove}
+                    onCopyItem={handleCopy}
                     boundDir={boundDir}
                     fileSizeMap={fileSizeMap}
                   >
@@ -352,6 +398,42 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
           <DialogFooter>
             <Button variant="outline" onClick={() => setNameDialog((p) => ({ ...p, open: false }))}>{tc('cancel')}</Button>
             <Button onClick={handleNameConfirm} disabled={!nameDialog.value.trim()}>{tc('create')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={renameDialog.open} onOpenChange={(v) => setRenameDialog((p) => ({ ...p, open: v }))}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>{t('renameTitle')}</DialogTitle>
+          </DialogHeader>
+          <Input
+            autoFocus
+            placeholder={t('renamePlaceholder')}
+            value={renameDialog.value}
+            onChange={(e) => setRenameDialog((p) => ({ ...p, value: e.target.value }))}
+            onKeyDown={(e) => e.key === 'Enter' && handleRenameConfirm()}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameDialog((p) => ({ ...p, open: false }))}>{tc('cancel')}</Button>
+            <Button onClick={handleRenameConfirm} disabled={!renameDialog.value.trim()}>{t('rename')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={moveDialog.open} onOpenChange={(v) => setMoveDialog((p) => ({ ...p, open: v }))}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>{moveDialog.mode === 'move' ? t('moveTitle') : t('copyTitle')}</DialogTitle>
+          </DialogHeader>
+          <Input
+            autoFocus
+            placeholder={moveDialog.mode === 'move' ? t('movePlaceholder') : t('copyPlaceholder')}
+            value={moveDialog.value}
+            onChange={(e) => setMoveDialog((p) => ({ ...p, value: e.target.value }))}
+            onKeyDown={(e) => e.key === 'Enter' && handleMoveConfirm()}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMoveDialog((p) => ({ ...p, open: false }))}>{tc('cancel')}</Button>
+            <Button onClick={handleMoveConfirm} disabled={!moveDialog.value.trim()}>{moveDialog.mode === 'move' ? t('move') : t('copyFile')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -1,5 +1,5 @@
-import { readdir, stat, readFile, writeFile, mkdir, rm } from 'node:fs/promises';
-import { join, resolve, relative, isAbsolute } from 'node:path';
+import { readdir, stat, readFile, writeFile, mkdir, rm, rename as fsRename } from 'node:fs/promises';
+import { join, resolve, relative, isAbsolute, dirname } from 'node:path';
 import type { FileNode } from '@agent-spaces/shared';
 import type { Workspace } from '@agent-spaces/shared';
 import { getWorkspace } from '../storage/workspace-store.js';
@@ -135,6 +135,35 @@ export async function importFromAbsPath(workspace: Workspace, absPath: string, t
     return ok ? relPath : null;
   } catch {
     return null;
+  }
+}
+
+export async function renamePath(workspace: Workspace, oldRelPath: string, newRelPath: string): Promise<boolean> {
+  const oldAbs = resolvePath(workspace, oldRelPath);
+  const newAbs = resolvePath(workspace, newRelPath);
+  if (!oldAbs || !newAbs) return false;
+
+  try {
+    await mkdir(dirname(newAbs), { recursive: true });
+    await fsRename(oldAbs, newAbs);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function copyPath(workspace: Workspace, srcRelPath: string, destRelPath: string): Promise<boolean> {
+  const srcAbs = resolvePath(workspace, srcRelPath);
+  const destAbs = resolvePath(workspace, destRelPath);
+  if (!srcAbs || !destAbs) return false;
+
+  try {
+    const { cp } = await import('node:fs/promises');
+    await mkdir(dirname(destAbs), { recursive: true });
+    await cp(srcAbs, destAbs, { recursive: true });
+    return true;
+  } catch {
+    return false;
   }
 }
 

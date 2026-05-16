@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronRightIcon, FileIcon, FolderIcon, FolderOpenIcon, Trash2, ExternalLink, Upload, Copy, FolderPlus, FilePlus, AlertTriangle } from "lucide-react"
+import { ChevronRightIcon, FileIcon, FolderIcon, FolderOpenIcon, Trash2, ExternalLink, Upload, Copy, FolderPlus, FilePlus, AlertTriangle, Pencil, MoveRight } from "lucide-react"
 import { createContext, type HTMLAttributes, type ReactNode, useContext, useState, useCallback } from "react"
 /**
  * @title React AI File Tree
@@ -40,6 +40,9 @@ interface FileTreeContextType {
   onCopyPath?: (path: string) => void
   onCreateFile?: (targetDir: string) => void
   onCreateFolder?: (targetDir: string) => void
+  onRename?: (path: string) => void
+  onMove?: (path: string) => void
+  onCopyItem?: (path: string) => void
   boundDir?: string
   fileSizeMap?: Record<string, number>
 }
@@ -61,6 +64,9 @@ export type FileTreeProps = HTMLAttributes<HTMLDivElement> & {
   onCopyPath?: (path: string) => void
   onCreateFile?: (targetDir: string) => void
   onCreateFolder?: (targetDir: string) => void
+  onRename?: (path: string) => void
+  onMove?: (path: string) => void
+  onCopyItem?: (path: string) => void
   boundDir?: string
   fileSizeMap?: Record<string, number>
 }
@@ -77,6 +83,9 @@ export const FileTree = ({
   onCopyPath,
   onCreateFile,
   onCreateFolder,
+  onRename,
+  onMove,
+  onCopyItem,
   boundDir,
   fileSizeMap,
   className,
@@ -98,7 +107,7 @@ export const FileTree = ({
   }
 
   return (
-    <FileTreeContext.Provider value={{ expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete, onImport, onCopyPath, onCreateFile, onCreateFolder, boundDir, fileSizeMap }}>
+    <FileTreeContext.Provider value={{ expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete, onImport, onCopyPath, onCreateFile, onCreateFolder, onRename, onMove, onCopyItem, boundDir, fileSizeMap }}>
       <div
         className={cn("flex flex-col bg-background font-mono text-sm h-full", className)}
         role="tree"
@@ -136,7 +145,7 @@ export const FileTreeFolder = ({
   children,
   ...props
 }: FileTreeFolderProps) => {
-  const { expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete, onImport, onCopyPath, onCreateFile, onCreateFolder, boundDir } = useContext(FileTreeContext)
+  const { expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete, onImport, onCopyPath, onCreateFile, onCreateFolder, onRename, onMove, onCopyItem, boundDir } = useContext(FileTreeContext)
   const isExpanded = expandedPaths.has(path)
   const isSelected = selectedPath === path
   const t = useTranslations('editor')
@@ -190,6 +199,18 @@ export const FileTreeFolder = ({
           </div>
         </Collapsible>
         <ContextMenuContent>
+          <ContextMenuItem onClick={() => onRename?.(path)}>
+            <Pencil className="size-4" />
+            {t('rename')}
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => onMove?.(path)}>
+            <MoveRight className="size-4" />
+            {t('move')}
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => onCopyItem?.(path)}>
+            <Copy className="size-4" />
+            {t('copyFile')}
+          </ContextMenuItem>
           <ContextMenuItem onClick={() => onImport?.(path)}>
             <Upload className="size-4" />
             {t('importFile')}
@@ -239,7 +260,7 @@ export const FileTreeFile = ({
   children,
   ...props
 }: FileTreeFileProps) => {
-  const { selectedPath, onFileSelect, workspaceId, onDelete, fileSizeMap } = useContext(FileTreeContext)
+  const { selectedPath, onFileSelect, workspaceId, onDelete, onRename, onMove, onCopyItem, fileSizeMap } = useContext(FileTreeContext)
   const isSelected = selectedPath === path
   const t = useTranslations('editor')
   const tc = useTranslations('common')
@@ -273,40 +294,62 @@ export const FileTreeFile = ({
 
   return (
     <FileTreeFileContext.Provider value={{ path, name }}>
-      <div
-        className={cn(
-          "group/file flex cursor-pointer items-center gap-1 rounded px-2 py-1 transition-colors hover:bg-muted/50",
-          isSelected && "bg-muted",
-          className,
-        )}
-        onClick={handleSelect}
-        onKeyDown={e => {
-          if (e.key === "Enter" || e.key === " ") {
-            handleSelect()
-          }
-        }}
-        role="treeitem"
-        tabIndex={0}
-        {...props}
-      >
-        {children ?? (
-          <>
-            <span className="size-4" />
-            <FileTreeIcon>
-              {icon ?? <FileIcon className="size-4 text-muted-foreground" />}
-            </FileTreeIcon>
-            <FileTreeName>{name}</FileTreeName>
-            <FileTreeActions>
-              <button onClick={handleReveal} className="p-0.5 rounded hover:bg-accent" title={t('revealInFinder')}>
-                <ExternalLink className="size-3 text-muted-foreground" />
-              </button>
-              <button onClick={() => onDelete?.(path)} className="p-0.5 rounded hover:bg-accent" title={tc('delete')}>
-                <Trash2 className="size-3 text-muted-foreground hover:text-destructive" />
-              </button>
-            </FileTreeActions>
-          </>
-        )}
-      </div>
+      <ContextMenu>
+        <ContextMenuTrigger className="contents">
+          <div
+            className={cn(
+              "group/file flex cursor-pointer items-center gap-1 rounded px-2 py-1 transition-colors hover:bg-muted/50",
+              isSelected && "bg-muted",
+              className,
+            )}
+            onClick={handleSelect}
+            onKeyDown={e => {
+              if (e.key === "Enter" || e.key === " ") {
+                handleSelect()
+              }
+            }}
+            role="treeitem"
+            tabIndex={0}
+            {...props}
+          >
+            {children ?? (
+              <>
+                <span className="size-4" />
+                <FileTreeIcon>
+                  {icon ?? <FileIcon className="size-4 text-muted-foreground" />}
+                </FileTreeIcon>
+                <FileTreeName>{name}</FileTreeName>
+                <FileTreeActions>
+                  <button onClick={handleReveal} className="p-0.5 rounded hover:bg-accent" title={t('revealInFinder')}>
+                    <ExternalLink className="size-3 text-muted-foreground" />
+                  </button>
+                  <button onClick={() => onDelete?.(path)} className="p-0.5 rounded hover:bg-accent" title={tc('delete')}>
+                    <Trash2 className="size-3 text-muted-foreground hover:text-destructive" />
+                  </button>
+                </FileTreeActions>
+              </>
+            )}
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem onClick={() => onRename?.(path)}>
+            <Pencil className="size-4" />
+            {t('rename')}
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => onMove?.(path)}>
+            <MoveRight className="size-4" />
+            {t('move')}
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => onCopyItem?.(path)}>
+            <Copy className="size-4" />
+            {t('copyFile')}
+          </ContextMenuItem>
+          <ContextMenuItem onClick={handleReveal}>
+            <ExternalLink className="size-4" />
+            {t('revealInFinder')}
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
