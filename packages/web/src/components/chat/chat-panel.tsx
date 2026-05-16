@@ -81,15 +81,21 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
     const enabledAgents = agents.filter((agent) => agent.enabled !== false);
     if (!channel) return [];
 
-    const seen = new Set<string>();
-    return channel.members
-      .filter((member) => member !== 'user')
-      .map((member) => findAgentById(enabledAgents, member))
-      .filter((agent): agent is AgentConfig => {
-        if (!agent || seen.has(agent.id)) return false;
-        seen.add(agent.id);
-        return true;
-      });
+    // If channel has members, show only those agents
+    const memberAgentIds = channel.members.filter((m) => m !== 'user');
+    if (memberAgentIds.length > 0) {
+      const seen = new Set<string>();
+      return memberAgentIds
+        .map((member) => findAgentById(enabledAgents, member))
+        .filter((agent): agent is AgentConfig => {
+          if (!agent || seen.has(agent.id)) return false;
+          seen.add(agent.id);
+          return true;
+        });
+    }
+
+    // Fallback: no members in channel, show all enabled agents
+    return enabledAgents;
   }, [channel, agents]);
 
   useEffect(() => {
@@ -313,6 +319,7 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
             channel={channel}
             agents={agents}
             allChannels={channels}
+            onDeleted={() => setInfoOpen(false)}
           />
         </SheetContent>
       </Sheet>

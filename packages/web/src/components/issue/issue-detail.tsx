@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useIssueStore } from '@/stores/issue';
+import { useMobilePanelStore } from '@/stores/mobile-panel';
 import { useTaskStore } from '@/stores/task';
 import { useAgentStore } from '@/stores/agent';
 import { EditIssueDialog } from '@/components/issue/edit-issue-dialog';
@@ -315,7 +316,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
         members={members}
         enabledAgents={enabledAgents}
         onAddMembers={handleAddMembers}
-        onDeleteIssue={() => { deleteIssue(workspaceId, issue.id); }}
+        onDeleteIssue={() => { deleteIssue(workspaceId, issue.id); useMobilePanelStore.getState().setActivePanel('issue-list'); }}
         t={t}
       />
 

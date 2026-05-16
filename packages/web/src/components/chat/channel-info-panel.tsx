@@ -12,6 +12,7 @@ import { MemberCard } from './member-card';
 import { MemberInfoDialog } from './member-info-dialog';
 import { AddMemberDialog } from './add-member-dialog';
 import { useChannelStore } from '@/stores/channel';
+import { useMobilePanelStore } from '@/stores/mobile-panel';
 import { getAgentDisplayName, getMemberDisplayName, normalizeChannelMembersToAgentIds } from '@/lib/agent-members';
 
 import type { AgentConfig, Channel } from '@agent-spaces/shared';
@@ -27,9 +28,10 @@ interface ChannelInfoPanelProps {
   channel: Channel;
   agents: AgentConfig[];
   allChannels: Channel[];
+  onDeleted?: () => void;
 }
 
-export function ChannelInfoPanel({ workspaceId, channel, agents, allChannels }: ChannelInfoPanelProps) {
+export function ChannelInfoPanel({ workspaceId, channel, agents, allChannels, onDeleted }: ChannelInfoPanelProps) {
   const t = useTranslations('chat');
   const tc = useTranslations('common');
   const { updateChannel, deleteChannel } = useChannelStore();
@@ -57,6 +59,8 @@ export function ChannelInfoPanel({ workspaceId, channel, agents, allChannels }: 
   const handleDelete = async () => {
     await deleteChannel(workspaceId, channel.id);
     setDeleteOpen(false);
+    useMobilePanelStore.getState().setActivePanel('channel-list');
+    onDeleted?.();
   };
 
   return (
