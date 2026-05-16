@@ -211,6 +211,7 @@ export async function runMentionedAgent(
     }, preset.tools),
     ...createCommandFunctionTools(workspaceId),
   ];
+  const workingDir = agentService.resolveWorkingDir(workspaceId, preset);
   const startTime = Date.now();
   const existingMessage = options.messageId
     ? listMessages(workspaceId, channelId).find((message) => message.id === options.messageId)
@@ -313,8 +314,10 @@ export async function runMentionedAgent(
       mcpServers: Object.keys(mcpServers ?? {}),
       skills,
       boundDirs: workspace?.boundDirs,
+      workingDir,
+      excludeNativeClaudeMd: preset.runtimeKind === 'claude-code',
       builtInTools: buildBuiltInTools(functionTools, channel, issue),
-    }), agentService.resolveWorkingDir(workspaceId, preset), {
+    }), workingDir, {
       maxTurns: 100,
       functionTools,
       mcpServers,

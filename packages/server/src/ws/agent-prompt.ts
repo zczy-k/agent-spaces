@@ -1,10 +1,10 @@
 import type { Message } from '@agent-spaces/shared';
 import type { Channel } from '@agent-spaces/shared';
-import { readWorkspacePrompt } from '../services/workspace-prompt.js';
 import { stripHtml } from './html-utils.js';
 import * as issueService from '../services/issue.js';
 import { getChannel } from '../services/channel.js';
 import { createIssueFunctionTools } from '../services/builtin-tools.js';
+import { prependPersistentAgentContext } from '../services/persistent-agent-context.js';
 
 export interface BuiltInToolContext {
   name: string;
@@ -23,6 +23,8 @@ export function buildAgentPrompt(
     mcpServers: string[];
     skills: string[];
     boundDirs?: string[];
+    workingDir?: string;
+    excludeNativeClaudeMd?: boolean;
     builtInTools?: BuiltInToolContext[];
   },
 ): string {
@@ -70,23 +72,34 @@ export function buildAgentPrompt(
   }
 
   parts.push(`User message:\n${userPrompt}`);
-  return prependWorkspacePrompt(workspaceId, parts.join('\n\n'));
+  return prependPersistentAgentContext(parts.join('\n\n'), {
+    workspaceId,
+    workingDir: runtimeConfig?.workingDir ?? runtimeConfig?.boundDirs?.[0] ?? process.cwd(),
+    boundDirs: runtimeConfig?.boundDirs,
+    excludeNativeClaudeMd: runtimeConfig?.excludeNativeClaudeMd,
+  });
 }
 
 function formatConversationHistory(history: Message[]): string[] {
-  const lines: string[] = [];
+  const historyLines: string[] = [];
+  let remainingBudget = 24_000;
+
   for (const msg of history) {
     const role = msg.senderId === 'user' ? 'User' : (msg.senderRole || 'Agent');
     const text = msg.senderId === 'user' ? stripHtml(msg.content) : getAgentFinalMessage(msg);
-    if (!text.trim()) continue;
-    lines.push(`[${role}]: ${text}`);
+    appendHistoryLine(historyLines, `[${role}]`, text, remainingBudget);
+    remainingBudget -= text.length;
+    if (remainingBudget <= 0) break;
+
     for (const reply of msg.replies ?? []) {
       const replyRole = reply.senderId === 'user' ? 'User' : (reply.senderRole || 'Agent');
       const replyText = reply.senderId === 'user' ? stripHtml(reply.content) : getReplyFinalMessage(reply);
-      if (replyText.trim()) lines.push(`[${replyRole} reply]: ${replyText}`);
+      appendHistoryLine(historyLines, `[${replyRole} reply]`, replyText, remainingBudget);
+      remainingBudget -= replyText.length;
+      if (remainingBudget <= 0) break;
     }
   }
-  return lines;
+  return historyLines;
 }
 
 function getAgentFinalMessage(message: Message): string {
@@ -128,6 +141,31 @@ function stripToolLikeHistoryLines(content: string): string {
   return kept.join('\n').trim();
 }
 
+function appendHistoryLine(lines: string[], label: string, rawText: string, remainingBudget: number): void {
+  const text = compactHistoryText(rawText);
+  if (!text || remainingBudget <= 0) return;
+  const clipped = clipText(text, Math.min(remainingBudget, 4_000));
+  if (clipped) lines.push(`${label}: ${clipped}`);
+}
+
+function compactHistoryText(text: string): string {
+  return stripPromptContextLeak(stripToolLikeHistoryLines(text))
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function stripPromptContextLeak(text: string): string {
+  return text
+    .replace(/Persistent agent instructions:\n[\s\S]*?(?=\n\n(?:Agent runtime configuration:|Conversation history:|User message:)|$)/g, '')
+    .replace(/Workspace prompt:\n[\s\S]*?(?=\n\n(?:Agent runtime configuration:|Conversation history:|User message:)|$)/g, '')
+    .trim();
+}
+
+function clipText(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text;
+  return `${text.slice(0, Math.max(0, maxChars - 32)).trimEnd()}\n[history truncated]`;
+}
+
 export function buildBuiltInTools(
   functionTools: ReturnType<typeof createIssueFunctionTools>,
   channel: ReturnType<typeof getChannel>,
@@ -143,12 +181,6 @@ export function buildBuiltInTools(
     issueId: channel.issueId,
     issueTitle,
   }));
-}
-
-function prependWorkspacePrompt(workspaceId: string, prompt: string): string {
-  const workspacePrompt = readWorkspacePrompt(workspaceId).trim();
-  if (!workspacePrompt) return prompt;
-  return `${workspacePrompt}\n\n${prompt}`;
 }
 
 function isIssueContextLookup(userPrompt: string): boolean {

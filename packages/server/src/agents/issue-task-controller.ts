@@ -11,6 +11,7 @@ import * as workspaceService from '../services/workspace.js';
 import { mapWorkflowToTaskDrafts, validateWorkflowForRun } from '../services/workflow.js';
 import { createIssueFunctionTools } from '../services/builtin-tools.js';
 import { getThinkingRuntimeConfig } from '../services/llm-model-config.js';
+import { prependPersistentAgentContext } from '../services/persistent-agent-context.js';
 import { completeIssueAgentProgress, createIssueAgentProgress, createIssueAgentProgressTracker } from './issue-agent-progress.js';
 
 const ACTIVE_TASK_STATUSES: TaskStatus[] = ['running', 'reviewing', 'retrying', 'waiting_review'];
@@ -76,7 +77,7 @@ export async function syncIssueTasksAfterPlanning(
   });
   const runtime = createRuntimeForPreset(taskSyncPreset);
   const result = await runtime.execute(
-    buildTaskSyncPrompt(issue, input, taskSyncWorkingDir),
+    buildIssueAgentPrompt(workspaceId, buildTaskSyncPrompt(issue, input, taskSyncWorkingDir), taskSyncWorkingDir, taskSyncPreset),
     taskSyncWorkingDir,
     {
       maxTurns: 20,
@@ -244,7 +245,7 @@ export async function runIssueTask(
   });
 
   const result = await runtime.execute(
-    buildTaskAgentPrompt(issue, runningTask, taskAgentPreset, agentWorkingDir),
+    buildIssueAgentPrompt(workspaceId, buildTaskAgentPrompt(issue, runningTask, taskAgentPreset, agentWorkingDir), agentWorkingDir, taskAgentPreset),
     agentWorkingDir,
     {
       maxTurns: 100,
@@ -562,6 +563,21 @@ function createRuntimeForPreset(preset: AgentConfig) {
 
 function resolveIssueWorkspaceRoot(workspaceId: string): string {
   return workspaceService.getById(workspaceId)?.boundDirs?.[0] || process.cwd();
+}
+
+function buildIssueAgentPrompt(
+  workspaceId: string,
+  prompt: string,
+  workingDir: string,
+  preset: AgentConfig,
+): string {
+  return prependPersistentAgentContext(prompt, {
+    workspaceId,
+    workingDir,
+    boundDirs: workspaceService.getById(workspaceId)?.boundDirs,
+    includeWorkspacePrompt: false,
+    excludeNativeClaudeMd: preset.runtimeKind === 'claude-code',
+  });
 }
 
 function buildTaskSyncPrompt(issue: Issue, input: PlannerTaskSyncInput, workingDir: string): string {

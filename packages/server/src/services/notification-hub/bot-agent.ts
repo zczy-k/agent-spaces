@@ -6,6 +6,7 @@ import { getThinkingRuntimeConfig } from '../llm-model-config.js';
 import type { AgentContext } from '../../agents/agent-context.js';
 import { hasActiveIssueAutomation, runIssueAutomation } from '../../agents/issue-agent-runner.js';
 import { publishWorkspaceEvent } from './events.js';
+import { prependPersistentAgentContext } from '../persistent-agent-context.js';
 
 export function getConfiguredBotAgent(workspaceId: string): AgentConfig | null {
   const workspace = workspaceService.getById(workspaceId);
@@ -28,10 +29,17 @@ export async function runBotAgent(workspaceId: string, preset: AgentConfig, mess
     ...getThinkingRuntimeConfig(preset),
   });
   const workingDir = agentService.resolveWorkingDir(workspaceId, preset);
+  const workspace = workspaceService.getById(workspaceId);
 
   try {
     const result = await runtime.execute(
-      buildBotPrompt(message),
+      prependPersistentAgentContext(buildBotPrompt(message), {
+        workspaceId,
+        workingDir,
+        boundDirs: workspace?.boundDirs,
+        includeWorkspacePrompt: false,
+        excludeNativeClaudeMd: preset.runtimeKind === 'claude-code',
+      }),
       workingDir,
       {
         maxTurns: 20,

@@ -53,7 +53,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
         managedSettings: {
           strictPluginOnlyCustomization: ['mcp'],
         },
-        settingSources: [],
+        settingSources: ['user', 'project', 'local'],
         strictMcpConfig: true,
         additionalDirectories,
         permissionMode,

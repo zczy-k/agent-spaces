@@ -73,6 +73,7 @@ router.post('/run', async (req: Request, res: Response) => {
   const configDir = agentService.getAgentConfigDir(workspaceId, { ...preset, skills: requestedSkills });
   const skills = agentService.getAvailableSkillNames(configDir, requestedSkills);
   const output: string[] = [];
+  const workingDir = agentService.resolveWorkingDir(workspaceId, preset);
   let completed = false;
 
   prepareSse(res);
@@ -106,10 +107,12 @@ router.post('/run', async (req: Request, res: Response) => {
           mcpServers: Object.keys(mcpServers ?? {}),
           skills,
           boundDirs: workspace.boundDirs,
+          workingDir,
+          excludeNativeClaudeMd: preset.runtimeKind === 'claude-code',
           builtInTools: [],
         },
       ),
-      agentService.resolveWorkingDir(workspaceId, preset),
+      workingDir,
       {
         maxTurns: normalizeMaxTurns(body.maxTurns),
         mcpServers,

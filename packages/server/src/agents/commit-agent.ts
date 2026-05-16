@@ -3,6 +3,7 @@ import { createAgentRuntime } from '../adapters/agent-runtime.js';
 import type { AgentConfig } from '@agent-spaces/shared';
 import { getWorkspace } from '../storage/workspace-store.js';
 import { getThinkingRuntimeConfig } from '../services/llm-model-config.js';
+import { prependPersistentAgentContext } from '../services/persistent-agent-context.js';
 import { simpleGit } from 'simple-git';
 
 const DEFAULT_SYSTEM_PROMPT =
@@ -43,13 +44,19 @@ export async function runCommitAgent(workspaceId: string): Promise<string> {
   const truncatedDiff = diff.length > 8000 ? diff.substring(0, 8000) + '\n... (truncated)' : diff;
 
   const result = await runtime.execute(
-    [
+    prependPersistentAgentContext([
       'Generate exactly one commit message for these changes.',
       'Do not inspect files or run commands. Use only this diff.',
       'Output only the commit message.',
       '',
       truncatedDiff,
-    ].join('\n'),
+    ].join('\n'), {
+      workspaceId,
+      workingDir,
+      boundDirs: ws.boundDirs,
+      includeWorkspacePrompt: false,
+      excludeNativeClaudeMd: commitAgent.runtimeKind === 'claude-code',
+    }),
     workingDir,
     {
       maxTurns: 1,
