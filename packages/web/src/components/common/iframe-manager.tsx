@@ -74,8 +74,6 @@ export function IframeFloatingBall() {
     });
   }, [register, ballVisible]);
 
-  if (!ballVisible) return null;
-
   const show = count >= 1;
 
   useEffect(() => {
@@ -89,7 +87,7 @@ export function IframeFloatingBall() {
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
-  if (!show) return null;
+  if (!ballVisible || !show) return null;
 
   return (
     <>

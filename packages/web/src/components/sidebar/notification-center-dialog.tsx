@@ -91,7 +91,7 @@ export function NotificationCenterDialog({
             )}
           </div>
         ) : (
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1 min-h-0">
             {notifications.length === 0 ? (
               <div className="px-6 py-12 text-center text-sm text-muted-foreground">
                 {t('empty')}

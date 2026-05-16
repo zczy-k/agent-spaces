@@ -349,7 +349,9 @@
       "namePlaceholder": "Channel name",
       "archive": "Archive",
       "unarchive": "Unarchive",
-      "archived": "Archived"
+      "archived": "Archived",
+      "clearArchived": "Clear Archived",
+      "clearArchivedConfirm": "Delete {count} archived {count, plural, one {channel} other {channels}}? This cannot be undone."
     },
     "channelType": {
       "general": "General",
@@ -469,7 +471,12 @@
       "emptyTitle": "No issues yet",
       "emptyDescription": "Create an issue to start collaborating",
       "addIssue": "Add Issue",
-      "taskCount": "{count, plural, one {# task} other {# tasks}}"
+      "taskCount": "{count, plural, one {# task} other {# tasks}}",
+      "archive": "Archive",
+      "unarchive": "Unarchive",
+      "archived": "Archived",
+      "clearArchived": "Clear Archived",
+      "clearArchivedConfirm": "Delete {count} archived {count, plural, one {issue} other {issues}}? This cannot be undone."
     },
     "detail": {
       "selectIssue": "Select an issue to view details",

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useChannelStore } from '@/stores/channel';
 import { useAgentStore } from '@/stores/agent';
-import { Bot, Hash, MessageCircle, AlertCircle, Plus, Pencil, FolderOpen, Archive, ArchiveRestore } from 'lucide-react';
+import { Bot, Hash, MessageCircle, AlertCircle, Plus, Pencil, FolderOpen, Archive, ArchiveRestore, MoreHorizontal, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -19,6 +19,8 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ChevronRight } from 'lucide-react';
 
 import type {  Channel, Message } from '@agent-spaces/shared';
@@ -46,11 +48,12 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
   const tc = useTranslations('common');
   const {
     channels, activeChannelId, messages,
-    loadChannels, createChannel, updateChannel, setActiveChannel, upsertChannel,
+    loadChannels, createChannel, updateChannel, deleteChannel, setActiveChannel, upsertChannel,
   } = useChannelStore();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
   const [archivedOpen, setArchivedOpen] = useState(false);
+  const [clearArchiveOpen, setClearArchiveOpen] = useState(false);
   const agents = useAgentStore((s) => s.agents);
   const ensureAgents = useAgentStore((s) => s.ensure);
 
@@ -102,13 +105,34 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
     await updateChannel(workspaceId, channel.id, { archived: !channel.archived });
   };
 
+  const handleClearArchived = async () => {
+    await Promise.all(archivedChannels.map((c) => deleteChannel(workspaceId, c.id)));
+    setClearArchiveOpen(false);
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-2 py-1.5 border-b text-xs font-medium text-muted-foreground">
         <span>{t('channel.general')}</span>
-        <button onClick={() => setDialogOpen(true)} className="p-0.5 hover:bg-accent rounded">
-          <Plus className="size-3.5" />
-        </button>
+        <div className="flex items-center gap-0.5">
+          <button onClick={() => setDialogOpen(true)} className="p-0.5 hover:bg-accent rounded">
+            <Plus className="size-3.5" />
+          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger className="p-0.5 hover:bg-accent rounded">
+              <MoreHorizontal className="size-3.5" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                disabled={archivedChannels.length === 0}
+                onClick={() => setClearArchiveOpen(true)}
+              >
+                <Trash2 className="size-3.5" />
+                {t('channel.clearArchived')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto">
         {activeChannels.length === 0 && archivedChannels.length === 0 ? (
@@ -253,6 +277,21 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
         agents={agents}
         onSubmit={handleSubmit}
       />
+
+      <AlertDialog open={clearArchiveOpen} onOpenChange={setClearArchiveOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('channel.clearArchived')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('channel.clearArchivedConfirm', { count: archivedChannels.length })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleClearArchived}>{tc('delete')}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
