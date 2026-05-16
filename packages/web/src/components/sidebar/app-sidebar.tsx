@@ -28,6 +28,9 @@ import {
   GitBranch,
   Sparkles,
   Plug,
+  PanelLeftClose,
+  Hash,
+  CircleDot,
 } from "lucide-react";
 import { UserIcon } from "@/components/common/user-icon";
 import { AgentDialog } from "@/components/sidebar/agent-dialog";
@@ -43,6 +46,9 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ServerSwitcher } from "@/components/sidebar/server-switcher";
 import { WorkspaceDialog } from "@/components/workspace/workspace-dialog";
 import { useWorkspaceStore } from "@/stores/workspace";
+import { useCommandPalette } from "@/stores/command-palette";
+import { useChannelStore } from "@/stores/channel";
+import { useIssueStore } from "@/stores/issue";
 import type { Workspace } from "@agent-spaces/shared";
 import { isWorkspacePath, workspaceIdFromLocation } from "@/lib/routes";
 
@@ -51,7 +57,7 @@ function buildWorkspaceHref(id: string) {
 }
 
 export function DashboardSidebar() {
-  const { state } = useSidebar();
+  const { state, toggleSidebar } = useSidebar();
   const pathname = usePathname();
   const router = useRouter();
   const ts = useTranslations('sidebar');
@@ -85,6 +91,70 @@ export function DashboardSidebar() {
   useEffect(() => {
     refreshWorkspaces();
   }, [refreshWorkspaces]);
+
+  // 监听全局事件（来自 search-commands）
+  useEffect(() => {
+    const toggleHandler = () => toggleSidebar();
+    const dialogHandler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail === 'agents') setAgentDialogOpen(true);
+    };
+    window.addEventListener('toggle-sidebar', toggleHandler);
+    window.addEventListener('open-dialog', dialogHandler);
+    return () => {
+      window.removeEventListener('toggle-sidebar', toggleHandler);
+      window.removeEventListener('open-dialog', dialogHandler);
+    };
+  }, [toggleSidebar]);
+
+  // 注册命令面板快捷命令
+  const registerCommands = useCommandPalette((s) => s.registerMany);
+  useEffect(() => {
+    const cmds = [
+      {
+        id: 'toggle-sidebar',
+        label: 'Toggle Sidebar',
+        group: 'View',
+        icon: PanelLeftClose,
+        action: () => toggleSidebar(),
+      },
+      {
+        id: 'latest-channel',
+        label: 'Open Latest Channel',
+        group: 'Navigation',
+        icon: Hash,
+        action: () => {
+          const { channels, setActiveChannel } = useChannelStore.getState();
+          if (channels.length > 0) setActiveChannel(channels[channels.length - 1].id);
+        },
+      },
+      {
+        id: 'latest-issue',
+        label: 'Open Latest Issue',
+        group: 'Navigation',
+        icon: CircleDot,
+        action: () => {
+          const { issues, setActiveIssue } = useIssueStore.getState();
+          if (issues.length > 0) setActiveIssue(issues[issues.length - 1].id);
+        },
+      },
+      {
+        id: 'open-agents',
+        label: 'Open Agent Settings',
+        group: 'Settings',
+        icon: Bot,
+        action: () => window.dispatchEvent(new CustomEvent('open-dialog', { detail: 'agents' })),
+      },
+      {
+        id: 'open-workflows',
+        label: 'Open Workflow Settings',
+        group: 'Settings',
+        icon: GitBranch,
+        action: () => { window.location.href = '/workflows'; },
+      },
+    ];
+    return registerCommands(cmds);
+  }, [registerCommands, toggleSidebar]);
 
   const handleWsSubmit = async (data: { name: string; boundDirs: string[] }) => {
     if (editingWs) {

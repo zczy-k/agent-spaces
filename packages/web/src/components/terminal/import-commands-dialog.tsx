@@ -98,7 +98,7 @@ export function ImportCommandsDialog({ open, onOpenChange, defaultPath, onImport
           <DialogTitle>{t('importTitle')}</DialogTitle>
           <DialogDescription>{t('importDescription')}</DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col gap-3 py-2">
+        <div className="flex flex-col gap-3 py-2 min-w-0 overflow-hidden">
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">{t('selectProject')}</label>
             <FolderPicker
@@ -110,7 +110,7 @@ export function ImportCommandsDialog({ open, onOpenChange, defaultPath, onImport
           </div>
 
           {scripts.length > 0 && (
-            <div className="flex flex-col border border-border rounded-lg overflow-hidden">
+            <div className="w-full flex flex-col border border-border rounded-lg overflow-hidden">
               <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border-b border-border">
                 <button
                   onClick={toggleAll}
@@ -128,7 +128,7 @@ export function ImportCommandsDialog({ open, onOpenChange, defaultPath, onImport
                 {scripts.map((script, i) => (
                   <div
                     key={script.name}
-                    className="flex items-center gap-2 px-3 py-1.5 hover:bg-accent cursor-pointer border-b border-border last:border-b-0"
+                    className="flex items-center gap-2 px-3 py-1.5 hover:bg-accent cursor-pointer border-b border-border last:border-b-0 min-w-0"
                     onClick={() => toggleScript(i)}
                   >
                     <button
@@ -141,7 +141,7 @@ export function ImportCommandsDialog({ open, onOpenChange, defaultPath, onImport
                       {script.selected && <Check size={10} />}
                     </button>
                     <span className="text-xs font-medium w-24 truncate shrink-0">{script.name}</span>
-                    <span className="text-xs text-muted-foreground font-mono truncate flex-1">{script.command}</span>
+                    <span className="text-xs text-muted-foreground font-mono truncate flex-1 min-w-0">{script.command}</span>
                   </div>
                 ))}
               </div>
