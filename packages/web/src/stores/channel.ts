@@ -12,7 +12,7 @@ interface ChannelStore {
 
   loadChannels: (workspaceId: string) => Promise<void>;
   createChannel: (workspaceId: string, name: string, type?: Channel['type'], members?: string[]) => Promise<void>;
-  updateChannel: (workspaceId: string, channelId: string, data: Partial<Pick<Channel, 'name' | 'type' | 'issueId' | 'members' | 'pinnedMentionId' | 'draft' | 'todos'>>) => Promise<void>;
+  updateChannel: (workspaceId: string, channelId: string, data: Partial<Pick<Channel, 'name' | 'type' | 'issueId' | 'members' | 'pinnedMentionId' | 'draft' | 'todos'>>) => Promise<Channel>;
   setActiveChannel: (id: string) => void;
   loadMessages: (workspaceId: string, channelId: string) => Promise<void>;
   sendMessage: (workspaceId: string, channelId: string, content: string, mentions?: string[], attachments?: Message['attachments'], replyToMessageId?: string) => void;
@@ -73,8 +73,10 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
+    if (!res.ok) throw new Error('Failed to update channel');
     const updated: Channel = await res.json();
     set((s) => ({ channels: s.channels.map((c) => (c.id === channelId ? updated : c)) }));
+    return updated;
   },
 
   setActiveChannel: (id) => {

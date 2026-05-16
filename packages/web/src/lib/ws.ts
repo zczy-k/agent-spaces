@@ -9,6 +9,7 @@ export class WorkspaceWS {
   private handlers = new Map<string, Set<EventHandler>>();
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private url: string;
+  private disposed = false;
 
   constructor(readonly workspaceId: string) {
     const serverUrl = getActiveServerUrl();
@@ -18,6 +19,7 @@ export class WorkspaceWS {
     url.searchParams.set('workspaceId', workspaceId);
     if (token) url.searchParams.set('token', token);
     this.url = url.toString();
+    document.addEventListener('visibilitychange', this.onVisibilityChange);
   }
 
   connect() {
@@ -49,7 +51,20 @@ export class WorkspaceWS {
     };
   }
 
+  private onVisibilityChange = () => {
+    if (document.visibilityState === 'visible' && !this.disposed) {
+      if (!this.ws || this.ws.readyState === WebSocket.CLOSED || this.ws.readyState === WebSocket.CLOSING) {
+        console.log('[WS] page visible, reconnecting...');
+        if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+        this.reconnectTimer = null;
+        this.connect();
+      }
+    }
+  };
+
   disconnect() {
+    this.disposed = true;
+    document.removeEventListener('visibilitychange', this.onVisibilityChange);
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     this.ws?.close();
     this.ws = null;

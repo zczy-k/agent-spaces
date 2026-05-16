@@ -15,7 +15,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { ChannelInfoPanel } from './channel-info-panel';
 import { MessageNavigator } from './message-navigator';
-import { findAgentById } from '@/lib/agent-members';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { AvatarGroup, AvatarGroupCount } from '@/components/ui/avatar';
 
@@ -78,25 +77,18 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
   const pendingQuestion = useMemo(() => findPendingQuestion(msgs), [msgs]);
 
   const mentionAgents = useMemo(() => {
-    const enabledAgents = agents.filter((agent) => agent.enabled !== false);
     if (!channel) return [];
 
-    // If channel has members, show only those agents
-    const memberAgentIds = channel.members.filter((m) => m !== 'user');
-    if (memberAgentIds.length > 0) {
-      const seen = new Set<string>();
-      return memberAgentIds
-        .map((member) => findAgentById(enabledAgents, member))
-        .filter((agent): agent is AgentConfig => {
-          if (!agent || seen.has(agent.id)) return false;
-          seen.add(agent.id);
-          return true;
-        });
-    }
+    const enabledById = new Map(
+      agents
+        .filter((agent) => agent.enabled !== false)
+        .map((agent) => [agent.id, agent]),
+    );
 
-    // Fallback: no members in channel, show all enabled agents
-    return enabledAgents;
-  }, [channel, agents]);
+    return channel.members
+      .map((member) => enabledById.get(member))
+      .filter((agent): agent is AgentConfig => Boolean(agent));
+  }, [agents, channel]);
 
   useEffect(() => {
     if (activeChannelId) loadMessages(workspaceId, activeChannelId);
