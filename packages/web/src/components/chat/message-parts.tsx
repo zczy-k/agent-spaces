@@ -180,13 +180,9 @@ function MessagePartView({ part, message, workspaceId }: { part: MessagePart; me
             {part.status === "streaming" ? t('messageParts.agentThinking') : t('messageParts.aiIntermediateOutput')}
           </ChainOfThoughtHeader>
           <ChainOfThoughtContent className="max-h-[300px] overflow-y-auto">
-            <ChainOfThoughtStep
-              icon={MessageSquareTextIcon}
-              label={part.status === "streaming" ? t('messageParts.streamingResponse') : t('messageParts.intermediateMessage')}
-              status={part.status === "streaming" ? "active" : "complete"}
-            >
+            <div className="pl-6 text-xs text-muted-foreground">
               <Markdown content={part.text} />
-            </ChainOfThoughtStep>
+            </div>
           </ChainOfThoughtContent>
         </ChainOfThought>
       )
