@@ -116,6 +116,11 @@ export function GitCommitsPanel({ workspaceId }: Props) {
 
   useEffect(() => { refresh(); loadBranches(workspaceId); }, [workspaceId, refresh, loadBranches]);
 
+  useEffect(() => {
+    const id = setInterval(() => { loadStatus(workspaceId); loadDiffs(workspaceId); }, 5000);
+    return () => clearInterval(id);
+  }, [workspaceId, loadStatus, loadDiffs]);
+
   // close context menu on outside click
   useEffect(() => {
     if (!ctxMenu) return;
