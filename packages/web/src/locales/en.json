@@ -731,7 +731,36 @@
       "pushFailed": "Push failed",
       "pulledSuccessfully": "Pulled successfully",
       "pullFailed": "Pull failed",
-      "remoteAdded": "Remote added"
+      "remoteAdded": "Remote added",
+      "contextMenu": {
+        "openChanges": "Open Changes",
+        "openOnGitHub": "Open on GitHub",
+        "checkout": "Checkout",
+        "checkoutDetached": "Checkout (Detached)",
+        "createBranch": "Create Branch...",
+        "deleteBranch": "Delete Branch",
+        "createTag": "Create Tag...",
+        "cherryPick": "Cherry Pick",
+        "compareWithRemote": "Compare with Remote",
+        "compareWithMergeBase": "Compare with Merge Base",
+        "compareWith": "Compare with...",
+        "copyCommitId": "Copy Commit ID",
+        "copyCommitMessage": "Copy Commit Message",
+        "addToChat": "Add to Chat",
+        "explainChanges": "Explain Changes",
+        "branchName": "Branch name",
+        "tagName": "Tag name",
+        "branchToDelete": "Branch to delete",
+        "comparingWith": "Comparing with {hash}",
+        "checkedOut": "Checked out",
+        "cherryPicked": "Cherry-picked",
+        "branchCreated": "Branch created",
+        "branchDeleted": "Branch deleted",
+        "tagCreated": "Tag created",
+        "commitIdCopied": "Commit ID copied",
+        "commitMessageCopied": "Commit message copied",
+        "failed": "Operation failed"
+      }
     },
     "graph": {
       "title": "Graph"

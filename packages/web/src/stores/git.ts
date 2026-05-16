@@ -25,6 +25,14 @@ interface GitState {
   getRemotes: (workspaceId: string) => Promise<{ name: string; refs: { fetch: string; push: string } }[]>;
   addRemote: (workspaceId: string, name: string, url: string) => Promise<void>;
   selectFile: (path: string | null) => void;
+  checkoutDetached: (workspaceId: string, commitHash: string) => Promise<void>;
+  cherryPick: (workspaceId: string, commitHash: string) => Promise<void>;
+  createBranch: (workspaceId: string, name: string, startPoint?: string) => Promise<void>;
+  deleteBranch: (workspaceId: string, name: string, force?: boolean) => Promise<void>;
+  createTag: (workspaceId: string, name: string, commitHash?: string) => Promise<void>;
+  getCommitDiff: (workspaceId: string, hash: string) => Promise<GitDiffResult[]>;
+  getRemoteUrl: (workspaceId: string) => Promise<string | null>;
+  getMergeBase: (workspaceId: string) => Promise<string>;
 }
 
 const GIT_NOT_REPO_PATTERN = /not a git repository/i;
@@ -186,4 +194,64 @@ export const useGitStore = create<GitState>((set) => ({
   },
 
   selectFile: (path) => set({ selectedFile: path }),
+
+  checkoutDetached: async (workspaceId, commitHash) => {
+    const res = await fetch(`/api/workspaces/${workspaceId}/git/checkout-detached`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ commitHash }),
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error);
+  },
+
+  cherryPick: async (workspaceId, commitHash) => {
+    const res = await fetch(`/api/workspaces/${workspaceId}/git/cherry-pick`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ commitHash }),
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error);
+  },
+
+  createBranch: async (workspaceId, name, startPoint) => {
+    const res = await fetch(`/api/workspaces/${workspaceId}/git/create-branch`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, startPoint }),
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error);
+  },
+
+  deleteBranch: async (workspaceId, name, force) => {
+    const res = await fetch(`/api/workspaces/${workspaceId}/git/delete-branch`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, force }),
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error);
+  },
+
+  createTag: async (workspaceId, name, commitHash) => {
+    const res = await fetch(`/api/workspaces/${workspaceId}/git/create-tag`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, commitHash }),
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error);
+  },
+
+  getCommitDiff: async (workspaceId, hash) => {
+    const res = await fetch(`/api/workspaces/${workspaceId}/git/commit-diff?hash=${encodeURIComponent(hash)}`);
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error);
+    return res.json();
+  },
+
+  getRemoteUrl: async (workspaceId) => {
+    const res = await fetch(`/api/workspaces/${workspaceId}/git/remote-url`);
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error);
+    const data = await res.json();
+    return data.url;
+  },
+
+  getMergeBase: async (workspaceId) => {
+    const res = await fetch(`/api/workspaces/${workspaceId}/git/merge-base`);
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error);
+    const data = await res.json();
+    return data.hash;
+  },
 }));

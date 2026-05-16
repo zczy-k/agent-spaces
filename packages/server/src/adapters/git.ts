@@ -285,6 +285,78 @@ export async function gitAddRemote(workspaceId: string, name: string, url: strin
   }
 }
 
+export async function gitCheckoutDetached(workspaceId: string, commitHash: string): Promise<void> {
+  const ws = getWorkspace(workspaceId);
+  if (!ws) throw new Error('Workspace not found');
+  const git = getGit(ws);
+  await git.checkout([commitHash]);
+}
+
+export async function gitCherryPick(workspaceId: string, commitHash: string): Promise<void> {
+  const ws = getWorkspace(workspaceId);
+  if (!ws) throw new Error('Workspace not found');
+  const git = getGit(ws);
+  await git.raw(['cherry-pick', commitHash]);
+}
+
+export async function gitCreateBranch(workspaceId: string, name: string, startPoint?: string): Promise<void> {
+  const ws = getWorkspace(workspaceId);
+  if (!ws) throw new Error('Workspace not found');
+  const git = getGit(ws);
+  const args = startPoint ? [name, startPoint] : [name];
+  await git.branch(args);
+}
+
+export async function gitDeleteBranch(workspaceId: string, name: string, force = false): Promise<void> {
+  const ws = getWorkspace(workspaceId);
+  if (!ws) throw new Error('Workspace not found');
+  const git = getGit(ws);
+  await git.deleteBranch(name, force);
+}
+
+export async function gitCreateTag(workspaceId: string, name: string, commitHash?: string): Promise<void> {
+  const ws = getWorkspace(workspaceId);
+  if (!ws) throw new Error('Workspace not found');
+  const git = getGit(ws);
+  const args = [name];
+  if (commitHash) args.push(commitHash);
+  await git.addTag(args.join(' '));
+}
+
+export async function gitCommitDiff(workspaceId: string, commitHash: string): Promise<GitDiffResult[]> {
+  const ws = getWorkspace(workspaceId);
+  if (!ws) throw new Error('Workspace not found');
+  const git = getGit(ws);
+
+  const diff = await git.diff([`${commitHash}^`, commitHash]);
+  const nameOnlyRaw = await git.diff(['--name-only', `${commitHash}^`, commitHash]);
+  const files = nameOnlyRaw.split('\n').filter(Boolean);
+
+  const diffs: GitDiffResult[] = [];
+  for (const f of files) {
+    const oldContent = await git.show([`${commitHash}^:${f}`]).catch(() => '');
+    const newContent = await git.show([`${commitHash}:${f}`]).catch(() => '');
+    diffs.push({ path: f, oldContent, newContent, isBinary: false, isNew: !oldContent, isDeleted: !newContent });
+  }
+  return diffs;
+}
+
+export async function gitGetRemoteUrl(workspaceId: string): Promise<string | null> {
+  const ws = getWorkspace(workspaceId);
+  if (!ws) throw new Error('Workspace not found');
+  const git = getGit(ws);
+  const remotes = await git.getRemotes(true);
+  return remotes.find(r => r.name === 'origin')?.refs?.push ?? null;
+}
+
+export async function gitMergeBase(workspaceId: string): Promise<string> {
+  const ws = getWorkspace(workspaceId);
+  if (!ws) throw new Error('Workspace not found');
+  const git = getGit(ws);
+  const result = await git.raw(['merge-base', 'HEAD', 'origin/HEAD']).catch(() => '');
+  return result.trim();
+}
+
 export async function gitInit(workspaceId: string): Promise<void> {
   const ws = getWorkspace(workspaceId);
   if (!ws) throw new Error('Workspace not found');

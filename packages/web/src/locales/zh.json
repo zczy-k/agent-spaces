@@ -733,7 +733,36 @@
       "pushFailed": "推送失败",
       "pulledSuccessfully": "拉取成功",
       "pullFailed": "拉取失败",
-      "remoteAdded": "远程仓库已添加"
+      "remoteAdded": "远程仓库已添加",
+      "contextMenu": {
+        "openChanges": "打开更改",
+        "openOnGitHub": "在 GitHub 上打开",
+        "checkout": "检出",
+        "checkoutDetached": "检出 (分离 HEAD)",
+        "createBranch": "创建分支...",
+        "deleteBranch": "删除分支",
+        "createTag": "创建标签...",
+        "cherryPick": "Cherry Pick",
+        "compareWithRemote": "与远程比较",
+        "compareWithMergeBase": "与合并基准比较",
+        "compareWith": "与...比较",
+        "copyCommitId": "复制 Commit ID",
+        "copyCommitMessage": "复制提交信息",
+        "addToChat": "添加到聊天",
+        "explainChanges": "解释更改",
+        "branchName": "分支名称",
+        "tagName": "标签名称",
+        "branchToDelete": "要删除的分支",
+        "comparingWith": "正在与 {hash} 比较",
+        "checkedOut": "已检出",
+        "cherryPicked": "已 Cherry Pick",
+        "branchCreated": "分支已创建",
+        "branchDeleted": "分支已删除",
+        "tagCreated": "标签已创建",
+        "commitIdCopied": "Commit ID 已复制",
+        "commitMessageCopied": "提交信息已复制",
+        "failed": "操作失败"
+      }
     },
     "graph": {
       "title": "图谱"

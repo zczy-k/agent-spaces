@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from 'express';
-import { gitStatus, gitDiff, gitLog, gitCommit, gitDiscard, gitDiscardAll, gitBranches, gitCheckout, gitInit, gitGenerateCommitMsg, gitPush, gitPull, gitGetRemotes, gitAddRemote } from '../adapters/git.js';
+import { gitStatus, gitDiff, gitLog, gitCommit, gitDiscard, gitDiscardAll, gitBranches, gitCheckout, gitInit, gitGenerateCommitMsg, gitPush, gitPull, gitGetRemotes, gitAddRemote, gitCheckoutDetached, gitCherryPick, gitCreateBranch, gitDeleteBranch, gitCreateTag, gitCommitDiff, gitGetRemoteUrl, gitMergeBase } from '../adapters/git.js';
 
 const router = Router({ mergeParams: true });
 
@@ -149,6 +149,74 @@ router.post('/remotes', async (req: Request<{ id: string }>, res: Response) => {
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
+});
+
+router.post('/checkout-detached', async (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const { commitHash } = req.body;
+    if (!commitHash) { res.status(400).json({ error: 'commitHash is required' }); return; }
+    await gitCheckoutDetached(req.params.id, commitHash);
+    res.json({ ok: true });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+router.post('/cherry-pick', async (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const { commitHash } = req.body;
+    if (!commitHash) { res.status(400).json({ error: 'commitHash is required' }); return; }
+    await gitCherryPick(req.params.id, commitHash);
+    res.json({ ok: true });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+router.post('/create-branch', async (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const { name, startPoint } = req.body;
+    if (!name) { res.status(400).json({ error: 'name is required' }); return; }
+    await gitCreateBranch(req.params.id, name, startPoint);
+    res.json({ ok: true });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+router.post('/delete-branch', async (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const { name, force } = req.body;
+    if (!name) { res.status(400).json({ error: 'name is required' }); return; }
+    await gitDeleteBranch(req.params.id, name, force);
+    res.json({ ok: true });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+router.post('/create-tag', async (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const { name, commitHash } = req.body;
+    if (!name) { res.status(400).json({ error: 'name is required' }); return; }
+    await gitCreateTag(req.params.id, name, commitHash);
+    res.json({ ok: true });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/commit-diff', async (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const hash = req.query.hash as string;
+    if (!hash) { res.status(400).json({ error: 'hash is required' }); return; }
+    const diffs = await gitCommitDiff(req.params.id, hash);
+    res.json(diffs);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/remote-url', async (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const url = await gitGetRemoteUrl(req.params.id);
+    res.json({ url });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/merge-base', async (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const hash = await gitMergeBase(req.params.id);
+    res.json({ hash });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
 export default router;
