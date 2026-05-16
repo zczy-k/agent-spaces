@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useIframeTabs, type IframeTab } from "@/stores/iframe-tabs";
+import { useCommandPalette } from "@/stores/command-palette";
 import { Globe, X, Home, ChevronUp } from "lucide-react";
 
 // ---------- Link Interceptor ----------
@@ -56,11 +57,22 @@ const BALL_SIZE = 40;
 
 export function IframeFloatingBall() {
   const { tabs, activeId, setActive, remove } = useIframeTabs();
+  const register = useCommandPalette((s) => s.register);
   const [open, setOpen] = useState(false);
   const ballRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const count = tabs.length;
+
+  useEffect(() => {
+    return register({
+      id: "iframe-toggle",
+      label: activeId ? "返回主页面" : "切换到 Iframe",
+      group: "视图",
+      icon: Globe,
+      action: () => useIframeTabs.getState().toggle(),
+    });
+  }, [register, activeId]);
   const show = count >= 1;
 
   useEffect(() => {

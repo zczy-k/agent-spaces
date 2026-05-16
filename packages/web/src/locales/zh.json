@@ -348,7 +348,10 @@
       "noAgents": "未找到 Agent",
       "delete": "删除频道",
       "deleteConfirm": "确认删除此频道？此操作不可撤销。",
-      "namePlaceholder": "频道名称"
+      "namePlaceholder": "频道名称",
+      "archive": "归档",
+      "unarchive": "取消归档",
+      "archived": "已归档"
     },
     "channelType": {
       "general": "通用",

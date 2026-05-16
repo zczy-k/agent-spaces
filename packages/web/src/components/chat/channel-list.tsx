@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useChannelStore } from '@/stores/channel';
 import { useAgentStore } from '@/stores/agent';
-import { Bot, Hash, MessageCircle, AlertCircle, Plus, Pencil, FolderOpen } from 'lucide-react';
+import { Bot, Hash, MessageCircle, AlertCircle, Plus, Pencil, FolderOpen, Archive, ArchiveRestore } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -15,8 +15,11 @@ import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ChevronRight } from 'lucide-react';
 
 import type {  Channel, Message } from '@agent-spaces/shared';
 
@@ -47,8 +50,12 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
   } = useChannelStore();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
+  const [archivedOpen, setArchivedOpen] = useState(false);
   const agents = useAgentStore((s) => s.agents);
   const ensureAgents = useAgentStore((s) => s.ensure);
+
+  const activeChannels = useMemo(() => channels.filter((c) => !c.archived), [channels]);
+  const archivedChannels = useMemo(() => channels.filter((c) => c.archived), [channels]);
 
   useEffect(() => {
     loadChannels(workspaceId);
@@ -91,6 +98,10 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
     await fetch(`/api/workspaces/${workspaceId}/files/reveal?channelId=${channelId}`, { method: 'POST' });
   };
 
+  const handleToggleArchive = async (channel: Channel) => {
+    await updateChannel(workspaceId, channel.id, { archived: !channel.archived });
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-2 py-1.5 border-b text-xs font-medium text-muted-foreground">
@@ -100,7 +111,7 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
         </button>
       </div>
       <div className="flex-1 overflow-y-auto">
-        {channels.length === 0 ? (
+        {activeChannels.length === 0 && archivedChannels.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 px-4 text-center">
             <div className="rounded-full bg-muted p-3">
               <MessageCircle className="h-5 w-5 text-muted-foreground" />
@@ -115,7 +126,7 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
             </Button>
           </div>
         ) : null}
-        {channels.map((ch) => {
+        {activeChannels.map((ch) => {
           const preview = lastMsgPreview(messages[ch.id]);
           const badge = typeBadgeConfig[ch.type];
           const isRunning = preview?.status === 'streaming' || preview?.status === 'pending';
@@ -166,10 +177,72 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
                   <FolderOpen className="size-3.5" />
                   {tc('open')}
                 </ContextMenuItem>
+                <ContextMenuSeparator />
+                <ContextMenuItem onClick={() => handleToggleArchive(ch)}>
+                  <Archive className="size-3.5" />
+                  {t('channel.archive')}
+                </ContextMenuItem>
               </ContextMenuContent>
             </ContextMenu>
           );
         })}
+
+        {archivedChannels.length > 0 && (
+          <Collapsible open={archivedOpen} onOpenChange={setArchivedOpen}>
+            <CollapsibleTrigger className="flex items-center gap-1 w-full px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent transition-colors">
+              <ChevronRight className={cn('size-3 transition-transform', archivedOpen && 'rotate-90')} />
+              <Archive className="size-3" />
+              {t('channel.archived')} ({archivedChannels.length})
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              {archivedChannels.map((ch) => {
+                const preview = lastMsgPreview(messages[ch.id]);
+                const badge = typeBadgeConfig[ch.type];
+
+                return (
+                  <ContextMenu key={ch.id}>
+                    <ContextMenuTrigger
+                      className={cn(
+                        'flex items-start gap-2.5 w-full px-3 py-2 text-sm hover:bg-accent transition-colors text-left opacity-60',
+                        activeChannelId === ch.id && 'bg-accent text-accent-foreground opacity-100',
+                      )}
+                      onClick={() => setActiveChannel(ch.id)}
+                    >
+                      {(() => {
+                        const Icon = badge.icon;
+                        return <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-1" />;
+                      })()}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="truncate font-medium text-[13px]">{ch.name}</span>
+                          <Badge variant="secondary" className={cn('text-[10px] px-1 py-0 h-4 rounded', badge.className)}>
+                            {t(`channel.${ch.type}`)}
+                          </Badge>
+                        </div>
+                        {preview ? (
+                          <p className="text-xs text-muted-foreground truncate mt-0.5">{preview.text}</p>
+                        ) : (
+                          <p className="text-xs text-muted-foreground/50 mt-0.5">{t('emptyState')}</p>
+                        )}
+                      </div>
+                    </ContextMenuTrigger>
+                    <ContextMenuContent>
+                      <ContextMenuItem onClick={() => setActiveChannel(ch.id)}>
+                        <FolderOpen className="size-3.5" />
+                        {tc('open')}
+                      </ContextMenuItem>
+                      <ContextMenuSeparator />
+                      <ContextMenuItem onClick={() => handleToggleArchive(ch)}>
+                        <ArchiveRestore className="size-3.5" />
+                        {t('channel.unarchive')}
+                      </ContextMenuItem>
+                    </ContextMenuContent>
+                  </ContextMenu>
+                );
+              })}
+            </CollapsibleContent>
+          </Collapsible>
+        )}
       </div>
 
       <ChannelDialog

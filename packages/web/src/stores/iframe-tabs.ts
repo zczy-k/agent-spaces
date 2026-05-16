@@ -12,6 +12,7 @@ interface IframeTabsState {
   add: (url: string, title?: string) => string;
   remove: (id: string) => void;
   setActive: (id: string | null) => void;
+  toggle: () => void;
 }
 
 let counter = 0;
@@ -23,13 +24,10 @@ export const useIframeTabs = create<IframeTabsState>((set, get) => ({
   add: (url, title) => {
     const { tabs } = get();
     const existing = tabs.find((t) => t.url === url);
-    if (existing) {
-      set({ activeId: existing.id });
-      return existing.id;
-    }
+    if (existing) return existing.id;
     const id = `iframe-${++counter}`;
     const tab: IframeTab = { id, url, title: title || new URL(url).hostname };
-    set({ tabs: [...tabs, tab], activeId: id });
+    set({ tabs: [...tabs, tab] });
     return id;
   },
 
@@ -43,4 +41,13 @@ export const useIframeTabs = create<IframeTabsState>((set, get) => ({
   },
 
   setActive: (id) => set({ activeId: id }),
+
+  toggle: () => {
+    const { tabs, activeId } = get();
+    if (activeId !== null) {
+      set({ activeId: null });
+    } else if (tabs.length > 0) {
+      set({ activeId: tabs[tabs.length - 1].id });
+    }
+  },
 }));

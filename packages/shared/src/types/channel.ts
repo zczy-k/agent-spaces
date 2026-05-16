@@ -19,6 +19,7 @@ export interface Channel {
     updatedAt: string;
   };
   todos?: TodoItem[];
+  archived?: boolean;
   createdAt: string;
 }
 
