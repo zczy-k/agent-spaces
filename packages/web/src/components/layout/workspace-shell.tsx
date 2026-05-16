@@ -303,10 +303,11 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
     const icon = comp ? tabIcons[comp] : undefined;
     if (!icon) return;
 
-    let badge: React.ReactNode = null;
+    let trailing: React.ReactNode = null;
+    let iconBadge: React.ReactNode = null;
     if (comp === 'git-commits' && gitStatus && !gitStatus.clean) {
       const hasStat = gitStatus.insertions > 0 || gitStatus.deletions > 0;
-      badge = (
+      trailing = (
         <span className="ml-1 text-[10px] font-medium leading-none flex items-center gap-0.5">
           {hasStat ? (
             <>
@@ -316,15 +317,24 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
           ) : (
             <span className="text-orange-500">{gitStatus.files.length}</span>
           )}
-          {gitStatus.ahead > 0 && <span className="text-blue-400">↑{gitStatus.ahead}</span>}
         </span>
       );
+      if (gitStatus.ahead > 0) {
+        iconBadge = (
+          <span className="absolute -top-1 -right-1.5 min-w-[14px] h-[14px] rounded-full bg-blue-500 text-white text-[9px] font-medium leading-none flex items-center justify-center px-0.5">
+            {gitStatus.ahead}
+          </span>
+        );
+      }
     }
 
     renderValues.content = (
       <span title={node.getName()} className="flex items-center justify-center">
-        {icon}
-        {badge}
+        <span className="relative">
+          {icon}
+          {iconBadge}
+        </span>
+        {trailing}
       </span>
     );
   }, [gitStatus]);

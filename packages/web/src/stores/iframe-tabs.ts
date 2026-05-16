@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { fetchWithAuth } from "@/lib/auth";
 
 export interface IframeTab {
   id: string;
@@ -6,20 +7,34 @@ export interface IframeTab {
   title: string;
 }
 
+export interface IframeBookmark {
+  id: string;
+  title: string;
+  url: string;
+  createdAt: string;
+}
+
 interface IframeTabsState {
   tabs: IframeTab[];
+  bookmarks: IframeBookmark[];
+  bookmarksLoaded: boolean;
   activeId: string | null; // null = main page
   ballVisible: boolean;
   add: (url: string, title?: string) => string;
   remove: (id: string) => void;
   setActive: (id: string | null) => void;
   toggleBall: () => void;
+  loadBookmarks: () => Promise<void>;
+  addBookmark: (title: string, url: string) => Promise<IframeBookmark | null>;
+  removeBookmark: (id: string) => Promise<void>;
 }
 
 let counter = 0;
 
 export const useIframeTabs = create<IframeTabsState>((set, get) => ({
   tabs: [],
+  bookmarks: [],
+  bookmarksLoaded: false,
   activeId: null,
   ballVisible: false,
 
@@ -45,4 +60,38 @@ export const useIframeTabs = create<IframeTabsState>((set, get) => ({
   setActive: (id) => set({ activeId: id }),
 
   toggleBall: () => set((s) => ({ ballVisible: !s.ballVisible })),
+
+  loadBookmarks: async () => {
+    if (get().bookmarksLoaded) return;
+    try {
+      const res = await fetchWithAuth("/api/iframe-bookmarks");
+      if (res.ok) {
+        const bookmarks: IframeBookmark[] = await res.json();
+        set({ bookmarks, bookmarksLoaded: true });
+      }
+    } catch {}
+  },
+
+  addBookmark: async (title, url) => {
+    try {
+      const res = await fetchWithAuth("/api/iframe-bookmarks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, url }),
+      });
+      if (!res.ok) return null;
+      const bookmark: IframeBookmark = await res.json();
+      set((s) => ({ bookmarks: [...s.bookmarks, bookmark] }));
+      return bookmark;
+    } catch {
+      return null;
+    }
+  },
+
+  removeBookmark: async (id) => {
+    try {
+      await fetchWithAuth(`/api/iframe-bookmarks/${id}`, { method: "DELETE" });
+      set((s) => ({ bookmarks: s.bookmarks.filter((b) => b.id !== id) }));
+    } catch {}
+  },
 }));
