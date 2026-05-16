@@ -46,7 +46,7 @@ export function NotificationsPopover({ workspaceId }: { workspaceId: string }) {
               </span>
             )}
         </PopoverTrigger>
-        <PopoverContent side="right" className="w-80 my-6 p-0" align="start">
+        <PopoverContent side="right" className="w-80 max-h-[70dvh] my-6 p-0" align="start">
           <div className="flex items-center justify-between px-4 py-3 border-b">
             <span className="text-sm font-semibold">{t('title')}</span>
             {notifications.length > 0 && (
@@ -63,7 +63,7 @@ export function NotificationsPopover({ workspaceId }: { workspaceId: string }) {
               </div>
             )}
           </div>
-          <ScrollArea className="h-80 overflow-hidden">
+          <ScrollArea className="max-h-[50dvh] overflow-hidden">
             {recent.length === 0 ? (
               <div className="px-4 py-8 text-center text-sm text-muted-foreground">
                 {t('empty')}
