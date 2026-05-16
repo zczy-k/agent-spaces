@@ -121,6 +121,7 @@ export function disposeAll(): void {
 }
 
 export function setupLanguageDefaults(): void {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const ts = (languages.typescript as any);
   if (!ts) return;
   ts.typescriptDefaults?.setEagerModelSync(true);

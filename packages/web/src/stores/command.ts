@@ -84,8 +84,8 @@ export const useCommandStore = create<CommandStore>((set, get) => ({
         const data = await res.json().catch(() => ({ error: res.statusText }));
         throw new Error(data.error || 'Failed to run command');
       }
-    } catch (e: any) {
-      toast.error(e.message || 'Failed to run command');
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to run command');
       throw e;
     }
   },

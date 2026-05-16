@@ -95,7 +95,6 @@ export function TerminalInstance({ sessionId, workspaceId }: TerminalInstancePro
     const ws = getWS(workspaceId);
     let xterm: Terminal;
     let fit: FitAddon;
-    let inputDisposable: ReturnType<Terminal['onData']>;
 
     const cached = terminalRegistry.get(sessionId);
     if (cached) {
@@ -151,7 +150,7 @@ export function TerminalInstance({ sessionId, workspaceId }: TerminalInstancePro
     fitRef.current = fit;
 
     // Send terminal input to server
-    inputDisposable = xterm.onData((data) => {
+    const inputDisposable = xterm.onData((data) => {
       ws.send('terminal.input', { sessionId, data });
     });
 

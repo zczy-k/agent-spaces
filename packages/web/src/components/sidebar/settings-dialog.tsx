@@ -388,8 +388,6 @@ function SpeechSettings() {
   const [configs, setConfigs] = useState<Array<{ id: string; provider: string; label: string; credentials: Record<string, string> }>>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { loadConfigs(); }, []);
-
   const loadConfigs = async () => {
     try {
       const res = await fetch("/api/speech-recognition");
@@ -397,6 +395,8 @@ function SpeechSettings() {
     } catch {}
     setLoading(false);
   };
+
+  useEffect(() => { loadConfigs(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveCredentials = async (id: string, credentials: Record<string, string>) => {
     await fetch(`/api/speech-recognition/${id}`, {

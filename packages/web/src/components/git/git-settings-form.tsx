@@ -22,10 +22,6 @@ export function GitSettingsForm({ scope, workspaceId }: GitSettingsFormProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    loadConfig();
-  }, [scope, workspaceId]);
-
   const loadConfig = async () => {
     setLoading(true);
     try {
@@ -43,6 +39,10 @@ export function GitSettingsForm({ scope, workspaceId }: GitSettingsFormProps) {
     } catch {}
     setLoading(false);
   };
+
+  useEffect(() => {
+    loadConfig();
+  }, [scope, workspaceId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSave = async () => {
     setSaving(true);

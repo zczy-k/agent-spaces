@@ -57,8 +57,9 @@ export const useGitStore = create<GitState>((set) => ({
       if (!res.ok) throw new Error(await res.text());
       const data: GitStatusResult = await res.json();
       set({ status: data, notGitRepo: false });
-    } catch (err: any) {
-      set({ error: err.message, notGitRepo: isNotGitRepoError(err) });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      set({ error: message, notGitRepo: isNotGitRepoError(err) });
     }
   },
 
@@ -72,8 +73,9 @@ export const useGitStore = create<GitState>((set) => ({
       if (!res.ok) throw new Error(await res.text());
       const data: GitDiffResult[] = await res.json();
       set({ diffs: data, loading: false, notGitRepo: false });
-    } catch (err: any) {
-      set({ error: err.message, loading: false, notGitRepo: isNotGitRepoError(err) });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      set({ error: message, loading: false, notGitRepo: isNotGitRepoError(err) });
     }
   },
 
@@ -83,8 +85,9 @@ export const useGitStore = create<GitState>((set) => ({
       if (!res.ok) throw new Error(await res.text());
       const data: GitLogEntry[] = await res.json();
       set({ log: data, notGitRepo: false });
-    } catch (err: any) {
-      set({ error: err.message, notGitRepo: isNotGitRepoError(err) });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      set({ error: message, notGitRepo: isNotGitRepoError(err) });
     }
   },
 
@@ -94,8 +97,9 @@ export const useGitStore = create<GitState>((set) => ({
       if (!res.ok) throw new Error(await res.text());
       const data: GitBranch[] = await res.json();
       set({ branches: data, notGitRepo: false });
-    } catch (err: any) {
-      set({ error: err.message, notGitRepo: isNotGitRepoError(err) });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      set({ error: message, notGitRepo: isNotGitRepoError(err) });
     }
   },
 
@@ -104,8 +108,8 @@ export const useGitStore = create<GitState>((set) => ({
       const res = await fetch(`/api/workspaces/${workspaceId}/git/init`, { method: 'POST' });
       if (!res.ok) throw new Error(await res.text());
       set({ error: null, notGitRepo: false });
-    } catch (err: any) {
-      set({ error: err.message });
+    } catch (err: unknown) {
+      set({ error: err instanceof Error ? err.message : String(err) });
     }
   },
 
@@ -117,8 +121,8 @@ export const useGitStore = create<GitState>((set) => ({
         body: JSON.stringify({ message }),
       });
       if (!res.ok) throw new Error(await res.text());
-    } catch (err: any) {
-      set({ error: err.message });
+    } catch (err: unknown) {
+      set({ error: err instanceof Error ? err.message : String(err) });
     }
   },
 
@@ -130,8 +134,8 @@ export const useGitStore = create<GitState>((set) => ({
         body: JSON.stringify({ path: filePath }),
       });
       if (!res.ok) throw new Error(await res.text());
-    } catch (err: any) {
-      set({ error: err.message });
+    } catch (err: unknown) {
+      set({ error: err instanceof Error ? err.message : String(err) });
     }
   },
 
@@ -141,8 +145,8 @@ export const useGitStore = create<GitState>((set) => ({
         method: 'POST',
       });
       if (!res.ok) throw new Error(await res.text());
-    } catch (err: any) {
-      set({ error: err.message });
+    } catch (err: unknown) {
+      set({ error: err instanceof Error ? err.message : String(err) });
     }
   },
 
@@ -154,8 +158,8 @@ export const useGitStore = create<GitState>((set) => ({
         body: JSON.stringify({ branch }),
       });
       if (!res.ok) throw new Error(await res.text());
-    } catch (err: any) {
-      set({ error: err.message });
+    } catch (err: unknown) {
+      set({ error: err instanceof Error ? err.message : String(err) });
     }
   },
 
