@@ -109,6 +109,22 @@ app.use('/api/workspaces/:id/commands', commandRouter);
 app.use('/api/workspaces/:id/agents', agentRouter);
 app.use('/api/workspaces/:id/tasks', taskRouter);
 app.use('/api/workspaces/:id/git', gitRouter);
+
+// Global git config (no workspace context needed)
+import { gitGetConfig as _gitGetConfig, gitSetConfig as _gitSetConfig } from './adapters/git.js';
+app.get('/api/git-config', async (_req, res) => {
+  try {
+    const config = await _gitGetConfig('global');
+    res.json(config);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+app.post('/api/git-config', async (req, res) => {
+  try {
+    const { name, email, proxy } = req.body;
+    await _gitSetConfig('global', { name, email, proxy });
+    res.json({ ok: true });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
 app.use('/api/workspaces/:id/search', searchRouter);
 app.use('/api/workspaces/:id/notifications', notificationRouter);
 app.use('/api/agents', agentRouter);

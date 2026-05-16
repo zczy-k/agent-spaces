@@ -6,7 +6,7 @@ import { useEffect, useCallback, useState, useRef } from "react";
 import {
   Upload, Download, Loader2, GitCommitHorizontal, RefreshCw,
   FileCode, FileText, RotateCcw, Trash2, ChevronDown, GitBranch,
-  EyeOff, Sparkles,
+  EyeOff, Sparkles, Settings2,
 } from "lucide-react";
 import { useGitStore } from "@/stores/git";
 import { useEditorStore } from "@/stores/editor";
@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
+import { GitSettingsForm } from "@/components/git/git-settings-form";
 import { useTheme } from "@/components/theme-provider";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -97,6 +98,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
   const ctxMenuRef = useRef<HTMLDivElement>(null);
   const [gitignoreOpen, setGitignoreOpen] = useState(false);
   const [gitignoreContent, setGitignoreContent] = useState("");
+  const [gitSettingsOpen, setGitSettingsOpen] = useState(false);
   const [gitignoreSaving, setGitignoreSaving] = useState(false);
 
   const ahead = status?.ahead ?? 0;
@@ -495,6 +497,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
               )}
             </button>
             <button onClick={refresh} className="text-muted-foreground hover:text-foreground"><RefreshCw size={13} /></button>
+            <button onClick={() => setGitSettingsOpen(true)} className="text-muted-foreground hover:text-foreground" title={t('settingsTitle')}><Settings2 size={13} /></button>
           </div>
         </div>
 
@@ -585,6 +588,15 @@ export function GitCommitsPanel({ workspaceId }: Props) {
             <DialogClose render={<Button variant="outline" size="sm" />}>{tc('cancel')}</DialogClose>
             <Button size="sm" onClick={saveGitignore} disabled={gitignoreSaving}>{gitignoreSaving ? tc('saving') : tc('save')}</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={gitSettingsOpen} onOpenChange={setGitSettingsOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('settingsTitle')}</DialogTitle>
+          </DialogHeader>
+          <GitSettingsForm scope="local" workspaceId={workspaceId} />
         </DialogContent>
       </Dialog>
     </div>

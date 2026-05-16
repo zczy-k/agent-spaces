@@ -61,7 +61,8 @@
     "speechSecretId": "Secret ID",
     "speechSecretKey": "Secret Key",
     "speechNoConfig": "No speech recognition configured",
-    "speechAddConfig": "Add Config"
+    "speechAddConfig": "Add Config",
+    "git": "Git"
   },
   "login": {
     "subtitle": "Enter your secret key to continue",
@@ -726,6 +727,7 @@
       "pushNCommits": "Push {count} commits",
       "pullNCommits": "Pull {count} commits",
       "noCommits": "No commits",
+      "settingsTitle": "Git Settings",
       "remoteTrackingBranch": "Remote tracking branch",
       "pushedSuccessfully": "Pushed successfully",
       "pushFailed": "Push failed",
@@ -778,6 +780,22 @@
       "message": "Not a Git repository",
       "initializing": "Initializing...",
       "initialize": "Initialize Git Repository"
+    },
+    "settings": {
+      "title": "Git Settings",
+      "globalScope": "Global Settings",
+      "localScope": "Repository Settings",
+      "globalScopeDescription": "These settings apply to all Git repositories",
+      "localScopeDescription": "These settings apply only to the current repository",
+      "name": "User Name",
+      "namePlaceholder": "Enter Git user name",
+      "email": "Email",
+      "emailPlaceholder": "Enter Git email",
+      "proxy": "HTTP Proxy",
+      "proxyPlaceholder": "e.g. http://127.0.0.1:7890",
+      "saved": "Settings saved",
+      "saveFailed": "Failed to save settings",
+      "loading": "Loading..."
     }
   },
   "projectSettings": {

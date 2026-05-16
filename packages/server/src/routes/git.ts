@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from 'express';
-import { gitStatus, gitDiff, gitLog, gitCommit, gitDiscard, gitDiscardAll, gitBranches, gitCheckout, gitInit, gitGenerateCommitMsg, gitPush, gitPull, gitGetRemotes, gitAddRemote, gitCheckoutDetached, gitCherryPick, gitCreateBranch, gitDeleteBranch, gitCreateTag, gitCommitDiff, gitGetRemoteUrl, gitMergeBase } from '../adapters/git.js';
+import { gitStatus, gitDiff, gitLog, gitCommit, gitDiscard, gitDiscardAll, gitBranches, gitCheckout, gitInit, gitGenerateCommitMsg, gitPush, gitPull, gitGetRemotes, gitAddRemote, gitCheckoutDetached, gitCherryPick, gitCreateBranch, gitDeleteBranch, gitCreateTag, gitCommitDiff, gitGetRemoteUrl, gitMergeBase, gitGetConfig, gitSetConfig } from '../adapters/git.js';
 
 const router = Router({ mergeParams: true });
 
@@ -216,6 +216,21 @@ router.get('/merge-base', async (req: Request<{ id: string }>, res: Response) =>
   try {
     const hash = await gitMergeBase(req.params.id);
     res.json({ hash });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/config', async (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const config = await gitGetConfig('local', req.params.id);
+    res.json(config);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+router.post('/config', async (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const { name, email, proxy } = req.body;
+    await gitSetConfig('local', { name, email, proxy }, req.params.id);
+    res.json({ ok: true });
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 

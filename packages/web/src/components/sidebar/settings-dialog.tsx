@@ -16,12 +16,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { Sun, Moon, Monitor, Languages, RotateCcw, User, Palette, Globe, Shield, Mic } from "lucide-react";
+import { Sun, Moon, Monitor, Languages, RotateCcw, User, Palette, Globe, Shield, Mic, GitBranch } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { UserIcon } from "@/components/common/user-icon";
 import { getToken, removeToken } from "@/lib/auth";
+import { GitSettingsForm } from "@/components/git/git-settings-form";
 import { isTauriEnvironment } from "@/lib/native-notification";
 
 const tabs = [
@@ -29,6 +30,7 @@ const tabs = [
   { key: "language", icon: Globe },
   { key: "account", icon: User },
   { key: "security", icon: Shield },
+  { key: "git", icon: GitBranch },
   { key: "speech", icon: Mic },
 ] as const;
 
@@ -146,6 +148,7 @@ export function SettingsDialog({
     language: t('language'),
     account: t('userAvatar'),
     security: t('security'),
+    git: t('git'),
     speech: t('speech'),
   };
 
@@ -317,6 +320,9 @@ export function SettingsDialog({
           </div>
         );
 
+      case "git":
+        return <GitSettings />;
+
       case "speech":
         return <SpeechSettings />;
     }
@@ -360,6 +366,19 @@ export function SettingsDialog({
         <div className="flex-1 min-h-0">{sidebar}</div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function GitSettings() {
+  return (
+    <div className="space-y-5">
+      <div>
+        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2.5 block">
+          Git
+        </label>
+        <GitSettingsForm scope="global" />
+      </div>
+    </div>
   );
 }
 

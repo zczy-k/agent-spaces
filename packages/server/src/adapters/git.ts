@@ -357,6 +357,44 @@ export async function gitMergeBase(workspaceId: string): Promise<string> {
   return result.trim();
 }
 
+export interface GitConfig {
+  name: string;
+  email: string;
+  proxy: string;
+}
+
+export async function gitGetConfig(scope: 'global' | 'local', workspaceId?: string): Promise<GitConfig> {
+  const scopeFlag = scope === 'global' ? '--global' : '--local';
+  const git = workspaceId ? getGit(getWorkspace(workspaceId)!) : simpleGit();
+
+  const get = (key: string) => git.raw(['config', scopeFlag, '--get', key]).then(v => v.trim()).catch(() => '');
+
+  const [name, email, proxy] = await Promise.all([
+    get('user.name'),
+    get('user.email'),
+    get('http.proxy'),
+  ]);
+
+  return { name, email, proxy };
+}
+
+export async function gitSetConfig(scope: 'global' | 'local', config: Partial<GitConfig>, workspaceId?: string): Promise<void> {
+  const scopeFlag = scope === 'global' ? '--global' : '--local';
+  const git = workspaceId ? getGit(getWorkspace(workspaceId)!) : simpleGit();
+
+  const set = (key: string, value: string) => {
+    if (value) return git.raw(['config', scopeFlag, key, value]);
+    return git.raw(['config', scopeFlag, '--unset', key]).catch(() => {});
+  };
+
+  await Promise.all([
+    config.name !== undefined ? set('user.name', config.name) : Promise.resolve(),
+    config.email !== undefined ? set('user.email', config.email) : Promise.resolve(),
+    config.proxy !== undefined ? set('http.proxy', config.proxy) : Promise.resolve(),
+    config.proxy !== undefined ? set('https.proxy', config.proxy) : Promise.resolve(),
+  ]);
+}
+
 export async function gitInit(workspaceId: string): Promise<void> {
   const ws = getWorkspace(workspaceId);
   if (!ws) throw new Error('Workspace not found');

@@ -61,7 +61,8 @@
     "speechSecretId": "Secret ID",
     "speechSecretKey": "Secret Key",
     "speechNoConfig": "暂无语音识别配置",
-    "speechAddConfig": "添加配置"
+    "speechAddConfig": "添加配置",
+    "git": "Git"
   },
   "login": {
     "subtitle": "输入密钥以继续",
@@ -728,6 +729,7 @@
       "pushNCommits": "推送 {count} 个提交",
       "pullNCommits": "拉取 {count} 个提交",
       "noCommits": "暂无提交",
+      "settingsTitle": "Git 设置",
       "remoteTrackingBranch": "远程跟踪分支",
       "pushedSuccessfully": "推送成功",
       "pushFailed": "推送失败",
@@ -780,6 +782,22 @@
       "message": "不是 Git 仓库",
       "initializing": "初始化中...",
       "initialize": "初始化 Git 仓库"
+    },
+    "settings": {
+      "title": "Git 设置",
+      "globalScope": "全局设置",
+      "localScope": "当前仓库设置",
+      "globalScopeDescription": "这些设置将应用到所有 Git 仓库",
+      "localScopeDescription": "这些设置仅应用到当前仓库",
+      "name": "用户名",
+      "namePlaceholder": "输入 Git 用户名",
+      "email": "邮箱",
+      "emailPlaceholder": "输入 Git 邮箱",
+      "proxy": "HTTP 代理",
+      "proxyPlaceholder": "例如 http://127.0.0.1:7890",
+      "saved": "设置已保存",
+      "saveFailed": "保存设置失败",
+      "loading": "加载中..."
     }
   },
   "projectSettings": {
