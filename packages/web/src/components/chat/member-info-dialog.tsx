@@ -41,12 +41,13 @@ export function MemberInfoDialog({ open, onOpenChange, memberName, displayName, 
     setRemoving(true);
     try {
       const latestChannel = useChannelStore.getState().channels.find((c) => c.id === channelId) ?? channel;
-      const updated = await updateChannel(workspaceId, channelId, {
-        members: latestChannel.members.filter((m) => m !== memberName),
-      });
+      const members = latestChannel.members.filter((m) => m !== memberName);
       useChannelStore.setState((state) => ({
-        channels: state.channels.map((item) => (item.id === channelId ? updated : item)),
+        channels: state.channels.map((item) => (
+          item.id === channelId ? { ...item, members } : item
+        )),
       }));
+      await updateChannel(workspaceId, channelId, { members });
       onOpenChange(false);
     } finally {
       setRemoving(false);

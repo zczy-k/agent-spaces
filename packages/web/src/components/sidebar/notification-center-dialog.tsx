@@ -55,32 +55,25 @@ export function NotificationCenterDialog({
       <DialogContent className="sm:max-w-lg max-h-[80vh] flex flex-col p-0">
         <DialogHeader className="px-6 py-4 border-b shrink-0">
           <div className="flex items-center justify-between">
-            <DialogTitle>{t('centerTitle')}</DialogTitle>
-            <div className="flex gap-1">
+            <div className="flex items-center gap-2">
+              <DialogTitle>{t('centerTitle')}</DialogTitle>
               {notifications.some((n) => !n.read) && (
-                <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => markAllRead(workspaceId)}>
-                  <CheckCheckIcon className="size-3.5" />
-                  {t('markAllRead')}
-                </Button>
-              )}
-              {notifications.length > 0 && (
-                <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-destructive" onClick={() => clearAll(workspaceId)}>
-                  <Trash2Icon className="size-3.5" />
-                  {t('clearAll')}
-                </Button>
+                <span className="inline-flex items-center justify-center size-5 rounded-full bg-blue-500 text-[10px] font-medium text-white">
+                  {notifications.filter((n) => !n.read).length}
+                </span>
               )}
             </div>
+            {notifications.some((n) => !n.read) && (
+              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => markAllRead(workspaceId)}>
+                <CheckCheckIcon className="size-3.5" />
+                {t('markAllRead')}
+              </Button>
+            )}
           </div>
         </DialogHeader>
 
         {show ? (
           <div className="flex-1 overflow-auto px-6 py-4">
-            <button
-              className="text-xs text-muted-foreground hover:text-foreground mb-3 flex items-center gap-1"
-              onClick={() => setDetail(null)}
-            >
-              ← {t('backToList')}
-            </button>
             <div className={cn("inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium mb-3", typeColor[show.type] ?? "")}>
               {typeIcon[show.type] ?? ""} {show.type}
             </div>
@@ -135,6 +128,14 @@ export function NotificationCenterDialog({
               </div>
             )}
           </ScrollArea>
+        )}
+        {notifications.length > 0 && (
+          <div className="px-6 py-3 border-t shrink-0 flex justify-end">
+            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-destructive" onClick={() => clearAll(workspaceId)}>
+              <Trash2Icon className="size-3.5" />
+              {t('clearAll')}
+            </Button>
+          </div>
         )}
       </DialogContent>
     </Dialog>
