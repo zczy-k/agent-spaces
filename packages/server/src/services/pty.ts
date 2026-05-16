@@ -1,7 +1,8 @@
 import pty from 'node-pty';
 import { v4 as uuid } from 'uuid';
 
-const MAX_BUFFER_LINES = 100;
+const MAX_BUFFER_LINES = 1000;
+const DEFAULT_READ_LIMIT = 100;
 
 interface PtySession {
   id: string;
@@ -9,6 +10,7 @@ interface PtySession {
   workspaceId: string;
   cwd: string;
   buffer: string[];
+  output: string;
 }
 
 const sessions = new Map<string, PtySession>();
@@ -36,13 +38,14 @@ export function createSession(
     env: ptyEnv,
   });
 
-  const session: PtySession = { id, pty: ptyProcess, workspaceId, cwd, buffer: [] };
+  const session: PtySession = { id, pty: ptyProcess, workspaceId, cwd, buffer: [], output: '' };
 
   ptyProcess.onData((data) => {
     session.buffer.push(data);
     if (session.buffer.length > MAX_BUFFER_LINES) {
       session.buffer = session.buffer.slice(-MAX_BUFFER_LINES);
     }
+    session.output = trimOutputLines(session.output + data, MAX_BUFFER_LINES);
     onOutput(id, data);
   });
   ptyProcess.onExit(({ exitCode }) => onExit(id, exitCode ?? 0));
@@ -83,4 +86,56 @@ export function getSessionsByWorkspace(workspaceId: string): PtySession[] {
     if (session.workspaceId === workspaceId) result.push(session);
   }
   return result;
+}
+
+export function readSessionOutput(
+  workspaceId: string,
+  sessionId: string,
+  options: { offset?: number; limit?: number } = {},
+): { sessionId: string; offset: number; limit: number; totalLines: number; lines: string[]; text: string } {
+  const session = sessions.get(sessionId);
+  if (!session || session.workspaceId !== workspaceId) {
+    throw new Error(`Terminal session not found: ${sessionId}`);
+  }
+
+  const lines = normalizeOutput(session.output).split('\n');
+  const totalLines = lines.length === 1 && lines[0] === '' ? 0 : lines.length;
+  const limit = normalizePositiveInteger(options.limit, DEFAULT_READ_LIMIT);
+  const offset = normalizeNonNegativeInteger(options.offset);
+  const start = Math.max(totalLines - offset - limit, 0);
+  const end = Math.max(totalLines - offset, 0);
+  const page = totalLines === 0 ? [] : lines.slice(start, end);
+
+  return {
+    sessionId,
+    offset,
+    limit,
+    totalLines,
+    lines: page,
+    text: page.join('\n'),
+  };
+}
+
+function normalizeOutput(output: string): string {
+  return stripAnsi(output).replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/\n$/, '');
+}
+
+function trimOutputLines(output: string, maxLines: number): string {
+  const lines = output.split(/\r\n|\n|\r/);
+  if (lines.length <= maxLines) return output;
+  return lines.slice(-maxLines).join('\n');
+}
+
+function normalizePositiveInteger(value: unknown, fallback: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
+  return Math.min(MAX_BUFFER_LINES, Math.max(1, Math.floor(value)));
+}
+
+function normalizeNonNegativeInteger(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
+  return Math.max(0, Math.floor(value));
+}
+
+function stripAnsi(value: string): string {
+  return value.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~]|\][^\x07]*(?:\x07|\x1B\\))/g, '');
 }

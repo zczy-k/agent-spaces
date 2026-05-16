@@ -61,6 +61,33 @@ const addCommentInputSchema = {
   additionalProperties: false,
 };
 
+const readTerminalOutputInputSchema = {
+  type: 'object',
+  properties: {
+    workspaceId: {
+      type: 'string',
+      description: 'The workspace ID.',
+    },
+    sessionId: {
+      type: 'string',
+      description: 'Terminal session ID to read.',
+    },
+    offset: {
+      type: 'integer',
+      minimum: 0,
+      description: 'Number of newest lines to skip before reading. Defaults to 0.',
+    },
+    limit: {
+      type: 'integer',
+      minimum: 1,
+      maximum: 1000,
+      description: 'Maximum number of lines to read. Defaults to 100.',
+    },
+  },
+  required: ['workspaceId', 'sessionId'],
+  additionalProperties: false,
+};
+
 export function createIssueFunctionTools(
   workspaceId: string,
   channel: Channel | undefined,
@@ -226,6 +253,20 @@ function assertCurrentChannelId(channel: Channel, input: unknown): Record<string
 
 export function createCommandFunctionTools(workspaceId: string): AgentFunctionTool[] {
   return [
+    {
+      name: 'ReadTerminalOutput',
+      description: 'Read paginated terminal output by terminal session ID. Defaults to the newest 100 lines.',
+      inputSchema: readTerminalOutputInputSchema,
+      annotations: { readOnly: true, openWorld: false },
+      execute: async (input) => {
+        const data = input as { workspaceId: string; sessionId: string; offset?: number; limit?: number };
+        if (data.workspaceId !== workspaceId) throw new Error('workspaceId mismatch');
+        return commandProcessManager.readTerminalOutput(workspaceId, data.sessionId, {
+          offset: data.offset,
+          limit: data.limit,
+        });
+      },
+    },
     {
       name: 'ListQuickCommands',
       description: 'List all quick commands for the workspace with running status.',

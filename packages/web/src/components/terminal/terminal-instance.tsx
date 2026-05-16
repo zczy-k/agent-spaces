@@ -112,6 +112,8 @@ export function TerminalInstance({ sessionId, workspaceId }: TerminalInstancePro
         cursorBlink: true,
         fontSize: 13,
         fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+        rightClickSelectsWord: true,
+        macOptionClickForcesSelection: true,
         theme: resolvedTheme === 'dark' ? TERM_THEMES.dark : TERM_THEMES.light,
       });
 
@@ -128,6 +130,13 @@ export function TerminalInstance({ sessionId, workspaceId }: TerminalInstancePro
         window.open(uri);
       }));
       xterm.open(termRef.current);
+      xterm.attachCustomKeyEventHandler((event) => {
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'c' && xterm.hasSelection()) {
+          void navigator.clipboard?.writeText(xterm.getSelection());
+          return false;
+        }
+        return true;
+      });
 
       requestAnimationFrame(() => fit.fit());
 
@@ -165,10 +174,19 @@ export function TerminalInstance({ sessionId, workspaceId }: TerminalInstancePro
         rows: xterm.rows,
       });
     });
-    resizeObserver.observe(termRef.current);
+    const terminalElement = termRef.current;
+    resizeObserver.observe(terminalElement);
+
+    const handleContextMenu = (event: MouseEvent) => {
+      event.preventDefault();
+      if (!xterm.hasSelection()) return;
+      void navigator.clipboard?.writeText(xterm.getSelection());
+    };
+    terminalElement.addEventListener('contextmenu', handleContextMenu, { capture: true });
 
     return () => {
       resizeObserver.disconnect();
+      terminalElement.removeEventListener('contextmenu', handleContextMenu, { capture: true });
       inputDisposable.dispose();
       ws.off('terminal.output', handleOutput);
       // If session was removed from store (user/server closed it), dispose terminal
@@ -185,5 +203,11 @@ export function TerminalInstance({ sessionId, workspaceId }: TerminalInstancePro
     xtermRef.current.options.theme = resolvedTheme === 'dark' ? TERM_THEMES.dark : TERM_THEMES.light;
   }, [resolvedTheme]);
 
-  return <div ref={termRef} className="h-full w-full" />;
+  return (
+    <div
+      ref={termRef}
+      className="h-full w-full select-text touch-pan-x touch-pan-y"
+      style={{ WebkitTouchCallout: 'none' }}
+    />
+  );
 }

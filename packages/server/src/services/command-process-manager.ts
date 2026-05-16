@@ -151,6 +151,14 @@ export function getCommandProcesses(workspaceId: string): CommandProcess[] {
   return result;
 }
 
+export function readTerminalOutput(
+  workspaceId: string,
+  sessionId: string,
+  options?: { offset?: number; limit?: number },
+) {
+  return ptyService.readSessionOutput(workspaceId, sessionId, options);
+}
+
 export function cleanup(workspaceId: string): void {
   for (const [commandId, cmdProcess] of processes) {
     if (cmdProcess.workspaceId === workspaceId) {

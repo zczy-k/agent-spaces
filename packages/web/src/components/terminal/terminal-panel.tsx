@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { Plus, ChevronDown, X, FolderOpen, Terminal } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useTerminalStore } from '@/stores/terminal';
@@ -140,24 +141,37 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
       {/* Tab bar */}
       <div className="flex items-center gap-0.5 px-1 py-0.5 bg-muted border-b border-border overflow-x-auto">
         {sessions.map((session) => (
-          <button
-            key={session.id}
-            onClick={() => setActive(session.id)}
-            className={`flex items-center gap-1 px-2 py-1 text-xs rounded-t transition-colors shrink-0 ${
-              activeId === session.id
-                ? 'bg-background text-foreground'
-                : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
-            }`}
-          >
-            <span className="font-mono text-[10px] opacity-60">{session.name ?? getShellLabel(session.shell, shellOptions)}</span>
-            {!session.name && <span>{sessions.indexOf(session) + 1}</span>}
-            <span
-              onClick={(e) => { e.stopPropagation(); removeSession(session.id); }}
-              className="ml-1 hover:text-destructive cursor-pointer"
-            >
-              <X size={12} />
-            </span>
-          </button>
+          <ContextMenu key={session.id}>
+            <ContextMenuTrigger>
+              <button
+                onClick={() => setActive(session.id)}
+                className={`flex items-center gap-1 px-2 py-1 text-xs rounded-t transition-colors shrink-0 ${
+                  activeId === session.id
+                    ? 'bg-background text-foreground'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
+                }`}
+              >
+                <span className="font-mono text-[10px] opacity-60">{session.name ?? getShellLabel(session.shell, shellOptions)}</span>
+                {!session.name && <span>{sessions.indexOf(session) + 1}</span>}
+                <span
+                  onClick={(e) => { e.stopPropagation(); removeSession(session.id); }}
+                  className="ml-1 hover:text-destructive cursor-pointer"
+                >
+                  <X size={12} />
+                </span>
+              </button>
+            </ContextMenuTrigger>
+            <ContextMenuContent>
+              <ContextMenuItem
+                onClick={() => {
+                  void navigator.clipboard?.writeText(session.id);
+                }}
+                className="text-xs"
+              >
+                复制终端id
+              </ContextMenuItem>
+            </ContextMenuContent>
+          </ContextMenu>
         ))}
         <DropdownMenu>
           <DropdownMenuTrigger

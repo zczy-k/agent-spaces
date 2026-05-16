@@ -15,6 +15,11 @@ export const BUILT_IN_AGENT_TOOLS = [
     description: 'Add a comment to the issue bound to the current channel.',
   },
   {
+    name: 'ReadTerminalOutput',
+    label: 'Read Terminal Output',
+    description: 'Read paginated terminal output by session ID. Defaults to the newest 100 lines.',
+  },
+  {
     name: 'ListQuickCommands',
     label: 'List Quick Commands',
     description: 'List all quick commands for a workspace with their running status.',
