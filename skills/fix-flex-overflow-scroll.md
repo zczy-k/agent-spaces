@@ -1,76 +1,227 @@
 ---
 name: fix-flex-overflow-scroll
-description: 修复 Flex 布局中 overflow-y-auto 不生效（内容溢出但不出现滚动条）的问题
-trigger: 用户报告某个区域"不能滚动"、"没有滚动条"、"overflow 不生效"、"内容溢出"
+description: 修复 Flex 布局中 overflow-y-auto / overflow-auto 不生效（内容溢出但没有滚动条）的问题
+trigger: 用户报告某个区域"不能滚动"、"没有滚动条"、"滚动条不出现"、"overflow 不生效"、"内容溢出"、"列表被截断"
 ---
 
-# 修复 Flex 布局 overflow 滚动失效
+# 修复 Flex 布局 Overflow 滚动失效
 
-## 问题表现
+## 适用场景
 
-给子元素加了 `overflow-y-auto`，但内容超出时没有滚动条，整个容器被撑开。
+元素已经加了 `overflow-y-auto` / `overflow-auto`，但内容超出时仍然没有滚动条，常见于：
 
-## 根因
+- Dialog / Sheet 内部内容区
+- Sidebar / Navigation 列表
+- Header + Content + Footer 的纵向布局
+- 嵌套 `flex` / `flex-col` 容器
+- 折叠态、移动端、状态变体下的滚动失效
 
-`overflow-y-auto` 需要元素有**明确的高度约束**才会生效。在 Flex 布局中，如果中间某一层不是 flex 容器，`flex-1` / `min-h-0` 不会向下传递高度约束，子元素就会按内容撑开。
+## 核心判断
 
-典型错误结构：
+`overflow-y-auto` 只有在元素拥有**明确且被约束的高度**时才会生效。
 
+在 Flex 布局中，滚动失效通常不是滚动元素自身的问题，而是它上游的高度约束链断了，或者后续 class 把 `overflow` 覆盖了。
+
+## 修复原则
+
+从滚动元素往上逐层检查：
+
+1. 滚动元素自身要有 `overflow-y-auto` / `overflow-auto`。
+2. 滚动元素自身要有高度约束，例如 `flex-1 min-h-0`、`h-*`、`max-h-*`。
+3. 每一层纵向 Flex 容器都要能裁剪溢出，通常需要 `flex flex-col overflow-hidden`。
+4. Header / Footer / Toolbar 这类固定区域要加 `shrink-0`。
+5. 中间包裹层如果承载 `flex-1`，也必须是能继续传递高度约束的 Flex 容器。
+6. 检查组件库默认 class、状态变体、响应式变体是否覆盖了滚动，例如 `group-data-[collapsible=icon]:overflow-hidden`。
+
+## 标准结构
+
+```tsx
+<div className="flex h-full flex-col overflow-hidden">
+  <Header className="shrink-0" />
+
+  <div className="min-h-0 flex-1 overflow-y-auto">
+    {/* scrollable content */}
+  </div>
+
+  <Footer className="shrink-0" />
+</div>
 ```
-flex-col 容器 (max-h / overflow-hidden)
-  └─ div (flex-1, min-h-0)          ← 有约束高度，但不是 flex 容器
-      └─ div (flex, min-h-0, flex-1) ← flex-1 无效，高度不约束
-          ├─ 左侧 (overflow-y-auto)  ← 无效，因为父级没被约束
-          └─ 右侧 (overflow-y-auto)  ← 同上
+
+关键点：
+
+- 外层：`flex flex-col overflow-hidden`
+- 固定区：`shrink-0`
+- 滚动区：`min-h-0 flex-1 overflow-y-auto`
+
+## 常见断裂模式
+
+### 模式 A：中间层不是 Flex 容器
+
+`flex-1` / `min-h-0` 不会自动向下传递高度约束。如果中间层只是普通 `div`，子层的 `flex-1` 可能无效。
+
+```tsx
+<DialogContent className="flex max-h-[85vh] flex-col overflow-hidden">
+  <Header className="shrink-0" />
+
+  <div className="min-h-0 flex-1">
+    <div className="flex min-h-0 flex-1">
+      <div className="overflow-y-auto" />
+    </div>
+  </div>
+</DialogContent>
 ```
 
-## 解决方法
-
-给中间层加上 `flex flex-col overflow-hidden`，让高度约束向下传递：
-
-```
-flex-col 容器 (max-h / overflow-hidden)
-  └─ div (flex-1, min-h-0, flex, flex-col, overflow-hidden) ← 变成 flex 容器
-      └─ div (flex, min-h-0, flex-1) ← flex-1 现在生效，高度被约束
-          ├─ 左侧 (overflow-y-auto)  ← 生效
-          └─ 右侧 (overflow-y-auto)  ← 生效
-```
-
-## 检查清单
-
-遇到 overflow 不生效时，从出问题的元素**往上逐层检查**：
-
-1. **元素自身**是否有 `overflow-y-auto` / `overflow-auto`？
-2. **元素自身**是否有高度约束？(`h-*`, `max-h-*`, `flex-1` 在 flex 容器中, `absolute` 定位等)
-3. **往上每一层**，是否都是 flex 容器且子元素有 `min-h-0`（flex 默认 `min-height: auto` 会阻止收缩）？
-4. 中间是否有**非 flex 的 div** 断裂了高度约束链？
-
-关键规则：
-- Flex 子元素默认 `min-height: auto`，会阻止内容收缩 → 需要加 `min-h-0`
-- `overflow-y-auto` 需要**被约束的高度**，`auto`/`none` 高度不会触发滚动
-- 每一层都必须传递高度约束，断一层就全部失效
-
-## 修复模板
+修复：
 
 ```diff
-  <!-- DialogContent: flex-col + max-h + overflow-hidden -->
-  <Dialog className="flex flex-col max-h-[85vh] overflow-hidden">
-    <Header className="shrink-0" />
-
--   <div className="flex-1 min-h-0">
-+   <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-      <div className="flex min-h-0 flex-1">
-        <div className="overflow-y-auto">{/* 左侧 */}</div>
-        <div className="flex-1 overflow-y-auto">{/* 右侧 */}</div>
-      </div>
-    </div>
-  </Dialog>
+- <div className="min-h-0 flex-1">
++ <div className="min-h-0 flex-1 flex flex-col overflow-hidden">
 ```
 
-## 常见变体
+### 模式 B：父级 Flex 容器缺少 overflow-hidden
 
-| 场景 | 修复 |
-|------|------|
-| Dialog/Sheet 内容不滚动 | 给内容包裹层加 `flex flex-col overflow-hidden` |
-| 侧边栏列表溢出 | 检查外层 flex 容器是否有 `min-h-0` |
-| 嵌套 flex 布局中间断裂 | 每一层都加 `min-h-0` + `overflow-hidden`（flex-col 时） |
+即使滚动区有 `flex-1 min-h-0 overflow-y-auto`，父级如果不裁剪，内容仍可能撑破容器。
+
+```diff
+- <div className="flex size-full flex-col">
++ <div className="flex size-full flex-col overflow-hidden">
+```
+
+同时固定区域需要避免被压缩：
+
+```diff
+- <Header />
++ <Header className="shrink-0" />
+
+- <Footer />
++ <Footer className="shrink-0" />
+```
+
+### 模式 C：状态变体覆盖了 overflow
+
+组件库或底层组件可能带有状态 class，在特定状态下覆盖滚动，例如折叠侧边栏：
+
+```tsx
+className="flex min-h-0 flex-1 flex-col overflow-auto group-data-[collapsible=icon]:overflow-hidden"
+```
+
+如果业务要求折叠态也能滚动，需要在调用处显式覆盖同一状态变体：
+
+```diff
+<SidebarContent
+-  className="overflow-y-auto"
++  className="min-h-0 overflow-y-auto group-data-[collapsible=icon]:overflow-y-auto"
+/>
+```
+
+注意：使用 `tailwind-merge` / `cn` 时，后传入的同类 class 通常会覆盖前面的 class。需要确认调用处 class 是否在底层默认 class 之后合并。
+
+## 排查清单
+
+按顺序检查，避免靠猜：
+
+1. 滚动元素是否真的命中到 DOM？开发者工具中查看 computed `overflow-y`。
+2. 滚动元素是否有被约束的高度？查看 computed `height` / `max-height`。
+3. 滚动元素是否是 Flex 子项？如果是，是否有 `min-h-0`？
+4. 父级 `flex-col` 是否有 `overflow-hidden`？
+5. Header / Footer 是否有 `shrink-0`？
+6. 中间是否有普通 `div` 断开了 `flex-1` 的高度约束链？
+7. 是否有响应式或状态变体覆盖了 `overflow`？
+8. 是否被 `overflow-hidden` 加在了错误层级，导致滚动条被裁掉？
+
+## 快速修复模板
+
+### Dialog / Sheet
+
+```diff
+- <DialogContent className="max-h-[85vh] flex flex-col">
++ <DialogContent className="max-h-[85vh] flex flex-col overflow-hidden">
+    <Header className="shrink-0" />
+
+-   <div className="flex-1">
++   <div className="min-h-0 flex-1 overflow-y-auto">
+      ...
+    </div>
+  </DialogContent>
+```
+
+### Sidebar
+
+```diff
+  <Sidebar className="overflow-hidden">
+-   <SidebarHeader>
++   <SidebarHeader className="shrink-0">
+      ...
+    </SidebarHeader>
+
+-   <SidebarContent className="overflow-y-auto">
++   <SidebarContent className="min-h-0 overflow-y-auto">
+      ...
+    </SidebarContent>
+
+-   <SidebarFooter>
++   <SidebarFooter className="shrink-0">
+      ...
+    </SidebarFooter>
+  </Sidebar>
+```
+
+如果底层组件在折叠态写了 `overflow-hidden`：
+
+```diff
+- <SidebarContent className="min-h-0 overflow-y-auto">
++ <SidebarContent className="min-h-0 overflow-y-auto group-data-[collapsible=icon]:overflow-y-auto">
+```
+
+## 常见修复映射
+
+| 场景 | 最小修复 |
+| --- | --- |
+| Dialog 内容不滚动 | 外层 `flex flex-col overflow-hidden`，内容区 `min-h-0 flex-1 overflow-y-auto` |
+| Header/Footer 挤压内容 | Header/Footer 加 `shrink-0` |
+| Sidebar 列表被截断 | Sidebar 外层裁剪，Content 加 `min-h-0 overflow-y-auto` |
+| 折叠态不滚动 | 检查并覆盖状态变体中的 `overflow-hidden` |
+| 嵌套 Flex 中间层断裂 | 中间层加 `flex flex-col overflow-hidden` |
+| fixed/h-screen 容器内不滚动 | 根容器使用 `h-dvh` / `h-screen` + `overflow-hidden` |
+
+## 验证步骤
+
+1. 构造足够多的内容，让滚动区明显超出可视高度。
+2. 缩小窗口高度，确认只有目标内容区滚动。
+3. 确认 Header / Footer 不被压缩、不被滚走。
+4. 切换相关状态，例如展开/折叠、移动端/桌面端、Dialog 打开/关闭。
+5. 在 DevTools 中确认最终生效的 `overflow-y` 是 `auto` 或 `scroll`，不是被状态 class 改成 `hidden`。
+
+## 已验证案例
+
+### App Sidebar 底部按钮列表被截断
+
+问题：`SidebarContent` 已有 `overflow-y-auto`，但折叠 icon 模式下底部按钮列表被截断仍不出现滚动条。
+
+原因：底层 `SidebarContent` 默认包含 `group-data-[collapsible=icon]:overflow-hidden`，折叠态覆盖了调用处的普通 `overflow-y-auto`。
+
+修复：
+
+```diff
+<Sidebar
+  variant="floating"
+  collapsible="icon"
+- className={cn(isWorkspace && "...")}
++ className={cn("overflow-hidden", isWorkspace && "...")}
+>
+- <SidebarHeader className="flex ...">
++ <SidebarHeader className="flex shrink-0 ...">
+    ...
+  </SidebarHeader>
+
+- <SidebarContent className="overflow-y-auto ...">
++ <SidebarContent className="min-h-0 overflow-y-auto group-data-[collapsible=icon]:overflow-y-auto ...">
+    ...
+  </SidebarContent>
+
+- <SidebarFooter className="...">
++ <SidebarFooter className="shrink-0 ...">
+    ...
+  </SidebarFooter>
+</Sidebar>
+```
