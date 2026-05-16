@@ -175,7 +175,14 @@ export async function gitDiscard(workspaceId: string, filePath: string): Promise
   if (!ws) throw new Error('Workspace not found');
 
   const git = getGit(ws);
-  await git.checkout(['--', filePath]);
+  const status = await git.status();
+  const isUntracked = status.not_added.includes(filePath);
+
+  if (isUntracked) {
+    await git.clean('f', ['-d', '--', filePath]);
+  } else {
+    await git.checkout(['--', filePath]);
+  }
 }
 
 export async function gitDiscardAll(workspaceId: string): Promise<void> {

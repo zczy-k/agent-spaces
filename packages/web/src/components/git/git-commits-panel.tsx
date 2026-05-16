@@ -433,7 +433,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
               className={`group w-full text-left px-2 py-1 text-xs font-mono flex items-center gap-1.5 hover:bg-accent cursor-pointer ${selectedFile === f.path ? "bg-accent" : ""}`}>
               <span className={`w-4 text-center font-bold shrink-0 ${statusColors[f.status]}`}>{statusLabels[f.status]}</span>
               <span className="truncate flex-1">{f.path}</span>
-              <span className="hidden group-hover:flex items-center gap-0.5 shrink-0">
+              <span className="hidden group-hover:flex md:flex items-center gap-0.5 shrink-0">
                 <button onClick={(e) => handleOpenFile(e, f.path)} className="p-0.5 rounded hover:bg-accent/80" title={tc('open')}><FileCode size={13} /></button>
                 <button onClick={(e) => handleDiscard(e, f.path)} className="p-0.5 rounded hover:bg-accent/80" title={tChanges('discardAll')}><RotateCcw size={13} /></button>
               </span>
