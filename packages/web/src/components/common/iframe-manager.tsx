@@ -56,7 +56,7 @@ export function IframeLinkInterceptor() {
 const BALL_SIZE = 40;
 
 export function IframeFloatingBall() {
-  const { tabs, activeId, setActive, remove } = useIframeTabs();
+  const { tabs, activeId, setActive, remove, ballVisible } = useIframeTabs();
   const register = useCommandPalette((s) => s.register);
   const [open, setOpen] = useState(false);
   const ballRef = useRef<HTMLDivElement>(null);
@@ -66,13 +66,16 @@ export function IframeFloatingBall() {
 
   useEffect(() => {
     return register({
-      id: "iframe-toggle",
-      label: activeId ? "返回主页面" : "切换到 Iframe",
+      id: "iframe-toggle-ball",
+      label: ballVisible ? "隐藏 Iframe 悬浮球" : "显示 Iframe 悬浮球",
       group: "视图",
       icon: Globe,
-      action: () => useIframeTabs.getState().toggle(),
+      action: () => useIframeTabs.getState().toggleBall(),
     });
-  }, [register, activeId]);
+  }, [register, ballVisible]);
+
+  if (!ballVisible) return null;
+
   const show = count >= 1;
 
   useEffect(() => {

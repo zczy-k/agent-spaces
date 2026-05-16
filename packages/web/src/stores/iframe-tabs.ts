@@ -9,10 +9,11 @@ export interface IframeTab {
 interface IframeTabsState {
   tabs: IframeTab[];
   activeId: string | null; // null = main page
+  ballVisible: boolean;
   add: (url: string, title?: string) => string;
   remove: (id: string) => void;
   setActive: (id: string | null) => void;
-  toggle: () => void;
+  toggleBall: () => void;
 }
 
 let counter = 0;
@@ -20,6 +21,7 @@ let counter = 0;
 export const useIframeTabs = create<IframeTabsState>((set, get) => ({
   tabs: [],
   activeId: null,
+  ballVisible: false,
 
   add: (url, title) => {
     const { tabs } = get();
@@ -42,12 +44,5 @@ export const useIframeTabs = create<IframeTabsState>((set, get) => ({
 
   setActive: (id) => set({ activeId: id }),
 
-  toggle: () => {
-    const { tabs, activeId } = get();
-    if (activeId !== null) {
-      set({ activeId: null });
-    } else if (tabs.length > 0) {
-      set({ activeId: tabs[tabs.length - 1].id });
-    }
-  },
+  toggleBall: () => set((s) => ({ ballVisible: !s.ballVisible })),
 }));
