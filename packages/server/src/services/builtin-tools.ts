@@ -66,7 +66,7 @@ const readTerminalOutputInputSchema = {
   properties: {
     workspaceId: {
       type: 'string',
-      description: 'The workspace ID.',
+      description: 'Optional workspace ID. If omitted, the current workspace is used.',
     },
     sessionId: {
       type: 'string',
@@ -84,7 +84,7 @@ const readTerminalOutputInputSchema = {
       description: 'Maximum number of lines to read. Defaults to 100.',
     },
   },
-  required: ['workspaceId', 'sessionId'],
+  required: ['sessionId'],
   additionalProperties: false,
 };
 
@@ -259,8 +259,8 @@ export function createCommandFunctionTools(workspaceId: string): AgentFunctionTo
       inputSchema: readTerminalOutputInputSchema,
       annotations: { readOnly: true, openWorld: false },
       execute: async (input) => {
-        const data = input as { workspaceId: string; sessionId: string; offset?: number; limit?: number };
-        if (data.workspaceId !== workspaceId) throw new Error('workspaceId mismatch');
+        const data = input as { workspaceId?: string; sessionId: string; offset?: number; limit?: number };
+        if (data.workspaceId && data.workspaceId !== workspaceId) throw new Error('workspaceId mismatch');
         return commandProcessManager.readTerminalOutput(workspaceId, data.sessionId, {
           offset: data.offset,
           limit: data.limit,

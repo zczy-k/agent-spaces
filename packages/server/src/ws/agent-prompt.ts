@@ -33,6 +33,7 @@ export function buildAgentPrompt(
   if (runtimeConfig) {
     const configLines = [
       'Agent runtime configuration:',
+      `- Current workspace id: ${workspaceId}`,
       `- MCP servers configured for this agent: ${runtimeConfig.mcpServers.length ? runtimeConfig.mcpServers.join(', ') : 'none'}`,
       `- Skills configured for this agent: ${runtimeConfig.skills.length ? runtimeConfig.skills.join(', ') : 'none'}`,
       '- Runtime tools available through Claude Code: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, Task, TodoWrite, WebFetch, WebSearch',
@@ -43,7 +44,7 @@ export function buildAgentPrompt(
     }
     configLines.push('- For Bash commands that create or modify files under the current working directory, use relative paths such as `mkdir -p css js` instead of absolute paths.');
     if (runtimeConfig.builtInTools?.length) {
-      configLines.push(...formatBuiltInToolContext(runtimeConfig.builtInTools));
+      configLines.push(...formatBuiltInToolContext(workspaceId, runtimeConfig.builtInTools));
     }
     if (isIssueContextLookup(userPrompt)) {
       configLines.push(
@@ -155,15 +156,17 @@ function isIssueContextLookup(userPrompt: string): boolean {
   return /当前频道.*议题|议题内容|current channel.*issue|issue.*current channel/.test(text);
 }
 
-function formatBuiltInToolContext(tools: BuiltInToolContext[]): string[] {
+function formatBuiltInToolContext(workspaceId: string, tools: BuiltInToolContext[]): string[] {
   const firstTool = tools[0];
   const firstIssueTool = tools.find((tool) => tool.issueId);
   const lines = [
     'Built-in issue tool rules:',
     '- These are real function-call tools exposed by the Agent Spaces runtime.',
     '- They are not agent-configured MCP servers and must be reported only as Agent Spaces channel tools.',
-    '- Tool calls must use the current channel id.',
+    '- Tool calls that require workspaceId must use the current workspace id.',
+    '- Issue tool calls must use the current channel id.',
   ];
+  lines.push(`- Current workspace id: ${workspaceId}`);
   if (firstTool?.channelId) lines.push(`- Current channel id: ${firstTool.channelId}`);
   if (firstIssueTool?.issueId) {
     lines.push(`- Current channel issue id: ${firstIssueTool.issueId}`);

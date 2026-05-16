@@ -261,7 +261,7 @@ export function isAnthropicBridgeProvider(provider: AgentPreset["modelProvider"]
 export function Section({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-2.5">
-      <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+       <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
         {icon}
         {title}
       </div>

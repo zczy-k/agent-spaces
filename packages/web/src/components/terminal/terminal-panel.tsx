@@ -164,11 +164,17 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
             <ContextMenuContent>
               <ContextMenuItem
                 onClick={() => {
-                  void navigator.clipboard?.writeText(session.id);
+                  void navigator.clipboard?.writeText([
+                    `workspaceId: ${workspaceId}`,
+                    `terminalId: ${session.id}`,
+                    `sessionId: ${session.id}`,
+                    `cwd: ${session.cwd}`,
+                    session.shell ? `shell: ${session.shell}` : undefined,
+                  ].filter(Boolean).join('\n'));
                 }}
                 className="text-xs"
               >
-                复制终端id
+                复制终端信息
               </ContextMenuItem>
             </ContextMenuContent>
           </ContextMenu>
