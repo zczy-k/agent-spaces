@@ -232,9 +232,17 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
             >
               <ArrowUp className="size-3.5" />
             </button>
-            <div className="flex-1 truncate rounded-md bg-muted px-2.5 py-1 text-xs text-muted-foreground font-mono">
-              {currentPath}
-            </div>
+            <input
+              className="flex-1 truncate rounded-md bg-muted px-2.5 py-1 text-xs text-muted-foreground font-mono outline-none focus:bg-background focus:ring-1 focus:ring-primary transition-colors"
+              value={currentPath}
+              onChange={(e) => setCurrentPath(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  browse(currentPath);
+                }
+              }}
+            />
             <button
               type="button"
               onClick={() => { setCreating(true); setNewFolderName(""); }}

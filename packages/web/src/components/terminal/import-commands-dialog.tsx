@@ -98,7 +98,7 @@ export function ImportCommandsDialog({ open, onOpenChange, defaultPath, onImport
           <DialogTitle>{t('importTitle')}</DialogTitle>
           <DialogDescription>{t('importDescription')}</DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col gap-3 py-2 min-w-0 overflow-hidden">
+        <div className="flex flex-col gap-3 py-2 min-w-0">
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">{t('selectProject')}</label>
             <FolderPicker
