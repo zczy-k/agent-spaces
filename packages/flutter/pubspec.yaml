@@ -63,11 +63,8 @@ flutter:
   assets:
     # BEGIN GENERATED WEB ASSETS
     - assets/web/
-    - assets/web/_next/
-    - assets/web/_next/gN3O86ki0NGTvGTqE2Ibh/
     - assets/web/_next/static/
     - assets/web/_next/static/chunks/
-    - assets/web/_next/static/gN3O86ki0NGTvGTqE2Ibh/
     - assets/web/_next/static/media/
     - assets/web/_not-found/
     - assets/web/icons/

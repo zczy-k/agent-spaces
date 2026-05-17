@@ -41,10 +41,10 @@ const webAssetDirs = listAssetDirs(flutterWeb, 'assets/web');
 updateFlutterAssets(flutterPubspec, webAssetDirs);
 
 console.log('[copy-web] packages/web/out -> packages/server/web + packages/server/dist/web + packages/tauri/web + packages/flutter/assets/web');
-console.log(`[copy-web] updated packages/flutter/pubspec.yaml with ${webAssetDirs.length} web asset directories`);
+console.log(`[copy-web] updated packages/flutter/pubspec.yaml with ${webAssetDirs.length} stable web asset directories`);
 
 function listAssetDirs(absDir, assetPath) {
-  const dirs = [`${assetPath}/`];
+  const dirs = shouldIncludeAssetDir(assetPath) ? [`${assetPath}/`] : [];
   const entries = readdirSync(absDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -54,6 +54,23 @@ function listAssetDirs(absDir, assetPath) {
   }
 
   return dirs;
+}
+
+function shouldIncludeAssetDir(assetPath) {
+  const parts = assetPath.split('/');
+  if (parts[0] !== 'assets' || parts[1] !== 'web' || parts[2] !== '_next') {
+    return true;
+  }
+  if (parts.length === 3) {
+    return false;
+  }
+  if (parts.length === 4) {
+    return parts[3] === 'static';
+  }
+  if (parts.length === 5 && parts[3] === 'static') {
+    return parts[4] === 'chunks' || parts[4] === 'media';
+  }
+  return true;
 }
 
 function updateFlutterAssets(pubspecPath, assetDirs) {
