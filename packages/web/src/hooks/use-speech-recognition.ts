@@ -20,23 +20,30 @@ export function useSpeechRecognition() {
 
   const loadConfig = useCallback(async (): Promise<SpeechRecognitionConfig | null> => {
     const token = getToken();
+    console.log("[speech] loading config, token:", token ? "present" : "missing");
     const res = await fetch("/api/speech-recognition", {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
+    console.log("[speech] config response status:", res.status);
     if (!res.ok) return null;
     const configs: SpeechRecognitionConfig[] = await res.json();
+    console.log("[speech] configs found:", configs.length, configs.length > 0 ? configs[0] : "");
     return configs.length > 0 ? configs[0] : null;
   }, []);
 
   const start = useCallback(
     async (onText: (text: string, isFinal: boolean) => void) => {
       const cfg = await loadConfig();
-      if (!cfg) return false;
+      if (!cfg) {
+        console.warn("[speech] no config found, aborting");
+        return false;
+      }
       setConfig(cfg);
 
       const token = getToken();
       const proto = location.protocol === "https:" ? "wss:" : "ws:";
       const wsUrl = `${proto}//${location.host}/ws/speech?token=${token ?? ""}&configId=${cfg.id}`;
+      console.log("[speech] connecting to", wsUrl.replace(/token=[^&]+/, "token=***"));
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
@@ -44,25 +51,37 @@ export function useSpeechRecognition() {
         try {
           const data = JSON.parse(e.data);
           if (data.error) {
-            console.error("[speech]", data.error);
+            console.error("[speech] error from server:", data.error);
             return;
           }
           if (data.text) {
+            console.log("[speech] result:", data.text, "isFinal:", data.isFinal);
             onText(data.text, data.isFinal);
           }
-        } catch {}
+        } catch (err) {
+          console.error("[speech] failed to parse message:", err);
+        }
       };
 
-      ws.onerror = () => {
+      ws.onerror = (e) => {
+        console.error("[speech] WebSocket error", e);
         stop();
       };
 
-      await new Promise<void>((resolve, reject) => {
-        ws.onopen = () => resolve();
-        ws.onerror = () => reject(new Error("WS connect failed"));
-      }).catch(() => {
+      try {
+        await new Promise<void>((resolve, reject) => {
+          ws.onopen = () => {
+            console.log("[speech] WebSocket connected");
+            resolve();
+          };
+          ws.onerror = (e) => {
+            console.error("[speech] WebSocket connect failed", e);
+            reject(new Error("WS connect failed"));
+          };
+        });
+      } catch {
         return false;
-      });
+      }
 
       // Get microphone stream
       let stream: MediaStream;
@@ -70,7 +89,9 @@ export function useSpeechRecognition() {
         stream = await navigator.mediaDevices.getUserMedia({
           audio: { sampleRate: 16000, channelCount: 1, echoCancellation: true },
         });
-      } catch {
+        console.log("[speech] microphone acquired, tracks:", stream.getAudioTracks().length);
+      } catch (err) {
+        console.error("[speech] microphone access denied:", err);
         ws.close();
         return false;
       }
@@ -78,21 +99,26 @@ export function useSpeechRecognition() {
 
       const audioContext = new AudioContext({ sampleRate: 16000 });
       audioContextRef.current = audioContext;
+      console.log("[speech] AudioContext sampleRate:", audioContext.sampleRate);
 
       const source = audioContext.createMediaStreamSource(stream);
       const processor = audioContext.createScriptProcessor(4096, 1, 1);
       processorRef.current = processor;
 
+      let audioChunkCount = 0;
       processor.onaudioprocess = (e) => {
         if (ws.readyState !== WebSocket.OPEN) return;
         const float32 = e.inputBuffer.getChannelData(0);
-        // Convert Float32 -> Int16 PCM
         const int16 = new Int16Array(float32.length);
         for (let i = 0; i < float32.length; i++) {
           const s = Math.max(-1, Math.min(1, float32[i]));
           int16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
         }
         ws.send(int16.buffer);
+        audioChunkCount++;
+        if (audioChunkCount <= 3 || audioChunkCount % 50 === 0) {
+          console.log("[speech] sent audio chunk #", audioChunkCount, "size:", int16.buffer.byteLength);
+        }
       };
 
       source.connect(processor);

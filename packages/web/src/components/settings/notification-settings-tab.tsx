@@ -373,18 +373,25 @@ export function NotificationSettingsTab({
               onValueChange={(provider) => patchNotifications({ provider: provider as NotificationProvider })}
               className="flex flex-col">
               <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="lark" className="gap-1">
-                  {t('notifications.lark')}
-                  <CircleHelp
-                    className="h-3.5 w-3.5 shrink-0 text-muted-foreground hover:text-foreground"
-                    onClick={(e) => { e.stopPropagation(); setLarkGuideOpen(true); }}
-                  />
-                </TabsTrigger>
+                <TabsTrigger value="lark">{t('notifications.lark')}</TabsTrigger>
                 <TabsTrigger value="wechat">{t('notifications.wechat')}</TabsTrigger>
                 <TabsTrigger value="native">{t('notifications.native')}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="lark" className="space-y-3 pt-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">飞书 Bot 配置</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+                    onClick={() => setLarkGuideOpen(true)}
+                  >
+                    <CircleHelp className="h-3.5 w-3.5" />
+                    部署教程
+                  </Button>
+                </div>
                 <div className="grid gap-2">
                   <Label htmlFor="lark-app-id" className="text-xs text-muted-foreground">{t('notifications.appId')}</Label>
                   <Input

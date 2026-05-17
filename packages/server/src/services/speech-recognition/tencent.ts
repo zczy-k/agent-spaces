@@ -46,6 +46,7 @@ export class TencentSpeechProvider extends SpeechRecognitionProviderBase {
     params.signature = signature
 
     const url = `wss://asr.cloud.tencent.com/asr/v2/${appId}?${new URLSearchParams(params).toString()}`
+    console.log('[tencent-asr] connecting to Tencent ASR, appId:', appId)
 
     const ws = new WebSocket(url)
     const resultCallbacks: ((result: SpeechRecognitionResult) => void)[] = []
@@ -59,12 +60,13 @@ export class TencentSpeechProvider extends SpeechRecognitionProviderBase {
       }, 10000)
 
       ws.on('open', () => {
-        // Wait for handshake confirmation
+        console.log('[tencent-asr] WebSocket opened, waiting for handshake...')
       })
 
       ws.on('message', (data: WebSocket.Data) => {
         clearTimeout(handshakeTimeout)
         const msg: TencentMessage = JSON.parse(data.toString())
+        console.log('[tencent-asr] message:', JSON.stringify(msg).slice(0, 200))
 
         if (msg.code !== 0) {
           const err = new Error(`Tencent ASR error [${msg.code}]: ${msg.message}`)
@@ -91,11 +93,13 @@ export class TencentSpeechProvider extends SpeechRecognitionProviderBase {
 
       ws.on('error', (err) => {
         clearTimeout(handshakeTimeout)
+        console.error('[tencent-asr] WebSocket error:', err.message)
         errorCallbacks.forEach(cb => cb(err))
       })
 
       ws.on('close', () => {
         clearTimeout(handshakeTimeout)
+        console.log('[tencent-asr] WebSocket closed')
         closeCallbacks.forEach(cb => cb())
       })
 
@@ -103,6 +107,7 @@ export class TencentSpeechProvider extends SpeechRecognitionProviderBase {
       ws.once('message', (data: WebSocket.Data) => {
         clearTimeout(handshakeTimeout)
         const msg: TencentMessage = JSON.parse(data.toString())
+        console.log('[tencent-asr] handshake response:', JSON.stringify(msg).slice(0, 200))
         if (msg.code !== 0) {
           reject(new Error(`Tencent ASR handshake failed [${msg.code}]: ${msg.message}`))
           return
