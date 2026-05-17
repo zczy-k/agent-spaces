@@ -3,38 +3,40 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../bridge/js_bridge.dart';
 import '../models/browser_tab.dart';
+import '../providers/browser_provider.dart';
 import '../providers/console_log_provider.dart';
 import '../services/notification_service.dart';
 import '../services/webview_service.dart';
 
 final _webViewService = WebViewService();
 final _notificationService = NotificationService();
-final _jsBridge = JsBridge(
-  onInvoke: (method, args) async {
-    switch (method) {
-      case 'setZoom':
-        final scale = args is Map ? (args['scale'] as num?)?.toDouble() ?? 1.0 : 1.0;
-        return scale;
-      case 'setFullscreen':
-        return args as bool? ?? true;
-      case 'sendNotification':
-        final map = args as Map?;
-        await _notificationService.showNotification(
-          title: map?['title'] ?? 'Agent Spaces',
-          body: map?['body'] ?? '',
-          id: (map?['id'] as num?)?.toInt(),
-          ongoing: map?['ongoing'] == true,
-        );
-        return true;
-      case 'getNotificationPermission':
-        return await _notificationService.isAllowed();
-      case 'requestNotificationPermission':
-        return await _notificationService.requestPermission();
-      default:
-        return null;
-    }
-  },
-);
+
+Future<dynamic> _handleBridgeInvoke(String method, dynamic args) async {
+  switch (method) {
+    case 'setZoom':
+      final scale = args is Map
+          ? (args['scale'] as num?)?.toDouble() ?? 1.0
+          : 1.0;
+      return scale;
+    case 'setFullscreen':
+      return args as bool? ?? true;
+    case 'sendNotification':
+      final map = args as Map?;
+      await _notificationService.showNotification(
+        title: map?['title'] ?? 'Agent Spaces',
+        body: map?['body'] ?? '',
+        id: (map?['id'] as num?)?.toInt(),
+        ongoing: map?['ongoing'] == true,
+      );
+      return true;
+    case 'getNotificationPermission':
+      return await _notificationService.isAllowed();
+    case 'requestNotificationPermission':
+      return await _notificationService.requestPermission();
+    default:
+      return null;
+  }
+}
 
 const _keyboardViewportScript = '''
   (function() {
@@ -90,7 +92,13 @@ const _keyboardViewportScript = '''
 
 class WebViewInstance extends ConsumerStatefulWidget {
   final BrowserTab tab;
-  final void Function(String tabId, String title, String url, String? faviconUrl) onTitleChanged;
+  final void Function(
+    String tabId,
+    String title,
+    String url,
+    String? faviconUrl,
+  )
+  onTitleChanged;
 
   const WebViewInstance({
     super.key,
@@ -105,11 +113,19 @@ class WebViewInstance extends ConsumerStatefulWidget {
 class _WebViewInstanceState extends ConsumerState<WebViewInstance> {
   InAppWebViewController? _controller;
   String _lastUrl = '';
+  late final JsBridge _jsBridge;
 
   @override
   void initState() {
     super.initState();
     _lastUrl = widget.tab.url;
+    _jsBridge = JsBridge(
+      onEvent: (event, data) {
+        if (event != 'inspector.jump' || !mounted) return;
+        ref.read(browserProvider.notifier).setActiveTab(widget.tab.id);
+      },
+      onInvoke: _handleBridgeInvoke,
+    );
   }
 
   @override
@@ -125,9 +141,7 @@ class _WebViewInstanceState extends ConsumerState<WebViewInstance> {
     super.didUpdateWidget(oldWidget);
     if (widget.tab.url != _lastUrl && _controller != null) {
       _lastUrl = widget.tab.url;
-      _controller!.loadUrl(
-        urlRequest: URLRequest(url: WebUri(widget.tab.url)),
-      );
+      _controller!.loadUrl(urlRequest: URLRequest(url: WebUri(widget.tab.url)));
     }
   }
 
@@ -174,21 +188,27 @@ class _WebViewInstanceState extends ConsumerState<WebViewInstance> {
         await controller.evaluateJavascript(source: _keyboardViewportScript);
       },
       onConsoleMessage: (_, consoleMessage) {
-        ref.read(consoleLogProvider.notifier).addLog(
+        ref
+            .read(consoleLogProvider.notifier)
+            .addLog(
               consoleMessage.message,
               consoleMessage.messageLevel.toString().split('.').last,
             );
       },
       onReceivedError: (_, request, error) {
         if (request.isForMainFrame != true) return;
-        ref.read(consoleLogProvider.notifier).addLog(
+        ref
+            .read(consoleLogProvider.notifier)
+            .addLog(
               'WebView load error: ${error.description} (${error.type})',
               'error',
             );
       },
       onReceivedHttpError: (_, request, response) {
         if (request.isForMainFrame != true) return;
-        ref.read(consoleLogProvider.notifier).addLog(
+        ref
+            .read(consoleLogProvider.notifier)
+            .addLog(
               'WebView HTTP error: ${response.statusCode} ${response.reasonPhrase}',
               'error',
             );

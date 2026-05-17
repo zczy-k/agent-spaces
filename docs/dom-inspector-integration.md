@@ -15,6 +15,10 @@ Agent Spaces 前端 workspace-shell.tsx
   │  jumpToPosition(path, line, column)
   ▼
 Monaco Editor 打开文件并定位到行
+  │
+  │  Flutter WebView 环境：__flutterBridge.emit('inspector.jump', ...)
+  ▼
+Flutter BrowserTabBar 激活承载该网页的浏览器 tab
 ```
 
 ## 被调试项目配置
@@ -86,6 +90,18 @@ if (process.env.NODE_ENV === 'development') {
 - **事件监听**：`workspace-shell.tsx` 中监听 `inspector.jump` WS 事件
 - **处理逻辑**：去掉 path 前导 `/` 后调用 `useEditorStore.getState().jumpToPosition(workspaceId, path, line, column)`
 - **自动激活**：`jumpToPosition` 设置 `activeFilePath`，已有的 useEffect 自动切换 FlexLayout 到 code-editor tab
+- **Flutter Tab 激活**：如果当前网页运行在 Flutter WebView 内，`workspace-shell.tsx` 会通过 `window.__flutterBridge.emit('inspector.jump', { path, line, column })` 通知 Flutter；`WebViewInstance` 收到后调用 `browserProvider.setActiveTab(tab.id)`，从而让 `BrowserTabBar` 跳到承载该 Agent Spaces 网页的浏览器 tab。
+
+## Flutter 端跳转说明
+
+可以让网页端通知 Flutter 跳转 tab，但跳转目标不应该由网页直接操作 `BrowserTabBar`。推荐链路是：
+
+1. Web 前端完成 Monaco 定位后，通过已注入的 `__flutterBridge.emit('inspector.jump', payload)` 发事件。
+2. 每个 Flutter `WebViewInstance` 拥有自己的 `JsBridge` 事件处理器。
+3. 收到事件的 `WebViewInstance` 用自身的 `widget.tab.id` 调用 `browserProvider.setActiveTab(...)`。
+4. `BrowserTabBar` 监听 `browserProvider` 状态变化后自动切换高亮 tab。
+
+这样 Flutter UI 仍由 Riverpod 状态驱动，网页端只发意图事件，不直接依赖 Flutter widget 结构。
 
 ## POST 数据格式
 

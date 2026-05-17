@@ -27,6 +27,13 @@ import { sendAndroidOngoingTaskNotification, sendNativeNotification } from "@/li
 import { useNotificationStore } from "@/stores/notification";
 import type { Issue, Task, IssueStatusChangedPayload, TaskStatusChangedPayload, AppNotification } from "@agent-spaces/shared";
 
+type FlutterBridge = { emit?: (event: string, data: unknown) => void };
+
+function emitFlutterInspectorJump(data: { path: string; line: number; column?: number }) {
+  const bridge = (window as Window & { __flutterBridge?: FlutterBridge }).__flutterBridge;
+  bridge?.emit?.('inspector.jump', data);
+}
+
 const tabIcons: Record<string, React.ReactNode> = {
   "channel-list": <Hash size={16} />,
   "issue-list": <ListChecks size={16} />,
@@ -316,6 +323,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
       ws.on('inspector.jump', (data) => {
         const { path, line, column } = data as { path: string; line: number; column?: number };
         useEditorStore.getState().jumpToPosition(workspaceId, path, line, column);
+        emitFlutterInspectorJump({ path, line, column });
       }),
     ];
     return () => unsubs.forEach((u) => u());

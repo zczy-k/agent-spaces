@@ -79,6 +79,13 @@ router.put('/:issueId', (req: Request<{ id: string; issueId: string }>, res: Res
       stopChannelRuns(req.params.id, issue.channelId);
     }
     broadcastToWorkspace(req.params.id, 'issue.status_changed', { issueId: req.params.issueId, from: previousStatus, to: status });
+
+    // Issue 归档/取消归档时，同步关联的 Channel
+    if (issue.channelId && (status === 'archived' || previousStatus === 'archived')) {
+      const archived = status === 'archived';
+      const updatedChannel = channelService.updateChannel(req.params.id, issue.channelId, { archived });
+      if (updatedChannel) broadcastToWorkspace(req.params.id, 'channel.updated', updatedChannel);
+    }
   }
   res.json(saved);
 });

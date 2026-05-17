@@ -4,6 +4,7 @@ import { listMessages, createMessage, updateMessage, deleteMessage, clearMessage
 import { broadcastToWorkspace } from '../ws/connection-manager.js';
 import { hasActiveChannelRuns, markInactiveChannelRunsStopped, stopChannelRuns } from '../ws/agent-runner.js';
 import { getToolDetail } from '../services/tool-detail.js';
+import * as issueService from '../services/issue.js';
 
 const router = Router({ mergeParams: true });
 
@@ -35,6 +36,23 @@ router.put('/:channelId', (req: Request<ChannelParams>, res: Response) => {
   const channel = updateChannel(id, channelId!, patch);
   if (!channel) { res.status(404).json({ error: 'channel not found' }); return; }
   broadcastToWorkspace(id, 'channel.updated', channel);
+
+  // 频道归档/取消归档时，同步关联的 Issue
+  if (Object.hasOwn(patch, 'archived') && channel.issueId) {
+    const issue = issueService.getById(id, channel.issueId);
+    if (issue) {
+      const prevStatus = issue.status;
+      const newStatus = patch.archived ? 'archived' : 'draft';
+      if (prevStatus !== newStatus) {
+        const saved = issueService.updateStatus(id, channel.issueId, newStatus as any);
+        if (saved) {
+          broadcastToWorkspace(id, 'issue.updated', saved);
+          broadcastToWorkspace(id, 'issue.status_changed', { issueId: channel.issueId, from: prevStatus, to: newStatus });
+        }
+      }
+    }
+  }
+
   res.json(channel);
 });
 
