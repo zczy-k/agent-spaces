@@ -323,7 +323,7 @@ export const FileTreeFile = ({
   children,
   ...props
 }: FileTreeFileProps) => {
-  const { selectedPath, onFileSelect, workspaceId, onDelete, onRename, onMove, onCopyItem, fileSizeMap } = useContext(FileTreeContext)
+  const { selectedPath, onFileSelect, workspaceId, onDelete, onRename, onMove, onCopyItem, fileSizeMap, boundDir } = useContext(FileTreeContext)
   const parentFolder = useContext(FileTreeFolderContext)
   const isIgnored = ignored || parentFolder.ignored
   const isSelected = selectedPath === path
@@ -418,6 +418,13 @@ export const FileTreeFile = ({
           <ContextMenuItem onClick={() => onCopyItem?.(path)}>
             <Copy className="size-4" />
             {t('copyFile')}
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => {
+            const absPath = boundDir ? boundDir.replace(/\/+$/, '') + '/' + path : path;
+            navigator.clipboard.writeText(absPath);
+          }}>
+            <Copy className="size-4" />
+            {t('copyPath')}
           </ContextMenuItem>
           <ContextMenuItem onClick={handleReveal}>
             <ExternalLink className="size-4" />

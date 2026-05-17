@@ -22,6 +22,8 @@ final _jsBridge = JsBridge(
         await _notificationService.showNotification(
           title: map?['title'] ?? 'Agent Spaces',
           body: map?['body'] ?? '',
+          id: (map?['id'] as num?)?.toInt(),
+          ongoing: map?['ongoing'] == true,
         );
         return true;
       case 'getNotificationPermission':

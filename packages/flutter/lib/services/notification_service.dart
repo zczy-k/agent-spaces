@@ -35,6 +35,7 @@ class NotificationService {
     required String title,
     required String body,
     int? id,
+    bool ongoing = false,
     Map<String, String?>? payload,
   }) async {
     await AwesomeNotifications().createNotification(
@@ -43,6 +44,8 @@ class NotificationService {
         channelKey: _channelKey,
         title: title,
         body: body,
+        locked: ongoing,
+        autoDismissible: !ongoing,
         payload: payload,
       ),
     );

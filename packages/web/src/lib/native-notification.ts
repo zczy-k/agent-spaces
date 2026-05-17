@@ -60,7 +60,7 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
 /** Send a native notification. */
 export async function sendNativeNotification(title: string, body: string, options: NativeNotificationOptions = {}): Promise<void> {
   if (isFlutterEnvironment()) {
-    return sendFlutterNotification(title, body);
+    return sendFlutterNotification(title, body, options);
   }
   return sendWebNotification(title, body);
 }
@@ -151,11 +151,11 @@ async function requestFlutterPermission(): Promise<NotificationPermissionStatus>
   }
 }
 
-async function sendFlutterNotification(title: string, body: string): Promise<void> {
+async function sendFlutterNotification(title: string, body: string, options: NativeNotificationOptions): Promise<void> {
   try {
     const bridge = getBridge();
     if (!bridge) return;
-    await bridge.invoke('sendNotification', { title, body });
+    await bridge.invoke('sendNotification', { title, body, ...options });
   } catch {
     // Flutter bridge not available
   }
