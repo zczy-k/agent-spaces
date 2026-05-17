@@ -5,8 +5,34 @@ import { AlertDialog as AlertDialogPrimitive } from "@base-ui/react/alert-dialog
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { useMobilePanelStore } from "@/stores/mobile-panel"
 
-function AlertDialog({ ...props }: AlertDialogPrimitive.Root.Props) {
+type AlertDialogRootProps = AlertDialogPrimitive.Root.Props & {
+  ignoreBack?: boolean;
+};
+
+function AlertDialog({ ignoreBack = false, ...props }: AlertDialogRootProps) {
+  const overlayId = React.useId();
+  const registerOverlay = useMobilePanelStore((state) => state.registerOverlay);
+  const unregisterOverlay = useMobilePanelStore((state) => state.unregisterOverlay);
+  const open = "open" in props ? props.open : "defaultOpen" in props ? props.defaultOpen : undefined;
+  const onOpenChange = props.onOpenChange;
+  const onOpenChangeRef = React.useRef(onOpenChange);
+
+  React.useEffect(() => {
+    onOpenChangeRef.current = onOpenChange;
+  }, [onOpenChange]);
+
+  React.useEffect(() => {
+    if (!open || ignoreBack || !onOpenChangeRef.current) {
+      unregisterOverlay(overlayId);
+      return;
+    }
+
+    registerOverlay(overlayId, () => onOpenChangeRef.current?.(false));
+    return () => unregisterOverlay(overlayId);
+  }, [ignoreBack, open, overlayId, registerOverlay, unregisterOverlay]);
+
   return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />
 }
 

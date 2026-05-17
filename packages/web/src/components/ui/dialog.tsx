@@ -6,8 +6,34 @@ import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { XIcon } from "lucide-react"
+import { useMobilePanelStore } from "@/stores/mobile-panel"
 
-function Dialog({ ...props }: DialogPrimitive.Root.Props) {
+type DialogRootProps = DialogPrimitive.Root.Props & {
+  ignoreBack?: boolean;
+};
+
+function Dialog({ ignoreBack = false, ...props }: DialogRootProps) {
+  const overlayId = React.useId();
+  const registerOverlay = useMobilePanelStore((state) => state.registerOverlay);
+  const unregisterOverlay = useMobilePanelStore((state) => state.unregisterOverlay);
+  const open = "open" in props ? props.open : "defaultOpen" in props ? props.defaultOpen : undefined;
+  const onOpenChange = props.onOpenChange;
+  const onOpenChangeRef = React.useRef(onOpenChange);
+
+  React.useEffect(() => {
+    onOpenChangeRef.current = onOpenChange;
+  }, [onOpenChange]);
+
+  React.useEffect(() => {
+    if (!open || ignoreBack || !onOpenChangeRef.current) {
+      unregisterOverlay(overlayId);
+      return;
+    }
+
+    registerOverlay(overlayId, () => onOpenChangeRef.current?.(false));
+    return () => unregisterOverlay(overlayId);
+  }, [ignoreBack, open, overlayId, registerOverlay, unregisterOverlay]);
+
   return <DialogPrimitive.Root data-slot="dialog" {...props} />
 }
 

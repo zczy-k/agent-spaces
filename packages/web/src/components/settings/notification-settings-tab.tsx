@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Bell, Bot, CheckCircle2, Loader2, Monitor, QrCode, RefreshCw, Send } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Bell, Bot, CheckCircle2, CircleHelp, Loader2, Monitor, QrCode, RefreshCw, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import type { AgentConfig, NotificationEventKey, NotificationProvider, Workspace, WorkspaceNotificationSettings } from '@agent-spaces/shared';
 import {
@@ -59,6 +60,45 @@ function buildQRCodeImageUrl(content: string): string {
 
 export { defaultNotificationSettings };
 
+const LARK_PERMISSION_JSON = `{
+  "scopes": {
+    "tenant": [
+      "contact:contact.base:readonly",
+      "im:chat:readonly",
+      "im:chat.members:read",
+      "im:message",
+      "im:message.group_at_msg:readonly",
+      "im:message.group_msg",
+      "im:message.p2p_msg:readonly",
+      "im:message:send_as_bot",
+      "im:resource"
+    ],
+    "user": []
+  }
+}`;
+
+function CopyPermissionJson() {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(LARK_PERMISSION_JSON).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+  return (
+    <div className="space-y-2">
+      <Button type="button" size="sm" variant="outline" onClick={handleCopy}>
+        {copied ? <CheckCircle2 className="mr-1.5 h-3.5 w-3.5 text-emerald-600" /> : null}
+        {copied ? '已复制' : '复制批量权限配置'}
+      </Button>
+      <details className="group">
+        <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">展开查看权限详情</summary>
+        <pre className="mt-1.5 overflow-x-auto rounded-md bg-muted p-2 text-xs">{LARK_PERMISSION_JSON}</pre>
+      </details>
+    </div>
+  );
+}
+
 export function NotificationSettingsTab({
   workspaceId,
   workspace,
@@ -79,6 +119,7 @@ export function NotificationSettingsTab({
   const pollingWeChatQR = useRef(false);
   const [nativePermission, setNativePermission] = useState<NotificationPermissionStatus>('default');
   const [isAndroidNative, setIsAndroidNative] = useState(false);
+  const [larkGuideOpen, setLarkGuideOpen] = useState(false);
 
   const notificationSettings = notificationDraft;
   const wechatLoggedIn = Boolean(notificationSettings.wechat?.token && notificationSettings.wechat?.accountId);
@@ -332,7 +373,13 @@ export function NotificationSettingsTab({
               onValueChange={(provider) => patchNotifications({ provider: provider as NotificationProvider })}
               className="flex flex-col">
               <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="lark">{t('notifications.lark')}</TabsTrigger>
+                <TabsTrigger value="lark" className="gap-1">
+                  {t('notifications.lark')}
+                  <CircleHelp
+                    className="h-3.5 w-3.5 shrink-0 text-muted-foreground hover:text-foreground"
+                    onClick={(e) => { e.stopPropagation(); setLarkGuideOpen(true); }}
+                  />
+                </TabsTrigger>
                 <TabsTrigger value="wechat">{t('notifications.wechat')}</TabsTrigger>
                 <TabsTrigger value="native">{t('notifications.native')}</TabsTrigger>
               </TabsList>
@@ -591,6 +638,67 @@ export function NotificationSettingsTab({
           </div>
         )}
       </div>
+
+      <Dialog open={larkGuideOpen} onOpenChange={setLarkGuideOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>创建飞书 Bot</DialogTitle>
+            <DialogDescription>
+              首次使用？按以下步骤在飞书开放平台创建机器人应用
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 text-sm">
+            <div className="space-y-1.5">
+              <p className="font-medium">1. 创建自建应用</p>
+              <p className="text-muted-foreground">
+                前往{' '}
+                <a href="https://open.feishu.cn/app" target="_blank" rel="noreferrer" className="underline underline-offset-3 hover:text-foreground">飞书开放平台</a>
+                {' '}(海外版：{' '}
+                <a href="https://open.larksuite.com/app" target="_blank" rel="noreferrer" className="underline underline-offset-3 hover:text-foreground">Lark 开放平台</a>
+                )，点击「创建自建应用」并填写名称描述。
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <p className="font-medium">2. 获取凭证</p>
+              <p className="text-muted-foreground">
+                进入详情页，在「凭证与基础信息」中找到 App ID 和 App Secret，复制到上方的配置表单。
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <p className="font-medium">3. 启用机器人能力</p>
+              <p className="text-muted-foreground">
+                进入「添加应用能力」页面，启用「机器人」能力。这样应用才能接收和发送飞书消息。
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <p className="font-medium">4. 配置权限</p>
+              <p className="text-muted-foreground">
+                进入「权限管理」页面，点击下方按钮复制权限配置 JSON，然后在飞书开放平台通过「批量开通」粘贴即可一键添加所有权限：
+              </p>
+              <CopyPermissionJson />
+            </div>
+            <div className="space-y-1.5">
+              <p className="font-medium">5. 配置事件订阅（关键步骤）</p>
+              <p className="text-muted-foreground">
+                进入「事件与回调」页面：
+              </p>
+              <ul className="list-disc space-y-1 pl-4 text-muted-foreground">
+                <li>事件订阅方式选择「使用长连接接收事件」（而非 Webhook，无需公网 IP）</li>
+                <li>添加事件 <code className="rounded bg-muted px-1 py-0.5 text-xs">im.message.receive_v1</code>（接收消息）</li>
+              </ul>
+            </div>
+            <div className="space-y-1.5">
+              <p className="font-medium">6. 发布应用</p>
+              <p className="text-muted-foreground">
+                进入「版本管理与发布」→ 创建版本 → 提交审核。需要企业管理员在管理后台审核通过后，机器人才能正常使用。
+              </p>
+              <p className="text-muted-foreground">
+                版本审核通过并发布后，在飞书中搜索机器人名称添加到聊天，即可通过飞书向 Proma Agent 发送指令。
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

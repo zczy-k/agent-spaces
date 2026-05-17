@@ -22,6 +22,7 @@ import { useGitStore } from "@/stores/git";
 import { useMobilePanelStore } from "@/stores/mobile-panel";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useWorkspaceStore } from "@/stores/workspace";
+import { useTerminalStore } from "@/stores/terminal";
 import { sendAndroidOngoingTaskNotification, sendNativeNotification } from "@/lib/native-notification";
 import { useNotificationStore } from "@/stores/notification";
 import type { Issue, Task, IssueStatusChangedPayload, TaskStatusChangedPayload, AppNotification } from "@agent-spaces/shared";
@@ -104,7 +105,9 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   const activeChannelId = useChannelStore((s) => s.activeChannelId);
   const channelSelectSeq = useChannelStore((s) => s.channelSelectSeq);
   const gitStatus = useGitStore((s) => s.status);
-  const { activePanel, setActivePanel } = useMobilePanelStore();
+  const terminalSessions = useTerminalStore((s) => s.sessions);
+  const channelMessages = useChannelStore((s) => s.messages);
+  const { activePanel, setActivePanel, handleBackAction } = useMobilePanelStore();
   const loadEditorState = useEditorStore((s) => s.loadEditorState);
   const revealPath = useEditorStore((s) => s.revealPath);
   const clearRevealPath = useEditorStore((s) => s.clearRevealPath);
@@ -128,6 +131,47 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   useEffect(() => {
     loadEditorState(workspaceId);
   }, [workspaceId, loadEditorState]);
+
+  useEffect(() => {
+    if (!isMobile) return;
+
+    const handlePopState = (event: PopStateEvent) => {
+      const handled = handleBackAction();
+      if (!handled) return;
+      event.preventDefault();
+      window.history.pushState({ workspaceId, mobileBackGuard: true }, "");
+    };
+
+    window.history.replaceState({ workspaceId, mobileBackGuard: true }, "");
+    window.history.pushState({ workspaceId, mobileBackGuard: true }, "");
+    window.addEventListener("popstate", handlePopState);
+
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [handleBackAction, isMobile, workspaceId]);
+
+  useEffect(() => {
+    if (!isMobile) return;
+
+    let unlisten: (() => void) | undefined;
+
+    void (async () => {
+      try {
+        const { onBackButtonPress } = await import("@tauri-apps/api/app");
+        unlisten = await onBackButtonPress((event) => {
+          const handled = handleBackAction();
+          if (!handled && event.canGoBack) {
+            window.history.back();
+          }
+        });
+      } catch {
+        // plain web has no native back event
+      }
+    })();
+
+    return () => {
+      unlisten?.();
+    };
+  }, [handleBackAction, isMobile]);
 
   // 点击 issue 时自动切换到 Issue Detail tab
   useEffect(() => {
@@ -349,6 +393,30 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
       }
     }
 
+    // Terminal: show session count
+    if (comp === 'terminal' && terminalSessions.length > 0) {
+      iconBadge = (
+        <span className="absolute -top-1 -right-1.5 min-w-[14px] h-[14px] rounded-full bg-green-500 text-white text-[9px] font-medium leading-none flex items-center justify-center px-0.5">
+          {terminalSessions.length}
+        </span>
+      );
+    }
+
+    // Channel-list / Issue-detail: show running indicator
+    if (comp === 'channel-list' || comp === 'issue-detail') {
+      const hasRunning = Object.values(channelMessages).some((msgs) =>
+        msgs.some((m) => m.status === 'streaming' || m.status === 'pending')
+      );
+      if (hasRunning) {
+        iconBadge = (
+          <span className="absolute -top-1 -right-1 flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+          </span>
+        );
+      }
+    }
+
     renderValues.content = (
       <span title={node.getName()} className="flex items-center justify-center">
         <span className="relative">
@@ -358,7 +426,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
         {trailing}
       </span>
     );
-  }, [gitStatus]);
+  }, [gitStatus, terminalSessions, channelMessages]);
 
   const onModelChange = useCallback(
     (_model: Model, action: Action) => {

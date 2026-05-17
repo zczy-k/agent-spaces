@@ -6,8 +6,34 @@ import { Dialog as SheetPrimitive } from "@base-ui/react/dialog"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { XIcon } from "lucide-react"
+import { useMobilePanelStore } from "@/stores/mobile-panel"
 
-function Sheet({ ...props }: SheetPrimitive.Root.Props) {
+type SheetRootProps = SheetPrimitive.Root.Props & {
+  ignoreBack?: boolean;
+};
+
+function Sheet({ ignoreBack = false, ...props }: SheetRootProps) {
+  const overlayId = React.useId();
+  const registerOverlay = useMobilePanelStore((state) => state.registerOverlay);
+  const unregisterOverlay = useMobilePanelStore((state) => state.unregisterOverlay);
+  const open = "open" in props ? props.open : "defaultOpen" in props ? props.defaultOpen : undefined;
+  const onOpenChange = props.onOpenChange;
+  const onOpenChangeRef = React.useRef(onOpenChange);
+
+  React.useEffect(() => {
+    onOpenChangeRef.current = onOpenChange;
+  }, [onOpenChange]);
+
+  React.useEffect(() => {
+    if (!open || ignoreBack || !onOpenChangeRef.current) {
+      unregisterOverlay(overlayId);
+      return;
+    }
+
+    registerOverlay(overlayId, () => onOpenChangeRef.current?.(false));
+    return () => unregisterOverlay(overlayId);
+  }, [ignoreBack, open, overlayId, registerOverlay, unregisterOverlay]);
+
   return <SheetPrimitive.Root data-slot="sheet" {...props} />
 }
 
