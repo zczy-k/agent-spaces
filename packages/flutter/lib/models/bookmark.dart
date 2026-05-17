@@ -16,34 +16,32 @@ class Bookmark {
   }) : createdAt = createdAt ?? DateTime.now();
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'url': url,
-        'deviceType': deviceType.index,
-        'createdAt': createdAt.toIso8601String(),
-      };
+    'id': id,
+    'name': name,
+    'url': url,
+    'deviceType': deviceType.index,
+    'createdAt': createdAt.toIso8601String(),
+  };
 
   factory Bookmark.fromJson(Map<String, dynamic> json) => Bookmark(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        url: json['url'] as String,
-        deviceType: DeviceType.values[json['deviceType'] as int],
-        createdAt: DateTime.parse(json['createdAt'] as String),
-      );
+    id: json['id'] as String,
+    name: json['name'] as String,
+    url: json['url'] as String,
+    deviceType: DeviceType.values[json['deviceType'] as int],
+    createdAt: DateTime.parse(json['createdAt'] as String),
+  );
 }
 
 class AppSettings {
   final bool restoreTabsOnStartup;
 
-  const AppSettings({
-    this.restoreTabsOnStartup = false,
-  });
+  const AppSettings({this.restoreTabsOnStartup = true});
 
   Map<String, dynamic> toJson() => {
-        'restoreTabsOnStartup': restoreTabsOnStartup,
-      };
+    'restoreTabsOnStartup': restoreTabsOnStartup,
+  };
 
   factory AppSettings.fromJson(Map<String, dynamic> json) => AppSettings(
-        restoreTabsOnStartup: json['restoreTabsOnStartup'] as bool? ?? false,
-      );
+    restoreTabsOnStartup: json['restoreTabsOnStartup'] as bool? ?? false,
+  );
 }

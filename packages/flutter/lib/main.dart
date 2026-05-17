@@ -15,8 +15,14 @@ void main() {
 final _router = GoRouter(
   routes: [
     GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
-    GoRoute(path: '/bookmarks', builder: (context, state) => const BookmarksScreen()),
-    GoRoute(path: '/settings', builder: (context, state) => const SettingsScreen()),
+    GoRoute(
+      path: '/bookmarks',
+      builder: (context, state) => const BookmarksScreen(),
+    ),
+    GoRoute(
+      path: '/settings',
+      builder: (context, state) => const SettingsScreen(),
+    ),
   ],
 );
 
