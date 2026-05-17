@@ -20,6 +20,7 @@ export function getCommitHashFromPath(path: string): string {
 }
 
 interface JumpPosition {
+  path: string;
   line: number;
   column?: number;
 }
@@ -220,7 +221,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   jumpToPosition: async (workspaceId, path, line, column) => {
     await get().openFile(workspaceId, path);
-    set({ pendingJump: { line, column } });
+    set({ pendingJump: { path, line, column } });
   },
 
   clearPendingJump: () => set({ pendingJump: null }),

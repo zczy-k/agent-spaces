@@ -166,6 +166,8 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [wordWrap, setWordWrap] = useState(() => localStorage.getItem('editor-word-wrap') === 'true');
   const [minimap, setMinimap] = useState(() => localStorage.getItem('editor-minimap') === 'true');
+  const [editorReadyTick, setEditorReadyTick] = useState(0);
+  const [jumpRetryTick, setJumpRetryTick] = useState(0);
 
   const activeFile = openFiles.find((f) => f.path === activeFilePath);
   const isCommitDiff = activeFilePath ? isCommitDiffPath(activeFilePath) : false;
@@ -201,6 +203,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     editorRef.current = editor;
     setupLanguageDefaults();
     syncReadOnly(editor, isReadOnly);
+    setEditorReadyTick((tick) => tick + 1);
 
     editor.addCommand(
       2048 | 49, // KeyMod.CtrlCmd | KeyCode.KeyS
@@ -242,25 +245,6 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     const container = editorContainerRef.current;
     if (!container || !isReadOnly) return;
 
-    const preventReadOnlyFocus = (event: Event) => {
-      const editor = editorRef.current;
-      const target = event.target as Node | null;
-      if (!editor || !target) return;
-      if (!editor.getDomNode()?.contains(target)) return;
-
-      // Only block touch events that would focus the textarea — allow mouse pointer for scrolling
-      if (event.type === 'pointerdown' && 'pointerType' in event && (event as PointerEvent).pointerType === 'mouse') {
-        return;
-      }
-
-      event.preventDefault();
-      event.stopPropagation();
-      if ('stopImmediatePropagation' in event) {
-        event.stopImmediatePropagation();
-      }
-      editor.getDomNode()?.querySelector('textarea')?.blur();
-    };
-
     const blurReadOnlyInput = (event: FocusEvent) => {
       const editor = editorRef.current;
       const target = event.target as HTMLElement | null;
@@ -271,13 +255,9 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
       }
     };
 
-    container.addEventListener('touchstart', preventReadOnlyFocus, { capture: true });
-    container.addEventListener('pointerdown', preventReadOnlyFocus, { capture: true });
     container.addEventListener('focusin', blurReadOnlyInput, { capture: true });
 
     return () => {
-      container.removeEventListener('touchstart', preventReadOnlyFocus, { capture: true });
-      container.removeEventListener('pointerdown', preventReadOnlyFocus, { capture: true });
       container.removeEventListener('focusin', blurReadOnlyInput, { capture: true });
     };
   }, [isReadOnly]);
@@ -293,18 +273,30 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
 
   // Handle pending jump from search results
   useEffect(() => {
-    if (!pendingJump || !editorRef.current) return;
+    if (!pendingJump || !activeFilePath || pendingJump.path !== activeFilePath || !editorRef.current) return;
 
-    const { line, column } = pendingJump;
+    const { line, column, path } = pendingJump;
     const editor = editorRef.current;
+    const model = editor.getModel();
+    const expectedModelPath = `/${workspaceId}/${path}`;
+    if (!model || model.uri.path !== expectedModelPath) {
+      const retryTimer = window.setTimeout(() => {
+        setJumpRetryTick((tick) => tick + 1);
+      }, 30);
+      return () => window.clearTimeout(retryTimer);
+    }
 
-    editor.revealLineInCenter(line);
-    editor.setPosition({ lineNumber: line, column: column || 1 });
+    const lineNumber = Math.min(Math.max(1, line), model.getLineCount());
+    const maxColumn = model.getLineMaxColumn(lineNumber);
+    const columnNumber = Math.min(Math.max(1, column || 1), maxColumn);
+
+    editor.setPosition({ lineNumber, column: columnNumber });
+    editor.revealLineInCenter(lineNumber);
     if (!isReadOnly) {
       editor.focus();
     }
     clearPendingJump();
-  }, [pendingJump, clearPendingJump, isReadOnly]);
+  }, [pendingJump, activeFilePath, workspaceId, editorReadyTick, jumpRetryTick, clearPendingJump, isReadOnly]);
 
   const modelPath = activeFilePath
     ? `/${workspaceId}/${activeFilePath}`
