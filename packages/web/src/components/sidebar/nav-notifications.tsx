@@ -102,7 +102,7 @@ export function NotificationsPopover({ workspaceId }: { workspaceId: string }) {
               <div className="border-t" />
               <button
                 className="w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-primary hover:bg-accent/30 transition-colors"
-                onClick={() => { setOpen(false); setDialogOpen(true); }}
+                onClick={() => { setSelectedNotification(null); setOpen(false); setDialogOpen(true); }}
               >
                 {t('viewAll')}
               </button>

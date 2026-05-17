@@ -405,7 +405,6 @@ function TabItem({
 // ---------- Iframe Overlay ----------
 export function IframeOverlay() {
   const { tabs, activeId, setActive } = useIframeTabs();
-  const activeTab = tabs.find((t) => t.id === activeId) ?? null;
   const [minimizedId, setMinimizedId] = useState<string | null>(null);
 
   // When active tab changes, clear minimized state
@@ -415,56 +414,69 @@ export function IframeOverlay() {
     }
   }, [activeId]);
 
-  if (!activeTab) return null;
+  if (tabs.length === 0 || activeId === null) return null;
 
-  const size = activeTab.size || "full";
-
-  // Minimized: show floating ball, click to restore
-  if (minimizedId === activeTab.id) {
-    return (
-      <FloatingBall
-        lsKey={`iframe-panel-ball:${activeTab.id}`}
-        size={40}
-        onClick={() => setMinimizedId(null)}
-        className="bg-gradient-to-br from-violet-500 to-violet-400 text-white shadow-lg hover:shadow-xl transition-shadow"
-      >
-        <Globe size={18} />
-      </FloatingBall>
-    );
-  }
-
-  // Full screen mode
-  if (size === "full") {
-    return (
-      <div className="fixed inset-0 z-[99990] bg-white dark:bg-zinc-900">
-        <iframe
-          src={activeTab.url}
-          className="w-full h-full border-none"
-          title={activeTab.title}
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
-        />
-      </div>
-    );
-  }
-
-  // Floating panel mode
-  const defaults = SIZE_DEFAULTS[size] || SIZE_DEFAULTS["4:3"]!;
+  const activeTab = tabs.find((t) => t.id === activeId);
+  const isMinimized = minimizedId === activeId;
 
   return (
-    <FloatingPanel
-      id={`iframe-overlay:${activeTab.id}`}
-      title={activeTab.title}
-      defaultWidth={defaults.w}
-      defaultHeight={defaults.h}
-      onClose={() => setActive(null)}
-      onMinimize={() => setMinimizedId(activeTab.id)}
-    >
-      <iframe
-        src={activeTab.url}
-        className="w-full h-full border-none"
-        title={activeTab.title}
-        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
-      />
-    </FloatingPanel>
+    <>
+      {/* Minimized floating ball for active tab */}
+      {isMinimized && (
+        <FloatingBall
+          lsKey={`iframe-panel-ball:${activeId}`}
+          size={40}
+          onClick={() => setMinimizedId(null)}
+          className="bg-gradient-to-br from-violet-500 to-violet-400 text-white shadow-lg hover:shadow-xl transition-shadow"
+        >
+          <Globe size={18} />
+        </FloatingBall>
+      )}
+
+      {/* Render ALL tab iframes, hide inactive ones to avoid reload */}
+      {tabs.map((tab) => {
+        const isActive = tab.id === activeId;
+        const visible = isActive && !isMinimized;
+        const size = tab.size || "full";
+
+        if (size === "full") {
+          return (
+            <div
+              key={tab.id}
+              className="fixed inset-0 z-[99990] bg-white dark:bg-zinc-900"
+              style={{ display: visible ? undefined : "none" }}
+            >
+              <iframe
+                src={tab.url}
+                className="w-full h-full border-none"
+                title={tab.title}
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+              />
+            </div>
+          );
+        }
+
+        const defaults = SIZE_DEFAULTS[size] || SIZE_DEFAULTS["4:3"]!;
+        return (
+          <div key={tab.id} style={{ display: visible ? undefined : "none" }}>
+            <FloatingPanel
+              id={`iframe-overlay:${tab.id}`}
+              title={tab.title}
+              defaultWidth={defaults.w}
+              defaultHeight={defaults.h}
+              onClose={() => setActive(null)}
+              onMinimize={() => setMinimizedId(tab.id)}
+            >
+              <iframe
+                src={tab.url}
+                className="w-full h-full border-none"
+                title={tab.title}
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+              />
+            </FloatingPanel>
+          </div>
+        );
+      })}
+    </>
   );
 }
