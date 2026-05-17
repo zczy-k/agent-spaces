@@ -644,6 +644,7 @@
     "explorer": "资源管理器",
     "noFiles": "未找到文件",
     "revealInFinder": "在 Finder 中显示",
+    "loading": "加载中...",
     "loadingEditor": "编辑器加载中...",
     "openFileToEdit": "打开文件开始编辑",
     "search": "搜索",

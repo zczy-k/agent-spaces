@@ -642,6 +642,7 @@
     "explorer": "EXPLORER",
     "noFiles": "No files found",
     "revealInFinder": "Reveal in Finder",
+    "loading": "Loading...",
     "loadingEditor": "Loading editor...",
     "openFileToEdit": "Open a file to start editing",
     "search": "Search",

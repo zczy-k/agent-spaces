@@ -173,7 +173,8 @@ export const FileTreeFolder = ({
   const isExpanded = expandedPaths.has(path)
   const isIgnored = ignored || parentFolder.ignored
   const isSelected = selectedPath === path
-  const isLoading = loadedDirs?.has(path)
+  const isLoaded = loadedDirs?.has(path)
+  const isLoading = isExpanded && !isLoaded && !!onLoadDirectory
   const t = useTranslations('editor')
   const tc = useTranslations('common')
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
@@ -218,7 +219,7 @@ export const FileTreeFolder = ({
                     )}
                   </FileTreeIcon>
                   <FileTreeName>{name}</FileTreeName>
-                  {isLoading && <span className="size-3 border border-muted-foreground border-t-transparent rounded-full animate-spin" />}
+                  {isLoading && <span className="size-3 border border-muted-foreground border-t-transparent rounded-full animate-spin shrink-0" />}
                 </CollapsibleTrigger>
                 <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1 invisible group-hover/folder:visible" onClick={e => e.stopPropagation()}>
                   <button onClick={handleReveal} className="p-0.5 rounded hover:bg-accent" title={t('revealInFinder')}>
@@ -231,7 +232,14 @@ export const FileTreeFolder = ({
               </div>
             </ContextMenuTrigger>
             <CollapsibleContent>
-              <div className="ml-4 border-l pl-2">{children}</div>
+              <div className="ml-4 border-l pl-2">
+                {isLoading ? (
+                  <div className="flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground">
+                    <span className="size-3 border border-muted-foreground border-t-transparent rounded-full animate-spin shrink-0" />
+                    <span>{t('loading')}</span>
+                  </div>
+                ) : children}
+              </div>
             </CollapsibleContent>
           </div>
         </Collapsible>

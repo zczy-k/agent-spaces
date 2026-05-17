@@ -64,6 +64,7 @@ import {
 import { AgentIcon } from "@/components/common/agent-icon";
 import { AddMemberDialog } from "./add-member-dialog";
 import { getAgentDisplayName, normalizeChannelMembersToAgentIds } from "@/lib/agent-members";
+import { useAgentStore } from "@/stores/agent";
 
 type MentionedAgent = Pick<AgentConfig, "id" | "name" | "role" | "description" | "enabled" | "mcps" | "skills" | "tools" | "avatarUrl">;
 type DisplayTodoItem = TodoItem & { title?: string; content?: string };
@@ -113,6 +114,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
 
   const { saveDraft, clearDraft, updateChannel } = useChannelStore();
   const [addMemberOpen, setAddMemberOpen] = useState(false);
+  const allAgents = useAgentStore((s) => s.agents);
   const pinnedMentionId = channel.pinnedMentionId;
   const isPinned = pinnedMentionId === mentionedAgentIds[0] && !!pinnedMentionId;
 
@@ -800,14 +802,14 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       <AddMemberDialog
         open={addMemberOpen}
         onOpenChange={setAddMemberOpen}
-        candidates={agents.filter(a => a.enabled !== false).map(a => ({
+        candidates={allAgents.filter(a => a.enabled !== false).map(a => ({
           id: a.id,
           label: getAgentDisplayName(a),
           description: a.role,
         }))}
         defaultSelected={channel.members}
         onAdd={(newMembers) => {
-          const enabled = agents.filter(a => a.enabled !== false);
+          const enabled = allAgents.filter(a => a.enabled !== false);
           updateChannel(workspaceId, channelId, {
             members: normalizeChannelMembersToAgentIds(enabled, newMembers),
           });
