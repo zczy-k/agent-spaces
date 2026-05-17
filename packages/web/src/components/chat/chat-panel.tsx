@@ -144,7 +144,8 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
   }, [workspaceId, activeChannelId, addMessage, updateMessage, deleteMessage, upsertChannel]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = bottomRef.current?.parentElement;
+    if (container) container.scrollTop = 0;
   }, [msgs.length]);
 
   // Poll for message updates when agent is active
@@ -291,7 +292,7 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
                 ))}
               </div>
             ) : null}
-            {!messagesLoading && msgs.map((msg) => (
+            {!messagesLoading && [...msgs].reverse().map((msg) => (
               <div key={msg.id} id={`msg-${msg.id}`}>
                 <MessageItem message={msg} workspaceId={workspaceId} onEdit={handleEditMessage} onDelete={handleDeleteMessage} onReply={handleReplyMessage} />
               </div>

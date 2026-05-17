@@ -303,7 +303,12 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
         }
       }),
       ws.on('notification.created', (data) => {
-        notificationStore.addNotification(data as AppNotification);
+        const notification = data as AppNotification;
+        notificationStore.addNotification(notification);
+        const ns = getNativeNotificationConfig();
+        if (ns) {
+          sendNativeNotification(notification.title, notification.description || '');
+        }
       }),
       ws.on('notification.cleared', () => {
         notificationStore.reset();
