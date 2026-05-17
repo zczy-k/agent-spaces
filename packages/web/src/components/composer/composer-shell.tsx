@@ -3,9 +3,12 @@
 import type { ReactNode } from 'react';
 import { EditorContent, type Editor } from '@tiptap/react';
 import { Button } from '@/components/ui/button';
-import { Send, Square, X } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useInspectorHistoryStore } from '@/stores/inspector-history';
+import { Code2, Send, Square, X } from 'lucide-react';
 
 interface ComposerShellProps {
+  workspaceId: string;
   editor: Editor | null;
   canSubmit: boolean;
   onSubmit: () => void;
@@ -20,6 +23,7 @@ interface ComposerShellProps {
 }
 
 export function ComposerShell({
+  workspaceId,
   editor,
   canSubmit,
   onSubmit,
@@ -32,6 +36,13 @@ export function ComposerShell({
   replyLabel,
   onCancelReply,
 }: ComposerShellProps) {
+  const history = useInspectorHistoryStore((s) => s.histories[workspaceId] ?? []);
+  const loadHistory = useInspectorHistoryStore((s) => s.loadHistory);
+
+  const insertCodeLocation = (path: string, line: number, column: number) => {
+    editor?.chain().focus().insertContent(`${path}:${line}:${column}`).run();
+  };
+
   return (
     <div className={className}>
       <div
@@ -56,7 +67,49 @@ export function ComposerShell({
           <EditorContent editor={editor} />
         </div>
         <div className="flex items-center justify-between px-2 pb-2">
-          <div className="flex items-center gap-1">{actions}</div>
+          <div className="flex items-center gap-1">
+            {actions}
+            <Popover onOpenChange={(open) => { if (open) loadHistory(workspaceId); }}>
+              <PopoverTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 rounded-full border border-border hover:bg-accent text-muted-foreground"
+                    title="最近定位代码"
+                  />
+                }
+              >
+                <Code2 className="size-3" />
+              </PopoverTrigger>
+              <PopoverContent align="start" sideOffset={6} className="w-80 p-1.5 gap-0">
+                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">最近定位代码</div>
+                {history.length === 0 ? (
+                  <div className="px-2 py-6 text-center text-xs text-muted-foreground">暂无记录</div>
+                ) : (
+                  <div className="max-h-72 overflow-y-auto">
+                    {history.map((item) => {
+                      const label = item.name || item.path.split('/').pop() || item.path;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => insertCodeLocation(item.path, item.line, item.column)}
+                          className="flex w-full flex-col items-start gap-0.5 rounded-md px-2 py-1.5 text-left hover:bg-accent"
+                        >
+                          <span className="w-full truncate text-xs font-medium">{label}</span>
+                          <span className="w-full truncate font-mono text-[11px] text-muted-foreground">
+                            {item.path}:{item.line}:{item.column}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
+          </div>
           {isProcessing ? (
             <Button
               type="button"

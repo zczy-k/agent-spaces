@@ -54,12 +54,18 @@ app.use('/api/agent-sse', agentSseRouter);
 
 // Inspector track endpoint (no auth - called by dom-inspector-hook from external apps)
 app.post('/api/inspector/track', (req, res) => {
-  const { path, line, column } = req.body as { path?: string; line?: number; column?: number };
+  const { path, name, line, column, timestamp } = req.body as {
+    path?: string;
+    name?: string;
+    line?: number;
+    column?: number;
+    timestamp?: number;
+  };
   if (!path || line == null) {
     res.status(400).json({ error: 'path and line are required' });
     return;
   }
-  broadcastToAll('inspector.jump', { path, line, column: column ?? 1 });
+  broadcastToAll('inspector.jump', { path, name, line, column: column ?? 1, timestamp });
   res.json({ ok: true });
 });
 

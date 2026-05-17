@@ -25,6 +25,7 @@ import { useWorkspaceStore } from "@/stores/workspace";
 import { useTerminalStore } from "@/stores/terminal";
 import { sendAndroidOngoingTaskNotification, sendNativeNotification } from "@/lib/native-notification";
 import { useNotificationStore } from "@/stores/notification";
+import { useInspectorHistoryStore } from "@/stores/inspector-history";
 import type { Issue, Task, IssueStatusChangedPayload, TaskStatusChangedPayload, AppNotification } from "@agent-spaces/shared";
 
 type FlutterBridge = { emit?: (event: string, data: unknown) => void };
@@ -321,9 +322,23 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
         notificationStore.reset();
       }),
       ws.on('inspector.jump', (data) => {
-        const { path, line, column } = data as { path: string; line: number; column?: number };
+        const { path, name, line, column, timestamp } = data as {
+          path: string;
+          name?: string;
+          line: number;
+          column?: number;
+          timestamp?: number;
+        };
+        const normalizedColumn = column ?? 1;
+        useInspectorHistoryStore.getState().addEntry(workspaceId, {
+          path,
+          name,
+          line,
+          column: normalizedColumn,
+          timestamp: timestamp ?? Date.now(),
+        });
         useEditorStore.getState().jumpToPosition(workspaceId, path, line, column);
-        emitFlutterInspectorJump({ path, line, column });
+        emitFlutterInspectorJump({ path, line, column: normalizedColumn });
       }),
     ];
     return () => unsubs.forEach((u) => u());

@@ -532,6 +532,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           />
 
           <ComposerShell
+            workspaceId={workspaceId}
             editor={editor}
             canSubmit={canSubmit}
             onSubmit={handleSubmit}

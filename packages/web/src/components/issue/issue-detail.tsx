@@ -346,6 +346,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                 <X className="size-3.5" />
               </button>
               <ComposerShell
+                workspaceId={workspaceId}
                 editor={editor}
                 canSubmit={canSubmit}
                 onSubmit={handleSendComment}
