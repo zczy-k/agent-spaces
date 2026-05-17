@@ -299,7 +299,7 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
             ))}
             <div ref={bottomRef} />
           </div>
-          <MessageNavigator messages={msgs} />
+          <MessageNavigator messages={msgs} reverse />
         </div>
 
         {/* Input */}
