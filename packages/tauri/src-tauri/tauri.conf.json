@@ -18,7 +18,8 @@
     ],
     "security": {
       "csp": {
-        "default-src": "'self'",
+        "default-src": "'self' asset:",
+        "frame-src": "'self' asset: file:",
         "script-src": "'self'",
         "style-src": "'self' 'unsafe-inline'",
         "img-src": "'self' http: https: data: blob:",

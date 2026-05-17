@@ -491,9 +491,9 @@ export function GitCommitsPanel({ workspaceId }: Props) {
       </div>
 
       {/* Right: Commits + Diff */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Commits header */}
-        <div className="flex items-center justify-between px-2 py-1.5 border-b">
+        <div className="flex items-center justify-between px-2 py-1.5 border-b shrink-0">
           <span className="text-xs font-medium text-muted-foreground">
             {log.length > 0 ? t('titleWithCount', { count: log.length }) : t('title')}
           </span>
@@ -525,7 +525,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
             <DiffViewer oldContent={selectedDiff.oldContent} newContent={selectedDiff.newContent} path={selectedDiff.path} />
           </div>
         ) : (
-          <div className="flex-1 overflow-auto">
+          <div className="min-h-0 flex-1 overflow-y-auto">
             {loading && !log.length && <div className="p-2 text-xs text-muted-foreground">{tc('loading')}</div>}
             {log.map((entry, i) => {
               const isRemoteHead = i === remoteHeadIndex;

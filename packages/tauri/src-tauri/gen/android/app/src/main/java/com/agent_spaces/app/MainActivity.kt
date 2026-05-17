@@ -13,6 +13,7 @@ import androidx.core.view.WindowInsetsCompat
 
 class MainActivity : TauriActivity() {
     private var statusBarTheme = "light"
+    private var webViewRef: WebView? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -20,17 +21,23 @@ class MainActivity : TauriActivity() {
         statusBarTheme = if (isSystemDarkTheme()) "dark" else "light"
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+        ViewCompat.setOnApplyWindowInsetsListener(window.decorView) { _, insets ->
+            webViewRef?.let { dispatchNativeInsets(it, insets) }
+            insets
+        }
         applyStatusBarTheme(statusBarTheme)
     }
 
     override fun onWebViewCreate(webView: WebView) {
         super.onWebViewCreate(webView)
+        webViewRef = webView
         webView.settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         webView.addJavascriptInterface(StatusBarBridge(this), "AgentSpacesStatusBar")
         ViewCompat.setOnApplyWindowInsetsListener(webView) { _, insets ->
             dispatchNativeInsets(webView, insets)
             insets
         }
+        ViewCompat.requestApplyInsets(window.decorView)
         ViewCompat.requestApplyInsets(webView)
     }
 

@@ -177,6 +177,7 @@ export function IframeFloatingBall() {
     setUrl(bm.url);
     setSize(bm.size);
     setDialogOpen(true);
+    setOpen(false);
   };
 
   const closeDialog = () => {

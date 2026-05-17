@@ -224,7 +224,6 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
       ws.on('issue.created', (data) => issueStore.upsertIssue(data as Issue)),
       ws.on('issue.updated', (data) => issueStore.upsertIssue(data as Issue)),
       ws.on('issue.status_changed', (data) => {
-        issueStore.loadIssues(workspaceId);
         const ns = getNativeNotificationConfig();
         if (ns) {
           const { from, to } = data as IssueStatusChangedPayload;

@@ -46,16 +46,39 @@ function updateViewportInsets() {
   root.style.setProperty("--app-top-inset", `${topInset}px`);
 }
 
+function isEditableTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) return false;
+
+  return target.matches("input, textarea, [contenteditable='true'], [contenteditable='']");
+}
+
+function refreshAfterEditableFocus(target: EventTarget | null) {
+  if (!isEditableTarget(target)) return;
+
+  const element = target;
+  const refresh = () => {
+    updateViewportInsets();
+    element.scrollIntoView({ block: "nearest", inline: "nearest" });
+  };
+
+  refresh();
+  window.setTimeout(refresh, 60);
+  window.setTimeout(refresh, 180);
+  window.setTimeout(refresh, 360);
+}
+
 export function ViewportInsets() {
   useEffect(() => {
     updateViewportInsets();
 
+    const handleFocusIn = (event: FocusEvent) => refreshAfterEditableFocus(event.target);
     const viewport = window.visualViewport;
     viewport?.addEventListener("resize", updateViewportInsets);
     viewport?.addEventListener("scroll", updateViewportInsets);
     window.addEventListener("resize", updateViewportInsets);
     window.addEventListener("orientationchange", updateViewportInsets);
     window.addEventListener("agent-spaces-native-insets", updateViewportInsets);
+    document.addEventListener("focusin", handleFocusIn);
 
     return () => {
       viewport?.removeEventListener("resize", updateViewportInsets);
@@ -63,6 +86,7 @@ export function ViewportInsets() {
       window.removeEventListener("resize", updateViewportInsets);
       window.removeEventListener("orientationchange", updateViewportInsets);
       window.removeEventListener("agent-spaces-native-insets", updateViewportInsets);
+      document.removeEventListener("focusin", handleFocusIn);
     };
   }, []);
 

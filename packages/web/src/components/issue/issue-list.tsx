@@ -82,8 +82,8 @@ export function IssueList({ workspaceId }: IssueListProps) {
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-2 py-1.5 border-b text-xs font-medium text-muted-foreground">
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="flex items-center justify-between px-2 py-1.5 border-b text-xs font-medium text-muted-foreground shrink-0">
         <span>{t('list.title')}</span>
         <div className="flex items-center gap-0.5">
           <button onClick={() => setCreateOpen(true)} className="p-0.5 hover:bg-accent rounded">
@@ -106,7 +106,7 @@ export function IssueList({ workspaceId }: IssueListProps) {
         </div>
       </div>
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="min-h-0 flex-1 overflow-hidden">
         {grouped.length === 0 && archivedIssues.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full gap-3 px-4 text-center py-12">
             <div className="rounded-full bg-muted p-3">
