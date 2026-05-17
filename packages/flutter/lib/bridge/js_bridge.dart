@@ -6,34 +6,36 @@ class JsBridge {
   static final _log = Logger(printer: PrettyPrinter(methodCount: 0));
 
   static const _jsInject = '''
-    window.__FLUTTER_INTERNALS__ = true;
-    window.__flutterBridge = {
-      _handlers: {},
-      _pending: {},
-      _id: 0,
-      on: function(event, handler) {
-        this._handlers[event] = handler;
-      },
-      emit: function(event, data) {
-        window.flutter_inappwebview.callHandler('bridgeEvent', JSON.stringify({event: event, data: data}));
-      },
-      invoke: function(method, args) {
-        var id = ++this._id;
-        return new Promise(function(resolve) {
-          window.__flutterBridge._pending[id] = resolve;
-          window.flutter_inappwebview.callHandler('bridgeInvoke', JSON.stringify({id: id, method: method, args: args}));
-        });
-      },
-      _resolve: function(id, result) {
-        var resolve = this._pending[id];
-        if (resolve) {
-          delete this._pending[id];
-          resolve(result);
+    (function() {
+      window.__FLUTTER_INTERNALS__ = true;
+      window.__flutterBridge = {
+        _handlers: {},
+        _pending: {},
+        _id: 0,
+        on: function(event, handler) {
+          this._handlers[event] = handler;
+        },
+        emit: function(event, data) {
+          window.flutter_inappwebview.callHandler('bridgeEvent', JSON.stringify({event: event, data: data}));
+        },
+        invoke: function(method, args) {
+          var id = ++this._id;
+          return new Promise(function(resolve) {
+            window.__flutterBridge._pending[id] = resolve;
+            window.flutter_inappwebview.callHandler('bridgeInvoke', JSON.stringify({id: id, method: method, args: args}));
+          });
+        },
+        _resolve: function(id, result) {
+          var resolve = this._pending[id];
+          if (resolve) {
+            delete this._pending[id];
+            resolve(result);
+          }
         }
-      }
-    };
-    window.isFlutterEnvironment = function() { return true; };
-    window.isTauriEnvironment = function() { return false; };
+      };
+      window.isFlutterEnvironment = function() { return true; };
+      window.isTauriEnvironment = function() { return false; };
+    })();
   ''';
 
   final void Function(String event, dynamic data)? onEvent;
