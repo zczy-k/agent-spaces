@@ -61,4 +61,35 @@ flutter_launcher_icons:
 flutter:
   uses-material-design: true
   assets:
+    # BEGIN GENERATED WEB ASSETS
     - assets/web/
+    - assets/web/_next/
+    - assets/web/_next/9X6R42UNn3h4WL_zj_Yh4/
+    - assets/web/_next/static/
+    - assets/web/_next/static/9X6R42UNn3h4WL_zj_Yh4/
+    - assets/web/_next/static/chunks/
+    - assets/web/_next/static/media/
+    - assets/web/_not-found/
+    - assets/web/icons/
+    - assets/web/login/
+    - assets/web/monaco/
+    - assets/web/monaco/vs/
+    - assets/web/monaco/vs/assets/
+    - assets/web/monaco/vs/basic-languages/
+    - assets/web/monaco/vs/editor/
+    - assets/web/monaco/vs/language/
+    - assets/web/monaco/vs/language/css/
+    - assets/web/monaco/vs/language/html/
+    - assets/web/monaco/vs/language/json/
+    - assets/web/monaco/vs/language/typescript/
+    - assets/web/settings/
+    - assets/web/settings/agents/
+    - assets/web/settings/mcps/
+    - assets/web/settings/models/
+    - assets/web/settings/providers/
+    - assets/web/settings/skills/
+    - assets/web/workflows/
+    - assets/web/workspace/
+    - assets/web/workspace/_/
+    - assets/web/workspaces/
+    # END GENERATED WEB ASSETS
