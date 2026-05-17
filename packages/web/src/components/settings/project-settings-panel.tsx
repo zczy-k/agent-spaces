@@ -6,11 +6,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useChannelStore } from '@/stores/channel';
 import { useIssueStore } from '@/stores/issue';
 import { useAgentStore } from '@/stores/agent';
+import { useWorkspaceStore } from '@/stores/workspace';
 import { AgentDialog } from '@/components/sidebar/agent-dialog';
 import { Loader2 } from 'lucide-react';
 import type { Workspace, WorkspaceNotificationSettings } from '@agent-spaces/shared';
 import { getNotificationPermission, type NotificationPermissionStatus } from '@/lib/native-notification';
-import { useWorkspaceStore } from '@/stores/workspace';
 
 import { WorkspaceInfoSection } from './workspace-info-section';
 import { NotificationSettingsTab, defaultNotificationSettings } from './notification-settings-tab';
@@ -30,8 +30,6 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
 
   const channels = useChannelStore((s) => s.channels);
   const issues = useIssueStore((s) => s.issues);
-  const loadChannels = useChannelStore((s) => s.loadChannels);
-  const loadIssues = useIssueStore((s) => s.loadIssues);
 
   const allAgents = useAgentStore((s) => s.agents);
   const botAgents = allAgents.filter((agent) => agent.role === 'bot' && agent.enabled !== false);
@@ -41,8 +39,6 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
     Promise.all([
       fetch(`/api/workspaces/${workspaceId}`).then((r) => r.json()),
       fetch(`/api/workspaces/${workspaceId}/prompt`).then((r) => r.json()),
-      loadChannels(workspaceId),
-      loadIssues(workspaceId),
     ])
       .then(([ws, promptData]) => {
         setWorkspace(ws);
@@ -56,7 +52,6 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
           if (status === 'granted' && ns.provider === 'native' && !ns.native?.permissionGranted) {
             const updated = { ...ns, native: { ...ns.native, permissionGranted: true } };
             setNotificationDraft(updated);
-            // Update server-side
             fetch(`/api/workspaces/${workspaceId}`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
@@ -71,7 +66,7 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
         });
       })
       .catch(() => setLoading(false));
-  }, [workspaceId, loadChannels, loadIssues, upsertWorkspace]);
+  }, [workspaceId, upsertWorkspace]);
 
   if (loading) {
     return (

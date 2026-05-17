@@ -11,23 +11,12 @@ import {
 import { cn } from "@/lib/utils";
 import {
   IconChevronDown,
-  IconCircleCheck,
-  IconCircleDashed,
-  IconFileText,
-  IconLoader2,
-  IconMessageCirclePlus,
-  IconPaperclip,
-  IconPin,
-  IconPinFilled,
-  IconPlug,
-  IconPlus,
-  IconPuzzle,
-  IconTools,
-  IconWand,
+  IconChevronUp,
   IconMicrophone,
-  IconUserPlus,
+  IconPaperclip,
+  IconPlus,
+  IconWand,
 } from "@tabler/icons-react";
-import { IconChevronUp, IconBell, IconBellOff } from "@tabler/icons-react";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
@@ -49,7 +38,6 @@ import {
   type AgentConfig,
   type Attachment as MessageAttachment,
   type Channel,
-  type TodoItem,
   type Message,
 } from "@agent-spaces/shared";
 import { useChannelStore } from "@/stores/channel";
@@ -59,19 +47,26 @@ import {
   AttachmentPreview,
   AttachmentRemove,
   Attachments,
-  type AttachmentData,
 } from "./attachments";
-import { AgentIcon } from "@/components/common/agent-icon";
 import { AddMemberDialog } from "./add-member-dialog";
 import { getAgentDisplayName, normalizeChannelMembersToAgentIds } from "@/lib/agent-members";
 import { useAgentStore } from "@/stores/agent";
 
-type MentionedAgent = Pick<AgentConfig, "id" | "name" | "role" | "description" | "enabled" | "mcps" | "skills" | "tools" | "avatarUrl">;
-type DisplayTodoItem = TodoItem & { title?: string; content?: string };
-
-function getTodoTitle(todo: DisplayTodoItem, fallback: string) {
-  return todo.subject || todo.title || todo.activeForm || todo.content || fallback;
-}
+import {
+  type MentionedAgent,
+  collectMentionIds,
+  stripSimpleParagraphs,
+  getMcpLabels,
+  getToolIcon,
+  buildContentWithMentions,
+} from "./chat-input-utils";
+import {
+  type LocalAttachment,
+  uploadAttachment,
+  localAttachmentToData,
+} from "./chat-input-attachments";
+import { ChatInputAgentBar } from "./chat-input-agent-bar";
+import { ChatInputInfoBar } from "./chat-input-info-bar";
 
 interface ChatInputProps {
   channelName: string;
@@ -136,7 +131,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       .map((tool) => ({ ...tool, icon: getToolIcon(tool.name) }));
   }, [activeAgent?.tools]);
 
-  // Build last-active timestamps from messages (senderId -> last createdAt)
   const agentLastActive = useMemo(() => {
     const map = new Map<string, string>();
     for (const msg of messages) {
@@ -147,7 +141,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     return map;
   }, [messages]);
 
-  // Sorted agents: active first, then by last active time descending
   const sortedAgents = useMemo(() => {
     const activeId = activeAgent?.id;
     return [...agents].sort((a, b) => {
@@ -159,23 +152,11 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     });
   }, [agents, activeAgent?.id, agentLastActive]);
 
-  useEffect(() => {
-    isProcessingRef.current = isProcessing;
-  }, [isProcessing]);
+  useEffect(() => { isProcessingRef.current = isProcessing; }, [isProcessing]);
+  useEffect(() => { onSendRef.current = onSend; }, [onSend]);
+  useEffect(() => { agentsRef.current = agents; }, [agents]);
+  useEffect(() => { channelRef.current = channel; }, [channel]);
 
-  useEffect(() => {
-    onSendRef.current = onSend;
-  }, [onSend]);
-
-  useEffect(() => {
-    agentsRef.current = agents;
-  }, [agents]);
-
-  useEffect(() => {
-    channelRef.current = channel;
-  }, [channel]);
-
-  // Save draft with debounce
   const scheduleDraftSave = useCallback(
     (content: string) => {
       if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
@@ -198,7 +179,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     const mentions = collectMentionIds(currentEditor.getJSON());
     submittingRef.current = true;
     setSubmitting(true);
-    // Cancel pending draft save
     if (draftTimerRef.current) {
       clearTimeout(draftTimerRef.current);
       draftTimerRef.current = null;
@@ -234,26 +214,19 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     onDrop: (files) => {
       setAttachments((prev) => [
         ...prev,
-        ...files.map((file) => ({
-          file,
-          preview: URL.createObjectURL(file),
-        })),
+        ...files.map((file) => ({ file, preview: URL.createObjectURL(file) })),
       ]);
     },
   });
 
   useEffect(() => {
-    return () => {
-      attachments.forEach((item) => URL.revokeObjectURL(item.preview));
-    };
+    return () => { attachments.forEach((item) => URL.revokeObjectURL(item.preview)); };
   }, [attachments]);
 
-  // Remove all existing mentions from editor, keep only the last one
   const removeExistingMentions = useCallback((editor: Editor, keepId?: string) => {
     const { tr } = editor.state;
     let removed = false;
     const nodesToRemove: { pos: number; nodeSize: number }[] = [];
-
     editor.state.doc.descendants((node, pos) => {
       if (node.type.name === "mention") {
         const nodeId = node.attrs?.id;
@@ -262,17 +235,12 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         }
       }
     });
-
-    // Remove from end to start to preserve positions
     for (let i = nodesToRemove.length - 1; i >= 0; i--) {
       const { pos, nodeSize } = nodesToRemove[i];
       tr.delete(pos, pos + nodeSize);
       removed = true;
     }
-
-    if (removed) {
-      editor.view.dispatch(tr);
-    }
+    if (removed) editor.view.dispatch(tr);
   }, []);
 
   const mentionExtension = useMemo(
@@ -305,7 +273,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             range: Range;
             props: MentionNodeAttrs;
           }) => {
-            // Remove existing mentions first (single mention only)
             removeExistingMentions(editor, props.id as string);
             editor
               .chain()
@@ -340,17 +307,13 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       immediatelyRender: false,
       extensions: [
         StarterKit,
-        Placeholder.configure({
-          placeholder: t('input.placeholder', { channel: channelName }),
-        }),
+        Placeholder.configure({ placeholder: t('input.placeholder', { channel: channelName }) }),
         mentionExtension,
         slashExtension,
         fileSearchExtension,
       ],
       editorProps: {
-        attributes: {
-          class: "tiptap tiptap-chat",
-        },
+        attributes: { class: "tiptap tiptap-chat" },
         handleKeyDown: (_view, event) => {
           if (event.key === "Enter" && !event.shiftKey) {
             const hasPopup = document.querySelector(".suggestion-menu");
@@ -397,17 +360,13 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     [mentionExtension, slashExtension, fileSearchExtension, channelName]
   );
 
-  useEffect(() => {
-    editorRef.current = editor;
-  }, [editor]);
+  useEffect(() => { editorRef.current = editor; }, [editor]);
 
   const activateAgent = useCallback((agent: MentionedAgent) => {
     if (!editor) return;
     if (mentionedAgentIds[0] === agent.id) return;
-    // Get text content without the mention node
     removeExistingMentions(editor, agent.id);
     const plainText = editor.getText().trim();
-    // Rebuild content: mention + space + remaining text
     const content: JSONContent[] = [
       { type: 'mention', attrs: { id: agent.id, label: agent.name || agent.role } },
       { type: 'text', text: ' ' + plainText },
@@ -419,12 +378,10 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   useEffect(() => {
     if (!editor || restoredChannelRef.current === channelId) return;
     restoredChannelRef.current = channelId;
-
     if (draftTimerRef.current) {
       clearTimeout(draftTimerRef.current);
       draftTimerRef.current = null;
     }
-
     const draft = channelRef.current.draft;
     const pinnedId = channelRef.current.pinnedMentionId;
     const pinnedAgent = pinnedId ? agentsRef.current.find((agent) => agent.id === pinnedId) : undefined;
@@ -436,7 +393,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             { type: "text", text: " " },
           ]
         : "";
-
     editor.commands.setContent(content, { emitUpdate: false });
     setMentionedAgentIds(collectMentionIds(editor.getJSON()));
   }, [editor, channelId]);
@@ -446,11 +402,9 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     () => ({
       setContent: (html: string, agents?: MentionedAgent[]) => {
         if (!editor) return;
-        // TipTap HTML with mention nodes — set directly
         if (html.includes('data-type="mention"')) {
           editor.commands.setContent(html, { emitUpdate: false });
         } else {
-          // Plain text or HTML without mentions — strip tags and restore @mentions
           const plainText = /<[a-z][\s\S]*>/i.test(html) ? html.replace(/<[^>]*>/g, '') : html;
           const allAgents = agents ?? agentsRef.current;
           if (allAgents.length > 0 && /@\S+/.test(plainText)) {
@@ -461,16 +415,12 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         }
         editor.commands.focus("end");
       },
-      focus: () => {
-        editor?.commands.focus("end");
-      },
+      focus: () => { editor?.commands.focus("end"); },
     }),
     [editor]
   );
 
-  const handleSubmit = useCallback(() => {
-    submitCurrentMessage();
-  }, [submitCurrentMessage]);
+  const handleSubmit = useCallback(() => { submitCurrentMessage(); }, [submitCurrentMessage]);
 
   const hasText = useEditorState({
     editor,
@@ -490,22 +440,16 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const togglePin = useCallback(() => {
     const currentMentionId = mentionedAgentIds[0];
     if (!currentMentionId) return;
-
     const newPinnedId = isPinned ? undefined : currentMentionId;
     updateChannel(workspaceId, channelId, { pinnedMentionId: newPinnedId });
   }, [mentionedAgentIds, isPinned, workspaceId, channelId, updateChannel]);
 
   const toggleVoice = useCallback(() => {
-    if (isVoiceRecording) {
-      stopVoice();
-      return;
-    }
+    if (isVoiceRecording) { stopVoice(); return; }
     const onText = (text: string, isFinal: boolean) => {
       const ed = editorRef.current;
       if (!ed) return;
-      if (isFinal) {
-        ed.chain().focus().insertContent(text).run();
-      }
+      if (isFinal) ed.chain().focus().insertContent(text).run();
     };
     startVoice(onText);
   }, [isVoiceRecording, startVoice, stopVoice]);
@@ -575,75 +519,17 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       </div>
       {!collapsed && (
         <div className="border-t px-4 py-2">
-          {/* Agent quick bar + notify toggle */}
-          {
-            <div className="flex items-center gap-1 mb-1.5">
-              <div className="flex items-center gap-1 overflow-x-auto scrollbar-none flex-1 min-w-0">
-              <button
-                type="button"
-                onClick={() => setAddMemberOpen(true)}
-                className="shrink-0 inline-flex items-center justify-center size-6 rounded-full text-muted-foreground border border-dashed border-muted-foreground/40 hover:bg-accent hover:text-foreground transition-all"
-                title={t('input.manageMembers')}
-              >
-                <IconUserPlus className="size-3.5" />
-              </button>
-              {sortedAgents.map((agent) => {
-                const isActive = agent.id === activeAgent?.id;
-                return (
-                  <button
-                    key={agent.id}
-                    type="button"
-                    onClick={() => activateAgent(agent)}
-                    className={cn(
-                      "shrink-0 inline-flex items-center gap-1 h-6 pl-0.5 pr-1 rounded-full text-xs transition-all",
-                      isActive
-                        ? "bg-primary/10 text-primary border border-primary/30"
-                        : "text-muted-foreground border border-transparent hover:bg-accent"
-                    )}
-                  >
-                    <AgentIcon
-                      agentId={agent.id}
-                      name={agent.name || agent.role}
-                      avatarUrl={agent.avatarUrl}
-                      className="size-5 rounded-full text-[9px]"
-                    />
-                    <span className="max-w-[80px] truncate">{agent.name || agent.role}</span>
-                    {isActive ? (
-                      <span
-                        role="button"
-                        tabIndex={0}
-                        onClick={(e) => { e.stopPropagation(); togglePin(); }}
-                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); togglePin(); } }}
-                        className={cn(
-                          "inline-flex items-center justify-center size-4 rounded-full hover:bg-primary/20 transition-colors",
-                          isPinned ? "text-primary" : "text-primary/50"
-                        )}
-                        title={isPinned ? t('input.unpinAgent') : t('input.pinAgent')}
-                      >
-                        {isPinned ? <IconPinFilled className="size-2.5" /> : <IconPin className="size-2.5" />}
-                      </span>
-                    ) : pinnedMentionId === agent.id ? (
-                      <IconPinFilled className="size-2.5 text-muted-foreground/50" />
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-              <button
-                type="button"
-                onClick={() => updateChannel(workspaceId, channelId, { notifyOnComplete: !channel.notifyOnComplete })}
-                className={cn(
-                  "shrink-0 inline-flex items-center gap-1 h-6 px-1.5 rounded-full text-xs transition-all",
-                  channel.notifyOnComplete
-                    ? "bg-primary/10 text-primary border border-primary/30"
-                    : "text-muted-foreground border border-transparent hover:bg-accent"
-                )}
-                title={t('input.notifyOnComplete')}
-              >
-                {channel.notifyOnComplete ? <IconBell className="size-3" /> : <IconBellOff className="size-3" />}
-              </button>
-            </div>
-          }
+          <ChatInputAgentBar
+            agents={sortedAgents}
+            activeAgent={activeAgent}
+            pinnedMentionId={pinnedMentionId}
+            isPinned={isPinned}
+            channel={channel}
+            onActivateAgent={activateAgent}
+            onTogglePin={togglePin}
+            onOpenAddMember={() => setAddMemberOpen(true)}
+            onToggleNotify={() => updateChannel(workspaceId, channelId, { notifyOnComplete: !channel.notifyOnComplete })}
+          />
 
           <ComposerShell
             editor={editor}
@@ -673,144 +559,12 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             </Attachments>
           )}
 
-          <div className="flex items-center gap-0 pt-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs"
-                  />
-                }
-              >
-                <IconPlug className="size-3" />
-                <span>{t('input.mcp')}{activeMcps.length ? ` ${activeMcps.length}` : ""}</span>
-                <IconChevronDown className="size-3" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5 bg-popover border-border">
-                <DropdownMenuGroup className="space-y-1">
-                  {activeMcps.length ? (
-                    activeMcps.map((mcp) => (
-                      <DropdownMenuItem key={mcp} className="rounded-[calc(1rem-6px)] text-xs">
-                        <IconPlug size={16} className="opacity-60" />
-                        {mcp}
-                      </DropdownMenuItem>
-                    ))
-                  ) : (
-                    <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs text-muted-foreground">
-                      <IconPlug size={16} className="opacity-60" />
-                      {t('input.noMcp')}
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs"
-                  />
-                }
-              >
-                <IconPuzzle className="size-3" />
-                <span>{t('input.skill')}{activeSkills.length ? ` ${activeSkills.length}` : ""}</span>
-                <IconChevronDown className="size-3" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5 bg-popover border-border">
-                <DropdownMenuGroup className="space-y-1">
-                  {activeSkills.length ? (
-                    activeSkills.map((skill) => (
-                      <DropdownMenuItem key={skill} className="rounded-[calc(1rem-6px)] text-xs">
-                        <IconPuzzle size={16} className="opacity-60" />
-                        {skill}
-                      </DropdownMenuItem>
-                    ))
-                  ) : (
-                    <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs text-muted-foreground">
-                      <IconPuzzle size={16} className="opacity-60" />
-                      {t('input.noSkills')}
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs"
-                  />
-                }
-              >
-                <IconTools className="size-3" />
-                <span>{t('input.tools')}{activeTools.length ? ` ${activeTools.length}` : ""}</span>
-                <IconChevronDown className="size-3" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5 bg-popover border-border">
-                <DropdownMenuGroup className="space-y-1">
-                  {activeTools.length ? (
-                    activeTools.map(({ name, label, icon: Icon }) => (
-                      <DropdownMenuItem key={name} className="rounded-[calc(1rem-6px)] text-xs">
-                        <Icon size={16} className="opacity-60" />
-                        {label}
-                      </DropdownMenuItem>
-                    ))
-                  ) : (
-                    <DropdownMenuItem className="rounded-[calc(1rem-6px)] text-xs text-muted-foreground">
-                      <IconTools size={16} className="opacity-60" />
-                      {t('input.noTools')}
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {channel.todos && channel.todos.length > 0 && (
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs"
-                    />
-                  }
-                >
-                  <IconCircleCheck className="size-3" />
-                  <span>{t('input.todos')} {channel.todos.length}</span>
-                  <IconChevronDown className="size-3" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5 bg-popover border-border">
-                  <DropdownMenuGroup className="space-y-0.5">
-                    {channel.todos.map((todo, index) => (
-                      <DropdownMenuItem key={todo.id || `${getTodoTitle(todo, t('untitledTodo'))}-${index}`} className="rounded-[calc(1rem-6px)] text-xs gap-2" onSelect={(e) => e.preventDefault()}>
-                        {todo.status === 'completed' ? (
-                          <IconCircleCheck size={14} className="text-green-500 shrink-0" />
-                        ) : todo.status === 'in_progress' ? (
-                          <IconLoader2 size={14} className="text-blue-500 shrink-0 animate-spin" style={{ animationDuration: '3s' }} />
-                        ) : (
-                          <IconCircleDashed size={14} className="text-muted-foreground shrink-0" />
-                        )}
-                        <span className={cn("truncate", todo.status === 'completed' && "line-through text-muted-foreground")}>
-                          {getTodoTitle(todo, t('untitledTodo'))}
-                        </span>
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuGroup>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-
-            <div className="flex-1" />
-          </div>
+          <ChatInputInfoBar
+            mcps={activeMcps}
+            skills={activeSkills}
+            tools={activeTools}
+            todos={channel.todos}
+          />
         </div>
       )}
 
@@ -833,124 +587,3 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     </>
   );
 });
-
-type LocalAttachment = {
-  file: File;
-  preview: string;
-};
-
-async function uploadAttachment(item: LocalAttachment): Promise<MessageAttachment> {
-  const formData = new FormData();
-  formData.append("file", item.file);
-  const res = await fetch("/api/upload", {
-    method: "POST",
-    body: formData,
-  });
-  if (!res.ok) {
-    throw new Error(`Upload failed: ${item.file.name}`); // i18n handled by caller
-  }
-  const uploaded = (await res.json()) as { name: string; size: number; type: string; url: string };
-  return {
-    name: uploaded.name,
-    path: uploaded.url,
-    url: uploaded.url,
-    type: uploaded.type,
-    size: uploaded.size,
-  };
-}
-
-function localAttachmentToData(item: LocalAttachment): AttachmentData {
-  return {
-    id: `${item.file.name}-${item.file.lastModified}`,
-    type: "file",
-    filename: item.file.name,
-    mediaType: item.file.type,
-    url: item.preview,
-  };
-}
-
-function collectMentionIds(node: JSONContent): string[] {
-  const ids = new Set<string>();
-  const walk = (current: JSONContent) => {
-    if (!current) return;
-    if (current.type === "mention" && typeof current.attrs?.id === "string") {
-      ids.add(current.attrs.id);
-    }
-    if (Array.isArray(current.content)) {
-      for (const child of current.content) walk(child);
-    }
-  };
-  walk(node);
-  return [...ids];
-}
-
-function stripSimpleParagraphs(html: string): string {
-  if (!html) return html;
-  const stripped = html.replace(/<\/?p>/g, "");
-  if (/<[^>]+>/.test(stripped)) return html;
-  return html.replace(/<\/p>\s*<p>/g, "\n").replace(/<\/?p>/g, "");
-}
-
-function getMcpLabels(mcps: AgentConfig["mcps"] | undefined): string[] {
-  if (!mcps) return [];
-  const servers = (mcps as { mcpServers?: unknown }).mcpServers;
-  if (!servers || typeof servers !== "object" || Array.isArray(servers)) return [];
-  return Object.keys(servers);
-}
-
-function getToolIcon(name: string) {
-  if (name === "CreateCurrentChannelIssue") return IconPlus;
-  if (name === "ViewCurrentChannelIssue") return IconFileText;
-  if (name === "AddCurrentChannelComment") return IconMessageCirclePlus;
-  return IconTools;
-}
-
-function buildContentWithMentions(
-  text: string,
-  agents: Pick<AgentConfig, "id" | "name" | "role">[]
-): JSONContent {
-  if (!text) return { type: "doc", content: [{ type: "paragraph" }] };
-
-  const lines = text.split("\n");
-  const paragraphs: JSONContent[] = lines.map((line) => {
-    const inline = parseInlineMentions(line, agents);
-    return { type: "paragraph", content: inline.length > 0 ? inline : undefined };
-  });
-
-  return { type: "doc", content: paragraphs };
-}
-
-function parseInlineMentions(
-  text: string,
-  agents: Pick<AgentConfig, "id" | "name" | "role">[]
-): JSONContent[] {
-  const result: JSONContent[] = [];
-  const regex = /@(\S+)/g;
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-
-  while ((match = regex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      result.push({ type: "text", text: text.slice(lastIndex, match.index) });
-    }
-    const name = match[1];
-    const agent = agents.find(
-      (a) => a.name === name || a.id === name || a.role === name
-    );
-    if (agent) {
-      result.push({
-        type: "mention",
-        attrs: { id: agent.id, label: agent.name || agent.role },
-      });
-    } else {
-      result.push({ type: "text", text: match[0] });
-    }
-    lastIndex = regex.lastIndex;
-  }
-
-  if (lastIndex < text.length) {
-    result.push({ type: "text", text: text.slice(lastIndex) });
-  }
-
-  return result;
-}
