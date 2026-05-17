@@ -6,6 +6,7 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,7 @@ import {
   IconPlus,
   IconPuzzle,
   IconTools,
+  IconTrash,
 } from "@tabler/icons-react";
 import { useTranslations } from "next-intl";
 import type { Icon } from "@tabler/icons-react";
@@ -42,9 +44,10 @@ interface ChatInputInfoBarProps {
   skills: string[];
   tools: ToolEntry[];
   todos: Channel["todos"];
+  onClearTodos?: () => void;
 }
 
-export function ChatInputInfoBar({ mcps, skills, tools, todos }: ChatInputInfoBarProps) {
+export function ChatInputInfoBar({ mcps, skills, tools, todos, onClearTodos }: ChatInputInfoBarProps) {
   const t = useTranslations("chat");
 
   return (
@@ -163,7 +166,7 @@ export function ChatInputInfoBar({ mcps, skills, tools, todos }: ChatInputInfoBa
             <span>{t("input.todos")} {todos.length}</span>
             <IconChevronDown className="size-3" />
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5 bg-popover border-border">
+          <DropdownMenuContent align="start" className="w-80 rounded-2xl p-1.5 bg-popover border-border">
             <DropdownMenuGroup className="space-y-0.5">
               {todos.map((todo, index) => (
                 <DropdownMenuItem
@@ -182,12 +185,24 @@ export function ChatInputInfoBar({ mcps, skills, tools, todos }: ChatInputInfoBa
                   ) : (
                     <IconCircleDashed size={14} className="text-muted-foreground shrink-0" />
                   )}
-                  <span className={cn("truncate", todo.status === "completed" && "line-through text-muted-foreground")}>
+                  <span className={cn("todo-text-scroll", todo.status === "completed" && "line-through text-muted-foreground")}>
                     {getTodoTitle(todo, t("untitledTodo"))}
                   </span>
                 </DropdownMenuItem>
               ))}
             </DropdownMenuGroup>
+            {onClearTodos && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="rounded-[calc(1rem-6px)] text-xs text-destructive focus:text-destructive gap-2 justify-center cursor-pointer"
+                  onClick={(e) => { e.stopPropagation(); onClearTodos(); }}
+                >
+                  <IconTrash size={14} />
+                  {t("input.clearTodos")}
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       )}

@@ -762,3 +762,23 @@
     visibility: visible !important;
   }
 }
+
+/* Todo text scrolling marquee effect */
+@keyframes todo-scroll {
+  0%, 10% { transform: translateX(0); }
+  90%, 100% { transform: translateX(var(--scroll-distance, -50%)); }
+}
+
+.todo-text-scroll {
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 240px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.todo-text-scroll:hover {
+  text-overflow: unset;
+  --scroll-distance: calc(-100% + 240px);
+  animation: todo-scroll 4s ease-in-out infinite;
+}

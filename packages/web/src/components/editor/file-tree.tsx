@@ -94,7 +94,7 @@ export const FileTree = ({
   onMove,
   onCopyItem,
   onLoadDirectory,
-  loadedDirs,
+  loadingDirs,
   boundDir,
   fileSizeMap,
   refreshInterval,
@@ -126,7 +126,7 @@ export const FileTree = ({
   }, [refreshInterval, onLoadDirectory, expandedPaths])
 
   return (
-    <FileTreeContext.Provider value={{ expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete, onImport, onCopyPath, onCreateFile, onCreateFolder, onRename, onMove, onCopyItem, onLoadDirectory, loadedDirs, boundDir, fileSizeMap, ignoredPaths }}>
+    <FileTreeContext.Provider value={{ expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete, onImport, onCopyPath, onCreateFile, onCreateFolder, onRename, onMove, onCopyItem, onLoadDirectory, loadingDirs, boundDir, fileSizeMap, ignoredPaths }}>
       <div
         className={cn("flex flex-col bg-background font-mono text-sm h-full", className)}
         role="tree"

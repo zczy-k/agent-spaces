@@ -564,6 +564,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             skills={activeSkills}
             tools={activeTools}
             todos={channel.todos}
+            onClearTodos={() => updateChannel(workspaceId, channelId, { todos: [] })}
           />
         </div>
       )}

@@ -393,6 +393,7 @@
       "tools": "Tools",
       "noTools": "No tools configured",
       "todos": "Todos",
+      "clearTodos": "Clear Todos",
       "uploadFailed": "Upload failed: {name}",
       "voiceStart": "Voice Input",
       "voiceStop": "Stop Recording",
