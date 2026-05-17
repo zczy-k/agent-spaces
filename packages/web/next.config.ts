@@ -5,10 +5,12 @@ import createNextIntlPlugin from "next-intl/plugin";
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 const monorepoRoot = path.resolve(projectRoot, '../..');
+const isStaticExport = process.env.NEXT_STATIC_EXPORT === "1";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 const nextConfig: NextConfig = {
+  output: isStaticExport ? "export" : undefined,
   allowedDevOrigins: [
     "127.0.0.1",
     "192.168.*.*",
@@ -36,7 +38,7 @@ const nextConfig: NextConfig = {
 
     return config;
   },
-  ...({
+  ...(isStaticExport ? {} : {
     async rewrites() {
       const serverUrl = process.env.SERVER_URL || "http://localhost:3100";
       return [

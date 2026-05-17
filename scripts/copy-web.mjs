@@ -1,4 +1,4 @@
-import { cpSync, existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -21,6 +21,7 @@ cpSync(webOut, serverWeb, { recursive: true });
 if (existsSync(serverDistWeb)) {
   rmSync(serverDistWeb, { recursive: true, force: true });
 }
+mkdirSync(dirname(serverDistWeb), { recursive: true });
 cpSync(webOut, serverDistWeb, { recursive: true });
 
 const tauriWeb = resolve(root, 'packages/tauri/web');

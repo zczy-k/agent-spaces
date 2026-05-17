@@ -177,6 +177,20 @@ class _WebViewInstanceState extends ConsumerState<WebViewInstance> {
               consoleMessage.messageLevel.toString().split('.').last,
             );
       },
+      onReceivedError: (_, request, error) {
+        if (request.isForMainFrame != true) return;
+        ref.read(consoleLogProvider.notifier).addLog(
+              'WebView load error: ${error.description} (${error.type})',
+              'error',
+            );
+      },
+      onReceivedHttpError: (_, request, response) {
+        if (request.isForMainFrame != true) return;
+        ref.read(consoleLogProvider.notifier).addLog(
+              'WebView HTTP error: ${response.statusCode} ${response.reasonPhrase}',
+              'error',
+            );
+      },
     );
 
     if (isConstrained) {

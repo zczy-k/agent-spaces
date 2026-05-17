@@ -10,10 +10,46 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  build-web-assets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install web dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build web assets
+        run: |
+          pnpm --filter @agent-spaces/shared build
+          NEXT_STATIC_EXPORT=1 pnpm --filter @agent-spaces/web build
+          node scripts/copy-web.mjs
+
+      - name: Upload Flutter web assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-web-assets
+          path: |
+            packages/flutter/assets/web
+            packages/flutter/pubspec.yaml
+
   build-macos:
+    needs: build-web-assets
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Download Flutter web assets
+        uses: actions/download-artifact@v4
+        with:
+          name: flutter-web-assets
+          path: packages/flutter
 
       - uses: subosito/flutter-action@v2
         with:
@@ -36,9 +72,16 @@ jobs:
           path: packages/flutter/build/macos/Build/Products/Release/*.app
 
   build-ios:
+    needs: build-web-assets
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Download Flutter web assets
+        uses: actions/download-artifact@v4
+        with:
+          name: flutter-web-assets
+          path: packages/flutter
 
       - uses: subosito/flutter-action@v2
         with:
@@ -76,9 +119,16 @@ jobs:
           path: packages/flutter/AgentSpaces.ipa
 
   build-windows:
+    needs: build-web-assets
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Download Flutter web assets
+        uses: actions/download-artifact@v4
+        with:
+          name: flutter-web-assets
+          path: packages/flutter
 
       - uses: subosito/flutter-action@v2
         with:
@@ -101,9 +151,16 @@ jobs:
           path: packages/flutter/build/windows/x64/runner/Release/*
 
   build-android:
+    needs: build-web-assets
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Download Flutter web assets
+        uses: actions/download-artifact@v4
+        with:
+          name: flutter-web-assets
+          path: packages/flutter
 
       - uses: actions/setup-java@v4
         with:
