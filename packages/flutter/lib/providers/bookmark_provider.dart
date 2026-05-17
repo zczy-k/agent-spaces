@@ -33,6 +33,17 @@ class BookmarkNotifier extends StateNotifier<List<Bookmark>> {
     StorageService.saveBookmarks(state);
   }
 
+  void updateBookmark(String id, {
+    String? name,
+    String? url,
+    DeviceType? deviceType,
+  }) {
+    state = state.map((b) => b.id == id
+        ? b.copyWith(name: name, url: url, deviceType: deviceType)
+        : b).toList();
+    StorageService.saveBookmarks(state);
+  }
+
   bool isBookmarked(String url) => state.any((b) => b.url == url);
 
   Bookmark? findByUrl(String url) {

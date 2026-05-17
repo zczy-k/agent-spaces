@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/browser_tab.dart';
+import '../models/bookmark.dart';
 import '../providers/browser_provider.dart';
 import '../providers/bookmark_provider.dart';
 
@@ -42,10 +43,6 @@ class BookmarksScreen extends ConsumerWidget {
                   leading: Icon(_deviceIcon(bm.deviceType), size: 18),
                   title: Text(bm.name, style: const TextStyle(fontSize: 13)),
                   subtitle: Text(bm.url, style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant)),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete_outline, size: 18),
-                    onPressed: () => bookmarkNotifier.removeBookmark(bm.id),
-                  ),
                   onTap: () {
                     browserNotifier.addTab(
                       url: bm.url,
@@ -54,6 +51,7 @@ class BookmarksScreen extends ConsumerWidget {
                     );
                     Navigator.of(context).pop();
                   },
+                  onLongPress: () => _showActionSheet(context, bookmarkNotifier, bm),
                 );
               },
             ),
@@ -121,6 +119,97 @@ class BookmarksScreen extends ConsumerWidget {
                 }
               },
               child: const Text('添加'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showActionSheet(BuildContext context, BookmarkNotifier notifier, Bookmark bm) {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit_outlined, size: 20),
+              title: const Text('编辑', style: TextStyle(fontSize: 14)),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _showEditDialog(context, notifier, bm);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline, size: 20),
+              title: const Text('删除', style: TextStyle(fontSize: 14)),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                notifier.removeBookmark(bm.id);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showEditDialog(BuildContext context, BookmarkNotifier notifier, Bookmark bm) {
+    final nameCtl = TextEditingController(text: bm.name);
+    final urlCtl = TextEditingController(text: bm.url);
+    DeviceType deviceType = bm.deviceType;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: const Text('编辑书签', style: TextStyle(fontSize: 15)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameCtl,
+                style: const TextStyle(fontSize: 13),
+                decoration: const InputDecoration(isDense: true, labelText: '名称'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: urlCtl,
+                style: const TextStyle(fontSize: 13),
+                decoration: const InputDecoration(
+                  isDense: true,
+                  labelText: '网址',
+                  prefixIcon: Icon(Icons.language, size: 16),
+                ),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<DeviceType>(
+                initialValue: deviceType,
+                isDense: true,
+                decoration: const InputDecoration(isDense: true, labelText: '设备类型'),
+                items: DeviceType.values.map((t) => DropdownMenuItem(
+                  value: t,
+                  child: Text(_deviceTypeName(t), style: const TextStyle(fontSize: 13)),
+                )).toList(),
+                onChanged: (v) => setState(() => deviceType = v!),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () {
+                if (nameCtl.text.isNotEmpty && urlCtl.text.isNotEmpty) {
+                  final url = urlCtl.text.startsWith('http') ? urlCtl.text : 'http://${urlCtl.text}';
+                  notifier.updateBookmark(bm.id, name: nameCtl.text, url: url, deviceType: deviceType);
+                  Navigator.of(ctx).pop();
+                }
+              },
+              child: const Text('保存'),
             ),
           ],
         ),

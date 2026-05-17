@@ -160,6 +160,11 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
             Text(isBookmarked ? '从书签移除' : '添加到书签', style: const TextStyle(fontSize: 13)),
           ]),
         ),
+        const PopupMenuItem<String>(
+          value: 'console',
+          height: 36,
+          child: Row(children: [Icon(Icons.terminal, size: 16), SizedBox(width: 8), Text('查看控制台', style: TextStyle(fontSize: 13))]),
+        ),
       ],
     ).then((value) {
       if (!context.mounted) return;
@@ -175,6 +180,12 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
         } else {
           bookmarkNotifier.addBookmark(name: tab.title, url: tab.url, deviceType: tab.device.type);
         }
+      } else if (value == 'console') {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          builder: (_) => const _ConsoleSheet(),
+        );
       }
     });
   }
@@ -274,26 +285,15 @@ class _MoreMenuButton extends ConsumerWidget {
       offset: const Offset(0, 40),
       itemBuilder: (_) => [
         const PopupMenuItem(value: 'bookmarks', height: 36, child: Row(children: [Icon(Icons.bookmark_outline, size: 16), SizedBox(width: 8), Text('书签', style: TextStyle(fontSize: 13))])),
-        const PopupMenuItem(value: 'console', height: 36, child: Row(children: [Icon(Icons.terminal, size: 16), SizedBox(width: 8), Text('查看控制台', style: TextStyle(fontSize: 13))])),
         const PopupMenuItem(value: 'settings', height: 36, child: Row(children: [Icon(Icons.settings, size: 16), SizedBox(width: 8), Text('设置', style: TextStyle(fontSize: 13))])),
       ],
       onSelected: (value) {
         if (value == 'bookmarks') {
           context.push('/bookmarks');
-        } else if (value == 'console') {
-          _showConsoleSheet(context, ref);
         } else if (value == 'settings') {
           context.push('/settings');
         }
       },
-    );
-  }
-
-  void _showConsoleSheet(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => const _ConsoleSheet(),
     );
   }
 }

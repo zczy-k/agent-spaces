@@ -23,6 +23,18 @@ class Bookmark {
     'createdAt': createdAt.toIso8601String(),
   };
 
+  Bookmark copyWith({
+    String? name,
+    String? url,
+    DeviceType? deviceType,
+  }) => Bookmark(
+    id: id,
+    name: name ?? this.name,
+    url: url ?? this.url,
+    deviceType: deviceType ?? this.deviceType,
+    createdAt: createdAt,
+  );
+
   factory Bookmark.fromJson(Map<String, dynamic> json) => Bookmark(
     id: json['id'] as String,
     name: json['name'] as String,
