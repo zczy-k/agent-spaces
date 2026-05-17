@@ -25,7 +25,7 @@ export function getSpeechConfig(id: string): StoredConfig | undefined {
 
 export function getDefaultSpeechConfig(): StoredConfig | undefined {
   const items = load()
-  return items.length > 0 ? items[0] : undefined
+  return items.find(c => c.enabled !== false) ?? undefined
 }
 
 export function createSpeechConfig(input: {
@@ -39,6 +39,7 @@ export function createSpeechConfig(input: {
     id: randomUUID(),
     provider: input.provider,
     label: input.label || input.provider,
+    enabled: true,
     credentials: input.credentials,
     createdAt: now,
     updatedAt: now,
@@ -48,12 +49,13 @@ export function createSpeechConfig(input: {
   return item
 }
 
-export function updateSpeechConfig(id: string, patch: Partial<Pick<StoredConfig, 'label' | 'credentials'>>): StoredConfig | undefined {
+export function updateSpeechConfig(id: string, patch: Partial<Pick<StoredConfig, 'label' | 'credentials' | 'enabled'>>): StoredConfig | undefined {
   const items = load()
   const idx = items.findIndex(c => c.id === id)
   if (idx === -1) return undefined
   if (patch.label !== undefined) items[idx].label = patch.label
   if (patch.credentials !== undefined) items[idx].credentials = patch.credentials
+  if (patch.enabled !== undefined) items[idx].enabled = patch.enabled
   items[idx].updatedAt = new Date().toISOString()
   save(items)
   return items[idx]

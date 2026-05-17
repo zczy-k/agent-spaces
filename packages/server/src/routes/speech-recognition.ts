@@ -26,8 +26,8 @@ router.post('/', (req: Request, res: Response) => {
 })
 
 router.put('/:id', (req: Request<{ id: string }>, res: Response) => {
-  const { label, credentials } = req.body as { label?: string; credentials?: Record<string, string> }
-  const updated = store.updateSpeechConfig(req.params.id, { label, credentials })
+  const { label, credentials, enabled } = req.body as { label?: string; credentials?: Record<string, string>; enabled?: boolean }
+  const updated = store.updateSpeechConfig(req.params.id, { label, credentials, enabled })
   if (!updated) {
     res.status(404).json({ error: 'Config not found' })
     return

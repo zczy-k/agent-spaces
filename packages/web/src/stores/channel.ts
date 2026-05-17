@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Channel, Message, TodoItem } from '@agent-spaces/shared';
+import type { Channel, Message } from '@agent-spaces/shared';
 import { getWS } from '@/lib/ws';
 
 interface ChannelStore {

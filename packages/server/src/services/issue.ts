@@ -6,7 +6,9 @@ import * as taskService from '../services/task.js';
 
 function ensureChannel(workspaceId: string, issue: Issue): void {
   ensureRetryDefaults(workspaceId, issue);
-  const channelMembers = issue.members || [];
+  const existingChannel = issue.channelId ? channelService.getChannel(workspaceId, issue.channelId) : undefined;
+  const issueMembers = issue.members || [];
+  const channelMembers = issueMembers.length > 0 ? issueMembers : (existingChannel?.members ?? []);
   if (issue.channelId) {
     channelService.updateChannel(workspaceId, issue.channelId, { type: 'issue', issueId: issue.id, members: channelMembers });
     return;

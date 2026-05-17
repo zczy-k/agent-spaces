@@ -114,7 +114,7 @@ export function markInactiveChannelRunsStopped(workspaceId: string, channelId: s
 
   const stopped: Message[] = [];
   for (const message of listMessages(workspaceId, channelId)) {
-    if (message.status !== 'pending' && message.status !== 'streaming') continue;
+    if (message.status !== 'pending' && message.status !== 'streaming' && message.status !== 'waiting_for_user') continue;
     const updated = updateMessage(workspaceId, channelId, message.id, {
       content: message.content || 'Stopped by user',
       status: 'error',
@@ -276,6 +276,7 @@ export async function runMentionedAgent(
     const toolUseDetailIds = new Map<string, string>();
     let lastLiveUpdate = 0;
     const broadcastLiveParts = (force = false) => {
+      if (activeRun?.stopped) return;
       const now = Date.now();
       if (!force && now - lastLiveUpdate < 120) return;
       lastLiveUpdate = now;
@@ -325,6 +326,7 @@ export async function runMentionedAgent(
       configDir,
       sandboxDirs: preset.sandboxDirs,
       onEvent: (event) => {
+        if (activeRun?.stopped) return;
         if (event.type === 'reasoning') {
           liveReasoning.push({ text: event.text, status: event.status });
           broadcastToWorkspace(workspaceId, 'agent.output', { agentId: session.id, data: event.text });
@@ -406,8 +408,8 @@ export async function runMentionedAgent(
         broadcastLiveParts();
       },
     });
-    broadcastLiveParts(true);
     if (activeRun.stopped) return;
+    broadcastLiveParts(true);
 
     const displayOutput = mergeRuntimeOutput(liveOutput, result.output);
     if (shouldWaitForUserAnswer(askUserQuestions, result.summary, result.error, displayOutput)) {

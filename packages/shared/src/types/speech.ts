@@ -4,6 +4,7 @@ export interface SpeechRecognitionConfig {
   id: string
   provider: SpeechRecognitionProvider
   label: string
+  enabled: boolean
   credentials: Record<string, string>
   createdAt: string
   updatedAt: string

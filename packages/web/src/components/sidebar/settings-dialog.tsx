@@ -21,7 +21,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { UserIcon } from "@/components/common/user-icon";
-import { getToken, removeToken } from "@/lib/auth";
+import { getToken, removeToken, authHeaders } from "@/lib/auth";
 import { GitSettingsForm } from "@/components/git/git-settings-form";
 import { isTauriEnvironment } from "@/lib/native-notification";
 
@@ -403,12 +403,12 @@ function GitSettings() {
 function SpeechSettings() {
   const t = useTranslations('settings');
   const tc = useTranslations('common');
-  const [configs, setConfigs] = useState<Array<{ id: string; provider: string; label: string; credentials: Record<string, string> }>>([]);
+  const [configs, setConfigs] = useState<Array<{ id: string; provider: string; label: string; enabled: boolean; credentials: Record<string, string> }>>([]);
   const [loading, setLoading] = useState(true);
 
   const loadConfigs = async () => {
     try {
-      const res = await fetch("/api/speech-recognition");
+      const res = await fetch("/api/speech-recognition", { headers: authHeaders() });
       if (res.ok) setConfigs(await res.json());
     } catch {}
     setLoading(false);
@@ -419,15 +419,24 @@ function SpeechSettings() {
   const saveCredentials = async (id: string, credentials: Record<string, string>) => {
     await fetch(`/api/speech-recognition/${id}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify({ credentials }),
     });
+  };
+
+  const toggleEnabled = async (id: string, enabled: boolean) => {
+    await fetch(`/api/speech-recognition/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ enabled }),
+    });
+    setConfigs((prev) => prev.map((c) => (c.id === id ? { ...c, enabled } : c)));
   };
 
   const createConfig = async (provider: string) => {
     const res = await fetch("/api/speech-recognition", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify({ provider, credentials: {} }),
     });
     if (res.ok) {
@@ -451,6 +460,12 @@ function SpeechSettings() {
         <div className="space-y-3 p-3 border rounded-lg">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">{t('speechTencent')}</span>
+            {tencent && (
+              <Switch
+                checked={tencent.enabled !== false}
+                onCheckedChange={(checked) => toggleEnabled(tencent.id, checked)}
+              />
+            )}
           </div>
           {tencent ? (
             <TencentCredentialForm

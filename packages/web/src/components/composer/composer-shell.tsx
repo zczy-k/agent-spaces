@@ -59,6 +59,7 @@ export function ComposerShell({
           <div className="flex items-center gap-1">{actions}</div>
           {isProcessing ? (
             <Button
+              type="button"
               onClick={onStop}
               className="size-7 p-0 rounded-full bg-destructive hover:bg-destructive/90 text-destructive-foreground"
             >
@@ -66,6 +67,7 @@ export function ComposerShell({
             </Button>
           ) : canSubmit ? (
             <Button
+              type="button"
               onClick={onSubmit}
               className="size-7 p-0 rounded-full bg-primary"
             >
