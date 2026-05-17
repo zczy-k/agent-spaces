@@ -14,6 +14,7 @@ interface InspectorHistoryState {
   loadHistory: (workspaceId: string) => void;
   addEntry: (workspaceId: string, entry: Omit<InspectorHistoryEntry, 'id'> & { id?: string }) => void;
   setHistory: (workspaceId: string, history: InspectorHistoryEntry[]) => void;
+  clearHistory: (workspaceId: string) => void;
 }
 
 const MAX_HISTORY = 50;
@@ -87,6 +88,13 @@ export const useInspectorHistoryStore = create<InspectorHistoryState>((set) => (
     writeHistory(workspaceId, history);
     set((state) => ({
       histories: { ...state.histories, [workspaceId]: history },
+    }));
+  },
+
+  clearHistory: (workspaceId) => {
+    writeHistory(workspaceId, []);
+    set((state) => ({
+      histories: { ...state.histories, [workspaceId]: [] },
     }));
   },
 }));

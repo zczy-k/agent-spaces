@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { useState } from 'react';
 import { EditorContent, type Editor } from '@tiptap/react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -22,6 +23,8 @@ interface ComposerShellProps {
   onCancelReply?: () => void;
 }
 
+const EMPTY_HISTORY: never[] = [];
+
 export function ComposerShell({
   workspaceId,
   editor,
@@ -36,11 +39,14 @@ export function ComposerShell({
   replyLabel,
   onCancelReply,
 }: ComposerShellProps) {
-  const history = useInspectorHistoryStore((s) => s.histories[workspaceId] ?? []);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const history = useInspectorHistoryStore((s) => s.histories[workspaceId] ?? EMPTY_HISTORY);
   const loadHistory = useInspectorHistoryStore((s) => s.loadHistory);
+  const clearHistory = useInspectorHistoryStore((s) => s.clearHistory);
 
   const insertCodeLocation = (path: string, line: number, column: number) => {
     editor?.chain().focus().insertContent(`${path}:${line}:${column}`).run();
+    setHistoryOpen(false);
   };
 
   return (
@@ -69,7 +75,13 @@ export function ComposerShell({
         <div className="flex items-center justify-between px-2 pb-2">
           <div className="flex items-center gap-1">
             {actions}
-            <Popover onOpenChange={(open) => { if (open) loadHistory(workspaceId); }}>
+            <Popover
+              open={historyOpen}
+              onOpenChange={(open) => {
+                setHistoryOpen(open);
+                if (open) loadHistory(workspaceId);
+              }}
+            >
               <PopoverTrigger
                 render={
                   <Button
@@ -84,7 +96,17 @@ export function ComposerShell({
                 <Code2 className="size-3" />
               </PopoverTrigger>
               <PopoverContent align="start" sideOffset={6} className="w-80 p-1.5 gap-0">
-                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">最近定位代码</div>
+                <div className="flex items-center justify-between gap-2 px-2 py-1.5">
+                  <span className="text-xs font-medium text-muted-foreground">最近定位代码</span>
+                  <button
+                    type="button"
+                    onClick={() => clearHistory(workspaceId)}
+                    disabled={history.length === 0}
+                    className="rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                  >
+                    清空
+                  </button>
+                </div>
                 {history.length === 0 ? (
                   <div className="px-2 py-6 text-center text-xs text-muted-foreground">暂无记录</div>
                 ) : (
