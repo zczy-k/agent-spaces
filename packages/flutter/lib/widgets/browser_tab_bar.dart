@@ -38,7 +38,11 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
     if (_controller?.length != tabCount) {
       _controller?.dispose();
       _controller = tabCount > 0
-          ? TabController(length: tabCount, initialIndex: activeIndex, vsync: this)
+          ? TabController(
+              length: tabCount,
+              initialIndex: activeIndex,
+              vsync: this,
+            )
           : null;
     }
 
@@ -49,7 +53,7 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
         child: Row(
           children: [
             const Spacer(),
-            _AddTabButton(onTap: () => notifier.addTab()),
+            _AddTabButton(onTap: () => _showNewTabDialog(context, notifier)),
             _MoreMenuButton(),
             const SizedBox(width: 4),
           ],
@@ -78,17 +82,29 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
               borderWidth: 0,
               radius: 8,
               contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-              buttonMargin: const EdgeInsets.symmetric(horizontal: 1, vertical: 4),
+              buttonMargin: const EdgeInsets.symmetric(
+                horizontal: 1,
+                vertical: 4,
+              ),
               onTap: (index) {
-                if (index < tabCount) notifier.setActiveTab(state.tabs[index].id);
+                if (index < tabCount)
+                  notifier.setActiveTab(state.tabs[index].id);
               },
               tabs: state.tabs.map((tab) {
                 return Tab(
                   child: GestureDetector(
-                    onLongPressStart: (details) =>
-                        _showContextMenu(context, ref, tab, details.globalPosition),
-                    onSecondaryTapUp: (details) =>
-                        _showContextMenu(context, ref, tab, details.globalPosition),
+                    onLongPressStart: (details) => _showContextMenu(
+                      context,
+                      ref,
+                      tab,
+                      details.globalPosition,
+                    ),
+                    onSecondaryTapUp: (details) => _showContextMenu(
+                      context,
+                      ref,
+                      tab,
+                      details.globalPosition,
+                    ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -118,7 +134,7 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
               }).toList(),
             ),
           ),
-          _AddTabButton(onTap: () => notifier.addTab()),
+          _AddTabButton(onTap: () => _showNewTabDialog(context, notifier)),
           _MoreMenuButton(),
           const SizedBox(width: 4),
         ],
@@ -126,44 +142,79 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
     );
   }
 
-  void _showContextMenu(BuildContext context, WidgetRef ref, BrowserTab tab, Offset position) {
+  void _showContextMenu(
+    BuildContext context,
+    WidgetRef ref,
+    BrowserTab tab,
+    Offset position,
+  ) {
     final notifier = ref.read(browserProvider.notifier);
     final bookmarkNotifier = ref.read(bookmarkProvider.notifier);
     final isBookmarked = bookmarkNotifier.isBookmarked(tab.url);
 
     showMenu<String>(
       context: context,
-      position: RelativeRect.fromLTRB(position.dx, position.dy, position.dx + 1, position.dy + 1),
+      position: RelativeRect.fromLTRB(
+        position.dx,
+        position.dy,
+        position.dx + 1,
+        position.dy + 1,
+      ),
       items: [
         const PopupMenuItem<String>(
           value: 'navigate',
           height: 36,
-          child: Row(children: [Icon(Icons.open_in_browser, size: 16), SizedBox(width: 8), Text('跳转', style: TextStyle(fontSize: 13))]),
+          child: Row(
+            children: [
+              Icon(Icons.open_in_browser, size: 16),
+              SizedBox(width: 8),
+              Text('跳转', style: TextStyle(fontSize: 13)),
+            ],
+          ),
         ),
         PopupMenuItem<String>(
           value: 'device',
           height: 36,
-          child: Row(children: [
-            Icon(_deviceIcon(tab.device.type), size: 16),
-            const SizedBox(width: 8),
-            const Text('切换设备', style: TextStyle(fontSize: 13)),
-            const Spacer(),
-            Text(tab.device.name, style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
-          ]),
+          child: Row(
+            children: [
+              Icon(_deviceIcon(tab.device.type), size: 16),
+              const SizedBox(width: 8),
+              const Text('切换设备', style: TextStyle(fontSize: 13)),
+              const Spacer(),
+              Text(
+                tab.device.name,
+                style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+              ),
+            ],
+          ),
         ),
         PopupMenuItem<String>(
           value: 'bookmark',
           height: 36,
-          child: Row(children: [
-            Icon(isBookmarked ? Icons.bookmark : Icons.bookmark_outline, size: 16),
-            const SizedBox(width: 8),
-            Text(isBookmarked ? '从书签移除' : '添加到书签', style: const TextStyle(fontSize: 13)),
-          ]),
+          child: Row(
+            children: [
+              Icon(
+                isBookmarked ? Icons.bookmark : Icons.bookmark_outline,
+                size: 16,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                isBookmarked ? '从书签移除' : '添加到书签',
+                style: const TextStyle(fontSize: 13),
+              ),
+            ],
+          ),
         ),
         const PopupMenuItem<String>(
           value: 'console',
           height: 36,
-          child: Row(children: [Icon(Icons.terminal, size: 16), SizedBox(width: 8), Text('查看控制台', style: TextStyle(fontSize: 13))]),
+          child: Row(
+            children: [
+              Icon(Icons.terminal, size: 16),
+              SizedBox(width: 8),
+              Text('查看控制台', style: TextStyle(fontSize: 13)),
+            ],
+          ),
         ),
       ],
     ).then((value) {
@@ -178,7 +229,11 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
           final bm = bookmarkNotifier.findByUrl(tab.url);
           if (bm != null) bookmarkNotifier.removeBookmark(bm.id);
         } else {
-          bookmarkNotifier.addBookmark(name: tab.title, url: tab.url, deviceType: tab.device.type);
+          bookmarkNotifier.addBookmark(
+            name: tab.title,
+            url: tab.url,
+            deviceType: tab.device.type,
+          );
         }
       } else if (value == 'console') {
         showModalBottomSheet(
@@ -190,7 +245,52 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
     });
   }
 
-  void _showNavigateDialog(BuildContext context, BrowserTab tab, BrowserNotifier notifier) {
+  void _showNewTabDialog(BuildContext context, BrowserNotifier notifier) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('新建标签页', style: TextStyle(fontSize: 15)),
+        contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          style: const TextStyle(fontSize: 13),
+          decoration: const InputDecoration(isDense: true, hintText: '输入 URL'),
+          onSubmitted: (url) {
+            if (url.isNotEmpty) {
+              final normalized = url.startsWith('http') ? url : 'http://$url';
+              notifier.addTab(url: normalized);
+              Navigator.of(ctx).pop();
+            }
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              final url = controller.text;
+              if (url.isNotEmpty) {
+                final normalized = url.startsWith('http') ? url : 'http://$url';
+                notifier.addTab(url: normalized);
+                Navigator.of(ctx).pop();
+              }
+            },
+            child: const Text('打开'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showNavigateDialog(
+    BuildContext context,
+    BrowserTab tab,
+    BrowserNotifier notifier,
+  ) {
     final controller = TextEditingController(text: tab.url);
     showDialog(
       context: context,
@@ -215,11 +315,16 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
           },
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('取消')),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('取消'),
+          ),
           TextButton(
             onPressed: () {
               if (controller.text.isNotEmpty) {
-                final normalized = controller.text.startsWith('http') ? controller.text : 'http://${controller.text}';
+                final normalized = controller.text.startsWith('http')
+                    ? controller.text
+                    : 'http://${controller.text}';
                 notifier.updateTab(tab.id, url: normalized);
                 Navigator.of(ctx).pop();
               }
@@ -231,7 +336,11 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
     );
   }
 
-  void _showDeviceMenu(BuildContext context, BrowserTab tab, BrowserNotifier notifier) {
+  void _showDeviceMenu(
+    BuildContext context,
+    BrowserTab tab,
+    BrowserNotifier notifier,
+  ) {
     showDialog(
       context: context,
       builder: (ctx) => SimpleDialog(
@@ -249,11 +358,18 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
                 const SizedBox(width: 12),
                 Text(
                   '${d.name} (${d.width.toInt()}x${d.height.toInt()})',
-                  style: TextStyle(fontSize: 13, fontWeight: selected ? FontWeight.w600 : FontWeight.normal),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                  ),
                 ),
                 if (selected) ...[
                   const Spacer(),
-                  Icon(Icons.check, size: 16, color: Theme.of(context).colorScheme.primary),
+                  Icon(
+                    Icons.check,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ],
               ],
             ),
@@ -277,15 +393,39 @@ class _MoreMenuButton extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     return PopupMenuButton<String>(
-      icon: Icon(Icons.more_vert, size: 18, color: theme.colorScheme.onSurfaceVariant),
+      icon: Icon(
+        Icons.more_vert,
+        size: 18,
+        color: theme.colorScheme.onSurfaceVariant,
+      ),
       style: IconButton.styleFrom(
         minimumSize: const Size(32, 32),
         padding: EdgeInsets.zero,
       ),
       offset: const Offset(0, 40),
       itemBuilder: (_) => [
-        const PopupMenuItem(value: 'bookmarks', height: 36, child: Row(children: [Icon(Icons.bookmark_outline, size: 16), SizedBox(width: 8), Text('书签', style: TextStyle(fontSize: 13))])),
-        const PopupMenuItem(value: 'settings', height: 36, child: Row(children: [Icon(Icons.settings, size: 16), SizedBox(width: 8), Text('设置', style: TextStyle(fontSize: 13))])),
+        const PopupMenuItem(
+          value: 'bookmarks',
+          height: 36,
+          child: Row(
+            children: [
+              Icon(Icons.bookmark_outline, size: 16),
+              SizedBox(width: 8),
+              Text('书签', style: TextStyle(fontSize: 13)),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 'settings',
+          height: 36,
+          child: Row(
+            children: [
+              Icon(Icons.settings, size: 16),
+              SizedBox(width: 8),
+              Text('设置', style: TextStyle(fontSize: 13)),
+            ],
+          ),
+        ),
       ],
       onSelected: (value) {
         if (value == 'bookmarks') {
@@ -308,7 +448,11 @@ class _AddTabButton extends StatelessWidget {
     final theme = Theme.of(context);
     return IconButton(
       onPressed: onTap,
-      icon: Icon(Icons.add, size: 18, color: theme.colorScheme.onSurfaceVariant),
+      icon: Icon(
+        Icons.add,
+        size: 18,
+        color: theme.colorScheme.onSurfaceVariant,
+      ),
       style: IconButton.styleFrom(
         minimumSize: const Size(32, 32),
         padding: EdgeInsets.zero,
@@ -324,7 +468,11 @@ class _FaviconIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (url.isEmpty) {
-      return Icon(Icons.language, size: 14, color: Theme.of(context).colorScheme.onSurfaceVariant);
+      return Icon(
+        Icons.language,
+        size: 14,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+      );
     }
     return ClipRRect(
       borderRadius: BorderRadius.circular(2),
@@ -333,7 +481,11 @@ class _FaviconIcon extends StatelessWidget {
         width: 14,
         height: 14,
         // ignore: avoid_renaming_method_parameters
-        errorBuilder: (context, error, stackTrace) => Icon(Icons.language, size: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
+        errorBuilder: (context, error, stackTrace) => Icon(
+          Icons.language,
+          size: 14,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
       ),
     );
   }
@@ -368,26 +520,43 @@ class _ConsoleSheet extends ConsumerWidget {
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                   const SizedBox(width: 8),
-                  Text('捕获日志', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
+                  Text(
+                    '捕获日志',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                   const SizedBox(width: 12),
                   IconButton(
                     onPressed: state.logs.isEmpty
                         ? null
                         : () {
-                            Clipboard.setData(ClipboardData(text: notifier.allLogsText));
+                            Clipboard.setData(
+                              ClipboardData(text: notifier.allLogsText),
+                            );
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('已复制'), duration: Duration(seconds: 1)),
+                              const SnackBar(
+                                content: Text('已复制'),
+                                duration: Duration(seconds: 1),
+                              ),
                             );
                           },
                     icon: const Icon(Icons.copy, size: 18),
                     tooltip: '复制所有日志',
-                    style: IconButton.styleFrom(minimumSize: const Size(32, 32), padding: EdgeInsets.zero),
+                    style: IconButton.styleFrom(
+                      minimumSize: const Size(32, 32),
+                      padding: EdgeInsets.zero,
+                    ),
                   ),
                   IconButton(
                     onPressed: state.logs.isEmpty ? null : notifier.clearLogs,
                     icon: const Icon(Icons.delete_outline, size: 18),
                     tooltip: '清空日志',
-                    style: IconButton.styleFrom(minimumSize: const Size(32, 32), padding: EdgeInsets.zero),
+                    style: IconButton.styleFrom(
+                      minimumSize: const Size(32, 32),
+                      padding: EdgeInsets.zero,
+                    ),
                   ),
                 ],
               ),
@@ -398,7 +567,10 @@ class _ConsoleSheet extends ConsumerWidget {
                   ? Center(
                       child: Text(
                         state.capturing ? '暂无日志' : '开启捕获以记录控制台日志',
-                        style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurfaceVariant),
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     )
                   : ListView.builder(
@@ -409,31 +581,48 @@ class _ConsoleSheet extends ConsumerWidget {
                         final log = state.logs[i];
                         final color = _levelColor(log.level, theme);
                         return Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 2,
+                          ),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 '${log.formattedTime} ',
-                                style: TextStyle(fontSize: 11, fontFamily: 'monospace', color: theme.colorScheme.onSurfaceVariant),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontFamily: 'monospace',
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
                               ),
                               Container(
                                 margin: const EdgeInsets.only(top: 2),
-                                padding: const EdgeInsets.symmetric(horizontal: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                ),
                                 decoration: BoxDecoration(
                                   color: color.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(3),
                                 ),
                                 child: Text(
                                   log.level.toUpperCase(),
-                                  style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: color),
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w600,
+                                    color: color,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
                                   log.message,
-                                  style: TextStyle(fontSize: 12, fontFamily: 'monospace', color: color),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontFamily: 'monospace',
+                                    color: color,
+                                  ),
                                 ),
                               ),
                             ],

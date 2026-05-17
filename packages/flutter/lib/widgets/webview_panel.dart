@@ -553,6 +553,13 @@ class _WebViewInstance extends ConsumerStatefulWidget {
 
 class _WebViewInstanceState extends ConsumerState<_WebViewInstance> {
   InAppWebViewController? _controller;
+  String _lastUrl = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _lastUrl = widget.tab.url;
+  }
 
   @override
   void dispose() {
@@ -560,6 +567,17 @@ class _WebViewInstanceState extends ConsumerState<_WebViewInstance> {
       _webViewService.unregisterController(widget.tab.id);
     }
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant _WebViewInstance oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.tab.url != _lastUrl && _controller != null) {
+      _lastUrl = widget.tab.url;
+      _controller!.loadUrl(
+        urlRequest: URLRequest(url: WebUri(widget.tab.url)),
+      );
+    }
   }
 
   @override
