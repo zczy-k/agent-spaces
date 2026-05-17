@@ -171,6 +171,9 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   const isCommitDiff = activeFilePath ? isCommitDiffPath(activeFilePath) : false;
   const commitDiffData = isCommitDiff && activeFilePath ? commitDiffs[getCommitHashFromPath(activeFilePath)] : null;
 
+  // Track the content we pass to Monaco so onChange can detect programmatic vs user changes
+  const lastSetContent = useRef<string | null>(null);
+
   const handleSave = useCallback(() => {
     if (activeFilePath) {
       saveFile(workspaceId, activeFilePath);
@@ -283,9 +286,10 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   useEffect(() => {
     if (!activeFile || !activeFilePath) return;
 
+    lastSetContent.current = activeFile.content;
     getOrCreateModel(workspaceId, activeFilePath, activeFile.content);
     preloadDirectory(workspaceId, activeFilePath);
-  }, [activeFilePath, workspaceId, activeFile]);
+  }, [activeFilePath, workspaceId]); // intentional: don't depend on activeFile to avoid loop
 
   // Handle pending jump from search results
   useEffect(() => {
@@ -319,7 +323,13 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
             language={getLanguage(activeFile.path)}
             value={activeFile.content}
             path={modelPath}
-            onChange={(value) => updateContent(activeFile.path, value || "")}
+            onChange={(value) => {
+              const v = value || "";
+              // Skip if this onChange is from programmatic setValue (tab switch/mount), not user edit
+              if (lastSetContent.current === v) return;
+              lastSetContent.current = v;
+              updateContent(activeFile.path, v);
+            }}
             onMount={handleMount}
             options={{
               fontSize: 13,

@@ -169,9 +169,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   updateContent: (path, content) => {
     set((s) => ({
-      openFiles: s.openFiles.map((f) =>
-        f.path === path ? { ...f, content, modified: f.content !== content } : f
-      ),
+      openFiles: s.openFiles.map((f) => {
+        if (f.path !== path) return f;
+        // Monaco normalizes \r\n to \n, so compare normalized content
+        const normalize = (s: string) => s.replace(/\r\n?/g, '\n');
+        const contentChanged = normalize(f.content) !== normalize(content);
+        return { ...f, content, modified: contentChanged };
+      }),
     }));
   },
 
