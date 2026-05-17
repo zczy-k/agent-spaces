@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../models/browser_tab.dart';
 import '../providers/browser_provider.dart';
+import '../providers/bookmark_provider.dart';
 
 class BrowserTabBar extends ConsumerWidget {
   const BrowserTabBar({super.key});
@@ -15,38 +17,70 @@ class BrowserTabBar extends ConsumerWidget {
     return Container(
       height: 40,
       color: theme.colorScheme.surfaceContainer,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        itemCount: state.tabs.length + 1,
-        separatorBuilder: (_, __) => const SizedBox(width: 2),
-        itemBuilder: (context, index) {
-          if (index == state.tabs.length) {
-            return _AddTabButton(onTap: () => notifier.addTab());
-          }
-          final tab = state.tabs[index];
-          final isActive = tab.id == state.activeTabId;
-          return _TabChip(
-            tab: tab,
-            isActive: isActive,
-            canClose: state.tabs.length > 1,
-            onTap: () => notifier.setActiveTab(tab.id),
-            onClose: () => notifier.closeTab(tab.id),
-            onNavigate: (url) {
-              final normalized = url.startsWith('http') ? url : 'http://$url';
-              notifier.updateTab(tab.id, url: normalized);
-            },
-            onSwitchDevice: (device) {
-              notifier.setDevice(device, tab.id);
-            },
-          );
-        },
+      child: Row(
+        children: [
+          Expanded(
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              itemCount: state.tabs.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 2),
+              itemBuilder: (context, index) {
+                final tab = state.tabs[index];
+                final isActive = tab.id == state.activeTabId;
+                return _TabChip(
+                  tab: tab,
+                  isActive: isActive,
+                  canClose: state.tabs.length > 1,
+                  onTap: () => notifier.setActiveTab(tab.id),
+                  onClose: () => notifier.closeTab(tab.id),
+                  onNavigate: (url) {
+                    final normalized = url.startsWith('http') ? url : 'http://$url';
+                    notifier.updateTab(tab.id, url: normalized);
+                  },
+                  onSwitchDevice: (device) {
+                    notifier.setDevice(device, tab.id);
+                  },
+                );
+              },
+            ),
+          ),
+          _AddTabButton(onTap: () => notifier.addTab()),
+          _MoreMenuButton(),
+          const SizedBox(width: 4),
+        ],
       ),
     );
   }
 }
 
-class _TabChip extends StatelessWidget {
+class _MoreMenuButton extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    return PopupMenuButton<String>(
+      icon: Icon(Icons.more_vert, size: 18, color: theme.colorScheme.onSurfaceVariant),
+      style: IconButton.styleFrom(
+        minimumSize: const Size(32, 32),
+        padding: EdgeInsets.zero,
+      ),
+      offset: const Offset(0, 40),
+      itemBuilder: (_) => [
+        const PopupMenuItem(value: 'bookmarks', height: 36, child: Row(children: [Icon(Icons.bookmark_outline, size: 16), SizedBox(width: 8), Text('书签', style: TextStyle(fontSize: 13))])),
+        const PopupMenuItem(value: 'settings', height: 36, child: Row(children: [Icon(Icons.settings, size: 16), SizedBox(width: 8), Text('设置', style: TextStyle(fontSize: 13))])),
+      ],
+      onSelected: (value) {
+        if (value == 'bookmarks') {
+          context.push('/bookmarks');
+        } else if (value == 'settings') {
+          context.push('/settings');
+        }
+      },
+    );
+  }
+}
+
+class _TabChip extends ConsumerWidget {
   final BrowserTab tab;
   final bool isActive;
   final bool canClose;
@@ -66,7 +100,7 @@ class _TabChip extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     return Material(
       color: isActive
@@ -76,7 +110,7 @@ class _TabChip extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         onSecondaryTapUp: (details) =>
-            _showContextMenu(context, details.globalPosition),
+            _showContextMenu(context, ref, details.globalPosition),
         borderRadius: BorderRadius.circular(8),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -116,7 +150,10 @@ class _TabChip extends StatelessWidget {
     );
   }
 
-  void _showContextMenu(BuildContext context, Offset position) {
+  void _showContextMenu(BuildContext context, WidgetRef ref, Offset position) {
+    final bookmarkNotifier = ref.read(bookmarkProvider.notifier);
+    final isBookmarked = bookmarkNotifier.isBookmarked(tab.url);
+
     showMenu<String>(
       context: context,
       position: RelativeRect.fromLTRB(
@@ -153,12 +190,37 @@ class _TabChip extends StatelessWidget {
             ],
           ),
         ),
+        PopupMenuItem<String>(
+          value: 'bookmark',
+          height: 36,
+          child: Row(
+            children: [
+              Icon(isBookmarked ? Icons.bookmark : Icons.bookmark_outline, size: 16),
+              const SizedBox(width: 8),
+              Text(
+                isBookmarked ? '从书签移除' : '添加到书签',
+                style: const TextStyle(fontSize: 13),
+              ),
+            ],
+          ),
+        ),
       ],
     ).then((value) {
       if (value == 'navigate') {
         _showNavigateDialog(context);
       } else if (value == 'device') {
         _showDeviceMenu(context);
+      } else if (value == 'bookmark') {
+        if (isBookmarked) {
+          final bm = bookmarkNotifier.findByUrl(tab.url);
+          if (bm != null) bookmarkNotifier.removeBookmark(bm.id);
+        } else {
+          bookmarkNotifier.addBookmark(
+            name: tab.title,
+            url: tab.url,
+            deviceType: tab.device.type,
+          );
+        }
       }
     });
   }
