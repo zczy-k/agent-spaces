@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { isTauriEnvironment } from "@/lib/native-notification";
+import { isTauriEnvironment, isFlutterEnvironment } from "@/lib/native-notification";
 
 type TauriWebviewApi = {
   webview?: {
@@ -11,17 +11,24 @@ type TauriWebviewApi = {
   };
 };
 
+type FlutterBridge = {
+  invoke?: (method: string, args: unknown) => Promise<unknown>;
+};
+
 async function applyNativeZoom(value: number) {
-  if (!isTauriEnvironment()) return;
-
-  const tauri = (window as Window & { __TAURI__?: TauriWebviewApi }).__TAURI__;
-  const setZoom = tauri?.webview?.getCurrentWebview?.()?.setZoom;
-  if (!setZoom) return;
-
-  try {
-    await setZoom(value / 100);
-  } catch {
-    // Ignore unsupported platforms/webviews.
+  if (isTauriEnvironment()) {
+    const tauri = (window as Window & { __TAURI__?: TauriWebviewApi }).__TAURI__;
+    const setZoom = tauri?.webview?.getCurrentWebview?.()?.setZoom;
+    if (!setZoom) return;
+    try {
+      await setZoom(value / 100);
+    } catch { /* ignore */ }
+  } else if (isFlutterEnvironment()) {
+    const bridge = (window as Window & { __flutterBridge?: FlutterBridge }).__flutterBridge;
+    if (!bridge?.invoke) return;
+    try {
+      await bridge.invoke('setZoom', { scale: value / 100 });
+    } catch { /* ignore */ }
   }
 }
 

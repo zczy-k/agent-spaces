@@ -20,6 +20,16 @@ export function isTauriEnvironment(): boolean {
     && (window.location.hostname === "tauri.localhost" || "__TAURI_INTERNALS__" in window);
 }
 
+/** Detect whether we are running inside a Flutter webview. */
+export function isFlutterEnvironment(): boolean {
+  return typeof window !== "undefined" && "__FLUTTER_INTERNALS__" in window;
+}
+
+/** Detect whether we are running inside a native webview (Tauri or Flutter). */
+export function isNativeEnvironment(): boolean {
+  return isTauriEnvironment() || isFlutterEnvironment();
+}
+
 /** Detect whether we are running inside the Android Tauri webview. */
 export function isTauriAndroidEnvironment(): boolean {
   return isTauriEnvironment()
@@ -32,6 +42,9 @@ export async function getNotificationPermission(): Promise<NotificationPermissio
   if (isTauriEnvironment()) {
     return getTauriPermission();
   }
+  if (isFlutterEnvironment()) {
+    return getFlutterPermission();
+  }
   return getWebPermission();
 }
 
@@ -40,6 +53,9 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
   if (isTauriEnvironment()) {
     return requestTauriPermission();
   }
+  if (isFlutterEnvironment()) {
+    return requestFlutterPermission();
+  }
   return requestWebPermission();
 }
 
@@ -47,6 +63,9 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
 export async function sendNativeNotification(title: string, body: string, options: NativeNotificationOptions = {}): Promise<void> {
   if (isTauriEnvironment()) {
     return sendTauriNotification(title, body, options);
+  }
+  if (isFlutterEnvironment()) {
+    return sendFlutterNotification(title, body);
   }
   return sendWebNotification(title, body);
 }
@@ -128,5 +147,41 @@ async function sendTauriNotification(title: string, body: string, options: Nativ
     sendNotification({ title, body, ...options });
   } catch {
     // Tauri plugin not available, fall back silently
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Flutter (flutter_inappwebview JS Bridge)
+// ---------------------------------------------------------------------------
+
+async function getFlutterPermission(): Promise<NotificationPermissionStatus> {
+  try {
+    const bridge = (window as Window & { __flutterBridge?: { invoke: (method: string, args: unknown) => Promise<unknown> } }).__flutterBridge;
+    if (!bridge) return 'unsupported';
+    const result = await bridge.invoke('getNotificationPermission', null);
+    return result === true ? 'granted' : 'default';
+  } catch {
+    return 'unsupported';
+  }
+}
+
+async function requestFlutterPermission(): Promise<NotificationPermissionStatus> {
+  try {
+    const bridge = (window as Window & { __flutterBridge?: { invoke: (method: string, args: unknown) => Promise<unknown> } }).__flutterBridge;
+    if (!bridge) return 'unsupported';
+    const result = await bridge.invoke('requestNotificationPermission', null);
+    return result === true ? 'granted' : 'denied';
+  } catch {
+    return 'unsupported';
+  }
+}
+
+async function sendFlutterNotification(title: string, body: string): Promise<void> {
+  try {
+    const bridge = (window as Window & { __flutterBridge?: { invoke: (method: string, args: unknown) => Promise<unknown> } }).__flutterBridge;
+    if (!bridge) return;
+    await bridge.invoke('sendNotification', { title, body });
+  } catch {
+    // Flutter bridge not available
   }
 }

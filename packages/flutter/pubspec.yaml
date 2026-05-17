@@ -1,0 +1,45 @@
+name: agent_spaces
+description: "Agent Spaces - Multi-Agent Collaborative Programming Platform"
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.10.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # WebView
+  flutter_inappwebview: ^6.1.5
+
+  # Notifications
+  awesome_notifications: ^0.11.0
+
+  # State management
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # Routing
+  go_router: ^14.8.1
+
+  # Storage
+  shared_preferences: ^2.5.3
+
+  # Utils
+  logger: ^2.5.0
+  path_provider: ^2.1.5
+  url_launcher: ^6.3.1
+  share_plus: ^10.1.4
+  uuid: ^4.5.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  riverpod_generator: ^2.6.3
+  build_runner: ^2.4.14
+
+flutter:
+  uses-material-design: true
