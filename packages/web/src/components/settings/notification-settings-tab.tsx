@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 import type { AgentConfig, NotificationEventKey, NotificationProvider, Workspace, WorkspaceNotificationSettings } from '@agent-spaces/shared';
 import {
   getNotificationPermission,
-  isTauriAndroidEnvironment,
+  isNativeAndroidEnvironment,
   requestNotificationPermission,
   sendNativeNotification,
   type NotificationPermissionStatus,
@@ -168,7 +168,7 @@ export function NotificationSettingsTab({
   }, [notificationSettings.enabled, notificationSettings.provider, wechatQR.status, wechatQR.qrcodeImgContent, workspaceId]);
 
   useEffect(() => {
-    setIsAndroidNative(isTauriAndroidEnvironment());
+    setIsAndroidNative(isNativeAndroidEnvironment());
     getNotificationPermission().then(setNativePermission);
   }, []);
 

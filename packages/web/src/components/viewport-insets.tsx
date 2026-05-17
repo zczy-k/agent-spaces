@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { isTauriEnvironment } from "@/lib/native-notification";
+import { isNativeEnvironment } from "@/lib/native-notification";
 
 declare global {
   interface Window {
@@ -12,15 +12,15 @@ declare global {
   }
 }
 
-function getAndroidTauriTopInset() {
-  if (!isTauriEnvironment()) return 0;
+function getAndroidNativeTopInset() {
+  if (!isNativeEnvironment()) return 0;
   if (!/Android/i.test(navigator.userAgent)) return 0;
 
-  return window.__agentSpacesNativeInsets?.top ?? window.AgentSpacesStatusBar?.getTopInset?.() ?? 0;
+  return window.__agentSpacesNativeInsets?.top ?? 0;
 }
 
-function getAndroidTauriKeyboardInset() {
-  if (!isTauriEnvironment()) return 0;
+function getAndroidNativeKeyboardInset() {
+  if (!isNativeEnvironment()) return 0;
   if (!/Android/i.test(navigator.userAgent)) return 0;
 
   return window.__agentSpacesNativeInsets?.keyboard ?? 0;
@@ -29,12 +29,12 @@ function getAndroidTauriKeyboardInset() {
 function updateViewportInsets() {
   const root = document.documentElement;
   const viewport = window.visualViewport;
-  const topInset = getAndroidTauriTopInset();
+  const topInset = getAndroidNativeTopInset();
   const visualViewportHeight = viewport?.height ?? window.innerHeight;
   const visualKeyboardHeight = viewport
     ? Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop)
     : 0;
-  const keyboardHeight = Math.max(visualKeyboardHeight, getAndroidTauriKeyboardInset());
+  const keyboardHeight = Math.max(visualKeyboardHeight, getAndroidNativeKeyboardInset());
   const viewportHeight = visualKeyboardHeight > 0
     ? visualViewportHeight
     : Math.max(0, window.innerHeight - keyboardHeight);

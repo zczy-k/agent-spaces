@@ -23,7 +23,7 @@ import { Slider } from "@/components/ui/slider";
 import { UserIcon } from "@/components/common/user-icon";
 import { getToken, removeToken, authHeaders } from "@/lib/auth";
 import { GitSettingsForm } from "@/components/git/git-settings-form";
-import { isTauriEnvironment } from "@/lib/native-notification";
+import { isNativeEnvironment } from "@/lib/native-notification";
 
 const tabs = [
   { key: "appearance", icon: Palette },
@@ -89,7 +89,7 @@ export function SettingsDialog({
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
       setUserAvatarUrl(localStorage.getItem("userAvatarUrl"));
-      setShowZoomSetting(isTauriEnvironment());
+      setShowZoomSetting(isNativeEnvironment());
     });
     return () => cancelAnimationFrame(frame);
   }, [open]);

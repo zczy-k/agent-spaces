@@ -78,10 +78,10 @@ class BrowserNotifier extends StateNotifier<BrowserState> {
     state = state.copyWith(activeTabId: tabId);
   }
 
-  void updateTab(String tabId, {String? title, String? url}) {
+  void updateTab(String tabId, {String? title, String? url, String? faviconUrl}) {
     state = state.copyWith(
       tabs: state.tabs
-          .map((t) => t.id == tabId ? t.copyWith(title: title, url: url) : t)
+          .map((t) => t.id == tabId ? t.copyWith(title: title, url: url, faviconUrl: faviconUrl) : t)
           .toList(),
     );
   }

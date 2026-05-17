@@ -13,10 +13,6 @@ function isLocalhost(hostname: string): boolean {
   return hostname === "localhost" || hostname === "127.0.0.1";
 }
 
-function isTauriHost(hostname: string): boolean {
-  return hostname === "tauri.localhost" || hostname.endsWith(".tauri.localhost");
-}
-
 function getDefaultServerUrl(): string {
   const configuredUrl = process.env.NEXT_PUBLIC_SERVER_URL?.trim();
   if (configuredUrl) return configuredUrl.replace(/\/$/, "");
@@ -24,10 +20,6 @@ function getDefaultServerUrl(): string {
   if (typeof window === "undefined") return "http://localhost:3100";
 
   const { hostname, port } = window.location;
-
-  if (isTauriHost(hostname)) {
-    return "http://localhost:3100";
-  }
 
   if (isLocalhost(hostname) && port === "3000") {
     return `http://${hostname}:3100`;

@@ -57,6 +57,7 @@ class BrowserTab {
   final String id;
   final String title;
   final String url;
+  final String? faviconUrl;
   final DeviceProfile device;
   final DateTime createdAt;
 
@@ -64,19 +65,24 @@ class BrowserTab {
     required this.id,
     required this.title,
     required this.url,
+    this.faviconUrl,
     this.device = DeviceProfile.desktop,
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
+  String get effectiveFaviconUrl => faviconUrl ?? '';
+
   BrowserTab copyWith({
     String? title,
     String? url,
+    String? faviconUrl,
     DeviceProfile? device,
   }) {
     return BrowserTab(
       id: id,
       title: title ?? this.title,
       url: url ?? this.url,
+      faviconUrl: faviconUrl ?? this.faviconUrl,
       device: device ?? this.device,
       createdAt: createdAt,
     );

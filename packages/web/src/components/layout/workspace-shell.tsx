@@ -149,29 +149,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
     return () => window.removeEventListener("popstate", handlePopState);
   }, [handleBackAction, isMobile, workspaceId]);
 
-  useEffect(() => {
-    if (!isMobile) return;
-
-    let unlisten: (() => void) | undefined;
-
-    void (async () => {
-      try {
-        const { onBackButtonPress } = await import("@tauri-apps/api/app");
-        unlisten = await onBackButtonPress((event) => {
-          const handled = handleBackAction();
-          if (!handled && event.canGoBack) {
-            window.history.back();
-          }
-        });
-      } catch {
-        // plain web has no native back event
-      }
-    })();
-
-    return () => {
-      unlisten?.();
-    };
-  }, [handleBackAction, isMobile]);
+  // Flutter handles back button natively via PopScope / WillPopScope
 
   // 点击 issue 时自动切换到 Issue Detail tab
   useEffect(() => {

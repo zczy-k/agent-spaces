@@ -1,9 +1,9 @@
-import { isTauriEnvironment } from './native-notification';
+import { isNativeEnvironment } from './native-notification';
 
-export function tauriNavigate(router: { push: (href: string) => void; replace: (href: string) => void }, href: string, replace = false) {
+export function nativeNavigate(router: { push: (href: string) => void; replace: (href: string) => void }, href: string, replace = false) {
   const isDev = process.env.NODE_ENV === "development";
 
-  if (isDev && !isTauriEnvironment()) {
+  if (isDev && !isNativeEnvironment()) {
     replace ? router.replace(href) : router.push(href);
     return;
   }
@@ -15,6 +15,9 @@ export function tauriNavigate(router: { push: (href: string) => void; replace: (
     window.location.href = href;
   }
 }
+
+/** @deprecated Use nativeNavigate */
+export const tauriNavigate = nativeNavigate;
 
 export function toStaticHref(href: string) {
   const [pathWithQuery, hash = ""] = href.split("#", 2);

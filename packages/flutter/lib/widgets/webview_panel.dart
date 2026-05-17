@@ -55,11 +55,12 @@ class _WebViewPanelState extends ConsumerState<WebViewPanel> {
         return _WebViewInstance(
           key: ValueKey(tab.id),
           tab: tab,
-          onTitleChanged: (tabId, title, url) {
+          onTitleChanged: (tabId, title, url, faviconUrl) {
             ref.read(browserProvider.notifier).updateTab(
                   tabId,
                   title: title,
                   url: url,
+                  faviconUrl: faviconUrl,
                 );
           },
         );
@@ -70,7 +71,7 @@ class _WebViewPanelState extends ConsumerState<WebViewPanel> {
 
 class _WebViewInstance extends StatefulWidget {
   final BrowserTab tab;
-  final void Function(String tabId, String title, String url) onTitleChanged;
+  final void Function(String tabId, String title, String url, String? faviconUrl) onTitleChanged;
 
   const _WebViewInstance({
     super.key,
@@ -119,10 +120,16 @@ class _WebViewInstanceState extends State<_WebViewInstance> {
       onLoadStop: (controller, url) async {
         if (url != null) {
           final title = await controller.getTitle();
+          final favicons = await controller.getFavicons();
+          String? faviconUrl;
+          if (favicons != null && favicons.isNotEmpty) {
+            faviconUrl = favicons.first.url.toString();
+          }
           widget.onTitleChanged(
             widget.tab.id,
             title ?? url.host,
             url.toString(),
+            faviconUrl,
           );
         }
         await controller.evaluateJavascript(source: _jsBridge.injectionScript);
