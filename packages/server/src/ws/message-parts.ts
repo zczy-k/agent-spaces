@@ -528,8 +528,8 @@ function isToolLikeLine(line: string): boolean {
 function isIgnorableToolProgressLine(line: string): boolean {
   const trimmed = line.trim();
   return /^Claude$/i.test(trimmed)
-    || /^reading$/i.test(trimmed)
-    || /^Read\s+running\s+\(\d+s\)$/i.test(trimmed);
+    || /^(Reading|Searching)(\.{1,3}|…)?$/i.test(trimmed)
+    || /^(Read|Search|Grep|Glob|SemanticSearch|WebSearch)\s+running\s+\(\d+s\)$/i.test(trimmed);
 }
 
 function isFinalAnswerLine(line: string): boolean {

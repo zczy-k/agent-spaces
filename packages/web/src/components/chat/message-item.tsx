@@ -68,6 +68,7 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
         className="size-7 rounded-full"
       />
       <div className={`flex flex-col min-w-0 w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
+        {!isUser && (
         <div className="flex items-center gap-2 mb-0.5">
           <span className="text-xs font-medium text-foreground">
             {senderName}
@@ -85,6 +86,7 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
           <MessageContextUsage message={message} />
           <span className="text-[10px] text-muted-foreground">{time}</span>
         </div>
+        )}
         <div className={`min-w-0 max-w-full text-sm rounded-lg px-3 py-2 ${isUser ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
           <MessageParts message={message} isUser={isUser} workspaceId={workspaceId} />
           {(replies.length > 0 || showDuration) && (

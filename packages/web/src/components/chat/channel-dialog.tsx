@@ -67,7 +67,6 @@ export function ChannelDialog({ open, onOpenChange, channel, agents = [], onSubm
   };
 
   const handleSubmit = () => {
-    if (!name.trim()) return;
     onSubmit({ name: name.trim(), type, members });
     onOpenChange(false);
   };
@@ -113,7 +112,7 @@ export function ChannelDialog({ open, onOpenChange, channel, agents = [], onSubm
           />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>{tc('cancel')}</Button>
-            <Button onClick={handleSubmit} disabled={!name.trim()}>
+            <Button onClick={handleSubmit}>
               {channel ? tc('save') : tc('create')}
             </Button>
           </div>
