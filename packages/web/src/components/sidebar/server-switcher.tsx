@@ -25,6 +25,7 @@ import {
   saveActiveId,
   setActiveServerCookie,
 } from "@/lib/server";
+import { setToken, removeToken } from "@/lib/auth";
 import { useTranslations } from "next-intl";
 import { ServerFormDialog } from "./server-form-dialog";
 import { ServerManagerDialog } from "./server-manager-dialog";
@@ -45,6 +46,11 @@ export function ServerSwitcher() {
     setActiveId(server.id);
     saveActiveId(server.id);
     setActiveServerCookie(server.url);
+    if (server.secret) {
+      setToken(server.secret);
+    } else {
+      removeToken();
+    }
     window.location.href = "/";
   };
 

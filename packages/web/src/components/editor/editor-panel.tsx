@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FileTree, FileTreeFolder, FileTreeFile } from "./file-tree";
 import { SearchPanel } from "./search-panel";
 import { ImportFileDialog } from "./import-file-dialog";
 import { useEditorStore } from "@/stores/editor";
-import type { FileNode } from "@agent-spaces/shared";
+import type { FileNode, FileSearchResult } from "@agent-spaces/shared";
 import { RefreshCw, Ellipsis, Upload, Copy, FolderPlus, FilePlus, Search, X } from "lucide-react";
 import { FileIconImg, FolderIconImg } from "./file-icon";
 import { useTranslations } from 'next-intl';
@@ -122,9 +122,38 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
   const [renameDialog, setRenameDialog] = useState<{ open: boolean; path: string; value: string }>({ open: false, path: '', value: '' });
   const [moveDialog, setMoveDialog] = useState<{ open: boolean; path: string; value: string; mode: 'move' | 'copy' }>({ open: false, path: '', value: '', mode: 'move' });
   const [fileSearch, setFileSearch] = useState('');
+  const [globalFileResults, setGlobalFileResults] = useState<FileSearchResult[]>([]);
+  const [globalFileLoading, setGlobalFileLoading] = useState(false);
+  const fileSearchTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [bottomTab, setBottomTab] = useState<'all' | 'recent' | 'open'>('all');
   const filteredTree = useMemo(() => filterTreeByName(tree, fileSearch), [tree, fileSearch]);
   const fileSizeMap = useMemo(() => buildFileSizeMap(tree), [tree]);
+
+  // 有搜索词时走后端全局搜索，否则清空
+  useEffect(() => {
+    clearTimeout(fileSearchTimer.current);
+    if (!fileSearch.trim()) {
+      setGlobalFileResults([]);
+      return;
+    }
+    fileSearchTimer.current = setTimeout(async () => {
+      setGlobalFileLoading(true);
+      try {
+        const res = await fetch(`/api/workspaces/${workspaceId}/search/files?q=${encodeURIComponent(fileSearch.trim())}`);
+        const data = await res.json();
+        setGlobalFileResults(data.results || []);
+      } catch {
+        setGlobalFileResults([]);
+      } finally {
+        setGlobalFileLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(fileSearchTimer.current);
+  }, [fileSearch, workspaceId]);
+
+  const displayTree = fileSearch.trim() && globalFileResults.length > 0
+    ? globalFileResults.filter(r => r.type === 'file').map(r => ({ path: r.path, name: r.name, type: 'file' as const }))
+    : [];
   const recentFiles = useMemo(() => {
     const files = collectAllFiles(tree).filter(f => f.modifiedAt);
     files.sort((a, b) => (b.modifiedAt || '').localeCompare(a.modifiedAt || ''));
@@ -320,49 +349,87 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
           </div>
           <div className="flex-1 min-h-0 overflow-auto py-1">
             {bottomTab === 'all' ? (
-              <>
-                {treeLoading && tree.length === 0 && (
-                  <div className="space-y-0.5 px-2">
-                    {Array.from({ length: 8 }, (_, i) => (
-                      <div key={i} className="flex items-center gap-1 px-2 py-[3px]">
-                        <Skeleton className="size-4 shrink-0" />
-                        <Skeleton className="h-4 flex-1" />
+              fileSearch.trim() ? (
+                <>
+                  {globalFileLoading && globalFileResults.length === 0 ? (
+                    <div className="space-y-0.5 px-2">
+                      {Array.from({ length: 6 }, (_, i) => (
+                        <div key={i} className="flex items-center gap-1 px-2 py-[3px]">
+                          <Skeleton className="size-4 shrink-0" />
+                          <Skeleton className="h-4 flex-1" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : globalFileResults.length === 0 ? (
+                    <div className="px-2 py-4 text-xs text-muted-foreground text-center">{t('noResults')}</div>
+                  ) : (
+                    <>
+                      <div className="px-2 py-0.5 text-[10px] text-muted-foreground">
+                        {t('searchResults', { count: globalFileResults.length, files: globalFileResults.length })}
                       </div>
-                    ))}
-                  </div>
-                )}
-                {tree.length === 0 && !treeLoading && (
-                  <div className="px-2 py-4 text-xs text-muted-foreground text-center">
-                    {t('noFiles')}
-                  </div>
-                )}
-                {tree.length > 0 && (
-                  <FileTree
-                    expanded={effectiveExpanded}
-                    onExpandedChange={handleExpandedChange}
-                    selectedPath={selectedPath}
-                    onFileSelect={(path) => {
-                      setSelectedPath(path);
-                      openFile(workspaceId, path);
-                    }}
-                    workspaceId={workspaceId}
-                    onDelete={handleDelete}
-                    onImport={(targetPath) => { setImportTargetPath(targetPath); setImportDialogOpen(true); }}
-                    onCopyPath={(path) => { navigator.clipboard.writeText(boundDir ? boundDir.replace(/\/+$/, '') + '/' + path : path); toast.success(t('copied')); }}
-                    onCreateFile={(targetDir) => openNameDialog('file', targetDir)}
-                    onCreateFolder={(targetDir) => openNameDialog('folder', targetDir)}
-                    onRename={handleRename}
-                    onMove={handleMove}
-                    onCopyItem={handleCopy}
-                    onLoadDirectory={(dirPath) => loadDirectory(workspaceId, dirPath)}
-                    boundDir={boundDir}
-                    fileSizeMap={fileSizeMap}
-                    refreshInterval={5000}
-                  >
-                    <FileTreeNodes nodes={filteredTree} />
-                  </FileTree>
-                )}
-              </>
+                      {displayTree.map(node => (
+                        <button
+                          key={node.path}
+                          onClick={() => { setSelectedPath(node.path); openFile(workspaceId, node.path); }}
+                          className={`w-full flex items-center gap-1.5 px-3 py-[3px] text-xs hover:bg-accent/50 transition-colors ${selectedPath === node.path ? 'bg-accent' : ''}`}
+                        >
+                          <FileIconImg name={node.name} />
+                          <span className="truncate">{node.name}</span>
+                          {node.path.includes('/') && (
+                            <span className="ml-auto text-[10px] text-muted-foreground truncate max-w-[100px]">
+                              {node.path.replace(/\/[^/]*$/, '')}
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
+                  {treeLoading && tree.length === 0 && (
+                    <div className="space-y-0.5 px-2">
+                      {Array.from({ length: 8 }, (_, i) => (
+                        <div key={i} className="flex items-center gap-1 px-2 py-[3px]">
+                          <Skeleton className="size-4 shrink-0" />
+                          <Skeleton className="h-4 flex-1" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {tree.length === 0 && !treeLoading && (
+                    <div className="px-2 py-4 text-xs text-muted-foreground text-center">
+                      {t('noFiles')}
+                    </div>
+                  )}
+                  {tree.length > 0 && (
+                    <FileTree
+                      expanded={effectiveExpanded}
+                      onExpandedChange={handleExpandedChange}
+                      selectedPath={selectedPath}
+                      onFileSelect={(path) => {
+                        setSelectedPath(path);
+                        openFile(workspaceId, path);
+                      }}
+                      workspaceId={workspaceId}
+                      onDelete={handleDelete}
+                      onImport={(targetPath) => { setImportTargetPath(targetPath); setImportDialogOpen(true); }}
+                      onCopyPath={(path) => { navigator.clipboard.writeText(boundDir ? boundDir.replace(/\/+$/, '') + '/' + path : path); toast.success(t('copied')); }}
+                      onCreateFile={(targetDir) => openNameDialog('file', targetDir)}
+                      onCreateFolder={(targetDir) => openNameDialog('folder', targetDir)}
+                      onRename={handleRename}
+                      onMove={handleMove}
+                      onCopyItem={handleCopy}
+                      onLoadDirectory={(dirPath) => loadDirectory(workspaceId, dirPath)}
+                      boundDir={boundDir}
+                      fileSizeMap={fileSizeMap}
+                      refreshInterval={5000}
+                    >
+                      <FileTreeNodes nodes={filteredTree} />
+                    </FileTree>
+                  )}
+                </>
+              )
             ) : (
               (() => {
                 const files = bottomTab === 'recent' ? recentFiles : openedFileNodes;

@@ -22,29 +22,32 @@ class BrowserTabBar extends ConsumerWidget {
       child: Row(
         children: [
           Expanded(
-            child: ListView.separated(
+            child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              itemCount: state.tabs.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 2),
-              itemBuilder: (context, index) {
-                final tab = state.tabs[index];
-                final isActive = tab.id == state.activeTabId;
-                return _TabChip(
-                  tab: tab,
-                  isActive: isActive,
-                  canClose: state.tabs.length > 1,
-                  onTap: () => notifier.setActiveTab(tab.id),
-                  onClose: () => notifier.closeTab(tab.id),
-                  onNavigate: (url) {
-                    final normalized = url.startsWith('http') ? url : 'http://$url';
-                    notifier.updateTab(tab.id, url: normalized);
-                  },
-                  onSwitchDevice: (device) {
-                    notifier.setDevice(device, tab.id);
-                  },
-                );
-              },
+              child: Row(
+                children: List.generate(state.tabs.length, (index) {
+                  final tab = state.tabs[index];
+                  final isActive = tab.id == state.activeTabId;
+                  return Padding(
+                    padding: EdgeInsets.only(right: index < state.tabs.length - 1 ? 2 : 0),
+                    child: _TabChip(
+                      tab: tab,
+                      isActive: isActive,
+                      canClose: state.tabs.length > 1,
+                      onTap: () => notifier.setActiveTab(tab.id),
+                      onClose: () => notifier.closeTab(tab.id),
+                      onNavigate: (url) {
+                        final normalized = url.startsWith('http') ? url : 'http://$url';
+                        notifier.updateTab(tab.id, url: normalized);
+                      },
+                      onSwitchDevice: (device) {
+                        notifier.setDevice(device, tab.id);
+                      },
+                    ),
+                  );
+                }),
+              ),
             ),
           ),
           _AddTabButton(onTap: () => notifier.addTab()),
@@ -122,6 +125,11 @@ class _TabChip extends ConsumerWidget {
       borderRadius: BorderRadius.circular(8),
       child: InkWell(
         onTap: onTap,
+        onLongPress: () {
+          final box = context.findRenderObject() as RenderBox;
+          final offset = box.localToGlobal(Offset.zero);
+          _showContextMenu(context, ref, Offset(offset.dx + box.size.width / 2, offset.dy + box.size.height));
+        },
         onSecondaryTapUp: (details) =>
             _showContextMenu(context, ref, details.globalPosition),
         borderRadius: BorderRadius.circular(8),

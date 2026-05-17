@@ -37,11 +37,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
-        children: [
-          const BrowserTabBar(),
-          const Expanded(child: WebViewPanel()),
-        ],
+      body: SafeArea(
+        child: Column(
+          children: [
+            const BrowserTabBar(),
+            const Expanded(child: WebViewPanel()),
+          ],
+        ),
       ),
     );
   }
