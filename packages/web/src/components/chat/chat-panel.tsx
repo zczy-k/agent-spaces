@@ -9,6 +9,7 @@ import { MessageItem } from './message-item';
 import { ChatInput, type ChatInputHandle } from './chat-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Status, StatusIndicator, StatusLabel } from '@/components/ui/status-badge';
 import { ArrowLeft, HelpCircleIcon, Info, SendIcon, Trash2, ExternalLink } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
@@ -64,6 +65,7 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
   const [deletingMsg, setDeletingMsg] = useState<Message | null>(null);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<{ id: string; label: string } | null>(null);
+  const [messagesLoading, setMessagesLoading] = useState(false);
   const chatInputRef = useRef<ChatInputHandle>(null);
 
   const agents = useAgentStore((s) => s.agents);
@@ -91,7 +93,10 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
   }, [agents, channel]);
 
   useEffect(() => {
-    if (activeChannelId) loadMessages(workspaceId, activeChannelId);
+    if (activeChannelId) {
+      setMessagesLoading(true);
+      loadMessages(workspaceId, activeChannelId).finally(() => setMessagesLoading(false));
+    }
     ensureAgents();
   }, [activeChannelId, workspaceId, loadMessages, ensureAgents]);
 
@@ -269,7 +274,24 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
         {/* Messages */}
         <div className="flex-1 min-h-0 relative">
           <div className="h-full overflow-y-auto overflow-x-hidden py-2">
-            {msgs.map((msg) => (
+            {messagesLoading && msgs.length === 0 ? (
+              <div className="space-y-4 px-4">
+                {Array.from({ length: 4 }, (_, i) => (
+                  <div key={i} className="flex gap-3">
+                    <Skeleton className="size-6 rounded-full shrink-0 mt-0.5" />
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Skeleton className="h-4 w-20" />
+                        <Skeleton className="h-3 w-12" />
+                      </div>
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-3/4" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {!messagesLoading && msgs.map((msg) => (
               <div key={msg.id} id={`msg-${msg.id}`}>
                 <MessageItem message={msg} workspaceId={workspaceId} onEdit={handleEditMessage} onDelete={handleDeleteMessage} onReply={handleReplyMessage} />
               </div>

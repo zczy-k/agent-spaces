@@ -874,7 +874,9 @@
       "nativeTestSuccess": "System notification sent",
       "nativeTestFailed": "Failed to send system notification",
       "nativePermissionGrantedToast": "Notification permission granted",
-      "nativePermissionDeniedToast": "Notification permission denied"
+      "nativePermissionDeniedToast": "Notification permission denied",
+      "androidOngoingTaskNotification": "Ongoing task notification",
+      "androidOngoingTaskNotificationDescription": "Update an ongoing notification in the system notification panel when tasks change. Android only; foreground service support may be required."
     },
     "wechat": {
       "robot": "WeChat iLink Robot",

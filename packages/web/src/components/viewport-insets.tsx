@@ -55,7 +55,7 @@ function isEditableTarget(target: EventTarget | null) {
 function refreshAfterEditableFocus(target: EventTarget | null) {
   if (!isEditableTarget(target)) return;
 
-  const element = target;
+  const element = target as HTMLElement;
   const refresh = () => {
     updateViewportInsets();
     element.scrollIntoView({ block: "nearest", inline: "nearest" });

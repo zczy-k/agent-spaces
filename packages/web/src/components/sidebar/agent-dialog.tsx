@@ -470,7 +470,21 @@ export function AgentDialog({
           </div>
         )}
         {loading ? (
-          <div className="py-12 text-center text-sm text-muted-foreground">{t('dialog.loading')}</div>
+          <div className="flex flex-col p-2 space-y-1">
+            {Array.from({ length: 5 }, (_, i) => (
+              <div key={i} className="flex items-center gap-3 rounded-lg px-3 py-2.5">
+                <div className="size-8 rounded-full bg-muted animate-pulse" />
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <div className="h-4 w-20 rounded bg-muted animate-pulse" />
+                    <div className="h-4 w-10 rounded-full bg-muted animate-pulse" />
+                  </div>
+                  <div className="h-3 w-32 rounded bg-muted animate-pulse" />
+                </div>
+                <div className="h-3 w-12 rounded bg-muted animate-pulse" />
+              </div>
+            ))}
+          </div>
         ) : !selectedAgent ? (
           <AgentList
             agents={visibleAgents}

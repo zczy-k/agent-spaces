@@ -22,9 +22,11 @@ interface AddMemberDialogProps {
   candidates: MemberCandidate[];
   defaultSelected?: string[];
   onAdd: (members: string[]) => void;
+  /** 过滤候选成员，默认只展示 agent 类型 */
+  filter?: (candidate: MemberCandidate) => boolean;
 }
 
-export function AddMemberDialog({ open, onOpenChange, candidates, defaultSelected, onAdd }: AddMemberDialogProps) {
+export function AddMemberDialog({ open, onOpenChange, candidates, defaultSelected, onAdd, filter }: AddMemberDialogProps) {
   const [selected, setSelected] = useState<string[]>([]);
   const [dialogKey, setDialogKey] = useState(0);
 
@@ -69,6 +71,7 @@ export function AddMemberDialog({ open, onOpenChange, candidates, defaultSelecte
           <MemberPicker
             key={dialogKey}
             candidates={candidates}
+            filter={filter}
             selected={selected}
             onToggle={toggle}
             searchPlaceholder="搜索成员..."

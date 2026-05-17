@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FolderPicker } from "@/components/ui/folder-picker";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useWorkspaceStore } from "@/stores/workspace";
 
 function filterTreeByName(nodes: FileNode[], query: string): FileNode[] {
@@ -320,6 +321,16 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
           <div className="flex-1 min-h-0 overflow-auto py-1">
             {bottomTab === 'all' ? (
               <>
+                {treeLoading && tree.length === 0 && (
+                  <div className="space-y-0.5 px-2">
+                    {Array.from({ length: 8 }, (_, i) => (
+                      <div key={i} className="flex items-center gap-1 px-2 py-[3px]">
+                        <Skeleton className="size-4 shrink-0" />
+                        <Skeleton className="h-4 flex-1" />
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {tree.length === 0 && !treeLoading && (
                   <div className="px-2 py-4 text-xs text-muted-foreground text-center">
                     {t('noFiles')}

@@ -6,6 +6,7 @@ import { Pencil, RefreshCw } from "lucide-react"
 import type { SubscriptionConfig, SubscriptionLimit, SubscriptionQuota } from "@agent-spaces/shared"
 
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { SubscriptionDialog } from "./subscription-dialog"
 
 const LIMIT_TYPE_LABELS: Record<string, string> = {
@@ -118,8 +119,18 @@ export function SubscriptionPanel() {
         const state = quotas.get(config.id)
 
         if (!state) return (
-          <div key={config.id} className="rounded-md border px-3 py-2">
+          <div key={config.id} className="rounded-md border px-3 py-2 space-y-2">
             {cardHeader(config)}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-md bg-muted/30 px-3 py-2 space-y-1">
+                <Skeleton className="h-3 w-12" />
+                <Skeleton className="h-5 w-16" />
+              </div>
+              <div className="rounded-md bg-muted/30 px-3 py-2 space-y-1">
+                <Skeleton className="h-3 w-12" />
+                <Skeleton className="h-5 w-16" />
+              </div>
+            </div>
           </div>
         )
 

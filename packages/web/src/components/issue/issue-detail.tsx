@@ -22,6 +22,7 @@ import { IssueDetailComments } from './issue-detail-comments';
 import { IssueDetailInfoPanel } from './issue-detail-info-panel';
 import { collectMentionIds } from './collect-mention-ids';
 import { MessageSquare, X } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { IssueComment } from '@agent-spaces/shared';
 
 /* ------------------------------------------------------------------ */
@@ -34,12 +35,13 @@ interface IssueDetailProps {
 
 export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const { issues, activeIssueId, startIssue, resumeIssue, updateIssue, deleteIssue } = useIssueStore();
-  const { tasks, loadTasks, retryTask, cancelTask, createTask, updateTask, deleteTask, reorderTasks } = useTaskStore();
+  const { tasks, loading: tasksLoading, loadTasks, retryTask, cancelTask, createTask, updateTask, deleteTask, reorderTasks } = useTaskStore();
   const agents = useAgentStore((s) => s.agents);
   const ensureAgents = useAgentStore((s) => s.ensure);
   const [infoOpen, setInfoOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [comments, setComments] = useState<IssueComment[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
   const [expandedCommentIds, setExpandedCommentIds] = useState<Set<string>>(() => new Set());
   const [composerOpen, setComposerOpen] = useState(false);
   const commentsViewportRef = useRef<HTMLDivElement | null>(null);
@@ -52,10 +54,15 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const issue = issues.find((i) => i.id === activeIssueId);
 
   const loadComments = useCallback(async (targetIssueId: string) => {
-    const res = await fetch(`/api/workspaces/${workspaceId}/issues/${targetIssueId}/comments`);
-    if (!res.ok) return;
-    const nextComments: IssueComment[] = await res.json();
-    setComments(nextComments);
+    setCommentsLoading(true);
+    try {
+      const res = await fetch(`/api/workspaces/${workspaceId}/issues/${targetIssueId}/comments`);
+      if (!res.ok) return;
+      const nextComments: IssueComment[] = await res.json();
+      setComments(nextComments);
+    } finally {
+      setCommentsLoading(false);
+    }
   }, [workspaceId]);
 
   useEffect(() => {
@@ -250,35 +257,75 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
           issueTasks={issueTasks}
         />
 
-        <IssueDetailTasksPanel
-          issue={issue}
-          workspaceId={workspaceId}
-          issueTasks={issueTasks}
-          agents={enabledAgents}
-          t={t}
-          tTask={tTask}
-          tc={tc}
-          retryTask={retryTask}
-          cancelTask={cancelTask}
-          reorderTasks={reorderTasks}
-          createTask={createTask}
-          updateTask={updateTask}
-          deleteTask={deleteTask}
-        />
+        {tasksLoading ? (
+          <div className="shrink-0 p-4 pb-2">
+            <div className="flex items-center justify-between mb-2">
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="size-6 rounded" />
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {Array.from({ length: 3 }, (_, i) => (
+                <div key={i} className="rounded-md border px-3 py-2 min-w-[140px] space-y-1.5">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-3 w-16" />
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <IssueDetailTasksPanel
+            issue={issue}
+            workspaceId={workspaceId}
+            issueTasks={issueTasks}
+            agents={enabledAgents}
+            t={t}
+            tTask={tTask}
+            tc={tc}
+            retryTask={retryTask}
+            cancelTask={cancelTask}
+            reorderTasks={reorderTasks}
+            createTask={createTask}
+            updateTask={updateTask}
+            deleteTask={deleteTask}
+          />
+        )}
 
-        <IssueDetailComments
-          issue={issue}
-          workspaceId={workspaceId}
-          comments={comments}
-          expandedCommentIds={expandedCommentIds}
-          commentsViewportRef={commentsViewportRef}
-          commentRefs={commentRefs}
-          onDeleteComment={handleDeleteComment}
-          onUpdateComment={handleUpdateComment}
-          onExpandedChange={handleCommentExpandedChange}
-          scrollToComment={scrollToComment}
-          t={t}
-        />
+        {commentsLoading && comments.length === 0 ? (
+          <div className="flex-1 min-h-0 flex flex-col border-t">
+            <div className="shrink-0 px-4 pt-2">
+              <Skeleton className="h-4 w-20 mb-3" />
+            </div>
+            <div className="flex-1 overflow-auto px-4 space-y-4">
+              {Array.from({ length: 3 }, (_, i) => (
+                <div key={i} className="flex gap-3">
+                  <Skeleton className="size-6 rounded-full shrink-0 mt-0.5" />
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-3 w-12" />
+                    </div>
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <IssueDetailComments
+            issue={issue}
+            workspaceId={workspaceId}
+            comments={comments}
+            expandedCommentIds={expandedCommentIds}
+            commentsViewportRef={commentsViewportRef}
+            commentRefs={commentRefs}
+            onDeleteComment={handleDeleteComment}
+            onUpdateComment={handleUpdateComment}
+            onExpandedChange={handleCommentExpandedChange}
+            scrollToComment={scrollToComment}
+            t={t}
+          />
+        )}
 
         {/* Floating composer */}
         {!composerOpen ? (

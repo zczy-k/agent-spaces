@@ -22,7 +22,7 @@ import { useGitStore } from "@/stores/git";
 import { useMobilePanelStore } from "@/stores/mobile-panel";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useWorkspaceStore } from "@/stores/workspace";
-import { sendNativeNotification } from "@/lib/native-notification";
+import { sendAndroidOngoingTaskNotification, sendNativeNotification } from "@/lib/native-notification";
 import { useNotificationStore } from "@/stores/notification";
 import type { Issue, Task, IssueStatusChangedPayload, TaskStatusChangedPayload, AppNotification } from "@agent-spaces/shared";
 
@@ -216,6 +216,14 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
     return ns;
   }, [workspaceId]);
 
+  const formatOngoingTaskNotificationBody = useCallback((task: Task) => {
+    const statusText = task.status.replace(/_/g, " ");
+    if (task.result?.summary) {
+      return `${task.title}: ${statusText} - ${task.result.summary}`;
+    }
+    return `${task.title}: ${statusText}`;
+  }, []);
+
   useEffect(() => {
     const ws = getWS(workspaceId);
     const notificationStore = useNotificationStore.getState();
@@ -238,8 +246,22 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
           }
         }
       }),
-      ws.on('task.created', (data) => taskStore.upsertTask(data as Task)),
-      ws.on('task.updated', (data) => taskStore.upsertTask(data as Task)),
+      ws.on('task.created', (data) => {
+        const task = data as Task;
+        taskStore.upsertTask(task);
+        const ns = getNativeNotificationConfig();
+        if (ns?.native?.androidOngoingTaskNotification) {
+          sendAndroidOngoingTaskNotification(formatOngoingTaskNotificationBody(task));
+        }
+      }),
+      ws.on('task.updated', (data) => {
+        const task = data as Task;
+        taskStore.upsertTask(task);
+        const ns = getNativeNotificationConfig();
+        if (ns?.native?.androidOngoingTaskNotification) {
+          sendAndroidOngoingTaskNotification(formatOngoingTaskNotificationBody(task));
+        }
+      }),
       ws.on('task.status_changed', (data) => {
         const activeIssueId = useIssueStore.getState().activeIssueId;
         if (activeIssueId) {
@@ -266,7 +288,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
       }),
     ];
     return () => unsubs.forEach((u) => u());
-  }, [issueStore, taskStore, workspaceId, getNativeNotificationConfig]);
+  }, [issueStore, taskStore, workspaceId, getNativeNotificationConfig, formatOngoingTaskNotificationBody]);
 
   const factory = useCallback(
     (node: TabNode) => {

@@ -18,7 +18,11 @@ interface MemberPickerProps {
   searchPlaceholder?: string;
   emptyText?: string;
   label?: string;
+  /** 过滤候选成员，默认排除 scheduler/task_creator/bot */
+  filter?: (candidate: MemberCandidate) => boolean;
 }
+
+const DEFAULT_FILTER = (c: MemberCandidate) => !['scheduler', 'task_creator', 'bot'].includes(c.description || '');
 
 export function MemberPicker({
   candidates,
@@ -27,10 +31,12 @@ export function MemberPicker({
   searchPlaceholder,
   emptyText,
   label,
+  filter,
 }: MemberPickerProps) {
   const [query, setQuery] = useState('');
 
-  const filtered = candidates.filter((c) =>
+  const eligible = candidates.filter(filter ?? DEFAULT_FILTER);
+  const filtered = eligible.filter((c) =>
     `${c.label} ${c.description || ''}`.toLowerCase().includes(query.toLowerCase()),
   );
 

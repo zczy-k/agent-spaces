@@ -33,6 +33,7 @@ import { useTranslations } from "next-intl";
 import { GitSettingsForm } from "@/components/git/git-settings-form";
 import { useTheme } from "@/components/theme-provider";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Skeleton, SkeletonGroup } from "@/components/ui/skeleton";
 
 const MonacoEditor = dynamic(
   () => import("@monaco-editor/react").then((mod) => mod.default),
@@ -526,7 +527,24 @@ export function GitCommitsPanel({ workspaceId }: Props) {
           </div>
         ) : (
           <div className="min-h-0 flex-1 overflow-y-auto">
-            {loading && !log.length && <div className="p-2 text-xs text-muted-foreground">{tc('loading')}</div>}
+            {loading && !log.length && (
+              <div className="p-2 space-y-1">
+                <SkeletonGroup count={6}>
+                  {(i) => (
+                    <div key={i} className="px-2 py-1.5 border-b space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <Skeleton className="h-3 w-10 rounded" />
+                        <Skeleton className="h-3 flex-1" />
+                      </div>
+                      <div className="flex items-center gap-2 pl-7">
+                        <Skeleton className="h-3 w-20" />
+                        <Skeleton className="h-3 w-16" />
+                      </div>
+                    </div>
+                  )}
+                </SkeletonGroup>
+              </div>
+            )}
             {log.map((entry, i) => {
               const isRemoteHead = i === remoteHeadIndex;
               return (

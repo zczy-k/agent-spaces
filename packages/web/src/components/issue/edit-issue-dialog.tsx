@@ -1,13 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { X } from 'lucide-react';
-import { AgentIcon } from '@/components/common/agent-icon';
+import { MemberPicker, type MemberCandidate } from '@/components/common/member-picker';
 import { getMemberDisplayName } from '@/lib/agent-members';
 import { useWorkflowStore } from '@/stores/workflow';
 import type { Issue, IssueStatus, AgentConfig } from '@agent-spaces/shared';
@@ -30,7 +29,6 @@ export function EditIssueDialog({ issue, open, onOpenChange, agents = [], onSave
   const [description, setDescription] = useState(issue.description);
   const [status, setStatus] = useState<IssueStatus>(issue.status);
   const [members, setMembers] = useState<string[]>(issue.members || []);
-  const [memberQuery, setMemberQuery] = useState('');
   const [saving, setSaving] = useState(false);
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string>(issue.workflowId ?? '');
   const { workflows, loadWorkflows } = useWorkflowStore();
@@ -43,7 +41,6 @@ export function EditIssueDialog({ issue, open, onOpenChange, agents = [], onSave
       setDescription(issue.description);
       setStatus(issue.status);
       setMembers(issue.members?.length ? [...issue.members] : []);
-      setMemberQuery('');
       setSelectedWorkflowId(issue.workflowId ?? '');
     }
   }, [open, issue]);
@@ -78,8 +75,13 @@ export function EditIssueDialog({ issue, open, onOpenChange, agents = [], onSave
     }
   };
 
-  const filtered = agents.filter((a) =>
-    a.enabled !== false && `${a.name || ''} ${a.role || ''}`.toLowerCase().includes(memberQuery.toLowerCase()),
+  const memberCandidates: MemberCandidate[] = useMemo(
+    () => agents.filter((a) => a.enabled !== false).map((a) => ({
+      id: a.id,
+      label: getMemberDisplayName(agents, a.id),
+      description: a.role,
+    })),
+    [agents],
   );
 
   return (
@@ -132,60 +134,14 @@ export function EditIssueDialog({ issue, open, onOpenChange, agents = [], onSave
             </select>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">{t('edit.membersLabel')}</label>
-            <Input
-              value={memberQuery}
-              onChange={(e) => setMemberQuery(e.target.value)}
-              placeholder={t('edit.searchAgent')}
-            />
-            <div className="max-h-36 overflow-y-auto space-y-0.5">
-              {filtered.length === 0 && (
-                <p className="text-sm text-muted-foreground py-2 text-center">{t('edit.noAgents')}</p>
-              )}
-              {filtered.map((agent) => (
-                <button
-                  key={agent.id}
-                  type="button"
-                  onClick={() => toggleMember(agent.id)}
-                  className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md hover:bg-muted text-left text-sm transition-colors"
-                >
-                  <AgentIcon
-                    agentId={agent.id}
-                    name={getMemberDisplayName(agents, agent.id)}
-                    className="size-5 rounded-full"
-                  />
-                  <span className="flex-1 truncate">{getMemberDisplayName(agents, agent.id)}</span>
-                  <div
-                    className={`flex items-center justify-center size-4 rounded border ${
-                      members.includes(agent.id)
-                        ? 'bg-primary border-primary text-primary-foreground'
-                        : 'border-input'
-                    }`}
-                  />
-                </button>
-              ))}
-            </div>
-            {members.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {members.map((m) => (
-                  <span key={m} className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs">
-                    {m === 'user' ? (
-                      tc('user')
-                    ) : (
-                      <span className="inline-flex items-center gap-1">
-                        <AgentIcon agentId={m} name={getMemberDisplayName(agents, m)} className="size-3.5 rounded-full" />
-                        {getMemberDisplayName(agents, m)}
-                      </span>
-                    )}
-                    <button type="button" onClick={() => toggleMember(m)} className="hover:text-destructive">
-                      <X className="size-3" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
+          <MemberPicker
+            candidates={memberCandidates}
+            selected={members}
+            onToggle={toggleMember}
+            label={t('edit.membersLabel')}
+            searchPlaceholder={t('edit.searchAgent')}
+            emptyText={t('edit.noAgents')}
+          />
 
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>

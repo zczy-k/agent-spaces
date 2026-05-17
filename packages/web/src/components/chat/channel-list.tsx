@@ -8,6 +8,7 @@ import { Bot, Hash, MessageCircle, AlertCircle, Plus, Pencil, FolderOpen, Archiv
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { Skeleton, SkeletonGroup } from '@/components/ui/skeleton';
 import { ChannelDialog } from './channel-dialog';
 import { normalizeChannelMembersToAgentIds } from '@/lib/agent-members';
 import { getWS } from '@/lib/ws';
@@ -54,6 +55,7 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
   const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
   const [archivedOpen, setArchivedOpen] = useState(false);
   const [clearArchiveOpen, setClearArchiveOpen] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const agents = useAgentStore((s) => s.agents);
   const ensureAgents = useAgentStore((s) => s.ensure);
 
@@ -61,7 +63,8 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
   const archivedChannels = useMemo(() => channels.filter((c) => c.archived), [channels]);
 
   useEffect(() => {
-    loadChannels(workspaceId);
+    setInitialLoading(true);
+    loadChannels(workspaceId).finally(() => setInitialLoading(false));
     ensureAgents();
   }, [workspaceId, loadChannels, ensureAgents]);
 
@@ -135,7 +138,25 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
         </div>
       </div>
       <div className="flex-1 overflow-y-auto">
-        {activeChannels.length === 0 && archivedChannels.length === 0 ? (
+        {initialLoading ? (
+          <div className="p-2 space-y-1">
+            <SkeletonGroup count={4}>
+              {(i) => (
+                <div key={i} className="flex items-start gap-2.5 px-3 py-2">
+                  <Skeleton className="size-3.5 rounded shrink-0 mt-1" />
+                  <div className="flex-1 min-w-0 space-y-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-4 w-8 rounded-full" />
+                    </div>
+                    <Skeleton className="h-3 w-3/4" />
+                  </div>
+                </div>
+              )}
+            </SkeletonGroup>
+          </div>
+        ) : null}
+        {!initialLoading && activeChannels.length === 0 && archivedChannels.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 px-4 text-center">
             <div className="rounded-full bg-muted p-3">
               <MessageCircle className="h-5 w-5 text-muted-foreground" />
@@ -150,7 +171,7 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
             </Button>
           </div>
         ) : null}
-        {activeChannels.map((ch) => {
+        {!initialLoading && activeChannels.map((ch) => {
           const preview = lastMsgPreview(messages[ch.id]);
           const badge = typeBadgeConfig[ch.type];
           const isRunning = preview?.status === 'streaming' || preview?.status === 'pending';
@@ -211,7 +232,7 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
           );
         })}
 
-        {archivedChannels.length > 0 && (
+        {!initialLoading && archivedChannels.length > 0 && (
           <Collapsible open={archivedOpen} onOpenChange={setArchivedOpen}>
             <CollapsibleTrigger className="flex items-center gap-1 w-full px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent transition-colors">
               <ChevronRight className={cn('size-3 transition-transform', archivedOpen && 'rotate-90')} />

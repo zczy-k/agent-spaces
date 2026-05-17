@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import type { CodeSearchResult } from "@agent-spaces/shared";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface SearchPanelProps {
   workspaceId: string;
@@ -132,7 +133,27 @@ export function SearchPanel({ workspaceId }: SearchPanelProps) {
       {/* Results list */}
       <div className="flex-1 overflow-auto">
         <div className="py-1">
-          {Object.entries(codeResults).map(([file, matches]) => (
+          {loading && codeTotal === 0 ? (
+            <div className="space-y-1 px-2">
+              {Array.from({ length: 3 }, (_, fi) => (
+                <div key={fi}>
+                  <div className="flex items-center gap-1 py-0.5">
+                    <Skeleton className="size-3" />
+                    <Skeleton className="size-3" />
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-6 ml-auto" />
+                  </div>
+                  {Array.from({ length: 3 }, (_, ri) => (
+                    <div key={ri} className="flex items-start gap-2 pl-4 py-0.5">
+                      <Skeleton className="h-3 w-6 shrink-0" />
+                      <Skeleton className="h-3 flex-1" />
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {!loading && Object.entries(codeResults).map(([file, matches]) => (
             <div key={file}>
               <button
                 onClick={() => toggleFile(file)}

@@ -12,6 +12,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Plus, CircleDot, Pencil, Trash2, CircleAlert, Archive, ArchiveRestore, MoreHorizontal, ChevronRight } from 'lucide-react';
+import { Skeleton, SkeletonGroup } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { CreateIssueDialog } from './create-issue-dialog';
 import { EditIssueDialog } from './edit-issue-dialog';
@@ -78,7 +79,27 @@ export function IssueList({ workspaceId }: IssueListProps) {
   };
 
   if (loading) {
-    return <div className="p-4 text-sm text-muted-foreground">{tc('loading')}</div>;
+    return (
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="flex items-center justify-between px-2 py-1.5 border-b text-xs font-medium text-muted-foreground shrink-0">
+          <span>{t('list.title')}</span>
+        </div>
+        <div className="p-2 space-y-1">
+          <SkeletonGroup count={5}>
+            {(i) => (
+              <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-md">
+                <Skeleton className="size-4 rounded-full shrink-0" />
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+                <Skeleton className="h-4 w-12 rounded-full" />
+              </div>
+            )}
+          </SkeletonGroup>
+        </div>
+      </div>
+    );
   }
 
   return (

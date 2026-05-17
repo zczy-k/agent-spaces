@@ -7,10 +7,24 @@
 
 export type NotificationPermissionStatus = 'granted' | 'denied' | 'default' | 'unsupported';
 
+const ANDROID_ONGOING_TASK_NOTIFICATION_ID = 10001;
+
+interface NativeNotificationOptions {
+  id?: number;
+  ongoing?: boolean;
+}
+
 /** Detect whether we are running inside a Tauri webview. */
 export function isTauriEnvironment(): boolean {
   return typeof window !== "undefined"
     && (window.location.hostname === "tauri.localhost" || "__TAURI_INTERNALS__" in window);
+}
+
+/** Detect whether we are running inside the Android Tauri webview. */
+export function isTauriAndroidEnvironment(): boolean {
+  return isTauriEnvironment()
+    && typeof navigator !== 'undefined'
+    && /android/i.test(navigator.userAgent);
 }
 
 /** Get the current native notification permission status. */
@@ -30,11 +44,20 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
 }
 
 /** Send a native notification. */
-export async function sendNativeNotification(title: string, body: string): Promise<void> {
+export async function sendNativeNotification(title: string, body: string, options: NativeNotificationOptions = {}): Promise<void> {
   if (isTauriEnvironment()) {
-    return sendTauriNotification(title, body);
+    return sendTauriNotification(title, body, options);
   }
   return sendWebNotification(title, body);
+}
+
+/** Update the Android ongoing task notification by reusing a stable notification id. */
+export async function sendAndroidOngoingTaskNotification(body: string): Promise<void> {
+  if (!isTauriAndroidEnvironment()) return;
+  return sendNativeNotification('Agent Spaces', body, {
+    id: ANDROID_ONGOING_TASK_NOTIFICATION_ID,
+    ongoing: true,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -98,11 +121,11 @@ async function requestTauriPermission(): Promise<NotificationPermissionStatus> {
   }
 }
 
-async function sendTauriNotification(title: string, body: string): Promise<void> {
+async function sendTauriNotification(title: string, body: string, options: NativeNotificationOptions = {}): Promise<void> {
   try {
     const { sendNotification, isPermissionGranted } = await import('@tauri-apps/plugin-notification');
     if (!(await isPermissionGranted())) return;
-    sendNotification({ title, body });
+    sendNotification({ title, body, ...options });
   } catch {
     // Tauri plugin not available, fall back silently
   }
