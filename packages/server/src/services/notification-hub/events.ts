@@ -105,6 +105,7 @@ function buildAgentCompletedEnvelope(workspaceId: string, data: unknown): Broadc
 
   const channel = channelService.getChannel(workspaceId, payload.channelId);
   if (!channel?.notifyOnComplete) return null;
+  if (!shouldNotify(workspaceId, 'channel_agent_completed')) return null;
 
   return {
     event: 'channel_agent_completed',

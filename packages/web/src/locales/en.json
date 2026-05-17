@@ -915,7 +915,8 @@
       "title": "Notification Events",
       "issueStarted": "Issue Started",
       "issueCompleted": "Issue Completed",
-      "taskCompleted": "Task Completed"
+      "taskCompleted": "Task Completed",
+      "channelAgentCompleted": "Channel Agent Reply Completed"
     },
     "prompt": {
       "title": "Prompt",
