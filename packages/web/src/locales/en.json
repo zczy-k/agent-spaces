@@ -885,6 +885,7 @@
       "nativePermissionUnsupported": "Unsupported",
       "nativeRequestPermission": "Grant Permission",
       "nativeTestSuccess": "System notification sent",
+      "nativeTestSent": "Notification sent. If not visible, check System Settings > Notifications > Browser",
       "nativeTestFailed": "Failed to send system notification",
       "nativePermissionGrantedToast": "Notification permission granted",
       "nativePermissionDeniedToast": "Notification permission denied",

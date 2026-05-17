@@ -586,9 +586,9 @@ export function NotificationSettingsTab({
                           'Agent Spaces',
                           t('notifications.nativeTestSuccess'),
                         );
-                        toast.success(t('notifications.nativeTestSuccess'));
-                      } catch {
-                        toast.error(t('notifications.nativeTestFailed'));
+                        toast.success(t('notifications.nativeTestSent'), { duration: 5000 });
+                      } catch (err) {
+                        toast.error(`${t('notifications.nativeTestFailed')}: ${err instanceof Error ? err.message : err}`, { duration: 5000 });
                       }
                     }}
                     disabled={nativePermission !== 'granted'}

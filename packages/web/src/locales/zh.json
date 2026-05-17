@@ -887,6 +887,7 @@
       "nativePermissionUnsupported": "不支持",
       "nativeRequestPermission": "授权通知",
       "nativeTestSuccess": "系统通知已发送",
+      "nativeTestSent": "通知已发送，若未弹出请检查系统设置：设置 > 通知 > 浏览器",
       "nativeTestFailed": "发送系统通知失败",
       "nativePermissionGrantedToast": "通知权限已授权",
       "nativePermissionDeniedToast": "通知权限被拒绝",

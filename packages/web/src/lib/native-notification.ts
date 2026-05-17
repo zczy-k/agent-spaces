@@ -94,10 +94,20 @@ async function requestWebPermission(): Promise<NotificationPermissionStatus> {
 }
 
 function sendWebNotification(title: string, body: string): void {
-  if (typeof window === 'undefined' || !('Notification' in window) || Notification.permission !== 'granted') {
-    return;
+  if (typeof window === 'undefined' || !('Notification' in window)) {
+    throw new Error('Notification API not available');
   }
-  new Notification(title, { body, icon: '/favicon.ico' });
+  if (Notification.permission !== 'granted') {
+    throw new Error(`Notification permission is "${Notification.permission}", not "granted"`);
+  }
+  try {
+    const n = new Notification(title, { body, icon: '/favicon.ico' });
+    n.onerror = () => {
+      console.warn('[NativeNotification] browser notification error event');
+    };
+  } catch (err) {
+    throw new Error(`Failed to create Notification: ${err instanceof Error ? err.message : err}`);
+  }
 }
 
 function mapWebStatus(permission: NotificationPermission): NotificationPermissionStatus {
