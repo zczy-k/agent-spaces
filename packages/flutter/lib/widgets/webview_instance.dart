@@ -5,6 +5,7 @@ import '../bridge/js_bridge.dart';
 import '../models/browser_tab.dart';
 import '../providers/browser_provider.dart';
 import '../providers/console_log_provider.dart';
+import '../providers/settings_provider.dart';
 import '../services/notification_service.dart';
 import '../services/webview_service.dart';
 
@@ -149,6 +150,9 @@ class _WebViewInstanceState extends ConsumerState<WebViewInstance> {
   Widget build(BuildContext context) {
     final device = widget.tab.device;
     final isConstrained = device.type != DeviceType.desktop;
+    final webViewDebuggingEnabled = ref.watch(
+      settingsProvider.select((settings) => settings.webViewDebuggingEnabled),
+    );
 
     Widget webView = InAppWebView(
       initialUrlRequest: URLRequest(url: WebUri(widget.tab.url)),
@@ -161,7 +165,7 @@ class _WebViewInstanceState extends ConsumerState<WebViewInstance> {
         useHybridComposition: true,
         allowsInlineMediaPlayback: true,
         mediaPlaybackRequiresUserGesture: false,
-        isInspectable: true,
+        isInspectable: webViewDebuggingEnabled,
       ),
       onWebViewCreated: (controller) async {
         _controller = controller;

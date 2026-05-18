@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:logger/logger.dart';
 
@@ -8,6 +10,15 @@ class WebViewService {
   final Map<String, InAppWebViewController> _controllers = {};
 
   InAppWebViewController? getController(String tabId) => _controllers[tabId];
+
+  Future<void> setDebuggingEnabled(bool enabled) async {
+    if (!Platform.isAndroid) {
+      _log.i('WebView debugging uses per-WebView settings on this platform');
+      return;
+    }
+    await InAppWebViewController.setWebContentsDebuggingEnabled(enabled);
+    _log.i('WebView debugging ${enabled ? 'enabled' : 'disabled'}');
+  }
 
   void registerController(String tabId, InAppWebViewController controller) {
     _controllers[tabId] = controller;
@@ -28,9 +39,7 @@ class WebViewService {
   Future<void> loadUrl(String tabId, String url) async {
     final ctrl = _controllers[tabId];
     if (ctrl == null) return;
-    await ctrl.loadUrl(
-      urlRequest: URLRequest(url: WebUri(url)),
-    );
+    await ctrl.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
   }
 
   Future<void> evaluateJS(String tabId, String script) async {

@@ -4,6 +4,7 @@ import '../providers/browser_provider.dart';
 import '../providers/settings_provider.dart';
 import '../services/notification_service.dart';
 import '../services/storage_service.dart';
+import '../services/webview_service.dart';
 import '../widgets/browser_tab_bar.dart';
 import '../widgets/webview_panel.dart';
 
@@ -31,6 +32,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     final settings = await StorageService.loadSettings();
     ref.read(settingsProvider.notifier).load(settings);
+    await WebViewService.instance.setDebuggingEnabled(
+      settings.webViewDebuggingEnabled,
+    );
 
     final browserNotifier = ref.read(browserProvider.notifier);
     browserNotifier.setRestoreOnStartup(settings.restoreTabsOnStartup);

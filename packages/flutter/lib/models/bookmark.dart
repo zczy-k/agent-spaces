@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import 'browser_tab.dart';
 
 class Bookmark {
@@ -23,17 +25,14 @@ class Bookmark {
     'createdAt': createdAt.toIso8601String(),
   };
 
-  Bookmark copyWith({
-    String? name,
-    String? url,
-    DeviceType? deviceType,
-  }) => Bookmark(
-    id: id,
-    name: name ?? this.name,
-    url: url ?? this.url,
-    deviceType: deviceType ?? this.deviceType,
-    createdAt: createdAt,
-  );
+  Bookmark copyWith({String? name, String? url, DeviceType? deviceType}) =>
+      Bookmark(
+        id: id,
+        name: name ?? this.name,
+        url: url ?? this.url,
+        deviceType: deviceType ?? this.deviceType,
+        createdAt: createdAt,
+      );
 
   factory Bookmark.fromJson(Map<String, dynamic> json) => Bookmark(
     id: json['id'] as String,
@@ -46,14 +45,32 @@ class Bookmark {
 
 class AppSettings {
   final bool restoreTabsOnStartup;
+  final bool webViewDebuggingEnabled;
 
-  const AppSettings({this.restoreTabsOnStartup = true});
+  const AppSettings({
+    this.restoreTabsOnStartup = true,
+    this.webViewDebuggingEnabled = kDebugMode,
+  });
+
+  AppSettings copyWith({
+    bool? restoreTabsOnStartup,
+    bool? webViewDebuggingEnabled,
+  }) {
+    return AppSettings(
+      restoreTabsOnStartup: restoreTabsOnStartup ?? this.restoreTabsOnStartup,
+      webViewDebuggingEnabled:
+          webViewDebuggingEnabled ?? this.webViewDebuggingEnabled,
+    );
+  }
 
   Map<String, dynamic> toJson() => {
     'restoreTabsOnStartup': restoreTabsOnStartup,
+    'webViewDebuggingEnabled': webViewDebuggingEnabled,
   };
 
   factory AppSettings.fromJson(Map<String, dynamic> json) => AppSettings(
     restoreTabsOnStartup: json['restoreTabsOnStartup'] as bool? ?? false,
+    webViewDebuggingEnabled:
+        json['webViewDebuggingEnabled'] as bool? ?? kDebugMode,
   );
 }

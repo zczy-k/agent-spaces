@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/browser_provider.dart';
+import '../providers/settings_provider.dart';
 import 'home_page.dart';
 import 'webview_instance.dart';
 
@@ -15,13 +16,18 @@ class _WebViewPanelState extends ConsumerState<WebViewPanel> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(browserProvider);
+    final webViewDebuggingEnabled = ref.watch(
+      settingsProvider.select((settings) => settings.webViewDebuggingEnabled),
+    );
     final activeIndex = state.tabs.indexWhere((t) => t.id == state.activeTabId);
 
     if (state.tabs.isEmpty) {
       return HomePage(
         onServerFound: (url) {
           ref.read(browserProvider.notifier).setHomeUrl(url);
-          ref.read(browserProvider.notifier).addTab(url: url, title: 'Agent Spaces');
+          ref
+              .read(browserProvider.notifier)
+              .addTab(url: url, title: 'Agent Spaces');
         },
         homeUrl: state.homeUrl,
       );
@@ -31,10 +37,12 @@ class _WebViewPanelState extends ConsumerState<WebViewPanel> {
       index: activeIndex >= 0 ? activeIndex : 0,
       children: state.tabs.map((tab) {
         return WebViewInstance(
-          key: ValueKey(tab.id),
+          key: ValueKey('${tab.id}-$webViewDebuggingEnabled'),
           tab: tab,
           onTitleChanged: (tabId, title, url, faviconUrl) {
-            ref.read(browserProvider.notifier).updateTab(
+            ref
+                .read(browserProvider.notifier)
+                .updateTab(
                   tabId,
                   title: title,
                   url: url,

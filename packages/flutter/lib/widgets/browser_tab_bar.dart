@@ -7,6 +7,7 @@ import '../models/browser_tab.dart';
 import '../providers/browser_provider.dart';
 import '../providers/bookmark_provider.dart';
 import '../providers/console_log_provider.dart';
+import '../providers/settings_provider.dart';
 import '../services/webview_service.dart';
 
 class BrowserTabBar extends ConsumerStatefulWidget {
@@ -275,6 +276,9 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
 
   void _showDebugDialog(BuildContext context, BrowserTab tab) {
     final theme = Theme.of(context);
+    final webViewDebuggingEnabled = ref.read(
+      settingsProvider.select((settings) => settings.webViewDebuggingEnabled),
+    );
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -300,7 +304,9 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'WebView inspectable 已启用。',
+                  webViewDebuggingEnabled
+                      ? 'WebView inspectable 已启用。'
+                      : 'WebView inspectable 当前未启用，可在“设置 > 浏览器 > WebView 调试”中打开。',
                   style: TextStyle(
                     fontSize: 12,
                     height: 1.4,

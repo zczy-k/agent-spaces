@@ -81,7 +81,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             title: const Text('启动时恢复 Tabs', style: TextStyle(fontSize: 13)),
             subtitle: Text(
               '打开应用后恢复上次关闭时的标签页',
-              style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
+              style: TextStyle(
+                fontSize: 11,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
             value: settings.restoreTabsOnStartup,
             onChanged: (v) => notifier.setRestoreTabsOnStartup(v),
@@ -108,17 +111,46 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     onPressed: _requestingNotificationPermission
                         ? null
                         : _requestNotificationPermission,
-                    child: Text(_requestingNotificationPermission ? '授权中...' : '授权'),
+                    child: Text(
+                      _requestingNotificationPermission ? '授权中...' : '授权',
+                    ),
                   ),
           ),
           _SectionHeader(title: '浏览器'),
+          SwitchListTile(
+            dense: true,
+            secondary: const Icon(Icons.bug_report_outlined, size: 20),
+            title: const Text('WebView 调试', style: TextStyle(fontSize: 13)),
+            subtitle: Text(
+              '允许 Safari/Chrome 检查 WebView，切换后会重新初始化 WebView',
+              style: TextStyle(
+                fontSize: 11,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            value: settings.webViewDebuggingEnabled,
+            onChanged: (v) async {
+              notifier.setWebViewDebuggingEnabled(v);
+              await WebViewService.instance.setDebuggingEnabled(v);
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(v ? 'WebView 调试已开启' : 'WebView 调试已关闭'),
+                  duration: const Duration(seconds: 1),
+                ),
+              );
+            },
+          ),
           ListTile(
             dense: true,
             leading: const Icon(Icons.cleaning_services_outlined, size: 20),
             title: const Text('清空浏览器缓存', style: TextStyle(fontSize: 13)),
             subtitle: Text(
               '清除所有 WebView 缓存数据',
-              style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
+              style: TextStyle(
+                fontSize: 11,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
             trailing: _clearingCache
                 ? const SizedBox(
@@ -136,7 +168,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             title: const Text('关于', style: TextStyle(fontSize: 13)),
             subtitle: Text(
               '版本 0.1.0',
-              style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
+              style: TextStyle(
+                fontSize: 11,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
             onTap: () => context.push('/about'),
           ),
