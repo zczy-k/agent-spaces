@@ -38,7 +38,7 @@ export function MobileTabBar() {
               <button
                 onClick={() => handleTabClick(tab.id)}
                 className={cn(
-                  "relative flex items-center justify-center size-8 rounded-md transition-colors",
+                  "relative flex items-center justify-center h-8 min-w-8 px-1 rounded-md transition-colors",
                   activePanel === tab.id
                     ? "bg-accent text-accent-foreground"
                     : "text-muted-foreground hover:bg-accent/50"
