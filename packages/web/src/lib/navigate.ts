@@ -1,10 +1,14 @@
-import { isNativeEnvironment } from './native-notification';
+import { isFlutterEnvironment, isNativeEnvironment } from './native-notification';
 
 export function nativeNavigate(router: { push: (href: string) => void; replace: (href: string) => void }, href: string, replace = false) {
   const isDev = process.env.NODE_ENV === "development";
 
-  if (isDev && !isNativeEnvironment()) {
-    replace ? router.replace(href) : router.push(href);
+  if ((isDev && !isNativeEnvironment()) || isFlutterEnvironment()) {
+    if (replace) {
+      router.replace(href);
+    } else {
+      router.push(href);
+    }
     return;
   }
 
