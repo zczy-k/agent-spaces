@@ -1,4 +1,5 @@
 import * as agentService from '../services/agent.js';
+import { AGENT_COMMIT_PRESET_ID, getDefaultCommitAgentPreset } from '../services/agent.js';
 import { createAgentRuntime } from '../adapters/agent-runtime.js';
 import type { AgentConfig } from '@agent-spaces/shared';
 import { getWorkspace } from '../storage/workspace-store.js';
@@ -26,7 +27,6 @@ export async function runCommitAgent(workspaceId: string): Promise<string> {
   if (!diff.trim()) throw new Error('No changes found');
 
   const commitAgent = findCommitAgent(workspaceId);
-  if (!commitAgent) throw new Error('No commit agent configured. Add a commit-type agent preset.');
   const session = agentService.getOrCreateSessionForConfig(workspaceId, commitAgent);
   agentService.updateStatus(workspaceId, session.id, 'active');
 
@@ -215,10 +215,12 @@ function inferType(subject: string): string {
   return 'chore';
 }
 
-function findCommitAgent(workspaceId: string): AgentConfig | null {
+function findCommitAgent(workspaceId: string): AgentConfig {
   const presets = agentService.listPresets(workspaceId);
-  if (!presets) return null;
-  return presets.find((a) => a.role === 'commit' && a.enabled !== false) ?? null;
+  const preset = presets?.find((a) => a.id === AGENT_COMMIT_PRESET_ID);
+  if (preset) return preset;
+  const template = agentService.readAgentTemplate(AGENT_COMMIT_PRESET_ID);
+  return template ?? getDefaultCommitAgentPreset();
 }
 
 async function collectDiff(ws: import('@agent-spaces/shared').Workspace): Promise<string> {

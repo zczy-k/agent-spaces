@@ -20,6 +20,7 @@ import { extractUsageFromOutput } from '../storage/usage.js';
 
 const DEFAULT_AGENT_ROLE: AgentConfig['role'] = 'agent';
 export const AGENT_GENERATOR_PRESET_ID = 'agent-generator';
+export const AGENT_COMMIT_PRESET_ID = 'commit-agent';
 const VALID_RUNTIME_KINDS: NonNullable<AgentConfig['runtimeKind']>[] = ['open-agent-sdk', 'claude-code', 'codex', 'langchain'];
 const VALID_TOOL_NAMES = new Set(BUILT_IN_AGENT_TOOLS.map((tool) => tool.name));
 const ANTHROPIC_BRIDGE_PROVIDERS: Array<NonNullable<AgentConfig['modelProvider']>> = [
@@ -65,7 +66,7 @@ export function isValidRole(role: unknown): role is AgentConfig['role'] {
 
 export function listTemplates(): AgentConfig[] {
   const root = getGlobalAgentTemplatesDir();
-  if (!existsSync(root)) return [getDefaultAgentGeneratorPreset()];
+  if (!existsSync(root)) return [getDefaultAgentGeneratorPreset(), getDefaultCommitAgentPreset()];
 
   const templates = readdirSync(root, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
@@ -73,6 +74,9 @@ export function listTemplates(): AgentConfig[] {
     .filter((template): template is AgentConfig => Boolean(template));
   if (!templates.some((template) => template.id === AGENT_GENERATOR_PRESET_ID)) {
     templates.unshift(getDefaultAgentGeneratorPreset());
+  }
+  if (!templates.some((template) => template.id === AGENT_COMMIT_PRESET_ID)) {
+    templates.unshift(getDefaultCommitAgentPreset());
   }
   return templates;
 }
@@ -615,12 +619,16 @@ function ensureWorkspaceAgentCopy(preset: AgentConfig, agentspaceDir: string): v
 export function readAgentTemplate(agentId: string): AgentConfig | null {
   const filePath = join(getGlobalAgentTemplateDir(agentId), 'agent.json');
   if (!existsSync(filePath)) {
-    return agentId === AGENT_GENERATOR_PRESET_ID ? getDefaultAgentGeneratorPreset() : null;
+    return agentId === AGENT_GENERATOR_PRESET_ID ? getDefaultAgentGeneratorPreset()
+      : agentId === AGENT_COMMIT_PRESET_ID ? getDefaultCommitAgentPreset()
+      : null;
   }
   try {
     return JSON.parse(readFileSync(filePath, 'utf-8')) as AgentConfig;
   } catch {
-    return agentId === AGENT_GENERATOR_PRESET_ID ? getDefaultAgentGeneratorPreset() : null;
+    return agentId === AGENT_GENERATOR_PRESET_ID ? getDefaultAgentGeneratorPreset()
+      : agentId === AGENT_COMMIT_PRESET_ID ? getDefaultCommitAgentPreset()
+      : null;
   }
 }
 
@@ -658,6 +666,28 @@ function getDefaultAgentGeneratorPreset(): AgentConfig {
   };
 }
 
+export function getDefaultCommitAgentPreset(): AgentConfig {
+  return {
+    id: AGENT_COMMIT_PRESET_ID,
+    name: 'Commit Agent',
+    role: 'commit',
+    description: '根据 git diff 自动生成 conventional commit message。',
+    runtimeKind: 'claude-code',
+    modelProvider: undefined,
+    modelId: '',
+    apiBase: '',
+    apiKey: '',
+    workingDir: '',
+    mcps: {},
+    skills: [],
+    tools: [],
+    systemPrompt: '',
+    temperature: 0,
+    maxTokens: 512,
+    enabled: true,
+  };
+}
+
 function sanitizeMarkdownFilename(name: string): string {
   const raw = basename(name).replace(/\.md$/i, '');
   const safe = raw.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'skill';
@@ -666,6 +696,7 @@ function sanitizeMarkdownFilename(name: string): string {
 
 export function deletePreset(workspaceId: string, presetId: string): boolean | null {
   if (presetId === AGENT_GENERATOR_PRESET_ID) return false;
+  if (presetId === AGENT_COMMIT_PRESET_ID) return false;
 
   const ws = getWorkspace(workspaceId);
   if (!ws) return null;
@@ -764,6 +795,7 @@ export function updateGlobalPreset(presetId: string, data: Partial<AgentConfig>)
 
 export function deleteGlobalPreset(presetId: string): boolean {
   if (presetId === AGENT_GENERATOR_PRESET_ID) return false;
+  if (presetId === AGENT_COMMIT_PRESET_ID) return false;
 
   const templateDir = getGlobalAgentTemplateDir(presetId);
   if (!existsSync(templateDir)) return false;
