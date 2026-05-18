@@ -19,9 +19,12 @@ class BrowserTabBar extends ConsumerStatefulWidget {
 class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
     with TickerProviderStateMixin {
   TabController? _controller;
+  OverlayEntry? _debugOverlayEntry;
+  Offset _debugOverlayOffset = const Offset(24, 72);
 
   @override
   void dispose() {
+    _debugOverlayEntry?.remove();
     _controller?.dispose();
     super.dispose();
   }
@@ -219,6 +222,17 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
           ),
         ),
         const PopupMenuItem<String>(
+          value: 'debug',
+          height: 36,
+          child: Row(
+            children: [
+              Icon(Icons.bug_report_outlined, size: 16),
+              SizedBox(width: 8),
+              Text('调试', style: TextStyle(fontSize: 13)),
+            ],
+          ),
+        ),
+        const PopupMenuItem<String>(
           value: 'console',
           height: 36,
           child: Row(
@@ -250,6 +264,8 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
         }
       } else if (value == 'refresh') {
         WebViewService.instance.reload(tab.id);
+      } else if (value == 'debug') {
+        _showDebugOverlay(context, tab);
       } else if (value == 'console') {
         showModalBottomSheet(
           context: context,
@@ -258,6 +274,37 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
         );
       }
     });
+  }
+
+  void _showDebugOverlay(BuildContext context, BrowserTab tab) {
+    _debugOverlayEntry?.remove();
+    _debugOverlayEntry = null;
+
+    final overlay = Overlay.of(context);
+    _debugOverlayEntry = OverlayEntry(
+      builder: (overlayContext) {
+        return _DebugOverlayPanel(
+          tab: tab,
+          initialOffset: _debugOverlayOffset,
+          onOffsetChanged: (offset) => _debugOverlayOffset = offset,
+          onClose: () {
+            _debugOverlayEntry?.remove();
+            _debugOverlayEntry = null;
+          },
+          onReload: () => WebViewService.instance.reload(tab.id),
+          onConsole: () {
+            _debugOverlayEntry?.remove();
+            _debugOverlayEntry = null;
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              builder: (_) => const _ConsoleSheet(),
+            );
+          },
+        );
+      },
+    );
+    overlay.insert(_debugOverlayEntry!);
   }
 
   void _hideKeyboard() {
@@ -472,6 +519,225 @@ class _MoreMenuButton extends ConsumerWidget {
           context.push('/settings');
         }
       },
+    );
+  }
+}
+
+class _DebugOverlayPanel extends StatefulWidget {
+  final BrowserTab tab;
+  final Offset initialOffset;
+  final ValueChanged<Offset> onOffsetChanged;
+  final VoidCallback onClose;
+  final VoidCallback onReload;
+  final VoidCallback onConsole;
+
+  const _DebugOverlayPanel({
+    required this.tab,
+    required this.initialOffset,
+    required this.onOffsetChanged,
+    required this.onClose,
+    required this.onReload,
+    required this.onConsole,
+  });
+
+  @override
+  State<_DebugOverlayPanel> createState() => _DebugOverlayPanelState();
+}
+
+class _DebugOverlayPanelState extends State<_DebugOverlayPanel> {
+  static const _panelWidth = 320.0;
+  static const _panelMaxHeight = 360.0;
+  static const _margin = 12.0;
+
+  late Offset _offset;
+
+  @override
+  void initState() {
+    super.initState();
+    _offset = widget.initialOffset;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final size = MediaQuery.sizeOf(context);
+    final width = size.width < _panelWidth + _margin * 2
+        ? size.width - _margin * 2
+        : _panelWidth;
+    final maxLeft = (size.width - width - _margin).clamp(_margin, size.width);
+    final maxTop = (size.height - 120).clamp(_margin, size.height);
+    final left = _offset.dx.clamp(_margin, maxLeft).toDouble();
+    final top = _offset.dy.clamp(_margin, maxTop).toDouble();
+
+    if (left != _offset.dx || top != _offset.dy) {
+      _offset = Offset(left, top);
+      widget.onOffsetChanged(_offset);
+    }
+
+    return Positioned(
+      left: left,
+      top: top,
+      width: width,
+      child: Material(
+        color: Colors.transparent,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: _panelMaxHeight),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: theme.colorScheme.outlineVariant),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onPanUpdate: (details) {
+                    setState(() {
+                      final next = _offset + details.delta;
+                      _offset = Offset(
+                        next.dx.clamp(_margin, maxLeft).toDouble(),
+                        next.dy.clamp(_margin, maxTop).toDouble(),
+                      );
+                    });
+                    widget.onOffsetChanged(_offset);
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 6, 8),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.drag_indicator, size: 16),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            '调试',
+                            style: theme.textTheme.titleSmall,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: widget.onReload,
+                          icon: const Icon(Icons.refresh, size: 18),
+                          tooltip: '刷新',
+                          style: IconButton.styleFrom(
+                            minimumSize: const Size(32, 32),
+                            padding: EdgeInsets.zero,
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: widget.onClose,
+                          icon: const Icon(Icons.close, size: 18),
+                          tooltip: '关闭',
+                          style: IconButton.styleFrom(
+                            minimumSize: const Size(32, 32),
+                            padding: EdgeInsets.zero,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const Divider(height: 1),
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _DebugInfoRow(label: '标签页', value: widget.tab.title),
+                        const SizedBox(height: 8),
+                        _DebugInfoRow(label: 'URL', value: widget.tab.url),
+                        const SizedBox(height: 8),
+                        _DebugInfoRow(
+                          label: '设备',
+                          value:
+                              '${widget.tab.device.name} '
+                              '${widget.tab.device.width.toInt()}x'
+                              '${widget.tab.device.height.toInt()}',
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'WebView inspectable 已启用。iOS 16.4+ 或 macOS 13.3+ 可在 Safari 的开发菜单中选择此 WebView；Android 可打开 chrome://inspect。',
+                          style: TextStyle(
+                            fontSize: 12,
+                            height: 1.4,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            OutlinedButton.icon(
+                              onPressed: widget.onConsole,
+                              icon: const Icon(Icons.terminal, size: 16),
+                              label: const Text('控制台'),
+                            ),
+                            OutlinedButton.icon(
+                              onPressed: () {
+                                Clipboard.setData(
+                                  ClipboardData(text: widget.tab.url),
+                                );
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('已复制 URL'),
+                                    duration: Duration(seconds: 1),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.copy, size: 16),
+                              label: const Text('复制 URL'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DebugInfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _DebugInfoRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 44,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        Expanded(
+          child: SelectableText(value, style: const TextStyle(fontSize: 12)),
+        ),
+      ],
     );
   }
 }
