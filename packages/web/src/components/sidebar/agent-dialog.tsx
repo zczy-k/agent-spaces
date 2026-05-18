@@ -77,6 +77,7 @@ export function AgentDialog({
   const [generating, setGenerating] = useState(false);
   const [testResult, setTestResult] = useState<ConnectionTestResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [resetKey, setResetKey] = useState(0);
   const roleFilterSet = roleFilter
     ? new Set(Array.isArray(roleFilter) ? roleFilter : [roleFilter])
     : null;
@@ -283,23 +284,11 @@ export function AgentDialog({
     }
   };
 
-  const handleReset = async () => {
-    if (!selectedAgent || !FIXED_AGENT_IDS.has(selectedAgent.id)) return;
-    setSaving(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/agents/presets/${selectedAgent.id}/reset`, { method: "POST" });
-      if (!res.ok) throw new Error(await res.text());
-      const raw = (await res.json()) as AgentConfig;
-      const preset = normalizeAgent(raw);
-      setEditDraft({ ...preset });
-      setSelectedAgent(preset);
-      setTestResult(null);
-    } catch {
-      setError(t('error.saveFailed'));
-    } finally {
-      setSaving(false);
-    }
+  const handleReset = () => {
+    if (!selectedAgent) return;
+    setEditDraft({ ...selectedAgent });
+    setTestResult(null);
+    setResetKey((k) => k + 1);
   };
 
   const updateAgentDraft = <K extends keyof AgentPreset>(key: K, value: AgentPreset[K]) => {
@@ -528,7 +517,7 @@ export function AgentDialog({
           />
         ) : editDraft ? (
           <AgentDetail
-            key={editDraft.id}
+            key={`${editDraft.id}-${resetKey}`}
             agent={editDraft}
             roleOptions={addRoleOptions}
             testing={testing}

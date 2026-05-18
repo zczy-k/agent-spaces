@@ -49,7 +49,7 @@ agents.md
 1. 用户全局目录：
 
 ```text
-~/.claude/{filename}
+~/.agent-spaces-data/{filename}
 ```
 
 2. 当前 `workingDir` 向上递归到工作空间根目录或最近项目根目录。
@@ -196,7 +196,7 @@ Workspace prompt:
 且存在：
 
 ```text
-~/.claude/CLAUDE.md
+~/.agent-spaces-data/CLAUDE.md
 /repo/CLAUDE.md
 /repo/AGENTS.md
 /repo/packages/web/CLAUDE.md
@@ -206,7 +206,7 @@ Workspace prompt:
 对 Codex runtime，统一 prompt 会加载全部文件，顺序为：
 
 ```text
-~/.claude/CLAUDE.md
+~/.agent-spaces-data/CLAUDE.md
 /repo/CLAUDE.md
 /repo/AGENTS.md
 /repo/packages/web/CLAUDE.md

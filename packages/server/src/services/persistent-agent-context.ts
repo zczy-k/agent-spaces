@@ -1,6 +1,7 @@
 import { existsSync, realpathSync, readFileSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
+import { getDataDir } from '../storage/json-store.js';
 import { readWorkspacePrompt } from './workspace-prompt.js';
 
 const INSTRUCTION_FILENAMES = ['CLAUDE.md', 'claude.md', 'AGENTS.md', 'agents.md'];
@@ -103,8 +104,8 @@ function collectInstructionFiles(
 }
 
 function globalInstructionPaths(options: Pick<PersistentAgentContextOptions, 'excludeNativeClaudeMd'>): string[] {
-  const claudeDir = join(homedir(), '.claude');
-  return getInstructionFilenames(options).map((filename) => join(claudeDir, filename));
+  const dataDir = getDataDir();
+  return getInstructionFilenames(options).map((filename) => join(dataDir, filename));
 }
 
 function getInstructionFilenames(options: Pick<PersistentAgentContextOptions, 'excludeNativeClaudeMd'>): string[] {
