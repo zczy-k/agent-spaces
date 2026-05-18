@@ -50,4 +50,9 @@ class WebViewService {
     if (ctrl == null) return;
     await ctrl.reload();
   }
+
+  Future<void> clearAllCache() async {
+    await InAppWebViewController.clearAllCache();
+    _log.i('All WebView cache cleared');
+  }
 }

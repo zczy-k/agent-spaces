@@ -32,6 +32,51 @@ jobs:
 
       - run: pnpm --filter documents build
 
+      - name: Generate appcast.xml
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          TAG="${GITHUB_REF_NAME}"
+          REPO="${{ github.repository }}"
+          BASE_URL="https://github.com/${REPO}/releases/download/${TAG}"
+          NOTES_URL="https://github.com/${REPO}/releases/tag/${TAG}"
+
+          cat > documents/build/appcast.xml << EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+            <channel>
+              <title>Agent Spaces</title>
+              <item>
+                <title>Version ${VERSION}</title>
+                <description>See release notes: ${NOTES_URL}</description>
+                <sparkle:releaseNotesLink>${NOTES_URL}</sparkle:releaseNotesLink>
+                <sparkle:version>${VERSION}</sparkle:version>
+                <enclosure url="${BASE_URL}/app-release.apk" sparkle:version="${VERSION}" sparkle:os="android" />
+              </item>
+              <item>
+                <title>Version ${VERSION}</title>
+                <description>See release notes: ${NOTES_URL}</description>
+                <sparkle:releaseNotesLink>${NOTES_URL}</sparkle:releaseNotesLink>
+                <sparkle:version>${VERSION}</sparkle:version>
+                <enclosure url="${BASE_URL}/AgentSpaces.ipa" sparkle:version="${VERSION}" sparkle:os="ios" />
+              </item>
+              <item>
+                <title>Version ${VERSION}</title>
+                <description>See release notes: ${NOTES_URL}</description>
+                <sparkle:releaseNotesLink>${NOTES_URL}</sparkle:releaseNotesLink>
+                <sparkle:version>${VERSION}</sparkle:version>
+                <enclosure url="${BASE_URL}/AgentSpaces-macos.zip" sparkle:version="${VERSION}" sparkle:os="macos" />
+              </item>
+              <item>
+                <title>Version ${VERSION}</title>
+                <description>See release notes: ${NOTES_URL}</description>
+                <sparkle:releaseNotesLink>${NOTES_URL}</sparkle:releaseNotesLink>
+                <sparkle:version>${VERSION}</sparkle:version>
+                <enclosure url="${BASE_URL}/AgentSpaces-windows.zip" sparkle:version="${VERSION}" sparkle:os="windows" />
+              </item>
+            </channel>
+          </rss>
+          EOF
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

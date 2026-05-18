@@ -63,7 +63,13 @@ jobs:
 
       - name: Build macOS
         working-directory: packages/flutter
-        run: flutter build macos --release
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          BUILD_NUMBER="${{ github.run_number }}"
+          flutter build macos --release \
+            --build-name "$VERSION" \
+            --build-number "$BUILD_NUMBER" \
+            --dart-define "APPCAST_URL=https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/appcast.xml"
 
       - name: Package macOS
         run: |
@@ -106,7 +112,13 @@ jobs:
 
       - name: Build iOS (no-codesign)
         working-directory: packages/flutter
-        run: flutter build ios --release --no-codesign
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          BUILD_NUMBER="${{ github.run_number }}"
+          flutter build ios --release --no-codesign \
+            --build-name "$VERSION" \
+            --build-number "$BUILD_NUMBER" \
+            --dart-define "APPCAST_URL=https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/appcast.xml"
 
       - name: Package IPA
         run: |
@@ -153,7 +165,13 @@ jobs:
 
       - name: Build Windows
         working-directory: packages/flutter
-        run: flutter build windows --release
+        run: |
+          $version = "${env:GITHUB_REF_NAME}" -replace "^v", ""
+          $buildNumber = "${{ github.run_number }}"
+          flutter build windows --release `
+            --build-name "$version" `
+            --build-number "$buildNumber" `
+            --dart-define "APPCAST_URL=https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/appcast.xml"
 
       - name: Package Windows
         shell: pwsh
@@ -205,14 +223,26 @@ jobs:
 
       - name: Build Android APK
         working-directory: packages/flutter
-        run: flutter build apk --release --target-platform android-arm,android-arm64
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          BUILD_NUMBER="${{ github.run_number }}"
+          flutter build apk --release --target-platform android-arm,android-arm64 \
+            --build-name "$VERSION" \
+            --build-number "$BUILD_NUMBER" \
+            --dart-define "APPCAST_URL=https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/appcast.xml"
         env:
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
       - name: Build Android AAB
         working-directory: packages/flutter
-        run: flutter build appbundle --release --target-platform android-arm,android-arm64
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          BUILD_NUMBER="${{ github.run_number }}"
+          flutter build appbundle --release --target-platform android-arm,android-arm64 \
+            --build-name "$VERSION" \
+            --build-number "$BUILD_NUMBER" \
+            --dart-define "APPCAST_URL=https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/appcast.xml"
         env:
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
@@ -238,12 +268,62 @@ jobs:
       - name: List artifacts
         run: find artifacts -type f
 
-      - uses: softprops/action-gh-release@v2
+      - name: Generate appcast.xml
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          TAG="${GITHUB_REF_NAME}"
+          REPO="${{ github.repository }}"
+          BASE_URL="https://github.com/${REPO}/releases/download/${TAG}"
+          NOTES_URL="https://github.com/${REPO}/releases/tag/${TAG}"
+
+          mkdir -p public
+          cat > public/appcast.xml << EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+            <channel>
+              <title>Agent Spaces</title>
+              <item>
+                <title>Version ${VERSION}</title>
+                <description>See release notes: ${NOTES_URL}</description>
+                <sparkle:releaseNotesLink>${NOTES_URL}</sparkle:releaseNotesLink>
+                <sparkle:version>${VERSION}</sparkle:version>
+                <enclosure url="${BASE_URL}/app-release.apk" sparkle:version="${VERSION}" sparkle:os="android" />
+              </item>
+              <item>
+                <title>Version ${VERSION}</title>
+                <description>See release notes: ${NOTES_URL}</description>
+                <sparkle:releaseNotesLink>${NOTES_URL}</sparkle:releaseNotesLink>
+                <sparkle:version>${VERSION}</sparkle:version>
+                <enclosure url="${BASE_URL}/AgentSpaces.ipa" sparkle:version="${VERSION}" sparkle:os="ios" />
+              </item>
+              <item>
+                <title>Version ${VERSION}</title>
+                <description>See release notes: ${NOTES_URL}</description>
+                <sparkle:releaseNotesLink>${NOTES_URL}</sparkle:releaseNotesLink>
+                <sparkle:version>${VERSION}</sparkle:version>
+                <enclosure url="${BASE_URL}/AgentSpaces-macos.zip" sparkle:version="${VERSION}" sparkle:os="macos" />
+              </item>
+              <item>
+                <title>Version ${VERSION}</title>
+                <description>See release notes: ${NOTES_URL}</description>
+                <sparkle:releaseNotesLink>${NOTES_URL}</sparkle:releaseNotesLink>
+                <sparkle:version>${VERSION}</sparkle:version>
+                <enclosure url="${BASE_URL}/AgentSpaces-windows.zip" sparkle:version="${VERSION}" sparkle:os="windows" />
+              </item>
+            </channel>
+          </rss>
+          EOF
+
+      - name: Create GitHub Release
+        uses: ncipollo/release-action@v1
         with:
-          generate_release_notes: true
-          files: |
+          allowUpdates: true
+          artifacts: |
+            public/appcast.xml
             artifacts/macos/*.zip
             artifacts/ios/*.ipa
             artifacts/windows/*.zip
             artifacts/android/**/*.apk
             artifacts/android/**/*.aab
+          generateReleaseNotes: true
+          token: ${{ secrets.GITHUB_TOKEN }}

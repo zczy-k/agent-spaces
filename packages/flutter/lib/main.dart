@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:upgrader/upgrader.dart';
 import 'providers/bookmark_provider.dart';
 import 'providers/settings_provider.dart';
 import 'screens/home_screen.dart';
@@ -11,6 +12,7 @@ import 'screens/about_screen.dart';
 import 'services/notification_service.dart';
 
 final localWebServer = InAppLocalhostServer(port: 8080, documentRoot: 'assets/web');
+const _appcastUrl = String.fromEnvironment('APPCAST_URL');
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,6 +39,29 @@ final _router = GoRouter(
   ],
 );
 
+final _upgrader = Upgrader(
+  storeController: _appcastUrl.isEmpty
+      ? UpgraderStoreController()
+      : UpgraderStoreController(
+          onAndroid: () => UpgraderAppcastStore(
+            appcastURL: _appcastUrl,
+            osVersion: '0.0.0',
+          ),
+          oniOS: () => UpgraderAppcastStore(
+            appcastURL: _appcastUrl,
+            osVersion: '0.0.0',
+          ),
+          onMacOS: () => UpgraderAppcastStore(
+            appcastURL: _appcastUrl,
+            osVersion: '0.0.0',
+          ),
+          onWindows: () => UpgraderAppcastStore(
+            appcastURL: _appcastUrl,
+            osVersion: '0.0.0',
+          ),
+        ),
+);
+
 class AgentSpacesApp extends ConsumerWidget {
   const AgentSpacesApp({super.key});
 
@@ -59,6 +84,13 @@ class AgentSpacesApp extends ConsumerWidget {
         useMaterial3: true,
         brightness: Brightness.dark,
       ),
+      builder: (context, child) {
+        return UpgradeAlert(
+          navigatorKey: _router.routerDelegate.navigatorKey,
+          upgrader: _upgrader,
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
       routerConfig: _router,
     );
   }

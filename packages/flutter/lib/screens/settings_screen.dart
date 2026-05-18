@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/settings_provider.dart';
 import '../services/notification_service.dart';
+import '../services/webview_service.dart';
 
 final _notificationService = NotificationService();
 
@@ -17,6 +18,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _notificationAllowed = false;
   bool _loadingNotificationPermission = true;
   bool _requestingNotificationPermission = false;
+  bool _clearingCache = false;
 
   @override
   void initState() {
@@ -44,6 +46,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _requestingNotificationPermission = false;
       _loadingNotificationPermission = false;
     });
+  }
+
+  Future<void> _clearBrowserCache() async {
+    setState(() => _clearingCache = true);
+    await WebViewService.instance.clearAllCache();
+    if (!mounted) return;
+    setState(() => _clearingCache = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('缓存已清空'), duration: Duration(seconds: 1)),
+    );
   }
 
   @override
@@ -98,6 +110,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         : _requestNotificationPermission,
                     child: Text(_requestingNotificationPermission ? '授权中...' : '授权'),
                   ),
+          ),
+          _SectionHeader(title: '浏览器'),
+          ListTile(
+            dense: true,
+            leading: const Icon(Icons.cleaning_services_outlined, size: 20),
+            title: const Text('清空浏览器缓存', style: TextStyle(fontSize: 13)),
+            subtitle: Text(
+              '清除所有 WebView 缓存数据',
+              style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
+            ),
+            trailing: _clearingCache
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.chevron_right, size: 20),
+            onTap: _clearingCache ? null : _clearBrowserCache,
           ),
           _SectionHeader(title: '其他'),
           ListTile(
