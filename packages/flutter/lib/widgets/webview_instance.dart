@@ -1,4 +1,3 @@
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -214,35 +213,6 @@ class _WebViewInstanceState extends ConsumerState<WebViewInstance> {
               'WebView HTTP error: ${response.statusCode} ${response.reasonPhrase}',
               'error',
             );
-      },
-      onShowFileChooser: (controller, request) async {
-        try {
-          final result = await FilePicker.platform.pickFiles(
-            allowMultiple:
-                request.mode == ChooseFileDialogMode.openMultiple,
-            type: request.acceptTypes?.isNotEmpty == true
-                ? FileType.custom
-                : FileType.any,
-            allowedExtensions: request.acceptTypes?.isNotEmpty == true
-                ? request.acceptTypes!
-                    .expand((t) => t.extensions)
-                    .where((e) => e != null)
-                    .map((e) => e!)
-                    .toList()
-                : null,
-          );
-          if (result == null || result.files.isEmpty) {
-            return FileChooserResponse(cancel: true);
-          }
-          return FileChooserResponse(
-            filePaths: result.files
-                .where((f) => f.path != null)
-                .map((f) => f.path!)
-                .toList(),
-          );
-        } catch (e) {
-          return FileChooserResponse(cancel: true);
-        }
       },
     );
 

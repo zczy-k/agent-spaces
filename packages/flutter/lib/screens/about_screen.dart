@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
@@ -86,9 +87,7 @@ class AboutScreen extends StatelessWidget {
               'github.com/hunmer/agent-spaces',
               style: TextStyle(fontSize: 11),
             ),
-            onTap: () {
-              // TODO: launchUrl
-            },
+            onTap: () => launchUrl(Uri.parse('https://github.com/hunmer/agent-spaces')),
           ),
           ListTile(
             dense: true,
@@ -98,9 +97,7 @@ class AboutScreen extends StatelessWidget {
               'github.com/hunmer/agent-spaces/issues',
               style: TextStyle(fontSize: 11),
             ),
-            onTap: () {
-              // TODO: launchUrl
-            },
+            onTap: () => launchUrl(Uri.parse('https://github.com/hunmer/agent-spaces/issues')),
           ),
           _SectionHeader(title: '技术栈'),
           ListTile(
