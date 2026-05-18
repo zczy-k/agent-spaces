@@ -243,6 +243,9 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     if (removed) editor.view.dispatch(tr);
   }, []);
 
+  const replyToRef = useRef(replyTo);
+  useEffect(() => { replyToRef.current = replyTo; }, [replyTo]);
+
   const mentionExtension = useMemo(
     () =>
       Mention.configure({
@@ -250,6 +253,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         suggestion: {
           char: "@",
           items: ({ query }: { query: string }) => {
+            if (replyToRef.current) return [];
             const keyword = query.toLowerCase();
             return agentsRef.current
               .filter(
@@ -519,17 +523,19 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       </div>
       {!collapsed && (
         <div className="border-t px-4 py-2">
-          <ChatInputAgentBar
-            agents={sortedAgents}
-            activeAgent={activeAgent}
-            pinnedMentionId={pinnedMentionId}
-            isPinned={isPinned}
-            channel={channel}
-            onActivateAgent={activateAgent}
-            onTogglePin={togglePin}
-            onOpenAddMember={() => setAddMemberOpen(true)}
-            onToggleNotify={() => updateChannel(workspaceId, channelId, { notifyOnComplete: !channel.notifyOnComplete })}
-          />
+          {!replyTo && (
+            <ChatInputAgentBar
+              agents={sortedAgents}
+              activeAgent={activeAgent}
+              pinnedMentionId={pinnedMentionId}
+              isPinned={isPinned}
+              channel={channel}
+              onActivateAgent={activateAgent}
+              onTogglePin={togglePin}
+              onOpenAddMember={() => setAddMemberOpen(true)}
+              onToggleNotify={() => updateChannel(workspaceId, channelId, { notifyOnComplete: !channel.notifyOnComplete })}
+            />
+          )}
 
           <ComposerShell
             workspaceId={workspaceId}

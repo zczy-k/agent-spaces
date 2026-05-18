@@ -14,9 +14,13 @@ export function buildAgentMessageParts(input: {
   workspaceRoot?: string;
   presetName: string;
   role: string;
+  agentConfigId?: string;
+  runtime?: string;
   model?: string;
   usage?: MessageTokenUsage;
   systemPrompt?: string;
+  userPrompt?: string;
+  fullPrompt?: string;
   mcpServers: string[];
   skills: string[];
   builtInTools?: BuiltInToolContext[];
@@ -79,6 +83,18 @@ export function buildAgentMessageParts(input: {
       maxTokens: 128_000,
       modelId: input.model,
       usage,
+      agentContext: {
+        sessionId: input.sessionId,
+        agentConfigId: input.agentConfigId,
+        name: input.presetName,
+        role: input.role,
+        runtime: input.runtime,
+        model: input.model,
+        systemPrompt: input.systemPrompt,
+        userPrompt: input.userPrompt,
+        fullPrompt: input.fullPrompt,
+        output: finalText || lines.join('\n'),
+      },
     });
   }
 

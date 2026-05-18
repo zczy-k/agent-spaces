@@ -213,6 +213,14 @@ export async function runMentionedAgent(
   ];
   const workingDir = agentService.resolveWorkingDir(workspaceId, preset);
   const startTime = Date.now();
+  const runtimePromptConfig = {
+    mcpServers: Object.keys(mcpServers ?? {}),
+    skills,
+    boundDirs: workspace?.boundDirs,
+    workingDir,
+    excludeNativeClaudeMd: preset.runtimeKind === 'claude-code',
+    builtInTools: buildBuiltInTools(functionTools, channel, issue),
+  };
   const existingMessage = options.messageId
     ? listMessages(workspaceId, channelId).find((message) => message.id === options.messageId)
     : undefined;
@@ -252,6 +260,7 @@ export async function runMentionedAgent(
 
   let activeRun: ActiveChannelRun | undefined;
   const liveReasoning: Array<{ text: string; status?: 'streaming' | 'completed' }> = [];
+  let agentPrompt = '';
   try {
     const runtime = createAgentRuntime({
       kind: preset.runtimeKind,
@@ -270,6 +279,7 @@ export async function runMentionedAgent(
     };
     trackChannelRun(workspaceId, channelId, activeRun);
     const history = listMessages(workspaceId, channelId, { limit: 20 });
+    agentPrompt = buildAgentPrompt(workspaceId, preset.systemPrompt, prompt, history, runtimePromptConfig);
     const liveOutput: string[] = [...(options.seedOutput ?? [])];
     const askUserQuestions: PendingAskUserQuestion[] = [...(options.seedQuestions ?? [])];
     const toolDetails = new Map<string, ToolDetail>();
@@ -285,11 +295,15 @@ export async function runMentionedAgent(
         workspaceRoot: workspace?.boundDirs?.[0],
         presetName: preset.name || preset.role,
         role: preset.role,
+        agentConfigId: preset.id,
+        runtime: preset.runtimeKind,
         model: preset.modelId,
         systemPrompt: preset.systemPrompt,
-        mcpServers: Object.keys(mcpServers ?? {}),
-        skills,
-        builtInTools: buildBuiltInTools(functionTools, channel, issue),
+        userPrompt: prompt,
+        fullPrompt: agentPrompt,
+        mcpServers: runtimePromptConfig.mcpServers,
+        skills: runtimePromptConfig.skills,
+        builtInTools: runtimePromptConfig.builtInTools,
         output: liveOutput,
         reasoning: liveReasoning,
         toolDetails,
@@ -311,14 +325,7 @@ export async function runMentionedAgent(
       });
       if (live) broadcastToWorkspace(workspaceId, 'channel.message.updated', live);
     };
-    const result = await runtime.execute(buildAgentPrompt(workspaceId, preset.systemPrompt, prompt, history, {
-      mcpServers: Object.keys(mcpServers ?? {}),
-      skills,
-      boundDirs: workspace?.boundDirs,
-      workingDir,
-      excludeNativeClaudeMd: preset.runtimeKind === 'claude-code',
-      builtInTools: buildBuiltInTools(functionTools, channel, issue),
-    }), workingDir, {
+    const result = await runtime.execute(agentPrompt, workingDir, {
       maxTurns: 100,
       functionTools,
       mcpServers,
@@ -419,10 +426,14 @@ export async function runMentionedAgent(
         workspaceRoot: workspace?.boundDirs?.[0],
         presetName: preset.name || preset.role,
         role: preset.role,
+        agentConfigId: preset.id,
+        runtime: preset.runtimeKind,
         model: preset.modelId,
         systemPrompt: preset.systemPrompt,
-        mcpServers: Object.keys(mcpServers ?? {}),
-        skills,
+        userPrompt: prompt,
+        fullPrompt: agentPrompt,
+        mcpServers: runtimePromptConfig.mcpServers,
+        skills: runtimePromptConfig.skills,
         output: waitingOutput,
         reasoning: liveReasoning,
         toolDetails,
@@ -484,12 +495,16 @@ export async function runMentionedAgent(
       workspaceRoot: workspace?.boundDirs?.[0],
       presetName: preset.name || preset.role,
       role: preset.role,
+      agentConfigId: preset.id,
+      runtime: preset.runtimeKind,
       model: preset.modelId,
       usage: result.usage,
       systemPrompt: preset.systemPrompt,
-      mcpServers: Object.keys(mcpServers ?? {}),
-      skills,
-      builtInTools: buildBuiltInTools(functionTools, channel, issue),
+      userPrompt: prompt,
+      fullPrompt: agentPrompt,
+      mcpServers: runtimePromptConfig.mcpServers,
+      skills: runtimePromptConfig.skills,
+      builtInTools: runtimePromptConfig.builtInTools,
       output: displayOutput,
       reasoning: liveReasoning,
       toolDetails,
@@ -527,11 +542,15 @@ export async function runMentionedAgent(
       workspaceRoot: workspace?.boundDirs?.[0],
       presetName: preset.name || preset.role,
       role: preset.role,
+      agentConfigId: preset.id,
+      runtime: preset.runtimeKind,
       model: preset.modelId,
       systemPrompt: preset.systemPrompt,
-      mcpServers: Object.keys(mcpServers ?? {}),
-      skills,
-      builtInTools: buildBuiltInTools(functionTools, channel, issue),
+      userPrompt: prompt,
+      fullPrompt: agentPrompt,
+      mcpServers: runtimePromptConfig.mcpServers,
+      skills: runtimePromptConfig.skills,
+      builtInTools: runtimePromptConfig.builtInTools,
       output: [error],
       reasoning: liveReasoning,
       toolDetails: new Map(),

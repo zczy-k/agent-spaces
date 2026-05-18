@@ -3,11 +3,15 @@
 import type { Message, MessagePart } from "@agent-spaces/shared"
 import type { LucideIcon } from "lucide-react"
 import { BookOpenIcon, BotIcon, CheckIcon, CheckCircle2Icon, ChevronDownIcon, CircleIcon, CopyIcon, FileEditIcon, FileTextIcon, FolderSearchIcon, GlobeIcon, HelpCircleIcon, MessageSquareTextIcon, PencilIcon, CircleHelpIcon, SearchIcon, SquareCheckIcon, TerminalIcon, WrenchIcon, WebhookIcon } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useTranslations } from "next-intl"
 import { Markdown } from "@/components/ui/markdown"
 import { Loader } from "@/components/ui/loader"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useEditorStore } from "@/stores/editor"
 import { useLLMStore } from "@/stores/llm"
 import { cn } from "@/lib/utils"
@@ -92,7 +96,10 @@ export function MessageParts({ message, isUser, workspaceId }: MessagePartsProps
 }
 
 export function MessageContextUsage({ message }: { message: Message }) {
-  const part = message.parts?.find((item) => item.type === "context")
+  const contextParts = useMemo(() => message.parts?.filter((item) => item.type === "context") ?? [], [message.parts])
+  const part = contextParts[contextParts.length - 1]
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [activeAgentId, setActiveAgentId] = useState<string | undefined>()
   const models = useLLMStore((state) => state.models)
   const ensureModels = useLLMStore((state) => state.ensure)
   const configuredModel = part?.modelId
@@ -107,38 +114,168 @@ export function MessageContextUsage({ message }: { message: Message }) {
 
   if (!part || !maxTokens) return null
 
+  const totalUsedTokens = contextParts.reduce((sum, item) => sum + item.usedTokens, 0)
+  const aggregateUsage = aggregateTokenUsage(contextParts)
+  const overviewPart = contextParts.length > 1
+    ? {
+        ...part,
+        usedTokens: totalUsedTokens,
+        usage: aggregateUsage,
+      }
+    : part
+  const overviewUsage = toContextUsage(overviewPart)
+  const selectedAgent = contextParts.find((item) => item.id === activeAgentId) ?? contextParts[0]
+
   return (
-    <Context
-      usedTokens={part.usedTokens}
-      maxTokens={maxTokens}
-      modelId={part.modelId}
-      usage={{
-        inputTokens: part.usage?.inputTokens ?? 0,
-        outputTokens: part.usage?.outputTokens ?? 0,
-        totalTokens: part.usage?.totalTokens ?? part.usedTokens,
-        cachedInputTokens: part.usage?.cachedInputTokens ?? 0,
-        reasoningTokens: part.usage?.reasoningTokens ?? 0,
-        inputTokenDetails: {
-          noCacheTokens: undefined,
-          cacheReadTokens: undefined,
-          cacheWriteTokens: undefined,
-        },
-        outputTokenDetails: { textTokens: undefined, reasoningTokens: undefined },
-      }}
-    >
-      <ContextTrigger className="h-5 gap-1 px-1.5 text-[10px]" />
-      <ContextContent>
-        <ContextContentHeader />
-        <ContextContentBody className="space-y-2">
-          <ContextInputUsage />
-          <ContextOutputUsage />
-          <ContextReasoningUsage />
-          <ContextCacheUsage />
-        </ContextContentBody>
-        <ContextContentFooter />
-      </ContextContent>
-    </Context>
+    <>
+      <Context
+        usedTokens={overviewPart.usedTokens}
+        maxTokens={maxTokens}
+        modelId={overviewPart.modelId}
+        usage={overviewUsage}
+      >
+        <ContextTrigger className="h-5 gap-1 px-1.5 text-[10px]" onClick={() => setDetailsOpen(true)} />
+        <ContextContent>
+          <ContextContentHeader />
+          <ContextContentBody className="space-y-2">
+            <ContextInputUsage />
+            <ContextOutputUsage />
+            <ContextReasoningUsage />
+            <ContextCacheUsage />
+          </ContextContentBody>
+          <ContextContentFooter />
+        </ContextContent>
+      </Context>
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DialogContent className="!w-[min(920px,calc(100vw-2rem))] !max-w-[min(920px,calc(100vw-2rem))] gap-0 overflow-hidden p-0">
+          <DialogHeader className="border-b px-5 py-4">
+            <DialogTitle className="text-base">Agent 上下文结构</DialogTitle>
+            <DialogDescription className="text-xs">
+              此条消息包含 {contextParts.length} 次 agent 运行。选择 tab 查看提示词、输入、输出和 token 消耗。
+            </DialogDescription>
+          </DialogHeader>
+          {contextParts.length ? (
+            <Tabs
+              value={selectedAgent?.id}
+              onValueChange={setActiveAgentId}
+              className="min-h-0 gap-0"
+            >
+              <div className="border-b px-5 py-3">
+                <ScrollArea className="w-full">
+                  <TabsList className="h-8 max-w-full justify-start overflow-x-auto rounded-md">
+                    {contextParts.map((item, index) => (
+                      <TabsTrigger key={item.id} value={item.id} className="max-w-44 px-2 text-xs">
+                        <BotIcon className="size-3.5" />
+                        <span className="truncate">{item.agentContext?.name || item.agentContext?.role || `Agent ${index + 1}`}</span>
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </ScrollArea>
+              </div>
+              <ScrollArea className="max-h-[min(68vh,720px)]">
+                {contextParts.map((item) => (
+                  <TabsContent key={item.id} value={item.id} className="m-0 p-5">
+                    <AgentContextPanel part={item} />
+                  </TabsContent>
+                ))}
+              </ScrollArea>
+            </Tabs>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+    </>
   )
+}
+
+type ContextPart = Extract<MessagePart, { type: "context" }>
+
+function toContextUsage(part: ContextPart) {
+  return {
+    inputTokens: part.usage?.inputTokens ?? 0,
+    outputTokens: part.usage?.outputTokens ?? 0,
+    totalTokens: part.usage?.totalTokens ?? part.usedTokens,
+    cachedInputTokens: part.usage?.cachedInputTokens ?? 0,
+    reasoningTokens: part.usage?.reasoningTokens ?? 0,
+    inputTokenDetails: {
+      noCacheTokens: undefined,
+      cacheReadTokens: undefined,
+      cacheWriteTokens: undefined,
+    },
+    outputTokenDetails: { textTokens: undefined, reasoningTokens: undefined },
+  }
+}
+
+function aggregateTokenUsage(parts: ContextPart[]) {
+  return parts.reduce((usage, part) => ({
+    inputTokens: usage.inputTokens + (part.usage?.inputTokens ?? 0),
+    outputTokens: usage.outputTokens + (part.usage?.outputTokens ?? 0),
+    totalTokens: usage.totalTokens + (part.usage?.totalTokens ?? part.usedTokens),
+    cachedInputTokens: usage.cachedInputTokens + (part.usage?.cachedInputTokens ?? 0),
+    reasoningTokens: usage.reasoningTokens + (part.usage?.reasoningTokens ?? 0),
+  }), {
+    inputTokens: 0,
+    outputTokens: 0,
+    totalTokens: 0,
+    cachedInputTokens: 0,
+    reasoningTokens: 0,
+  })
+}
+
+function AgentContextPanel({ part }: { part: ContextPart }) {
+  const agent = part.agentContext
+  const usage = toContextUsage(part)
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant="secondary">{agent?.name || agent?.role || "Agent"}</Badge>
+        {agent?.runtime ? <Badge variant="outline">{agent.runtime}</Badge> : null}
+        {(agent?.model || part.modelId) ? <Badge variant="outline">{agent?.model || part.modelId}</Badge> : null}
+        {agent?.sessionId ? <span className="font-mono text-[11px] text-muted-foreground">{agent.sessionId}</span> : null}
+      </div>
+      <div className="grid gap-2 sm:grid-cols-5">
+        <TokenMetric label="总 token" value={usage.totalTokens} />
+        <TokenMetric label="输入" value={usage.inputTokens} />
+        <TokenMetric label="输出" value={usage.outputTokens} />
+        <TokenMetric label="推理" value={usage.reasoningTokens} />
+        <TokenMetric label="缓存输入" value={usage.cachedInputTokens} />
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ContextTextBlock title="提示词信息" value={agent?.systemPrompt} empty="此 agent 未配置独立 system prompt。" />
+        <ContextTextBlock title="输入信息" value={agent?.userPrompt} empty="旧消息未记录用户输入。" />
+      </div>
+      <ContextTextBlock title="完整上下文" value={agent?.fullPrompt} empty="旧消息未记录完整 prompt。" tall />
+      <ContextTextBlock title="输出信息" value={agent?.output} empty="暂无输出信息。" tall />
+    </div>
+  )
+}
+
+function TokenMetric({ label, value }: { label: string; value?: number }) {
+  return (
+    <div className="rounded-md border bg-muted/30 p-3">
+      <div className="text-[11px] text-muted-foreground">{label}</div>
+      <div className="mt-1 font-mono text-sm">{formatTokenCount(value ?? 0)}</div>
+    </div>
+  )
+}
+
+function ContextTextBlock({ title, value, empty, tall }: { title: string; value?: string; empty: string; tall?: boolean }) {
+  return (
+    <section className="min-w-0 space-y-2">
+      <h4 className="text-xs font-medium text-muted-foreground">{title}</h4>
+      <pre className={cn(
+        "min-w-0 whitespace-pre-wrap break-words rounded-md border bg-muted/30 p-3 font-mono text-xs leading-relaxed text-foreground",
+        tall ? "max-h-72 overflow-auto" : "max-h-48 overflow-auto",
+        !value?.trim() && "text-muted-foreground",
+      )}>
+        {value?.trim() || empty}
+      </pre>
+    </section>
+  )
+}
+
+function formatTokenCount(value: number) {
+  return new Intl.NumberFormat("en-US").format(value)
 }
 
 function dedupeDisplayPart(part: MessagePart): MessagePart {

@@ -67,7 +67,7 @@ export type MessagePart =
   | { id: string; type: 'chain'; chains: MessageChain[] }
   | { id: string; type: 'terminal'; command?: string; output: string; status?: 'streaming' | 'completed' | 'error' }
   | { id: string; type: 'confirmation'; title: string; description?: string; approval?: MessageApproval }
-  | { id: string; type: 'context'; usedTokens: number; maxTokens: number; modelId?: string; usage?: MessageTokenUsage }
+  | { id: string; type: 'context'; usedTokens: number; maxTokens: number; modelId?: string; usage?: MessageTokenUsage; agentContext?: MessageAgentContext }
   | { id: string; type: 'subagent'; name: string; model?: string; instructions?: string; output?: string; tools?: MessageTool[] }
   | { id: string; type: 'ask_user_question'; question: string; choices?: string[]; status?: 'requested' | 'answered'; answer?: string; toolUseId?: string };
 
@@ -96,6 +96,19 @@ export interface MessageTokenUsage {
   totalTokens?: number;
   cachedInputTokens?: number;
   reasoningTokens?: number;
+}
+
+export interface MessageAgentContext {
+  sessionId: string;
+  agentConfigId?: string;
+  name?: string;
+  role?: string;
+  runtime?: string;
+  model?: string;
+  systemPrompt?: string;
+  userPrompt?: string;
+  fullPrompt?: string;
+  output?: string;
 }
 
 export interface MessageTool {
