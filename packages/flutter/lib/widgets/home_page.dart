@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -16,13 +15,11 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   bool _hasLocalWeb = false;
-  bool _frontendAvailable = false;
-  bool _backendAvailable = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _autoCheck());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkLocalWeb());
   }
 
   @override
@@ -37,48 +34,18 @@ class _HomePageState extends State<HomePage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Title row with server badges
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(child: Column(children: [
-                    Icon(Icons.hub, size: 56, color: theme.colorScheme.primary),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Agent Spaces',
-                      style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '连接到 Agent Spaces 服务器',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ])),
-                  // Right side server buttons
-                  if (_frontendAvailable || _backendAvailable)
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (_backendAvailable)
-                          _ServerBadge(
-                            label: '后端服务器',
-                            color: Colors.green,
-                            onTap: () => widget.onServerFound('http://127.0.0.1:3100'),
-                          ),
-                        if (_frontendAvailable) ...[
-                          const SizedBox(height: 6),
-                          _ServerBadge(
-                            label: '前端服务器',
-                            color: Colors.blue,
-                            onTap: () => widget.onServerFound('http://127.0.0.1:3000'),
-                          ),
-                        ],
-                      ],
-                    ),
-                ],
+              Icon(Icons.hub, size: 56, color: theme.colorScheme.primary),
+              const SizedBox(height: 16),
+              Text(
+                'Agent Spaces',
+                style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '连接到 Agent Spaces 服务器',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
               const SizedBox(height: 32),
               ActionCard(
@@ -111,20 +78,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Future<void> _autoCheck() async {
-    await _checkLocalWeb();
-    // Check both servers in parallel
-    final results = await Future.wait([
-      _checkUrl('http://127.0.0.1:3000'),
-      _checkHealth('127.0.0.1', 3100),
-    ]);
-    if (!mounted) return;
-    setState(() {
-      _frontendAvailable = results[0];
-      _backendAvailable = results[1];
-    });
-  }
-
   Future<void> _checkLocalWeb() async {
     try {
       final client = HttpClient();
@@ -136,34 +89,6 @@ class _HomePageState extends State<HomePage> {
         setState(() => _hasLocalWeb = true);
       }
     } catch (_) {}
-  }
-
-  Future<bool> _checkUrl(String url) async {
-    try {
-      final client = HttpClient();
-      client.connectionTimeout = const Duration(seconds: 2);
-      final request = await client.getUrl(Uri.parse(url));
-      final response = await request.close();
-      client.close();
-      return response.statusCode == 200;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  Future<bool> _checkHealth(String host, int port) async {
-    final url = 'http://$host:$port/api/health';
-    try {
-      final client = HttpClient();
-      client.connectionTimeout = const Duration(seconds: 2);
-      final request = await client.getUrl(Uri.parse(url));
-      final response = await request.close();
-      final body = await response.transform(utf8.decoder).join();
-      client.close();
-      return response.statusCode == 200 && body.contains('"status":"ok"');
-    } catch (_) {
-      return false;
-    }
   }
 
   void _openLocal() {
@@ -198,39 +123,5 @@ class _HomePageState extends State<HomePage> {
     final url = raw.startsWith('http') ? raw : 'http://$raw';
     Navigator.of(ctx).pop();
     widget.onServerFound(url);
-  }
-}
-
-class _ServerBadge extends StatelessWidget {
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _ServerBadge({required this.label, required this.color, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: color.withValues(alpha: 0.1),
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.circle, size: 8, color: color),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }
