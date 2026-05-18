@@ -12,8 +12,6 @@ import { useWorkspaceStore } from "@/stores/workspace";
 import {
   getModelUri,
   getOrCreateModel,
-  preloadDirectory,
-  setupLanguageDefaults,
 } from "@/lib/monaco-models";
 import { startTypeScriptLanguageClient, stopTypeScriptLanguageClient } from "@/lib/monaco-language-client";
 import {
@@ -231,7 +229,6 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
 
   const handleMount = useCallback((editor: Monaco.editor.IStandaloneCodeEditor, _monaco: typeof Monaco) => {
     editorRef.current = editor;
-    setupLanguageDefaults();
     if (workspaceRoot) {
       startTypeScriptLanguageClient(workspaceId, workspaceRoot);
     }
@@ -304,12 +301,11 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     };
   }, [isReadOnly]);
 
-  // Register model + preload directory when active file changes
+  // Register model when active file changes
   useEffect(() => {
     if (!activeFile || !activeFilePath) return;
 
     getOrCreateModel(workspaceId, activeFilePath, activeContent, workspaceRoot);
-    preloadDirectory(workspaceId, activeFilePath, workspaceRoot);
   }, [activeFilePath, activeContent, workspaceId, workspaceRoot]);
 
   // Handle pending jump from search results
