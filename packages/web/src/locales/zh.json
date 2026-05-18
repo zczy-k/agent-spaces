@@ -128,6 +128,7 @@
       "general": "通用",
       "agents": "智能体",
       "skills": "技能管理",
+      "prompts": "提示词管理",
       "mcps": "MCP 服务器",
       "models": "模型",
       "providers": "供应商",
@@ -1014,6 +1015,24 @@
     "syncEmpty": "所有智能体的技能已是最新",
     "syncConfirm": "确认更新",
     "syncSuccess": "已更新 {count} 个技能文件"
+  },
+  "prompts": {
+    "title": "提示词管理",
+    "description": "管理提示词模板，批量应用到智能体",
+    "search": "搜索提示词...",
+    "empty": "暂无提示词模板",
+    "create": "新建",
+    "createTitle": "新建提示词模板",
+    "editTitle": "编辑提示词 - {name}",
+    "editDescription": "编辑提示词内容",
+    "namePlaceholder": "提示词模板名称",
+    "apply": "应用",
+    "applyTitle": "应用到智能体 - {name}",
+    "applyDescription": "选择要应用此提示词的智能体，将直接替换其系统提示词",
+    "applyConfirm": "应用到 {count} 个智能体",
+    "searchAgents": "搜索智能体...",
+    "noAgents": "暂无智能体",
+    "delete": "删除"
   },
   "mcps": {
     "title": "MCP 服务器管理",

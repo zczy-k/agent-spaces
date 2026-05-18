@@ -128,6 +128,7 @@
       "general": "General",
       "agents": "Agents",
       "skills": "Skills",
+      "prompts": "Prompts",
       "mcps": "MCP Servers",
       "models": "Models",
       "providers": "Providers"
@@ -1012,6 +1013,24 @@
     "syncEmpty": "All agent skills are up to date",
     "syncConfirm": "Confirm Update",
     "syncSuccess": "Updated {count} skill files"
+  },
+  "prompts": {
+    "title": "Prompt Templates",
+    "description": "Manage prompt templates and apply to agents",
+    "search": "Search prompts...",
+    "empty": "No prompt templates",
+    "create": "New",
+    "createTitle": "New Prompt Template",
+    "editTitle": "Edit Prompt - {name}",
+    "editDescription": "Edit prompt content",
+    "namePlaceholder": "Prompt template name",
+    "apply": "Apply",
+    "applyTitle": "Apply to Agents - {name}",
+    "applyDescription": "Select agents to apply this prompt. This will replace their system prompt.",
+    "applyConfirm": "Apply to {count} agents",
+    "searchAgents": "Search agents...",
+    "noAgents": "No agents found",
+    "delete": "Delete"
   },
   "mcps": {
     "title": "MCP Servers",

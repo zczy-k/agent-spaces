@@ -27,6 +27,7 @@ import {
   LayoutGrid,
   GitBranch,
   Sparkles,
+  MessageSquare,
   Plug,
   PanelLeftClose,
   Hash,
@@ -38,6 +39,7 @@ import { ModelsDialog } from "@/components/sidebar/models-dialog";
 import { ProvidersDialog } from "@/components/sidebar/providers-dialog";
 import { SettingsDialog } from "@/components/sidebar/settings-dialog";
 import { SkillsDialog } from "@/components/sidebar/skills-dialog";
+import { PromptsDialog } from "@/components/sidebar/prompts-dialog";
 import { McpsDialog } from "@/components/sidebar/mcps-dialog";
 import type { Route } from "./nav-main";
 import DashboardNavigation from "@/components/sidebar/nav-main";
@@ -77,6 +79,7 @@ export function DashboardSidebar() {
   const [modelsDialogOpen, setModelsDialogOpen] = useState(false);
   const [providersDialogOpen, setProvidersDialogOpen] = useState(false);
   const [skillsDialogOpen, setSkillsDialogOpen] = useState(false);
+  const [promptsDialogOpen, setPromptsDialogOpen] = useState(false);
   const [mcpsDialogOpen, setMcpsDialogOpen] = useState(false);
   const [wsDialogOpen, setWsDialogOpen] = useState(false);
   const [editingWs, setEditingWs] = useState<Workspace | null>(null);
@@ -259,6 +262,7 @@ export function DashboardSidebar() {
             { title: ts('nav.general'), link: "/settings" },
             { title: ts('nav.agents'), link: "/settings/agents", icon: <Bot className="size-3.5" /> },
             { title: ts('nav.skills'), link: "/settings/skills", icon: <Sparkles className="size-3.5" /> },
+            { title: ts('nav.prompts'), link: "/settings/prompts", icon: <MessageSquare className="size-3.5" /> },
             { title: ts('nav.mcps'), link: "/settings/mcps", icon: <Plug className="size-3.5" /> },
             { title: ts('nav.models'), link: "/settings/models", icon: <Brain className="size-3.5" /> },
             { title: ts('nav.providers'), link: "/settings/providers", icon: <Server className="size-3.5" /> },
@@ -267,6 +271,7 @@ export function DashboardSidebar() {
             { title: ts('nav.general'), link: "#", onClick: () => setSettingsDialogOpen(true) },
             { title: ts('nav.agents'), link: "#", icon: <Bot className="size-3.5" />, onClick: () => setAgentDialogOpen(true) },
             { title: ts('nav.skills'), link: "#", icon: <Sparkles className="size-3.5" />, onClick: () => setSkillsDialogOpen(true) },
+            { title: ts('nav.prompts'), link: "#", icon: <MessageSquare className="size-3.5" />, onClick: () => setPromptsDialogOpen(true) },
             { title: ts('nav.mcps'), link: "#", icon: <Plug className="size-3.5" />, onClick: () => setMcpsDialogOpen(true) },
             { title: ts('nav.models'), link: "#", icon: <Brain className="size-3.5" />, onClick: () => { setModelsDialogProvider(undefined); setModelsDialogOpen(true); } },
             { title: ts('nav.providers'), link: "#", icon: <Server className="size-3.5" />, onClick: () => setProvidersDialogOpen(true) },
@@ -317,6 +322,7 @@ export function DashboardSidebar() {
       </SidebarFooter>
       <AgentDialog open={agentDialogOpen} onOpenChange={setAgentDialogOpen} />
       <SkillsDialog open={skillsDialogOpen} onOpenChange={setSkillsDialogOpen} />
+      <PromptsDialog open={promptsDialogOpen} onOpenChange={setPromptsDialogOpen} />
       <McpsDialog open={mcpsDialogOpen} onOpenChange={setMcpsDialogOpen} />
       <SettingsDialog open={settingsDialogOpen} onOpenChange={setSettingsDialogOpen} />
       <ModelsDialog open={modelsDialogOpen} onOpenChange={setModelsDialogOpen} initialProvider={modelsDialogProvider} />
