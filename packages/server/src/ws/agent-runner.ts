@@ -290,7 +290,7 @@ export async function runMentionedAgent(
       ],
       excludeReplyIds: options.excludeHistoryReplyIds,
     });
-    const isRuntimeSessionResume = Boolean(options.resumeSessionId && preset.runtimeKind === 'claude-code');
+    const isRuntimeSessionResume = Boolean(options.resumeSessionId && (preset.runtimeKind === 'claude-code' || preset.runtimeKind === 'codex'));
     agentPrompt = isRuntimeSessionResume
       ? prompt
       : buildAgentPrompt(workspaceId, preset.systemPrompt, prompt, history, runtimePromptConfig);

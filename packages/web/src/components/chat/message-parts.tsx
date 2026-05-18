@@ -251,11 +251,11 @@ function AgentContextPanel({ part }: { part: ContextPart }) {
         <TokenMetric label="缓存输入" value={usage.cachedInputTokens} helper={`${formatPercent(cacheShare)} of total`} />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
-        <ContextTextBlock {...textBlocks[0]} totalTokens={totalBlockTokens} />
-        <ContextTextBlock {...textBlocks[1]} totalTokens={totalBlockTokens} />
+        <ContextTextBlock key={textBlocks[0].key} title={textBlocks[0].title} value={textBlocks[0].value} empty={textBlocks[0].empty} stats={textBlocks[0].stats} totalTokens={totalBlockTokens} />
+        <ContextTextBlock key={textBlocks[1].key} title={textBlocks[1].title} value={textBlocks[1].value} empty={textBlocks[1].empty} stats={textBlocks[1].stats} totalTokens={totalBlockTokens} />
       </div>
-      <ContextTextBlock {...textBlocks[2]} totalTokens={totalBlockTokens} />
-      <ContextTextBlock {...textBlocks[3]} totalTokens={totalBlockTokens} />
+      <ContextTextBlock key={textBlocks[2].key} title={textBlocks[2].title} value={textBlocks[2].value} empty={textBlocks[2].empty} tall={textBlocks[2].tall} stats={textBlocks[2].stats} totalTokens={totalBlockTokens} />
+      <ContextTextBlock key={textBlocks[3].key} title={textBlocks[3].title} value={textBlocks[3].value} empty={textBlocks[3].empty} tall={textBlocks[3].tall} stats={textBlocks[3].stats} totalTokens={totalBlockTokens} />
     </div>
   )
 }

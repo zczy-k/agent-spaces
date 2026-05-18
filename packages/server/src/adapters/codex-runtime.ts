@@ -56,7 +56,7 @@ export class CodexRuntime implements AgentRuntime {
         config: configOverrides,
         env: buildEnv(this.config, codexHome),
       });
-      const thread = codex.startThread({
+      const threadOptions: ThreadOptions = {
         model: this.config.model,
         sandboxMode,
         approvalPolicy,
@@ -65,7 +65,10 @@ export class CodexRuntime implements AgentRuntime {
         additionalDirectories: options?.sandboxDirs,
         networkAccessEnabled: true,
         webSearchMode: 'live',
-      });
+      };
+      const thread = options?.resumeSessionId
+        ? codex.resumeThread(options.resumeSessionId, threadOptions)
+        : codex.startThread(threadOptions);
 
       const { events } = await thread.runStreamed(prompt, {
         signal: this.abortController.signal,
@@ -75,9 +78,14 @@ export class CodexRuntime implements AgentRuntime {
       let tokenCount = 0;
       let usage: AgentRunResult['usage'];
       let error: string | undefined;
+      let sessionId = options?.resumeSessionId ?? thread.id ?? undefined;
       const emittedItemLines = new Set<string>();
 
       for await (const event of events) {
+        if (event.type === 'thread.started') {
+          sessionId = event.thread_id;
+          options?.onEvent?.({ type: 'session', sessionId });
+        }
         logEventDebug(event, d);
         const mappedEvents = mapRuntimeEvents(event);
         const mappedEventLines = new Set(mappedEvents.flatMap((runtimeEvent) => (
@@ -119,6 +127,7 @@ export class CodexRuntime implements AgentRuntime {
           artifacts: [],
           error,
           output,
+          sessionId,
           usage,
         };
       }
@@ -131,6 +140,7 @@ export class CodexRuntime implements AgentRuntime {
         summary: summarizeResult(text),
         artifacts: [],
         output,
+        sessionId,
         usage,
       };
     } catch (err) {
@@ -139,7 +149,7 @@ export class CodexRuntime implements AgentRuntime {
       d(`failed ${elapsed}ms | ${message}`);
       if (err instanceof Error && err.stack) console.error(err.stack);
 
-      return { success: false, summary: 'Codex execution failed', artifacts: [], error: message, output };
+      return { success: false, summary: 'Codex execution failed', artifacts: [], error: message, output, sessionId: options?.resumeSessionId };
     } finally {
       this.abortController = null;
     }
