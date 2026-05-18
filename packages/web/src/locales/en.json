@@ -771,7 +771,9 @@
       "committedSuccessfully": "Committed successfully",
       "commitFailed": "Commit failed",
       "discardedSuccessfully": "Changes discarded",
-      "discardFailed": "Discard failed"
+      "discardFailed": "Discard failed",
+      "viewDiff": "View unstaged diff",
+      "unstagedChanges": "Unstaged Changes"
     },
     "commits": {
       "title": "Commits",

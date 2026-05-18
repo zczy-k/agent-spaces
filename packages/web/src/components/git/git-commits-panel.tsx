@@ -6,7 +6,7 @@ import { useEffect, useCallback, useState, useRef } from "react";
 import {
   Upload, Download, Loader2, GitCommitHorizontal, RefreshCw, ArrowUp, ArrowDown,
   FileCode, RotateCcw, Trash2, ChevronDown, GitBranch,
-  EyeOff, Sparkles, Settings2,
+  EyeOff, Sparkles, Settings2, FileDiff,
 } from "lucide-react";
 import { useGitStore } from "@/stores/git";
 import { useEditorStore } from "@/stores/editor";
@@ -437,6 +437,11 @@ export function GitCommitsPanel({ workspaceId }: Props) {
               <Trash2 size={13} />
             </button>
           )}
+          <button onClick={() => {
+            if (diffs.length > 0) openCommitDiff(workspaceId, 'unstaged', tChanges('unstagedChanges'), diffs);
+          }} disabled={!hasFiles} className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30" title={tChanges('viewDiff')}>
+            <FileDiff size={13} />
+          </button>
           <button onClick={refresh} className="p-1 text-muted-foreground hover:text-foreground" title={tc('refresh')}>
             <RefreshCw size={13} />
           </button>

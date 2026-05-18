@@ -773,7 +773,9 @@
       "committedSuccessfully": "提交成功",
       "commitFailed": "提交失败",
       "discardedSuccessfully": "已丢弃更改",
-      "discardFailed": "丢弃失败"
+      "discardFailed": "丢弃失败",
+      "viewDiff": "查看未提交差异",
+      "unstagedChanges": "未提交更改"
     },
     "commits": {
       "title": "提交",
