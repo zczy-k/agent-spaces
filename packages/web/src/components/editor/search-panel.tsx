@@ -92,7 +92,7 @@ export function SearchPanel({ workspaceId }: SearchPanelProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Search input */}
-      <div className="px-2 py-1.5 border-b space-y-1">
+      <div className="px-2 py-2 border-b space-y-1.5">
         <div className="flex items-center gap-1">
           <Search className="size-3.5 text-muted-foreground shrink-0" />
           <Input
@@ -109,14 +109,12 @@ export function SearchPanel({ workspaceId }: SearchPanelProps) {
           <button
             onClick={() => setIsCaseSensitive(!isCaseSensitive)}
             className={cn("p-1 rounded text-xs", isCaseSensitive ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}
-            title={t('caseSensitive')}
           >
             <CaseSensitive className="size-3" />
           </button>
           <button
             onClick={() => setIsRegex(!isRegex)}
             className={cn("p-1 rounded text-xs", isRegex ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}
-            title={t('useRegex')}
           >
             <Regex className="size-3" />
           </button>

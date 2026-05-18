@@ -54,11 +54,11 @@ function FavoriteCard({
 }: {
   favorite: CodeFavorite;
   workspaceId: string;
-  onJump: (wid: string, path: string, line: number, col?: number) => Promise<void>;
+  onJump: (wid: string, path: string, line: number, col?: number, endLine?: number, endColumn?: number) => Promise<void>;
   onRemove: (id: string) => void;
 }) {
   const handleClick = () => {
-    onJump(workspaceId, favorite.path, favorite.line, favorite.column);
+    onJump(workspaceId, favorite.path, favorite.line, favorite.column, favorite.endLine, favorite.endColumn);
   };
 
   return (
@@ -74,7 +74,7 @@ function FavoriteCard({
         <div className="flex items-center gap-1 shrink-0">
           <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
             <MapPin size={10} />
-            {favorite.line}
+            {favorite.endLine > favorite.line ? `${favorite.line}-${favorite.endLine}` : favorite.line}
           </span>
           <Button
             variant="ghost"

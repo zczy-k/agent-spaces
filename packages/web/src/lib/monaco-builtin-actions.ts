@@ -13,7 +13,8 @@ registerMonacoAction({
     const sel = editor.getSelection();
     if (!model || !sel) return;
     const relPath = toRelativePath(model.uri.path, ctx);
-    const pos = `${relPath || model.uri.path}:${sel.startLineNumber}:${sel.startColumn}`;
+    const base = `${relPath || model.uri.path}:${sel.startLineNumber}:${sel.startColumn}`;
+    const pos = sel.endLineNumber > sel.startLineNumber ? `${base}-${sel.endLineNumber}` : base;
     navigator.clipboard.writeText(pos).then(() => {
       toast.success(`已复制: ${pos}`);
     });
@@ -32,21 +33,26 @@ registerMonacoAction({
 
     const line = sel.startLineNumber;
     const column = sel.startColumn;
-    const snippet = model.getLineContent(line).trim();
+    const endLine = sel.endLineNumber;
+    const endColumn = sel.endColumn;
+    const snippet = endLine > line
+      ? model.getLineContent(line).trim() + ' …'
+      : model.getLineContent(line).trim();
     const relPath = toRelativePath(model.uri.path, ctx);
     if (!relPath) return;
 
     const fileName = relPath.split('/').pop() || relPath;
+    const lineLabel = endLine > line ? `${line}-${endLine}` : `${line}`;
 
-    useCodeFavoritesStore.getState().addFavorite({
+    useCodeFavoritesStore.getState().setPendingFavorite({
       workspaceId: ctx.workspaceId,
       path: relPath,
       line,
       column,
-      label: `${fileName}:${line}`,
+      endLine,
+      endColumn,
+      label: `${fileName}:${lineLabel}`,
       snippet: snippet.length > 80 ? snippet.slice(0, 80) + '…' : snippet,
     });
-
-    toast.success(`已收藏: ${fileName}:${line}`);
   },
 });

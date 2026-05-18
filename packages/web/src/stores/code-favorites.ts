@@ -5,19 +5,34 @@ export interface CodeFavorite {
   path: string;
   line: number;
   column: number;
+  endLine: number;
+  endColumn: number;
   label?: string;
   snippet?: string;
   createdAt: number;
   workspaceId: string;
 }
 
+export interface PendingFavorite {
+  workspaceId: string;
+  path: string;
+  line: number;
+  column: number;
+  endLine: number;
+  endColumn: number;
+  label: string;
+  snippet: string;
+}
+
 interface CodeFavoritesState {
   favorites: CodeFavorite[];
   loadedWorkspaceId: string | null;
+  pendingFavorite: PendingFavorite | null;
   load: (workspaceId: string) => void;
   addFavorite: (fav: Omit<CodeFavorite, 'id' | 'createdAt'>) => void;
   removeFavorite: (id: string) => void;
   clearFavorites: (workspaceId: string) => void;
+  setPendingFavorite: (pending: PendingFavorite | null) => void;
 }
 
 const STORAGE_KEY_PREFIX = 'code-favorites-';
@@ -25,6 +40,7 @@ const STORAGE_KEY_PREFIX = 'code-favorites-';
 export const useCodeFavoritesStore = create<CodeFavoritesState>((set, get) => ({
   favorites: [],
   loadedWorkspaceId: null,
+  pendingFavorite: null,
 
   load: (workspaceId) => {
     const { loadedWorkspaceId } = get();
@@ -64,4 +80,6 @@ export const useCodeFavoritesStore = create<CodeFavoritesState>((set, get) => ({
     localStorage.removeItem(STORAGE_KEY_PREFIX + workspaceId);
     set({ favorites: [], loadedWorkspaceId: workspaceId });
   },
+
+  setPendingFavorite: (pending) => set({ pendingFavorite: pending }),
 }));

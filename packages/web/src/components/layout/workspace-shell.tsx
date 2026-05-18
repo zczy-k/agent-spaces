@@ -15,6 +15,7 @@ import { IssueDetail } from "@/components/issue/issue-detail";
 import { GitCommitsPanel } from "@/components/git/git-commits-panel";
 import { ProjectSettingsPanel } from "@/components/settings/project-settings-panel";
 import { CodeFavoritesPanel } from "@/components/editor/code-favorites-panel";
+import { AddFavoriteDialog } from "@/components/editor/add-favorite-dialog";
 import { getWS } from "@/lib/ws";
 import { useIssueStore } from "@/stores/issue";
 import { useTaskStore } from "@/stores/task";
@@ -421,6 +422,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
     return (
       <div className="relative h-full w-full">
         <MobilePanelRenderer panel={activePanel} workspaceId={workspaceId} boundDirs={boundDirs} />
+        <AddFavoriteDialog />
       </div>
     );
   }
@@ -428,6 +430,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   return (
     <div className="relative h-full w-full">
       <Layout model={model} factory={factory} onRenderTab={onRenderTab} onModelChange={onModelChange} />
+      <AddFavoriteDialog />
     </div>
   );
 }

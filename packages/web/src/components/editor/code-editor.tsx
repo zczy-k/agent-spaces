@@ -11,6 +11,7 @@ import { useTheme } from "@/components/theme-provider";
 import { useTranslations } from 'next-intl';
 import { CommitDiffViewer } from "@/components/git/commit-diff-viewer";
 import { useWorkspaceStore } from "@/stores/workspace";
+import { useCodeFavoritesStore } from "@/stores/code-favorites";
 import {
   getModelUri,
   getOrCreateModel,
@@ -232,7 +233,12 @@ function EditorMenuBar({ editorRef, workspaceId, isReadOnly, onToggleReadOnly, i
   const t = useTranslations('editor');
 
   const exec = (action: string) => {
-    editorRef.current?.trigger('menu', action, null);
+    requestAnimationFrame(() => {
+      const editor = editorRef.current;
+      if (!editor) return;
+      editor.focus();
+      editor.getAction(action)?.run();
+    });
   };
 
   return (
@@ -328,6 +334,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   const editorContainerRef = useRef<HTMLDivElement | null>(null);
   const navigationDisposablesRef = useRef<Monaco.IDisposable[]>([]);
   const actionRegistryDisposablesRef = useRef<Monaco.IDisposable[]>([]);
+  const favoriteDecorationsRef = useRef<string[]>([]);
   const [isReadOnly, setIsReadOnly] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [wordWrap, setWordWrap] = useState(() => localStorage.getItem('editor-word-wrap') === 'true');
@@ -550,8 +557,37 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
       navigationDisposablesRef.current = [];
       for (const d of actionRegistryDisposablesRef.current) d.dispose();
       actionRegistryDisposablesRef.current = [];
+      favoriteDecorationsRef.current = [];
     };
   }, []);
+
+  // Apply favorite decorations for current file
+  const favorites = useCodeFavoritesStore((s) => s.favorites);
+  useEffect(() => {
+    const editor = editorRef.current;
+    const monaco = monacoRef.current;
+    if (!editor || !monaco || !activeFilePath) {
+      if (editor) favoriteDecorationsRef.current = editor.deltaDecorations(favoriteDecorationsRef.current, []);
+      return;
+    }
+    const matched = favorites.filter(
+      (f) => f.path === activeFilePath && f.workspaceId === workspaceId,
+    );
+    if (matched.length === 0) {
+      favoriteDecorationsRef.current = editor.deltaDecorations(favoriteDecorationsRef.current, []);
+      return;
+    }
+    const decorations = matched.map((f) => ({
+      range: new monaco.Range(f.line, 1, f.endLine || f.line, 1),
+      options: {
+        isWholeLine: true,
+        glyphMarginClassName: 'favorite-glyph',
+        glyphMarginHoverMessage: { value: '已收藏' },
+        className: 'favorite-line-bg',
+      },
+    }));
+    favoriteDecorationsRef.current = editor.deltaDecorations(favoriteDecorationsRef.current, decorations);
+  }, [activeFilePath, favorites, workspaceId, editorReadyTick]);
 
   // Poll for external file changes (skip if user has unsaved edits)
   useEffect(() => {
@@ -670,6 +706,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
               fontSize: 13,
               minimap: { enabled: minimap },
               scrollBeyondLastLine: false,
+              glyphMargin: true,
               padding: { top: 8 },
               renderLineHighlight: "gutter",
               readOnly: isReadOnly,
