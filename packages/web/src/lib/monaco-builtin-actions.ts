@@ -1,9 +1,9 @@
 import { registerMonacoAction, toRelativePath } from './monaco-action-registry';
-import type { MonacoActionContext } from './monaco-action-registry';
 import { useCodeFavoritesStore } from '@/stores/code-favorites';
 import { toast } from 'sonner';
 
-registerMonacoAction({
+export const monacoBuiltinActions = [
+  {
   id: 'copyPosition',
   label: '复制代码位置',
   contextMenuGroupId: '9_cutcopypaste',
@@ -18,9 +18,8 @@ registerMonacoAction({
       toast.success(`已复制: ${pos}`);
     });
   },
-});
-
-registerMonacoAction({
+  },
+  {
   id: 'addToFavorites',
   label: '添加到代码收藏',
   contextMenuGroupId: '9_cutcopypaste',
@@ -61,4 +60,9 @@ registerMonacoAction({
       snippet,
     });
   },
-});
+  },
+] satisfies Parameters<typeof registerMonacoAction>[0][];
+
+for (const action of monacoBuiltinActions) {
+  registerMonacoAction(action);
+}
