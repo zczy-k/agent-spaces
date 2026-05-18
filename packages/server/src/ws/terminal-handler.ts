@@ -30,21 +30,25 @@ export function handleTerminalEvent(
     case 'terminal.create': {
       const payload = data as TerminalCreatePayload;
       const cwd = payload.cwd || process.env.HOME || process.env.USERPROFILE || (process.platform === 'win32' ? process.env.SYSTEMROOT || 'C:\\' : '/tmp');
-      const sessionId = ptyService.createSession(
-        workspaceId,
-        cwd,
-        (id, output) => {
-          broadcastToWorkspace(workspaceId, 'terminal.output', { sessionId: id, data: output });
-        },
-        (id, exitCode) => {
-          broadcastToWorkspace(workspaceId, 'terminal.closed', { sessionId: id, exitCode });
-        },
-        payload.shell,
-        undefined,
-        payload.sessionId,
-      );
-      const session = ptyService.getSession(sessionId);
-      broadcastToWorkspace(workspaceId, 'terminal.created', { sessionId, cwd, shell: session?.shell ?? payload.shell });
+      try {
+        const sessionId = ptyService.createSession(
+          workspaceId,
+          cwd,
+          (id, output) => {
+            broadcastToWorkspace(workspaceId, 'terminal.output', { sessionId: id, data: output });
+          },
+          (id, exitCode) => {
+            broadcastToWorkspace(workspaceId, 'terminal.closed', { sessionId: id, exitCode });
+          },
+          payload.shell,
+          undefined,
+          payload.sessionId,
+        );
+        const session = ptyService.getSession(sessionId);
+        broadcastToWorkspace(workspaceId, 'terminal.created', { sessionId, cwd, shell: session?.shell ?? payload.shell });
+      } catch (err: any) {
+        broadcastToWorkspace(workspaceId, 'terminal.error', { sessionId: payload.sessionId, error: err.message || String(err) });
+      }
       break;
     }
     case 'terminal.input': {

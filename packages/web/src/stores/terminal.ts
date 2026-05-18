@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { WorkspaceWS } from '@/lib/ws';
+import { toast } from 'sonner';
 
 // Buffer cache for terminal session reconnection, consumed by TerminalInstance
 const sessionBufferCache = new Map<string, string>();
@@ -68,6 +69,10 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
           activeId: sessionId,
         };
       });
+    });
+    ws.on('terminal.error', (data) => {
+      const { error } = data as { sessionId?: string; error: string };
+      toast.error(error);
     });
     ws.on('terminal.closed', (data) => {
       const { sessionId } = data as { sessionId: string };

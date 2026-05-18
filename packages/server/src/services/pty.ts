@@ -1,5 +1,6 @@
 import pty from 'node-pty';
 import { v4 as uuid } from 'uuid';
+import { accessSync, constants } from 'node:fs';
 
 const MAX_BUFFER_LINES = 1000;
 const DEFAULT_READ_LIMIT = 100;
@@ -29,7 +30,7 @@ export function createSession(
   if (sessions.has(id)) {
     throw new Error(`Terminal session already exists: ${id}`);
   }
-  const resolvedShell = shell || process.env.SHELL || (process.platform === 'win32' ? 'powershell.exe' : '/bin/zsh') || '/bin/sh';
+  const resolvedShell = resolveShell(shell);
   const ptyEnv: Record<string, string> = {};
   for (const [k, v] of Object.entries(process.env)) {
     if (v !== undefined) ptyEnv[k] = v;
@@ -143,4 +144,20 @@ function normalizeNonNegativeInteger(value: unknown): number {
 
 function stripAnsi(value: string): string {
   return value.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~]|\][^\x07]*(?:\x07|\x1B\\))/g, '');
+}
+
+function resolveShell(shell?: string): string {
+  if (process.platform === 'win32') {
+    return shell || 'powershell.exe';
+  }
+  const candidates = [shell, process.env.SHELL, '/bin/zsh', '/bin/bash', '/bin/sh'].filter(Boolean) as string[];
+  for (const candidate of candidates) {
+    try {
+      accessSync(candidate!, constants.X_OK);
+      return candidate!;
+    } catch {
+      continue;
+    }
+  }
+  throw new Error(`No available shell found. Tried: ${candidates.join(', ')}`);
 }
