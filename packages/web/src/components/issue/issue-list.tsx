@@ -9,9 +9,9 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Plus, CircleDot, Pencil, Trash2, CircleAlert, Archive, ArchiveRestore, MoreHorizontal, ChevronRight } from 'lucide-react';
+import { Plus, CircleDot, Pencil, Trash2, CircleAlert, Archive, ArchiveRestore, MoreHorizontal, ChevronRight, Check } from 'lucide-react';
 import { Skeleton, SkeletonGroup } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { CreateIssueDialog } from './create-issue-dialog';
@@ -35,6 +35,25 @@ const GROUP_ORDER: IssueStatus[] = [
   'draft', 'planned', 'approved', 'completed', 'error',
 ];
 
+type GroupMode = 'none' | 'time' | 'status';
+
+const TIME_GROUP_ORDER = ['today', 'yesterday', 'thisWeek', 'earlier'] as const;
+const TIME_LABEL_KEYS: Record<string, string> = {
+  today: 'timeToday', yesterday: 'timeYesterday', thisWeek: 'timeThisWeek', earlier: 'timeEarlier',
+};
+
+function getTimeGroup(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today.getTime() - 86400000);
+  const weekAgo = new Date(today.getTime() - 7 * 86400000);
+  if (date >= today) return 'today';
+  if (date >= yesterday) return 'yesterday';
+  if (date >= weekAgo) return 'thisWeek';
+  return 'earlier';
+}
+
 interface IssueListProps {
   workspaceId: string;
 }
@@ -45,6 +64,8 @@ export function IssueList({ workspaceId }: IssueListProps) {
   const [createOpen, setCreateOpen] = useState(false);
   const [editingIssue, setEditingIssue] = useState<Issue | null>(null);
   const [archivedOpen, setArchivedOpen] = useState(false);
+  const [groupMode, setGroupMode] = useState<GroupMode>('status');
+  const [groupOpen, setGroupOpen] = useState<Record<string, boolean>>({});
   const [clearArchiveOpen, setClearArchiveOpen] = useState(false);
   const t = useTranslations('issue');
   const tc = useTranslations('common');
@@ -67,6 +88,56 @@ export function IssueList({ workspaceId }: IssueListProps) {
       items: activeIssues.filter((i) => i.status === status),
     }))
     .filter((g) => g.items.length > 0);
+
+  const timeGroups = useMemo(() => {
+    const groups: Record<string, Issue[]> = {};
+    for (const issue of activeIssues) {
+      const key = getTimeGroup(issue.createdAt);
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(issue);
+    }
+    return TIME_GROUP_ORDER
+      .filter(k => groups[k]?.length)
+      .map(k => ({ key: k, label: tc(TIME_LABEL_KEYS[k]), items: groups[k]! }));
+  }, [activeIssues, tc]);
+
+  const renderIssueItem = (issue: Issue) => (
+    <ContextMenu key={issue.id}>
+      <ContextMenuTrigger
+        onClick={() => setActiveIssue(issue.id)}
+        className={`w-full text-left px-3 py-2 hover:bg-accent/50 transition-colors flex items-start gap-2 ${
+          activeIssueId === issue.id ? 'bg-accent' : ''
+        }`}
+      >
+        <CircleDot className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-medium truncate">{issue.title}</div>
+          <div className="text-xs text-muted-foreground">
+            {t('list.taskCount', { count: issue.tasks.length })}
+          </div>
+        </div>
+        <Badge variant="outline" className={`text-[10px] shrink-0 border-none ${STATUS_STYLE[issue.status]}`}>
+          {t(`status.${issue.status}`)}
+        </Badge>
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        <ContextMenuItem onClick={() => setEditingIssue(issue)}>
+          <Pencil className="size-4 mr-2" />
+          {tc('edit')}
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onClick={() => handleToggleArchive(issue)}>
+          <Archive className="size-4 mr-2" />
+          {t('list.archive')}
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem variant="destructive" onClick={() => deleteIssue(workspaceId, issue.id)}>
+          <Trash2 className="size-4 mr-2" />
+          {tc('delete')}
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
+  );
 
   const handleToggleArchive = async (issue: Issue) => {
     const newStatus: IssueStatus = issue.status === 'archived' ? 'completed' : 'archived';
@@ -114,7 +185,20 @@ export function IssueList({ workspaceId }: IssueListProps) {
             <DropdownMenuTrigger className="p-0.5 hover:bg-accent rounded">
               <MoreHorizontal className="size-3.5" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="min-w-48">
+              <DropdownMenuItem onClick={() => setGroupMode('none')}>
+                {groupMode === 'none' && <Check className="size-3.5" />}
+                {tc('groupNone')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setGroupMode('time')}>
+                {groupMode === 'time' && <Check className="size-3.5" />}
+                {tc('groupByTime')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setGroupMode('status')}>
+                {groupMode === 'status' && <Check className="size-3.5" />}
+                {tc('groupByStatus')}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem
                 disabled={archivedIssues.length === 0}
                 onClick={() => setClearArchiveOpen(true)}
@@ -143,49 +227,28 @@ export function IssueList({ workspaceId }: IssueListProps) {
             </Button>
           </div>
         )}
-        {grouped.map((group) => (
-          <div key={group.status}>
-            <div className="px-3 py-1 text-xs font-medium text-muted-foreground uppercase">
+        {groupMode === 'none' && activeIssues.map((issue) => renderIssueItem(issue))}
+        {groupMode === 'status' && grouped.map((group) => (
+          <Collapsible key={group.status} open={groupOpen[group.status] !== false} onOpenChange={(open) => setGroupOpen((prev) => ({ ...prev, [group.status]: open }))}>
+            <CollapsibleTrigger className="flex items-center gap-1 w-full px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent transition-colors">
+              <ChevronRight className={cn('size-3 transition-transform', groupOpen[group.status] !== false && 'rotate-90')} />
               {t(`status.${group.status}`)} ({group.items.length})
-            </div>
-            {group.items.map((issue) => (
-              <ContextMenu key={issue.id}>
-                <ContextMenuTrigger
-                  onClick={() => setActiveIssue(issue.id)}
-                  className={`w-full text-left px-3 py-2 hover:bg-accent/50 transition-colors flex items-start gap-2 ${
-                    activeIssueId === issue.id ? 'bg-accent' : ''
-                  }`}
-                >
-                  <CircleDot className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium truncate">{issue.title}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {t('list.taskCount', { count: issue.tasks.length })}
-                    </div>
-                  </div>
-                  <Badge variant="outline" className={`text-[10px] shrink-0 border-none ${STATUS_STYLE[issue.status]}`}>
-                    {t(`status.${issue.status}`)}
-                  </Badge>
-                </ContextMenuTrigger>
-                <ContextMenuContent>
-                  <ContextMenuItem onClick={() => setEditingIssue(issue)}>
-                    <Pencil className="size-4 mr-2" />
-                    {tc('edit')}
-                  </ContextMenuItem>
-                  <ContextMenuSeparator />
-                  <ContextMenuItem onClick={() => handleToggleArchive(issue)}>
-                    <Archive className="size-4 mr-2" />
-                    {t('list.archive')}
-                  </ContextMenuItem>
-                  <ContextMenuSeparator />
-                  <ContextMenuItem variant="destructive" onClick={() => deleteIssue(workspaceId, issue.id)}>
-                    <Trash2 className="size-4 mr-2" />
-                    {tc('delete')}
-                  </ContextMenuItem>
-                </ContextMenuContent>
-              </ContextMenu>
-            ))}
-          </div>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              {group.items.map((issue) => renderIssueItem(issue))}
+            </CollapsibleContent>
+          </Collapsible>
+        ))}
+        {groupMode === 'time' && timeGroups.map((group) => (
+          <Collapsible key={group.key} open={groupOpen[group.key] !== false} onOpenChange={(open) => setGroupOpen((prev) => ({ ...prev, [group.key]: open }))}>
+            <CollapsibleTrigger className="flex items-center gap-1 w-full px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent transition-colors">
+              <ChevronRight className={cn('size-3 transition-transform', groupOpen[group.key] !== false && 'rotate-90')} />
+              {group.label} ({group.items.length})
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              {group.items.map((issue) => renderIssueItem(issue))}
+            </CollapsibleContent>
+          </Collapsible>
         ))}
 
         {archivedIssues.length > 0 && (

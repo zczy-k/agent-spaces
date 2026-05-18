@@ -205,14 +205,14 @@ jobs:
 
       - name: Build Android APK
         working-directory: packages/flutter
-        run: flutter build apk --release
+        run: flutter build apk --release --target-platform android-arm,android-arm64
         env:
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
       - name: Build Android AAB
         working-directory: packages/flutter
-        run: flutter build appbundle --release
+        run: flutter build appbundle --release --target-platform android-arm,android-arm64
         env:
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}

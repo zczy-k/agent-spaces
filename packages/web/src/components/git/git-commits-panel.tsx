@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import "@/lib/monaco-loader";
 import { useEffect, useCallback, useState, useRef } from "react";
 import {
-  Upload, Download, Loader2, GitCommitHorizontal, RefreshCw,
+  Upload, Download, Loader2, GitCommitHorizontal, RefreshCw, ArrowUp, ArrowDown,
   FileCode, RotateCcw, Trash2, ChevronDown, GitBranch,
   EyeOff, Sparkles, Settings2,
 } from "lucide-react";
@@ -499,7 +499,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
             <button onClick={() => handleSync("push")} disabled={syncing !== null}
               className="relative p-1 text-muted-foreground hover:text-foreground disabled:opacity-50"
               title={ahead > 0 ? t('pushNCommits', { count: ahead }) : "Push"}>
-              {syncing === "push" ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+              {syncing === "push" ? <Loader2 size={13} className="animate-spin" /> : <ArrowUp size={13} />}
               {ahead > 0 && (
                 <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-foreground px-1 text-[9px] font-medium leading-none text-background">{ahead}</span>
               )}
@@ -507,7 +507,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
             <button onClick={() => handleSync("pull")} disabled={syncing !== null}
               className="relative p-1 text-muted-foreground hover:text-foreground disabled:opacity-50"
               title={behind > 0 ? t('pullNCommits', { count: behind }) : "Pull"}>
-              {syncing === "pull" ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+              {syncing === "pull" ? <Loader2 size={13} className="animate-spin" /> : <ArrowDown size={13} />}
               {behind > 0 && (
                 <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-foreground px-1 text-[9px] font-medium leading-none text-background">{behind}</span>
               )}

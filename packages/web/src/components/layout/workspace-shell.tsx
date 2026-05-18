@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Layout, Model, TabNode, IJsonModel, Actions, ITabRenderValues, Action } from "flexlayout-react";
 import { Hash, ListChecks, FolderOpen, Code2, MessageSquare, FileText, TerminalSquare, FileDiff, GitCommitHorizontal, Settings2 } from "lucide-react";
+import { TAB_ICONS, RIGHT_TO_LEFT_TAB_MAP, renderTabIcon } from "./tab-config";
 
 import { EditorPanel } from "@/components/editor/editor-panel";
 import { CodeEditor } from "@/components/editor/code-editor";
@@ -35,24 +36,7 @@ function emitFlutterInspectorJump(data: { path: string; line: number; column?: n
   bridge?.emit?.('inspector.jump', data);
 }
 
-const tabIcons: Record<string, React.ReactNode> = {
-  "channel-list": <Hash size={16} />,
-  "issue-list": <ListChecks size={16} />,
-  "workfolder": <FolderOpen size={16} />,
-  "code-editor": <Code2 size={16} />,
-  "chat": <MessageSquare size={16} />,
-  "issue-detail": <FileText size={16} />,
-  "terminal": <TerminalSquare size={16} />,
-  "git-commits": <GitCommitHorizontal size={16} />,
-  "project-settings": <Settings2 size={16} />,
-};
-
-// 右侧 tab → 左侧 tab 同步映射
-const rightToLeftTabMap: Record<string, string> = {
-  "code-editor": "workfolder",
-  "chat": "channel-list",
-  "issue-detail": "issue-list",
-};
+// tab 图标、右→左同步映射、badge 渲染逻辑见 tab-config.tsx
 
 const defaultJson: IJsonModel = {
   global: {
@@ -375,67 +359,9 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
 
   const onRenderTab = useCallback((node: TabNode, renderValues: ITabRenderValues) => {
     const comp = node.getComponent();
-    const icon = comp ? tabIcons[comp] : undefined;
-    if (!icon) return;
-
-    let trailing: React.ReactNode = null;
-    let iconBadge: React.ReactNode = null;
-    if (comp === 'git-commits' && gitStatus && !gitStatus.clean) {
-      const hasStat = gitStatus.insertions > 0 || gitStatus.deletions > 0;
-      trailing = (
-        <span className="ml-1 text-[10px] font-medium leading-none flex items-center gap-0.5">
-          {hasStat ? (
-            <>
-              {gitStatus.insertions > 0 && <span className="text-green-600">+{gitStatus.insertions}</span>}
-              {gitStatus.deletions > 0 && <span className="text-red-500">-{gitStatus.deletions}</span>}
-            </>
-          ) : (
-            <span className="text-orange-500">{gitStatus.files.length}</span>
-          )}
-        </span>
-      );
-      if (gitStatus.ahead > 0) {
-        iconBadge = (
-          <span className="absolute -top-1 -right-1.5 min-w-[14px] h-[14px] rounded-full bg-blue-500 text-white text-[9px] font-medium leading-none flex items-center justify-center px-0.5">
-            {gitStatus.ahead}
-          </span>
-        );
-      }
-    }
-
-    // Terminal: show session count
-    if (comp === 'terminal' && terminalSessions.length > 0) {
-      iconBadge = (
-        <span className="absolute -top-1 -right-1.5 min-w-[14px] h-[14px] rounded-full bg-green-500 text-white text-[9px] font-medium leading-none flex items-center justify-center px-0.5">
-          {terminalSessions.length}
-        </span>
-      );
-    }
-
-    // Channel-list / Issue-detail: show running indicator
-    if (comp === 'channel-list' || comp === 'issue-detail') {
-      const hasRunning = Object.values(channelMessages).some((msgs) =>
-        msgs.some((m) => m.status === 'streaming' || m.status === 'pending')
-      );
-      if (hasRunning) {
-        iconBadge = (
-          <span className="absolute -top-1 -right-1 flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
-          </span>
-        );
-      }
-    }
-
-    renderValues.content = (
-      <span title={node.getName()} className="flex items-center justify-center">
-        <span className="relative">
-          {icon}
-          {iconBadge}
-        </span>
-        {trailing}
-      </span>
-    );
+    if (!comp) return;
+    const content = renderTabIcon(comp, node.getName(), gitStatus, terminalSessions, channelMessages);
+    if (content) renderValues.content = content;
   }, [gitStatus, terminalSessions, channelMessages]);
 
   const onModelChange = useCallback(
@@ -453,7 +379,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
       const comp = node.getComponent();
 
       // 右侧 tab 切换时，同步切换左侧对应 tab
-      const leftTabId = rightToLeftTabMap[comp ?? ""];
+      const leftTabId = RIGHT_TO_LEFT_TAB_MAP[comp ?? ""];
       if (leftTabId) {
         const leftNode = _model.getNodeById(leftTabId);
         if (leftNode && leftNode instanceof TabNode) {

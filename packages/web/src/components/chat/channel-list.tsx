@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useChannelStore } from '@/stores/channel';
 import { useAgentStore } from '@/stores/agent';
-import { Bot, Hash, MessageCircle, AlertCircle, Plus, Pencil, FolderOpen, Archive, ArchiveRestore, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Bot, Hash, MessageCircle, AlertCircle, Plus, Pencil, FolderOpen, Archive, ArchiveRestore, MoreHorizontal, Trash2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -20,7 +20,7 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ChevronRight } from 'lucide-react';
 
@@ -40,6 +40,25 @@ function lastMsgPreview(msgs: Message[] | undefined): { text: string; status: Me
   return { text: text || '...', status: last.status };
 }
 
+type GroupMode = 'none' | 'time' | 'status';
+
+const TIME_GROUP_ORDER = ['today', 'yesterday', 'thisWeek', 'earlier'] as const;
+const TIME_LABEL_KEYS: Record<string, string> = {
+  today: 'timeToday', yesterday: 'timeYesterday', thisWeek: 'timeThisWeek', earlier: 'timeEarlier',
+};
+
+function getTimeGroup(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today.getTime() - 86400000);
+  const weekAgo = new Date(today.getTime() - 7 * 86400000);
+  if (date >= today) return 'today';
+  if (date >= yesterday) return 'yesterday';
+  if (date >= weekAgo) return 'thisWeek';
+  return 'earlier';
+}
+
 interface ChannelListProps {
   workspaceId: string;
 }
@@ -54,6 +73,8 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
   const [archivedOpen, setArchivedOpen] = useState(false);
+  const [groupMode, setGroupMode] = useState<GroupMode>('none');
+  const [groupOpen, setGroupOpen] = useState<Record<string, boolean>>({});
   const [clearArchiveOpen, setClearArchiveOpen] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const agents = useAgentStore((s) => s.agents);
@@ -61,6 +82,25 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
 
   const activeChannels = useMemo(() => channels.filter((c) => !c.archived), [channels]);
   const archivedChannels = useMemo(() => channels.filter((c) => c.archived), [channels]);
+
+  const channelGroups = useMemo(() => {
+    if (groupMode === 'none') return null;
+    if (groupMode === 'time') {
+      const groups: Record<string, Channel[]> = {};
+      for (const ch of activeChannels) {
+        const key = getTimeGroup(ch.createdAt);
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(ch);
+      }
+      return TIME_GROUP_ORDER
+        .filter(k => groups[k]?.length)
+        .map(k => ({ key: k, label: tc(TIME_LABEL_KEYS[k]), items: groups[k]! }));
+    }
+    const types: Channel['type'][] = ['general', 'issue', 'agent'];
+    return types
+      .filter(type => activeChannels.some(ch => ch.type === type))
+      .map(type => ({ key: type, label: t(`channel.${type}`), items: activeChannels.filter(ch => ch.type === type) }));
+  }, [groupMode, activeChannels, tc, t]);
 
   useEffect(() => {
     setInitialLoading(true);
@@ -76,6 +116,62 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
     });
     return () => { unsub(); };
   }, [workspaceId, upsertChannel]);
+
+  const renderActiveChannel = (ch: Channel) => {
+    const preview = lastMsgPreview(messages[ch.id]);
+    const badge = typeBadgeConfig[ch.type];
+    const isRunning = preview?.status === 'streaming' || preview?.status === 'pending';
+    const agentMembers = ch.members.filter((m) => m !== 'user');
+
+    return (
+      <ContextMenu key={ch.id}>
+        <ContextMenuTrigger
+          className={cn(
+            'flex items-start gap-2.5 w-full px-3 py-2 text-sm hover:bg-accent transition-colors text-left',
+            activeChannelId === ch.id && 'bg-accent text-accent-foreground',
+          )}
+          onClick={() => setActiveChannel(ch.id)}
+        >
+          {(() => { const Icon = badge.icon; return <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-1" />; })()}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="truncate font-medium text-[13px]">{ch.name}</span>
+              <Badge variant="secondary" className={cn('text-[10px] px-1 py-0 h-4 rounded', badge.className)}>
+                {t(`channel.${ch.type}`)}
+              </Badge>
+              {isRunning && (
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+                </span>
+              )}
+              {agentMembers.length > 0 && <Bot className="h-3 w-3 text-muted-foreground shrink-0" />}
+            </div>
+            {preview ? (
+              <p className="text-xs text-muted-foreground truncate mt-0.5">{preview.text}</p>
+            ) : (
+              <p className="text-xs text-muted-foreground/50 mt-0.5">{t('emptyState')}</p>
+            )}
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem onClick={() => handleEdit(ch)}>
+            <Pencil className="size-3.5" />
+            {tc('edit')}
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => handleReveal(ch.id)}>
+            <FolderOpen className="size-3.5" />
+            {tc('open')}
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem onClick={() => handleToggleArchive(ch)}>
+            <Archive className="size-3.5" />
+            {t('channel.archive')}
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+    );
+  };
 
   const handleSubmit = async (data: { name: string; type: Channel['type']; members: string[] }) => {
     const memberIds = normalizeChannelMembersToAgentIds(agents, data.members);
@@ -125,7 +221,20 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
             <DropdownMenuTrigger className="p-0.5 hover:bg-accent rounded">
               <MoreHorizontal className="size-3.5" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="min-w-48">
+              <DropdownMenuItem onClick={() => setGroupMode('none')}>
+                {groupMode === 'none' && <Check className="size-3.5" />}
+                {tc('groupNone')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setGroupMode('time')}>
+                {groupMode === 'time' && <Check className="size-3.5" />}
+                {tc('groupByTime')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setGroupMode('status')}>
+                {groupMode === 'status' && <Check className="size-3.5" />}
+                {tc('groupByStatus')}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem
                 disabled={archivedChannels.length === 0}
                 onClick={() => setClearArchiveOpen(true)}
@@ -171,66 +280,18 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
             </Button>
           </div>
         ) : null}
-        {!initialLoading && activeChannels.map((ch) => {
-          const preview = lastMsgPreview(messages[ch.id]);
-          const badge = typeBadgeConfig[ch.type];
-          const isRunning = preview?.status === 'streaming' || preview?.status === 'pending';
-          const agentMembers = ch.members.filter((m) => m !== 'user');
-
-          return (
-            <ContextMenu key={ch.id}>
-              <ContextMenuTrigger
-                className={cn(
-                  'flex items-start gap-2.5 w-full px-3 py-2 text-sm hover:bg-accent transition-colors text-left',
-                  activeChannelId === ch.id && 'bg-accent text-accent-foreground',
-                )}
-                onClick={() => setActiveChannel(ch.id)}
-              >
-              {(() => {
-                const Icon = badge.icon;
-                return <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-1" />;
-              })()}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="truncate font-medium text-[13px]">{ch.name}</span>
-                  <Badge variant="secondary" className={cn('text-[10px] px-1 py-0 h-4 rounded', badge.className)}>
-                    {t(`channel.${ch.type}`)}
-                  </Badge>
-                  {isRunning && (
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
-                    </span>
-                  )}
-                  {agentMembers.length > 0 && (
-                    <Bot className="h-3 w-3 text-muted-foreground shrink-0" />
-                  )}
-                </div>
-                {preview ? (
-                  <p className="text-xs text-muted-foreground truncate mt-0.5">{preview.text}</p>
-                ) : (
-                  <p className="text-xs text-muted-foreground/50 mt-0.5">{t('emptyState')}</p>
-                )}
-              </div>
-              </ContextMenuTrigger>
-              <ContextMenuContent>
-                <ContextMenuItem onClick={() => handleEdit(ch)}>
-                  <Pencil className="size-3.5" />
-                  {tc('edit')}
-                </ContextMenuItem>
-                <ContextMenuItem onClick={() => handleReveal(ch.id)}>
-                  <FolderOpen className="size-3.5" />
-                  {tc('open')}
-                </ContextMenuItem>
-                <ContextMenuSeparator />
-                <ContextMenuItem onClick={() => handleToggleArchive(ch)}>
-                  <Archive className="size-3.5" />
-                  {t('channel.archive')}
-                </ContextMenuItem>
-              </ContextMenuContent>
-            </ContextMenu>
-          );
-        })}
+        {!initialLoading && groupMode === 'none' && activeChannels.map((ch) => renderActiveChannel(ch))}
+        {!initialLoading && groupMode !== 'none' && channelGroups?.map((group) => (
+          <Collapsible key={group.key} open={groupOpen[group.key] !== false} onOpenChange={(open) => setGroupOpen((prev) => ({ ...prev, [group.key]: open }))}>
+            <CollapsibleTrigger className="flex items-center gap-1 w-full px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent transition-colors">
+              <ChevronRight className={cn('size-3 transition-transform', groupOpen[group.key] !== false && 'rotate-90')} />
+              {group.label} ({group.items.length})
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              {group.items.map((ch) => renderActiveChannel(ch))}
+            </CollapsibleContent>
+          </Collapsible>
+        ))}
 
         {!initialLoading && archivedChannels.length > 0 && (
           <Collapsible open={archivedOpen} onOpenChange={setArchivedOpen}>

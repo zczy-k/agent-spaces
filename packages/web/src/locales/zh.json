@@ -32,7 +32,14 @@
     "you": "你",
     "user": "用户",
     "refresh": "刷新",
-    "new": "新建"
+    "new": "新建",
+    "timeToday": "今天",
+    "timeYesterday": "昨天",
+    "timeThisWeek": "本周",
+    "timeEarlier": "更早",
+    "groupNone": "不分组",
+    "groupByTime": "按时间分组",
+    "groupByStatus": "按任务状态分组"
   },
   "settings": {
     "title": "设置",
@@ -840,6 +847,8 @@
       "emailPlaceholder": "输入 Git 邮箱",
       "proxy": "HTTP 代理",
       "proxyPlaceholder": "例如 http://127.0.0.1:7890",
+      "remoteUrl": "远程仓库地址",
+      "remoteUrlPlaceholder": "例如 https://github.com/user/repo.git",
       "saved": "设置已保存",
       "saveFailed": "保存设置失败",
       "loading": "加载中..."

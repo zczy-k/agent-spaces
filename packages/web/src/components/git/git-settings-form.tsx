@@ -19,22 +19,33 @@ export function GitSettingsForm({ scope, workspaceId }: GitSettingsFormProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [proxy, setProxy] = useState("");
+  const [remoteUrl, setRemoteUrl] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const loadConfig = async () => {
     setLoading(true);
     try {
-      const url =
+      const configUrl =
         scope === "global"
           ? "/api/git-config"
           : `/api/workspaces/${workspaceId}/git/config`;
-      const res = await fetch(url, { headers: authHeaders() });
+      const res = await fetch(configUrl, { headers: authHeaders() });
       if (res.ok) {
         const data = await res.json();
         setName(data.name ?? "");
         setEmail(data.email ?? "");
         setProxy(data.proxy ?? "");
+      }
+      if (scope === "local" && workspaceId) {
+        const remoteRes = await fetch(
+          `/api/workspaces/${workspaceId}/git/remote-url`,
+          { headers: authHeaders() }
+        );
+        if (remoteRes.ok) {
+          const remoteData = await remoteRes.json();
+          setRemoteUrl(remoteData.url ?? "");
+        }
       }
     } catch {}
     setLoading(false);
@@ -47,20 +58,28 @@ export function GitSettingsForm({ scope, workspaceId }: GitSettingsFormProps) {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const url =
+      const configUrl =
         scope === "global"
           ? "/api/git-config"
           : `/api/workspaces/${workspaceId}/git/config`;
-      const res = await fetch(url, {
+      const res = await fetch(configUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ name, email, proxy }),
       });
-      if (res.ok) {
-        toast.success(t("saved"));
-      } else {
+      if (!res.ok) {
         toast.error(t("saveFailed"));
+        setSaving(false);
+        return;
       }
+      if (scope === "local" && workspaceId && remoteUrl) {
+        await fetch(`/api/workspaces/${workspaceId}/git/remotes`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...authHeaders() },
+          body: JSON.stringify({ name: "origin", url: remoteUrl }),
+        });
+      }
+      toast.success(t("saved"));
     } catch {
       toast.error(t("saveFailed"));
     }
@@ -105,6 +124,17 @@ export function GitSettingsForm({ scope, workspaceId }: GitSettingsFormProps) {
           placeholder={t("proxyPlaceholder")}
         />
       </div>
+      {scope === "local" && (
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">{t("remoteUrl")}</Label>
+          <Input
+            className="h-7 text-xs"
+            value={remoteUrl}
+            onChange={(e) => setRemoteUrl(e.target.value)}
+            placeholder={t("remoteUrlPlaceholder")}
+          />
+        </div>
+      )}
       <Button size="sm" className="text-xs" onClick={handleSave} disabled={saving}>
         {saving ? tc("loading") : tc("save")}
       </Button>

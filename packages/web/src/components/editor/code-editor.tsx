@@ -23,6 +23,19 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type * as Monaco from 'monaco-editor';
 
+function getFilePathFromModelPath(modelPath: string | undefined, workspaceId: string): string | null {
+  if (!modelPath) return null;
+  const workspacePrefix = `/workspace/${workspaceId}/`;
+  if (modelPath.startsWith(workspacePrefix)) {
+    return decodeURIComponent(modelPath.slice(workspacePrefix.length));
+  }
+  const plainPrefix = `/${workspaceId}/`;
+  if (modelPath.startsWith(plainPrefix)) {
+    return decodeURIComponent(modelPath.slice(plainPrefix.length));
+  }
+  return null;
+}
+
 if (typeof window !== "undefined" && !navigator.clipboard?.write) {
   Object.defineProperty(navigator, "clipboard", {
     value: {
@@ -174,9 +187,6 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   const isCommitDiff = activeFilePath ? isCommitDiffPath(activeFilePath) : false;
   const commitDiffData = isCommitDiff && activeFilePath ? commitDiffs[getCommitHashFromPath(activeFilePath)] : null;
 
-  // Track the content we pass to Monaco so onChange can detect programmatic vs user changes
-  const lastSetContent = useRef<string | null>(null);
-
   const handleSave = useCallback(() => {
     if (activeFilePath) {
       saveFile(workspaceId, activeFilePath);
@@ -267,7 +277,6 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   useEffect(() => {
     if (!activeFile || !activeFilePath) return;
 
-    lastSetContent.current = activeContent;
     getOrCreateModel(workspaceId, activeFilePath, activeContent);
     preloadDirectory(workspaceId, activeFilePath);
   }, [activeFilePath, activeContent, workspaceId]);
@@ -316,12 +325,15 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
             language={getLanguage(activeFile.path)}
             value={activeContent}
             path={modelPath}
-            onChange={(value) => {
+            onChange={(value, event) => {
+              if (event.isFlush) return;
               const v = value || "";
-              // Skip if this onChange is from programmatic setValue (tab switch/mount), not user edit
-              if (lastSetContent.current === v) return;
-              lastSetContent.current = v;
-              updateContent(activeFile.path, v);
+              const modelFilePath = getFilePathFromModelPath(
+                editorRef.current?.getModel()?.uri.path,
+                workspaceId,
+              );
+              if (!modelFilePath || modelFilePath !== activeFile.path) return;
+              updateContent(modelFilePath, v);
             }}
             onMount={handleMount}
             options={{
