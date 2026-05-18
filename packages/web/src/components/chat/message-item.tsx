@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { Message } from '@agent-spaces/shared';
-import { Copy, Pencil, Trash2, Check, Clock, Reply } from 'lucide-react';
+import { Copy, Pencil, Trash2, Check, Clock, Reply, CheckCircle2, XCircle } from 'lucide-react';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { useAgentStore } from '@/stores/agent';
 import { useUserAvatar } from '@/hooks/use-user-avatar';
@@ -92,15 +92,23 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
           {(replies.length > 0 || showDuration) && (
             <div className="mt-1 flex items-center justify-between gap-3 border-t border-border/30 pt-1">
               <MessageRepliesPopover replies={replies} currentUserLabel={tc('you')} />
-              {showDuration ? (
-                <div className="ml-auto flex items-center justify-end gap-1">
-                  <Clock className="h-3 w-3 text-muted-foreground" />
-                  <span className="text-[10px] text-muted-foreground">
-                    {formatDuration(elapsed)}
-                    {isStreaming && <span className="animate-pulse ml-0.5">...</span>}
-                  </span>
-                </div>
-              ) : null}
+              <div className="ml-auto flex items-center justify-end gap-1">
+                {!isStreaming && message.status === 'completed' && (
+                  <CheckCircle2 className="h-3 w-3 text-green-500 shrink-0" />
+                )}
+                {!isStreaming && message.status === 'error' && (
+                  <XCircle className="h-3 w-3 text-destructive shrink-0" />
+                )}
+                {showDuration && (
+                  <>
+                    <Clock className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-[10px] text-muted-foreground">
+                      {formatDuration(elapsed)}
+                      {isStreaming && <span className="animate-pulse ml-0.5">...</span>}
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
           )}
         </div>

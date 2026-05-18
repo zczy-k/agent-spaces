@@ -27,6 +27,10 @@ export class WorkspaceWS {
 
     this.ws.onopen = () => {
       console.log('[WS] connected');
+      const handlers = this.handlers.get('connected');
+      if (handlers) {
+        for (const h of handlers) h(undefined);
+      }
     };
 
     this.ws.onmessage = (ev) => {
