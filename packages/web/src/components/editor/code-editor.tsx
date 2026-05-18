@@ -230,6 +230,26 @@ interface MobileReadonlyMenuState {
   selectedText: string;
 }
 
+interface MobileLongPressState {
+  x: number;
+  y: number;
+  timer: number;
+}
+
+interface MobileSelectionPreMetrics {
+  scrollLeft: number;
+  scrollTop: number;
+  contentLeft: number;
+  contentRight: number;
+  fontFamily: string;
+  fontWeight: string;
+  fontSize: number;
+  lineHeight: number;
+  letterSpacing: number;
+  fontFeatureSettings: string;
+  fontVariationSettings: string;
+}
+
 interface CodeEditorProps {
   workspaceId: string;
 }
@@ -354,7 +374,9 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   const monacoRef = useRef<typeof Monaco | null>(null);
   const editorContainerRef = useRef<HTMLDivElement | null>(null);
   const mobileSelectionPreRef = useRef<HTMLPreElement | null>(null);
-  const mobileReadonlyScrollRef = useRef<{ x: number; y: number; scrollLeft: number; scrollTop: number } | null>(null);
+  const mobileReadonlyMenuRef = useRef<HTMLDivElement | null>(null);
+  const mobileLongPressRef = useRef<MobileLongPressState | null>(null);
+  const mobileSelectionMenuTimerRef = useRef<number | null>(null);
   const navigationDisposablesRef = useRef<Monaco.IDisposable[]>([]);
   const actionRegistryDisposablesRef = useRef<Monaco.IDisposable[]>([]);
   const favoriteDecorationsRef = useRef<string[]>([]);
@@ -366,6 +388,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   const [jumpRetryTick, setJumpRetryTick] = useState(0);
   const [mobileSelectionMode, setMobileSelectionMode] = useState(false);
   const [mobileReadonlyMenu, setMobileReadonlyMenu] = useState<MobileReadonlyMenuState | null>(null);
+  const [mobileSelectionPreMetrics, setMobileSelectionPreMetrics] = useState<MobileSelectionPreMetrics | null>(null);
 
   const activeFile = openFiles.find((f) => f.path === activeFilePath);
   const activeContent = activeFile ? modifiedFileContents[activeFile.path] ?? activeFile.content : "";
@@ -382,8 +405,13 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   handleSaveRef.current = handleSave;
 
   const closeMobileSelectionMode = useCallback(() => {
+    if (mobileSelectionMenuTimerRef.current != null) {
+      window.clearTimeout(mobileSelectionMenuTimerRef.current);
+      mobileSelectionMenuTimerRef.current = null;
+    }
     setMobileSelectionMode(false);
     setMobileReadonlyMenu(null);
+    setMobileSelectionPreMetrics(null);
     window.getSelection()?.removeAllRanges();
   }, []);
 
@@ -391,6 +419,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     if (!showMobileReadonlyOverlay || mobileSelectionMode) return;
     event.preventDefault();
     event.stopPropagation();
+    blurEditorActiveElement(editorRef.current);
     setMobileReadonlyMenu({
       x: event.clientX,
       y: event.clientY,
@@ -398,49 +427,65 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     });
   }, [mobileSelectionMode, showMobileReadonlyOverlay]);
 
-  const handleMobileReadonlyPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    event.stopPropagation();
-    const editor = editorRef.current;
-    mobileReadonlyScrollRef.current = editor
-      ? {
-          x: event.clientX,
-          y: event.clientY,
-          scrollLeft: editor.getScrollLeft(),
-          scrollTop: editor.getScrollTop(),
-        }
-      : null;
-    blurEditorActiveElement(editor);
-    setMobileReadonlyMenu(null);
+  const handleMobileReadonlyFocus = useCallback(() => {
+    if (!showMobileReadonlyOverlay || mobileSelectionMode) return;
+    blurEditorActiveElement(editorRef.current);
+  }, [mobileSelectionMode, showMobileReadonlyOverlay]);
+
+  const clearMobileLongPress = useCallback(() => {
+    const longPress = mobileLongPressRef.current;
+    if (longPress) {
+      window.clearTimeout(longPress.timer);
+      mobileLongPressRef.current = null;
+    }
   }, []);
+
+  const clearMobileSelectionMenuTimer = useCallback(() => {
+    if (mobileSelectionMenuTimerRef.current != null) {
+      window.clearTimeout(mobileSelectionMenuTimerRef.current);
+      mobileSelectionMenuTimerRef.current = null;
+    }
+  }, []);
+
+  const handleMobileReadonlyPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (!showMobileReadonlyOverlay || mobileSelectionMode || event.pointerType === 'mouse') return;
+    if (mobileReadonlyMenuRef.current?.contains(event.target as Node)) return;
+    setMobileReadonlyMenu(null);
+    clearMobileLongPress();
+    const x = event.clientX;
+    const y = event.clientY;
+    mobileLongPressRef.current = {
+      x,
+      y,
+      timer: window.setTimeout(() => {
+        blurEditorActiveElement(editorRef.current);
+        setMobileReadonlyMenu({ x, y, selectedText: '' });
+        mobileLongPressRef.current = null;
+      }, 520),
+    };
+  }, [clearMobileLongPress, mobileSelectionMode, showMobileReadonlyOverlay]);
+
+  const handleMobileContainerPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (!showMobileReadonlyOverlay) return;
+    if (mobileReadonlyMenuRef.current?.contains(event.target as Node)) return;
+    setMobileReadonlyMenu(null);
+    handleMobileReadonlyPointerDown(event);
+  }, [handleMobileReadonlyPointerDown, showMobileReadonlyOverlay]);
 
   const handleMobileReadonlyPointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    const scrollStart = mobileReadonlyScrollRef.current;
-    const editor = editorRef.current;
-    if (!scrollStart || !editor) return;
-    event.preventDefault();
-    event.stopPropagation();
-    editor.setScrollTop(scrollStart.scrollTop + scrollStart.y - event.clientY);
-    editor.setScrollLeft(scrollStart.scrollLeft + scrollStart.x - event.clientX);
-  }, []);
+    const longPress = mobileLongPressRef.current;
+    if (!longPress) return;
+    const moved = Math.hypot(event.clientX - longPress.x, event.clientY - longPress.y);
+    if (moved > 10) {
+      clearMobileLongPress();
+    }
+  }, [clearMobileLongPress]);
 
-  const handleMobileReadonlyPointerEnd = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    event.stopPropagation();
-    mobileReadonlyScrollRef.current = null;
-  }, []);
+  const handleMobileReadonlyPointerEnd = useCallback(() => {
+    clearMobileLongPress();
+  }, [clearMobileLongPress]);
 
-  const handleMobileSelectionContextMenu = useCallback((event: React.MouseEvent<HTMLPreElement>) => {
-    if (!mobileSelectionMode) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const selectedText = window.getSelection()?.toString() ?? '';
-    setMobileReadonlyMenu({
-      x: event.clientX,
-      y: event.clientY,
-      selectedText,
-    });
-  }, [mobileSelectionMode]);
-
-  const handleMobileSelectionChange = useCallback(() => {
+  const syncMobilePreSelection = useCallback((showMenu: boolean) => {
     if (!mobileSelectionMode) return;
     const selection = window.getSelection();
     const selectedText = selection?.toString() ?? '';
@@ -477,6 +522,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
       }
     }
 
+    if (!showMenu) return;
     const rect = range?.getBoundingClientRect();
     setMobileReadonlyMenu({
       x: rect ? rect.left + rect.width / 2 : window.innerWidth / 2,
@@ -484,6 +530,47 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
       selectedText,
     });
   }, [mobileSelectionMode]);
+
+  const scheduleMobileSelectionMenu = useCallback(() => {
+    clearMobileSelectionMenuTimer();
+    setMobileReadonlyMenu(null);
+    mobileSelectionMenuTimerRef.current = window.setTimeout(() => {
+      mobileSelectionMenuTimerRef.current = null;
+      syncMobilePreSelection(true);
+    }, 1400);
+  }, [clearMobileSelectionMenuTimer, syncMobilePreSelection]);
+
+  const handleMobileSelectionContextMenu = useCallback((event: React.MouseEvent<HTMLPreElement>) => {
+    if (!mobileSelectionMode) return;
+    event.preventDefault();
+    event.stopPropagation();
+    scheduleMobileSelectionMenu();
+  }, [mobileSelectionMode, scheduleMobileSelectionMenu]);
+
+  const enterMobileSelectionMode = useCallback(() => {
+    const editor = editorRef.current;
+    if (editor && monacoRef.current) {
+      const layout = editor.getLayoutInfo();
+      const fontInfo = editor.getOption(monacoRef.current.editor.EditorOption.fontInfo);
+      setMobileSelectionPreMetrics({
+        scrollLeft: editor.getScrollLeft(),
+        scrollTop: editor.getScrollTop(),
+        contentLeft: layout.contentLeft,
+        contentRight: Math.max(0, layout.width - layout.contentLeft - layout.contentWidth),
+        fontFamily: fontInfo.fontFamily,
+        fontWeight: fontInfo.fontWeight,
+        fontSize: fontInfo.fontSize,
+        lineHeight: fontInfo.lineHeight,
+        letterSpacing: fontInfo.letterSpacing,
+        fontFeatureSettings: fontInfo.fontFeatureSettings,
+        fontVariationSettings: fontInfo.fontVariationSettings,
+      });
+    } else {
+      setMobileSelectionPreMetrics(null);
+    }
+    setMobileSelectionMode(true);
+    setMobileReadonlyMenu(null);
+  }, []);
 
   const copyMobileSelection = useCallback(async () => {
     const text = mobileReadonlyMenu?.selectedText || activeContent;
@@ -500,6 +587,13 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     action.run(editor, { workspaceId, workspaceRoot });
     closeMobileSelectionMode();
   }, [closeMobileSelectionMode, workspaceId, workspaceRoot]);
+
+  const runMobileEditorAction = useCallback((actionId: string) => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.getAction(actionId)?.run();
+    closeMobileSelectionMode();
+  }, [closeMobileSelectionMode]);
 
   const syncReadOnly = useCallback((editor: Monaco.editor.IStandaloneCodeEditor, readOnly: boolean) => {
     editor.updateOptions({ readOnly, domReadOnly: readOnly });
@@ -758,18 +852,30 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   useEffect(() => {
     if (!showMobileReadonlyOverlay) {
       closeMobileSelectionMode();
+      clearMobileLongPress();
     }
-  }, [closeMobileSelectionMode, showMobileReadonlyOverlay]);
+  }, [clearMobileLongPress, closeMobileSelectionMode, showMobileReadonlyOverlay]);
 
   useEffect(() => {
     if (!mobileSelectionMode) return;
 
     const handleSelectionChange = () => {
-      window.setTimeout(handleMobileSelectionChange, 0);
+      window.setTimeout(() => {
+        syncMobilePreSelection(false);
+        scheduleMobileSelectionMenu();
+      }, 0);
     };
     document.addEventListener('selectionchange', handleSelectionChange);
     return () => document.removeEventListener('selectionchange', handleSelectionChange);
-  }, [handleMobileSelectionChange, mobileSelectionMode]);
+  }, [mobileSelectionMode, scheduleMobileSelectionMenu, syncMobilePreSelection]);
+
+  useEffect(() => {
+    if (!mobileSelectionMode) return;
+    const pre = mobileSelectionPreRef.current;
+    if (!pre || !mobileSelectionPreMetrics) return;
+    pre.scrollLeft = mobileSelectionPreMetrics.scrollLeft;
+    pre.scrollTop = mobileSelectionPreMetrics.scrollTop;
+  }, [mobileSelectionMode, mobileSelectionPreMetrics]);
 
   // Sync wordWrap with Monaco editor
   useEffect(() => {
@@ -847,7 +953,16 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     <div className={`flex flex-col h-full ${isFullscreen ? 'fixed inset-0 z-50 bg-background' : ''}`}>
       <EditorTabs workspaceId={workspaceId} />
       <EditorMenuBar editorRef={editorRef} workspaceId={workspaceId} isReadOnly={isReadOnly} onToggleReadOnly={() => setIsReadOnly(r => !r)} isFullscreen={isFullscreen} onToggleFullscreen={() => setIsFullscreen(f => !f)} wordWrap={wordWrap} onToggleWordWrap={() => { const v = !wordWrap; setWordWrap(v); localStorage.setItem('editor-word-wrap', String(v)); }} minimap={minimap} onToggleMinimap={() => { const v = !minimap; setMinimap(v); localStorage.setItem('editor-minimap', String(v)); }} />
-      <div ref={editorContainerRef} className="relative flex-1 min-h-0">
+      <div
+        ref={editorContainerRef}
+        className="relative flex-1 min-h-0"
+        onContextMenuCapture={handleMobileReadonlyContextMenu}
+        onFocusCapture={handleMobileReadonlyFocus}
+        onPointerDownCapture={handleMobileContainerPointerDown}
+        onPointerMoveCapture={handleMobileReadonlyPointerMove}
+        onPointerUpCapture={handleMobileReadonlyPointerEnd}
+        onPointerCancelCapture={handleMobileReadonlyPointerEnd}
+      >
         {isCommitDiff && commitDiffData ? (
           <CommitDiffViewer diffs={commitDiffData.diffs} message={commitDiffData.message} />
         ) : activeFile ? (
@@ -889,20 +1004,23 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
               }}
               theme={resolvedTheme === "dark" ? "vs-dark" : "vs"}
             />
-            {showMobileReadonlyOverlay && !mobileSelectionMode ? (
-              <div
-                className="absolute inset-0 z-10 touch-pan-y"
-                onContextMenu={handleMobileReadonlyContextMenu}
-                onPointerDown={handleMobileReadonlyPointerDown}
-                onPointerMove={handleMobileReadonlyPointerMove}
-                onPointerUp={handleMobileReadonlyPointerEnd}
-                onPointerCancel={handleMobileReadonlyPointerEnd}
-              />
-            ) : null}
             {showMobileReadonlyOverlay && mobileSelectionMode ? (
               <pre
                 ref={mobileSelectionPreRef}
-                className="absolute inset-0 z-20 m-0 overflow-auto whitespace-pre-wrap break-words bg-background px-[62px] py-2 font-mono text-[13px] leading-[19px] text-foreground select-text"
+                className="absolute inset-0 z-20 m-0 overflow-auto bg-background py-2 text-foreground select-text"
+                style={{
+                  paddingLeft: mobileSelectionPreMetrics?.contentLeft ?? 0,
+                  paddingRight: mobileSelectionPreMetrics?.contentRight ?? 0,
+                  fontFamily: mobileSelectionPreMetrics?.fontFamily,
+                  fontWeight: mobileSelectionPreMetrics?.fontWeight,
+                  fontSize: mobileSelectionPreMetrics?.fontSize,
+                  lineHeight: mobileSelectionPreMetrics ? `${mobileSelectionPreMetrics.lineHeight}px` : undefined,
+                  letterSpacing: mobileSelectionPreMetrics?.letterSpacing,
+                  fontFeatureSettings: mobileSelectionPreMetrics?.fontFeatureSettings,
+                  fontVariationSettings: mobileSelectionPreMetrics?.fontVariationSettings,
+                  whiteSpace: wordWrap ? 'pre-wrap' : 'pre',
+                  overflowWrap: wordWrap ? 'anywhere' : 'normal',
+                }}
                 onContextMenu={handleMobileSelectionContextMenu}
               >
                 {activeContent}
@@ -910,7 +1028,8 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
             ) : null}
             {mobileReadonlyMenu && showMobileReadonlyOverlay ? (
               <div
-                className="fixed z-[80] min-w-40 rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+                ref={mobileReadonlyMenuRef}
+                className="fixed z-[80] min-w-40 select-none rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
                 style={{
                   left: Math.min(Math.max(8, mobileReadonlyMenu.x), window.innerWidth - 168),
                   top: Math.min(Math.max(8, mobileReadonlyMenu.y), window.innerHeight - 180),
@@ -921,10 +1040,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
                   <button
                     type="button"
                     className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
-                    onClick={() => {
-                      setMobileSelectionMode(true);
-                      setMobileReadonlyMenu(null);
-                    }}
+                    onClick={enterMobileSelectionMode}
                   >
                     选择模式
                   </button>
@@ -935,6 +1051,20 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
                   onClick={copyMobileSelection}
                 >
                   复制代码
+                </button>
+                <button
+                  type="button"
+                  className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
+                  onClick={() => runMobileEditorAction('agentSpaces.showDefinition')}
+                >
+                  Go to Definition
+                </button>
+                <button
+                  type="button"
+                  className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
+                  onClick={() => runMobileEditorAction('agentSpaces.showReferences')}
+                >
+                  Go to References
                 </button>
                 {monacoBuiltinActions.map((action) => (
                   <button
