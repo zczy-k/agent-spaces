@@ -2,8 +2,12 @@ import { isFlutterEnvironment, isNativeEnvironment } from './native-notification
 
 export function nativeNavigate(router: { push: (href: string) => void; replace: (href: string) => void }, href: string, replace = false) {
   const isDev = process.env.NODE_ENV === "development";
+  // Flutter local asset server (port 8080) can't serve dynamic Next.js routes
+  const isLocalAssets = typeof window !== 'undefined' &&
+    isFlutterEnvironment() &&
+    window.location.port === '8080';
 
-  if ((isDev && !isNativeEnvironment()) || isFlutterEnvironment()) {
+  if ((isDev && !isNativeEnvironment()) || (isFlutterEnvironment() && !isLocalAssets)) {
     if (replace) {
       router.replace(href);
     } else {
