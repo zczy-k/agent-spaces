@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Layout, Model, TabNode, IJsonModel, Actions, ITabRenderValues, Action } from "flexlayout-react";
+import { Layout, Model, TabNode, IJsonModel, Actions, ITabRenderValues, Action, DockLocation } from "flexlayout-react";
 import { Hash, ListChecks, FolderOpen, Code2, MessageSquare, FileText, TerminalSquare, FileDiff, GitCommitHorizontal, Settings2, Star } from "lucide-react";
 import { TAB_ICONS, RIGHT_TO_LEFT_TAB_MAP, renderTabIcon } from "./tab-config";
 
@@ -54,6 +54,7 @@ const defaultJson: IJsonModel = {
       children: [
         { type: "tab", name: "Terminal", component: "terminal" },
         { type: "tab", name: "Commits", component: "git-commits" },
+        { type: "tab", name: "Favorites", component: "code-favorites", id: "code-favorites" },
       ],
     },
   ],
@@ -68,7 +69,6 @@ const defaultJson: IJsonModel = {
           { type: "tab", name: "Channels", component: "channel-list", id: "channel-list" },
           { type: "tab", name: "Issues", component: "issue-list", id: "issue-list" },
           { type: "tab", name: "Workfolder", component: "workfolder", id: "workfolder" },
-          { type: "tab", name: "Favorites", component: "code-favorites", id: "code-favorites" },
         ],
       },
       {
@@ -106,11 +106,25 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   const revealPath = useEditorStore((s) => s.revealPath);
   const clearRevealPath = useEditorStore((s) => s.clearRevealPath);
   const [model, setModel] = useState(() => {
+    let m: Model;
     try {
       const saved = localStorage.getItem(`flexlayout-${workspaceId}`);
-      if (saved) return Model.fromJson(JSON.parse(saved));
-    } catch { /* ignore corrupt data */ }
-    return Model.fromJson(defaultJson);
+      if (saved) {
+        const json = JSON.parse(saved);
+        // Ensure bottom border has code-favorites tab
+        const borders = json.borders as { type: string; location: string; children: unknown[] }[] | undefined;
+        const bottom = borders?.find((b) => b.location === 'bottom');
+        if (bottom && !bottom.children.some((c: any) => c.id === 'code-favorites' || c.component === 'code-favorites')) {
+          bottom.children.push({ type: 'tab', name: 'Favorites', component: 'code-favorites', id: 'code-favorites' });
+        }
+        m = Model.fromJson(json);
+      } else {
+        m = Model.fromJson(defaultJson);
+      }
+    } catch {
+      m = Model.fromJson(defaultJson);
+    }
+    return m;
   });
 
   useEffect(() => {

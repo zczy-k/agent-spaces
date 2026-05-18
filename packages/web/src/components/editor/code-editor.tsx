@@ -350,17 +350,6 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
 
   const syncReadOnly = useCallback((editor: Monaco.editor.IStandaloneCodeEditor, readOnly: boolean) => {
     editor.updateOptions({ readOnly, domReadOnly: readOnly });
-
-    const textarea = editor.getDomNode()?.querySelector('textarea');
-    if (textarea) {
-      textarea.inputMode = readOnly ? 'none' : 'text';
-      textarea.tabIndex = readOnly ? -1 : 0;
-      textarea.toggleAttribute('readonly', readOnly);
-      textarea.toggleAttribute('disabled', readOnly);
-      if (readOnly) {
-        textarea.blur();
-      }
-    }
   }, []);
 
   const registerNavigationActions = useCallback((editor: Monaco.editor.IStandaloneCodeEditor, monaco: typeof Monaco) => {
@@ -593,27 +582,6 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     if (!editor) return;
     editor.updateOptions({ minimap: { enabled: minimap } });
   }, [minimap]);
-
-  useEffect(() => {
-    const container = editorContainerRef.current;
-    if (!container || !isReadOnly) return;
-
-    const blurReadOnlyInput = (event: FocusEvent) => {
-      const editor = editorRef.current;
-      const target = event.target as HTMLElement | null;
-      if (!editor || !target) return;
-      if (!editor.getDomNode()?.contains(target)) return;
-      if (target.tagName === 'TEXTAREA') {
-        target.blur();
-      }
-    };
-
-    container.addEventListener('focusin', blurReadOnlyInput, { capture: true });
-
-    return () => {
-      container.removeEventListener('focusin', blurReadOnlyInput, { capture: true });
-    };
-  }, [isReadOnly]);
 
   // Register model when active file changes
   useEffect(() => {
