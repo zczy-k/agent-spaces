@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { useCodeFavoritesStore, type CodeFavorite } from "@/stores/code-favorites";
 import { useEditorStore } from "@/stores/editor";
-import { FileCode, Trash2, MapPin } from "lucide-react";
+import { FileCode, Trash2, MapPin, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { toast } from "sonner";
 
 interface CodeFavoritesPanelProps {
   workspaceId: string;
@@ -31,7 +32,7 @@ export function CodeFavoritesPanel({ workspaceId }: CodeFavoritesPanelProps) {
 
   return (
     <ScrollArea className="h-full">
-      <div className="p-2 space-y-2">
+      <div className="grid gap-2 p-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))' }}>
         {favorites.map((fav) => (
           <FavoriteCard
             key={fav.id}
@@ -61,6 +62,14 @@ function FavoriteCard({
     onJump(workspaceId, favorite.path, favorite.line, favorite.column, favorite.endLine, favorite.endColumn);
   };
 
+  const handleCopy = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    const pos = `${favorite.path}:${favorite.line}:${favorite.endLine}`;
+    navigator.clipboard.writeText(pos).then(() => {
+      toast.success(`已复制: ${pos}`);
+    });
+  }, [favorite]);
+
   return (
     <div
       className="group border rounded-lg p-3 hover:bg-accent/50 cursor-pointer transition-colors"
@@ -71,11 +80,20 @@ function FavoriteCard({
           <FileCode size={14} className="shrink-0 text-muted-foreground" />
           <span className="text-sm font-medium truncate">{favorite.label || favorite.path}</span>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+        <div className="flex items-center gap-0.5 shrink-0">
+          <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground mr-0.5">
             <MapPin size={10} />
             {favorite.endLine > favorite.line ? `${favorite.line}-${favorite.endLine}` : favorite.line}
           </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={handleCopy}
+            title="复制代码位置"
+          >
+            <Copy size={12} />
+          </Button>
           <Button
             variant="ghost"
             size="icon"
