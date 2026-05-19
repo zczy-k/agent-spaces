@@ -16,10 +16,14 @@ export default function Page() {
       .then((r) => (r.ok ? r.json() : []))
       .then((list: Workspace[]) => {
         setWorkspaces(list);
-        if (localStorage.getItem("autoActivateWorkspace") === "true") {
+        if (
+          localStorage.getItem("autoActivateWorkspace") === "true" &&
+          !sessionStorage.getItem("autoActivateSkipped")
+        ) {
           const lastId = localStorage.getItem("lastWorkspaceId");
           if (lastId && list.some((ws) => ws.id === lastId)) {
-            tauriNavigate(router, `/workspace/${lastId}`);
+            sessionStorage.setItem("autoActivateSkipped", "1");
+            tauriNavigate(router, `/workspace/${lastId}`, true);
           }
         }
       });

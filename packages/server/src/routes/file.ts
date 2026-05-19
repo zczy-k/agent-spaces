@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import { exec } from 'child_process';
-import { resolve, join } from 'path';
-import { existsSync } from 'node:fs';
+import { resolve, join, extname } from 'path';
+import { existsSync, createReadStream, statSync } from 'node:fs';
 import * as fileService from '../services/file.js';
 import * as wsService from '../services/workspace.js';
 import { getDataDir } from '../storage/json-store.js';
@@ -20,12 +20,33 @@ router.get('/tree', async (req: Request<{ id: string }>, res: Response) => {
   res.json(tree);
 });
 
+const MIME_MAP: Record<string, string> = {
+  '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif',
+  '.webp': 'image/webp', '.svg': 'image/svg+xml', '.bmp': 'image/bmp', '.ico': 'image/x-icon',
+  '.mp4': 'video/mp4', '.webm': 'video/webm', '.ogg': 'video/ogg', '.mov': 'video/quicktime',
+  '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.flac': 'audio/flac', '.aac': 'audio/aac',
+  '.m4a': 'audio/mp4', '.opus': 'audio/opus',
+};
+
 router.get('/content', async (req: Request<{ id: string }>, res: Response) => {
   const ws = fileService.getWorkspace(req.params.id);
   if (!ws) { res.status(404).json({ error: 'Workspace not found' }); return; }
 
   const path = req.query.path as string;
   if (!path) { res.status(400).json({ error: 'path is required' }); return; }
+
+  const raw = req.query.raw === 'true';
+  if (raw) {
+    const abs = fileService.resolvePath(ws, path);
+    if (!abs || !existsSync(abs)) { res.status(404).json({ error: 'File not found' }); return; }
+    const ext = extname(path).toLowerCase();
+    const mime = MIME_MAP[ext] || 'application/octet-stream';
+    res.setHeader('Content-Type', mime);
+    const stat = statSync(abs);
+    res.setHeader('Content-Length', stat.size);
+    createReadStream(abs).pipe(res);
+    return;
+  }
 
   const result = await fileService.readFileContent(ws, path);
   if (!result) { res.status(404).json({ error: 'File not found' }); return; }

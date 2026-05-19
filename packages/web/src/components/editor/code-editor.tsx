@@ -7,7 +7,7 @@ import "@/lib/monaco-builtin-actions";
 import "@/components/editor/code-editor-clipboard";
 import { applyRegisteredActions } from "@/lib/monaco-action-registry";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useEditorStore, isCommitDiffPath, getCommitHashFromPath } from "@/stores/editor";
+import { useEditorStore, isCommitDiffPath, getCommitHashFromPath, getMediaType } from "@/stores/editor";
 import { EditorTabs } from "./editor-tabs";
 import { EditorMenuBar } from "./code-editor-menu-bar";
 import { useTheme } from "@/components/theme-provider";
@@ -79,6 +79,10 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   const activeContent = activeFile ? modifiedFileContents[activeFile.path] ?? activeFile.content : "";
   const isCommitDiff = activeFilePath ? isCommitDiffPath(activeFilePath) : false;
   const commitDiffData = isCommitDiff && activeFilePath ? commitDiffs[getCommitHashFromPath(activeFilePath)] : null;
+  const mediaType = activeFile?.mediaType ?? (activeFilePath ? getMediaType(activeFilePath) : null);
+  const mediaUrl = activeFilePath && mediaType
+    ? `/api/workspaces/${workspaceId}/files/content?path=${encodeURIComponent(activeFilePath)}&raw=true`
+    : null;
 
   const mobile = useMobileReadonlyOverlay({
     editorRef,
@@ -299,6 +303,21 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
       >
         {isCommitDiff && commitDiffData ? (
           <CommitDiffViewer diffs={commitDiffData.diffs} message={commitDiffData.message} />
+        ) : mediaType && mediaUrl ? (
+          <div className="flex items-center justify-center h-full bg-muted/20 overflow-auto p-4">
+            {mediaType === 'image' && (
+              <img src={mediaUrl} alt={activeFile?.name} className="max-w-full max-h-full object-contain" />
+            )}
+            {mediaType === 'video' && (
+              <video src={mediaUrl} controls className="max-w-full max-h-full" />
+            )}
+            {mediaType === 'audio' && (
+              <div className="flex flex-col items-center gap-4">
+                <div className="text-muted-foreground text-sm">{activeFile?.name}</div>
+                <audio src={mediaUrl} controls />
+              </div>
+            )}
+          </div>
         ) : activeFile ? (
           <>
             <MonacoEditor

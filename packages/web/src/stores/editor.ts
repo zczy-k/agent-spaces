@@ -1,12 +1,27 @@
 import { create } from 'zustand';
 import type { FileNode, GitDiffResult } from '@agent-spaces/shared';
 
+export type MediaType = 'image' | 'video' | 'audio';
+
+const IMAGE_EXTS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp', '.ico']);
+const VIDEO_EXTS = new Set(['.mp4', '.webm', '.ogg', '.mov']);
+const AUDIO_EXTS = new Set(['.mp3', '.wav', '.flac', '.aac', '.m4a', '.opus']);
+
+export function getMediaType(path: string): MediaType | null {
+  const ext = '.' + path.split('.').pop()?.toLowerCase();
+  if (IMAGE_EXTS.has(ext)) return 'image';
+  if (VIDEO_EXTS.has(ext)) return 'video';
+  if (AUDIO_EXTS.has(ext)) return 'audio';
+  return null;
+}
+
 export interface OpenFile {
   path: string;
   name: string;
   content: string;
   modified: boolean;
   pinned?: boolean;
+  mediaType?: MediaType;
 }
 
 export const COMMIT_DIFF_PREFIX = '__commit_diff__:';
@@ -146,11 +161,22 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       return;
     }
 
+    const name = path.split('/').pop() || path;
+    const mediaType = getMediaType(path);
+
+    if (mediaType) {
+      set((s) => ({
+        openFiles: [...s.openFiles, { path, name, content: '', modified: false, mediaType }],
+        activeFilePath: path,
+      }));
+      debouncedSave(workspaceId);
+      return;
+    }
+
     const res = await fetch(
       `/api/workspaces/${workspaceId}/files/content?path=${encodeURIComponent(path)}`
     );
     const data = await res.json();
-    const name = path.split('/').pop() || path;
 
     set((s) => ({
       openFiles: [...s.openFiles, { path, name, content: data.content, modified: false }],
@@ -281,12 +307,17 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const openFiles: OpenFile[] = [];
       for (const path of openFilePaths) {
         try {
-          const fileRes = await fetch(
-            `/api/workspaces/${workspaceId}/files/content?path=${encodeURIComponent(path)}`
-          );
-          const data = await fileRes.json();
           const name = path.split('/').pop() || path;
-          openFiles.push({ path, name, content: data.content, modified: false, pinned: pinnedSet.has(path) || undefined });
+          const mediaType = getMediaType(path);
+          if (mediaType) {
+            openFiles.push({ path, name, content: '', modified: false, mediaType, pinned: pinnedSet.has(path) || undefined });
+          } else {
+            const fileRes = await fetch(
+              `/api/workspaces/${workspaceId}/files/content?path=${encodeURIComponent(path)}`
+            );
+            const data = await fileRes.json();
+            openFiles.push({ path, name, content: data.content, modified: false, pinned: pinnedSet.has(path) || undefined });
+          }
         } catch {
           // file may have been deleted, skip
         }
