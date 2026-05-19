@@ -16,6 +16,8 @@ import type { AgentCandidate, SkillInfo } from './types';
 
 interface SkillBindDialogProps {
   skill: SkillInfo | null;
+  titleOverride?: string;
+  descriptionOverride?: string;
   agents: AgentCandidate[];
   selected: string[];
   onToggle: (id: string) => void;
@@ -23,7 +25,7 @@ interface SkillBindDialogProps {
   onConfirm: () => void;
 }
 
-export function SkillBindDialog({ skill, agents, selected, onToggle, onClose, onConfirm }: SkillBindDialogProps) {
+export function SkillBindDialog({ skill, titleOverride, descriptionOverride, agents, selected, onToggle, onClose, onConfirm }: SkillBindDialogProps) {
   const t = useTranslations('skills');
   const tc = useTranslations('common');
 
@@ -31,8 +33,8 @@ export function SkillBindDialog({ skill, agents, selected, onToggle, onClose, on
     <Dialog open={!!skill} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="sm:max-w-sm flex flex-col gap-0 overflow-hidden p-0">
         <DialogHeader className="shrink-0 px-6 py-4">
-          <DialogTitle>{t('bindTitle', { name: skill?.name || '' })}</DialogTitle>
-          <DialogDescription>{t('bindDescription')}</DialogDescription>
+          <DialogTitle>{titleOverride || t('bindTitle', { name: skill?.name || '' })}</DialogTitle>
+          <DialogDescription>{descriptionOverride || t('bindDescription')}</DialogDescription>
         </DialogHeader>
         <div className="min-h-0 flex-1 pb-2 overflow-y-auto px-6 space-y-3">
           <div className="space-y-0.5">

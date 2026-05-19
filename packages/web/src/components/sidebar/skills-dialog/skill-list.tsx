@@ -32,7 +32,6 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SkillImportPanel } from './skill-import-dialog';
-import { SkillBindDialog } from './skill-bind-dialog';
 import type { AgentCandidate, FilterMode, SkillInfo, ImportSkillItem } from './types';
 
 interface SkillListProps {
@@ -50,7 +49,7 @@ interface SkillListProps {
   onBind: (skill: SkillInfo) => void;
   onImportBatch: (items: ImportSkillItem[]) => void;
   onSyncCheck: () => Promise<unknown>;
-  onApplyAllToAgent: (agentId: string, skillNames: string[]) => Promise<void>;
+  onBindAll: () => void;
 }
 
 export function SkillList({
@@ -68,7 +67,7 @@ export function SkillList({
   onBind,
   onImportBatch,
   onSyncCheck,
-  onApplyAllToAgent,
+  onBindAll,
 }: SkillListProps) {
   const t = useTranslations('skills');
   const tc = useTranslations('common');
@@ -84,9 +83,6 @@ export function SkillList({
   const [importItems, setImportItems] = useState<ImportSkillItem[]>([]);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importDefaultGroup, setImportDefaultGroup] = useState('');
-  const [applyAllOpen, setApplyAllOpen] = useState(false);
-  const [applyAllSelected, setApplyAllSelected] = useState<string[]>([]);
-  const [applyAllLoading, setApplyAllLoading] = useState(false);
 
   // Extract unique groups
   const groups = Array.from(new Set(skills.map((s) => s.group).filter(Boolean)));
@@ -247,18 +243,6 @@ export function SkillList({
   const handleImportCancel = () => {
     setImportDialogOpen(false);
     setImportItems([]);
-  };
-
-  const handleApplyAllConfirm = async () => {
-    if (applyAllSelected.length === 0) return;
-    setApplyAllLoading(true);
-    const skillNames = filtered.map((s) => s.name);
-    for (const agentId of applyAllSelected) {
-      await onApplyAllToAgent(agentId, skillNames);
-    }
-    setApplyAllLoading(false);
-    setApplyAllOpen(false);
-    setApplyAllSelected([]);
   };
 
   return (
@@ -450,37 +434,15 @@ export function SkillList({
             </div>
           </div>
 
-          {/* Desktop: Search bar + toggle all */}
-          <div className="hidden md:flex items-center gap-3">
-            <div className="relative flex-1">
-              <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={t('search')}
-                className="pl-8"
-              />
-            </div>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
-              <span>{t('toggleAll')}</span>
-              <Switch
-                size="sm"
-                checked={allEnabled}
-                onCheckedChange={handleToggleAll}
-              />
-              <span className="w-10 text-right">
-                {filtered.filter((s) => s.enabled).length}/{filtered.length}
-              </span>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => { setApplyAllOpen(true); setApplyAllSelected([]); }}
-              disabled={filtered.length === 0}
-            >
-              <Rocket className="size-3.5 mr-1" />
-              {t('applyAllToAgent')}
-            </Button>
+          {/* Desktop: Search bar */}
+          <div className="hidden md:block relative">
+            <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t('search')}
+              className="pl-8"
+            />
           </div>
 
           <ScrollArea className="flex-1 min-h-0">
@@ -584,21 +546,35 @@ export function SkillList({
               </div>
             )}
           </ScrollArea>
+
+          {/* Desktop: Footer with toggle all + apply all */}
+          <div className="hidden md:flex items-center gap-3 pt-2 border-t shrink-0">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
+              <span>{t('toggleAll')}</span>
+              <Switch
+                size="sm"
+                checked={allEnabled}
+                onCheckedChange={handleToggleAll}
+              />
+              <span className="w-10 text-right">
+                {filtered.filter((s) => s.enabled).length}/{filtered.length}
+              </span>
+            </div>
+            <div className="flex-1" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onBindAll}
+              disabled={filtered.length === 0}
+            >
+              <Rocket className="size-3.5 mr-1" />
+              {t('applyAllToAgent')}
+            </Button>
+          </div>
         </div>
       </div>
       )}
 
-      {/* Apply all to agent dialog */}
-      <SkillBindDialog
-        skill={applyAllOpen ? { name: t('applyAllToAgent'), description: '', filename: '', content: '', favorited: false, enabled: true, group: '', boundAgents: [] } as SkillInfo : null}
-        agents={agents}
-        selected={applyAllSelected}
-        onToggle={(id) => setApplyAllSelected((prev) =>
-          prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-        )}
-        onClose={() => { setApplyAllOpen(false); setApplyAllSelected([]); }}
-        onConfirm={handleApplyAllConfirm}
-      />
     </>
   );
 }

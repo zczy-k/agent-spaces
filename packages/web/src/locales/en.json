@@ -1047,7 +1047,8 @@
     "filterGroups": "Groups",
     "filterNoGroup": "No Group",
     "toggleAll": "Toggle All",
-    "applyAllToAgent": "Apply All to Agent"
+    "applyAllToAgent": "Apply All to Agent",
+    "applyAllToAgentDescription": "Select agents to apply all skills to"
   },
   "prompts": {
     "title": "Prompt Templates",

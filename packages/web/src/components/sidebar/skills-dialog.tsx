@@ -41,6 +41,23 @@ export function SkillsDialog({ open, onOpenChange, standalone }: SkillsDialogPro
     setBindSelected(skill.boundAgents.map((a) => a.id));
   };
 
+  const BIND_ALL_KEY = '__bind_all__';
+  const isBindAllMode = bindDialogSkill?.name === BIND_ALL_KEY;
+
+  const openBindAllDialog = () => {
+    setBindDialogSkill({
+      name: BIND_ALL_KEY,
+      description: '',
+      filename: '',
+      content: '',
+      favorited: false,
+      enabled: true,
+      group: '',
+      boundAgents: [],
+    });
+    setBindSelected([]);
+  };
+
   const handleSaveEdit = async () => {
     if (!editSkill) return;
     const ok = await actions.saveEdit(editSkill.name, editContent);
@@ -49,7 +66,14 @@ export function SkillsDialog({ open, onOpenChange, standalone }: SkillsDialogPro
 
   const handleBindConfirm = async () => {
     if (!bindDialogSkill) return;
-    await actions.bindConfirm(bindDialogSkill, bindSelected, agents);
+    if (isBindAllMode) {
+      const skillNames = skills.map((s) => s.name);
+      for (const agentId of bindSelected) {
+        await actions.applyAllToAgent(agentId, skillNames);
+      }
+    } else {
+      await actions.bindConfirm(bindDialogSkill, bindSelected, agents);
+    }
     setBindDialogSkill(null);
   };
 
@@ -98,7 +122,7 @@ export function SkillsDialog({ open, onOpenChange, standalone }: SkillsDialogPro
       onBind={openBindDialog}
       onImportBatch={actions.importBatch}
       onSyncCheck={handleSyncCheck}
-      onApplyAllToAgent={actions.applyAllToAgent}
+      onBindAll={openBindAllDialog}
     />
   );
 
@@ -127,6 +151,8 @@ export function SkillsDialog({ open, onOpenChange, standalone }: SkillsDialogPro
 
       <SkillBindDialog
         skill={bindDialogSkill}
+        titleOverride={isBindAllMode ? t('applyAllToAgent') : undefined}
+        descriptionOverride={isBindAllMode ? t('applyAllToAgentDescription') : undefined}
         agents={agents}
         selected={bindSelected}
         onToggle={(id) => setBindSelected((prev) =>
