@@ -60,6 +60,26 @@ class WebViewService {
     await ctrl.reload();
   }
 
+  Future<bool> goBack(String tabId) async {
+    final ctrl = _controllers[tabId];
+    if (ctrl == null) return false;
+    if (await ctrl.canGoBack()) {
+      await ctrl.goBack();
+      return true;
+    }
+    return false;
+  }
+
+  Future<bool> goForward(String tabId) async {
+    final ctrl = _controllers[tabId];
+    if (ctrl == null) return false;
+    if (await ctrl.canGoForward()) {
+      await ctrl.goForward();
+      return true;
+    }
+    return false;
+  }
+
   Future<void> clearAllCache() async {
     await InAppWebViewController.clearAllCache();
     _log.i('All WebView cache cleared');

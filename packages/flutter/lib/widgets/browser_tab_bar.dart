@@ -69,6 +69,21 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
       color: theme.colorScheme.surfaceContainer,
       child: Row(
         children: [
+          _NavButton(
+            icon: Icons.arrow_back_ios,
+            tooltip: '后退',
+            onPressed: () => WebViewService.instance.goBack(state.activeTabId!),
+          ),
+          _NavButton(
+            icon: Icons.arrow_forward_ios,
+            tooltip: '前进',
+            onPressed: () => WebViewService.instance.goForward(state.activeTabId!),
+          ),
+          _NavButton(
+            icon: Icons.refresh,
+            tooltip: '刷新',
+            onPressed: () => WebViewService.instance.reload(state.activeTabId!),
+          ),
           Expanded(
             child: ButtonsTabBar(
               controller: _controller,
@@ -548,6 +563,33 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
       DeviceType.tablet => Icons.tablet,
       DeviceType.desktop => Icons.desktop_windows,
     };
+  }
+}
+
+class _NavButton extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  const _NavButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return IconButton(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 14),
+      tooltip: tooltip,
+      color: theme.colorScheme.onSurfaceVariant,
+      style: IconButton.styleFrom(
+        minimumSize: const Size(32, 32),
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+      ),
+    );
   }
 }
 
