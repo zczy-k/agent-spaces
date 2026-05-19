@@ -51,7 +51,6 @@ export function MessageParts({ message, isUser, workspaceId }: MessagePartsProps
   const messageParts = message.parts ?? []
   const parts = messageParts.filter((part) => part.type !== "context")
   const hasTextPart = parts.some((part) => part.type === "text")
-  const persistentContextSummary = getPersistentContextSummary(messageParts.find((part): part is Extract<MessagePart, { type: "context" }> => part.type === "context"))
   const shouldRenderLegacyContent = messageParts.length === 0 && message.content
 
   return (
@@ -65,7 +64,6 @@ export function MessageParts({ message, isUser, workspaceId }: MessagePartsProps
           part={dedupeDisplayPart(part)}
           message={message}
           workspaceId={workspaceId}
-          persistentContextSummary={persistentContextSummary}
         />
       )) : null}
       {!hasTextPart && shouldRenderLegacyContent ? (
@@ -85,15 +83,10 @@ function MessagePartView({
   part,
   message,
   workspaceId,
-  persistentContextSummary,
 }: {
   part: MessagePart
   message: Message
   workspaceId: string
-  persistentContextSummary?: {
-    claudeMd: number
-    total: number
-  }
 }) {
   const t = useTranslations('chat')
 
@@ -105,7 +98,7 @@ function MessagePartView({
     case "reasoning":
       return (
         <ChainOfThought defaultOpen={part.status === "streaming"} className="max-w-none">
-          <ChainOfThoughtHeader loading={part.status === "streaming"} contextSummary={persistentContextSummary}>
+          <ChainOfThoughtHeader loading={part.status === "streaming"}>
             {part.status === "streaming" ? t('messageParts.agentThinking') : t('messageParts.aiIntermediateOutput')}
           </ChainOfThoughtHeader>
           <ChainOfThoughtContent className="max-h-[300px] overflow-y-auto">
@@ -126,7 +119,6 @@ function MessagePartView({
         <ChainOfThought defaultOpen={message.status === "pending"} className="max-w-none">
           <ChainOfThoughtHeader
             loading={message.status === "pending" || message.status === "streaming"}
-            contextSummary={persistentContextSummary}
           >
             {t('messageParts.chainSteps', { count: visibleChainStepCount })}
           </ChainOfThoughtHeader>
@@ -134,25 +126,23 @@ function MessagePartView({
             {visibleChains.map((chain) => {
               const completed = chain.status === "completed"
               if (chain.kind === "message") {
+                return (
+                  <AiMessageStep
+                    key={chain.id}
+                    text={chain.text ?? chain.title}
+                    status={completed ? "complete" : "active"}
+                  />
+                )
+              }
               return (
-                <AiMessageStep
+                <ToolStep
                   key={chain.id}
-                  text={chain.text ?? chain.title}
+                  chain={chain}
+                  message={message}
+                  workspaceId={workspaceId}
                   status={completed ? "complete" : "active"}
-                  persistentContextSummary={persistentContextSummary}
                 />
               )
-            }
-            return (
-              <ToolStep
-                key={chain.id}
-                chain={chain}
-                message={message}
-                workspaceId={workspaceId}
-                status={completed ? "complete" : "active"}
-                persistentContextSummary={persistentContextSummary}
-              />
-            )
             })}
           </ChainOfThoughtContent>
         </ChainOfThought>
@@ -229,15 +219,6 @@ function MessagePartView({
       return <AnsweredQuestionSummary question={part.question} answer={part.answer ?? ""} />
     default:
       return null
-  }
-}
-
-function getPersistentContextSummary(part?: Extract<MessagePart, { type: "context" }>) {
-  const summary = part?.agentContext?.persistentContext
-  if (!summary) return undefined
-  return {
-    claudeMd: summary.counts.claudeMd,
-    total: summary.counts.total,
   }
 }
 

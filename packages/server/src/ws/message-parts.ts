@@ -42,7 +42,7 @@ export function buildAgentMessageParts(input: {
   const usage = input.usage ?? extractUsage(lines);
   const parts: MessagePart[] = [];
 
-  const chainItems = buildChainItems(lines, finalTextRange, finalText, input.workspaceRoot, input.toolDetails);
+  const chainItems = buildChainItems(lines, finalTextRange, finalText, input.workspaceRoot, input.toolDetails, input.persistentContext);
 
   const reasoningText = normalizeReasoningText(input.reasoning);
   if (reasoningText) {
@@ -313,12 +313,19 @@ function buildChainItems(
   finalText: string,
   workspaceRoot?: string,
   toolDetails?: Map<string, ToolDetail>,
+  persistentContext?: PersistentAgentContextSummary,
 ): MessageChain[] {
   let toolIndex = 0;
   let messageIndex = 0;
   const items: MessageChain[] = [];
   const toolDetailMatchCounts = new Map<string, number>();
   let messageBuffer: string[] = [];
+
+  const persistentContextItem = buildPersistentContextToolItem(persistentContext);
+  if (persistentContextItem) {
+    items.push(persistentContextItem);
+    toolIndex += 1;
+  }
 
   const flushMessageBuffer = () => {
     if (messageBuffer.length === 0) return;
@@ -368,6 +375,7 @@ function buildToolTodo(
 
   return {
     id: `tool-${index}`,
+    kind: 'tool',
     title: summary.title,
     description: summary.description,
     status: 'completed',
@@ -375,6 +383,25 @@ function buildToolTodo(
     filePath: summary.filePath,
     command: summary.command,
     detailId,
+  };
+}
+
+function buildPersistentContextToolItem(persistentContext?: PersistentAgentContextSummary): MessageChain | null {
+  const counts = persistentContext?.counts;
+  if (!counts?.total) return null;
+
+  const parts = [
+    counts.claudeMd ? `${counts.claudeMd} claude.md` : null,
+    counts.agentsMd ? `${counts.agentsMd} AGENTS.md` : null,
+  ].filter(Boolean);
+
+  return {
+    id: 'tool-persistent-context',
+    kind: 'tool',
+    title: 'Load claude.md',
+    description: parts.length ? parts.join(', ') : `${counts.total} instruction files`,
+    status: 'completed',
+    toolName: 'LoadClaudeMd',
   };
 }
 
