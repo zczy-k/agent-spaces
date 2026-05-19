@@ -438,7 +438,13 @@ export function getAvailableSkillNames(agentDir: string | undefined, skills?: st
     .map((skill) => skill.trim().replace(/\.md$/i, ''))
     .filter((skill) => {
       if (!skill) return false;
-      const skillFile = join(agentDir, 'skills', `${skill}.md`);
+      const skillsBase = join(agentDir, 'skills');
+      // Check folder structure first, then flat .md
+      const skillFolder = join(skillsBase, skill);
+      if (existsSync(skillFolder) && statSync(skillFolder).isDirectory()) {
+        return readdirSync(skillFolder).some((f) => f.endsWith('.md'));
+      }
+      const skillFile = join(skillsBase, `${skill}.md`);
       return existsSync(skillFile) && statSync(skillFile).size > 0;
     });
 }
@@ -546,24 +552,41 @@ function writeAgentTemplate(preset: AgentConfig, skillInputs?: SkillInput[]): vo
   } else if (preset.skills?.length) {
     const globalSkillsDir = join(getDataDir(), 'skills');
     const keepFiles = new Set(preset.skills.map((s) => s.endsWith('.md') ? s : `${s}.md`));
-    // Remove skill files no longer in the list
+    const keepNames = new Set(preset.skills.map((s) => s.replace(/\.md$/i, '')));
+    // Remove skill entries no longer in the list (flat .md files and folders)
     if (existsSync(skillsDir)) {
       for (const existing of readdirSync(skillsDir)) {
-        if (existing.endsWith('.md') && !keepFiles.has(existing)) {
-          rmSync(join(skillsDir, existing), { force: true });
+        const name = existing.endsWith('.md') ? existing.replace(/\.md$/i, '') : existing;
+        if (!keepNames.has(name)) {
+          rmSync(join(skillsDir, existing), { recursive: true, force: true });
           console.log('[writeAgentTemplate] removed stale skill:', existing);
         }
       }
     }
-    // Copy / ensure skill files
-    for (const filename of keepFiles) {
-      const target = join(skillsDir, filename);
-      const globalSource = join(globalSkillsDir, filename);
-      console.log('[writeAgentTemplate] skill:', filename, 'globalExists:', existsSync(globalSource), 'targetExists:', existsSync(target));
-      if (existsSync(globalSource)) {
-        copyFileSync(globalSource, target);
-      } else if (!existsSync(target)) {
-        writeFileSync(target, '', 'utf-8');
+    // Copy / ensure skill files (global skills are folders: skills/{name}/SKILL.md)
+    for (const skillName of keepNames) {
+      const globalFolder = join(globalSkillsDir, skillName);
+      const flatTarget = join(skillsDir, `${skillName}.md`);
+      const folderTarget = join(skillsDir, skillName);
+      console.log('[writeAgentTemplate] skill:', skillName, 'globalFolder:', globalFolder, 'globalExists:', existsSync(globalFolder) && statSync(globalFolder).isDirectory());
+      if (existsSync(globalFolder) && statSync(globalFolder).isDirectory()) {
+        // Copy entire skill folder
+        if (existsSync(folderTarget)) {
+          rmSync(folderTarget, { recursive: true, force: true });
+        }
+        cpSync(globalFolder, folderTarget, { recursive: true, force: true });
+        // Remove stale flat .md if it exists
+        if (existsSync(flatTarget)) {
+          rmSync(flatTarget, { force: true });
+        }
+      } else {
+        // Fallback: single SKILL.md or legacy flat file
+        const globalSkillFile = join(globalFolder, 'SKILL.md');
+        if (existsSync(globalSkillFile)) {
+          copyFileSync(globalSkillFile, flatTarget);
+        } else if (!existsSync(flatTarget) && !existsSync(folderTarget)) {
+          writeFileSync(flatTarget, '', 'utf-8');
+        }
       }
     }
   } else {
