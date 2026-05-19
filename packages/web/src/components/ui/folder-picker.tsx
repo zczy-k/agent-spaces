@@ -190,25 +190,21 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
           ref={inputRef}
         />
         <Popover open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setCreating(false); setNewFolderName(""); } }}>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              className={cn(
-                "flex items-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm transition-colors",
-                open
-                  ? "border-primary bg-primary/5 text-primary"
-                  : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-              )}
-            >
-              <FolderOpen className="size-4" />
-              Browse
-            </button>
+          <PopoverTrigger
+            className={cn(
+              "flex items-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm transition-colors",
+              open
+                ? "border-primary bg-primary/5 text-primary"
+                : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            )}
+          >
+            <FolderOpen className="size-4" />
+            Browse
           </PopoverTrigger>
           <PopoverContent
             align="start"
             className="w-[var(--radix-popover-trigger-width)] p-0 overflow-hidden rounded-xl"
             style={{ height: 360 }}
-            onOpenAutoFocus={(e) => e.preventDefault()}
           >
             <div className="flex h-full flex-col">
           {/* Header */}
