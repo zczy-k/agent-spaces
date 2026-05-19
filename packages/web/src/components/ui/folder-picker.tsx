@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { File, Folder, FolderOpen, ChevronRight, ArrowUp, Home, Loader2, FolderPlus, Check, X, ShieldCheck, ShieldAlert, ShieldOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface BrowseEntry {
   name: string;
@@ -140,16 +141,6 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
     }
   };
 
-  const toggleBrowse = () => {
-    if (open) {
-      setOpen(false);
-      setCreating(false);
-      setNewFolderName("");
-    } else {
-      setOpen(true);
-    }
-  };
-
   const handleCreateFolder = async () => {
     const name = newFolderName.trim();
     if (!name) return;
@@ -198,23 +189,28 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
           onKeyDown={handleInputKeyDown}
           ref={inputRef}
         />
-        <button
-          type="button"
-          onClick={toggleBrowse}
-          className={cn(
-            "flex items-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm transition-colors",
-            open
-              ? "border-primary bg-primary/5 text-primary"
-              : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-          )}
-        >
-          <FolderOpen className="size-4" />
-          Browse
-        </button>
-      </div>
-
-      {open && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-1 flex flex-col rounded-xl border border-border bg-popover shadow-lg" style={{ height: 360 }}>
+        <Popover open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setCreating(false); setNewFolderName(""); } }}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className={cn(
+                "flex items-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm transition-colors",
+                open
+                  ? "border-primary bg-primary/5 text-primary"
+                  : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+              )}
+            >
+              <FolderOpen className="size-4" />
+              Browse
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="start"
+            className="w-[var(--radix-popover-trigger-width)] p-0 overflow-hidden rounded-xl"
+            style={{ height: 360 }}
+            onOpenAutoFocus={(e) => e.preventDefault()}
+          >
+            <div className="flex h-full flex-col">
           {/* Header */}
           <div className="flex items-center gap-1.5 border-b border-border px-3 py-2">
             <button
@@ -366,9 +362,11 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
             ) : (
               <span className="text-muted-foreground">{t('selectDirectory')}</span>
             )}
+            </div>
           </div>
-        </div>
-      )}
+        </PopoverContent>
+      </Popover>
+      </div>
     </div>
   );
 }
