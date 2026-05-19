@@ -613,9 +613,13 @@ function copyAgentTemplateToWorkspace(agentId: string, agentspaceDir: string): v
   if (existsSync(skillsDir)) {
     const workspaceSkillsDir = join(agentspaceDir, 'skills');
     ensureDir(workspaceSkillsDir);
-    for (const file of readdirSync(skillsDir)) {
-      if (extname(file).toLowerCase() === '.md') {
-        copyFileSync(join(skillsDir, file), join(workspaceSkillsDir, file));
+    for (const entry of readdirSync(skillsDir)) {
+      const source = join(skillsDir, entry);
+      const sourceStat = statSync(source);
+      if (sourceStat.isDirectory()) {
+        cpSync(source, join(workspaceSkillsDir, entry), { recursive: true, force: true });
+      } else if (sourceStat.isFile() && extname(entry).toLowerCase() === '.md') {
+        copyFileSync(source, join(workspaceSkillsDir, entry));
       }
     }
   }

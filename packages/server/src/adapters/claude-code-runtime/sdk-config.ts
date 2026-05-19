@@ -1,6 +1,6 @@
-import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs';
+import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { extname, isAbsolute, resolve } from 'node:path';
+import { basename, extname, isAbsolute, resolve } from 'node:path';
 import { join } from 'node:path';
 import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import type { McpServerConfig, PermissionMode } from '@anthropic-ai/claude-agent-sdk';
@@ -145,7 +145,7 @@ function isMuslRuntime(): boolean {
 export function normalizeSkillNames(skills?: string[], configDir?: string): string[] {
   if (!Array.isArray(skills)) return [];
   return skills
-    .map((skill) => skill.trim().replace(/\.md$/i, ''))
+    .map(sanitizeSkillName)
     .filter((skill) => Boolean(skill) && hasSkillContent(skill, configDir));
 }
 
@@ -159,17 +159,43 @@ export function prepareConfigDir(configDir: string, agentDir?: string): void {
   mkdirSync(targetSkillsDir, { recursive: true });
 
   if (!existsSync(sourceSkillsDir)) return;
-  for (const file of readdirSync(sourceSkillsDir)) {
-    if (extname(file).toLowerCase() !== '.md') continue;
-    copyFileSync(join(sourceSkillsDir, file), join(targetSkillsDir, file));
+  for (const entry of readdirSync(sourceSkillsDir)) {
+    const source = join(sourceSkillsDir, entry);
+    const sourceStat = statSync(source);
+
+    if (sourceStat.isDirectory()) {
+      const skillName = sanitizeSkillName(entry);
+      if (!skillName) continue;
+      const sourceSkillFile = join(source, 'SKILL.md');
+      const targetSkillDir = join(targetSkillsDir, skillName);
+      if (existsSync(sourceSkillFile) && statSync(sourceSkillFile).size > 0) {
+        cpSync(source, targetSkillDir, { recursive: true, force: true });
+      }
+      continue;
+    }
+
+    if (!sourceStat.isFile() || extname(entry).toLowerCase() !== '.md') continue;
+    const skillName = sanitizeSkillName(entry);
+    if (!skillName || sourceStat.size === 0) continue;
+    const targetSkillDir = join(targetSkillsDir, skillName);
+    mkdirSync(targetSkillDir, { recursive: true });
+    writeFileSync(join(targetSkillDir, 'SKILL.md'), readFileSync(source, 'utf-8'), 'utf-8');
+    copyFileSync(source, join(targetSkillsDir, `${skillName}.md`));
   }
 }
 
 function hasSkillContent(skill: string, configDir?: string): boolean {
   if (!configDir) return true;
-  const skillFile = join(configDir, 'skills', `${skill}.md`);
-  if (!existsSync(skillFile)) return false;
-  return statSync(skillFile).size > 0;
+  const skillFile = join(configDir, 'skills', skill, 'SKILL.md');
+  if (existsSync(skillFile) && statSync(skillFile).size > 0) return true;
+
+  const legacySkillFile = join(configDir, 'skills', `${skill}.md`);
+  return existsSync(legacySkillFile) && statSync(legacySkillFile).size > 0;
+}
+
+function sanitizeSkillName(name: string): string {
+  const raw = basename(name).replace(/\.md$/i, '').trim();
+  return raw.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '');
 }
 
 export function normalizePermissionMode(permissionMode?: AgentRuntimeConfig['permissionMode']): PermissionMode {

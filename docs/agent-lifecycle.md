@@ -15,7 +15,13 @@ Agent 数据分为全局应用数据和工作空间数据两部分。
       agent.json
       mcp.json
       skills/
-        *.md
+        {skillName}/
+          SKILL.md
+          ...（其他文件）
+  skills/
+    {skillName}/
+      SKILL.md
+      ...（其他文件）
 ```
 
 工作空间数据：
@@ -27,9 +33,13 @@ Agent 数据分为全局应用数据和工作空间数据两部分。
       agent.json
       mcp.json
       skills/
-        *.md
+        {skillName}/
+          SKILL.md
+          ...（其他文件）
   skills/
-    *.md
+    {skillName}/
+      SKILL.md
+      ...（其他文件）
 ```
 
 工作空间记录也会在 `workspace.agents` 中存储 Agent Preset。
@@ -46,7 +56,9 @@ Agent 数据分为全局应用数据和工作空间数据两部分。
 }
 ```
 
-`AgentConfig.skills` 在工作空间 JSON 中存储的是 Markdown 技能文件名列表。通过 Web UI 创建/更新时，上传的 Markdown 文件以包含 `name` 和 `content` 的对象形式发送；服务端将它们写入磁盘，在 Preset 中只存储标准化后的文件名。
+`AgentConfig.skills` 存储的是技能名称列表（不含 `.md` 后缀）。通过 Web UI 创建/更新时，上传的 Markdown 文件以包含 `name` 和 `content` 的对象形式发送；服务端将它们写入磁盘，在 Preset 中只存储标准化后的名称。
+
+全局技能采用文件夹结构：每个技能是一个以技能名命名的文件夹，内含 `SKILL.md` 作为主文件。绑定技能到 Agent 时，整个技能文件夹会被复制到 Agent 的 `skills/` 目录下，而非只复制单个 `.md` 文件。
 
 ## 创建 Agent Preset
 
@@ -63,11 +75,11 @@ UI 入口：
 3. 服务端在 `~/.agent-spaces-data/agent-templates/{agentId}` 下写入全局模板：
    - `agent.json`
    - `mcp.json`
-   - `skills/*.md`
+   - `skills/{skillName}/SKILL.md`（从全局技能文件夹复制）
 4. 如果 `workingDir` 为空，服务端同时将模板复制到工作空间作为配置存储：
    - `{workspace.agentspaceDir}/agents/{agentId}`
 5. 当 `workingDir` 为空时，保存在 `workspace.agents` 中的 Preset 保持 `workingDir` 为空。
-6. 上传的技能 Markdown 文件也会被复制到：
+6. 绑定的技能文件夹也会被复制到：
    - `{workspace.agentspaceDir}/skills`
 
 如果提供了 `workingDir`，服务端保留该显式路径。运行时配置文件和技能仍然从工作空间的 Agent 配置副本中读取。
@@ -84,8 +96,8 @@ UI 入口：
 
 1. 服务端将更新合并到现有工作空间 Preset 中。
 2. MCP 配置被标准化为 JSON 对象。
-3. 技能上传数据被标准化为 Markdown 文件名。
-4. `~/.agent-spaces-data/agent-templates/{agentId}` 下的全局模板被重写。
+3. 技能名称被标准化（不含 `.md` 后缀）。
+4. `~/.agent-spaces-data/agent-templates/{agentId}` 下的全局模板被重写，技能文件夹从全局 `skills/` 目录整体复制。
 5. `workspace.agents` 中的工作空间 Preset 被更新。
 
 当前行为：更新现有 Preset 会刷新全局模板。除非更新路径显式写入工作空间副本，否则不会自动将完整模板文件夹重新复制到每个工作空间。
@@ -111,7 +123,7 @@ API：
    - 全局模板文件夹被复制到 `{workspace.agentspaceDir}/agents/{agentId}`。
    - 工作空间副本中的 `agent.json` 被重写，使 `workingDir` 指向 `{workspace.agentspaceDir}/agents/{agentId}`。
    - 工作空间 Preset 被添加到 `workspace.agents`。
-   - Markdown 技能被复制到 `{workspace.agentspaceDir}/skills`。
+   - 技能文件夹被复制到 `{workspace.agentspaceDir}/skills`。
 
 这意味着全局模板可以保留自己的源元数据，而工作空间副本始终将运行时执行指向工作空间本地的 Agent 文件夹。
 
