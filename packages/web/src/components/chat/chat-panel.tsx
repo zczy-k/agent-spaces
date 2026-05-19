@@ -59,13 +59,14 @@ interface ChatPanelProps {
 export function ChatPanel({ workspaceId }: ChatPanelProps) {
   const t = useTranslations('chat');
   const tc = useTranslations('common');
-  const { activeChannelId, channels, messages, loadMessages, sendMessage, addMessage, updateMessage, stopProcessingMessages, deleteMessage, clearMessages, upsertChannel } = useChannelStore();
+  const { activeChannelId, channels, messages, loadMessages, loadChannelState, sendMessage, addMessage, updateMessage, stopProcessingMessages, deleteMessage, clearMessages, upsertChannel } = useChannelStore();
   const bottomRef = useRef<HTMLDivElement>(null);
   const [infoOpen, setInfoOpen] = useState(false);
   const [deletingMsg, setDeletingMsg] = useState<Message | null>(null);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<{ id: string; label: string } | null>(null);
   const [messagesLoading, setMessagesLoading] = useState(false);
+  const [channelActive, setChannelActive] = useState(false);
   const chatInputRef = useRef<ChatInputHandle>(null);
 
   const agents = useAgentStore((s) => s.agents);
@@ -76,6 +77,7 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
     () => activeChannelId ? (messages[activeChannelId] || []) : [],
     [activeChannelId, messages],
   );
+  const lastMessageStatus = msgs[msgs.length - 1]?.status;
   const pendingQuestion = useMemo(() => findPendingQuestion(msgs), [msgs]);
 
   const mentionAgents = useMemo(() => {
@@ -94,6 +96,7 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
 
   useEffect(() => {
     if (activeChannelId) {
+      setChannelActive(false);
       setMessagesLoading(true);
       loadMessages(workspaceId, activeChannelId).finally(() => setMessagesLoading(false));
     }
@@ -148,25 +151,36 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
     if (container) container.scrollTop = 0;
   }, [msgs.length]);
 
-  // Poll for message updates when agent is active
+  // Poll channel state and then refresh messages. This is intentionally driven
+  // by the HTTP state endpoint so waiting-for-user state does not depend only
+  // on potentially missed WebSocket updates.
   useEffect(() => {
     if (!activeChannelId || !workspaceId) return;
-    const last = msgs[msgs.length - 1];
-    if (!last || !['pending', 'streaming', 'waiting_for_user'].includes(last.status ?? '')) return;
+    const needsPolling = Boolean(lastMessageStatus && ['pending', 'streaming', 'waiting_for_user'].includes(lastMessageStatus)) || channelActive;
+    if (!needsPolling) return;
 
-    const interval = setInterval(() => {
-      loadMessages(workspaceId, activeChannelId);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [activeChannelId, workspaceId, msgs.length, msgs[msgs.length - 1]?.status, loadMessages]);
+    let cancelled = false;
+    const poll = async () => {
+      const state = await loadChannelState(workspaceId, activeChannelId);
+      if (cancelled || !state) return;
+      setChannelActive(state.active);
+      await loadMessages(workspaceId, activeChannelId);
+    };
+    const interval = setInterval(poll, 3000);
+    void poll();
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [activeChannelId, workspaceId, channelActive, lastMessageStatus, loadMessages, loadChannelState]);
 
   const handleSend = useCallback((content: string, mentions: string[], attachments?: Message['attachments'], replyToMessageId?: string) => {
     if (!activeChannelId) return;
     sendMessage(workspaceId, activeChannelId, content, mentions, attachments, replyToMessageId);
   }, [workspaceId, activeChannelId, sendMessage]);
 
-  const isProcessing = msgs.length > 0
-    && ['pending', 'streaming', 'waiting_for_user'].includes(msgs[msgs.length - 1].status ?? '');
+  const isProcessing = channelActive || (msgs.length > 0
+    && ['pending', 'streaming', 'waiting_for_user'].includes(msgs[msgs.length - 1].status ?? ''));
 
   const handleStop = useCallback(() => {
     if (!activeChannelId) return;

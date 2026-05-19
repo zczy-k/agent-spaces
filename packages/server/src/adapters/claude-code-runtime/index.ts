@@ -90,14 +90,14 @@ export class ClaudeCodeRuntime implements AgentRuntime {
           options?.onEvent?.({ type: 'session', sessionId });
         }
         const toolUses = extractToolUseEvents(message);
+        let sawAskUserQuestion = false;
         for (const toolUse of toolUses) {
           if (toolUse.name === 'AskUserQuestion') {
             pendingAskUserQuestionToolIds.add(toolUse.id);
             waitingForUserAnswer = true;
-            break;
+            sawAskUserQuestion = true;
           }
         }
-        if (waitingForUserAnswer) break;
         const toolResult = extractToolResultEvent(message);
         const suppressAskUserQuestionResult = Boolean(
           toolResult
@@ -145,6 +145,8 @@ export class ClaudeCodeRuntime implements AgentRuntime {
             error = message.errors.join('\n') || message.subtype;
           }
         }
+
+        if (sawAskUserQuestion) break;
       }
 
       const elapsed = Date.now() - startTime;

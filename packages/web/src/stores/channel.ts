@@ -15,6 +15,7 @@ interface ChannelStore {
   updateChannel: (workspaceId: string, channelId: string, data: Partial<Pick<Channel, 'name' | 'type' | 'issueId' | 'members' | 'pinnedMentionId' | 'draft' | 'todos' | 'notifyOnComplete' | 'archived'>>) => Promise<Channel>;
   setActiveChannel: (id: string) => void;
   loadMessages: (workspaceId: string, channelId: string) => Promise<void>;
+  loadChannelState: (workspaceId: string, channelId: string) => Promise<ChannelState | null>;
   sendMessage: (workspaceId: string, channelId: string, content: string, mentions?: string[], attachments?: Message['attachments'], replyToMessageId?: string) => void;
   addMessage: (channelId: string, message: Message) => void;
   updateMessage: (channelId: string, message: Message) => void;
@@ -28,6 +29,17 @@ interface ChannelStore {
   clearDraft: (workspaceId: string, channelId: string) => Promise<void>;
   /** Ensure channel exists in store (fetch from server if missing), then activate it */
   ensureAndActivateChannel: (workspaceId: string, channelId: string) => Promise<void>;
+}
+
+export interface ChannelState {
+  channelId: string;
+  active: boolean;
+  lastMessage: {
+    id: string;
+    status?: Message['status'];
+    metadata?: Message['metadata'];
+    hasPendingQuestion?: boolean;
+  } | null;
 }
 
 const STORAGE_KEY_PREFIX = 'agent-spaces:channel:';
@@ -102,6 +114,12 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
     const res = await fetch(`/api/workspaces/${workspaceId}/channels/${channelId}/messages`);
     const msgs: Message[] = await res.json();
     set((s) => ({ messages: { ...s.messages, [channelId]: msgs } }));
+  },
+
+  loadChannelState: async (workspaceId, channelId) => {
+    const res = await fetch(`/api/workspaces/${workspaceId}/channels/${channelId}/state`);
+    if (!res.ok) return null;
+    return await res.json() as ChannelState;
   },
 
   sendMessage: (workspaceId, channelId, content, mentions = [], attachments = [], replyToMessageId) => {

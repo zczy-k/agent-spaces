@@ -2,7 +2,7 @@ import { Router, type Request, type Response } from 'express';
 import { listChannels, createChannel, getChannel, updateChannel, deleteChannel } from '../services/channel.js';
 import { listMessages, createMessage, updateMessage, deleteMessage, clearMessages } from '../services/message.js';
 import { broadcastToWorkspace } from '../ws/connection-manager.js';
-import { hasActiveChannelRuns, markInactiveChannelRunsStopped, stopChannelRuns } from '../ws/agent-runner.js';
+import { hasActiveChannelRuns, stopChannelRuns } from '../ws/agent-runner.js';
 import { getToolDetail } from '../services/tool-detail.js';
 import * as issueService from '../services/issue.js';
 
@@ -72,10 +72,27 @@ router.get('/:channelId/messages', (req: Request<ChannelParams>, res: Response) 
   const { id, channelId } = req.params;
   const { limit, before } = req.query;
   if (!getChannel(id, channelId!)) { res.status(404).json({ error: 'channel not found' }); return; }
-  if (!hasActiveChannelRuns(id, channelId!)) {
-    markInactiveChannelRunsStopped(id, channelId!);
-  }
   res.json(listMessages(id, channelId!, { limit: limit ? Number(limit) : undefined, before: before as string | undefined }));
+});
+
+// GET /api/workspaces/:id/channels/:channelId/state
+router.get('/:channelId/state', (req: Request<ChannelParams>, res: Response) => {
+  const { id, channelId } = req.params;
+  if (!getChannel(id, channelId!)) { res.status(404).json({ error: 'channel not found' }); return; }
+  const messages = listMessages(id, channelId!, { limit: 1 });
+  const lastMessage = messages.at(-1);
+  res.json({
+    channelId,
+    active: hasActiveChannelRuns(id, channelId!),
+    lastMessage: lastMessage ? {
+      id: lastMessage.id,
+      status: lastMessage.status,
+      metadata: lastMessage.metadata,
+      hasPendingQuestion: Boolean(lastMessage.parts?.some((part) => (
+        part.type === 'ask_user_question' && part.status !== 'answered' && !part.answer
+      ))),
+    } : null,
+  });
 });
 
 // GET /api/workspaces/:id/channels/:channelId/messages/:messageId/tool-details/:detailId
