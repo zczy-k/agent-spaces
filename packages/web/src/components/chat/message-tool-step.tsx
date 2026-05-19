@@ -2,11 +2,23 @@
 
 import type { Message, MessagePart } from "@agent-spaces/shared"
 import type { LucideIcon } from "lucide-react"
-import { BookOpenIcon, BotIcon, CheckCircle2Icon, CheckIcon, ChevronDownIcon, CircleIcon, CopyIcon, FileEditIcon, FileTextIcon, FolderSearchIcon, GlobeIcon, CircleHelpIcon, MessageSquareTextIcon, PencilIcon, SearchIcon, SquareCheckIcon, TerminalIcon, WebhookIcon, WrenchIcon } from "lucide-react"
-import { useState } from "react"
+import { BookOpenIcon, BotIcon, CheckCircle2Icon, CheckIcon, ChevronDownIcon, CircleIcon, CopyIcon, EyeIcon, FileEditIcon, FileTextIcon, FolderSearchIcon, GlobeIcon, CircleHelpIcon, MessageSquareTextIcon, PencilIcon, SearchIcon, SquareCheckIcon, TerminalIcon, WebhookIcon, WrenchIcon } from "lucide-react"
+import { useState, useCallback } from "react"
 import { useTranslations } from "next-intl"
 import { Markdown } from "@/components/ui/markdown"
 import { Button } from "@/components/ui/button"
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { useEditorStore } from "@/stores/editor"
 import { cn } from "@/lib/utils"
 import { DiffViewer } from "@/components/git/diff-viewer"
@@ -98,6 +110,7 @@ export function ToolStep({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [viewOpen, setViewOpen] = useState(false)
   const t = useTranslations('chat')
 
   const handleOpenFile = async () => {
@@ -105,7 +118,7 @@ export function ToolStep({
     await openFile(workspaceId, chain.filePath)
   }
 
-  const loadDetail = async () => {
+  const loadDetail = useCallback(async () => {
     if (detail || !chain.detailId) return detail
     setLoading(true)
     setError(null)
@@ -123,7 +136,7 @@ export function ToolStep({
     } finally {
       setLoading(false)
     }
-  }
+  }, [detail, chain.detailId, workspaceId, message.channelId, message.id, t])
 
   const handleToggleDetail = async () => {
     const nextOpen = !open
@@ -142,52 +155,60 @@ export function ToolStep({
     } catch { /* clipboard unavailable */ }
   }
 
+  const handleView = async () => {
+    await loadDetail()
+    setViewOpen(true)
+  }
+
   return (
     <ChainOfThoughtStep
       icon={getToolIcon(chain.toolName, status)}
       label={
-        <div className="group/tool-step flex min-w-0 items-center gap-1.5 overflow-hidden">
-          <span className="shrink-0">{chain.filePath ? chain.title.replace(new RegExp(`\\s+${escapeRegExp(fileName(chain.filePath))}$`), "") : chain.title}</span>
-          {chain.description ? (
-            <span className="min-w-0 shrink truncate text-muted-foreground text-xs">
-              {chain.description}
-            </span>
-          ) : null}
-          {chain.filePath ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-6 max-w-48 shrink gap-1 px-1.5 text-xs"
-              onClick={handleOpenFile}
-            >
-              <FileTextIcon className="size-3 shrink-0" />
-              <span className="truncate">{chain.filePath}</span>
-            </Button>
-          ) : null}
-          <div className="ml-auto flex shrink-0 items-center">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-5 opacity-0 transition-opacity group-hover/tool-step:opacity-100 focus-visible:opacity-100"
-              onClick={handleCopy}
-            >
-              {copied ? <CheckIcon className="size-3 text-green-500" /> : <CopyIcon className="size-3" />}
-            </Button>
-            {chain.detailId ? (
+        <ContextMenu>
+          <ContextMenuTrigger className="group/tool-step flex min-w-0 items-center gap-1.5 overflow-hidden">
+            <span className="shrink-0">{chain.filePath ? chain.title.replace(new RegExp(`\\s+${escapeRegExp(fileName(chain.filePath))}$`), "") : chain.title}</span>
+            {chain.description ? (
+              <span className="min-w-0 shrink truncate text-muted-foreground text-xs">
+                {chain.description}
+              </span>
+            ) : null}
+            {chain.filePath ? (
               <Button
                 type="button"
                 variant="ghost"
-                size="icon"
-                className="size-5"
-                onClick={handleToggleDetail}
+                size="sm"
+                className="h-6 max-w-48 shrink gap-1 px-1.5 text-xs"
+                onClick={handleOpenFile}
               >
-                <ChevronDownIcon className={cn("size-3.5 transition-transform", open && "rotate-180")} />
+                <FileTextIcon className="size-3 shrink-0" />
+                <span className="truncate">{chain.filePath}</span>
               </Button>
             ) : null}
-          </div>
-        </div>
+            <div className="ml-auto flex shrink-0 items-center">
+              {chain.detailId ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-5"
+                  onClick={handleToggleDetail}
+                >
+                  <ChevronDownIcon className={cn("size-3.5 transition-transform", open && "rotate-180")} />
+                </Button>
+              ) : null}
+            </div>
+          </ContextMenuTrigger>
+          <ContextMenuContent>
+            <ContextMenuItem onClick={handleCopy}>
+              {copied ? <CheckIcon className="size-4 text-green-500" /> : <CopyIcon className="size-4" />}
+              {t('messageParts.copy')}
+            </ContextMenuItem>
+            <ContextMenuItem onClick={handleView}>
+              <EyeIcon className="size-4" />
+              {t('messageParts.view')}
+            </ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
       }
       description={chain.command}
       status={status}
@@ -205,6 +226,15 @@ export function ToolStep({
           )}
         </div>
       ) : null}
+      <ToolDetailDialog
+        open={viewOpen}
+        onOpenChange={setViewOpen}
+        detail={detail}
+        toolName={chain.toolName}
+        loading={loading}
+        error={error}
+        t={t}
+      />
     </ChainOfThoughtStep>
   )
 }
@@ -374,6 +404,59 @@ function extractOutputFileContent(output: unknown) {
   }
 
   return undefined
+}
+
+function ToolDetailDialog({
+  open,
+  onOpenChange,
+  detail,
+  toolName,
+  loading,
+  error,
+  t,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  detail: ToolDetailData | null
+  toolName?: string
+  loading: boolean
+  error: string | null
+  t: ReturnType<typeof useTranslations>
+}) {
+  const inputStr = detail ? formatDetailValue(detail.input) : ""
+  const outputStr = detail ? formatDetailValue(detail.output) : ""
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>{toolName ?? t('messageParts.raw')}</DialogTitle>
+        </DialogHeader>
+        {loading ? (
+          <div className="py-8 text-center text-muted-foreground text-sm">{t('messageParts.loadingDetails')}</div>
+        ) : error ? (
+          <div className="py-8 text-center text-destructive text-sm">{error}</div>
+        ) : detail ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-1.5">
+              <div className="text-xs font-medium text-muted-foreground">{t('messageParts.input')}</div>
+              <div className="max-h-80 overflow-auto rounded-md border bg-muted/40 p-3">
+                <pre className="whitespace-pre-wrap break-all font-mono text-xs">{inputStr || "-"}</pre>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <div className="text-xs font-medium text-muted-foreground">{t('messageParts.output')}</div>
+              <div className="max-h-80 overflow-auto rounded-md border bg-muted/40 p-3">
+                <pre className="whitespace-pre-wrap break-all font-mono text-xs">{outputStr || "-"}</pre>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="py-8 text-center text-muted-foreground text-sm">{t('messageParts.noDetails')}</div>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
 }
 
 function stringValue(value: unknown) {

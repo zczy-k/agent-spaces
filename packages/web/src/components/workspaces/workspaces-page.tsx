@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from "next/navigation"
-import { FolderOpen, MoreHorizontal, Pencil, Trash2, FolderSearch } from 'lucide-react'
+import { FolderOpen, MoreHorizontal, Pencil, Plus, Trash2, FolderSearch } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
 import { Button } from '@/components/ui/button'
@@ -87,11 +87,13 @@ export function WorkspacesPage({ initialWorkspaces }: { initialWorkspaces: Works
         ) : (
           <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
             {workspaces.map((ws) => (
-              <button
+              <div
                 key={ws.id}
-                type="button"
+                role="button"
+                tabIndex={0}
                 onClick={() => tauriNavigate(router, `/workspace/${ws.id}`)}
-                className='group relative rounded-2xl border border-border bg-card p-5 hover:shadow-card-hover transition-all duration-200 block'
+                onKeyDown={(e) => { if (e.key === 'Enter') tauriNavigate(router, `/workspace/${ws.id}`) }}
+                className='group relative cursor-pointer rounded-2xl border border-border bg-card p-5 hover:shadow-card-hover transition-all duration-200 block'
               >
                 <DropdownMenu>
                   <DropdownMenuTrigger
@@ -125,7 +127,7 @@ export function WorkspacesPage({ initialWorkspaces }: { initialWorkspaces: Works
                 <p className='text-sm text-muted-foreground mt-1 truncate'>
                   {ws.boundDirs.join(', ')}
                 </p>
-              </button>
+              </div>
             ))}
           </div>
         )}

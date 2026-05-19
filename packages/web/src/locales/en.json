@@ -434,7 +434,9 @@
       "noDetails": "No details available.",
       "raw": "Raw",
       "input": "Input",
-      "output": "Output"
+      "output": "Output",
+      "copy": "Copy",
+      "view": "View"
     },
     "chainOfThought": {
       "defaultHeader": "Chain of Thought"
