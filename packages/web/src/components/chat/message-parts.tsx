@@ -134,23 +134,25 @@ function MessagePartView({
             {visibleChains.map((chain) => {
               const completed = chain.status === "completed"
               if (chain.kind === "message") {
-                return (
-                  <AiMessageStep
-                    key={chain.id}
-                    text={chain.text ?? chain.title}
-                    status={completed ? "complete" : "active"}
-                  />
-                )
-              }
               return (
-                <ToolStep
+                <AiMessageStep
                   key={chain.id}
-                  chain={chain}
-                  message={message}
-                  workspaceId={workspaceId}
+                  text={chain.text ?? chain.title}
                   status={completed ? "complete" : "active"}
+                  persistentContextSummary={persistentContextSummary}
                 />
               )
+            }
+            return (
+              <ToolStep
+                key={chain.id}
+                chain={chain}
+                message={message}
+                workspaceId={workspaceId}
+                status={completed ? "complete" : "active"}
+                persistentContextSummary={persistentContextSummary}
+              />
+            )
             })}
           </ChainOfThoughtContent>
         </ChainOfThought>

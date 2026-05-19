@@ -84,14 +84,10 @@ export const ChainOfThought = memo(
 
 export type ChainOfThoughtHeaderProps = ComponentProps<typeof CollapsibleTrigger> & {
   loading?: boolean
-  contextSummary?: {
-    claudeMd: number
-    total: number
-  }
 }
 
 export const ChainOfThoughtHeader = memo(
-  ({ className, children, loading, contextSummary, ...props }: ChainOfThoughtHeaderProps) => {
+  ({ className, children, loading, ...props }: ChainOfThoughtHeaderProps) => {
     const { isOpen, setIsOpen } = useChainOfThought()
     const t = useTranslations('chat')
 
@@ -106,11 +102,6 @@ export const ChainOfThoughtHeader = memo(
           >
           <BrainIcon className="size-4" />
           <span className="flex-1 text-left">{children ?? t('chainOfThought.defaultHeader')}</span>
-          {typeof contextSummary?.total === "number" ? (
-            <Badge variant="secondary" className="h-5 shrink-0 px-1.5 font-mono text-[10px] font-normal">
-              指令文件 {contextSummary.total}
-            </Badge>
-          ) : null}
           {loading && <Loader size={14} />}
           <ChevronDownIcon
             className={cn("size-4 transition-transform", isOpen ? "rotate-180" : "rotate-0")}

@@ -23,13 +23,10 @@ import { useEditorStore } from "@/stores/editor"
 import { cn } from "@/lib/utils"
 import { DiffViewer } from "@/components/git/diff-viewer"
 import {
-  ChainOfThought,
-  ChainOfThoughtContent,
-  ChainOfThoughtHeader,
   ChainOfThoughtStep,
 } from "./chain-of-thought"
-import { Terminal } from "./terminal"
 import { ReadonlyCodeBlock } from "./readonly-code-block"
+import { Terminal } from "./terminal"
 
 const toolIconMap: Record<string, LucideIcon> = {
   Read: BookOpenIcon,
@@ -98,11 +95,16 @@ export function ToolStep({
   message,
   workspaceId,
   status,
+  persistentContextSummary,
 }: {
   chain: Extract<MessagePart, { type: "chain" }>["chains"][number]
   message: Message
   workspaceId: string
   status: "complete" | "active"
+  persistentContextSummary?: {
+    claudeMd: number
+    total: number
+  }
 }) {
   const openFile = useEditorStore((state) => state.openFile)
   const [open, setOpen] = useState(false)
@@ -164,51 +166,58 @@ export function ToolStep({
     <ChainOfThoughtStep
       icon={getToolIcon(chain.toolName, status)}
       label={
-        <ContextMenu>
-          <ContextMenuTrigger className="group/tool-step flex min-w-0 items-center gap-1.5 overflow-hidden">
-            <span className="shrink-0">{chain.filePath ? chain.title.replace(new RegExp(`\\s+${escapeRegExp(fileName(chain.filePath))}$`), "") : chain.title}</span>
-            {chain.description ? (
-              <span className="min-w-0 shrink truncate text-muted-foreground text-xs">
-                {chain.description}
-              </span>
-            ) : null}
-            {chain.filePath ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-6 max-w-48 shrink gap-1 px-1.5 text-xs"
-                onClick={handleOpenFile}
-              >
-                <FileTextIcon className="size-3 shrink-0" />
-                <span className="truncate">{chain.filePath}</span>
-              </Button>
-            ) : null}
-            <div className="ml-auto flex shrink-0 items-center">
-              {chain.detailId ? (
+        <div className="flex min-w-0 items-center gap-1.5">
+          <ContextMenu>
+            <ContextMenuTrigger className="group/tool-step flex min-w-0 items-center gap-1.5 overflow-hidden">
+              <span className="shrink-0">{chain.filePath ? chain.title.replace(new RegExp(`\\s+${escapeRegExp(fileName(chain.filePath))}$`), "") : chain.title}</span>
+              {chain.description ? (
+                <span className="min-w-0 shrink truncate text-muted-foreground text-xs">
+                  {chain.description}
+                </span>
+              ) : null}
+              {chain.filePath ? (
                 <Button
                   type="button"
                   variant="ghost"
-                  size="icon"
-                  className="size-5"
-                  onClick={handleToggleDetail}
+                  size="sm"
+                  className="h-6 max-w-48 shrink gap-1 px-1.5 text-xs"
+                  onClick={handleOpenFile}
                 >
-                  <ChevronDownIcon className={cn("size-3.5 transition-transform", open && "rotate-180")} />
+                  <FileTextIcon className="size-3 shrink-0" />
+                  <span className="truncate">{chain.filePath}</span>
                 </Button>
               ) : null}
-            </div>
-          </ContextMenuTrigger>
-          <ContextMenuContent>
-            <ContextMenuItem onClick={handleCopy}>
-              {copied ? <CheckIcon className="size-4 text-green-500" /> : <CopyIcon className="size-4" />}
-              {t('messageParts.copy')}
-            </ContextMenuItem>
-            <ContextMenuItem onClick={handleView}>
-              <EyeIcon className="size-4" />
-              {t('messageParts.view')}
-            </ContextMenuItem>
-          </ContextMenuContent>
-        </ContextMenu>
+            </ContextMenuTrigger>
+            <ContextMenuContent>
+              <ContextMenuItem onClick={handleCopy}>
+                {copied ? <CheckIcon className="size-4 text-green-500" /> : <CopyIcon className="size-4" />}
+                {t('messageParts.copy')}
+              </ContextMenuItem>
+              <ContextMenuItem onClick={handleView}>
+                <EyeIcon className="size-4" />
+                {t('messageParts.view')}
+              </ContextMenuItem>
+            </ContextMenuContent>
+          </ContextMenu>
+          {persistentContextSummary ? (
+            <span className="rounded-full border bg-muted/50 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+              指令文件 {persistentContextSummary.total}
+            </span>
+          ) : null}
+          <div className="ml-auto flex shrink-0 items-center">
+            {chain.detailId ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-5"
+                onClick={handleToggleDetail}
+              >
+                <ChevronDownIcon className={cn("size-3.5 transition-transform", open && "rotate-180")} />
+              </Button>
+            ) : null}
+          </div>
+        </div>
       }
       description={chain.command}
       status={status}
@@ -423,9 +432,6 @@ function ToolDetailDialog({
   error: string | null
   t: ReturnType<typeof useTranslations>
 }) {
-  const inputStr = detail ? formatDetailValue(detail.input) : ""
-  const outputStr = detail ? formatDetailValue(detail.output) : ""
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-3xl">
@@ -438,18 +444,18 @@ function ToolDetailDialog({
           <div className="py-8 text-center text-destructive text-sm">{error}</div>
         ) : detail ? (
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <div className="text-xs font-medium text-muted-foreground">{t('messageParts.input')}</div>
-              <div className="max-h-80 overflow-auto rounded-md border bg-muted/40 p-3">
-                <pre className="whitespace-pre-wrap break-all font-mono text-xs">{inputStr || "-"}</pre>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <div className="text-xs font-medium text-muted-foreground">{t('messageParts.output')}</div>
-              <div className="max-h-80 overflow-auto rounded-md border bg-muted/40 p-3">
-                <pre className="whitespace-pre-wrap break-all font-mono text-xs">{outputStr || "-"}</pre>
-              </div>
-            </div>
+            <ReadonlyCodeBlock
+              title={t('messageParts.input')}
+              value={formatDetailValue(detail.input) || "-"}
+              language={isJsonValue(detail.input) ? "json" : "plaintext"}
+              height={320}
+            />
+            <ReadonlyCodeBlock
+              title={t('messageParts.output')}
+              value={formatDetailValue(detail.output) || "-"}
+              language={isJsonValue(detail.output) ? "json" : "plaintext"}
+              height={320}
+            />
           </div>
         ) : (
           <div className="py-8 text-center text-muted-foreground text-sm">{t('messageParts.noDetails')}</div>
