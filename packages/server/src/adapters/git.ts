@@ -7,6 +7,21 @@ import { existsSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { broadcastToWorkspace } from '../ws/connection-manager.js';
 
+const BINARY_EXTENSIONS = new Set([
+  'png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'svg', 'tiff', 'tif',
+  'mp3', 'mp4', 'wav', 'avi', 'mov', 'mkv', 'flv', 'wmv', 'webm',
+  'zip', 'tar', 'gz', 'bz2', 'xz', '7z', 'rar', 'dmg', 'iso',
+  'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
+  'woff', 'woff2', 'ttf', 'otf', 'eot',
+  'exe', 'dll', 'so', 'dylib', 'bin', 'dat',
+  'sqlite', 'db', 'pyc', 'o', 'obj', 'class', 'jar', 'wasm',
+]);
+
+function isBinaryPath(filePath: string): boolean {
+  const ext = filePath.split('.').pop()?.toLowerCase();
+  return ext ? BINARY_EXTENSIONS.has(ext) : true;
+}
+
 const gitInstances = new Map<string, SimpleGit>();
 
 function getGitOptions(): Partial<import('simple-git').SimpleGitOptions> {
@@ -129,9 +144,9 @@ export async function gitDiff(workspaceId: string, filePath?: string): Promise<G
 
     diffs.push({
       path: filePath,
-      oldContent,
-      newContent,
-      isBinary: false,
+      oldContent: isBinaryPath(filePath) ? '' : oldContent,
+      newContent: isBinaryPath(filePath) ? '' : newContent,
+      isBinary: isBinaryPath(filePath),
       isNew: !oldContent,
       isDeleted: !newContent,
     });
@@ -140,8 +155,9 @@ export async function gitDiff(workspaceId: string, filePath?: string): Promise<G
     const files = raw.split('\n').filter(Boolean);
 
     for (const f of files) {
-      const oldContent = await git.show([`HEAD:${f}`]).catch(() => '');
-      const newContent = await import('node:fs/promises').then(fs =>
+      const binary = isBinaryPath(f);
+      const oldContent = binary ? '' : await git.show([`HEAD:${f}`]).catch(() => '');
+      const newContent = binary ? '' : await import('node:fs/promises').then(fs =>
         fs.readFile(`${ws.boundDirs[0]}/${f}`, 'utf-8')
       ).catch(() => '');
 
@@ -149,7 +165,7 @@ export async function gitDiff(workspaceId: string, filePath?: string): Promise<G
         path: f,
         oldContent,
         newContent,
-        isBinary: false,
+        isBinary: binary,
         isNew: !oldContent,
         isDeleted: !newContent,
       });
@@ -158,15 +174,16 @@ export async function gitDiff(workspaceId: string, filePath?: string): Promise<G
     // Also check untracked (staged new files)
     const status = await git.status();
     for (const f of status.not_added) {
-      const newContent = await import('node:fs/promises').then(fs =>
+      const binary = isBinaryPath(f);
+      const newContent = binary ? '' : await import('node:fs/promises').then(fs =>
         fs.readFile(`${ws.boundDirs[0]}/${f}`, 'utf-8')
       ).catch(() => '');
-      if (newContent) {
+      if (newContent || binary) {
         diffs.push({
           path: f,
           oldContent: '',
-          newContent,
-          isBinary: false,
+          newContent: binary ? '' : newContent,
+          isBinary: binary,
           isNew: true,
           isDeleted: false,
         });
@@ -373,9 +390,10 @@ export async function gitCommitDiff(workspaceId: string, commitHash: string): Pr
 
   const diffs: GitDiffResult[] = [];
   for (const f of files) {
-    const oldContent = await git.show([`${commitHash}^:${f}`]).catch(() => '');
-    const newContent = await git.show([`${commitHash}:${f}`]).catch(() => '');
-    diffs.push({ path: f, oldContent, newContent, isBinary: false, isNew: !oldContent, isDeleted: !newContent });
+    const binary = isBinaryPath(f);
+    const oldContent = binary ? '' : await git.show([`${commitHash}^:${f}`]).catch(() => '');
+    const newContent = binary ? '' : await git.show([`${commitHash}:${f}`]).catch(() => '');
+    diffs.push({ path: f, oldContent, newContent, isBinary: binary, isNew: !oldContent, isDeleted: !newContent });
   }
   return diffs;
 }

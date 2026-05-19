@@ -152,36 +152,36 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
                   </PopoverContent>
                 </Popover>
               ) : (
-              <Collapsible
-                open={isOpen}
-                onOpenChange={(open) =>
-                  setOpenSet((prev) => {
-                    const next = new Set(prev);
-                    if (open) next.add(route.id);
-                    else next.delete(route.id);
-                    return next;
-                  })
-                }
-                className="w-full"
-              >
-                <CollapsibleTrigger render={<SidebarMenuButton className={cn(
-                                              "group/hdr flex flex-1 items-center rounded-lg px-2 transition-colors",
-                                              isOpen
-                                                ? "bg-sidebar-muted text-foreground"
-                                                : "text-muted-foreground hover:bg-sidebar-muted hover:text-foreground",
-                                            )} />}>{route.icon}{
-                                              <span className="ml-2 flex-1 text-sm font-medium">
-                                                {route.title}
-                                              </span>
-                                            }{hasSubRoutes && (
-                                              <span>
-                                                {isOpen ? (
-                                                  <ChevronUp className="size-4" />
-                                                ) : (
-                                                  <ChevronDown className="size-4" />
-                                                )}
-                                              </span>
-                                            )}</CollapsibleTrigger>
+                <Collapsible
+                  open={isOpen}
+                  onOpenChange={(open) =>
+                    setOpenSet((prev) => {
+                      const next = new Set(prev);
+                      if (open) next.add(route.id);
+                      else next.delete(route.id);
+                      return next;
+                    })
+                  }
+                  className="w-full"
+                >
+                  <CollapsibleTrigger render={<SidebarMenuButton className={cn(
+                    "group/hdr flex flex-1 items-center rounded-lg px-2 transition-colors",
+                    isOpen
+                      ? "bg-sidebar-muted text-foreground"
+                      : "text-muted-foreground hover:bg-sidebar-muted hover:text-foreground",
+                  )} />}>{route.icon}{
+                      <span className="ml-2 flex-1 text-sm font-medium">
+                        {route.title}
+                      </span>
+                    }{hasSubRoutes && (
+                      <span>
+                        {isOpen ? (
+                          <ChevronUp className="size-4" />
+                        ) : (
+                          <ChevronDown className="size-4" />
+                        )}
+                      </span>
+                    )}</CollapsibleTrigger>
 
                   <CollapsibleContent>
                     <SidebarMenuSub className="my-1 ml-3.5">
@@ -192,39 +192,39 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
                         >
                           <div className="group/sub relative flex items-center">
                             <SidebarMenuSubButton
-                            render={
-                              subRoute.onClick
-                                ? <button
+                              render={
+                                subRoute.onClick
+                                  ? <button
                                     type="button"
                                     onClick={subRoute.onClick}
                                     className="flex w-full items-center rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-muted hover:text-foreground"
                                   />
-                                : <button type="button" onClick={() => navigate(subRoute.link)} className="flex w-full items-center rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-muted hover:text-foreground" />
-                            }
-                          >{subRoute.title}</SidebarMenuSubButton>
+                                  : <button type="button" onClick={() => navigate(subRoute.link)} className="flex w-full items-center rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-muted hover:text-foreground" />
+                              }
+                            >{subRoute.title}</SidebarMenuSubButton>
 
-                          {subRoute.menuItems && subRoute.menuItems.length > 0 && (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger
-                                className="absolute right-1 flex items-center justify-center rounded-md p-0.5 opacity-0 group-hover/sub:opacity-100 hover:bg-sidebar-muted transition-opacity cursor-pointer"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <MoreHorizontal className="size-3.5 text-muted-foreground" />
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" side="right">
-                                {subRoute.menuItems.map((item) => (
-                                  <DropdownMenuItem
-                                    key={item.label}
-                                    variant={item.variant}
-                                    onClick={item.onClick}
-                                  >
-                                    {item.icon}
-                                    {item.label}
-                                  </DropdownMenuItem>
-                                ))}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
+                            {subRoute.menuItems && subRoute.menuItems.length > 0 && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger
+                                  className="absolute right-1 flex items-center justify-center rounded-md p-0.5 opacity-0 group-hover/sub:opacity-100 hover:bg-sidebar-muted transition-opacity cursor-pointer"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <MoreHorizontal className="size-3.5 text-muted-foreground" />
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" side="right">
+                                  {subRoute.menuItems.map((item) => (
+                                    <DropdownMenuItem
+                                      key={item.label}
+                                      variant={item.variant}
+                                      onClick={item.onClick}
+                                    >
+                                      {item.icon}
+                                      {item.label}
+                                    </DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
                           </div>
                         </SidebarMenuSubItem>
                       ))}
@@ -254,17 +254,17 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
                       )}
                     </SidebarMenuSub>
                   </CollapsibleContent>
-              </Collapsible>
+                </Collapsible>
               )
             ) : (
               <SidebarMenuButton tooltip={route.title} render={<button type="button" onClick={() => navigate(route.link)} className={cn(
-                                            "flex items-center rounded-lg px-2 transition-colors text-muted-foreground hover:bg-sidebar-muted hover:text-foreground",
-                                            isCollapsed && "justify-center"
-                                          )} />}>{route.icon}{!isCollapsed && (
-                                            <span className="ml-2 text-sm font-medium">
-                                              {route.title}
-                                            </span>
-                                          )}</SidebarMenuButton>
+                "flex items-center rounded-lg px-2 transition-colors text-muted-foreground hover:bg-sidebar-muted hover:text-foreground",
+                isCollapsed && "justify-center"
+              )} />}>{route.icon}{!isCollapsed && (
+                <span className="ml-2 text-sm font-medium">
+                  {route.title}
+                </span>
+              )}</SidebarMenuButton>
             )}
           </SidebarMenuItem>
         );

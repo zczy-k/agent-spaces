@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Search, CaseSensitive, Regex, ChevronRight, ChevronDown, File, Loader2 } from "lucide-react";
+import { Search, CaseSensitive, Regex, ChevronRight, ChevronDown, Loader2 } from "lucide-react";
+import { FileIconImg } from "./file-icon";
 import { useEditorStore } from "@/stores/editor";
 import { useTranslations } from "next-intl";
 import type { CodeSearchResult } from "@agent-spaces/shared";
@@ -166,7 +167,7 @@ export function SearchPanel({ workspaceId }: SearchPanelProps) {
                     ) : (
                       <ChevronRight className="size-3 text-muted-foreground shrink-0" />
                     )}
-                    <File className="size-3 text-muted-foreground shrink-0" />
+                    <FileIconImg name={file} />
                     <span className="truncate">{file}</span>
                     <span className="text-muted-foreground ml-auto shrink-0">({matches.length})</span>
                   </button>

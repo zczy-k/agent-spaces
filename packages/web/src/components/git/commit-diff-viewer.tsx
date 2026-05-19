@@ -49,7 +49,7 @@ export function CommitDiffViewer({ diffs, message }: CommitDiffViewerProps) {
             </button>
             {!isCollapsed && (
               <div className="h-64">
-                <DiffViewer oldContent={diff.oldContent} newContent={diff.newContent} path={diff.path} />
+                <DiffViewer oldContent={diff.oldContent} newContent={diff.newContent} path={diff.path} isBinary={diff.isBinary} />
               </div>
             )}
           </div>

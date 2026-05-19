@@ -327,7 +327,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
         {/* Commit list or Diff */}
         {selectedDiff ? (
           <div className="flex-1 min-h-0">
-            <DiffViewer oldContent={selectedDiff.oldContent} newContent={selectedDiff.newContent} path={selectedDiff.path} />
+            <DiffViewer oldContent={selectedDiff.oldContent} newContent={selectedDiff.newContent} path={selectedDiff.path} isBinary={selectedDiff.isBinary} />
           </div>
         ) : (
           <div className="min-h-0 flex-1 overflow-y-auto">

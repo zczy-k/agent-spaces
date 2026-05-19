@@ -95,7 +95,7 @@ function DesktopLayout({ diffs, selectedFile, onSelect, selectedDiff }: {
       </div>
       <div className="flex-1 min-h-0">
         {selectedDiff ? (
-          <DiffViewer oldContent={selectedDiff.oldContent} newContent={selectedDiff.newContent} path={selectedDiff.path} />
+          <DiffViewer oldContent={selectedDiff.oldContent} newContent={selectedDiff.newContent} path={selectedDiff.path} isBinary={selectedDiff.isBinary} />
         ) : (
           <div className="flex items-center justify-center h-full text-xs text-muted-foreground">Select a file</div>
         )}
@@ -122,7 +122,7 @@ function MobileLayout({ diffs, selectedFile, onSelect, selectedDiff }: {
       </div>
       <div className="flex-1 min-h-0">
         {selectedDiff ? (
-          <DiffViewer oldContent={selectedDiff.oldContent} newContent={selectedDiff.newContent} path={selectedDiff.path} />
+          <DiffViewer oldContent={selectedDiff.oldContent} newContent={selectedDiff.newContent} path={selectedDiff.path} isBinary={selectedDiff.isBinary} />
         ) : (
           <div className="flex items-center justify-center h-full text-xs text-muted-foreground">Select a file</div>
         )}

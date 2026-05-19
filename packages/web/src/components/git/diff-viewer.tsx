@@ -14,6 +14,7 @@ interface DiffViewerProps {
   newContent: string;
   path: string;
   language?: string;
+  isBinary?: boolean;
   /** 只展示修改代码部分及上下文，默认 true */
   compactDiff?: boolean;
 }
@@ -159,6 +160,7 @@ export function DiffViewer({
   oldContent,
   newContent,
   path,
+  isBinary,
   compactDiff = true,
 }: DiffViewerProps) {
   const language = detectLanguage(path);
@@ -210,6 +212,12 @@ export function DiffViewer({
         </button>
       </div>
       <div className="flex-1">
+        {isBinary ? (
+          <div className="flex items-center justify-center h-full text-muted-foreground text-sm gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+            二进制文件，不支持预览
+          </div>
+        ) : (
         <DiffEditor
           original={displayOld}
           modified={displayNew}
@@ -225,6 +233,7 @@ export function DiffViewer({
             lineNumbers: "on",
           }}
         />
+        )}
       </div>
     </div>
   );
