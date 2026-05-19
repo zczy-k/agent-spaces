@@ -34,6 +34,7 @@ interface PendingQuestionRun {
 }
 
 interface RunMentionedAgentOptions {
+  agentSessionId?: string;
   messageId?: string;
   seedOutput?: string[];
   seedQuestions?: PendingAskUserQuestion[];
@@ -177,6 +178,7 @@ export function handleAnswerQuestion(_ws: WebSocket, workspaceId: string, data: 
       'Continue from this answer and complete the original task.',
     ].join('\n'),
     {
+      agentSessionId: message.metadata?.agentSessionId,
       messageId,
       seedOutput: normalizeOutputLines([message.content]),
       seedQuestions: seedQuestion ? [seedQuestion] : [],
@@ -195,12 +197,19 @@ export async function runMentionedAgent(
   const preset = agentService.listPresets(workspaceId)?.find((agent) => agent.id === agentConfigId);
   if (!preset || preset.enabled === false) return;
 
-  const session = agentService.create(workspaceId, preset.role, preset.id);
-  broadcastToWorkspace(workspaceId, 'agent.started', session);
-  agentService.updateStatus(workspaceId, session.id, 'active');
+  const session = options.agentSessionId
+    ? agentService.getById(workspaceId, options.agentSessionId)
+    : null;
+  const nextSession = session ?? agentService.create(workspaceId, preset.role, preset.id);
+  const sessionChanged = !session;
+  const previousStatus = nextSession.status;
+  if (!sessionChanged) {
+    broadcastToWorkspace(workspaceId, 'agent.started', nextSession);
+  }
+  agentService.updateStatus(workspaceId, nextSession.id, 'active');
   broadcastToWorkspace(workspaceId, 'agent.status_changed', {
-    agentId: session.id,
-    from: 'idle',
+    agentId: nextSession.id,
+    from: previousStatus,
     to: 'active',
   });
 
@@ -234,7 +243,7 @@ export async function runMentionedAgent(
       status: 'streaming',
       metadata: {
         ...existingMessage.metadata,
-        agentSessionId: session.id,
+        agentSessionId: nextSession.id,
         runtimeSessionId: options.resumeSessionId ?? existingMessage.metadata?.runtimeSessionId,
         runtime: preset.runtimeKind,
         model: preset.modelId,
@@ -248,14 +257,14 @@ export async function runMentionedAgent(
       type: 'text',
       status: 'streaming',
       metadata: {
-        agentSessionId: session.id,
+        agentSessionId: nextSession.id,
         runtime: preset.runtimeKind,
         model: preset.modelId,
         duration: 0,
       },
       parts: [
         {
-          id: `reasoning-${session.id}`,
+          id: `reasoning-${nextSession.id}`,
           type: 'reasoning',
           text: 'Preparing agent runtime and loading conversation context...',
           status: 'streaming',
@@ -285,7 +294,7 @@ export async function runMentionedAgent(
       ...getThinkingRuntimeConfig(preset),
     });
     activeRun = {
-      agentId: session.id,
+      agentId: nextSession.id,
       agentConfigId,
       messageId: pending.id,
       runtime,
@@ -318,7 +327,7 @@ export async function runMentionedAgent(
       if (!force && now - lastLiveUpdate < 120) return;
       lastLiveUpdate = now;
       const parts = buildAgentMessageParts({
-        sessionId: session.id,
+        sessionId: nextSession.id,
         workspaceRoot: workspace?.boundDirs?.[0],
         presetName: preset.name || preset.role,
         role: preset.role,
@@ -339,7 +348,7 @@ export async function runMentionedAgent(
         askUserQuestions,
         success: true,
       });
-      const displayParts = buildContinuationParts(existingMessage?.parts, session.id, options.appendUserMessage, parts);
+      const displayParts = buildContinuationParts(existingMessage?.parts, nextSession.id, options.appendUserMessage, parts);
       if (displayParts.length === 0) return;
 
       const status = askUserQuestions.some((question) => !question.answer) ? 'waiting_for_user' : 'streaming';
@@ -379,7 +388,7 @@ export async function runMentionedAgent(
         }
         if (event.type === 'reasoning') {
           liveReasoning.push({ text: event.text, status: event.status });
-          broadcastToWorkspace(workspaceId, 'agent.output', { agentId: session.id, data: event.text });
+          broadcastToWorkspace(workspaceId, 'agent.output', { agentId: nextSession.id, data: event.text });
           broadcastLiveParts();
           return;
         }
@@ -431,7 +440,7 @@ export async function runMentionedAgent(
             toolName: event.name,
             text: event.line,
           }));
-          broadcastToWorkspace(workspaceId, 'agent.output', { agentId: session.id, data: event.line });
+          broadcastToWorkspace(workspaceId, 'agent.output', { agentId: nextSession.id, data: event.line });
           broadcastLiveParts();
           return;
         }
@@ -475,7 +484,7 @@ export async function runMentionedAgent(
           type: 'output',
           text: event.line,
         }));
-        broadcastToWorkspace(workspaceId, 'agent.output', { agentId: session.id, data: event.line });
+        broadcastToWorkspace(workspaceId, 'agent.output', { agentId: nextSession.id, data: event.line });
         broadcastLiveParts();
       },
     });
@@ -485,8 +494,8 @@ export async function runMentionedAgent(
     const displayOutput = mergeRuntimeOutput(liveOutput, result.output);
     if (shouldWaitForUserAnswer(askUserQuestions, result.summary, result.error, displayOutput)) {
       const waitingOutput = stripAskUserQuestionErrorLines(liveOutput);
-      const waitingParts = buildContinuationParts(existingMessage?.parts, session.id, options.appendUserMessage, buildAgentMessageParts({
-        sessionId: session.id,
+      const waitingParts = buildContinuationParts(existingMessage?.parts, nextSession.id, options.appendUserMessage, buildAgentMessageParts({
+        sessionId: nextSession.id,
         workspaceRoot: workspace?.boundDirs?.[0],
         presetName: preset.name || preset.role,
         role: preset.role,
@@ -511,7 +520,7 @@ export async function runMentionedAgent(
         type: 'text',
         status: 'waiting_for_user',
         metadata: {
-          agentSessionId: session.id,
+          agentSessionId: nextSession.id,
           runtimeSessionId: result.sessionId ?? runtimeSessionId,
           runtime: preset.runtimeKind,
           model: preset.modelId,
@@ -521,9 +530,9 @@ export async function runMentionedAgent(
         parts: waitingParts,
       });
       if (waiting) broadcastToWorkspace(workspaceId, 'channel.message.updated', waiting);
-      agentService.updateStatus(workspaceId, session.id, 'blocked');
+      agentService.updateStatus(workspaceId, nextSession.id, 'blocked');
       broadcastToWorkspace(workspaceId, 'agent.status_changed', {
-        agentId: session.id,
+        agentId: nextSession.id,
         from: 'active',
         to: 'blocked',
       });
@@ -532,11 +541,11 @@ export async function runMentionedAgent(
 
     if (liveOutput.length === 0) {
       for (const line of result.output) {
-        broadcastToWorkspace(workspaceId, 'agent.output', { agentId: session.id, data: line });
+        broadcastToWorkspace(workspaceId, 'agent.output', { agentId: nextSession.id, data: line });
       }
     }
 
-    agentService.complete(workspaceId, session.id, result.success ? undefined : result.error, {
+    agentService.complete(workspaceId, nextSession.id, result.success ? undefined : result.error, {
       runtime: preset.runtimeKind,
       model: preset.modelId,
       summary: result.summary,
@@ -546,7 +555,7 @@ export async function runMentionedAgent(
       costUsd: result.costUsd,
     });
     broadcastToWorkspace(workspaceId, 'agent.completed', {
-      agentId: session.id,
+      agentId: nextSession.id,
       channelId,
       result: {
         success: result.success,
@@ -557,8 +566,8 @@ export async function runMentionedAgent(
       error: result.error,
     });
 
-    const replyParts = buildContinuationParts(existingMessage?.parts, session.id, options.appendUserMessage, buildAgentMessageParts({
-      sessionId: session.id,
+    const replyParts = buildContinuationParts(existingMessage?.parts, nextSession.id, options.appendUserMessage, buildAgentMessageParts({
+      sessionId: nextSession.id,
       workspaceRoot: workspace?.boundDirs?.[0],
       presetName: preset.name || preset.role,
       role: preset.role,
@@ -590,7 +599,7 @@ export async function runMentionedAgent(
       type: 'text',
       status: result.success ? 'completed' : 'error',
       metadata: {
-        agentSessionId: session.id,
+        agentSessionId: nextSession.id,
         runtimeSessionId: result.sessionId ?? runtimeSessionId,
         runtime: preset.runtimeKind,
         model: preset.modelId,
@@ -603,16 +612,16 @@ export async function runMentionedAgent(
   } catch (err) {
     if (activeRun?.stopped) return;
     const error = err instanceof Error ? err.message : String(err);
-    agentService.complete(workspaceId, session.id, error, {
+    agentService.complete(workspaceId, nextSession.id, error, {
       runtime: preset.runtimeKind,
       model: preset.modelId,
       summary: error,
       output: [error],
       durationMs: Date.now() - startTime,
     });
-    broadcastToWorkspace(workspaceId, 'agent.error', { agentId: session.id, error });
-    const errorParts = buildContinuationParts(existingMessage?.parts, session.id, options.appendUserMessage, buildAgentMessageParts({
-      sessionId: session.id,
+    broadcastToWorkspace(workspaceId, 'agent.error', { agentId: nextSession.id, error });
+    const errorParts = buildContinuationParts(existingMessage?.parts, nextSession.id, options.appendUserMessage, buildAgentMessageParts({
+      sessionId: nextSession.id,
       workspaceRoot: workspace?.boundDirs?.[0],
       presetName: preset.name || preset.role,
       role: preset.role,
@@ -643,7 +652,7 @@ export async function runMentionedAgent(
       type: 'text',
       status: 'error',
       metadata: {
-        agentSessionId: session.id,
+        agentSessionId: nextSession.id,
         runtimeSessionId,
         runtime: preset.runtimeKind,
         model: preset.modelId,
@@ -653,7 +662,7 @@ export async function runMentionedAgent(
     });
     if (reply) broadcastToWorkspace(workspaceId, 'channel.message.updated', reply);
   } finally {
-    untrackChannelRun(workspaceId, channelId, session.id);
+    untrackChannelRun(workspaceId, channelId, nextSession.id);
   }
 }
 

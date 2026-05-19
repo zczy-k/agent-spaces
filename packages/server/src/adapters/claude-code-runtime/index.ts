@@ -93,8 +93,11 @@ export class ClaudeCodeRuntime implements AgentRuntime {
         for (const toolUse of toolUses) {
           if (toolUse.name === 'AskUserQuestion') {
             pendingAskUserQuestionToolIds.add(toolUse.id);
+            waitingForUserAnswer = true;
+            break;
           }
         }
+        if (waitingForUserAnswer) break;
         const toolResult = extractToolResultEvent(message);
         const suppressAskUserQuestionResult = Boolean(
           toolResult
@@ -145,6 +148,20 @@ export class ClaudeCodeRuntime implements AgentRuntime {
       }
 
       const elapsed = Date.now() - startTime;
+      if (waitingForUserAnswer) {
+        d(`waiting for user answer ${elapsed}ms | turns=${turns} tokens=${tokenCount}`);
+        if (usageLine) output.push(usageLine);
+        return {
+          success: true,
+          summary: 'Waiting for user answer',
+          artifacts: [],
+          output,
+          usage,
+          costUsd,
+          sessionId,
+        };
+      }
+
       if (!sawResult) {
         const runtimeError = extractRuntimeError([...stderrLines, ...output])
           || 'Claude Code execution stopped before reporting a final result';
