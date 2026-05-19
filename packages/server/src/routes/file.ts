@@ -238,4 +238,46 @@ router.post('/upload', async (req: Request<{ id: string }>, res: Response) => {
   res.json({ ok: true, paths: results });
 });
 
+router.get('/download', async (req: Request<{ id: string }>, res: Response) => {
+  const ws = fileService.getWorkspace(req.params.id);
+  if (!ws) { res.status(404).json({ error: 'Workspace not found' }); return; }
+
+  const path = req.query.path as string;
+  if (!path) { res.status(400).json({ error: 'path is required' }); return; }
+
+  const abs = fileService.resolvePath(ws, path);
+  if (!abs || !existsSync(abs)) { res.status(404).json({ error: 'File not found' }); return; }
+
+  const stat = statSync(abs);
+  if (stat.isDirectory()) { res.status(400).json({ error: 'Cannot download a directory' }); return; }
+
+  const ext = extname(path).toLowerCase();
+  const mime = MIME_MAP[ext] || 'application/octet-stream';
+  const fileName = path.split('/').pop() || 'download';
+
+  // Handle Range requests for large files
+  const range = req.headers.range;
+  if (range) {
+    const parts = range.replace(/bytes=/, '').split('-');
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : stat.size - 1;
+    const chunkSize = end - start + 1;
+
+    res.status(206);
+    res.setHeader('Content-Range', `bytes ${start}-${end}/${stat.size}`);
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Content-Length', chunkSize);
+    res.setHeader('Content-Type', mime);
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
+    createReadStream(abs, { start, end }).pipe(res);
+    return;
+  }
+
+  res.setHeader('Content-Type', mime);
+  res.setHeader('Content-Length', stat.size);
+  res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
+  res.setHeader('Accept-Ranges', 'bytes');
+  createReadStream(abs).pipe(res);
+});
+
 export default router;

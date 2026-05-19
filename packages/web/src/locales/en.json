@@ -715,6 +715,8 @@
     "rename": "Rename",
     "move": "Move",
     "copyFile": "Copy",
+    "download": "Download",
+    "copyDownloadUrl": "Copy Download URL",
     "renameTitle": "Rename",
     "renamePlaceholder": "Enter new name",
     "moveTitle": "Move to",

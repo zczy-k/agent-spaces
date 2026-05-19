@@ -717,6 +717,8 @@
     "rename": "重命名",
     "move": "移动",
     "copyFile": "复制",
+    "download": "下载",
+    "copyDownloadUrl": "获取下载地址",
     "renameTitle": "重命名",
     "renamePlaceholder": "输入新名称",
     "moveTitle": "移动到",

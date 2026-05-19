@@ -10,6 +10,7 @@ import { RefreshCw, Ellipsis, Upload, Copy, FolderPlus, FilePlus, Search, X } fr
 import { FileIconImg, FolderIconImg } from "./file-icon";
 import { useTranslations } from 'next-intl';
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -481,10 +482,10 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
           </div>
         </TabsContent>
 
-        <TabsContent value="search" forceMount className="flex-1 min-h-0 mt-0 data-[state=inactive]:hidden">
-          <SearchPanel workspaceId={workspaceId} />
-        </TabsContent>
       </Tabs>
+      <div className={cn("flex-1 min-h-0", sidebarTab !== 'search' && "hidden")}>
+        <SearchPanel workspaceId={workspaceId} />
+      </div>
       <ImportFileDialog
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}

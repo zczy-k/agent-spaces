@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronRightIcon, FileIcon, FolderIcon, FolderOpenIcon, Trash2, ExternalLink, Upload, Copy, FolderPlus, FilePlus, AlertTriangle, Pencil, MoveRight } from "lucide-react"
+import { ChevronRightIcon, FileIcon, FolderIcon, FolderOpenIcon, Trash2, ExternalLink, Upload, Copy, FolderPlus, FilePlus, AlertTriangle, Pencil, MoveRight, Download, Link } from "lucide-react"
 import { createContext, type HTMLAttributes, type ReactNode, useContext, useState, useCallback, useEffect, useRef } from "react"
 /**
  * @title React AI File Tree
@@ -365,6 +365,21 @@ export const FileTreeFile = ({
     fetch(`/api/workspaces/${workspaceId}/files/reveal?path=${encodeURIComponent(path)}`, { method: 'POST' })
   }
 
+  const handleDownload = () => {
+    const url = `/api/workspaces/${workspaceId}/files/download?path=${encodeURIComponent(path)}`
+    const a = document.createElement('a')
+    a.href = url
+    a.download = ''
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+  }
+
+  const handleCopyDownloadUrl = () => {
+    const url = `${window.location.origin}/api/workspaces/${workspaceId}/files/download?path=${encodeURIComponent(path)}`
+    navigator.clipboard.writeText(url)
+  }
+
   return (
     <FileTreeFileContext.Provider value={{ path, name }}>
       <ContextMenu>
@@ -429,6 +444,15 @@ export const FileTreeFile = ({
           <ContextMenuItem onClick={handleReveal}>
             <ExternalLink className="size-4" />
             {t('revealInFinder')}
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem onClick={handleDownload}>
+            <Download className="size-4" />
+            {t('download')}
+          </ContextMenuItem>
+          <ContextMenuItem onClick={handleCopyDownloadUrl}>
+            <Link className="size-4" />
+            {t('copyDownloadUrl')}
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
