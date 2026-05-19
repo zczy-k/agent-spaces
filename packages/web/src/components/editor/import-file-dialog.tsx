@@ -131,13 +131,17 @@ export function ImportFileDialog({ open, onOpenChange, workspaceId, targetPath, 
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[520px]">
+      <DialogContent className="sm:max-w-[520px] overflow-hidden">
         <DialogHeader>
           <DialogTitle>{t("importFile")}</DialogTitle>
           <DialogDescription>{t("importFileDesc")}</DialogDescription>
         </DialogHeader>
-        <Tabs defaultValue="url" className="w-full flex flex-col gap-3">
+        <Tabs defaultValue="upload" className="w-full flex flex-col gap-3">
           <TabsList className="w-full grid grid-cols-3">
+             <TabsTrigger value="upload" className="gap-1 text-xs">
+              <Upload className="size-3" />
+              {t("importUpload")}
+            </TabsTrigger>
             <TabsTrigger value="url" className="gap-1 text-xs">
               <Globe className="size-3" />
               {t("importOnline")}
@@ -146,11 +150,13 @@ export function ImportFileDialog({ open, onOpenChange, workspaceId, targetPath, 
               <FolderInput className="size-3" />
               {t("importInternal")}
             </TabsTrigger>
-            <TabsTrigger value="upload" className="gap-1 text-xs">
-              <Upload className="size-3" />
-              {t("importUpload")}
-            </TabsTrigger>
           </TabsList>
+           <TabsContent value="upload" className="space-y-3 pt-2">
+            <FileUpload value={uploadFiles} onChange={setUploadFiles} />
+            <Button className="w-full" onClick={handleUpload} disabled={uploadFiles.length === 0 || loading}>
+              {loading ? <Loader2 className="size-4 animate-spin" /> : t("importUpload")}
+            </Button>
+          </TabsContent>
           <TabsContent value="url" className="space-y-3 pt-2">
             <Input placeholder="https://example.com/file.js" value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleUrlImport()} />
             <Button className="w-full" onClick={handleUrlImport} disabled={!url.trim() || loading}>
@@ -161,12 +167,6 @@ export function ImportFileDialog({ open, onOpenChange, workspaceId, targetPath, 
             <FolderPicker value={internalPath} onChange={setInternalPath} allowFiles />
             <Button className="w-full" onClick={handleInternalImport} disabled={!internalPath.trim() || loading}>
               {loading ? <Loader2 className="size-4 animate-spin" /> : t("importInternal")}
-            </Button>
-          </TabsContent>
-          <TabsContent value="upload" className="space-y-3 pt-2">
-            <FileUpload value={uploadFiles} onChange={setUploadFiles} />
-            <Button className="w-full" onClick={handleUpload} disabled={uploadFiles.length === 0 || loading}>
-              {loading ? <Loader2 className="size-4 animate-spin" /> : t("importUpload")}
             </Button>
           </TabsContent>
         </Tabs>
