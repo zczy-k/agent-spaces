@@ -4,7 +4,7 @@
 
 ## 模块职责
 
-前后端共享的 TypeScript 类型定义包。定义了所有核心数据模型、WebSocket 事件契约、结构化消息 Parts、内置工具声明、通知设置、Agent 用量统计、Workflow 模板、快捷命令、订阅管理、代码搜索、语音识别、应用内通知等接口类型，供 server 和 web 包共同引用。
+前后端共享的 TypeScript 类型定义包。定义了所有核心数据模型、WebSocket 事件契约、结构化消息 Parts、内置工具声明、通知设置、Agent 用量统计、Workflow 模板、快捷命令、订阅管理、代码搜索、语音识别、应用内通知、代码收藏等接口类型，供 server 和 web 包共同引用。
 
 ## 入口与启动
 
@@ -28,12 +28,13 @@
 | `types/llm.ts` | `LLMModel`, `LLMProvider`, `LLMModelCost`, `LLMThinkingEffort` | LLM 模型（含成本配置、思考模式）与供应商 |
 | `types/tool.ts` | `BUILT_IN_AGENT_TOOLS`, `BuiltInAgentToolName` | 内置 Agent 工具声明 |
 | `types/workflow.ts` | `WorkflowTemplate`, `WorkflowNode`, `WorkflowEdge` | Workflow DAG 模板（节点绑定 Agent Preset，边定义执行依赖） |
-| `types/command.ts` | `QuickCommand`, `CommandProcess`, `CommandProcessEvent` | 快捷命令定义、运行进程状态、进程生命周期事件（**新**） |
-| `types/subscription.ts` | `SubscriptionProvider`, `SubscriptionConfig`, `SubscriptionQuota`, `SubscriptionLimit` | 订阅管理（智谱/MiniMax/AICode 供应商 + 配额查询）（**新**） |
-| `types/search.ts` | `CodeSearchResult`, `FileSearchResult`, `SearchCodeOptions` | 代码搜索结果和查询选项（**新**） |
-| `types/notification.ts` | `NotificationType`, `AppNotification` | 应用内通知类型和模型（issue_completed/issue_failed/task_completed/task_failed）（**新**） |
-| `types/speech.ts` | `SpeechRecognitionProvider`, `SpeechRecognitionConfig`, `SpeechRecognitionResult`, `TencentSpeechCredentials` | 语音识别配置和结果（腾讯语音）（**新**） |
-| `types/events.ts` | `WSEvent<T>`, `ClientEventMap`, `ServerEventMap` | WebSocket 事件契约（含 workflow + command + notification 事件） |
+| `types/command.ts` | `QuickCommand`, `CommandProcess`, `CommandProcessEvent` | 快捷命令定义、运行进程状态、进程生命周期事件 |
+| `types/subscription.ts` | `SubscriptionProvider`, `SubscriptionConfig`, `SubscriptionQuota`, `SubscriptionLimit` | 订阅管理（智谱/MiniMax/AICode 供应商 + 配额查询） |
+| `types/search.ts` | `CodeSearchResult`, `FileSearchResult`, `SearchCodeOptions` | 代码搜索结果和查询选项 |
+| `types/notification.ts` | `NotificationType`, `AppNotification` | 应用内通知类型和模型（issue_completed/issue_failed/task_completed/task_failed） |
+| `types/speech.ts` | `SpeechRecognitionProvider`, `SpeechRecognitionConfig`, `SpeechRecognitionResult`, `TencentSpeechCredentials` | 语音识别配置和结果（腾讯语音） |
+| `types/code-favorites.ts` | `CodeFavorite` | 代码收藏（id/path/line/column/endLine/endColumn/label/snippet/workspaceId）（**新**） |
+| `types/events.ts` | `WSEvent<T>`, `ClientEventMap`, `ServerEventMap` | WebSocket 事件契约（含 workflow + command + notification + inspector 事件） |
 
 ### AgentConfig 与 Role 体系
 
@@ -58,6 +59,11 @@
 - `templateId`: 标识由哪个模板创建（用于导入去重）
 - `enabled`: 是否启用
 
+### CodeFavorite 详情
+
+代码收藏系统（**新**）：
+- `CodeFavorite`: 收藏项（id, path, line, column, endLine, endColumn, label?, snippet?, createdAt, workspaceId）
+
 ### WorkflowTemplate 详情
 
 Workflow 是 Issue 自动化的可视化 DAG 模板：
@@ -67,14 +73,14 @@ Workflow 是 Issue 自动化的可视化 DAG 模板：
 
 ### QuickCommand 与 CommandProcess
 
-快捷命令系统（**新**）：
+快捷命令系统：
 - `QuickCommand`: 自定义命令定义（id, name, command, folder?, cwd?, shell?, env?, autoRestart?, timestamps）
 - `CommandProcess`: 运行中进程状态（commandId, workspaceId, sessionId, status: 'running'|'stopping', startedAt, restartCount）
 - `CommandProcessEvent`: 进程生命周期事件（commandId, sessionId?, workspaceId, exitCode?, restartCount?）
 
 ### SubscriptionProvider 与 SubscriptionQuota
 
-订阅管理系统（**新**）：
+订阅管理系统：
 - `SubscriptionProvider`: 'zhipu' | 'minimax' | 'aicode'
 - `SubscriptionConfig`: 供应商配置（id, provider, label, headers?, cookie?, timestamps）
 - `SubscriptionQuota`: 配额查询结果（provider, label, limits[], fetchedAt）
@@ -82,20 +88,20 @@ Workflow 是 Issue 自动化的可视化 DAG 模板：
 
 ### CodeSearchResult 与 SearchCodeOptions
 
-代码搜索系统（**新**）：
+代码搜索系统：
 - `CodeSearchResult`: 搜索结果（file, line, column, text, matchStart, matchLength）
 - `FileSearchResult`: 文件搜索结果（path, name, type: 'file'|'directory'）
 - `SearchCodeOptions`: 搜索选项（query, regex?, caseSensitive?, filePattern?, maxResults?）
 
 ### AppNotification 与 NotificationType
 
-应用内通知系统（**新**）：
+应用内通知系统：
 - `NotificationType`: 'issue_completed' | 'issue_failed' | 'task_completed' | 'task_failed'
 - `AppNotification`: 通知对象（id, workspaceId, type, title, description?, data, read, createdAt）
 
 ### SpeechRecognitionConfig 与 SpeechRecognitionResult
 
-语音识别系统（**新**）：
+语音识别系统：
 - `SpeechRecognitionProvider`: 'tencent'
 - `SpeechRecognitionConfig`: 配置（id, provider, label, credentials, timestamps）
 - `SpeechRecognitionResult`: 识别结果（text, isFinal, sliceType）
@@ -160,7 +166,7 @@ AI 消息通过 `parts` 字段实现结构化展示：
 |----------|----------|------|
 | `types/events.ts` | `WSEvent<T>` | WebSocket 事件基础结构 |
 | `types/events.ts` | `ClientEventMap` | 客户端->服务端事件映射（9 个事件） |
-| `types/events.ts` | `ServerEventMap` | 服务端->客户端事件映射（26 个事件，含 workflow.created/updated/deleted + command.started/stopped/restarted + notification.created/cleared） |
+| `types/events.ts` | `ServerEventMap` | 服务端->客户端事件映射（含 workflow + command + notification + inspector 事件） |
 
 ### 状态枚举
 
@@ -198,6 +204,7 @@ TodoItemStatus: pending | in_progress | completed
 - **Q: SubscriptionProvider 支持哪些供应商？** A: `zhipu`（智谱）、`minimax`（MiniMax）、`aicode`（AI Code）。
 - **Q: SpeechRecognitionProvider 支持哪些供应商？** A: 当前仅 `tencent`（腾讯语音），通过 `SpeechRecognitionProviderBase` 抽象可扩展。
 - **Q: QuickCommand 的 autoRestart 是什么？** A: 命令进程意外退出时自动重启。
+- **Q: CodeFavorite 的 endLine/endColumn 有什么用？** A: 标记收藏的代码范围（可以是多行选中区域），前端显示时使用 label 和 snippet 预览。
 
 ## 相关文件清单
 
@@ -216,7 +223,7 @@ packages/shared/
       channel.ts                # Channel + TodoItem + Message + Attachment + MessagePart + MessageChain + MessageMetadata
       file.ts                   # FileNode
       git.ts                    # Git 操作结果类型
-      events.ts                 # WebSocket 事件契约（9个客户端事件 + 26个服务端事件，含 workflow + command + notification 事件）
+      events.ts                 # WebSocket 事件契约
       llm.ts                    # LLMModel + LLMProvider + LLMModelCost + LLMThinkingEffort
       tool.ts                   # BUILT_IN_AGENT_TOOLS + BuiltInAgentToolName
       workflow.ts               # WorkflowTemplate + WorkflowNode + WorkflowEdge（DAG 模板定义）
@@ -225,14 +232,16 @@ packages/shared/
       search.ts                 # CodeSearchResult + FileSearchResult + SearchCodeOptions（代码搜索）
       notification.ts           # NotificationType + AppNotification（应用内通知）
       speech.ts                 # SpeechRecognitionProvider + SpeechRecognitionConfig + SpeechRecognitionResult + TencentSpeechCredentials（语音识别）
+      code-favorites.ts         # CodeFavorite（代码收藏）（新增）
 ```
 
 ## 变更记录 (Changelog)
 
 | 时间 | 操作 | 说明 |
 |------|------|------|
-| 2026-05-16T17:36:40+08:00 | 增量更新 | 新增 command.ts（QuickCommand/CommandProcess/CommandProcessEvent）、subscription.ts（SubscriptionProvider/SubscriptionConfig/SubscriptionQuota/SubscriptionLimit）、search.ts（CodeSearchResult/FileSearchResult/SearchCodeOptions）、notification.ts（NotificationType/AppNotification）、speech.ts（SpeechRecognitionProvider/SpeechRecognitionConfig/SpeechRecognitionResult/TencentSpeechCredentials）；events.ts ServerEventMap 新增 command.started/stopped/restarted + notification.created/cleared 事件（23->26 个） |
-| 2026-05-08T17:18:31+08:00 | 增量更新 | 新增 workflow.ts（WorkflowTemplate/WorkflowNode/WorkflowEdge）、workspace.ts 新增 BuiltInAgentRole/AgentRole 类型（简化为 agent/scheduler/task_creator/bot + 自定义）、NotificationProvider 新增 'native'、WorkspaceNotificationSettings 新增 native 字段、Issue/CreateIssueInput 新增 workflowId 字段、events.ts ServerEventMap 新增 workflow.created/updated/deleted 事件（20->23 个） |
+| 2026-05-19T09:45:03+08:00 | 增量更新 | 新增 code-favorites.ts（CodeFavorite 类型：id/path/line/column/endLine/endColumn/label/snippet/createdAt/workspaceId）；types/index.ts 新增导出 |
+| 2026-05-16T17:36:40+08:00 | 增量更新 | 新增 command.ts（QuickCommand/CommandProcess/CommandProcessEvent）、subscription.ts（SubscriptionProvider/SubscriptionConfig/SubscriptionQuota/SubscriptionLimit）、search.ts（CodeSearchResult/FileSearchResult/SearchCodeOptions）、notification.ts（NotificationType/AppNotification）、speech.ts（SpeechRecognitionProvider/SpeechRecognitionConfig/SpeechRecognitionResult/TencentSpeechCredentials）；events.ts ServerEventMap 新增 command.started/stopped/restarted + notification.created/cleared 事件 |
+| 2026-05-08T17:18:31+08:00 | 增量更新 | 新增 workflow.ts（WorkflowTemplate/WorkflowNode/WorkflowEdge）、workspace.ts 新增 BuiltInAgentRole/AgentRole 类型（简化为 agent/scheduler/task_creator/bot + 自定义）、NotificationProvider 新增 'native'、WorkspaceNotificationSettings 新增 native 字段、Issue/CreateIssueInput 新增 workflowId 字段、events.ts ServerEventMap 新增 workflow.created/updated/deleted 事件 |
 | 2026-05-05T23:52:43+08:00 | 增量更新 | workspace.ts 新增 WorkspaceNotificationSettings/NotificationProvider/NotificationEventKey（飞书/企微通知配置）、AgentConfig role 新增 commit/bot；agent.ts 新增 AgentUsageRecord/AgentUsageDashboard（SQLite 用量统计 + Dashboard 聚合）；llm.ts 新增 LLMModelCost/LLMThinkingEffort（模型成本配置 + 思考模式） |
 | 2026-05-04T21:04:42+08:00 | 增量更新 | runtimeKind 新增 codex、modelProvider 新增两个 bridge 类型、AgentConfig 大幅扩展、新增 tool.ts、channel.ts 大幅扩展、issue.ts 新增 IssueComment 类型 |
 | 2026-05-02T23:43:41 | 增量更新 | 补充 llm.ts 类型、AgentConfig 详细字段、WebSocket 事件数量更新 |
