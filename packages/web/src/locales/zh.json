@@ -736,7 +736,11 @@
     "deleteFolderDesc": "确定要删除文件夹 \"{name}\" 及其所有内容吗？此操作不可撤销。",
     "allFiles": "所有文件",
     "recentlyAdded": "最近添加",
-    "recentlyOpened": "最近打开"
+    "recentlyOpened": "最近打开",
+    "code": "代码",
+    "preview": "预览",
+    "switchToCode": "切换到代码",
+    "switchToPreview": "切换到预览"
   },
   "terminal": {
     "newTerminal": "新建终端",

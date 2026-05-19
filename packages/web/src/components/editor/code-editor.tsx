@@ -15,6 +15,7 @@ import { useTranslations } from 'next-intl';
 import { CommitDiffViewer } from "@/components/git/commit-diff-viewer";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useCodeFavoritesStore } from "@/stores/code-favorites";
+import { Code, Eye } from "lucide-react";
 import {
   getModelUri,
   getOrCreateModel,
@@ -33,6 +34,13 @@ import type * as Monaco from 'monaco-editor';
 function EditorLoadingFallback() {
   const t = useTranslations('editor');
   return <div className="flex items-center justify-center h-full text-muted-foreground text-sm">{t('loadingEditor')}</div>;
+}
+
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+
+function MediaMarkdown({ content }: { content: string }) {
+  return <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>;
 }
 
 const MonacoEditor = dynamic(
@@ -74,15 +82,21 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   const [minimap, setMinimap] = useState(() => localStorage.getItem('editor-minimap') === 'true');
   const [editorReadyTick, setEditorReadyTick] = useState(0);
   const [jumpRetryTick, setJumpRetryTick] = useState(0);
+  const [showPreview, setShowPreview] = useState(true);
 
   const activeFile = openFiles.find((f) => f.path === activeFilePath);
   const activeContent = activeFile ? modifiedFileContents[activeFile.path] ?? activeFile.content : "";
   const isCommitDiff = activeFilePath ? isCommitDiffPath(activeFilePath) : false;
   const commitDiffData = isCommitDiff && activeFilePath ? commitDiffs[getCommitHashFromPath(activeFilePath)] : null;
   const mediaType = activeFile?.mediaType ?? (activeFilePath ? getMediaType(activeFilePath) : null);
+  const isPreviewable = mediaType === 'image' || mediaType === 'video' || mediaType === 'audio' || mediaType === 'svg' || mediaType === 'markdown';
+  const isCodePreviewToggle = mediaType === 'svg' || mediaType === 'markdown';
   const mediaUrl = activeFilePath && mediaType
     ? `/api/workspaces/${workspaceId}/files/content?path=${encodeURIComponent(activeFilePath)}&raw=true`
     : null;
+
+  // Reset preview state when file changes
+  useEffect(() => { setShowPreview(true); }, [activeFilePath]);
 
   const mobile = useMobileReadonlyOverlay({
     editorRef,
@@ -303,20 +317,80 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
       >
         {isCommitDiff && commitDiffData ? (
           <CommitDiffViewer diffs={commitDiffData.diffs} message={commitDiffData.message} />
-        ) : mediaType && mediaUrl ? (
-          <div className="flex items-center justify-center h-full bg-muted/20 overflow-auto p-4">
+        ) : isPreviewable && showPreview && (mediaUrl || mediaType === 'markdown') ? (
+          <div className="relative flex items-center justify-center h-full bg-muted/20 overflow-auto p-4">
+            {isCodePreviewToggle && (
+              <button
+                onClick={() => setShowPreview(false)}
+                className="absolute top-2 right-2 z-10 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-background/90 border text-xs text-muted-foreground hover:text-foreground hover:bg-background shadow-sm transition-colors"
+                title={t('switchToCode')}
+              >
+                <Code size={14} />
+                {t('code')}
+              </button>
+            )}
             {mediaType === 'image' && (
-              <img src={mediaUrl} alt={activeFile?.name} className="max-w-full max-h-full object-contain" />
+              <img src={mediaUrl!} alt={activeFile?.name} className="max-w-full max-h-full object-contain" />
             )}
             {mediaType === 'video' && (
-              <video src={mediaUrl} controls className="max-w-full max-h-full" />
+              <video src={mediaUrl!} controls className="max-w-full max-h-full" />
             )}
             {mediaType === 'audio' && (
               <div className="flex flex-col items-center gap-4">
                 <div className="text-muted-foreground text-sm">{activeFile?.name}</div>
-                <audio src={mediaUrl} controls />
+                <audio src={mediaUrl!} controls />
               </div>
             )}
+            {mediaType === 'svg' && (
+              <img src={mediaUrl!} alt={activeFile?.name} className="max-w-full max-h-full object-contain" />
+            )}
+            {mediaType === 'markdown' && activeContent && (
+              <div className="prose prose-sm dark:prose-invert max-w-none w-full max-w-4xl mx-auto">
+                <MediaMarkdown content={activeContent} />
+              </div>
+            )}
+          </div>
+        ) : activeFile && isCodePreviewToggle && !showPreview ? (
+          <div className="relative flex flex-col h-full">
+            <button
+              onClick={() => setShowPreview(true)}
+              className="absolute top-2 right-2 z-10 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-background/90 border text-xs text-muted-foreground hover:text-foreground hover:bg-background shadow-sm transition-colors"
+              title={t('switchToPreview')}
+            >
+              <Eye size={14} />
+              {t('preview')}
+            </button>
+            <MonacoEditor
+              height="100%"
+              language={getLanguage(activeFile.path)}
+              value={activeContent}
+              path={modelPath}
+              onChange={(value, event) => {
+                if (event.isFlush) return;
+                const v = value || "";
+                const modelFilePath = getFilePathFromModelUri(
+                  editorRef.current?.getModel()?.uri,
+                  workspaceId,
+                  workspaceRoot,
+                );
+                if (!modelFilePath || modelFilePath !== activeFile.path) return;
+                updateContent(modelFilePath, v);
+              }}
+              onMount={handleMount}
+              options={{
+                fontSize: 13,
+                minimap: { enabled: minimap },
+                scrollBeyondLastLine: false,
+                glyphMargin: true,
+                lineNumbersMinChars: 3,
+                padding: { top: 8 },
+                renderLineHighlight: "gutter",
+                readOnly: isReadOnly,
+                domReadOnly: isReadOnly,
+                wordWrap: wordWrap ? 'on' : 'off',
+              }}
+              theme={resolvedTheme === "dark" ? "vs-dark" : "vs"}
+            />
           </div>
         ) : activeFile ? (
           <>

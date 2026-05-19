@@ -1,17 +1,21 @@
 import { create } from 'zustand';
 import type { FileNode, GitDiffResult } from '@agent-spaces/shared';
 
-export type MediaType = 'image' | 'video' | 'audio';
+export type MediaType = 'image' | 'video' | 'audio' | 'svg' | 'markdown';
 
-const IMAGE_EXTS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp', '.ico']);
+const IMAGE_EXTS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.ico']);
 const VIDEO_EXTS = new Set(['.mp4', '.webm', '.ogg', '.mov']);
 const AUDIO_EXTS = new Set(['.mp3', '.wav', '.flac', '.aac', '.m4a', '.opus']);
+const SVG_EXTS = new Set(['.svg']);
+const MD_EXTS = new Set(['.md', '.mdx']);
 
 export function getMediaType(path: string): MediaType | null {
   const ext = '.' + path.split('.').pop()?.toLowerCase();
   if (IMAGE_EXTS.has(ext)) return 'image';
   if (VIDEO_EXTS.has(ext)) return 'video';
   if (AUDIO_EXTS.has(ext)) return 'audio';
+  if (SVG_EXTS.has(ext)) return 'svg';
+  if (MD_EXTS.has(ext)) return 'markdown';
   return null;
 }
 
@@ -164,7 +168,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const name = path.split('/').pop() || path;
     const mediaType = getMediaType(path);
 
-    if (mediaType) {
+    // Binary media files (image/video/audio) don't need text content
+    if (mediaType && mediaType !== 'svg' && mediaType !== 'markdown') {
       set((s) => ({
         openFiles: [...s.openFiles, { path, name, content: '', modified: false, mediaType }],
         activeFilePath: path,
@@ -179,7 +184,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const data = await res.json();
 
     set((s) => ({
-      openFiles: [...s.openFiles, { path, name, content: data.content, modified: false }],
+      openFiles: [...s.openFiles, { path, name, content: data.content, modified: false, mediaType: mediaType || undefined }],
       activeFilePath: path,
     }));
     debouncedSave(workspaceId);
@@ -309,14 +314,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         try {
           const name = path.split('/').pop() || path;
           const mediaType = getMediaType(path);
-          if (mediaType) {
+          if (mediaType && mediaType !== 'svg' && mediaType !== 'markdown') {
             openFiles.push({ path, name, content: '', modified: false, mediaType, pinned: pinnedSet.has(path) || undefined });
           } else {
             const fileRes = await fetch(
               `/api/workspaces/${workspaceId}/files/content?path=${encodeURIComponent(path)}`
             );
             const data = await fileRes.json();
-            openFiles.push({ path, name, content: data.content, modified: false, pinned: pinnedSet.has(path) || undefined });
+            openFiles.push({ path, name, content: data.content, modified: false, mediaType: mediaType || undefined, pinned: pinnedSet.has(path) || undefined });
           }
         } catch {
           // file may have been deleted, skip

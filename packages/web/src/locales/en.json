@@ -734,7 +734,11 @@
     "deleteFolderDesc": "Are you sure you want to delete \"{name}\" and all its contents? This action cannot be undone.",
     "allFiles": "All Files",
     "recentlyAdded": "Recently Added",
-    "recentlyOpened": "Recently Opened"
+    "recentlyOpened": "Recently Opened",
+    "code": "Code",
+    "preview": "Preview",
+    "switchToCode": "Switch to Code",
+    "switchToPreview": "Switch to Preview"
   },
   "terminal": {
     "newTerminal": "New Terminal",
