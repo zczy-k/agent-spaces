@@ -797,6 +797,7 @@
       "pulledSuccessfully": "拉取成功",
       "pullFailed": "拉取失败",
       "remoteAdded": "远程仓库已添加",
+      "detailFileCount": "{count} 个文件",
       "contextMenu": {
         "openChanges": "打开更改",
         "openOnGitHub": "在 GitHub 上打开",

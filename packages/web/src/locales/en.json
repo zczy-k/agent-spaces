@@ -795,6 +795,7 @@
       "pulledSuccessfully": "Pulled successfully",
       "pullFailed": "Pull failed",
       "remoteAdded": "Remote added",
+      "detailFileCount": "{count} files",
       "contextMenu": {
         "openChanges": "Open Changes",
         "openOnGitHub": "Open on GitHub",

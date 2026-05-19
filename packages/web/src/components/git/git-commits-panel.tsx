@@ -6,6 +6,7 @@ import {
   FileCode, RotateCcw, Trash2, ChevronDown, GitBranch,
   Sparkles, Settings2, FileDiff,
 } from "lucide-react";
+import type { GitLogEntry } from "@agent-spaces/shared";
 import { useGitStore } from "@/stores/git";
 import { useEditorStore } from "@/stores/editor";
 import { GitNotInitialized } from "./git-not-initialized";
@@ -29,6 +30,7 @@ import { GitDiscardDialog, type DiscardConfirm } from "./git-discard-dialog";
 import { GitGitignoreDialog } from "./git-gitignore-dialog";
 import { GitFileContextMenu } from "./git-file-context-menu";
 import { GitCommitContextMenu } from "./git-commit-context-menu";
+import { GitCommitDetailDialog } from "./git-commit-detail-dialog";
 
 interface Props {
   workspaceId: string;
@@ -62,6 +64,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
   const [gitSettingsOpen, setGitSettingsOpen] = useState(false);
   const [gitignoreSaving, setGitignoreSaving] = useState(false);
   const [discardConfirm, setDiscardConfirm] = useState<DiscardConfirm>(null);
+  const [detailEntry, setDetailEntry] = useState<GitLogEntry | null>(null);
 
   const ahead = status?.ahead ?? 0;
   const behind = status?.behind ?? 0;
@@ -351,7 +354,10 @@ export function GitCommitsPanel({ workspaceId }: Props) {
               return (
                 <ContextMenu key={entry.hash}>
                   <ContextMenuTrigger>
-                    <div className={`px-2 py-1.5 border-b hover:bg-accent cursor-default ${isRemoteHead ? 'border-l-2 border-l-blue-500' : ''}`}>
+                    <div
+                      onClick={() => setDetailEntry(entry)}
+                      className={`px-2 py-1.5 border-b hover:bg-accent cursor-pointer ${isRemoteHead ? 'border-l-2 border-l-blue-500' : ''}`}
+                    >
                       <div className="flex items-center gap-2">
                         {isRemoteHead && <span title={t('remoteTrackingBranch')}><GitCommitHorizontal size={13} className="shrink-0 text-blue-500" /></span>}
                         <code className="text-xs font-mono text-blue-600 shrink-0">{entry.hash.slice(0, 7)}</code>
@@ -412,6 +418,12 @@ export function GitCommitsPanel({ workspaceId }: Props) {
         open={!!discardConfirm}
         onOpenChange={(open) => !open && setDiscardConfirm(null)}
         onConfirm={confirmDiscard}
+      />
+
+      <GitCommitDetailDialog
+        workspaceId={workspaceId}
+        entry={detailEntry}
+        onClose={() => setDetailEntry(null)}
       />
     </div>
   );
