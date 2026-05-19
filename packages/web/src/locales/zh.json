@@ -1033,7 +1033,22 @@
     "syncDescription": "以下智能体的技能文件已过时，勾选需要更新的项目",
     "syncEmpty": "所有智能体的技能已是最新",
     "syncConfirm": "确认更新",
-    "syncSuccess": "已更新 {count} 个技能文件"
+    "syncSuccess": "已更新 {count} 个技能文件",
+    "importFromMd": "导入 .md 文件",
+    "importFromFolder": "导入文件夹",
+    "importFromZip": "导入 ZIP",
+    "importPreviewTitle": "导入预览",
+    "importPreviewGroupPlaceholder": "分组名称（可选）",
+    "importPreviewNamePlaceholder": "技能名称",
+    "importPreviewSelected": "确认导入 ({selected}/{total})",
+    "importPreviewSelectAll": "全选",
+    "importPreviewDeselectAll": "取消全选",
+    "importPreviewConfirm": "确认导入 ({selected}/{total})",
+    "importPreviewCancel": "取消",
+    "importPreviewEmpty": "没有可导入的内容",
+    "filterGroups": "分组",
+    "filterNoGroup": "无分组",
+    "toggleAll": "全部启用"
   },
   "prompts": {
     "title": "提示词管理",

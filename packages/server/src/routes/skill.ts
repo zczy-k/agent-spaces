@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { listSkills, importSkill, toggleFavorite, updateSkillContent, deleteSkill, checkSkillSync, syncSkills } from '../services/skill.js';
+import { listSkills, importSkill, importSkillsBatch, toggleFavorite, toggleEnabled, toggleAllEnabled, updateSkillContent, deleteSkill, checkSkillSync, syncSkills } from '../services/skill.js';
 import type { Request, Response } from 'express';
 
 const router = Router();
@@ -23,19 +23,45 @@ router.post('/sync', (req: Request, res: Response) => {
 });
 
 router.post('/import', (req: Request, res: Response) => {
-  const { filename, content } = req.body as { filename?: string; content?: string };
+  const { filename, content, group } = req.body as { filename?: string; content?: string; group?: string };
   if (!filename || !content) {
     res.status(400).json({ error: 'filename and content required' });
     return;
   }
-  const skill = importSkill(filename, content);
+  const skill = importSkill(filename, content, group);
   res.json(skill);
+});
+
+router.post('/import-batch', (req: Request, res: Response) => {
+  const { items } = req.body as { items?: Array<{ name: string; content: string; group?: string }> };
+  if (!Array.isArray(items) || items.length === 0) {
+    res.status(400).json({ error: 'items required' });
+    return;
+  }
+  const skills = importSkillsBatch(items);
+  res.json(skills);
 });
 
 router.post('/:name/favorite', (req: Request, res: Response) => {
   const name = typeof req.params.name === 'string' ? req.params.name : req.params.name[0];
   const favorited = toggleFavorite(name);
   res.json({ favorited });
+});
+
+router.post('/:name/toggle', (req: Request, res: Response) => {
+  const name = typeof req.params.name === 'string' ? req.params.name : req.params.name[0];
+  const enabled = toggleEnabled(name);
+  res.json({ enabled });
+});
+
+router.post('/toggle-all', (req: Request, res: Response) => {
+  const { names, enabled } = req.body as { names?: string[]; enabled?: boolean };
+  if (!Array.isArray(names) || typeof enabled !== 'boolean') {
+    res.status(400).json({ error: 'names and enabled required' });
+    return;
+  }
+  toggleAllEnabled(names, enabled);
+  res.json({ success: true });
 });
 
 router.put('/:name', (req: Request, res: Response) => {

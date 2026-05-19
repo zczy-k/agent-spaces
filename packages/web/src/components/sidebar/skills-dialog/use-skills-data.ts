@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import type { AgentCandidate, SkillInfo, SkillSyncItem } from './types';
+import type { AgentCandidate, ImportSkillItem, SkillInfo, SkillSyncItem } from './types';
 
 export function useSkillsData(open: boolean, standalone?: boolean) {
   const [skills, setSkills] = useState<SkillInfo[]>([]);
@@ -57,6 +57,33 @@ export function useSkillActions(skills: SkillInfo[], setSkills: (fn: (prev: Skil
     } catch { /* ignore */ }
   };
 
+  const toggleEnabled = async (skill: SkillInfo) => {
+    try {
+      const res = await fetch(`/api/skills/${encodeURIComponent(skill.name)}/toggle`, { method: 'POST' });
+      if (res.ok) {
+        const { enabled } = await res.json();
+        setSkills((prev) =>
+          prev.map((s) => s.name === skill.name ? { ...s, enabled } : s),
+        );
+      }
+    } catch { /* ignore */ }
+  };
+
+  const toggleAllEnabled = async (names: string[], enabled: boolean) => {
+    try {
+      const res = await fetch('/api/skills/toggle-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ names, enabled }),
+      });
+      if (res.ok) {
+        setSkills((prev) =>
+          prev.map((s) => names.includes(s.name) ? { ...s, enabled } : s),
+        );
+      }
+    } catch { /* ignore */ }
+  };
+
   const deleteSkill = async (skill: SkillInfo) => {
     try {
       const res = await fetch(`/api/skills/${encodeURIComponent(skill.name)}`, { method: 'DELETE' });
@@ -83,17 +110,22 @@ export function useSkillActions(skills: SkillInfo[], setSkills: (fn: (prev: Skil
     return false;
   };
 
-  const importSkills = async (files: { file: File }[], onDone: () => void) => {
-    for (const item of files) {
-      const content = await item.file.text();
-      await fetch('/api/skills/import', {
+  const importBatch = async (items: ImportSkillItem[]) => {
+    const batchItems = items.map((item) => ({
+      name: item.name,
+      content: item.content,
+      group: item.group,
+    }));
+    try {
+      const res = await fetch('/api/skills/import-batch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: item.file.name, content }),
+        body: JSON.stringify({ items: batchItems }),
       });
-    }
-    onDone();
-    fetchSkills();
+      if (res.ok) {
+        fetchSkills();
+      }
+    } catch { /* ignore */ }
   };
 
   const bindConfirm = async (skill: SkillInfo, bindSelected: string[], agents: { id: string }[]) => {
@@ -147,5 +179,5 @@ export function useSkillActions(skills: SkillInfo[], setSkills: (fn: (prev: Skil
     return res.ok;
   };
 
-  return { toggleFavorite, deleteSkill, saveEdit, importSkills, bindConfirm, syncCheck, syncConfirm };
+  return { toggleFavorite, toggleEnabled, toggleAllEnabled, deleteSkill, saveEdit, importBatch, bindConfirm, syncCheck, syncConfirm };
 }

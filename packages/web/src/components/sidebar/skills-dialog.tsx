@@ -91,10 +91,12 @@ export function SkillsDialog({ open, onOpenChange, standalone }: SkillsDialogPro
       title={standalone ? <h2 className="text-base font-semibold">{t('title')}</h2> : <DialogTitle>{t('title')}</DialogTitle>}
       description={standalone ? <p className="text-xs text-muted-foreground">{t('description')}</p> : <DialogDescription>{t('description')}</DialogDescription>}
       onToggleFavorite={actions.toggleFavorite}
+      onToggleEnabled={actions.toggleEnabled}
+      onToggleAllEnabled={actions.toggleAllEnabled}
       onDelete={actions.deleteSkill}
       onEdit={openEditDialog}
       onBind={openBindDialog}
-      onImport={actions.importSkills}
+      onImportBatch={actions.importBatch}
       onSyncCheck={handleSyncCheck}
     />
   );

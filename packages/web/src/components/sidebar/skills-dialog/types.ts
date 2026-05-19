@@ -10,6 +10,8 @@ export interface SkillInfo {
   filename: string;
   content: string;
   favorited: boolean;
+  enabled: boolean;
+  group: string;
   boundAgents: BoundAgent[];
 }
 
@@ -34,4 +36,13 @@ export interface SkillSyncItem {
   skillName: string;
   globalMtime: string;
   agentMtime: string;
+}
+
+export interface ImportSkillItem {
+  id: string;
+  name: string;
+  group: string;
+  content: string;
+  selected: boolean;
+  sourceName: string;
 }
