@@ -29,13 +29,13 @@ export function SkillBindDialog({ skill, agents, selected, onToggle, onClose, on
 
   return (
     <Dialog open={!!skill} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="sm:max-w-sm">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-sm flex flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="shrink-0 px-6 py-4">
           <DialogTitle>{t('bindTitle', { name: skill?.name || '' })}</DialogTitle>
           <DialogDescription>{t('bindDescription')}</DialogDescription>
         </DialogHeader>
-        <div className="space-y-3 pt-2">
-          <div className="max-h-52 overflow-y-auto space-y-0.5">
+        <div className="min-h-0 flex-1 pb-2 overflow-y-auto px-6 space-y-3">
+          <div className="space-y-0.5">
             {agents.map((agent) => (
               <button
                 key={agent.id}
@@ -79,14 +79,14 @@ export function SkillBindDialog({ skill, agents, selected, onToggle, onClose, on
               })}
             </div>
           )}
-          <div className="flex justify-end gap-2 pt-1">
-            <Button variant="outline" onClick={onClose}>
-              {tc('cancel')}
-            </Button>
-            <Button onClick={onConfirm}>
-              {tc('confirm')}
-            </Button>
-          </div>
+        </div>
+        <div className="shrink-0 flex justify-end gap-2 border-t px-6 py-4">
+          <Button variant="outline" onClick={onClose}>
+            {tc('cancel')}
+          </Button>
+          <Button onClick={onConfirm}>
+            {tc('confirm')}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

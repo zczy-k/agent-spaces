@@ -35,7 +35,12 @@ function readMeta(): SkillMeta {
   const path = getSkillMetaPath();
   if (!existsSync(path)) return { favorites: [], groups: {}, disabled: [] };
   try {
-    return JSON.parse(readFileSync(path, 'utf-8')) as SkillMeta;
+    const raw = JSON.parse(readFileSync(path, 'utf-8'));
+    return {
+      favorites: raw.favorites || [],
+      groups: raw.groups || {},
+      disabled: raw.disabled || [],
+    };
   } catch {
     return { favorites: [], groups: {}, disabled: [] };
   }

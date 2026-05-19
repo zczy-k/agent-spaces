@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SkillImportPanel } from './skill-import-dialog';
+import { SkillBindDialog } from './skill-bind-dialog';
 import type { AgentCandidate, FilterMode, SkillInfo, ImportSkillItem } from './types';
 
 interface SkillListProps {
@@ -49,6 +50,7 @@ interface SkillListProps {
   onBind: (skill: SkillInfo) => void;
   onImportBatch: (items: ImportSkillItem[]) => void;
   onSyncCheck: () => Promise<unknown>;
+  onApplyAllToAgent: (agentId: string, skillNames: string[]) => Promise<void>;
 }
 
 export function SkillList({
@@ -66,6 +68,7 @@ export function SkillList({
   onBind,
   onImportBatch,
   onSyncCheck,
+  onApplyAllToAgent,
 }: SkillListProps) {
   const t = useTranslations('skills');
   const tc = useTranslations('common');
@@ -81,6 +84,9 @@ export function SkillList({
   const [importItems, setImportItems] = useState<ImportSkillItem[]>([]);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importDefaultGroup, setImportDefaultGroup] = useState('');
+  const [applyAllOpen, setApplyAllOpen] = useState(false);
+  const [applyAllSelected, setApplyAllSelected] = useState<string[]>([]);
+  const [applyAllLoading, setApplyAllLoading] = useState(false);
 
   // Extract unique groups
   const groups = Array.from(new Set(skills.map((s) => s.group).filter(Boolean)));
@@ -243,6 +249,18 @@ export function SkillList({
     setImportItems([]);
   };
 
+  const handleApplyAllConfirm = async () => {
+    if (applyAllSelected.length === 0) return;
+    setApplyAllLoading(true);
+    const skillNames = filtered.map((s) => s.name);
+    for (const agentId of applyAllSelected) {
+      await onApplyAllToAgent(agentId, skillNames);
+    }
+    setApplyAllLoading(false);
+    setApplyAllOpen(false);
+    setApplyAllSelected([]);
+  };
+
   return (
     <>
       {/* Hidden file inputs */}
@@ -320,32 +338,32 @@ export function SkillList({
         />
       ) : (
         <div className="flex flex-1 min-h-0 gap-4 pt-2">
-        <div className="hidden md:flex w-44 shrink-0 flex-col gap-3">
-          <div className="space-y-1">
-            <Button
-              variant={filterMode === 'all' && !filterGroup ? 'secondary' : 'ghost'}
-              size="sm"
-              className="w-full justify-start"
-              onClick={() => { setFilterMode('all'); setFilterAgentId(''); setFilterGroup(''); }}
-            >
-              <FileText className="size-3.5 mr-1.5" />
-              {t('filterAll')}
-            </Button>
-            <Button
-              variant={filterMode === 'favorites' ? 'secondary' : 'ghost'}
-              size="sm"
-              className="w-full justify-start"
-              onClick={() => { setFilterMode('favorites'); setFilterAgentId(''); setFilterGroup(''); }}
-            >
-              <Star className="size-3.5 mr-1.5" />
-              {t('filterFavorites')}
-            </Button>
-          </div>
-
-          {agents.length > 0 && (
+        <ScrollArea className="hidden md:block w-44 shrink-0">
+          <div className="flex flex-col gap-3 pr-2">
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground px-2">{t('filterByAgent')}</p>
-              <ScrollArea className="max-h-48">
+              <Button
+                variant={filterMode === 'all' && !filterGroup ? 'secondary' : 'ghost'}
+                size="sm"
+                className="w-full justify-start"
+                onClick={() => { setFilterMode('all'); setFilterAgentId(''); setFilterGroup(''); }}
+              >
+                <FileText className="size-3.5 mr-1.5" />
+                {t('filterAll')}
+              </Button>
+              <Button
+                variant={filterMode === 'favorites' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="w-full justify-start"
+                onClick={() => { setFilterMode('favorites'); setFilterAgentId(''); setFilterGroup(''); }}
+              >
+                <Star className="size-3.5 mr-1.5" />
+                {t('filterFavorites')}
+              </Button>
+            </div>
+
+            {agents.length > 0 && (
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground px-2">{t('filterByAgent')}</p>
                 {agents.map((agent) => (
                   <Button
                     key={agent.id}
@@ -358,14 +376,12 @@ export function SkillList({
                     <span className="truncate">{agent.name}</span>
                   </Button>
                 ))}
-              </ScrollArea>
-            </div>
-          )}
+              </div>
+            )}
 
-          {groups.length > 0 && (
-            <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground px-2">{t('filterGroups')}</p>
-              <ScrollArea className="max-h-48">
+            {groups.length > 0 && (
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground px-2">{t('filterGroups')}</p>
                 {groups.map((group) => (
                   <Button
                     key={group}
@@ -378,7 +394,6 @@ export function SkillList({
                     <span className="truncate">{group}</span>
                   </Button>
                 ))}
-                {/* Show skills without group */}
                 {skills.some((s) => !s.group) && (
                   <Button
                     variant={filterGroup === '__none__' ? 'secondary' : 'ghost'}
@@ -390,13 +405,13 @@ export function SkillList({
                     {t('filterNoGroup')}
                   </Button>
                 )}
-              </ScrollArea>
-            </div>
-          )}
-        </div>
+              </div>
+            )}
+          </div>
+        </ScrollArea>
 
         {/* Right: Skill cards */}
-        <div className="flex-1 min-w-0 flex flex-col gap-3">
+        <div className="flex-1 min-w-0 flex flex-col gap-3 min-h-0">
           {/* Mobile: Top filters */}
           <div className="flex md:hidden flex-col gap-2">
             <div className="relative">
@@ -457,9 +472,18 @@ export function SkillList({
                 {filtered.filter((s) => s.enabled).length}/{filtered.length}
               </span>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { setApplyAllOpen(true); setApplyAllSelected([]); }}
+              disabled={filtered.length === 0}
+            >
+              <Rocket className="size-3.5 mr-1" />
+              {t('applyAllToAgent')}
+            </Button>
           </div>
 
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1 min-h-0">
             {loading ? (
               <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
                 {tc('loading')}
@@ -564,6 +588,17 @@ export function SkillList({
       </div>
       )}
 
+      {/* Apply all to agent dialog */}
+      <SkillBindDialog
+        skill={applyAllOpen ? { name: t('applyAllToAgent'), description: '', filename: '', content: '', favorited: false, enabled: true, group: '', boundAgents: [] } as SkillInfo : null}
+        agents={agents}
+        selected={applyAllSelected}
+        onToggle={(id) => setApplyAllSelected((prev) =>
+          prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+        )}
+        onClose={() => { setApplyAllOpen(false); setApplyAllSelected([]); }}
+        onConfirm={handleApplyAllConfirm}
+      />
     </>
   );
 }

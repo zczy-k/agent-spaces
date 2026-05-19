@@ -98,6 +98,7 @@ export function SkillsDialog({ open, onOpenChange, standalone }: SkillsDialogPro
       onBind={openBindDialog}
       onImportBatch={actions.importBatch}
       onSyncCheck={handleSyncCheck}
+      onApplyAllToAgent={actions.applyAllToAgent}
     />
   );
 
@@ -110,7 +111,7 @@ export function SkillsDialog({ open, onOpenChange, standalone }: SkillsDialogPro
       )}
       {!standalone && (
         <Dialog open={showMainDialog} onOpenChange={onOpenChange}>
-          <DialogContent className="!w-[80vw] !max-w-[80vw] !h-[80vh] flex flex-col">
+          <DialogContent className="!w-[80vw] !max-w-[80vw] !h-[80vh] flex flex-col overflow-hidden">
             {mainBody}
           </DialogContent>
         </Dialog>

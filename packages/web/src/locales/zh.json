@@ -1048,7 +1048,8 @@
     "importPreviewEmpty": "没有可导入的内容",
     "filterGroups": "分组",
     "filterNoGroup": "无分组",
-    "toggleAll": "全部启用"
+    "toggleAll": "全部启用",
+    "applyAllToAgent": "应用到智能体"
   },
   "prompts": {
     "title": "提示词管理",

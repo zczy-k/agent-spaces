@@ -1046,7 +1046,8 @@
     "importPreviewEmpty": "Nothing to import",
     "filterGroups": "Groups",
     "filterNoGroup": "No Group",
-    "toggleAll": "Toggle All"
+    "toggleAll": "Toggle All",
+    "applyAllToAgent": "Apply All to Agent"
   },
   "prompts": {
     "title": "Prompt Templates",

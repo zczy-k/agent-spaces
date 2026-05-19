@@ -179,5 +179,26 @@ export function useSkillActions(skills: SkillInfo[], setSkills: (fn: (prev: Skil
     return res.ok;
   };
 
-  return { toggleFavorite, toggleEnabled, toggleAllEnabled, deleteSkill, saveEdit, importBatch, bindConfirm, syncCheck, syncConfirm };
+  const applyAllToAgent = async (agentId: string, skillNames: string[]) => {
+    try {
+      const res = await fetch(`/api/agents/presets/${agentId}`);
+      if (!res.ok) return;
+      const preset = await res.json();
+      const existing = new Set((preset.skills || []).map((s: string) => s.replace(/\.md$/i, '')));
+      const updatedSkills = [...(preset.skills || [])];
+      for (const name of skillNames) {
+        if (!existing.has(name)) {
+          updatedSkills.push(`${name}.md`);
+        }
+      }
+      await fetch(`/api/agents/presets/${agentId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...preset, skills: updatedSkills }),
+      });
+      fetchSkills();
+    } catch { /* ignore */ }
+  };
+
+  return { toggleFavorite, toggleEnabled, toggleAllEnabled, deleteSkill, saveEdit, importBatch, bindConfirm, applyAllToAgent, syncCheck, syncConfirm };
 }
