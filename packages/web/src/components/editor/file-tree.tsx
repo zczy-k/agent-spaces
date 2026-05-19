@@ -440,7 +440,7 @@ export const FileTreeFile = ({
               {t('fileTooLargeTitle')}
             </DialogTitle>
           </DialogHeader>
-          <DialogDescription>
+          <DialogDescription className="break-all">
             {t('fileTooLargeDesc', { name, size: formatSize(fileSize!) })}
           </DialogDescription>
           <DialogFooter>

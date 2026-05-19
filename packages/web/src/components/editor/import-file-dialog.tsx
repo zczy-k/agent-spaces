@@ -131,7 +131,7 @@ export function ImportFileDialog({ open, onOpenChange, workspaceId, targetPath, 
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[520px] overflow-hidden">
+      <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
           <DialogTitle>{t("importFile")}</DialogTitle>
           <DialogDescription>{t("importFileDesc")}</DialogDescription>
