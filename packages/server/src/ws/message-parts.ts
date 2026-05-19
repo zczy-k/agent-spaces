@@ -192,6 +192,10 @@ export function summarizeToolLine(line: string, workspaceRoot?: string): {
         command,
       };
     }
+    const skillSummary = extractSkillParams(trimmed, toolName);
+    if (skillSummary) {
+      return { ...skillSummary, toolName };
+    }
     const searchSummary = extractSearchParams(trimmed, toolName, workspaceRoot);
     if (searchSummary) {
       return { ...searchSummary, toolName };
@@ -627,6 +631,20 @@ function extractQuotedField(line: string, key: string): string | undefined {
 
   const json = line.match(new RegExp(`"${key}"\\s*:\\s*"([^"]+)"`))?.[1];
   return json;
+}
+
+function extractSkillParams(line: string, toolName: string): {
+  title: string;
+  description?: string;
+} | null {
+  if (!/^Skill$/i.test(toolName)) return null;
+  const skill = extractQuotedField(line, 'skill');
+  if (!skill) return null;
+  const args = extractQuotedField(line, 'args');
+  return {
+    title: `Skill ${skill}`,
+    description: args ? truncate(args, 120) : undefined,
+  };
 }
 
 function extractCommand(line: string, toolName?: string): string | undefined {

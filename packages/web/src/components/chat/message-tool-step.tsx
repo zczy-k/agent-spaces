@@ -2,7 +2,7 @@
 
 import type { Message, MessagePart } from "@agent-spaces/shared"
 import type { LucideIcon } from "lucide-react"
-import { BookOpenIcon, BotIcon, CheckCircle2Icon, CheckIcon, ChevronDownIcon, CircleIcon, CopyIcon, EyeIcon, FileEditIcon, FileTextIcon, FolderSearchIcon, GlobeIcon, CircleHelpIcon, MessageSquareTextIcon, PencilIcon, SearchIcon, SquareCheckIcon, TerminalIcon, WebhookIcon, WrenchIcon } from "lucide-react"
+import { BookOpenIcon, BotIcon, CheckCircle2Icon, CheckIcon, ChevronDownIcon, CircleIcon, CopyIcon, EyeIcon, FileEditIcon, FileTextIcon, FolderSearchIcon, GlobeIcon, CircleHelpIcon, MessageSquareTextIcon, PencilIcon, SearchIcon, SparklesIcon, SquareCheckIcon, TerminalIcon, WebhookIcon, WrenchIcon } from "lucide-react"
 import { useState, useCallback } from "react"
 import { useTranslations } from "next-intl"
 import { Markdown } from "@/components/ui/markdown"
@@ -44,6 +44,7 @@ const toolIconMap: Record<string, LucideIcon> = {
   Fetch: WebhookIcon,
   Task: MessageSquareTextIcon,
   Agent: BotIcon,
+  Skill: SparklesIcon,
   AskUserQuestion: CircleHelpIcon,
   LoadClaudeMd: BookOpenIcon,
 }
