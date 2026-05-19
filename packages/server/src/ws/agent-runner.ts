@@ -180,6 +180,7 @@ export function handleAnswerQuestion(_ws: WebSocket, workspaceId: string, data: 
       messageId,
       seedOutput: normalizeOutputLines([message.content]),
       seedQuestions: seedQuestion ? [seedQuestion] : [],
+      resumeSessionId: message.metadata?.runtimeSessionId,
     },
   );
 }
