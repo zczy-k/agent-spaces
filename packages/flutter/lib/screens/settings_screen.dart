@@ -141,6 +141,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               );
             },
           ),
+          SwitchListTile(
+            dense: true,
+            secondary: const Icon(Icons.visibility_off_outlined, size: 20),
+            title: const Text('无痕模式', style: TextStyle(fontSize: 13)),
+            subtitle: Text(
+              '不保留浏览记录和缓存，重新打开标签页后生效',
+              style: TextStyle(
+                fontSize: 11,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            value: settings.incognito,
+            onChanged: (v) {
+              notifier.setIncognito(v);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(v ? '无痕模式已开启' : '无痕模式已关闭'),
+                  duration: const Duration(seconds: 1),
+                ),
+              );
+            },
+          ),
           ListTile(
             dense: true,
             leading: const Icon(Icons.cleaning_services_outlined, size: 20),

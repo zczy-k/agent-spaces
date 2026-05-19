@@ -152,9 +152,7 @@ class _WebViewInstanceState extends ConsumerState<WebViewInstance> {
   Widget build(BuildContext context) {
     final device = widget.tab.device;
     final isConstrained = device.type != DeviceType.desktop;
-    final webViewDebuggingEnabled = ref.watch(
-      settingsProvider.select((settings) => settings.webViewDebuggingEnabled),
-    );
+    final settings = ref.watch(settingsProvider);
 
     Widget webView = Stack(
       children: [
@@ -164,12 +162,23 @@ class _WebViewInstanceState extends ConsumerState<WebViewInstance> {
         userAgent: device.userAgentSuffix.isEmpty
             ? null
             : device.userAgentSuffix,
-        supportZoom: true,
+        javaScriptEnabled: true,
+        supportZoom: false,
         builtInZoomControls: false,
+        displayZoomControls: false,
         useHybridComposition: true,
         allowsInlineMediaPlayback: true,
         mediaPlaybackRequiresUserGesture: false,
-        isInspectable: webViewDebuggingEnabled,
+        allowBackgroundAudioPlaying: true,
+        allowFileAccess: true,
+        allowContentAccess: true,
+        allowFileAccessFromFileURLs: true,
+        allowUniversalAccessFromFileURLs: true,
+        domStorageEnabled: true,
+        databaseEnabled: true,
+        safeBrowsingEnabled: false,
+        incognito: settings.incognito,
+        isInspectable: settings.webViewDebuggingEnabled,
       ),
       onWebViewCreated: (controller) async {
         _controller = controller;

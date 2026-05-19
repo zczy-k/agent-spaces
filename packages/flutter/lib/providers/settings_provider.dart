@@ -20,6 +20,11 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     state = state.copyWith(webViewDebuggingEnabled: value);
     StorageService.saveSettings(state);
   }
+
+  void setIncognito(bool value) {
+    state = state.copyWith(incognito: value);
+    StorageService.saveSettings(state);
+  }
 }
 
 final settingsProvider = StateNotifierProvider<SettingsNotifier, AppSettings>((
