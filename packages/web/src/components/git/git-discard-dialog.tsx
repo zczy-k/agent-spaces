@@ -7,7 +7,7 @@ import { useTranslations } from "next-intl";
 export type DiscardConfirm = { type: 'single'; path: string } | { type: 'all' } | null;
 
 interface Props {
-  confirm: Exclude<DiscardConfirm, null>;
+  confirm: DiscardConfirm;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
@@ -21,12 +21,12 @@ export function GitDiscardDialog({ confirm, open, onOpenChange, onConfirm }: Pro
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>{confirm.type === 'all' ? tChanges('discardAll') : tChanges('discard')}</DialogTitle>
+          <DialogTitle>{confirm?.type === 'all' ? tChanges('discardAll') : tChanges('discard')}</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">
-          {confirm.type === 'all'
+          {confirm?.type === 'all'
             ? tChanges('confirmDiscardAll')
-            : tChanges('confirmDiscardFile', { file: confirm.path })}
+            : tChanges('confirmDiscardFile', { file: confirm?.type === 'single' ? confirm.path : '' })}
         </p>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>{tc('cancel')}</Button>

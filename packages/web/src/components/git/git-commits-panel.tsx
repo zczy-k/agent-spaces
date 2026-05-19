@@ -408,7 +408,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
       </Dialog>
 
       <GitDiscardDialog
-        confirm={discardConfirm as Exclude<DiscardConfirm, null>}
+        confirm={discardConfirm}
         open={!!discardConfirm}
         onOpenChange={(open) => !open && setDiscardConfirm(null)}
         onConfirm={confirmDiscard}
