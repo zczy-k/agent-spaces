@@ -481,7 +481,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
           </div>
         </TabsContent>
 
-        <TabsContent value="search" className="flex-1 min-h-0 mt-0">
+        <TabsContent value="search" forceMount className="flex-1 min-h-0 mt-0 data-[state=inactive]:hidden">
           <SearchPanel workspaceId={workspaceId} />
         </TabsContent>
       </Tabs>
