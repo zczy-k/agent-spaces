@@ -51,6 +51,7 @@ export function MessageParts({ message, isUser, workspaceId }: MessagePartsProps
   const messageParts = message.parts ?? []
   const parts = messageParts.filter((part) => part.type !== "context")
   const hasTextPart = parts.some((part) => part.type === "text")
+  const persistentContextSummary = getPersistentContextSummary(messageParts.find((part): part is Extract<MessagePart, { type: "context" }> => part.type === "context"))
   const shouldRenderLegacyContent = messageParts.length === 0 && message.content
 
   return (
@@ -59,7 +60,13 @@ export function MessageParts({ message, isUser, workspaceId }: MessagePartsProps
         <MessageAttachments attachments={message.attachments} isUser={isUser} />
       ) : null}
       {parts.length > 0 ? parts.map((part) => (
-        <MessagePartView key={part.id} part={dedupeDisplayPart(part)} message={message} workspaceId={workspaceId} />
+        <MessagePartView
+          key={part.id}
+          part={dedupeDisplayPart(part)}
+          message={message}
+          workspaceId={workspaceId}
+          persistentContextSummary={persistentContextSummary}
+        />
       )) : null}
       {!hasTextPart && shouldRenderLegacyContent ? (
         isUser ? <UserContent content={message.content} /> : <Markdown content={dedupeRepeatedTextBlock(message.content)} />
@@ -74,7 +81,20 @@ export function MessageParts({ message, isUser, workspaceId }: MessagePartsProps
   )
 }
 
-function MessagePartView({ part, message, workspaceId }: { part: MessagePart; message: Message; workspaceId: string }) {
+function MessagePartView({
+  part,
+  message,
+  workspaceId,
+  persistentContextSummary,
+}: {
+  part: MessagePart
+  message: Message
+  workspaceId: string
+  persistentContextSummary?: {
+    claudeMd: number
+    total: number
+  }
+}) {
   const t = useTranslations('chat')
 
   switch (part.type) {
@@ -85,7 +105,7 @@ function MessagePartView({ part, message, workspaceId }: { part: MessagePart; me
     case "reasoning":
       return (
         <ChainOfThought defaultOpen={part.status === "streaming"} className="max-w-none">
-          <ChainOfThoughtHeader loading={part.status === "streaming"}>
+          <ChainOfThoughtHeader loading={part.status === "streaming"} contextSummary={persistentContextSummary}>
             {part.status === "streaming" ? t('messageParts.agentThinking') : t('messageParts.aiIntermediateOutput')}
           </ChainOfThoughtHeader>
           <ChainOfThoughtContent className="max-h-[300px] overflow-y-auto">
@@ -104,7 +124,12 @@ function MessagePartView({ part, message, workspaceId }: { part: MessagePart; me
       if (visibleChains.length === 0) return null
       return (
         <ChainOfThought defaultOpen={message.status === "pending"} className="max-w-none">
-          <ChainOfThoughtHeader loading={message.status === "pending" || message.status === "streaming"}>{t('messageParts.chainSteps', { count: visibleChainStepCount })}</ChainOfThoughtHeader>
+          <ChainOfThoughtHeader
+            loading={message.status === "pending" || message.status === "streaming"}
+            contextSummary={persistentContextSummary}
+          >
+            {t('messageParts.chainSteps', { count: visibleChainStepCount })}
+          </ChainOfThoughtHeader>
           <ChainOfThoughtContent className="max-h-[300px] overflow-y-auto">
             {visibleChains.map((chain) => {
               const completed = chain.status === "completed"
@@ -202,6 +227,15 @@ function MessagePartView({ part, message, workspaceId }: { part: MessagePart; me
       return <AnsweredQuestionSummary question={part.question} answer={part.answer ?? ""} />
     default:
       return null
+  }
+}
+
+function getPersistentContextSummary(part?: Extract<MessagePart, { type: "context" }>) {
+  const summary = part?.agentContext?.persistentContext
+  if (!summary) return undefined
+  return {
+    claudeMd: summary.counts.claudeMd,
+    total: summary.counts.total,
   }
 }
 

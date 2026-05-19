@@ -380,7 +380,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
 
       {/* File context menu */}
       {ctxMenu && (
-        <GitFileContextMenu x={ctxMenu.x} y={ctxMenu.y} path={ctxMenu.path} onAddToGitignore={addToGitignore} onClose={() => setCtxMenu(null)} />
+        <GitFileContextMenu x={ctxMenu.x} y={ctxMenu.y} path={ctxMenu.path} onAddToGitignore={addToGitignore} onOpenFile={(p) => openFile(workspaceId, p)} onDiscard={(p) => setDiscardConfirm({ type: 'single', path: p })} onClose={() => setCtxMenu(null)} />
       )}
 
       {/* Dialogs */}

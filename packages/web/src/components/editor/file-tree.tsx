@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronRightIcon, FileIcon, FolderIcon, FolderOpenIcon, Trash2, ExternalLink, Upload, Copy, FolderPlus, FilePlus, AlertTriangle, Pencil, MoveRight, Download, Link } from "lucide-react"
+import { ChevronRightIcon, FileIcon, FolderIcon, FolderOpenIcon, Trash2, ExternalLink, Upload, Copy, FolderPlus, FilePlus, AlertTriangle, Pencil, MoveRight } from "lucide-react"
 import { createContext, type HTMLAttributes, type ReactNode, useContext, useState, useCallback, useEffect, useRef } from "react"
 /**
  * @title React AI File Tree
@@ -27,6 +27,7 @@ import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, C
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { FileContextMenu } from "./file-context-menu"
 import { useTranslations } from 'next-intl'
 
 interface FileTreeContextType {
@@ -365,21 +366,6 @@ export const FileTreeFile = ({
     fetch(`/api/workspaces/${workspaceId}/files/reveal?path=${encodeURIComponent(path)}`, { method: 'POST' })
   }
 
-  const handleDownload = () => {
-    const url = `/api/workspaces/${workspaceId}/files/download?path=${encodeURIComponent(path)}`
-    const a = document.createElement('a')
-    a.href = url
-    a.download = ''
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-  }
-
-  const handleCopyDownloadUrl = () => {
-    const url = `${window.location.origin}/api/workspaces/${workspaceId}/files/download?path=${encodeURIComponent(path)}`
-    navigator.clipboard.writeText(url)
-  }
-
   return (
     <FileTreeFileContext.Provider value={{ path, name }}>
       <ContextMenu>
@@ -421,40 +407,14 @@ export const FileTreeFile = ({
             )}
           </div>
         </ContextMenuTrigger>
-        <ContextMenuContent>
-          <ContextMenuItem onClick={() => onRename?.(path)}>
-            <Pencil className="size-4" />
-            {t('rename')}
-          </ContextMenuItem>
-          <ContextMenuItem onClick={() => onMove?.(path)}>
-            <MoveRight className="size-4" />
-            {t('move')}
-          </ContextMenuItem>
-          <ContextMenuItem onClick={() => onCopyItem?.(path)}>
-            <Copy className="size-4" />
-            {t('copyFile')}
-          </ContextMenuItem>
-          <ContextMenuItem onClick={() => {
-            const absPath = boundDir ? boundDir.replace(/\/+$/, '') + '/' + path : path;
-            navigator.clipboard.writeText(absPath);
-          }}>
-            <Copy className="size-4" />
-            {t('copyPath')}
-          </ContextMenuItem>
-          <ContextMenuItem onClick={handleReveal}>
-            <ExternalLink className="size-4" />
-            {t('revealInFinder')}
-          </ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem onClick={handleDownload}>
-            <Download className="size-4" />
-            {t('download')}
-          </ContextMenuItem>
-          <ContextMenuItem onClick={handleCopyDownloadUrl}>
-            <Link className="size-4" />
-            {t('copyDownloadUrl')}
-          </ContextMenuItem>
-        </ContextMenuContent>
+        <FileContextMenu
+          filePath={path}
+          workspaceId={workspaceId!}
+          boundDir={boundDir}
+          onRename={() => onRename?.(path)}
+          onMove={() => onMove?.(path)}
+          onCopyItem={() => onCopyItem?.(path)}
+        />
       </ContextMenu>
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent className="sm:max-w-[400px]">

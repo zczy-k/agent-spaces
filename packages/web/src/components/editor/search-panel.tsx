@@ -8,6 +8,8 @@ import type { CodeSearchResult } from "@agent-spaces/shared";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ContextMenu, ContextMenuTrigger } from "@/components/ui/context-menu";
+import { FileContextMenu } from "./file-context-menu";
 
 interface SearchPanelProps {
   workspaceId: string;
@@ -153,19 +155,24 @@ export function SearchPanel({ workspaceId }: SearchPanelProps) {
           ) : null}
           {!loading && Object.entries(codeResults).map(([file, matches]) => (
             <div key={file}>
-              <button
-                onClick={() => toggleFile(file)}
-                className="w-full flex items-center gap-1 px-2 py-0.5 text-xs font-medium hover:bg-accent/50"
-              >
-                {expandedFiles.has(file) ? (
-                  <ChevronDown className="size-3 text-muted-foreground shrink-0" />
-                ) : (
-                  <ChevronRight className="size-3 text-muted-foreground shrink-0" />
-                )}
-                <File className="size-3 text-muted-foreground shrink-0" />
-                <span className="truncate">{file}</span>
-                <span className="text-muted-foreground ml-auto shrink-0">({matches.length})</span>
-              </button>
+              <ContextMenu>
+                <ContextMenuTrigger className="contents">
+                  <button
+                    onClick={() => toggleFile(file)}
+                    className="w-full flex items-center gap-1 px-2 py-0.5 text-xs font-medium hover:bg-accent/50"
+                  >
+                    {expandedFiles.has(file) ? (
+                      <ChevronDown className="size-3 text-muted-foreground shrink-0" />
+                    ) : (
+                      <ChevronRight className="size-3 text-muted-foreground shrink-0" />
+                    )}
+                    <File className="size-3 text-muted-foreground shrink-0" />
+                    <span className="truncate">{file}</span>
+                    <span className="text-muted-foreground ml-auto shrink-0">({matches.length})</span>
+                  </button>
+                </ContextMenuTrigger>
+                <FileContextMenu filePath={file} workspaceId={workspaceId} />
+              </ContextMenu>
 
               {expandedFiles.has(file) && matches.map((m, i) => (
                 <button

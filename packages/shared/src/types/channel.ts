@@ -110,6 +110,22 @@ export interface MessageAgentContext {
   fullPrompt?: string;
   output?: string;
   outputItems?: MessageAgentOutputItem[];
+  persistentContext?: MessagePersistentContextSummary;
+}
+
+export interface MessagePersistentContextSummary {
+  instructionFiles: MessagePersistentInstructionFile[];
+  counts: {
+    claudeMd: number;
+    agentsMd: number;
+    total: number;
+  };
+}
+
+export interface MessagePersistentInstructionFile {
+  path: string;
+  label: string;
+  filename: string;
 }
 
 export interface MessageAgentOutputItem {

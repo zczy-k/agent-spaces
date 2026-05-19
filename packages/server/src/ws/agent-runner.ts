@@ -15,6 +15,7 @@ import { saveToolDetails } from '../services/tool-detail.js';
 import type { ToolDetail } from '../services/tool-detail.js';
 import { getThinkingRuntimeConfig } from '../services/llm-model-config.js';
 import { buildAgentMessageParts, normalizeOutputLines, mergeRuntimeOutput, buildToolDetailId, summarizeToolLine, findToolDetailForResult } from './message-parts.js';
+import { buildPersistentAgentContextDetails } from '../services/persistent-agent-context.js';
 import type { PendingAskUserQuestion } from './message-parts.js';
 import { buildAgentPrompt, buildBuiltInTools } from './agent-prompt.js';
 import type { BuiltInToolContext } from './agent-prompt.js';
@@ -266,6 +267,12 @@ export async function runMentionedAgent(
   const liveReasoning: Array<{ text: string; status?: 'streaming' | 'completed' }> = [];
   let agentPrompt = '';
   let runtimeSessionId = options.resumeSessionId ?? existingMessage?.metadata?.runtimeSessionId;
+  const persistentContext = buildPersistentAgentContextDetails({
+    workspaceId,
+    workingDir: workspace?.boundDirs?.[0] || workingDir,
+    boundDirs: workspace?.boundDirs,
+    excludeNativeClaudeMd: preset.runtimeKind === 'claude-code',
+  }).summary;
   try {
     const runtime = createAgentRuntime({
       kind: preset.runtimeKind,
@@ -320,6 +327,7 @@ export async function runMentionedAgent(
         systemPrompt: preset.systemPrompt,
         userPrompt: prompt,
         fullPrompt: agentPrompt,
+        persistentContext,
         mcpServers: runtimePromptConfig.mcpServers,
         skills: runtimePromptConfig.skills,
         builtInTools: runtimePromptConfig.builtInTools,
@@ -487,6 +495,7 @@ export async function runMentionedAgent(
         systemPrompt: preset.systemPrompt,
         userPrompt: prompt,
         fullPrompt: agentPrompt,
+        persistentContext,
         mcpServers: runtimePromptConfig.mcpServers,
         skills: runtimePromptConfig.skills,
         output: waitingOutput,
@@ -559,6 +568,7 @@ export async function runMentionedAgent(
       systemPrompt: preset.systemPrompt,
       userPrompt: prompt,
       fullPrompt: agentPrompt,
+      persistentContext,
       mcpServers: runtimePromptConfig.mcpServers,
       skills: runtimePromptConfig.skills,
       builtInTools: runtimePromptConfig.builtInTools,
@@ -611,6 +621,7 @@ export async function runMentionedAgent(
       systemPrompt: preset.systemPrompt,
       userPrompt: prompt,
       fullPrompt: agentPrompt,
+      persistentContext,
       mcpServers: runtimePromptConfig.mcpServers,
       skills: runtimePromptConfig.skills,
       builtInTools: runtimePromptConfig.builtInTools,

@@ -8,6 +8,8 @@ import { useEditorStore } from "@/stores/editor";
 import type { FileNode, FileSearchResult } from "@agent-spaces/shared";
 import { RefreshCw, Ellipsis, Upload, Copy, FolderPlus, FilePlus, Search, X } from "lucide-react";
 import { FileIconImg, FolderIconImg } from "./file-icon";
+import { ContextMenu, ContextMenuTrigger } from "@/components/ui/context-menu";
+import { FileContextMenu } from "./file-context-menu";
 import { useTranslations } from 'next-intl';
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -290,7 +292,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
   }, [revealPath, workspaceId, loadDirectory, clearRevealPath]);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="relative flex flex-col h-full">
       <Tabs value={sidebarTab} onValueChange={setSidebarTab} className="flex flex-col h-full">
         <TabsList className="w-full h-8 shrink-0 rounded-none border-b bg-transparent p-0">
           <TabsTrigger value="files" className="flex-1 gap-1 rounded-none border border-b-2 border-transparent text-xs text-muted-foreground data-[active]:border-b-primary data-[active]:bg-transparent data-[active]:text-foreground data-[active]:shadow-none">
@@ -376,19 +378,23 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
                         {t('searchResults', { count: globalFileResults.length, files: globalFileResults.length })}
                       </div>
                       {displayTree.map(node => (
-                        <button
-                          key={node.path}
-                          onClick={() => { setSelectedPath(node.path); openFile(workspaceId, node.path); useMobilePanelStore.getState().setActivePanel('code-editor'); }}
-                          className={`w-full flex items-center gap-1.5 px-3 py-[3px] text-xs hover:bg-accent/50 transition-colors ${selectedPath === node.path ? 'bg-accent' : ''}`}
-                        >
-                          <FileIconImg name={node.name} />
-                          <span className="truncate">{node.name}</span>
-                          {node.path.includes('/') && (
-                            <span className="ml-auto text-[10px] text-muted-foreground truncate max-w-[100px]">
-                              {node.path.replace(/\/[^/]*$/, '')}
-                            </span>
-                          )}
-                        </button>
+                        <ContextMenu key={node.path}>
+                          <ContextMenuTrigger className="contents">
+                            <button
+                              onClick={() => { setSelectedPath(node.path); openFile(workspaceId, node.path); useMobilePanelStore.getState().setActivePanel('code-editor'); }}
+                              className={`w-full flex items-center gap-1.5 px-3 py-[3px] text-xs hover:bg-accent/50 transition-colors ${selectedPath === node.path ? 'bg-accent' : ''}`}
+                            >
+                              <FileIconImg name={node.name} />
+                              <span className="truncate">{node.name}</span>
+                              {node.path.includes('/') && (
+                                <span className="ml-auto text-[10px] text-muted-foreground truncate max-w-[100px]">
+                                  {node.path.replace(/\/[^/]*$/, '')}
+                                </span>
+                              )}
+                            </button>
+                          </ContextMenuTrigger>
+                          <FileContextMenu filePath={node.path} workspaceId={workspaceId} boundDir={boundDir} />
+                        </ContextMenu>
                       ))}
                     </>
                   )}
@@ -483,7 +489,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
         </TabsContent>
 
       </Tabs>
-      <div className={cn("flex-1 min-h-0", sidebarTab !== 'search' && "hidden")}>
+      <div className={cn("absolute inset-x-0 bottom-0 top-8 z-10", sidebarTab !== 'search' && "hidden")}>
         <SearchPanel workspaceId={workspaceId} />
       </div>
       <ImportFileDialog

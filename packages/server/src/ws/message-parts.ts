@@ -1,5 +1,6 @@
 import type { Channel, MessageAgentOutputItem, MessageChain, MessagePart, MessageTokenUsage } from '@agent-spaces/shared';
 import type { ToolDetail } from '../services/tool-detail.js';
+import type { PersistentAgentContextSummary } from '../services/persistent-agent-context.js';
 
 export interface PendingAskUserQuestion {
   id: string;
@@ -21,6 +22,7 @@ export function buildAgentMessageParts(input: {
   systemPrompt?: string;
   userPrompt?: string;
   fullPrompt?: string;
+  persistentContext?: PersistentAgentContextSummary;
   mcpServers: string[];
   skills: string[];
   builtInTools?: BuiltInToolContext[];
@@ -96,6 +98,7 @@ export function buildAgentMessageParts(input: {
         fullPrompt: input.fullPrompt,
         output: lines.join('\n'),
         outputItems: input.outputItems,
+        persistentContext: input.persistentContext,
       },
     });
   }

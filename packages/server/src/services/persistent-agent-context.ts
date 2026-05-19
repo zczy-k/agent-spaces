@@ -1,6 +1,6 @@
 import { existsSync, realpathSync, readFileSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { getDataDir } from '../storage/json-store.js';
 import { readWorkspacePrompt } from './workspace-prompt.js';
 
@@ -19,7 +19,23 @@ export interface PersistentAgentContextOptions {
 interface InstructionFile {
   path: string;
   label: string;
+  filename: string;
   content: string;
+}
+
+export interface PersistentInstructionFileSummary {
+  path: string;
+  label: string;
+  filename: string;
+}
+
+export interface PersistentAgentContextSummary {
+  instructionFiles: PersistentInstructionFileSummary[];
+  counts: {
+    claudeMd: number;
+    agentsMd: number;
+    total: number;
+  };
 }
 
 export function prependPersistentAgentContext(
@@ -32,10 +48,8 @@ export function prependPersistentAgentContext(
 }
 
 export function buildPersistentAgentContext(options: PersistentAgentContextOptions): string {
+  const { instructionContext } = buildPersistentAgentContextDetails(options);
   const sections: string[] = [];
-  const instructionContext = buildInstructionFileContext(options.workingDir, options.boundDirs, {
-    excludeNativeClaudeMd: options.excludeNativeClaudeMd,
-  });
   if (instructionContext) sections.push(instructionContext);
 
   if (options.includeWorkspacePrompt !== false) {
@@ -51,12 +65,28 @@ export function buildPersistentAgentContext(options: PersistentAgentContextOptio
   return sections.join('\n\n');
 }
 
+export function buildPersistentAgentContextDetails(
+  options: PersistentAgentContextOptions,
+): { instructionContext: string; summary: PersistentAgentContextSummary } {
+  const instructionFiles = collectInstructionFiles(options.workingDir, options.boundDirs, {
+    excludeNativeClaudeMd: options.excludeNativeClaudeMd,
+  });
+  return {
+    instructionContext: buildInstructionFileContextFromFiles(instructionFiles),
+    summary: buildPersistentAgentContextSummary(instructionFiles),
+  };
+}
+
 function buildInstructionFileContext(
   workingDir: string,
   boundDirs?: string[],
   options: Pick<PersistentAgentContextOptions, 'excludeNativeClaudeMd'> = {},
 ): string {
   const files = collectInstructionFiles(workingDir, boundDirs, options);
+  return buildInstructionFileContextFromFiles(files);
+}
+
+function buildInstructionFileContextFromFiles(files: InstructionFile[]): string {
   if (files.length === 0) return '';
 
   const lines = [
@@ -77,6 +107,30 @@ function buildInstructionFileContext(
   }
 
   return lines.join('\n').trim();
+}
+
+function buildPersistentAgentContextSummary(files: InstructionFile[]): PersistentAgentContextSummary {
+  const instructionFiles = files.map((file) => ({
+    path: file.path,
+    label: file.label,
+    filename: file.filename,
+  }));
+  const counts = instructionFiles.reduce((acc, file) => {
+    acc.total += 1;
+    if (file.filename === 'CLAUDE.md' || file.filename === 'claude.md') {
+      acc.claudeMd += 1;
+    }
+    if (file.filename === 'AGENTS.md' || file.filename === 'agents.md') {
+      acc.agentsMd += 1;
+    }
+    return acc;
+  }, {
+    claudeMd: 0,
+    agentsMd: 0,
+    total: 0,
+  });
+
+  return { instructionFiles, counts };
 }
 
 function collectInstructionFiles(
@@ -161,6 +215,7 @@ function addInstructionFile(files: InstructionFile[], seen: Set<string>, path: s
   files.push({
     path: realPath,
     label,
+    filename: basename(realPath),
     content: readFileSync(path, 'utf-8').trim(),
   });
 }
