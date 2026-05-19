@@ -31,7 +31,7 @@ import {
   Folder,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { SkillImportDialog } from './skill-import-dialog';
+import { SkillImportPanel } from './skill-import-dialog';
 import type { AgentCandidate, FilterMode, SkillInfo, ImportSkillItem } from './types';
 
 interface SkillListProps {
@@ -238,8 +238,10 @@ export function SkillList({
     setImportItems([]);
   };
 
-  // Dynamically import the dialog component
-  const SkillImportDialog = require('./skill-import-dialog').SkillImportDialog;
+  const handleImportCancel = () => {
+    setImportDialogOpen(false);
+    setImportItems([]);
+  };
 
   return (
     <>
@@ -308,8 +310,16 @@ export function SkillList({
         </div>
       </DialogHeader>
 
-      <div className="flex flex-1 min-h-0 gap-4 pt-2">
-        {/* Desktop: Left sidebar filters */}
+      {importDialogOpen ? (
+        <SkillImportPanel
+          items={importItems}
+          onItemsChange={setImportItems}
+          onConfirm={handleImportConfirm}
+          onCancel={handleImportCancel}
+          defaultGroup={importDefaultGroup}
+        />
+      ) : (
+        <div className="flex flex-1 min-h-0 gap-4 pt-2">
         <div className="hidden md:flex w-44 shrink-0 flex-col gap-3">
           <div className="space-y-1">
             <Button
@@ -552,16 +562,8 @@ export function SkillList({
           </ScrollArea>
         </div>
       </div>
+      )}
 
-      {/* Import preview dialog */}
-      <SkillImportDialog
-        open={importDialogOpen}
-        onOpenChange={setImportDialogOpen}
-        items={importItems}
-        onItemsChange={setImportItems}
-        onConfirm={handleImportConfirm}
-        defaultGroup={importDefaultGroup}
-      />
     </>
   );
 }

@@ -2,37 +2,28 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
+import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import type { ImportSkillItem } from './types';
 
-interface SkillImportDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+interface SkillImportPanelProps {
   items: ImportSkillItem[];
   onItemsChange: (items: ImportSkillItem[]) => void;
   onConfirm: (items: ImportSkillItem[]) => void;
+  onCancel: () => void;
   defaultGroup?: string;
 }
 
-export function SkillImportDialog({
-  open,
-  onOpenChange,
+export function SkillImportPanel({
   items,
   onItemsChange,
   onConfirm,
+  onCancel,
   defaultGroup,
-}: SkillImportDialogProps) {
+}: SkillImportPanelProps) {
   const t = useTranslations('skills');
   const [globalGroup, setGlobalGroup] = useState(defaultGroup || '');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -73,100 +64,96 @@ export function SkillImportDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="!w-[70vw] !max-w-[700px] !max-h-[80vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle>{t('importPreviewTitle')}</DialogTitle>
-        </DialogHeader>
-
-        <div className="flex items-center gap-3 mb-2">
-          <Input
-            value={globalGroup}
-            onChange={(e) => setGlobalGroup(e.target.value)}
-            placeholder={t('importPreviewGroupPlaceholder')}
-            className="flex-1"
-          />
-          <div className="flex gap-1">
-            <Button variant="ghost" size="sm" onClick={selectAll}>
-              {t('importPreviewSelectAll')}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={deselectAll}>
-              {t('importPreviewDeselectAll')}
-            </Button>
-          </div>
+    <div className="flex flex-col flex-1 min-h-0 pt-2">
+      <div className="flex items-center gap-3 mb-2">
+        <span className="text-sm font-medium">{t('importPreviewTitle')}</span>
+        <div className="flex-1" />
+        <div className="flex gap-1">
+          <Button variant="ghost" size="sm" onClick={selectAll}>
+            {t('importPreviewSelectAll')}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={deselectAll}>
+            {t('importPreviewDeselectAll')}
+          </Button>
         </div>
+        <Input
+          value={globalGroup}
+          onChange={(e) => setGlobalGroup(e.target.value)}
+          placeholder={t('importPreviewGroupPlaceholder')}
+          className="h-7 text-sm w-32"
+        />
+      </div>
 
-        {items.length === 0 ? (
-          <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
-            {t('importPreviewEmpty')}
-          </div>
-        ) : (
-          <ScrollArea className="flex-1 min-h-0">
-            <div className="space-y-2 pr-2">
-              {items.map((item) => {
-                const isExpanded = expandedIds.has(item.id);
-                return (
-                  <div key={item.id} className="rounded-lg border border-border p-3">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={item.selected}
-                        onChange={() => toggleSelected(item.id)}
-                        className="mt-0.5 size-3.5 accent-primary shrink-0"
-                      />
-                      <Input
-                        value={item.name}
-                        onChange={(e) => updateItem(item.id, { name: e.target.value })}
-                        placeholder={t('importPreviewNamePlaceholder')}
-                        className="h-7 text-sm flex-1"
-                      />
-                      <Input
-                        value={item.group}
-                        onChange={(e) => updateItem(item.id, { group: e.target.value })}
-                        placeholder={t('importPreviewGroupPlaceholder')}
-                        className="h-7 text-sm w-32"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => toggleExpanded(item.id)}
-                        className="p-1 rounded hover:bg-accent shrink-0"
-                      >
-                        {isExpanded ? (
-                          <ChevronDown className="size-3.5 text-muted-foreground" />
-                        ) : (
-                          <ChevronRight className="size-3.5 text-muted-foreground" />
-                        )}
-                      </button>
-                    </div>
-
-                    <Collapsible open={isExpanded}>
-                      <CollapsibleContent>
-                        <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-auto max-h-48 whitespace-pre-wrap">
-                          {item.content.slice(0, 2000)}
-                          {item.content.length > 2000 ? '\n...' : ''}
-                        </pre>
-                      </CollapsibleContent>
-                    </Collapsible>
+      {items.length === 0 ? (
+        <div className="flex items-center justify-center py-8 text-muted-foreground text-sm">
+          {t('importPreviewEmpty')}
+        </div>
+      ) : (
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="space-y-2 pr-2">
+            {items.map((item) => {
+              const isExpanded = expandedIds.has(item.id);
+              return (
+                <div key={item.id} className="rounded-lg border border-border bg-background p-3">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={item.selected}
+                      onChange={() => toggleSelected(item.id)}
+                      className="mt-0.5 size-3.5 accent-primary shrink-0"
+                    />
+                    <Input
+                      value={item.name}
+                      onChange={(e) => updateItem(item.id, { name: e.target.value })}
+                      placeholder={t('importPreviewNamePlaceholder')}
+                      className="h-7 text-sm flex-1"
+                    />
+                    <Input
+                      value={item.group}
+                      onChange={(e) => updateItem(item.id, { group: e.target.value })}
+                      placeholder={t('importPreviewGroupPlaceholder')}
+                      className="h-7 text-sm w-32"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => toggleExpanded(item.id)}
+                      className="p-1 rounded hover:bg-accent shrink-0"
+                    >
+                      {isExpanded ? (
+                        <ChevronDown className="size-3.5 text-muted-foreground" />
+                      ) : (
+                        <ChevronRight className="size-3.5 text-muted-foreground" />
+                      )}
+                    </button>
                   </div>
-                );
-              })}
-            </div>
-          </ScrollArea>
-        )}
 
-        <div className="flex items-center justify-end gap-2 pt-2 border-t">
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-            {t('importPreviewCancel')}
-          </Button>
-          <Button
-            size="sm"
-            onClick={handleConfirm}
-            disabled={selectedCount === 0}
-          >
-            {t('importPreviewConfirm', { selected: selectedCount, total: items.length })}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+                  <Collapsible open={isExpanded}>
+                    <CollapsibleContent>
+                      <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-auto max-h-48 whitespace-pre-wrap">
+                        {item.content.slice(0, 2000)}
+                        {item.content.length > 2000 ? '\n...' : ''}
+                      </pre>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </div>
+              );
+            })}
+          </div>
+        </ScrollArea>
+      )}
+
+      <div className="flex items-center justify-end gap-2 pt-2 mt-2 border-t">
+        <Button variant="outline" size="sm" onClick={onCancel}>
+          {t('importPreviewCancel')}
+        </Button>
+        <Button
+          size="sm"
+          onClick={handleConfirm}
+          disabled={selectedCount === 0}
+        >
+          {t('importPreviewConfirm', { selected: selectedCount, total: items.length })}
+        </Button>
+      </div>
+    </div>
   );
 }
