@@ -36,12 +36,8 @@ function EditorLoadingFallback() {
   return <div className="flex items-center justify-center h-full text-muted-foreground text-sm">{t('loadingEditor')}</div>;
 }
 
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { Markdown } from '@/components/ui/markdown';
 
-function MediaMarkdown({ content }: { content: string }) {
-  return <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>;
-}
 
 const MonacoEditor = dynamic(
   () => import("@monaco-editor/react").then((mod) => mod.default),
@@ -318,7 +314,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
         {isCommitDiff && commitDiffData ? (
           <CommitDiffViewer diffs={commitDiffData.diffs} message={commitDiffData.message} />
         ) : isPreviewable && showPreview && (mediaUrl || mediaType === 'markdown') ? (
-          <div className="relative flex items-center justify-center h-full bg-muted/20 overflow-auto p-4">
+          <div className="relative flex justify-center h-full bg-muted/20 overflow-auto p-4">
             {isCodePreviewToggle && (
               <button
                 onClick={() => setShowPreview(false)}
@@ -346,7 +342,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
             )}
             {mediaType === 'markdown' && activeContent && (
               <div className="prose prose-sm dark:prose-invert max-w-none w-full max-w-4xl mx-auto">
-                <MediaMarkdown content={activeContent} />
+                <Markdown content={activeContent} />
               </div>
             )}
           </div>

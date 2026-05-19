@@ -42,7 +42,15 @@ export function buildAgentMessageParts(input: {
   const usage = input.usage ?? extractUsage(lines);
   const parts: MessagePart[] = [];
 
-  const chainItems = buildChainItems(lines, finalTextRange, finalText, input.workspaceRoot, input.toolDetails, input.persistentContext);
+  const chainItems = buildChainItems(
+    lines,
+    finalTextRange,
+    finalText,
+    input.workspaceRoot,
+    input.toolDetails,
+    input.persistentContext,
+    input.askUserQuestions,
+  );
 
   const reasoningText = normalizeReasoningText(input.reasoning);
   if (reasoningText) {
@@ -318,6 +326,7 @@ function buildChainItems(
   workspaceRoot?: string,
   toolDetails?: Map<string, ToolDetail>,
   persistentContext?: PersistentAgentContextSummary,
+  askUserQuestions?: PendingAskUserQuestion[],
 ): MessageChain[] {
   let toolIndex = 0;
   let messageIndex = 0;
@@ -328,6 +337,11 @@ function buildChainItems(
   const persistentContextItem = buildPersistentContextToolItem(persistentContext);
   if (persistentContextItem) {
     items.push(persistentContextItem);
+    toolIndex += 1;
+  }
+
+  for (const question of askUserQuestions ?? []) {
+    items.push(buildAskUserQuestionToolItem(question, toolIndex));
     toolIndex += 1;
   }
 
@@ -406,6 +420,23 @@ function buildPersistentContextToolItem(persistentContext?: PersistentAgentConte
     description: parts.length ? parts.join(', ') : `${counts.total} instruction files`,
     status: 'completed',
     toolName: 'LoadClaudeMd',
+  };
+}
+
+function buildAskUserQuestionToolItem(question: PendingAskUserQuestion, index: number): MessageChain {
+  const choices = question.choices.length ? `选项：${question.choices.join(' / ')}` : undefined;
+  const description = question.answer
+    ? [question.question, `回答：${question.answer}`].join('\n')
+    : [question.question, choices].filter(Boolean).join('\n');
+
+  return {
+    id: `tool-ask-user-question-${question.id || index}`,
+    kind: 'tool',
+    title: 'Ask user question',
+    description,
+    status: question.answer ? 'completed' : 'pending',
+    toolName: 'AskUserQuestion',
+    answer: question.answer,
   };
 }
 

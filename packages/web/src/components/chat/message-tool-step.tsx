@@ -212,6 +212,12 @@ export function ToolStep({
       description={chain.command}
       status={status}
     >
+      {chain.answer ? (
+        <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
+          <div className="text-muted-foreground text-xs">{t('messageParts.result')}</div>
+          <div className="font-medium">{chain.answer}</div>
+        </div>
+      ) : null}
       {open ? (
         <div className="space-y-2">
           {loading ? (

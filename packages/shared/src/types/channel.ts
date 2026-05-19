@@ -82,6 +82,7 @@ export interface MessageChain {
   filePath?: string;
   command?: string;
   detailId?: string;
+  answer?: string;
 }
 
 export interface MessageApproval {

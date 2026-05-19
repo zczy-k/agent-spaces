@@ -1,7 +1,6 @@
 "use client"
 
 import type { Message, MessagePart } from "@agent-spaces/shared"
-import { HelpCircleIcon } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { Markdown } from "@/components/ui/markdown"
 import { Loader } from "@/components/ui/loader"
@@ -215,8 +214,7 @@ function MessagePartView({
         </Agent>
       )
     case "ask_user_question":
-      if (part.status !== "answered" && !part.answer) return null
-      return <AnsweredQuestionSummary question={part.question} answer={part.answer ?? ""} />
+      return null
     default:
       return null
   }
@@ -227,24 +225,6 @@ function UserReplyPart({ text, senderName }: { text: string; senderName: string 
     <div className="not-prose rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-sm">
       <div className="mb-1 text-xs font-medium text-primary">{senderName}：</div>
       <UserContent content={text} />
-    </div>
-  )
-}
-
-function AnsweredQuestionSummary({
-  question,
-  answer,
-}: {
-  question: string
-  answer: string
-}) {
-  return (
-    <div className="not-prose flex items-start gap-2 rounded-md border bg-muted/30 px-3 py-2 text-sm">
-      <HelpCircleIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-muted-foreground">{question}</div>
-        <div className="font-medium">{answer}</div>
-      </div>
     </div>
   )
 }
