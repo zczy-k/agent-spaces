@@ -218,7 +218,7 @@ export function SkillList({
         items.push({
           id: `zip-${folderName}-${Math.random().toString(36).slice(2, 8)}`,
           name: folderName,
-          group: zipName,
+          group: '',
           content,
           selected: true,
           sourceName: folderName,

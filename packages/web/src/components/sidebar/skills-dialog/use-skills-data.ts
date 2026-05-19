@@ -151,7 +151,7 @@ export function useSkillActions(skills: SkillInfo[], setSkills: (fn: (prev: Skil
         const preset = await res.json();
         const existing = (preset.skills || []).map((s: string) => s.replace(/\.md$/i, ''));
         if (!existing.includes(skill.name)) {
-          const updatedSkills = [...(preset.skills || []), `${skill.name}.md`];
+          const updatedSkills = [...(preset.skills || []), skill.name];
           await fetch(`/api/agents/presets/${agent.id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -188,7 +188,7 @@ export function useSkillActions(skills: SkillInfo[], setSkills: (fn: (prev: Skil
       const updatedSkills = [...(preset.skills || [])];
       for (const name of skillNames) {
         if (!existing.has(name)) {
-          updatedSkills.push(`${name}.md`);
+          updatedSkills.push(name);
         }
       }
       await fetch(`/api/agents/presets/${agentId}`, {

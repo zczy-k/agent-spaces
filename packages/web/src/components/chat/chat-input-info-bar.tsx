@@ -66,13 +66,13 @@ export function ChatInputInfoBar({ mcps, skills, tools, todos, onClearTodos }: C
           <span>{t("input.mcp")}{mcps.length ? ` ${mcps.length}` : ""}</span>
           <IconChevronDown className="size-3" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5 bg-popover border-border">
+        <DropdownMenuContent align="start" className="min-w-[200px] max-w-xs rounded-2xl p-1.5 bg-popover border-border">
           <DropdownMenuGroup className="space-y-1">
             {mcps.length ? (
               mcps.map((mcp) => (
-                <DropdownMenuItem key={mcp} className="rounded-[calc(1rem-6px)] text-xs">
-                  <IconPlug size={16} className="opacity-60" />
-                  {mcp}
+                <DropdownMenuItem key={mcp} className="rounded-[calc(1rem-6px)] text-xs truncate">
+                  <IconPlug size={16} className="opacity-60 shrink-0" />
+                  <span className="truncate">{mcp}</span>
                 </DropdownMenuItem>
               ))
             ) : (
@@ -99,13 +99,13 @@ export function ChatInputInfoBar({ mcps, skills, tools, todos, onClearTodos }: C
           <span>{t("input.skill")}{skills.length ? ` ${skills.length}` : ""}</span>
           <IconChevronDown className="size-3" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5 bg-popover border-border">
+        <DropdownMenuContent align="start" className="min-w-[200px] max-w-xs rounded-2xl p-1.5 bg-popover border-border">
           <DropdownMenuGroup className="space-y-1">
             {skills.length ? (
               skills.map((skill) => (
-                <DropdownMenuItem key={skill} className="rounded-[calc(1rem-6px)] text-xs">
-                  <IconPuzzle size={16} className="opacity-60" />
-                  {skill}
+                <DropdownMenuItem key={skill} className="rounded-[calc(1rem-6px)] text-xs truncate">
+                  <IconPuzzle size={16} className="opacity-60 shrink-0" />
+                  <span className="truncate">{skill}</span>
                 </DropdownMenuItem>
               ))
             ) : (
@@ -132,13 +132,13 @@ export function ChatInputInfoBar({ mcps, skills, tools, todos, onClearTodos }: C
           <span>{t("input.tools")}{tools.length ? ` ${tools.length}` : ""}</span>
           <IconChevronDown className="size-3" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5 bg-popover border-border">
+        <DropdownMenuContent align="start" className="min-w-[200px] max-w-xs rounded-2xl p-1.5 bg-popover border-border">
           <DropdownMenuGroup className="space-y-1">
             {tools.length ? (
               tools.map(({ name, label, icon: Icon }) => (
-                <DropdownMenuItem key={name} className="rounded-[calc(1rem-6px)] text-xs">
-                  <Icon size={16} className="opacity-60" />
-                  {label}
+                <DropdownMenuItem key={name} className="rounded-[calc(1rem-6px)] text-xs truncate">
+                  <Icon size={16} className="opacity-60 shrink-0" />
+                  <span className="truncate">{label}</span>
                 </DropdownMenuItem>
               ))
             ) : (

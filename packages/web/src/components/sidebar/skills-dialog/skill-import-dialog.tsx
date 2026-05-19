@@ -25,7 +25,7 @@ export function SkillImportPanel({
   defaultGroup,
 }: SkillImportPanelProps) {
   const t = useTranslations('skills');
-  const [globalGroup, setGlobalGroup] = useState(defaultGroup || '');
+  const [globalGroup, setGlobalGroup] = useState('');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   const updateItem = (id: string, patch: Partial<ImportSkillItem>) => {
@@ -79,7 +79,7 @@ export function SkillImportPanel({
         <Input
           value={globalGroup}
           onChange={(e) => setGlobalGroup(e.target.value)}
-          placeholder={t('importPreviewGroupPlaceholder')}
+          placeholder={defaultGroup || t('importPreviewGroupPlaceholder')}
           className="h-7 text-sm w-32"
         />
       </div>
