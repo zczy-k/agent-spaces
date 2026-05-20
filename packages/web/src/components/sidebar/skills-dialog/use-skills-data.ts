@@ -128,6 +128,27 @@ export function useSkillActions(skills: SkillInfo[], setSkills: (fn: (prev: Skil
     } catch { /* ignore */ }
   };
 
+  const importFromGit = async (url: string): Promise<ImportSkillItem[] | null> => {
+    try {
+      const res = await fetch('/api/skills/import-git', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+      if (!res.ok) return null;
+      const skills: Array<{ name: string; content: string }> = await res.json();
+      return skills.map((s) => ({
+        id: `git-${s.name}-${Math.random().toString(36).slice(2, 8)}`,
+        name: s.name,
+        group: '',
+        content: s.content,
+        selected: true,
+        sourceName: s.name,
+      }));
+    } catch { /* ignore */ }
+    return null;
+  };
+
   const bindConfirm = async (skill: SkillInfo, bindSelected: string[], agents: { id: string }[]) => {
     for (const agent of agents) {
       const wasBound = skill.boundAgents.some((a) => a.id === agent.id);
@@ -200,5 +221,5 @@ export function useSkillActions(skills: SkillInfo[], setSkills: (fn: (prev: Skil
     } catch { /* ignore */ }
   };
 
-  return { toggleFavorite, toggleEnabled, toggleAllEnabled, deleteSkill, saveEdit, importBatch, bindConfirm, applyAllToAgent, syncCheck, syncConfirm };
+  return { toggleFavorite, toggleEnabled, toggleAllEnabled, deleteSkill, saveEdit, importBatch, importFromGit, bindConfirm, applyAllToAgent, syncCheck, syncConfirm };
 }

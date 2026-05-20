@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { listSkills, importSkill, importSkillsBatch, toggleFavorite, toggleEnabled, toggleAllEnabled, updateSkillContent, deleteSkill, checkSkillSync, syncSkills } from '../services/skill.js';
+import { listSkills, importSkill, importSkillsBatch, toggleFavorite, toggleEnabled, toggleAllEnabled, updateSkillContent, deleteSkill, checkSkillSync, syncSkills, importSkillsFromGit } from '../services/skill.js';
 import type { Request, Response } from 'express';
 
 const router = Router();
@@ -40,6 +40,20 @@ router.post('/import-batch', (req: Request, res: Response) => {
   }
   const skills = importSkillsBatch(items);
   res.json(skills);
+});
+
+router.post('/import-git', (req: Request, res: Response) => {
+  const { url } = req.body as { url?: string };
+  if (!url) {
+    res.status(400).json({ error: 'url required' });
+    return;
+  }
+  try {
+    const skills = importSkillsFromGit(url);
+    res.json(skills);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Git clone failed' });
+  }
 });
 
 router.post('/:name/favorite', (req: Request, res: Response) => {

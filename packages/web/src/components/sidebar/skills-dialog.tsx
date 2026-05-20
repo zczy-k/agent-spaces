@@ -121,6 +121,7 @@ export function SkillsDialog({ open, onOpenChange, standalone }: SkillsDialogPro
       onEdit={openEditDialog}
       onBind={openBindDialog}
       onImportBatch={actions.importBatch}
+      onImportFromGit={actions.importFromGit}
       onSyncCheck={handleSyncCheck}
       onBindAll={openBindAllDialog}
     />

@@ -1035,6 +1035,8 @@
     "importFromMd": "Import .md File",
     "importFromFolder": "Import Folder",
     "importFromZip": "Import ZIP",
+    "importFromGit": "Import from Git",
+    "importFromGitDesc": "Enter a Git repository URL to clone and find SKILL.md files",
     "importPreviewTitle": "Import Preview",
     "importPreviewGroupPlaceholder": "Group name (optional)",
     "importPreviewNamePlaceholder": "Skill name",

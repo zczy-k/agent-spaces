@@ -1037,6 +1037,8 @@
     "importFromMd": "导入 .md 文件",
     "importFromFolder": "导入文件夹",
     "importFromZip": "导入 ZIP",
+    "importFromGit": "从 Git 导入",
+    "importFromGitDesc": "输入 Git 仓库地址，将自动 clone 并查找 SKILL.md 文件",
     "importPreviewTitle": "导入预览",
     "importPreviewGroupPlaceholder": "分组名称（可选）",
     "importPreviewNamePlaceholder": "技能名称",

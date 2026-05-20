@@ -1,5 +1,8 @@
 import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { basename, join, relative } from 'node:path';
+import { tmpdir } from 'node:os';
+import { randomUUID } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { ensureDir, getDataDir } from '../storage/json-store.js';
 import { listTemplates } from './agent.js';
 import type { AgentConfig } from '@agent-spaces/shared';
@@ -351,4 +354,46 @@ export function syncSkills(items: Array<{ agentId: string; skillName: string }>)
   }
 
   return synced;
+}
+
+export function importSkillsFromGit(gitUrl: string): Array<{ name: string; content: string }> {
+  const cloneDir = join(tmpdir(), `agent-spaces-git-${randomUUID()}`);
+
+  try {
+    execFileSync('git', ['clone', '--depth', '1', gitUrl, cloneDir], {
+      timeout: 60_000,
+      stdio: 'pipe',
+    });
+
+    const results: Array<{ name: string; content: string }> = [];
+
+    function walk(dir: string): void {
+      const entries = readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(full);
+        } else if (entry.name === SKILL_FILE || entry.name.endsWith('.md')) {
+          const folderName = basename(dir);
+          if (folderName === basename(cloneDir)) continue; // skip repo root
+          const existing = results.find((r) => r.name === folderName);
+          // Prefer SKILL.md over generic .md
+          if (!existing || (entry.name === SKILL_FILE && existing.content)) {
+            const content = readFileSync(full, 'utf-8');
+            if (!existing) {
+              results.push({ name: folderName, content });
+            } else {
+              existing.content = content;
+            }
+          }
+        }
+      }
+    }
+
+    walk(cloneDir);
+    return results;
+  } finally {
+    rmSync(cloneDir, { recursive: true, force: true });
+  }
 }

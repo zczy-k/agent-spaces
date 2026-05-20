@@ -3,7 +3,11 @@
 import { useState, useRef, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import {
+  Dialog,
+  DialogContent,
   DialogHeader,
+  DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +33,8 @@ import {
   FolderOpen,
   FileArchive,
   Folder,
+  GitBranch,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SkillImportPanel } from './skill-import-dialog';
@@ -48,6 +54,7 @@ interface SkillListProps {
   onEdit: (skill: SkillInfo) => void;
   onBind: (skill: SkillInfo) => void;
   onImportBatch: (items: ImportSkillItem[]) => void;
+  onImportFromGit: (url: string) => Promise<ImportSkillItem[] | null>;
   onSyncCheck: () => Promise<unknown>;
   onBindAll: () => void;
 }
@@ -66,6 +73,7 @@ export function SkillList({
   onEdit,
   onBind,
   onImportBatch,
+  onImportFromGit,
   onSyncCheck,
   onBindAll,
 }: SkillListProps) {
@@ -83,6 +91,9 @@ export function SkillList({
   const [importItems, setImportItems] = useState<ImportSkillItem[]>([]);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importDefaultGroup, setImportDefaultGroup] = useState('');
+  const [gitUrl, setGitUrl] = useState('');
+  const [gitLoading, setGitLoading] = useState(false);
+  const [gitDialogOpen, setGitDialogOpen] = useState(false);
 
   // Extract unique groups
   const groups = Array.from(new Set(skills.map((s) => s.group).filter(Boolean)));
@@ -245,6 +256,21 @@ export function SkillList({
     setImportItems([]);
   };
 
+  const handleGitImport = async () => {
+    const url = gitUrl.trim();
+    if (!url) return;
+    setGitLoading(true);
+    const items = await onImportFromGit(url);
+    setGitLoading(false);
+    if (items && items.length > 0) {
+      const repoName = url.split('/').pop()?.replace(/\.git$/i, '') || '';
+      setImportItems(items);
+      setImportDefaultGroup(repoName);
+      setImportDialogOpen(true);
+    }
+    setGitUrl('');
+  };
+
   return (
     <>
       {/* Hidden file inputs */}
@@ -305,6 +331,10 @@ export function SkillList({
                 <DropdownMenuItem onClick={() => zipInputRef.current?.click()}>
                   <FileArchive className="size-3.5 mr-1.5" />
                   {t('importFromZip')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setGitDialogOpen(true)} disabled={gitLoading}>
+                  <GitBranch className="size-3.5 mr-1.5" />
+                  {t('importFromGit')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -574,6 +604,29 @@ export function SkillList({
         </div>
       </div>
       )}
+
+      {/* Git import dialog */}
+      <Dialog open={gitDialogOpen} onOpenChange={setGitDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('importFromGit')}</DialogTitle>
+            <DialogDescription>{t('importFromGitDesc')}</DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center gap-2">
+            <Input
+              value={gitUrl}
+              onChange={(e) => setGitUrl(e.target.value)}
+              placeholder="https://github.com/user/skills-repo.git"
+              onKeyDown={(e) => { if (e.key === 'Enter') handleGitImport(); }}
+              disabled={gitLoading}
+              autoFocus
+            />
+            <Button onClick={handleGitImport} disabled={gitLoading || !gitUrl.trim()}>
+              {gitLoading ? <Loader2 className="size-4 animate-spin" /> : t('import')}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
     </>
   );
