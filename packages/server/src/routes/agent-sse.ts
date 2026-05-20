@@ -7,6 +7,7 @@ import * as agentService from '../services/agent.js';
 import * as workspaceService from '../services/workspace.js';
 import { getThinkingRuntimeConfig } from '../services/llm-model-config.js';
 import { buildAgentPrompt } from '../ws/agent-prompt.js';
+import { wrapOnEventWithHooks } from '../services/hook-engine.js';
 
 const router = Router();
 
@@ -119,10 +120,10 @@ router.post('/run', async (req: Request, res: Response) => {
         skills,
         configDir,
         sandboxDirs: preset.sandboxDirs,
-        onEvent: (event) => {
+        onEvent: wrapOnEventWithHooks((event) => {
           if (event.type === 'output') output.push(event.line);
           writeSse(res, event.type, serializeRuntimeEvent(event));
-        },
+        }, workspaceId, workspace?.hooksEnabled),
       },
     );
 

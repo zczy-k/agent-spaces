@@ -19,6 +19,7 @@ import { buildPersistentAgentContextDetails } from '../services/persistent-agent
 import type { PendingAskUserQuestion } from './message-parts.js';
 import { buildAgentPrompt, buildBuiltInTools } from './agent-prompt.js';
 import type { BuiltInToolContext } from './agent-prompt.js';
+import { wrapOnEventWithHooks } from '../services/hook-engine.js';
 
 interface ActiveChannelRun {
   agentId: string;
@@ -372,7 +373,7 @@ export async function runMentionedAgent(
       configDir,
       sandboxDirs: preset.sandboxDirs,
       resumeSessionId: isRuntimeSessionResume ? options.resumeSessionId : undefined,
-      onEvent: (event) => {
+      onEvent: wrapOnEventWithHooks((event) => {
         if (activeRun?.stopped) return;
         if (event.type === 'session') {
           runtimeSessionId = event.sessionId;
@@ -486,7 +487,7 @@ export async function runMentionedAgent(
         }));
         broadcastToWorkspace(workspaceId, 'agent.output', { agentId: nextSession.id, data: event.line });
         broadcastLiveParts();
-      },
+      }, workspaceId, workspace?.hooksEnabled),
     });
     if (activeRun.stopped) return;
     broadcastLiveParts(true);

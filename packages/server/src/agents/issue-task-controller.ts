@@ -13,6 +13,7 @@ import { createIssueFunctionTools } from '../services/builtin-tools.js';
 import { getThinkingRuntimeConfig } from '../services/llm-model-config.js';
 import { prependPersistentAgentContext } from '../services/persistent-agent-context.js';
 import { completeIssueAgentProgress, createIssueAgentProgress, createIssueAgentProgressTracker } from './issue-agent-progress.js';
+import { wrapOnEventWithHooks } from '../services/hook-engine.js';
 
 const ACTIVE_TASK_STATUSES: TaskStatus[] = ['running', 'reviewing', 'retrying', 'waiting_review'];
 
@@ -61,6 +62,7 @@ export async function syncIssueTasksAfterPlanning(
 
   const startTime = Date.now();
   const taskSyncWorkingDir = resolveIssueWorkspaceRoot(workspaceId);
+  const workspace = workspaceService.getById(workspaceId);
   const progress = createIssueAgentProgress(workspaceId, issue, taskSyncPreset, taskSyncAgent.id, {
     runtime: taskSyncPreset.runtimeKind,
     model: taskSyncPreset.modelId,
@@ -86,7 +88,7 @@ export async function syncIssueTasksAfterPlanning(
       skills: [],
       configDir: agentService.getAgentConfigDir(workspaceId, taskSyncPreset),
       sandboxDirs: taskSyncPreset.sandboxDirs,
-      onEvent: taskSyncTracker.handleEvent,
+      onEvent: wrapOnEventWithHooks(taskSyncTracker.handleEvent.bind(taskSyncTracker), workspaceId, workspace?.hooksEnabled),
     },
   );
 
@@ -238,6 +240,7 @@ export async function runIssueTask(
       ctx.broadcast('task.output', { taskId, data: line });
     },
   });
+  const workspace = workspaceService.getById(workspaceId);
   ctx.broadcast('agent.output', { agentId: taskAgent.id, data: `Executing task: ${runningTask.title}` });
   ctx.broadcast('agent.output', {
     agentId: taskAgent.id,
@@ -254,7 +257,7 @@ export async function runIssueTask(
       skills: agentService.getAvailableSkillNames(agentService.getAgentConfigDir(workspaceId, taskAgentPreset), taskAgentPreset.skills),
       configDir: agentService.getAgentConfigDir(workspaceId, taskAgentPreset),
       sandboxDirs: runningTask.sandboxDirs ?? taskAgentPreset.sandboxDirs,
-      onEvent: agentTracker.handleEvent,
+      onEvent: wrapOnEventWithHooks(agentTracker.handleEvent.bind(agentTracker), workspaceId, workspace?.hooksEnabled),
     },
   );
 
