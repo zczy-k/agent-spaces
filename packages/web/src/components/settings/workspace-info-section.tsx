@@ -26,6 +26,7 @@ interface WorkspaceInfoSectionProps {
 export function WorkspaceInfoSection({ workspace, channelCount, issueCount }: WorkspaceInfoSectionProps) {
   const t = useTranslations('projectSettings');
   const [autoProcess, setAutoProcess] = useState(workspace.autoProcessIssues !== false);
+  const [hooksEnabled, setHooksEnabled] = useState(workspace.hooksEnabled !== false);
   const [saving, setSaving] = useState(false);
 
   const handleToggleAutoProcess = async (checked: boolean) => {
@@ -39,6 +40,22 @@ export function WorkspaceInfoSection({ workspace, channelCount, issueCount }: Wo
       });
       const updated: Workspace = await res.json();
       setAutoProcess(updated.autoProcessIssues !== false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleHooks = async (checked: boolean) => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/workspaces/${workspace.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hooksEnabled: checked }),
+      });
+      const updated: Workspace = await res.json();
+      setHooksEnabled(updated.hooksEnabled !== false);
     } finally {
       setSaving(false);
     }
@@ -70,6 +87,29 @@ export function WorkspaceInfoSection({ workspace, channelCount, issueCount }: Wo
               id="auto-process"
               checked={autoProcess}
               onCheckedChange={handleToggleAutoProcess}
+              disabled={saving}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Hooks</h4>
+        <div className="flex items-center justify-between rounded-md border px-3 py-2.5">
+          <div className="space-y-0.5 pr-4">
+            <Label htmlFor="hooks-enabled" className="text-sm font-medium">
+              Enable Hooks
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Enable per-tool-call hooks for this workspace
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {saving && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+            <Switch
+              id="hooks-enabled"
+              checked={hooksEnabled}
+              onCheckedChange={handleToggleHooks}
               disabled={saving}
             />
           </div>

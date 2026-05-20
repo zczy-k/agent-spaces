@@ -32,6 +32,7 @@ import {
   PanelLeftClose,
   Hash,
   CircleDot,
+  Zap,
 } from "lucide-react";
 import { UserIcon } from "@/components/common/user-icon";
 import { AgentDialog } from "@/components/sidebar/agent-dialog";
@@ -42,6 +43,7 @@ import { SkillsDialog } from "@/components/sidebar/skills-dialog";
 import { PromptsDialog } from "@/components/sidebar/prompts-dialog";
 import { OutputStylesDialog } from "@/components/sidebar/output-styles-dialog";
 import { McpsDialog } from "@/components/sidebar/mcps-dialog";
+import { HooksDialog } from "@/components/sidebar/hooks-dialog";
 import type { Route } from "./nav-main";
 import DashboardNavigation from "@/components/sidebar/nav-main";
 import { NotificationsPopover } from "@/components/sidebar/nav-notifications";
@@ -83,6 +85,7 @@ export function DashboardSidebar() {
   const [promptsDialogOpen, setPromptsDialogOpen] = useState(false);
   const [outputStylesDialogOpen, setOutputStylesDialogOpen] = useState(false);
   const [mcpsDialogOpen, setMcpsDialogOpen] = useState(false);
+  const [hooksDialogOpen, setHooksDialogOpen] = useState(false);
   const [wsDialogOpen, setWsDialogOpen] = useState(false);
   const [editingWs, setEditingWs] = useState<Workspace | null>(null);
   const [modelsDialogProvider, setModelsDialogProvider] = useState<string | undefined>(undefined);
@@ -279,6 +282,7 @@ export function DashboardSidebar() {
             { title: ts('nav.mcps'), link: "#", icon: <Plug className="size-3.5" />, onClick: () => setMcpsDialogOpen(true) },
             { title: ts('nav.models'), link: "#", icon: <Brain className="size-3.5" />, onClick: () => { setModelsDialogProvider(undefined); setModelsDialogOpen(true); } },
             { title: ts('nav.providers'), link: "#", icon: <Server className="size-3.5" />, onClick: () => setProvidersDialogOpen(true) },
+            { title: ts('nav.hooks'), link: "#", icon: <Zap className="size-3.5" />, onClick: () => setHooksDialogOpen(true) },
           ],
     },
   ];
@@ -329,6 +333,7 @@ export function DashboardSidebar() {
       <PromptsDialog open={promptsDialogOpen} onOpenChange={setPromptsDialogOpen} />
       <OutputStylesDialog open={outputStylesDialogOpen} onOpenChange={setOutputStylesDialogOpen} />
       <McpsDialog open={mcpsDialogOpen} onOpenChange={setMcpsDialogOpen} />
+      <HooksDialog open={hooksDialogOpen} onOpenChange={setHooksDialogOpen} />
       <SettingsDialog open={settingsDialogOpen} onOpenChange={setSettingsDialogOpen} />
       <ModelsDialog open={modelsDialogOpen} onOpenChange={setModelsDialogOpen} initialProvider={modelsDialogProvider} />
       <ProvidersDialog

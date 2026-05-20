@@ -190,7 +190,7 @@ export function HooksDialog({ open, onOpenChange, standalone }: HooksDialogProps
                   Save
                 </Button>
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
+                  <DropdownMenuTrigger>
                     <Button size="sm" variant="ghost" className="h-7 w-7 p-0">
                       <MoreVertical className="size-3" />
                     </Button>
