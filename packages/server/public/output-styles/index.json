@@ -1,0 +1,37 @@
+[
+  {
+    "id": "carmack-mode",
+    "name": "Carmack 模式",
+    "filename": "carmack-mode.md"
+  },
+  {
+    "id": "codex-rigor-mode",
+    "name": "Codex Rigor 模式",
+    "filename": "codex-rigor-mode.md"
+  },
+  {
+    "id": "dhh-mode",
+    "name": "DHH 模式",
+    "filename": "dhh-mode.md"
+  },
+  {
+    "id": "evan-you-mode",
+    "name": "尤雨溪模式",
+    "filename": "evan-you-mode.md"
+  },
+  {
+    "id": "jobs-mode",
+    "name": "Jobs 模式",
+    "filename": "jobs-mode.md"
+  },
+  {
+    "id": "linus-mode",
+    "name": "Linus 模式",
+    "filename": "linus-mode.md"
+  },
+  {
+    "id": "uncle-bob-mode",
+    "name": "Uncle Bob 模式",
+    "filename": "uncle-bob-mode.md"
+  }
+]

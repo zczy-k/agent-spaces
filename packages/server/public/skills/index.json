@@ -1,0 +1,92 @@
+[
+  {
+    "id": "planning-with-files-zh",
+    "name": "planning-with-files-zh",
+    "group": "planning-with-files",
+    "path": "planning-with-files/planning-with-files-zh"
+  },
+  {
+    "id": "brainstorming",
+    "name": "brainstorming",
+    "group": "superpowers",
+    "path": "superpowers/brainstorming"
+  },
+  {
+    "id": "dispatching-parallel-agents",
+    "name": "dispatching-parallel-agents",
+    "group": "superpowers",
+    "path": "superpowers/dispatching-parallel-agents"
+  },
+  {
+    "id": "executing-plans",
+    "name": "executing-plans",
+    "group": "superpowers",
+    "path": "superpowers/executing-plans"
+  },
+  {
+    "id": "finishing-a-development-branch",
+    "name": "finishing-a-development-branch",
+    "group": "superpowers",
+    "path": "superpowers/finishing-a-development-branch"
+  },
+  {
+    "id": "receiving-code-review",
+    "name": "receiving-code-review",
+    "group": "superpowers",
+    "path": "superpowers/receiving-code-review"
+  },
+  {
+    "id": "requesting-code-review",
+    "name": "requesting-code-review",
+    "group": "superpowers",
+    "path": "superpowers/requesting-code-review"
+  },
+  {
+    "id": "subagent-driven-development",
+    "name": "subagent-driven-development",
+    "group": "superpowers",
+    "path": "superpowers/subagent-driven-development"
+  },
+  {
+    "id": "systematic-debugging",
+    "name": "systematic-debugging",
+    "group": "superpowers",
+    "path": "superpowers/systematic-debugging"
+  },
+  {
+    "id": "test-driven-development",
+    "name": "test-driven-development",
+    "group": "superpowers",
+    "path": "superpowers/test-driven-development"
+  },
+  {
+    "id": "using-git-worktrees",
+    "name": "using-git-worktrees",
+    "group": "superpowers",
+    "path": "superpowers/using-git-worktrees"
+  },
+  {
+    "id": "using-superpowers",
+    "name": "using-superpowers",
+    "group": "superpowers",
+    "path": "superpowers/using-superpowers"
+  },
+  {
+    "id": "verification-before-completion",
+    "name": "verification-before-completion",
+    "group": "superpowers",
+    "path": "superpowers/verification-before-completion"
+  },
+  {
+    "id": "writing-plans",
+    "name": "writing-plans",
+    "group": "superpowers",
+    "path": "superpowers/writing-plans"
+  },
+  {
+    "id": "writing-skills",
+    "name": "writing-skills",
+    "group": "superpowers",
+    "path": "superpowers/writing-skills"
+  }
+]
