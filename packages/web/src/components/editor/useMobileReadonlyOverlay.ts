@@ -35,7 +35,7 @@ export function useMobileReadonlyOverlay({
   isCommitDiff,
   hasActiveFile,
   editorReadyTick,
-  wordWrap,
+  wordWrap: _wordWrap,
 }: UseMobileReadonlyOverlayParams) {
   const mobileSelectionPreRef = useRef<HTMLPreElement | null>(null);
   const mobileReadonlyMenuRef = useRef<HTMLDivElement | null>(null);
@@ -100,13 +100,13 @@ export function useMobileReadonlyOverlay({
       selectedText: '',
       canNavigate: hasSingleWordSelection(editorRef.current),
     });
-  }, [mobileSelectionMode, showMobileReadonlyOverlay]);
+  }, [editorRef, mobileSelectionMode, showMobileReadonlyOverlay]);
 
   const handleMobileReadonlyFocus = useCallback(() => {
     if (allowMobileEditorFocusRef.current) return;
     if (!showMobileReadonlyOverlay || mobileSelectionMode) return;
     blurEditorActiveElement(editorRef.current);
-  }, [mobileSelectionMode, showMobileReadonlyOverlay]);
+  }, [editorRef, mobileSelectionMode, showMobileReadonlyOverlay]);
 
   const handleMobileReadonlyPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     if (!showMobileReadonlyOverlay || mobileSelectionMode || event.pointerType === 'mouse') return;
@@ -141,7 +141,7 @@ export function useMobileReadonlyOverlay({
         mobileLongPressRef.current = null;
       }, 520),
     };
-  }, [clearMobileLongPress, mobileSelectionMode, showMobileReadonlyOverlay]);
+  }, [clearMobileLongPress, editorRef, mobileSelectionMode, showMobileReadonlyOverlay]);
 
   const handleMobileContainerPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     if (!showMobileReadonlyOverlay) return;
@@ -208,7 +208,7 @@ export function useMobileReadonlyOverlay({
       selectedText,
       canNavigate: hasSingleWordSelection(editorRef.current),
     });
-  }, [mobileSelectionMode]);
+  }, [editorRef, mobileSelectionMode]);
 
   const scheduleMobileSelectionMenu = useCallback(() => {
     clearMobileSelectionMenuTimer();
@@ -249,7 +249,7 @@ export function useMobileReadonlyOverlay({
     }
     setMobileSelectionMode(true);
     setMobileReadonlyMenu(null);
-  }, []);
+  }, [editorRef, monacoRef]);
 
   const copyMobileSelection = useCallback(async () => {
     const text = mobileReadonlyMenu?.selectedText || activeContent;
@@ -265,7 +265,7 @@ export function useMobileReadonlyOverlay({
     if (!editor || !action) return;
     action.run(editor, { workspaceId, workspaceRoot });
     closeMobileSelectionMode();
-  }, [closeMobileSelectionMode, workspaceId, workspaceRoot]);
+  }, [closeMobileSelectionMode, editorRef, workspaceId, workspaceRoot]);
 
   const runMobileEditorAction = useCallback((actionId: string) => {
     const editor = editorRef.current;
@@ -304,7 +304,7 @@ export function useMobileReadonlyOverlay({
         blurEditorActiveElement(editorRef.current);
       }, 1600);
     });
-  }, [clearMobileMonacoSelectionMenuTimer]);
+  }, [clearMobileMonacoSelectionMenuTimer, editorRef]);
 
   // Effects
 
@@ -367,7 +367,7 @@ export function useMobileReadonlyOverlay({
       disposable.dispose();
       clearMobileMonacoSelectionMenuTimer();
     };
-  }, [clearMobileMonacoSelectionMenuTimer, editorReadyTick, mobileSelectionMode, showMobileReadonlyOverlay]);
+  }, [clearMobileMonacoSelectionMenuTimer, editorReadyTick, editorRef, mobileSelectionMode, showMobileReadonlyOverlay]);
 
   const pendingNavigationSelectionCleanup = pendingNavigationSelectionCleanupRef;
 

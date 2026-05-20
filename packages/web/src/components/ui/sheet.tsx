@@ -30,7 +30,7 @@ function Sheet({ ignoreBack = false, ...props }: SheetRootProps) {
       return;
     }
 
-    registerOverlay(overlayId, () => onOpenChangeRef.current?.(false, {} as any));
+    registerOverlay(overlayId, () => onOpenChangeRef.current?.(false, {} as Event));
     return () => unregisterOverlay(overlayId);
   }, [ignoreBack, open, overlayId, registerOverlay, unregisterOverlay]);
 

@@ -26,6 +26,8 @@ const eslintConfig = defineConfig([
       "react-hooks/preserve-manual-memoization": "warn",
       // TipTap/shadcn SDK types are incomplete; suppress during MVP
       "@typescript-eslint/no-explicit-any": "warn",
+      // Allow underscore-prefixed variables for destructuring exclusion patterns
+      "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_", "destructuredArrayIgnorePattern": "^_" }],
     },
   },
 ]);

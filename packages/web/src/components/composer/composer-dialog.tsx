@@ -8,7 +8,7 @@ export function ComposerDialog() {
   const t = useTranslations('composer');
   const tc = useTranslations('common');
   const [open, setOpen] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<Record<string, unknown> | null>(null);
 
   return (
     <div className="page">

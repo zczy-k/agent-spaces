@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { Keyboard, Power, Eraser, ClipboardPaste, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Edit3, Send } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { VirtualKeyboard } from './virtual-keyboard';
@@ -28,20 +29,24 @@ export function TerminalToolbar({ activeId, sendInput, onPaste }: TerminalToolba
     sendInput(activeId, data);
   };
 
-  useEffect(() => {
-    if (!editOpen) return;
-    requestAnimationFrame(() => inputRef.current?.focus());
-  }, [editOpen]);
+  const toggleEdit = () => {
+    if (editOpen) {
+      setEditOpen(false);
+      return;
+    }
+    flushSync(() => setEditOpen(true));
+    inputRef.current?.focus({ preventScroll: true });
+  };
 
   return (
     <div className="flex flex-col gap-1 px-2 py-1 border-t border-border bg-muted/50 shrink-0">
       {editOpen && (
-        <div className="flex items-end gap-2">
+        <div className="relative">
           <textarea
             ref={inputRef}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            className="min-h-10 max-h-28 flex-1 resize-y rounded-md border border-input bg-background px-2 py-1.5 text-sm font-mono leading-5 outline-none focus:border-ring focus:ring-1 focus:ring-ring disabled:opacity-50"
+            className="min-h-16 max-h-28 w-full resize-y rounded-md border border-input bg-background px-2 py-1.5 pr-14 text-sm font-mono leading-5 outline-none focus:border-ring focus:ring-1 focus:ring-ring disabled:opacity-50"
             placeholder={t('mobileInputPlaceholder')}
             disabled={!activeId}
             rows={2}
@@ -49,11 +54,10 @@ export function TerminalToolbar({ activeId, sendInput, onPaste }: TerminalToolba
           <button
             onClick={sendDraft}
             disabled={!activeId || !draft}
-            className="flex h-10 shrink-0 items-center gap-1.5 rounded-md bg-primary px-3 text-xs text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+            className="absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
             title={t('sendInput')}
           >
             <Send size={14} />
-            <span>{t('sendInput')}</span>
           </button>
         </div>
       )}
@@ -78,7 +82,7 @@ export function TerminalToolbar({ activeId, sendInput, onPaste }: TerminalToolba
         <div className="w-px h-4 bg-border shrink-0" />
 
         <button
-          onClick={() => setEditOpen((open) => !open)}
+          onClick={toggleEdit}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors data-[active=true]:bg-accent data-[active=true]:text-foreground"
           data-active={editOpen}
           title={t('editInput')}

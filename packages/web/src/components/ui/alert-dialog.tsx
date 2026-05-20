@@ -29,7 +29,7 @@ function AlertDialog({ ignoreBack = false, ...props }: AlertDialogRootProps) {
       return;
     }
 
-    registerOverlay(overlayId, () => onOpenChangeRef.current?.(false, {} as any));
+    registerOverlay(overlayId, () => onOpenChangeRef.current?.(false, {} as Event));
     return () => unregisterOverlay(overlayId);
   }, [ignoreBack, open, overlayId, registerOverlay, unregisterOverlay]);
 

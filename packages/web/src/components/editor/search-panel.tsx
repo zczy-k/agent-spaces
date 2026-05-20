@@ -75,7 +75,7 @@ export function SearchPanel({ workspaceId }: SearchPanelProps) {
 
   useEffect(() => {
     if (query.trim()) doSearch(query);
-  }, [isRegex, isCaseSensitive]);
+  }, [doSearch, isCaseSensitive, isRegex, query]);
 
   const toggleFile = (file: string) => {
     setExpandedFiles((prev) => {

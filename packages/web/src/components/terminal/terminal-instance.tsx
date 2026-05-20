@@ -86,6 +86,8 @@ export function TerminalInstance({ sessionId, workspaceId }: TerminalInstancePro
   const xtermRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
   const { resolvedTheme } = useTheme();
+  const resolvedThemeRef = useRef(resolvedTheme);
+  resolvedThemeRef.current = resolvedTheme;
 
   const handleOutput = useCallback((data: unknown) => {
     const { sessionId: sid, data: output } = data as { sessionId: string; data: string };
@@ -196,7 +198,7 @@ export function TerminalInstance({ sessionId, workspaceId }: TerminalInstancePro
         disposeTerminalSession(sessionId);
       }
     };
-  }, [sessionId, workspaceId, handleOutput]);
+  }, [sessionId, workspaceId, handleOutput, resolvedTheme]);
 
   // Sync theme without recreating terminal
   useEffect(() => {

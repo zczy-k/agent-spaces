@@ -34,7 +34,6 @@ import {
   type ConnectionTestResult,
   PROVIDER_OPTIONS,
   RUNTIME_OPTIONS,
-  isAnthropicBridgeProvider,
   Section,
   FieldGroup,
 } from "./agent-shared";

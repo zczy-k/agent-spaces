@@ -44,7 +44,7 @@ function WorkflowEditorInner({
   }, []);
 
   const [name, setName] = useState(template?.name ?? 'New Workflow');
-  const [description, setDescription] = useState(template?.description ?? '');
+  const [description, _setDescription] = useState(template?.description ?? '');
   const [nodes, setNodes] = useState<AgentNode[]>(
     () =>
       template?.nodes.map((n) => ({
@@ -149,7 +149,7 @@ function WorkflowEditorInner({
       if (agentId && !agentMap[agentId]) {
         const agent = allAgents.find((a) => a.id === agentId);
         if (agent) {
-          const { apiKey: _, ...rest } = agent;
+          const { apiKey: _apiKey, ...rest } = agent;
           agentMap[agentId] = rest;
         }
       }

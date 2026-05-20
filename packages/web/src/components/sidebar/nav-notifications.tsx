@@ -7,7 +7,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { BellIcon, CheckIcon, Trash2Icon } from "lucide-react";
+import { BellIcon, Trash2Icon } from "lucide-react";
 import { useTranslations } from 'next-intl';
 import { useNotificationStore } from "@/stores/notification";
 import { formatDistanceToNow } from "date-fns";

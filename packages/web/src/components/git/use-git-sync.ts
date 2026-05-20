@@ -49,7 +49,7 @@ export function useGitSync(workspaceId: string, refresh: () => void) {
       if (errMsg(err)?.includes("No remote")) setRemoteDialogOpen(true);
       else toast.error(tChanges('syncFailed'), { description: errMsg(err) });
     } finally { setSyncing(null); }
-  }, [workspaceId, push, pull, getRemotes, refresh]);
+  }, [workspaceId, push, pull, getRemotes, refresh, tChanges]);
 
   return { syncing, remoteDialogOpen, setRemoteDialogOpen, handleSync, handleRemoteSubmit, handleSyncChanges };
 }

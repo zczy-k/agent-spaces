@@ -101,8 +101,9 @@ export const useCommandStore = create<CommandStore>((set, get) => ({
         const data = await res.json().catch(() => ({ error: res.statusText }));
         throw new Error(data.error || 'Failed to stop command');
       }
-    } catch (e: any) {
-      toast.error(e.message || 'Failed to stop command');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(msg || 'Failed to stop command');
       throw e;
     }
   },

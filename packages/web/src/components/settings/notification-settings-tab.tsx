@@ -107,7 +107,7 @@ export function NotificationSettingsTab({
   setNotificationDraft,
   setWorkspace,
   botAgents,
-  agentDialogOpen,
+  agentDialogOpen: _agentDialogOpen,
   setAgentDialogOpen,
 }: NotificationSettingsTabProps) {
   const t = useTranslations('projectSettings');
@@ -166,7 +166,7 @@ export function NotificationSettingsTab({
     }, 2000);
 
     return () => window.clearInterval(timer);
-  }, [notificationSettings.enabled, notificationSettings.provider, wechatQR.status, wechatQR.qrcodeImgContent, workspaceId]);
+  }, [notificationSettings.enabled, notificationSettings.provider, setNotificationDraft, setWorkspace, t, wechatQR.qrcodeImgContent, wechatQR.status, workspaceId]);
 
   useEffect(() => {
     setIsAndroidNative(isNativeAndroidEnvironment());

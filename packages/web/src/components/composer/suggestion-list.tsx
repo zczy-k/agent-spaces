@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 
 type Item = {
@@ -10,7 +10,7 @@ type Item = {
   title?: string;
   description?: string;
   email?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
 export type SuggestionListRef = {
@@ -80,7 +80,7 @@ export const SuggestionList = forwardRef<SuggestionListRef, SuggestionListProps>
           return false;
         },
       }),
-      [props.items, selectedIndex],
+      [props.items, selectedIndex, selectItem],
     );
 
     if (!props.items.length) {

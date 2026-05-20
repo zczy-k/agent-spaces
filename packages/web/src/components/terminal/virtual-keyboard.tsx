@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { Keyboard } from 'lucide-react';
+import { useCallback } from 'react';
 
 interface VirtualKeyboardProps {
   onKey: (data: string) => void;

@@ -42,15 +42,15 @@ export function ServerSwitcher() {
 
   const activeServer = servers.find((s) => s.id === activeId) || servers[0];
 
-  const switchServer = (server: ServerConfig) => {
+  const switchServer = React.useCallback((server: ServerConfig) => {
     useEditorStore.getState().resetEditorState();
     setActiveId(server.id);
     saveActiveId(server.id);
     setActiveServerCookie(server.url);
     window.location.href = "/";
-  };
+  }, []);
 
-  const removeServer = (id: string) => {
+  const removeServer = React.useCallback((id: string) => {
     if (id === "default") return;
     const updated = servers.filter((s) => s.id !== id);
     setServers(updated);
@@ -59,7 +59,7 @@ export function ServerSwitcher() {
       const fallback = updated.find((s) => s.id === "default") || updated[0];
       if (fallback) switchServer(fallback);
     }
-  };
+  }, [activeId, servers, switchServer]);
 
   const handleFormSave = (updated: ServerConfig[]) => {
     setServers(updated);

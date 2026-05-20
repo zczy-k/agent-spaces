@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useTranslations } from 'next-intl'
-import { ArrowDown, ArrowUp, ChevronLeftIcon, ChevronRightIcon, Clock3, Cpu, DollarSign, TrendingUp, Zap, type LucideIcon } from "lucide-react"
+import { ArrowDown, ArrowUp, ChevronLeftIcon, ChevronRightIcon, Clock3, Cpu, DollarSign, Zap, type LucideIcon } from "lucide-react"
 import type { ColumnDef, PaginationState } from "@tanstack/react-table"
 import {
   flexRender,
@@ -135,7 +135,7 @@ export function UsageDashboard() {
       accessorKey: 'totalCostUsd',
       header: t('table.cost'),
       cell: ({ row }) => {
-        const { inputCostUsd, outputCostUsd, totalCostUsd } = row.original
+        const { inputCostUsd: _inputCostUsd, outputCostUsd: _outputCostUsd, totalCostUsd } = row.original
         return (
           <div className="flex flex-col gap-0.5 font-mono text-xs tabular-nums">
             <span>{formatCurrency(totalCostUsd)}</span>
@@ -402,7 +402,7 @@ export function UsageDashboard() {
 
 // ── agent runs datatable ──
 
-function AgentRunsTable({ data, columns, formatRelative }: { data: AgentUsageRecord[]; columns: ColumnDef<AgentUsageRecord>[]; formatRelative: (v: string) => string }) {
+function AgentRunsTable({ data, columns, formatRelative: _formatRelative }: { data: AgentUsageRecord[]; columns: ColumnDef<AgentUsageRecord>[]; formatRelative: (v: string) => string }) {
   const t = useTranslations('home')
   const pageSize = 5
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize })

@@ -118,7 +118,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
       if (data.message) setCommitMsg(data.message);
     } catch (err: unknown) { toast.error(errMsg(err) || tChanges('failedCommitMessage')); }
     finally { setGenerating(false); }
-  }, [workspaceId, generating, committing]);
+  }, [workspaceId, generating, committing, tChanges]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleCommit();
@@ -153,7 +153,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
   }, [workspaceId, discardConfirm, discard, discardAll, refresh]);
 
   // ---- gitignore ----
-  const openGitignore = useCallback(async () => {
+  const _openGitignore = useCallback(async () => {
     try {
       const res = await fetch(`/api/workspaces/${workspaceId}/files/content?path=.gitignore`);
       const data = await res.json(); setGitignoreContent(data.content ?? "");

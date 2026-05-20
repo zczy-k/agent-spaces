@@ -63,8 +63,8 @@ export function SubscriptionPanel() {
             const body = await res.json().catch(() => ({}))
             map.set(item.id, { error: body.error ?? `${res.status} ${res.statusText}` })
           }
-        } catch (err: any) {
-          map.set(item.id, { error: err.message ?? 'Network error' })
+        } catch (err: unknown) {
+          map.set(item.id, { error: err instanceof Error ? err.message : 'Network error' })
         }
       })
     )

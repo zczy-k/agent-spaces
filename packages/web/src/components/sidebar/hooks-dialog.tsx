@@ -46,7 +46,7 @@ interface HooksDialogProps {
 }
 
 export function HooksDialog({ open, onOpenChange, standalone }: HooksDialogProps) {
-  const t = useTranslations();
+  const _t = useTranslations();
   const { hooks, selectedName, loading, fetchHooks, createHook, updateHook, deleteHook, uploadHook, applyToWorkspace, setSelectedName } = useHookStore();
   const { workspaces } = useWorkspaceStore();
   const activeWorkspaceId = workspaces[0]?.id;
@@ -78,7 +78,8 @@ export function HooksDialog({ open, onOpenChange, standalone }: HooksDialogProps
       const parsed = JSON.parse(editorContent);
       await updateHook(activeWorkspaceId, selectedName, parsed);
       setDirty(false);
-    } catch (e: any) {
+    } catch (e: unknown) {
+      console.error('Invalid JSON:', e instanceof Error ? e.message : String(e));
       console.error('Invalid JSON:', e.message);
     }
   }, [activeWorkspaceId, selectedName, editorContent, updateHook]);

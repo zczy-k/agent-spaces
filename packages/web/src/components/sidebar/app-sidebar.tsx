@@ -24,7 +24,6 @@ import {
   Pencil,
   Trash2,
   FolderSearch,
-  LayoutGrid,
   GitBranch,
   Sparkles,
   MessageSquare,

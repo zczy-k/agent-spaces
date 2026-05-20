@@ -1,6 +1,6 @@
 "use client"
 
-import type { Message, MessagePart } from "@agent-spaces/shared"
+import type { Message } from "@agent-spaces/shared"
 import { BotIcon } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -20,7 +20,6 @@ import {
   ContextTrigger,
 } from "./context"
 import { AgentContextPanel, aggregateTokenUsage, toContextUsage } from "./message-context-panel"
-import type { ContextPart } from "./message-context-panel"
 
 export function MessageContextUsage({ message }: { message: Message }) {
   const contextParts = useMemo(() => message.parts?.filter((item) => item.type === "context") ?? [], [message.parts])

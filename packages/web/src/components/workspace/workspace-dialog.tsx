@@ -136,8 +136,8 @@ function WorkspaceDialogContent({ open, onOpenChange, workspace, onSubmit }: Wor
           }
         }
       }
-    } catch (err: any) {
-      setCloneProgress({ phase: "error", progress: 0, error: err.message });
+    } catch (err: unknown) {
+      setCloneProgress({ phase: "error", progress: 0, error: err instanceof Error ? err.message : String(err) });
       setCloneLoading(false);
     }
   }, [cloneUrl, dir, name, t]);

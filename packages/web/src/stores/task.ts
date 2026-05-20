@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Task, TaskStatus } from '@agent-spaces/shared';
+import type { Task } from '@agent-spaces/shared';
 
 interface TaskStore {
   tasks: Task[];

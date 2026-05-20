@@ -139,9 +139,9 @@ interface SkillEditDialogProps {
   onSave: () => void;
 }
 
-export function SkillEditDialog({ skill, content, onContentChange, onClose, onSave }: SkillEditDialogProps) {
+export function SkillEditDialog({ skill, content: _content, onContentChange, onClose, onSave }: SkillEditDialogProps) {
   const t = useTranslations('skills');
-  const tc = useTranslations('common');
+  const _tc = useTranslations('common');
   const isMobile = useIsMobile();
 
   const [files, setFiles] = useState<SkillFile[]>([]);
@@ -193,7 +193,7 @@ export function SkillEditDialog({ skill, content, onContentChange, onClose, onSa
           .finally(() => setLoading(false));
       })
       .catch(() => { setFiles([]); setLoading(false); });
-  }, [skill?.name]);
+  }, [skill]);
 
   const loadFileContent = useCallback((skillName: string, filePath: string) => {
     if (loadedRef.current.has(filePath)) return;

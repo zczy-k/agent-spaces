@@ -17,12 +17,6 @@ import { getAgentDisplayName, getMemberDisplayName, normalizeChannelMembersToAge
 
 import type { AgentConfig, Channel } from '@agent-spaces/shared';
 
-const channelTypeStatus: Record<Channel['type'], { status: 'online' | 'offline' | 'maintenance' | 'degraded' }> = {
-  general: { status: 'online' },
-  issue: { status: 'degraded' },
-  agent: { status: 'maintenance' },
-};
-
 interface ChannelInfoPanelProps {
   workspaceId: string;
   channel: Channel;
@@ -41,7 +35,6 @@ export function ChannelInfoPanel({ workspaceId, channel, agents, allChannels, on
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
-  const typeConf = channelTypeStatus[channel.type];
   const enabledAgents = agents.filter((agent) => agent.enabled !== false);
   const candidateMembers = enabledAgents.map((agent) => ({
     id: agent.id,

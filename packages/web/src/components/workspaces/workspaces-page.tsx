@@ -19,7 +19,7 @@ import { tauriNavigate } from '@/lib/navigate'
 
 export function WorkspacesPage({ initialWorkspaces }: { initialWorkspaces: Workspace[] }) {
   const t = useTranslations('workspaces')
-  const tc = useTranslations('common')
+  const _tc = useTranslations('common')
   const router = useRouter()
   const workspaces = useWorkspaceStore((store) => store.workspaces)
   const setWorkspaces = useWorkspaceStore((store) => store.setWorkspaces)

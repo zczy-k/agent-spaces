@@ -34,7 +34,7 @@ export function IssueDetailHeader({
   resumeIssue,
   members,
   enabledAgents,
-  issueTasks,
+  issueTasks: _issueTasks,
 }: IssueDetailHeaderProps) {
   return (
     <div className="shrink-0 p-4 pb-3 border-b">
