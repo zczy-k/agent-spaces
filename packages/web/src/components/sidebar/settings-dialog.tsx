@@ -21,6 +21,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { UserIcon } from "@/components/common/user-icon";
+import { setCachedUserAvatarUrl } from "@/hooks/use-user-avatar";
 import { getToken, removeToken, authHeaders } from "@/lib/auth";
 import { GitSettingsForm } from "@/components/git/git-settings-form";
 import { isNativeEnvironment } from "@/lib/native-notification";
@@ -110,7 +111,9 @@ export function SettingsDialog({
         });
         const data = await res.json();
         if (data.url) {
-          setUserAvatarUrl(`${data.url}?t=${Date.now()}`);
+          const url = `${data.url}?t=${Date.now()}`;
+          setUserAvatarUrl(url);
+          setCachedUserAvatarUrl(url);
           fetch("/api/user/settings", {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
@@ -125,6 +128,7 @@ export function SettingsDialog({
 
   const handleRemove = () => {
     setUserAvatarUrl(null);
+    setCachedUserAvatarUrl(null);
     fetch("/api/user/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
