@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -151,6 +151,8 @@ export function SkillEditDialog({ skill, content, onContentChange, onClose, onSa
   const [loading, setLoading] = useState(false);
   const [dirty, setDirty] = useState<Set<string>>(new Set());
 
+  const loadedRef = useRef<Set<string>>(new Set());
+
   // Load file list when skill changes
   useEffect(() => {
     if (!skill) return;
@@ -158,34 +160,47 @@ export function SkillEditDialog({ skill, content, onContentChange, onClose, onSa
     setFileContents({});
     setDirty(new Set());
     setExpandedPaths(new Set());
+    setFiles([]);
+    loadedRef.current = new Set();
+    setLoading(true);
 
-    fetch(`/api/skills/${encodeURIComponent(skill.name)}/files`)
+    const skillName = skill.name;
+    fetch(`/api/skills/${encodeURIComponent(skillName)}/files`)
       .then((r) => r.ok ? r.json() : [])
       .then((data: SkillFile[]) => {
         setFiles(data);
-        // Find SKILL.md as default
-        const skillMd = data.find((f) => f.path === 'SKILL.md' && !f.isDirectory);
-        if (skillMd) {
-          loadFileContent(skill.name, skillMd.path);
-          setSelectedFilePath(skillMd.path);
-        } else {
-          const firstFile = data.find((f) => !f.isDirectory);
-          if (firstFile) {
-            loadFileContent(skill.name, firstFile.path);
-            setSelectedFilePath(firstFile.path);
-          }
-        }
         // Auto-expand root-level dirs
         const rootDirs = data.filter((f) => f.isDirectory && !f.path.includes('/'));
         setExpandedPaths(new Set(rootDirs.map((d) => d.path)));
+        // Find SKILL.md as default, fallback to first file
+        const defaultFile = data.find((f) => f.path === 'SKILL.md' && !f.isDirectory)
+          || data.find((f) => !f.isDirectory);
+        if (!defaultFile) {
+          setLoading(false);
+          return;
+        }
+        setSelectedFilePath(defaultFile.path);
+        const encodedPath = defaultFile.path.split('/').map(encodeURIComponent).join('/');
+        fetch(`/api/skills/${encodeURIComponent(skillName)}/files/${encodedPath}`)
+          .then((r) => r.ok ? r.json() : null)
+          .then((fileData) => {
+            if (fileData) {
+              setFileContents({ [defaultFile.path]: fileData.content });
+              loadedRef.current.add(defaultFile.path);
+            }
+          })
+          .catch(() => {})
+          .finally(() => setLoading(false));
       })
-      .catch(() => setFiles([]));
+      .catch(() => { setFiles([]); setLoading(false); });
   }, [skill?.name]);
 
   const loadFileContent = useCallback((skillName: string, filePath: string) => {
-    if (fileContents[filePath] !== undefined) return;
+    if (loadedRef.current.has(filePath)) return;
+    loadedRef.current.add(filePath);
     setLoading(true);
-    fetch(`/api/skills/${encodeURIComponent(skillName)}/files/${encodeURIComponent(filePath)}`)
+    const encodedPath = filePath.split('/').map(encodeURIComponent).join('/');
+    fetch(`/api/skills/${encodeURIComponent(skillName)}/files/${encodedPath}`)
       .then((r) => r.ok ? r.json() : null)
       .then((data) => {
         if (data) {
@@ -194,7 +209,7 @@ export function SkillEditDialog({ skill, content, onContentChange, onClose, onSa
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [fileContents]);
+  }, []);
 
   const tree = useMemo(() => buildTree(files), [files]);
 
@@ -228,7 +243,8 @@ export function SkillEditDialog({ skill, content, onContentChange, onClose, onSa
     const content = fileContents[selectedFilePath];
     if (content === undefined) return;
 
-    const res = await fetch(`/api/skills/${encodeURIComponent(skill.name)}/files/${encodeURIComponent(selectedFilePath)}`, {
+    const encodedPath = selectedFilePath.split('/').map(encodeURIComponent).join('/');
+    const res = await fetch(`/api/skills/${encodeURIComponent(skill.name)}/files/${encodedPath}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content }),

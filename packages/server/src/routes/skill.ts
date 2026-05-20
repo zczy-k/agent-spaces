@@ -117,9 +117,9 @@ router.get('/:name/files', (req: Request, res: Response) => {
   res.json(files);
 });
 
-router.get('/:name/files/*', (req: Request, res: Response) => {
+router.get('/:name/files/{*filePath}', (req: Request, res: Response) => {
   const name = typeof req.params.name === 'string' ? req.params.name : req.params.name[0];
-  const filePath = req.params[0];
+  const filePath = Array.isArray(req.params.filePath) ? req.params.filePath.join('/') : req.params.filePath as string;
   if (!filePath) {
     res.status(400).json({ error: 'file path required' });
     return;
@@ -132,9 +132,9 @@ router.get('/:name/files/*', (req: Request, res: Response) => {
   res.json({ content });
 });
 
-router.put('/:name/files/*', (req: Request, res: Response) => {
+router.put('/:name/files/{*filePath}', (req: Request, res: Response) => {
   const name = typeof req.params.name === 'string' ? req.params.name : req.params.name[0];
-  const filePath = req.params[0];
+  const filePath = Array.isArray(req.params.filePath) ? req.params.filePath.join('/') : req.params.filePath as string;
   const { content } = req.body as { content?: string };
   if (!filePath || content === undefined) {
     res.status(400).json({ error: 'file path and content required' });
