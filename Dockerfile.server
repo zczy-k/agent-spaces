@@ -21,7 +21,7 @@ ENV CI=true
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_STATIC_EXPORT=1
 
-RUN pnpm install --no-frozen-lockfile && \
+RUN pnpm install --frozen-lockfile && \
     pnpm --filter @agent-spaces/shared build && \
     pnpm --filter @agent-spaces/server build && \
     pnpm --filter @agent-spaces/web build && \
