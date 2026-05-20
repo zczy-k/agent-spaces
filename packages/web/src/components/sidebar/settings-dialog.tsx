@@ -419,7 +419,7 @@ function SpeechSettings() {
     setLoading(false);
   };
 
-  useEffect(() => { loadConfigs(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadConfigs(); }, []);  
 
   const saveCredentials = async (id: string, credentials: Record<string, string>) => {
     await fetch(`/api/speech-recognition/${id}`, {

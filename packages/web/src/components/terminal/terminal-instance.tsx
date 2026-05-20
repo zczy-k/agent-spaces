@@ -12,6 +12,13 @@ import { useTerminalStore, consumeSessionBuffer } from '@/stores/terminal';
 // Global registry to persist xterm instances across mount/unmount cycles
 const terminalRegistry = new Map<string, { xterm: Terminal; fit: FitAddon }>();
 
+function disableXtermMobileKeyboard(xterm: Terminal) {
+  const textarea = xterm.textarea;
+  if (!textarea) return;
+  textarea.inputMode = 'none';
+  textarea.setAttribute('inputmode', 'none');
+}
+
 export function disposeTerminalSession(sessionId: string) {
   const cached = terminalRegistry.get(sessionId);
   if (cached) {
@@ -132,6 +139,7 @@ export function TerminalInstance({ sessionId, workspaceId }: TerminalInstancePro
 
       terminalRegistry.set(sessionId, { xterm, fit });
     }
+    disableXtermMobileKeyboard(xterm);
 
     // Restore buffered output supplied by the server for reconnected sessions.
     const buffer = consumeSessionBuffer(sessionId);

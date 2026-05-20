@@ -47,7 +47,7 @@ function buildTree(files: SkillFile[]): TreeNode[] {
       const partPath = parts.slice(0, i + 1).join('/');
       const isDir = i < parts.length - 1 || file.isDirectory;
 
-      let existing = current.find((n) => n.name === parts[i]);
+      const existing = current.find((n) => n.name === parts[i]);
       if (!existing) {
         const node: TreeNode = { name: parts[i], path: partPath, isDirectory: isDir, children: [] };
         current.push(node);

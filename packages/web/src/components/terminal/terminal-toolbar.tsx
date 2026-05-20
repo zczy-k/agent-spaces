@@ -1,6 +1,7 @@
 'use client';
 
-import { Keyboard, Power, Eraser, ClipboardPaste, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Keyboard, Power, Eraser, ClipboardPaste, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Edit3, Send } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { VirtualKeyboard } from './virtual-keyboard';
 import { useTranslations } from 'next-intl';
@@ -13,74 +14,123 @@ interface TerminalToolbarProps {
 
 export function TerminalToolbar({ activeId, sendInput, onPaste }: TerminalToolbarProps) {
   const t = useTranslations('terminal');
+  const [editOpen, setEditOpen] = useState(false);
+  const [draft, setDraft] = useState('');
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const send = (data: string) => {
     if (activeId) sendInput(activeId, data);
   };
 
+  const sendDraft = () => {
+    if (!draft || !activeId) return;
+    const data = /[\r\n]$/.test(draft) ? draft : `${draft}\n`;
+    sendInput(activeId, data);
+  };
+
+  useEffect(() => {
+    if (!editOpen) return;
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }, [editOpen]);
+
   return (
-    <div className="flex items-center gap-1 px-2 py-1 border-t border-border bg-muted/50 shrink-0">
-      {/* Cursor keys */}
-      <div className="flex items-center gap-0.5">
-        <button onClick={() => send('\x1b[A')} className="p-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="↑">
-          <ArrowUp size={14} />
+    <div className="flex flex-col gap-1 px-2 py-1 border-t border-border bg-muted/50 shrink-0">
+      {editOpen && (
+        <div className="flex items-end gap-2">
+          <textarea
+            ref={inputRef}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            className="min-h-10 max-h-28 flex-1 resize-y rounded-md border border-input bg-background px-2 py-1.5 text-sm font-mono leading-5 outline-none focus:border-ring focus:ring-1 focus:ring-ring disabled:opacity-50"
+            placeholder={t('mobileInputPlaceholder')}
+            disabled={!activeId}
+            rows={2}
+          />
+          <button
+            onClick={sendDraft}
+            disabled={!activeId || !draft}
+            className="flex h-10 shrink-0 items-center gap-1.5 rounded-md bg-primary px-3 text-xs text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+            title={t('sendInput')}
+          >
+            <Send size={14} />
+            <span>{t('sendInput')}</span>
+          </button>
+        </div>
+      )}
+
+      <div className="flex items-center gap-1 overflow-x-auto">
+        {/* Cursor keys */}
+        <div className="flex items-center gap-0.5">
+          <button onClick={() => send('\x1b[A')} className="p-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="↑">
+            <ArrowUp size={14} />
+          </button>
+          <button onClick={() => send('\x1b[B')} className="p-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="↓">
+            <ArrowDown size={14} />
+          </button>
+          <button onClick={() => send('\x1b[D')} className="p-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="←">
+            <ArrowLeft size={14} />
+          </button>
+          <button onClick={() => send('\x1b[C')} className="p-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="→">
+            <ArrowRight size={14} />
+          </button>
+        </div>
+
+        <div className="w-px h-4 bg-border shrink-0" />
+
+        <button
+          onClick={() => setEditOpen((open) => !open)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors data-[active=true]:bg-accent data-[active=true]:text-foreground"
+          data-active={editOpen}
+          title={t('editInput')}
+        >
+          <Edit3 size={14} />
+          <span className="hidden sm:inline">{t('editInput')}</span>
         </button>
-        <button onClick={() => send('\x1b[B')} className="p-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="↓">
-          <ArrowDown size={14} />
+
+        <Popover>
+          <PopoverTrigger
+            render={
+              <button
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                title={t('virtualKeyboard')}
+              >
+                <Keyboard size={14} />
+                <span className="hidden sm:inline">{t('virtualKeyboard')}</span>
+              </button>
+            }
+          />
+          <PopoverContent align="start" side="top" sideOffset={4} className="p-0 max-w-[800px] w-[calc(100vw-16px)]">
+            <VirtualKeyboard onKey={(data) => send(data)} />
+          </PopoverContent>
+        </Popover>
+
+        <button
+          onClick={() => send('\x03')}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          title="Ctrl+C"
+        >
+          <Power size={14} />
+          <span className="hidden sm:inline">{t('sendCtrlC')}</span>
         </button>
-        <button onClick={() => send('\x1b[D')} className="p-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="←">
-          <ArrowLeft size={14} />
+
+        <button
+          onClick={() => send('clear\n')}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          title={t('clearScreen')}
+        >
+          <Eraser size={14} />
+          <span className="hidden sm:inline">{t('clearScreen')}</span>
         </button>
-        <button onClick={() => send('\x1b[C')} className="p-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="→">
-          <ArrowRight size={14} />
+
+        <button
+          onClick={onPaste}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          title={t('pasteCommand')}
+        >
+          <ClipboardPaste size={14} />
+          <span className="hidden sm:inline">{t('pasteCommand')}</span>
         </button>
       </div>
-
-      <div className="w-px h-4 bg-border" />
-
-      <Popover>
-        <PopoverTrigger
-          render={
-            <button
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              title={t('virtualKeyboard')}
-            >
-              <Keyboard size={14} />
-              <span className="hidden sm:inline">{t('virtualKeyboard')}</span>
-            </button>
-          }
-        />
-        <PopoverContent align="start" side="top" sideOffset={4} className="p-0 max-w-[800px] w-[calc(100vw-16px)]">
-          <VirtualKeyboard onKey={(data) => send(data)} />
-        </PopoverContent>
-      </Popover>
-
-      <button
-        onClick={() => send('\x03')}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-        title="Ctrl+C"
-      >
-        <Power size={14} />
-        <span className="hidden sm:inline">{t('sendCtrlC')}</span>
-      </button>
-
-      <button
-        onClick={() => send('clear\n')}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-        title={t('clearScreen')}
-      >
-        <Eraser size={14} />
-        <span className="hidden sm:inline">{t('clearScreen')}</span>
-      </button>
-
-      <button
-        onClick={onPaste}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-        title={t('pasteCommand')}
-      >
-        <ClipboardPaste size={14} />
-        <span className="hidden sm:inline">{t('pasteCommand')}</span>
-      </button>
     </div>
   );
 }
