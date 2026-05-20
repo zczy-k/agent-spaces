@@ -114,7 +114,9 @@ export function completeIssueAgentProgress(
     parts?: MessagePart[];
   },
 ): void {
-  const content = output.join('\n').trim() || summary;
+  const parts = metadata.parts;
+  const finalText = [...(parts ?? [])].reverse().find((part) => part.type === 'text')?.text.trim();
+  const content = finalText || summary.trim() || output.join('\n').trim();
   if (!content.trim()) return;
 
   const message = messageService.updateMessage(workspaceId, issue.channelId, progress.message.id, {
@@ -128,7 +130,7 @@ export function completeIssueAgentProgress(
       summary,
       duration: metadata.duration,
     },
-    parts: metadata.parts,
+    parts,
   });
   if (message) broadcastToWorkspace(workspaceId, 'channel.message.updated', message);
 

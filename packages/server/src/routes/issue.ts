@@ -11,6 +11,7 @@ import * as agentService from '../services/agent.js';
 import * as taskService from '../services/task.js';
 import { retryIssue } from '../services/issue-retry.js';
 import { hasActiveIssueAutomation, runIssueAutomation } from '../agents/issue-agent-runner.js';
+import { continueIssueTaskScheduling, stopIssueAutomation } from '../agents/issue-task-controller.js';
 import * as workflowService from '../services/workflow.js';
 
 const router = Router({ mergeParams: true });
@@ -55,10 +56,11 @@ router.put('/:issueId', (req: Request<{ id: string; issueId: string }>, res: Res
     return;
   }
   const previousStatus = issue.status;
-  const { title, description, status, members, workflowId } = req.body;
+  const { title, description, status, members, workflowId, continuousRun } = req.body;
   if (title) issue.title = title;
   if (description !== undefined) issue.description = description;
   if (workflowId !== undefined) issue.workflowId = workflowId || undefined;
+  if (continuousRun !== undefined) issue.continuousRun = continuousRun !== false;
   if (members !== undefined) {
     issue.members = normalizeIssueMembers(req.params.id, mergeWorkflowMembers(members, issue.workflowId));
   } else if (workflowId !== undefined) {
@@ -150,6 +152,67 @@ router.post('/:issueId/resume', async (req: Request<{ id: string; issueId: strin
     return;
   }
   res.json(result.issue);
+});
+
+router.post('/:issueId/continue', (req: Request<{ id: string; issueId: string }>, res: Response) => {
+  const workspaceId = req.params.id;
+  const { issueId } = req.params;
+  const before = issueService.getById(workspaceId, issueId);
+  if (!before) {
+    res.status(404).json({ error: 'issue not found' });
+    return;
+  }
+
+  const issue = before.status === 'draft' || before.status === 'planned'
+    ? issueService.updateStatus(workspaceId, issueId, 'in_progress')
+    : before;
+  if (!issue) {
+    res.status(404).json({ error: 'issue not found' });
+    return;
+  }
+  if (issue.status !== before.status) {
+    broadcastToWorkspace(workspaceId, 'issue.status_changed', { issueId, from: before.status, to: issue.status });
+  }
+  broadcastToWorkspace(workspaceId, 'issue.updated', issue);
+  res.json(issue);
+
+  const ctx = {
+    workspaceId,
+    broadcast: (event: string, data: unknown) => broadcastToWorkspace(workspaceId, event, data),
+    getSession: (sessionId: string) => agentService.getById(workspaceId, sessionId),
+    updateSessionStatus: (sessionId: string, status: AgentSessionStatus, extra?: Record<string, unknown>) =>
+      agentService.updateStatus(workspaceId, sessionId, status, extra),
+  };
+  continueIssueTaskScheduling(workspaceId, issueId, ctx).catch((err) => {
+    console.error(`[issue-continue] scheduling error for issue ${issueId}:`, err);
+  });
+});
+
+router.post('/:issueId/interrupt', (req: Request<{ id: string; issueId: string }>, res: Response) => {
+  const workspaceId = req.params.id;
+  const { issueId } = req.params;
+  const before = issueService.getById(workspaceId, issueId);
+  if (!before) {
+    res.status(404).json({ error: 'issue not found' });
+    return;
+  }
+
+  const reason = 'Interrupted by user';
+  const failedTasks = stopIssueAutomation(workspaceId, issueId, reason);
+  for (const { task, from } of failedTasks) {
+    broadcastToWorkspace(workspaceId, 'task.status_changed', { taskId: task.id, from, to: task.status });
+    broadcastToWorkspace(workspaceId, 'task.updated', task);
+  }
+  if (before.channelId) stopChannelRuns(workspaceId, before.channelId);
+
+  const issue = issueService.markError(workspaceId, issueId, reason);
+  if (!issue) {
+    res.status(404).json({ error: 'issue not found' });
+    return;
+  }
+  broadcastToWorkspace(workspaceId, 'issue.status_changed', { issueId, from: before.status, to: 'error' });
+  broadcastToWorkspace(workspaceId, 'issue.updated', issue);
+  res.json(issue);
 });
 
 router.delete('/:issueId', (req: Request<{ id: string; issueId: string }>, res: Response) => {

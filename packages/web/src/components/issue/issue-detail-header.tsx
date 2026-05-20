@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AvatarGroup } from '@/components/ui/avatar';
 import { AgentIcon } from '@/components/common/agent-icon';
-import { ArrowLeft, Play, RotateCcw, Clock, GitBranch, Info, Pencil, MessagesSquare } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Clock, GitBranch, Info, Pencil, MessagesSquare } from 'lucide-react';
 import { useMobilePanelStore } from '@/stores/mobile-panel';
 import { useChannelStore } from '@/stores/channel';
 import { getMemberDisplayName } from '@/lib/agent-members';
@@ -30,7 +30,7 @@ export function IssueDetailHeader({
   t,
   setEditOpen,
   setInfoOpen,
-  startIssue,
+  startIssue: _startIssue,
   resumeIssue,
   members,
   enabledAgents,
@@ -104,14 +104,6 @@ export function IssueDetailHeader({
       </div>
       {issue.description && (
         <p className="text-sm text-muted-foreground mt-2">{issue.description}</p>
-      )}
-      {issue.status === 'draft' && (
-        <div className="mt-2">
-          <Button size="sm" variant="outline" onClick={() => startIssue(workspaceId, issue.id)}>
-            <Play className="h-3 w-3 mr-1" />
-            {t('detail.start')}
-          </Button>
-        </div>
       )}
       {issue.status === 'error' && (
         <div className="mt-2 flex items-center gap-2">

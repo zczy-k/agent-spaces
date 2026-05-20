@@ -31,14 +31,14 @@ function getDesc(item: Item) {
 }
 
 export const SuggestionList = forwardRef<SuggestionListRef, SuggestionListProps>(
-  function SuggestionList(props, ref) {
+  function SuggestionList({ items, command }, ref) {
     const [selectedIndex, setSelectedIndex] = useState(0);
     const listRef = useRef<HTMLDivElement>(null);
     const t = useTranslations('composer');
 
     useEffect(() => {
       setSelectedIndex(0);
-    }, [props.items]);
+    }, [items]);
 
     useEffect(() => {
       listRef.current
@@ -46,28 +46,28 @@ export const SuggestionList = forwardRef<SuggestionListRef, SuggestionListProps>
         ?.scrollIntoView({ block: 'nearest' });
     }, [selectedIndex]);
 
-    const selectItem = (index: number) => {
-      const item = props.items[index];
-      if (item) props.command(item);
-    };
+    const selectItem = useCallback((index: number) => {
+      const item = items[index];
+      if (item) command(item);
+    }, [items, command]);
 
     useImperativeHandle(
       ref,
       () => ({
         onKeyDown: ({ event }) => {
-          if (!props.items.length) return false;
+          if (!items.length) return false;
 
           if (event.key === 'ArrowUp') {
             event.preventDefault();
             setSelectedIndex(
-              (prev) => (prev + props.items.length - 1) % props.items.length,
+              (prev) => (prev + items.length - 1) % items.length,
             );
             return true;
           }
 
           if (event.key === 'ArrowDown' || event.key === 'Tab') {
             event.preventDefault();
-            setSelectedIndex((prev) => (prev + 1) % props.items.length);
+            setSelectedIndex((prev) => (prev + 1) % items.length);
             return true;
           }
 
@@ -80,10 +80,10 @@ export const SuggestionList = forwardRef<SuggestionListRef, SuggestionListProps>
           return false;
         },
       }),
-      [props.items, selectedIndex, selectItem],
+      [items, selectedIndex, selectItem],
     );
 
-    if (!props.items.length) {
+    if (!items.length) {
       return (
         <div className="suggestion-menu">
           <div className="suggestion-empty">{t('noMatch')}</div>
@@ -95,7 +95,7 @@ export const SuggestionList = forwardRef<SuggestionListRef, SuggestionListProps>
       <div className="suggestion-menu">
         <div className="suggestion-header">{t('selectOption')}</div>
         <div className="suggestion-list" ref={listRef}>
-          {props.items.map((item, index) => {
+          {items.map((item, index) => {
             const selected = index === selectedIndex;
             return (
               <div
@@ -105,7 +105,7 @@ export const SuggestionList = forwardRef<SuggestionListRef, SuggestionListProps>
                 onMouseEnter={() => setSelectedIndex(index)}
                 onMouseDown={(e) => {
                   e.preventDefault();
-                  props.command(item);
+                  command(item);
                 }}
               >
                 <div className="suggestion-title">{getTitle(item)}</div>

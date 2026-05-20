@@ -1,7 +1,7 @@
 "use client"
 
 import { CheckIcon, CopyIcon, FileIcon, GitCommitIcon, MinusIcon, PlusIcon } from "lucide-react"
-import { type ComponentProps, type HTMLAttributes, useEffect, useRef, useState } from "react"
+import { type ComponentProps, type HTMLAttributes, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 /**
  * @title React AI Commit
@@ -118,10 +118,12 @@ export type CommitTimestampProps = HTMLAttributes<HTMLTimeElement> & {
 }
 
 export const CommitTimestamp = ({ date, className, children, ...props }: CommitTimestampProps) => {
-  const formatted = new Intl.RelativeTimeFormat("en", { numeric: "auto" }).format(
-    Math.round((date.getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => { setNow(Date.now()) }, [])
+  const formatted = useMemo(() => new Intl.RelativeTimeFormat("en", { numeric: "auto" }).format(
+    Math.round((date.getTime() - now) / (1000 * 60 * 60 * 24)),
     "day",
-  )
+  ), [date, now])
 
   return (
     <time

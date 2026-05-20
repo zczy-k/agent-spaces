@@ -34,7 +34,7 @@ interface IssueDetailProps {
 }
 
 export function IssueDetail({ workspaceId }: IssueDetailProps) {
-  const { issues, activeIssueId, startIssue, resumeIssue, updateIssue, deleteIssue } = useIssueStore();
+  const { issues, activeIssueId, startIssue, resumeIssue, continueIssue, interruptIssue, updateIssue, deleteIssue } = useIssueStore();
   const { tasks, loading: tasksLoading, loadTasks, retryTask, cancelTask, createTask, updateTask, deleteTask, reorderTasks } = useTaskStore();
   const agents = useAgentStore((s) => s.agents);
   const ensureAgents = useAgentStore((s) => s.ensure);
@@ -287,6 +287,10 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
             createTask={createTask}
             updateTask={updateTask}
             deleteTask={deleteTask}
+            updateIssue={updateIssue}
+            startIssue={startIssue}
+            continueIssue={continueIssue}
+            interruptIssue={interruptIssue}
           />
         )}
 

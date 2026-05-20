@@ -104,7 +104,7 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
     if (open) {
       browse(value || "");
     }
-  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, browse, value]);
 
   useEffect(() => {
     if (creating && newFolderInputRef.current) {

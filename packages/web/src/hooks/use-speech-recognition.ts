@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { getToken } from "@/lib/auth";
 
 interface SpeechRecognitionConfig {
@@ -52,7 +52,9 @@ export function useSpeechRecognition() {
     setIsRecording(false);
   }, []);
 
-  stopRef.current = stop;
+  useEffect(() => {
+    stopRef.current = stop;
+  }, [stop]);
 
   const start = useCallback(
     async (onText: (text: string, isFinal: boolean) => void) => {

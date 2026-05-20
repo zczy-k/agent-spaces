@@ -1,7 +1,7 @@
 import type { AgentConfig, Issue, Task, TaskResult, TaskStatus } from '@agent-spaces/shared';
 import type { WorkflowTemplate } from '@agent-spaces/shared';
 import type { AgentContext } from './agent-context.js';
-import type { AgentFunctionTool } from '../adapters/agent-runtime-types.js';
+import type { AgentFunctionTool, AgentRunResult, AgentRuntime } from '../adapters/agent-runtime-types.js';
 import { createAgentRuntime } from '../adapters/agent-runtime.js';
 import * as agentService from '../services/agent.js';
 import * as channelService from '../services/channel.js';
@@ -16,6 +16,7 @@ import { completeIssueAgentProgress, createIssueAgentProgress, createIssueAgentP
 import { wrapOnEventWithHooks } from '../services/hook-engine.js';
 
 const ACTIVE_TASK_STATUSES: TaskStatus[] = ['running', 'reviewing', 'retrying', 'waiting_review'];
+const activeIssueRuntimes = new Map<string, Map<string, AgentRuntime>>();
 
 export interface PlannerTaskSyncInput {
   plannerPreset?: AgentConfig;
@@ -148,7 +149,10 @@ export async function scheduleRunnableIssueTasks(
   workspaceId: string,
   issueId: string,
   ctx: AgentContext,
+  _options: { force?: boolean } = {},
 ): Promise<void> {
+  const issue = issueService.getById(workspaceId, issueId);
+  if (!issue) return;
   const tasks = taskService.list(workspaceId, issueId);
   const doneIds = new Set(tasks.filter((task) => task.status === 'done').map((task) => task.id));
   const hasActive = tasks.some((task) => ACTIVE_TASK_STATUSES.includes(task.status));
@@ -163,7 +167,8 @@ export async function scheduleRunnableIssueTasks(
     return;
   }
 
-  for (const task of runnable) {
+  const tasksToRun = issue.continuousRun === false ? runnable.slice(0, 1) : runnable;
+  for (const task of tasksToRun) {
     await runIssueTask(workspaceId, issueId, task.id, ctx);
   }
 }
@@ -186,6 +191,7 @@ export async function runIssueTask(
 
   const taskAgentPreset = findAgentForTask(workspaceId, issue, task);
   if (!taskAgentPreset) {
+    if (issueService.getById(workspaceId, issueId)?.status === 'error') return;
     const missingExecutorResult = {
       success: false,
       summary: 'No runnable agent configured in issue channel members',
@@ -222,6 +228,7 @@ export async function runIssueTask(
   agentService.assignTask(workspaceId, taskAgent.id, taskId);
 
   const runtime = createRuntimeForPreset(taskAgentPreset);
+  registerActiveIssueRuntime(workspaceId, issueId, taskAgent.id, runtime);
   const agentWorkingDir = resolveIssueWorkspaceRoot(workspaceId);
   const startTime = Date.now();
   const progress = createIssueAgentProgress(workspaceId, issue, taskAgentPreset, taskAgent.id, {
@@ -248,20 +255,38 @@ export async function runIssueTask(
     data: `[debug] workflow agentConfigId=${taskAgentPreset.id} role=${taskAgentPreset.role} taskAgentConfigId=${runningTask.agentConfigId || '(fallback)'} runtime=${taskAgentPreset.runtimeKind ?? 'open-agent-sdk'}`,
   });
 
-  const result = await runtime.execute(
-    buildIssueAgentPrompt(workspaceId, buildTaskAgentPrompt(issue, runningTask, taskAgentPreset, agentWorkingDir), agentWorkingDir, taskAgentPreset),
-    agentWorkingDir,
-    {
-      maxTurns: 100,
-      mcpServers: agentService.getMcpServers(taskAgentPreset.mcps),
-      functionTools: createCurrentIssueTools(workspaceId, issue, taskAgentPreset),
-      skills: agentService.getAvailableSkillNames(agentService.getAgentConfigDir(workspaceId, taskAgentPreset), taskAgentPreset.skills),
-      configDir: agentService.getAgentConfigDir(workspaceId, taskAgentPreset),
-      sandboxDirs: runningTask.sandboxDirs ?? taskAgentPreset.sandboxDirs,
-      outputStyle: taskAgentPreset.outputStyle,
-      onEvent: wrapOnEventWithHooks(agentTracker.handleEvent.bind(agentTracker), workspaceId, workspace?.hooksEnabled),
-    },
-  );
+  let result: AgentRunResult;
+  try {
+    result = await runtime.execute(
+      buildIssueAgentPrompt(workspaceId, buildTaskAgentPrompt(issue, runningTask, taskAgentPreset, agentWorkingDir), agentWorkingDir, taskAgentPreset),
+      agentWorkingDir,
+      {
+        maxTurns: 100,
+        mcpServers: agentService.getMcpServers(taskAgentPreset.mcps),
+        functionTools: createCurrentIssueTools(workspaceId, issue, taskAgentPreset),
+        skills: agentService.getAvailableSkillNames(agentService.getAgentConfigDir(workspaceId, taskAgentPreset), taskAgentPreset.skills),
+        configDir: agentService.getAgentConfigDir(workspaceId, taskAgentPreset),
+        sandboxDirs: runningTask.sandboxDirs ?? taskAgentPreset.sandboxDirs,
+        outputStyle: taskAgentPreset.outputStyle,
+        onEvent: wrapOnEventWithHooks(agentTracker.handleEvent.bind(agentTracker), workspaceId, workspace?.hooksEnabled),
+      },
+    );
+  } finally {
+    unregisterActiveIssueRuntime(workspaceId, issueId, taskAgent.id);
+  }
+
+  if (issueService.getById(workspaceId, issueId)?.status === 'error') {
+    const failedTask = taskService.updateStatus(workspaceId, taskId, 'failed', {
+      result: {
+        success: false,
+        summary: 'Interrupted by user',
+        artifacts: [],
+        error: 'Interrupted by user',
+      },
+    });
+    broadcastTaskUpdate(ctx, failedTask, 'running');
+    return;
+  }
 
   if (agentTracker.output.length === 0) {
     for (const line of result.output) {
@@ -308,7 +333,9 @@ export async function runIssueTask(
 
   const completedTask = taskService.complete(workspaceId, taskId, result);
   broadcastTaskUpdate(ctx, completedTask, 'running');
-  await scheduleRunnableIssueTasks(workspaceId, issueId, ctx);
+  if (issueService.getById(workspaceId, issueId)?.continuousRun !== false) {
+    await scheduleRunnableIssueTasks(workspaceId, issueId, ctx);
+  }
 }
 
 export async function continueIssueTaskScheduling(
@@ -316,7 +343,38 @@ export async function continueIssueTaskScheduling(
   issueId: string,
   ctx: AgentContext,
 ): Promise<void> {
-  await scheduleRunnableIssueTasks(workspaceId, issueId, ctx);
+  await scheduleRunnableIssueTasks(workspaceId, issueId, ctx, { force: true });
+}
+
+export function stopIssueAutomation(workspaceId: string, issueId: string, reason = 'Interrupted by user'): Array<{ task: Task; from: TaskStatus }> {
+  const key = issueRunKey(workspaceId, issueId);
+  const runtimes = activeIssueRuntimes.get(key);
+  if (runtimes) {
+    for (const [agentId, runtime] of runtimes.entries()) {
+      try {
+        runtime.stop();
+      } catch {
+        // Runtime may already be unwinding.
+      }
+      agentService.complete(workspaceId, agentId, reason);
+    }
+    activeIssueRuntimes.delete(key);
+  }
+
+  const activeTasks = taskService.list(workspaceId, issueId)
+    .filter((task) => ACTIVE_TASK_STATUSES.includes(task.status));
+  return activeTasks.map((task) => {
+    const from = task.status;
+    const failed = taskService.updateStatus(workspaceId, task.id, 'failed', {
+      result: {
+        success: false,
+        summary: reason,
+        artifacts: [],
+        error: reason,
+      },
+    });
+    return failed ? { task: failed, from } : null;
+  }).filter((item): item is { task: Task; from: TaskStatus } => Boolean(item));
 }
 
 function createTaskSyncTools(
@@ -471,8 +529,10 @@ function findAgentForTask(
   task: Task,
 ): AgentConfig | null {
   const assignable = getIssueMemberPresets(workspaceId, issue);
-  if (!task.agentConfigId) return null;
-  return assignable.find((agent) => agent.id === task.agentConfigId) ?? null;
+  if (task.agentConfigId) return assignable.find((agent) => agent.id === task.agentConfigId) ?? null;
+  return assignable.find((agent) => !['scheduler', 'bot', 'planner', 'task_creator'].includes(agent.role))
+    ?? assignable.find((agent) => !['scheduler', 'bot'].includes(agent.role))
+    ?? null;
 }
 
 function findTaskSyncAgentForIssue(
@@ -547,6 +607,25 @@ async function handleTaskFailure(
   if (!updated) return;
   ctx.broadcast('issue.status_changed', { issueId, from: issue?.status ?? 'in_progress', to: 'error' });
   ctx.broadcast('issue.updated', updated);
+}
+
+function registerActiveIssueRuntime(workspaceId: string, issueId: string, agentId: string, runtime: AgentRuntime): void {
+  const key = issueRunKey(workspaceId, issueId);
+  const runtimes = activeIssueRuntimes.get(key) ?? new Map<string, AgentRuntime>();
+  runtimes.set(agentId, runtime);
+  activeIssueRuntimes.set(key, runtimes);
+}
+
+function unregisterActiveIssueRuntime(workspaceId: string, issueId: string, agentId: string): void {
+  const key = issueRunKey(workspaceId, issueId);
+  const runtimes = activeIssueRuntimes.get(key);
+  if (!runtimes) return;
+  runtimes.delete(agentId);
+  if (runtimes.size === 0) activeIssueRuntimes.delete(key);
+}
+
+function issueRunKey(workspaceId: string, issueId: string): string {
+  return `${workspaceId}:${issueId}`;
 }
 
 function broadcastTaskUpdate(ctx: AgentContext, task: Task | null, from: TaskStatus): void {

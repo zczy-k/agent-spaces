@@ -85,7 +85,7 @@ export function FloatingPanel({
   useEffect(() => {
     rectRef.current = rect;
     setMounted(true);
-  }, []);
+  }, [rect]);
 
   // Clamp on resize
   useEffect(() => {

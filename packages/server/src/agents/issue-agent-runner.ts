@@ -16,6 +16,12 @@ export async function runIssueAutomation(
     return;
   }
 
+  const tasks = taskService.list(workspaceId, issueId);
+  if (tasks.length > 0) {
+    await scheduleRunnableIssueTasks(workspaceId, issueId, ctx);
+    return;
+  }
+
   // Workflow template branch
   if (issue.workflowId) {
     const template = workflowService.getWorkflow(issue.workflowId);
@@ -33,12 +39,6 @@ export async function runIssueAutomation(
       markIssueError(workspaceId, issueId, `Workflow template ${issue.workflowId} not found`, ctx);
       return;
     }
-  }
-
-  const tasks = taskService.list(workspaceId, issueId);
-  if (tasks.length > 0) {
-    await scheduleRunnableIssueTasks(workspaceId, issueId, ctx);
-    return;
   }
 
   console.warn(`[issue-runner] no workflow configured for issue workspaceId=${workspaceId} issueId=${issueId}`);

@@ -407,6 +407,7 @@ function AgentRunsTable({ data, columns, formatRelative: _formatRelative }: { da
   const pageSize = 5
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize })
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data,
     columns,
