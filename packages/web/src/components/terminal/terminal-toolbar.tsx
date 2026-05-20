@@ -27,6 +27,7 @@ export function TerminalToolbar({ activeId, sendInput, onPaste }: TerminalToolba
     if (!draft || !activeId) return;
     const data = /[\r\n]$/.test(draft) ? draft : `${draft}\n`;
     sendInput(activeId, data);
+    setDraft('');
   };
 
   const toggleEdit = () => {
