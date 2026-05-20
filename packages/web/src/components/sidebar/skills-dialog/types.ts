@@ -10,7 +10,6 @@ export interface SkillInfo {
   filename: string;
   content: string;
   favorited: boolean;
-  enabled: boolean;
   group: string;
   boundAgents: BoundAgent[];
 }

@@ -13,7 +13,6 @@ export interface SkillInfo {
   filename: string;
   content: string;
   favorited: boolean;
-  enabled: boolean;
   group: string;
   boundAgents: Array<{ id: string; name: string; avatarUrl?: string }>;
 }
@@ -21,7 +20,6 @@ export interface SkillInfo {
 interface SkillMeta {
   favorites: string[];
   groups: Record<string, string>;
-  disabled: string[];
 }
 
 const SKILL_FILE = 'SKILL.md';
@@ -36,16 +34,15 @@ function getSkillMetaPath(): string {
 
 function readMeta(): SkillMeta {
   const path = getSkillMetaPath();
-  if (!existsSync(path)) return { favorites: [], groups: {}, disabled: [] };
+  if (!existsSync(path)) return { favorites: [], groups: {} };
   try {
     const raw = JSON.parse(readFileSync(path, 'utf-8'));
     return {
       favorites: raw.favorites || [],
       groups: raw.groups || {},
-      disabled: raw.disabled || [],
     };
   } catch {
-    return { favorites: [], groups: {}, disabled: [] };
+    return { favorites: [], groups: {} };
   }
 }
 
@@ -114,7 +111,6 @@ export function listSkills(): SkillInfo[] {
       filename: `${folderName}/${SKILL_FILE}`,
       content,
       favorited: meta.favorites.includes(folderName),
-      enabled: !meta.disabled.includes(folderName),
       group: meta.groups[folderName] || '',
       boundAgents,
     };
@@ -172,7 +168,6 @@ export function importSkill(filename: string, content: string, group?: string): 
     filename: `${folderName}/${SKILL_FILE}`,
     content,
     favorited: false,
-    enabled: true,
     group: group || '',
     boundAgents: [],
   };
@@ -194,7 +189,6 @@ export function importSkillsBatch(items: Array<{ name: string; content: string; 
       filename: `${folderName}/${SKILL_FILE}`,
       content: item.content,
       favorited: false,
-      enabled: true,
       group: item.group || '',
       boundAgents: [],
     });
@@ -244,7 +238,6 @@ export function importSkillFromStore(storePath: string, group: string): SkillInf
     filename: `${skillName}/${SKILL_FILE}`,
     content,
     favorited: false,
-    enabled: true,
     group,
     boundAgents: [],
   };
@@ -260,30 +253,6 @@ export function toggleFavorite(name: string): boolean {
   }
   writeMeta(meta);
   return idx < 0;
-}
-
-export function toggleEnabled(name: string): boolean {
-  const meta = readMeta();
-  const idx = meta.disabled.indexOf(name);
-  if (idx >= 0) {
-    meta.disabled.splice(idx, 1);
-  } else {
-    meta.disabled.push(name);
-  }
-  writeMeta(meta);
-  return idx >= 0; // true = now enabled
-}
-
-export function toggleAllEnabled(names: string[], enabled: boolean): void {
-  const meta = readMeta();
-  if (enabled) {
-    meta.disabled = meta.disabled.filter((n) => !names.includes(n));
-  } else {
-    const set = new Set(meta.disabled);
-    for (const n of names) set.add(n);
-    meta.disabled = [...set];
-  }
-  writeMeta(meta);
 }
 
 export function updateSkillContent(name: string, content: string): boolean {
@@ -304,7 +273,6 @@ export function deleteSkill(name: string): boolean {
   const meta = readMeta();
   meta.favorites = meta.favorites.filter((n) => n !== name);
   delete meta.groups[name];
-  meta.disabled = meta.disabled.filter((n) => n !== name);
   writeMeta(meta);
 
   return true;

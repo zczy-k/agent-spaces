@@ -18,7 +18,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Switch } from '@/components/ui/switch';
 import { AgentIcon } from '@/components/common/agent-icon';
 import {
   Star,
@@ -46,8 +45,6 @@ interface SkillListProps {
   loading: boolean;
   syncLoading: boolean;
   onToggleFavorite: (skill: SkillInfo) => void;
-  onToggleEnabled: (skill: SkillInfo) => void;
-  onToggleAllEnabled: (names: string[], enabled: boolean) => void;
   onDelete: (skill: SkillInfo) => void;
   onEdit: (skill: SkillInfo) => void;
   onBind: (skill: SkillInfo) => void;
@@ -63,8 +60,6 @@ export function SkillList({
   loading,
   syncLoading,
   onToggleFavorite,
-  onToggleEnabled,
-  onToggleAllEnabled,
   onDelete,
   onEdit,
   onBind,
@@ -113,11 +108,6 @@ export function SkillList({
     return true;
   });
 
-  const allEnabled = filtered.length > 0 && filtered.every((s) => s.enabled);
-
-  const handleToggleAll = () => {
-    onToggleAllEnabled(filtered.map((s) => s.name), !allEnabled);
-  };
 
   // --- Import handlers ---
 
@@ -478,10 +468,7 @@ export function SkillList({
                 {filtered.map((skill) => (
                   <div
                     key={skill.name}
-                    className={cn(
-                      "rounded-xl border border-border bg-background p-4 hover:bg-accent/30 transition-colors cursor-pointer",
-                      !skill.enabled && "opacity-50",
-                    )}
+                    className="rounded-xl border border-border bg-background p-4 hover:bg-accent/30 transition-colors cursor-pointer"
                     onClick={() => onEdit(skill)}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -510,11 +497,6 @@ export function SkillList({
                         </p>
                       </div>
                       <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                        <Switch
-                          size="sm"
-                          checked={skill.enabled}
-                          onCheckedChange={() => onToggleEnabled(skill)}
-                        />
                         <Button
                           variant="outline"
                           size="sm"
@@ -572,20 +554,8 @@ export function SkillList({
             )}
           </ScrollArea>
 
-          {/* Desktop: Footer with toggle all + apply all */}
-          <div className="hidden md:flex items-center gap-3 pt-2 border-t shrink-0">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
-              <span>{t('toggleAll')}</span>
-              <Switch
-                size="sm"
-                checked={allEnabled}
-                onCheckedChange={handleToggleAll}
-              />
-              <span className="w-10 text-right">
-                {filtered.filter((s) => s.enabled).length}/{filtered.length}
-              </span>
-            </div>
-            <div className="flex-1" />
+          {/* Desktop: Footer with apply all */}
+          <div className="hidden md:flex items-center justify-end gap-3 pt-2 border-t shrink-0">
             <Button
               variant="outline"
               size="sm"

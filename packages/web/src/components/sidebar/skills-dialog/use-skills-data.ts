@@ -97,33 +97,6 @@ export function useSkillActions(skills: SkillInfo[], setSkills: (fn: (prev: Skil
     } catch { /* ignore */ }
   };
 
-  const toggleEnabled = async (skill: SkillInfo) => {
-    try {
-      const res = await fetch(`/api/skills/${encodeURIComponent(skill.name)}/toggle`, { method: 'POST' });
-      if (res.ok) {
-        const { enabled } = await res.json();
-        setSkills((prev) =>
-          prev.map((s) => s.name === skill.name ? { ...s, enabled } : s),
-        );
-      }
-    } catch { /* ignore */ }
-  };
-
-  const toggleAllEnabled = async (names: string[], enabled: boolean) => {
-    try {
-      const res = await fetch('/api/skills/toggle-all', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ names, enabled }),
-      });
-      if (res.ok) {
-        setSkills((prev) =>
-          prev.map((s) => names.includes(s.name) ? { ...s, enabled } : s),
-        );
-      }
-    } catch { /* ignore */ }
-  };
-
   const deleteSkill = async (skill: SkillInfo) => {
     try {
       const res = await fetch(`/api/skills/${encodeURIComponent(skill.name)}`, { method: 'DELETE' });
@@ -261,5 +234,5 @@ export function useSkillActions(skills: SkillInfo[], setSkills: (fn: (prev: Skil
     } catch { /* ignore */ }
   };
 
-  return { toggleFavorite, toggleEnabled, toggleAllEnabled, deleteSkill, saveEdit, importBatch, importFromGit, bindConfirm, applyAllToAgent, syncCheck, syncConfirm };
+  return { toggleFavorite, deleteSkill, saveEdit, importBatch, importFromGit, bindConfirm, applyAllToAgent, syncCheck, syncConfirm };
 }

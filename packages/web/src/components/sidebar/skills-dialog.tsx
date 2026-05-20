@@ -70,7 +70,6 @@ export function SkillsDialog({ open, onOpenChange, standalone }: SkillsDialogPro
       filename: '',
       content: '',
       favorited: false,
-      enabled: true,
       group: '',
       boundAgents: [],
     });
@@ -284,8 +283,6 @@ export function SkillsDialog({ open, onOpenChange, standalone }: SkillsDialogPro
           loading={loading}
           syncLoading={syncLoading}
           onToggleFavorite={actions.toggleFavorite}
-          onToggleEnabled={actions.toggleEnabled}
-          onToggleAllEnabled={actions.toggleAllEnabled}
           onDelete={actions.deleteSkill}
           onEdit={openEditDialog}
           onBind={openBindDialog}

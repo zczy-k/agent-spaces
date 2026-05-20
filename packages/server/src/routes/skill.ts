@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { exec } from 'node:child_process';
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
-import { listSkills, importSkill, importSkillsBatch, importSkillFromStore, toggleFavorite, toggleEnabled, toggleAllEnabled, updateSkillContent, deleteSkill, checkSkillSync, syncSkills, importSkillsFromGit, listSkillFiles, readSkillFile, writeSkillFile } from '../services/skill.js';
+import { listSkills, importSkill, importSkillsBatch, importSkillFromStore, toggleFavorite, updateSkillContent, deleteSkill, checkSkillSync, syncSkills, importSkillsFromGit, listSkillFiles, readSkillFile, writeSkillFile } from '../services/skill.js';
 import { getDataDir } from '../storage/json-store.js';
 import type { Request, Response } from 'express';
 
@@ -78,22 +78,6 @@ router.post('/:name/favorite', (req: Request, res: Response) => {
   const name = typeof req.params.name === 'string' ? req.params.name : req.params.name[0];
   const favorited = toggleFavorite(name);
   res.json({ favorited });
-});
-
-router.post('/:name/toggle', (req: Request, res: Response) => {
-  const name = typeof req.params.name === 'string' ? req.params.name : req.params.name[0];
-  const enabled = toggleEnabled(name);
-  res.json({ enabled });
-});
-
-router.post('/toggle-all', (req: Request, res: Response) => {
-  const { names, enabled } = req.body as { names?: string[]; enabled?: boolean };
-  if (!Array.isArray(names) || typeof enabled !== 'boolean') {
-    res.status(400).json({ error: 'names and enabled required' });
-    return;
-  }
-  toggleAllEnabled(names, enabled);
-  res.json({ success: true });
 });
 
 router.put('/:name', (req: Request, res: Response) => {
