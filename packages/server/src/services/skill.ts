@@ -204,6 +204,52 @@ export function importSkillsBatch(items: Array<{ name: string; content: string; 
   return results;
 }
 
+export function importSkillFromStore(storePath: string, group: string): SkillInfo | null {
+  // storePath is like "group-name/skill-name", relative to public/skills/
+  const publicSkillsDir = join(getDataDir(), '..', 'public', 'skills');
+  // Try relative to package first
+  let srcDir: string | null = null;
+  const candidates = [
+    join(process.cwd(), 'public', 'skills', storePath),
+    join(import.meta.dirname ?? '', '..', 'public', 'skills', storePath),
+  ];
+  for (const c of candidates) {
+    if (existsSync(c) && statSync(c).isDirectory()) { srcDir = c; break; }
+  }
+  if (!srcDir) return null;
+
+  const skillName = basename(storePath);
+  const skillsDir = getSkillsDir();
+  const destDir = join(skillsDir, skillName);
+
+  // Copy entire folder
+  if (existsSync(destDir)) rmSync(destDir, { recursive: true, force: true });
+  cpSync(srcDir, destDir, { recursive: true, force: true });
+
+  // Set group in meta
+  if (group) {
+    const meta = readMeta();
+    meta.groups[skillName] = group;
+    writeMeta(meta);
+  }
+
+  // Read content for return
+  const skillFile = join(destDir, SKILL_FILE);
+  const content = existsSync(skillFile) ? readFileSync(skillFile, 'utf-8') : '';
+  const fm = parseFrontmatter(content);
+
+  return {
+    name: skillName,
+    description: fm.description || '',
+    filename: `${skillName}/${SKILL_FILE}`,
+    content,
+    favorited: false,
+    enabled: true,
+    group,
+    boundAgents: [],
+  };
+}
+
 export function toggleFavorite(name: string): boolean {
   const meta = readMeta();
   const idx = meta.favorites.indexOf(name);

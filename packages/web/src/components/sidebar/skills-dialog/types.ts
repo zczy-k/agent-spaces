@@ -46,3 +46,10 @@ export interface ImportSkillItem {
   selected: boolean;
   sourceName: string;
 }
+
+export interface StoreSkillItem {
+  id: string;
+  name: string;
+  group: string;
+  path: string;
+}

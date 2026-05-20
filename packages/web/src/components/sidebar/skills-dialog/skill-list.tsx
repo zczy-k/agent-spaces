@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, type ReactNode } from 'react';
+import { useState, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   Dialog,
@@ -45,8 +45,6 @@ interface SkillListProps {
   agents: AgentCandidate[];
   loading: boolean;
   syncLoading: boolean;
-  title: ReactNode;
-  description: ReactNode;
   onToggleFavorite: (skill: SkillInfo) => void;
   onToggleEnabled: (skill: SkillInfo) => void;
   onToggleAllEnabled: (names: string[], enabled: boolean) => void;
@@ -64,8 +62,6 @@ export function SkillList({
   agents,
   loading,
   syncLoading,
-  title,
-  description,
   onToggleFavorite,
   onToggleEnabled,
   onToggleAllEnabled,
@@ -300,13 +296,7 @@ export function SkillList({
         onChange={handleZipSelect}
       />
 
-      <DialogHeader>
-        <div className="flex items-center justify-between pr-8">
-          <div className="hidden md:block">
-            {title}
-            {description}
-          </div>
-          <div className="flex items-center gap-2 ml-auto shrink-0 pt-2">
+      <div className="flex items-center gap-2 ml-auto shrink-0 pt-2">
             <Button variant="outline" size="sm" onClick={onSyncCheck} disabled={syncLoading}>
               <RefreshCw className={cn("size-3.5 mr-1", syncLoading && "animate-spin")} />
               {t('syncToAgents')}
@@ -339,9 +329,7 @@ export function SkillList({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
-        </div>
-      </DialogHeader>
+      </div>
 
       {importDialogOpen ? (
         <SkillImportPanel

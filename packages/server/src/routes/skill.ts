@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { listSkills, importSkill, importSkillsBatch, toggleFavorite, toggleEnabled, toggleAllEnabled, updateSkillContent, deleteSkill, checkSkillSync, syncSkills, importSkillsFromGit } from '../services/skill.js';
+import { listSkills, importSkill, importSkillsBatch, importSkillFromStore, toggleFavorite, toggleEnabled, toggleAllEnabled, updateSkillContent, deleteSkill, checkSkillSync, syncSkills, importSkillsFromGit } from '../services/skill.js';
 import type { Request, Response } from 'express';
 
 const router = Router();
@@ -40,6 +40,20 @@ router.post('/import-batch', (req: Request, res: Response) => {
   }
   const skills = importSkillsBatch(items);
   res.json(skills);
+});
+
+router.post('/import-store', (req: Request, res: Response) => {
+  const { path, group } = req.body as { path?: string; group?: string };
+  if (!path) {
+    res.status(400).json({ error: 'path required' });
+    return;
+  }
+  const skill = importSkillFromStore(path, group || '');
+  if (!skill) {
+    res.status(404).json({ error: 'Store skill not found' });
+    return;
+  }
+  res.json(skill);
 });
 
 router.post('/import-git', (req: Request, res: Response) => {

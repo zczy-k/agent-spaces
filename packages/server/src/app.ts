@@ -114,6 +114,35 @@ function scanOutputStyleStore() {
 }
 scanOutputStyleStore();
 
+// Scan public/skills/{group}/{skill-name}/SKILL.md and generate index.json
+function scanSkillStore() {
+  const dir = join(publicDir, 'skills');
+  if (!existsSync(dir)) return;
+  const index: Array<{ id: string; name: string; group: string; path: string }> = [];
+  for (const groupEntry of readdirSync(dir, { withFileTypes: true })) {
+    if (!groupEntry.isDirectory()) continue;
+    const group = groupEntry.name;
+    const groupDir = join(dir, group);
+    for (const skillEntry of readdirSync(groupDir, { withFileTypes: true })) {
+      if (!skillEntry.isDirectory()) continue;
+      const skillName = skillEntry.name;
+      const skillFile = join(groupDir, skillName, 'SKILL.md');
+      if (!existsSync(skillFile)) continue;
+      const content = readFileSync(skillFile, 'utf-8');
+      const fm = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+      let name = skillName;
+      if (fm) {
+        const nameLine = fm[1].split(/\r?\n/).find((l: string) => /^\s*name\s*:/i.test(l));
+        if (nameLine) name = nameLine.split(':', 2)[1].trim() || skillName;
+      }
+      index.push({ id: skillName, name, group, path: `${group}/${skillName}` });
+    }
+  }
+  writeFileSync(join(dir, 'index.json'), JSON.stringify(index, null, 2), 'utf-8');
+  console.log(`[skill-store] scanned ${index.length} skills`);
+}
+scanSkillStore();
+
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), platform: process.platform });
 });

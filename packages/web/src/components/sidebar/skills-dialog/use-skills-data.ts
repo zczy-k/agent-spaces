@@ -1,12 +1,17 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import type { AgentCandidate, ImportSkillItem, SkillInfo, SkillSyncItem } from './types';
+import type { AgentCandidate, ImportSkillItem, SkillInfo, SkillSyncItem, StoreSkillItem } from './types';
 
 export function useSkillsData(open: boolean, standalone?: boolean) {
   const [skills, setSkills] = useState<SkillInfo[]>([]);
   const [agents, setAgents] = useState<AgentCandidate[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Store state
+  const [storeSkills, setStoreSkills] = useState<StoreSkillItem[]>([]);
+  const [storeLoading, setStoreLoading] = useState(false);
+  const [importingPaths, setImportingPaths] = useState<Set<string>>(new Set());
 
   const fetchSkills = useCallback(async () => {
     setLoading(true);
@@ -34,14 +39,49 @@ export function useSkillsData(open: boolean, standalone?: boolean) {
     } catch { /* ignore */ }
   }, []);
 
+  const fetchStoreSkills = useCallback(async () => {
+    setStoreLoading(true);
+    try {
+      const res = await fetch('/public/skills/index.json');
+      if (res.ok) setStoreSkills(await res.json());
+    } catch { /* ignore */ }
+    setStoreLoading(false);
+  }, []);
+
   useEffect(() => {
     if (open || standalone) {
       fetchSkills();
       fetchAgents();
+      fetchStoreSkills();
     }
-  }, [open, standalone, fetchSkills, fetchAgents]);
+  }, [open, standalone, fetchSkills, fetchAgents, fetchStoreSkills]);
 
-  return { skills, setSkills, agents, loading, fetchSkills };
+  // Local skill names for dedup
+  const localSkillNames = new Set(skills.map((s) => s.name));
+
+  const importFromStore = async (storeSkill: StoreSkillItem) => {
+    if (localSkillNames.has(storeSkill.id) || importingPaths.has(storeSkill.path)) return false;
+    setImportingPaths((prev) => new Set(prev).add(storeSkill.path));
+    try {
+      const res = await fetch('/api/skills/import-store', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: storeSkill.path, group: storeSkill.group }),
+      });
+      if (res.ok) {
+        await fetchSkills();
+        return true;
+      }
+    } catch { /* ignore */ }
+    setImportingPaths((prev) => {
+      const next = new Set(prev);
+      next.delete(storeSkill.path);
+      return next;
+    });
+    return false;
+  };
+
+  return { skills, setSkills, agents, loading, fetchSkills, storeSkills, storeLoading, importingPaths, importFromStore };
 }
 
 export function useSkillActions(skills: SkillInfo[], setSkills: (fn: (prev: SkillInfo[]) => SkillInfo[]) => void, fetchSkills: () => Promise<void>) {

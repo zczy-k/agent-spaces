@@ -23,13 +23,13 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { SearchSelect } from '@/components/ui/search-select';
 import { AgentIcon } from '@/components/common/agent-icon';
+import { AgentPickerDialog } from '@/components/common/agent-picker-dialog';
 import {
   Star,
   StarOff,
   Upload,
   Search,
   Plug,
-  X,
   MoreVertical,
   Trash2,
   Rocket,
@@ -583,68 +583,18 @@ export function McpsDialog({ open, onOpenChange, standalone }: McpsDialogProps) 
       </Dialog>
 
       {/* Bind Agent Dialog */}
-      <Dialog open={!!bindDialogMcp} onOpenChange={(v) => { if (!v) setBindDialogMcp(null); }}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{t('bindTitle', { name: bindDialogMcp?.name || '' })}</DialogTitle>
-            <DialogDescription>{t('bindDescription')}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 pt-2">
-            <div className="max-h-52 overflow-y-auto space-y-0.5">
-              {agents.map((agent) => (
-                <button
-                  key={agent.id}
-                  type="button"
-                  onClick={() => toggleBindAgent(agent.id)}
-                  className={cn(
-                    'flex items-center gap-2 w-full px-2 py-1.5 rounded-md hover:bg-muted text-left text-sm transition-colors',
-                  )}
-                >
-                  <AgentIcon agentId={agent.id} name={agent.name} avatarUrl={agent.avatarUrl} className="size-5 rounded-full" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate">{agent.name}</span>
-                    {agent.description && (
-                      <span className="block truncate text-xs text-muted-foreground">{agent.description}</span>
-                    )}
-                  </span>
-                  <div
-                    className={cn(
-                      'flex items-center justify-center size-4 rounded border shrink-0',
-                      bindSelected.includes(agent.id)
-                        ? 'bg-primary border-primary text-primary-foreground'
-                        : 'border-input',
-                    )}
-                  />
-                </button>
-              ))}
-            </div>
-            {bindSelected.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {bindSelected.map((id) => {
-                  const agent = agents.find((a) => a.id === id);
-                  return (
-                    <span key={id} className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs">
-                      <AgentIcon agentId={id} name={agent?.name} className="size-3.5 rounded-full" />
-                      {agent?.name || id}
-                      <button type="button" onClick={() => toggleBindAgent(id)} className="hover:text-destructive">
-                        <X className="size-3" />
-                      </button>
-                    </span>
-                  );
-                })}
-              </div>
-            )}
-            <div className="flex justify-end gap-2 pt-1">
-              <Button variant="outline" onClick={() => setBindDialogMcp(null)}>
-                {tc('cancel')}
-              </Button>
-              <Button onClick={handleBindConfirm}>
-                {tc('confirm')}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <AgentPickerDialog
+        open={!!bindDialogMcp}
+        onClose={() => setBindDialogMcp(null)}
+        onConfirm={handleBindConfirm}
+        title={t('bindTitle', { name: bindDialogMcp?.name || '' })}
+        description={t('bindDescription')}
+        agents={agents}
+        selected={bindSelected}
+        onToggle={toggleBindAgent}
+        cancelText={tc('cancel')}
+        confirmText={tc('confirm')}
+      />
     </>
   );
 }

@@ -1054,7 +1054,13 @@
     "filterNoGroup": "No Group",
     "toggleAll": "Toggle All",
     "applyAllToAgent": "Apply All to Agent",
-    "applyAllToAgentDescription": "Select agents to apply all skills to"
+    "applyAllToAgentDescription": "Select agents to apply all skills to",
+    "tabLocal": "Local",
+    "tabStore": "Store",
+    "storeEmpty": "No skills in store",
+    "importTo": "Import",
+    "imported": "Imported",
+    "importing": "Importing..."
   },
   "prompts": {
     "title": "Prompt Templates",
