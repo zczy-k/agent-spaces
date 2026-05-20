@@ -8,7 +8,7 @@ import type {
   AgentRuntime,
   AgentRuntimeConfig,
 } from './agent-runtime-types.js';
-import { summarizeResult } from './agent-runtime-types.js';
+import { appendOutputStyleToPrompt, summarizeResult } from './agent-runtime-types.js';
 
 /**
  * Runtime backed by LangChain.js.
@@ -42,7 +42,7 @@ export class LangChainRuntime implements AgentRuntime {
       });
 
       const result = await agent.invoke(
-        { messages: [{ role: 'user', content: prompt }] },
+        { messages: [{ role: 'user', content: appendOutputStyleToPrompt(prompt, options?.outputStyle) }] },
         {
           signal: this.abortController?.signal,
           recursionLimit: options?.maxTurns ? Math.max(2, options.maxTurns * 2 + 1) : undefined,

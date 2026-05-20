@@ -21,7 +21,7 @@ import type {
   AgentRuntime,
   AgentRuntimeConfig,
 } from './agent-runtime-types.js';
-import { summarizeResult } from './agent-runtime-types.js';
+import { appendOutputStyleToPrompt, summarizeResult } from './agent-runtime-types.js';
 
 /**
  * Runtime backed by OpenAI's Codex SDK.
@@ -70,7 +70,7 @@ export class CodexRuntime implements AgentRuntime {
         ? codex.resumeThread(options.resumeSessionId, threadOptions)
         : codex.startThread(threadOptions);
 
-      const { events } = await thread.runStreamed(prompt, {
+      const { events } = await thread.runStreamed(appendOutputStyleToPrompt(prompt, options?.outputStyle), {
         signal: this.abortController.signal,
       });
 

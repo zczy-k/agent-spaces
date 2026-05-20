@@ -6,7 +6,7 @@ import type {
   AgentRuntime,
   AgentRuntimeConfig,
 } from './agent-runtime-types.js';
-import { summarizeResult } from './agent-runtime-types.js';
+import { appendOutputStyleToPrompt, summarizeResult } from './agent-runtime-types.js';
 
 /**
  * Runtime backed by @codeany/open-agent-sdk.
@@ -45,7 +45,7 @@ export class OpenAgentSdkRuntime implements AgentRuntime {
 
       d('agent created, sending prompt...');
       d('tool debug | open-agent-sdk runtime does not expose per-tool stream events through prompt(); only final text/usage is available here');
-      const result = await this.agent.prompt(prompt);
+      const result = await this.agent.prompt(appendOutputStyleToPrompt(prompt, options?.outputStyle));
       const elapsed = Date.now() - startTime;
       const inputTokens = result.usage.input_tokens;
       const outputTokens = result.usage.output_tokens;

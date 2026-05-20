@@ -372,6 +372,7 @@ export async function runMentionedAgent(
       skills,
       configDir,
       sandboxDirs: preset.sandboxDirs,
+      outputStyle: preset.outputStyle,
       resumeSessionId: isRuntimeSessionResume ? options.resumeSessionId : undefined,
       onEvent: wrapOnEventWithHooks((event) => {
         if (activeRun?.stopped) return;

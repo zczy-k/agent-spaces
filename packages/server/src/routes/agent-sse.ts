@@ -26,6 +26,7 @@ interface AgentSseRequestBody {
   skill?: string | string[];
   skills?: string[];
   systemPrompt?: string;
+  outputStyle?: string;
   maxTurns?: number;
 }
 
@@ -120,6 +121,7 @@ router.post('/run', async (req: Request, res: Response) => {
         skills,
         configDir,
         sandboxDirs: preset.sandboxDirs,
+        outputStyle: body.outputStyle ?? preset.outputStyle,
         onEvent: wrapOnEventWithHooks((event) => {
           if (event.type === 'output') output.push(event.line);
           writeSse(res, event.type, serializeRuntimeEvent(event));

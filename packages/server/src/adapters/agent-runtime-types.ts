@@ -26,6 +26,7 @@ export interface AgentRunOptions {
   configDir?: string;
   sandboxDirs?: string[];
   systemPrompt?: string;
+  outputStyle?: string;
   resumeSessionId?: string;
   onEvent?: (event: AgentRuntimeEvent) => void;
 }
@@ -67,4 +68,15 @@ export function summarizeResult(text: string): string {
   const normalized = text.trim().replace(/\s+/g, ' ');
   if (!normalized) return 'Completed agent execution';
   return normalized.length > 160 ? `${normalized.slice(0, 157)}...` : normalized;
+}
+
+export function appendOutputStyleToPrompt(prompt: string, outputStyle?: string): string {
+  const style = outputStyle?.trim();
+  if (!style) return prompt;
+  return [
+    prompt.trimEnd(),
+    '',
+    'Output style instructions:',
+    style,
+  ].join('\n');
 }

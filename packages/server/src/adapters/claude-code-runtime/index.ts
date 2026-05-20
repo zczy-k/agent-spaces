@@ -50,6 +50,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
         tools: { type: 'preset', preset: 'claude_code' },
         mcpServers: sdkMcpServers,
         skills: skillNames,
+        outputStyle: options?.outputStyle?.trim() || undefined,
         managedSettings: {
           strictPluginOnlyCustomization: ['mcp'],
         },

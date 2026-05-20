@@ -88,6 +88,7 @@ export async function syncIssueTasksAfterPlanning(
       skills: [],
       configDir: agentService.getAgentConfigDir(workspaceId, taskSyncPreset),
       sandboxDirs: taskSyncPreset.sandboxDirs,
+      outputStyle: taskSyncPreset.outputStyle,
       onEvent: wrapOnEventWithHooks(taskSyncTracker.handleEvent.bind(taskSyncTracker), workspaceId, workspace?.hooksEnabled),
     },
   );
@@ -257,6 +258,7 @@ export async function runIssueTask(
       skills: agentService.getAvailableSkillNames(agentService.getAgentConfigDir(workspaceId, taskAgentPreset), taskAgentPreset.skills),
       configDir: agentService.getAgentConfigDir(workspaceId, taskAgentPreset),
       sandboxDirs: runningTask.sandboxDirs ?? taskAgentPreset.sandboxDirs,
+      outputStyle: taskAgentPreset.outputStyle,
       onEvent: wrapOnEventWithHooks(agentTracker.handleEvent.bind(agentTracker), workspaceId, workspace?.hooksEnabled),
     },
   );

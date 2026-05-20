@@ -51,6 +51,7 @@ export async function runCommitAgent(workspaceId: string): Promise<string> {
     {
       maxTurns: 1,
       systemPrompt,
+      outputStyle: commitAgent.outputStyle,
     },
   );
 

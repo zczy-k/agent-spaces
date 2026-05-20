@@ -48,6 +48,7 @@ export async function runBotAgent(workspaceId: string, preset: AgentConfig, mess
         configDir: agentService.getAgentConfigDir(workspaceId, preset),
         sandboxDirs: preset.sandboxDirs,
         systemPrompt: preset.systemPrompt,
+        outputStyle: preset.outputStyle,
       },
     );
     agentService.complete(workspaceId, session.id, result.success ? undefined : result.error || result.summary, {
