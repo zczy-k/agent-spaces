@@ -3,6 +3,7 @@ import { query } from '@anthropic-ai/claude-agent-sdk';
 import type { Options, Query } from '@anthropic-ai/claude-agent-sdk';
 import type { AgentRunOptions, AgentRunResult, AgentRuntime, AgentRuntimeConfig } from '../agent-runtime-types.js';
 import { summarizeResult } from '../agent-runtime-types.js';
+import { prepareClaudeOutputStyleFile } from '../../services/output-style.js';
 import { normalizeAdditionalDirectories, normalizePermissionMode, normalizeSkillNames, prepareConfigDir, resolveBundledClaudeExecutable, buildEnv, normalizeMcpServers } from './sdk-config.js';
 import { startClaudeAdapterIfNeeded, getClaudeCodeModel } from './adapter-pool.js';
 import { extractThinkingEvents, extractToolUseEvents, extractToolResultEvent, logToolDebug, formatMessage, isAskUserQuestionAutoResult, countUsageTokens, formatUsageLine, normalizeUsage } from './message-format.js';
@@ -26,6 +27,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
     const configDir = agentDir ? join(agentDir, '.claude') : undefined;
     if (configDir) prepareConfigDir(configDir, agentDir);
     const skillNames = normalizeSkillNames(options?.skills, configDir);
+    const outputStyleFile = configDir ? prepareClaudeOutputStyleFile(configDir, options?.outputStyle) : undefined;
     const claudeExecutable = resolveBundledClaudeExecutable();
     this.adapterRun = await startClaudeAdapterIfNeeded(this.config);
     const baseURL = this.adapterRun?.url ?? this.config.baseURL;
@@ -50,7 +52,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
         tools: { type: 'preset', preset: 'claude_code' },
         mcpServers: sdkMcpServers,
         skills: skillNames,
-        outputStyle: options?.outputStyle?.trim() || undefined,
+        outputStyle: outputStyleFile,
         managedSettings: {
           strictPluginOnlyCustomization: ['mcp'],
         },

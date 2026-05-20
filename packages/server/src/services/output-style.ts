@@ -1,5 +1,6 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { basename, join } from 'node:path';
 import { ensureDir, getDataDir } from '../storage/json-store.js';
 
 export interface OutputStyleTemplate {
@@ -41,6 +42,38 @@ export function listOutputStyles(): OutputStyleTemplate[] {
   return readMeta().templates;
 }
 
+export function resolveOutputStyleTemplate(ref?: string): OutputStyleTemplate | null {
+  const needle = sanitizeOutputStyleName(ref);
+  if (!needle) return null;
+  return listOutputStyles().find((template) =>
+    template.id === ref?.trim()
+    || template.name === ref?.trim()
+    || sanitizeOutputStyleName(template.name) === needle,
+  ) ?? null;
+}
+
+export function resolveOutputStyleContent(ref?: string): string | undefined {
+  const raw = ref?.trim();
+  if (!raw) return undefined;
+  return resolveOutputStyleTemplate(raw)?.content ?? raw;
+}
+
+export function prepareClaudeOutputStyleFile(configDir: string, ref?: string): string | undefined {
+  const raw = ref?.trim();
+  if (!raw) return undefined;
+
+  const template = resolveOutputStyleTemplate(raw);
+  const content = template?.content ?? raw;
+  const fileStem = sanitizeOutputStyleName(template?.name) || `output-style-${shortHash(content)}`;
+  if (!fileStem) return undefined;
+
+  const dir = join(configDir, 'output_styles');
+  rmSync(dir, { recursive: true, force: true });
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, `${fileStem}.md`), `${content.trimEnd()}\n`, 'utf-8');
+  return fileStem;
+}
+
 export function createOutputStyle(name: string, content: string): OutputStyleTemplate {
   const meta = readMeta();
   const now = new Date().toISOString();
@@ -69,4 +102,14 @@ export function deleteOutputStyle(id: string): boolean {
   meta.templates.splice(idx, 1);
   writeMeta(meta);
   return true;
+}
+
+function sanitizeOutputStyleName(name?: string): string {
+  const raw = name?.trim();
+  if (!raw) return '';
+  return basename(raw).replace(/\.md$/i, '').replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+function shortHash(text: string): string {
+  return createHash('sha1').update(text).digest('hex').slice(0, 8);
 }

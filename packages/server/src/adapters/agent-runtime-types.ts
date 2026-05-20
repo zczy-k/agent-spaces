@@ -1,5 +1,6 @@
 import type { AgentOptions, ApiType } from '@codeany/open-agent-sdk';
 import type { MessageTokenUsage } from '@agent-spaces/shared';
+import { resolveOutputStyleContent } from '../services/output-style.js';
 
 export interface AgentRunResult {
   success: boolean;
@@ -71,7 +72,7 @@ export function summarizeResult(text: string): string {
 }
 
 export function appendOutputStyleToPrompt(prompt: string, outputStyle?: string): string {
-  const style = outputStyle?.trim();
+  const style = resolveOutputStyleContent(outputStyle)?.trim();
   if (!style) return prompt;
   return [
     prompt.trimEnd(),
