@@ -117,7 +117,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   useEffect(() => { handleSaveRef.current = handleSave; }, [handleSave]);
 
   const syncReadOnly = useCallback((editor: Monaco.editor.IStandaloneCodeEditor, readOnly: boolean) => {
-    editor.updateOptions({ readOnly, domReadOnly: readOnly });
+    editor.updateOptions({ readOnly });
   }, []);
 
   const registerNavigation = useCallback((editor: Monaco.editor.IStandaloneCodeEditor, monaco: typeof Monaco) => {
@@ -382,7 +382,6 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
                 padding: { top: 8 },
                 renderLineHighlight: "gutter",
                 readOnly: isReadOnly,
-                domReadOnly: isReadOnly,
                 wordWrap: wordWrap ? 'on' : 'off',
               }}
               theme={resolvedTheme === "dark" ? "vs-dark" : "vs"}
@@ -416,7 +415,6 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
                 padding: { top: 8 },
                 renderLineHighlight: "gutter",
                 readOnly: isReadOnly,
-                domReadOnly: isReadOnly,
                 wordWrap: wordWrap ? 'on' : 'off',
                 gotoLocation: {
                   multipleDefinitions: 'goto',

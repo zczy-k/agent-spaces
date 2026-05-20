@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { tauriNavigate, toStaticHref } from "@/lib/navigate";
+import { tauriNavigate } from "@/lib/navigate";
 import {
   Sidebar,
   SidebarContent,
@@ -104,8 +104,34 @@ export function DashboardSidebar() {
   useEffect(() => {
     const toggleHandler = () => toggleSidebar();
     const dialogHandler = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (detail === 'agents') setAgentDialogOpen(true);
+      const detail = (e as CustomEvent).detail as string;
+      const routeMap: Record<string, string> = {
+        agents: '/settings/agents',
+        skills: '/settings/skills',
+        prompts: '/settings/prompts',
+        'output-styles': '/settings/output-styles',
+        mcps: '/settings/mcps',
+        models: '/settings/models',
+        providers: '/settings/providers',
+        hooks: '/settings',
+        settings: '/settings',
+      };
+      if (isMobile && routeMap[detail]) {
+        router.push(routeMap[detail]);
+        return;
+      }
+      const setterMap: Record<string, React.Dispatch<React.SetStateAction<boolean>>> = {
+        agents: setAgentDialogOpen,
+        skills: setSkillsDialogOpen,
+        prompts: setPromptsDialogOpen,
+        'output-styles': setOutputStylesDialogOpen,
+        mcps: setMcpsDialogOpen,
+        models: setModelsDialogOpen,
+        providers: setProvidersDialogOpen,
+        hooks: setHooksDialogOpen,
+        settings: setSettingsDialogOpen,
+      };
+      if (setterMap[detail]) setterMap[detail](true);
     };
     window.addEventListener('toggle-sidebar', toggleHandler);
     window.addEventListener('open-dialog', dialogHandler);
@@ -113,11 +139,18 @@ export function DashboardSidebar() {
       window.removeEventListener('toggle-sidebar', toggleHandler);
       window.removeEventListener('open-dialog', dialogHandler);
     };
-  }, [toggleSidebar]);
+  }, [toggleSidebar, isMobile]);
 
   // 注册命令面板快捷命令
   const registerCommands = useCommandPalette((s) => s.registerMany);
   useEffect(() => {
+    const openSettingsPage = (path: string, setter?: React.Dispatch<React.SetStateAction<boolean>>) => {
+      if (isMobile || !setter) {
+        router.push(path);
+      } else {
+        setter(true);
+      }
+    };
     const cmds = [
       {
         id: 'toggle-sidebar',
@@ -153,22 +186,91 @@ export function DashboardSidebar() {
         },
       },
       {
+        id: 'open-settings',
+        label: 'Open General Settings',
+        group: 'Settings',
+        icon: Settings,
+        action: () => openSettingsPage('/settings', setSettingsDialogOpen),
+      },
+      {
         id: 'open-agents',
         label: 'Open Agent Settings',
         group: 'Settings',
         icon: Bot,
-        action: () => window.dispatchEvent(new CustomEvent('open-dialog', { detail: 'agents' })),
+        action: () => openSettingsPage('/settings/agents', setAgentDialogOpen),
+      },
+      {
+        id: 'open-skills',
+        label: 'Open Skills Settings',
+        group: 'Settings',
+        icon: Sparkles,
+        action: () => openSettingsPage('/settings/skills', setSkillsDialogOpen),
+      },
+      {
+        id: 'open-prompts',
+        label: 'Open Prompt Settings',
+        group: 'Settings',
+        icon: MessageSquare,
+        action: () => openSettingsPage('/settings/prompts', setPromptsDialogOpen),
+      },
+      {
+        id: 'open-output-styles',
+        label: 'Open Output Style Settings',
+        group: 'Settings',
+        icon: Pencil,
+        action: () => openSettingsPage('/settings/output-styles', setOutputStylesDialogOpen),
+      },
+      {
+        id: 'open-mcps',
+        label: 'Open MCP Settings',
+        group: 'Settings',
+        icon: Plug,
+        action: () => openSettingsPage('/settings/mcps', setMcpsDialogOpen),
+      },
+      {
+        id: 'open-models',
+        label: 'Open Model Settings',
+        group: 'Settings',
+        icon: Brain,
+        action: () => {
+          if (isMobile) {
+            router.push('/settings/models');
+          } else {
+            setModelsDialogProvider(undefined);
+            setModelsDialogOpen(true);
+          }
+        },
+      },
+      {
+        id: 'open-providers',
+        label: 'Open Provider Settings',
+        group: 'Settings',
+        icon: Server,
+        action: () => openSettingsPage('/settings/providers', setProvidersDialogOpen),
+      },
+      {
+        id: 'open-hooks',
+        label: 'Open Hook Settings',
+        group: 'Settings',
+        icon: Zap,
+        action: () => {
+          if (isMobile) {
+            router.push('/settings');
+          } else {
+            setHooksDialogOpen(true);
+          }
+        },
       },
       {
         id: 'open-workflows',
         label: 'Open Workflow Settings',
-        group: 'Settings',
+        group: 'Navigation',
         icon: GitBranch,
-        action: () => { window.location.href = toStaticHref('/workflows'); },
+        action: () => { router.push('/workflows'); },
       },
     ];
     return registerCommands(cmds);
-  }, [registerCommands, toggleSidebar]);
+  }, [registerCommands, toggleSidebar, isMobile]);
 
   const handleWsSubmit = async (data: { name: string; boundDirs: string[] }) => {
     if (editingWs) {
