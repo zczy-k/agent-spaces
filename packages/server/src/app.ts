@@ -97,6 +97,23 @@ function scanPromptStore() {
 }
 scanPromptStore();
 
+// Scan public/output-styles/ and generate index.json
+function scanOutputStyleStore() {
+  const dir = join(publicDir, 'output-styles');
+  if (!existsSync(dir)) return;
+  const files = readdirSync(dir).filter((f) => f.endsWith('.md'));
+  const index = files.map((filename) => {
+    const id = basename(filename, '.md');
+    const content = readFileSync(join(dir, filename), 'utf-8');
+    const firstHeading = content.split('\n').find((l) => /^#\s+/.test(l));
+    const name = firstHeading ? firstHeading.replace(/^#\s+/, '').trim() : id.replace(/[-_]/g, ' ');
+    return { id, name, filename };
+  });
+  writeFileSync(join(dir, 'index.json'), JSON.stringify(index, null, 2), 'utf-8');
+  console.log(`[output-style-store] scanned ${index.length} templates`);
+}
+scanOutputStyleStore();
+
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), platform: process.platform });
 });

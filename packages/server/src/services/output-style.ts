@@ -7,6 +7,7 @@ export interface OutputStyleTemplate {
   id: string;
   name: string;
   content: string;
+  storeId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -74,11 +75,11 @@ export function prepareClaudeOutputStyleFile(configDir: string, ref?: string): s
   return fileStem;
 }
 
-export function createOutputStyle(name: string, content: string): OutputStyleTemplate {
+export function createOutputStyle(name: string, content: string, storeId?: string): OutputStyleTemplate {
   const meta = readMeta();
   const now = new Date().toISOString();
   const id = `os-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const tmpl: OutputStyleTemplate = { id, name, content, createdAt: now, updatedAt: now };
+  const tmpl: OutputStyleTemplate = { id, name, content, storeId, createdAt: now, updatedAt: now };
   meta.templates.push(tmpl);
   writeMeta(meta);
   return tmpl;

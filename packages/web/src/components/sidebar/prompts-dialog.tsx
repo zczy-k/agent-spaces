@@ -564,7 +564,7 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
 
       {/* Apply to Agents Dialog */}
       <Dialog open={!!applyTemplate} onOpenChange={(v) => { if (!v) setApplyTemplate(null); }}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="sm:max-w-sm overflow-hidden">
           <DialogHeader>
             <DialogTitle>{t('applyTitle', { name: applyTemplate?.name || '' })}</DialogTitle>
             <DialogDescription>{t('applyDescription')}</DialogDescription>

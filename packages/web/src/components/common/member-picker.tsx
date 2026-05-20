@@ -87,16 +87,16 @@ export function MemberPicker({
             const candidate = candidates.find((c) => c.id === id);
             const displayLabel = candidate?.label || id;
             return (
-              <span key={id} className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs">
+              <span key={id} className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs max-w-[160px] min-w-0">
                 {id === 'user' ? (
-                  displayLabel
+                  <span className="truncate">{displayLabel}</span>
                 ) : (
-                  <span className="inline-flex items-center gap-1">
-                    <AgentIcon agentId={id} name={displayLabel} className="size-3.5 rounded-full" />
-                    {displayLabel}
+                  <span className="inline-flex items-center gap-1 min-w-0">
+                    <AgentIcon agentId={id} name={displayLabel} className="size-3.5 rounded-full shrink-0" />
+                    <span className="truncate">{displayLabel}</span>
                   </span>
                 )}
-                <button type="button" onClick={() => onToggle(id)} className="hover:text-destructive">
+                <button type="button" onClick={() => onToggle(id)} className="hover:text-destructive shrink-0">
                   <X className="size-3" />
                 </button>
               </span>
