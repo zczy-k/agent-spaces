@@ -1,20 +1,11 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
 import { Layout, Model, TabNode, IJsonModel, Actions, ITabRenderValues, Action, DockLocation } from "flexlayout-react";
 import { Hash, ListChecks, FolderOpen, Code2, MessageSquare, FileText, TerminalSquare, FileDiff, GitCommitHorizontal, Settings2, Star } from "lucide-react";
 import { TAB_ICONS, RIGHT_TO_LEFT_TAB_MAP, renderTabIcon } from "./tab-config";
 
-import { EditorPanel } from "@/components/editor/editor-panel";
-import { CodeEditor } from "@/components/editor/code-editor";
-import { TerminalPanel } from "@/components/terminal/terminal-panel";
-import { ChannelList } from "@/components/chat/channel-list";
-import { ChatPanel } from "@/components/chat/chat-panel";
-import { IssueList } from "@/components/issue/issue-list";
-import { IssueDetail } from "@/components/issue/issue-detail";
-import { GitCommitsPanel } from "@/components/git/git-commits-panel";
-import { ProjectSettingsPanel } from "@/components/settings/project-settings-panel";
-import { CodeFavoritesPanel } from "@/components/editor/code-favorites-panel";
 import { AddFavoriteDialog } from "@/components/editor/add-favorite-dialog";
 import { getWS } from "@/lib/ws";
 import { useIssueStore } from "@/stores/issue";
@@ -31,11 +22,58 @@ import { useNotificationStore } from "@/stores/notification";
 import { useInspectorHistoryStore } from "@/stores/inspector-history";
 import type { Issue, Task, IssueStatusChangedPayload, TaskStatusChangedPayload, AppNotification } from "@agent-spaces/shared";
 
+const panelLoader = () => <PanelLoading />;
+
+const EditorPanel = dynamic(() => import("@/components/editor/editor-panel").then((mod) => mod.EditorPanel), {
+  ssr: false,
+  loading: panelLoader,
+});
+const CodeEditor = dynamic(() => import("@/components/editor/code-editor").then((mod) => mod.CodeEditor), {
+  ssr: false,
+  loading: panelLoader,
+});
+const TerminalPanel = dynamic(() => import("@/components/terminal/terminal-panel").then((mod) => mod.TerminalPanel), {
+  ssr: false,
+  loading: panelLoader,
+});
+const ChannelList = dynamic(() => import("@/components/chat/channel-list").then((mod) => mod.ChannelList), {
+  ssr: false,
+  loading: panelLoader,
+});
+const ChatPanel = dynamic(() => import("@/components/chat/chat-panel").then((mod) => mod.ChatPanel), {
+  ssr: false,
+  loading: panelLoader,
+});
+const IssueList = dynamic(() => import("@/components/issue/issue-list").then((mod) => mod.IssueList), {
+  ssr: false,
+  loading: panelLoader,
+});
+const IssueDetail = dynamic(() => import("@/components/issue/issue-detail").then((mod) => mod.IssueDetail), {
+  ssr: false,
+  loading: panelLoader,
+});
+const GitCommitsPanel = dynamic(() => import("@/components/git/git-commits-panel").then((mod) => mod.GitCommitsPanel), {
+  ssr: false,
+  loading: panelLoader,
+});
+const ProjectSettingsPanel = dynamic(() => import("@/components/settings/project-settings-panel").then((mod) => mod.ProjectSettingsPanel), {
+  ssr: false,
+  loading: panelLoader,
+});
+const CodeFavoritesPanel = dynamic(() => import("@/components/editor/code-favorites-panel").then((mod) => mod.CodeFavoritesPanel), {
+  ssr: false,
+  loading: panelLoader,
+});
+
 type FlutterBridge = { emit?: (event: string, data: unknown) => void };
 
 function emitFlutterInspectorJump(data: { path: string; line: number; column?: number }) {
   const bridge = (window as Window & { __flutterBridge?: FlutterBridge }).__flutterBridge;
   bridge?.emit?.('inspector.jump', data);
+}
+
+function PanelLoading() {
+  return <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Loading...</div>;
 }
 
 // tab 图标、右→左同步映射、badge 渲染逻辑见 tab-config.tsx
