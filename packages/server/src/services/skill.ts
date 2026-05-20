@@ -409,6 +409,51 @@ export function syncSkills(items: Array<{ agentId: string; skillName: string }>)
   return synced;
 }
 
+export function listSkillFiles(name: string): Array<{ name: string; path: string; isDirectory: boolean }> {
+  const skillsDir = getSkillsDir();
+  const folderPath = join(skillsDir, name);
+  if (!existsSync(folderPath) || !statSync(folderPath).isDirectory()) return [];
+
+  function walk(dir: string, prefix: string): Array<{ name: string; path: string; isDirectory: boolean }> {
+    const entries = readdirSync(dir, { withFileTypes: true });
+    const result: Array<{ name: string; path: string; isDirectory: boolean }> = [];
+    for (const entry of entries) {
+      if (entry.name.startsWith('_') || entry.name === '.DS_Store') continue;
+      const fullPath = join(dir, entry.name);
+      const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) {
+        result.push({ name: entry.name, path: relativePath, isDirectory: true });
+        result.push(...walk(fullPath, relativePath));
+      } else {
+        result.push({ name: entry.name, path: relativePath, isDirectory: false });
+      }
+    }
+    return result;
+  }
+
+  return walk(folderPath, '');
+}
+
+export function readSkillFile(name: string, filePath: string): string | null {
+  const skillsDir = getSkillsDir();
+  const fullPath = join(skillsDir, name, filePath);
+  // Prevent path traversal
+  if (!fullPath.startsWith(join(skillsDir, name))) return null;
+  if (!existsSync(fullPath) || !statSync(fullPath).isFile()) return null;
+  return readFileSync(fullPath, 'utf-8');
+}
+
+export function writeSkillFile(name: string, filePath: string, content: string): boolean {
+  const skillsDir = getSkillsDir();
+  const fullPath = join(skillsDir, name, filePath);
+  // Prevent path traversal
+  if (!fullPath.startsWith(join(skillsDir, name))) return false;
+  const dir = join(fullPath, '..');
+  ensureDir(dir);
+  writeFileSync(fullPath, content, 'utf-8');
+  return true;
+}
+
 export function importSkillsFromGit(gitUrl: string): Array<{ name: string; content: string }> {
   const cloneDir = join(tmpdir(), `agent-spaces-git-${randomUUID()}`);
 

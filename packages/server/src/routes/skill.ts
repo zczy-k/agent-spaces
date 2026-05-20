@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { exec } from 'node:child_process';
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
-import { listSkills, importSkill, importSkillsBatch, importSkillFromStore, toggleFavorite, toggleEnabled, toggleAllEnabled, updateSkillContent, deleteSkill, checkSkillSync, syncSkills, importSkillsFromGit } from '../services/skill.js';
+import { listSkills, importSkill, importSkillsBatch, importSkillFromStore, toggleFavorite, toggleEnabled, toggleAllEnabled, updateSkillContent, deleteSkill, checkSkillSync, syncSkills, importSkillsFromGit, listSkillFiles, readSkillFile, writeSkillFile } from '../services/skill.js';
 import { getDataDir } from '../storage/json-store.js';
 import type { Request, Response } from 'express';
 
@@ -106,6 +106,43 @@ router.put('/:name', (req: Request, res: Response) => {
   const ok = updateSkillContent(name, content);
   if (!ok) {
     res.status(404).json({ error: 'Skill not found' });
+    return;
+  }
+  res.json({ success: true });
+});
+
+router.get('/:name/files', (req: Request, res: Response) => {
+  const name = typeof req.params.name === 'string' ? req.params.name : req.params.name[0];
+  const files = listSkillFiles(name);
+  res.json(files);
+});
+
+router.get('/:name/files/*', (req: Request, res: Response) => {
+  const name = typeof req.params.name === 'string' ? req.params.name : req.params.name[0];
+  const filePath = req.params[0];
+  if (!filePath) {
+    res.status(400).json({ error: 'file path required' });
+    return;
+  }
+  const content = readSkillFile(name, filePath);
+  if (content === null) {
+    res.status(404).json({ error: 'File not found' });
+    return;
+  }
+  res.json({ content });
+});
+
+router.put('/:name/files/*', (req: Request, res: Response) => {
+  const name = typeof req.params.name === 'string' ? req.params.name : req.params.name[0];
+  const filePath = req.params[0];
+  const { content } = req.body as { content?: string };
+  if (!filePath || content === undefined) {
+    res.status(400).json({ error: 'file path and content required' });
+    return;
+  }
+  const ok = writeSkillFile(name, filePath, content);
+  if (!ok) {
+    res.status(400).json({ error: 'Failed to write file' });
     return;
   }
   res.json({ success: true });
