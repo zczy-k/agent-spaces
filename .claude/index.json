@@ -1,11 +1,11 @@
 {
-  "version": "1.7.0",
-  "timestamp": "2026-05-19T09:45:03+08:00",
+  "version": "1.8.0",
+  "timestamp": "2026-05-20T14:08:52+08:00",
   "project": {
     "name": "agent-spaces",
     "type": "pnpm-monorepo + flutter",
     "language": "TypeScript + Dart",
-    "description": "多 Agent 协同编程平台（含四运行时 Agent 编排、Workflow DAG 可视化编排、i18n 中英文切换、通知中心、用量统计、订阅管理、语音识别、快捷命令、代码搜索、Agent SSE API、Command Palette、代码收藏、Prompt 模板管理、TypeScript LSP、DOM Inspector、持久上下文加载、Flutter 多平台客户端）"
+    "description": "多 Agent 协同编程平台（含四运行时 Agent 编排、Workflow DAG 可视化编排、Hook 系统、输出风格管理、i18n 中英文切换、通知中心、用量统计、订阅管理、语音识别、快捷命令、代码搜索、Agent SSE API、Command Palette、代码收藏、Prompt 模板管理、TypeScript LSP、DOM Inspector、持久上下文加载、Flutter 多平台客户端）"
   },
   "modules": [
     {
@@ -33,7 +33,8 @@
         "CodeSearchResult", "FileSearchResult", "SearchCodeOptions",
         "NotificationType", "AppNotification",
         "SpeechRecognitionProvider", "SpeechRecognitionConfig", "SpeechRecognitionResult", "TencentSpeechCredentials",
-        "CodeFavorite"
+        "CodeFavorite",
+        "HookConfig", "HookRule"
       ],
       "api": [],
       "tests": [],
@@ -55,12 +56,13 @@
         "packages/shared/src/types/search.ts",
         "packages/shared/src/types/notification.ts",
         "packages/shared/src/types/speech.ts",
-        "packages/shared/src/types/code-favorites.ts"
+        "packages/shared/src/types/code-favorites.ts",
+        "packages/shared/src/types/hooks.ts"
       ],
       "claudeMd": "packages/shared/CLAUDE.md",
       "coverage": {
-        "scanned": 19,
-        "total": 19,
+        "scanned": 20,
+        "total": 20,
         "percentage": 100,
         "gaps": []
       }
@@ -70,7 +72,7 @@
       "path": "packages/server",
       "packageId": "@agent-spaces/server",
       "language": "TypeScript",
-      "role": "Express REST API + WebSocket + 认证中间件 + 四运行时 Agent 编排 + Workflow 系统 + 通知中心 + 应用内通知 + Agent SSE API + 代码搜索 + 订阅管理 + 语音识别 + 快捷命令 + Agent Designer + Skill/MCP 管理 + 用户设置 + Prompt 模板 + 代码收藏 + 持久上下文 + TypeScript LSP + DOM Inspector",
+      "role": "Express REST API + WebSocket + 认证中间件 + 四运行时 Agent 编排 + Workflow 系统 + Hook 系统 + 输出风格管理 + 通知中心 + 应用内通知 + Agent SSE API + 代码搜索 + 订阅管理 + 语音识别 + 快捷命令 + Agent Designer + Skill/MCP 管理 + 用户设置 + Prompt 模板 + 代码收藏 + 持久上下文 + TypeScript LSP + DOM Inspector",
       "entry": "src/app.ts",
       "types": [],
       "api": [
@@ -125,6 +127,10 @@
         "DELETE /api/workspaces/:id/code-favorites/:favId",
         "GET /api/workspaces/:id/search/code",
         "GET /api/workspaces/:id/search/files",
+        "GET|POST /api/workspaces/:id/hooks",
+        "GET|PUT|DELETE /api/workspaces/:id/hooks/:name",
+        "POST /api/workspaces/:id/hooks/upload",
+        "POST /api/workspaces/:id/hooks/:name/apply",
         "GET|POST /api/workflows",
         "GET|PUT|DELETE /api/workflows/:workflowId",
         "POST /api/workflows/:workflowId/duplicate",
@@ -134,6 +140,8 @@
         "PUT|DELETE /api/models/:id",
         "GET|POST /api/providers",
         "PUT|DELETE /api/providers/:id",
+        "GET|POST /api/output-styles",
+        "PUT|DELETE /api/output-styles/:id",
         "GET /api/folder/browse",
         "POST /api/folder/create",
         "GET /api/skills",
@@ -233,6 +241,8 @@
         "packages/server/src/routes/notification.ts",
         "packages/server/src/routes/code-favorites.ts",
         "packages/server/src/routes/prompt-template.ts",
+        "packages/server/src/routes/hooks.ts",
+        "packages/server/src/routes/output-style.ts",
         "packages/server/src/agents/scheduler-agent.ts",
         "packages/server/src/agents/issue-task-controller.ts",
         "packages/server/src/agents/issue-agent-runner.ts",
@@ -243,10 +253,13 @@
         "packages/server/src/agents/agent-context.ts",
         "packages/server/src/agents/commit-agent.ts",
         "packages/server/src/adapters/agent-runtime.ts",
+        "packages/server/src/adapters/agent-runtime-types.ts",
         "packages/server/src/adapters/langchain-runtime.ts",
         "packages/server/src/adapters/claude-code-runtime/",
         "packages/server/src/services/workflow.ts",
         "packages/server/src/services/agent.ts",
+        "packages/server/src/services/hook-engine.ts",
+        "packages/server/src/services/output-style.ts",
         "packages/server/src/services/search.ts",
         "packages/server/src/services/command.ts",
         "packages/server/src/services/command-process-manager.ts",
@@ -256,6 +269,7 @@
         "packages/server/src/services/code-favorites.ts",
         "packages/server/src/services/subscription/",
         "packages/server/src/services/speech-recognition/",
+        "packages/server/src/services/notification-hub/",
         "packages/server/src/services/skill.ts",
         "packages/server/src/services/mcp.ts",
         "packages/server/src/services/gitignore.ts",
@@ -265,6 +279,7 @@
         "packages/server/src/ws/agent-prompt.ts",
         "packages/server/src/ws/typescript-lsp.ts",
         "packages/server/src/storage/code-favorites-store.ts",
+        "packages/server/src/storage/hook-store.ts",
         "packages/server/src/storage/subscription-store.ts",
         "packages/server/src/storage/command-store.ts",
         "packages/server/src/storage/speech-recognition-store.ts",
@@ -272,8 +287,8 @@
       ],
       "claudeMd": "packages/server/CLAUDE.md",
       "coverage": {
-        "scanned": 113,
-        "total": 113,
+        "scanned": 118,
+        "total": 118,
         "percentage": 100,
         "gaps": []
       }
@@ -283,7 +298,7 @@
       "path": "packages/web",
       "packageId": "@agent-spaces/web",
       "language": "TypeScript/TSX",
-      "role": "Next.js 前端 SPA（TypeScript LSP + 代码收藏 + Prompt 模板 + DOM Inspector + Monaco Action Registry + Command Palette + 订阅面板 + 语音识别 + 快捷命令 + 代码搜索 + Iframe Tab + 应用内通知 + Skill/MCP 管理 + 独立设置页 + Monaco Models + Tauri Zoom/Viewport 适配）",
+      "role": "Next.js 前端 SPA（Hook 管理 + 输出风格管理 + 频道管理 + Issue 拖拽排序 + Git Context Menu + Providers 对话框 + Skills 子目录 + TypeScript LSP + 代码收藏 + Prompt 模板 + DOM Inspector + Monaco Action Registry + Command Palette + 订阅面板 + 语音识别 + 快捷命令 + 代码搜索 + Iframe Tab + 应用内通知 + Skill/MCP 管理 + 独立设置页 + Monaco Models + Tauri Zoom/Viewport 适配）",
       "entry": "src/app/layout.tsx",
       "types": [],
       "api": [],
@@ -303,11 +318,13 @@
         "packages/web/src/app/settings/models/page.tsx",
         "packages/web/src/app/settings/providers/page.tsx",
         "packages/web/src/app/settings/prompts/page.tsx",
+        "packages/web/src/app/settings/output-styles/page.tsx",
         "packages/web/src/components/locale-provider.tsx",
         "packages/web/src/components/command-palette.tsx",
         "packages/web/src/components/dev-inspector.tsx",
         "packages/web/src/components/zoom-wrapper.tsx",
         "packages/web/src/components/viewport-insets.tsx",
+        "packages/web/src/components/theme-provider.tsx",
         "packages/web/src/components/common/console-panel.tsx",
         "packages/web/src/components/common/iframe-manager.tsx",
         "packages/web/src/components/common/member-picker.tsx",
@@ -326,18 +343,43 @@
         "packages/web/src/components/chat/message-tool-step.tsx",
         "packages/web/src/components/chat/message-context-panel.tsx",
         "packages/web/src/components/chat/message-context-usage.tsx",
+        "packages/web/src/components/chat/message-item.tsx",
+        "packages/web/src/components/chat/message-navigator.tsx",
+        "packages/web/src/components/chat/channel-dialog.tsx",
+        "packages/web/src/components/chat/channel-list.tsx",
+        "packages/web/src/components/chat/channel-info-panel.tsx",
+        "packages/web/src/components/chat/member-info-dialog.tsx",
+        "packages/web/src/components/chat/add-member-dialog.tsx",
         "packages/web/src/components/chat/chat-input-utils.ts",
         "packages/web/src/components/chat/chat-input-attachments.ts",
         "packages/web/src/components/chat/chat-input-agent-bar.tsx",
         "packages/web/src/components/chat/chat-input-info-bar.tsx",
         "packages/web/src/components/composer/create-file-search-extension.ts",
+        "packages/web/src/components/composer/suggestion-list.tsx",
+        "packages/web/src/components/composer/composer-shell.tsx",
+        "packages/web/src/components/issue/edit-issue-dialog.tsx",
+        "packages/web/src/components/issue/issue-detail-header.tsx",
+        "packages/web/src/components/issue/issue-detail-comments.tsx",
+        "packages/web/src/components/issue/issue-detail-tasks-panel.tsx",
+        "packages/web/src/components/issue/task-row.tsx",
+        "packages/web/src/components/git/use-git-sync.ts",
+        "packages/web/src/components/git/git-settings-form.tsx",
+        "packages/web/src/components/git/commit-diff-viewer.tsx",
+        "packages/web/src/components/git/git-prompt-dialog.tsx",
+        "packages/web/src/components/git/git-gitignore-dialog.tsx",
+        "packages/web/src/components/git/git-file-context-menu.tsx",
+        "packages/web/src/components/git/git-commit-context-menu.tsx",
+        "packages/web/src/components/git/git-commit-utils.ts",
+        "packages/web/src/components/git/git-commit-detail-dialog.tsx",
+        "packages/web/src/components/git/git-discard-dialog.tsx",
+        "packages/web/src/components/git/diff-viewer.tsx",
         "packages/web/src/components/terminal/command-dialog.tsx",
         "packages/web/src/components/terminal/command-sidebar.tsx",
         "packages/web/src/components/terminal/virtual-keyboard.tsx",
-        "packages/web/src/components/home/subscription-panel.tsx",
-        "packages/web/src/components/home/subscription-dialog.tsx",
-        "packages/web/src/components/sidebar/skills-dialog.tsx",
-        "packages/web/src/components/sidebar/mcps-dialog.tsx",
+        "packages/web/src/components/sidebar/skills-dialog/",
+        "packages/web/src/components/sidebar/hooks-dialog.tsx",
+        "packages/web/src/components/sidebar/output-styles-dialog.tsx",
+        "packages/web/src/components/sidebar/providers-dialog.tsx",
         "packages/web/src/components/sidebar/prompts-dialog.tsx",
         "packages/web/src/components/sidebar/notification-center-dialog.tsx",
         "packages/web/src/components/sidebar/nav-notifications.tsx",
@@ -345,12 +387,11 @@
         "packages/web/src/components/settings/notification-settings-tab.tsx",
         "packages/web/src/components/settings/workspace-prompt-section.tsx",
         "packages/web/src/components/settings/workspace-info-section.tsx",
-        "packages/web/src/components/git/git-settings-form.tsx",
-        "packages/web/src/components/git/commit-diff-viewer.tsx",
         "packages/web/src/stores/command.ts",
         "packages/web/src/stores/command-palette.ts",
         "packages/web/src/stores/notification.ts",
         "packages/web/src/stores/code-favorites.ts",
+        "packages/web/src/stores/hooks.ts",
         "packages/web/src/stores/inspector-history.ts",
         "packages/web/src/stores/iframe-tabs.ts",
         "packages/web/src/stores/search-commands/",
@@ -368,8 +409,8 @@
       ],
       "claudeMd": "packages/web/CLAUDE.md",
       "coverage": {
-        "scanned": 245,
-        "total": 245,
+        "scanned": 265,
+        "total": 265,
         "percentage": 100,
         "gaps": []
       }
@@ -471,6 +512,10 @@
       "description": "DOM Inspector 源码定位集成方案（dom-inspector-hook + /api/inspector/track + inspector.jump WS 广播）"
     },
     {
+      "path": "docs/flex-truncate-fix.md",
+      "description": "Flex 布局中 truncate 不生效的解决方案（w-0 flex-1 模式）"
+    },
+    {
       "path": "docs/superpowers/specs/2026-05-06-i18n-design.md",
       "description": "i18n 中英文多语言切换设计文档"
     },
@@ -485,6 +530,10 @@
     {
       "path": "docs/superpowers/specs/2026-05-14-editor-search-and-monaco-models-design.md",
       "description": "编辑器搜索和 Monaco Models 设计文档"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-05-20-hook-system-design.md",
+      "description": "Hook 系统设计文档（PreToolUse/PostToolUse 钩子，per-tool-call 粒度）"
     },
     {
       "path": "docs/superpowers/plans/2026-05-06-i18n-wave1-infrastructure.md",
@@ -515,6 +564,10 @@
       "description": "编辑器搜索和 Monaco Models 实施计划"
     },
     {
+      "path": "docs/superpowers/plans/2026-05-20-hook-system.md",
+      "description": "Hook 系统实施计划"
+    },
+    {
       "path": "PRD.md",
       "description": "产品需求文档"
     },
@@ -536,8 +589,8 @@
     "Dockerfile.server"
   ],
   "scanCoverage": {
-    "totalSourceFiles": 398,
-    "scannedFiles": 398,
+    "totalSourceFiles": 424,
+    "scannedFiles": 424,
     "coveragePercentage": 100,
     "ignoredDirectories": [
       "node_modules",
@@ -552,107 +605,100 @@
     "truncated": false,
     "gapDetails": [],
     "moduleBreakdown": {
-      "shared": { "total": 19, "scanned": 19, "percentage": 100 },
-      "server": { "total": 113, "scanned": 113, "percentage": 100 },
-      "web": { "total": 245, "scanned": 245, "percentage": 100 },
+      "shared": { "total": 20, "scanned": 20, "percentage": 100 },
+      "server": { "total": 118, "scanned": 118, "percentage": 100 },
+      "web": { "total": 265, "scanned": 265, "percentage": 100 },
       "flutter": { "total": 21, "scanned": 21, "percentage": 100 }
     }
   },
   "changesFromPrevious": {
-    "previousVersion": "1.6.0",
-    "previousTimestamp": "2026-05-17T15:04:39+08:00",
-    "summary": "代码收藏系统、Prompt 模板管理、TypeScript LSP、持久上下文加载、DOM Inspector、回复 AI 消息、Monaco Action Registry、编辑器增强、聊天拆分、浮动组件、Flutter 模块拆分。文件总数 357->398（+41），新增 4 篇文档。",
+    "previousVersion": "1.7.0",
+    "previousTimestamp": "2026-05-19T09:45:03+08:00",
+    "summary": "Hook 系统（Agent 工具调用前后自定义钩子）、输出风格管理（OutputStyle 模板 CRUD）、Issue Task Controller 从 issue-agent-runner 独立拆分（689 行）、Agent 运行时接口独立文件、Bot Agent 从 notification-hub 提取、Web 大规模组件拆分（聊天/Issue/Git/Composer/Skills Dialog/UI 基础组件）、Providers 管理对话框。文件总数 398->424（+26），新增 3 篇文档。",
     "newFiles": {
       "shared": [
-        "src/types/code-favorites.ts (CodeFavorite 类型)"
+        "src/types/hooks.ts (HookConfig + HookRule 类型)"
       ],
       "server": [
-        "src/routes/code-favorites.ts (代码收藏 CRUD 路由)",
-        "src/services/code-favorites.ts (代码收藏服务)",
-        "src/storage/code-favorites-store.ts (代码收藏持久化)",
-        "src/routes/prompt-template.ts (Prompt 模板 CRUD + apply)",
-        "src/services/prompt-template.ts (Prompt 模板服务)",
-        "src/services/persistent-agent-context.ts (持久上下文自动加载)",
-        "src/ws/typescript-lsp.ts (TypeScript LSP WebSocket handler)"
+        "src/routes/hooks.ts (Hook CRUD + upload + apply 路由)",
+        "src/services/hook-engine.ts (Hook 引擎 + wrapOnEventWithHooks)",
+        "src/storage/hook-store.ts (Hook .hook.json 持久化)",
+        "src/routes/output-style.ts (输出风格模板 CRUD 路由)",
+        "src/services/output-style.ts (输出风格模板管理 + resolveOutputStyleContent)",
+        "src/agents/issue-task-controller.ts (从 issue-agent-runner 拆分的 689 行任务控制器)",
+        "src/adapters/agent-runtime-types.ts (Agent 运行时接口独立文件)",
+        "src/services/notification-hub/bot-agent.ts (Bot Agent 从 notification-hub 提取)"
       ],
       "web": [
-        "src/stores/code-favorites.ts (代码收藏状态管理)",
-        "src/stores/inspector-history.ts (Inspector 历史记录)",
-        "src/lib/monaco-language-client.ts (Monaco LSP 语言客户端)",
-        "src/lib/monaco-action-registry.ts (Monaco Action 注册表)",
-        "src/lib/monaco-builtin-actions.ts (内置 Monaco Actions)",
-        "src/components/editor/code-favorites-panel.tsx (代码收藏面板)",
-        "src/components/editor/add-favorite-dialog.tsx (添加收藏对话框)",
-        "src/components/editor/code-editor-clipboard.ts (编辑器剪贴板)",
-        "src/components/editor/code-editor-menu-bar.tsx (编辑器菜单栏)",
-        "src/components/editor/code-editor-mobile.ts (移动端编辑器)",
-        "src/components/editor/code-editor-mobile-overlay.tsx (移动端覆盖层)",
-        "src/components/editor/code-editor-navigation.ts (编辑器导航)",
-        "src/components/editor/code-editor-utils.ts (编辑器工具)",
-        "src/components/chat/message-tool-step.tsx (工具步骤渲染)",
-        "src/components/chat/message-context-panel.tsx (上下文面板)",
-        "src/components/chat/message-context-usage.tsx (上下文用量)",
-        "src/components/chat/chat-input-utils.ts (聊天输入工具)",
-        "src/components/chat/chat-input-attachments.ts (聊天输入附件)",
-        "src/components/chat/chat-input-agent-bar.tsx (聊天输入 Agent 栏)",
-        "src/components/chat/chat-input-info-bar.tsx (聊天输入信息栏)",
-        "src/components/composer/create-file-search-extension.ts (文件搜索扩展)",
-        "src/components/common/floating-panel.tsx (浮动面板)",
-        "src/components/common/floating-ball.tsx (浮动球)",
-        "src/components/sidebar/prompts-dialog.tsx (Prompt 模板对话框)",
-        "src/components/settings/notification-settings-tab.tsx (通知设置标签页)",
-        "src/components/settings/workspace-prompt-section.tsx (工作空间 Prompt 区块)",
-        "src/components/settings/workspace-info-section.tsx (工作空间信息区块)",
-        "src/components/git/commit-diff-viewer.tsx (提交 Diff 查看器)",
-        "src/components/dev-inspector.tsx (DOM Inspector 集成)",
-        "src/app/settings/prompts/page.tsx (Prompt 模板设置页)"
+        "src/stores/hooks.ts (Hook Store)",
+        "src/components/sidebar/hooks-dialog.tsx (Hook 管理对话框)",
+        "src/components/sidebar/output-styles-dialog.tsx (输出风格管理对话框)",
+        "src/components/sidebar/providers-dialog.tsx (LLM 供应商管理对话框)",
+        "src/app/settings/output-styles/page.tsx (输出风格设置页)",
+        "src/components/chat/message-item.tsx (消息项组件)",
+        "src/components/chat/message-navigator.tsx (消息导航器)",
+        "src/components/chat/context.tsx (通用 context 组件)",
+        "src/components/chat/channel-dialog.tsx (频道对话框)",
+        "src/components/chat/channel-list.tsx (频道列表)",
+        "src/components/chat/channel-info-panel.tsx (频道信息面板)",
+        "src/components/chat/member-info-dialog.tsx (成员信息对话框)",
+        "src/components/chat/add-member-dialog.tsx (添加成员对话框)",
+        "src/components/issue/edit-issue-dialog.tsx (编辑议题对话框)",
+        "src/components/issue/issue-detail-header.tsx (议题详情头部)",
+        "src/components/issue/issue-detail-comments.tsx (议题评论区域)",
+        "src/components/issue/issue-detail-tasks-panel.tsx (拖拽排序任务面板)",
+        "src/components/issue/task-row.tsx (可拖拽任务行)",
+        "src/components/git/use-git-sync.ts (Git 远程同步 Hook)",
+        "src/components/git/git-prompt-dialog.tsx (通用输入对话框)",
+        "src/components/git/git-gitignore-dialog.tsx (.gitignore 编辑)",
+        "src/components/git/git-file-context-menu.tsx (文件右键菜单)",
+        "src/components/git/git-commit-context-menu.tsx (提交右键菜单)",
+        "src/components/git/git-commit-utils.ts (Git 工具函数)",
+        "src/components/git/git-commit-detail-dialog.tsx (提交详情对话框)",
+        "src/components/git/git-discard-dialog.tsx (丢弃确认)",
+        "src/components/git/diff-viewer.tsx (通用 Diff 查看器)",
+        "src/components/composer/suggestion-list.tsx (TipTap 建议列表)",
+        "src/components/composer/composer-shell.tsx (Composer 外壳)",
+        "src/components/sidebar/skills-dialog/ (Skills Dialog 子目录 7 文件)",
+        "src/components/ui/search-select.tsx (搜索选择器)",
+        "src/components/ui/markdown.tsx (Markdown 渲染)",
+        "src/components/ui/skeleton.tsx (骨架屏)",
+        "src/components/ui/drawer.tsx (抽屉组件)",
+        "src/components/ui/dialog.tsx (@base-ui/dialog 重写)",
+        "src/components/ui/sheet.tsx (@base-ui/dialog 侧边面板)",
+        "src/components/ui/alert-dialog.tsx (@base-ui/alert-dialog)",
+        "src/components/ui/input.tsx (@base-ui/input + IME)",
+        "src/components/theme-provider.tsx (主题提供者)"
       ],
-      "flutter": [
-        "lib/widgets/webview_instance.dart (WebView 实例，从 webview_panel 拆分)",
-        "lib/widgets/home_page.dart (服务器发现首页，从 webview_panel 拆分)",
-        "lib/widgets/home_cards.dart (首页卡片组件，从 webview_panel 拆分)"
-      ]
+      "flutter": []
     },
     "dependencyChanges": {
       "server": {
-        "added": [
-          "typescript-language-server ^5.2.0",
-          "vscode-ws-jsonrpc ^3.5.0",
-          "minimatch ^10.2.5"
-        ],
+        "added": [],
         "removed": []
       },
       "web": {
-        "added": [
-          "monaco-languageclient ^10.7.0",
-          "vscode-languageclient ^9.0.1",
-          "vscode-ws-jsonrpc ^3.5.0",
-          "@dnd-kit/core ^6.3.1",
-          "@dnd-kit/sortable ^10.0.0",
-          "@dnd-kit/utilities ^3.2.2",
-          "copy-code ^1.0.0",
-          "tw-animate-css ^1.4.0"
-        ],
+        "added": [],
         "removed": []
       },
       "flutter": {
-        "added": ["upgrader ^13.3.0"],
+        "added": [],
         "removed": []
       }
     }
   },
   "nextSteps": {
-    "description": "全部核心模块已完整扫描（398/398 文件，100% 覆盖率）。",
+    "description": "全部核心模块已完整扫描（424/424 文件，100% 覆盖率）。",
     "suggestions": [
-      "TypeScript LSP 测试（WebSocket 连接/断开、typescript-language-server 子进程管理）",
-      "持久上下文测试（CLAUDE.md/AGENTS.md 自动加载 + 截断预算 + 层级优先级）",
-      "代码收藏测试（CRUD + 按工作空间持久化 + Monaco Action 集成）",
-      "Prompt 模板测试（CRUD + 批量 apply 到 Agent）",
-      "DOM Inspector 测试（/api/inspector/track 端点 + inspector.jump WS 广播）",
-      "回复 AI 消息测试（replies 嵌套 + Agent 续跑 + 降级行为）",
-      "Monaco Action Registry 测试（注册/注销/apply + 右键菜单项）",
+      "Hook 系统测试（hook-engine 规则匹配、命令执行、wrapOnEventWithHooks 拦截）",
+      "输出风格测试（CRUD + resolveOutputStyleContent 注入）",
+      "Issue Task Controller 测试（依赖调度 + Hook 集成 + Workflow 映射）",
+      "频道管理组件测试（CRUD + 成员管理 + 频道信息面板）",
+      "Issue 拖拽排序测试（@dnd-kit 集成 + Task 状态更新）",
+      "Git Context Menu 测试（文件/提交右键菜单 + 丢弃确认）",
+      "Skills Dialog 子目录集成测试（import/sync/bind/edit）",
       "i18n 翻译 key 完整性校验工具（对比 en.json 和 zh.json）",
-      "ws/agent-runner.ts 790 行进一步模块化拆分",
+      "ws/agent-runner.ts 进一步模块化拆分",
       "Flutter Provider 单元测试（BrowserNotifier/BookmarkNotifier 状态变更）",
       "Flutter JsBridge 集成测试（事件收发、RPC 调用、Promise 回调）"
     ]

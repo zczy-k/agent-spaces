@@ -4,7 +4,7 @@
 
 ## 模块职责
 
-前后端共享的 TypeScript 类型定义包。定义了所有核心数据模型、WebSocket 事件契约、结构化消息 Parts、内置工具声明、通知设置、Agent 用量统计、Workflow 模板、快捷命令、订阅管理、代码搜索、语音识别、应用内通知、代码收藏等接口类型，供 server 和 web 包共同引用。
+前后端共享的 TypeScript 类型定义包。定义了所有核心数据模型、WebSocket 事件契约、结构化消息 Parts、内置工具声明、通知设置、Agent 用量统计、Workflow 模板、快捷命令、订阅管理、代码搜索、语音识别、应用内通知、代码收藏、Hook 配置等接口类型，供 server 和 web 包共同引用。
 
 ## 入口与启动
 
@@ -33,7 +33,8 @@
 | `types/search.ts` | `CodeSearchResult`, `FileSearchResult`, `SearchCodeOptions` | 代码搜索结果和查询选项 |
 | `types/notification.ts` | `NotificationType`, `AppNotification` | 应用内通知类型和模型（issue_completed/issue_failed/task_completed/task_failed） |
 | `types/speech.ts` | `SpeechRecognitionProvider`, `SpeechRecognitionConfig`, `SpeechRecognitionResult`, `TencentSpeechCredentials` | 语音识别配置和结果（腾讯语音） |
-| `types/code-favorites.ts` | `CodeFavorite` | 代码收藏（id/path/line/column/endLine/endColumn/label/snippet/workspaceId）（**新**） |
+| `types/code-favorites.ts` | `CodeFavorite` | 代码收藏（id/path/line/column/endLine/endColumn/label/snippet/workspaceId） |
+| `types/hooks.ts` | `HookConfig`, `HookRule` | Hook 配置（PreToolUse/PostToolUse 钩子，shell/webhook/script 动作）（**新**） |
 | `types/events.ts` | `WSEvent<T>`, `ClientEventMap`, `ServerEventMap` | WebSocket 事件契约（含 workflow + command + notification + inspector 事件） |
 
 ### AgentConfig 与 Role 体系
@@ -59,9 +60,17 @@
 - `templateId`: 标识由哪个模板创建（用于导入去重）
 - `enabled`: 是否启用
 
+### HookConfig 与 HookRule
+
+Hook 配置系统（**新**）：
+- `HookConfig`: Hook 配置（name, description?, enabled, hooks: { PreToolUse?, PostToolUse? }）
+- `HookRule`: 钩子规则（matcher: string, type: 'command' | 'webhook' | 'script', command?, url?, function?, timeout?）
+- matcher 支持三种模式：`*` 通配、`/regex/` 正则、精确字符串匹配
+- 遵循 Claude Code `hooks.json` 格式约定
+
 ### CodeFavorite 详情
 
-代码收藏系统（**新**）：
+代码收藏系统：
 - `CodeFavorite`: 收藏项（id, path, line, column, endLine, endColumn, label?, snippet?, createdAt, workspaceId）
 
 ### WorkflowTemplate 详情
@@ -111,7 +120,7 @@ Workflow 是 Issue 自动化的可视化 DAG 模板：
 
 工作空间通知配置类型：
 - `enabled`: 是否启用通知
-- `provider`: 'lark' | 'wechat' | 'native'（通知平台，新增 native）
+- `provider`: 'lark' | 'wechat' | 'native'（通知平台）
 - `events`: 通知事件列表（issue_started / issue_completed / issue_task_completed）
 - `serviceRunning`: 后端重启后是否自动恢复服务
 - `botAgentId`: 普通用户消息交给哪个 bot agent 处理
@@ -205,6 +214,7 @@ TodoItemStatus: pending | in_progress | completed
 - **Q: SpeechRecognitionProvider 支持哪些供应商？** A: 当前仅 `tencent`（腾讯语音），通过 `SpeechRecognitionProviderBase` 抽象可扩展。
 - **Q: QuickCommand 的 autoRestart 是什么？** A: 命令进程意外退出时自动重启。
 - **Q: CodeFavorite 的 endLine/endColumn 有什么用？** A: 标记收藏的代码范围（可以是多行选中区域），前端显示时使用 label 和 snippet 预览。
+- **Q: HookConfig 的 matcher 支持哪些格式？** A: `*` 匹配所有工具、`/regex/` 正则表达式匹配、精确字符串匹配工具名。
 
 ## 相关文件清单
 
@@ -232,13 +242,15 @@ packages/shared/
       search.ts                 # CodeSearchResult + FileSearchResult + SearchCodeOptions（代码搜索）
       notification.ts           # NotificationType + AppNotification（应用内通知）
       speech.ts                 # SpeechRecognitionProvider + SpeechRecognitionConfig + SpeechRecognitionResult + TencentSpeechCredentials（语音识别）
-      code-favorites.ts         # CodeFavorite（代码收藏）（新增）
+      code-favorites.ts         # CodeFavorite（代码收藏）
+      hooks.ts                  # HookConfig + HookRule（Hook 系统）（新增）
 ```
 
 ## 变更记录 (Changelog)
 
 | 时间 | 操作 | 说明 |
 |------|------|------|
+| 2026-05-20T14:08:52+08:00 | 增量更新 | 新增 hooks.ts（HookConfig + HookRule 类型：PreToolUse/PostToolUse 钩子，matcher 通配/正则/精确匹配，type: command/webhook/script 三种动作）；types/index.ts 新增导出；**文件数 19->20** |
 | 2026-05-19T09:45:03+08:00 | 增量更新 | 新增 code-favorites.ts（CodeFavorite 类型：id/path/line/column/endLine/endColumn/label/snippet/createdAt/workspaceId）；types/index.ts 新增导出 |
 | 2026-05-16T17:36:40+08:00 | 增量更新 | 新增 command.ts（QuickCommand/CommandProcess/CommandProcessEvent）、subscription.ts（SubscriptionProvider/SubscriptionConfig/SubscriptionQuota/SubscriptionLimit）、search.ts（CodeSearchResult/FileSearchResult/SearchCodeOptions）、notification.ts（NotificationType/AppNotification）、speech.ts（SpeechRecognitionProvider/SpeechRecognitionConfig/SpeechRecognitionResult/TencentSpeechCredentials）；events.ts ServerEventMap 新增 command.started/stopped/restarted + notification.created/cleared 事件 |
 | 2026-05-08T17:18:31+08:00 | 增量更新 | 新增 workflow.ts（WorkflowTemplate/WorkflowNode/WorkflowEdge）、workspace.ts 新增 BuiltInAgentRole/AgentRole 类型（简化为 agent/scheduler/task_creator/bot + 自定义）、NotificationProvider 新增 'native'、WorkspaceNotificationSettings 新增 native 字段、Issue/CreateIssueInput 新增 workflowId 字段、events.ts ServerEventMap 新增 workflow.created/updated/deleted 事件 |
