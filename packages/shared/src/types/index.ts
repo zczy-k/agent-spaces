@@ -15,3 +15,4 @@ export * from './search.js';
 export * from './notification.js';
 export * from './speech.js';
 export * from './code-favorites.js';
+export * from './hooks.js';
