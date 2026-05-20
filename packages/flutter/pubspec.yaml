@@ -84,6 +84,7 @@ flutter:
     - assets/web/settings/agents/
     - assets/web/settings/mcps/
     - assets/web/settings/models/
+    - assets/web/settings/output-styles/
     - assets/web/settings/prompts/
     - assets/web/settings/providers/
     - assets/web/settings/skills/
