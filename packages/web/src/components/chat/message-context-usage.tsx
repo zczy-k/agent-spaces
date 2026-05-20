@@ -25,6 +25,7 @@ import type { ContextPart } from "./message-context-panel"
 export function MessageContextUsage({ message }: { message: Message }) {
   const contextParts = useMemo(() => message.parts?.filter((item) => item.type === "context") ?? [], [message.parts])
   const part = contextParts[contextParts.length - 1]
+  const [popoverOpen, setPopoverOpen] = useState(false)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [activeAgentId, setActiveAgentId] = useState<string | undefined>()
   const models = useLLMStore((state) => state.models)
@@ -60,8 +61,10 @@ export function MessageContextUsage({ message }: { message: Message }) {
         maxTokens={maxTokens}
         modelId={overviewPart.modelId}
         usage={overviewUsage}
+        open={popoverOpen}
+        onOpenChange={setPopoverOpen}
       >
-        <ContextTrigger className="h-5 gap-1 px-1.5 text-[10px]" onClick={() => setDetailsOpen(true)} />
+        <ContextTrigger className="h-5 gap-1 px-1.5 text-[10px]" />
         <ContextContent>
           <ContextContentHeader />
           <ContextContentBody className="space-y-2">
@@ -71,6 +74,18 @@ export function MessageContextUsage({ message }: { message: Message }) {
             <ContextCacheUsage />
           </ContextContentBody>
           <ContextContentFooter />
+          <div className="border-t px-3 py-2">
+            <button
+              type="button"
+              className="w-full text-center text-xs text-primary hover:underline"
+              onClick={() => {
+                setPopoverOpen(false)
+                setDetailsOpen(true)
+              }}
+            >
+              查看详情 →
+            </button>
+          </div>
         </ContextContent>
       </Context>
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
