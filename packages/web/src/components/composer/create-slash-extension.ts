@@ -1,12 +1,30 @@
 import { Extension, type Editor } from '@tiptap/core';
 import Suggestion from '@tiptap/suggestion';
 
-import { COMMANDS } from '@/lib/commands';
 import { createSuggestionRenderer } from './create-suggestion-renderer';
 
 type EditorRange = { from: number; to: number };
+type GetSkills = () => string[];
 
-export function createSlashExtension(openFilePicker?: () => void) {
+function getSkillItems(skills: string[], query: string) {
+  const keyword = query.toLowerCase();
+  const seen = new Set<string>();
+
+  return skills
+    .map((skill) => skill.trim())
+    .filter((skill) => {
+      if (!skill || seen.has(skill)) return false;
+      seen.add(skill);
+      return skill.toLowerCase().includes(keyword);
+    })
+    .map((skill) => ({
+      id: skill,
+      title: skill,
+      description: 'skill',
+    }));
+}
+
+export function createSlashExtension(getSkills: GetSkills = () => []) {
   return Extension.create({
     name: 'slashCommand',
     addOptions() {
@@ -14,14 +32,7 @@ export function createSlashExtension(openFilePicker?: () => void) {
         suggestion: {
           char: '/',
           items: ({ query }: { query: string }) => {
-            const keyword = query.toLowerCase();
-            return COMMANDS.filter((item) =>
-              `${item.title} ${item.description}`.toLowerCase().includes(keyword)
-            ).map((item) => ({
-              id: item.id,
-              title: item.title,
-              description: item.description,
-            }));
+            return getSkillItems(getSkills(), query);
           },
           command: ({
             editor,
@@ -32,21 +43,12 @@ export function createSlashExtension(openFilePicker?: () => void) {
             range: EditorRange;
             props: { id: string; title: string; description: string };
           }) => {
-            editor.chain().focus().deleteRange(range).run();
-            switch (props.id) {
-              case 'heading1':
-                editor.chain().focus().toggleHeading({ level: 1 }).run();
-                break;
-              case 'blockquote':
-                editor.chain().focus().toggleBlockquote().run();
-                break;
-              case 'divider':
-                editor.chain().focus().setHorizontalRule().run();
-                break;
-              case 'attach':
-                openFilePicker?.();
-                break;
-            }
+            editor
+              .chain()
+              .focus()
+              .deleteRange(range)
+              .insertContent(`[use skill: ${props.id}]`)
+              .run();
           },
           render: () => createSuggestionRenderer(),
         },
