@@ -260,6 +260,7 @@ export function SkillsDialog({ open, onOpenChange, standalone }: SkillsDialogPro
 
       {tabs}
 
+      <div className="flex flex-1 min-h-0 flex-col">
       {activeTab === 'local' ? (
         <SkillList
           skills={skills}
@@ -280,6 +281,7 @@ export function SkillsDialog({ open, onOpenChange, standalone }: SkillsDialogPro
       ) : (
         storeView
       )}
+      </div>
     </>
   );
 

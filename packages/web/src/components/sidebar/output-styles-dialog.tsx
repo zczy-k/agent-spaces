@@ -455,21 +455,19 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
 
       {/* Edit/Create Dialog */}
       <Dialog open={!!editTemplate || isCreating} onOpenChange={(v) => { if (!v) closeEdit(); }}>
-        <DialogContent className="sm:max-w-2xl max-h-[80vh] flex flex-col">
+        <DialogContent className="sm:max-w-2xl h-[80vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>
               {editTemplate ? t('editTitle', { name: editTemplate.name }) : t('createTitle')}
             </DialogTitle>
             <DialogDescription>{t('editDescription')}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
-            <Input
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              placeholder={t('namePlaceholder')}
-            />
-          </div>
-          <div className="flex-1 min-h-0">
+          <Input
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            placeholder={t('namePlaceholder')}
+          />
+          <div className="flex-1 min-h-0 overflow-hidden rounded-md border border-border">
             <MonacoEditor
               height="100%"
               language="markdown"
