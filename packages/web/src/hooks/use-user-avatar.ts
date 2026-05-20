@@ -4,9 +4,8 @@ let cachedUrl: string | null | undefined = undefined;
 
 export function useUserAvatar() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
     if (cachedUrl !== undefined) return cachedUrl;
-    return localStorage.getItem("userAvatarUrl");
+    return null;
   });
 
   useEffect(() => {
@@ -17,7 +16,6 @@ export function useUserAvatar() {
         if (data.avatarUrl) {
           cachedUrl = data.avatarUrl;
           setAvatarUrl(data.avatarUrl);
-          localStorage.setItem("userAvatarUrl", data.avatarUrl);
         }
       })
       .catch(() => {});

@@ -51,10 +51,7 @@ export function SettingsDialog({
   const { locale, setLocale } = useLocale();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabKey>("appearance");
-  const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    return localStorage.getItem("userAvatarUrl");
-  });
+  const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
   const [newSecret, setNewSecret] = useState("");
   const [secretSaved, setSecretSaved] = useState(false);
   const [zoom, setZoom] = useState(() => {
@@ -87,8 +84,14 @@ export function SettingsDialog({
   ];
 
   useEffect(() => {
+    fetch("/api/user/settings")
+      .then((r) => r.json())
+      .then((data) => { if (data.avatarUrl) setUserAvatarUrl(data.avatarUrl); })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     const frame = requestAnimationFrame(() => {
-      setUserAvatarUrl(localStorage.getItem("userAvatarUrl"));
       setShowZoomSetting(isNativeEnvironment());
     });
     return () => cancelAnimationFrame(frame);
@@ -103,12 +106,11 @@ export function SettingsDialog({
         const res = await fetch("/api/upload/avatar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ dataUrl: reader.result, filename: "user.jpg" }),
+          body: JSON.stringify({ dataUrl: reader.result }),
         });
         const data = await res.json();
         if (data.url) {
-          localStorage.setItem("userAvatarUrl", data.url);
-          setUserAvatarUrl(data.url);
+          setUserAvatarUrl(`${data.url}?t=${Date.now()}`);
           fetch("/api/user/settings", {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
@@ -122,7 +124,6 @@ export function SettingsDialog({
   };
 
   const handleRemove = () => {
-    localStorage.removeItem("userAvatarUrl");
     setUserAvatarUrl(null);
     fetch("/api/user/settings", {
       method: "PUT",

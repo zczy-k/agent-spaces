@@ -99,9 +99,7 @@ app.post('/api/upload/avatar', async (req, res) => {
     return;
   }
   const [, mime, base64] = match;
-  const ext = mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : 'jpg';
-  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const name = filename ? `${id}-${filename.replace(/[^a-zA-Z0-9._-]/g, '_')}` : `${id}.${ext}`;
+  const name = 'user.jpg';
   const avatarsDir = join(publicDir, 'avatars');
   if (!existsSync(avatarsDir)) mkdirSync(avatarsDir, { recursive: true });
   await writeFile(join(avatarsDir, name), Buffer.from(base64, 'base64'));
