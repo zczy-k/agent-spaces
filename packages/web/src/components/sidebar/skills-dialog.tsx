@@ -16,7 +16,9 @@ import {
   FileText,
   Download,
   Folder,
+  Search,
 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import type { SkillInfo, SkillSyncItem, SkillsDialogProps, StoreSkillItem } from './skills-dialog/types';
 import { useSkillsData, useSkillActions } from './skills-dialog/use-skills-data';
 import { SkillList } from './skills-dialog/skill-list';
@@ -46,6 +48,7 @@ export function SkillsDialog({ open, onOpenChange, standalone }: SkillsDialogPro
 
   // Store state
   const [storeGroupFilter, setStoreGroupFilter] = useState('');
+  const [storeSearch, setStoreSearch] = useState('');
 
   const openEditDialog = (skill: SkillInfo) => {
     setEditSkill(skill);
@@ -128,6 +131,10 @@ export function SkillsDialog({ open, onOpenChange, standalone }: SkillsDialogPro
 
   const filteredStoreSkills = storeSkills.filter((s) => {
     if (storeGroupFilter && s.group !== storeGroupFilter) return false;
+    if (storeSearch) {
+      const q = storeSearch.toLowerCase();
+      if (!s.name.toLowerCase().includes(q) && !s.id.toLowerCase().includes(q) && !s.group.toLowerCase().includes(q)) return false;
+    }
     return true;
   });
 
@@ -184,6 +191,15 @@ export function SkillsDialog({ open, onOpenChange, standalone }: SkillsDialogPro
         </ScrollArea>
       )}
       <div className="flex-1 min-w-0 flex flex-col min-h-0">
+        <div className="relative mb-3">
+          <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={storeSearch}
+            onChange={(e) => setStoreSearch(e.target.value)}
+            placeholder={t('search')}
+            className="pl-8"
+          />
+        </div>
         <ScrollArea className="flex-1">
           {storeLoading ? (
             <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">

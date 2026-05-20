@@ -533,6 +533,12 @@ export function SkillList({
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
+                              onClick={() => fetch(`/api/skills/${encodeURIComponent(skill.name)}/reveal`, { method: 'POST' })}
+                            >
+                              <FolderOpen className="size-3.5 mr-1.5" />
+                              {t('revealFolder')}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
                               className="text-destructive focus:text-destructive"
                               onClick={() => onDelete(skill)}
                             >

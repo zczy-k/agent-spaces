@@ -1025,6 +1025,7 @@
     "manageAgents": "Manage",
     "apply": "Apply",
     "delete": "Delete",
+    "revealFolder": "Reveal in File Manager",
     "editTitle": "Edit Skill - {name}",
     "editDescription": "Edit skill Markdown content",
     "bindTitle": "Bind Agents - {name}",

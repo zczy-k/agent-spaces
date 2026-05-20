@@ -1,5 +1,9 @@
 import { Router } from 'express';
+import { exec } from 'node:child_process';
+import { join } from 'node:path';
+import { existsSync } from 'node:fs';
 import { listSkills, importSkill, importSkillsBatch, importSkillFromStore, toggleFavorite, toggleEnabled, toggleAllEnabled, updateSkillContent, deleteSkill, checkSkillSync, syncSkills, importSkillsFromGit } from '../services/skill.js';
+import { getDataDir } from '../storage/json-store.js';
 import type { Request, Response } from 'express';
 
 const router = Router();
@@ -105,6 +109,27 @@ router.put('/:name', (req: Request, res: Response) => {
     return;
   }
   res.json({ success: true });
+});
+
+router.post('/:name/reveal', (req: Request, res: Response) => {
+  const name = typeof req.params.name === 'string' ? req.params.name : req.params.name[0];
+  const skillDir = join(getDataDir(), 'skills', name);
+  if (!existsSync(skillDir)) {
+    res.status(404).json({ error: 'Skill folder not found' });
+    return;
+  }
+  const cmd = process.platform === 'darwin'
+    ? `open "${skillDir}"`
+    : process.platform === 'win32'
+      ? `explorer "${skillDir}"`
+      : `xdg-open "${skillDir}"`;
+  exec(cmd, (err) => {
+    if (err) {
+      res.status(500).json({ error: 'Failed to reveal', detail: err.message });
+      return;
+    }
+    res.json({ ok: true, path: skillDir });
+  });
 });
 
 router.delete('/:name', (req: Request, res: Response) => {
