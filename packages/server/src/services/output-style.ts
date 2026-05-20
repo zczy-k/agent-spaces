@@ -6,6 +6,7 @@ import { ensureDir, getDataDir } from '../storage/json-store.js';
 export interface OutputStyleTemplate {
   id: string;
   name: string;
+  description?: string;
   content: string;
   storeId?: string;
   createdAt: string;
@@ -75,21 +76,22 @@ export function prepareClaudeOutputStyleFile(configDir: string, ref?: string): s
   return fileStem;
 }
 
-export function createOutputStyle(name: string, content: string, storeId?: string): OutputStyleTemplate {
+export function createOutputStyle(name: string, content: string, storeId?: string, description?: string): OutputStyleTemplate {
   const meta = readMeta();
   const now = new Date().toISOString();
   const id = `os-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const tmpl: OutputStyleTemplate = { id, name, content, storeId, createdAt: now, updatedAt: now };
+  const tmpl: OutputStyleTemplate = { id, name, description, content, storeId, createdAt: now, updatedAt: now };
   meta.templates.push(tmpl);
   writeMeta(meta);
   return tmpl;
 }
 
-export function updateOutputStyle(id: string, data: { name?: string; content?: string }): OutputStyleTemplate | null {
+export function updateOutputStyle(id: string, data: { name?: string; description?: string; content?: string }): OutputStyleTemplate | null {
   const meta = readMeta();
   const tmpl = meta.templates.find((t) => t.id === id);
   if (!tmpl) return null;
   if (data.name !== undefined) tmpl.name = data.name;
+  if (data.description !== undefined) tmpl.description = data.description;
   if (data.content !== undefined) tmpl.content = data.content;
   tmpl.updatedAt = new Date().toISOString();
   writeMeta(meta);

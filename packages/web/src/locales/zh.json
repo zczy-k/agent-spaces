@@ -1103,6 +1103,7 @@
     "editTitle": "编辑输出风格 - {name}",
     "editDescription": "编辑输出风格内容",
     "namePlaceholder": "风格名称",
+    "descriptionPlaceholder": "风格描述（可选）",
     "contentPlaceholder": "定义回复风格、语气、格式要求。例如：使用简洁的中文回复，代码使用 TypeScript，解释要直截了当...",
     "delete": "删除",
     "import": "导入",
