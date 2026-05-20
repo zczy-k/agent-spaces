@@ -195,7 +195,7 @@ export const FileTreeFolder = ({
     <FileTreeFolderContext.Provider value={{ path, name, isExpanded, ignored: isIgnored }}>
       <ContextMenu>
         <Collapsible onOpenChange={handleOpenChange} open={isExpanded}>
-          <div className={className} role="treeitem" tabIndex={0} {...props}>
+          <div className={className} role="treeitem" aria-selected={false} tabIndex={0} {...props}>
             <ContextMenuTrigger className="contents">
               <div className="group/folder relative">
                 <CollapsibleTrigger
@@ -385,6 +385,7 @@ export const FileTreeFile = ({
               }
             }}
             role="treeitem"
+            aria-selected={false}
             tabIndex={0}
             {...props}
           >

@@ -141,7 +141,7 @@ interface SkillEditDialogProps {
 
 export function SkillEditDialog({ skill, content: _content, onContentChange, onClose, onSave }: SkillEditDialogProps) {
   const t = useTranslations('skills');
-  const _tc = useTranslations('common');
+  const tc = useTranslations('common');
   const isMobile = useIsMobile();
 
   const [files, setFiles] = useState<SkillFile[]>([]);
