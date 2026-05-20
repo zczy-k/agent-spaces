@@ -1090,7 +1090,11 @@
     "editDescription": "编辑输出风格内容",
     "namePlaceholder": "风格名称",
     "contentPlaceholder": "定义回复风格、语气、格式要求。例如：使用简洁的中文回复，代码使用 TypeScript，解释要直截了当...",
-    "delete": "删除"
+    "delete": "删除",
+    "import": "导入",
+    "importTitle": "导入输出风格文件",
+    "importPlaceholder": "拖拽 .md 或 .txt 文件到此处，或点击选择",
+    "importConfirm": "确认导入"
   },
   "mcps": {
     "title": "MCP 服务器管理",

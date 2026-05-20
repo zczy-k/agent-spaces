@@ -267,6 +267,7 @@ export function SkillList({
       setImportItems(items);
       setImportDefaultGroup(repoName);
       setImportDialogOpen(true);
+      setGitDialogOpen(false);
     }
     setGitUrl('');
   };

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import dynamic from 'next/dynamic';
 import {
   Dialog,
   DialogContent,
@@ -11,8 +12,9 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { FileUpload, type FileUploadFile } from '@/components/ui/file-upload';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,7 +27,13 @@ import {
   Trash2,
   Plus,
   Pencil,
+  Upload,
 } from 'lucide-react';
+
+const MonacoEditor = dynamic(
+  () => import('@monaco-editor/react').then((mod) => mod.default),
+  { ssr: false, loading: () => <div className="flex items-center justify-center h-full text-muted-foreground text-sm">Loading editor...</div> },
+);
 
 interface OutputStyleTemplate {
   id: string;
@@ -49,6 +57,10 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Import state
+  const [importOpen, setImportOpen] = useState(false);
+  const [uploadFiles, setUploadFiles] = useState<FileUploadFile[]>([]);
+
   // Create/Edit state
   const [editTemplate, setEditTemplate] = useState<OutputStyleTemplate | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -68,6 +80,35 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
   useEffect(() => {
     if (open || standalone) fetchTemplates();
   }, [open, standalone, fetchTemplates]);
+
+  const handleImport = async () => {
+    if (uploadFiles.length === 0) return;
+
+    if (uploadFiles.length === 1) {
+      const content = await uploadFiles[0].file.text();
+      const name = uploadFiles[0].file.name.replace(/\.(md|txt|markdown)$/i, '');
+      setUploadFiles([]);
+      setImportOpen(false);
+      setEditTemplate(null);
+      setIsCreating(true);
+      setEditName(name);
+      setEditContent(content);
+      return;
+    }
+
+    for (const item of uploadFiles) {
+      const content = await item.file.text();
+      const name = item.file.name.replace(/\.(md|txt|markdown)$/i, '');
+      await fetch('/api/output-styles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, content }),
+      });
+    }
+    setUploadFiles([]);
+    setImportOpen(false);
+    fetchTemplates();
+  };
 
   const handleCreate = () => {
     setEditTemplate(null);
@@ -144,6 +185,34 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
             }
           </div>
           <div className="flex items-center gap-2 ml-auto shrink-0 pt-2">
+            <Popover open={importOpen} onOpenChange={setImportOpen}>
+              <PopoverTrigger render={
+                <Button variant="outline" size="sm">
+                  <Upload className="size-3.5 mr-1" />
+                  {t('import')}
+                </Button>
+              } />
+              <PopoverContent className="w-80" align="end">
+                <div className="space-y-3">
+                  <p className="text-sm font-medium">{t('importTitle')}</p>
+                  <FileUpload
+                    value={uploadFiles}
+                    onChange={setUploadFiles}
+                    accept={{ 'text/markdown': ['.md', '.txt'], '': ['.md', '.txt'] }}
+                    placeholder={t('importPlaceholder')}
+                    maxFiles={10}
+                  />
+                  <Button
+                    size="sm"
+                    onClick={handleImport}
+                    disabled={uploadFiles.length === 0}
+                    className="w-full"
+                  >
+                    {t('importConfirm')}
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
             <Button variant="outline" size="sm" onClick={handleCreate}>
               <Plus className="size-3.5 mr-1" />
               {t('create')}
@@ -245,17 +314,28 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
             </DialogTitle>
             <DialogDescription>{t('editDescription')}</DialogDescription>
           </DialogHeader>
-          <div className="flex-1 min-h-0 space-y-3 overflow-y-auto">
+          <div className="space-y-3">
             <Input
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
               placeholder={t('namePlaceholder')}
             />
-            <Textarea
+          </div>
+          <div className="flex-1 min-h-0">
+            <MonacoEditor
+              height="100%"
+              language="markdown"
               value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
-              placeholder={t('contentPlaceholder')}
-              className="min-h-48 text-sm"
+              onChange={(value) => setEditContent(value || '')}
+              theme="vs-dark"
+              options={{
+                fontSize: 13,
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+                padding: { top: 8 },
+                renderLineHighlight: 'gutter',
+                wordWrap: 'on',
+              }}
             />
           </div>
           <div className="flex justify-end gap-2 pt-2">

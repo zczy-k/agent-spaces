@@ -1088,7 +1088,11 @@
     "editDescription": "Edit output style content",
     "namePlaceholder": "Style name",
     "contentPlaceholder": "Define response style, tone, format requirements. e.g.: Reply in concise English, use TypeScript for code, be straightforward...",
-    "delete": "Delete"
+    "delete": "Delete",
+    "import": "Import",
+    "importTitle": "Import Output Style Files",
+    "importPlaceholder": "Drag .md or .txt files here, or click to select",
+    "importConfirm": "Confirm Import"
   },
   "mcps": {
     "title": "MCP Servers",

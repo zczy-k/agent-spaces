@@ -293,8 +293,10 @@ export function checkSkillSync(): SkillSyncItem[] {
       const agentFile = join(agentSkillsDir, `${skillName}.md`);
 
       if (!existsSync(globalFolder) || !statSync(globalFolder).isDirectory()) continue;
+      // Use SKILL.md file mtime — directory mtime is unreliable on Windows
+      if (!existsSync(globalSkillFile)) continue;
 
-      const globalStat = statSync(globalFolder);
+      const globalStat = statSync(globalSkillFile);
       const agentExists = existsSync(agentFolder) || existsSync(agentFile);
 
       if (!agentExists) {
@@ -309,8 +311,13 @@ export function checkSkillSync(): SkillSyncItem[] {
         continue;
       }
 
-      const agentPath = existsSync(agentFolder) ? agentFolder : agentFile;
-      const agentStat = statSync(agentPath);
+      // Find the actual agent SKILL.md path
+      const agentSkillFile = existsSync(agentFolder)
+        ? join(agentFolder, SKILL_FILE)
+        : agentFile;
+      if (!existsSync(agentSkillFile)) continue;
+
+      const agentStat = statSync(agentSkillFile);
 
       if (globalStat.mtimeMs > agentStat.mtimeMs) {
         result.push({
