@@ -1,13 +1,32 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { WorkspaceShell } from "@/components/layout/workspace-shell";
-import { MobileTabBar } from "@/components/layout/mobile-tab-bar";
 import { useWorkspaceStore } from "@/stores/workspace";
 import type { Workspace } from "@agent-spaces/shared";
 import { useRouter } from "next/navigation";
 import { tauriNavigate } from "@/lib/navigate";
+
+const MobileTabBar = dynamic(
+  () => import("@/components/layout/mobile-tab-bar").then((mod) => mod.MobileTabBar),
+  {
+    ssr: false,
+    loading: () => null,
+  },
+);
+
+const WorkspaceShell = dynamic(
+  () => import("@/components/layout/workspace-shell").then((mod) => mod.WorkspaceShell),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-full flex items-center justify-center text-muted-foreground">
+        Loading...
+      </div>
+    ),
+  },
+);
 
 function useWorkspaceId() {
   const searchParams = useSearchParams();

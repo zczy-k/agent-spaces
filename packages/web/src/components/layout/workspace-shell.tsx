@@ -6,7 +6,6 @@ import { Layout, Model, TabNode, IJsonModel, Actions, ITabRenderValues, Action, 
 import { Hash, ListChecks, FolderOpen, Code2, MessageSquare, FileText, TerminalSquare, FileDiff, GitCommitHorizontal, Settings2, Star } from "lucide-react";
 import { TAB_ICONS, RIGHT_TO_LEFT_TAB_MAP, renderTabIcon } from "./tab-config";
 
-import { AddFavoriteDialog } from "@/components/editor/add-favorite-dialog";
 import { getWS } from "@/lib/ws";
 import { useIssueStore } from "@/stores/issue";
 import { useTaskStore } from "@/stores/task";
@@ -63,6 +62,10 @@ const ProjectSettingsPanel = dynamic(() => import("@/components/settings/project
 const CodeFavoritesPanel = dynamic(() => import("@/components/editor/code-favorites-panel").then((mod) => mod.CodeFavoritesPanel), {
   ssr: false,
   loading: panelLoader,
+});
+const AddFavoriteDialog = dynamic(() => import("@/components/editor/add-favorite-dialog").then((mod) => mod.AddFavoriteDialog), {
+  ssr: false,
+  loading: () => null,
 });
 
 type FlutterBridge = { emit?: (event: string, data: unknown) => void };
