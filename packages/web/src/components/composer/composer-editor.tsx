@@ -7,7 +7,7 @@ import { EditorContent, ReactRenderer, useEditor } from '@tiptap/react';
 import type { Editor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
-import Mention from '@tiptap/extension-mention';
+import Mention, { type MentionNodeAttrs } from '@tiptap/extension-mention';
 import { Extension } from '@tiptap/core';
 import Suggestion from '@tiptap/suggestion';
 import tippy from 'tippy.js';
@@ -30,10 +30,10 @@ function stripSimpleParagraphs(html: string): string {
 
 function createSuggestionRenderer() {
   let component: ReactRenderer | null = null;
-  let popup: InstanceType<typeof tippy>[0] | null = null;
+  let popup: ReturnType<typeof tippy> | null = null;
 
   return {
-    onStart(props: { editor: Editor; clientRect?: (() => DOMRect) | null }) {
+    onStart(props: { editor: Editor; clientRect?: (() => DOMRect | null) | null }) {
       component = new ReactRenderer(SuggestionList, {
         props,
         editor: props.editor,
@@ -42,7 +42,7 @@ function createSuggestionRenderer() {
       if (!props.clientRect) return;
 
       popup = tippy('body', {
-        getReferenceClientRect: props.clientRect,
+        getReferenceClientRect: () => props.clientRect!() ?? new DOMRect(),
         appendTo: () => document.body,
         content: component.element,
         showOnCreate: true,
@@ -52,11 +52,11 @@ function createSuggestionRenderer() {
       });
     },
 
-    onUpdate(props: { editor: Editor; clientRect?: (() => DOMRect) | null }) {
+    onUpdate(props: { editor: Editor; clientRect?: (() => DOMRect | null) | null }) {
       component?.updateProps(props);
       if (popup?.[0] && props.clientRect) {
         popup[0].setProps({
-          getReferenceClientRect: props.clientRect,
+          getReferenceClientRect: () => props.clientRect!() ?? new DOMRect(),
         });
       }
     },
@@ -191,7 +191,7 @@ export function ComposerEditor({
         }: {
           editor: Editor;
           range: { from: number; to: number };
-          props: Record<string, string>;
+          props: MentionNodeAttrs;
         }) => {
           editor
             .chain()

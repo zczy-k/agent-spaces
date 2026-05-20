@@ -155,7 +155,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
         // Ensure bottom border has code-favorites tab
         const borders = json.borders as { type: string; location: string; children: unknown[] }[] | undefined;
         const bottom = borders?.find((b) => b.location === 'bottom');
-        if (bottom && !bottom.children.some((c: { id?: string; component?: string }) => c.id === 'code-favorites' || c.component === 'code-favorites')) {
+        if (bottom && !bottom.children.some((c) => { const t = c as Record<string, unknown>; return t.id === 'code-favorites' || t.component === 'code-favorites'; })) {
           bottom.children.push({ type: 'tab', name: 'Favorites', component: 'code-favorites', id: 'code-favorites' });
         }
         m = Model.fromJson(json);

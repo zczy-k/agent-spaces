@@ -1,3 +1,11 @@
 packages:
   - "packages/*"
   - "documents"
+
+onlyBuiltDependencies:
+  - esbuild
+  - msw
+  - node-pty
+  - protobufjs
+  - sharp
+  - unrs-resolver

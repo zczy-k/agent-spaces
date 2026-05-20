@@ -80,7 +80,6 @@ export function HooksDialog({ open, onOpenChange, standalone }: HooksDialogProps
       setDirty(false);
     } catch (e: unknown) {
       console.error('Invalid JSON:', e instanceof Error ? e.message : String(e));
-      console.error('Invalid JSON:', e.message);
     }
   }, [activeWorkspaceId, selectedName, editorContent, updateHook]);
 
