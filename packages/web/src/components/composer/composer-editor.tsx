@@ -12,7 +12,7 @@ import Suggestion from '@tiptap/suggestion';
 import tippy from 'tippy.js';
 
 import { USERS } from '@/lib/users';
-import { COMMANDS } from '@/lib/commands';
+import { useAgentStore } from '@/stores/agent';
 import { SuggestionList } from './suggestion-list';
 
 type Attachment = {
@@ -74,7 +74,7 @@ function createSuggestionRenderer() {
   };
 }
 
-function createSlashExtension(openFilePicker: () => void) {
+function createSlashExtension(skills: string[]) {
   return Extension.create({
     name: 'slashCommand',
 
@@ -84,14 +84,9 @@ function createSlashExtension(openFilePicker: () => void) {
           char: '/',
           items: ({ query }: { query: string }) => {
             const keyword = query.toLowerCase();
-
-            return COMMANDS.filter((item) =>
-              `${item.title} ${item.description}`.toLowerCase().includes(keyword),
-            ).map((item) => ({
-              id: item.id,
-              title: item.title,
-              description: item.description,
-            }));
+            return skills
+              .filter((s) => s.toLowerCase().includes(keyword))
+              .map((s) => ({ id: s, title: s, description: 'skill' }));
           },
 
           command: ({
@@ -101,26 +96,14 @@ function createSlashExtension(openFilePicker: () => void) {
           }: {
             editor: any;
             range: { from: number; to: number };
-            props: { id: string; title: string; description: string };
+            props: { id: string };
           }) => {
-            editor.chain().focus().deleteRange(range).run();
-
-            switch (props.id) {
-              case 'heading1':
-                editor.chain().focus().toggleHeading({ level: 1 }).run();
-                break;
-              case 'blockquote':
-                editor.chain().focus().toggleBlockquote().run();
-                break;
-              case 'divider':
-                editor.chain().focus().setHorizontalRule().run();
-                break;
-              case 'attach':
-                openFilePicker();
-                break;
-              default:
-                break;
-            }
+            editor
+              .chain()
+              .focus()
+              .deleteRange(range)
+              .insertContent(`[use skill: ${props.id}]`)
+              .run();
           },
 
           render: () => createSuggestionRenderer(),
@@ -225,9 +208,19 @@ export function ComposerEditor({
     });
   }, []);
 
+  const agents = useAgentStore((s) => s.agents);
+
+  const allSkills = useMemo(() => {
+    const set = new Set<string>();
+    for (const agent of agents) {
+      agent.skills?.forEach((s) => set.add(s));
+    }
+    return [...set].sort();
+  }, [agents]);
+
   const slashExtension = useMemo(() => {
-    return createSlashExtension(openFilePicker);
-  }, [openFilePicker]);
+    return createSlashExtension(allSkills);
+  }, [allSkills]);
 
   const editor = useEditor({
     extensions: [

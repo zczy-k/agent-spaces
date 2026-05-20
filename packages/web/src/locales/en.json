@@ -1077,6 +1077,19 @@
     "importPlaceholder": "Drag .md or .txt files here, or click to select",
     "importConfirm": "Confirm Import"
   },
+  "outputStyles": {
+    "title": "Output Styles",
+    "description": "Manage output style templates that define Agent response style, tone and format",
+    "search": "Search output styles...",
+    "empty": "No output style templates",
+    "create": "New",
+    "createTitle": "New Output Style",
+    "editTitle": "Edit Output Style - {name}",
+    "editDescription": "Edit output style content",
+    "namePlaceholder": "Style name",
+    "contentPlaceholder": "Define response style, tone, format requirements. e.g.: Reply in concise English, use TypeScript for code, be straightforward...",
+    "delete": "Delete"
+  },
   "mcps": {
     "title": "MCP Servers",
     "description": "Manage and import MCP server configs, bind to agents",

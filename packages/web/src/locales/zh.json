@@ -1079,6 +1079,19 @@
     "importPlaceholder": "拖拽 .md 或 .txt 文件到此处，或点击选择",
     "importConfirm": "确认导入"
   },
+  "outputStyles": {
+    "title": "输出风格管理",
+    "description": "管理输出风格模板，定义 Agent 的回复风格、语气和格式",
+    "search": "搜索输出风格...",
+    "empty": "暂无输出风格模板",
+    "create": "新建",
+    "createTitle": "新建输出风格",
+    "editTitle": "编辑输出风格 - {name}",
+    "editDescription": "编辑输出风格内容",
+    "namePlaceholder": "风格名称",
+    "contentPlaceholder": "定义回复风格、语气、格式要求。例如：使用简洁的中文回复，代码使用 TypeScript，解释要直截了当...",
+    "delete": "删除"
+  },
   "mcps": {
     "title": "MCP 服务器管理",
     "description": "管理和导入 MCP 服务器配置，绑定到智能体",

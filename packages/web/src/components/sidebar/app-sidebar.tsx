@@ -40,6 +40,7 @@ import { ProvidersDialog } from "@/components/sidebar/providers-dialog";
 import { SettingsDialog } from "@/components/sidebar/settings-dialog";
 import { SkillsDialog } from "@/components/sidebar/skills-dialog";
 import { PromptsDialog } from "@/components/sidebar/prompts-dialog";
+import { OutputStylesDialog } from "@/components/sidebar/output-styles-dialog";
 import { McpsDialog } from "@/components/sidebar/mcps-dialog";
 import type { Route } from "./nav-main";
 import DashboardNavigation from "@/components/sidebar/nav-main";
@@ -80,6 +81,7 @@ export function DashboardSidebar() {
   const [providersDialogOpen, setProvidersDialogOpen] = useState(false);
   const [skillsDialogOpen, setSkillsDialogOpen] = useState(false);
   const [promptsDialogOpen, setPromptsDialogOpen] = useState(false);
+  const [outputStylesDialogOpen, setOutputStylesDialogOpen] = useState(false);
   const [mcpsDialogOpen, setMcpsDialogOpen] = useState(false);
   const [wsDialogOpen, setWsDialogOpen] = useState(false);
   const [editingWs, setEditingWs] = useState<Workspace | null>(null);
@@ -273,7 +275,7 @@ export function DashboardSidebar() {
             { title: ts('nav.agents'), link: "#", icon: <Bot className="size-3.5" />, onClick: () => setAgentDialogOpen(true) },
             { title: ts('nav.skills'), link: "#", icon: <Sparkles className="size-3.5" />, onClick: () => setSkillsDialogOpen(true) },
             { title: ts('nav.prompts'), link: "#", icon: <MessageSquare className="size-3.5" />, onClick: () => setPromptsDialogOpen(true) },
-            { title: ts('nav.outputStyles'), link: "/settings/output-styles", icon: <Pencil className="size-3.5" /> },
+            { title: ts('nav.outputStyles'), link: "#", icon: <Pencil className="size-3.5" />, onClick: () => setOutputStylesDialogOpen(true) },
             { title: ts('nav.mcps'), link: "#", icon: <Plug className="size-3.5" />, onClick: () => setMcpsDialogOpen(true) },
             { title: ts('nav.models'), link: "#", icon: <Brain className="size-3.5" />, onClick: () => { setModelsDialogProvider(undefined); setModelsDialogOpen(true); } },
             { title: ts('nav.providers'), link: "#", icon: <Server className="size-3.5" />, onClick: () => setProvidersDialogOpen(true) },
@@ -325,6 +327,7 @@ export function DashboardSidebar() {
       <AgentDialog open={agentDialogOpen} onOpenChange={setAgentDialogOpen} />
       <SkillsDialog open={skillsDialogOpen} onOpenChange={setSkillsDialogOpen} />
       <PromptsDialog open={promptsDialogOpen} onOpenChange={setPromptsDialogOpen} />
+      <OutputStylesDialog open={outputStylesDialogOpen} onOpenChange={setOutputStylesDialogOpen} />
       <McpsDialog open={mcpsDialogOpen} onOpenChange={setMcpsDialogOpen} />
       <SettingsDialog open={settingsDialogOpen} onOpenChange={setSettingsDialogOpen} />
       <ModelsDialog open={modelsDialogOpen} onOpenChange={setModelsDialogOpen} initialProvider={modelsDialogProvider} />

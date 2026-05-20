@@ -2,13 +2,13 @@
 
 import { useTranslations } from "next-intl";
 import { SettingsPageLayout } from "@/components/settings/settings-page-layout";
-import { AgentDialog } from "@/components/sidebar/agent-dialog";
+import { OutputStylesDialog } from "@/components/sidebar/output-styles-dialog";
 
 export default function OutputStylesPage() {
-  const t = useTranslations("agent");
+  const t = useTranslations("outputStyles");
   return (
-    <SettingsPageLayout title={t("detail.outputStyle")}>
-      <AgentDialog open={true} onOpenChange={() => {}} standalone />
+    <SettingsPageLayout title={t("title")}>
+      <OutputStylesDialog open={true} onOpenChange={() => {}} standalone />
     </SettingsPageLayout>
   );
 }
