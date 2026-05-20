@@ -24,7 +24,7 @@ interface IssueDetailTasksPanelProps {
   retryTask: (wsId: string, taskId: string) => void;
   cancelTask: (wsId: string, taskId: string) => void;
   reorderTasks: (wsId: string, issueId: string, taskIds: string[]) => void;
-  createTask: (wsId: string, issueId: string, title: string, desc: string, agentConfigId?: string) => Promise<Task>;
+  createTask: (wsId: string, issueId: string, title: string, desc: string, agentConfigId: string) => Promise<Task>;
   updateTask: (wsId: string, taskId: string, data: Partial<Task>) => Promise<void>;
   deleteTask: (wsId: string, taskId: string) => Promise<void>;
   updateIssue: (wsId: string, issueId: string, data: Partial<Issue>) => Promise<void>;
@@ -59,15 +59,15 @@ export function IssueDetailTasksPanel({
   const [selectedAgentId, setSelectedAgentId] = useState('');
 
   const handleCreateTask = async () => {
-    if (!newTaskTitle.trim()) return;
+    if (!newTaskTitle.trim() || !selectedAgentId) return;
     if (editingTask) {
       await updateTask(workspaceId, editingTask.id, {
         title: newTaskTitle.trim(),
         description: newTaskDesc.trim(),
-        agentConfigId: selectedAgentId || undefined,
+        agentConfigId: selectedAgentId,
       });
     } else {
-      await createTask(workspaceId, issue.id, newTaskTitle.trim(), newTaskDesc.trim(), selectedAgentId || undefined);
+      await createTask(workspaceId, issue.id, newTaskTitle.trim(), newTaskDesc.trim(), selectedAgentId);
     }
     setNewTaskTitle('');
     setNewTaskDesc('');
@@ -160,17 +160,6 @@ export function IssueDetailTasksPanel({
                   <div className="space-y-1">
                     <label className="text-xs text-muted-foreground">Agent</label>
                     <div className="flex flex-wrap gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedAgentId('')}
-                        className={cn(
-                          'flex items-center gap-1.5 px-2 py-1 rounded-md text-xs transition-colors border',
-                          !selectedAgentId ? 'border-primary bg-primary/10 text-primary' : 'border-transparent hover:bg-muted',
-                        )}
-                      >
-                        <span className="size-4 rounded bg-muted flex items-center justify-center text-[10px]">-</span>
-                        {t('detail.noAgent') as string}
-                      </button>
                       {agents.map((agent) => (
                         <button
                           key={agent.id}
@@ -189,7 +178,7 @@ export function IssueDetailTasksPanel({
                     </div>
                   </div>
                 )}
-                <Button onClick={handleCreateTask} disabled={!newTaskTitle.trim()} size="sm">
+                <Button onClick={handleCreateTask} disabled={!newTaskTitle.trim() || !selectedAgentId} size="sm">
                   {editingTask ? tc('save') : t('detail.addTask')}
                 </Button>
               </div>

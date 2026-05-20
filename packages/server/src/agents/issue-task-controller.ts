@@ -529,10 +529,8 @@ function findAgentForTask(
   task: Task,
 ): AgentConfig | null {
   const assignable = getIssueMemberPresets(workspaceId, issue);
-  if (task.agentConfigId) return assignable.find((agent) => agent.id === task.agentConfigId) ?? null;
-  return assignable.find((agent) => !['scheduler', 'bot', 'planner', 'task_creator'].includes(agent.role))
-    ?? assignable.find((agent) => !['scheduler', 'bot'].includes(agent.role))
-    ?? null;
+  if (!task.agentConfigId) return null;
+  return assignable.find((agent) => agent.id === task.agentConfigId) ?? null;
 }
 
 function findTaskSyncAgentForIssue(
