@@ -131,14 +131,19 @@ export function wrapOnEventWithHooks(
 
   const engine = new HookEngine(workspaceId);
   engine.load();
+  const toolNameById = new Map<string, string>();
 
   return (event: AgentRuntimeEvent) => {
     onEvent(event);
     if (event.type === 'tool_use') {
+      toolNameById.set(event.id, event.name);
       engine.executeHooks('PreToolUse', event.name, { toolInput: event.input });
     }
     if (event.type === 'tool_result') {
-      engine.executeHooks('PostToolUse', event.name, { toolResult: event.result });
+      const toolName = event.toolUseId ? (toolNameById.get(event.toolUseId) ?? '') : '';
+      if (toolName) {
+        engine.executeHooks('PostToolUse', toolName, { toolResult: event.result });
+      }
     }
   };
 }
