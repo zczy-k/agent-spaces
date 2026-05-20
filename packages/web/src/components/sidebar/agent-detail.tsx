@@ -213,6 +213,16 @@ export function AgentDetail({
         />
       </Section>
 
+      {/* Output Style */}
+      <Section icon={<Sparkles className="size-3.5" />} title={t('detail.outputStyle')}>
+        <Textarea
+          value={agent.outputStyle}
+          onChange={(e) => onChange("outputStyle", e.target.value)}
+          placeholder={t('detail.outputStylePlaceholder')}
+          className="min-h-24 text-xs"
+        />
+      </Section>
+
       {/* MCP Servers */}
       <Section icon={<Wrench className="size-3.5" />} title={t('detail.mcpServers')}>
         <Textarea

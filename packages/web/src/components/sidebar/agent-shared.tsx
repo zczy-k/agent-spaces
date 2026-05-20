@@ -20,6 +20,7 @@ export type AgentPreset = Omit<AgentConfig, "mcps" | "skills" | "modelProvider">
   skills: SkillDraft[];
   tools: BuiltInAgentToolName[];
   systemPrompt: string;
+  outputStyle: string;
   temperature: number;
   maxTokens: number;
 };
@@ -97,6 +98,7 @@ export const ROLE_TEMPLATES: Record<BuiltInRole, Omit<AgentPreset, "id">> = {
     tools: DEFAULT_AGENT_TOOLS,
     systemPrompt:
       "你是通用 Agent。根据 issue 和当前任务上下文完成被分配的工作，遵循项目规范，必要时修改代码、运行验证，并清晰汇报结果。",
+    outputStyle: "",
     temperature: 0.3,
     maxTokens: 8192,
     enabled: true,
@@ -117,6 +119,7 @@ export const ROLE_TEMPLATES: Record<BuiltInRole, Omit<AgentPreset, "id">> = {
     tools: DEFAULT_AGENT_TOOLS,
     systemPrompt:
       "你是调度者 Agent。负责接收用户任务，分析任务类型，分发给合适的执行者。你需要跟踪任务状态，确保所有子任务按时完成。",
+    outputStyle: "",
     temperature: 0.3,
     maxTokens: 4096,
     enabled: true,
@@ -137,6 +140,7 @@ export const ROLE_TEMPLATES: Record<BuiltInRole, Omit<AgentPreset, "id">> = {
     tools: DEFAULT_AGENT_TOOLS,
     systemPrompt:
       "你是任务创建者 Agent。负责读取 issue 上下文，把需求拆分为少量可执行任务，并用系统工具写入任务列表。只创建真正需要独立执行的任务，避免把细碎步骤拆成任务。",
+    outputStyle: "",
     temperature: 0.3,
     maxTokens: 4096,
     enabled: true,
@@ -157,6 +161,7 @@ export const ROLE_TEMPLATES: Record<BuiltInRole, Omit<AgentPreset, "id">> = {
     tools: DEFAULT_AGENT_TOOLS,
     systemPrompt:
       "你是 Agent Spaces 的消息机器人。你会简洁回答来自外部聊天平台的用户消息。不要执行危险操作；需要用户提供更多信息时直接询问。",
+    outputStyle: "",
     temperature: 0.3,
     maxTokens: 4096,
     enabled: true,
@@ -179,6 +184,7 @@ export function normalizeAgent(agent: AgentConfig): AgentPreset {
     skills: normalizeSkillDrafts(agent.skills),
     tools: normalizeToolDrafts(agent.tools),
     systemPrompt: agent.systemPrompt || "",
+    outputStyle: agent.outputStyle || "",
     temperature: agent.temperature ?? 0.3,
     maxTokens: agent.maxTokens ?? 4096,
     enabled: agent.enabled ?? true,
@@ -244,6 +250,7 @@ export function newEmptyAgent(): AgentPreset {
     skills: [],
     tools: DEFAULT_AGENT_TOOLS,
     systemPrompt: "",
+    outputStyle: "",
     temperature: 0.3,
     maxTokens: 4096,
     enabled: true,

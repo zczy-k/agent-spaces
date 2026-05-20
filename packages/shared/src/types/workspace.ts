@@ -61,6 +61,7 @@ export interface AgentConfig {
   skills?: string[];
   tools?: BuiltInAgentToolName[];
   systemPrompt?: string;
+  outputStyle?: string;
   temperature?: number;
   maxTokens?: number;
   avatarUrl?: string;

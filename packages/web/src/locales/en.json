@@ -139,6 +139,7 @@
       "agents": "Agents",
       "skills": "Skills",
       "prompts": "Prompts",
+      "outputStyles": "Output Styles",
       "mcps": "MCP Servers",
       "models": "Models",
       "providers": "Providers"
@@ -232,6 +233,8 @@
       "workingDirPlaceholder": "/workspace",
       "systemPrompt": "System Prompt",
       "systemPromptPlaceholder": "Enter system prompt...",
+      "outputStyle": "Output Style",
+      "outputStylePlaceholder": "Define the Agent's response style, tone, format requirements...",
       "mcpServers": "MCP Servers",
       "tools": "Tools",
       "skills": "Skills",
