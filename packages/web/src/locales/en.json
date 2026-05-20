@@ -1099,7 +1099,13 @@
     "import": "Import",
     "importTitle": "Import Output Style Files",
     "importPlaceholder": "Drag .md or .txt files here, or click to select",
-    "importConfirm": "Confirm Import"
+    "importConfirm": "Confirm Import",
+    "tabLocal": "Local",
+    "tabStore": "Store",
+    "storeEmpty": "No output styles in store",
+    "importTo": "Import",
+    "imported": "Imported",
+    "importing": "Importing..."
   },
   "mcps": {
     "title": "MCP Servers",

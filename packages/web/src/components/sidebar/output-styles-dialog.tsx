@@ -28,6 +28,9 @@ import {
   Plus,
   Pencil,
   Upload,
+  Download,
+  Store,
+  FileText,
 } from 'lucide-react';
 
 const MonacoEditor = dynamic(
@@ -39,8 +42,15 @@ interface OutputStyleTemplate {
   id: string;
   name: string;
   content: string;
+  storeId?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+interface StoreTemplate {
+  id: string;
+  name: string;
+  filename: string;
 }
 
 interface OutputStylesDialogProps {
@@ -49,13 +59,21 @@ interface OutputStylesDialogProps {
   standalone?: boolean;
 }
 
+type TabType = 'local' | 'store';
+
 export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputStylesDialogProps) {
   const t = useTranslations('outputStyles');
   const tc = useTranslations('common');
 
+  const [activeTab, setActiveTab] = useState<TabType>('local');
   const [templates, setTemplates] = useState<OutputStyleTemplate[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Store state
+  const [storeTemplates, setStoreTemplates] = useState<StoreTemplate[]>([]);
+  const [storeLoading, setStoreLoading] = useState(false);
+  const [importingIds, setImportingIds] = useState<Set<string>>(new Set());
 
   // Import state
   const [importOpen, setImportOpen] = useState(false);
@@ -77,9 +95,24 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
     setLoading(false);
   }, []);
 
+  const fetchStoreTemplates = useCallback(async () => {
+    setStoreLoading(true);
+    try {
+      const res = await fetch('/public/output-styles/index.json');
+      if (res.ok) setStoreTemplates(await res.json());
+    } catch { /* ignore */ }
+    setStoreLoading(false);
+  }, []);
+
   useEffect(() => {
-    if (open || standalone) fetchTemplates();
-  }, [open, standalone, fetchTemplates]);
+    if (open || standalone) {
+      fetchTemplates();
+      fetchStoreTemplates();
+    }
+  }, [open, standalone, fetchTemplates, fetchStoreTemplates]);
+
+  // Track which store ids are already imported locally
+  const importedStoreIds = new Set(templates.filter((t) => t.storeId).map((t) => t.storeId));
 
   const handleImport = async () => {
     if (uploadFiles.length === 0) return;
@@ -108,6 +141,30 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
     setUploadFiles([]);
     setImportOpen(false);
     fetchTemplates();
+  };
+
+  const handleStoreImport = async (store: StoreTemplate) => {
+    if (importedStoreIds.has(store.id) || importingIds.has(store.id)) return;
+    setImportingIds((prev) => new Set(prev).add(store.id));
+    try {
+      const contentRes = await fetch(`/public/output-styles/${store.filename}`);
+      if (!contentRes.ok) return;
+      const content = await contentRes.text();
+      const res = await fetch('/api/output-styles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: store.name, content, storeId: store.id }),
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setTemplates((prev) => [...prev, created]);
+      }
+    } catch { /* ignore */ }
+    setImportingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(store.id);
+      return next;
+    });
   };
 
   const handleCreate = () => {
@@ -168,7 +225,180 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
     return tmpl.name.toLowerCase().includes(q) || tmpl.content.toLowerCase().includes(q);
   });
 
+  const filteredStore = storeTemplates.filter((tmpl) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return tmpl.name.toLowerCase().includes(q) || tmpl.id.toLowerCase().includes(q);
+  });
+
   const showMainView = (standalone || open) && !editTemplate && !isCreating;
+
+  const tabs = (
+    <div className="flex items-center gap-1 border-b border-border px-1">
+      {([['local', FileText, t('tabLocal')], ['store', Store, t('tabStore')]] as const).map(([key, Icon, label]) => (
+        <button
+          key={key}
+          onClick={() => setActiveTab(key)}
+          className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === key
+              ? 'border-primary text-foreground'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Icon className="size-3.5" />
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+
+  const localView = (
+    <>
+      <div className="flex items-center gap-2 ml-auto shrink-0 pt-2">
+        <Popover open={importOpen} onOpenChange={setImportOpen}>
+          <PopoverTrigger render={
+            <Button variant="outline" size="sm">
+              <Upload className="size-3.5 mr-1" />
+              {t('import')}
+            </Button>
+          } />
+          <PopoverContent className="w-80" align="end">
+            <div className="space-y-3">
+              <p className="text-sm font-medium">{t('importTitle')}</p>
+              <FileUpload
+                value={uploadFiles}
+                onChange={setUploadFiles}
+                accept={{ 'text/markdown': ['.md', '.txt'], '': ['.md', '.txt'] }}
+                placeholder={t('importPlaceholder')}
+                maxFiles={10}
+              />
+              <Button
+                size="sm"
+                onClick={handleImport}
+                disabled={uploadFiles.length === 0}
+                className="w-full"
+              >
+                {t('importConfirm')}
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
+        <Button variant="outline" size="sm" onClick={handleCreate}>
+          <Plus className="size-3.5 mr-1" />
+          {t('create')}
+        </Button>
+      </div>
+
+      <ScrollArea className="flex-1">
+        {loading ? (
+          <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
+            {tc('loading')}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
+            {t('empty')}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pr-2">
+            {filtered.map((tmpl) => (
+              <div
+                key={tmpl.id}
+                className="rounded-xl border border-border bg-background p-4 hover:bg-accent/30 transition-colors cursor-pointer"
+                onClick={() => handleEdit(tmpl)}
+              >
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <Pencil className="size-3.5 text-muted-foreground shrink-0" />
+                      <span className="font-medium text-sm truncate">{tmpl.name}</span>
+                    </div>
+                    <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          render={<Button variant="ghost" size="icon" className="size-6" />}
+                        >
+                          <MoreVertical className="size-3" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => handleDelete(tmpl)}
+                          >
+                            <Trash2 className="size-3 mr-1.5" />
+                            {t('delete')}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground line-clamp-3">
+                    {tmpl.content.slice(0, 200)}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </ScrollArea>
+    </>
+  );
+
+  const storeView = (
+    <ScrollArea className="flex-1">
+      {storeLoading ? (
+        <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
+          {tc('loading')}
+        </div>
+      ) : filteredStore.length === 0 ? (
+        <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
+          {t('storeEmpty')}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pr-2">
+          {filteredStore.map((tmpl) => {
+            const isImported = importedStoreIds.has(tmpl.id);
+            const isImporting = importingIds.has(tmpl.id);
+            return (
+              <div
+                key={tmpl.id}
+                className="rounded-xl border border-border bg-background p-4 hover:bg-accent/30 transition-colors"
+              >
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <Store className="size-3.5 text-muted-foreground shrink-0" />
+                      <span className="font-medium text-sm truncate">{tmpl.name}</span>
+                    </div>
+                    <Button
+                      variant={isImported ? 'ghost' : 'outline'}
+                      size="sm"
+                      className="h-6 px-1.5 text-xs shrink-0"
+                      disabled={isImported || isImporting}
+                      onClick={() => handleStoreImport(tmpl)}
+                    >
+                      {isImported ? (
+                        <>{t('imported')}</>
+                      ) : isImporting ? (
+                        <>{t('importing')}</>
+                      ) : (
+                        <>
+                          <Download className="size-3 mr-0.5" />
+                          {t('importTo')}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {tmpl.id}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </ScrollArea>
+  );
 
   const mainBody = (
     <>
@@ -184,42 +414,10 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
               : <DialogDescription>{t('description')}</DialogDescription>
             }
           </div>
-          <div className="flex items-center gap-2 ml-auto shrink-0 pt-2">
-            <Popover open={importOpen} onOpenChange={setImportOpen}>
-              <PopoverTrigger render={
-                <Button variant="outline" size="sm">
-                  <Upload className="size-3.5 mr-1" />
-                  {t('import')}
-                </Button>
-              } />
-              <PopoverContent className="w-80" align="end">
-                <div className="space-y-3">
-                  <p className="text-sm font-medium">{t('importTitle')}</p>
-                  <FileUpload
-                    value={uploadFiles}
-                    onChange={setUploadFiles}
-                    accept={{ 'text/markdown': ['.md', '.txt'], '': ['.md', '.txt'] }}
-                    placeholder={t('importPlaceholder')}
-                    maxFiles={10}
-                  />
-                  <Button
-                    size="sm"
-                    onClick={handleImport}
-                    disabled={uploadFiles.length === 0}
-                    className="w-full"
-                  >
-                    {t('importConfirm')}
-                  </Button>
-                </div>
-              </PopoverContent>
-            </Popover>
-            <Button variant="outline" size="sm" onClick={handleCreate}>
-              <Plus className="size-3.5 mr-1" />
-              {t('create')}
-            </Button>
-          </div>
         </div>
       </DialogHeader>
+
+      {tabs}
 
       <div className="flex flex-1 min-h-0 gap-4 pt-2">
         <div className="flex-1 min-w-0 flex flex-col gap-3">
@@ -233,57 +431,7 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
             />
           </div>
 
-          <ScrollArea className="flex-1">
-            {loading ? (
-              <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
-                {tc('loading')}
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
-                {t('empty')}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pr-2">
-                {filtered.map((tmpl) => (
-                  <div
-                    key={tmpl.id}
-                    className="rounded-xl border border-border bg-background p-4 hover:bg-accent/30 transition-colors cursor-pointer"
-                    onClick={() => handleEdit(tmpl)}
-                  >
-                    <div className="flex flex-col gap-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <Pencil className="size-3.5 text-muted-foreground shrink-0" />
-                          <span className="font-medium text-sm truncate">{tmpl.name}</span>
-                        </div>
-                        <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger
-                              render={<Button variant="ghost" size="icon" className="size-6" />}
-                            >
-                              <MoreVertical className="size-3" />
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={() => handleDelete(tmpl)}
-                              >
-                                <Trash2 className="size-3 mr-1.5" />
-                                {t('delete')}
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </div>
-                      <p className="text-xs text-muted-foreground line-clamp-3">
-                        {tmpl.content.slice(0, 200)}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </ScrollArea>
+          {activeTab === 'local' ? localView : storeView}
         </div>
       </div>
     </>

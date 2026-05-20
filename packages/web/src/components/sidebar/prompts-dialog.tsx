@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MemberPicker, type MemberCandidate } from '@/components/common/member-picker';
+import { AgentPickerDialog } from '@/components/common/agent-picker-dialog';
 import { FileUpload, type FileUploadFile } from '@/components/ui/file-upload';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
@@ -283,9 +283,10 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
 
   const showMainView = (standalone || open) && !applyTemplate && !editTemplate && !isCreating;
 
-  const agentCandidates: MemberCandidate[] = agents.map((a) => ({
+  const agentPickerItems = agents.map((a) => ({
     id: a.id,
-    label: a.name,
+    name: a.name,
+    avatarUrl: a.avatarUrl,
     description: a.description,
   }));
 
@@ -563,33 +564,21 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
       </Dialog>
 
       {/* Apply to Agents Dialog */}
-      <Dialog open={!!applyTemplate} onOpenChange={(v) => { if (!v) setApplyTemplate(null); }}>
-        <DialogContent className="sm:max-w-sm overflow-hidden">
-          <DialogHeader>
-            <DialogTitle>{t('applyTitle', { name: applyTemplate?.name || '' })}</DialogTitle>
-            <DialogDescription>{t('applyDescription')}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 pt-2">
-            <MemberPicker
-              candidates={agentCandidates}
-              selected={applySelected}
-              onToggle={(id) => setApplySelected((prev) =>
-                prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-              )}
-              searchPlaceholder={t('searchAgents')}
-              emptyText={t('noAgents')}
-            />
-            <div className="flex justify-end gap-2 pt-1">
-              <Button variant="outline" onClick={() => setApplyTemplate(null)}>
-                {tc('cancel')}
-              </Button>
-              <Button onClick={handleApply} disabled={applying || applySelected.length === 0}>
-                {t('applyConfirm', { count: applySelected.length })}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <AgentPickerDialog
+        open={!!applyTemplate}
+        onClose={() => setApplyTemplate(null)}
+        onConfirm={handleApply}
+        title={t('applyTitle', { name: applyTemplate?.name || '' })}
+        description={t('applyDescription')}
+        agents={agentPickerItems}
+        selected={applySelected}
+        onToggle={(id) => setApplySelected((prev) =>
+          prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+        )}
+        cancelText={tc('cancel')}
+        confirmText={t('applyConfirm', { count: applySelected.length })}
+        loading={applying}
+      />
     </>
   );
 }
