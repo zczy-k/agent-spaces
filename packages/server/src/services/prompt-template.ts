@@ -8,6 +8,7 @@ export interface PromptTemplate {
   id: string;
   name: string;
   content: string;
+  storeId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -43,11 +44,11 @@ export function listPromptTemplates(): PromptTemplate[] {
   return readMeta().templates;
 }
 
-export function createPromptTemplate(name: string, content: string): PromptTemplate {
+export function createPromptTemplate(name: string, content: string, storeId?: string): PromptTemplate {
   const meta = readMeta();
   const now = new Date().toISOString();
   const id = `prompt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const tmpl: PromptTemplate = { id, name, content, createdAt: now, updatedAt: now };
+  const tmpl: PromptTemplate = { id, name, content, storeId, createdAt: now, updatedAt: now };
   meta.templates.push(tmpl);
   writeMeta(meta);
   return tmpl;

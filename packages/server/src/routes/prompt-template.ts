@@ -16,12 +16,12 @@ router.get('/', (_req: Request, res: Response) => {
 });
 
 router.post('/', (req: Request, res: Response) => {
-  const { name, content } = req.body as { name?: string; content?: string };
+  const { name, content, storeId } = req.body as { name?: string; content?: string; storeId?: string };
   if (!name || !content) {
     res.status(400).json({ error: 'name and content required' });
     return;
   }
-  res.json(createPromptTemplate(name, content));
+  res.json(createPromptTemplate(name, content, storeId));
 });
 
 router.put('/:id', (req: Request, res: Response) => {

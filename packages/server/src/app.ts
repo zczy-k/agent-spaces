@@ -6,9 +6,9 @@ import express from 'express';
 import cors from 'cors';
 import { createServer } from 'node:http';
 import { WebSocketServer } from 'ws';
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { writeFile, mkdir } from 'node:fs/promises';
-import { join, dirname, extname, resolve } from 'node:path';
+import { join, dirname, extname, resolve, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import workspaceRouter from './routes/workspace.js';
 import fileRouter from './routes/file.js';
@@ -79,6 +79,23 @@ app.use('/api', authMiddleware);
 // Serve static files from public/
 const publicDir = resolveRuntimeDir('public');
 app.use('/public', express.static(publicDir));
+
+// Scan public/prompt/ and generate index.json for the prompt store
+function scanPromptStore() {
+  const promptDir = join(publicDir, 'prompt');
+  if (!existsSync(promptDir)) return;
+  const files = readdirSync(promptDir).filter((f) => f.endsWith('.md'));
+  const index = files.map((filename) => {
+    const id = basename(filename, '.md');
+    const content = readFileSync(join(promptDir, filename), 'utf-8');
+    const firstHeading = content.split('\n').find((l) => /^#\s+/.test(l));
+    const name = firstHeading ? firstHeading.replace(/^#\s+/, '').trim() : id.replace(/[-_]/g, ' ');
+    return { id, name, filename };
+  });
+  writeFileSync(join(promptDir, 'index.json'), JSON.stringify(index, null, 2), 'utf-8');
+  console.log(`[prompt-store] scanned ${index.length} templates`);
+}
+scanPromptStore();
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), platform: process.platform });
