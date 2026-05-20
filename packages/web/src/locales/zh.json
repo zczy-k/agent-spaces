@@ -143,7 +143,8 @@
       "mcps": "MCP 服务器",
       "models": "模型",
       "providers": "供应商",
-      "workflows": "工作流"
+      "workflows": "工作流",
+      "hooks": "Hooks"
     },
     "notifications": {
       "openAriaLabel": "打开通知",

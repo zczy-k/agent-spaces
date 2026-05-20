@@ -249,7 +249,7 @@ export function HooksDialog({ open, onOpenChange, standalone }: HooksDialogProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl p-0 overflow-hidden">
+      <DialogContent className="!max-w-[80vw] p-0 overflow-hidden">
         <DialogHeader className="px-4 pt-4">
           <DialogTitle>Hooks</DialogTitle>
           <DialogDescription>Manage per-tool-call hooks for this workspace</DialogDescription>

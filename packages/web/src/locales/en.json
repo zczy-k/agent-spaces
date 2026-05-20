@@ -142,7 +142,8 @@
       "outputStyles": "Output Styles",
       "mcps": "MCP Servers",
       "models": "Models",
-      "providers": "Providers"
+      "providers": "Providers",
+      "hooks": "Hooks"
     },
     "notifications": {
       "openAriaLabel": "Open notifications",
