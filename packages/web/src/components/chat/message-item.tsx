@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { Message } from '@agent-spaces/shared';
-import { Copy, Pencil, Trash2, Check, Clock, Reply, CheckCircle2, XCircle } from 'lucide-react';
+import { Copy, Pencil, Trash2, Check, Clock, Reply, CheckCircle2, XCircle, Maximize2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogOverlay, DialogPortal } from '@/components/ui/dialog';
+import { Markdown } from '@/components/ui/markdown';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { useAgentStore } from '@/stores/agent';
 import { useUserAvatar } from '@/hooks/use-user-avatar';
@@ -30,6 +32,7 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
   const time = new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const [copied, setCopied] = useState(false);
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
+  const [fullscreenOpen, setFullscreenOpen] = useState(false);
   const replies = message.replies ?? [];
 
   const isStreaming = message.status === 'streaming' || message.status === 'pending' || message.status === 'waiting_for_user';
@@ -136,6 +139,15 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
               <Pencil className="h-3.5 w-3.5" />
             </button>
           )}
+          {!isUser && message.content && (
+            <button
+              onClick={() => setFullscreenOpen(true)}
+              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              title="全屏查看"
+            >
+              <Maximize2 className="h-3.5 w-3.5" />
+            </button>
+          )}
           <button
             onClick={() => onDelete?.(message)}
             className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors"
@@ -146,6 +158,21 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
         </div>
       </div>
       <MemberInfoDialog open={memberDialogOpen} onOpenChange={setMemberDialogOpen} memberName={message.senderId} channelId={message.channelId} workspaceId={workspaceId} />
+      {!isUser && fullscreenOpen && (
+        <Dialog open={fullscreenOpen} onOpenChange={setFullscreenOpen}>
+          <DialogPortal>
+            <DialogOverlay />
+            <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col gap-0">
+              <DialogHeader>
+                <DialogTitle>{senderName}</DialogTitle>
+              </DialogHeader>
+              <div className="flex-1 overflow-y-auto px-6 pb-6">
+                <Markdown content={isHTML(message.content) ? message.content.replace(/<[^>]*>/g, '') : message.content} />
+              </div>
+            </DialogContent>
+          </DialogPortal>
+        </Dialog>
+      )}
     </div>
   );
 }

@@ -1119,7 +1119,11 @@
     "storeEmpty": "No output styles in store",
     "importTo": "Import",
     "imported": "Imported",
-    "importing": "Importing..."
+    "importing": "Importing...",
+    "apply": "Apply",
+    "applyTitle": "Apply \"{name}\" to Agents",
+    "applyDescription": "Select agents to apply this output style",
+    "applyConfirm": "Apply to {count} agents"
   },
   "mcps": {
     "title": "MCP Servers",

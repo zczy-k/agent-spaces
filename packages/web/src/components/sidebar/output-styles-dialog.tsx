@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { AgentPickerDialog } from '@/components/common/agent-picker-dialog';
 import { FileUpload, type FileUploadFile } from '@/components/ui/file-upload';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
@@ -29,6 +30,7 @@ import {
   Pencil,
   Upload,
   Download,
+  Rocket,
   Store,
   FileText,
 } from 'lucide-react';
@@ -54,6 +56,13 @@ interface StoreTemplate {
   filename: string;
 }
 
+interface AgentCandidate {
+  id: string;
+  name: string;
+  avatarUrl?: string;
+  description?: string;
+}
+
 interface OutputStylesDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -68,6 +77,7 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
 
   const [activeTab, setActiveTab] = useState<TabType>('local');
   const [templates, setTemplates] = useState<OutputStyleTemplate[]>([]);
+  const [agents, setAgents] = useState<AgentCandidate[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -88,6 +98,11 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
   const [editContent, setEditContent] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // Apply dialog state
+  const [applyTemplate, setApplyTemplate] = useState<OutputStyleTemplate | null>(null);
+  const [applySelected, setApplySelected] = useState<string[]>([]);
+  const [applying, setApplying] = useState(false);
+
   const fetchTemplates = useCallback(async () => {
     setLoading(true);
     try {
@@ -95,6 +110,13 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
       if (res.ok) setTemplates(await res.json());
     } catch { /* ignore */ }
     setLoading(false);
+  }, []);
+
+  const fetchAgents = useCallback(async () => {
+    try {
+      const res = await fetch('/api/output-styles/agents');
+      if (res.ok) setAgents(await res.json());
+    } catch { /* ignore */ }
   }, []);
 
   const fetchStoreTemplates = useCallback(async () => {
@@ -109,9 +131,10 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
   useEffect(() => {
     if (open || standalone) {
       fetchTemplates();
+      fetchAgents();
       fetchStoreTemplates();
     }
-  }, [open, standalone, fetchTemplates, fetchStoreTemplates]);
+  }, [open, standalone, fetchTemplates, fetchAgents, fetchStoreTemplates]);
 
   // Track which store ids are already imported locally
   const importedStoreIds = new Set(templates.filter((t) => t.storeId).map((t) => t.storeId));
@@ -242,6 +265,25 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
     } catch { /* ignore */ }
   };
 
+  const openApplyDialog = (tmpl: OutputStyleTemplate) => {
+    setApplyTemplate(tmpl);
+    setApplySelected([]);
+  };
+
+  const handleApply = async () => {
+    if (!applyTemplate || applySelected.length === 0) return;
+    setApplying(true);
+    try {
+      await fetch(`/api/output-styles/${applyTemplate.id}/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentIds: applySelected }),
+      });
+      setApplyTemplate(null);
+    } catch { /* ignore */ }
+    setApplying(false);
+  };
+
   const filtered = templates.filter((tmpl) => {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
@@ -254,7 +296,7 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
     return tmpl.name.toLowerCase().includes(q) || tmpl.id.toLowerCase().includes(q);
   });
 
-  const showMainView = (standalone || open) && !editTemplate && !isCreating;
+  const showMainView = (standalone || open) && !applyTemplate && !editTemplate && !isCreating;
 
   const tabs = (
     <div className="flex items-center gap-1 border-b border-border px-1">
@@ -336,6 +378,15 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
                       <span className="font-medium text-sm truncate">{tmpl.name}</span>
                     </div>
                     <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-6 px-1.5 text-xs"
+                        onClick={() => openApplyDialog(tmpl)}
+                      >
+                        <Rocket className="size-3 mr-0.5" />
+                        {t('apply')}
+                      </Button>
                       <DropdownMenu>
                         <DropdownMenuTrigger
                           render={<Button variant="ghost" size="icon" className="size-6" />}
@@ -522,6 +573,23 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Apply to Agents Dialog */}
+      <AgentPickerDialog
+        open={!!applyTemplate}
+        onClose={() => setApplyTemplate(null)}
+        onConfirm={handleApply}
+        title={t('applyTitle', { name: applyTemplate?.name || '' })}
+        description={t('applyDescription')}
+        agents={agents.map((a) => ({ id: a.id, name: a.name, avatarUrl: a.avatarUrl, description: a.description }))}
+        selected={applySelected}
+        onToggle={(id) => setApplySelected((prev) =>
+          prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+        )}
+        cancelText={tc('cancel')}
+        confirmText={t('applyConfirm', { count: applySelected.length })}
+        loading={applying}
+      />
     </>
   );
 }
