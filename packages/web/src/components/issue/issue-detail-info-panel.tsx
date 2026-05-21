@@ -28,7 +28,7 @@ interface IssueDetailInfoPanelProps {
 
 export function IssueDetailInfoPanel({
   issue,
-  workspaceId,
+  workspaceId: _workspaceId,
   open,
   onOpenChange,
   issueTasks,

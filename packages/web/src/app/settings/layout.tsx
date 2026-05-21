@@ -1,7 +1,5 @@
 "use client";
 
-import { SettingsPageLayout } from "@/components/settings/settings-page-layout";
-
 export default function SettingsLayout({
   children,
 }: {

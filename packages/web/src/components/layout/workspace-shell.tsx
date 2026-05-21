@@ -2,9 +2,8 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
-import { Layout, Model, TabNode, IJsonModel, Actions, ITabRenderValues, Action, DockLocation } from "flexlayout-react";
-import { Hash, ListChecks, FolderOpen, Code2, MessageSquare, FileText, TerminalSquare, FileDiff, GitCommitHorizontal, Settings2, Star } from "lucide-react";
-import { TAB_ICONS, RIGHT_TO_LEFT_TAB_MAP, renderTabIcon } from "./tab-config";
+import { Layout, Model, TabNode, IJsonModel, Actions, ITabRenderValues, Action } from "flexlayout-react";
+import { RIGHT_TO_LEFT_TAB_MAP, renderTabIcon } from "./tab-config";
 
 import { getWS } from "@/lib/ws";
 import { useIssueStore } from "@/stores/issue";
@@ -146,7 +145,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   const { activePanel, setActivePanel, handleBackAction } = useMobilePanelStore();
   const loadEditorState = useEditorStore((s) => s.loadEditorState);
   const revealPath = useEditorStore((s) => s.revealPath);
-  const clearRevealPath = useEditorStore((s) => s.clearRevealPath);
+  const _clearRevealPath = useEditorStore((s) => s.clearRevealPath);
   const [model, setModel] = useState(() => {
     let m: Model;
     try {
@@ -156,7 +155,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
         // Ensure bottom border has code-favorites tab
         const borders = json.borders as { type: string; location: string; children: unknown[] }[] | undefined;
         const bottom = borders?.find((b) => b.location === 'bottom');
-        if (bottom && !bottom.children.some((c: any) => c.id === 'code-favorites' || c.component === 'code-favorites')) {
+        if (bottom && !bottom.children.some((c) => { const t = c as Record<string, unknown>; return t.id === 'code-favorites' || t.component === 'code-favorites'; })) {
           bottom.children.push({ type: 'tab', name: 'Favorites', component: 'code-favorites', id: 'code-favorites' });
         }
         m = Model.fromJson(json);

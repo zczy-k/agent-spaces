@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { AgentPickerDialog } from '@/components/common/agent-picker-dialog';
 import { FileUpload, type FileUploadFile } from '@/components/ui/file-upload';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
@@ -29,6 +30,7 @@ import {
   Pencil,
   Upload,
   Download,
+  Rocket,
   Store,
   FileText,
 } from 'lucide-react';
@@ -41,6 +43,7 @@ const MonacoEditor = dynamic(
 interface OutputStyleTemplate {
   id: string;
   name: string;
+  description?: string;
   content: string;
   storeId?: string;
   createdAt: string;
@@ -51,6 +54,13 @@ interface StoreTemplate {
   id: string;
   name: string;
   filename: string;
+}
+
+interface AgentCandidate {
+  id: string;
+  name: string;
+  avatarUrl?: string;
+  description?: string;
 }
 
 interface OutputStylesDialogProps {
@@ -67,6 +77,7 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
 
   const [activeTab, setActiveTab] = useState<TabType>('local');
   const [templates, setTemplates] = useState<OutputStyleTemplate[]>([]);
+  const [agents, setAgents] = useState<AgentCandidate[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -83,8 +94,14 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
   const [editTemplate, setEditTemplate] = useState<OutputStyleTemplate | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [editName, setEditName] = useState('');
+  const [editDescription, setEditDescription] = useState('');
   const [editContent, setEditContent] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Apply dialog state
+  const [applyTemplate, setApplyTemplate] = useState<OutputStyleTemplate | null>(null);
+  const [applySelected, setApplySelected] = useState<string[]>([]);
+  const [applying, setApplying] = useState(false);
 
   const fetchTemplates = useCallback(async () => {
     setLoading(true);
@@ -93,6 +110,13 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
       if (res.ok) setTemplates(await res.json());
     } catch { /* ignore */ }
     setLoading(false);
+  }, []);
+
+  const fetchAgents = useCallback(async () => {
+    try {
+      const res = await fetch('/api/output-styles/agents');
+      if (res.ok) setAgents(await res.json());
+    } catch { /* ignore */ }
   }, []);
 
   const fetchStoreTemplates = useCallback(async () => {
@@ -107,35 +131,53 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
   useEffect(() => {
     if (open || standalone) {
       fetchTemplates();
+      fetchAgents();
       fetchStoreTemplates();
     }
-  }, [open, standalone, fetchTemplates, fetchStoreTemplates]);
+  }, [open, standalone, fetchTemplates, fetchAgents, fetchStoreTemplates]);
 
   // Track which store ids are already imported locally
   const importedStoreIds = new Set(templates.filter((t) => t.storeId).map((t) => t.storeId));
+
+  function parseFrontmatter(raw: string): { name?: string; description?: string; content: string } {
+    const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
+    if (!match) return { content: raw };
+    const frontmatter = match[1];
+    const content = raw.slice(match[0].length);
+    const nameMatch = frontmatter.match(/^name:\s*(.+)$/m);
+    const descMatch = frontmatter.match(/^description:\s*(.+)$/m);
+    return {
+      name: nameMatch?.[1]?.trim(),
+      description: descMatch?.[1]?.trim(),
+      content,
+    };
+  }
 
   const handleImport = async () => {
     if (uploadFiles.length === 0) return;
 
     if (uploadFiles.length === 1) {
-      const content = await uploadFiles[0].file.text();
-      const name = uploadFiles[0].file.name.replace(/\.(md|txt|markdown)$/i, '');
+      const raw = await uploadFiles[0].file.text();
+      const parsed = parseFrontmatter(raw);
+      const name = parsed.name || uploadFiles[0].file.name.replace(/\.(md|txt|markdown)$/i, '');
       setUploadFiles([]);
       setImportOpen(false);
       setEditTemplate(null);
       setIsCreating(true);
       setEditName(name);
-      setEditContent(content);
+      setEditDescription(parsed.description || '');
+      setEditContent(parsed.content || raw);
       return;
     }
 
     for (const item of uploadFiles) {
-      const content = await item.file.text();
-      const name = item.file.name.replace(/\.(md|txt|markdown)$/i, '');
+      const raw = await item.file.text();
+      const parsed = parseFrontmatter(raw);
+      const name = parsed.name || item.file.name.replace(/\.(md|txt|markdown)$/i, '');
       await fetch('/api/output-styles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, content }),
+        body: JSON.stringify({ name, content: parsed.content || raw, description: parsed.description }),
       });
     }
     setUploadFiles([]);
@@ -149,11 +191,12 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
     try {
       const contentRes = await fetch(`/public/output-styles/${store.filename}`);
       if (!contentRes.ok) return;
-      const content = await contentRes.text();
+      const raw = await contentRes.text();
+      const parsed = parseFrontmatter(raw);
       const res = await fetch('/api/output-styles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: store.name, content, storeId: store.id }),
+        body: JSON.stringify({ name: store.name, content: parsed.content || raw, storeId: store.id, description: parsed.description }),
       });
       if (res.ok) {
         const created = await res.json();
@@ -171,6 +214,7 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
     setEditTemplate(null);
     setIsCreating(true);
     setEditName('');
+    setEditDescription('');
     setEditContent('');
   };
 
@@ -178,6 +222,7 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
     setEditTemplate(tmpl);
     setIsCreating(false);
     setEditName(tmpl.name);
+    setEditDescription(tmpl.description || '');
     setEditContent(tmpl.content);
   };
 
@@ -185,6 +230,7 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
     setEditTemplate(null);
     setIsCreating(false);
     setEditName('');
+    setEditDescription('');
     setEditContent('');
   };
 
@@ -197,7 +243,7 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: editName, content: editContent }),
+        body: JSON.stringify({ name: editName, content: editContent, description: editDescription || undefined }),
       });
       if (res.ok) {
         const saved = await res.json();
@@ -219,6 +265,25 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
     } catch { /* ignore */ }
   };
 
+  const openApplyDialog = (tmpl: OutputStyleTemplate) => {
+    setApplyTemplate(tmpl);
+    setApplySelected([]);
+  };
+
+  const handleApply = async () => {
+    if (!applyTemplate || applySelected.length === 0) return;
+    setApplying(true);
+    try {
+      await fetch(`/api/output-styles/${applyTemplate.id}/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentIds: applySelected }),
+      });
+      setApplyTemplate(null);
+    } catch { /* ignore */ }
+    setApplying(false);
+  };
+
   const filtered = templates.filter((tmpl) => {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
@@ -231,7 +296,7 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
     return tmpl.name.toLowerCase().includes(q) || tmpl.id.toLowerCase().includes(q);
   });
 
-  const showMainView = (standalone || open) && !editTemplate && !isCreating;
+  const showMainView = (standalone || open) && !applyTemplate && !editTemplate && !isCreating;
 
   const tabs = (
     <div className="flex items-center gap-1 border-b border-border px-1">
@@ -313,6 +378,15 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
                       <span className="font-medium text-sm truncate">{tmpl.name}</span>
                     </div>
                     <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-6 px-1.5 text-xs"
+                        onClick={() => openApplyDialog(tmpl)}
+                      >
+                        <Rocket className="size-3 mr-0.5" />
+                        {t('apply')}
+                      </Button>
                       <DropdownMenu>
                         <DropdownMenuTrigger
                           render={<Button variant="ghost" size="icon" className="size-6" />}
@@ -332,7 +406,7 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground line-clamp-3">
-                    {tmpl.content.slice(0, 200)}
+                    {tmpl.description || tmpl.content.slice(0, 200)}
                   </p>
                 </div>
               </div>
@@ -467,6 +541,11 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
             onChange={(e) => setEditName(e.target.value)}
             placeholder={t('namePlaceholder')}
           />
+          <Input
+            value={editDescription}
+            onChange={(e) => setEditDescription(e.target.value)}
+            placeholder={t('descriptionPlaceholder')}
+          />
           <div className="flex-1 min-h-0 overflow-hidden rounded-md border border-border">
             <MonacoEditor
               height="100%"
@@ -494,6 +573,23 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Apply to Agents Dialog */}
+      <AgentPickerDialog
+        open={!!applyTemplate}
+        onClose={() => setApplyTemplate(null)}
+        onConfirm={handleApply}
+        title={t('applyTitle', { name: applyTemplate?.name || '' })}
+        description={t('applyDescription')}
+        agents={agents.map((a) => ({ id: a.id, name: a.name, avatarUrl: a.avatarUrl, description: a.description }))}
+        selected={applySelected}
+        onToggle={(id) => setApplySelected((prev) =>
+          prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+        )}
+        cancelText={tc('cancel')}
+        confirmText={t('applyConfirm', { count: applySelected.length })}
+        loading={applying}
+      />
     </>
   );
 }

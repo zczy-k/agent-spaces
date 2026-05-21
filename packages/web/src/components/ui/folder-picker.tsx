@@ -93,8 +93,8 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
       setFiles(data.files ?? []);
       setParentPath(data.parent);
       checkPermission(data.path);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
     }
@@ -104,7 +104,7 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
     if (open) {
       browse(value || "");
     }
-  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, browse, value]);
 
   useEffect(() => {
     if (creating && newFolderInputRef.current) {
@@ -161,8 +161,8 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
       onChange(newPath);
       setCurrentPath(newPath);
       setOpen(false);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 

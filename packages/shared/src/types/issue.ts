@@ -20,6 +20,7 @@ export interface Issue {
   tasks: string[];
   members: string[];
   workflowId?: string;
+  continuousRun?: boolean;
   retryCount: number;
   maxRetries: number;
   retryPaused?: boolean;

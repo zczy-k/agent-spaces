@@ -30,7 +30,7 @@ function Dialog({ ignoreBack = false, ...props }: DialogRootProps) {
       return;
     }
 
-    registerOverlay(overlayId, () => onOpenChangeRef.current?.(false, {} as any));
+    registerOverlay(overlayId, () => onOpenChangeRef.current?.(false, { reason: undefined } as any));
     return () => unregisterOverlay(overlayId);
   }, [ignoreBack, open, overlayId, registerOverlay, unregisterOverlay]);
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import type { AgentConfig } from '@agent-spaces/shared';
 import type { Node } from '@xyflow/react';
 import type { WorkflowNode } from '@agent-spaces/shared';
@@ -50,7 +50,7 @@ export function WorkflowAgentPalette({ agents, onNodeAdd }: WorkflowAgentPalette
     event.dataTransfer.effectAllowed = 'move';
   };
 
-  const handleAddToCanvas = (agent: AgentConfig) => {
+  const handleAddToCanvas = useCallback((agent: AgentConfig) => {
     if (!onNodeAdd) return;
     onNodeAdd({
       id: `node-${Date.now()}`,
@@ -58,7 +58,7 @@ export function WorkflowAgentPalette({ agents, onNodeAdd }: WorkflowAgentPalette
       position: { x: 100 + Math.random() * 200, y: 100 + Math.random() * 200 },
       data: { label: agent.name, agentConfigId: agent.id, role: agent.role, avatarUrl: agent.avatarUrl, modelId: agent.modelId },
     });
-  };
+  }, [onNodeAdd]);
 
   // Mobile: horizontal scrollable strip
   const enabledAgents = agents.filter(a => a.enabled);

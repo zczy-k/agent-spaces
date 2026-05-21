@@ -4,9 +4,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useDropzone } from 'react-dropzone';
 import { EditorContent, ReactRenderer, useEditor } from '@tiptap/react';
+import type { Editor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
-import Mention from '@tiptap/extension-mention';
+import Mention, { type MentionNodeAttrs } from '@tiptap/extension-mention';
 import { Extension } from '@tiptap/core';
 import Suggestion from '@tiptap/suggestion';
 import tippy from 'tippy.js';
@@ -29,10 +30,10 @@ function stripSimpleParagraphs(html: string): string {
 
 function createSuggestionRenderer() {
   let component: ReactRenderer | null = null;
-  let popup: any = null;
+  let popup: ReturnType<typeof tippy> | null = null;
 
   return {
-    onStart(props: any) {
+    onStart(props: { editor: Editor; clientRect?: (() => DOMRect | null) | null }) {
       component = new ReactRenderer(SuggestionList, {
         props,
         editor: props.editor,
@@ -41,7 +42,7 @@ function createSuggestionRenderer() {
       if (!props.clientRect) return;
 
       popup = tippy('body', {
-        getReferenceClientRect: props.clientRect,
+        getReferenceClientRect: () => props.clientRect!() ?? new DOMRect(),
         appendTo: () => document.body,
         content: component.element,
         showOnCreate: true,
@@ -51,18 +52,18 @@ function createSuggestionRenderer() {
       });
     },
 
-    onUpdate(props: any) {
+    onUpdate(props: { editor: Editor; clientRect?: (() => DOMRect | null) | null }) {
       component?.updateProps(props);
       if (popup?.[0] && props.clientRect) {
         popup[0].setProps({
-          getReferenceClientRect: props.clientRect,
+          getReferenceClientRect: () => props.clientRect!() ?? new DOMRect(),
         });
       }
     },
 
-    onKeyDown(props: any) {
+    onKeyDown(props: { event: KeyboardEvent }) {
       if (component?.ref && typeof component.ref === 'object' && 'onKeyDown' in component.ref) {
-        return (component.ref as any).onKeyDown(props);
+        return (component.ref as { onKeyDown: (props: { event: KeyboardEvent }) => boolean }).onKeyDown(props);
       }
       return false;
     },
@@ -94,7 +95,7 @@ function createSlashExtension(skills: string[]) {
             range,
             props,
           }: {
-            editor: any;
+            editor: Editor;
             range: { from: number; to: number };
             props: { id: string };
           }) => {
@@ -188,9 +189,9 @@ export function ComposerEditor({
           range,
           props,
         }: {
-          editor: any;
+          editor: Editor;
           range: { from: number; to: number };
-          props: Record<string, any>;
+          props: MentionNodeAttrs;
         }) => {
           editor
             .chain()

@@ -76,17 +76,16 @@ export function FloatingPanel({
       w: defaultWidth,
       h: defaultHeight,
     };
-    const loaded = loadRect(id, fallback);
-    rectRef.current = loaded;
-    return loaded;
+    return loadRect(id, fallback);
   });
 
   const dragStart = useRef<{ mx: number; my: number; r: Rect } | null>(null);
   const resizeStart = useRef<{ corner: Corner; mx: number; my: number; r: Rect } | null>(null);
 
   useEffect(() => {
+    rectRef.current = rect;
     setMounted(true);
-  }, []);
+  }, [rect]);
 
   // Clamp on resize
   useEffect(() => {

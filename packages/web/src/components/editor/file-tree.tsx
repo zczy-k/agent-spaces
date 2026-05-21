@@ -23,7 +23,7 @@ import { createContext, type HTMLAttributes, type ReactNode, useContext, useStat
  * ]
  */
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from "@/components/ui/context-menu"
+import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem } from "@/components/ui/context-menu"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -169,7 +169,7 @@ export const FileTreeFolder = ({
   children,
   ...props
 }: FileTreeFolderProps) => {
-  const { expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete, onImport, onCopyPath, onCreateFile, onCreateFolder, onRename, onMove, onCopyItem, onLoadDirectory, loadingDirs, boundDir } = useContext(FileTreeContext)
+  const { expandedPaths, togglePath, selectedPath, onFileSelect: _onFileSelect, workspaceId, onDelete, onImport, onCopyPath: _onCopyPath, onCreateFile, onCreateFolder, onRename, onMove, onCopyItem, onLoadDirectory, loadingDirs, boundDir } = useContext(FileTreeContext)
   const parentFolder = useContext(FileTreeFolderContext)
   const isExpanded = expandedPaths.has(path)
   const isIgnored = ignored || parentFolder.ignored
@@ -195,7 +195,7 @@ export const FileTreeFolder = ({
     <FileTreeFolderContext.Provider value={{ path, name, isExpanded, ignored: isIgnored }}>
       <ContextMenu>
         <Collapsible onOpenChange={handleOpenChange} open={isExpanded}>
-          <div className={className} role="treeitem" tabIndex={0} {...props}>
+          <div className={className} role="treeitem" aria-selected={false} tabIndex={0} {...props}>
             <ContextMenuTrigger className="contents">
               <div className="group/folder relative">
                 <CollapsibleTrigger
@@ -385,6 +385,7 @@ export const FileTreeFile = ({
               }
             }}
             role="treeitem"
+            aria-selected={false}
             tabIndex={0}
             {...props}
           >

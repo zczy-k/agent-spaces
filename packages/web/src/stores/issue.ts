@@ -9,6 +9,7 @@ interface UpdateIssueInput {
   status?: IssueStatus;
   members?: string[];
   workflowId?: string | null;
+  continuousRun?: boolean;
 }
 
 interface IssueStore {
@@ -26,6 +27,8 @@ interface IssueStore {
   updateIssueStatus: (workspaceId: string, issueId: string, status: IssueStatus) => Promise<void>;
   startIssue: (workspaceId: string, issueId: string) => Promise<void>;
   resumeIssue: (workspaceId: string, issueId: string) => Promise<void>;
+  continueIssue: (workspaceId: string, issueId: string) => Promise<void>;
+  interruptIssue: (workspaceId: string, issueId: string) => Promise<void>;
   deleteIssue: (workspaceId: string, issueId: string) => Promise<void>;
 
   // WS handlers
@@ -117,6 +120,24 @@ export const useIssueStore = create<IssueStore>((set, get) => ({
     const res = await fetch(`/api/workspaces/${workspaceId}/issues/${issueId}/resume`, {
       method: 'POST',
     });
+    const issue: Issue = await res.json();
+    get().upsertIssue(issue);
+  },
+
+  continueIssue: async (workspaceId, issueId) => {
+    const res = await fetch(`/api/workspaces/${workspaceId}/issues/${issueId}/continue`, {
+      method: 'POST',
+    });
+    if (!res.ok) return;
+    const issue: Issue = await res.json();
+    get().upsertIssue(issue);
+  },
+
+  interruptIssue: async (workspaceId, issueId) => {
+    const res = await fetch(`/api/workspaces/${workspaceId}/issues/${issueId}/interrupt`, {
+      method: 'POST',
+    });
+    if (!res.ok) return;
     const issue: Issue = await res.json();
     get().upsertIssue(issue);
   },

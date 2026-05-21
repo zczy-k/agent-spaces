@@ -15,17 +15,25 @@ router.post('/', (req: Request<{ id: string }>, res: Response) => {
     res.status(400).json({ error: 'issueId and title are required' });
     return;
   }
+  if (typeof agentConfigId !== 'string' || !agentConfigId.trim()) {
+    res.status(400).json({ error: 'agentConfigId is required' });
+    return;
+  }
 
   const issue = issueService.getById(req.params.id, issueId);
   if (!issue) {
     res.status(404).json({ error: 'issue not found' });
     return;
   }
+  if (!issue.members.includes(agentConfigId)) {
+    res.status(400).json({ error: 'agentConfigId must be an issue member' });
+    return;
+  }
 
   const task = taskService.create(req.params.id, issueId, {
     title,
     description: description || '',
-    agentConfigId,
+    agentConfigId: agentConfigId.trim(),
     dependsOnTaskIds,
     sandboxDirs,
   });
@@ -72,6 +80,10 @@ router.put('/:taskId', (req: Request<{ id: string; taskId: string }>, res: Respo
   const { title, description, agentConfigId, dependsOnTaskIds, sandboxDirs } = req.body;
   if (!title && description === undefined && agentConfigId === undefined && dependsOnTaskIds === undefined && sandboxDirs === undefined) {
     res.status(400).json({ error: 'title, description, agentConfigId, dependsOnTaskIds, or sandboxDirs is required' });
+    return;
+  }
+  if (agentConfigId !== undefined && (typeof agentConfigId !== 'string' || !agentConfigId.trim())) {
+    res.status(400).json({ error: 'agentConfigId cannot be empty' });
     return;
   }
 

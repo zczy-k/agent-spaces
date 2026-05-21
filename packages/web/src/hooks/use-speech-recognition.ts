@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { getToken } from "@/lib/auth";
 
 interface SpeechRecognitionConfig {
@@ -18,6 +18,8 @@ export function useSpeechRecognition() {
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const stopRef = useRef<() => void>(() => {});
+
   const loadConfig = useCallback(async (): Promise<SpeechRecognitionConfig | null> => {
     const token = getToken();
     console.log("[speech] loading config, token:", token ? "present" : "missing");
@@ -30,6 +32,29 @@ export function useSpeechRecognition() {
     console.log("[speech] configs found:", configs.length, configs.length > 0 ? configs[0] : "");
     return configs.length > 0 ? configs[0] : null;
   }, []);
+
+  const stop = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    processorRef.current?.disconnect();
+    audioContextRef.current?.close();
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "end" }));
+      wsRef.current.close();
+    }
+    wsRef.current = null;
+    processorRef.current = null;
+    audioContextRef.current = null;
+    streamRef.current = null;
+    setIsRecording(false);
+  }, []);
+
+  useEffect(() => {
+    stopRef.current = stop;
+  }, [stop]);
 
   const start = useCallback(
     async (onText: (text: string, isFinal: boolean) => void) => {
@@ -65,7 +90,7 @@ export function useSpeechRecognition() {
 
       ws.onerror = (e) => {
         console.error("[speech] WebSocket error", e);
-        stop();
+        stopRef.current();
       };
 
       try {
@@ -129,25 +154,6 @@ export function useSpeechRecognition() {
     },
     [loadConfig]
   );
-
-  const stop = useCallback(() => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-    processorRef.current?.disconnect();
-    audioContextRef.current?.close();
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: "end" }));
-      wsRef.current.close();
-    }
-    wsRef.current = null;
-    processorRef.current = null;
-    audioContextRef.current = null;
-    streamRef.current = null;
-    setIsRecording(false);
-  }, []);
 
   return { isRecording, start, stop, config };
 }

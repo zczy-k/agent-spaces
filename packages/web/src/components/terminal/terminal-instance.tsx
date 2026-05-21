@@ -12,6 +12,13 @@ import { useTerminalStore, consumeSessionBuffer } from '@/stores/terminal';
 // Global registry to persist xterm instances across mount/unmount cycles
 const terminalRegistry = new Map<string, { xterm: Terminal; fit: FitAddon }>();
 
+function disableXtermMobileKeyboard(xterm: Terminal) {
+  const textarea = xterm.textarea;
+  if (!textarea) return;
+  textarea.inputMode = 'none';
+  textarea.setAttribute('inputmode', 'none');
+}
+
 export function disposeTerminalSession(sessionId: string) {
   const cached = terminalRegistry.get(sessionId);
   if (cached) {
@@ -79,6 +86,10 @@ export function TerminalInstance({ sessionId, workspaceId }: TerminalInstancePro
   const xtermRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
   const { resolvedTheme } = useTheme();
+  // Capture theme for terminal creation without adding it to the creation effect deps.
+  // A separate effect below syncs the theme on existing terminals.
+  const themeForCreateRef = useRef(resolvedTheme);
+  useEffect(() => { themeForCreateRef.current = resolvedTheme; }, [resolvedTheme]);
 
   const handleOutput = useCallback((data: unknown) => {
     const { sessionId: sid, data: output } = data as { sessionId: string; data: string };
@@ -111,7 +122,7 @@ export function TerminalInstance({ sessionId, workspaceId }: TerminalInstancePro
         fontFamily: 'Menlo, Monaco, "Courier New", monospace',
         rightClickSelectsWord: true,
         macOptionClickForcesSelection: true,
-        theme: resolvedTheme === 'dark' ? TERM_THEMES.dark : TERM_THEMES.light,
+        theme: themeForCreateRef.current === 'dark' ? TERM_THEMES.dark : TERM_THEMES.light,
       });
 
       fit = new FitAddon();
@@ -132,6 +143,7 @@ export function TerminalInstance({ sessionId, workspaceId }: TerminalInstancePro
 
       terminalRegistry.set(sessionId, { xterm, fit });
     }
+    disableXtermMobileKeyboard(xterm);
 
     // Restore buffered output supplied by the server for reconnected sessions.
     const buffer = consumeSessionBuffer(sessionId);

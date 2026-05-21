@@ -70,7 +70,7 @@ export function FileUpload({
     [value, onChange],
   );
 
-  const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept,
     maxFiles: maxFiles || undefined,

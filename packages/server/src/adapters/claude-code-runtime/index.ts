@@ -48,7 +48,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
     const stderrLines: string[] = [];
 
     try {
-      const queryOptions: ClaudeQueryOptions = {
+      const queryOptions: Options & { outputStyle?: string } = {
         cwd,
         model,
         maxTurns: options?.maxTurns,

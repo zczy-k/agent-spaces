@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import {
-  IconChevronDown,
   IconChevronUp,
   IconMicrophone,
   IconPaperclip,
@@ -32,10 +31,10 @@ import { useDropzone } from "react-dropzone";
 import { ComposerShell } from "@/components/composer/composer-shell";
 import { createSuggestionRenderer } from "@/components/composer/create-suggestion-renderer";
 import { createSlashExtension } from "@/components/composer/create-slash-extension";
+import { createAgentResourceExtension } from "@/components/composer/create-agent-resource-extension";
 import { createFileSearchExtension } from "@/components/composer/create-file-search-extension";
 import {
   BUILT_IN_AGENT_TOOLS,
-  type AgentConfig,
   type Attachment as MessageAttachment,
   type Channel,
   type Message,
@@ -106,6 +105,11 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const restoredChannelRef = useRef<string | null>(null);
   const agentsRef = useRef(agents);
   const channelRef = useRef(channel);
+  const activeSkillsRef = useRef<string[]>([]);
+  const activeResourcesRef = useRef<{
+    mcps: string[];
+    tools: { name: string; label: string }[];
+  }>({ mcps: [], tools: [] });
 
   const { saveDraft, clearDraft, updateChannel } = useChannelStore();
   const [addMemberOpen, setAddMemberOpen] = useState(false);
@@ -122,14 +126,18 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   }, [agents, mentionedAgentIds]);
 
   const activeAgent = mentionedAgents[0];
-  const activeMcps = getMcpLabels(activeAgent?.mcps);
-  const activeSkills = activeAgent?.skills ?? [];
+  const activeMcps = useMemo(() => getMcpLabels(activeAgent?.mcps), [activeAgent?.mcps]);
+  const activeSkills = useMemo(() => activeAgent?.skills ?? [], [activeAgent?.skills]);
   const activeTools = useMemo(() => {
     const enabledNames = new Set(activeAgent?.tools ?? []);
     return (BUILT_IN_AGENT_TOOLS ?? [])
       .filter((tool) => enabledNames.has(tool.name))
       .map((tool) => ({ ...tool, icon: getToolIcon(tool.name) }));
   }, [activeAgent?.tools]);
+  const activeResourceTools = useMemo(
+    () => activeTools.map((tool) => ({ name: tool.name, label: tool.label })),
+    [activeTools]
+  );
 
   const agentLastActive = useMemo(() => {
     const map = new Map<string, string>();
@@ -156,6 +164,13 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   useEffect(() => { onSendRef.current = onSend; }, [onSend]);
   useEffect(() => { agentsRef.current = agents; }, [agents]);
   useEffect(() => { channelRef.current = channel; }, [channel]);
+  useEffect(() => { activeSkillsRef.current = activeSkills; }, [activeSkills]);
+  useEffect(() => {
+    activeResourcesRef.current = {
+      mcps: activeMcps,
+      tools: activeResourceTools,
+    };
+  }, [activeMcps, activeResourceTools]);
 
   const scheduleDraftSave = useCallback(
     (content: string) => {
@@ -292,15 +307,18 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
 
   const slashExtension = useMemo(
     () =>
-      createSlashExtension(() => {
-        document.querySelector<HTMLInputElement>("[data-chat-file-input]")?.click();
-      }),
+      createSlashExtension(() => activeSkillsRef.current),
     []
   );
 
   const fileSearchExtension = useMemo(
     () => createFileSearchExtension(workspaceId),
     [workspaceId]
+  );
+
+  const agentResourceExtension = useMemo(
+    () => createAgentResourceExtension(() => activeResourcesRef.current),
+    []
   );
 
   const submitRef = useRef(submitCurrentMessage);
@@ -314,6 +332,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         Placeholder.configure({ placeholder: t('input.placeholder', { channel: channelName }) }),
         mentionExtension,
         slashExtension,
+        agentResourceExtension,
         fileSearchExtension,
       ],
       editorProps: {
@@ -361,7 +380,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         scheduleDraftSave(editor.getHTML());
       },
     },
-    [mentionExtension, slashExtension, fileSearchExtension, channelName]
+    [mentionExtension, slashExtension, agentResourceExtension, fileSearchExtension, channelName]
   );
 
   useEffect(() => { editorRef.current = editor; }, [editor]);

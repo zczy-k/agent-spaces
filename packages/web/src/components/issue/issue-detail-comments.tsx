@@ -1,10 +1,8 @@
 'use client';
 
-import { User } from 'lucide-react';
 import { IssueMessage } from '@/components/issue/issue-message';
 import { CommentNavigator } from '@/components/issue/comment-navigator';
-import type { IssueComment } from '@agent-spaces/shared';
-import type { Issue } from '@agent-spaces/shared';
+import type { IssueComment, Issue } from '@agent-spaces/shared';
 
 interface IssueDetailCommentsProps {
   issue: Issue;
@@ -21,7 +19,7 @@ interface IssueDetailCommentsProps {
 }
 
 export function IssueDetailComments({
-  issue,
+  issue: _issue,
   workspaceId,
   comments,
   expandedCommentIds,

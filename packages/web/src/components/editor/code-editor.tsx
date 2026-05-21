@@ -114,10 +114,10 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     }
   }, [activeFilePath, saveFile, workspaceId]);
   const handleSaveRef = useRef(handleSave);
-  handleSaveRef.current = handleSave;
+  useEffect(() => { handleSaveRef.current = handleSave; }, [handleSave]);
 
   const syncReadOnly = useCallback((editor: Monaco.editor.IStandaloneCodeEditor, readOnly: boolean) => {
-    editor.updateOptions({ readOnly, domReadOnly: readOnly });
+    editor.updateOptions({ readOnly });
   }, []);
 
   const registerNavigation = useCallback((editor: Monaco.editor.IStandaloneCodeEditor, monaco: typeof Monaco) => {
@@ -212,7 +212,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
       refreshFile(workspaceId, activeFilePath);
     }, 3000);
     return () => clearInterval(timer);
-  }, [activeFilePath, activeFile?.modified, isCommitDiff, workspaceId, refreshFile]);
+  }, [activeFile, activeFilePath, activeFile?.modified, isCommitDiff, workspaceId, refreshFile]);
 
   // Sync readOnly state with Monaco editor
   useEffect(() => {
@@ -249,7 +249,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     if (!activeFile || !activeFilePath) return;
 
     getOrCreateModel(workspaceId, activeFilePath, activeContent, workspaceRoot);
-  }, [activeFilePath, activeContent, workspaceId, workspaceRoot]);
+  }, [activeFile, activeFilePath, activeContent, workspaceId, workspaceRoot]);
 
   // Handle pending jump from search results
   useEffect(() => {
@@ -382,7 +382,6 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
                 padding: { top: 8 },
                 renderLineHighlight: "gutter",
                 readOnly: isReadOnly,
-                domReadOnly: isReadOnly,
                 wordWrap: wordWrap ? 'on' : 'off',
               }}
               theme={resolvedTheme === "dark" ? "vs-dark" : "vs"}
@@ -416,7 +415,6 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
                 padding: { top: 8 },
                 renderLineHighlight: "gutter",
                 readOnly: isReadOnly,
-                domReadOnly: isReadOnly,
                 wordWrap: wordWrap ? 'on' : 'off',
                 gotoLocation: {
                   multipleDefinitions: 'goto',

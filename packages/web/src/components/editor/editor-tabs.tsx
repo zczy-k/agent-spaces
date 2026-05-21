@@ -44,7 +44,7 @@ function getAbsolutePath(relPath: string, boundDirs: string[]): string {
   return base + '/' + relPath;
 }
 
-function getRelativePath(relPath: string, boundDirs: string[]): string {
+function getRelativePath(relPath: string, _boundDirs: string[]): string {
   return relPath;
 }
 
@@ -152,7 +152,7 @@ export function EditorTabs({ workspaceId }: EditorTabsProps) {
     togglePin, reorderFiles, closeOthers, closeToLeft, closeToRight } = useEditorStore();
   const workspaces = useWorkspaceStore((s) => s.workspaces);
   const workspace = workspaces.find((w) => w.id === workspaceId);
-  const boundDirs = workspace?.boundDirs ?? [];
+  const _boundDirs = workspace?.boundDirs ?? [];
   const t = useTranslations('editor');
   const [pendingClose, setPendingClose] = useState<{ path: string; name: string } | null>(null);
 
@@ -233,7 +233,7 @@ export function EditorTabs({ workspaceId }: EditorTabsProps) {
                 key={file.path}
                 file={file}
                 isActive={file.path === activeFilePath}
-                boundDirs={boundDirs}
+                boundDirs={_boundDirs}
                 commitDiffs={commitDiffs}
                 onClose={handleClose}
                 onClick={() => setActiveFile(workspaceId, file.path)}

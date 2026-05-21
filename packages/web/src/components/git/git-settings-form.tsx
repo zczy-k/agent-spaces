@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,7 @@ export function GitSettingsForm({ scope, workspaceId }: GitSettingsFormProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const loadConfig = async () => {
+  const loadConfig = useCallback(async () => {
     setLoading(true);
     try {
       const configUrl =
@@ -49,11 +49,11 @@ export function GitSettingsForm({ scope, workspaceId }: GitSettingsFormProps) {
       }
     } catch {}
     setLoading(false);
-  };
+  }, [scope, workspaceId]);
 
   useEffect(() => {
     loadConfig();
-  }, [scope, workspaceId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [scope, workspaceId, loadConfig]);
 
   const handleSave = async () => {
     setSaving(true);
