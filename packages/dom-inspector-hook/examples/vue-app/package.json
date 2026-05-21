@@ -1,0 +1,17 @@
+{
+  "name": "vue-app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite"
+  },
+  "dependencies": {
+    "vue": "^3.5.0",
+    "dom-inspector-hook": "file:../..",
+    "code-inspector-plugin": "^1.5.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.0",
+    "vite": "^6.3.0"
+  }
+}

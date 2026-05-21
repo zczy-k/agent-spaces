@@ -1,0 +1,32 @@
+{
+  "name": "dom-inspector-hook",
+  "version": "0.2.1",
+  "description": "Capture element source info via code-inspector-plugin and POST to custom URL",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch"
+  },
+  "peerDependencies": {
+    "code-inspector-plugin": ">=0.7.0"
+  },
+  "devDependencies": {
+    "code-inspector-plugin": "^1.5.1",
+    "tsup": "^8.4.0",
+    "typescript": "^5.7.0"
+  },
+  "license": "MIT"
+}
