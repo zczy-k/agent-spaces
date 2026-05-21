@@ -26,6 +26,7 @@ export default function NotionEditor({ content, onChange, theme = 'sans' }: Noti
   const menuRef = useRef<HTMLDivElement>(null);
 
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },

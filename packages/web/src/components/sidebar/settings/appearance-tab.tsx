@@ -30,6 +30,8 @@ const BUILTIN_FONTS = [
 
 const STORAGE_KEY = "customFont";
 const CUSTOM_FONTS_KEY = "customFonts";
+const FONT_VARIABLES = ["--font-app", "--font-sans", "--font-heading", "--font-mid"];
+const DEFAULT_FONT_FAMILY = `"Helvetica Neue", Helvetica, Arial, sans-serif`;
 
 interface CustomFont {
   name: string;
@@ -37,27 +39,29 @@ interface CustomFont {
 }
 
 function getFontFamily(value: string, customFonts: CustomFont[]) {
-  if (!value) return "";
+  if (!value) return DEFAULT_FONT_FAMILY;
   const builtin = BUILTIN_FONTS.find(f => f.value === value);
   if (builtin) return value;
   const custom = customFonts.find(f => f.name === value);
-  if (custom) return `"${value.replace(/\.\w+$/, '')}"`;
+  if (custom) return `"${getCustomFontFamilyName(value)}"`;
   return value;
 }
 
 function applyFont(value: string, customFonts: CustomFont[]) {
-  if (!value) {
-    document.documentElement.style.removeProperty("font-family");
-    return;
-  }
   const family = getFontFamily(value, customFonts);
-  document.documentElement.style.setProperty("font-family", family);
+  for (const variable of FONT_VARIABLES) {
+    document.documentElement.style.setProperty(variable, family);
+  }
+}
+
+function getCustomFontFamilyName(name: string) {
+  return name.replace(/\.\w+$/, '');
 }
 
 function loadFontFace(name: string, url: string) {
   const id = `font-${name.replace(/[^a-zA-Z0-9]/g, '-')}`;
   if (document.getElementById(id)) return;
-  const fontName = name.replace(/\.\w+$/, '');
+  const fontName = getCustomFontFamilyName(name);
   const style = document.createElement("style");
   style.id = id;
   style.textContent = `@font-face { font-family: "${fontName}"; src: url("${url}"); }`;
@@ -120,9 +124,8 @@ export function AppearanceTab() {
     for (const cf of customFonts) {
       loadFontFace(cf.name, cf.url);
     }
-    if (font) applyFont(font, customFonts);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    applyFont(font, customFonts);
+  }, [customFonts, font]);
 
   const handleFontChange = useCallback((value: string) => {
     setFont(value);

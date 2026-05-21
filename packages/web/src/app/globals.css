@@ -5,12 +5,13 @@
 
 @theme inline {
   /* Fonts */
+  --font-app: "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-dm-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-outfit: "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-poppins: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --font-sans: var(--font-dm-sans), "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --font-heading: var(--font-outfit), "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --font-mid: var(--font-poppins), "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-sans: var(--font-app);
+  --font-heading: var(--font-app);
+  --font-mid: var(--font-app);
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 
   /* Colors */
@@ -154,7 +155,7 @@
     height: var(--app-content-height);
   }
   h1, h2, h3 {
-    font-family: var(--font-outfit), "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-family: var(--font-heading);
   }
 }
 
