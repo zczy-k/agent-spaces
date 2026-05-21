@@ -12,7 +12,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: write
 
     steps:
@@ -46,6 +46,35 @@ jobs:
         platforms: linux/amd64,linux/arm64
         cache-from: type=gha
         cache-to: type=gha,mode=max
+
+    - name: Build Linux AMD64 image for tar export
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        file: ./Dockerfile.server
+        load: true
+        tags: agent_spaces-server:${{ github.ref_name }}
+        platforms: linux/amd64
+        cache-from: type=gha
+
+    - name: Export Docker image tar
+      run: |
+        mkdir -p dist
+        TAR_PATH="dist/agent_spaces-server-${GITHUB_REF_NAME}-linux-amd64.tar"
+        docker save --output "$TAR_PATH" "agent_spaces-server:${GITHUB_REF_NAME}"
+        sha256sum "$TAR_PATH" > "$TAR_PATH.sha256"
+        ls -lh "$TAR_PATH" "$TAR_PATH.sha256"
+
+    - name: Upload Docker tar to GitHub Release
+      run: |
+        TAG="${GITHUB_REF_NAME}"
+        gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --generate-notes
+        gh release upload "$TAG" \
+          "dist/agent_spaces-server-${TAG}-linux-amd64.tar" \
+          "dist/agent_spaces-server-${TAG}-linux-amd64.tar.sha256" \
+          --clobber
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   make-public:
     needs: [build]
