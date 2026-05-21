@@ -34,8 +34,9 @@ class NavButton extends StatelessWidget {
 
 class MoreMenuButton extends ConsumerWidget {
   final VoidCallback? onNewTab;
+  final String? activeTabId;
 
-  const MoreMenuButton({super.key, this.onNewTab});
+  const MoreMenuButton({super.key, this.onNewTab, this.activeTabId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -65,6 +66,52 @@ class MoreMenuButton extends ConsumerWidget {
             ),
           ),
         const PopupMenuItem(
+          value: 'go_back',
+          height: 36,
+          child: Row(
+            children: [
+              Icon(Icons.arrow_back_ios, size: 16),
+              SizedBox(width: 8),
+              Text('后退', style: TextStyle(fontSize: 13)),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 'go_forward',
+          height: 36,
+          child: Row(
+            children: [
+              Icon(Icons.arrow_forward_ios, size: 16),
+              SizedBox(width: 8),
+              Text('前进', style: TextStyle(fontSize: 13)),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 'refresh',
+          height: 36,
+          child: Row(
+            children: [
+              Icon(Icons.refresh, size: 16),
+              SizedBox(width: 8),
+              Text('刷新', style: TextStyle(fontSize: 13)),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(),
+        const PopupMenuItem(
+          value: 'split',
+          height: 36,
+          child: Row(
+            children: [
+              Icon(Icons.view_column, size: 16),
+              SizedBox(width: 8),
+              Text('分屏布局', style: TextStyle(fontSize: 13)),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(),
+        const PopupMenuItem(
           value: 'bookmarks',
           height: 36,
           child: Row(
@@ -90,6 +137,14 @@ class MoreMenuButton extends ConsumerWidget {
       onSelected: (value) {
         if (value == 'new_tab') {
           onNewTab?.call();
+        } else if (value == 'go_back') {
+          if (activeTabId != null) WebViewService.instance.goBack(activeTabId!);
+        } else if (value == 'go_forward') {
+          if (activeTabId != null) WebViewService.instance.goForward(activeTabId!);
+        } else if (value == 'refresh') {
+          if (activeTabId != null) WebViewService.instance.reload(activeTabId!);
+        } else if (value == 'split') {
+          showSplitMenu(context, ref);
         } else if (value == 'bookmarks') {
           context.push('/bookmarks');
         } else if (value == 'settings') {
@@ -126,27 +181,6 @@ class FaviconIcon extends StatelessWidget {
           color: Theme.of(context).colorScheme.onSurfaceVariant,
         ),
       ),
-    );
-  }
-}
-
-class NavigationButtons extends StatelessWidget {
-  final String? activeTabId;
-  const NavigationButtons({super.key, this.activeTabId});
-
-  void _goBack() { if (activeTabId != null) WebViewService.instance.goBack(activeTabId!); }
-  void _goForward() { if (activeTabId != null) WebViewService.instance.goForward(activeTabId!); }
-  void _reload() { if (activeTabId != null) WebViewService.instance.reload(activeTabId!); }
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        NavButton(icon: Icons.arrow_back_ios, tooltip: '后退', onPressed: _goBack),
-        NavButton(icon: Icons.arrow_forward_ios, tooltip: '前进', onPressed: _goForward),
-        NavButton(icon: Icons.refresh, tooltip: '刷新', onPressed: _reload),
-      ],
     );
   }
 }

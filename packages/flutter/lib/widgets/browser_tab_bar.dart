@@ -54,6 +54,7 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
             const Spacer(),
             MoreMenuButton(
               onNewTab: () => showNewTabDialog(context, notifier),
+              activeTabId: state.activeTabId,
             ),
           ],
         ),
@@ -65,7 +66,7 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
       color: theme.colorScheme.surfaceContainer,
       child: Row(
         children: [
-          NavigationButtons(activeTabId: state.activeTabId),
+          const SizedBox.shrink(),
           Expanded(
             child: ButtonsTabBar(
               controller: _controller,
