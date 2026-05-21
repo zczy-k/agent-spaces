@@ -9,27 +9,6 @@ import 'tab_widgets.dart';
 import 'tab_dialogs.dart';
 import 'console_sheet.dart';
 
-class NavigationButtons extends StatelessWidget {
-  final String? activeTabId;
-  const NavigationButtons({super.key, this.activeTabId});
-
-  void _goBack() { if (activeTabId != null) WebViewService.instance.goBack(activeTabId!); }
-  void _goForward() { if (activeTabId != null) WebViewService.instance.goForward(activeTabId!); }
-  void _reload() { if (activeTabId != null) WebViewService.instance.reload(activeTabId!); }
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        NavButton(icon: Icons.arrow_back_ios, tooltip: '后退', onPressed: _goBack),
-        NavButton(icon: Icons.arrow_forward_ios, tooltip: '前进', onPressed: _goForward),
-        NavButton(icon: Icons.refresh, tooltip: '刷新', onPressed: _reload),
-      ],
-    );
-  }
-}
-
 void showTabContextMenu(
   BuildContext context,
   WidgetRef ref,
@@ -185,57 +164,4 @@ void showTabContextMenu(
       showSplitMenu(context, ref);
     }
   });
-}
-
-void showSplitMenu(BuildContext context, WidgetRef ref) {
-  final current = ref.read(browserProvider).splitLayout;
-  final notifier = ref.read(browserProvider.notifier);
-  showDialog(
-    context: context,
-    builder: (ctx) => SimpleDialog(
-      title: const Text('分屏布局', style: TextStyle(fontSize: 15)),
-      children: [
-        _splitOption(ctx, ref, notifier, SplitLayout.single, '重置布局', Icons.crop_square, current),
-        _splitOption(ctx, ref, notifier, SplitLayout.horizontal2, '左右两分屏', Icons.view_column, current),
-        _splitOption(ctx, ref, notifier, SplitLayout.vertical2, '上下两分屏', Icons.view_agenda, current),
-        _splitOption(ctx, ref, notifier, SplitLayout.horizontal3, '左右三分屏', Icons.view_carousel, current),
-        _splitOption(ctx, ref, notifier, SplitLayout.quad, '四宫格', Icons.grid_view, current),
-      ],
-    ),
-  );
-}
-
-SimpleDialogOption _splitOption(
-  BuildContext ctx,
-  WidgetRef ref,
-  BrowserNotifier notifier,
-  SplitLayout layout,
-  String label,
-  IconData icon,
-  SplitLayout current,
-) {
-  final selected = layout == current;
-  return SimpleDialogOption(
-    onPressed: () {
-      notifier.setSplitLayout(layout);
-      Navigator.of(ctx).pop();
-    },
-    child: Row(
-      children: [
-        Icon(icon, size: 18),
-        const SizedBox(width: 12),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-          ),
-        ),
-        if (selected) ...[
-          const Spacer(),
-          Icon(Icons.check, size: 16, color: Theme.of(ctx).colorScheme.primary),
-        ],
-      ],
-    ),
-  );
 }
