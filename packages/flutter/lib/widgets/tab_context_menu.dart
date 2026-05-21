@@ -13,26 +13,18 @@ class NavigationButtons extends StatelessWidget {
   final String? activeTabId;
   const NavigationButtons({super.key, this.activeTabId});
 
+  void _goBack() { if (activeTabId != null) WebViewService.instance.goBack(activeTabId!); }
+  void _goForward() { if (activeTabId != null) WebViewService.instance.goForward(activeTabId!); }
+  void _reload() { if (activeTabId != null) WebViewService.instance.reload(activeTabId!); }
+
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        NavButton(
-          icon: Icons.arrow_back_ios,
-          tooltip: '后退',
-          onPressed: () => WebViewService.instance.goBack(activeTabId),
-        ),
-        NavButton(
-          icon: Icons.arrow_forward_ios,
-          tooltip: '前进',
-          onPressed: () => WebViewService.instance.goForward(activeTabId),
-        ),
-        NavButton(
-          icon: Icons.refresh,
-          tooltip: '刷新',
-          onPressed: () => WebViewService.instance.reload(activeTabId),
-        ),
+        NavButton(icon: Icons.arrow_back_ios, tooltip: '后退', onPressed: _goBack),
+        NavButton(icon: Icons.arrow_forward_ios, tooltip: '前进', onPressed: _goForward),
+        NavButton(icon: Icons.refresh, tooltip: '刷新', onPressed: _reload),
       ],
     );
   }
