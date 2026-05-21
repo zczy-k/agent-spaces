@@ -146,6 +146,10 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html[data-custom-font="true"] body,
+  html[data-custom-font="true"] body :where(:not(.monaco-editor, .monaco-editor *, .xterm, .xterm *)) {
+    font-family: var(--font-app) !important;
+  }
   body {
     @apply bg-background text-foreground;
     padding-top: var(--app-top-inset);

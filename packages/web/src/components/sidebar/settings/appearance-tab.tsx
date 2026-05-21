@@ -30,7 +30,7 @@ const BUILTIN_FONTS = [
 
 const STORAGE_KEY = "customFont";
 const CUSTOM_FONTS_KEY = "customFonts";
-const FONT_VARIABLES = ["--font-app", "--font-sans", "--font-heading", "--font-mid"];
+const FONT_VARIABLES = ["--font-app", "--font-sans", "--font-heading", "--font-mid", "--font-mono"];
 const DEFAULT_FONT_FAMILY = `"Helvetica Neue", Helvetica, Arial, sans-serif`;
 
 interface CustomFont {
@@ -49,6 +49,7 @@ function getFontFamily(value: string, customFonts: CustomFont[]) {
 
 function applyFont(value: string, customFonts: CustomFont[]) {
   const family = getFontFamily(value, customFonts);
+  document.documentElement.dataset.customFont = value ? "true" : "false";
   for (const variable of FONT_VARIABLES) {
     document.documentElement.style.setProperty(variable, family);
   }
