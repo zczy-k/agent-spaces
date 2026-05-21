@@ -188,12 +188,17 @@ function prepareSse(res: Response): void {
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders?.();
+  res.socket?.setNoDelay?.(true);
 }
 
 function writeSse(res: Response, event: string, data: unknown): void {
   res.write(`event: ${event}\n`);
   res.write(`data: ${JSON.stringify(data)}\n\n`);
+  // Force flush — compression middleware and some proxies buffer small writes
+  const flushable = res as Response & { flush?: () => void };
+  if (typeof flushable.flush === 'function') flushable.flush();
 }
 
 function resolveUserPrompt(body: AgentSseRequestBody): string {

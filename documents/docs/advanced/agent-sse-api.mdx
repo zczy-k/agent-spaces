@@ -56,19 +56,22 @@ POST /api/agent-sse/run
 
 ```
 event: session
-data: {"sessionId": "abc-123", "agentId": "agent-1"}
+data: {"session":{"id":"abc-123","role":"agent","presetId":"agent-1"},"workspaceId":"ws-1"}
+
+event: status
+data: {"agentId":"abc-123","status":"active"}
 
 event: output
-data: {"type": "text", "content": "正在分析代码..."}
+data: {"type":"output","line":"正在分析代码..."}
 
 event: tool_use
-data: {"tool": "Read", "input": {"file_path": "/src/main.ts"}}
+data: {"type":"tool_use","id":"tool-1","name":"Read","input":{"file_path":"/src/main.ts"},"line":"读取文件..."}
 
 event: tool_result
-data: {"tool": "Read", "output": "文件内容..."}
+data: {"type":"tool_result","toolUseId":"tool-1","result":"文件内容..."}
 
 event: done
-data: {"status": "completed", "tokens": {"input": 1500, "output": 800}}
+data: {"agentId":"abc-123","success":true,"summary":"分析完成","output":["正在分析代码..."],"usage":{"inputTokens":1500,"outputTokens":800,"totalTokens":2300},"durationMs":5234}
 ```
 
 ## 使用示例
@@ -123,3 +126,26 @@ const reader = response.body.getReader();
 - **外部工具集成** — 从 IDE 插件、CLI 工具或其他应用触发 Agent
 - **API 测试** — 快速测试 Agent 的响应和行为
 - **自动化脚本** — 编写脚本批量调用 Agent 处理任务
+
+## 流式行为
+
+不同 Agent 运行时的 SSE 事件流行为不同：
+
+| 运行时 | 实时流式 | 说明 |
+|--------|---------|------|
+| `claude-code` | ✅ | 工具调用、思考、输出均实时推送 |
+| `codex` | ✅ | 实时推送事件 |
+| `langchain` | ✅ | 实时推送事件 |
+| `open-agent-sdk`（默认） | ❌ | SDK `prompt()` 为阻塞调用，所有事件在执行结束后一次性推送 |
+
+:::caution
+`open-agent-sdk` 运行时执行期间不会发送 `output`/`tool_use`/`tool_result` 事件，仅在执行结束后发送单条 `output` 事件和 `done` 事件。如需实时流式输出，请使用 `claude-code`、`codex` 或 `langchain` 运行时。
+:::
+
+## 注意事项
+
+- **请求方法**：必须使用 `POST`（不支持 `GET`，因此不能使用浏览器 `EventSource` API）
+- **直接连接后端**：SSE 流请直接连接后端 `http://localhost:3100`，避免经过 Next.js 代理可能导致的响应缓冲
+- **curl 测试**：使用 `-N` 参数禁用缓冲：`curl -N -X POST ...`
+- **超时**：Agent 执行可能耗时较长，客户端应设置足够的超时时间（建议 5 分钟以上）
+- **断开处理**：客户端断开连接后，后端会自动停止 Agent 执行
