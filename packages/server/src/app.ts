@@ -169,6 +169,37 @@ app.post('/api/upload/avatar', async (req, res) => {
   res.json({ url: `/static/avatars/${name}` });
 });
 
+// Font upload
+const FONT_EXTS = new Set(['.ttf', '.otf', '.woff', '.woff2']);
+const fontsDir = join(publicDir, 'fonts');
+if (!existsSync(fontsDir)) mkdirSync(fontsDir, { recursive: true });
+
+app.get('/api/fonts', (_req, res) => {
+  if (!existsSync(fontsDir)) { res.json([]); return; }
+  const fonts = readdirSync(fontsDir).filter(f => FONT_EXTS.has(extname(f).toLowerCase()));
+  res.json(fonts.map(f => ({ name: f, url: `/static/fonts/${f}` })));
+});
+
+app.post('/api/fonts/upload', async (req, res) => {
+  const { name, content } = req.body as { name?: string; content?: string };
+  if (!name || !content) { res.status(400).json({ error: 'name and content are required' }); return; }
+  const ext = extname(name).toLowerCase();
+  if (!FONT_EXTS.has(ext)) { res.status(400).json({ error: 'Unsupported font format' }); return; }
+  const safeName = basename(name).replace(/[^a-zA-Z0-9._-]/g, '_');
+  await writeFile(join(fontsDir, safeName), Buffer.from(content, 'base64'));
+  res.json({ name: safeName, url: `/static/fonts/${safeName}` });
+});
+
+app.delete('/api/fonts/:name', (req, res) => {
+  const name = basename(req.params.name);
+  const ext = extname(name).toLowerCase();
+  if (!FONT_EXTS.has(ext)) { res.status(400).json({ error: 'Invalid font file' }); return; }
+  const filePath = join(fontsDir, name);
+  if (!existsSync(filePath)) { res.status(404).json({ error: 'Font not found' }); return; }
+  import('node:fs').then(fs => fs.unlinkSync(filePath));
+  res.json({ ok: true });
+});
+
 // User settings
 app.get('/api/user/settings', (_req, res) => {
   const settings = getUserSettings();

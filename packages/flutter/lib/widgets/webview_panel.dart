@@ -6,6 +6,7 @@ import '../providers/browser_provider.dart';
 import '../providers/settings_provider.dart';
 import 'home_page.dart';
 import 'webview_instance.dart';
+import 'split_layout.dart';
 
 class WebViewPanel extends ConsumerStatefulWidget {
   const WebViewPanel({super.key});
@@ -74,7 +75,6 @@ class _WebViewPanelState extends ConsumerState<WebViewPanel> {
     final webViewDebuggingEnabled = ref.watch(
       settingsProvider.select((settings) => settings.webViewDebuggingEnabled),
     );
-    final activeIndex = state.tabs.indexWhere((t) => t.id == state.activeTabId);
 
     Widget child;
     if (state.tabs.isEmpty) {
@@ -82,7 +82,8 @@ class _WebViewPanelState extends ConsumerState<WebViewPanel> {
         onServerFound: _openServer,
         homeUrl: state.homeUrl,
       );
-    } else {
+    } else if (state.splitLayout == SplitLayout.single) {
+      final activeIndex = state.tabs.indexWhere((t) => t.id == state.activeTabId);
       child = IndexedStack(
         index: activeIndex >= 0 ? activeIndex : 0,
         children: state.tabs.map((tab) {
@@ -99,6 +100,21 @@ class _WebViewPanelState extends ConsumerState<WebViewPanel> {
             },
           );
         }).toList(),
+      );
+    } else {
+      child = buildSplitLayout(
+        context: context,
+        layout: state.splitLayout,
+        visibleTabs: state.visibleTabs,
+        webViewDebuggingEnabled: webViewDebuggingEnabled,
+        onTitleChanged: (tabId, title, url, faviconUrl) {
+          ref.read(browserProvider.notifier).updateTab(
+                tabId,
+                title: title,
+                url: url,
+                faviconUrl: faviconUrl,
+              );
+        },
       );
     }
 

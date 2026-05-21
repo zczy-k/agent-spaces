@@ -76,7 +76,18 @@
     "speechSecretKey": "Secret Key",
     "speechNoConfig": "暂无语音识别配置",
     "speechAddConfig": "添加配置",
-    "git": "Git"
+    "git": "Git",
+    "font": "字体",
+    "fontPlaceholder": "默认字体",
+    "fontSearch": "搜索字体...",
+    "addCustomFont": "添加自定义字体",
+    "addCustomFontDesc": "上传字体文件或输入在线字体 URL",
+    "fontUpload": "上传字体",
+    "fontOnlineUrl": "在线字体",
+    "fontUploadPlaceholder": "拖拽字体文件到此处，支持 .ttf .otf .woff .woff2",
+    "fontUrlHint": "输入字体文件的直链 URL（如 Google Fonts 的 woff2 文件地址）",
+    "fontAdded": "字体已添加",
+    "fontAddFailed": "字体添加失败"
   },
   "login": {
     "subtitle": "输入密钥以继续",

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/browser_provider.dart';
-import '../services/webview_service.dart';
 import 'tab_widgets.dart';
 import 'tab_context_menu.dart';
 import 'tab_dialogs.dart';
@@ -66,23 +65,7 @@ class _BrowserTabBarState extends ConsumerState<BrowserTabBar>
       color: theme.colorScheme.surfaceContainer,
       child: Row(
         children: [
-          NavButton(
-            icon: Icons.arrow_back_ios,
-            tooltip: '后退',
-            onPressed: () => WebViewService.instance.goBack(state.activeTabId),
-          ),
-          NavButton(
-            icon: Icons.arrow_forward_ios,
-            tooltip: '前进',
-            onPressed: () =>
-                WebViewService.instance.goForward(state.activeTabId),
-          ),
-          NavButton(
-            icon: Icons.refresh,
-            tooltip: '刷新',
-            onPressed: () =>
-                WebViewService.instance.reload(state.activeTabId),
-          ),
+          NavigationButtons(activeTabId: state.activeTabId),
           Expanded(
             child: ButtonsTabBar(
               controller: _controller,

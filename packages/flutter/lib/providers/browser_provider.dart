@@ -3,15 +3,25 @@ import 'package:uuid/uuid.dart';
 import '../models/browser_tab.dart';
 import '../services/storage_service.dart';
 
+enum SplitLayout {
+  single,
+  horizontal2,
+  vertical2,
+  horizontal3,
+  quad,
+}
+
 class BrowserState {
   final List<BrowserTab> tabs;
   final String activeTabId;
   final String homeUrl;
+  final SplitLayout splitLayout;
 
   const BrowserState({
     this.tabs = const [],
     this.activeTabId = '',
     this.homeUrl = 'http://localhost:3000',
+    this.splitLayout = SplitLayout.single,
   });
 
   BrowserTab? get activeTab {
@@ -22,15 +32,41 @@ class BrowserState {
     }
   }
 
+  int get splitCount => switch (splitLayout) {
+        SplitLayout.single => 1,
+        SplitLayout.horizontal2 => 2,
+        SplitLayout.vertical2 => 2,
+        SplitLayout.horizontal3 => 3,
+        SplitLayout.quad => 4,
+      };
+
+  List<BrowserTab> get visibleTabs {
+    if (splitLayout == SplitLayout.single) {
+      final idx = tabs.indexWhere((t) => t.id == activeTabId);
+      return [tabs[idx >= 0 ? idx : 0]];
+    }
+    final activeIdx = tabs.indexWhere((t) => t.id == activeTabId).clamp(0, tabs.length - 1);
+    final result = <BrowserTab>[];
+    for (int i = 0; i < splitCount && i + activeIdx < tabs.length; i++) {
+      result.add(tabs[activeIdx + i]);
+    }
+    while (result.length < splitCount && result.length < tabs.length) {
+      result.add(tabs[result.length]);
+    }
+    return result;
+  }
+
   BrowserState copyWith({
     List<BrowserTab>? tabs,
     String? activeTabId,
     String? homeUrl,
+    SplitLayout? splitLayout,
   }) {
     return BrowserState(
       tabs: tabs ?? this.tabs,
       activeTabId: activeTabId ?? this.activeTabId,
       homeUrl: homeUrl ?? this.homeUrl,
+      splitLayout: splitLayout ?? this.splitLayout,
     );
   }
 }
@@ -115,6 +151,10 @@ class BrowserNotifier extends StateNotifier<BrowserState> {
   void setHomeUrl(String url) {
     state = state.copyWith(homeUrl: url);
     StorageService.saveHomeUrl(url);
+  }
+
+  void setSplitLayout(SplitLayout layout) {
+    state = state.copyWith(splitLayout: layout);
   }
 
   void _persistTabs() {
