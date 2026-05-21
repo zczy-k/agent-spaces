@@ -1,4 +1,3 @@
-import 'package:docking/docking.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -33,7 +32,7 @@ class NavButton extends StatelessWidget {
   }
 }
 
-List<TabbedViewMenuItem> buildBrowserMenuItems(
+List<PopupMenuEntry<VoidCallback>> buildBrowserMenuItems(
   BuildContext context,
   WidgetRef ref, {
   required String? activeTabId,
@@ -48,30 +47,30 @@ List<TabbedViewMenuItem> buildBrowserMenuItems(
 
   return [
     if (onNewTab != null)
-      TabbedViewMenuItem(text: '新建标签页', onSelection: onNewTab),
-    TabbedViewMenuItem(
-      text: '后退',
-      onSelection: () => runWithActiveTab(WebViewService.instance.goBack),
+      PopupMenuItem<VoidCallback>(value: onNewTab, child: const Text('新建标签页')),
+    PopupMenuItem<VoidCallback>(
+      value: () => runWithActiveTab(WebViewService.instance.goBack),
+      child: const Text('后退'),
     ),
-    TabbedViewMenuItem(
-      text: '前进',
-      onSelection: () => runWithActiveTab(WebViewService.instance.goForward),
+    PopupMenuItem<VoidCallback>(
+      value: () => runWithActiveTab(WebViewService.instance.goForward),
+      child: const Text('前进'),
     ),
-    TabbedViewMenuItem(
-      text: '刷新',
-      onSelection: () => runWithActiveTab(WebViewService.instance.reload),
+    PopupMenuItem<VoidCallback>(
+      value: () => runWithActiveTab(WebViewService.instance.reload),
+      child: const Text('刷新'),
     ),
-    TabbedViewMenuItem(
-      text: '分屏布局',
-      onSelection: () => showSplitMenu(context, ref),
+    PopupMenuItem<VoidCallback>(
+      value: () => showSplitMenu(context, ref),
+      child: const Text('分屏布局'),
     ),
-    TabbedViewMenuItem(
-      text: '书签',
-      onSelection: () => context.push('/bookmarks'),
+    PopupMenuItem<VoidCallback>(
+      value: () => context.push('/bookmarks'),
+      child: const Text('书签'),
     ),
-    TabbedViewMenuItem(
-      text: '设置',
-      onSelection: () => context.push('/settings'),
+    PopupMenuItem<VoidCallback>(
+      value: () => context.push('/settings'),
+      child: const Text('设置'),
     ),
   ];
 }

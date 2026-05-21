@@ -10,7 +10,7 @@ typedef TitleChangedCallback =
 typedef TabSelectedCallback = void Function(String tabId);
 typedef TabClosedCallback = void Function(String tabId);
 typedef DockingMenuBuilder =
-    List<TabbedViewMenuItem> Function(BuildContext context);
+    List<PopupMenuEntry<VoidCallback>> Function(BuildContext context);
 
 Widget _buildWebViewPane(
   BrowserTab tab,
@@ -27,8 +27,8 @@ Widget _buildWebViewPane(
 TabbedViewThemeData _buildDockingTabTheme(ThemeData theme) {
   final colorScheme = theme.colorScheme;
   final borderColor = colorScheme.outlineVariant.withValues(alpha: 0.8);
-  final tabRadius = BorderRadius.circular(10);
-  final selectedIndicator = BorderSide(color: colorScheme.primary, width: 3);
+  final tabRadius = BorderRadius.circular(8);
+  final selectedIndicator = BorderSide(color: colorScheme.primary, width: 2);
 
   return TabbedViewThemeData.minimalist()
     ..materialDesignIcons()
@@ -36,12 +36,12 @@ TabbedViewThemeData _buildDockingTabTheme(ThemeData theme) {
     ..tabsArea.border = Border(bottom: BorderSide(color: borderColor))
     ..tabsArea.buttonsAreaDecoration = BoxDecoration(color: colorScheme.surface)
     ..tabsArea.buttonsAreaPadding = const EdgeInsets.symmetric(
-      horizontal: 8,
-      vertical: 6,
+      horizontal: 6,
+      vertical: 4,
     )
-    ..tabsArea.buttonPadding = const EdgeInsets.all(6)
-    ..tabsArea.buttonIconSize = 18
-    ..tabsArea.buttonsGap = 4
+    ..tabsArea.buttonPadding = const EdgeInsets.all(4)
+    ..tabsArea.buttonIconSize = 16
+    ..tabsArea.buttonsGap = 2
     ..tabsArea.normalButtonColor = colorScheme.onSurfaceVariant
     ..tabsArea.hoverButtonColor = colorScheme.onSurface
     ..tabsArea.disabledButtonColor = colorScheme.onSurface.withValues(
@@ -49,15 +49,15 @@ TabbedViewThemeData _buildDockingTabTheme(ThemeData theme) {
     )
     ..tabsArea.hoverButtonBackground = BoxDecoration(
       color: colorScheme.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(6),
     )
     ..tab.textStyle = theme.textTheme.labelLarge?.copyWith(
       color: colorScheme.onSurfaceVariant,
       fontWeight: FontWeight.w500,
     )
-    ..tab.padding = const EdgeInsets.fromLTRB(14, 9, 8, 7)
-    ..tab.paddingWithoutButton = const EdgeInsets.fromLTRB(14, 9, 14, 7)
-    ..tab.margin = const EdgeInsets.fromLTRB(6, 6, 0, 0)
+    ..tab.padding = const EdgeInsets.fromLTRB(10, 6, 6, 5)
+    ..tab.paddingWithoutButton = const EdgeInsets.fromLTRB(10, 6, 10, 5)
+    ..tab.margin = const EdgeInsets.fromLTRB(4, 4, 0, 0)
     ..tab.decoration = BoxDecoration(
       color: colorScheme.surfaceContainer,
       borderRadius: tabRadius,
@@ -73,13 +73,13 @@ TabbedViewThemeData _buildDockingTabTheme(ThemeData theme) {
     ..tab.normalButtonColor = colorScheme.onSurfaceVariant
     ..tab.hoverButtonColor = colorScheme.onSurface
     ..tab.disabledButtonColor = colorScheme.onSurface.withValues(alpha: 0.32)
-    ..tab.buttonIconSize = 18
-    ..tab.buttonPadding = const EdgeInsets.all(4)
-    ..tab.buttonsOffset = 8
-    ..tab.buttonsGap = 4
+    ..tab.buttonIconSize = 16
+    ..tab.buttonPadding = const EdgeInsets.all(3)
+    ..tab.buttonsOffset = 6
+    ..tab.buttonsGap = 2
     ..tab.hoverButtonBackground = BoxDecoration(
       color: colorScheme.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(6),
     )
     ..tab.highlightedStatus = TabStatusThemeData(
       decoration: BoxDecoration(
@@ -97,6 +97,29 @@ TabbedViewThemeData _buildDockingTabTheme(ThemeData theme) {
         borderRadius: tabRadius,
       ),
     );
+}
+
+void _showDockingMenu(BuildContext context, DockingMenuBuilder menuBuilder) {
+  final overlay = Overlay.of(context).context.findRenderObject();
+  final renderBox = context.findRenderObject();
+  if (overlay is! RenderBox || renderBox is! RenderBox) return;
+
+  final offset = renderBox.localToGlobal(Offset.zero, ancestor: overlay);
+  final position = RelativeRect.fromRect(
+    Rect.fromLTWH(
+      offset.dx,
+      offset.dy + renderBox.size.height,
+      renderBox.size.width,
+      renderBox.size.height,
+    ),
+    Offset.zero & overlay.size,
+  );
+
+  showMenu<VoidCallback>(
+    context: context,
+    position: position,
+    items: menuBuilder(context),
+  ).then((action) => action?.call());
 }
 
 class SplitLayoutView extends StatefulWidget {
@@ -172,7 +195,7 @@ class _SplitLayoutViewState extends State<SplitLayoutView> {
           TabButton(
             icon: IconProvider.data(Icons.more_vert),
             toolTip: '更多',
-            menuBuilder: widget.onBuildMenu,
+            onPressed: () => _showDockingMenu(context, widget.onBuildMenu),
           ),
         ],
         draggable: true,

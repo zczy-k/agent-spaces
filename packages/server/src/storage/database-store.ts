@@ -60,7 +60,7 @@ export function getNode(workspaceId: string, nodeId: string): DocNode | null {
   return row ? rowToNode(row) : null;
 }
 
-export function createNode(workspaceId: string, node: Partial<DocNode> & { parentId?: string | null }): DocNode {
+export function createNode(workspaceId: string, node: Partial<DocNode>): DocNode {
   const database = openDb();
   const id = node.id || uuid();
   const now = Date.now();
@@ -73,7 +73,7 @@ export function createNode(workspaceId: string, node: Partial<DocNode> & { paren
     node.icon || '📝',
     node.cover || '',
     node.content || '',
-    node.parentId ?? node.parent_id ?? null,
+    node.parentId ?? null,
     node.isTrash ? 1 : 0,
     node.createdAt || now,
     node.updatedAt || now
@@ -101,7 +101,7 @@ export function deleteNode(workspaceId: string, nodeId: string): boolean {
   const database = openDb();
   const result = database.prepare(
     'DELETE FROM doc_nodes WHERE workspace_id=? AND id=?'
-  ).run(workspaceId, nodeId);
+  ).run(workspaceId, nodeId) as { changes: number };
   return result.changes > 0;
 }
 
