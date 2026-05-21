@@ -2,7 +2,7 @@ import { Router } from 'express';
 import type { Request, Response } from 'express';
 import type { AgentConfig } from '@agent-spaces/shared';
 import * as agentService from '../services/agent.js';
-import { generateAgentDesign } from '../agents/agent-designer.js';
+import { generateAgentDesign, optimizeAgentPrompt } from '../agents/agent-designer.js';
 
 const router = Router({ mergeParams: true });
 
@@ -42,6 +42,21 @@ router.post('/presets/generate', async (req: Request<{ id: string }>, res: Respo
   } catch (err) {
     console.error('[agent-designer] generate failed', err);
     res.status(400).json({ error: err instanceof Error ? err.message : 'agent generation failed' });
+  }
+});
+
+router.post('/presets/optimize-prompt', async (req: Request<{ id: string }>, res: Response) => {
+  const { prompt, currentPrompt } = req.body as { prompt?: string; currentPrompt?: string };
+  if (!prompt?.trim()) {
+    res.status(400).json({ error: 'prompt is required' });
+    return;
+  }
+
+  try {
+    res.json(await optimizeAgentPrompt(prompt, currentPrompt ?? ''));
+  } catch (err) {
+    console.error('[agent-designer] optimize failed', err);
+    res.status(400).json({ error: err instanceof Error ? err.message : 'prompt optimization failed' });
   }
 });
 

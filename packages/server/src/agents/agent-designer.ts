@@ -7,6 +7,10 @@ export interface AgentDesign {
   systemPrompt: string;
 }
 
+export interface PromptOptimizationResult {
+  systemPrompt: string;
+}
+
 interface ModelConfig {
   modelProvider?: AgentConfig['modelProvider'];
   modelId: string;
@@ -49,12 +53,45 @@ export async function generateAgentDesign(userPrompt: string): Promise<AgentDesi
     promptLength: prompt.length,
   });
 
-  const content = await requestDesign(config, prompt);
+  const content = await requestText(config, buildDesignSystemPrompt(config), prompt);
   console.info('[agent-designer] model text extracted', {
     length: content.length,
     preview: content.slice(0, 500),
   });
   return normalizeDesign(parseJsonObject(content));
+}
+
+export async function optimizeAgentPrompt(
+  userPrompt: string,
+  currentPrompt: string,
+): Promise<PromptOptimizationResult> {
+  const prompt = userPrompt.trim();
+  if (!prompt) throw new Error('prompt is required');
+
+  const config = resolveModelConfig();
+  if (!config) {
+    throw new Error(`Configure model settings for ${AGENT_GENERATOR_PRESET_ID} before optimizing prompts.`);
+  }
+
+  console.info('[agent-designer] optimizing agent prompt', {
+    agentId: AGENT_GENERATOR_PRESET_ID,
+    provider: config.modelProvider ?? inferProvider(config.apiBase),
+    modelId: config.modelId,
+    apiBase: maskUrl(config.apiBase),
+    promptLength: prompt.length,
+    currentPromptLength: currentPrompt.trim().length,
+  });
+
+  const content = await requestText(
+    config,
+    buildOptimizationSystemPrompt(config),
+    buildPromptOptimizationUserPrompt(prompt, currentPrompt),
+  );
+  console.info('[agent-designer] optimized prompt received', {
+    length: content.length,
+    preview: content.slice(0, 500),
+  });
+  return { systemPrompt: normalizePrompt(content) };
 }
 
 function resolveModelConfig(): ModelConfig | null {
@@ -75,11 +112,16 @@ function resolveModelConfig(): ModelConfig | null {
 }
 
 async function requestDesign(config: ModelConfig, userPrompt: string): Promise<string> {
+  return requestText(config, buildDesignSystemPrompt(config), userPrompt);
+}
+
+async function requestText(config: ModelConfig, systemPrompt: string, userPrompt: string): Promise<string> {
   const provider = config.modelProvider ?? inferProvider(config.apiBase);
-  if (provider === 'anthropic-messages') return requestAnthropic(config, userPrompt);
-  if (provider === 'gemini-generate-content') return requestGemini(config, userPrompt);
+  if (provider === 'anthropic-messages') return requestAnthropic(config, systemPrompt, userPrompt);
+  if (provider === 'gemini-generate-content') return requestGemini(config, systemPrompt, userPrompt);
   return requestOpenAICompatible(
     config,
+    systemPrompt,
     userPrompt,
     provider === 'openai-responses' || provider === 'openai-responses-to-anthropic-messages',
   );
@@ -87,6 +129,7 @@ async function requestDesign(config: ModelConfig, userPrompt: string): Promise<s
 
 async function requestOpenAICompatible(
   config: ModelConfig,
+  systemPrompt: string,
   userPrompt: string,
   useResponsesApi: boolean,
 ): Promise<string> {
@@ -101,14 +144,14 @@ async function requestOpenAICompatible(
       useResponsesApi
         ? {
             model: config.modelId,
-            input: `${buildSystemPrompt(config)}\n\nUser request:\n${userPrompt}`,
+            input: `${systemPrompt}\n\nUser request:\n${userPrompt}`,
             temperature: config.temperature ?? 0.2,
             max_output_tokens: config.maxTokens,
           }
         : {
             model: config.modelId,
             messages: [
-              { role: 'system', content: buildSystemPrompt(config) },
+              { role: 'system', content: systemPrompt },
               { role: 'user', content: userPrompt },
             ],
             temperature: config.temperature ?? 0.2,
@@ -121,7 +164,7 @@ async function requestOpenAICompatible(
   return body.text;
 }
 
-async function requestAnthropic(config: ModelConfig, userPrompt: string): Promise<string> {
+async function requestAnthropic(config: ModelConfig, systemPrompt: string, userPrompt: string): Promise<string> {
   const response = await fetch(getAnthropicMessagesUrl(config.apiBase), {
     method: 'POST',
     headers: {
@@ -131,7 +174,7 @@ async function requestAnthropic(config: ModelConfig, userPrompt: string): Promis
     },
     body: JSON.stringify({
       model: config.modelId,
-      system: buildSystemPrompt(config),
+      system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],
       max_tokens: config.maxTokens ?? 4096,
       temperature: config.temperature ?? 0.2,
@@ -142,7 +185,7 @@ async function requestAnthropic(config: ModelConfig, userPrompt: string): Promis
   return body.text;
 }
 
-async function requestGemini(config: ModelConfig, userPrompt: string): Promise<string> {
+async function requestGemini(config: ModelConfig, systemPrompt: string, userPrompt: string): Promise<string> {
   const response = await fetch(joinUrl(config.apiBase, `/models/${encodeURIComponent(config.modelId)}:generateContent`), {
     method: 'POST',
     headers: {
@@ -150,7 +193,7 @@ async function requestGemini(config: ModelConfig, userPrompt: string): Promise<s
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      systemInstruction: { parts: [{ text: buildSystemPrompt(config) }] },
+      systemInstruction: { parts: [{ text: systemPrompt }] },
       contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
       generationConfig: {
         temperature: config.temperature ?? 0.2,
@@ -163,10 +206,40 @@ async function requestGemini(config: ModelConfig, userPrompt: string): Promise<s
   return body.text;
 }
 
-function buildSystemPrompt(config: ModelConfig): string {
+function buildDesignSystemPrompt(config: ModelConfig): string {
   const custom = config.systemPrompt?.trim();
   if (!custom) return SYSTEM_PROMPT;
   return `${custom}\n\n${SYSTEM_PROMPT}`;
+}
+
+function buildOptimizationSystemPrompt(config: ModelConfig): string {
+  const custom = config.systemPrompt?.trim();
+  const base = [
+    'You optimize agent system prompts.',
+    'Return only the rewritten prompt text.',
+    'Do not wrap the result in markdown fences.',
+    'Do not add commentary, bullets about the process, or any explanation outside the prompt.',
+    'Keep the prompt actionable, concise, and directly usable as a system prompt.',
+    'Preserve important constraints from the current prompt unless the user request clearly asks to change them.',
+  ].join('\n');
+  if (!custom) return base;
+  return `${custom}\n\n${base}`;
+}
+
+function buildPromptOptimizationUserPrompt(userRequest: string, currentPrompt: string): string {
+  return [
+    'User request:',
+    userRequest,
+    '',
+    'Current system prompt:',
+    currentPrompt.trim() || '(empty)',
+    '',
+    'Rewrite the current system prompt according to the user request. Return only the final prompt text.',
+  ].join('\n');
+}
+
+function normalizePrompt(text: string): string {
+  return text.trim().replace(/^```(?:markdown|md)?\s*/i, '').replace(/\s*```$/i, '');
 }
 
 async function readResponseBody(response: Response): Promise<{ text: string; error?: string }> {

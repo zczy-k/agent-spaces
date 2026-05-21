@@ -285,3 +285,23 @@ export function FieldGroup({ label, children }: { label: string; children: React
     </div>
   );
 }
+
+export function SectionHeader({
+  icon,
+  title,
+  action,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+      <div className="flex items-center gap-1.5 min-w-0">
+        {icon}
+        <span className="truncate">{title}</span>
+      </div>
+      {action ? <div className="shrink-0">{action}</div> : null}
+    </div>
+  );
+}
