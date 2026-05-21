@@ -298,9 +298,6 @@ export default function DatabasePanel({ workspaceId }: Props) {
               <Plus className="w-3.5 h-3.5" />
             </button>
           </div>
-          <div className="hidden sm:flex items-center gap-2 text-[10px] text-muted-foreground font-mono shrink-0 select-none">
-            <span className="bg-card px-2 py-0.5 rounded-md border border-border">文档：{openTabs.length}</span>
-          </div>
         </div>
 
         {/* Top nav bar */}
@@ -425,7 +422,7 @@ export default function DatabasePanel({ workspaceId }: Props) {
                 )}
               </div>
 
-              <div className="mt-8 border-t border-border pt-4 flex flex-col sm:flex-row items-center justify-between text-[11px] text-muted-foreground font-medium gap-2">
+              <div className="sticky bottom-0 bg-background border-t border-border py-3 px-6 md:px-12 flex flex-col sm:flex-row items-center justify-between text-[11px] text-muted-foreground font-medium gap-2">
                 <div className="flex items-center gap-5">
                   <span>字数：<strong className="text-foreground">{wordCount}</strong></span>
                   <span className="hidden sm:inline">创建：{new Date(activeNode.createdAt).toLocaleDateString()}</span>
