@@ -48,17 +48,9 @@ export function AgentList({
                 <Badge variant="outline" className="text-[10px] h-4 px-1.5">
                   {fixed ? "system" : agent.role}
                 </Badge>
+                <span className="text-[10px] text-muted-foreground font-mono">{agent.modelId.split("-").slice(0, 2).join("-")}</span>
               </div>
               <p className="text-xs text-muted-foreground truncate">{agent.description || t('list.noDescription')}</p>
-            </div>
-            <span className="text-[10px] text-muted-foreground font-mono">{agent.modelId.split("-").slice(0, 2).join("-")}</span>
-            <div onClick={(e) => e.stopPropagation()}>
-              <Switch
-                size="sm"
-                checked={fixed || agent.enabled}
-                disabled={fixed}
-                onCheckedChange={() => onToggleEnabled?.(agent.id)}
-              />
             </div>
             <Button
               variant="ghost"
@@ -78,6 +70,14 @@ export function AgentList({
                 <Trash2 className="size-3 text-destructive" />
               </Button>
             )}
+            <div onClick={(e) => e.stopPropagation()}>
+              <Switch
+                size="sm"
+                checked={fixed || agent.enabled}
+                disabled={fixed}
+                onCheckedChange={() => onToggleEnabled?.(agent.id)}
+              />
+            </div>
           </div>
         );
       })}

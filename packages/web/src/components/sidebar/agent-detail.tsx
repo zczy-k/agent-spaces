@@ -493,7 +493,7 @@ export function AgentDetail({
               </div>
             </div>
           </div>
-          <DialogFooter className="border-t px-4 py-3">
+          <DialogFooter className="border-t m-1">
             <Button variant="outline" onClick={() => setApplyPreviewOpen(false)}>
               <XIcon className="size-3.5" />
               {t("detail.cancel")}
