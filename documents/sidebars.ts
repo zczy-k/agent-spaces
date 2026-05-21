@@ -38,6 +38,7 @@ const sidebars: SidebarsConfig = {
         'advanced/multi-server',
         'advanced/bot-agent',
         'advanced/agent-sse-api',
+        'advanced/docker-deployment',
       ],
     },
   ],
