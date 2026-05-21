@@ -16,3 +16,4 @@ export * from './notification.js';
 export * from './speech.js';
 export * from './code-favorites.js';
 export * from './hooks.js';
+export * from './database.js';

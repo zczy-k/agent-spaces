@@ -66,6 +66,10 @@ const AddFavoriteDialog = dynamic(() => import("@/components/editor/add-favorite
   ssr: false,
   loading: () => null,
 });
+const DatabasePanel = dynamic(() => import("@/components/database/database-panel"), {
+  ssr: false,
+  loading: panelLoader,
+});
 
 type FlutterBridge = { emit?: (event: string, data: unknown) => void };
 
@@ -119,6 +123,7 @@ const defaultJson: IJsonModel = {
           { type: "tab", name: "Code Editor", component: "code-editor", id: "code-editor" },
           { type: "tab", name: "Chat", component: "chat", id: "chat" },
           { type: "tab", name: "Issue Detail", component: "issue-detail", id: "issue-detail" },
+          { type: "tab", name: "Database", component: "database", id: "database" },
         ],
       },
     ],
@@ -409,6 +414,8 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
           return <ProjectSettingsPanel workspaceId={workspaceId} />;
         case "code-favorites":
           return <CodeFavoritesPanel workspaceId={workspaceId} />;
+        case "database":
+          return <DatabasePanel workspaceId={workspaceId} />;
         default:
           return <Placeholder name={node.getName()} />;
       }
@@ -497,6 +504,8 @@ function MobilePanelRenderer({ panel, workspaceId, boundDirs }: { panel: string;
       return <ProjectSettingsPanel workspaceId={workspaceId} />;
     case "code-favorites":
       return <CodeFavoritesPanel workspaceId={workspaceId} />;
+    case "database":
+      return <DatabasePanel workspaceId={workspaceId} />;
     default:
       return <ChannelList workspaceId={workspaceId} />;
   }

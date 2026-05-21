@@ -24,6 +24,81 @@ Widget _buildWebViewPane(
   );
 }
 
+TabbedViewThemeData _buildDockingTabTheme(ThemeData theme) {
+  final colorScheme = theme.colorScheme;
+  final borderColor = colorScheme.outlineVariant.withValues(alpha: 0.8);
+  final tabRadius = BorderRadius.circular(10);
+  final selectedIndicator = BorderSide(color: colorScheme.primary, width: 3);
+
+  return TabbedViewThemeData.minimalist()
+    ..materialDesignIcons()
+    ..tabsArea.color = colorScheme.surface
+    ..tabsArea.border = Border(bottom: BorderSide(color: borderColor))
+    ..tabsArea.buttonsAreaDecoration = BoxDecoration(color: colorScheme.surface)
+    ..tabsArea.buttonsAreaPadding = const EdgeInsets.symmetric(
+      horizontal: 8,
+      vertical: 6,
+    )
+    ..tabsArea.buttonPadding = const EdgeInsets.all(6)
+    ..tabsArea.buttonIconSize = 18
+    ..tabsArea.buttonsGap = 4
+    ..tabsArea.normalButtonColor = colorScheme.onSurfaceVariant
+    ..tabsArea.hoverButtonColor = colorScheme.onSurface
+    ..tabsArea.disabledButtonColor = colorScheme.onSurface.withValues(
+      alpha: 0.32,
+    )
+    ..tabsArea.hoverButtonBackground = BoxDecoration(
+      color: colorScheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(8),
+    )
+    ..tab.textStyle = theme.textTheme.labelLarge?.copyWith(
+      color: colorScheme.onSurfaceVariant,
+      fontWeight: FontWeight.w500,
+    )
+    ..tab.padding = const EdgeInsets.fromLTRB(14, 9, 8, 7)
+    ..tab.paddingWithoutButton = const EdgeInsets.fromLTRB(14, 9, 14, 7)
+    ..tab.margin = const EdgeInsets.fromLTRB(6, 6, 0, 0)
+    ..tab.decoration = BoxDecoration(
+      color: colorScheme.surfaceContainer,
+      borderRadius: tabRadius,
+    )
+    ..tab.draggingDecoration = BoxDecoration(
+      color: colorScheme.surfaceContainerHighest,
+      borderRadius: tabRadius,
+    )
+    ..tab.innerBottomBorder = BorderSide(
+      color: Colors.transparent,
+      width: selectedIndicator.width,
+    )
+    ..tab.normalButtonColor = colorScheme.onSurfaceVariant
+    ..tab.hoverButtonColor = colorScheme.onSurface
+    ..tab.disabledButtonColor = colorScheme.onSurface.withValues(alpha: 0.32)
+    ..tab.buttonIconSize = 18
+    ..tab.buttonPadding = const EdgeInsets.all(4)
+    ..tab.buttonsOffset = 8
+    ..tab.buttonsGap = 4
+    ..tab.hoverButtonBackground = BoxDecoration(
+      color: colorScheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(8),
+    )
+    ..tab.highlightedStatus = TabStatusThemeData(
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: tabRadius,
+      ),
+    )
+    ..tab.selectedStatus = TabStatusThemeData(
+      fontColor: colorScheme.onSurface,
+      innerBottomBorder: selectedIndicator,
+      normalButtonColor: colorScheme.onSurface,
+      hoverButtonColor: colorScheme.onSurface,
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: tabRadius,
+      ),
+    );
+}
+
 class SplitLayoutView extends StatefulWidget {
   final SplitLayout layout;
   final List<BrowserTab> visibleTabs;
@@ -77,7 +152,7 @@ class _SplitLayoutViewState extends State<SplitLayoutView> {
     if (layout == null) return const SizedBox.shrink();
 
     return TabbedViewTheme(
-      data: TabbedViewThemeData.minimalist(),
+      data: _buildDockingTabTheme(Theme.of(context)),
       child: Docking(
         layout: layout,
         onItemSelection: (item) {

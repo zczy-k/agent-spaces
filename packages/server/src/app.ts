@@ -32,6 +32,7 @@ import subscriptionRouter from './routes/subscription.js';
 import agentSseRouter from './routes/agent-sse.js';
 import searchRouter from './routes/search.js';
 import notificationRouter from './routes/notification.js';
+import databaseRouter from './routes/database.js';
 import speechRecognitionRouter, { handleSpeechStream } from './routes/speech-recognition.js';
 import { getUserSettings, setUserAvatarUrl, removeUserAvatarUrl } from './storage/user-settings-store.js';
 import { authMiddleware, verifyToken } from './middleware/auth.js';
@@ -244,6 +245,7 @@ app.post('/api/git-config', async (req, res) => {
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 app.use('/api/workspaces/:id/search', searchRouter);
+app.use('/api/workspaces/:id/database', databaseRouter);
 app.use('/api/workspaces/:id/notifications', notificationRouter);
 app.use('/api/agents', agentRouter);
 app.use('/api', llmRouter);
