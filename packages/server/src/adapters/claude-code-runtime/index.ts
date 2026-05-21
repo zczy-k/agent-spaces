@@ -8,6 +8,10 @@ import { normalizeAdditionalDirectories, normalizePermissionMode, normalizeSkill
 import { startClaudeAdapterIfNeeded, getClaudeCodeModel } from './adapter-pool.js';
 import { extractThinkingEvents, extractToolUseEvents, extractToolResultEvent, logToolDebug, formatMessage, isAskUserQuestionAutoResult, countUsageTokens, formatUsageLine, normalizeUsage } from './message-format.js';
 
+type ClaudeQueryOptions = Options & {
+  outputStyle?: string;
+};
+
 export class ClaudeCodeRuntime implements AgentRuntime {
   private abortController: AbortController | null = null;
   private activeQuery: Query | null = null;
@@ -44,7 +48,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
     const stderrLines: string[] = [];
 
     try {
-      const queryOptions: Options = {
+      const queryOptions: ClaudeQueryOptions = {
         cwd,
         model,
         maxTurns: options?.maxTurns,

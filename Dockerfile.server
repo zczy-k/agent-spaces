@@ -1,9 +1,13 @@
-ARG NODE_VERSION=22.14.0
+ARG NODE_VERSION=22.14.0-bookworm-slim
 ARG PNPM_VERSION=10.17.1
 
 FROM node:${NODE_VERSION} AS builder
 
 ARG PNPM_VERSION
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates git python3 make g++ && \
+    rm -rf /var/lib/apt/lists/*
 
 RUN corepack enable && \
     corepack prepare pnpm@${PNPM_VERSION} --activate && \
@@ -32,6 +36,10 @@ RUN pnpm store prune && \
     rm -rf packages/shared/src packages/server/src packages/web/src packages/web/out packages/web/.next
 
 FROM node:${NODE_VERSION}
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends bash ca-certificates git openssh-client && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app/packages/server
 

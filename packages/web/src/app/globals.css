@@ -5,6 +5,9 @@
 
 @theme inline {
   /* Fonts */
+  --font-dm-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-outfit: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-poppins: "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-sans: var(--font-dm-sans), "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-heading: var(--font-outfit), "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-mid: var(--font-poppins), "Helvetica Neue", Helvetica, Arial, sans-serif;

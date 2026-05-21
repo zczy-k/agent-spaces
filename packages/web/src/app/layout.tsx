@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { DM_Sans, Outfit, Poppins } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { LocaleProvider } from "@/components/locale-provider";
 import { AuthGuard } from "@/components/auth-guard";
@@ -12,24 +11,6 @@ import { Toaster } from "sonner";
 import "flexlayout-react/style/light.css";
 import "tippy.js/dist/tippy.css";
 import "./globals.css";
-
-const dmSans = DM_Sans({
-  variable: "--font-dm-sans",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
-
-const outfit = Outfit({
-  variable: "--font-outfit",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-});
-
-const poppins = Poppins({
-  variable: "--font-poppins",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-});
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -56,7 +37,7 @@ export default function RootLayout({
   return (
     <html
       lang=""
-      className={`${dmSans.variable} ${outfit.variable} ${poppins.variable} h-[var(--app-content-height)] overflow-hidden antialiased`}
+      className="h-[var(--app-content-height)] overflow-hidden antialiased"
       suppressHydrationWarning
     >
       <body className="h-[var(--app-content-height)] overflow-hidden font-sans">

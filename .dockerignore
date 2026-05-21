@@ -1,10 +1,14 @@
 node_modules
+**/node_modules
 .next
+**/.next
 dist
+**/dist
 .git
 *.md
 .env*
 .DS_Store
 coverage
+**/coverage
 .claude
 .agentspace
