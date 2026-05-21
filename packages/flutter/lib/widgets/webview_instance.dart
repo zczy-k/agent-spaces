@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../bridge/js_bridge.dart';
@@ -113,15 +114,14 @@ class WebViewInstance extends ConsumerStatefulWidget {
 
 class _WebViewInstanceState extends ConsumerState<WebViewInstance> {
   InAppWebViewController? _controller;
-  String _lastUrl = '';
   late final JsBridge _jsBridge;
   bool _isLoading = true;
   String? _errorMessage;
+  bool _disposed = false;
 
   @override
   void initState() {
     super.initState();
-    _lastUrl = widget.tab.url;
     _jsBridge = JsBridge(
       onEvent: (event, data) {
         if (event != 'inspector.jump' || !mounted) return;
@@ -133,18 +133,22 @@ class _WebViewInstanceState extends ConsumerState<WebViewInstance> {
 
   @override
   void dispose() {
+    _disposed = true;
     if (_controller != null) {
       _webViewService.unregisterController(widget.tab.id);
     }
     super.dispose();
   }
 
-  @override
-  void didUpdateWidget(covariant WebViewInstance oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.tab.url != _lastUrl && _controller != null) {
-      _lastUrl = widget.tab.url;
-      _controller!.loadUrl(urlRequest: URLRequest(url: WebUri(widget.tab.url)));
+  Future<void> _injectPageScripts(InAppWebViewController controller) async {
+    if (_disposed || !mounted) return;
+    try {
+      await controller.evaluateJavascript(source: _jsBridge.injectionScript);
+      if (_disposed || !mounted) return;
+      await controller.evaluateJavascript(source: _keyboardViewportScript);
+    } on MissingPluginException {
+      // The native WebView can be torn down while an async navigation callback
+      // is still completing, especially when docking tabs are rearranged.
     }
   }
 
@@ -157,110 +161,110 @@ class _WebViewInstanceState extends ConsumerState<WebViewInstance> {
     Widget webView = Stack(
       children: [
         InAppWebView(
-      initialUrlRequest: URLRequest(url: WebUri(widget.tab.url)),
-      initialSettings: InAppWebViewSettings(
-        userAgent: device.userAgentSuffix.isEmpty
-            ? null
-            : device.userAgentSuffix,
-        javaScriptEnabled: true,
-        supportZoom: false,
-        builtInZoomControls: false,
-        displayZoomControls: false,
-        useHybridComposition: true,
-        allowsInlineMediaPlayback: true,
-        mediaPlaybackRequiresUserGesture: false,
-        allowBackgroundAudioPlaying: true,
-        allowFileAccess: true,
-        allowContentAccess: true,
-        allowFileAccessFromFileURLs: true,
-        allowUniversalAccessFromFileURLs: true,
-        domStorageEnabled: true,
-        databaseEnabled: true,
-        safeBrowsingEnabled: false,
-        incognito: settings.incognito,
-        isInspectable: settings.webViewDebuggingEnabled,
-      ),
-      onWebViewCreated: (controller) async {
-        _controller = controller;
-        _webViewService.registerController(widget.tab.id, controller);
-        _jsBridge.registerHandlers(controller);
-        await controller.evaluateJavascript(source: _jsBridge.injectionScript);
-        await controller.evaluateJavascript(source: _keyboardViewportScript);
-      },
-      onLoadStop: (controller, url) async {
-        if (mounted && _isLoading) {
-          setState(() => _isLoading = false);
-        }
-        if (url != null) {
-          final title = await controller.getTitle();
-          final favicons = await controller.getFavicons();
-          String? faviconUrl;
-          if (favicons.isNotEmpty) {
-            faviconUrl = favicons.first.url.toString();
-          }
-          widget.onTitleChanged(
-            widget.tab.id,
-            title ?? url.host,
-            url.toString(),
-            faviconUrl,
-          );
-        }
-        await controller.evaluateJavascript(source: _jsBridge.injectionScript);
-        await controller.evaluateJavascript(source: _keyboardViewportScript);
-      },
-      onConsoleMessage: (_, consoleMessage) {
-        ref
-            .read(consoleLogProvider.notifier)
-            .addLog(
-              consoleMessage.message,
-              consoleMessage.messageLevel.toString().split('.').last,
-            );
-      },
-      onReceivedError: (_, request, error) {
-        if (request.isForMainFrame != true) return;
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-            _errorMessage = error.description;
-          });
-        }
-        ref
-            .read(consoleLogProvider.notifier)
-            .addLog(
-              'WebView load error: ${error.description} (${error.type})',
-              'error',
-            );
-      },
-      onReceivedHttpError: (_, request, response) {
-        if (request.isForMainFrame != true) return;
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-            _errorMessage = 'HTTP ${response.statusCode} ${response.reasonPhrase}';
-          });
-        }
-        ref
-            .read(consoleLogProvider.notifier)
-            .addLog(
-              'WebView HTTP error: ${response.statusCode} ${response.reasonPhrase}',
-              'error',
-            );
-      },
-    ),
-    if (_isLoading)
-      const _LoadingPlaceholder(),
-    if (_errorMessage != null)
-      _ErrorPlaceholder(
-        message: _errorMessage!,
-        onRetry: () {
-          setState(() {
-            _isLoading = true;
-            _errorMessage = null;
-          });
-          _controller?.loadUrl(urlRequest: URLRequest(url: WebUri(widget.tab.url)));
-        },
-      ),
-    ],
+          initialUrlRequest: URLRequest(url: WebUri(widget.tab.url)),
+          initialSettings: InAppWebViewSettings(
+            userAgent: device.userAgentSuffix.isEmpty
+                ? null
+                : device.userAgentSuffix,
+            javaScriptEnabled: true,
+            supportZoom: false,
+            builtInZoomControls: false,
+            displayZoomControls: false,
+            useHybridComposition: true,
+            allowsInlineMediaPlayback: true,
+            mediaPlaybackRequiresUserGesture: false,
+            allowBackgroundAudioPlaying: true,
+            allowFileAccess: true,
+            allowContentAccess: true,
+            allowFileAccessFromFileURLs: true,
+            allowUniversalAccessFromFileURLs: true,
+            domStorageEnabled: true,
+            databaseEnabled: true,
+            safeBrowsingEnabled: false,
+            incognito: settings.incognito,
+            isInspectable: settings.webViewDebuggingEnabled,
+          ),
+          onWebViewCreated: (controller) async {
+            _controller = controller;
+            _webViewService.registerController(widget.tab.id, controller);
+            _jsBridge.registerHandlers(controller);
+            await _injectPageScripts(controller);
+          },
+          onLoadStop: (controller, url) async {
+            if (mounted && _isLoading) {
+              setState(() => _isLoading = false);
+            }
+            if (url != null) {
+              final title = await controller.getTitle();
+              final favicons = await controller.getFavicons();
+              String? faviconUrl;
+              if (favicons.isNotEmpty) {
+                faviconUrl = favicons.first.url.toString();
+              }
+              widget.onTitleChanged(
+                widget.tab.id,
+                title ?? url.host,
+                url.toString(),
+                faviconUrl,
+              );
+            }
+            await _injectPageScripts(controller);
+          },
+          onConsoleMessage: (_, consoleMessage) {
+            ref
+                .read(consoleLogProvider.notifier)
+                .addLog(
+                  consoleMessage.message,
+                  consoleMessage.messageLevel.toString().split('.').last,
+                );
+          },
+          onReceivedError: (_, request, error) {
+            if (request.isForMainFrame != true) return;
+            if (mounted) {
+              setState(() {
+                _isLoading = false;
+                _errorMessage = error.description;
+              });
+            }
+            ref
+                .read(consoleLogProvider.notifier)
+                .addLog(
+                  'WebView load error: ${error.description} (${error.type})',
+                  'error',
+                );
+          },
+          onReceivedHttpError: (_, request, response) {
+            if (request.isForMainFrame != true) return;
+            if (mounted) {
+              setState(() {
+                _isLoading = false;
+                _errorMessage =
+                    'HTTP ${response.statusCode} ${response.reasonPhrase}';
+              });
+            }
+            ref
+                .read(consoleLogProvider.notifier)
+                .addLog(
+                  'WebView HTTP error: ${response.statusCode} ${response.reasonPhrase}',
+                  'error',
+                );
+          },
+        ),
+        if (_isLoading) const _LoadingPlaceholder(),
+        if (_errorMessage != null)
+          _ErrorPlaceholder(
+            message: _errorMessage!,
+            onRetry: () {
+              setState(() {
+                _isLoading = true;
+                _errorMessage = null;
+              });
+              _controller?.loadUrl(
+                urlRequest: URLRequest(url: WebUri(widget.tab.url)),
+              );
+            },
+          ),
+      ],
     );
 
     if (isConstrained) {
@@ -308,9 +312,7 @@ class _LoadingPlaceholder extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
-      child: const Center(
-        child: CircularProgressIndicator(strokeWidth: 2),
-      ),
+      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
     );
   }
 }
@@ -334,21 +336,17 @@ class _ErrorPlaceholder extends StatelessWidget {
             children: [
               Icon(Icons.cloud_off, size: 48, color: theme.disabledColor),
               const SizedBox(height: 12),
-              Text(
-                '加载失败',
-                style: theme.textTheme.titleMedium,
-              ),
+              Text('加载失败', style: theme.textTheme.titleMedium),
               const SizedBox(height: 8),
               Text(
                 message,
-                style: theme.textTheme.bodySmall?.copyWith(color: theme.disabledColor),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.disabledColor,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
-              FilledButton.tonal(
-                onPressed: onRetry,
-                child: const Text('重试'),
-              ),
+              FilledButton.tonal(onPressed: onRetry, child: const Text('重试')),
             ],
           ),
         ),

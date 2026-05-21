@@ -3,13 +3,7 @@ import 'package:uuid/uuid.dart';
 import '../models/browser_tab.dart';
 import '../services/storage_service.dart';
 
-enum SplitLayout {
-  single,
-  horizontal2,
-  vertical2,
-  horizontal3,
-  quad,
-}
+enum SplitLayout { single, horizontal2, vertical2, horizontal3, quad }
 
 class BrowserState {
   final List<BrowserTab> tabs;
@@ -33,27 +27,24 @@ class BrowserState {
   }
 
   int get splitCount => switch (splitLayout) {
-        SplitLayout.single => 1,
-        SplitLayout.horizontal2 => 2,
-        SplitLayout.vertical2 => 2,
-        SplitLayout.horizontal3 => 3,
-        SplitLayout.quad => 4,
-      };
+    SplitLayout.single => 1,
+    SplitLayout.horizontal2 => 2,
+    SplitLayout.vertical2 => 2,
+    SplitLayout.horizontal3 => 3,
+    SplitLayout.quad => 4,
+  };
 
   List<BrowserTab> get visibleTabs {
+    if (tabs.isEmpty) return const [];
     if (splitLayout == SplitLayout.single) {
       final idx = tabs.indexWhere((t) => t.id == activeTabId);
       return [tabs[idx >= 0 ? idx : 0]];
     }
-    final activeIdx = tabs.indexWhere((t) => t.id == activeTabId).clamp(0, tabs.length - 1);
-    final result = <BrowserTab>[];
-    for (int i = 0; i < splitCount && i + activeIdx < tabs.length; i++) {
-      result.add(tabs[activeIdx + i]);
-    }
-    while (result.length < splitCount && result.length < tabs.length) {
-      result.add(tabs[result.length]);
-    }
-    return result;
+    final activeIdx = tabs
+        .indexWhere((t) => t.id == activeTabId)
+        .clamp(0, tabs.length - 1);
+    final orderedTabs = [...tabs.skip(activeIdx), ...tabs.take(activeIdx)];
+    return orderedTabs.take(splitCount).toList(growable: false);
   }
 
   BrowserState copyWith({
@@ -106,10 +97,7 @@ class BrowserNotifier extends StateNotifier<BrowserState> {
       url: url ?? state.homeUrl,
       device: device ?? DeviceProfile.desktop,
     );
-    state = state.copyWith(
-      tabs: [...state.tabs, tab],
-      activeTabId: tab.id,
-    );
+    state = state.copyWith(tabs: [...state.tabs, tab], activeTabId: tab.id);
     _persistTabs();
   }
 
@@ -126,16 +114,33 @@ class BrowserNotifier extends StateNotifier<BrowserState> {
   }
 
   void setActiveTab(String tabId) {
+    if (state.activeTabId == tabId) return;
     state = state.copyWith(activeTabId: tabId);
     _persistTabs();
   }
 
-  void updateTab(String tabId, {String? title, String? url, String? faviconUrl}) {
-    state = state.copyWith(
-      tabs: state.tabs
-          .map((t) => t.id == tabId ? t.copyWith(title: title, url: url, faviconUrl: faviconUrl) : t)
-          .toList(),
-    );
+  void updateTab(
+    String tabId, {
+    String? title,
+    String? url,
+    String? faviconUrl,
+  }) {
+    var changed = false;
+    final tabs = state.tabs.map((t) {
+      if (t.id != tabId) return t;
+      final nextTitle = title ?? t.title;
+      final nextUrl = url ?? t.url;
+      final nextFaviconUrl = faviconUrl ?? t.faviconUrl;
+      if (nextTitle == t.title &&
+          nextUrl == t.url &&
+          nextFaviconUrl == t.faviconUrl) {
+        return t;
+      }
+      changed = true;
+      return t.copyWith(title: title, url: url, faviconUrl: faviconUrl);
+    }).toList();
+    if (!changed) return;
+    state = state.copyWith(tabs: tabs);
     _persistTabs();
   }
 
@@ -162,7 +167,8 @@ class BrowserNotifier extends StateNotifier<BrowserState> {
   }
 }
 
-final browserProvider =
-    StateNotifierProvider<BrowserNotifier, BrowserState>((ref) {
+final browserProvider = StateNotifierProvider<BrowserNotifier, BrowserState>((
+  ref,
+) {
   return BrowserNotifier();
 });

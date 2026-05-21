@@ -81,6 +81,7 @@ void showNavigateDialog(
           if (url.isNotEmpty) {
             final normalized = url.startsWith('http') ? url : 'http://$url';
             notifier.updateTab(tab.id, url: normalized);
+            WebViewService.instance.loadUrl(tab.id, normalized);
             Navigator.of(ctx).pop();
           }
         },
@@ -97,6 +98,7 @@ void showNavigateDialog(
                   ? controller.text
                   : 'http://${controller.text}';
               notifier.updateTab(tab.id, url: normalized);
+              WebViewService.instance.loadUrl(tab.id, normalized);
               Navigator.of(ctx).pop();
             }
           },
@@ -150,11 +152,7 @@ void showDeviceMenu(
   );
 }
 
-void showDebugDialog(
-  BuildContext context,
-  WidgetRef ref,
-  BrowserTab tab,
-) {
+void showDebugDialog(BuildContext context, WidgetRef ref, BrowserTab tab) {
   final theme = Theme.of(context);
   final webViewDebuggingEnabled = ref.read(
     settingsProvider.select((settings) => settings.webViewDebuggingEnabled),
