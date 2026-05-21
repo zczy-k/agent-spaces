@@ -1,11 +1,22 @@
+import 'package:docking/docking.dart';
 import 'package:flutter/material.dart';
 import '../models/browser_tab.dart';
 import '../providers/browser_provider.dart';
+import 'tab_widgets.dart';
 import 'webview_instance.dart';
 
-typedef TitleChangedCallback = void Function(String tabId, String title, String url, String? faviconUrl);
+typedef TitleChangedCallback =
+    void Function(String tabId, String title, String url, String? faviconUrl);
+typedef TabSelectedCallback = void Function(String tabId);
+typedef TabClosedCallback = void Function(String tabId);
+typedef DockingMenuBuilder =
+    List<TabbedViewMenuItem> Function(BuildContext context);
 
-Widget _buildWebViewPane(BrowserTab tab, bool webViewDebuggingEnabled, TitleChangedCallback onTitleChanged) {
+Widget _buildWebViewPane(
+  BrowserTab tab,
+  bool webViewDebuggingEnabled,
+  TitleChangedCallback onTitleChanged,
+) {
   return WebViewInstance(
     key: ValueKey('${tab.id}-$webViewDebuggingEnabled'),
     tab: tab,
@@ -19,74 +30,151 @@ Widget buildSplitLayout({
   required List<BrowserTab> visibleTabs,
   required bool webViewDebuggingEnabled,
   required TitleChangedCallback onTitleChanged,
+  required TabSelectedCallback onTabSelected,
+  required TabClosedCallback onTabClosed,
+  required VoidCallback onNewTab,
+  required DockingMenuBuilder onBuildMenu,
 }) {
-  final dividerColor = Theme.of(context).colorScheme.outlineVariant;
-  const dividerThickness = 1.0;
+  if (visibleTabs.isEmpty) return const SizedBox.shrink();
 
-  final children = visibleTabs.map((tab) {
-    return Expanded(
-      child: _buildWebViewPane(tab, webViewDebuggingEnabled, onTitleChanged),
+  final root = switch (layout) {
+    SplitLayout.single => _buildDockingTabs(
+      visibleTabs,
+      webViewDebuggingEnabled,
+      onTitleChanged,
+    ),
+    SplitLayout.horizontal2 => _buildDockingRow(
+      _buildTabGroups(visibleTabs, 2),
+      webViewDebuggingEnabled,
+      onTitleChanged,
+    ),
+    SplitLayout.vertical2 => _buildDockingColumn(
+      _buildTabGroups(visibleTabs, 2),
+      webViewDebuggingEnabled,
+      onTitleChanged,
+    ),
+    SplitLayout.horizontal3 => _buildDockingRow(
+      _buildTabGroups(visibleTabs, 3),
+      webViewDebuggingEnabled,
+      onTitleChanged,
+    ),
+    SplitLayout.quad => _buildDockingColumn(
+      _chunkTabGroups(_buildTabGroups(visibleTabs, 4), 2)
+          .map(
+            (rowGroups) => _buildDockingRow(
+              rowGroups,
+              webViewDebuggingEnabled,
+              onTitleChanged,
+            ),
+          )
+          .toList(),
+      webViewDebuggingEnabled,
+      onTitleChanged,
+    ),
+  };
+
+  return TabbedViewTheme(
+    data: TabbedViewThemeData.minimalist(),
+    child: Docking(
+      key: ValueKey(
+        'split-${layout.name}-${visibleTabs.map((tab) => tab.id).join('-')}',
+      ),
+      layout: DockingLayout(root: root),
+      onItemSelection: (item) {
+        final tabId = item.value;
+        if (tabId is String) onTabSelected(tabId);
+      },
+      onItemClose: (item) {
+        final tabId = item.value;
+        if (tabId is String) onTabClosed(tabId);
+      },
+      dockingButtonsBuilder: (context, dockingTabs, dockingItem) => [
+        TabButton(
+          icon: IconProvider.data(Icons.add),
+          toolTip: '新建标签页',
+          onPressed: onNewTab,
+        ),
+        TabButton(
+          icon: IconProvider.data(Icons.more_vert),
+          toolTip: '更多',
+          menuBuilder: onBuildMenu,
+        ),
+      ],
+      draggable: true,
+      maximizableItem: false,
+      maximizableTab: false,
+      maximizableTabsArea: false,
+    ),
+  );
+}
+
+List<List<BrowserTab>> _buildTabGroups(List<BrowserTab> tabs, int groupCount) {
+  final groups = List.generate(groupCount, (_) => <BrowserTab>[]);
+  for (int i = 0; i < tabs.length; i++) {
+    groups[i % groupCount].add(tabs[i]);
+  }
+  return groups.where((group) => group.isNotEmpty).toList();
+}
+
+List<List<List<BrowserTab>>> _chunkTabGroups(
+  List<List<BrowserTab>> groups,
+  int chunkSize,
+) {
+  final chunks = <List<List<BrowserTab>>>[];
+  for (int i = 0; i < groups.length; i += chunkSize) {
+    chunks.add(groups.sublist(i, (i + chunkSize).clamp(0, groups.length)));
+  }
+  return chunks;
+}
+
+DockingArea _buildDockingRow(
+  List<dynamic> children,
+  bool webViewDebuggingEnabled,
+  TitleChangedCallback onTitleChanged,
+) {
+  final areas = children.map((child) {
+    if (child is DockingArea) return child;
+    return _buildDockingTabs(
+      child as List<BrowserTab>,
+      webViewDebuggingEnabled,
+      onTitleChanged,
+    );
+  }).toList();
+  return areas.length == 1 ? areas.first : DockingRow(areas);
+}
+
+DockingArea _buildDockingColumn(
+  List<dynamic> children,
+  bool webViewDebuggingEnabled,
+  TitleChangedCallback onTitleChanged,
+) {
+  final areas = children.map((child) {
+    if (child is DockingArea) return child;
+    return _buildDockingTabs(
+      child as List<BrowserTab>,
+      webViewDebuggingEnabled,
+      onTitleChanged,
+    );
+  }).toList();
+  return areas.length == 1 ? areas.first : DockingColumn(areas);
+}
+
+DockingArea _buildDockingTabs(
+  List<BrowserTab> tabs,
+  bool webViewDebuggingEnabled,
+  TitleChangedCallback onTitleChanged,
+) {
+  final items = tabs.map((tab) {
+    return DockingItem(
+      id: tab.id,
+      name: tab.title,
+      value: tab.id,
+      closable: true,
+      keepAlive: true,
+      leading: (context, status) => FaviconIcon(url: tab.effectiveFaviconUrl),
+      widget: _buildWebViewPane(tab, webViewDebuggingEnabled, onTitleChanged),
     );
   }).toList();
 
-  return switch (layout) {
-    SplitLayout.single => const SizedBox.shrink(),
-    SplitLayout.horizontal2 => _buildRow(children, dividerColor, dividerThickness),
-    SplitLayout.vertical2 => _buildColumn(children, dividerColor, dividerThickness),
-    SplitLayout.horizontal3 => _buildRow(children, dividerColor, dividerThickness),
-    SplitLayout.quad => _buildQuad(visibleTabs, webViewDebuggingEnabled, onTitleChanged, dividerColor, dividerThickness),
-  };
-}
-
-Widget _buildRow(List<Widget> children, Color dividerColor, double thickness) {
-  final result = <Widget>[];
-  for (int i = 0; i < children.length; i++) {
-    if (i > 0) {
-      result.add(VerticalDivider(width: thickness, thickness: thickness, color: dividerColor));
-    }
-    result.add(children[i]);
-  }
-  return Row(children: result);
-}
-
-Widget _buildColumn(List<Widget> children, Color dividerColor, double thickness) {
-  final result = <Widget>[];
-  for (int i = 0; i < children.length; i++) {
-    if (i > 0) {
-      result.add(Divider(height: thickness, thickness: thickness, color: dividerColor));
-    }
-    result.add(children[i]);
-  }
-  return Column(children: result);
-}
-
-Widget _buildQuad(
-  List<BrowserTab> visibleTabs,
-  bool webViewDebuggingEnabled,
-  TitleChangedCallback onTitleChanged,
-  Color dividerColor,
-  double thickness,
-) {
-  while (visibleTabs.length < 4) {
-    visibleTabs = [...visibleTabs, visibleTabs.last];
-  }
-  final top = <Widget>[];
-  final bottom = <Widget>[];
-  for (int i = 0; i < 4; i++) {
-    final pane = Expanded(
-      child: _buildWebViewPane(visibleTabs[i], webViewDebuggingEnabled, onTitleChanged),
-    );
-    if (i < 2) {
-      if (top.isNotEmpty) top.add(VerticalDivider(width: thickness, thickness: thickness, color: dividerColor));
-      top.add(pane);
-    } else {
-      if (bottom.isNotEmpty) bottom.add(VerticalDivider(width: thickness, thickness: thickness, color: dividerColor));
-      bottom.add(pane);
-    }
-  }
-  return Column(children: [
-    Expanded(child: Row(children: top)),
-    Divider(height: thickness, thickness: thickness, color: dividerColor),
-    Expanded(child: Row(children: bottom)),
-  ]);
+  return items.length == 1 ? items.first : DockingTabs(items);
 }

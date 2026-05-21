@@ -5,7 +5,6 @@ import '../providers/settings_provider.dart';
 import '../services/notification_service.dart';
 import '../services/storage_service.dart';
 import '../services/webview_service.dart';
-import '../widgets/browser_tab_bar.dart';
 import '../widgets/webview_panel.dart';
 
 final _notificationService = NotificationService();
@@ -77,14 +76,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      body: SafeArea(
-        child: Column(
-          children: [
-            const BrowserTabBar(),
-            const Expanded(child: WebViewPanel()),
-          ],
-        ),
-      ),
+      body: SafeArea(child: const WebViewPanel()),
     );
   }
 }

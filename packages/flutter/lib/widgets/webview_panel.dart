@@ -5,8 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/browser_provider.dart';
 import '../providers/settings_provider.dart';
 import 'home_page.dart';
-import 'webview_instance.dart';
 import 'split_layout.dart';
+import 'tab_dialogs.dart';
+import 'tab_widgets.dart';
 
 class WebViewPanel extends ConsumerStatefulWidget {
   const WebViewPanel({super.key});
@@ -54,7 +55,9 @@ class _WebViewPanelState extends ConsumerState<WebViewPanel> {
     try {
       final client = HttpClient();
       client.connectionTimeout = const Duration(seconds: 2);
-      final request = await client.getUrl(Uri.parse('http://$host:$port/api/health'));
+      final request = await client.getUrl(
+        Uri.parse('http://$host:$port/api/health'),
+      );
       final response = await request.close();
       final body = await response.transform(utf8.decoder).join();
       client.close();
@@ -72,53 +75,44 @@ class _WebViewPanelState extends ConsumerState<WebViewPanel> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(browserProvider);
+    final notifier = ref.read(browserProvider.notifier);
     final webViewDebuggingEnabled = ref.watch(
       settingsProvider.select((settings) => settings.webViewDebuggingEnabled),
     );
 
     Widget child;
     if (state.tabs.isEmpty) {
-      child = HomePage(
-        onServerFound: _openServer,
-        homeUrl: state.homeUrl,
-      );
-    } else if (state.splitLayout == SplitLayout.single) {
-      final activeIndex = state.tabs.indexWhere((t) => t.id == state.activeTabId);
-      child = IndexedStack(
-        index: activeIndex >= 0 ? activeIndex : 0,
-        children: state.tabs.map((tab) {
-          return WebViewInstance(
-            key: ValueKey('${tab.id}-$webViewDebuggingEnabled'),
-            tab: tab,
-            onTitleChanged: (tabId, title, url, faviconUrl) {
-              ref.read(browserProvider.notifier).updateTab(
-                    tabId,
-                    title: title,
-                    url: url,
-                    faviconUrl: faviconUrl,
-                  );
-            },
-          );
-        }).toList(),
-      );
+      child = HomePage(onServerFound: _openServer, homeUrl: state.homeUrl);
     } else {
       child = buildSplitLayout(
         context: context,
         layout: state.splitLayout,
-        visibleTabs: state.visibleTabs,
+        visibleTabs: state.splitLayout == SplitLayout.single
+            ? state.tabs
+            : state.visibleTabs,
         webViewDebuggingEnabled: webViewDebuggingEnabled,
         onTitleChanged: (tabId, title, url, faviconUrl) {
-          ref.read(browserProvider.notifier).updateTab(
-                tabId,
-                title: title,
-                url: url,
-                faviconUrl: faviconUrl,
-              );
+          notifier.updateTab(
+            tabId,
+            title: title,
+            url: url,
+            faviconUrl: faviconUrl,
+          );
         },
+        onTabSelected: notifier.setActiveTab,
+        onTabClosed: notifier.closeTab,
+        onNewTab: () => showNewTabDialog(context, notifier),
+        onBuildMenu: (menuContext) => buildBrowserMenuItems(
+          menuContext,
+          ref,
+          activeTabId: state.activeTabId,
+          onNewTab: () => showNewTabDialog(context, notifier),
+        ),
       );
     }
 
-    final showBadges = state.tabs.isEmpty && (_frontendAvailable || _backendAvailable);
+    final showBadges =
+        state.tabs.isEmpty && (_frontendAvailable || _backendAvailable);
     if (!showBadges) return child;
 
     return Stack(
@@ -158,7 +152,11 @@ class _ServerBadge extends StatelessWidget {
   final Color color;
   final VoidCallback onTap;
 
-  const _ServerBadge({required this.label, required this.color, required this.onTap});
+  const _ServerBadge({
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -178,7 +176,11 @@ class _ServerBadge extends StatelessWidget {
               const SizedBox(width: 6),
               Text(
                 label,
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
               ),
             ],
           ),

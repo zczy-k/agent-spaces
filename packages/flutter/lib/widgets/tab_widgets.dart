@@ -1,3 +1,4 @@
+import 'package:docking/docking.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -32,127 +33,47 @@ class NavButton extends StatelessWidget {
   }
 }
 
-class MoreMenuButton extends ConsumerWidget {
-  final VoidCallback? onNewTab;
-  final String? activeTabId;
-
-  const MoreMenuButton({super.key, this.onNewTab, this.activeTabId});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    return PopupMenuButton<String>(
-      icon: Icon(
-        Icons.more_vert,
-        size: 18,
-        color: theme.colorScheme.onSurfaceVariant,
-      ),
-      style: IconButton.styleFrom(
-        minimumSize: const Size(32, 32),
-        padding: EdgeInsets.zero,
-      ),
-      offset: const Offset(0, 40),
-      itemBuilder: (_) => [
-        if (onNewTab != null)
-          const PopupMenuItem(
-            value: 'new_tab',
-            height: 36,
-            child: Row(
-              children: [
-                Icon(Icons.add, size: 16),
-                SizedBox(width: 8),
-                Text('新建标签页', style: TextStyle(fontSize: 13)),
-              ],
-            ),
-          ),
-        const PopupMenuItem(
-          value: 'go_back',
-          height: 36,
-          child: Row(
-            children: [
-              Icon(Icons.arrow_back_ios, size: 16),
-              SizedBox(width: 8),
-              Text('后退', style: TextStyle(fontSize: 13)),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'go_forward',
-          height: 36,
-          child: Row(
-            children: [
-              Icon(Icons.arrow_forward_ios, size: 16),
-              SizedBox(width: 8),
-              Text('前进', style: TextStyle(fontSize: 13)),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'refresh',
-          height: 36,
-          child: Row(
-            children: [
-              Icon(Icons.refresh, size: 16),
-              SizedBox(width: 8),
-              Text('刷新', style: TextStyle(fontSize: 13)),
-            ],
-          ),
-        ),
-        const PopupMenuDivider(),
-        const PopupMenuItem(
-          value: 'split',
-          height: 36,
-          child: Row(
-            children: [
-              Icon(Icons.view_column, size: 16),
-              SizedBox(width: 8),
-              Text('分屏布局', style: TextStyle(fontSize: 13)),
-            ],
-          ),
-        ),
-        const PopupMenuDivider(),
-        const PopupMenuItem(
-          value: 'bookmarks',
-          height: 36,
-          child: Row(
-            children: [
-              Icon(Icons.bookmark_outline, size: 16),
-              SizedBox(width: 8),
-              Text('书签', style: TextStyle(fontSize: 13)),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'settings',
-          height: 36,
-          child: Row(
-            children: [
-              Icon(Icons.settings, size: 16),
-              SizedBox(width: 8),
-              Text('设置', style: TextStyle(fontSize: 13)),
-            ],
-          ),
-        ),
-      ],
-      onSelected: (value) {
-        if (value == 'new_tab') {
-          onNewTab?.call();
-        } else if (value == 'go_back') {
-          if (activeTabId != null) WebViewService.instance.goBack(activeTabId!);
-        } else if (value == 'go_forward') {
-          if (activeTabId != null) WebViewService.instance.goForward(activeTabId!);
-        } else if (value == 'refresh') {
-          if (activeTabId != null) WebViewService.instance.reload(activeTabId!);
-        } else if (value == 'split') {
-          showSplitMenu(context, ref);
-        } else if (value == 'bookmarks') {
-          context.push('/bookmarks');
-        } else if (value == 'settings') {
-          context.push('/settings');
-        }
-      },
-    );
+List<TabbedViewMenuItem> buildBrowserMenuItems(
+  BuildContext context,
+  WidgetRef ref, {
+  required String? activeTabId,
+  VoidCallback? onNewTab,
+}) {
+  void runWithActiveTab(void Function(String tabId) action) {
+    final tabId = activeTabId;
+    if (tabId != null && tabId.isNotEmpty) {
+      action(tabId);
+    }
   }
+
+  return [
+    if (onNewTab != null)
+      TabbedViewMenuItem(text: '新建标签页', onSelection: onNewTab),
+    TabbedViewMenuItem(
+      text: '后退',
+      onSelection: () => runWithActiveTab(WebViewService.instance.goBack),
+    ),
+    TabbedViewMenuItem(
+      text: '前进',
+      onSelection: () => runWithActiveTab(WebViewService.instance.goForward),
+    ),
+    TabbedViewMenuItem(
+      text: '刷新',
+      onSelection: () => runWithActiveTab(WebViewService.instance.reload),
+    ),
+    TabbedViewMenuItem(
+      text: '分屏布局',
+      onSelection: () => showSplitMenu(context, ref),
+    ),
+    TabbedViewMenuItem(
+      text: '书签',
+      onSelection: () => context.push('/bookmarks'),
+    ),
+    TabbedViewMenuItem(
+      text: '设置',
+      onSelection: () => context.push('/settings'),
+    ),
+  ];
 }
 
 class FaviconIcon extends StatelessWidget {
@@ -193,11 +114,46 @@ void showSplitMenu(BuildContext context, WidgetRef ref) {
     builder: (ctx) => SimpleDialog(
       title: const Text('分屏布局', style: TextStyle(fontSize: 15)),
       children: [
-        _splitOption(ctx, notifier, SplitLayout.single, '重置布局', Icons.crop_square, current),
-        _splitOption(ctx, notifier, SplitLayout.horizontal2, '左右两分屏', Icons.view_column, current),
-        _splitOption(ctx, notifier, SplitLayout.vertical2, '上下两分屏', Icons.view_agenda, current),
-        _splitOption(ctx, notifier, SplitLayout.horizontal3, '左右三分屏', Icons.view_carousel, current),
-        _splitOption(ctx, notifier, SplitLayout.quad, '四宫格', Icons.grid_view, current),
+        _splitOption(
+          ctx,
+          notifier,
+          SplitLayout.single,
+          '重置布局',
+          Icons.crop_square,
+          current,
+        ),
+        _splitOption(
+          ctx,
+          notifier,
+          SplitLayout.horizontal2,
+          '左右两分屏',
+          Icons.view_column,
+          current,
+        ),
+        _splitOption(
+          ctx,
+          notifier,
+          SplitLayout.vertical2,
+          '上下两分屏',
+          Icons.view_agenda,
+          current,
+        ),
+        _splitOption(
+          ctx,
+          notifier,
+          SplitLayout.horizontal3,
+          '左右三分屏',
+          Icons.view_carousel,
+          current,
+        ),
+        _splitOption(
+          ctx,
+          notifier,
+          SplitLayout.quad,
+          '四宫格',
+          Icons.grid_view,
+          current,
+        ),
       ],
     ),
   );
