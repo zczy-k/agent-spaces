@@ -235,3 +235,131 @@ packages/server/src/services/builtin-tools/database-tools.ts
 - UI entry: `packages/web/src/components/database/database-main-panel.tsx` settings menu uses `History` to open a dialog and renders diffs with `packages/web/src/components/git/diff-viewer.tsx`.
 - Editor content saves are debounced in `packages/web/src/stores/database.ts` to avoid creating one version per keystroke.
 - Agent tool: `ListDatabaseNodeVersions` in `packages/server/src/services/builtin-tools/database-tools.ts`, with optional `databaseId`, required `id`, and optional `limit`.
+
+## Database AI Chat Entry
+
+Database 面板提供一个右下角 AI 浮动入口，用于直接对知识库发起对话。
+
+前端入口：
+
+```text
+packages/web/src/components/database/database-panel.tsx
+packages/web/src/components/database/database-ai-chat.tsx
+packages/web/src/components/common/floating-ball.tsx
+packages/web/src/components/common/floating-panel.tsx
+```
+
+交互结构：
+
+- `DatabasePanel` 在右下角挂载 `FloatingBall`，点击后打开数据库 AI 聊天面板。
+- 聊天面板使用 `FloatingPanel` 承载，默认初始位置在右下角浮球上方；如果用户拖动过面板，`localStorage` 中保存的位置优先。
+- Header 左侧为会话标题，右侧为设置按钮。
+- 设置按钮使用 `Popover`，菜单项包含 `模型设置` 和 `清空消息`。
+- `模型设置` 打开 `AgentDialog` 的单 Agent 配置模式。
+- 消息区按左右区分用户消息和 Agent 消息，不展示头像。
+- Agent 回复使用 `packages/web/src/components/ui/markdown.tsx` 做极简 Markdown 渲染。
+- 底部为输入框和右侧圆形发送按钮。
+
+通用浮动面板支持：
+
+- `FloatingPanel` 新增 `headerActions`，用于注入 header 右侧操作按钮。
+- `FloatingPanel` 新增 `defaultPosition`，用于指定无历史拖拽位置时的初始坐标。
+- `PopoverContent` 支持 `positionerClassName`，数据库 AI 设置菜单使用更高 z-index，避免菜单被悬浮面板遮挡。
+
+## Database AI Agent Configuration
+
+数据库 AI 使用 workspace 级专用 Agent 配置，配置文件固定保存到：
+
+```text
+.agent-spaces-data/workspaces/{workspace_id}/database/agent.json
+```
+
+后端路由位于：
+
+```text
+packages/server/src/routes/database.ts
+```
+
+新增配置 API：
+
+- `GET /api/workspaces/:id/database/agent-presets`：返回数据库专用 Agent 配置列表，当前仅包含 `database-agent`。
+- `GET /api/workspaces/:id/database/agent-presets/:presetId`：读取数据库专用 Agent 配置。
+- `PUT /api/workspaces/:id/database/agent-presets/:presetId`：保存数据库专用 Agent 配置到 `database/agent.json`。
+- `POST /api/workspaces/:id/database/agent-presets/test-connection`：复用 Agent 连接测试逻辑。
+- `POST /api/workspaces/:id/database/agent-presets/generate`：复用 Agent 生成逻辑。
+
+前端复用：
+
+- `AgentDialog` 支持 `presetBasePath`，可将 Agent 配置读写切换到数据库专用 API。
+- `AgentDialog` 支持 `singleAgent`，用于直接编辑固定的 `database-agent`，不展示常规 Agent 列表和新增入口。
+- `AgentEditor` 支持 `presetBasePath`，保存、测试连接、智能生成均可走调用方指定的 API 前缀。
+
+配置归一化规则：
+
+- `id` 固定为 `database-agent`。
+- `role` 固定为 `agent`。
+- `mcps` 固定为空对象。
+- `skills` 固定为空数组。
+- `workingDir` 固定为空。
+- `sandboxDirs` 固定为空数组。
+- `tools` 固定为数据库知识库必要工具。
+
+允许的数据库工具：
+
+- `ListDatabaseNodes`
+- `SearchDatabaseNodes`
+- `QueryDatabaseVectors`
+- `ReadDatabaseNode`
+- `ListDatabaseNodeVersions`
+- `CreateDatabaseNode`
+- `WriteDatabaseNode`
+- `DeleteDatabaseNode`
+- `MoveDatabaseNode`
+- `UpdateDatabaseNodeMeta`
+
+该专用 Agent 不继承全局 Agent 预设中的 MCP、skills、命令工具、issue 工具或文件系统能力配置。
+
+## Database AI Chat Runtime
+
+聊天 API：
+
+```text
+POST /api/workspaces/:id/database/chat
+```
+
+请求体：
+
+```json
+{
+  "message": "用户输入",
+  "history": [
+    { "role": "user", "content": "上一轮用户消息" },
+    { "role": "agent", "content": "上一轮 Agent final message" }
+  ]
+}
+```
+
+响应体：
+
+```json
+{
+  "finalMessage": "只包含 Agent 最终回复的 Markdown"
+}
+```
+
+运行规则：
+
+- 后端读取 `database/agent.json`，不存在时使用默认数据库助手配置。
+- 运行时只注入 `createDatabaseFunctionTools(workspaceId, agent.tools)` 返回的数据库工具。
+- `mcpServers` 传空对象，`skills` 传空数组，`sandboxDirs` 传空数组。
+- Prompt 明确声明 MCP servers 为 `none`，并列出可用数据库工具的 `mcp__agent-spaces__{ToolName}` 名称。
+- Prompt 要求 Agent 仅返回最终 Markdown 答案，不输出工具日志或执行轨迹。
+- 服务端对 runtime 输出做最终消息提取，过滤 `Tool:`、`Todo:`、`[Usage]`、`[Reasoning]` 等非 final message 行。
+- 前端只渲染响应中的 `finalMessage`，不展示 streaming 中间输出、工具调用或头像。
+
+设计约束：
+
+- 数据库 AI 是 Database 面板内的知识库助手，不是通用工作区 Agent。
+- 数据库 AI 只能通过数据库内置工具读写知识库节点。
+- 数据库 AI 配置独立于全局 Agent preset，避免全局 Agent 的 MCP、skills 或文件系统能力泄漏到知识库聊天入口。
+- 清空消息只清空当前前端会话状态，不删除后端 Agent 配置或数据库内容。

@@ -8,6 +8,7 @@ interface FloatingPanelProps {
   title: string;
   defaultWidth: number;
   defaultHeight: number;
+  defaultPosition?: { x?: number; y?: number };
   minWidth?: number;
   minHeight?: number;
   onClose: () => void;
@@ -53,6 +54,7 @@ export function FloatingPanel({
   title,
   defaultWidth,
   defaultHeight,
+  defaultPosition,
   minWidth = DEFAULT_MIN_W,
   minHeight = DEFAULT_MIN_H,
   onClose,
@@ -65,21 +67,19 @@ export function FloatingPanel({
   const [mounted, setMounted] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const dragMoved = useRef(false);
-  const rectRef = useRef<Rect>({
-    x: Math.max(20, (typeof window !== "undefined" ? window.innerWidth : 1200) - defaultWidth) / 2,
-    y: Math.max(40, (typeof window !== "undefined" ? window.innerHeight : 800) - defaultHeight) / 2,
+  const fallbackRect = (): Rect => ({
+    x: defaultPosition?.x ?? Math.max(20, ((typeof window !== "undefined" ? window.innerWidth : 1200) - defaultWidth) / 2),
+    y: defaultPosition?.y ?? Math.max(40, ((typeof window !== "undefined" ? window.innerHeight : 800) - defaultHeight) / 2),
     w: defaultWidth,
     h: defaultHeight,
   });
-  const [rect, setRect] = useState<Rect>(() => {
-    const fallback: Rect = {
-      x: Math.max(20, (window.innerWidth - defaultWidth) / 2),
-      y: Math.max(40, (window.innerHeight - defaultHeight) / 2),
-      w: defaultWidth,
-      h: defaultHeight,
-    };
-    return loadRect(id, fallback);
+  const rectRef = useRef<Rect>({
+    x: defaultPosition?.x ?? Math.max(20, ((typeof window !== "undefined" ? window.innerWidth : 1200) - defaultWidth) / 2),
+    y: defaultPosition?.y ?? Math.max(40, ((typeof window !== "undefined" ? window.innerHeight : 800) - defaultHeight) / 2),
+    w: defaultWidth,
+    h: defaultHeight,
   });
+  const [rect, setRect] = useState<Rect>(() => loadRect(id, fallbackRect()));
 
   const dragStart = useRef<{ mx: number; my: number; r: Rect } | null>(null);
   const resizeStart = useRef<{ corner: Corner; mx: number; my: number; r: Rect } | null>(null);

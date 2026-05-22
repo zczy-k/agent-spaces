@@ -7,11 +7,10 @@ import { AgentDialog } from '@/components/sidebar/agent-dialog';
 import { Markdown } from '@/components/ui/markdown';
 import { Button } from '@/components/ui/button';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 
 type ChatMessage = {
@@ -19,6 +18,21 @@ type ChatMessage = {
   role: 'user' | 'agent';
   content: string;
 };
+
+const PANEL_WIDTH = 420;
+const PANEL_HEIGHT = 560;
+const PANEL_MARGIN = 24;
+const FLOATING_BALL_CLEARANCE = 88;
+
+function getInitialPanelPosition() {
+  if (typeof window === 'undefined') {
+    return { x: PANEL_MARGIN, y: PANEL_MARGIN };
+  }
+  return {
+    x: Math.max(PANEL_MARGIN, window.innerWidth - PANEL_WIDTH - PANEL_MARGIN),
+    y: Math.max(PANEL_MARGIN, window.innerHeight - PANEL_HEIGHT - FLOATING_BALL_CLEARANCE),
+  };
+}
 
 interface DatabaseAiChatProps {
   workspaceId: string;
@@ -31,6 +45,7 @@ export function DatabaseAiChat({ workspaceId, onClose, onMinimize }: DatabaseAiC
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -84,15 +99,16 @@ export function DatabaseAiChat({ workspaceId, onClose, onMinimize }: DatabaseAiC
       <FloatingPanel
         id={`database-ai-chat:${workspaceId}`}
         title="数据库会话"
-        defaultWidth={420}
-        defaultHeight={560}
+        defaultWidth={PANEL_WIDTH}
+        defaultHeight={PANEL_HEIGHT}
+        defaultPosition={getInitialPanelPosition()}
         minWidth={340}
         minHeight={420}
         onClose={onClose}
         onMinimize={onMinimize}
         headerActions={
-          <DropdownMenu>
-            <DropdownMenuTrigger
+          <Popover open={menuOpen} onOpenChange={setMenuOpen}>
+            <PopoverTrigger
               render={
                 <button
                   className="p-1 rounded hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors text-gray-500 dark:text-gray-400"
@@ -102,17 +118,37 @@ export function DatabaseAiChat({ workspaceId, onClose, onMinimize }: DatabaseAiC
                 </button>
               }
             />
-            <DropdownMenuContent align="end" className="w-36">
-              <DropdownMenuItem className="gap-2" onClick={() => setSettingsOpen(true)}>
+            <PopoverContent
+              align="end"
+              side="bottom"
+              sideOffset={6}
+              positionerClassName="z-[100002]"
+              className="w-36 gap-1 p-1"
+            >
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setSettingsOpen(true);
+                }}
+              >
                 <SlidersHorizontal className="size-3.5" />
                 <span>模型设置</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem className="gap-2 text-destructive" onClick={() => setMessages([])}>
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-destructive hover:bg-destructive/10"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setMessages([]);
+                }}
+              >
                 <Trash2 className="size-3.5" />
                 <span>清空消息</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </button>
+            </PopoverContent>
+          </Popover>
         }
       >
         <div className="flex h-full flex-col bg-background">
