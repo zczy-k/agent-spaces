@@ -1,0 +1,15 @@
+{
+  "title": "Tools",
+  "search": "Search tools...",
+  "empty": "No tools found",
+  "filterAll": "All",
+  "detailTitle": "Tool Details",
+  "enabledCount": "{count}/{total} tools enabled",
+  "selectTools": "Select Tools",
+  "categories": {
+    "channel": "Channel",
+    "terminal": "Terminal",
+    "database": "Database",
+    "kanban": "Kanban"
+  }
+}

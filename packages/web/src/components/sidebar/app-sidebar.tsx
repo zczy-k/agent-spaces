@@ -44,6 +44,7 @@ import { PromptsDialog } from "@/components/sidebar/prompts-dialog";
 import { OutputStylesDialog } from "@/components/sidebar/output-styles-dialog";
 import { McpsDialog } from "@/components/sidebar/mcps-dialog";
 import { HooksDialog } from "@/components/sidebar/hooks-dialog";
+import { ToolsDialog } from "@/components/sidebar/tools-dialog";
 import type { Route } from "./nav-main";
 import DashboardNavigation from "@/components/sidebar/nav-main";
 import { NotificationsPopover } from "@/components/sidebar/nav-notifications";
@@ -86,6 +87,7 @@ export function DashboardSidebar() {
   const [outputStylesDialogOpen, setOutputStylesDialogOpen] = useState(false);
   const [mcpsDialogOpen, setMcpsDialogOpen] = useState(false);
   const [hooksDialogOpen, setHooksDialogOpen] = useState(false);
+  const [toolsDialogOpen, setToolsDialogOpen] = useState(false);
   const [wsDialogOpen, setWsDialogOpen] = useState(false);
   const [editingWs, setEditingWs] = useState<Workspace | null>(null);
   const [modelsDialogProvider, setModelsDialogProvider] = useState<string | undefined>(undefined);
@@ -130,6 +132,7 @@ export function DashboardSidebar() {
         models: setModelsDialogOpen,
         providers: setProvidersDialogOpen,
         hooks: setHooksDialogOpen,
+        tools: setToolsDialogOpen,
         settings: setSettingsDialogOpen,
       };
       if (setterMap[detail]) setterMap[detail](true);
@@ -263,6 +266,19 @@ export function DashboardSidebar() {
         },
       },
       {
+        id: 'open-tools',
+        label: 'Open Tools Settings',
+        group: 'Settings',
+        icon: Wrench,
+        action: () => {
+          if (isMobile) {
+            router.push('/settings/tools');
+          } else {
+            setToolsDialogOpen(true);
+          }
+        },
+      },
+      {
         id: 'open-workflows',
         label: 'Open Workflow Settings',
         group: 'Navigation',
@@ -372,6 +388,7 @@ export function DashboardSidebar() {
             { title: ts('nav.prompts'), link: "/settings/prompts", icon: <MessageSquare className="size-3.5" /> },
             { title: ts('nav.outputStyles'), link: "/settings/output-styles", icon: <Pencil className="size-3.5" /> },
             { title: ts('nav.mcps'), link: "/settings/mcps", icon: <Plug className="size-3.5" /> },
+            { title: ts('nav.tools'), link: "/settings/tools", icon: <Wrench className="size-3.5" /> },
             { title: ts('nav.models'), link: "/settings/models", icon: <Brain className="size-3.5" /> },
             { title: ts('nav.providers'), link: "/settings/providers", icon: <Server className="size-3.5" /> },
           ]
@@ -382,6 +399,7 @@ export function DashboardSidebar() {
             { title: ts('nav.prompts'), link: "#", icon: <MessageSquare className="size-3.5" />, onClick: () => setPromptsDialogOpen(true) },
             { title: ts('nav.outputStyles'), link: "#", icon: <Pencil className="size-3.5" />, onClick: () => setOutputStylesDialogOpen(true) },
             { title: ts('nav.mcps'), link: "#", icon: <Plug className="size-3.5" />, onClick: () => setMcpsDialogOpen(true) },
+            { title: ts('nav.tools'), link: "#", icon: <Wrench className="size-3.5" />, onClick: () => setToolsDialogOpen(true) },
             { title: ts('nav.models'), link: "#", icon: <Brain className="size-3.5" />, onClick: () => { setModelsDialogProvider(undefined); setModelsDialogOpen(true); } },
             { title: ts('nav.providers'), link: "#", icon: <Server className="size-3.5" />, onClick: () => setProvidersDialogOpen(true) },
             { title: ts('nav.hooks'), link: "#", icon: <Zap className="size-3.5" />, onClick: () => setHooksDialogOpen(true) },
@@ -436,6 +454,7 @@ export function DashboardSidebar() {
       <OutputStylesDialog open={outputStylesDialogOpen} onOpenChange={setOutputStylesDialogOpen} />
       <McpsDialog open={mcpsDialogOpen} onOpenChange={setMcpsDialogOpen} />
       <HooksDialog open={hooksDialogOpen} onOpenChange={setHooksDialogOpen} />
+      <ToolsDialog open={toolsDialogOpen} onOpenChange={setToolsDialogOpen} />
       <SettingsDialog open={settingsDialogOpen} onOpenChange={setSettingsDialogOpen} />
       <ModelsDialog open={modelsDialogOpen} onOpenChange={setModelsDialogOpen} initialProvider={modelsDialogProvider} />
       <ProvidersDialog

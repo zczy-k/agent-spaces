@@ -1,0 +1,58 @@
+import agent from './agent.json';
+import chat from './chat.json';
+import commandPalette from './commandPalette.json';
+import commands from './commands.json';
+import common from './common.json';
+import composer from './composer.json';
+import database from './database.json';
+import editor from './editor.json';
+import folderPicker from './folderPicker.json';
+import git from './git.json';
+import home from './home.json';
+import issue from './issue.json';
+import kanban from './kanban.json';
+import login from './login.json';
+import mcps from './mcps.json';
+import models from './models.json';
+import outputStyles from './outputStyles.json';
+import projectSettings from './projectSettings.json';
+import prompts from './prompts.json';
+import providers from './providers.json';
+import settings from './settings.json';
+import sidebar from './sidebar.json';
+import skills from './skills.json';
+import task from './task.json';
+import terminal from './terminal.json';
+import tools from './tools.json';
+import workspace from './workspace.json';
+import workspaces from './workspaces.json';
+
+export default {
+  agent,
+  chat,
+  commandPalette,
+  commands,
+  common,
+  composer,
+  database,
+  editor,
+  folderPicker,
+  git,
+  home,
+  issue,
+  kanban,
+  login,
+  mcps,
+  models,
+  outputStyles,
+  projectSettings,
+  prompts,
+  providers,
+  settings,
+  sidebar,
+  skills,
+  task,
+  terminal,
+  tools,
+  workspace,
+  workspaces,};

@@ -1,0 +1,15 @@
+{
+  "openDialog": "Open Dialog",
+  "newContent": "New Content",
+  "placeholder": "Type content, use @ to mention, / to open commands",
+  "heading": "Heading",
+  "quote": "Quote",
+  "divider": "Divider",
+  "addFile": "Add File",
+  "dropzoneHint": "Tip: drag files here, or click \"Add File\"",
+  "send": "Send",
+  "sending": "Sending...",
+  "uploadFailed": "Upload failed: {name}",
+  "noMatch": "No matches",
+  "selectOption": "Select an option"
+}

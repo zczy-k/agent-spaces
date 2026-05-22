@@ -1,0 +1,20 @@
+{
+  "title": "MCP Servers",
+  "description": "Manage and import MCP server configs, bind to agents",
+  "import": "Import",
+  "importTitle": "Import MCP Config",
+  "importConfirm": "Confirm Import",
+  "importInvalidJson": "Invalid JSON format",
+  "importFailed": "Import failed",
+  "filterAll": "All",
+  "filterFavorites": "Favorites",
+  "filterByAgent": "Filter by Agent",
+  "search": "Search MCP servers...",
+  "empty": "No MCP servers configured",
+  "apply": "Apply",
+  "delete": "Delete",
+  "editTitle": "Edit MCP - {name}",
+  "editDescription": "Edit MCP server config (JSON)",
+  "bindTitle": "Bind Agents - {name}",
+  "bindDescription": "Select agents to bind this MCP server to"
+}

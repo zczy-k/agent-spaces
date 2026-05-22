@@ -1,0 +1,236 @@
+'use client';
+
+import { useState, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
+import {
+  BUILT_IN_AGENT_TOOLS,
+  type BuiltInAgentToolName,
+} from '@agent-spaces/shared';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Hash,
+  Terminal,
+  Database,
+  LayoutGrid,
+  Search,
+  Wrench,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+interface ToolsDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  standalone?: boolean;
+  selectable?: boolean;
+  selectedTools?: BuiltInAgentToolName[];
+  onSelectedToolsChange?: (tools: BuiltInAgentToolName[]) => void;
+}
+
+const TOOL_CATEGORIES: Record<string, { keys: string[]; icon: typeof Hash }> = {
+  channel: {
+    keys: ['CreateCurrentChannelIssue', 'ViewCurrentChannelIssue', 'AddCurrentChannelComment'],
+    icon: Hash,
+  },
+  terminal: {
+    keys: ['ReadTerminalOutput', 'ListQuickCommands', 'RunQuickCommand', 'StopQuickCommand'],
+    icon: Terminal,
+  },
+  database: {
+    keys: ['ListDatabases', 'ListDatabaseNodes', 'SearchDatabaseNodes', 'QueryDatabaseVectors', 'ReadDatabaseNode', 'ListDatabaseNodeVersions', 'CreateDatabaseNode', 'WriteDatabaseNode', 'DeleteDatabaseNode', 'MoveDatabaseNode', 'UpdateDatabaseNodeMeta'],
+    icon: Database,
+  },
+  kanban: {
+    keys: ['ListKanbanBoards', 'ViewKanbanBoard', 'CreateKanbanBoard', 'UpdateKanbanBoard', 'DeleteKanbanBoard'],
+    icon: LayoutGrid,
+  },
+};
+
+const ALL_TOOLS = (BUILT_IN_AGENT_TOOLS ?? []) as readonly { name: BuiltInAgentToolName; label: string; description: string }[];
+
+export function ToolsDialog({ open, onOpenChange, standalone, selectable, selectedTools: externalSelected, onSelectedToolsChange }: ToolsDialogProps) {
+  const t = useTranslations('tools');
+  const tc = useTranslations('common');
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [detailTool, setDetailTool] = useState<{ name: string; label: string; description: string } | null>(null);
+  const [internalSelected, setInternalSelected] = useState<Set<BuiltInAgentToolName>>(new Set());
+
+  const selected = selectable ? new Set<BuiltInAgentToolName>(externalSelected ?? internalSelected) : new Set<BuiltInAgentToolName>();
+
+  const toggleTool = (toolName: BuiltInAgentToolName) => {
+    const next = new Set<BuiltInAgentToolName>(selected);
+    if (next.has(toolName)) {
+      next.delete(toolName);
+    } else {
+      next.add(toolName);
+    }
+    if (onSelectedToolsChange) {
+      onSelectedToolsChange(ALL_TOOLS.map((t) => t.name).filter((n) => next.has(n)));
+    } else {
+      setInternalSelected(next);
+    }
+  };
+
+  const filteredTools = useMemo(() => {
+    let tools = ALL_TOOLS;
+    if (activeCategory !== 'all') {
+      const keys = new Set(TOOL_CATEGORIES[activeCategory]?.keys ?? []);
+      tools = tools.filter((t) => keys.has(t.name));
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      tools = tools.filter((t) => t.label.toLowerCase().includes(q) || t.description.toLowerCase().includes(q));
+    }
+    return tools;
+  }, [activeCategory, searchQuery]);
+
+  const mainBody = (
+    <>
+      <DialogHeader className="shrink-0">
+        <DialogTitle>{t('title')}</DialogTitle>
+        <DialogDescription className="sr-only">{t('title')}</DialogDescription>
+      </DialogHeader>
+
+      <div className="flex-1 min-h-0 flex flex-col md:flex-row gap-4 pt-2">
+        {/* Left: Categories */}
+        <div className="hidden md:flex w-44 shrink-0 flex-col gap-1">
+          <Button
+            variant={activeCategory === 'all' ? 'secondary' : 'ghost'}
+            size="sm"
+            className="justify-start"
+            onClick={() => setActiveCategory('all')}
+          >
+            <Wrench className="size-3.5 mr-1.5" />
+            {t('filterAll')}
+          </Button>
+          {Object.entries(TOOL_CATEGORIES).map(([key, { icon: Icon }]) => (
+            <Button
+              key={key}
+              variant={activeCategory === key ? 'secondary' : 'ghost'}
+              size="sm"
+              className="justify-start"
+              onClick={() => setActiveCategory(key)}
+            >
+              <Icon className="size-3.5 mr-1.5" />
+              {t(`categories.${key}`)}
+            </Button>
+          ))}
+        </div>
+
+        {/* Right: Tool cards */}
+        <div className="flex-1 min-w-0 flex flex-col gap-3">
+          {/* Mobile: top filters */}
+          <div className="flex md:hidden flex-col gap-2">
+            <div className="relative">
+              <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={t('search')} className="pl-8" />
+            </div>
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+              <button type="button" className={cn('shrink-0 px-2.5 py-1 rounded-md text-xs font-medium transition-colors', activeCategory === 'all' ? 'bg-muted' : 'text-muted-foreground hover:text-foreground')} onClick={() => setActiveCategory('all')}>
+                {t('filterAll')}
+              </button>
+              {Object.entries(TOOL_CATEGORIES).map(([key]) => (
+                <button key={key} type="button" className={cn('shrink-0 px-2.5 py-1 rounded-md text-xs font-medium transition-colors', activeCategory === key ? 'bg-muted' : 'text-muted-foreground hover:text-foreground')} onClick={() => setActiveCategory(key)}>
+                  {t(`categories.${key}`)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Desktop: search */}
+          <div className="hidden md:block relative">
+            <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={t('search')} className="pl-8" />
+          </div>
+
+          <ScrollArea className="flex-1">
+            {filteredTools.length === 0 ? (
+              <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">{t('empty')}</div>
+            ) : (
+              <div className="grid grid-cols-1 gap-2 pr-2">
+                {filteredTools.map((tool) => (
+                  <div
+                    key={tool.name}
+                    className="rounded-lg border border-border bg-background px-3 py-2 hover:bg-accent/30 transition-colors cursor-pointer"
+                    onClick={() => {
+                      if (selectable) {
+                        toggleTool(tool.name);
+                      } else {
+                        setDetailTool(tool);
+                      }
+                    }}
+                  >
+                    <div className="flex items-start gap-2">
+                      {selectable && (
+                        <input
+                          type="checkbox"
+                          checked={selected.has(tool.name)}
+                          onChange={() => toggleTool(tool.name)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="mt-0.5 size-3.5 shrink-0"
+                        />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <span className="block text-xs font-medium">{tool.label}</span>
+                        <span className="block text-[11px] text-muted-foreground line-clamp-2">{tool.description}</span>
+                      </div>
+                      {selectable && (
+                        <button
+                          type="button"
+                          className="shrink-0 text-muted-foreground hover:text-foreground"
+                          onClick={(e) => { e.stopPropagation(); setDetailTool(tool); }}
+                        >
+                          <Search className="size-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </div>
+      </div>
+    </>
+  );
+
+  return (
+    <>
+      {standalone && open && (
+        <div className="h-full flex flex-col">
+          {mainBody}
+        </div>
+      )}
+      {!standalone && (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+          <DialogContent className="!w-[80vw] !max-w-[80vw] !h-[80vh] flex flex-col">
+            {mainBody}
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Detail dialog */}
+      <Dialog open={!!detailTool} onOpenChange={(v) => { if (!v) setDetailTool(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{detailTool?.label}</DialogTitle>
+            <DialogDescription className="font-mono text-xs text-muted-foreground">{detailTool?.name}</DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <p className="text-sm text-muted-foreground">{detailTool?.description}</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}

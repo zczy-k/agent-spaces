@@ -1,0 +1,20 @@
+{
+  "title": "MCP 服务器管理",
+  "description": "管理和导入 MCP 服务器配置，绑定到智能体",
+  "import": "导入",
+  "importTitle": "导入 MCP 配置",
+  "importConfirm": "确认导入",
+  "importInvalidJson": "JSON 格式无效",
+  "importFailed": "导入失败",
+  "filterAll": "全部",
+  "filterFavorites": "收藏",
+  "filterByAgent": "按智能体过滤",
+  "search": "搜索 MCP 服务器...",
+  "empty": "暂无 MCP 服务器配置",
+  "apply": "应用",
+  "delete": "删除",
+  "editTitle": "编辑 MCP - {name}",
+  "editDescription": "编辑 MCP 服务器配置（JSON）",
+  "bindTitle": "绑定智能体 - {name}",
+  "bindDescription": "选择要绑定此 MCP 服务器的智能体"
+}

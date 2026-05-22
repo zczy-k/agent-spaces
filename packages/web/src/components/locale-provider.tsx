@@ -3,8 +3,8 @@
 import { createContext, useCallback, useContext, useSyncExternalStore } from 'react';
 import { useServerInsertedHTML } from 'next/navigation';
 import { NextIntlClientProvider } from 'next-intl';
-import en from '@/locales/en.json';
-import zh from '@/locales/zh.json';
+import en from '@/locales/en';
+import zh from '@/locales/zh';
 
 const STORAGE_KEY = 'agent-spaces-locale';
 const DEFAULT_LOCALE = 'zh' as const;

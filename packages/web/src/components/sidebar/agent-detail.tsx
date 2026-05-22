@@ -6,9 +6,9 @@ import { useLLMStore } from "@/stores/llm";
 import {
   BUILT_IN_AGENT_TOOLS,
   type AgentConfig,
-  type BuiltInAgentToolName,
   type LLMProvider,
 } from "@agent-spaces/shared";
+import type { BuiltInAgentToolName } from "@agent-spaces/shared";
 import { AgentIcon } from "@/components/common/agent-icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +38,7 @@ import {
   X as XIcon,
 } from "lucide-react";
 import { DiffViewer } from "@/components/git/diff-viewer";
+import { ToolsDialog } from "@/components/sidebar/tools-dialog";
 import {
   type AgentPreset,
   type AgentRole,
@@ -82,6 +83,7 @@ export function AgentDetail({
   const [optimizedPrompt, setOptimizedPrompt] = useState("");
   const [optimizationError, setOptimizationError] = useState<string | null>(null);
   const [applyPreviewOpen, setApplyPreviewOpen] = useState(false);
+  const [toolsDialogOpen, setToolsDialogOpen] = useState(false);
   const [previewPrompt, setPreviewPrompt] = useState("");
 
   const { models: allLlmModels, providers: llmProviders, ensure: ensureLLM } = useLLMStore();
@@ -131,16 +133,6 @@ export function AgentDetail({
       content: await file.text(),
     })));
     onAddSkillFiles(next);
-  };
-
-  const toggleTool = (toolName: BuiltInAgentToolName) => {
-    const selected = new Set(agent.tools);
-    if (selected.has(toolName)) {
-      selected.delete(toolName);
-    } else {
-      selected.add(toolName);
-    }
-    onChange("tools", (BUILT_IN_AGENT_TOOLS ?? []).map((tool) => tool.name).filter((name) => selected.has(name)));
   };
 
   const handleOptimizePrompt = async () => {
@@ -311,22 +303,16 @@ export function AgentDetail({
       </Section>
 
       <Section icon={<Wrench className="size-3.5" />} title={t("detail.tools")}>
-        <div className="grid gap-2">
-          {(BUILT_IN_AGENT_TOOLS ?? []).map((tool) => (
-            <label key={tool.name} className="flex cursor-pointer items-start gap-2 rounded-lg border border-input px-3 py-2 hover:bg-muted/50">
-              <input
-                type="checkbox"
-                checked={agent.tools.includes(tool.name)}
-                onChange={() => toggleTool(tool.name)}
-                className="mt-0.5 size-3.5"
-              />
-              <span className="min-w-0 flex-1">
-                <span className="block text-xs font-medium">{tool.label}</span>
-                <span className="block text-[11px] text-muted-foreground">{tool.description}</span>
-              </span>
-            </label>
-          ))}
-        </div>
+        <Button variant="outline" size="sm" className="w-full" onClick={() => setToolsDialogOpen(true)}>
+          {t("detail.enabledToolsCount", { count: agent.tools.length, total: (BUILT_IN_AGENT_TOOLS ?? []).length })}
+        </Button>
+        <ToolsDialog
+          open={toolsDialogOpen}
+          onOpenChange={setToolsDialogOpen}
+          selectable
+          selectedTools={agent.tools}
+          onSelectedToolsChange={(tools) => onChange("tools", tools)}
+        />
       </Section>
 
       <Section icon={<Cpu className="size-3.5" />} title={t("detail.skills")}>

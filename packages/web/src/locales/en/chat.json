@@ -1,0 +1,131 @@
+{
+  "channel": {
+    "general": "General",
+    "issue": "Issue",
+    "agent": "Agent",
+    "edit": "Edit Channel",
+    "create": "Create Channel",
+    "selectType": "Select type",
+    "addMember": "Add Member",
+    "info": "Channel Info",
+    "members": "Members",
+    "type": "Type:",
+    "channelId": "Channel ID",
+    "memberCount": "Member count",
+    "createdAt": "Created",
+    "noMembers": "No members yet",
+    "delete": "Delete Channel",
+    "deleteConfirm": "Are you sure you want to delete this channel? This action cannot be undone.",
+    "namePlaceholder": "Channel name",
+    "archive": "Archive",
+    "unarchive": "Unarchive",
+    "archived": "Archived",
+    "clearArchived": "Clear Archived",
+    "clearArchivedConfirm": "Delete {count} archived {count, plural, one {channel} other {channels}}? This cannot be undone."
+  },
+  "channelType": {
+    "general": "General",
+    "issue": "Issue",
+    "agent": "Agent"
+  },
+  "emptyState": "Select a channel to start chatting",
+  "status": {
+    "idle": "Idle",
+    "waitingForUser": "Waiting for confirmation",
+    "running": "Running",
+    "success": "Success",
+    "error": "Failed"
+  },
+  "viewRelatedIssue": "View related issue",
+  "deleteMessage": {
+    "title": "Delete Message",
+    "description": "Are you sure you want to delete this message? This action cannot be undone."
+  },
+  "clearMessages": {
+    "title": "Clear Channel Messages",
+    "description": "Are you sure you want to clear all messages in #{channel}? This action cannot be undone.",
+    "confirm": "Clear"
+  },
+  "pendingQuestion": {
+    "placeholder": "Type your answer..."
+  },
+  "untitledTodo": "Untitled todo",
+  "input": {
+    "placeholder": "Message #{channel}... Use @ to mention agents, / for commands",
+    "attachFiles": "Attach Files",
+    "autoMode": "Auto",
+    "unpinAgent": "Unpin Agent",
+    "pinAgent": "Pin Agent",
+    "mcp": "MCP",
+    "noMcp": "No MCP configured",
+    "skill": "Skill",
+    "noSkills": "No skills configured",
+    "tools": "Tools",
+    "noTools": "No tools configured",
+    "todos": "Todos",
+    "clearTodos": "Clear Todos",
+    "uploadFailed": "Upload failed: {name}",
+    "voiceStart": "Voice Input",
+    "voiceStop": "Stop Recording",
+    "manageMembers": "Manage channel members",
+    "notifyOnComplete": "Notify on AI reply complete"
+  },
+  "messageParts": {
+    "agentProcessing": "Agent is processing...",
+    "agentThinking": "Agent is thinking",
+    "aiIntermediateOutput": "AI intermediate output",
+    "streamingResponse": "Streaming response",
+    "intermediateMessage": "Intermediate message",
+    "chainSteps": "{count, plural, one {# chain step} other {# chain steps}}",
+    "reject": "Reject",
+    "approve": "Approve",
+    "result": "Result",
+    "aiMessage": "AI message",
+    "failedToLoadDetails": "Failed to load details.",
+    "loadingDetails": "Loading details...",
+    "noDetails": "No details available.",
+    "raw": "Raw",
+    "input": "Input",
+    "output": "Output",
+    "copy": "Copy",
+    "view": "View"
+  },
+  "chainOfThought": {
+    "defaultHeader": "Chain of Thought"
+  },
+  "commit": {
+    "clipboardUnavailable": "Clipboard API not available"
+  },
+  "subagent": {
+    "instructions": "Instructions",
+    "tools": "Tools",
+    "noDescription": "No description",
+    "outputSchema": "Output Schema"
+  },
+  "terminal": {
+    "title": "Terminal",
+    "running": "Running...",
+    "clipboardUnavailable": "Clipboard API not available"
+  },
+  "context": {
+    "totalCost": "Total cost",
+    "input": "Input",
+    "output": "Output",
+    "reasoning": "Reasoning",
+    "cache": "Cache"
+  },
+  "attachments": {
+    "source": "Source",
+    "image": "Image",
+    "attachment": "Attachment",
+    "imageAlt": "Image",
+    "remove": "Remove",
+    "noAttachments": "No attachments"
+  },
+  "askUser": {
+    "placeholder": "Type an answer..."
+  },
+  "readonlyCodeBlock": {
+    "loading": "Loading code..."
+  }
+}
