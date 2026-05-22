@@ -3,7 +3,7 @@ import type { Channel } from '@agent-spaces/shared';
 import { stripHtml } from './html-utils.js';
 import * as issueService from '../services/issue.js';
 import { getChannel } from '../services/channel.js';
-import { createIssueFunctionTools } from '../services/builtin-tools.js';
+import { createIssueFunctionTools } from '../services/builtin-tools/index.js';
 import { prependPersistentAgentContext } from '../services/persistent-agent-context.js';
 
 export interface BuiltInToolContext {

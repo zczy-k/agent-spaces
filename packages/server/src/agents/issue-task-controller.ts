@@ -9,7 +9,7 @@ import * as issueService from '../services/issue.js';
 import * as taskService from '../services/task.js';
 import * as workspaceService from '../services/workspace.js';
 import { mapWorkflowToTaskDrafts, validateWorkflowForRun } from '../services/workflow.js';
-import { createIssueFunctionTools } from '../services/builtin-tools.js';
+import { createIssueFunctionTools } from '../services/builtin-tools/index.js';
 import { getThinkingRuntimeConfig } from '../services/llm-model-config.js';
 import { prependPersistentAgentContext } from '../services/persistent-agent-context.js';
 import { completeIssueAgentProgress, createIssueAgentProgress, createIssueAgentProgressTracker } from './issue-agent-progress.js';
