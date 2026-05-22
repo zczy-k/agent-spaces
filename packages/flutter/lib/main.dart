@@ -1,3 +1,4 @@
+import 'package:adaptive_theme/adaptive_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,13 +25,14 @@ void main() async {
   await EasyLocalization.ensureInitialized();
   await NotificationService().initialize();
   await localWebServer.start();
+  final savedThemeMode = await AdaptiveTheme.getThemeMode();
   runApp(
     EasyLocalization(
       supportedLocales: const [Locale('zh'), Locale('en')],
       path: 'assets/translations',
       fallbackLocale: const Locale('zh'),
       useOnlyLangCode: true,
-      child: const ProviderScope(child: AgentSpacesApp()),
+      child: ProviderScope(child: AgentSpacesApp(savedThemeMode: savedThemeMode)),
     ),
   );
 }
@@ -70,7 +72,8 @@ final _upgrader = Upgrader(
 );
 
 class AgentSpacesApp extends ConsumerWidget {
-  const AgentSpacesApp({super.key});
+  final AdaptiveThemeMode? savedThemeMode;
+  const AgentSpacesApp({super.key, this.savedThemeMode});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -78,30 +81,35 @@ class AgentSpacesApp extends ConsumerWidget {
     ref.watch(bookmarkProvider);
     ref.watch(settingsProvider);
 
-    return MaterialApp.router(
-      title: 'Agent Spaces',
-      debugShowCheckedModeBanner: false,
-      localizationsDelegates: context.localizationDelegates,
-      supportedLocales: context.supportedLocales,
-      locale: context.locale,
-      theme: ThemeData(
+    return AdaptiveTheme(
+      light: ThemeData(
         colorSchemeSeed: const Color(0xFF2563EB),
         useMaterial3: true,
         brightness: Brightness.light,
       ),
-      darkTheme: ThemeData(
+      dark: ThemeData(
         colorSchemeSeed: const Color(0xFF2563EB),
         useMaterial3: true,
         brightness: Brightness.dark,
       ),
-      builder: (context, child) {
-        return UpgradeAlert(
-          navigatorKey: _router.routerDelegate.navigatorKey,
-          upgrader: _upgrader,
-          child: child ?? const SizedBox.shrink(),
-        );
-      },
-      routerConfig: _router,
+      initial: savedThemeMode ?? AdaptiveThemeMode.light,
+      builder: (theme, darkTheme) => MaterialApp.router(
+        title: 'Agent Spaces',
+        debugShowCheckedModeBanner: false,
+        localizationsDelegates: context.localizationDelegates,
+        supportedLocales: context.supportedLocales,
+        locale: context.locale,
+        theme: theme,
+        darkTheme: darkTheme,
+        builder: (context, child) {
+          return UpgradeAlert(
+            navigatorKey: _router.routerDelegate.navigatorKey,
+            upgrader: _upgrader,
+            child: child ?? const SizedBox.shrink(),
+          );
+        },
+        routerConfig: _router,
+      ),
     );
   }
 }

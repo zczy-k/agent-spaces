@@ -51,7 +51,7 @@ void showTabContextMenu(
             const Spacer(),
             Text(
               tab.device.name,
-              style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+              style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
           ],
         ),

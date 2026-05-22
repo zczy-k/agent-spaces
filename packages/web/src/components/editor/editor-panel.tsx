@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FileTree, FileTreeNodes } from "./file-tree";
+import { FileTree, FileTreeNodes, FileTreeFolder, FileTreeFile } from "./file-tree";
 import { SearchPanel } from "./search-panel";
 import { ImportFileDialog } from "./import-file-dialog";
 import { useEditorStore } from "@/stores/editor";
@@ -80,6 +80,27 @@ function collectAllFiles(nodes: FileNode[]): FileNode[] {
   return files;
 }
 
+function toSingleLevelTree(files: FileNode[]): FileNode[] {
+  const dirMap = new Map<string, FileNode[]>();
+  const rootFiles: FileNode[] = [];
+  for (const f of files) {
+    const idx = f.path.indexOf('/');
+    if (idx === -1) {
+      rootFiles.push(f);
+    } else {
+      const dir = f.path.substring(0, idx);
+      let list = dirMap.get(dir);
+      if (!list) { list = []; dirMap.set(dir, list); }
+      list.push(f);
+    }
+  }
+  const result: FileNode[] = [...rootFiles];
+  for (const [dirPath, children] of dirMap) {
+    result.push({ name: dirPath, path: dirPath, type: 'directory', children });
+  }
+  return result;
+}
+
 const STORAGE_KEY_PREFIX = 'agent-spaces:file-tree-expanded:';
 const ROOT_DROP_TARGET = '__file_tree_root_drop_target__';
 const FILE_TREE_DRAG_MIME = 'application/x-agent-spaces-file-path';
@@ -96,6 +117,33 @@ function saveExpandedPaths(workspaceId: string, paths: Set<string>) {
   try {
     localStorage.setItem(STORAGE_KEY_PREFIX + workspaceId, JSON.stringify([...paths]));
   } catch {}
+}
+
+function FlatFileTree({ files, selectedPath, onSelect, workspaceId, boundDir, emptyText }: {
+  files: FileNode[];
+  selectedPath?: string;
+  onSelect: (path: string) => void;
+  workspaceId: string;
+  boundDir: string;
+  emptyText: string;
+}) {
+  const tree = useMemo(() => toSingleLevelTree(files), [files]);
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set(tree.filter(n => n.type === 'directory').map(n => n.path)));
+  if (files.length === 0) {
+    return <div className="px-2 py-4 text-xs text-muted-foreground text-center">{emptyText}</div>;
+  }
+  return (
+    <FileTree
+      expanded={expanded}
+      onExpandedChange={setExpanded}
+      selectedPath={selectedPath}
+      onFileSelect={onSelect}
+      workspaceId={workspaceId}
+      boundDir={boundDir}
+    >
+      <FileTreeNodes nodes={tree} />
+    </FileTree>
+  );
 }
 
 interface EditorPanelProps {
@@ -577,28 +625,18 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
                 </>
               )
             ) : (
-              (() => {
-                const files = bottomTab === 'recent' ? recentFiles : openedFileNodes;
-                const lower = fileSearch.toLowerCase();
-                const filtered = fileSearch ? files.filter(f => f.name.toLowerCase().includes(lower)) : files;
-                return filtered.length === 0 ? (
-                  <div className="px-2 py-4 text-xs text-muted-foreground text-center">{t('noFiles')}</div>
-                ) : filtered.map(node => (
-                  <button
-                    key={node.path}
-                    onClick={() => { setSelectedPath(node.path); openFile(workspaceId, node.path); useMobilePanelStore.getState().setActivePanel('code-editor'); }}
-                    className={`w-full flex items-center gap-1.5 px-3 py-[3px] text-xs hover:bg-accent/50 transition-colors ${selectedPath === node.path ? 'bg-accent' : ''}`}
-                  >
-                    <FileIconImg name={node.name} />
-                    <span className="truncate">{node.name}</span>
-                    {node.path.includes('/') && (
-                      <span className="ml-auto text-[10px] text-muted-foreground truncate max-w-[100px]">
-                        {node.path.replace(/\/[^/]*$/, '')}
-                      </span>
-                    )}
-                  </button>
-                ));
-              })()
+              <FlatFileTree
+                files={(() => {
+                  const files = bottomTab === 'recent' ? recentFiles : openedFileNodes;
+                  const lower = fileSearch.toLowerCase();
+                  return fileSearch ? files.filter(f => f.name.toLowerCase().includes(lower)) : files;
+                })()}
+                selectedPath={selectedPath}
+                onSelect={(path) => { setSelectedPath(path); openFile(workspaceId, path); useMobilePanelStore.getState().setActivePanel('code-editor'); }}
+                workspaceId={workspaceId}
+                boundDir={boundDir}
+                emptyText={t('noFiles')}
+              />
             )}
           </div>
           <div className="shrink-0 border-t flex h-7">

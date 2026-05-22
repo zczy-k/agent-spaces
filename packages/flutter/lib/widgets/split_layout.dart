@@ -1,5 +1,6 @@
 import 'package:docking/docking.dart';
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../models/browser_tab.dart';
 import '../providers/browser_provider.dart';
 import 'tab_widgets.dart';
@@ -222,17 +223,17 @@ class _SplitLayoutViewState extends State<SplitLayoutView> {
         dockingButtonsBuilder: (context, dockingTabs, dockingItem) => [
           TabButton(
             icon: IconProvider.data(Icons.add),
-            toolTip: '新建标签页',
+            toolTip: 'tab_new_tab'.tr(),
             onPressed: widget.onNewTab,
           ),
           TabButton(
             icon: IconProvider.data(Icons.terminal),
-            toolTip: '新建 Terminal',
+            toolTip: 'tab_new_terminal'.tr(),
             onPressed: widget.onNewTerminal,
           ),
           TabButton(
             icon: IconProvider.data(Icons.more_vert),
-            toolTip: '更多',
+            toolTip: 'tab_more'.tr(),
             onPressed: () => _showDockingMenu(context, widget.onBuildMenu),
           ),
         ],

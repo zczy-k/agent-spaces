@@ -42,6 +42,11 @@
   "settings_terminal_credentials_desc": "Manage SSH password or private key credentials",
   "settings_language": "Language",
   "settings_language_desc": "Switch app display language",
+  "settings_appearance": "Appearance",
+  "settings_theme": "Theme",
+  "settings_theme_light": "Light",
+  "settings_theme_dark": "Dark",
+  "settings_theme_system": "System",
   "settings_other": "Other",
   "settings_version": "Version {}",
   "settings_device_selector": "Switch Device",
@@ -162,5 +167,14 @@
   "tab_refresh_label": "Refresh",
   "tab_console_label": "Console",
   "tab_url_copied": "URL Copied",
-  "tab_copy_url": "Copy URL"
+  "tab_copy_url": "Copy URL",
+  "tab_new_terminal": "New Terminal",
+  "tab_go_back": "Back",
+  "tab_go_forward": "Forward",
+  "tab_split_layout_reset": "Reset Layout",
+  "tab_split_horizontal_2": "Split Left-Right",
+  "tab_split_vertical_2": "Split Top-Bottom",
+  "tab_split_horizontal_3": "Three Columns",
+  "tab_split_quad": "Quad Grid",
+  "tab_more": "More"
 }

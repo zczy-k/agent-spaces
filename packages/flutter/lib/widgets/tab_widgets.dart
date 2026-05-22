@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../providers/browser_provider.dart';
 import '../services/webview_service.dart';
 
@@ -48,35 +49,35 @@ List<PopupMenuEntry<VoidCallback>> buildBrowserMenuItems(
 
   return [
     if (onNewTab != null)
-      PopupMenuItem<VoidCallback>(value: onNewTab, child: const Text('新建标签页')),
+      PopupMenuItem<VoidCallback>(value: onNewTab, child: Text('tab_new_tab'.tr())),
     if (onNewTerminal != null)
       PopupMenuItem<VoidCallback>(
         value: onNewTerminal,
-        child: const Text('新建 Terminal'),
+        child: Text('tab_new_terminal'.tr()),
       ),
     PopupMenuItem<VoidCallback>(
       value: () => runWithActiveTab(WebViewService.instance.goBack),
-      child: const Text('后退'),
+      child: Text('tab_go_back'.tr()),
     ),
     PopupMenuItem<VoidCallback>(
       value: () => runWithActiveTab(WebViewService.instance.goForward),
-      child: const Text('前进'),
+      child: Text('tab_go_forward'.tr()),
     ),
     PopupMenuItem<VoidCallback>(
       value: () => runWithActiveTab(WebViewService.instance.reload),
-      child: const Text('刷新'),
+      child: Text('tab_refresh'.tr()),
     ),
     PopupMenuItem<VoidCallback>(
       value: () => showSplitMenu(context, ref),
-      child: const Text('分屏布局'),
+      child: Text('tab_split_layout'.tr()),
     ),
     PopupMenuItem<VoidCallback>(
       value: () => context.push('/bookmarks'),
-      child: const Text('书签'),
+      child: Text('bookmarks'.tr()),
     ),
     PopupMenuItem<VoidCallback>(
       value: () => context.push('/settings'),
-      child: const Text('设置'),
+      child: Text('settings'.tr()),
     ),
   ];
 }
@@ -117,13 +118,13 @@ void showSplitMenu(BuildContext context, WidgetRef ref) {
   showDialog(
     context: context,
     builder: (ctx) => SimpleDialog(
-      title: const Text('分屏布局', style: TextStyle(fontSize: 15)),
+      title: Text('tab_split_layout'.tr(), style: const TextStyle(fontSize: 15)),
       children: [
         _splitOption(
           ctx,
           notifier,
           SplitLayout.single,
-          '重置布局',
+          'tab_split_layout_reset'.tr(),
           Icons.crop_square,
           current,
         ),
@@ -131,7 +132,7 @@ void showSplitMenu(BuildContext context, WidgetRef ref) {
           ctx,
           notifier,
           SplitLayout.horizontal2,
-          '左右两分屏',
+          'tab_split_horizontal_2'.tr(),
           Icons.view_column,
           current,
         ),
@@ -139,7 +140,7 @@ void showSplitMenu(BuildContext context, WidgetRef ref) {
           ctx,
           notifier,
           SplitLayout.vertical2,
-          '上下两分屏',
+          'tab_split_vertical_2'.tr(),
           Icons.view_agenda,
           current,
         ),
@@ -147,7 +148,7 @@ void showSplitMenu(BuildContext context, WidgetRef ref) {
           ctx,
           notifier,
           SplitLayout.horizontal3,
-          '左右三分屏',
+          'tab_split_horizontal_3'.tr(),
           Icons.view_carousel,
           current,
         ),
@@ -155,7 +156,7 @@ void showSplitMenu(BuildContext context, WidgetRef ref) {
           ctx,
           notifier,
           SplitLayout.quad,
-          '四宫格',
+          'tab_split_quad'.tr(),
           Icons.grid_view,
           current,
         ),

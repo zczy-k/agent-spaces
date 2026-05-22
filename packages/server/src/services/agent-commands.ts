@@ -1,12 +1,19 @@
-import { existsSync, readdirSync, readFileSync, writeFileSync, unlinkSync, mkdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, writeFileSync, unlinkSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { getDataDir, ensureDir } from '../storage/json-store.js';
 
 export interface AgentCommand {
   name: string;
   content: string;
+  group: string;
   agentId: string;
   agentName?: string;
+}
+
+export interface AgentInfo {
+  agentId: string;
+  agentName: string;
+  commandCount: number;
 }
 
 function getAgentTemplatesDir(): string {
@@ -28,7 +35,27 @@ function getAgentName(agentId: string): string | undefined {
   }
 }
 
-export function listAgentsWithCommands(): Array<{ agentId: string; agentName: string; commandCount: number }> {
+function readCommandsFromDir(dir: string, agentId: string, group: string = ''): AgentCommand[] {
+  if (!existsSync(dir)) return [];
+  const agentName = getAgentName(agentId);
+
+  return readdirSync(dir, { withFileTypes: true })
+    .flatMap((entry) => {
+      if (entry.isDirectory()) {
+        return readCommandsFromDir(join(dir, entry.name), agentId, entry.name);
+      }
+      if (!entry.name.endsWith('.md')) return [];
+      return {
+        name: entry.name.replace(/\.md$/, ''),
+        content: readFileSync(join(dir, entry.name), 'utf-8'),
+        group,
+        agentId,
+        agentName,
+      };
+    });
+}
+
+export function listAgentsWithCommands(): AgentInfo[] {
   const templatesDir = getAgentTemplatesDir();
   if (!existsSync(templatesDir)) return [];
 
@@ -36,84 +63,112 @@ export function listAgentsWithCommands(): Array<{ agentId: string; agentName: st
     .filter((entry) => entry.isDirectory())
     .map((entry) => {
       const commandsDir = getCommandsDir(entry.name);
-      let commandCount = 0;
-      if (existsSync(commandsDir)) {
-        commandCount = readdirSync(commandsDir)
-          .filter((f) => f.endsWith('.md'))
-          .length;
-      }
+      const commands = readCommandsFromDir(commandsDir, entry.name);
       return {
         agentId: entry.name,
         agentName: getAgentName(entry.name) || entry.name,
-        commandCount,
+        commandCount: commands.length,
       };
     });
 }
 
-export function listCommands(agentId: string): AgentCommand[] {
-  const dir = getCommandsDir(agentId);
-  if (!existsSync(dir)) return [];
+export function listAllCommands(): AgentCommand[] {
+  const templatesDir = getAgentTemplatesDir();
+  if (!existsSync(templatesDir)) return [];
 
-  const agentName = getAgentName(agentId);
-  return readdirSync(dir)
-    .filter((f) => f.endsWith('.md'))
-    .map((f) => ({
-      name: f.replace(/\.md$/, ''),
-      content: readFileSync(join(dir, f), 'utf-8'),
-      agentId,
-      agentName,
-    }));
+  return readdirSync(templatesDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .flatMap((entry) => {
+      const commandsDir = getCommandsDir(entry.name);
+      return readCommandsFromDir(commandsDir, entry.name);
+    });
 }
 
-export function getCommand(agentId: string, name: string): AgentCommand | null {
-  const filePath = join(getCommandsDir(agentId), `${name}.md`);
-  if (!existsSync(filePath)) return null;
+export function listCommands(agentId: string): AgentCommand[] {
+  return readCommandsFromDir(getCommandsDir(agentId), agentId);
+}
+
+function resolveCommandPath(agentId: string, name: string, group?: string): string {
+  if (group) {
+    return join(getCommandsDir(agentId), group, `${name}.md`);
+  }
+  return join(getCommandsDir(agentId), `${name}.md`);
+}
+
+function findCommandPath(agentId: string, name: string, group?: string): string | null {
+  if (group) {
+    const p = join(getCommandsDir(agentId), group, `${name}.md`);
+    return existsSync(p) ? p : null;
+  }
+  // Search root first, then subdirectories
+  const root = join(getCommandsDir(agentId), `${name}.md`);
+  if (existsSync(root)) return root;
+  if (existsSync(getCommandsDir(agentId))) {
+    for (const entry of readdirSync(getCommandsDir(agentId), { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        const p = join(getCommandsDir(agentId), entry.name, `${name}.md`);
+        if (existsSync(p)) return p;
+      }
+    }
+  }
+  return null;
+}
+
+export function getCommand(agentId: string, name: string, group?: string): AgentCommand | null {
+  const filePath = findCommandPath(agentId, name, group);
+  if (!filePath) return null;
+
+  // Infer group from path
+  const commandsDir = getCommandsDir(agentId);
+  const relative = filePath.slice(commandsDir.length + 1);
+  const parts = relative.split('/');
+  const inferredGroup = parts.length > 1 ? parts.slice(0, -1).join('/') : '';
+
   return {
     name,
     content: readFileSync(filePath, 'utf-8'),
+    group: inferredGroup,
     agentId,
     agentName: getAgentName(agentId),
   };
 }
 
-export function createCommand(agentId: string, name: string, content: string): AgentCommand {
-  const dir = getCommandsDir(agentId);
+export function createCommand(agentId: string, name: string, content: string, group?: string): AgentCommand {
+  const dir = group ? join(getCommandsDir(agentId), group) : getCommandsDir(agentId);
   ensureDir(dir);
   const filePath = join(dir, `${name}.md`);
   writeFileSync(filePath, content, 'utf-8');
   return {
     name,
     content,
+    group: group || '',
     agentId,
     agentName: getAgentName(agentId),
   };
 }
 
-export function updateCommand(agentId: string, name: string, content: string): AgentCommand | null {
-  const filePath = join(getCommandsDir(agentId), `${name}.md`);
-  if (!existsSync(filePath)) return null;
+export function updateCommand(agentId: string, name: string, content: string, group?: string): AgentCommand | null {
+  const filePath = findCommandPath(agentId, name, group);
+  if (!filePath) return null;
   writeFileSync(filePath, content, 'utf-8');
+
+  const commandsDir = getCommandsDir(agentId);
+  const relative = filePath.slice(commandsDir.length + 1);
+  const parts = relative.split('/');
+  const inferredGroup = parts.length > 1 ? parts.slice(0, -1).join('/') : '';
+
   return {
     name,
     content,
+    group: inferredGroup,
     agentId,
     agentName: getAgentName(agentId),
   };
 }
 
-export function deleteCommand(agentId: string, name: string): boolean {
-  const filePath = join(getCommandsDir(agentId), `${name}.md`);
-  if (!existsSync(filePath)) return false;
+export function deleteCommand(agentId: string, name: string, group?: string): boolean {
+  const filePath = findCommandPath(agentId, name, group);
+  if (!filePath) return false;
   unlinkSync(filePath);
-  return true;
-}
-
-export function renameCommand(agentId: string, oldName: string, newName: string): boolean {
-  const oldPath = join(getCommandsDir(agentId), `${oldName}.md`);
-  const newPath = join(getCommandsDir(agentId), `${newName}.md`);
-  if (!existsSync(oldPath) || existsSync(newPath)) return false;
-  const content = readFileSync(oldPath, 'utf-8');
-  writeFileSync(newPath, content, 'utf-8');
-  unlinkSync(oldPath);
   return true;
 }

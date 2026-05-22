@@ -21,6 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { AgentIcon } from '@/components/common/agent-icon';
 import {
   Search,
   MoreVertical,
@@ -29,8 +30,10 @@ import {
   Plus,
   Terminal,
   Upload,
-  ChevronDown,
+  FileText,
+  Folder,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const MonacoEditor = dynamic(
   () => import('@monaco-editor/react').then((mod) => mod.default),
@@ -41,11 +44,13 @@ interface AgentInfo {
   agentId: string;
   agentName: string;
   commandCount: number;
+  avatarUrl?: string;
 }
 
 interface CommandItem {
   name: string;
   content: string;
+  group: string;
   agentId: string;
   agentName?: string;
 }
@@ -60,10 +65,11 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
   const tc = useTranslations('common');
 
   const [agents, setAgents] = useState<AgentInfo[]>([]);
-  const [selectedAgentId, setSelectedAgentId] = useState<string>('');
-  const [commands, setCommands] = useState<CommandItem[]>([]);
+  const [allCommands, setAllCommands] = useState<CommandItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterAgentId, setFilterAgentId] = useState('');
+  const [filterGroup, setFilterGroup] = useState('');
 
   const [importOpen, setImportOpen] = useState(false);
   const [uploadFiles, setUploadFiles] = useState<FileUploadFile[]>([]);
@@ -71,10 +77,10 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
   const [editCommand, setEditCommand] = useState<CommandItem | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [editName, setEditName] = useState('');
+  const [editGroup, setEditGroup] = useState('');
+  const [editAgentId, setEditAgentId] = useState('');
   const [editContent, setEditContent] = useState('');
   const [saving, setSaving] = useState(false);
-
-  const [agentPickerOpen, setAgentPickerOpen] = useState(false);
 
   const fetchAgents = useCallback(async () => {
     try {
@@ -82,35 +88,54 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
       if (res.ok) {
         const data: AgentInfo[] = await res.json();
         setAgents(data);
-        if (data.length > 0 && !selectedAgentId) {
-          setSelectedAgentId(data[0].agentId);
+        if (data.length > 0 && !filterAgentId) {
+          setEditAgentId(data[0].agentId);
         }
       }
     } catch { /* ignore */ }
-  }, [selectedAgentId]);
+  }, [filterAgentId]);
 
-  const fetchCommands = useCallback(async () => {
-    if (!selectedAgentId) return;
+  const fetchAllCommands = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/agent-commands/${selectedAgentId}`);
-      if (res.ok) setCommands(await res.json());
+      const res = await fetch('/api/agent-commands/all');
+      if (res.ok) setAllCommands(await res.json());
     } catch { /* ignore */ }
     setLoading(false);
-  }, [selectedAgentId]);
+  }, []);
 
   useEffect(() => {
-    if (open) fetchAgents();
-  }, [open, fetchAgents]);
+    if (open) {
+      fetchAgents();
+      fetchAllCommands();
+    }
+  }, [open, fetchAgents, fetchAllCommands]);
 
-  useEffect(() => {
-    if (open && selectedAgentId) fetchCommands();
-  }, [open, selectedAgentId, fetchCommands]);
+  const groups = Array.from(new Set(allCommands.map((c) => c.group).filter(Boolean)));
 
-  const selectedAgent = agents.find((a) => a.agentId === selectedAgentId);
+  const filtered = allCommands.filter((cmd) => {
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      if (!cmd.name.toLowerCase().includes(q) && !cmd.content.toLowerCase().includes(q)) return false;
+    }
+    if (filterAgentId && cmd.agentId !== filterAgentId) return false;
+    if (filterGroup) {
+      if (filterGroup === '__none__') {
+        if (cmd.group) return false;
+      } else if (cmd.group !== filterGroup) return false;
+    }
+    return true;
+  });
+
+  const getAgentAvatarUrl = (agentId: string) => {
+    const agent = agents.find((a) => a.agentId === agentId);
+    return agent?.avatarUrl;
+  };
 
   const handleImport = async () => {
-    if (uploadFiles.length === 0 || !selectedAgentId) return;
+    if (uploadFiles.length === 0) return;
+    const targetAgentId = filterAgentId || (agents.length > 0 ? agents[0].agentId : '');
+    if (!targetAgentId) return;
 
     if (uploadFiles.length === 1) {
       const content = await uploadFiles[0].file.text();
@@ -121,13 +146,15 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
       setIsCreating(true);
       setEditName(name);
       setEditContent(content);
+      setEditAgentId(targetAgentId);
+      setEditGroup('');
       return;
     }
 
     for (const item of uploadFiles) {
       const content = await item.file.text();
       const name = item.file.name.replace(/\.(md|txt|markdown)$/i, '');
-      await fetch(`/api/agent-commands/${selectedAgentId}`, {
+      await fetch(`/api/agent-commands/${targetAgentId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, content }),
@@ -135,7 +162,7 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
     }
     setUploadFiles([]);
     setImportOpen(false);
-    fetchCommands();
+    fetchAllCommands();
   };
 
   const handleCreate = () => {
@@ -143,6 +170,8 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
     setIsCreating(true);
     setEditName('');
     setEditContent('');
+    setEditGroup('');
+    setEditAgentId(filterAgentId || (agents.length > 0 ? agents[0].agentId : ''));
   };
 
   const handleEdit = (cmd: CommandItem) => {
@@ -150,6 +179,8 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
     setIsCreating(false);
     setEditName(cmd.name);
     setEditContent(cmd.content);
+    setEditGroup(cmd.group);
+    setEditAgentId(cmd.agentId);
   };
 
   const closeEditDialog = () => {
@@ -157,33 +188,32 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
     setIsCreating(false);
     setEditName('');
     setEditContent('');
+    setEditGroup('');
   };
 
   const handleSave = async () => {
-    if (!editName.trim() || !editContent.trim() || !selectedAgentId) return;
+    if (!editName.trim() || !editContent.trim() || !editAgentId) return;
     setSaving(true);
     try {
       if (editCommand) {
-        const res = await fetch(`/api/agent-commands/${selectedAgentId}/${editCommand.name}`, {
+        const res = await fetch(`/api/agent-commands/${editAgentId}/${editCommand.name}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content: editContent }),
+          body: JSON.stringify({ content: editContent, group: editGroup }),
         });
         if (res.ok) {
-          const updated = await res.json();
-          setCommands((prev) => prev.map((c) => c.name === updated.name ? updated : c));
           closeEditDialog();
+          fetchAllCommands();
         }
       } else {
-        const res = await fetch(`/api/agent-commands/${selectedAgentId}`, {
+        const res = await fetch(`/api/agent-commands/${editAgentId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: editName, content: editContent }),
+          body: JSON.stringify({ name: editName, content: editContent, group: editGroup || undefined }),
         });
         if (res.ok) {
-          const created = await res.json();
-          setCommands((prev) => [...prev, created]);
           closeEditDialog();
+          fetchAllCommands();
         }
       }
     } catch { /* ignore */ }
@@ -191,18 +221,12 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
   };
 
   const handleDelete = async (cmd: CommandItem) => {
-    if (!selectedAgentId) return;
     try {
-      const res = await fetch(`/api/agent-commands/${selectedAgentId}/${cmd.name}`, { method: 'DELETE' });
-      if (res.ok) setCommands((prev) => prev.filter((c) => c.name !== cmd.name));
+      const query = cmd.group ? `?group=${encodeURIComponent(cmd.group)}` : '';
+      const res = await fetch(`/api/agent-commands/${cmd.agentId}/${cmd.name}${query}`, { method: 'DELETE' });
+      if (res.ok) fetchAllCommands();
     } catch { /* ignore */ }
   };
-
-  const filtered = commands.filter((cmd) => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return cmd.name.toLowerCase().includes(q) || cmd.content.toLowerCase().includes(q);
-  });
 
   const showMainView = open && !editCommand && !isCreating;
 
@@ -217,10 +241,112 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
         </div>
       </DialogHeader>
 
+      <div className="flex items-center gap-2 ml-auto shrink-0">
+        <Popover open={importOpen} onOpenChange={setImportOpen}>
+          <PopoverTrigger render={
+            <Button variant="outline" size="sm">
+              <Upload className="size-3.5 mr-1" />
+              {t('import')}
+            </Button>
+          } />
+          <PopoverContent className="w-80" align="end">
+            <div className="space-y-3">
+              <p className="text-sm font-medium">{t('importTitle')}</p>
+              <FileUpload
+                value={uploadFiles}
+                onChange={setUploadFiles}
+                accept={{ 'text/markdown': ['.md', '.txt'], '': ['.md', '.txt'] }}
+                placeholder={t('importPlaceholder')}
+                maxFiles={10}
+              />
+              <Button
+                size="sm"
+                onClick={handleImport}
+                disabled={uploadFiles.length === 0}
+                className="w-full"
+              >
+                {t('importConfirm')}
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
+        <Button variant="outline" size="sm" onClick={handleCreate}>
+          <Plus className="size-3.5 mr-1" />
+          {t('create')}
+        </Button>
+      </div>
+
       <div className="flex flex-1 min-h-0 gap-4 pt-2">
-        <div className="flex-1 min-w-0 flex flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
+        {/* Left: Filters */}
+        <ScrollArea className="hidden md:block w-44 shrink-0">
+          <div className="flex flex-col gap-3 pr-2">
+            <div className="space-y-1">
+              <Button
+                variant={!filterAgentId && !filterGroup ? 'secondary' : 'ghost'}
+                size="sm"
+                className="w-full justify-start"
+                onClick={() => { setFilterAgentId(''); setFilterGroup(''); }}
+              >
+                <FileText className="size-3.5 mr-1.5" />
+                {t('allAgents')}
+              </Button>
+            </div>
+
+            {agents.length > 0 && (
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground px-2">{t('selectAgent')}</p>
+                {agents.map((agent) => (
+                  <Button
+                    key={agent.agentId}
+                    variant={filterAgentId === agent.agentId ? 'secondary' : 'ghost'}
+                    size="sm"
+                    className="w-full justify-start"
+                    onClick={() => { setFilterAgentId(agent.agentId); setFilterGroup(''); }}
+                  >
+                    <AgentIcon agentId={agent.agentId} name={agent.agentName} avatarUrl={agent.avatarUrl} className="size-4 mr-1.5 rounded-full" />
+                    <span className="truncate">{agent.agentName}</span>
+                    <span className="ml-auto text-xs text-muted-foreground">{agent.commandCount}</span>
+                  </Button>
+                ))}
+              </div>
+            )}
+
+            {groups.length > 0 && (
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground px-2">{t('filterGroups')}</p>
+                {groups.map((group) => (
+                  <Button
+                    key={group}
+                    variant={filterGroup === group ? 'secondary' : 'ghost'}
+                    size="sm"
+                    className="w-full justify-start"
+                    onClick={() => { setFilterGroup(filterGroup === group ? '' : group); setFilterAgentId(''); }}
+                  >
+                    <Folder className="size-3.5 mr-1.5" />
+                    <span className="truncate">{group}</span>
+                  </Button>
+                ))}
+                {allCommands.some((c) => !c.group) && (
+                  <Button
+                    variant={filterGroup === '__none__' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    className="w-full justify-start"
+                    onClick={() => { setFilterGroup(filterGroup === '__none__' ? '' : '__none__'); setFilterAgentId(''); }}
+                  >
+                    <FileText className="size-3.5 mr-1.5" />
+                    {t('filterNoGroup')}
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+
+        {/* Right: Commands list */}
+        <div className="flex-1 min-w-0 flex flex-col gap-3 min-h-0">
+          {/* Mobile: Top filters */}
+          <div className="flex md:hidden flex-col gap-2">
+            <div className="relative">
               <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={searchQuery}
@@ -229,78 +355,43 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
                 className="pl-8"
               />
             </div>
-
-            <Popover open={agentPickerOpen} onOpenChange={setAgentPickerOpen}>
-              <PopoverTrigger render={
-                <Button variant="outline" size="sm" className="shrink-0 gap-1">
-                  <Terminal className="size-3.5" />
-                  <span className="max-w-[120px] truncate">{selectedAgent?.agentName || t('selectAgent')}</span>
-                  <ChevronDown className="size-3" />
-                </Button>
-              } />
-              <PopoverContent className="w-64 p-1" align="end">
-                <ScrollArea className="max-h-60">
-                  {agents.length === 0 ? (
-                    <div className="px-2 py-3 text-sm text-muted-foreground text-center">{t('noAgents')}</div>
-                  ) : (
-                    agents.map((agent) => (
-                      <button
-                        key={agent.agentId}
-                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm hover:bg-accent transition-colors ${
-                          agent.agentId === selectedAgentId ? 'bg-accent' : ''
-                        }`}
-                        onClick={() => {
-                          setSelectedAgentId(agent.agentId);
-                          setAgentPickerOpen(false);
-                        }}
-                      >
-                        <Terminal className="size-3.5 text-muted-foreground shrink-0" />
-                        <span className="truncate">{agent.agentName}</span>
-                        <span className="ml-auto text-xs text-muted-foreground">{agent.commandCount}</span>
-                      </button>
-                    ))
+            <div className="flex items-center gap-2 overflow-x-auto">
+              <button
+                className={cn(
+                  'px-2.5 py-1 rounded-md text-xs font-medium transition-colors shrink-0 border',
+                  !filterAgentId && !filterGroup ? 'bg-muted border-muted' : 'border-input text-muted-foreground',
+                )}
+                onClick={() => { setFilterAgentId(''); setFilterGroup(''); }}
+              >
+                {t('allAgents')}
+              </button>
+              {agents.slice(0, 5).map((agent) => (
+                <button
+                  key={agent.agentId}
+                  className={cn(
+                    'px-2.5 py-1 rounded-md text-xs font-medium transition-colors shrink-0 border',
+                    filterAgentId === agent.agentId ? 'bg-muted border-muted' : 'border-input text-muted-foreground',
                   )}
-                </ScrollArea>
-              </PopoverContent>
-            </Popover>
+                  onClick={() => { setFilterAgentId(agent.agentId); setFilterGroup(''); }}
+                >
+                  {agent.agentName}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="flex items-center gap-2 ml-auto shrink-0">
-            <Popover open={importOpen} onOpenChange={setImportOpen}>
-              <PopoverTrigger render={
-                <Button variant="outline" size="sm">
-                  <Upload className="size-3.5 mr-1" />
-                  {t('import')}
-                </Button>
-              } />
-              <PopoverContent className="w-80" align="end">
-                <div className="space-y-3">
-                  <p className="text-sm font-medium">{t('importTitle')}</p>
-                  <FileUpload
-                    value={uploadFiles}
-                    onChange={setUploadFiles}
-                    accept={{ 'text/markdown': ['.md', '.txt'], '': ['.md', '.txt'] }}
-                    placeholder={t('importPlaceholder')}
-                    maxFiles={10}
-                  />
-                  <Button
-                    size="sm"
-                    onClick={handleImport}
-                    disabled={uploadFiles.length === 0 || !selectedAgentId}
-                    className="w-full"
-                  >
-                    {t('importConfirm')}
-                  </Button>
-                </div>
-              </PopoverContent>
-            </Popover>
-            <Button variant="outline" size="sm" onClick={handleCreate} disabled={!selectedAgentId}>
-              <Plus className="size-3.5 mr-1" />
-              {t('create')}
-            </Button>
+          {/* Desktop: Search bar */}
+          <div className="hidden md:block relative">
+            <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t('search')}
+              className="pl-8"
+            />
           </div>
 
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1 min-h-0">
             {loading ? (
               <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
                 {tc('loading')}
@@ -310,41 +401,46 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
                 {t('empty')}
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pr-2">
+              <div className="grid grid-cols-1 gap-3 pr-2">
                 {filtered.map((cmd) => (
                   <div
-                    key={cmd.name}
+                    key={`${cmd.agentId}-${cmd.group}-${cmd.name}`}
                     className="rounded-xl border border-border bg-background p-4 hover:bg-accent/30 transition-colors cursor-pointer"
                     onClick={() => handleEdit(cmd)}
                   >
-                    <div className="flex flex-col gap-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <Terminal className="size-3.5 text-muted-foreground shrink-0" />
-                          <span className="font-medium text-sm truncate">{cmd.name}</span>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-medium text-sm">{cmd.name}</span>
+                          {cmd.group && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                              {cmd.group}
+                            </span>
+                          )}
+                          {!filterAgentId && (
+                            <AgentIcon agentId={cmd.agentId} name={cmd.agentName || cmd.agentId} avatarUrl={getAgentAvatarUrl(cmd.agentId)} className="size-4 rounded-full" />
+                          )}
                         </div>
-                        <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger
-                              render={<Button variant="ghost" size="icon" className="size-6" />}
-                            >
-                              <MoreVertical className="size-3" />
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={() => handleDelete(cmd)}
-                              >
-                                <Trash2 className="size-3 mr-1.5" />
-                                {t('delete')}
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                          {cmd.content.slice(0, 120).replace(/^#\s+/, '')}
+                        </p>
                       </div>
-                      <p className="text-xs text-muted-foreground line-clamp-3">
-                        {cmd.content.slice(0, 200).replace(/^#\s+/, '')}
-                      </p>
+                      <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="size-7" />}>
+                            <MoreVertical className="size-3.5" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => handleDelete(cmd)}
+                            >
+                              <Trash2 className="size-3.5 mr-1.5" />
+                              {t('delete')}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -380,12 +476,19 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
               </Button>
             </div>
           </DialogHeader>
-          <div className="space-y-3 pb-2">
+          <div className="flex items-center gap-2 pb-2">
             <Input
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
               placeholder={t('namePlaceholder')}
               disabled={!!editCommand}
+              className="flex-1"
+            />
+            <Input
+              value={editGroup}
+              onChange={(e) => setEditGroup(e.target.value)}
+              placeholder={t('groupPlaceholder')}
+              className="w-40"
             />
           </div>
           <div className="flex-1 min-h-0">

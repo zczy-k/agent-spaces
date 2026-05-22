@@ -130,14 +130,14 @@ class _WebViewPanelState extends ConsumerState<WebViewPanel> {
               if (_backendAvailable)
                 _ServerBadge(
                   label: '后端服务器',
-                  color: Colors.green,
+                  color: Theme.of(context).colorScheme.primary,
                   onTap: () => _openServer('http://127.0.0.1:3100'),
                 ),
               if (_frontendAvailable) ...[
                 const SizedBox(height: 6),
                 _ServerBadge(
                   label: '前端服务器',
-                  color: Colors.blue,
+                  color: Theme.of(context).colorScheme.tertiary,
                   onTap: () => _openServer('http://127.0.0.1:3000'),
                 ),
               ],

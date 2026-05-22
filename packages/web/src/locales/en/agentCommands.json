@@ -8,6 +8,7 @@
   "editTitle": "Edit Command - {name}",
   "editDescription": "Edit command content",
   "namePlaceholder": "Command name",
+  "groupPlaceholder": "Group (optional)",
   "delete": "Delete",
   "import": "Import",
   "importTitle": "Import Command Files",
@@ -15,5 +16,7 @@
   "importConfirm": "Confirm Import",
   "selectAgent": "Select Agent",
   "allAgents": "All Agents",
-  "noAgents": "No agent templates"
+  "noAgents": "No agent templates",
+  "filterGroups": "Groups",
+  "filterNoGroup": "Ungrouped"
 }

@@ -8,6 +8,7 @@
   "editTitle": "编辑 Command - {name}",
   "editDescription": "编辑 Command 内容",
   "namePlaceholder": "Command 名称",
+  "groupPlaceholder": "分组（可选）",
   "delete": "删除",
   "import": "导入",
   "importTitle": "导入 Command 文件",
@@ -15,5 +16,7 @@
   "importConfirm": "确认导入",
   "selectAgent": "选择 Agent",
   "allAgents": "所有 Agent",
-  "noAgents": "暂无 Agent 模板"
+  "noAgents": "暂无 Agent 模板",
+  "filterGroups": "分组",
+  "filterNoGroup": "未分组"
 }

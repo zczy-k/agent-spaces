@@ -1,3 +1,4 @@
+import 'package:adaptive_theme/adaptive_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -102,12 +103,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               style: TextStyle(
                 fontSize: 11,
                 color: _notificationAllowed
-                    ? Colors.green
+                    ? Colors.teal
                     : theme.colorScheme.onSurfaceVariant,
               ),
             ),
             trailing: _notificationAllowed
-                ? const Icon(Icons.check_circle, size: 20, color: Colors.green)
+                ? Icon(Icons.check_circle, size: 20, color: theme.colorScheme.primary)
                 : TextButton(
                     onPressed: _requestingNotificationPermission
                         ? null
@@ -224,6 +225,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             onTap: () => _showLanguageDialog(context),
           ),
+          _SectionHeader(title: 'settings_appearance'.tr()),
+          ListTile(
+            dense: true,
+            leading: const Icon(Icons.dark_mode_outlined, size: 20),
+            title: Text('settings_theme'.tr(), style: const TextStyle(fontSize: 13)),
+            subtitle: Text(
+              _themeLabel(AdaptiveTheme.of(context).mode),
+              style: TextStyle(
+                fontSize: 11,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            trailing: const Icon(Icons.chevron_right, size: 20),
+            onTap: () => _showThemeDialog(context),
+          ),
           _SectionHeader(title: 'settings_other'.tr()),
           ListTile(
             dense: true,
@@ -278,6 +294,40 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  String _themeLabel(AdaptiveThemeMode mode) {
+    return switch (mode) {
+      AdaptiveThemeMode.light => 'settings_theme_light'.tr(),
+      AdaptiveThemeMode.dark => 'settings_theme_dark'.tr(),
+      AdaptiveThemeMode.system => 'settings_theme_system'.tr(),
+    };
+  }
+
+  void _showThemeDialog(BuildContext context) {
+    final current = AdaptiveTheme.of(context).mode;
+    showDialog(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: Text('settings_theme'.tr()),
+        children: AdaptiveThemeMode.values.map((mode) {
+          return SimpleDialogOption(
+            onPressed: () {
+              AdaptiveTheme.of(context).setThemeMode(mode);
+              Navigator.of(ctx).pop();
+            },
+            child: Row(
+              children: [
+                Text(_themeLabel(mode), style: const TextStyle(fontSize: 14)),
+                const Spacer(),
+                if (mode == current)
+                  Icon(Icons.check, size: 18, color: Theme.of(context).colorScheme.primary),
+              ],
+            ),
+          );
+        }).toList(),
       ),
     );
   }

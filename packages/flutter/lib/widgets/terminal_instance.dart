@@ -85,13 +85,16 @@ class _TerminalInstanceState extends ConsumerState<TerminalInstance> {
     final theme = Theme.of(context);
     final credentials = ref.watch(terminalCredentialsProvider);
 
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 520),
-        child: Card(
-          margin: const EdgeInsets.all(20),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
+    return SizedBox.expand(
+      child: ColoredBox(
+        color: theme.colorScheme.surface,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520, maxHeight: double.infinity),
+            child: Card(
+              margin: const EdgeInsets.all(20),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
             child: Form(
               key: _formKey,
               child: Column(
