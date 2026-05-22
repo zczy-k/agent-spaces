@@ -29,7 +29,7 @@ interface DatabaseActions {
   updateDatabase: (workspaceId: string, databaseId: string, input: { name: string; description?: string }) => Promise<DatabaseMeta>;
   deleteDatabase: (workspaceId: string, databaseId: string) => Promise<void>;
   loadVectorStats: (workspaceId: string, databaseId: string) => Promise<void>;
-  bindEmbeddingAgent: (workspaceId: string, databaseId: string, embeddingAgentId: string | null) => Promise<void>;
+  bindEmbeddingModel: (workspaceId: string, databaseId: string, embeddingModelId: string | null) => Promise<void>;
   indexVectors: (workspaceId: string, databaseId: string) => Promise<DatabaseVectorIndexResult>;
   setActiveId: (id: string | null) => void;
   createNode: (workspaceId: string, parentId: string | null, type?: 'folder' | 'document') => Promise<DocNode>;
@@ -187,15 +187,15 @@ export const useDatabaseStore = create<DatabaseState & DatabaseActions>((set, ge
     }
   },
 
-  bindEmbeddingAgent: async (workspaceId, databaseId, embeddingAgentId) => {
+  bindEmbeddingModel: async (workspaceId, databaseId, embeddingModelId) => {
     const vectorStats = await api<DatabaseVectorStats>(workspaceId, `/databases/${databaseId}/vector`, {
       method: 'PUT',
-      body: JSON.stringify({ embeddingAgentId }),
+      body: JSON.stringify({ embeddingModelId }),
     });
     set((s) => ({
       vectorStats,
       databases: s.databases.map((database) =>
-        database.id === databaseId ? { ...database, embeddingAgentId: embeddingAgentId || undefined } : database,
+        database.id === databaseId ? { ...database, embeddingModelId: embeddingModelId || undefined } : database,
       ),
     }));
   },

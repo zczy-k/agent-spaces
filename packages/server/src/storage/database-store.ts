@@ -24,7 +24,7 @@ function openDb(): DatabaseSync {
       workspace_id TEXT NOT NULL,
       name TEXT NOT NULL DEFAULT '',
       description TEXT NOT NULL DEFAULT '',
-      embedding_agent_id TEXT,
+      embedding_model_id TEXT,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     );
@@ -64,7 +64,8 @@ function openDb(): DatabaseSync {
     CREATE INDEX IF NOT EXISTS idx_doc_nodes_parent ON doc_nodes(workspace_id, database_id, parent_id);
     CREATE INDEX IF NOT EXISTS idx_database_embeddings_database ON database_embeddings(workspace_id, database_id);
   `);
-  ensureColumn('databases', 'embedding_agent_id', 'TEXT');
+  ensureColumn('databases', 'embedding_model_id', 'TEXT');
+  migrateEmbeddingModelColumn();
   return db;
 }
 
@@ -75,13 +76,25 @@ function ensureColumn(table: string, column: string, type: string): void {
   if (!exists) database.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
 }
 
+function migrateEmbeddingModelColumn(): void {
+  const database = db!;
+  const columns = database.prepare('PRAGMA table_info(databases)').all() as Record<string, unknown>[];
+  const hasLegacyAgentColumn = columns.some((item) => item.name === 'embedding_agent_id');
+  if (!hasLegacyAgentColumn) return;
+  database.exec(`
+    UPDATE databases
+    SET embedding_model_id = COALESCE(embedding_model_id, embedding_agent_id)
+    WHERE embedding_agent_id IS NOT NULL AND embedding_agent_id != ''
+  `);
+}
+
 function rowToDatabase(row: Record<string, unknown>): DatabaseMeta {
   return {
     id: row.id as string,
     workspaceId: row.workspace_id as string,
     name: row.name as string,
     description: row.description as string,
-    embeddingAgentId: (row.embedding_agent_id as string | null) || undefined,
+    embeddingModelId: (row.embedding_model_id as string | null) || undefined,
     createdAt: row.created_at as number,
     updatedAt: row.updated_at as number,
   };
@@ -141,15 +154,15 @@ export function createDatabase(
 export function updateDatabase(
   workspaceId: string,
   databaseId: string,
-  updates: Partial<Pick<DatabaseMeta, 'name' | 'description' | 'embeddingAgentId'>>,
+  updates: Partial<Pick<DatabaseMeta, 'name' | 'description' | 'embeddingModelId'>>,
 ): DatabaseMeta | null {
   const existing = getDatabase(workspaceId, databaseId);
   if (!existing) return null;
   const database = openDb();
   const merged = { ...existing, ...updates, updatedAt: Date.now() };
   database.prepare(
-    'UPDATE databases SET name = ?, description = ?, embedding_agent_id = ?, updated_at = ? WHERE workspace_id = ? AND id = ?'
-  ).run(merged.name.trim() || 'Untitled Database', merged.description, merged.embeddingAgentId ?? null, merged.updatedAt, workspaceId, databaseId);
+    'UPDATE databases SET name = ?, description = ?, embedding_model_id = ?, updated_at = ? WHERE workspace_id = ? AND id = ?'
+  ).run(merged.name.trim() || 'Untitled Database', merged.description, merged.embeddingModelId ?? null, merged.updatedAt, workspaceId, databaseId);
   return getDatabase(workspaceId, databaseId);
 }
 
@@ -270,15 +283,15 @@ export function getVectorStats(workspaceId: string, databaseId: string): Databas
   ).get(workspaceId, databaseId) as { count: number };
   return {
     databaseId,
-    embeddingAgentId: meta?.embeddingAgentId ?? null,
+    embeddingModelId: meta?.embeddingModelId ?? null,
     indexedCount: indexed.count,
     nodeCount: nodes.count,
     lastIndexedAt: indexed.last_indexed_at,
   };
 }
 
-export function setDatabaseEmbeddingAgent(workspaceId: string, databaseId: string, embeddingAgentId: string | null): DatabaseMeta | null {
-  return updateDatabase(workspaceId, databaseId, { embeddingAgentId: embeddingAgentId ?? undefined });
+export function setDatabaseEmbeddingModel(workspaceId: string, databaseId: string, embeddingModelId: string | null): DatabaseMeta | null {
+  return updateDatabase(workspaceId, databaseId, { embeddingModelId: embeddingModelId ?? undefined });
 }
 
 export interface DatabaseEmbeddingRecord {

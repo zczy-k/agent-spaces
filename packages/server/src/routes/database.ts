@@ -32,8 +32,8 @@ router.get('/databases/:databaseId/vector', (req: Request, res: Response) => {
 });
 
 router.put('/databases/:databaseId/vector', (req: Request, res: Response) => {
-  const { embeddingAgentId } = req.body as { embeddingAgentId?: string | null };
-  const database = store.setDatabaseEmbeddingAgent(wid(req), req.params.databaseId as string, embeddingAgentId || null);
+  const { embeddingModelId } = req.body as { embeddingModelId?: string | null };
+  const database = store.setDatabaseEmbeddingModel(wid(req), req.params.databaseId as string, embeddingModelId || null);
   if (!database) return res.status(404).json({ error: 'Database not found' });
   res.json(store.getVectorStats(wid(req), req.params.databaseId as string));
 });
@@ -42,7 +42,16 @@ router.post('/databases/:databaseId/vector/index', async (req: Request, res: Res
   try {
     res.json(await databaseVector.indexDatabaseVectors(wid(req), req.params.databaseId as string));
   } catch (error) {
-    res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+    console.error('[database:vector:index] failed', {
+      workspaceId: wid(req),
+      databaseId: req.params.databaseId,
+      error: error instanceof Error ? error.message : String(error),
+      debug: error instanceof databaseVector.DatabaseVectorError ? error.debug : undefined,
+    });
+    res.status(400).json({
+      error: error instanceof Error ? error.message : String(error),
+      debug: error instanceof databaseVector.DatabaseVectorError ? error.debug : undefined,
+    });
   }
 });
 

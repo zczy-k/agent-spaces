@@ -6,17 +6,17 @@ import {
   Layers, BookOpen, Minimize2, Maximize2, Check,
   CheckCircle, FileCheck, Clock, Sparkles, SlidersHorizontal, MoreHorizontal,
   ChevronDown, Edit2, Move, Trash2, Database,
-  Brain, Play, Bot,
+  Brain, Play, Server,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { htmlToMarkdown, markdownToHtml } from '@/lib/converter';
 import { useDatabaseStore } from '@/stores/database';
-import { useAgentStore } from '@/stores/agent';
+import { useLLMStore } from '@/stores/llm';
 import { PRESET_COVERS } from '@agent-spaces/shared';
-import type { AgentConfig, DatabaseMeta, DatabaseVectorStats, DocNode } from '@agent-spaces/shared';
+import type { DatabaseMeta, DatabaseVectorStats, DocNode, LLMModel, LLMProvider } from '@agent-spaces/shared';
 import { NestedTree } from '@/components/editor/file-tree';
 import type { NestedTreeRenderState, NestedTreeRowProps } from '@/components/editor/file-tree';
-import { AgentPickerDialog } from '@/components/common/agent-picker-dialog';
+import { ModelPickerDialog } from '@/components/common/model-picker-dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,12 +58,13 @@ interface DatabaseDialogProps {
 interface DatabaseVectorDialogProps {
   open: boolean;
   database: DatabaseMeta | null;
-  agents: AgentConfig[];
+  models: LLMModel[];
+  providers: LLMProvider[];
   stats: DatabaseVectorStats | null;
   loading: boolean;
   indexing: boolean;
   onOpenChange: (open: boolean) => void;
-  onBind: (agentId: string | null) => Promise<void>;
+  onBind: (modelId: string | null) => Promise<void>;
   onIndex: () => Promise<void>;
 }
 
@@ -161,7 +162,8 @@ function DatabaseDialog({ open, database, onOpenChange, onSave }: DatabaseDialog
 function DatabaseVectorDialog({
   open,
   database,
-  agents,
+  models,
+  providers,
   stats,
   loading,
   indexing,
@@ -170,35 +172,29 @@ function DatabaseVectorDialog({
   onIndex,
 }: DatabaseVectorDialogProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const embeddingAgentId = stats?.embeddingAgentId ?? database?.embeddingAgentId ?? null;
-  const boundAgent = agents.find((agent) => agent.id === embeddingAgentId);
-  const pickerAgents = agents
-    .filter((agent) => agent.enabled && agent.apiBase && agent.apiKey && agent.modelId)
-    .map((agent) => ({
-      id: agent.id,
-      name: agent.name,
-      avatarUrl: agent.avatarUrl,
-      description: agent.modelId || agent.description,
-    }));
+  const embeddingModelId = stats?.embeddingModelId ?? database?.embeddingModelId ?? null;
+  const boundModel = models.find((model) => model.id === embeddingModelId);
+  const boundProvider = boundModel ? providers.find((provider) => provider.name === boundModel.provider) : undefined;
+  const embeddingModels = models.filter((model) => model.embedding);
 
   useEffect(() => {
     if (!open) return;
-    setSelectedAgentId(embeddingAgentId);
+    setSelectedModelId(embeddingModelId);
     setMessage(null);
     setError(null);
-  }, [embeddingAgentId, open]);
+  }, [embeddingModelId, open]);
 
   const handleBind = async () => {
     setSaving(true);
     setError(null);
     setMessage(null);
     try {
-      await onBind(selectedAgentId);
+      await onBind(selectedModelId);
       setMessage('Embedding model saved.');
       setPickerOpen(false);
     } catch (err) {
@@ -214,7 +210,7 @@ function DatabaseVectorDialog({
     setMessage(null);
     try {
       await onBind(null);
-      setSelectedAgentId(null);
+      setSelectedModelId(null);
       setMessage('Embedding model cleared.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to clear embedding model.');
@@ -247,8 +243,10 @@ function DatabaseVectorDialog({
                 <div className="min-w-0">
                   <div className="text-xs font-semibold text-foreground">Embedding model</div>
                   <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                    <Bot className="w-3.5 h-3.5 shrink-0" />
-                    <span className="truncate">{boundAgent ? `${boundAgent.name} (${boundAgent.modelId || 'model not set'})` : 'No model bound'}</span>
+                    <Server className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">
+                      {boundModel ? `${boundModel.name} (${boundProvider?.name || boundModel.provider})` : 'No model bound'}
+                    </span>
                   </div>
                 </div>
                 <button
@@ -259,7 +257,7 @@ function DatabaseVectorDialog({
                   Select
                 </button>
               </div>
-              {embeddingAgentId && (
+              {embeddingModelId && (
                 <button
                   type="button"
                   onClick={handleClear}
@@ -298,7 +296,7 @@ function DatabaseVectorDialog({
             <button
               type="button"
               onClick={handleIndex}
-              disabled={loading || indexing || saving || !embeddingAgentId}
+              disabled={loading || indexing || saving || !embeddingModelId}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground disabled:opacity-50 inline-flex items-center gap-1.5"
             >
               <Play className="w-3.5 h-3.5" />
@@ -308,15 +306,15 @@ function DatabaseVectorDialog({
         </DialogContent>
       </Dialog>
 
-      <AgentPickerDialog
+      <ModelPickerDialog
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
         onConfirm={handleBind}
         title="Select embedding model"
-        description="Pick one configured agent whose API base supports /embeddings."
-        agents={pickerAgents}
-        selected={selectedAgentId ? [selectedAgentId] : []}
-        onToggle={(id) => setSelectedAgentId((current) => current === id ? null : id)}
+        description="Pick one embedding model. Its provider supplies API base and key."
+        models={embeddingModels}
+        selected={selectedModelId ? [selectedModelId] : []}
+        onToggle={(id) => setSelectedModelId((current) => current === id ? null : id)}
         confirmText={saving ? 'Saving...' : 'Save'}
         loading={saving}
       />
@@ -470,7 +468,7 @@ export default function DatabasePanel({ workspaceId }: Props) {
     nodes, activeId, openTabs, recentIds, editorMode, theme, isFullWidth,
     openFolders, sidebarSearch, vectorStats, vectorLoading, vectorIndexing, loading, loaded,
     load, setActiveDatabaseId, createDatabase, updateDatabase, deleteDatabase,
-    loadVectorStats, bindEmbeddingAgent, indexVectors,
+    loadVectorStats, bindEmbeddingModel, indexVectors,
     setActiveId, createNode, updateContent, renameNode, updateIcon,
     updateCover, trashNode, restoreNode, deleteNode, moveNode,
     setEditorMode, setTheme, setIsFullWidth, toggleFolder, setSidebarSearch,
@@ -488,7 +486,7 @@ export default function DatabasePanel({ workspaceId }: Props) {
   const [databaseDialogOpen, setDatabaseDialogOpen] = useState(false);
   const [vectorDialogOpen, setVectorDialogOpen] = useState(false);
   const [editingDatabase, setEditingDatabase] = useState<DatabaseMeta | null>(null);
-  const { agents, ensure: ensureAgents } = useAgentStore();
+  const { models, providers, ensure: ensureLLM } = useLLMStore();
   const newDropdownRef = useRef<HTMLDivElement>(null);
   const settingsDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -496,9 +494,9 @@ export default function DatabasePanel({ workspaceId }: Props) {
 
   useEffect(() => {
     if (!vectorDialogOpen) return;
-    void ensureAgents();
+    void ensureLLM();
     if (activeDatabaseId) void loadVectorStats(workspaceId, activeDatabaseId);
-  }, [activeDatabaseId, ensureAgents, loadVectorStats, vectorDialogOpen, workspaceId]);
+  }, [activeDatabaseId, ensureLLM, loadVectorStats, vectorDialogOpen, workspaceId]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -629,10 +627,10 @@ export default function DatabasePanel({ workspaceId }: Props) {
     await deleteDatabase(workspaceId, activeDatabase.id);
   }, [activeDatabase, databases.length, deleteDatabase, workspaceId]);
 
-  const handleBindEmbeddingAgent = useCallback(async (agentId: string | null) => {
+  const handleBindEmbeddingModel = useCallback(async (modelId: string | null) => {
     if (!activeDatabase) return;
-    await bindEmbeddingAgent(workspaceId, activeDatabase.id, agentId);
-  }, [activeDatabase, bindEmbeddingAgent, workspaceId]);
+    await bindEmbeddingModel(workspaceId, activeDatabase.id, modelId);
+  }, [activeDatabase, bindEmbeddingModel, workspaceId]);
 
   const handleIndexVectors = useCallback(async () => {
     if (!activeDatabase) return;
@@ -1047,12 +1045,13 @@ export default function DatabasePanel({ workspaceId }: Props) {
       <DatabaseVectorDialog
         open={vectorDialogOpen}
         database={activeDatabase}
-        agents={agents}
+        models={models}
+        providers={providers}
         stats={vectorStats}
         loading={vectorLoading}
         indexing={vectorIndexing}
         onOpenChange={setVectorDialogOpen}
-        onBind={handleBindEmbeddingAgent}
+        onBind={handleBindEmbeddingModel}
         onIndex={handleIndexVectors}
       />
     </div>

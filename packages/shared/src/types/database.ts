@@ -3,14 +3,14 @@ export interface DatabaseMeta {
   workspaceId: string;
   name: string;
   description: string;
-  embeddingAgentId?: string;
+  embeddingModelId?: string;
   createdAt: number;
   updatedAt: number;
 }
 
 export interface DatabaseVectorStats {
   databaseId: string;
-  embeddingAgentId: string | null;
+  embeddingModelId: string | null;
   indexedCount: number;
   nodeCount: number;
   lastIndexedAt: number | null;
