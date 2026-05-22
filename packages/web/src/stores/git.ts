@@ -20,6 +20,9 @@ interface GitState {
   commit: (workspaceId: string, message: string) => Promise<void>;
   discard: (workspaceId: string, filePath: string) => Promise<void>;
   discardAll: (workspaceId: string) => Promise<void>;
+  stage: (workspaceId: string, filePath: string) => Promise<void>;
+  unstage: (workspaceId: string, filePath: string) => Promise<void>;
+  resolveFile: (workspaceId: string, filePath: string, content: string, stage?: boolean) => Promise<void>;
   checkout: (workspaceId: string, branch: string) => Promise<void>;
   push: (workspaceId: string) => Promise<void>;
   pull: (workspaceId: string) => Promise<void>;
@@ -152,6 +155,41 @@ export const useGitStore = create<GitState>((set) => ({
     } catch (err: unknown) {
       set({ error: err instanceof Error ? err.message : String(err) });
     }
+  },
+
+  stage: async (workspaceId, filePath) => {
+    try {
+      const res = await fetch(`/api/workspaces/${workspaceId}/git/stage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: filePath }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+    } catch (err: unknown) {
+      set({ error: err instanceof Error ? err.message : String(err) });
+    }
+  },
+
+  unstage: async (workspaceId, filePath) => {
+    try {
+      const res = await fetch(`/api/workspaces/${workspaceId}/git/unstage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: filePath }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+    } catch (err: unknown) {
+      set({ error: err instanceof Error ? err.message : String(err) });
+    }
+  },
+
+  resolveFile: async (workspaceId, filePath, content, stage = true) => {
+    const res = await fetch(`/api/workspaces/${workspaceId}/git/resolve-file`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: filePath, content, stage }),
+    });
+    if (!res.ok) throw new Error(await res.text());
   },
 
   checkout: async (workspaceId, branch) => {

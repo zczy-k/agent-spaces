@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from 'express';
-import { gitStatus, gitDiff, gitLog, gitCommit, gitDiscard, gitDiscardAll, gitBranches, gitCheckout, gitInit, gitGenerateCommitMsg, gitPush, gitPull, gitFetch, gitGetRemotes, gitAddRemote, gitCheckoutDetached, gitCherryPick, gitCreateBranch, gitDeleteBranch, gitCreateTag, gitCommitDiff, gitGetRemoteUrl, gitMergeBase, gitGetConfig, gitSetConfig } from '../adapters/git.js';
+import { gitStatus, gitDiff, gitLog, gitCommit, gitDiscard, gitDiscardAll, gitBranches, gitCheckout, gitInit, gitGenerateCommitMsg, gitPush, gitPull, gitFetch, gitGetRemotes, gitAddRemote, gitCheckoutDetached, gitCherryPick, gitCreateBranch, gitDeleteBranch, gitCreateTag, gitCommitDiff, gitGetRemoteUrl, gitMergeBase, gitGetConfig, gitSetConfig, gitStage, gitUnstage, gitResolveFile } from '../adapters/git.js';
 
 const router = Router({ mergeParams: true });
 
@@ -63,6 +63,48 @@ router.post('/discard', async (req: Request<{ id: string }>, res: Response) => {
 router.post('/discard-all', async (req: Request<{ id: string }>, res: Response) => {
   try {
     await gitDiscardAll(req.params.id);
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/stage', async (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const { path } = req.body;
+    if (!path) {
+      res.status(400).json({ error: 'path is required' });
+      return;
+    }
+    await gitStage(req.params.id, path);
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/unstage', async (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const { path } = req.body;
+    if (!path) {
+      res.status(400).json({ error: 'path is required' });
+      return;
+    }
+    await gitUnstage(req.params.id, path);
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/resolve-file', async (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const { path, content, stage } = req.body;
+    if (!path || typeof content !== 'string') {
+      res.status(400).json({ error: 'path and content are required' });
+      return;
+    }
+    await gitResolveFile(req.params.id, path, content, stage !== false);
     res.json({ ok: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

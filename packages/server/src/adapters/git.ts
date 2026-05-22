@@ -45,27 +45,36 @@ function getGit(workspace: Workspace): SimpleGit {
 
 function mapStatus(raw: StatusResult): GitStatusResult {
   const files: GitFileStatus[] = [];
+  const addOrUpdate = (file: GitFileStatus) => {
+    const existing = files.find(x => x.path === file.path);
+    if (existing) {
+      Object.assign(existing, file, {
+        staged: existing.staged || file.staged,
+        conflicted: existing.conflicted || file.conflicted,
+        status: file.conflicted ? 'conflicted' : existing.status,
+      });
+    } else {
+      files.push(file);
+    }
+  };
 
   for (const f of raw.staged) {
-    files.push({ path: f, status: mapStatusCode(raw.files.find(r => r.path === f)?.index) });
+    addOrUpdate({ path: f, status: mapStatusCode(raw.files.find(r => r.path === f)?.index), staged: true });
   }
   for (const f of raw.modified) {
-    if (!files.find(x => x.path === f)) {
-      files.push({ path: f, status: 'modified' });
-    }
+    addOrUpdate({ path: f, status: 'modified' });
   }
   for (const f of raw.not_added) {
-    files.push({ path: f, status: 'untracked' });
+    addOrUpdate({ path: f, status: 'untracked' });
   }
   for (const f of raw.deleted) {
-    if (!files.find(x => x.path === f)) {
-      files.push({ path: f, status: 'deleted' });
-    }
+    addOrUpdate({ path: f, status: 'deleted' });
   }
   for (const f of raw.created) {
-    if (!files.find(x => x.path === f)) {
-      files.push({ path: f, status: 'added' });
-    }
+    addOrUpdate({ path: f, status: 'added', staged: raw.staged.includes(f) });
+  }
+  for (const f of raw.conflicted) {
+    addOrUpdate({ path: f, status: 'conflicted', conflicted: true });
   }
 
   return {
@@ -76,6 +85,70 @@ function mapStatus(raw: StatusResult): GitStatusResult {
     clean: raw.isClean(),
     insertions: 0,
     deletions: 0,
+  };
+}
+
+function splitConflictSides(content: string): { left: string; right: string; hasConflict: boolean } {
+  const left: string[] = [];
+  const right: string[] = [];
+  let mode: 'both' | 'left' | 'right' = 'both';
+  let hasConflict = false;
+
+  for (const line of content.split('\n')) {
+    if (line.startsWith('<<<<<<< ')) {
+      hasConflict = true;
+      mode = 'left';
+      continue;
+    }
+    if (line.startsWith('=======')) {
+      mode = 'right';
+      continue;
+    }
+    if (line.startsWith('>>>>>>> ')) {
+      mode = 'both';
+      continue;
+    }
+
+    if (mode === 'both' || mode === 'left') left.push(line);
+    if (mode === 'both' || mode === 'right') right.push(line);
+  }
+
+  return { left: left.join('\n'), right: right.join('\n'), hasConflict };
+}
+
+async function buildWorkingDiff(
+  git: SimpleGit,
+  rootDir: string,
+  filePath: string,
+  conflicted = false,
+): Promise<GitDiffResult> {
+  const binary = isBinaryPath(filePath);
+  const workingContent = binary ? '' : await readFile(join(rootDir, filePath), 'utf-8').catch(() => '');
+
+  if (!binary && conflicted) {
+    const conflict = splitConflictSides(workingContent);
+    if (conflict.hasConflict) {
+      return {
+        path: filePath,
+        oldContent: conflict.left,
+        newContent: conflict.right,
+        isBinary: false,
+        isNew: false,
+        isDeleted: false,
+        isConflict: true,
+      };
+    }
+  }
+
+  const oldContent = binary ? '' : await git.show([`HEAD:${filePath}`]).catch(() => '');
+
+  return {
+    path: filePath,
+    oldContent,
+    newContent: workingContent,
+    isBinary: binary,
+    isNew: !oldContent,
+    isDeleted: !workingContent,
   };
 }
 
@@ -139,64 +212,54 @@ export async function gitDiff(workspaceId: string, filePath?: string): Promise<G
 
   const git = getGit(ws);
   const diffs: GitDiffResult[] = [];
+  const status = await git.status();
+  const conflicted = new Set(status.conflicted);
 
   if (filePath) {
-    const diff = await git.diff([filePath]);
-    const oldContent = await git.show([`HEAD:${filePath}`]).catch(() => '');
-    const newContent = await import('node:fs/promises').then(fs =>
-      fs.readFile(`${ws.boundDirs[0]}/${filePath}`, 'utf-8')
-    ).catch(() => '');
-
-    diffs.push({
-      path: filePath,
-      oldContent: isBinaryPath(filePath) ? '' : oldContent,
-      newContent: isBinaryPath(filePath) ? '' : newContent,
-      isBinary: isBinaryPath(filePath),
-      isNew: !oldContent,
-      isDeleted: !newContent,
-    });
+    diffs.push(await buildWorkingDiff(git, ws.boundDirs[0], filePath, conflicted.has(filePath)));
   } else {
     const raw = await git.diff(['--name-only']);
-    const files = raw.split('\n').filter(Boolean);
+    const cachedRaw = await git.diff(['--cached', '--name-only']);
+    const files = Array.from(new Set([
+      ...raw.split('\n').filter(Boolean),
+      ...cachedRaw.split('\n').filter(Boolean),
+      ...status.not_added,
+      ...status.conflicted,
+    ]));
 
     for (const f of files) {
-      const binary = isBinaryPath(f);
-      const oldContent = binary ? '' : await git.show([`HEAD:${f}`]).catch(() => '');
-      const newContent = binary ? '' : await import('node:fs/promises').then(fs =>
-        fs.readFile(`${ws.boundDirs[0]}/${f}`, 'utf-8')
-      ).catch(() => '');
-
-      diffs.push({
-        path: f,
-        oldContent,
-        newContent,
-        isBinary: binary,
-        isNew: !oldContent,
-        isDeleted: !newContent,
-      });
-    }
-
-    // Also check untracked (staged new files)
-    const status = await git.status();
-    for (const f of status.not_added) {
-      const binary = isBinaryPath(f);
-      const newContent = binary ? '' : await import('node:fs/promises').then(fs =>
-        fs.readFile(`${ws.boundDirs[0]}/${f}`, 'utf-8')
-      ).catch(() => '');
-      if (newContent || binary) {
-        diffs.push({
-          path: f,
-          oldContent: '',
-          newContent: binary ? '' : newContent,
-          isBinary: binary,
-          isNew: true,
-          isDeleted: false,
-        });
-      }
+      diffs.push(await buildWorkingDiff(git, ws.boundDirs[0], f, conflicted.has(f)));
     }
   }
 
   return diffs;
+}
+
+export async function gitStage(workspaceId: string, filePath: string): Promise<void> {
+  const ws = getWorkspace(workspaceId);
+  if (!ws) throw new Error('Workspace not found');
+
+  const git = getGit(ws);
+  await git.add(filePath);
+}
+
+export async function gitUnstage(workspaceId: string, filePath: string): Promise<void> {
+  const ws = getWorkspace(workspaceId);
+  if (!ws) throw new Error('Workspace not found');
+
+  const git = getGit(ws);
+  await git.raw(['restore', '--staged', '--', filePath]).catch(async () => {
+    await git.raw(['reset', 'HEAD', '--', filePath]);
+  });
+}
+
+export async function gitResolveFile(workspaceId: string, filePath: string, content: string, stage = true): Promise<void> {
+  const ws = getWorkspace(workspaceId);
+  if (!ws) throw new Error('Workspace not found');
+
+  const git = getGit(ws);
+  await writeFile(join(ws.boundDirs[0], filePath), content, 'utf-8');
+  if (stage) await git.add(filePath);
 }
 
 export async function gitLog(workspaceId: string, maxCount = 50): Promise<GitLogEntry[]> {

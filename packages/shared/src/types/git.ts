@@ -1,7 +1,9 @@
 export interface GitFileStatus {
   path: string;
-  status: 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked';
+  status: 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked' | 'conflicted';
   oldPath?: string;
+  staged?: boolean;
+  conflicted?: boolean;
 }
 
 export interface GitStatusResult {
@@ -29,6 +31,7 @@ export interface GitDiffResult {
   isBinary: boolean;
   isNew: boolean;
   isDeleted: boolean;
+  isConflict?: boolean;
 }
 
 export interface GitBranch {

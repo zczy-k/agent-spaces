@@ -4,6 +4,7 @@ export const statusColors: Record<string, string> = {
   deleted: "text-red-600",
   renamed: "text-blue-600",
   untracked: "text-gray-500",
+  conflicted: "text-red-500",
 };
 
 export const statusLabels: Record<string, string> = {
@@ -12,6 +13,7 @@ export const statusLabels: Record<string, string> = {
   deleted: "D",
   renamed: "R",
   untracked: "U",
+  conflicted: "!",
 };
 
 export function errMsg(err: unknown): string {

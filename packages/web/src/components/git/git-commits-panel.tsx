@@ -4,7 +4,7 @@ import { useEffect, useCallback, useState } from "react";
 import {
   Upload, Loader2, GitCommitHorizontal, RefreshCw, ArrowUp, ArrowDown,
   FileCode, RotateCcw, Trash2, ChevronDown, GitBranch,
-  Sparkles, Settings2, FileDiff,
+  Sparkles, Settings2, FileDiff, Plus, Minus, AlertTriangle,
 } from "lucide-react";
 import type { GitLogEntry } from "@agent-spaces/shared";
 import { useGitStore } from "@/stores/git";
@@ -45,7 +45,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
   const {
     log, loading, notGitRepo, status, branches, diffs, selectedFile,
     loadStatus, loadDiffs, loadLog, loadBranches,
-    commit, discard, discardAll, checkout, selectFile,
+    commit, discard, discardAll, stage, unstage, resolveFile, checkout, selectFile,
     commitMsg, setCommitMsg, fetchRemote,
   } = useGitStore();
   const openFile = useEditorStore((s) => s.openFile);
@@ -74,9 +74,11 @@ export function GitCommitsPanel({ workspaceId }: Props) {
 
   const refresh = useCallback(async () => {
     await fetchRemote(workspaceId).catch(() => {});
-    loadStatus(workspaceId);
-    loadDiffs(workspaceId);
-    loadLog(workspaceId);
+    await Promise.all([
+      loadStatus(workspaceId),
+      loadDiffs(workspaceId),
+      loadLog(workspaceId),
+    ]);
   }, [workspaceId, fetchRemote, loadStatus, loadDiffs, loadLog]);
 
   const refreshAll = useCallback(() => { refresh(); loadBranches(workspaceId); }, [workspaceId, refresh, loadBranches]);
@@ -107,7 +109,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
     setCommitMsg("");
     setCommitting(false);
     refresh();
-  }, [workspaceId, commitMsg, commit, refresh, selectFile]);
+  }, [workspaceId, commitMsg, commit, refresh, selectFile, setCommitMsg]);
 
   const handleGenerateCommit = useCallback(async () => {
     if (generating || committing) return;
@@ -119,7 +121,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
       if (data.message) setCommitMsg(data.message);
     } catch (err: unknown) { toast.error(errMsg(err) || tChanges('failedCommitMessage')); }
     finally { setGenerating(false); }
-  }, [workspaceId, generating, committing, tChanges]);
+  }, [workspaceId, generating, committing, setCommitMsg, tChanges]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleCommit();
@@ -137,6 +139,23 @@ export function GitCommitsPanel({ workspaceId }: Props) {
   const handleDiscard = useCallback((e: React.MouseEvent, path: string) => {
     e.stopPropagation(); setDiscardConfirm({ type: 'single', path });
   }, []);
+
+  const handleStageToggle = useCallback(async (e: React.MouseEvent, path: string, staged?: boolean) => {
+    e.stopPropagation();
+    if (staged) {
+      await unstage(workspaceId, path);
+    } else {
+      await stage(workspaceId, path);
+    }
+    refresh();
+  }, [workspaceId, refresh, stage, unstage]);
+
+  const handleResolveConflict = useCallback(async (path: string, content: string) => {
+    await resolveFile(workspaceId, path, content, true);
+    selectFile(null);
+    refresh();
+    toast.success("冲突已解决并暂存");
+  }, [workspaceId, refresh, resolveFile, selectFile]);
 
   const handleDiscardAll = useCallback(() => {
     setDiscardConfirm({ type: 'all' });
@@ -256,8 +275,17 @@ export function GitCommitsPanel({ workspaceId }: Props) {
             <div key={f.path} onClick={() => handleFileClick(f.path)} onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, path: f.path }); }}
               className={`group w-full text-left px-2 py-1 text-xs font-mono flex items-center gap-1.5 hover:bg-accent cursor-pointer ${selectedFile === f.path ? "bg-accent" : ""}`}>
               <span className={`w-4 text-center font-bold shrink-0 ${statusColors[f.status]}`}>{statusLabels[f.status]}</span>
+              {f.conflicted && <AlertTriangle size={12} className="shrink-0 text-red-500" />}
               <span className="truncate flex-1">{f.path}</span>
               <span className="hidden group-hover:flex md:flex items-center gap-0.5 shrink-0">
+                <button
+                  onClick={(e) => handleStageToggle(e, f.path, f.staged)}
+                  disabled={f.conflicted}
+                  className="p-0.5 rounded hover:bg-accent/80 active:scale-90 transition-all duration-100 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                  title={f.staged ? "Unstage" : "Stage"}
+                >
+                  {f.staged ? <Minus size={13} /> : <Plus size={13} />}
+                </button>
                 <button onClick={(e) => handleOpenFile(e, f.path)} className="p-0.5 rounded hover:bg-accent/80 active:scale-90 transition-all duration-100 cursor-pointer" title={tc('open')}><FileCode size={13} /></button>
                 <button onClick={(e) => handleDiscard(e, f.path)} className="p-0.5 rounded hover:bg-accent/80 active:scale-90 transition-all duration-100 cursor-pointer" title={tChanges('discardAll')}><RotateCcw size={13} /></button>
               </span>
@@ -328,7 +356,14 @@ export function GitCommitsPanel({ workspaceId }: Props) {
         {/* Commit list or Diff */}
         {selectedDiff ? (
           <div className="flex-1 min-h-0">
-            <DiffViewer oldContent={selectedDiff.oldContent} newContent={selectedDiff.newContent} path={selectedDiff.path} isBinary={selectedDiff.isBinary} />
+            <DiffViewer
+              oldContent={selectedDiff.oldContent}
+              newContent={selectedDiff.newContent}
+              path={selectedDiff.path}
+              isBinary={selectedDiff.isBinary}
+              mergeMode={!!selectedDiff.isConflict}
+              onResolve={selectedDiff.isConflict ? (content) => handleResolveConflict(selectedDiff.path, content) : undefined}
+            />
           </div>
         ) : (
           <div className="min-h-0 flex-1 overflow-y-auto">

@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { errMsg } from "./git-commit-utils";
 
-export function useGitSync(workspaceId: string, refresh: () => void) {
+export function useGitSync(workspaceId: string, refresh: () => void | Promise<void>) {
   const t = useTranslations('git.commits');
   const tChanges = useTranslations('git.changes');
   const { push, pull, getRemotes, addRemote } = useGitStore();
@@ -28,6 +28,7 @@ export function useGitSync(workspaceId: string, refresh: () => void) {
     } catch (err: unknown) {
       if (errMsg(err)?.includes("No remote")) { setPendingAction(action); setRemoteDialogOpen(true); }
       else toast.error(action === "push" ? t('pushFailed') : t('pullFailed'), { description: errMsg(err) });
+      if (action === "pull") await refresh();
     } finally { setSyncing(null); }
   };
 
@@ -48,6 +49,7 @@ export function useGitSync(workspaceId: string, refresh: () => void) {
     } catch (err: unknown) {
       if (errMsg(err)?.includes("No remote")) setRemoteDialogOpen(true);
       else toast.error(tChanges('syncFailed'), { description: errMsg(err) });
+      await refresh();
     } finally { setSyncing(null); }
   }, [workspaceId, push, pull, getRemotes, refresh, tChanges]);
 

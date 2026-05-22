@@ -7,7 +7,7 @@ import type { editor } from "monaco-editor";
 import { useTheme } from "@/components/theme-provider";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
-import { Filter } from "lucide-react";
+import { Check, Filter, Split } from "lucide-react";
 
 interface DiffViewerProps {
   oldContent: string;
@@ -17,6 +17,8 @@ interface DiffViewerProps {
   isBinary?: boolean;
   /** 只展示修改代码部分及上下文，默认 true */
   compactDiff?: boolean;
+  mergeMode?: boolean;
+  onResolve?: (content: string, side: "left" | "right") => Promise<void> | void;
 }
 
 function detectLanguage(path: string): string | undefined {
@@ -162,12 +164,15 @@ export function DiffViewer({
   path,
   isBinary,
   compactDiff = true,
+  mergeMode = false,
+  onResolve,
 }: DiffViewerProps) {
   const language = detectLanguage(path);
   const editorRef = useRef<editor.IStandaloneDiffEditor | null>(null);
   const { resolvedTheme } = useTheme();
   const isMobile = useIsMobile();
   const [compact, setCompact] = useState(compactDiff);
+  const [resolving, setResolving] = useState<"left" | "right" | null>(null);
 
   const handleMount: DiffOnMount = useCallback((editor) => {
     editorRef.current = editor;
@@ -191,25 +196,59 @@ export function DiffViewer({
   const displayOld = compactResult ? compactResult.oldLines.join('\n') : oldContent;
   const displayNew = compactResult ? compactResult.newLines.join('\n') : newContent;
 
+  const handleResolve = useCallback(async (side: "left" | "right") => {
+    if (!onResolve || resolving) return;
+    setResolving(side);
+    try {
+      await onResolve(side === "left" ? oldContent : newContent, side);
+    } finally {
+      setResolving(null);
+    }
+  }, [newContent, oldContent, onResolve, resolving]);
+
   return (
     <div className="h-full w-full flex flex-col">
       <div className="flex items-center justify-between px-2 py-1 border-b bg-muted/30">
         <span className="text-xs text-muted-foreground font-mono truncate">
           {path}
         </span>
-        <button
-          onClick={() => setCompact(v => !v)}
-          className={cn(
-            "flex items-center gap-1 text-xs px-1.5 py-0.5 rounded transition-colors",
-            compact
-              ? "text-blue-600 dark:text-blue-400 bg-blue-500/10"
-              : "text-muted-foreground hover:text-foreground"
+        <div className="flex items-center gap-1">
+          {mergeMode && onResolve && (
+            <>
+              <button
+                onClick={() => handleResolve("left")}
+                disabled={resolving !== null}
+                className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-50"
+                title="保留左侧"
+              >
+                {resolving === "left" ? <Check className="h-3 w-3" /> : <Split className="h-3 w-3 rotate-180" />}
+                保留左侧
+              </button>
+              <button
+                onClick={() => handleResolve("right")}
+                disabled={resolving !== null}
+                className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-50"
+                title="保留右侧"
+              >
+                {resolving === "right" ? <Check className="h-3 w-3" /> : <Split className="h-3 w-3" />}
+                保留右侧
+              </button>
+            </>
           )}
-          title={compact ? "显示全部代码" : "只看修改部分"}
-        >
-          <Filter className="h-3 w-3" />
-          {compact ? "紧凑" : "全部"}
-        </button>
+          <button
+            onClick={() => setCompact(v => !v)}
+            className={cn(
+              "flex items-center gap-1 text-xs px-1.5 py-0.5 rounded transition-colors",
+              compact
+                ? "text-blue-600 dark:text-blue-400 bg-blue-500/10"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+            title={compact ? "显示全部代码" : "只看修改部分"}
+          >
+            <Filter className="h-3 w-3" />
+            {compact ? "紧凑" : "全部"}
+          </button>
+        </div>
       </div>
       <div className="flex-1">
         {isBinary ? (
