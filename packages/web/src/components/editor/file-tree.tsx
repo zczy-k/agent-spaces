@@ -59,6 +59,7 @@ interface FileTreeContextType {
   onItemDragEnd?: (event: DragEvent<HTMLDivElement>) => void
   rootDropTargetId?: string
   onRootDropLineDragOver?: (event: DragEvent<HTMLDivElement>, targetId: string) => void
+  onRootDropLineDragEnter?: (event: DragEvent<HTMLDivElement>, targetId: string) => void
   onRootDropLineDragLeave?: (event: DragEvent<HTMLDivElement>, targetId: string) => void
   onRootDropLineDrop?: (event: DragEvent<HTMLDivElement>, targetId: string) => void
 }
@@ -97,6 +98,7 @@ export type FileTreeProps = HTMLAttributes<HTMLDivElement> & {
   onItemDragEnd?: (event: DragEvent<HTMLDivElement>) => void
   rootDropTargetId?: string
   onRootDropLineDragOver?: (event: DragEvent<HTMLDivElement>, targetId: string) => void
+  onRootDropLineDragEnter?: (event: DragEvent<HTMLDivElement>, targetId: string) => void
   onRootDropLineDragLeave?: (event: DragEvent<HTMLDivElement>, targetId: string) => void
   onRootDropLineDrop?: (event: DragEvent<HTMLDivElement>, targetId: string) => void
 }
@@ -130,6 +132,7 @@ export const FileTree = ({
   onItemDragEnd,
   rootDropTargetId,
   onRootDropLineDragOver,
+  onRootDropLineDragEnter,
   onRootDropLineDragLeave,
   onRootDropLineDrop,
   className,
@@ -159,7 +162,7 @@ export const FileTree = ({
   }, [refreshInterval, onLoadDirectory, expandedPaths])
 
   return (
-    <FileTreeContext.Provider value={{ expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete, onImport, onCopyPath, onCreateFile, onCreateFolder, onRename, onMove, onCopyItem, onLoadDirectory, loadingDirs, boundDir, fileSizeMap, ignoredPaths, draggedOverPath, onItemDragStart, onItemDragOver, onItemDragLeave, onItemDrop, onItemDragEnd, rootDropTargetId, onRootDropLineDragOver, onRootDropLineDragLeave, onRootDropLineDrop }}>
+    <FileTreeContext.Provider value={{ expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete, onImport, onCopyPath, onCreateFile, onCreateFolder, onRename, onMove, onCopyItem, onLoadDirectory, loadingDirs, boundDir, fileSizeMap, ignoredPaths, draggedOverPath, onItemDragStart, onItemDragOver, onItemDragLeave, onItemDrop, onItemDragEnd, rootDropTargetId, onRootDropLineDragOver, onRootDropLineDragEnter, onRootDropLineDragLeave, onRootDropLineDrop }}>
       <div
         className={cn("flex flex-col bg-background font-mono text-sm h-full", className)}
         role="tree"
@@ -644,6 +647,7 @@ export function FileTreeNodes({ nodes }: { nodes: FileNode[] }) {
     onItemDragEnd,
     rootDropTargetId,
     onRootDropLineDragOver,
+    onRootDropLineDragEnter,
     onRootDropLineDragLeave,
     onRootDropLineDrop,
   } = useContext(FileTreeContext)
@@ -663,10 +667,16 @@ export function FileTreeNodes({ nodes }: { nodes: FileNode[] }) {
         const rootDropLineId = rootDropTargetId ? `${rootDropTargetId}:${node.path}` : undefined
         const rootDropLine = state.level === 0 && node.type === "directory" && onRootDropLineDrop ? (
           <div
-            className="group/root-drop h-3 px-2"
+            className="h-4 px-2"
+            draggable={false}
+            onDragEnterCapture={rootDropLineId ? (event) => onRootDropLineDragEnter?.(event, rootDropLineId) : undefined}
             onDragOverCapture={rootDropLineId ? (event) => onRootDropLineDragOver?.(event, rootDropLineId) : undefined}
             onDragLeaveCapture={rootDropLineId ? (event) => onRootDropLineDragLeave?.(event, rootDropLineId) : undefined}
             onDropCapture={rootDropLineId ? (event) => onRootDropLineDrop(event, rootDropLineId) : undefined}
+            onDragEnter={rootDropLineId ? (event) => onRootDropLineDragEnter?.(event, rootDropLineId) : undefined}
+            onDragOver={rootDropLineId ? (event) => onRootDropLineDragOver?.(event, rootDropLineId) : undefined}
+            onDragLeave={rootDropLineId ? (event) => onRootDropLineDragLeave?.(event, rootDropLineId) : undefined}
+            onDrop={rootDropLineId ? (event) => onRootDropLineDrop(event, rootDropLineId) : undefined}
           >
             <div
               className={cn(

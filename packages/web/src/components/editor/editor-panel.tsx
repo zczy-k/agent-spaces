@@ -346,13 +346,11 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
   }, [draggedPath, findTreeNode, getParentDir, movePathToDirectory]);
 
   const handleTreeRootDragOver = useCallback((event: React.DragEvent<HTMLDivElement>, targetId: string) => {
-    const sourcePath = draggedPathRef.current || draggedPath || event.dataTransfer.getData('text/plain');
-    if (!sourcePath) return;
     event.preventDefault();
     event.stopPropagation();
     setDraggedOverPath(targetId);
     event.dataTransfer.dropEffect = 'move';
-  }, [draggedPath]);
+  }, []);
 
   const handleTreeRootDrop = useCallback(async (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -556,6 +554,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
                       onItemDragEnd={handleTreeDragEnd}
                       rootDropTargetId={ROOT_DROP_TARGET}
                       onRootDropLineDragOver={handleTreeRootDragOver}
+                      onRootDropLineDragEnter={handleTreeRootDragOver}
                       onRootDropLineDragLeave={handleTreeRootDragLeave}
                       onRootDropLineDrop={handleTreeRootDrop}
                     >

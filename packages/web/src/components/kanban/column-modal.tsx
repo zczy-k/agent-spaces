@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Layout, Sparkles } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import type { KanbanColumn as KanbanColumnType } from '@agent-spaces/shared';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,6 +30,8 @@ const BG_COLORS: Record<string, string> = {
 export default function ColumnModal({ isOpen, onClose, onCreate, onEdit, editingColumn }: ColumnModalProps) {
   const [title, setTitle] = useState('');
   const [color, setColor] = useState('sky');
+  const t = useTranslations('kanban');
+  const tc = useTranslations('common');
 
   useEffect(() => {
     if (isOpen) {
@@ -52,19 +55,19 @@ export default function ColumnModal({ isOpen, onClose, onCreate, onEdit, editing
       <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden">
         <DialogHeader className="px-6 py-4 border-b">
           <DialogTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            {editingColumn ? 'Edit Section' : 'New Section'}
+            {editingColumn ? t('editSection') : t('newSection')}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5">
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              <Layout className="h-3.5 w-3.5" />Section Name
+              <Layout className="h-3.5 w-3.5" />{t('sectionName')}
             </Label>
             <Input
               type="text"
               required
               autoFocus
-              placeholder="e.g. Backlog, Review"
+              placeholder={t('sectionNamePlaceholder')}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               maxLength={25}
@@ -73,7 +76,7 @@ export default function ColumnModal({ isOpen, onClose, onCreate, onEdit, editing
           </div>
           <div className="space-y-2.5">
             <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              <Sparkles className="h-3.5 w-3.5" />Theme
+              <Sparkles className="h-3.5 w-3.5" />{t('theme')}
             </Label>
             <div className="flex items-center gap-3 py-1">
               {['sky', 'amber', 'emerald', 'rose', 'purple', 'slate'].map((opt) => (
@@ -83,8 +86,8 @@ export default function ColumnModal({ isOpen, onClose, onCreate, onEdit, editing
           </div>
         </form>
         <DialogFooter className="!-mx-0 !-mb-0 px-6 py-4 border-t flex-row justify-end sm:justify-end">
-          <Button size="sm" variant="outline" onClick={onClose}>Cancel</Button>
-          <Button size="sm" onClick={handleSubmit} disabled={!title.trim()}>{editingColumn ? 'Save' : 'Create'}</Button>
+          <Button size="sm" variant="outline" onClick={onClose}>{tc('cancel')}</Button>
+          <Button size="sm" onClick={handleSubmit} disabled={!title.trim()}>{editingColumn ? tc('save') : tc('create')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

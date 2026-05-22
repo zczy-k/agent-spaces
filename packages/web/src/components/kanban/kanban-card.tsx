@@ -4,6 +4,7 @@ import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Calendar, AlignLeft, GripVertical, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import type { KanbanTask, KanbanPriority } from '@agent-spaces/shared';
 
 interface KanbanCardProps {
@@ -12,10 +13,10 @@ interface KanbanCardProps {
   isOverlay?: boolean;
 }
 
-const PRIORITY_META: Record<KanbanPriority, { label: string; text: string; dot: string }> = {
-  low: { label: 'Low', text: 'text-emerald-700 bg-emerald-50 border border-emerald-100', dot: 'bg-emerald-500' },
-  medium: { label: 'Medium', text: 'text-amber-700 bg-amber-50 border border-amber-100', dot: 'bg-amber-500' },
-  high: { label: 'High', text: 'text-rose-700 bg-rose-50 border border-rose-100', dot: 'bg-rose-500' },
+const PRIORITY_STYLES: Record<KanbanPriority, { text: string; dot: string }> = {
+  low: { text: 'text-emerald-700 bg-emerald-50 border border-emerald-100', dot: 'bg-emerald-500' },
+  medium: { text: 'text-amber-700 bg-amber-50 border border-amber-100', dot: 'bg-amber-500' },
+  high: { text: 'text-rose-700 bg-rose-50 border border-rose-100', dot: 'bg-rose-500' },
 };
 
 export default function KanbanCard({ task, onClick, isOverlay = false }: KanbanCardProps) {
@@ -23,12 +24,18 @@ export default function KanbanCard({ task, onClick, isOverlay = false }: KanbanC
     id: task.id,
     disabled: isOverlay,
   });
+  const t = useTranslations('kanban');
 
   const style = isOverlay
     ? { transform: 'rotate(2.5deg) scale(1.04)', cursor: 'grabbing' as const }
     : { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.35 : 1, cursor: isDragging ? ('grabbing' as const) : ('pointer' as const) };
 
-  const meta = PRIORITY_META[task.priority] || PRIORITY_META.medium;
+  const priorityStyles = PRIORITY_STYLES[task.priority] || PRIORITY_STYLES.medium;
+  const priorityLabel: Record<KanbanPriority, string> = {
+    low: t('low'),
+    medium: t('medium'),
+    high: t('high'),
+  };
   const formatDate = (dateStr: string) => {
     try { return new Date(dateStr).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); }
     catch { return dateStr; }
@@ -43,9 +50,9 @@ export default function KanbanCard({ task, onClick, isOverlay = false }: KanbanC
       {...(!isOverlay ? attributes : {})}
     >
       <div className="flex items-center justify-between gap-2 mb-2.5">
-        <span className={`flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[10px] font-bold tracking-wider uppercase ${meta.text}`}>
-          <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
-          {meta.label}
+        <span className={`flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[10px] font-bold tracking-wider uppercase ${priorityStyles.text}`}>
+          <span className={`h-1.5 w-1.5 rounded-full ${priorityStyles.dot}`} />
+          {priorityLabel[task.priority]}
         </span>
         {!isOverlay && (
           <div {...listeners} className="p-1 text-stone-300 group-hover:text-stone-500 rounded-md hover:bg-stone-50 dark:hover:bg-neutral-700 transition cursor-grab active:cursor-grabbing" onClick={(e) => e.stopPropagation()}>
@@ -59,8 +66,8 @@ export default function KanbanCard({ task, onClick, isOverlay = false }: KanbanC
       <div className="flex items-center justify-between text-[11px] text-stone-400 dark:text-neutral-500 font-medium">
         <div className="flex items-center gap-1">
           {task.description ? <AlignLeft className="h-3.5 w-3.3 text-stone-300" /> : null}
-          {task.columnId === 'done' ? <span className="flex items-center gap-0.5 text-emerald-600 font-bold"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />Done</span> : null}
-          {task.columnId === 'archive' ? <span className="flex items-center gap-0.5 text-stone-500 font-bold"><AlertCircle className="h-3.5 w-3.5 text-stone-400" />Archived</span> : null}
+          {task.columnId === 'done' ? <span className="flex items-center gap-0.5 text-emerald-600 font-bold"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />{t('done')}</span> : null}
+          {task.columnId === 'archive' ? <span className="flex items-center gap-0.5 text-stone-500 font-bold"><AlertCircle className="h-3.5 w-3.5 text-stone-400" />{t('archived')}</span> : null}
         </div>
         {task.dueDate ? (
           <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md ${new Date(task.dueDate) < new Date() && task.columnId !== 'done' && task.columnId !== 'archive' ? 'text-rose-600 bg-rose-50 font-bold border border-rose-100' : 'text-stone-500'}`}>

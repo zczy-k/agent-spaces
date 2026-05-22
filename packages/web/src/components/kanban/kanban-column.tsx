@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Plus, Trash2, Edit2, ChevronDown, ChevronUp } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import type { KanbanColumn as KanbanColumnType, KanbanTask, KanbanLayoutMode } from '@agent-spaces/shared';
 import KanbanCard from './kanban-card';
 
@@ -37,6 +38,7 @@ export default function KanbanColumn({ column, tasks, layoutMode, onCardClick, o
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const activeColor = COLOR_OPTIONS.find((c) => c.name === column.color) || COLOR_OPTIONS[0];
   const taskIds = tasks.map((t) => t.id);
+  const t = useTranslations('kanban');
 
   return (
     <div
@@ -62,8 +64,8 @@ export default function KanbanColumn({ column, tasks, layoutMode, onCardClick, o
             )}
             {isConfirmingDelete ? (
               <div className="flex items-center gap-1 bg-stone-100 dark:bg-neutral-700 p-0.5 border border-stone-200 dark:border-neutral-600 rounded-md">
-                <button onClick={() => { onDeleteColumn(column.id); setIsConfirmingDelete(false); }} className="px-1.5 py-0.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-[9px] rounded transition cursor-pointer">Confirm</button>
-                <button onClick={() => setIsConfirmingDelete(false)} className="px-1 py-0.5 bg-white dark:bg-neutral-600 border border-stone-200 dark:border-neutral-500 text-stone-600 dark:text-neutral-300 text-[9px] rounded transition cursor-pointer">No</button>
+                <button onClick={() => { onDeleteColumn(column.id); setIsConfirmingDelete(false); }} className="px-1.5 py-0.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-[9px] rounded transition cursor-pointer">{t('confirm')}</button>
+                <button onClick={() => setIsConfirmingDelete(false)} className="px-1 py-0.5 bg-white dark:bg-neutral-600 border border-stone-200 dark:border-neutral-500 text-stone-600 dark:text-neutral-300 text-[9px] rounded transition cursor-pointer">{t('no')}</button>
               </div>
             ) : (
               <button onClick={() => setIsConfirmingDelete(true)} className="p-1 text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-md transition cursor-pointer"><Trash2 className="h-3.5 w-3.5" /></button>
@@ -81,13 +83,13 @@ export default function KanbanColumn({ column, tasks, layoutMode, onCardClick, o
               </div>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center py-6 px-4 border border-dashed border-stone-200 dark:border-neutral-600 rounded-xl text-stone-400">
-                <p className="text-xs font-medium">Empty Section</p>
-                <p className="text-[10px] mt-1">Cards can be dropped here</p>
+                <p className="text-xs font-medium">{t('emptySection')}</p>
+                <p className="text-[10px] mt-1">{t('dropHint')}</p>
               </div>
             )}
           </SortableContext>
           <button onClick={() => onAddTask(column.id)} className="w-full flex items-center justify-center gap-1.5 py-2 px-3 mt-1 text-xs font-semibold text-stone-500 dark:text-neutral-400 hover:text-stone-900 dark:hover:text-neutral-100 bg-white dark:bg-neutral-800 border border-stone-200 dark:border-neutral-600 hover:border-stone-400 dark:hover:border-neutral-500 rounded-xl transition cursor-pointer">
-            <Plus className="h-4 w-4" />Add Task
+            <Plus className="h-4 w-4" />{t('addTask')}
           </button>
         </div>
       )}

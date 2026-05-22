@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Calendar, AlertCircle, FileText, LayoutGrid, Trash2, Clock } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import type { KanbanTask, KanbanPriority, KanbanColumn } from '@agent-spaces/shared';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -39,6 +40,8 @@ export default function TaskModal({ task, columns, isOpen, onClose, onSave, onDe
   const [columnId, setColumnId] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+  const t = useTranslations('kanban');
+  const tc = useTranslations('common');
 
   useEffect(() => {
     if (task) {
@@ -60,23 +63,29 @@ export default function TaskModal({ task, columns, isOpen, onClose, onSave, onDe
     onClose();
   };
 
+  const priorityLabel: Record<KanbanPriority, string> = {
+    low: t('low'),
+    medium: t('medium'),
+    high: t('high'),
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden">
         <DialogHeader className="px-6 py-4 border-b">
           <DialogTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-            <FileText className="h-3.5 w-3.5" />Task Details
+            <FileText className="h-3.5 w-3.5" />{t('taskDetails')}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5">
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              <FileText className="h-3.5 w-3.5" />Title
+              <FileText className="h-3.5 w-3.5" />{t('title')}
             </Label>
             <Input
               type="text"
               required
-              placeholder="Task title"
+              placeholder={t('titlePlaceholder')}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="h-9 text-sm font-medium"
@@ -84,11 +93,11 @@ export default function TaskModal({ task, columns, isOpen, onClose, onSave, onDe
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              <AlertCircle className="h-3.5 w-3.5" />Description
+              <AlertCircle className="h-3.5 w-3.5" />{t('descriptionLabel')}
             </Label>
             <Textarea
               rows={4}
-              placeholder="Task description..."
+              placeholder={t('descriptionPlaceholder')}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
@@ -96,19 +105,19 @@ export default function TaskModal({ task, columns, isOpen, onClose, onSave, onDe
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                <LayoutGrid className="h-3.5 w-3.5" />Section
+                <LayoutGrid className="h-3.5 w-3.5" />{t('sectionLabel')}
               </Label>
               <SearchSelect
                 value={columnId}
                 onChange={setColumnId}
                 options={columns.map((col) => ({ value: col.id, label: col.title }))}
-                placeholder="Select section..."
+                placeholder={t('selectSection')}
                 allowCustom={false}
               />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                <Calendar className="h-3.5 w-3.5" />Due Date
+                <Calendar className="h-3.5 w-3.5" />{t('dueDate')}
               </Label>
               <Input
                 type="date"
@@ -120,7 +129,7 @@ export default function TaskModal({ task, columns, isOpen, onClose, onSave, onDe
           </div>
           <div className="space-y-2">
             <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              <Clock className="h-3.5 w-3.5" />Priority
+              <Clock className="h-3.5 w-3.5" />{t('priority')}
             </Label>
             <ToggleGroup
               variant="outline"
@@ -136,10 +145,10 @@ export default function TaskModal({ task, columns, isOpen, onClose, onSave, onDe
                     key={p}
                     value={p}
                     aria-label={`Priority ${p}`}
-                    className={`flex items-center justify-center gap-1.5 text-xs font-semibold capitalize ${active ? colors.activeBg + ' !border' : colors.bg}`}
+                    className={`flex items-center justify-center gap-1.5 text-xs font-semibold ${active ? colors.activeBg + ' !border' : colors.bg}`}
                   >
                     <span className={`h-1.5 w-1.5 rounded-full ${active ? 'bg-white' : colors.dot}`} />
-                    {p}
+                    {priorityLabel[p]}
                   </ToggleGroupItem>
                 );
               })}
@@ -149,18 +158,18 @@ export default function TaskModal({ task, columns, isOpen, onClose, onSave, onDe
         <DialogFooter className="!-mx-0 !-mb-0 px-6 py-4 border-t flex-row justify-between sm:justify-between">
           {isConfirmingDelete ? (
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-rose-600 animate-pulse">Delete?</span>
-              <Button size="xs" variant="destructive" onClick={() => { onDelete(task.id); onClose(); }}>Yes</Button>
-              <Button size="xs" variant="outline" onClick={() => setIsConfirmingDelete(false)}>Cancel</Button>
+              <span className="text-xs font-semibold text-rose-600 animate-pulse">{t('deleteConfirm')}</span>
+              <Button size="xs" variant="destructive" onClick={() => { onDelete(task.id); onClose(); }}>{t('yes')}</Button>
+              <Button size="xs" variant="outline" onClick={() => setIsConfirmingDelete(false)}>{tc('cancel')}</Button>
             </div>
           ) : (
             <Button size="sm" variant="destructive" onClick={() => setIsConfirmingDelete(true)}>
-              <Trash2 className="h-4 w-4" />Delete
+              <Trash2 className="h-4 w-4" />{tc('delete')}
             </Button>
           )}
           <div className="flex items-center gap-2.5">
-            <Button size="sm" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button size="sm" onClick={handleSubmit} disabled={!title.trim()}>Save</Button>
+            <Button size="sm" variant="outline" onClick={onClose}>{tc('cancel')}</Button>
+            <Button size="sm" onClick={handleSubmit} disabled={!title.trim()}>{tc('save')}</Button>
           </div>
         </DialogFooter>
       </DialogContent>
