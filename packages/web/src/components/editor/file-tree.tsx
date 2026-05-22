@@ -56,10 +56,11 @@ interface FileTreeContextType {
   onItemDragOver?: (event: DragEvent<HTMLDivElement>, path: string) => void
   onItemDragLeave?: (event: DragEvent<HTMLDivElement>) => void
   onItemDrop?: (event: DragEvent<HTMLDivElement>, path: string) => void
+  onItemDragEnd?: (event: DragEvent<HTMLDivElement>) => void
   rootDropTargetId?: string
-  onRootDropLineDragOver?: (event: DragEvent<HTMLDivElement>) => void
-  onRootDropLineDragLeave?: (event: DragEvent<HTMLDivElement>) => void
-  onRootDropLineDrop?: (event: DragEvent<HTMLDivElement>) => void
+  onRootDropLineDragOver?: (event: DragEvent<HTMLDivElement>, targetId: string) => void
+  onRootDropLineDragLeave?: (event: DragEvent<HTMLDivElement>, targetId: string) => void
+  onRootDropLineDrop?: (event: DragEvent<HTMLDivElement>, targetId: string) => void
 }
 
 const FileTreeContext = createContext<FileTreeContextType>({
@@ -93,10 +94,11 @@ export type FileTreeProps = HTMLAttributes<HTMLDivElement> & {
   onItemDragOver?: (event: DragEvent<HTMLDivElement>, path: string) => void
   onItemDragLeave?: (event: DragEvent<HTMLDivElement>) => void
   onItemDrop?: (event: DragEvent<HTMLDivElement>, path: string) => void
+  onItemDragEnd?: (event: DragEvent<HTMLDivElement>) => void
   rootDropTargetId?: string
-  onRootDropLineDragOver?: (event: DragEvent<HTMLDivElement>) => void
-  onRootDropLineDragLeave?: (event: DragEvent<HTMLDivElement>) => void
-  onRootDropLineDrop?: (event: DragEvent<HTMLDivElement>) => void
+  onRootDropLineDragOver?: (event: DragEvent<HTMLDivElement>, targetId: string) => void
+  onRootDropLineDragLeave?: (event: DragEvent<HTMLDivElement>, targetId: string) => void
+  onRootDropLineDrop?: (event: DragEvent<HTMLDivElement>, targetId: string) => void
 }
 
 export const FileTree = ({
@@ -125,6 +127,7 @@ export const FileTree = ({
   onItemDragOver,
   onItemDragLeave,
   onItemDrop,
+  onItemDragEnd,
   rootDropTargetId,
   onRootDropLineDragOver,
   onRootDropLineDragLeave,
@@ -156,7 +159,7 @@ export const FileTree = ({
   }, [refreshInterval, onLoadDirectory, expandedPaths])
 
   return (
-    <FileTreeContext.Provider value={{ expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete, onImport, onCopyPath, onCreateFile, onCreateFolder, onRename, onMove, onCopyItem, onLoadDirectory, loadingDirs, boundDir, fileSizeMap, ignoredPaths, draggedOverPath, onItemDragStart, onItemDragOver, onItemDragLeave, onItemDrop, rootDropTargetId, onRootDropLineDragOver, onRootDropLineDragLeave, onRootDropLineDrop }}>
+    <FileTreeContext.Provider value={{ expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete, onImport, onCopyPath, onCreateFile, onCreateFolder, onRename, onMove, onCopyItem, onLoadDirectory, loadingDirs, boundDir, fileSizeMap, ignoredPaths, draggedOverPath, onItemDragStart, onItemDragOver, onItemDragLeave, onItemDrop, onItemDragEnd, rootDropTargetId, onRootDropLineDragOver, onRootDropLineDragLeave, onRootDropLineDrop }}>
       <div
         className={cn("flex flex-col bg-background font-mono text-sm h-full", className)}
         role="tree"
@@ -548,6 +551,7 @@ export type NestedTreeProps<TNode> = {
   onDragOver?: (event: DragEvent<HTMLDivElement>, nodeId: string) => void
   onDragLeave?: (event: DragEvent<HTMLDivElement>) => void
   onDrop?: (event: DragEvent<HTMLDivElement>, nodeId: string) => void
+  onDragEnd?: (event: DragEvent<HTMLDivElement>) => void
   shouldRenderChildren?: (node: TNode, state: NestedTreeRenderState) => boolean
 }
 
@@ -565,6 +569,7 @@ export function NestedTree<TNode>({
   onDragOver,
   onDragLeave,
   onDrop,
+  onDragEnd,
   shouldRenderChildren,
 }: NestedTreeProps<TNode>) {
   return nodes.map((node) => {
@@ -594,6 +599,7 @@ export function NestedTree<TNode>({
             onDrop(event, nodeId)
           }
         : undefined,
+      onDragEnd,
     }
     const shouldShowChildren = state.hasChildren && (shouldRenderChildren?.(node, state) ?? true)
 
@@ -618,6 +624,7 @@ export function NestedTree<TNode>({
               onDragOver={onDragOver}
               onDragLeave={onDragLeave}
               onDrop={onDrop}
+              onDragEnd={onDragEnd}
               shouldRenderChildren={shouldRenderChildren}
             />
           ) : null,
@@ -634,6 +641,7 @@ export function FileTreeNodes({ nodes }: { nodes: FileNode[] }) {
     onItemDragOver,
     onItemDragLeave,
     onItemDrop,
+    onItemDragEnd,
     rootDropTargetId,
     onRootDropLineDragOver,
     onRootDropLineDragLeave,
@@ -650,18 +658,20 @@ export function FileTreeNodes({ nodes }: { nodes: FileNode[] }) {
       onDragOver={onItemDragOver}
       onDragLeave={onItemDragLeave}
       onDrop={onItemDrop}
+      onDragEnd={onItemDragEnd}
       renderNode={({ node, state, rowProps, children }) => {
+        const rootDropLineId = rootDropTargetId ? `${rootDropTargetId}:${node.path}` : undefined
         const rootDropLine = state.level === 0 && node.type === "directory" && onRootDropLineDrop ? (
           <div
-            className="group/root-drop h-2 px-2"
-            onDragOver={onRootDropLineDragOver}
-            onDragLeave={onRootDropLineDragLeave}
-            onDrop={onRootDropLineDrop}
+            className="group/root-drop h-3 px-2"
+            onDragOverCapture={rootDropLineId ? (event) => onRootDropLineDragOver?.(event, rootDropLineId) : undefined}
+            onDragLeaveCapture={rootDropLineId ? (event) => onRootDropLineDragLeave?.(event, rootDropLineId) : undefined}
+            onDropCapture={rootDropLineId ? (event) => onRootDropLineDrop(event, rootDropLineId) : undefined}
           >
             <div
               className={cn(
                 "h-0.5 rounded-full bg-primary opacity-0 transition-opacity",
-                rootDropTargetId && draggedOverPath === rootDropTargetId && "opacity-100",
+                rootDropLineId && draggedOverPath === rootDropLineId && "opacity-100",
               )}
             />
           </div>

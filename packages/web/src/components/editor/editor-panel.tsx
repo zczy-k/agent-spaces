@@ -119,6 +119,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
   const [globalFileLoading, setGlobalFileLoading] = useState(false);
   const [draggedPath, setDraggedPath] = useState<string | null>(null);
   const [draggedOverPath, setDraggedOverPath] = useState<string | null>(null);
+  const draggedPathRef = useRef<string | null>(null);
   const fileSearchTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [bottomTab, setBottomTab] = useState<'all' | 'recent' | 'open'>('all');
   const [sidebarTab, setSidebarTab] = useState('files');
@@ -299,14 +300,21 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
   }, [getParentDir, reloadExpandedTree, selectedPath, workspaceId]);
 
   const handleTreeDragStart = useCallback((event: React.DragEvent<HTMLDivElement>, path: string) => {
+    draggedPathRef.current = path;
     setDraggedPath(path);
     event.dataTransfer.setData('text/plain', path);
     event.dataTransfer.effectAllowed = 'move';
   }, []);
 
+  const handleTreeDragEnd = useCallback(() => {
+    draggedPathRef.current = null;
+    setDraggedPath(null);
+    setDraggedOverPath(null);
+  }, []);
+
   const handleTreeDragOver = useCallback((event: React.DragEvent<HTMLDivElement>, targetPath: string) => {
     event.preventDefault();
-    const sourcePath = draggedPath || event.dataTransfer.getData('text/plain');
+    const sourcePath = draggedPathRef.current || draggedPath || event.dataTransfer.getData('text/plain');
     if (!sourcePath || sourcePath === targetPath) return;
 
     const targetNode = findTreeNode(targetPath);
@@ -326,9 +334,10 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
 
   const handleTreeDrop = useCallback(async (event: React.DragEvent<HTMLDivElement>, targetPath: string) => {
     event.preventDefault();
-    const sourcePath = draggedPath || event.dataTransfer.getData('text/plain');
+    const sourcePath = draggedPathRef.current || draggedPath || event.dataTransfer.getData('text/plain');
     setDraggedOverPath(null);
     setDraggedPath(null);
+    draggedPathRef.current = null;
     if (!sourcePath || sourcePath === targetPath) return;
 
     const targetNode = findTreeNode(targetPath);
@@ -336,26 +345,28 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
     await movePathToDirectory(sourcePath, targetDir);
   }, [draggedPath, findTreeNode, getParentDir, movePathToDirectory]);
 
-  const handleTreeRootDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
-    if (!draggedPath) return;
+  const handleTreeRootDragOver = useCallback((event: React.DragEvent<HTMLDivElement>, targetId: string) => {
+    const sourcePath = draggedPathRef.current || draggedPath || event.dataTransfer.getData('text/plain');
+    if (!sourcePath) return;
     event.preventDefault();
     event.stopPropagation();
-    setDraggedOverPath(ROOT_DROP_TARGET);
+    setDraggedOverPath(targetId);
     event.dataTransfer.dropEffect = 'move';
   }, [draggedPath]);
 
   const handleTreeRootDrop = useCallback(async (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.stopPropagation();
-    if (!draggedPath) return;
-    const sourcePath = draggedPath;
+    const sourcePath = draggedPathRef.current || draggedPath || event.dataTransfer.getData('text/plain');
     setDraggedOverPath(null);
     setDraggedPath(null);
+    draggedPathRef.current = null;
+    if (!sourcePath) return;
     await movePathToDirectory(sourcePath, '');
   }, [draggedPath, movePathToDirectory]);
 
-  const handleTreeRootDragLeave = useCallback(() => {
-    setDraggedOverPath((path) => path === ROOT_DROP_TARGET ? null : path);
+  const handleTreeRootDragLeave = useCallback((_event: React.DragEvent<HTMLDivElement>, targetId: string) => {
+    setDraggedOverPath((path) => path === targetId ? null : path);
   }, []);
 
   useEffect(() => {
@@ -542,6 +553,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
                       onItemDragOver={handleTreeDragOver}
                       onItemDragLeave={handleTreeDragLeave}
                       onItemDrop={handleTreeDrop}
+                      onItemDragEnd={handleTreeDragEnd}
                       rootDropTargetId={ROOT_DROP_TARGET}
                       onRootDropLineDragOver={handleTreeRootDragOver}
                       onRootDropLineDragLeave={handleTreeRootDragLeave}
