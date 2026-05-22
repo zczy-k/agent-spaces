@@ -43,6 +43,21 @@ export interface DocNode {
   isTrash: boolean;
 }
 
+export interface DatabaseNodeVersion {
+  id: string;
+  nodeId: string;
+  databaseId: string;
+  title: string;
+  patch: {
+    start: number;
+    deleteText: string;
+    insertText: string;
+  };
+  oldContent: string;
+  newContent: string;
+  createdAt: number;
+}
+
 export const PRESET_COVERS = [
   'linear-gradient(to right, #10b981, #06b6d4)',
   'linear-gradient(to right, #ec4899, #8b5cf6)',

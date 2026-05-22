@@ -4,15 +4,17 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import {
   Plus, X, ChevronRight, Sidebar, Layers, BookOpen,
   Minimize2, Maximize2, Check, MoreHorizontal,
-  CheckCircle, Sparkles, FileCheck, List,
+  CheckCircle, Sparkles, FileCheck, List, History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { htmlToMarkdown, markdownToHtml } from '@/lib/converter';
 import { useDatabaseStore } from '@/stores/database';
-import { PRESET_COVERS } from '@agent-spaces/shared';
+import { PRESET_COVERS, type DatabaseNodeVersion } from '@agent-spaces/shared';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import NotionEditor from './notion-editor';
 import MarkdownEditor from './markdown-editor';
 import { TableOfContents, extractTocFromHtml, extractTocFromMarkdown } from './table-of-contents';
+import { DiffViewer } from '@/components/git/diff-viewer';
 import type { PanelImperativeHandle } from 'react-resizable-panels';
 
 interface DatabaseMainPanelProps {
@@ -31,11 +33,16 @@ export function DatabaseMainPanel({
   const {
     nodes, activeId, openTabs, editorMode, theme, isFullWidth,
     setActiveId, createNode, updateContent, renameNode, updateCover,
-    setEditorMode, setTheme, setIsFullWidth, closeTab,
+    setEditorMode, setTheme, setIsFullWidth, closeTab, listNodeVersions,
   } = useDatabaseStore();
 
   const [settingsDropdownOpen, setSettingsDropdownOpen] = useState(false);
   const [tocOpen, setTocOpen] = useState(true);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [versions, setVersions] = useState<DatabaseNodeVersion[]>([]);
+  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
   const settingsDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -74,6 +81,30 @@ export function DatabaseMainPanel({
     e.stopPropagation();
     closeTab(tabId);
   }, [closeTab]);
+
+  const handleOpenHistory = useCallback(async () => {
+    if (!activeNode) return;
+    setHistoryOpen(true);
+    setSettingsDropdownOpen(false);
+    setHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      const items = await listNodeVersions(workspaceId, activeNode.id);
+      setVersions(items);
+      setSelectedVersionId(items[0]?.id ?? null);
+    } catch (error) {
+      setHistoryError(error instanceof Error ? error.message : '加载历史版本失败');
+      setVersions([]);
+      setSelectedVersionId(null);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [activeNode, listNodeVersions, workspaceId]);
+
+  const selectedVersion = useMemo(
+    () => versions.find((item) => item.id === selectedVersionId) ?? versions[0] ?? null,
+    [selectedVersionId, versions],
+  );
 
   return (
     <>
@@ -181,6 +212,14 @@ export function DatabaseMainPanel({
                     </button>
                   ))}
                   <div className="h-[1px] bg-border my-1.5" />
+                  <button onClick={handleOpenHistory}
+                    className="w-full text-left px-3.5 py-2 flex items-center justify-between text-xs transition-colors cursor-pointer text-muted-foreground hover:text-foreground hover:bg-accent/50">
+                    <div className="flex items-center gap-2">
+                      <History className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span>查看历史版本</span>
+                    </div>
+                  </button>
+                  <div className="h-[1px] bg-border my-1.5" />
                   <div className="px-3.5 py-1 bg-muted/30 text-muted-foreground text-[10px] font-bold uppercase tracking-wider select-none mb-1">页面宽度</div>
                   <button onClick={() => { setIsFullWidth(!isFullWidth); setSettingsDropdownOpen(false); }}
                     className={cn("w-full text-left px-3.5 py-2 flex items-center justify-between text-xs transition-colors cursor-pointer",
@@ -284,6 +323,56 @@ export function DatabaseMainPanel({
           </button>
         </div>
       )}
+
+      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+        <DialogContent className="!flex !w-[min(1080px,calc(100vw-2rem))] !max-w-[min(1080px,calc(100vw-2rem))] h-[min(760px,calc(100vh-4rem))] flex-col gap-0 overflow-hidden p-0">
+          <DialogHeader className="shrink-0 border-b border-border px-5 py-4">
+            <DialogTitle className="text-sm">历史版本</DialogTitle>
+          </DialogHeader>
+          <div className="flex min-h-0 flex-1">
+            <div className="w-64 shrink-0 border-r border-border overflow-y-auto bg-muted/20">
+              {historyLoading ? (
+                <div className="p-4 text-xs text-muted-foreground">加载中...</div>
+              ) : historyError ? (
+                <div className="p-4 text-xs text-destructive">{historyError}</div>
+              ) : versions.length === 0 ? (
+                <div className="p-4 text-xs text-muted-foreground">暂无历史版本</div>
+              ) : (
+                versions.map((version) => (
+                  <button
+                    key={version.id}
+                    onClick={() => setSelectedVersionId(version.id)}
+                    className={cn(
+                      "w-full border-b border-border px-4 py-3 text-left text-xs transition-colors",
+                      selectedVersion?.id === version.id ? "bg-background text-foreground" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                    )}
+                  >
+                    <div className="truncate font-semibold">{version.title || activeNode?.title || '未命名文档'}</div>
+                    <div className="mt-1 text-[11px]">{new Date(version.createdAt).toLocaleString()}</div>
+                    <div className="mt-1 text-[10px] font-mono">
+                      -{version.patch.deleteText.length} +{version.patch.insertText.length}
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              {selectedVersion ? (
+                <DiffViewer
+                  oldContent={selectedVersion.oldContent}
+                  newContent={selectedVersion.newContent}
+                  path={`${activeNode?.title || 'database-node'}.md`}
+                  compactDiff
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                  选择一个版本查看 Diff
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

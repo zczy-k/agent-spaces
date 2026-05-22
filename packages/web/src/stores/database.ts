@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { fetchWithAuth } from '@/lib/auth';
-import type { DatabaseMeta, DatabaseVectorIndexResult, DatabaseVectorStats, DocNode } from '@agent-spaces/shared';
+import type { DatabaseMeta, DatabaseNodeVersion, DatabaseVectorIndexResult, DatabaseVectorStats, DocNode } from '@agent-spaces/shared';
 
 interface DatabaseState {
   databases: DatabaseMeta[];
@@ -34,6 +34,7 @@ interface DatabaseActions {
   setActiveId: (id: string | null) => void;
   createNode: (workspaceId: string, parentId: string | null, type?: 'folder' | 'document') => Promise<DocNode>;
   updateContent: (workspaceId: string, nodeId: string, content: string) => Promise<void>;
+  listNodeVersions: (workspaceId: string, nodeId: string) => Promise<DatabaseNodeVersion[]>;
   renameNode: (workspaceId: string, nodeId: string, title: string) => Promise<void>;
   updateIcon: (workspaceId: string, nodeId: string, icon: string) => Promise<void>;
   updateCover: (workspaceId: string, nodeId: string, cover: string) => Promise<void>;
@@ -76,6 +77,23 @@ function withDatabase(path: string, databaseId: string | null): string {
   if (!databaseId) return path;
   const separator = path.includes('?') ? '&' : '?';
   return `${path}${separator}databaseId=${encodeURIComponent(databaseId)}`;
+}
+
+const contentSaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+function scheduleContentSave(workspaceId: string, databaseId: string | null, nodeId: string, content: string): void {
+  const key = `${workspaceId}:${databaseId ?? 'default'}:${nodeId}`;
+  const existing = contentSaveTimers.get(key);
+  if (existing) clearTimeout(existing);
+
+  const timer = setTimeout(() => {
+    contentSaveTimers.delete(key);
+    void api(workspaceId, withDatabase(`/${nodeId}`, databaseId), {
+      method: 'PUT',
+      body: JSON.stringify({ content }),
+    });
+  }, 800);
+  contentSaveTimers.set(key, timer);
 }
 
 export const useDatabaseStore = create<DatabaseState & DatabaseActions>((set, get) => ({
@@ -251,7 +269,12 @@ export const useDatabaseStore = create<DatabaseState & DatabaseActions>((set, ge
   updateContent: async (workspaceId, nodeId, content) => {
     const databaseId = get().activeDatabaseId;
     set((s) => ({ nodes: s.nodes.map(n => n.id === nodeId ? { ...n, content, updatedAt: Date.now() } : n) }));
-    await api(workspaceId, withDatabase(`/${nodeId}`, databaseId), { method: 'PUT', body: JSON.stringify({ content }) });
+    scheduleContentSave(workspaceId, databaseId, nodeId, content);
+  },
+
+  listNodeVersions: async (workspaceId, nodeId) => {
+    const databaseId = get().activeDatabaseId;
+    return api<DatabaseNodeVersion[]>(workspaceId, withDatabase(`/${nodeId}/versions`, databaseId));
   },
 
   renameNode: async (workspaceId, nodeId, title) => {

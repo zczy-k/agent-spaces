@@ -222,3 +222,16 @@ packages/server/src/services/builtin-tools/database-tools.ts
 - 前端切换数据库后不保留旧数据库编辑上下文。
 - 向量索引是手动触发的本地 SQLite 索引，不会在文档编辑时自动增量更新。
 - 向量检索依赖 OpenAI-compatible `/embeddings` 响应格式：`data[].embedding` 必须为数值数组，返回条数必须与输入条数一致。
+
+## Version History
+
+- Shared type: `DatabaseNodeVersion` in `packages/shared/src/types/database.ts`.
+- Storage table: `doc_node_versions` in `packages/server/src/storage/database-store.ts`.
+- Content versions are recorded only when `DocNode.content` changes.
+- Each version stores a small patch (`start`, `deleteText`, `insertText`) plus old/new content hashes, not a full historical snapshot.
+- `listNodeVersions(workspaceId, nodeId, databaseId?, limit?)` reconstructs `oldContent` and `newContent` from the current node content by applying stored patches backward.
+- HTTP API: `GET /api/workspaces/:id/database/:nodeId/versions?databaseId=...`.
+- Frontend API: `useDatabaseStore().listNodeVersions(workspaceId, nodeId)`.
+- UI entry: `packages/web/src/components/database/database-main-panel.tsx` settings menu uses `History` to open a dialog and renders diffs with `packages/web/src/components/git/diff-viewer.tsx`.
+- Editor content saves are debounced in `packages/web/src/stores/database.ts` to avoid creating one version per keystroke.
+- Agent tool: `ListDatabaseNodeVersions` in `packages/server/src/services/builtin-tools/database-tools.ts`, with optional `databaseId`, required `id`, and optional `limit`.

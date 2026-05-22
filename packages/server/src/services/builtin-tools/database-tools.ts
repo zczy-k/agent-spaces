@@ -43,6 +43,26 @@ const readDatabaseNodeInputSchema = {
   additionalProperties: false,
 };
 
+const listDatabaseNodeVersionsInputSchema = {
+  type: 'object',
+  properties: {
+    databaseId: {
+      type: 'string',
+      description: 'Optional database ID. If omitted, the workspace default database is used.',
+    },
+    id: {
+      type: 'string',
+      description: 'Knowledge base node ID.',
+    },
+    limit: {
+      type: 'number',
+      description: 'Maximum number of versions. Defaults to 20, capped at 100.',
+    },
+  },
+  required: ['id'],
+  additionalProperties: false,
+};
+
 const queryDatabaseVectorsInputSchema = {
   type: 'object',
   properties: {
@@ -219,6 +239,13 @@ export function createDatabaseFunctionTools(workspaceId: string, allowedTools?: 
       execute: async (input) => readDatabaseNode(workspaceId, input),
     },
     {
+      name: 'ListDatabaseNodeVersions',
+      description: 'List content version history for a knowledge base file by id, including oldContent and newContent for each diff.',
+      inputSchema: listDatabaseNodeVersionsInputSchema,
+      annotations: { readOnly: true, openWorld: false },
+      execute: async (input) => listDatabaseNodeVersions(workspaceId, input),
+    },
+    {
       name: 'CreateDatabaseNode',
       description: 'Create a knowledge base file or directory. Use this when the database is empty or the target document does not exist.',
       inputSchema: createDatabaseNodeInputSchema,
@@ -264,6 +291,7 @@ function getAllowedDatabaseToolNames(allowedTools?: BuiltInAgentToolName[]): Set
   if (hasDatabaseTools) {
     names.add('CreateDatabaseNode');
     names.add('QueryDatabaseVectors');
+    names.add('ListDatabaseNodeVersions');
   }
   return names;
 }
@@ -333,6 +361,15 @@ function readDatabaseNode(workspaceId: string, input: unknown): DocNode & { path
       .filter((child) => child.parentId === node.id)
       .map((child) => summarizeDatabaseNode(child, nodes)),
   };
+}
+
+function listDatabaseNodeVersions(workspaceId: string, input: unknown) {
+  const data = assertRecord(input);
+  const id = readRequiredString(data.id, 'id');
+  const databaseId = resolveToolDatabaseId(workspaceId, data);
+  requireDatabaseNode(workspaceId, id, databaseId);
+  const limit = typeof data.limit === 'number' ? data.limit : 20;
+  return databaseStore.listNodeVersions(workspaceId, id, databaseId, limit);
 }
 
 function createDatabaseNode(workspaceId: string, input: unknown): DocNode & { path: string } {
@@ -534,6 +571,7 @@ function isDatabaseToolName(name: string): boolean {
     || name === 'SearchDatabaseNodes'
     || name === 'QueryDatabaseVectors'
     || name === 'ReadDatabaseNode'
+    || name === 'ListDatabaseNodeVersions'
     || name === 'CreateDatabaseNode'
     || name === 'WriteDatabaseNode'
     || name === 'DeleteDatabaseNode'

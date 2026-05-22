@@ -1,7 +1,8 @@
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import { createHash } from 'node:crypto';
 import { v4 as uuid } from 'uuid';
-import type { DatabaseMeta, DatabaseVectorSearchResult, DatabaseVectorStats, DocNode } from '@agent-spaces/shared';
+import type { DatabaseMeta, DatabaseNodeVersion, DatabaseVectorSearchResult, DatabaseVectorStats, DocNode } from '@agent-spaces/shared';
 import { getDataDir, ensureDir } from './json-store.js';
 
 let db: DatabaseSync | null = null;
@@ -58,11 +59,24 @@ function openDb(): DatabaseSync {
       PRIMARY KEY (workspace_id, database_id, node_id)
     );
 
+    CREATE TABLE IF NOT EXISTS doc_node_versions (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      database_id TEXT NOT NULL,
+      node_id TEXT NOT NULL,
+      title TEXT NOT NULL DEFAULT '',
+      patch_json TEXT NOT NULL,
+      old_hash TEXT NOT NULL,
+      new_hash TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+
     CREATE INDEX IF NOT EXISTS idx_databases_workspace ON databases(workspace_id);
     CREATE INDEX IF NOT EXISTS idx_doc_nodes_workspace ON doc_nodes(workspace_id);
     CREATE INDEX IF NOT EXISTS idx_doc_nodes_database ON doc_nodes(workspace_id, database_id);
     CREATE INDEX IF NOT EXISTS idx_doc_nodes_parent ON doc_nodes(workspace_id, database_id, parent_id);
     CREATE INDEX IF NOT EXISTS idx_database_embeddings_database ON database_embeddings(workspace_id, database_id);
+    CREATE INDEX IF NOT EXISTS idx_doc_node_versions_node ON doc_node_versions(workspace_id, database_id, node_id, created_at DESC);
   `);
   ensureColumn('databases', 'embedding_model_id', 'TEXT');
   migrateEmbeddingModelColumn();
@@ -112,6 +126,19 @@ function rowToNode(row: Record<string, unknown>): DocNode {
     isTrash: !!row.is_trash,
     createdAt: row.created_at as number,
     updatedAt: row.updated_at as number,
+  };
+}
+
+function rowToVersionRow(row: Record<string, unknown>): StoredNodeVersion {
+  return {
+    id: row.id as string,
+    nodeId: row.node_id as string,
+    databaseId: row.database_id as string,
+    title: row.title as string,
+    patch: JSON.parse(row.patch_json as string) as ContentPatch,
+    oldHash: row.old_hash as string,
+    newHash: row.new_hash as string,
+    createdAt: row.created_at as number,
   };
 }
 
@@ -222,6 +249,9 @@ export function updateNode(workspaceId: string, nodeId: string, updates: Partial
   if (!existing) return null;
   const database = openDb();
   const merged = { ...existing, ...updates, updatedAt: Date.now() };
+  if (Object.hasOwn(updates, 'content') && merged.content !== existing.content) {
+    insertNodeVersion(database, workspaceId, existing, merged.content);
+  }
   database.prepare(
     `UPDATE doc_nodes SET title = ?, icon = ?, cover = ?, content = ?, parent_id = ?, is_trash = ?, updated_at = ?
      WHERE workspace_id = ? AND database_id = ? AND id = ?`
@@ -240,16 +270,122 @@ export function updateNode(workspaceId: string, nodeId: string, updates: Partial
   return getNode(workspaceId, nodeId, existing.databaseId);
 }
 
+export function listNodeVersions(workspaceId: string, nodeId: string, databaseId?: string, limit = 50): DatabaseNodeVersion[] {
+  const node = getNode(workspaceId, nodeId, databaseId);
+  if (!node) return [];
+  const database = openDb();
+  const normalizedLimit = Number.isFinite(limit) ? Math.max(1, Math.min(100, Math.trunc(limit))) : 50;
+  const rows = database.prepare(
+    `SELECT * FROM doc_node_versions
+     WHERE workspace_id = ? AND database_id = ? AND node_id = ?
+     ORDER BY created_at DESC
+     LIMIT ?`
+  ).all(workspaceId, node.databaseId, nodeId, normalizedLimit) as Record<string, unknown>[];
+  const stored = rows.map(rowToVersionRow);
+  let after = node.content;
+
+  return stored.map((item) => {
+    const before = applyReversePatch(after, item.patch);
+    const version: DatabaseNodeVersion = {
+      id: item.id,
+      nodeId: item.nodeId,
+      databaseId: item.databaseId,
+      title: item.title,
+      patch: item.patch,
+      oldContent: before,
+      newContent: after,
+      createdAt: item.createdAt,
+    };
+    after = before;
+    return version;
+  });
+}
+
 export function deleteNode(workspaceId: string, nodeId: string, databaseId?: string): boolean {
   const database = openDb();
   const existing = getNode(workspaceId, nodeId, databaseId);
   if (!existing) return false;
   database.prepare('DELETE FROM database_embeddings WHERE workspace_id = ? AND database_id = ? AND node_id = ?')
     .run(workspaceId, existing.databaseId, nodeId);
+  database.prepare('DELETE FROM doc_node_versions WHERE workspace_id = ? AND database_id = ? AND node_id = ?')
+    .run(workspaceId, existing.databaseId, nodeId);
   const result = database.prepare(
     'DELETE FROM doc_nodes WHERE workspace_id = ? AND database_id = ? AND id = ?'
   ).run(workspaceId, existing.databaseId, nodeId) as { changes: number };
   return result.changes > 0;
+}
+
+interface ContentPatch {
+  start: number;
+  deleteText: string;
+  insertText: string;
+}
+
+interface StoredNodeVersion {
+  id: string;
+  nodeId: string;
+  databaseId: string;
+  title: string;
+  patch: ContentPatch;
+  oldHash: string;
+  newHash: string;
+  createdAt: number;
+}
+
+function insertNodeVersion(database: DatabaseSync, workspaceId: string, existing: DocNode, nextContent: string): void {
+  const patch = createContentPatch(existing.content, nextContent);
+  database.prepare(
+    `INSERT INTO doc_node_versions
+      (id, workspace_id, database_id, node_id, title, patch_json, old_hash, new_hash, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    uuid(),
+    workspaceId,
+    existing.databaseId,
+    existing.id,
+    existing.title,
+    JSON.stringify(patch),
+    hashContent(existing.content),
+    hashContent(nextContent),
+    Date.now(),
+  );
+}
+
+function createContentPatch(oldContent: string, newContent: string): ContentPatch {
+  let start = 0;
+  while (
+    start < oldContent.length
+    && start < newContent.length
+    && oldContent[start] === newContent[start]
+  ) {
+    start++;
+  }
+
+  let oldEnd = oldContent.length;
+  let newEnd = newContent.length;
+  while (
+    oldEnd > start
+    && newEnd > start
+    && oldContent[oldEnd - 1] === newContent[newEnd - 1]
+  ) {
+    oldEnd--;
+    newEnd--;
+  }
+
+  return {
+    start,
+    deleteText: oldContent.slice(start, oldEnd),
+    insertText: newContent.slice(start, newEnd),
+  };
+}
+
+function applyReversePatch(content: string, patch: ContentPatch): string {
+  const insertEnd = patch.start + patch.insertText.length;
+  return `${content.slice(0, patch.start)}${patch.deleteText}${content.slice(insertEnd)}`;
+}
+
+function hashContent(content: string): string {
+  return createHash('sha256').update(content).digest('hex');
 }
 
 export function moveNode(workspaceId: string, nodeId: string, newParentId: string | null, databaseId?: string): DocNode | null {

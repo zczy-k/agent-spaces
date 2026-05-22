@@ -74,6 +74,12 @@ router.get('/:nodeId', (req: Request, res: Response) => {
   res.json(node);
 });
 
+router.get('/:nodeId/versions', (req: Request, res: Response) => {
+  const limit = typeof req.query.limit === 'string' ? Number(req.query.limit) : 50;
+  const versions = store.listNodeVersions(wid(req), req.params.nodeId as string, databaseId(req), limit);
+  res.json(versions);
+});
+
 // Create node
 router.post('/', (req: Request, res: Response) => {
   const node = store.createNode(wid(req), { ...req.body, databaseId: databaseId(req) });
