@@ -213,7 +213,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
         {/* Header with branch selector */}
         <div className="flex items-center gap-1 px-2 py-1.5 border-b">
           <div className="relative flex-1 min-w-0">
-            <button onClick={() => setBranchOpen(!branchOpen)} className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground w-full">
+            <button onClick={() => setBranchOpen(!branchOpen)} className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground active:opacity-70 transition-all duration-100 cursor-pointer w-full">
               <GitBranch size={13} className="shrink-0" />
               <span className="truncate">{status?.branch ?? "..."}</span>
               {status && hasFiles && <span className="text-muted-foreground">({status.files.length})</span>}
@@ -224,7 +224,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
                 <div className="absolute left-0 top-full z-50 mt-1 w-48 bg-popover border rounded shadow-md py-0.5 max-h-60 overflow-auto">
                   {branches.map((b) => (
                     <button key={b.name} onClick={() => handleBranchCheckout(b.name)}
-                      className={`w-full text-left px-2 py-1 text-xs hover:bg-accent truncate ${b.current ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
+                      className={`w-full text-left px-2 py-1 text-xs hover:bg-accent active:scale-[0.98] active:bg-accent transition-all duration-100 cursor-pointer truncate ${b.current ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
                       {b.name}
                     </button>
                   ))}
@@ -235,16 +235,16 @@ export function GitCommitsPanel({ workspaceId }: Props) {
             )}
           </div>
           {hasFiles && (
-            <button onClick={handleDiscardAll} className="p-1 text-muted-foreground hover:text-destructive" title={tChanges('discardAll')}>
+            <button onClick={handleDiscardAll} className="p-1 text-muted-foreground hover:text-destructive active:scale-90 transition-all duration-100 cursor-pointer" title={tChanges('discardAll')}>
               <Trash2 size={13} />
             </button>
           )}
           <button onClick={() => {
             if (diffs.length > 0) openCommitDiff(workspaceId, 'unstaged', tChanges('unstagedChanges'), diffs);
-          }} disabled={!hasFiles} className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30" title={tChanges('viewDiff')}>
+          }} disabled={!hasFiles} className="p-1 text-muted-foreground hover:text-foreground active:scale-90 transition-all duration-100 cursor-pointer disabled:opacity-30" title={tChanges('viewDiff')}>
             <FileDiff size={13} />
           </button>
-          <button onClick={refresh} className="p-1 text-muted-foreground hover:text-foreground" title={tc('refresh')}>
+          <button onClick={refresh} className="p-1 text-muted-foreground hover:text-foreground active:scale-90 transition-all duration-100 cursor-pointer" title={tc('refresh')}>
             <RefreshCw size={13} />
           </button>
         </div>
@@ -257,8 +257,8 @@ export function GitCommitsPanel({ workspaceId }: Props) {
               <span className={`w-4 text-center font-bold shrink-0 ${statusColors[f.status]}`}>{statusLabels[f.status]}</span>
               <span className="truncate flex-1">{f.path}</span>
               <span className="hidden group-hover:flex md:flex items-center gap-0.5 shrink-0">
-                <button onClick={(e) => handleOpenFile(e, f.path)} className="p-0.5 rounded hover:bg-accent/80" title={tc('open')}><FileCode size={13} /></button>
-                <button onClick={(e) => handleDiscard(e, f.path)} className="p-0.5 rounded hover:bg-accent/80" title={tChanges('discardAll')}><RotateCcw size={13} /></button>
+                <button onClick={(e) => handleOpenFile(e, f.path)} className="p-0.5 rounded hover:bg-accent/80 active:scale-90 transition-all duration-100 cursor-pointer" title={tc('open')}><FileCode size={13} /></button>
+                <button onClick={(e) => handleDiscard(e, f.path)} className="p-0.5 rounded hover:bg-accent/80 active:scale-90 transition-all duration-100 cursor-pointer" title={tChanges('discardAll')}><RotateCcw size={13} /></button>
               </span>
             </div>
           ))}
@@ -274,20 +274,20 @@ export function GitCommitsPanel({ workspaceId }: Props) {
                 className="w-full resize-none text-xs px-2 pt-1 pr-8 pb-7 border rounded bg-background disabled:opacity-50"
                 disabled={committing || generating} />
               <button type="button" onClick={handleGenerateCommit} disabled={generating || committing || !hasFiles}
-                className="absolute bottom-1.5 right-1.5 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="absolute bottom-1.5 right-1.5 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent active:scale-90 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-100"
                 title="AI generate commit message">
                 {generating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
               </button>
             </div>
             <button onClick={handleCommit} disabled={!commitMsg.trim() || committing}
-              className="w-full text-xs px-2 py-1 rounded bg-primary text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed">
+              className="w-full text-xs px-2 py-1 rounded bg-primary text-primary-foreground active:scale-[0.98] transition-all duration-100 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
               {committing ? tChanges('committing') : tChanges('commit')}
             </button>
           </div>
         ) : ahead > 0 ? (
           <div className="border-t p-2">
             <button onClick={handleSyncChanges} disabled={syncing !== null}
-              className="w-full text-xs px-2 py-1 rounded bg-primary text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5">
+              className="w-full text-xs px-2 py-1 rounded bg-primary text-primary-foreground active:scale-[0.98] transition-all duration-100 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5">
               {syncing ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
               {syncing ? tChanges('syncing') : tChanges('syncChanges')}
             </button>
@@ -304,7 +304,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
           </span>
           <div className="flex items-center gap-1">
             <button onClick={() => handleSync("push")} disabled={syncing !== null}
-              className="relative p-1 text-muted-foreground hover:text-foreground disabled:opacity-50"
+              className="relative p-1 text-muted-foreground hover:text-foreground active:scale-90 transition-all duration-100 cursor-pointer disabled:opacity-50"
               title={ahead > 0 ? t('pushNCommits', { count: ahead }) : "Push"}>
               {syncing === "push" ? <Loader2 size={13} className="animate-spin" /> : <ArrowUp size={13} />}
               {ahead > 0 && (
@@ -312,15 +312,15 @@ export function GitCommitsPanel({ workspaceId }: Props) {
               )}
             </button>
             <button onClick={() => handleSync("pull")} disabled={syncing !== null}
-              className="relative p-1 text-muted-foreground hover:text-foreground disabled:opacity-50"
+              className="relative p-1 text-muted-foreground hover:text-foreground active:scale-90 transition-all duration-100 cursor-pointer disabled:opacity-50"
               title={behind > 0 ? t('pullNCommits', { count: behind }) : "Pull"}>
               {syncing === "pull" ? <Loader2 size={13} className="animate-spin" /> : <ArrowDown size={13} />}
               {behind > 0 && (
                 <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-foreground px-1 text-[9px] font-medium leading-none text-background">{behind}</span>
               )}
             </button>
-            <button onClick={refresh} className="text-muted-foreground hover:text-foreground"><RefreshCw size={13} /></button>
-            <button onClick={() => setGitSettingsOpen(true)} className="text-muted-foreground hover:text-foreground" title={t('settingsTitle')}><Settings2 size={13} /></button>
+            <button onClick={refresh} className="p-1 text-muted-foreground hover:text-foreground active:scale-90 transition-all duration-100 cursor-pointer"><RefreshCw size={13} /></button>
+            <button onClick={() => setGitSettingsOpen(true)} className="p-1 text-muted-foreground hover:text-foreground active:scale-90 transition-all duration-100 cursor-pointer" title={t('settingsTitle')}><Settings2 size={13} /></button>
           </div>
         </div>
 

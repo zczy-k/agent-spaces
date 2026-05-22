@@ -87,7 +87,7 @@ function DesktopLayout({ diffs, selectedFile, onSelect, selectedDiff }: {
       <div className="w-48 border-r overflow-auto shrink-0">
         {diffs.map((d) => (
           <button key={d.path} onClick={() => onSelect(d.path)}
-            className={`w-full text-left px-2 py-1.5 text-xs font-mono flex items-center gap-1.5 border-b hover:bg-accent ${selectedFile === d.path ? 'bg-accent' : ''}`}>
+            className={`w-full text-left px-2 py-1.5 text-xs font-mono flex items-center gap-1.5 border-b hover:bg-accent cursor-pointer ${selectedFile === d.path ? 'bg-accent' : ''}`}>
             <FileCode size={13} className="shrink-0 text-muted-foreground" />
             <span className="truncate">{d.path}</span>
           </button>

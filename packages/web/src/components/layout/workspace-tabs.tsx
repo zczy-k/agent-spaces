@@ -26,7 +26,7 @@ export function WorkspaceTabs() {
     <div className="flex items-center h-12 px-3 bg-transparent overflow-x-auto shrink-0">
       <button
         onClick={() => toggleSidebar()}
-        className="flex items-center justify-center size-8 rounded-lg text-muted-foreground hover:bg-accent/50 transition-colors shrink-0 md:hidden"
+        className="flex items-center justify-center size-8 rounded-lg text-muted-foreground hover:bg-accent/50 transition-colors shrink-0 md:hidden cursor-pointer"
       >
         <PanelLeft size={16} />
       </button>

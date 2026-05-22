@@ -40,7 +40,7 @@ export function CommitDiffViewer({ diffs, message }: CommitDiffViewerProps) {
         return (
           <div key={diff.path} className="border-b last:border-b-0">
             <button
-              className="flex items-center gap-1.5 w-full px-2 py-1 text-xs font-mono hover:bg-accent/50 text-left"
+              className="flex items-center gap-1.5 w-full px-2 py-1 text-xs font-mono hover:bg-accent/50 text-left cursor-pointer"
               onClick={() => toggle(diff.path)}
             >
               {isCollapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}

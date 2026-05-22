@@ -66,16 +66,16 @@ export function TerminalToolbar({ activeId, sendInput, onPaste }: TerminalToolba
       <div className="flex items-center gap-1 overflow-x-auto">
         {/* Cursor keys */}
         <div className="flex items-center gap-0.5">
-          <button onClick={() => send('\x1b[A')} className="p-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="↑">
+          <button onClick={() => send('\x1b[A')} className="p-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="↑ cursor-pointer">
             <ArrowUp size={14} />
           </button>
-          <button onClick={() => send('\x1b[B')} className="p-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="↓">
+          <button onClick={() => send('\x1b[B')} className="p-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="↓ cursor-pointer">
             <ArrowDown size={14} />
           </button>
-          <button onClick={() => send('\x1b[D')} className="p-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="←">
+          <button onClick={() => send('\x1b[D')} className="p-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="← cursor-pointer">
             <ArrowLeft size={14} />
           </button>
-          <button onClick={() => send('\x1b[C')} className="p-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="→">
+          <button onClick={() => send('\x1b[C')} className="p-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="→ cursor-pointer">
             <ArrowRight size={14} />
           </button>
         </div>
@@ -96,7 +96,7 @@ export function TerminalToolbar({ activeId, sendInput, onPaste }: TerminalToolba
           <PopoverTrigger
             render={
               <button
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
                 title={t('virtualKeyboard')}
               >
                 <Keyboard size={14} />

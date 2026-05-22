@@ -111,7 +111,7 @@ export function DatabaseAiChat({ workspaceId, onClose, onMinimize }: DatabaseAiC
             <PopoverTrigger
               render={
                 <button
-                  className="p-1 rounded hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors text-gray-500 dark:text-gray-400"
+                  className="p-1 rounded hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors text-gray-500 dark:text-gray-400 cursor-pointer"
                   title="设置"
                 >
                   <Settings size={14} />

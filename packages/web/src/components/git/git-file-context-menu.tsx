@@ -32,24 +32,24 @@ export function GitFileContextMenu({ x, y, path, onAddToGitignore, onOpenFile, o
     <div ref={ref}
       className="fixed z-[100] bg-popover border rounded-lg shadow-md py-1 text-xs min-w-40 ring-1 ring-foreground/10"
       style={{ left: x, top: y }}>
-      <button className="flex items-center gap-2 w-full px-3 py-1.5 hover:bg-accent text-left"
+      <button className="flex items-center gap-2 w-full px-3 py-1.5 hover:bg-accent text-left cursor-pointer"
         onClick={() => { onOpenFile(path); onClose(); }}>
         <FileCode size={13} />
         <span>{tc('open')}</span>
       </button>
-      <button className="flex items-center gap-2 w-full px-3 py-1.5 hover:bg-accent text-left"
+      <button className="flex items-center gap-2 w-full px-3 py-1.5 hover:bg-accent text-left cursor-pointer"
         onClick={() => { onDiscard(path); onClose(); }}>
         <RotateCcw size={13} />
         <span>{tChanges('discardAll')}</span>
       </button>
       <div className="my-1 border-t" />
-      <button className="flex items-center gap-2 w-full px-3 py-1.5 hover:bg-accent text-left"
+      <button className="flex items-center gap-2 w-full px-3 py-1.5 hover:bg-accent text-left cursor-pointer"
         onClick={() => onAddToGitignore(fileName)}>
         <EyeOff size={13} />
         <span>{tChanges('ignoreThisFile')}</span>
         <span className="ml-auto text-muted-foreground truncate max-w-24">{fileName}</span>
       </button>
-      <button className="flex items-center gap-2 w-full px-3 py-1.5 hover:bg-accent text-left"
+      <button className="flex items-center gap-2 w-full px-3 py-1.5 hover:bg-accent text-left cursor-pointer"
         onClick={() => { if (dir) onAddToGitignore(dir); }}>
         <EyeOff size={13} />
         <span>{tChanges('ignoreFilePath', { path: dir })}</span>

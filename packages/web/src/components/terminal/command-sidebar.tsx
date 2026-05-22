@@ -35,13 +35,13 @@ function CommandListItem({ command, running, onRun, onClose, onEdit, onDelete, o
         <>
           <button
             onClick={(event) => { event.stopPropagation(); onEdit(); }}
-            className="shrink-0 p-0.5 text-muted-foreground hover:text-foreground"
+            className="shrink-0 p-0.5 text-muted-foreground hover:text-foreground cursor-pointer"
           >
             <Pencil size={11} />
           </button>
           <button
             onClick={(event) => { event.stopPropagation(); onDelete(); }}
-            className="shrink-0 p-0.5 text-muted-foreground hover:text-destructive"
+            className="shrink-0 p-0.5 text-muted-foreground hover:text-destructive cursor-pointer"
           >
             <Trash2 size={11} />
           </button>
@@ -92,7 +92,7 @@ export function CommandSidebar({
             className="h-5 bg-transparent text-xs border-0 focus-visible:ring-0 focus-visible:border-0 px-1 min-w-0"
           />
           {search && (
-            <button onClick={() => onSearchChange('')} className="text-muted-foreground hover:text-foreground">
+            <button onClick={() => onSearchChange('')} className="text-muted-foreground hover:text-foreground cursor-pointer">
               <X size={10} />
             </button>
           )}
