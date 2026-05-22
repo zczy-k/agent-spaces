@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { fetchWithAuth } from '@/lib/auth';
-import type { DatabaseMeta, DocNode } from '@agent-spaces/shared';
+import type { DatabaseMeta, DatabaseVectorIndexResult, DatabaseVectorStats, DocNode } from '@agent-spaces/shared';
 
 interface DatabaseState {
   databases: DatabaseMeta[];
@@ -14,6 +14,9 @@ interface DatabaseState {
   isFullWidth: boolean;
   openFolders: Record<string, boolean>;
   sidebarSearch: string;
+  vectorStats: DatabaseVectorStats | null;
+  vectorLoading: boolean;
+  vectorIndexing: boolean;
   loading: boolean;
   loaded: boolean;
 }
@@ -25,6 +28,9 @@ interface DatabaseActions {
   createDatabase: (workspaceId: string, input: { name: string; description?: string }) => Promise<DatabaseMeta>;
   updateDatabase: (workspaceId: string, databaseId: string, input: { name: string; description?: string }) => Promise<DatabaseMeta>;
   deleteDatabase: (workspaceId: string, databaseId: string) => Promise<void>;
+  loadVectorStats: (workspaceId: string, databaseId: string) => Promise<void>;
+  bindEmbeddingAgent: (workspaceId: string, databaseId: string, embeddingAgentId: string | null) => Promise<void>;
+  indexVectors: (workspaceId: string, databaseId: string) => Promise<DatabaseVectorIndexResult>;
   setActiveId: (id: string | null) => void;
   createNode: (workspaceId: string, parentId: string | null, type?: 'folder' | 'document') => Promise<DocNode>;
   updateContent: (workspaceId: string, nodeId: string, content: string) => Promise<void>;
@@ -59,7 +65,10 @@ async function api<T = unknown>(workspaceId: string, path: string, init?: Reques
     headers: { 'Content-Type': 'application/json' },
     ...init,
   });
-  if (!res.ok) throw new Error(`Database API error: ${res.status}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => null) as { error?: string } | null;
+    throw new Error(body?.error || `Database API error: ${res.status}`);
+  }
   return res.json();
 }
 
@@ -81,6 +90,9 @@ export const useDatabaseStore = create<DatabaseState & DatabaseActions>((set, ge
   isFullWidth: false,
   openFolders: {},
   sidebarSearch: '',
+  vectorStats: null,
+  vectorLoading: false,
+  vectorIndexing: false,
   loading: false,
   loaded: false,
 
@@ -92,11 +104,15 @@ export const useDatabaseStore = create<DatabaseState & DatabaseActions>((set, ge
         ? get().activeDatabaseId
         : databases[0]?.id ?? null;
       const nodes = activeDatabaseId ? await api<DocNode[]>(workspaceId, withDatabase('', activeDatabaseId)) : [];
+      const vectorStats = activeDatabaseId
+        ? await api<DatabaseVectorStats>(workspaceId, `/databases/${activeDatabaseId}/vector`).catch(() => null)
+        : null;
       const activeDocs = nodes.filter(n => !n.isTrash);
       set({
         databases,
         activeDatabaseId,
         nodes,
+        vectorStats,
         loading: false,
         loaded: true,
         activeId: activeDocs.length > 0 ? activeDocs[0].id : null,
@@ -121,7 +137,9 @@ export const useDatabaseStore = create<DatabaseState & DatabaseActions>((set, ge
         recentIds: [],
         openFolders: {},
         sidebarSearch: '',
+        vectorStats: null,
       });
+      await get().loadVectorStats(workspaceId, databaseId);
     } catch {
       set({ loading: false });
     }
@@ -157,6 +175,43 @@ export const useDatabaseStore = create<DatabaseState & DatabaseActions>((set, ge
     const activeDatabaseId = databases[0]?.id ?? null;
     set({ databases, activeDatabaseId });
     if (activeDatabaseId) await get().loadNodes(workspaceId, activeDatabaseId);
+  },
+
+  loadVectorStats: async (workspaceId, databaseId) => {
+    set({ vectorLoading: true });
+    try {
+      const vectorStats = await api<DatabaseVectorStats>(workspaceId, `/databases/${databaseId}/vector`);
+      set({ vectorStats, vectorLoading: false });
+    } catch {
+      set({ vectorStats: null, vectorLoading: false });
+    }
+  },
+
+  bindEmbeddingAgent: async (workspaceId, databaseId, embeddingAgentId) => {
+    const vectorStats = await api<DatabaseVectorStats>(workspaceId, `/databases/${databaseId}/vector`, {
+      method: 'PUT',
+      body: JSON.stringify({ embeddingAgentId }),
+    });
+    set((s) => ({
+      vectorStats,
+      databases: s.databases.map((database) =>
+        database.id === databaseId ? { ...database, embeddingAgentId: embeddingAgentId || undefined } : database,
+      ),
+    }));
+  },
+
+  indexVectors: async (workspaceId, databaseId) => {
+    set({ vectorIndexing: true });
+    try {
+      const result = await api<DatabaseVectorIndexResult>(workspaceId, `/databases/${databaseId}/vector/index`, {
+        method: 'POST',
+      });
+      set({ vectorStats: result, vectorIndexing: false });
+      return result;
+    } catch (error) {
+      set({ vectorIndexing: false });
+      throw error;
+    }
   },
 
   setActiveId: (id) => {

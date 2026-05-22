@@ -45,6 +45,11 @@ export const BUILT_IN_AGENT_TOOLS = [
     description: 'Search knowledge base nodes by title or content under a path.',
   },
   {
+    name: 'QueryDatabaseVectors',
+    label: 'Query Database Vectors',
+    description: 'Search knowledge base nodes by vector similarity using the database-bound embedding model.',
+  },
+  {
     name: 'ReadDatabaseNode',
     label: 'Read Database Node',
     description: 'Read knowledge base node metadata and content by ID.',

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 import * as store from '../storage/database-store.js';
+import * as databaseVector from '../services/database-vector.js';
 
 const router = Router({ mergeParams: true });
 
@@ -21,6 +22,28 @@ router.put('/databases/:databaseId', (req: Request, res: Response) => {
   const database = store.updateDatabase(wid(req), req.params.databaseId as string, req.body);
   if (!database) return res.status(404).json({ error: 'Database not found' });
   res.json(database);
+});
+
+router.get('/databases/:databaseId/vector', (req: Request, res: Response) => {
+  if (!store.getDatabase(wid(req), req.params.databaseId as string)) {
+    return res.status(404).json({ error: 'Database not found' });
+  }
+  res.json(store.getVectorStats(wid(req), req.params.databaseId as string));
+});
+
+router.put('/databases/:databaseId/vector', (req: Request, res: Response) => {
+  const { embeddingAgentId } = req.body as { embeddingAgentId?: string | null };
+  const database = store.setDatabaseEmbeddingAgent(wid(req), req.params.databaseId as string, embeddingAgentId || null);
+  if (!database) return res.status(404).json({ error: 'Database not found' });
+  res.json(store.getVectorStats(wid(req), req.params.databaseId as string));
+});
+
+router.post('/databases/:databaseId/vector/index', async (req: Request, res: Response) => {
+  try {
+    res.json(await databaseVector.indexDatabaseVectors(wid(req), req.params.databaseId as string));
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+  }
 });
 
 router.delete('/databases/:databaseId', (req: Request, res: Response) => {

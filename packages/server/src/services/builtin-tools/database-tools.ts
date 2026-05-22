@@ -1,6 +1,7 @@
 import { BUILT_IN_AGENT_TOOLS, type BuiltInAgentToolName, type DocNode } from '@agent-spaces/shared';
 import type { AgentFunctionTool } from '../../adapters/agent-runtime-types.js';
 import * as databaseStore from '../../storage/database-store.js';
+import * as databaseVector from '../database-vector.js';
 import { assertRecord, readRequiredString, readString, readOptionalString, readStringOrDefault, normalizeSearchText } from './input-helpers.js';
 
 const databasePathFilterInputSchema = {
@@ -39,6 +40,26 @@ const readDatabaseNodeInputSchema = {
     },
   },
   required: ['id'],
+  additionalProperties: false,
+};
+
+const queryDatabaseVectorsInputSchema = {
+  type: 'object',
+  properties: {
+    databaseId: {
+      type: 'string',
+      description: 'Optional database ID. If omitted, the workspace default database is used.',
+    },
+    query: {
+      type: 'string',
+      description: 'Semantic search query.',
+    },
+    limit: {
+      type: 'number',
+      description: 'Maximum number of results. Defaults to 5, capped at 20.',
+    },
+  },
+  required: ['query'],
   additionalProperties: false,
 };
 
@@ -184,6 +205,13 @@ export function createDatabaseFunctionTools(workspaceId: string, allowedTools?: 
       execute: async (input) => searchDatabaseNodes(workspaceId, input),
     },
     {
+      name: 'QueryDatabaseVectors',
+      description: 'Semantic vector search for knowledge base files. The target database must be indexed and bound to an embedding agent. Input: databaseId, query, limit.',
+      inputSchema: queryDatabaseVectorsInputSchema,
+      annotations: { readOnly: true, openWorld: false },
+      execute: async (input) => queryDatabaseVectors(workspaceId, input),
+    },
+    {
       name: 'ReadDatabaseNode',
       description: 'Read knowledge base file or directory information by id, including metadata, path, children, and content.',
       inputSchema: readDatabaseNodeInputSchema,
@@ -233,7 +261,10 @@ export function createDatabaseFunctionTools(workspaceId: string, allowedTools?: 
 function getAllowedDatabaseToolNames(allowedTools?: BuiltInAgentToolName[]): Set<BuiltInAgentToolName> {
   const names = new Set(allowedTools ?? BUILT_IN_AGENT_TOOLS.map((tool) => tool.name));
   const hasDatabaseTools = Array.from(names).some((name) => isDatabaseToolName(name));
-  if (hasDatabaseTools) names.add('CreateDatabaseNode');
+  if (hasDatabaseTools) {
+    names.add('CreateDatabaseNode');
+    names.add('QueryDatabaseVectors');
+  }
   return names;
 }
 
@@ -279,6 +310,14 @@ function searchDatabaseNodes(workspaceId: string, input: unknown): DatabaseNodeS
     .filter((node) => includeTrash || !node.isTrash)
     .filter((node) => !filter || normalizeSearchText(`${node.title}\n${node.content}`).includes(filter))
     .map((node) => summarizeDatabaseNode(node, nodes));
+}
+
+async function queryDatabaseVectors(workspaceId: string, input: unknown) {
+  const data = assertRecord(input);
+  const databaseId = resolveToolDatabaseId(workspaceId, data);
+  const query = readRequiredString(data.query, 'query');
+  const limit = typeof data.limit === 'number' ? data.limit : 5;
+  return databaseVector.searchDatabaseVectors(workspaceId, databaseId, query, limit);
 }
 
 function readDatabaseNode(workspaceId: string, input: unknown): DocNode & { path: string; children: DatabaseNodeSummary[] } {
@@ -493,6 +532,7 @@ function requireDatabaseNode(workspaceId: string, id: string, databaseId: string
 function isDatabaseToolName(name: string): boolean {
   return name === 'ListDatabaseNodes'
     || name === 'SearchDatabaseNodes'
+    || name === 'QueryDatabaseVectors'
     || name === 'ReadDatabaseNode'
     || name === 'CreateDatabaseNode'
     || name === 'WriteDatabaseNode'

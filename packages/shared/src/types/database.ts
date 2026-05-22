@@ -3,7 +3,30 @@ export interface DatabaseMeta {
   workspaceId: string;
   name: string;
   description: string;
+  embeddingAgentId?: string;
   createdAt: number;
+  updatedAt: number;
+}
+
+export interface DatabaseVectorStats {
+  databaseId: string;
+  embeddingAgentId: string | null;
+  indexedCount: number;
+  nodeCount: number;
+  lastIndexedAt: number | null;
+}
+
+export interface DatabaseVectorIndexResult extends DatabaseVectorStats {
+  indexedCount: number;
+  skippedCount: number;
+}
+
+export interface DatabaseVectorSearchResult {
+  nodeId: string;
+  title: string;
+  path: string;
+  score: number;
+  content: string;
   updatedAt: number;
 }
 

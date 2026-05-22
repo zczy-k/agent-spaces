@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { v4 as uuid } from 'uuid';
-import type { DatabaseMeta, DocNode } from '@agent-spaces/shared';
+import type { DatabaseMeta, DatabaseVectorSearchResult, DatabaseVectorStats, DocNode } from '@agent-spaces/shared';
 import { getDataDir, ensureDir } from './json-store.js';
 
 let db: DatabaseSync | null = null;
@@ -24,6 +24,7 @@ function openDb(): DatabaseSync {
       workspace_id TEXT NOT NULL,
       name TEXT NOT NULL DEFAULT '',
       description TEXT NOT NULL DEFAULT '',
+      embedding_agent_id TEXT,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     );
@@ -42,12 +43,36 @@ function openDb(): DatabaseSync {
       updated_at INTEGER NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS database_embeddings (
+      workspace_id TEXT NOT NULL,
+      database_id TEXT NOT NULL,
+      node_id TEXT NOT NULL,
+      title TEXT NOT NULL DEFAULT '',
+      path TEXT NOT NULL DEFAULT '',
+      content TEXT NOT NULL DEFAULT '',
+      content_hash TEXT NOT NULL,
+      embedding TEXT NOT NULL,
+      model_id TEXT NOT NULL DEFAULT '',
+      agent_id TEXT NOT NULL DEFAULT '',
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (workspace_id, database_id, node_id)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_databases_workspace ON databases(workspace_id);
     CREATE INDEX IF NOT EXISTS idx_doc_nodes_workspace ON doc_nodes(workspace_id);
     CREATE INDEX IF NOT EXISTS idx_doc_nodes_database ON doc_nodes(workspace_id, database_id);
     CREATE INDEX IF NOT EXISTS idx_doc_nodes_parent ON doc_nodes(workspace_id, database_id, parent_id);
+    CREATE INDEX IF NOT EXISTS idx_database_embeddings_database ON database_embeddings(workspace_id, database_id);
   `);
+  ensureColumn('databases', 'embedding_agent_id', 'TEXT');
   return db;
+}
+
+function ensureColumn(table: string, column: string, type: string): void {
+  const database = db!;
+  const exists = (database.prepare(`PRAGMA table_info(${table})`).all() as Record<string, unknown>[])
+    .some((item) => item.name === column);
+  if (!exists) database.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
 }
 
 function rowToDatabase(row: Record<string, unknown>): DatabaseMeta {
@@ -56,6 +81,7 @@ function rowToDatabase(row: Record<string, unknown>): DatabaseMeta {
     workspaceId: row.workspace_id as string,
     name: row.name as string,
     description: row.description as string,
+    embeddingAgentId: (row.embedding_agent_id as string | null) || undefined,
     createdAt: row.created_at as number,
     updatedAt: row.updated_at as number,
   };
@@ -115,21 +141,22 @@ export function createDatabase(
 export function updateDatabase(
   workspaceId: string,
   databaseId: string,
-  updates: Partial<Pick<DatabaseMeta, 'name' | 'description'>>,
+  updates: Partial<Pick<DatabaseMeta, 'name' | 'description' | 'embeddingAgentId'>>,
 ): DatabaseMeta | null {
   const existing = getDatabase(workspaceId, databaseId);
   if (!existing) return null;
   const database = openDb();
   const merged = { ...existing, ...updates, updatedAt: Date.now() };
   database.prepare(
-    'UPDATE databases SET name = ?, description = ?, updated_at = ? WHERE workspace_id = ? AND id = ?'
-  ).run(merged.name.trim() || 'Untitled Database', merged.description, merged.updatedAt, workspaceId, databaseId);
+    'UPDATE databases SET name = ?, description = ?, embedding_agent_id = ?, updated_at = ? WHERE workspace_id = ? AND id = ?'
+  ).run(merged.name.trim() || 'Untitled Database', merged.description, merged.embeddingAgentId ?? null, merged.updatedAt, workspaceId, databaseId);
   return getDatabase(workspaceId, databaseId);
 }
 
 export function deleteDatabase(workspaceId: string, databaseId: string): boolean {
   const database = openDb();
   database.prepare('DELETE FROM doc_nodes WHERE workspace_id = ? AND database_id = ?').run(workspaceId, databaseId);
+  database.prepare('DELETE FROM database_embeddings WHERE workspace_id = ? AND database_id = ?').run(workspaceId, databaseId);
   const result = database.prepare('DELETE FROM databases WHERE workspace_id = ? AND id = ?').run(workspaceId, databaseId) as { changes: number };
   if (result.changes > 0 && listDatabases(workspaceId).length === 0) getDefaultDatabase(workspaceId);
   return result.changes > 0;
@@ -204,6 +231,8 @@ export function deleteNode(workspaceId: string, nodeId: string, databaseId?: str
   const database = openDb();
   const existing = getNode(workspaceId, nodeId, databaseId);
   if (!existing) return false;
+  database.prepare('DELETE FROM database_embeddings WHERE workspace_id = ? AND database_id = ? AND node_id = ?')
+    .run(workspaceId, existing.databaseId, nodeId);
   const result = database.prepare(
     'DELETE FROM doc_nodes WHERE workspace_id = ? AND database_id = ? AND id = ?'
   ).run(workspaceId, existing.databaseId, nodeId) as { changes: number };
@@ -228,4 +257,97 @@ export function restoreNode(workspaceId: string, nodeId: string, databaseId?: st
     }
   }
   return updateNode(workspaceId, nodeId, { isTrash: false }, node.databaseId);
+}
+
+export function getVectorStats(workspaceId: string, databaseId: string): DatabaseVectorStats {
+  const database = openDb();
+  const meta = getDatabase(workspaceId, databaseId);
+  const indexed = database.prepare(
+    'SELECT COUNT(*) AS count, MAX(updated_at) AS last_indexed_at FROM database_embeddings WHERE workspace_id = ? AND database_id = ?'
+  ).get(workspaceId, databaseId) as { count: number; last_indexed_at: number | null };
+  const nodes = database.prepare(
+    'SELECT COUNT(*) AS count FROM doc_nodes WHERE workspace_id = ? AND database_id = ? AND is_trash = 0'
+  ).get(workspaceId, databaseId) as { count: number };
+  return {
+    databaseId,
+    embeddingAgentId: meta?.embeddingAgentId ?? null,
+    indexedCount: indexed.count,
+    nodeCount: nodes.count,
+    lastIndexedAt: indexed.last_indexed_at,
+  };
+}
+
+export function setDatabaseEmbeddingAgent(workspaceId: string, databaseId: string, embeddingAgentId: string | null): DatabaseMeta | null {
+  return updateDatabase(workspaceId, databaseId, { embeddingAgentId: embeddingAgentId ?? undefined });
+}
+
+export interface DatabaseEmbeddingRecord {
+  nodeId: string;
+  title: string;
+  path: string;
+  content: string;
+  contentHash: string;
+  embedding: number[];
+  modelId: string;
+  agentId: string;
+}
+
+export function upsertDatabaseEmbedding(workspaceId: string, databaseId: string, record: DatabaseEmbeddingRecord): void {
+  const database = openDb();
+  database.prepare(
+    `INSERT INTO database_embeddings
+      (workspace_id, database_id, node_id, title, path, content, content_hash, embedding, model_id, agent_id, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(workspace_id, database_id, node_id) DO UPDATE SET
+      title = excluded.title,
+      path = excluded.path,
+      content = excluded.content,
+      content_hash = excluded.content_hash,
+      embedding = excluded.embedding,
+      model_id = excluded.model_id,
+      agent_id = excluded.agent_id,
+      updated_at = excluded.updated_at`
+  ).run(
+    workspaceId,
+    databaseId,
+    record.nodeId,
+    record.title,
+    record.path,
+    record.content,
+    record.contentHash,
+    JSON.stringify(record.embedding),
+    record.modelId,
+    record.agentId,
+    Date.now(),
+  );
+}
+
+export function deleteStaleDatabaseEmbeddings(workspaceId: string, databaseId: string, activeNodeIds: string[]): number {
+  const database = openDb();
+  if (activeNodeIds.length === 0) {
+    const result = database.prepare('DELETE FROM database_embeddings WHERE workspace_id = ? AND database_id = ?')
+      .run(workspaceId, databaseId) as { changes: number };
+    return result.changes;
+  }
+  const placeholders = activeNodeIds.map(() => '?').join(',');
+  const result = database.prepare(
+    `DELETE FROM database_embeddings WHERE workspace_id = ? AND database_id = ? AND node_id NOT IN (${placeholders})`
+  ).run(workspaceId, databaseId, ...activeNodeIds) as { changes: number };
+  return result.changes;
+}
+
+export function listDatabaseEmbeddings(workspaceId: string, databaseId: string): Array<DatabaseVectorSearchResult & { embedding: number[] }> {
+  const database = openDb();
+  const rows = database.prepare(
+    'SELECT node_id, title, path, content, embedding, updated_at FROM database_embeddings WHERE workspace_id = ? AND database_id = ?'
+  ).all(workspaceId, databaseId) as Record<string, unknown>[];
+  return rows.map((row) => ({
+    nodeId: row.node_id as string,
+    title: row.title as string,
+    path: row.path as string,
+    content: row.content as string,
+    score: 0,
+    updatedAt: row.updated_at as number,
+    embedding: JSON.parse(row.embedding as string) as number[],
+  }));
 }
