@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Hash, ListChecks, FolderOpen, Code2, MessageSquare, FileText, TerminalSquare, FileDiff, GitCommitHorizontal, Settings2, Star, Database, LucideIcon } from "lucide-react";
+import { Hash, ListChecks, FolderOpen, Code2, MessageSquare, FileText, TerminalSquare, FileDiff, GitCommitHorizontal, Settings2, Star, Database, Kanban, LucideIcon } from "lucide-react";
 
 export interface TabItem {
   id: string;
@@ -21,6 +21,7 @@ const builtinTabs: TabItem[] = [
   { id: "project-settings", icon: Settings2, group: "settings" },
   { id: "code-favorites", icon: Star, group: "workfolder" },
   { id: "database", icon: Database, group: "workfolder" },
+  { id: "kanban", icon: Kanban, group: "workfolder" },
 ];
 
 const dynamicTabs: TabItem[] = [];
@@ -52,6 +53,7 @@ export const TAB_ICONS: Record<string, React.ReactNode> = {
   "project-settings": <Settings2 size={16} />,
   "code-favorites": <Star size={16} />,
   "database": <Database size={16} />,
+  "kanban": <Kanban size={16} />,
   ...dynamicIcons,
 };
 

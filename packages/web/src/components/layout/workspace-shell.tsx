@@ -70,6 +70,10 @@ const DatabasePanel = dynamic(() => import("@/components/database/database-panel
   ssr: false,
   loading: panelLoader,
 });
+const KanbanBoard = dynamic(() => import("@/components/kanban/kanban-board").then((mod) => mod.default), {
+  ssr: false,
+  loading: panelLoader,
+});
 
 type FlutterBridge = { emit?: (event: string, data: unknown) => void };
 
@@ -124,6 +128,7 @@ const defaultJson: IJsonModel = {
           { type: "tab", name: "Chat", component: "chat", id: "chat" },
           { type: "tab", name: "Issue Detail", component: "issue-detail", id: "issue-detail" },
           { type: "tab", name: "Database", component: "database", id: "database" },
+          { type: "tab", name: "Kanban", component: "kanban", id: "kanban" },
         ],
       },
     ],
@@ -416,6 +421,8 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
           return <CodeFavoritesPanel workspaceId={workspaceId} />;
         case "database":
           return <DatabasePanel workspaceId={workspaceId} />;
+        case "kanban":
+          return <KanbanBoard workspaceId={workspaceId} />;
         default:
           return <Placeholder name={node.getName()} />;
       }
@@ -506,6 +513,8 @@ function MobilePanelRenderer({ panel, workspaceId, boundDirs }: { panel: string;
       return <CodeFavoritesPanel workspaceId={workspaceId} />;
     case "database":
       return <DatabasePanel workspaceId={workspaceId} />;
+    case "kanban":
+      return <KanbanBoard workspaceId={workspaceId} />;
     default:
       return <ChannelList workspaceId={workspaceId} />;
   }

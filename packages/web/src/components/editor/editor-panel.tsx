@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FileTree, FileTreeFolder, FileTreeFile } from "./file-tree";
+import { FileTree, FileTreeNodes } from "./file-tree";
 import { SearchPanel } from "./search-panel";
 import { ImportFileDialog } from "./import-file-dialog";
 import { useEditorStore } from "@/stores/editor";
 import type { FileNode, FileSearchResult } from "@agent-spaces/shared";
 import { RefreshCw, Ellipsis, Upload, Copy, FolderPlus, FilePlus, Search, X } from "lucide-react";
-import { FileIconImg, FolderIconImg } from "./file-icon";
+import { FileIconImg } from "./file-icon";
 import { ContextMenu, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { FileContextMenu } from "./file-context-menu";
 import { useTranslations } from 'next-intl';
@@ -80,19 +80,8 @@ function collectAllFiles(nodes: FileNode[]): FileNode[] {
   return files;
 }
 
-function FileTreeNodes({ nodes }: { nodes: FileNode[] }) {
-  return nodes.map((node) =>
-    node.type === "directory" ? (
-      <FileTreeFolder key={node.path} path={node.path} name={node.name} ignored={node.ignored} folderIcon={(isOpen) => <FolderIconImg name={node.name} isOpen={isOpen} />}>
-        {node.children && <FileTreeNodes nodes={node.children} />}
-      </FileTreeFolder>
-    ) : (
-      <FileTreeFile key={node.path} path={node.path} name={node.name} icon={<FileIconImg name={node.name} />} ignored={node.ignored} />
-    ),
-  );
-}
-
 const STORAGE_KEY_PREFIX = 'agent-spaces:file-tree-expanded:';
+const ROOT_DROP_TARGET = '__file_tree_root_drop_target__';
 
 function loadExpandedPaths(workspaceId: string): Set<string> {
   try {
@@ -128,6 +117,8 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
   const [fileSearch, setFileSearch] = useState('');
   const [globalFileResults, setGlobalFileResults] = useState<FileSearchResult[]>([]);
   const [globalFileLoading, setGlobalFileLoading] = useState(false);
+  const [draggedPath, setDraggedPath] = useState<string | null>(null);
+  const [draggedOverPath, setDraggedOverPath] = useState<string | null>(null);
   const fileSearchTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [bottomTab, setBottomTab] = useState<'all' | 'recent' | 'open'>('all');
   const [sidebarTab, setSidebarTab] = useState('files');
@@ -260,6 +251,112 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
     });
     if (res.ok) { loadTree(workspaceId); setMoveDialog(p => ({ ...p, open: false })); }
   }, [moveDialog, workspaceId, loadTree, boundDir]);
+
+  const findTreeNode = useCallback((path: string): FileNode | undefined => {
+    const walk = (nodes: FileNode[]): FileNode | undefined => {
+      for (const node of nodes) {
+        if (node.path === path) return node;
+        if (node.children) {
+          const found = walk(node.children);
+          if (found) return found;
+        }
+      }
+      return undefined;
+    };
+    return walk(tree);
+  }, [tree]);
+
+  const getParentDir = useCallback((path: string) => {
+    const index = path.lastIndexOf('/');
+    return index > -1 ? path.slice(0, index) : '';
+  }, []);
+
+  const reloadExpandedTree = useCallback(async () => {
+    await loadTree(workspaceId);
+    for (const dir of expandedPaths) {
+      await loadDirectory(workspaceId, dir);
+    }
+  }, [expandedPaths, loadDirectory, loadTree, workspaceId]);
+
+  const movePathToDirectory = useCallback(async (srcPath: string, targetDir: string) => {
+    const name = srcPath.split('/').pop() || '';
+    const newPath = targetDir ? `${targetDir}/${name}` : name;
+    if (!name || newPath === srcPath || getParentDir(srcPath) === targetDir) return;
+    if (targetDir === srcPath || targetDir.startsWith(`${srcPath}/`)) return;
+
+    const res = await fetch(`/api/workspaces/${workspaceId}/files/rename`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ oldPath: srcPath, newPath }),
+    });
+    if (!res.ok) {
+      toast.error('移动失败');
+      return;
+    }
+
+    if (selectedPath === srcPath) setSelectedPath(newPath);
+    await reloadExpandedTree();
+  }, [getParentDir, reloadExpandedTree, selectedPath, workspaceId]);
+
+  const handleTreeDragStart = useCallback((event: React.DragEvent<HTMLDivElement>, path: string) => {
+    setDraggedPath(path);
+    event.dataTransfer.setData('text/plain', path);
+    event.dataTransfer.effectAllowed = 'move';
+  }, []);
+
+  const handleTreeDragOver = useCallback((event: React.DragEvent<HTMLDivElement>, targetPath: string) => {
+    event.preventDefault();
+    const sourcePath = draggedPath || event.dataTransfer.getData('text/plain');
+    if (!sourcePath || sourcePath === targetPath) return;
+
+    const targetNode = findTreeNode(targetPath);
+    const targetDir = targetNode?.type === 'directory' ? targetPath : getParentDir(targetPath);
+    if (targetDir === sourcePath || targetDir.startsWith(`${sourcePath}/`)) {
+      event.dataTransfer.dropEffect = 'none';
+      return;
+    }
+
+    setDraggedOverPath(targetPath);
+    event.dataTransfer.dropEffect = 'move';
+  }, [draggedPath, findTreeNode, getParentDir]);
+
+  const handleTreeDragLeave = useCallback(() => {
+    setDraggedOverPath(null);
+  }, []);
+
+  const handleTreeDrop = useCallback(async (event: React.DragEvent<HTMLDivElement>, targetPath: string) => {
+    event.preventDefault();
+    const sourcePath = draggedPath || event.dataTransfer.getData('text/plain');
+    setDraggedOverPath(null);
+    setDraggedPath(null);
+    if (!sourcePath || sourcePath === targetPath) return;
+
+    const targetNode = findTreeNode(targetPath);
+    const targetDir = targetNode?.type === 'directory' ? targetPath : getParentDir(targetPath);
+    await movePathToDirectory(sourcePath, targetDir);
+  }, [draggedPath, findTreeNode, getParentDir, movePathToDirectory]);
+
+  const handleTreeRootDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    if (!draggedPath) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setDraggedOverPath(ROOT_DROP_TARGET);
+    event.dataTransfer.dropEffect = 'move';
+  }, [draggedPath]);
+
+  const handleTreeRootDrop = useCallback(async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!draggedPath) return;
+    const sourcePath = draggedPath;
+    setDraggedOverPath(null);
+    setDraggedPath(null);
+    await movePathToDirectory(sourcePath, '');
+  }, [draggedPath, movePathToDirectory]);
+
+  const handleTreeRootDragLeave = useCallback(() => {
+    setDraggedOverPath((path) => path === ROOT_DROP_TARGET ? null : path);
+  }, []);
 
   useEffect(() => {
     if (!revealPath) return;
@@ -440,6 +537,15 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
                       boundDir={boundDir}
                       fileSizeMap={fileSizeMap}
                       refreshInterval={5000}
+                      draggedOverPath={draggedOverPath}
+                      onItemDragStart={handleTreeDragStart}
+                      onItemDragOver={handleTreeDragOver}
+                      onItemDragLeave={handleTreeDragLeave}
+                      onItemDrop={handleTreeDrop}
+                      rootDropTargetId={ROOT_DROP_TARGET}
+                      onRootDropLineDragOver={handleTreeRootDragOver}
+                      onRootDropLineDragLeave={handleTreeRootDragLeave}
+                      onRootDropLineDrop={handleTreeRootDrop}
                     >
                       <FileTreeNodes nodes={filteredTree} />
                     </FileTree>

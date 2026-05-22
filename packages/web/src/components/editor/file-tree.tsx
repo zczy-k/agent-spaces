@@ -1,7 +1,7 @@
 "use client"
 
 import { ChevronRightIcon, FileIcon, FolderIcon, FolderOpenIcon, Trash2, ExternalLink, Upload, Copy, FolderPlus, FilePlus, AlertTriangle, Pencil, MoveRight } from "lucide-react"
-import { createContext, type HTMLAttributes, type ReactNode, useContext, useState, useCallback, useEffect, useRef } from "react"
+import { createContext, Fragment, type CSSProperties, type DragEvent, type HTMLAttributes, type ReactNode, useContext, useState, useCallback, useEffect, useRef } from "react"
 /**
  * @title React AI File Tree
  * @credit {"name": "Vercel", "url": "https://ai-sdk.dev/elements", "license": {"name": "Apache License 2.0", "url": "https://www.apache.org/licenses/LICENSE-2.0"}}
@@ -29,6 +29,8 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { FileContextMenu } from "./file-context-menu"
 import { useTranslations } from 'next-intl'
+import type { FileNode } from "@agent-spaces/shared"
+import { FileIconImg, FolderIconImg } from "./file-icon"
 
 interface FileTreeContextType {
   expandedPaths: Set<string>
@@ -49,6 +51,15 @@ interface FileTreeContextType {
   boundDir?: string
   fileSizeMap?: Record<string, number>
   ignoredPaths?: Set<string>
+  draggedOverPath?: string | null
+  onItemDragStart?: (event: DragEvent<HTMLDivElement>, path: string) => void
+  onItemDragOver?: (event: DragEvent<HTMLDivElement>, path: string) => void
+  onItemDragLeave?: (event: DragEvent<HTMLDivElement>) => void
+  onItemDrop?: (event: DragEvent<HTMLDivElement>, path: string) => void
+  rootDropTargetId?: string
+  onRootDropLineDragOver?: (event: DragEvent<HTMLDivElement>) => void
+  onRootDropLineDragLeave?: (event: DragEvent<HTMLDivElement>) => void
+  onRootDropLineDrop?: (event: DragEvent<HTMLDivElement>) => void
 }
 
 const FileTreeContext = createContext<FileTreeContextType>({
@@ -77,6 +88,15 @@ export type FileTreeProps = HTMLAttributes<HTMLDivElement> & {
   fileSizeMap?: Record<string, number>
   refreshInterval?: number
   ignoredPaths?: Set<string>
+  draggedOverPath?: string | null
+  onItemDragStart?: (event: DragEvent<HTMLDivElement>, path: string) => void
+  onItemDragOver?: (event: DragEvent<HTMLDivElement>, path: string) => void
+  onItemDragLeave?: (event: DragEvent<HTMLDivElement>) => void
+  onItemDrop?: (event: DragEvent<HTMLDivElement>, path: string) => void
+  rootDropTargetId?: string
+  onRootDropLineDragOver?: (event: DragEvent<HTMLDivElement>) => void
+  onRootDropLineDragLeave?: (event: DragEvent<HTMLDivElement>) => void
+  onRootDropLineDrop?: (event: DragEvent<HTMLDivElement>) => void
 }
 
 export const FileTree = ({
@@ -100,6 +120,15 @@ export const FileTree = ({
   fileSizeMap,
   refreshInterval,
   ignoredPaths,
+  draggedOverPath,
+  onItemDragStart,
+  onItemDragOver,
+  onItemDragLeave,
+  onItemDrop,
+  rootDropTargetId,
+  onRootDropLineDragOver,
+  onRootDropLineDragLeave,
+  onRootDropLineDrop,
   className,
   children,
   ...props
@@ -127,7 +156,7 @@ export const FileTree = ({
   }, [refreshInterval, onLoadDirectory, expandedPaths])
 
   return (
-    <FileTreeContext.Provider value={{ expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete, onImport, onCopyPath, onCreateFile, onCreateFolder, onRename, onMove, onCopyItem, onLoadDirectory, loadingDirs, boundDir, fileSizeMap, ignoredPaths }}>
+    <FileTreeContext.Provider value={{ expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete, onImport, onCopyPath, onCreateFile, onCreateFolder, onRename, onMove, onCopyItem, onLoadDirectory, loadingDirs, boundDir, fileSizeMap, ignoredPaths, draggedOverPath, onItemDragStart, onItemDragOver, onItemDragLeave, onItemDrop, rootDropTargetId, onRootDropLineDragOver, onRootDropLineDragLeave, onRootDropLineDrop }}>
       <div
         className={cn("flex flex-col bg-background font-mono text-sm h-full", className)}
         role="tree"
@@ -484,3 +513,195 @@ export const FileTreeActions = ({ className, children, ...props }: FileTreeActio
     {children}
   </div>
 )
+
+export type NestedTreeRenderState = {
+  level: number
+  hasChildren: boolean
+  isExpanded: boolean
+  isActive: boolean
+  isDraggedOver: boolean
+}
+
+export type NestedTreeRowProps = HTMLAttributes<HTMLDivElement> & {
+  draggable?: boolean
+  style?: CSSProperties
+}
+
+export type NestedTreeRenderArgs<TNode> = {
+  node: TNode
+  state: NestedTreeRenderState
+  rowProps: NestedTreeRowProps
+  children: ReactNode
+}
+
+export type NestedTreeProps<TNode> = {
+  nodes: TNode[]
+  getNodeId: (node: TNode) => string
+  getChildren: (node: TNode) => TNode[]
+  renderNode: (args: NestedTreeRenderArgs<TNode>) => ReactNode
+  activeId?: string | null
+  expandedIds?: Record<string, boolean>
+  draggedOverId?: string | null
+  level?: number
+  indent?: number
+  onDragStart?: (event: DragEvent<HTMLDivElement>, nodeId: string) => void
+  onDragOver?: (event: DragEvent<HTMLDivElement>, nodeId: string) => void
+  onDragLeave?: (event: DragEvent<HTMLDivElement>) => void
+  onDrop?: (event: DragEvent<HTMLDivElement>, nodeId: string) => void
+  shouldRenderChildren?: (node: TNode, state: NestedTreeRenderState) => boolean
+}
+
+export function NestedTree<TNode>({
+  nodes,
+  getNodeId,
+  getChildren,
+  renderNode,
+  activeId,
+  expandedIds,
+  draggedOverId,
+  level = 0,
+  indent = 12,
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  shouldRenderChildren,
+}: NestedTreeProps<TNode>) {
+  return nodes.map((node) => {
+    const nodeId = getNodeId(node)
+    const childNodes = getChildren(node)
+    const state: NestedTreeRenderState = {
+      level,
+      hasChildren: childNodes.length > 0,
+      isExpanded: expandedIds ? !!expandedIds[nodeId] : true,
+      isActive: activeId === nodeId,
+      isDraggedOver: draggedOverId === nodeId,
+    }
+    const rowProps: NestedTreeRowProps = {
+      draggable: !!onDragStart,
+      style: { paddingLeft: `${Math.max(4, level * indent)}px` },
+      onDragStart: onDragStart ? (event) => onDragStart(event, nodeId) : undefined,
+      onDragOver: onDragOver
+        ? (event) => {
+            event.stopPropagation()
+            onDragOver(event, nodeId)
+          }
+        : undefined,
+      onDragLeave,
+      onDrop: onDrop
+        ? (event) => {
+            event.stopPropagation()
+            onDrop(event, nodeId)
+          }
+        : undefined,
+    }
+    const shouldShowChildren = state.hasChildren && (shouldRenderChildren?.(node, state) ?? true)
+
+    return (
+      <Fragment key={nodeId}>
+        {renderNode({
+          node,
+          state,
+          rowProps,
+          children: shouldShowChildren ? (
+            <NestedTree
+              nodes={childNodes}
+              getNodeId={getNodeId}
+              getChildren={getChildren}
+              renderNode={renderNode}
+              activeId={activeId}
+              expandedIds={expandedIds}
+              draggedOverId={draggedOverId}
+              level={level + 1}
+              indent={indent}
+              onDragStart={onDragStart}
+              onDragOver={onDragOver}
+              onDragLeave={onDragLeave}
+              onDrop={onDrop}
+              shouldRenderChildren={shouldRenderChildren}
+            />
+          ) : null,
+        })}
+      </Fragment>
+    )
+  })
+}
+
+export function FileTreeNodes({ nodes }: { nodes: FileNode[] }) {
+  const {
+    draggedOverPath,
+    onItemDragStart,
+    onItemDragOver,
+    onItemDragLeave,
+    onItemDrop,
+    rootDropTargetId,
+    onRootDropLineDragOver,
+    onRootDropLineDragLeave,
+    onRootDropLineDrop,
+  } = useContext(FileTreeContext)
+
+  return (
+    <NestedTree
+      nodes={nodes}
+      getNodeId={(node) => node.path}
+      getChildren={(node) => node.type === "directory" ? node.children ?? [] : []}
+      draggedOverId={draggedOverPath}
+      onDragStart={onItemDragStart}
+      onDragOver={onItemDragOver}
+      onDragLeave={onItemDragLeave}
+      onDrop={onItemDrop}
+      renderNode={({ node, state, rowProps, children }) => {
+        const rootDropLine = state.level === 0 && node.type === "directory" && onRootDropLineDrop ? (
+          <div
+            className="group/root-drop h-2 px-2"
+            onDragOver={onRootDropLineDragOver}
+            onDragLeave={onRootDropLineDragLeave}
+            onDrop={onRootDropLineDrop}
+          >
+            <div
+              className={cn(
+                "h-0.5 rounded-full bg-primary opacity-0 transition-opacity",
+                rootDropTargetId && draggedOverPath === rootDropTargetId && "opacity-100",
+              )}
+            />
+          </div>
+        ) : null
+
+        return node.type === "directory" ? (
+          <>
+            {rootDropLine}
+            <FileTreeFolder
+              key={node.path}
+              {...rowProps}
+              style={undefined}
+              path={node.path}
+              name={node.name}
+              ignored={node.ignored}
+              className={cn(
+                state.isDraggedOver && "rounded border border-dashed border-primary/40 bg-primary/5",
+                rowProps.className,
+              )}
+              folderIcon={(isOpen) => <FolderIconImg name={node.name} isOpen={isOpen} />}
+            >
+              {children}
+            </FileTreeFolder>
+          </>
+        ) : (
+          <FileTreeFile
+            key={node.path}
+            {...rowProps}
+            style={undefined}
+            path={node.path}
+            name={node.name}
+            icon={<FileIconImg name={node.name} />}
+            ignored={node.ignored}
+            className={cn(
+              state.isDraggedOver && "border border-dashed border-primary/40 bg-primary/5",
+              rowProps.className,
+            )}
+          />
+        )
+      }}
+    />
+  )
+}
