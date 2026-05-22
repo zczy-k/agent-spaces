@@ -17,7 +17,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from '@/components/ui/resizable'
-import { Panel, type PanelImperativeHandle } from 'react-resizable-panels'
+import type { PanelImperativeHandle, Layout } from 'react-resizable-panels'
 
 import TreeItem from './tree-item';
 import NotionEditor from './notion-editor';
@@ -27,6 +27,31 @@ import TrashBinModal from './trash-bin-modal';
 
 interface Props {
   workspaceId: string;
+}
+
+const PANEL_LAYOUT_KEY = 'database-panel-layout';
+const SIDEBAR_MIN_SIZE = 12;
+const SIDEBAR_MAX_SIZE = 70;
+const MAIN_MIN_SIZE = 30;
+const DEFAULT_PANEL_LAYOUT: Layout = { sidebar: 25, main: 75 };
+const formatPanelSize = (size: number) => `${size}%`;
+
+function loadPanelLayout(): Layout | undefined {
+  try {
+    const raw = localStorage.getItem(PANEL_LAYOUT_KEY);
+    if (!raw) return undefined;
+
+    const layout = JSON.parse(raw) as Partial<Layout>;
+    return typeof layout.sidebar === 'number'
+      && typeof layout.main === 'number'
+      && layout.sidebar >= SIDEBAR_MIN_SIZE
+      && layout.sidebar <= SIDEBAR_MAX_SIZE
+      && layout.main >= MAIN_MIN_SIZE
+      ? { sidebar: layout.sidebar, main: layout.main }
+      : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export default function DatabasePanel({ workspaceId }: Props) {
@@ -164,17 +189,25 @@ export default function DatabasePanel({ workspaceId }: Props) {
 
   return (
     <div className="w-full h-full bg-background font-sans text-foreground antialiased">
-      <ResizablePanelGroup orientation="horizontal" autoSaveId="database-panel-layout" className="h-full">
+      <ResizablePanelGroup
+        orientation="horizontal"
+        id="database-panel-group"
+        defaultLayout={loadPanelLayout() ?? DEFAULT_PANEL_LAYOUT}
+        onLayoutChanged={(layout: Layout) => localStorage.setItem(PANEL_LAYOUT_KEY, JSON.stringify(layout))}
+        resizeTargetMinimumSize={{ coarse: 28, fine: 14 }}
+        className="h-full overflow-hidden"
+      >
 
       {/* Sidebar */}
-      <Panel
+      <ResizablePanel
+        id="sidebar"
         panelRef={sidebarPanelRef}
-        defaultSize={25}
-        minSize={15}
-        maxSize={40}
+        defaultSize={formatPanelSize(DEFAULT_PANEL_LAYOUT.sidebar)}
+        minSize={formatPanelSize(SIDEBAR_MIN_SIZE)}
+        maxSize={formatPanelSize(SIDEBAR_MAX_SIZE)}
         collapsible
-        collapsedSize={0}
-        className="h-full bg-sidebar border-r border-border flex flex-col"
+        collapsedSize="0%"
+        className="h-full min-w-0 bg-sidebar border-r border-border flex flex-col"
       >
         {/* Sidebar header */}
         <div className="px-4 py-3 border-b border-border bg-sidebar/80 backdrop-blur-md">
@@ -277,11 +310,16 @@ export default function DatabasePanel({ workspaceId }: Props) {
             )}
           </button>
         </div>
-      </Panel>
-      <ResizableHandle withHandle />
+      </ResizablePanel>
+      <ResizableHandle withHandle className="z-20 w-1 hover:bg-ring/60 after:w-4" />
 
       {/* Main editor area */}
-      <ResizablePanel defaultSize={75} className="flex flex-col h-full overflow-hidden bg-background relative">
+      <ResizablePanel
+        id="main"
+        defaultSize={formatPanelSize(DEFAULT_PANEL_LAYOUT.main)}
+        minSize={formatPanelSize(MAIN_MIN_SIZE)}
+        className="flex flex-col h-full min-w-0 overflow-hidden bg-background relative"
+      >
         {showSaveSuccess && (
           <div className="absolute top-4 right-1/2 translate-x-1/2 bg-card border border-border text-foreground text-xs font-semibold px-4 py-2 rounded-full flex items-center gap-2 shadow-2xl z-50">
             <CheckCircle className="w-3.5 h-3.5 text-emerald-400" /><span>内容已自动保存</span>
