@@ -32,6 +32,7 @@ import {
   Hash,
   CircleDot,
   Zap,
+  Wrench,
 } from "lucide-react";
 import { UserIcon } from "@/components/common/user-icon";
 import { AgentDialog } from "@/components/sidebar/agent-dialog";
@@ -365,7 +366,7 @@ export function DashboardSidebar() {
       link: "#",
       subs: isMobile
         ? [
-            { title: ts('nav.general'), link: "/settings" },
+            { title: ts('nav.general'), link: "/settings", icon: <Wrench className="size-3.5" /> },
             { title: ts('nav.agents'), link: "/settings/agents", icon: <Bot className="size-3.5" /> },
             { title: ts('nav.skills'), link: "/settings/skills", icon: <Sparkles className="size-3.5" /> },
             { title: ts('nav.prompts'), link: "/settings/prompts", icon: <MessageSquare className="size-3.5" /> },
@@ -375,7 +376,7 @@ export function DashboardSidebar() {
             { title: ts('nav.providers'), link: "/settings/providers", icon: <Server className="size-3.5" /> },
           ]
         : [
-            { title: ts('nav.general'), link: "#", onClick: () => setSettingsDialogOpen(true) },
+            { title: ts('nav.general'), link: "#", icon: <Wrench className="size-3.5" />, onClick: () => setSettingsDialogOpen(true) },
             { title: ts('nav.agents'), link: "#", icon: <Bot className="size-3.5" />, onClick: () => setAgentDialogOpen(true) },
             { title: ts('nav.skills'), link: "#", icon: <Sparkles className="size-3.5" />, onClick: () => setSkillsDialogOpen(true) },
             { title: ts('nav.prompts'), link: "#", icon: <MessageSquare className="size-3.5" />, onClick: () => setPromptsDialogOpen(true) },

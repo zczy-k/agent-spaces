@@ -51,9 +51,22 @@ function openDb(): DatabaseSync {
 export function getBoard(workspaceId: string): KanbanBoard | null {
   const database = openDb();
   const row = database.prepare(
-    'SELECT * FROM kanban_boards WHERE workspace_id = ?'
+    'SELECT * FROM kanban_boards WHERE workspace_id = ? ORDER BY updated_at DESC'
   ).get(workspaceId) as Record<string, unknown> | undefined;
   if (!row) return null;
+  return hydrateBoard(workspaceId, row);
+}
+
+export function listBoards(workspaceId: string): KanbanBoard[] {
+  const database = openDb();
+  const rows = database.prepare(
+    'SELECT * FROM kanban_boards WHERE workspace_id = ? ORDER BY updated_at DESC'
+  ).all(workspaceId) as Record<string, unknown>[];
+  return rows.map((row) => hydrateBoard(workspaceId, row));
+}
+
+function hydrateBoard(workspaceId: string, row: Record<string, unknown>): KanbanBoard {
+  const database = openDb();
   const boardId = row.id as string;
   const columns = (database.prepare(
     'SELECT * FROM kanban_columns WHERE board_id = ? ORDER BY sort_order ASC'
@@ -97,18 +110,31 @@ export function createBoard(workspaceId: string, title?: string): KanbanBoard {
   return { id, workspaceId, title: title || 'Kanban Board', layoutMode: 'horizontal', columns: [], tasks: [], createdAt: now, updatedAt: now };
 }
 
-export function updateBoard(workspaceId: string, updates: { title?: string; layoutMode?: string }): KanbanBoard | null {
-  let board = getBoard(workspaceId);
+export function updateBoard(workspaceId: string, updates: { title?: string; layoutMode?: string }, boardId?: string): KanbanBoard | null {
+  let board = boardId ? listBoards(workspaceId).find((item) => item.id === boardId) ?? null : getBoard(workspaceId);
   if (!board) return null;
   const database = openDb();
   const now = Date.now();
   if (updates.title !== undefined) {
-    database.prepare('UPDATE kanban_boards SET title = ?, updated_at = ? WHERE workspace_id = ?').run(updates.title, now, workspaceId);
+    database.prepare('UPDATE kanban_boards SET title = ?, updated_at = ? WHERE workspace_id = ? AND id = ?').run(updates.title, now, workspaceId, board.id);
   }
   if (updates.layoutMode !== undefined) {
-    database.prepare('UPDATE kanban_boards SET layout_mode = ?, updated_at = ? WHERE workspace_id = ?').run(updates.layoutMode, now, workspaceId);
+    database.prepare('UPDATE kanban_boards SET layout_mode = ?, updated_at = ? WHERE workspace_id = ? AND id = ?').run(updates.layoutMode, now, workspaceId, board.id);
   }
-  return getBoard(workspaceId);
+  return (boardId ? listBoards(workspaceId).find((item) => item.id === board.id) : getBoard(workspaceId)) ?? null;
+}
+
+export function deleteBoard(workspaceId: string, boardId?: string): boolean {
+  const database = openDb();
+  const board = boardId
+    ? database.prepare('SELECT * FROM kanban_boards WHERE workspace_id = ? AND id = ?').get(workspaceId, boardId) as Record<string, unknown> | undefined
+    : database.prepare('SELECT * FROM kanban_boards WHERE workspace_id = ?').get(workspaceId) as Record<string, unknown> | undefined;
+  if (!board) return false;
+  const id = board.id as string;
+  database.prepare('DELETE FROM kanban_tasks WHERE board_id = ?').run(id);
+  database.prepare('DELETE FROM kanban_columns WHERE board_id = ?').run(id);
+  database.prepare('DELETE FROM kanban_boards WHERE id = ? AND workspace_id = ?').run(id, workspaceId);
+  return true;
 }
 
 export function saveColumns(boardId: string, columns: KanbanColumn[]): void {

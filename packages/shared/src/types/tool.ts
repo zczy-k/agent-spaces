@@ -89,6 +89,31 @@ export const BUILT_IN_AGENT_TOOLS = [
     label: 'Update Database Meta',
     description: 'Update knowledge base node metadata such as title, icon, cover, parent, or trash state.',
   },
+  {
+    name: 'ListKanbanBoards',
+    label: 'List Kanban Boards',
+    description: 'List Kanban boards in the workspace.',
+  },
+  {
+    name: 'ViewKanbanBoard',
+    label: 'View Kanban Board',
+    description: 'View Kanban board metadata, columns, and tasks.',
+  },
+  {
+    name: 'CreateKanbanBoard',
+    label: 'Create Kanban Board',
+    description: 'Create the workspace Kanban board.',
+  },
+  {
+    name: 'UpdateKanbanBoard',
+    label: 'Update Kanban Board',
+    description: 'Update Kanban board metadata, columns, or tasks.',
+  },
+  {
+    name: 'DeleteKanbanBoard',
+    label: 'Delete Kanban Board',
+    description: 'Delete the workspace Kanban board with its columns and tasks.',
+  },
 ] as const;
 
 export type BuiltInAgentToolName = typeof BUILT_IN_AGENT_TOOLS[number]['name'];
