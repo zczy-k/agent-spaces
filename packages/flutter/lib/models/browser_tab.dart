@@ -1,5 +1,6 @@
-
 enum DeviceType { phone, tablet, desktop }
+
+enum BrowserTabType { webview, terminal }
 
 class DeviceProfile {
   final DeviceType type;
@@ -59,6 +60,7 @@ class BrowserTab {
   final String url;
   final String? faviconUrl;
   final DeviceProfile device;
+  final BrowserTabType type;
   final DateTime createdAt;
 
   BrowserTab({
@@ -67,25 +69,30 @@ class BrowserTab {
     required this.url,
     this.faviconUrl,
     this.device = DeviceProfile.desktop,
+    this.type = BrowserTabType.webview,
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
   String get effectiveFaviconUrl => faviconUrl ?? '';
 
   factory BrowserTab.fromSaved(Map<String, dynamic> json) => BrowserTab(
-        id: json['id'] as String,
-        title: json['title'] as String,
-        url: json['url'] as String,
-        faviconUrl: json['faviconUrl'] as String?,
-        device: DeviceProfile.fromType(DeviceType.values[json['deviceType'] as int]),
-        createdAt: DateTime.parse(json['createdAt'] as String),
-      );
+    id: json['id'] as String,
+    title: json['title'] as String,
+    url: json['url'] as String,
+    faviconUrl: json['faviconUrl'] as String?,
+    device: DeviceProfile.fromType(
+      DeviceType.values[json['deviceType'] as int],
+    ),
+    type: BrowserTabType.values[json['type'] as int? ?? 0],
+    createdAt: DateTime.parse(json['createdAt'] as String),
+  );
 
   BrowserTab copyWith({
     String? title,
     String? url,
     String? faviconUrl,
     DeviceProfile? device,
+    BrowserTabType? type,
   }) {
     return BrowserTab(
       id: id,
@@ -93,6 +100,7 @@ class BrowserTab {
       url: url ?? this.url,
       faviconUrl: faviconUrl ?? this.faviconUrl,
       device: device ?? this.device,
+      type: type ?? this.type,
       createdAt: createdAt,
     );
   }

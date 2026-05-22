@@ -68,7 +68,6 @@ export function GitCommitsPanel({ workspaceId }: Props) {
 
   const ahead = status?.ahead ?? 0;
   const behind = status?.behind ?? 0;
-  const remoteHeadIndex = ahead > 0 ? ahead : -1;
   const hasFiles = (status?.files.length ?? 0) > 0;
   const selectedDiff = diffs.find((d) => d.path === selectedFile);
 
@@ -385,15 +384,15 @@ export function GitCommitsPanel({ workspaceId }: Props) {
                 </SkeletonGroup>
               </div>
             )}
-            {log.map((entry, i) => {
-              const isRemoteHead = i === remoteHeadIndex;
+            {log.map((entry) => {
+              const isRemoteHead = !!status?.remoteHeadHash && entry.hash.startsWith(status.remoteHeadHash.substring(0, 7));
               const isHead = !!status?.headHash && entry.hash.startsWith(status.headHash.substring(0, 7));
               return (
                 <ContextMenu key={entry.hash}>
                   <ContextMenuTrigger>
                     <div
                       onClick={() => setDetailEntry(entry)}
-                      className={`px-2 py-1.5 border-b hover:bg-accent cursor-pointer ${isHead ? 'bg-accent/50' : ''} ${isRemoteHead ? 'border-l-2 border-l-blue-500' : ''}`}
+                      className={`px-2 py-1.5 border-b border-l-2 hover:bg-accent cursor-pointer ${isHead ? 'border-l-foreground' : isRemoteHead ? 'border-l-blue-500' : 'border-l-transparent'}`}
                     >
                       <div className="flex items-center gap-2">
                         {isRemoteHead && <span title={t('remoteTrackingBranch')}><GitCommitHorizontal size={13} className="shrink-0 text-blue-500" /></span>}

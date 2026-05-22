@@ -183,6 +183,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 : const Icon(Icons.chevron_right, size: 20),
             onTap: _clearingCache ? null : _clearBrowserCache,
           ),
+          _SectionHeader(title: 'Terminal'),
+          ListTile(
+            dense: true,
+            leading: const Icon(Icons.key_outlined, size: 20),
+            title: const Text('Terminal 凭证管理', style: TextStyle(fontSize: 13)),
+            subtitle: Text(
+              '管理 SSH 密码或私钥登录凭证',
+              style: TextStyle(
+                fontSize: 11,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            trailing: const Icon(Icons.chevron_right, size: 20),
+            onTap: () => context.push('/settings/terminal-credentials'),
+          ),
           _SectionHeader(title: '其他'),
           ListTile(
             dense: true,

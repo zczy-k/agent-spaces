@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/browser_tab.dart';
 import '../providers/browser_provider.dart';
 import 'tab_widgets.dart';
+import 'terminal_instance.dart';
 import 'webview_instance.dart';
 
 typedef TitleChangedCallback =
@@ -22,6 +23,36 @@ Widget _buildWebViewPane(
     tab: tab,
     onTitleChanged: onTitleChanged,
   );
+}
+
+Widget _buildTabPane(
+  BrowserTab tab,
+  bool webViewDebuggingEnabled,
+  TitleChangedCallback onTitleChanged,
+) {
+  return switch (tab.type) {
+    BrowserTabType.webview => _buildWebViewPane(
+      tab,
+      webViewDebuggingEnabled,
+      onTitleChanged,
+    ),
+    BrowserTabType.terminal => TerminalInstance(
+      key: ValueKey(tab.id),
+      tab: tab,
+      onTitleChanged: (title) => onTitleChanged(tab.id, title, tab.url, null),
+    ),
+  };
+}
+
+Widget _buildTabLeading(BuildContext context, BrowserTab tab) {
+  if (tab.type == BrowserTabType.terminal) {
+    return Icon(
+      Icons.terminal,
+      size: 14,
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+    );
+  }
+  return FaviconIcon(url: tab.effectiveFaviconUrl);
 }
 
 TabbedViewThemeData _buildDockingTabTheme(ThemeData theme) {
@@ -130,6 +161,7 @@ class SplitLayoutView extends StatefulWidget {
   final TabSelectedCallback onTabSelected;
   final TabClosedCallback onTabClosed;
   final VoidCallback onNewTab;
+  final VoidCallback onNewTerminal;
   final DockingMenuBuilder onBuildMenu;
 
   const SplitLayoutView({
@@ -141,6 +173,7 @@ class SplitLayoutView extends StatefulWidget {
     required this.onTabSelected,
     required this.onTabClosed,
     required this.onNewTab,
+    required this.onNewTerminal,
     required this.onBuildMenu,
   });
 
@@ -191,6 +224,11 @@ class _SplitLayoutViewState extends State<SplitLayoutView> {
             icon: IconProvider.data(Icons.add),
             toolTip: '新建标签页',
             onPressed: widget.onNewTab,
+          ),
+          TabButton(
+            icon: IconProvider.data(Icons.terminal),
+            toolTip: '新建 Terminal',
+            onPressed: widget.onNewTerminal,
           ),
           TabButton(
             icon: IconProvider.data(Icons.more_vert),
@@ -292,13 +330,12 @@ class _SplitLayoutViewState extends State<SplitLayoutView> {
       final tab = tabsById[area.value as String];
       if (tab == null) continue;
       area.name = tab.title;
-      area.widget = _buildWebViewPane(
+      area.widget = _buildTabPane(
         tab,
         widget.webViewDebuggingEnabled,
         widget.onTitleChanged,
       );
-      area.leading = (context, status) =>
-          FaviconIcon(url: tab.effectiveFaviconUrl);
+      area.leading = (context, status) => _buildTabLeading(context, tab);
     }
     layout.rebuild();
   }
@@ -313,6 +350,7 @@ Widget buildSplitLayout({
   required TabSelectedCallback onTabSelected,
   required TabClosedCallback onTabClosed,
   required VoidCallback onNewTab,
+  required VoidCallback onNewTerminal,
   required DockingMenuBuilder onBuildMenu,
 }) {
   if (visibleTabs.isEmpty) return const SizedBox.shrink();
@@ -324,6 +362,7 @@ Widget buildSplitLayout({
     onTabSelected: onTabSelected,
     onTabClosed: onTabClosed,
     onNewTab: onNewTab,
+    onNewTerminal: onNewTerminal,
     onBuildMenu: onBuildMenu,
   );
 }
@@ -405,7 +444,7 @@ DockingItem _buildDockingItem(
     value: tab.id,
     closable: true,
     keepAlive: true,
-    leading: (context, status) => FaviconIcon(url: tab.effectiveFaviconUrl),
-    widget: _buildWebViewPane(tab, webViewDebuggingEnabled, onTitleChanged),
+    leading: (context, status) => _buildTabLeading(context, tab),
+    widget: _buildTabPane(tab, webViewDebuggingEnabled, onTitleChanged),
   );
 }

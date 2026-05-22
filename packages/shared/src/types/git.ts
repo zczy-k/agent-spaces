@@ -15,6 +15,7 @@ export interface GitStatusResult {
   insertions: number;
   deletions: number;
   headHash?: string;
+  remoteHeadHash?: string;
 }
 
 export interface GitLogEntry {

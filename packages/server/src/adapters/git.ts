@@ -88,6 +88,20 @@ function mapStatus(raw: StatusResult): GitStatusResult {
   };
 }
 
+async function getUpstreamRef(git: SimpleGit, branch?: string): Promise<string | null> {
+  const upstream = await git.raw(['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'])
+    .then(v => v.trim())
+    .catch(() => '');
+  if (upstream) return upstream;
+
+  if (!branch || branch === 'HEAD') return null;
+  const originBranch = `origin/${branch}`;
+  const hasOriginBranch = await git.raw(['rev-parse', '--verify', '--quiet', originBranch])
+    .then(() => true)
+    .catch(() => false);
+  return hasOriginBranch ? originBranch : null;
+}
+
 function splitConflictSides(content: string): { left: string; right: string; hasConflict: boolean } {
   const left: string[] = [];
   const right: string[] = [];
@@ -173,6 +187,14 @@ export async function gitStatus(workspaceId: string): Promise<GitStatusResult> {
   try {
     const headHash = await git.revparse(['--short', 'HEAD']);
     result.headHash = headHash.trim();
+  } catch {}
+
+  try {
+    const upstream = await getUpstreamRef(git, result.branch);
+    if (upstream) {
+      const remoteHeadHash = await git.revparse(['--short', upstream]);
+      result.remoteHeadHash = remoteHeadHash.trim();
+    }
   } catch {}
 
   if (!result.clean) {
@@ -267,14 +289,24 @@ export async function gitLog(workspaceId: string, maxCount = 50): Promise<GitLog
   if (!ws) throw new Error('Workspace not found');
 
   const git = getGit(ws);
-  const log = await git.log({ maxCount });
+  const status = await git.status();
+  const upstream = await getUpstreamRef(git, status.current || 'HEAD');
+  const refs = upstream ? ['HEAD', upstream] : ['HEAD'];
+  const pretty = '%H%x1f%s%x1f%an%x1f%aI%x1e';
+  const raw = await git.raw(['log', `--max-count=${maxCount}`, `--pretty=format:${pretty}`, ...refs]);
 
-  return log.all.map(entry => ({
-    hash: entry.hash.substring(0, 7),
-    message: entry.message,
-    author: entry.author_name,
-    date: entry.date,
-  }));
+  return raw.split('\x1e')
+    .map(record => record.trim())
+    .filter(Boolean)
+    .map(record => {
+      const [hash = '', message = '', author = '', date = ''] = record.split('\x1f');
+      return {
+        hash: hash.substring(0, 7),
+        message,
+        author,
+        date,
+      };
+    });
 }
 
 export async function gitCommit(workspaceId: string, message: string): Promise<{ hash: string }> {

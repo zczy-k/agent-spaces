@@ -37,6 +37,7 @@ List<PopupMenuEntry<VoidCallback>> buildBrowserMenuItems(
   WidgetRef ref, {
   required String? activeTabId,
   VoidCallback? onNewTab,
+  VoidCallback? onNewTerminal,
 }) {
   void runWithActiveTab(void Function(String tabId) action) {
     final tabId = activeTabId;
@@ -48,6 +49,11 @@ List<PopupMenuEntry<VoidCallback>> buildBrowserMenuItems(
   return [
     if (onNewTab != null)
       PopupMenuItem<VoidCallback>(value: onNewTab, child: const Text('新建标签页')),
+    if (onNewTerminal != null)
+      PopupMenuItem<VoidCallback>(
+        value: onNewTerminal,
+        child: const Text('新建 Terminal'),
+      ),
     PopupMenuItem<VoidCallback>(
       value: () => runWithActiveTab(WebViewService.instance.goBack),
       child: const Text('后退'),

@@ -8,10 +8,14 @@ import 'providers/settings_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/bookmarks_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/terminal_credentials_screen.dart';
 import 'screens/about_screen.dart';
 import 'services/notification_service.dart';
 
-final localWebServer = InAppLocalhostServer(port: 8080, documentRoot: 'assets/web');
+final localWebServer = InAppLocalhostServer(
+  port: 8080,
+  documentRoot: 'assets/web',
+);
 const _appcastUrl = String.fromEnvironment('APPCAST_URL');
 
 void main() async {
@@ -33,9 +37,10 @@ final _router = GoRouter(
       builder: (context, state) => const SettingsScreen(),
     ),
     GoRoute(
-      path: '/about',
-      builder: (context, state) => const AboutScreen(),
+      path: '/settings/terminal-credentials',
+      builder: (context, state) => const TerminalCredentialsScreen(),
     ),
+    GoRoute(path: '/about', builder: (context, state) => const AboutScreen()),
   ],
 );
 
@@ -43,22 +48,14 @@ final _upgrader = Upgrader(
   storeController: _appcastUrl.isEmpty
       ? UpgraderStoreController()
       : UpgraderStoreController(
-          onAndroid: () => UpgraderAppcastStore(
-            appcastURL: _appcastUrl,
-            osVersion: '0.0.0',
-          ),
-          oniOS: () => UpgraderAppcastStore(
-            appcastURL: _appcastUrl,
-            osVersion: '0.0.0',
-          ),
-          onMacOS: () => UpgraderAppcastStore(
-            appcastURL: _appcastUrl,
-            osVersion: '0.0.0',
-          ),
-          onWindows: () => UpgraderAppcastStore(
-            appcastURL: _appcastUrl,
-            osVersion: '0.0.0',
-          ),
+          onAndroid: () =>
+              UpgraderAppcastStore(appcastURL: _appcastUrl, osVersion: '0.0.0'),
+          oniOS: () =>
+              UpgraderAppcastStore(appcastURL: _appcastUrl, osVersion: '0.0.0'),
+          onMacOS: () =>
+              UpgraderAppcastStore(appcastURL: _appcastUrl, osVersion: '0.0.0'),
+          onWindows: () =>
+              UpgraderAppcastStore(appcastURL: _appcastUrl, osVersion: '0.0.0'),
         ),
 );
 

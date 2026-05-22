@@ -102,11 +102,13 @@ class _WebViewPanelState extends ConsumerState<WebViewPanel> {
         onTabSelected: notifier.setActiveTab,
         onTabClosed: notifier.closeTab,
         onNewTab: () => showNewTabDialog(context, notifier),
+        onNewTerminal: notifier.addTerminalTab,
         onBuildMenu: (menuContext) => buildBrowserMenuItems(
           menuContext,
           ref,
           activeTabId: state.activeTabId,
           onNewTab: () => showNewTabDialog(context, notifier),
+          onNewTerminal: notifier.addTerminalTab,
         ),
       );
     }

@@ -101,6 +101,17 @@ class BrowserNotifier extends StateNotifier<BrowserState> {
     _persistTabs();
   }
 
+  void addTerminalTab() {
+    final tab = BrowserTab(
+      id: _uuid.v4(),
+      title: 'Terminal',
+      url: 'terminal://new',
+      type: BrowserTabType.terminal,
+    );
+    state = state.copyWith(tabs: [...state.tabs, tab], activeTabId: tab.id);
+    _persistTabs();
+  }
+
   void closeTab(String tabId) {
     final newTabs = state.tabs.where((t) => t.id != tabId).toList();
     String newActiveId = '';
