@@ -1,5 +1,6 @@
 我想给知识库做rag检索，大概的逻辑是：
 在 packages/web/src/components/database/database-panel.tsx:357~365 右侧增加一个打开数据库向量设置的对话框，可以给当前数据库绑定一个embedding模型(packages\web\src\components\common\agent-picker-dialog.tsx)，绑定后可以手动点击开始进行对文档的批量向量化并保存到本地sqlite
+在 packages\server\src\services\builtin-tools\database-tools.ts 增加一个向量查询的工具，调用数据库绑定的agent来进行查询并输出到工具结果
 
 
 **最小实现方案 (Node.js)**
