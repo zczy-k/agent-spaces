@@ -127,7 +127,7 @@ export function DatabaseAiChat({ workspaceId, onClose, onMinimize }: DatabaseAiC
             >
               <button
                 type="button"
-                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
                 onClick={() => {
                   setMenuOpen(false);
                   setSettingsOpen(true);
@@ -138,7 +138,7 @@ export function DatabaseAiChat({ workspaceId, onClose, onMinimize }: DatabaseAiC
               </button>
               <button
                 type="button"
-                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-destructive hover:bg-destructive/10"
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-destructive hover:bg-destructive/10 cursor-pointer"
                 onClick={() => {
                   setMenuOpen(false);
                   setMessages([]);

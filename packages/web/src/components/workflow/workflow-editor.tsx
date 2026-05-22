@@ -175,7 +175,7 @@ function WorkflowEditorInner({
       <div className="flex items-center gap-3 border-b px-4 py-2">
         <button
           onClick={onBack}
-          className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent"
+          className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer"
         >
           <ArrowLeft className="size-4" />
         </button>

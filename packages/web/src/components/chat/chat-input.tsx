@@ -535,7 +535,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         <button
           type="button"
           onClick={() => setCollapsed(c => !c)}
-          className="p-0.5 text-muted-foreground/60 hover:text-foreground transition-colors"
+          className="p-0.5 text-muted-foreground/60 hover:text-foreground transition-colors cursor-pointer"
         >
           <IconChevronUp className={cn("size-3.5 transition-transform", collapsed && "rotate-180")} />
         </button>

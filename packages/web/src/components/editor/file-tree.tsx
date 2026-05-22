@@ -257,10 +257,10 @@ export const FileTreeFolder = ({
                   {isLoading && <span className="size-3 border border-muted-foreground border-t-transparent rounded-full animate-spin shrink-0" />}
                 </CollapsibleTrigger>
                 <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1 invisible group-hover/folder:visible" onClick={e => e.stopPropagation()}>
-                  <button onClick={handleReveal} className="p-0.5 rounded hover:bg-accent" title={t('revealInFinder')}>
+                  <button onClick={handleReveal} className="p-0.5 rounded hover:bg-accent cursor-pointer" title={t('revealInFinder')}>
                     <ExternalLink className="size-3 text-muted-foreground" />
                   </button>
-                  <button onClick={() => setDeleteConfirmOpen(true)} className="p-0.5 rounded hover:bg-accent" title={tc('delete')}>
+                  <button onClick={() => setDeleteConfirmOpen(true)} className="p-0.5 rounded hover:bg-accent cursor-pointer" title={tc('delete')}>
                     <Trash2 className="size-3 text-muted-foreground hover:text-destructive" />
                   </button>
                 </div>
@@ -440,10 +440,10 @@ export const FileTreeFile = ({
                 </FileTreeIcon>
                 <FileTreeName>{name}</FileTreeName>
                 <FileTreeActions>
-                  <button onClick={handleReveal} className="p-0.5 rounded hover:bg-accent" title={t('revealInFinder')}>
+                  <button onClick={handleReveal} className="p-0.5 rounded hover:bg-accent cursor-pointer" title={t('revealInFinder')}>
                     <ExternalLink className="size-3 text-muted-foreground" />
                   </button>
-                  <button onClick={() => setDeleteConfirmOpen(true)} className="p-0.5 rounded hover:bg-accent" title={tc('delete')}>
+                  <button onClick={() => setDeleteConfirmOpen(true)} className="p-0.5 rounded hover:bg-accent cursor-pointer" title={tc('delete')}>
                     <Trash2 className="size-3 text-muted-foreground hover:text-destructive" />
                   </button>
                 </FileTreeActions>

@@ -239,7 +239,7 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
       <div className="flex items-center justify-between px-2 py-1.5 border-b text-xs font-medium text-muted-foreground">
         <span>{t('channel.general')}</span>
         <div className="flex items-center gap-0.5">
-          <button onClick={() => setDialogOpen(true)} className="p-0.5 hover:bg-accent rounded">
+          <button onClick={() => setDialogOpen(true)} className="p-0.5 hover:bg-accent rounded cursor-pointer">
             <Plus className="size-3.5" />
           </button>
           <DropdownMenu>

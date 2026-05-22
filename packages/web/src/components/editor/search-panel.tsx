@@ -111,13 +111,13 @@ export function SearchPanel({ workspaceId }: SearchPanelProps) {
         <div className="flex items-center gap-0.5">
           <button
             onClick={() => setIsCaseSensitive(!isCaseSensitive)}
-            className={cn("p-1 rounded text-xs", isCaseSensitive ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}
+            className={cn("p-1 rounded text-xs", isCaseSensitive ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground", "cursor-pointer")}
           >
             <CaseSensitive className="size-3" />
           </button>
           <button
             onClick={() => setIsRegex(!isRegex)}
-            className={cn("p-1 rounded text-xs", isRegex ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")}
+            className={cn("p-1 rounded text-xs", isRegex ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground", "cursor-pointer")}
           >
             <Regex className="size-3" />
           </button>
@@ -160,7 +160,7 @@ export function SearchPanel({ workspaceId }: SearchPanelProps) {
                 <ContextMenuTrigger className="contents">
                   <button
                     onClick={() => toggleFile(file)}
-                    className="w-full flex items-center gap-1 px-2 py-0.5 text-xs font-medium hover:bg-accent/50"
+                    className="w-full flex items-center gap-1 px-2 py-0.5 text-xs font-medium hover:bg-accent/50 cursor-pointer"
                   >
                     {expandedFiles.has(file) ? (
                       <ChevronDown className="size-3 text-muted-foreground shrink-0" />
@@ -179,7 +179,7 @@ export function SearchPanel({ workspaceId }: SearchPanelProps) {
                 <button
                   key={i}
                   onClick={() => handleResultClick(m.file, m.line, m.column)}
-                  className="w-full flex items-start gap-2 pl-6 pr-2 py-0.5 text-xs hover:bg-accent/50 text-left font-mono"
+                  className="w-full flex items-start gap-2 pl-6 pr-2 py-0.5 text-xs hover:bg-accent/50 text-left font-mono cursor-pointer"
                 >
                   <span className="text-muted-foreground w-8 text-right shrink-0">{m.line}</span>
                   <span className="truncate">

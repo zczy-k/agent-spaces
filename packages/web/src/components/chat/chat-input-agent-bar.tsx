@@ -38,7 +38,7 @@ export function ChatInputAgentBar({
         <button
           type="button"
           onClick={onOpenAddMember}
-          className="shrink-0 inline-flex items-center justify-center size-6 rounded-full text-muted-foreground border border-dashed border-muted-foreground/40 hover:bg-accent hover:text-foreground transition-all"
+          className="shrink-0 inline-flex items-center justify-center size-6 rounded-full text-muted-foreground border border-dashed border-muted-foreground/40 hover:bg-accent hover:text-foreground transition-all cursor-pointer"
           title={t("input.manageMembers")}
         >
           <IconUserPlus className="size-3.5" />

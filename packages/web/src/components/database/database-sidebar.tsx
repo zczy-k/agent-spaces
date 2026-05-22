@@ -215,7 +215,7 @@ export function DatabaseSidebar({
                 onChange={(e) => setSidebarSearch(e.target.value)}
                 className="w-full text-xs bg-background border border-border rounded-lg px-2.5 py-1.5 pr-7 text-foreground focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/60" />
               {sidebarSearch ? (
-                <button onClick={() => setSidebarSearch('')} className="absolute right-2 top-2 text-muted-foreground hover:text-foreground"><X className="w-3.5 h-3.5" /></button>
+                <button onClick={() => setSidebarSearch('')} className="absolute right-2 top-2 text-muted-foreground hover:text-foreground cursor-pointer"><X className="w-3.5 h-3.5" /></button>
               ) : (
                 <SlidersHorizontal className="absolute right-2 top-2.5 w-3 h-3 text-muted-foreground/60 pointer-events-none" />
               )}

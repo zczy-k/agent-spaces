@@ -76,7 +76,7 @@ export function MessageContextUsage({ message }: { message: Message }) {
           <div className="border-t px-3 py-2">
             <button
               type="button"
-              className="w-full text-center text-xs text-primary hover:underline"
+              className="w-full text-center text-xs text-primary hover:underline cursor-pointer"
               onClick={() => {
                 setPopoverOpen(false)
                 setDetailsOpen(true)

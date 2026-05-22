@@ -96,7 +96,7 @@ export function MemberPicker({
                     <span className="truncate">{displayLabel}</span>
                   </span>
                 )}
-                <button type="button" onClick={() => onToggle(id)} className="hover:text-destructive shrink-0">
+                <button type="button" onClick={() => onToggle(id)} className="hover:text-destructive shrink-0 cursor-pointer">
                   <X className="size-3" />
                 </button>
               </span>

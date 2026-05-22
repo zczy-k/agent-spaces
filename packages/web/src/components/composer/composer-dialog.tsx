@@ -12,7 +12,7 @@ export function ComposerDialog() {
 
   return (
     <div className="page">
-      <button className="btn btn-primary" onClick={() => setOpen(true)}>
+      <button className="btn btn-primary cursor-pointer" onClick={() => setOpen(true)}>
         {t('openDialog')}
       </button>
 
@@ -25,7 +25,7 @@ export function ComposerDialog() {
           <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{t('newContent')}</h2>
-              <button className="btn btn-ghost" onClick={() => setOpen(false)}>
+              <button className="btn btn-ghost cursor-pointer" onClick={() => setOpen(false)}>
                 {tc('close')}
               </button>
             </div>

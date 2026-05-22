@@ -23,6 +23,7 @@ interface GitState {
   checkout: (workspaceId: string, branch: string) => Promise<void>;
   push: (workspaceId: string) => Promise<void>;
   pull: (workspaceId: string) => Promise<void>;
+  fetchRemote: (workspaceId: string) => Promise<void>;
   getRemotes: (workspaceId: string) => Promise<{ name: string; refs: { fetch: string; push: string } }[]>;
   addRemote: (workspaceId: string, name: string, url: string) => Promise<void>;
   selectFile: (path: string | null) => void;
@@ -178,6 +179,14 @@ export const useGitStore = create<GitState>((set) => ({
     const res = await fetch(`/api/workspaces/${workspaceId}/git/pull`, { method: 'POST' });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: 'Pull failed' }));
+      throw new Error(err.error);
+    }
+  },
+
+  fetchRemote: async (workspaceId) => {
+    const res = await fetch(`/api/workspaces/${workspaceId}/git/fetch`, { method: 'POST' });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Fetch failed' }));
       throw new Error(err.error);
     }
   },

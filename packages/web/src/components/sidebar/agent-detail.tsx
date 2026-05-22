@@ -219,7 +219,7 @@ export function AgentDetail({
             {agent.avatarUrl && (
               <button
                 type="button"
-                className="text-[10px] text-destructive hover:underline"
+                className="text-[10px] text-destructive hover:underline cursor-pointer"
                 onClick={() => onChange("avatarUrl", "")}
               >
                 {t("detail.removeAvatar")}
@@ -320,7 +320,7 @@ export function AgentDetail({
           {agent.skills.map((skill, i) => (
             <span key={i} className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium text-foreground">
               {skill.name}
-              <button type="button" onClick={() => onRemoveSkill(i)} className="hover:text-destructive">
+              <button type="button" onClick={() => onRemoveSkill(i)} className="hover:text-destructive cursor-pointer">
                 <X className="size-2.5" />
               </button>
             </span>

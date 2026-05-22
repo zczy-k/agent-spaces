@@ -88,7 +88,7 @@ export function AgentPickerDialog({
                   <span key={id} className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs max-w-[160px] min-w-0">
                     <AgentIcon agentId={id} name={agent?.name} avatarUrl={agent?.avatarUrl} className="size-3.5 rounded-full shrink-0" />
                     <span className="truncate">{agent?.name || id}</span>
-                    <button type="button" onClick={() => onToggle(id)} className="hover:text-destructive shrink-0">
+                    <button type="button" onClick={() => onToggle(id)} className="hover:text-destructive shrink-0 cursor-pointer">
                       <X className="size-3" />
                     </button>
                   </span>

@@ -71,7 +71,7 @@ export function MobileReadonlyOverlay({
           {!mobileSelectionMode ? (
             <button
               type="button"
-              className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
+              className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent cursor-pointer"
               onClick={onEnterSelectionMode}
             >
               选择模式
@@ -79,7 +79,7 @@ export function MobileReadonlyOverlay({
           ) : null}
           <button
             type="button"
-            className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
+            className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent cursor-pointer"
             onClick={onCopySelection}
           >
             复制代码
@@ -88,14 +88,14 @@ export function MobileReadonlyOverlay({
             <>
               <button
                 type="button"
-                className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
+                className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent cursor-pointer"
                 onClick={() => onRunEditorAction('editor.action.revealDefinition')}
               >
                 Go to Definition
               </button>
               <button
                 type="button"
-                className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
+                className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent cursor-pointer"
                 onClick={() => onRunEditorAction('editor.action.goToReferences')}
               >
                 Go to References
@@ -106,7 +106,7 @@ export function MobileReadonlyOverlay({
             <button
               key={action.id}
               type="button"
-              className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
+              className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent cursor-pointer"
               onClick={() => onRunBuiltinAction(action.id)}
             >
               {action.label}
@@ -115,7 +115,7 @@ export function MobileReadonlyOverlay({
           {mobileSelectionMode ? (
             <button
               type="button"
-              className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
+              className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent cursor-pointer"
               onClick={onCloseSelectionMode}
             >
               完成

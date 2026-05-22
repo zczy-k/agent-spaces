@@ -14,7 +14,7 @@ export function MemberCard({ name, agentId, description, onClick }: MemberCardPr
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md hover:bg-muted text-left transition-colors"
+      className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md hover:bg-muted text-left transition-colors cursor-pointer"
     >
       <AgentIcon agentId={agentId} name={name} className="size-7 rounded-full" />
       <span className="min-w-0">

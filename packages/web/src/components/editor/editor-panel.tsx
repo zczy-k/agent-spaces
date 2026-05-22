@@ -435,7 +435,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
                 spellCheck={false}
               />
               {fileSearch && (
-                <button onClick={() => setFileSearch('')} className="p-0.5 hover:bg-accent rounded">
+                <button onClick={() => setFileSearch('')} className="p-0.5 hover:bg-accent rounded cursor-pointer">
                   <X className="size-3 text-muted-foreground" />
                 </button>
               )}
@@ -470,7 +470,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
             </DropdownMenu>
             <button
               onClick={() => loadTree(workspaceId)}
-              className="p-0.5 hover:bg-accent rounded"
+              className="p-0.5 hover:bg-accent rounded cursor-pointer"
               disabled={treeLoading}
             >
               <RefreshCw className={`size-3 ${treeLoading ? "animate-spin" : ""}`} />

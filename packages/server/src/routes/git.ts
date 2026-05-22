@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from 'express';
-import { gitStatus, gitDiff, gitLog, gitCommit, gitDiscard, gitDiscardAll, gitBranches, gitCheckout, gitInit, gitGenerateCommitMsg, gitPush, gitPull, gitGetRemotes, gitAddRemote, gitCheckoutDetached, gitCherryPick, gitCreateBranch, gitDeleteBranch, gitCreateTag, gitCommitDiff, gitGetRemoteUrl, gitMergeBase, gitGetConfig, gitSetConfig } from '../adapters/git.js';
+import { gitStatus, gitDiff, gitLog, gitCommit, gitDiscard, gitDiscardAll, gitBranches, gitCheckout, gitInit, gitGenerateCommitMsg, gitPush, gitPull, gitFetch, gitGetRemotes, gitAddRemote, gitCheckoutDetached, gitCherryPick, gitCreateBranch, gitDeleteBranch, gitCreateTag, gitCommitDiff, gitGetRemoteUrl, gitMergeBase, gitGetConfig, gitSetConfig } from '../adapters/git.js';
 
 const router = Router({ mergeParams: true });
 
@@ -105,6 +105,15 @@ router.post('/generate-commit-message', async (req: Request<{ id: string }>, res
   try {
     const message = await gitGenerateCommitMsg(req.params.id);
     res.json({ message });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/fetch', async (req: Request<{ id: string }>, res: Response) => {
+  try {
+    await gitFetch(req.params.id);
+    res.json({ ok: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

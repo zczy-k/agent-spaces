@@ -113,7 +113,7 @@ export function SearchSelect({
             {allowCustom && query.trim() && !exactMatch && (
               <button
                 type="button"
-                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-primary hover:bg-muted/50"
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-primary hover:bg-muted/50 cursor-pointer"
                 onClick={() => select(query.trim())}
               >
                 <Plus className="size-3 shrink-0" />

@@ -459,7 +459,7 @@ export function McpsDialog({ open, onOpenChange, standalone }: McpsDialogProps) 
                           <span className="font-medium text-sm">{mcp.name}</span>
                           <button
                             type="button"
-                            className="flex items-center justify-center size-5 rounded hover:bg-accent"
+                            className="flex items-center justify-center size-5 rounded hover:bg-accent cursor-pointer"
                             onClick={(e) => { e.stopPropagation(); handleToggleFavorite(mcp); }}
                           >
                             {mcp.favorited ? (

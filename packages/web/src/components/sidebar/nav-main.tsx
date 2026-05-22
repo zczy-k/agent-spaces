@@ -90,7 +90,7 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
                           <button
                             type="button"
                             onClick={subRoute.onClick}
-                            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer"
                           >
                             {subRoute.icon}
                             {subRoute.title}
@@ -99,7 +99,7 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
                           <button
                             type="button"
                             onClick={() => navigate(subRoute.link)}
-                            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer"
                           >
                             {subRoute.icon}
                             {subRoute.title}
@@ -133,7 +133,7 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
                       <button
                         type="button"
                         onClick={route.onAdd}
-                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground mt-0.5"
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground mt-0.5 cursor-pointer"
                       >
                         <Plus className="size-3.5" />
                         {route.addLabel ?? tc('add')}
@@ -143,7 +143,7 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
                       <button
                         type="button"
                         onClick={() => navigate(route.manageLink!)}
-                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground mt-0.5"
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground mt-0.5 cursor-pointer"
                       >
                         <LayoutGrid className="size-3.5" />
                         {tc('manage')}
@@ -197,9 +197,9 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
                                   ? <button
                                     type="button"
                                     onClick={subRoute.onClick}
-                                    className="flex w-full items-center rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-muted hover:text-foreground"
+                                    className="flex w-full items-center rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-muted hover:text-foreground cursor-pointer"
                                   />
-                                  : <button type="button" onClick={() => navigate(subRoute.link)} className="flex w-full items-center rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-muted hover:text-foreground" />
+                                  : <button type="button" onClick={() => navigate(subRoute.link)} className="flex w-full items-center rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-muted hover:text-foreground cursor-pointer" />
                               }
                             >{subRoute.title}</SidebarMenuSubButton>
 
@@ -233,7 +233,7 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
                           <button
                             type="button"
                             onClick={route.onAdd}
-                            className="flex w-full items-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-muted hover:text-foreground"
+                            className="flex w-full items-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-muted hover:text-foreground cursor-pointer"
                           >
                             <Plus className="size-3.5" />
                             {route.addLabel ?? tc('add')}
@@ -245,7 +245,7 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
                           <button
                             type="button"
                             onClick={() => navigate(route.manageLink!)}
-                            className="flex w-full items-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-muted hover:text-foreground"
+                            className="flex w-full items-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-muted hover:text-foreground cursor-pointer"
                           >
                             <LayoutGrid className="size-3.5" />
                             {tc('manage')}
@@ -258,7 +258,7 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
               )
             ) : (
               <SidebarMenuButton tooltip={route.title} render={<button type="button" onClick={() => navigate(route.link)} className={cn(
-                "flex items-center rounded-lg px-2 transition-colors text-muted-foreground hover:bg-sidebar-muted hover:text-foreground",
+                "flex items-center rounded-lg px-2 transition-colors cursor-pointer text-muted-foreground hover:bg-sidebar-muted hover:text-foreground",
                 isCollapsed && "justify-center"
               )} />}>{route.icon}{!isCollapsed && (
                 <span className="ml-2 text-sm font-medium">

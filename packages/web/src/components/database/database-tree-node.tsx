@@ -74,14 +74,14 @@ export function DatabaseTreeNode({
         <div className="flex items-center min-w-0 flex-1 h-full py-1">
           <button
             onClick={(event) => { event.stopPropagation(); onToggleExpand(node.id); }}
-            className={cn("p-1 rounded-sm text-muted-foreground hover:text-foreground transition-colors shrink-0", !state.hasChildren && "opacity-0 cursor-default")}
+            className={cn("p-1 rounded-sm text-muted-foreground hover:text-foreground transition-colors shrink-0", !state.hasChildren && "opacity-0 cursor-default", "cursor-pointer")}
           >
             {state.isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
           </button>
           <div className="relative shrink-0" ref={emojiRef}>
             <button
               onClick={(event) => { event.stopPropagation(); setEmojiOpen(!emojiOpen); }}
-              className="text-base p-1.5 rounded-md hover:bg-accent shrink-0 transition-all select-none"
+              className="text-base p-1.5 rounded-md hover:bg-accent shrink-0 transition-all select-none cursor-pointer"
             >
               {node.icon || (state.hasChildren ? '📁' : '📄')}
             </button>

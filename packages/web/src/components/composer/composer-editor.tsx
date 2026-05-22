@@ -310,16 +310,16 @@ export function ComposerEditor({
       <div className="editor-shell" {...getRootProps()}>
         <input {...getInputProps()} />
         <div className="editor-toolbar">
-          <button className="btn" type="button" onClick={handleInsertHeading}>
+          <button className="btn cursor-pointer" type="button" onClick={handleInsertHeading}>
             {t('heading')}
           </button>
-          <button className="btn" type="button" onClick={handleInsertQuote}>
+          <button className="btn cursor-pointer" type="button" onClick={handleInsertQuote}>
             {t('quote')}
           </button>
-          <button className="btn" type="button" onClick={handleInsertDivider}>
+          <button className="btn cursor-pointer" type="button" onClick={handleInsertDivider}>
             {t('divider')}
           </button>
-          <button className="btn" type="button" onClick={openFilePicker}>
+          <button className="btn cursor-pointer" type="button" onClick={openFilePicker}>
             {t('addFile')}
           </button>
         </div>
@@ -345,7 +345,7 @@ export function ComposerEditor({
                     </div>
                   </div>
                   <button
-                    className="btn btn-danger"
+                    className="btn btn-danger cursor-pointer"
                     type="button"
                     onClick={() => removeAttachment(index)}
                   >
@@ -359,14 +359,14 @@ export function ComposerEditor({
 
         <div className="footer">
           <div className="footer-left">
-            <button className="btn" type="button" onClick={onClose}>
+            <button className="btn cursor-pointer" type="button" onClick={onClose}>
               {tc('cancel')}
             </button>
           </div>
 
           <div className="footer-right">
             <button
-              className="btn btn-primary"
+              className="btn btn-primary cursor-pointer"
               type="button"
               onClick={handleSubmit}
               disabled={!canSubmit || submitting}

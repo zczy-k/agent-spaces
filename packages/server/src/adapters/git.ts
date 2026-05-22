@@ -309,6 +309,14 @@ export async function gitPush(workspaceId: string): Promise<void> {
   await git.push('origin', branch);
 }
 
+export async function gitFetch(workspaceId: string): Promise<void> {
+  const ws = getWorkspace(workspaceId);
+  if (!ws) throw new Error('Workspace not found');
+
+  const git = getGit(ws);
+  await git.fetch('origin');
+}
+
 export async function gitPull(workspaceId: string): Promise<void> {
   const ws = getWorkspace(workspaceId);
   if (!ws) throw new Error('Workspace not found');

@@ -85,7 +85,7 @@ export function WorkflowAgentPalette({ agents, onNodeAdd }: WorkflowAgentPalette
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); openAgentDialog(agent); }}
-                  className="shrink-0 flex items-center justify-center size-5 rounded opacity-0 group-hover:opacity-100 hover:bg-accent transition-opacity"
+                  className="shrink-0 flex items-center justify-center size-5 rounded opacity-0 group-hover:opacity-100 hover:bg-accent transition-opacity cursor-pointer"
                 >
                   <Eye className="size-3 text-muted-foreground" />
                 </button>
@@ -110,7 +110,7 @@ export function WorkflowAgentPalette({ agents, onNodeAdd }: WorkflowAgentPalette
               <button
                 type="button"
                 onClick={() => handleAddToCanvas(agent)}
-                className="flex items-center justify-center size-4 rounded hover:bg-accent"
+                className="flex items-center justify-center size-4 rounded hover:bg-accent cursor-pointer"
               >
                 <Plus className="size-3" />
               </button>

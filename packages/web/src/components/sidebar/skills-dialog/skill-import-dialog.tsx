@@ -117,7 +117,7 @@ export function SkillImportPanel({
                     <button
                       type="button"
                       onClick={() => toggleExpanded(item.id)}
-                      className="p-1 rounded hover:bg-accent shrink-0"
+                      className="p-1 rounded hover:bg-accent shrink-0 cursor-pointer"
                     >
                       {isExpanded ? (
                         <ChevronDown className="size-3.5 text-muted-foreground" />

@@ -318,7 +318,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
             {isCodePreviewToggle && (
               <button
                 onClick={() => setShowPreview(false)}
-                className="absolute top-2 right-2 z-10 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-background/90 border text-xs text-muted-foreground hover:text-foreground hover:bg-background shadow-sm transition-colors"
+                className="absolute top-2 right-2 z-10 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-background/90 border text-xs text-muted-foreground hover:text-foreground hover:bg-background shadow-sm transition-colors cursor-pointer"
                 title={t('switchToCode')}
               >
                 <Code size={14} />
@@ -350,7 +350,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
           <div className="relative flex flex-col h-full">
             <button
               onClick={() => setShowPreview(true)}
-              className="absolute top-2 right-2 z-10 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-background/90 border text-xs text-muted-foreground hover:text-foreground hover:bg-background shadow-sm transition-colors"
+              className="absolute top-2 right-2 z-10 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-background/90 border text-xs text-muted-foreground hover:text-foreground hover:bg-background shadow-sm transition-colors cursor-pointer"
               title={t('switchToPreview')}
             >
               <Eye size={14} />

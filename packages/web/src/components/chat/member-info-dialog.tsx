@@ -89,7 +89,7 @@ export function MemberInfoDialog({ open, onOpenChange, memberName, displayName, 
           <button
             onClick={handleRemove}
             disabled={removing}
-            className="flex items-center justify-center gap-2 w-full mt-2 px-3 py-2 rounded-md text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50 transition-colors"
+            className="flex items-center justify-center gap-2 w-full mt-2 px-3 py-2 rounded-md text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50 transition-colors cursor-pointer"
           >
             <UserMinus className="size-4" />
             {removing ? '移除中...' : '从频道移除'}

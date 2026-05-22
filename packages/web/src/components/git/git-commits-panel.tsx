@@ -46,7 +46,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
     log, loading, notGitRepo, status, branches, diffs, selectedFile,
     loadStatus, loadDiffs, loadLog, loadBranches,
     commit, discard, discardAll, checkout, selectFile,
-    commitMsg, setCommitMsg,
+    commitMsg, setCommitMsg, fetchRemote,
   } = useGitStore();
   const openFile = useEditorStore((s) => s.openFile);
   const openCommitDiff = useEditorStore((s) => s.openCommitDiff);
@@ -72,11 +72,12 @@ export function GitCommitsPanel({ workspaceId }: Props) {
   const hasFiles = (status?.files.length ?? 0) > 0;
   const selectedDiff = diffs.find((d) => d.path === selectedFile);
 
-  const refresh = useCallback(() => {
+  const refresh = useCallback(async () => {
+    await fetchRemote(workspaceId).catch(() => {});
     loadStatus(workspaceId);
     loadDiffs(workspaceId);
     loadLog(workspaceId);
-  }, [workspaceId, loadStatus, loadDiffs, loadLog]);
+  }, [workspaceId, fetchRemote, loadStatus, loadDiffs, loadLog]);
 
   const refreshAll = useCallback(() => { refresh(); loadBranches(workspaceId); }, [workspaceId, refresh, loadBranches]);
 

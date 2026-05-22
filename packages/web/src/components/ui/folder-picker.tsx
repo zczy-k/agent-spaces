@@ -212,7 +212,7 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
             <button
               type="button"
               onClick={() => navigateTo("")}
-              className="flex size-7 items-center justify-center rounded-md hover:bg-accent transition-colors"
+              className="flex size-7 items-center justify-center rounded-md hover:bg-accent transition-colors cursor-pointer"
               title="Home"
             >
               <Home className="size-3.5" />
@@ -220,7 +220,7 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
             <button
               type="button"
               onClick={goUp}
-              className="flex size-7 items-center justify-center rounded-md hover:bg-accent transition-colors"
+              className="flex size-7 items-center justify-center rounded-md hover:bg-accent transition-colors cursor-pointer"
               title="Go up"
             >
               <ArrowUp className="size-3.5" />
@@ -239,7 +239,7 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
             <button
               type="button"
               onClick={() => { setCreating(true); setNewFolderName(""); }}
-              className="flex size-7 items-center justify-center rounded-md hover:bg-accent transition-colors"
+              className="flex size-7 items-center justify-center rounded-md hover:bg-accent transition-colors cursor-pointer"
               title={t('newFolder')}
             >
               <FolderPlus className="size-3.5" />
@@ -248,7 +248,7 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
               <button
                 type="button"
                 onClick={selectCurrent}
-                className="rounded-lg bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+                className="rounded-lg bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
               >
                 {t('select')}
               </button>
@@ -270,7 +270,7 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
               <button
                 type="button"
                 onClick={handleCreateFolder}
-                className="flex size-6 items-center justify-center rounded-md hover:bg-accent transition-colors"
+                className="flex size-6 items-center justify-center rounded-md hover:bg-accent transition-colors cursor-pointer"
                 disabled={!newFolderName.trim()}
               >
                 <Check className="size-3.5 text-primary" />
@@ -278,7 +278,7 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
               <button
                 type="button"
                 onClick={() => { setCreating(false); setNewFolderName(""); }}
-                className="flex size-6 items-center justify-center rounded-md hover:bg-accent transition-colors"
+                className="flex size-6 items-center justify-center rounded-md hover:bg-accent transition-colors cursor-pointer"
               >
                 <X className="size-3.5 text-muted-foreground" />
               </button>

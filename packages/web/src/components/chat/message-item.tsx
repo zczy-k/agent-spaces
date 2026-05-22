@@ -118,14 +118,14 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
         <div className="flex items-center gap-0.5 h-6 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
             onClick={() => onReply?.(message)}
-            className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             title="回复"
           >
             <Reply className="h-3.5 w-3.5" />
           </button>
           <button
             onClick={handleCopy}
-            className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             title="复制"
           >
             {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
@@ -133,7 +133,7 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
           {isUser && (
             <button
               onClick={() => onEdit?.(message)}
-              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
               title="编辑"
             >
               <Pencil className="h-3.5 w-3.5" />
@@ -142,7 +142,7 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
           {!isUser && message.content && (
             <button
               onClick={() => setFullscreenOpen(true)}
-              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
               title="全屏查看"
             >
               <Maximize2 className="h-3.5 w-3.5" />
@@ -150,7 +150,7 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
           )}
           <button
             onClick={() => onDelete?.(message)}
-            className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors"
+            className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
             title="删除"
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -198,7 +198,7 @@ function MessageRepliesPopover({
         render={
           <button
             type="button"
-            className="min-w-0 truncate text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+            className="min-w-0 truncate text-[11px] text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
           />
         }
       >

@@ -48,7 +48,7 @@ function WorkflowAgentNodeComponent({ id, data, selected }: NodeProps<AgentNode>
       <button
         type="button"
         onClick={handleDelete}
-        className="absolute -top-2 -right-2 flex items-center justify-center size-5 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 hover:bg-destructive/80 transition-opacity z-10 md:opacity-0 md:group-hover:opacity-100"
+        className="absolute -top-2 -right-2 flex items-center justify-center size-5 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 hover:bg-destructive/80 transition-opacity z-10 md:opacity-0 md:group-hover:opacity-100 cursor-pointer"
         style={{ opacity: showDelete ? 1 : undefined }}
       >
         <X className="size-3" />

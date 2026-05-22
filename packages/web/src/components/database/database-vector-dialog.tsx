@@ -118,7 +118,7 @@ export function DatabaseVectorDialog({
                 <button
                   type="button"
                   onClick={() => setPickerOpen(true)}
-                  className="shrink-0 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold hover:bg-muted"
+                  className="shrink-0 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold hover:bg-muted cursor-pointer"
                 >
                   Select
                 </button>
@@ -128,7 +128,7 @@ export function DatabaseVectorDialog({
                   type="button"
                   onClick={handleClear}
                   disabled={saving || indexing}
-                  className="mt-3 text-xs font-semibold text-muted-foreground hover:text-destructive disabled:opacity-50"
+                  className="mt-3 text-xs font-semibold text-muted-foreground hover:text-destructive disabled:opacity-50 cursor-pointer"
                 >
                   Clear binding
                 </button>
@@ -156,14 +156,14 @@ export function DatabaseVectorDialog({
             {message && <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700">{message}</div>}
           </div>
           <DialogFooter className="px-5 py-4">
-            <button type="button" onClick={() => onOpenChange(false)} className="px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-accent">
+            <button type="button" onClick={() => onOpenChange(false)} className="px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer">
               Close
             </button>
             <button
               type="button"
               onClick={handleIndex}
               disabled={loading || indexing || saving || !embeddingModelId}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground disabled:opacity-50 inline-flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground disabled:opacity-50 inline-flex items-center gap-1.5 cursor-pointer"
             >
               <Play className="w-3.5 h-3.5" />
               {indexing ? 'Indexing...' : 'Start indexing'}

@@ -317,7 +317,7 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
               <button
                 key={dir}
                 onClick={() => handleDirSelect(dir)}
-                className="flex items-center gap-2 px-3 py-2 text-sm text-left rounded-md border border-border hover:bg-accent hover:text-accent-foreground transition-colors"
+                className="flex items-center gap-2 px-3 py-2 text-sm text-left rounded-md border border-border hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
               >
                 <FolderOpen size={14} className="shrink-0 text-muted-foreground" />
                 <span className="truncate font-mono text-xs">{dir}</span>
@@ -366,7 +366,7 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
           <div className="flex justify-end gap-2">
             <button
               onClick={() => setPasteDialogOpen(false)}
-              className="px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              className="px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
             >
               {t('cancel')}
             </button>

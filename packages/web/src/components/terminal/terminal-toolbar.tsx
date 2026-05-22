@@ -55,7 +55,7 @@ export function TerminalToolbar({ activeId, sendInput, onPaste }: TerminalToolba
           <button
             onClick={sendDraft}
             disabled={!activeId || !draft}
-            className="absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+            className="absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 cursor-pointer"
             title={t('sendInput')}
           >
             <Send size={14} />
@@ -84,7 +84,7 @@ export function TerminalToolbar({ activeId, sendInput, onPaste }: TerminalToolba
 
         <button
           onClick={toggleEdit}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors data-[active=true]:bg-accent data-[active=true]:text-foreground"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors data-[active=true]:bg-accent data-[active=true]:text-foreground cursor-pointer"
           data-active={editOpen}
           title={t('editInput')}
         >
@@ -111,7 +111,7 @@ export function TerminalToolbar({ activeId, sendInput, onPaste }: TerminalToolba
 
         <button
           onClick={() => send('\x03')}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
           title="Ctrl+C"
         >
           <Power size={14} />
@@ -120,7 +120,7 @@ export function TerminalToolbar({ activeId, sendInput, onPaste }: TerminalToolba
 
         <button
           onClick={() => send('clear\n')}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
           title={t('clearScreen')}
         >
           <Eraser size={14} />
@@ -129,7 +129,7 @@ export function TerminalToolbar({ activeId, sendInput, onPaste }: TerminalToolba
 
         <button
           onClick={onPaste}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
           title={t('pasteCommand')}
         >
           <ClipboardPaste size={14} />

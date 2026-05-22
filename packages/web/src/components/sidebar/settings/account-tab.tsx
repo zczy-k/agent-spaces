@@ -73,7 +73,7 @@ export function AccountTab() {
               <input type="file" accept="image/*" className="hidden" onChange={handleUpload} />
             </label>
             {userAvatarUrl && (
-              <button type="button" className="text-xs text-destructive hover:underline" onClick={handleRemove}>
+              <button type="button" className="text-xs text-destructive hover:underline cursor-pointer" onClick={handleRemove}>
                 {tc("remove")}
               </button>
             )}

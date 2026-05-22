@@ -108,7 +108,7 @@ function SortableTab({
               : file.name}
           </span>
           <button
-            className="ml-1 hover:bg-accent rounded p-0.5"
+            className="ml-1 hover:bg-accent rounded p-0.5 cursor-pointer"
             onClick={(e) => onClose(e, file)}
           >
             <X className="size-3" />

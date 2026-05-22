@@ -68,10 +68,10 @@ export function DatabaseDialog({ open, database, onOpenChange, onSave }: Databas
             </label>
           </div>
           <DialogFooter className="px-5 py-4">
-            <button type="button" onClick={() => onOpenChange(false)} className="px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-accent">
+            <button type="button" onClick={() => onOpenChange(false)} className="px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer">
               Cancel
             </button>
-            <button type="submit" disabled={!name.trim() || saving} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground disabled:opacity-50">
+            <button type="submit" disabled={!name.trim() || saving} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground disabled:opacity-50 cursor-pointer">
               {saving ? 'Saving...' : 'Save'}
             </button>
           </DialogFooter>

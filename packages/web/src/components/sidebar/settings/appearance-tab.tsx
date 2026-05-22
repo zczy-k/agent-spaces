@@ -269,7 +269,7 @@ export function AppearanceTab() {
             <button
               type="button"
               onClick={() => applyZoom(100)}
-              className="text-muted-foreground hover:text-foreground transition-colors"
+              className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
               title={t("zoomReset")}
             >
               <RotateCcw className="size-3.5" />

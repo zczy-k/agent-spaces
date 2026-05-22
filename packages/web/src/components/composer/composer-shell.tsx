@@ -62,7 +62,7 @@ export function ComposerShell({
             <button
               type="button"
               onClick={onCancelReply}
-              className="inline-flex size-5 shrink-0 items-center justify-center rounded hover:bg-muted hover:text-foreground"
+              className="inline-flex size-5 shrink-0 items-center justify-center rounded hover:bg-muted hover:text-foreground cursor-pointer"
               title="取消回复"
             >
               <X className="size-3" />

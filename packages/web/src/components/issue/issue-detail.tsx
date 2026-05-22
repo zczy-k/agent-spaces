@@ -335,7 +335,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
         {!composerOpen ? (
           <button
             onClick={() => setComposerOpen(true)}
-            className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all z-10"
+            className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all z-10 cursor-pointer"
           >
             <MessageSquare className="size-4" />
             <span className="text-sm font-medium">{t('detail.comment')}</span>
@@ -345,7 +345,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
             <div className="relative">
               <button
                 onClick={() => setComposerOpen(false)}
-                className="absolute -top-2 -right-2 z-20 size-6 rounded-full bg-muted border shadow-sm flex items-center justify-center hover:bg-muted/80 transition-colors"
+                className="absolute -top-2 -right-2 z-20 size-6 rounded-full bg-muted border shadow-sm flex items-center justify-center hover:bg-muted/80 transition-colors cursor-pointer"
               >
                 <X className="size-3.5" />
               </button>

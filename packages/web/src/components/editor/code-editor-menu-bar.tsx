@@ -115,7 +115,7 @@ export function EditorMenuBar({ editorRef, workspaceId, isReadOnly, onToggleRead
       <div className="flex-1" />
       <button
         onClick={onToggleReadOnly}
-        className="flex items-center gap-1 px-2 h-full text-xs text-muted-foreground hover:text-foreground hover:bg-accent outline-none cursor-default"
+        className="flex items-center gap-1 px-2 h-full text-xs text-muted-foreground hover:text-foreground hover:bg-accent outline-none cursor-default cursor-pointer"
         title={isReadOnly ? t('enableEdit') : t('disableEdit')}
       >
         {isReadOnly ? '🔒' : '✏️'}

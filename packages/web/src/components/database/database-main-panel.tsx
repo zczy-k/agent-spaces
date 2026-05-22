@@ -126,7 +126,7 @@ export function DatabaseMainPanel({
                 <span className="text-sm select-none shrink-0">{tabNode.icon || '📝'}</span>
                 <span className="truncate max-w-[120px]">{tabNode.title || t('untitled')}</span>
                 <button onClick={(e) => handleCloseTab(e, tabId)}
-                  className="p-0.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors ml-1 opacity-60 group-hover:opacity-100">
+                  className="p-0.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors ml-1 opacity-60 group-hover:opacity-100 cursor-pointer">
                   <X className="w-3 h-3" />
                 </button>
               </div>

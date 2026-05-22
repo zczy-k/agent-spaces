@@ -55,7 +55,7 @@ function DeletableEdge({
         <EdgeLabelRenderer>
           <button
             type="button"
-            className="nodrag nopan absolute flex items-center justify-center size-5 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/80 pointer-events-auto"
+            className="nodrag nopan absolute flex items-center justify-center size-5 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/80 pointer-events-auto cursor-pointer"
             style={{ transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)` }}
             onClick={() => setEdges((eds) => eds.filter((e) => e.id !== id))}
           >

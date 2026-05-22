@@ -124,7 +124,7 @@ export function ModelPickerDialog({
                   <span key={id} className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs max-w-[160px] min-w-0">
                     <Brain className="size-3 shrink-0 text-muted-foreground" />
                     <span className="truncate">{model?.name || id}</span>
-                    <button type="button" onClick={() => onToggle(id)} className="hover:text-destructive shrink-0">
+                    <button type="button" onClick={() => onToggle(id)} className="hover:text-destructive shrink-0 cursor-pointer">
                       <X className="size-3" />
                     </button>
                   </span>

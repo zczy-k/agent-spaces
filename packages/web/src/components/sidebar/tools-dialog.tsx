@@ -135,11 +135,11 @@ export function ToolsDialog({ open, onOpenChange, standalone, selectable, select
               <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={t('search')} className="pl-8" />
             </div>
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-              <button type="button" className={cn('shrink-0 px-2.5 py-1 rounded-md text-xs font-medium transition-colors', activeCategory === 'all' ? 'bg-muted' : 'text-muted-foreground hover:text-foreground')} onClick={() => setActiveCategory('all')}>
+              <button type="button" className={cn('shrink-0 px-2.5 py-1 rounded-md text-xs font-medium transition-colors', activeCategory === 'all' ? 'bg-muted' : 'text-muted-foreground hover:text-foreground', "cursor-pointer")} onClick={() => setActiveCategory('all')}>
                 {t('filterAll')}
               </button>
               {Object.entries(TOOL_CATEGORIES).map(([key]) => (
-                <button key={key} type="button" className={cn('shrink-0 px-2.5 py-1 rounded-md text-xs font-medium transition-colors', activeCategory === key ? 'bg-muted' : 'text-muted-foreground hover:text-foreground')} onClick={() => setActiveCategory(key)}>
+                <button key={key} type="button" className={cn('shrink-0 px-2.5 py-1 rounded-md text-xs font-medium transition-colors', activeCategory === key ? 'bg-muted' : 'text-muted-foreground hover:text-foreground', "cursor-pointer")} onClick={() => setActiveCategory(key)}>
                   {t(`categories.${key}`)}
                 </button>
               ))}
@@ -215,7 +215,7 @@ export function ToolsDialog({ open, onOpenChange, standalone, selectable, select
                       {selectable && (
                         <button
                           type="button"
-                          className="shrink-0 text-muted-foreground hover:text-foreground"
+                          className="shrink-0 text-muted-foreground hover:text-foreground cursor-pointer"
                           onClick={(e) => { e.stopPropagation(); setDetailTool(tool); }}
                         >
                           <Search className="size-3" />

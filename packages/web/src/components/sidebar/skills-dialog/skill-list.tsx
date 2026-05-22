@@ -482,7 +482,7 @@ export function SkillList({
                           )}
                           <button
                             type="button"
-                            className="flex items-center justify-center size-5 rounded hover:bg-accent"
+                            className="flex items-center justify-center size-5 rounded hover:bg-accent cursor-pointer"
                             onClick={(e) => { e.stopPropagation(); onToggleFavorite(skill); }}
                           >
                             {skill.favorited ? (
