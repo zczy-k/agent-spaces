@@ -91,6 +91,7 @@ class _WebViewPanelState extends ConsumerState<WebViewPanel> {
             ? state.tabs
             : state.visibleTabs,
         activeTabId: state.activeTabId,
+        savedDockingLayout: state.savedDockingLayout,
         webViewDebuggingEnabled: webViewDebuggingEnabled,
         onTitleChanged: (tabId, title, url, faviconUrl) {
           notifier.updateTab(
@@ -104,6 +105,7 @@ class _WebViewPanelState extends ConsumerState<WebViewPanel> {
         onTabClosed: notifier.closeTab,
         onNewTab: () => showNewTabDialog(context, notifier),
         onNewTerminal: notifier.addTerminalTab,
+        onDockingLayoutChanged: notifier.saveDockingLayout,
         onBuildMenu: (menuContext) => buildBrowserMenuItems(
           menuContext,
           ref,

@@ -13,6 +13,40 @@ typedef TabSelectedCallback = void Function(String tabId);
 typedef TabClosedCallback = void Function(String tabId);
 typedef DockingMenuBuilder =
     List<PopupMenuEntry<VoidCallback>> Function(BuildContext context);
+typedef DockingLayoutChangedCallback = void Function(String layout);
+
+class _StringLayoutParser extends LayoutParser with LayoutParserMixin {}
+
+class _BrowserDockingAreaBuilder extends AreaBuilder with AreaBuilderMixin {
+  _BrowserDockingAreaBuilder({
+    required this.tabsById,
+    required this.webViewDebuggingEnabled,
+    required this.onTitleChanged,
+  });
+
+  final Map<String, BrowserTab> tabsById;
+  final bool webViewDebuggingEnabled;
+  final TitleChangedCallback onTitleChanged;
+
+  @override
+  DockingItem buildDockingItem({
+    required dynamic id,
+    required double? weight,
+    required bool maximized,
+  }) {
+    final tab = tabsById[id];
+    if (tab == null) {
+      throw ArgumentError('Saved layout references an unknown tab: $id');
+    }
+    return _buildDockingItem(
+      tab,
+      webViewDebuggingEnabled,
+      onTitleChanged,
+      weight: weight,
+      maximized: maximized,
+    );
+  }
+}
 
 Widget _buildWebViewPane(
   BrowserTab tab,
@@ -158,6 +192,7 @@ class SplitLayoutView extends StatefulWidget {
   final SplitLayout layout;
   final List<BrowserTab> visibleTabs;
   final String activeTabId;
+  final String? savedDockingLayout;
   final bool webViewDebuggingEnabled;
   final TitleChangedCallback onTitleChanged;
   final TabSelectedCallback onTabSelected;
@@ -165,12 +200,14 @@ class SplitLayoutView extends StatefulWidget {
   final VoidCallback onNewTab;
   final VoidCallback onNewTerminal;
   final DockingMenuBuilder onBuildMenu;
+  final DockingLayoutChangedCallback onDockingLayoutChanged;
 
   const SplitLayoutView({
     super.key,
     required this.layout,
     required this.visibleTabs,
     required this.activeTabId,
+    this.savedDockingLayout,
     required this.webViewDebuggingEnabled,
     required this.onTitleChanged,
     required this.onTabSelected,
@@ -178,6 +215,7 @@ class SplitLayoutView extends StatefulWidget {
     required this.onNewTab,
     required this.onNewTerminal,
     required this.onBuildMenu,
+    required this.onDockingLayoutChanged,
   });
 
   @override
@@ -185,8 +223,11 @@ class SplitLayoutView extends StatefulWidget {
 }
 
 class _SplitLayoutViewState extends State<SplitLayoutView> {
+  static final _layoutParser = _StringLayoutParser();
   DockingLayout? _dockingLayout;
   String _structureKey = '';
+  String _lastSavedDockingLayout = '';
+  bool _hasRestoredSavedDockingLayout = false;
 
   @override
   void initState() {
@@ -203,6 +244,12 @@ class _SplitLayoutViewState extends State<SplitLayoutView> {
     } else {
       _syncDockingItems();
     }
+  }
+
+  @override
+  void dispose() {
+    _dockingLayout?.removeListener(_handleDockingLayoutChanged);
+    super.dispose();
   }
 
   @override
@@ -223,16 +270,6 @@ class _SplitLayoutViewState extends State<SplitLayoutView> {
           if (tabId is String) widget.onTabClosed(tabId);
         },
         dockingButtonsBuilder: (context, dockingTabs, dockingItem) => [
-          TabButton(
-            icon: IconProvider.data(Icons.add),
-            toolTip: 'tab_new_tab'.tr(),
-            onPressed: widget.onNewTab,
-          ),
-          TabButton(
-            icon: IconProvider.data(Icons.terminal),
-            toolTip: 'tab_new_terminal'.tr(),
-            onPressed: widget.onNewTerminal,
-          ),
           TabButton(
             icon: IconProvider.data(Icons.more_vert),
             toolTip: 'tab_more'.tr(),
@@ -258,7 +295,50 @@ class _SplitLayoutViewState extends State<SplitLayoutView> {
 
   void _rebuildLayout({String? structureKey}) {
     _structureKey = structureKey ?? _buildStructureKey();
-    _dockingLayout = DockingLayout(root: _buildRoot());
+    _dockingLayout?.removeListener(_handleDockingLayoutChanged);
+    final layout = DockingLayout(root: _buildRoot());
+    final restored = _restoreSavedDockingLayout(layout);
+    _selectDockingItem(layout, widget.activeTabId);
+    _lastSavedDockingLayout = _stringifyLayout(layout);
+    layout.addListener(_handleDockingLayoutChanged);
+    _dockingLayout = layout;
+    if (!restored) {
+      widget.onDockingLayoutChanged(_lastSavedDockingLayout);
+    }
+  }
+
+  bool _restoreSavedDockingLayout(DockingLayout layout) {
+    final savedLayout = widget.savedDockingLayout;
+    if (_hasRestoredSavedDockingLayout ||
+        savedLayout == null ||
+        savedLayout.isEmpty) {
+      return false;
+    }
+    _hasRestoredSavedDockingLayout = true;
+    try {
+      layout.load(
+        layout: savedLayout,
+        parser: _layoutParser,
+        builder: _BrowserDockingAreaBuilder(
+          tabsById: {for (final tab in widget.visibleTabs) tab.id: tab},
+          webViewDebuggingEnabled: widget.webViewDebuggingEnabled,
+          onTitleChanged: widget.onTitleChanged,
+        ),
+      );
+      return true;
+    } catch (_) {
+      layout.root = _buildRoot();
+      return false;
+    }
+  }
+
+  void _handleDockingLayoutChanged() {
+    final layout = _dockingLayout;
+    if (layout == null) return;
+    final serialized = _stringifyLayout(layout);
+    if (serialized == _lastSavedDockingLayout) return;
+    _lastSavedDockingLayout = serialized;
+    widget.onDockingLayoutChanged(serialized);
   }
 
   DockingArea _buildRoot() {
@@ -357,6 +437,7 @@ Widget buildSplitLayout({
   required SplitLayout layout,
   required List<BrowserTab> visibleTabs,
   required String activeTabId,
+  String? savedDockingLayout,
   required bool webViewDebuggingEnabled,
   required TitleChangedCallback onTitleChanged,
   required TabSelectedCallback onTabSelected,
@@ -364,12 +445,14 @@ Widget buildSplitLayout({
   required VoidCallback onNewTab,
   required VoidCallback onNewTerminal,
   required DockingMenuBuilder onBuildMenu,
+  required DockingLayoutChangedCallback onDockingLayoutChanged,
 }) {
   if (visibleTabs.isEmpty) return const SizedBox.shrink();
   return SplitLayoutView(
     layout: layout,
     visibleTabs: visibleTabs,
     activeTabId: activeTabId,
+    savedDockingLayout: savedDockingLayout,
     webViewDebuggingEnabled: webViewDebuggingEnabled,
     onTitleChanged: onTitleChanged,
     onTabSelected: onTabSelected,
@@ -377,6 +460,7 @@ Widget buildSplitLayout({
     onNewTab: onNewTab,
     onNewTerminal: onNewTerminal,
     onBuildMenu: onBuildMenu,
+    onDockingLayoutChanged: onDockingLayoutChanged,
   );
 }
 
@@ -473,15 +557,23 @@ void _selectDockingItem(DockingLayout layout, String tabId) {
 DockingItem _buildDockingItem(
   BrowserTab tab,
   bool webViewDebuggingEnabled,
-  TitleChangedCallback onTitleChanged,
-) {
+  TitleChangedCallback onTitleChanged, {
+  double? weight,
+  bool maximized = false,
+}) {
   return DockingItem(
     id: tab.id,
     name: tab.title,
     value: tab.id,
     closable: true,
+    weight: weight,
+    maximized: maximized,
     keepAlive: true,
     leading: (context, status) => _buildTabLeading(context, tab),
     widget: _buildTabPane(tab, webViewDebuggingEnabled, onTitleChanged),
   );
+}
+
+String _stringifyLayout(DockingLayout layout) {
+  return layout.stringify(parser: _SplitLayoutViewState._layoutParser);
 }

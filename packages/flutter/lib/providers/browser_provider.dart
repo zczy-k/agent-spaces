@@ -10,12 +10,14 @@ class BrowserState {
   final String activeTabId;
   final String homeUrl;
   final SplitLayout splitLayout;
+  final String? savedDockingLayout;
 
   const BrowserState({
     this.tabs = const [],
     this.activeTabId = '',
     this.homeUrl = 'http://localhost:3000',
     this.splitLayout = SplitLayout.single,
+    this.savedDockingLayout,
   });
 
   BrowserTab? get activeTab {
@@ -52,12 +54,14 @@ class BrowserState {
     String? activeTabId,
     String? homeUrl,
     SplitLayout? splitLayout,
+    String? savedDockingLayout,
   }) {
     return BrowserState(
       tabs: tabs ?? this.tabs,
       activeTabId: activeTabId ?? this.activeTabId,
       homeUrl: homeUrl ?? this.homeUrl,
       splitLayout: splitLayout ?? this.splitLayout,
+      savedDockingLayout: savedDockingLayout ?? this.savedDockingLayout,
     );
   }
 }
@@ -78,8 +82,12 @@ class BrowserNotifier extends StateNotifier<BrowserState> {
     if (_restoreLayoutOnStartup) {
       final savedLayout = await StorageService.loadSplitLayout();
       final splitLayout = _parseSplitLayout(savedLayout);
+      final savedDockingLayout = await StorageService.loadDockingLayout();
       if (splitLayout != null) {
         state = state.copyWith(splitLayout: splitLayout);
+      }
+      if (savedDockingLayout != null) {
+        state = state.copyWith(savedDockingLayout: savedDockingLayout);
       }
     }
 
@@ -183,6 +191,10 @@ class BrowserNotifier extends StateNotifier<BrowserState> {
   void setSplitLayout(SplitLayout layout) {
     state = state.copyWith(splitLayout: layout);
     StorageService.saveSplitLayout(layout.name);
+  }
+
+  void saveDockingLayout(String layout) {
+    StorageService.saveDockingLayout(layout);
   }
 
   void _persistTabs() {

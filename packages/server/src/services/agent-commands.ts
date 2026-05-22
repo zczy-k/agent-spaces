@@ -181,7 +181,7 @@ export function applyCommandToAgents(sourceAgentId: string, name: string, group:
   for (const targetId of targetAgentIds) {
     if (targetId === sourceAgentId) continue;
     try {
-      createCommand(targetId, src.name, src.content, src.group || undefined);
+      createCommand(targetId, src.name, src.content);
       applied++;
     } catch { /* skip */ }
   }

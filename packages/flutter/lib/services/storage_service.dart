@@ -10,6 +10,7 @@ class StorageService {
   static const _tabsKey = 'saved_tabs';
   static const _activeTabKey = 'saved_active_tab';
   static const _splitLayoutKey = 'saved_split_layout';
+  static const _dockingLayoutKey = 'saved_docking_layout';
   static const _homeUrlKey = 'home_url';
   static const _permissionDialogSeenKey = 'permission_dialog_seen';
   static const _terminalCredentialsKey = 'terminal_credentials';
@@ -103,6 +104,16 @@ class StorageService {
   static Future<String?> loadSplitLayout() async {
     final prefs = await _prefs;
     return prefs.getString(_splitLayoutKey);
+  }
+
+  static Future<void> saveDockingLayout(String layout) async {
+    final prefs = await _prefs;
+    await prefs.setString(_dockingLayoutKey, layout);
+  }
+
+  static Future<String?> loadDockingLayout() async {
+    final prefs = await _prefs;
+    return prefs.getString(_dockingLayoutKey);
   }
 
   static Future<void> saveHomeUrl(String url) async {
