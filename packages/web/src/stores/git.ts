@@ -10,6 +10,7 @@ interface GitState {
   loading: boolean;
   error: string | null;
   notGitRepo: boolean;
+  commitMsg: string;
 
   loadStatus: (workspaceId: string) => Promise<void>;
   loadDiffs: (workspaceId: string, filePath?: string) => Promise<void>;
@@ -25,6 +26,7 @@ interface GitState {
   getRemotes: (workspaceId: string) => Promise<{ name: string; refs: { fetch: string; push: string } }[]>;
   addRemote: (workspaceId: string, name: string, url: string) => Promise<void>;
   selectFile: (path: string | null) => void;
+  setCommitMsg: (msg: string) => void;
   checkoutDetached: (workspaceId: string, commitHash: string) => Promise<void>;
   cherryPick: (workspaceId: string, commitHash: string) => Promise<void>;
   createBranch: (workspaceId: string, name: string, startPoint?: string) => Promise<void>;
@@ -50,6 +52,7 @@ export const useGitStore = create<GitState>((set) => ({
   loading: false,
   error: null,
   notGitRepo: false,
+  commitMsg: '',
 
   loadStatus: async (workspaceId) => {
     try {
@@ -198,6 +201,7 @@ export const useGitStore = create<GitState>((set) => ({
   },
 
   selectFile: (path) => set({ selectedFile: path }),
+  setCommitMsg: (msg) => set({ commitMsg: msg }),
 
   checkoutDetached: async (workspaceId, commitHash) => {
     const res = await fetch(`/api/workspaces/${workspaceId}/git/checkout-detached`, {

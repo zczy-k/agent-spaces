@@ -58,7 +58,6 @@ const ALL_TOOLS = (BUILT_IN_AGENT_TOOLS ?? []) as readonly { name: BuiltInAgentT
 
 export function ToolsDialog({ open, onOpenChange, standalone, selectable, selectedTools: externalSelected, onSelectedToolsChange }: ToolsDialogProps) {
   const t = useTranslations('tools');
-  const tc = useTranslations('common');
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
@@ -152,6 +151,35 @@ export function ToolsDialog({ open, onOpenChange, standalone, selectable, select
             <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={t('search')} className="pl-8" />
           </div>
+
+          {selectable && filteredTools.length > 0 && (
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">
+                {t('enabledCount', { count: filteredTools.filter((t) => selected.has(t.name)).length, total: filteredTools.length })}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 text-xs"
+                onClick={() => {
+                  const allSelected = filteredTools.every((t) => selected.has(t.name));
+                  const next = new Set<BuiltInAgentToolName>(selected);
+                  if (allSelected) {
+                    filteredTools.forEach((t) => next.delete(t.name));
+                  } else {
+                    filteredTools.forEach((t) => next.add(t.name));
+                  }
+                  if (onSelectedToolsChange) {
+                    onSelectedToolsChange(ALL_TOOLS.map((t) => t.name).filter((n) => next.has(n)));
+                  } else {
+                    setInternalSelected(next);
+                  }
+                }}
+              >
+                {filteredTools.every((t) => selected.has(t.name)) ? t('deselectAll') : t('selectAll')}
+              </Button>
+            </div>
+          )}
 
           <ScrollArea className="flex-1">
             {filteredTools.length === 0 ? (

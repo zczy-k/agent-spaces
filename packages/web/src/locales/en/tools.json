@@ -6,6 +6,8 @@
   "detailTitle": "Tool Details",
   "enabledCount": "{count}/{total} tools enabled",
   "selectTools": "Select Tools",
+  "selectAll": "Select All",
+  "deselectAll": "Deselect All",
   "categories": {
     "channel": "Channel",
     "terminal": "Terminal",

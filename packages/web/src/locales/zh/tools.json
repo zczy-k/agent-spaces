@@ -6,6 +6,8 @@
   "detailTitle": "工具详情",
   "enabledCount": "已启用 {count}/{total} 个工具",
   "selectTools": "选择工具",
+  "selectAll": "全选",
+  "deselectAll": "取消全选",
   "categories": {
     "channel": "频道管理",
     "terminal": "终端/命令",

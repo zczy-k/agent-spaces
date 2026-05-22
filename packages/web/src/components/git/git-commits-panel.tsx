@@ -46,12 +46,12 @@ export function GitCommitsPanel({ workspaceId }: Props) {
     log, loading, notGitRepo, status, branches, diffs, selectedFile,
     loadStatus, loadDiffs, loadLog, loadBranches,
     commit, discard, discardAll, checkout, selectFile,
+    commitMsg, setCommitMsg,
   } = useGitStore();
   const openFile = useEditorStore((s) => s.openFile);
   const openCommitDiff = useEditorStore((s) => s.openCommitDiff);
 
   const [branchOpen, setBranchOpen] = useState(false);
-  const [commitMsg, setCommitMsg] = useState("");
   const [committing, setCommitting] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [promptDialog, setPromptDialog] = useState<{
