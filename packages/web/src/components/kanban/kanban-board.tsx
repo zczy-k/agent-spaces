@@ -166,10 +166,10 @@ export default function KanbanBoardPanel({ workspaceId }: KanbanBoardProps) {
         </div>
         <div className="flex items-center gap-1 ml-auto">
           {(['all', 'high', 'medium', 'low'] as const).map((p) => (
-            <button key={p} onClick={() => setPriorityFilter(p)} className={`px-2.5 py-1 text-[10px] rounded-full border transition font-medium cursor-pointer ${priorityFilter === p ? 'bg-stone-800 dark:bg-neutral-100 dark:text-neutral-900 border-stone-800 text-white' : 'bg-white dark:bg-neutral-800 dark:border-neutral-600 dark:text-neutral-300 hover:bg-stone-50 text-stone-600 border-stone-200'}`}>{priorityLabels[p]}</button>
+            <button key={p} onClick={() => setPriorityFilter(p)} className={`px-2.5 py-1 text-[10px] rounded-full border transition font-medium cursor-pointer ${priorityFilter === p ? 'bg-primary text-primary-foreground border-primary' : 'bg-white dark:bg-neutral-800 dark:border-neutral-600 dark:text-neutral-300 hover:bg-stone-50 text-stone-600 border-stone-200'}`}>{priorityLabels[p]}</button>
           ))}
         </div>
-        <button onClick={() => handleAddTask(columns[0]?.id || '')} disabled={columns.length === 0} className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-800 dark:bg-neutral-100 dark:text-neutral-900 text-white rounded-lg text-xs font-semibold shadow-xs transition cursor-pointer disabled:opacity-50"><Plus className="h-3.5 w-3.5" />{t('newCard')}</button>
+        <button onClick={() => handleAddTask(columns[0]?.id || '')} disabled={columns.length === 0} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-semibold shadow-xs transition cursor-pointer disabled:opacity-50"><Plus className="h-3.5 w-3.5" />{t('newCard')}</button>
         <button onClick={() => setIsColumnModalOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-neutral-800 border border-stone-200 dark:border-neutral-600 rounded-lg text-xs font-semibold text-stone-600 dark:text-neutral-300 shadow-xs transition cursor-pointer"><Layout className="h-3.5 w-3.5" />{t('section')}</button>
         <button onClick={() => updateLayoutMode(workspaceId, layoutMode === 'horizontal' ? 'vertical' : 'horizontal')} className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-neutral-800 border border-stone-200 dark:border-neutral-600 rounded-lg text-xs font-semibold text-stone-600 dark:text-neutral-300 shadow-xs transition cursor-pointer"><LayoutGrid className="h-3.5 w-3.5" />{layoutMode === 'horizontal' ? t('vertical') : t('horizontal')}</button>
       </div>
@@ -180,7 +180,7 @@ export default function KanbanBoardPanel({ workspaceId }: KanbanBoardProps) {
           <div className="flex-1 flex flex-col items-center justify-center py-16 border border-dashed border-stone-200 dark:border-neutral-600 rounded-3xl">
             <Layers className="h-10 w-10 text-stone-300 mb-3" />
             <p className="text-sm font-bold text-stone-500 dark:text-neutral-400">{t('noSections')}</p>
-            <button onClick={() => setIsColumnModalOpen(true)} className="mt-4 px-4 py-2 bg-stone-800 dark:bg-neutral-100 dark:text-neutral-900 text-white rounded-xl text-xs font-bold cursor-pointer">{t('addSection')}</button>
+            <button onClick={() => setIsColumnModalOpen(true)} className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-xs font-bold cursor-pointer">{t('addSection')}</button>
           </div>
         ) : (
           <DndContext sensors={sensors} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>

@@ -10,10 +10,13 @@ import type { PanelImperativeHandle, Layout } from 'react-resizable-panels';
 import { useDatabaseStore } from '@/stores/database';
 import { useLLMStore } from '@/stores/llm';
 import type { DatabaseMeta } from '@agent-spaces/shared';
+import { Bot } from 'lucide-react';
+import { FloatingBall } from '@/components/common/floating-ball';
 import { DatabaseDialog } from './database-dialog';
 import { DatabaseVectorDialog } from './database-vector-dialog';
 import { DatabaseSidebar } from './database-sidebar';
 import { DatabaseMainPanel } from './database-main-panel';
+import { DatabaseAiChat } from './database-ai-chat';
 import QuickSearchModal from './quick-search-modal';
 import TrashBinModal from './trash-bin-modal';
 import {
@@ -47,6 +50,7 @@ export default function DatabasePanel({ workspaceId }: Props) {
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
   const [databaseDialogOpen, setDatabaseDialogOpen] = useState(false);
   const [vectorDialogOpen, setVectorDialogOpen] = useState(false);
+  const [aiChatOpen, setAiChatOpen] = useState(false);
   const [editingDatabase, setEditingDatabase] = useState<DatabaseMeta | null>(null);
 
   useEffect(() => { if (!loaded) load(workspaceId); }, [loaded, load, workspaceId]);
@@ -173,6 +177,21 @@ export default function DatabasePanel({ workspaceId }: Props) {
         onBind={handleBindEmbeddingModel}
         onIndex={handleIndexVectors}
       />
+      <FloatingBall
+        lsKey={`database-ai-ball:${workspaceId}`}
+        onClick={() => setAiChatOpen(true)}
+        visible={!aiChatOpen}
+        className="bg-primary text-primary-foreground shadow-lg border border-primary/20"
+      >
+        <Bot className="size-5" />
+      </FloatingBall>
+      {aiChatOpen && (
+        <DatabaseAiChat
+          workspaceId={workspaceId}
+          onClose={() => setAiChatOpen(false)}
+          onMinimize={() => setAiChatOpen(false)}
+        />
+      )}
     </div>
   );
 }

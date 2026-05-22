@@ -15,6 +15,7 @@ interface FloatingPanelProps {
   children: ReactNode;
   className?: string;
   zIndex?: number;
+  headerActions?: ReactNode;
 }
 
 interface Rect {
@@ -59,6 +60,7 @@ export function FloatingPanel({
   children,
   className,
   zIndex = 99991,
+  headerActions,
 }: FloatingPanelProps) {
   const [mounted, setMounted] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -217,6 +219,11 @@ export function FloatingPanel({
       >
         <span className="text-sm font-medium truncate text-gray-700 dark:text-gray-300">{title}</span>
         <div className="flex items-center gap-0.5 shrink-0">
+          {headerActions && (
+            <div onPointerDown={(e) => e.stopPropagation()} className="flex items-center">
+              {headerActions}
+            </div>
+          )}
           {onMinimize && (
             <button
               onPointerDown={(e) => e.stopPropagation()}

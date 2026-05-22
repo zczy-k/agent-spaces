@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   Plus, X, ChevronRight, Sidebar, Layers, BookOpen,
   Minimize2, Maximize2, Check, MoreHorizontal,
@@ -12,10 +12,11 @@ import { htmlToMarkdown, markdownToHtml } from '@/lib/converter';
 import { useDatabaseStore } from '@/stores/database';
 import { PRESET_COVERS, type DatabaseNodeVersion } from '@agent-spaces/shared';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { Markdown } from '@/components/ui/markdown';
 import NotionEditor from './notion-editor';
 import MarkdownEditor from './markdown-editor';
 import { TableOfContents, extractTocFromHtml, extractTocFromMarkdown } from './table-of-contents';
-import { DiffViewer } from '@/components/git/diff-viewer';
 import type { PanelImperativeHandle } from 'react-resizable-panels';
 
 interface DatabaseMainPanelProps {
@@ -39,22 +40,12 @@ export function DatabaseMainPanel({
   const t = useTranslations('database');
   const tc = useTranslations('common');
 
-  const [settingsDropdownOpen, setSettingsDropdownOpen] = useState(false);
   const [tocOpen, setTocOpen] = useState(true);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [versions, setVersions] = useState<DatabaseNodeVersion[]>([]);
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
-  const settingsDropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (settingsDropdownRef.current && !settingsDropdownRef.current.contains(e.target as Node)) setSettingsDropdownOpen(false);
-    };
-    if (settingsDropdownOpen) document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [settingsDropdownOpen]);
 
   const activeNode = nodes.find(n => n.id === activeId);
   const wordCount = activeNode ? (activeNode.content.replace(/<[^>]*>/g, '').trim().length || 0) : 0;
@@ -88,7 +79,6 @@ export function DatabaseMainPanel({
   const handleOpenHistory = useCallback(async () => {
     if (!activeNode) return;
     setHistoryOpen(true);
-    setSettingsDropdownOpen(false);
     setHistoryLoading(true);
     setHistoryError(null);
     try {
@@ -197,47 +187,45 @@ export function DatabaseMainPanel({
               <List className="w-4 h-4" />
             </button>
             <div className="w-[1px] h-5 bg-border" />
-            <div className="relative" ref={settingsDropdownRef}>
-              <button onClick={() => setSettingsDropdownOpen(!settingsDropdownOpen)}
-                className="w-9 h-9 rounded-xl border border-border hover:border-muted-foreground/40 bg-card text-muted-foreground hover:text-foreground transition-all cursor-pointer flex items-center justify-center shrink-0">
+            <DropdownMenu>
+              <DropdownMenuTrigger className="w-9 h-9 rounded-xl border border-border hover:border-muted-foreground/40 bg-card text-muted-foreground hover:text-foreground transition-all cursor-pointer flex items-center justify-center shrink-0">
                 <MoreHorizontal className="w-4 h-4" />
-              </button>
-              {settingsDropdownOpen && (
-                <div className="absolute right-0 top-[calc(100%+6px)] w-56 bg-popover border border-border rounded-xl shadow-2xl py-2 z-50 text-left">
-                  <div className="px-3.5 py-1.5 border-b border-border bg-muted/50 text-muted-foreground text-[10px] font-bold uppercase tracking-wider select-none mb-1">{t('typographyAndFont')}</div>
-                  {themeOptions.map(({ key, label, fontClass }) => (
-                    <button key={key} onClick={() => { setTheme(key); setSettingsDropdownOpen(false); }}
-                      className={cn("w-full text-left px-3.5 py-2 flex items-center justify-between text-xs transition-colors cursor-pointer",
-                        theme === key ? "text-foreground font-semibold bg-accent" : "text-muted-foreground hover:text-foreground hover:bg-accent/50")}>
-                      <div className="flex items-center gap-2">
-                        <span className={cn("text-xs bg-muted text-foreground px-1.5 py-0.5 rounded border border-border font-medium", fontClass)}>Ag</span>
-                        <span className={fontClass}>{label}</span>
-                      </div>
-                      {theme === key && <Check className="w-3.5 h-3.5 text-foreground" />}
-                    </button>
-                  ))}
-                  <div className="h-[1px] bg-border my-1.5" />
-                  <button onClick={handleOpenHistory}
-                    className="w-full text-left px-3.5 py-2 flex items-center justify-between text-xs transition-colors cursor-pointer text-muted-foreground hover:text-foreground hover:bg-accent/50">
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-wider">{t('typographyAndFont')}</DropdownMenuLabel>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                {themeOptions.map(({ key, label, fontClass }) => (
+                  <DropdownMenuItem key={key} onClick={() => setTheme(key)}
+                    className={cn("flex items-center justify-between text-xs", theme === key && "font-semibold")}>
                     <div className="flex items-center gap-2">
-                      <History className="w-3.5 h-3.5 text-muted-foreground" />
-                      <span>{t('viewHistory')}</span>
+                      <span className={cn("text-xs bg-muted text-foreground px-1.5 py-0.5 rounded border border-border font-medium", fontClass)}>Ag</span>
+                      <span className={fontClass}>{label}</span>
                     </div>
-                  </button>
-                  <div className="h-[1px] bg-border my-1.5" />
-                  <div className="px-3.5 py-1 bg-muted/30 text-muted-foreground text-[10px] font-bold uppercase tracking-wider select-none mb-1">{t('pageWidth')}</div>
-                  <button onClick={() => { setIsFullWidth(!isFullWidth); setSettingsDropdownOpen(false); }}
-                    className={cn("w-full text-left px-3.5 py-2 flex items-center justify-between text-xs transition-colors cursor-pointer",
-                      isFullWidth ? "text-foreground font-semibold bg-accent" : "text-muted-foreground hover:text-foreground hover:bg-accent/50")}>
-                    <div className="flex items-center gap-2">
-                      {isFullWidth ? <Minimize2 className="w-3.5 h-3.5 text-muted-foreground" /> : <Maximize2 className="w-3.5 h-3.5 text-muted-foreground" />}
-                      <span>{isFullWidth ? t('restoreWidth') : t('fullWidth')}</span>
-                    </div>
-                    {isFullWidth && <Check className="w-3.5 h-3.5 text-foreground" />}
-                  </button>
-                </div>
-              )}
-            </div>
+                    {theme === key && <Check className="w-3.5 h-3.5" />}
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleOpenHistory} className="text-xs">
+                  <History className="w-3.5 h-3.5" />
+                  <span>{t('viewHistory')}</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-wider">{t('pageWidth')}</DropdownMenuLabel>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setIsFullWidth(!isFullWidth)}
+                  className={cn("flex items-center justify-between text-xs", isFullWidth && "font-semibold")}>
+                  <div className="flex items-center gap-2">
+                    {isFullWidth ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                    <span>{isFullWidth ? t('restoreWidth') : t('fullWidth')}</span>
+                  </div>
+                  {isFullWidth && <Check className="w-3.5 h-3.5" />}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         )}
       </div>
@@ -361,14 +349,22 @@ export function DatabaseMainPanel({
                 ))
               )}
             </div>
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 overflow-y-auto">
               {selectedVersion ? (
-                <DiffViewer
-                  oldContent={selectedVersion.oldContent}
-                  newContent={selectedVersion.newContent}
-                  path={`${activeNode?.title || 'database-node'}.md`}
-                  compactDiff
-                />
+                <div className="grid min-h-full grid-rows-2">
+                  <MarkdownVersionPane
+                    title="Before"
+                    content={selectedVersion.oldContent}
+                    workspaceId={workspaceId}
+                    tone="old"
+                  />
+                  <MarkdownVersionPane
+                    title="After"
+                    content={selectedVersion.newContent}
+                    workspaceId={workspaceId}
+                    tone="new"
+                  />
+                </div>
               ) : (
                 <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
                   {t('selectVersionDiff')}
@@ -379,5 +375,32 @@ export function DatabaseMainPanel({
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+function MarkdownVersionPane({
+  title,
+  content,
+  workspaceId,
+  tone,
+}: {
+  title: string;
+  content: string;
+  workspaceId: string;
+  tone: 'old' | 'new';
+}) {
+  return (
+    <section className="min-h-0 border-b border-border last:border-b-0">
+      <div className={cn(
+        "sticky top-0 z-10 flex items-center justify-between border-b border-border px-4 py-2 text-xs font-semibold",
+        tone === 'old' ? "bg-red-500/10 text-red-700 dark:text-red-300" : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+      )}>
+        <span>{title}</span>
+        <span className="font-mono text-[10px] opacity-70">{content.length} chars</span>
+      </div>
+      <div className="prose prose-sm dark:prose-invert max-w-none px-5 py-4 text-sm">
+        <Markdown content={content || '_Empty content_'} workspaceId={workspaceId} />
+      </div>
+    </section>
   );
 }
