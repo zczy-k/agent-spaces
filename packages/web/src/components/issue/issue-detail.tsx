@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import type { Task, IssueComment } from '@agent-spaces/shared';
 import { useTranslations } from 'next-intl';
 import { useIssueStore } from '@/stores/issue';
 import { useMobilePanelStore } from '@/stores/mobile-panel';
@@ -16,14 +17,13 @@ import { useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Mention from '@tiptap/extension-mention';
-import { IssueDetailHeader } from './issue-detail-header';
+import { IssueDetailHeader, type IssueDetailHeaderRef } from './issue-detail-header';
 import { IssueDetailTasksPanel } from './issue-detail-tasks-panel';
 import { IssueDetailComments } from './issue-detail-comments';
 import { IssueDetailInfoPanel } from './issue-detail-info-panel';
 import { collectMentionIds } from './collect-mention-ids';
 import { MessageSquare, X } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { IssueComment } from '@agent-spaces/shared';
 
 /* ------------------------------------------------------------------ */
 /*  IssueDetail                                                        */
@@ -46,6 +46,11 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const [composerOpen, setComposerOpen] = useState(false);
   const commentsViewportRef = useRef<HTMLDivElement | null>(null);
   const commentRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const headerRef = useRef<IssueDetailHeaderRef>(null);
+
+  const handleEditTask = useCallback((task: Task) => {
+    headerRef.current?.openEditDialog(task);
+  }, []);
 
   const t = useTranslations('issue');
   const tTask = useTranslations('task');
@@ -245,16 +250,23 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
       {/* Main content */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden relative">
         <IssueDetailHeader
+          ref={headerRef}
           issue={issue}
           workspaceId={workspaceId}
           t={t}
+          tc={tc}
           setEditOpen={setEditOpen}
           setInfoOpen={setInfoOpen}
           startIssue={startIssue}
           resumeIssue={resumeIssue}
+          continueIssue={continueIssue}
+          interruptIssue={interruptIssue}
           members={members}
           enabledAgents={enabledAgents}
           issueTasks={issueTasks}
+          updateIssue={updateIssue}
+          createTask={createTask}
+          updateTask={updateTask}
         />
 
         {tasksLoading ? (
@@ -277,20 +289,13 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
             issue={issue}
             workspaceId={workspaceId}
             issueTasks={issueTasks}
-            agents={enabledAgents}
             t={t}
             tTask={tTask}
-            tc={tc}
             retryTask={retryTask}
             cancelTask={cancelTask}
             reorderTasks={reorderTasks}
-            createTask={createTask}
-            updateTask={updateTask}
             deleteTask={deleteTask}
-            updateIssue={updateIssue}
-            startIssue={startIssue}
-            continueIssue={continueIssue}
-            interruptIssue={interruptIssue}
+            onEditTask={handleEditTask}
           />
         )}
 

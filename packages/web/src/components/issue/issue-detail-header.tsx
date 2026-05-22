@@ -1,41 +1,116 @@
 'use client';
 
+import { useState, forwardRef, useImperativeHandle } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AvatarGroup } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AgentIcon } from '@/components/common/agent-icon';
-import { ArrowLeft, RotateCcw, Clock, GitBranch, Info, Pencil, MessagesSquare } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Clock, GitBranch, Info, Pencil, MessagesSquare, Plus, Check, Play, StepForward, Ban } from 'lucide-react';
 import { useMobilePanelStore } from '@/stores/mobile-panel';
 import { useChannelStore } from '@/stores/channel';
 import { getMemberDisplayName } from '@/lib/agent-members';
+import { cn } from '@/lib/utils';
 import { ISSUE_STATUS_COLOR } from './issue-status-colors';
 import type { AgentConfig, Issue, Task } from '@agent-spaces/shared';
+
+export interface IssueDetailHeaderRef {
+  openEditDialog: (task: Task) => void;
+}
 
 interface IssueDetailHeaderProps {
   issue: Issue;
   workspaceId: string;
   t: (key: string, params?: Record<string, string | number | Date>) => string;
+  tc: (key: string) => string;
   setEditOpen: (open: boolean) => void;
   setInfoOpen: (open: boolean) => void;
   startIssue: (wsId: string, issueId: string) => void;
   resumeIssue: (wsId: string, issueId: string) => void;
+  continueIssue: (wsId: string, issueId: string) => void;
+  interruptIssue: (wsId: string, issueId: string) => void;
   members: string[];
   enabledAgents: AgentConfig[];
   issueTasks: Task[];
+  updateIssue: (wsId: string, issueId: string, data: Partial<Issue>) => Promise<void>;
+  createTask: (wsId: string, issueId: string, title: string, desc: string, agentConfigId: string) => Promise<Task>;
+  updateTask: (wsId: string, taskId: string, data: Partial<Task>) => Promise<void>;
 }
 
-export function IssueDetailHeader({
+export const IssueDetailHeader = forwardRef<IssueDetailHeaderRef, IssueDetailHeaderProps>(function IssueDetailHeader({
   issue,
   workspaceId,
   t,
+  tc,
   setEditOpen,
   setInfoOpen,
-  startIssue: _startIssue,
+  startIssue,
   resumeIssue,
+  continueIssue,
+  interruptIssue,
   members,
-  enabledAgents,
-  issueTasks: _issueTasks,
-}: IssueDetailHeaderProps) {
+  enabledAgents: agents,
+  issueTasks,
+  updateIssue,
+  createTask,
+  updateTask,
+}, ref) {
+  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskDesc, setNewTaskDesc] = useState('');
+  const [selectedAgentId, setSelectedAgentId] = useState('');
+
+  const activeTaskStatuses = new Set(['running', 'reviewing', 'retrying', 'waiting_review']);
+  const hasActiveTask = issueTasks.some((task) => activeTaskStatuses.has(task.status));
+  const hasRunnableTask = issueTasks.some((task) => {
+    if (task.status !== 'pending') return false;
+    const doneIds = new Set(issueTasks.filter((item) => item.status === 'done').map((item) => item.id));
+    return (task.dependsOnTaskIds ?? []).every((id) => doneIds.has(id));
+  });
+  const canStart = issue.status === 'draft' || issue.status === 'planned';
+  const canContinue = !hasActiveTask && hasRunnableTask && issue.status !== 'error' && issue.status !== 'completed' && issue.status !== 'archived';
+  const canInterrupt = hasActiveTask || issue.status === 'planned' || issue.status === 'in_progress';
+
+  const handleOpenTaskDialog = () => {
+    setEditingTask(null);
+    setNewTaskTitle('');
+    setNewTaskDesc('');
+    setSelectedAgentId('');
+    setTaskDialogOpen(true);
+  };
+
+  const handleCreateTask = async () => {
+    if (!newTaskTitle.trim() || !selectedAgentId) return;
+    if (editingTask) {
+      await updateTask(workspaceId, editingTask.id, {
+        title: newTaskTitle.trim(),
+        description: newTaskDesc.trim(),
+        agentConfigId: selectedAgentId,
+      });
+    } else {
+      await createTask(workspaceId, issue.id, newTaskTitle.trim(), newTaskDesc.trim(), selectedAgentId);
+    }
+    setNewTaskTitle('');
+    setNewTaskDesc('');
+    setSelectedAgentId('');
+    setEditingTask(null);
+    setTaskDialogOpen(false);
+  };
+
+  useImperativeHandle(ref, () => ({
+    openEditDialog: (task: Task) => {
+      setEditingTask(task);
+      setNewTaskTitle(task.title);
+      setNewTaskDesc(task.description);
+      setSelectedAgentId(task.agentConfigId ?? '');
+      setTaskDialogOpen(true);
+    },
+  }));
+
   return (
     <div className="shrink-0 p-4 pb-3 border-b">
       <div className="flex items-center gap-2 mb-1">
@@ -76,7 +151,7 @@ export function IssueDetailHeader({
                 <AgentIcon
                   key={member}
                   agentId={member !== 'user' ? member : undefined}
-                  name={getMemberDisplayName(enabledAgents, member)}
+                  name={getMemberDisplayName(agents, member)}
                   className="size-6 rounded-full"
                 />
               ))}
@@ -105,6 +180,79 @@ export function IssueDetailHeader({
       {issue.description && (
         <p className="text-sm text-muted-foreground mt-2">{issue.description}</p>
       )}
+      <div className="mt-2 flex items-center gap-2">
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Switch
+            size="sm"
+            checked={issue.continuousRun !== false}
+            onCheckedChange={(checked) => updateIssue(workspaceId, issue.id, { continuousRun: checked })}
+          />
+          <span>{t('detail.continuousRun')}</span>
+        </div>
+        {canStart && (
+          <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => startIssue(workspaceId, issue.id)}>
+            <Play className="h-3 w-3 mr-1" />
+            {t('detail.start')}
+          </Button>
+        )}
+        <Button size="sm" variant="outline" className="h-6 px-2 text-xs" disabled={!canContinue} onClick={() => continueIssue(workspaceId, issue.id)}>
+          <StepForward className="h-3 w-3 mr-1" />
+          {t('detail.continue')}
+        </Button>
+        <Button size="sm" variant="outline" className="h-6 px-2 text-xs text-destructive hover:text-destructive" disabled={!canInterrupt} onClick={() => interruptIssue(workspaceId, issue.id)}>
+          <Ban className="h-3 w-3 mr-1" />
+          {t('detail.interrupt')}
+        </Button>
+        <Dialog open={taskDialogOpen} onOpenChange={(open) => { setTaskDialogOpen(open); if (!open) setEditingTask(null); }}>
+          <DialogTrigger render={<Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleOpenTaskDialog} />}>
+            <Plus className="h-4 w-4" />
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{editingTask ? t('detail.editTask') : t('detail.addTask')}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <Input
+                placeholder={t('detail.taskTitlePlaceholder') as string}
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
+              />
+              <Textarea
+                placeholder={t('detail.taskDescriptionPlaceholder') as string}
+                value={newTaskDesc}
+                onChange={(e) => setNewTaskDesc(e.target.value)}
+                rows={3}
+              />
+              {agents.length > 0 && (
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Agent</label>
+                  <div className="flex flex-wrap gap-1">
+                    {agents.map((agent) => (
+                      <button
+                        key={agent.id}
+                        type="button"
+                        onClick={() => setSelectedAgentId(agent.id)}
+                        className={cn(
+                          'flex items-center gap-1.5 px-2 py-1 rounded-md text-xs transition-colors border',
+                          selectedAgentId === agent.id ? 'border-primary bg-primary/10 text-primary' : 'border-transparent hover:bg-muted',
+                        )}
+                      >
+                        <AgentIcon agentId={agent.id} name={agent.name} avatarUrl={agent.avatarUrl} apiBase={agent.apiBase} className="size-4 rounded-full" />
+                        <span className="truncate max-w-[80px]">{agent.name}</span>
+                        {selectedAgentId === agent.id && <Check className="size-3 shrink-0" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <Button onClick={handleCreateTask} disabled={!newTaskTitle.trim() || !selectedAgentId} size="sm">
+                {editingTask ? tc('save') : t('detail.addTask')}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
       {issue.status === 'error' && (
         <div className="mt-2 flex items-center gap-2">
           <Button size="sm" variant="outline" onClick={() => resumeIssue(workspaceId, issue.id)}>
@@ -120,4 +268,4 @@ export function IssueDetailHeader({
       )}
     </div>
   );
-}
+});
