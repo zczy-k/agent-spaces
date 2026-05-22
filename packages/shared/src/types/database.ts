@@ -1,5 +1,15 @@
+export interface DatabaseMeta {
+  id: string;
+  workspaceId: string;
+  name: string;
+  description: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface DocNode {
   id: string;
+  databaseId: string;
   title: string;
   icon: string;
   cover: string;

@@ -5,15 +5,29 @@ import {
   Sidebar, Search, Plus, Trash, X, ChevronRight,
   Layers, BookOpen, Minimize2, Maximize2, Check,
   CheckCircle, FileCheck, Clock, Sparkles, SlidersHorizontal, MoreHorizontal,
-  ChevronDown, Edit2, Move, Trash2,
+  ChevronDown, Edit2, Move, Trash2, Database,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { htmlToMarkdown, markdownToHtml } from '@/lib/converter';
 import { useDatabaseStore } from '@/stores/database';
 import { PRESET_COVERS } from '@agent-spaces/shared';
-import type { DocNode } from '@agent-spaces/shared';
+import type { DatabaseMeta, DocNode } from '@agent-spaces/shared';
 import { NestedTree } from '@/components/editor/file-tree';
 import type { NestedTreeRenderState, NestedTreeRowProps } from '@/components/editor/file-tree';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 import {
   ResizableHandle,
@@ -29,6 +43,13 @@ import TrashBinModal from './trash-bin-modal';
 
 interface Props {
   workspaceId: string;
+}
+
+interface DatabaseDialogProps {
+  open: boolean;
+  database: DatabaseMeta | null;
+  onOpenChange: (open: boolean) => void;
+  onSave: (input: { name: string; description: string }) => Promise<void>;
 }
 
 const PANEL_LAYOUT_KEY = 'database-panel-layout';
@@ -57,6 +78,70 @@ function loadPanelLayout(): Layout | undefined {
 }
 
 const EMOJIS = ['📁', '📄', '📎', '🚀', '💡', '⭐', '🎯', '🎨', '📇', '📈', '☑️', '🔥', '🔍', '📮', '🧪', '✍️', '✅', '📸', '🔀', '🧭'];
+
+function DatabaseDialog({ open, database, onOpenChange, onSave }: DatabaseDialogProps) {
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setName(database?.name ?? '');
+    setDescription(database?.description ?? '');
+  }, [database, open]);
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const cleanName = name.trim();
+    if (!cleanName || saving) return;
+    setSaving(true);
+    try {
+      await onSave({ name: cleanName, description: description.trim() });
+      onOpenChange(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden">
+        <form onSubmit={handleSubmit}>
+          <DialogHeader className="px-5 py-4 border-b border-border">
+            <DialogTitle className="text-sm">{database ? 'Edit database' : 'Create database'}</DialogTitle>
+          </DialogHeader>
+          <div className="p-5 space-y-4">
+            <label className="block space-y-1.5">
+              <span className="text-xs font-medium text-muted-foreground">Name</span>
+              <input
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring"
+                autoFocus
+              />
+            </label>
+            <label className="block space-y-1.5">
+              <span className="text-xs font-medium text-muted-foreground">Description</span>
+              <textarea
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                className="min-h-20 w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring"
+              />
+            </label>
+          </div>
+          <DialogFooter className="px-5 py-4">
+            <button type="button" onClick={() => onOpenChange(false)} className="px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-accent">
+              Cancel
+            </button>
+            <button type="submit" disabled={!name.trim() || saving} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground disabled:opacity-50">
+              {saving ? 'Saving...' : 'Save'}
+            </button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 interface DatabaseTreeNodeProps {
   node: DocNode;
@@ -200,9 +285,11 @@ function DatabaseTreeNode({
 
 export default function DatabasePanel({ workspaceId }: Props) {
   const {
+    databases, activeDatabaseId,
     nodes, activeId, openTabs, recentIds, editorMode, theme, isFullWidth,
     openFolders, sidebarSearch, loading, loaded,
-    load, setActiveId, createNode, updateContent, renameNode, updateIcon,
+    load, setActiveDatabaseId, createDatabase, updateDatabase, deleteDatabase,
+    setActiveId, createNode, updateContent, renameNode, updateIcon,
     updateCover, trashNode, restoreNode, deleteNode, moveNode,
     setEditorMode, setTheme, setIsFullWidth, toggleFolder, setSidebarSearch,
     closeTab,
@@ -216,6 +303,8 @@ export default function DatabasePanel({ workspaceId }: Props) {
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
   const [newDropdownOpen, setNewDropdownOpen] = useState(false);
   const [settingsDropdownOpen, setSettingsDropdownOpen] = useState(false);
+  const [databaseDialogOpen, setDatabaseDialogOpen] = useState(false);
+  const [editingDatabase, setEditingDatabase] = useState<DatabaseMeta | null>(null);
   const newDropdownRef = useRef<HTMLDivElement>(null);
   const settingsDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -248,6 +337,7 @@ export default function DatabasePanel({ workspaceId }: Props) {
   const triggerSave = () => { setShowSaveSuccess(true); setTimeout(() => setShowSaveSuccess(false), 1200); };
 
   const activeNode = nodes.find(n => n.id === activeId);
+  const activeDatabase = databases.find((database) => database.id === activeDatabaseId) ?? databases[0] ?? null;
   const activeNodes = nodes.filter(n => !n.isTrash);
   const filteredNodes = activeNodes.filter(n => sidebarSearch ? (n.title || '').toLowerCase().includes(sidebarSearch.toLowerCase()) : true);
   const rootNodes = filteredNodes.filter(n => n.parentId === null);
@@ -325,6 +415,30 @@ export default function DatabasePanel({ workspaceId }: Props) {
     closeTab(tabId);
   }, [closeTab]);
 
+  const openCreateDatabaseDialog = useCallback(() => {
+    setEditingDatabase(null);
+    setDatabaseDialogOpen(true);
+  }, []);
+
+  const openEditDatabaseDialog = useCallback(() => {
+    setEditingDatabase(activeDatabase);
+    setDatabaseDialogOpen(true);
+  }, [activeDatabase]);
+
+  const handleSaveDatabase = useCallback(async (input: { name: string; description: string }) => {
+    if (editingDatabase) {
+      await updateDatabase(workspaceId, editingDatabase.id, input);
+      return;
+    }
+    await createDatabase(workspaceId, input);
+  }, [createDatabase, editingDatabase, updateDatabase, workspaceId]);
+
+  const handleDeleteDatabase = useCallback(async () => {
+    if (!activeDatabase || databases.length <= 1) return;
+    if (!confirm(`Delete database "${activeDatabase.name}" and all nodes inside it?`)) return;
+    await deleteDatabase(workspaceId, activeDatabase.id);
+  }, [activeDatabase, databases.length, deleteDatabase, workspaceId]);
+
   const wordCount = activeNode ? (activeNode.content.replace(/<[^>]*>/g, '').trim().length || 0) : 0;
 
   if (loading && !loaded) {
@@ -357,10 +471,41 @@ export default function DatabasePanel({ workspaceId }: Props) {
         <div className="px-4 py-3 border-b border-border bg-sidebar/80 backdrop-blur-md">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-muted to-muted-foreground/20 flex items-center justify-center font-bold text-base text-foreground border border-muted-foreground/20">📁</div>
-            <div className="flex flex-col">
+            <div className="hidden">
               <span className="text-xs font-bold text-foreground tracking-tight">知识库</span>
               <span className="text-[10px] text-muted-foreground font-medium font-mono leading-none mt-0.5">Database</span>
             </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger className="min-w-0 flex-1 flex items-center justify-between gap-2 rounded-lg px-1.5 py-1 text-left hover:bg-accent outline-none" title={activeDatabase?.name ?? 'Database'}>
+                <div className="min-w-0 flex flex-col">
+                  <span className="text-xs font-bold text-foreground tracking-tight truncate">{activeDatabase?.name ?? 'Database'}</span>
+                  <span className="text-[10px] text-muted-foreground font-medium font-mono leading-none mt-0.5">Database</span>
+                </div>
+                <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56">
+                {databases.map((database) => (
+                  <DropdownMenuItem key={database.id} onClick={() => { if (database.id !== activeDatabaseId) void setActiveDatabaseId(workspaceId, database.id); }} className="cursor-pointer">
+                    <Database className="w-4 h-4" />
+                    <span className="truncate flex-1">{database.name}</span>
+                    {database.id === activeDatabaseId && <Check className="w-4 h-4" />}
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={openCreateDatabaseDialog} className="cursor-pointer">
+                  <Plus className="w-4 h-4" />
+                  <span>Create database</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={openEditDatabaseDialog} disabled={!activeDatabase} className="cursor-pointer">
+                  <Edit2 className="w-4 h-4" />
+                  <span>Edit database</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleDeleteDatabase} disabled={!activeDatabase || databases.length <= 1} variant="destructive" className="cursor-pointer">
+                  <Trash2 className="w-4 h-4" />
+                  <span>Delete database</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
@@ -689,6 +834,12 @@ export default function DatabasePanel({ workspaceId }: Props) {
       <TrashBinModal isOpen={isTrashOpen} onClose={() => setIsTrashOpen(false)} nodes={nodes}
         onRestore={(id) => { restoreNode(workspaceId, id); triggerSave(); }}
         onDeletePermanent={(id) => { deleteNode(workspaceId, id); triggerSave(); }} />
+      <DatabaseDialog
+        open={databaseDialogOpen}
+        database={editingDatabase}
+        onOpenChange={setDatabaseDialogOpen}
+        onSave={handleSaveDatabase}
+      />
     </div>
   );
 }

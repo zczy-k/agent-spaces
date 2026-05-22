@@ -6,6 +6,10 @@ import { assertRecord, readRequiredString, readString, readOptionalString, readS
 const databasePathFilterInputSchema = {
   type: 'object',
   properties: {
+    databaseId: {
+      type: 'string',
+      description: 'Optional database ID. If omitted, the workspace default database is used.',
+    },
     path: {
       type: 'string',
       description: 'Optional knowledge base path using titles, for example "/" or "/Projects/Spec". Defaults to root.',
@@ -25,6 +29,10 @@ const databasePathFilterInputSchema = {
 const readDatabaseNodeInputSchema = {
   type: 'object',
   properties: {
+    databaseId: {
+      type: 'string',
+      description: 'Optional database ID. If omitted, the workspace default database is used.',
+    },
     id: {
       type: 'string',
       description: 'Knowledge base node ID.',
@@ -37,6 +45,10 @@ const readDatabaseNodeInputSchema = {
 const createDatabaseNodeInputSchema = {
   type: 'object',
   properties: {
+    databaseId: {
+      type: 'string',
+      description: 'Optional database ID. If omitted, the workspace default database is used.',
+    },
     title: {
       type: 'string',
       description: 'Knowledge base node title.',
@@ -69,6 +81,10 @@ const createDatabaseNodeInputSchema = {
 const writeDatabaseNodeInputSchema = {
   type: 'object',
   properties: {
+    databaseId: {
+      type: 'string',
+      description: 'Optional database ID. If omitted, the workspace default database is used.',
+    },
     id: {
       type: 'string',
       description: 'Knowledge base node ID.',
@@ -94,6 +110,10 @@ const writeDatabaseNodeInputSchema = {
 const deleteDatabaseNodeInputSchema = {
   type: 'object',
   properties: {
+    databaseId: {
+      type: 'string',
+      description: 'Optional database ID. If omitted, the workspace default database is used.',
+    },
     id: {
       type: 'string',
       description: 'Knowledge base node or directory ID.',
@@ -110,6 +130,10 @@ const deleteDatabaseNodeInputSchema = {
 const moveDatabaseNodeInputSchema = {
   type: 'object',
   properties: {
+    databaseId: {
+      type: 'string',
+      description: 'Optional database ID. If omitted, the workspace default database is used.',
+    },
     id: {
       type: 'string',
       description: 'Knowledge base node or directory ID to move.',
@@ -130,6 +154,7 @@ const moveDatabaseNodeInputSchema = {
 const updateDatabaseNodeMetaInputSchema = {
   type: 'object',
   properties: {
+    databaseId: { type: 'string', description: 'Optional database ID. If omitted, the workspace default database is used.' },
     id: { type: 'string', description: 'Knowledge base node ID.' },
     title: { type: 'string', description: 'New node title.' },
     icon: { type: 'string', description: 'New node icon.' },
@@ -146,14 +171,14 @@ export function createDatabaseFunctionTools(workspaceId: string, allowedTools?: 
   const tools: AgentFunctionTool[] = [
     {
       name: 'ListDatabaseNodes',
-      description: 'List knowledge base files and directories under a title path. Input: path, filter, includeTrash.',
+      description: 'List knowledge base files and directories under a title path. Input: databaseId, path, filter, includeTrash.',
       inputSchema: databasePathFilterInputSchema,
       annotations: { readOnly: true, openWorld: false },
       execute: async (input) => listDatabaseNodes(workspaceId, input),
     },
     {
       name: 'SearchDatabaseNodes',
-      description: 'Search knowledge base files by title or content under a title path. Input: path, filter, includeTrash.',
+      description: 'Search knowledge base files by title or content under a title path. Input: databaseId, path, filter, includeTrash.',
       inputSchema: databasePathFilterInputSchema,
       annotations: { readOnly: true, openWorld: false },
       execute: async (input) => searchDatabaseNodes(workspaceId, input),
@@ -227,7 +252,8 @@ interface DatabaseNodeSummary {
 
 function listDatabaseNodes(workspaceId: string, input: unknown): DatabaseNodeSummary[] {
   const data = assertRecord(input);
-  const nodes = databaseStore.listNodes(workspaceId);
+  const databaseId = resolveToolDatabaseId(workspaceId, data);
+  const nodes = databaseStore.listNodes(workspaceId, databaseId);
   const root = resolveDatabasePath(nodes, readOptionalString(data.path) ?? '/');
   const parentId = root?.id ?? null;
   const filter = normalizeSearchText(readOptionalString(data.filter));
@@ -241,7 +267,8 @@ function listDatabaseNodes(workspaceId: string, input: unknown): DatabaseNodeSum
 
 function searchDatabaseNodes(workspaceId: string, input: unknown): DatabaseNodeSummary[] {
   const data = assertRecord(input);
-  const nodes = databaseStore.listNodes(workspaceId);
+  const databaseId = resolveToolDatabaseId(workspaceId, data);
+  const nodes = databaseStore.listNodes(workspaceId, databaseId);
   const root = resolveDatabasePath(nodes, readOptionalString(data.path) ?? '/');
   const filter = normalizeSearchText(readOptionalString(data.filter));
   const includeTrash = data.includeTrash === true;
@@ -257,8 +284,9 @@ function searchDatabaseNodes(workspaceId: string, input: unknown): DatabaseNodeS
 function readDatabaseNode(workspaceId: string, input: unknown): DocNode & { path: string; children: DatabaseNodeSummary[] } {
   const data = assertRecord(input);
   const id = readRequiredString(data.id, 'id');
-  const node = requireDatabaseNode(workspaceId, id);
-  const nodes = databaseStore.listNodes(workspaceId);
+  const databaseId = resolveToolDatabaseId(workspaceId, data);
+  const node = requireDatabaseNode(workspaceId, id, databaseId);
+  const nodes = databaseStore.listNodes(workspaceId, databaseId);
   return {
     ...node,
     path: buildDatabaseNodePath(node, nodes),
@@ -271,7 +299,8 @@ function readDatabaseNode(workspaceId: string, input: unknown): DocNode & { path
 function createDatabaseNode(workspaceId: string, input: unknown): DocNode & { path: string } {
   const data = assertRecord(input);
   const title = readRequiredString(data.title, 'title');
-  const nodes = databaseStore.listNodes(workspaceId);
+  const databaseId = resolveToolDatabaseId(workspaceId, data);
+  const nodes = databaseStore.listNodes(workspaceId, databaseId);
   const parentId = resolveMoveParentId(nodes, data);
   if (parentId) {
     const parent = nodes.find((node) => node.id === parentId);
@@ -279,6 +308,7 @@ function createDatabaseNode(workspaceId: string, input: unknown): DocNode & { pa
   }
 
   const node = databaseStore.createNode(workspaceId, {
+    databaseId,
     title,
     content: readStringOrDefault(data.content, ''),
     parentId,
@@ -295,9 +325,10 @@ function createDatabaseNode(workspaceId: string, input: unknown): DocNode & { pa
 function writeDatabaseNode(workspaceId: string, input: unknown): DocNode {
   const data = assertRecord(input);
   const id = readRequiredString(data.id, 'id');
+  const databaseId = resolveToolDatabaseId(workspaceId, data);
   const content = readString(data.content, 'content');
   const mode = readOptionalString(data.mode) ?? 'insert';
-  const existing = requireDatabaseNode(workspaceId, id);
+  const existing = requireDatabaseNode(workspaceId, id, databaseId);
   let nextContent: string;
 
   if (mode === 'insert') {
@@ -312,7 +343,7 @@ function writeDatabaseNode(workspaceId: string, input: unknown): DocNode {
     throw new Error('mode must be one of: insert, replace, overwrite.');
   }
 
-  const updated = databaseStore.updateNode(workspaceId, id, { content: nextContent });
+  const updated = databaseStore.updateNode(workspaceId, id, { content: nextContent }, databaseId);
   if (!updated) throw new Error(`Database node not found: ${id}`);
   return updated;
 }
@@ -320,15 +351,16 @@ function writeDatabaseNode(workspaceId: string, input: unknown): DocNode {
 function deleteDatabaseNode(workspaceId: string, input: unknown): { ok: true; deletedIds: string[]; permanent: boolean } {
   const data = assertRecord(input);
   const id = readRequiredString(data.id, 'id');
-  requireDatabaseNode(workspaceId, id);
-  const nodes = databaseStore.listNodes(workspaceId);
+  const databaseId = resolveToolDatabaseId(workspaceId, data);
+  requireDatabaseNode(workspaceId, id, databaseId);
+  const nodes = databaseStore.listNodes(workspaceId, databaseId);
   const ids = collectDatabaseDescendantIds(nodes, id, true).reverse();
   const permanent = data.permanent === true;
 
   for (const nodeId of ids) {
     const ok = permanent
-      ? databaseStore.deleteNode(workspaceId, nodeId)
-      : Boolean(databaseStore.trashNode(workspaceId, nodeId));
+      ? databaseStore.deleteNode(workspaceId, nodeId, databaseId)
+      : Boolean(databaseStore.trashNode(workspaceId, nodeId, databaseId));
     if (!ok) throw new Error(`Failed to delete database node: ${nodeId}`);
   }
 
@@ -338,12 +370,13 @@ function deleteDatabaseNode(workspaceId: string, input: unknown): { ok: true; de
 function moveDatabaseNode(workspaceId: string, input: unknown): DocNode {
   const data = assertRecord(input);
   const id = readRequiredString(data.id, 'id');
-  requireDatabaseNode(workspaceId, id);
-  const nodes = databaseStore.listNodes(workspaceId);
+  const databaseId = resolveToolDatabaseId(workspaceId, data);
+  requireDatabaseNode(workspaceId, id, databaseId);
+  const nodes = databaseStore.listNodes(workspaceId, databaseId);
   const parentId = resolveMoveParentId(nodes, data);
   assertValidDatabaseParent(nodes, id, parentId);
 
-  const updated = databaseStore.moveNode(workspaceId, id, parentId);
+  const updated = databaseStore.moveNode(workspaceId, id, parentId, databaseId);
   if (!updated) throw new Error(`Database node not found: ${id}`);
   return updated;
 }
@@ -351,7 +384,8 @@ function moveDatabaseNode(workspaceId: string, input: unknown): DocNode {
 function updateDatabaseNodeMeta(workspaceId: string, input: unknown): DocNode {
   const data = assertRecord(input);
   const id = readRequiredString(data.id, 'id');
-  requireDatabaseNode(workspaceId, id);
+  const databaseId = resolveToolDatabaseId(workspaceId, data);
+  requireDatabaseNode(workspaceId, id, databaseId);
   const updates: Partial<DocNode> = {};
 
   if (typeof data.title === 'string') updates.title = data.title;
@@ -360,13 +394,13 @@ function updateDatabaseNodeMeta(workspaceId: string, input: unknown): DocNode {
   if (typeof data.isTrash === 'boolean') updates.isTrash = data.isTrash;
   if (Object.hasOwn(data, 'parentId')) {
     const parentId = data.parentId === null ? null : readRequiredString(data.parentId, 'parentId');
-    const nodes = databaseStore.listNodes(workspaceId);
+    const nodes = databaseStore.listNodes(workspaceId, databaseId);
     assertValidDatabaseParent(nodes, id, parentId);
     updates.parentId = parentId;
   }
 
   if (Object.keys(updates).length === 0) throw new Error('At least one metadata field is required.');
-  const updated = databaseStore.updateNode(workspaceId, id, updates);
+  const updated = databaseStore.updateNode(workspaceId, id, updates, databaseId);
   if (!updated) throw new Error(`Database node not found: ${id}`);
   return updated;
 }
@@ -443,8 +477,15 @@ function assertValidDatabaseParent(nodes: DocNode[], nodeId: string, parentId: s
   if (descendantIds.has(parentId)) throw new Error('A node cannot be moved under its own descendant.');
 }
 
-function requireDatabaseNode(workspaceId: string, id: string): DocNode {
-  const node = databaseStore.getNode(workspaceId, id);
+function resolveToolDatabaseId(workspaceId: string, data: Record<string, unknown>): string {
+  const databaseId = readOptionalString(data.databaseId);
+  if (!databaseId) return databaseStore.getDefaultDatabase(workspaceId).id;
+  if (!databaseStore.getDatabase(workspaceId, databaseId)) throw new Error(`Database not found: ${databaseId}`);
+  return databaseId;
+}
+
+function requireDatabaseNode(workspaceId: string, id: string, databaseId: string): DocNode {
+  const node = databaseStore.getNode(workspaceId, id, databaseId);
   if (!node) throw new Error(`Database node not found: ${id}`);
   return node;
 }
