@@ -158,7 +158,7 @@ const createDatabaseNodeInputSchema = {
     },
     icon: {
       type: 'string',
-      description: 'Optional icon.',
+      description: 'Optional icon. Defaults to the document emoji 📝.',
     },
     cover: {
       type: 'string',
@@ -642,7 +642,7 @@ function createDatabaseNode(workspaceId: string, input: unknown): DocNode & { pa
     title,
     content: readStringOrDefault(data.content, ''),
     parentId,
-    icon: readOptionalString(data.icon) ?? '馃摑',
+    icon: readOptionalString(data.icon) ?? '\u{1F4DD}',
     cover: readStringOrDefault(data.cover, ''),
   });
   const nextNodes = [...nodes, node];
