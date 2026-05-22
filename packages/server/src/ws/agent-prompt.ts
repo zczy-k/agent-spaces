@@ -216,8 +216,12 @@ function formatBuiltInToolContext(workspaceId: string, tools: BuiltInToolContext
       'Knowledge base database tool rules:',
       '- Knowledge base/database documents are Agent Spaces database nodes, not workspace filesystem files.',
       '- In Claude Code, call Agent Spaces database tools with their MCP names, for example mcp__agent-spaces__ListDatabaseNodes.',
+      '- To list available knowledge base databases and valid database IDs, call mcp__agent-spaces__ListDatabases.',
+      '- If the user does not specify a database, omit databaseId and the first database will be used automatically.',
+      '- Never use the workspace id as databaseId.',
       '- To list database files, call mcp__agent-spaces__ListDatabaseNodes with path and optional filter.',
       '- To search database files, call mcp__agent-spaces__SearchDatabaseNodes with path and optional filter.',
+      '- To run semantic vector search, call mcp__agent-spaces__QueryDatabaseVectors with query and optional databaseId.',
       '- To read database content, call mcp__agent-spaces__ReadDatabaseNode with an existing node id.',
       '- To inspect database document edit history, call mcp__agent-spaces__ListDatabaseNodeVersions with an existing node id.',
       '- To create a new database document, call mcp__agent-spaces__CreateDatabaseNode with title, optional content, and optional parentId or path.',
@@ -245,8 +249,10 @@ function isIssueToolName(name: string): boolean {
 }
 
 function isDatabaseToolName(name: string): boolean {
-  return name === 'ListDatabaseNodes'
+  return name === 'ListDatabases'
+    || name === 'ListDatabaseNodes'
     || name === 'SearchDatabaseNodes'
+    || name === 'QueryDatabaseVectors'
     || name === 'ReadDatabaseNode'
     || name === 'ListDatabaseNodeVersions'
     || name === 'CreateDatabaseNode'

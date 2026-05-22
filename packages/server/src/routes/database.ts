@@ -18,6 +18,7 @@ const pendingContentSaves = new Map<string, { timer: NodeJS.Timeout; content: st
 const CONTENT_SAVE_IDLE_MS = 30_000;
 const DATABASE_AGENT_ID = 'database-agent';
 const DATABASE_AGENT_TOOLS: BuiltInAgentToolName[] = [
+  'ListDatabases',
   'ListDatabaseNodes',
   'SearchDatabaseNodes',
   'QueryDatabaseVectors',
@@ -341,6 +342,9 @@ function buildDatabaseAgentPrompt(
     `- Current workspace id: ${workspaceId}`,
     '- MCP servers configured for this agent: none.',
     `- Available database tools: ${DATABASE_AGENT_TOOLS.map((tool) => `mcp__agent-spaces__${tool}`).join(', ')}.`,
+    '- Use mcp__agent-spaces__ListDatabases when you need to know valid database IDs.',
+    '- If the user does not specify a database, omit databaseId and the first database will be used automatically.',
+    '- Never use the workspace id as databaseId.',
     '- Do not use filesystem, command, issue, channel, web, or other non-database tools for knowledge base work.',
     '- If you need database content, call the database tools before answering.',
     '- Return only the final answer in Markdown. Do not include tool logs or implementation traces.',

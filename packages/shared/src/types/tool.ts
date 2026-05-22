@@ -35,6 +35,11 @@ export const BUILT_IN_AGENT_TOOLS = [
     description: 'Stop a running quick command by its ID.',
   },
   {
+    name: 'ListDatabases',
+    label: 'List Databases',
+    description: 'List knowledge base databases in the workspace and their IDs.',
+  },
+  {
     name: 'ListDatabaseNodes',
     label: 'List Database Nodes',
     description: 'List knowledge base nodes under a path, optionally filtered by title.',

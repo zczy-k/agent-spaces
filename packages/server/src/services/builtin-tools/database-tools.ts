@@ -9,7 +9,7 @@ const databasePathFilterInputSchema = {
   properties: {
     databaseId: {
       type: 'string',
-      description: 'Optional database ID. If omitted, the workspace default database is used.',
+      description: 'Optional database ID from ListDatabases. If omitted, the first database is used. Do not use workspaceId.',
     },
     path: {
       type: 'string',
@@ -27,12 +27,18 @@ const databasePathFilterInputSchema = {
   additionalProperties: false,
 };
 
+const listDatabasesInputSchema = {
+  type: 'object',
+  properties: {},
+  additionalProperties: false,
+};
+
 const readDatabaseNodeInputSchema = {
   type: 'object',
   properties: {
     databaseId: {
       type: 'string',
-      description: 'Optional database ID. If omitted, the workspace default database is used.',
+      description: 'Optional database ID from ListDatabases. If omitted, the first database is used. Do not use workspaceId.',
     },
     id: {
       type: 'string',
@@ -48,7 +54,7 @@ const listDatabaseNodeVersionsInputSchema = {
   properties: {
     databaseId: {
       type: 'string',
-      description: 'Optional database ID. If omitted, the workspace default database is used.',
+      description: 'Optional database ID from ListDatabases. If omitted, the first database is used. Do not use workspaceId.',
     },
     id: {
       type: 'string',
@@ -68,7 +74,7 @@ const queryDatabaseVectorsInputSchema = {
   properties: {
     databaseId: {
       type: 'string',
-      description: 'Optional database ID. If omitted, the workspace default database is used.',
+      description: 'Optional database ID from ListDatabases. If omitted, the first database is used. Do not use workspaceId.',
     },
     query: {
       type: 'string',
@@ -88,7 +94,7 @@ const createDatabaseNodeInputSchema = {
   properties: {
     databaseId: {
       type: 'string',
-      description: 'Optional database ID. If omitted, the workspace default database is used.',
+      description: 'Optional database ID from ListDatabases. If omitted, the first database is used. Do not use workspaceId.',
     },
     title: {
       type: 'string',
@@ -124,7 +130,7 @@ const writeDatabaseNodeInputSchema = {
   properties: {
     databaseId: {
       type: 'string',
-      description: 'Optional database ID. If omitted, the workspace default database is used.',
+      description: 'Optional database ID from ListDatabases. If omitted, the first database is used. Do not use workspaceId.',
     },
     id: {
       type: 'string',
@@ -153,7 +159,7 @@ const deleteDatabaseNodeInputSchema = {
   properties: {
     databaseId: {
       type: 'string',
-      description: 'Optional database ID. If omitted, the workspace default database is used.',
+      description: 'Optional database ID from ListDatabases. If omitted, the first database is used. Do not use workspaceId.',
     },
     id: {
       type: 'string',
@@ -173,7 +179,7 @@ const moveDatabaseNodeInputSchema = {
   properties: {
     databaseId: {
       type: 'string',
-      description: 'Optional database ID. If omitted, the workspace default database is used.',
+      description: 'Optional database ID from ListDatabases. If omitted, the first database is used. Do not use workspaceId.',
     },
     id: {
       type: 'string',
@@ -195,7 +201,7 @@ const moveDatabaseNodeInputSchema = {
 const updateDatabaseNodeMetaInputSchema = {
   type: 'object',
   properties: {
-    databaseId: { type: 'string', description: 'Optional database ID. If omitted, the workspace default database is used.' },
+    databaseId: { type: 'string', description: 'Optional database ID from ListDatabases. If omitted, the first database is used. Do not use workspaceId.' },
     id: { type: 'string', description: 'Knowledge base node ID.' },
     title: { type: 'string', description: 'New node title.' },
     icon: { type: 'string', description: 'New node icon.' },
@@ -211,22 +217,29 @@ export function createDatabaseFunctionTools(workspaceId: string, allowedTools?: 
   const allowedToolNames = getAllowedDatabaseToolNames(allowedTools);
   const tools: AgentFunctionTool[] = [
     {
+      name: 'ListDatabases',
+      description: 'List all knowledge base databases in the current workspace. Use this first when you need a databaseId.',
+      inputSchema: listDatabasesInputSchema,
+      annotations: { readOnly: true, openWorld: false },
+      execute: async () => listDatabases(workspaceId),
+    },
+    {
       name: 'ListDatabaseNodes',
-      description: 'List knowledge base files and directories under a title path. Input: databaseId, path, filter, includeTrash.',
+      description: 'List knowledge base files and directories under a title path. Input: optional databaseId, path, filter, includeTrash. If databaseId is omitted, the first database is used.',
       inputSchema: databasePathFilterInputSchema,
       annotations: { readOnly: true, openWorld: false },
       execute: async (input) => listDatabaseNodes(workspaceId, input),
     },
     {
       name: 'SearchDatabaseNodes',
-      description: 'Search knowledge base files by title or content under a title path. Input: databaseId, path, filter, includeTrash.',
+      description: 'Search knowledge base files by title or content under a title path. Input: optional databaseId, path, filter, includeTrash. If databaseId is omitted, the first database is used.',
       inputSchema: databasePathFilterInputSchema,
       annotations: { readOnly: true, openWorld: false },
       execute: async (input) => searchDatabaseNodes(workspaceId, input),
     },
     {
       name: 'QueryDatabaseVectors',
-      description: 'Semantic vector search for knowledge base files. The target database must be indexed and bound to an embedding agent. Input: databaseId, query, limit.',
+      description: 'Semantic vector search for knowledge base files. The target database must be indexed and bound to an embedding agent. Input: optional databaseId, query, limit. If databaseId is omitted, the first database is used.',
       inputSchema: queryDatabaseVectorsInputSchema,
       annotations: { readOnly: true, openWorld: false },
       execute: async (input) => queryDatabaseVectors(workspaceId, input),
@@ -289,6 +302,7 @@ function getAllowedDatabaseToolNames(allowedTools?: BuiltInAgentToolName[]): Set
   const names = new Set(allowedTools ?? BUILT_IN_AGENT_TOOLS.map((tool) => tool.name));
   const hasDatabaseTools = Array.from(names).some((name) => isDatabaseToolName(name));
   if (hasDatabaseTools) {
+    names.add('ListDatabases');
     names.add('CreateDatabaseNode');
     names.add('QueryDatabaseVectors');
     names.add('ListDatabaseNodeVersions');
@@ -307,6 +321,16 @@ interface DatabaseNodeSummary {
   updatedAt: number;
   childCount: number;
   contentLength: number;
+}
+
+function listDatabases(workspaceId: string) {
+  const databases = databaseStore.listDatabases(workspaceId);
+  const items = databases.length > 0 ? databases : [databaseStore.getDefaultDatabase(workspaceId)];
+  return items.map((database, index) => ({
+    ...database,
+    isDefault: index === 0,
+    nodeCount: databaseStore.listNodes(workspaceId, database.id).filter((node) => !node.isTrash).length,
+  }));
 }
 
 function listDatabaseNodes(workspaceId: string, input: unknown): DatabaseNodeSummary[] {
@@ -555,8 +579,12 @@ function assertValidDatabaseParent(nodes: DocNode[], nodeId: string, parentId: s
 
 function resolveToolDatabaseId(workspaceId: string, data: Record<string, unknown>): string {
   const databaseId = readOptionalString(data.databaseId);
+  if (databaseId === workspaceId) return databaseStore.getDefaultDatabase(workspaceId).id;
   if (!databaseId) return databaseStore.getDefaultDatabase(workspaceId).id;
-  if (!databaseStore.getDatabase(workspaceId, databaseId)) throw new Error(`Database not found: ${databaseId}`);
+  if (!databaseStore.getDatabase(workspaceId, databaseId)) {
+    const available = listDatabases(workspaceId).map((database) => `${database.name}=${database.id}`).join(', ');
+    throw new Error(`Database not found: ${databaseId}. Use ListDatabases to choose a valid databaseId. Available databases: ${available || 'none'}`);
+  }
   return databaseId;
 }
 
@@ -567,7 +595,8 @@ function requireDatabaseNode(workspaceId: string, id: string, databaseId: string
 }
 
 function isDatabaseToolName(name: string): boolean {
-  return name === 'ListDatabaseNodes'
+  return name === 'ListDatabases'
+    || name === 'ListDatabaseNodes'
     || name === 'SearchDatabaseNodes'
     || name === 'QueryDatabaseVectors'
     || name === 'ReadDatabaseNode'

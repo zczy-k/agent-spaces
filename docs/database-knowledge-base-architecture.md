@@ -306,6 +306,7 @@ packages/server/src/routes/database.ts
 
 允许的数据库工具：
 
+- `ListDatabases`
 - `ListDatabaseNodes`
 - `SearchDatabaseNodes`
 - `QueryDatabaseVectors`
