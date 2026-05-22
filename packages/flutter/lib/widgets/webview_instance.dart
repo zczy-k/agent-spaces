@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../bridge/js_bridge.dart';
 import '../models/browser_tab.dart';
 import '../providers/browser_provider.dart';
@@ -336,7 +337,7 @@ class _ErrorPlaceholder extends StatelessWidget {
             children: [
               Icon(Icons.cloud_off, size: 48, color: theme.disabledColor),
               const SizedBox(height: 12),
-              Text('加载失败', style: theme.textTheme.titleMedium),
+              Text('webview_load_failed'.tr(), style: theme.textTheme.titleMedium),
               const SizedBox(height: 8),
               Text(
                 message,
@@ -346,7 +347,7 @@ class _ErrorPlaceholder extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
-              FilledButton.tonal(onPressed: onRetry, child: const Text('重试')),
+              FilledButton.tonal(onPressed: onRetry, child: Text('retry'.tr())),
             ],
           ),
         ),

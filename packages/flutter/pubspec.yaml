@@ -37,6 +37,7 @@ dependencies:
   docking: ^1.16.2
   xterm: ^4.0.0
   dartssh2: ^2.17.1
+  easy_localization: ^3.0.8
 
 dev_dependencies:
   flutter_test:
@@ -63,7 +64,9 @@ flutter_launcher_icons:
 
 flutter:
   uses-material-design: true
+  generate: true
   assets:
+    - assets/translations/
     # BEGIN GENERATED WEB ASSETS
     - assets/web/
     - assets/web/_next/static/

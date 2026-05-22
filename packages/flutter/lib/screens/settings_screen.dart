@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../providers/settings_provider.dart';
 import '../services/notification_service.dart';
 import '../services/webview_service.dart';
@@ -54,7 +55,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (!mounted) return;
     setState(() => _clearingCache = false);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('缓存已清空'), duration: Duration(seconds: 1)),
+      SnackBar(content: Text('settings_cache_cleared'.tr()), duration: const Duration(seconds: 1)),
     );
   }
 
@@ -66,7 +67,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('设置', style: TextStyle(fontSize: 16)),
+        title: Text('settings'.tr(), style: const TextStyle(fontSize: 16)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, size: 20),
           onPressed: () => Navigator.of(context).pop(),
@@ -74,13 +75,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ),
       body: ListView(
         children: [
-          _SectionHeader(title: '启动'),
+          _SectionHeader(title: 'settings_startup'.tr()),
           SwitchListTile(
             dense: true,
             secondary: const Icon(Icons.restore, size: 20),
-            title: const Text('启动时恢复 Tabs', style: TextStyle(fontSize: 13)),
+            title: Text('settings_restore_tabs'.tr(), style: const TextStyle(fontSize: 13)),
             subtitle: Text(
-              '打开应用后恢复上次关闭时的标签页',
+              'settings_restore_tabs_desc'.tr(),
               style: TextStyle(
                 fontSize: 11,
                 color: theme.colorScheme.onSurfaceVariant,
@@ -89,15 +90,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             value: settings.restoreTabsOnStartup,
             onChanged: (v) => notifier.setRestoreTabsOnStartup(v),
           ),
-          _SectionHeader(title: '授权管理'),
+          _SectionHeader(title: 'settings_auth'.tr()),
           ListTile(
             dense: true,
             leading: const Icon(Icons.notifications_outlined, size: 20),
-            title: const Text('通知', style: TextStyle(fontSize: 13)),
+            title: Text('settings_notification'.tr(), style: const TextStyle(fontSize: 13)),
             subtitle: Text(
               _loadingNotificationPermission
-                  ? '检查中...'
-                  : (_notificationAllowed ? '已授权' : '未授权'),
+                  ? 'settings_notification_checking'.tr()
+                  : (_notificationAllowed ? 'settings_notification_allowed'.tr() : 'settings_notification_denied'.tr()),
               style: TextStyle(
                 fontSize: 11,
                 color: _notificationAllowed
@@ -112,17 +113,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ? null
                         : _requestNotificationPermission,
                     child: Text(
-                      _requestingNotificationPermission ? '授权中...' : '授权',
+                      _requestingNotificationPermission ? 'settings_notification_authorizing'.tr() : 'settings_notification_authorize'.tr(),
                     ),
                   ),
           ),
-          _SectionHeader(title: '浏览器'),
+          _SectionHeader(title: 'settings_browser'.tr()),
           SwitchListTile(
             dense: true,
             secondary: const Icon(Icons.bug_report_outlined, size: 20),
-            title: const Text('WebView 调试', style: TextStyle(fontSize: 13)),
+            title: Text('settings_webview_debug'.tr(), style: const TextStyle(fontSize: 13)),
             subtitle: Text(
-              '允许 Safari/Chrome 检查 WebView，切换后会重新初始化 WebView',
+              'settings_webview_debug_desc'.tr(),
               style: TextStyle(
                 fontSize: 11,
                 color: theme.colorScheme.onSurfaceVariant,
@@ -135,7 +136,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(v ? 'WebView 调试已开启' : 'WebView 调试已关闭'),
+                  content: Text(v ? 'settings_webview_debug_enabled'.tr() : 'settings_webview_debug_disabled'.tr()),
                   duration: const Duration(seconds: 1),
                 ),
               );
@@ -144,9 +145,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           SwitchListTile(
             dense: true,
             secondary: const Icon(Icons.visibility_off_outlined, size: 20),
-            title: const Text('无痕模式', style: TextStyle(fontSize: 13)),
+            title: Text('settings_incognito'.tr(), style: const TextStyle(fontSize: 13)),
             subtitle: Text(
-              '不保留浏览记录和缓存，重新打开标签页后生效',
+              'settings_incognito_desc'.tr(),
               style: TextStyle(
                 fontSize: 11,
                 color: theme.colorScheme.onSurfaceVariant,
@@ -157,7 +158,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               notifier.setIncognito(v);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(v ? '无痕模式已开启' : '无痕模式已关闭'),
+                  content: Text(v ? 'settings_incognito_enabled'.tr() : 'settings_incognito_disabled'.tr()),
                   duration: const Duration(seconds: 1),
                 ),
               );
@@ -166,9 +167,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ListTile(
             dense: true,
             leading: const Icon(Icons.cleaning_services_outlined, size: 20),
-            title: const Text('清空浏览器缓存', style: TextStyle(fontSize: 13)),
+            title: Text('settings_clear_cache'.tr(), style: const TextStyle(fontSize: 13)),
             subtitle: Text(
-              '清除所有 WebView 缓存数据',
+              'settings_clear_cache_desc'.tr(),
               style: TextStyle(
                 fontSize: 11,
                 color: theme.colorScheme.onSurfaceVariant,
@@ -183,13 +184,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 : const Icon(Icons.chevron_right, size: 20),
             onTap: _clearingCache ? null : _clearBrowserCache,
           ),
-          _SectionHeader(title: 'Terminal'),
+          _SectionHeader(title: 'settings_terminal'.tr()),
           ListTile(
             dense: true,
             leading: const Icon(Icons.key_outlined, size: 20),
-            title: const Text('Terminal 凭证管理', style: TextStyle(fontSize: 13)),
+            title: Text('settings_terminal_credentials'.tr(), style: const TextStyle(fontSize: 13)),
             subtitle: Text(
-              '管理 SSH 密码或私钥登录凭证',
+              'settings_terminal_credentials_desc'.tr(),
               style: TextStyle(
                 fontSize: 11,
                 color: theme.colorScheme.onSurfaceVariant,
@@ -198,19 +199,83 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             trailing: const Icon(Icons.chevron_right, size: 20),
             onTap: () => context.push('/settings/terminal-credentials'),
           ),
-          _SectionHeader(title: '其他'),
+          _SectionHeader(title: 'settings_language'.tr()),
+          ListTile(
+            dense: true,
+            leading: const Icon(Icons.language, size: 20),
+            title: Text('settings_language'.tr(), style: const TextStyle(fontSize: 13)),
+            subtitle: Text(
+              'settings_language_desc'.tr(),
+              style: TextStyle(
+                fontSize: 11,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  context.locale.languageCode == 'zh' ? 'language_zh'.tr() : 'language_en'.tr(),
+                  style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurfaceVariant),
+                ),
+                const SizedBox(width: 4),
+                const Icon(Icons.chevron_right, size: 20),
+              ],
+            ),
+            onTap: () => _showLanguageDialog(context),
+          ),
+          _SectionHeader(title: 'settings_other'.tr()),
           ListTile(
             dense: true,
             leading: const Icon(Icons.info_outline, size: 20),
-            title: const Text('关于', style: TextStyle(fontSize: 13)),
+            title: Text('about'.tr(), style: const TextStyle(fontSize: 13)),
             subtitle: Text(
-              '版本 0.1.0',
+              'settings_version'.tr(args: ['0.1.0']),
               style: TextStyle(
                 fontSize: 11,
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
             onTap: () => context.push('/about'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLanguageDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: Text('settings_language'.tr()),
+        children: [
+          SimpleDialogOption(
+            onPressed: () {
+              context.setLocale(const Locale('zh'));
+              Navigator.of(ctx).pop();
+            },
+            child: Row(
+              children: [
+                Text('language_zh'.tr(), style: const TextStyle(fontSize: 14)),
+                const Spacer(),
+                if (context.locale.languageCode == 'zh')
+                  Icon(Icons.check, size: 18, color: Theme.of(context).colorScheme.primary),
+              ],
+            ),
+          ),
+          SimpleDialogOption(
+            onPressed: () {
+              context.setLocale(const Locale('en'));
+              Navigator.of(ctx).pop();
+            },
+            child: Row(
+              children: [
+                Text('language_en'.tr(), style: const TextStyle(fontSize: 14)),
+                const Spacer(),
+                if (context.locale.languageCode == 'en')
+                  Icon(Icons.check, size: 18, color: Theme.of(context).colorScheme.primary),
+              ],
+            ),
           ),
         ],
       ),

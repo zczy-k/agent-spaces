@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class ActionCard extends StatelessWidget {
   final IconData icon;
@@ -100,7 +101,7 @@ class ServerCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('发现服务器', style: TextStyle(fontWeight: FontWeight.w600, color: theme.colorScheme.onPrimaryContainer)),
+                    Text('home_discover_server'.tr(), style: TextStyle(fontWeight: FontWeight.w600, color: theme.colorScheme.onPrimaryContainer)),
                     const SizedBox(height: 2),
                     Text(url, style: TextStyle(fontSize: 12, color: theme.colorScheme.onPrimaryContainer)),
                   ],

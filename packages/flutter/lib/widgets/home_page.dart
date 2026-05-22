@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'home_cards.dart';
 
 class HomePage extends StatefulWidget {
@@ -37,12 +38,12 @@ class _HomePageState extends State<HomePage> {
               Icon(Icons.hub, size: 56, color: theme.colorScheme.primary),
               const SizedBox(height: 16),
               Text(
-                'Agent Spaces',
+                'app_name'.tr(),
                 style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               Text(
-                '连接到 Agent Spaces 服务器',
+                'home_connect_to_server'.tr(),
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -50,24 +51,24 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 32),
               ActionCard(
                 icon: Icons.folder_open,
-                title: '打开本地',
-                subtitle: _hasLocalWeb ? '加载内置的 Web 前端（无需服务器）' : '未找到本地 Web 资源',
+                title: 'home_open_local'.tr(),
+                subtitle: _hasLocalWeb ? 'home_open_local_desc'.tr() : 'home_open_local_not_found'.tr(),
                 enabled: _hasLocalWeb,
                 onTap: _openLocal,
               ),
               const SizedBox(height: 12),
               ActionCard(
                 icon: Icons.link,
-                title: '手动输入地址',
-                subtitle: '输入服务器地址并设为默认',
+                title: 'home_manual_input'.tr(),
+                subtitle: 'home_manual_input_desc'.tr(),
                 enabled: true,
                 onTap: () => _showManualInput(),
               ),
               const SizedBox(height: 12),
               ActionCard(
                 icon: Icons.info_outline,
-                title: '关于 Agent Spaces',
-                subtitle: '版本信息与项目链接',
+                title: 'home_about'.tr(),
+                subtitle: 'home_about_desc'.tr(),
                 enabled: true,
                 onTap: () => context.push('/about'),
               ),
@@ -100,7 +101,7 @@ class _HomePageState extends State<HomePage> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('输入服务器地址'),
+        title: Text('home_enter_server_address'.tr()),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -111,8 +112,8 @@ class _HomePageState extends State<HomePage> {
           onSubmitted: (v) => _connectManual(ctx, v),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('取消')),
-          TextButton(onPressed: () => _connectManual(ctx, controller.text), child: const Text('连接')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text('cancel'.tr())),
+          TextButton(onPressed: () => _connectManual(ctx, controller.text), child: Text('home_connect'.tr())),
         ],
       ),
     );

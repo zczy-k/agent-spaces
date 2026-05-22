@@ -5,6 +5,7 @@ import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:xterm/xterm.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 import '../models/browser_tab.dart';
 import '../models/terminal_credential.dart';
@@ -101,9 +102,9 @@ class _TerminalInstanceState extends ConsumerState<TerminalInstance> {
                     children: [
                       Icon(Icons.terminal, color: theme.colorScheme.primary),
                       const SizedBox(width: 10),
-                      const Text(
-                        '新建 Terminal',
-                        style: TextStyle(
+                      Text(
+                        'terminal_new'.tr(),
+                        style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
                         ),
@@ -114,9 +115,9 @@ class _TerminalInstanceState extends ConsumerState<TerminalInstance> {
                   if (credentials.isNotEmpty) ...[
                     DropdownButtonFormField<String>(
                       initialValue: _selectedCredentialId,
-                      decoration: const InputDecoration(
-                        labelText: '选择已保存凭证',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: 'terminal_select_saved_credential'.tr(),
+                        border: const OutlineInputBorder(),
                       ),
                       items: credentials
                           .map(
@@ -146,14 +147,14 @@ class _TerminalInstanceState extends ConsumerState<TerminalInstance> {
                         flex: 3,
                         child: TextFormField(
                           controller: _hostController,
-                          decoration: const InputDecoration(
-                            labelText: '主机',
+                          decoration: InputDecoration(
+                            labelText: 'terminal_host'.tr(),
                             hintText: 'example.com',
-                            border: OutlineInputBorder(),
+                            border: const OutlineInputBorder(),
                           ),
                           validator: (value) =>
                               value == null || value.trim().isEmpty
-                              ? '请输入主机'
+                              ? 'terminal_host_hint'.tr()
                               : null,
                         ),
                       ),
@@ -161,15 +162,15 @@ class _TerminalInstanceState extends ConsumerState<TerminalInstance> {
                       Expanded(
                         child: TextFormField(
                           controller: _portController,
-                          decoration: const InputDecoration(
-                            labelText: '端口',
-                            border: OutlineInputBorder(),
+                          decoration: InputDecoration(
+                            labelText: 'terminal_port'.tr(),
+                            border: const OutlineInputBorder(),
                           ),
                           keyboardType: TextInputType.number,
                           validator: (value) {
                             final port = int.tryParse(value ?? '');
                             if (port == null || port <= 0 || port > 65535) {
-                              return '端口无效';
+                              return 'terminal_port_invalid'.tr();
                             }
                             return null;
                           },
@@ -180,18 +181,18 @@ class _TerminalInstanceState extends ConsumerState<TerminalInstance> {
                   const SizedBox(height: 14),
                   TextFormField(
                     controller: _usernameController,
-                    decoration: const InputDecoration(
-                      labelText: '用户名',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: 'terminal_username'.tr(),
+                      border: const OutlineInputBorder(),
                     ),
                     validator: (value) =>
-                        value == null || value.trim().isEmpty ? '请输入用户名' : null,
+                        value == null || value.trim().isEmpty ? 'terminal_username_hint'.tr() : null,
                   ),
                   const SizedBox(height: 10),
                   SegmentedButton<bool>(
-                    segments: const [
-                      ButtonSegment(value: false, label: Text('密码登录')),
-                      ButtonSegment(value: true, label: Text('私钥登录')),
+                    segments: [
+                      ButtonSegment(value: false, label: Text('terminal_password_login'.tr())),
+                      ButtonSegment(value: true, label: Text('terminal_key_login'.tr())),
                     ],
                     selected: {_usePrivateKey},
                     onSelectionChanged: (values) {
@@ -202,41 +203,41 @@ class _TerminalInstanceState extends ConsumerState<TerminalInstance> {
                   if (_usePrivateKey) ...[
                     TextFormField(
                       controller: _privateKeyController,
-                      decoration: const InputDecoration(
-                        labelText: '私钥 PEM',
+                      decoration: InputDecoration(
+                        labelText: 'terminal_private_key_pem'.tr(),
                         hintText: '-----BEGIN OPENSSH PRIVATE KEY-----',
-                        border: OutlineInputBorder(),
+                        border: const OutlineInputBorder(),
                       ),
                       minLines: 4,
                       maxLines: 8,
                       validator: (value) =>
                           value == null || value.trim().isEmpty
-                          ? '请输入私钥'
+                          ? 'terminal_private_key_hint'.tr()
                           : null,
                     ),
                     const SizedBox(height: 14),
                     TextFormField(
                       controller: _passphraseController,
-                      decoration: const InputDecoration(
-                        labelText: '私钥口令（可选）',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: 'terminal_key_passphrase'.tr(),
+                        border: const OutlineInputBorder(),
                       ),
                       obscureText: true,
                     ),
                   ] else
                     TextFormField(
                       controller: _passwordController,
-                      decoration: const InputDecoration(
-                        labelText: '密码',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: 'terminal_password'.tr(),
+                        border: const OutlineInputBorder(),
                       ),
                       obscureText: true,
                     ),
                   const SizedBox(height: 8),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('保存凭证'),
-                    subtitle: const Text('凭证会保存在本机 SharedPreferences 中'),
+                    title: Text('terminal_save_credential'.tr()),
+                    subtitle: Text('terminal_save_credential_desc'.tr()),
                     value: _saveCredential,
                     onChanged: (value) =>
                         setState(() => _saveCredential = value),
@@ -245,9 +246,9 @@ class _TerminalInstanceState extends ConsumerState<TerminalInstance> {
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _nameController,
-                      decoration: const InputDecoration(
-                        labelText: '凭证名称',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: 'terminal_credential_name'.tr(),
+                        border: const OutlineInputBorder(),
                       ),
                     ),
                   ],
@@ -261,7 +262,7 @@ class _TerminalInstanceState extends ConsumerState<TerminalInstance> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.login),
-                    label: Text(_connecting ? '连接中...' : '登录'),
+                    label: Text(_connecting ? 'terminal_connecting'.tr() : 'terminal_login'.tr()),
                   ),
                 ],
               ),
@@ -367,7 +368,7 @@ class _TerminalInstanceState extends ConsumerState<TerminalInstance> {
       _terminal.write('Connection failed: $error\r\n');
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Terminal 连接失败：$error')));
+      ).showSnackBar(SnackBar(content: Text('terminal_connection_failed'.tr(args: [error.toString()]))));
     }
   }
 

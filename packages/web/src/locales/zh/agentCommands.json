@@ -1,0 +1,19 @@
+{
+  "title": "Agent Commands",
+  "description": "管理 Agent 模板目录下的 Command 文件",
+  "search": "搜索 commands...",
+  "empty": "暂无 command 文件",
+  "create": "新建",
+  "createTitle": "新建 Command",
+  "editTitle": "编辑 Command - {name}",
+  "editDescription": "编辑 Command 内容",
+  "namePlaceholder": "Command 名称",
+  "delete": "删除",
+  "import": "导入",
+  "importTitle": "导入 Command 文件",
+  "importPlaceholder": "拖拽 .md 或 .txt 文件到此处，或点击选择",
+  "importConfirm": "确认导入",
+  "selectAgent": "选择 Agent",
+  "allAgents": "所有 Agent",
+  "noAgents": "暂无 Agent 模板"
+}

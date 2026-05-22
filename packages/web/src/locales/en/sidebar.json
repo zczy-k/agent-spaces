@@ -13,7 +13,8 @@
     "models": "Models",
     "providers": "Providers",
     "hooks": "Hooks",
-    "tools": "Tools"
+    "tools": "Tools",
+    "commands": "Agent Commands"
   },
   "notifications": {
     "openAriaLabel": "Open notifications",

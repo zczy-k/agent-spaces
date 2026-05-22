@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../models/browser_tab.dart';
 import '../models/bookmark.dart';
 import '../providers/browser_provider.dart';
@@ -17,7 +18,7 @@ class BookmarksScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('书签', style: TextStyle(fontSize: 16)),
+        title: Text('bookmarks'.tr(), style: const TextStyle(fontSize: 16)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, size: 20),
           onPressed: () => Navigator.of(context).pop(),
@@ -31,7 +32,7 @@ class BookmarksScreen extends ConsumerWidget {
       ),
       body: bookmarks.isEmpty
           ? Center(
-              child: Text('暂无书签', style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
+              child: Text('bookmarks_empty'.tr(), style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
             )
           : ListView.separated(
               itemCount: bookmarks.length,
@@ -67,35 +68,35 @@ class BookmarksScreen extends ConsumerWidget {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setState) => AlertDialog(
-          title: const Text('添加书签', style: TextStyle(fontSize: 15)),
+          title: Text('bookmarks_add'.tr(), style: const TextStyle(fontSize: 15)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: nameCtl,
                 style: const TextStyle(fontSize: 13),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   isDense: true,
-                  labelText: '名称',
+                  labelText: 'bookmarks_name'.tr(),
                 ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: urlCtl,
                 style: const TextStyle(fontSize: 13),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   isDense: true,
-                  labelText: '网址',
-                  prefixIcon: Icon(Icons.language, size: 16),
+                  labelText: 'bookmarks_url'.tr(),
+                  prefixIcon: const Icon(Icons.language, size: 16),
                 ),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<DeviceType>(
                 initialValue: deviceType,
                 isDense: true,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   isDense: true,
-                  labelText: '设备类型',
+                  labelText: 'bookmarks_device_type'.tr(),
                 ),
                 items: DeviceType.values.map((t) => DropdownMenuItem(
                   value: t,
@@ -108,7 +109,7 @@ class BookmarksScreen extends ConsumerWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('取消'),
+              child: Text('cancel'.tr()),
             ),
             TextButton(
               onPressed: () {
@@ -118,7 +119,7 @@ class BookmarksScreen extends ConsumerWidget {
                   Navigator.of(ctx).pop();
                 }
               },
-              child: const Text('添加'),
+              child: Text('add'.tr()),
             ),
           ],
         ),
@@ -135,7 +136,7 @@ class BookmarksScreen extends ConsumerWidget {
           children: [
             ListTile(
               leading: const Icon(Icons.edit_outlined, size: 20),
-              title: const Text('编辑', style: TextStyle(fontSize: 14)),
+              title: Text('edit'.tr(), style: const TextStyle(fontSize: 14)),
               onTap: () {
                 Navigator.of(ctx).pop();
                 _showEditDialog(context, notifier, bm);
@@ -143,7 +144,7 @@ class BookmarksScreen extends ConsumerWidget {
             ),
             ListTile(
               leading: const Icon(Icons.delete_outline, size: 20),
-              title: const Text('删除', style: TextStyle(fontSize: 14)),
+              title: Text('delete'.tr(), style: const TextStyle(fontSize: 14)),
               onTap: () {
                 Navigator.of(ctx).pop();
                 notifier.removeBookmark(bm.id);
@@ -164,30 +165,30 @@ class BookmarksScreen extends ConsumerWidget {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setState) => AlertDialog(
-          title: const Text('编辑书签', style: TextStyle(fontSize: 15)),
+          title: Text('bookmarks_edit'.tr(), style: const TextStyle(fontSize: 15)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: nameCtl,
                 style: const TextStyle(fontSize: 13),
-                decoration: const InputDecoration(isDense: true, labelText: '名称'),
+                decoration: InputDecoration(isDense: true, labelText: 'bookmarks_name'.tr()),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: urlCtl,
                 style: const TextStyle(fontSize: 13),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   isDense: true,
-                  labelText: '网址',
-                  prefixIcon: Icon(Icons.language, size: 16),
+                  labelText: 'bookmarks_url'.tr(),
+                  prefixIcon: const Icon(Icons.language, size: 16),
                 ),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<DeviceType>(
                 initialValue: deviceType,
                 isDense: true,
-                decoration: const InputDecoration(isDense: true, labelText: '设备类型'),
+                decoration: InputDecoration(isDense: true, labelText: 'bookmarks_device_type'.tr()),
                 items: DeviceType.values.map((t) => DropdownMenuItem(
                   value: t,
                   child: Text(_deviceTypeName(t), style: const TextStyle(fontSize: 13)),
@@ -199,7 +200,7 @@ class BookmarksScreen extends ConsumerWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('取消'),
+              child: Text('cancel'.tr()),
             ),
             TextButton(
               onPressed: () {
@@ -209,7 +210,7 @@ class BookmarksScreen extends ConsumerWidget {
                   Navigator.of(ctx).pop();
                 }
               },
-              child: const Text('保存'),
+              child: Text('save'.tr()),
             ),
           ],
         ),
@@ -218,9 +219,9 @@ class BookmarksScreen extends ConsumerWidget {
   }
 
   String _deviceTypeName(DeviceType t) => switch (t) {
-    DeviceType.phone => 'Phone',
-    DeviceType.tablet => 'Tablet',
-    DeviceType.desktop => 'Desktop',
+    DeviceType.phone => 'bookmarks_phone'.tr(),
+    DeviceType.tablet => 'bookmarks_tablet'.tr(),
+    DeviceType.desktop => 'bookmarks_desktop'.tr(),
   };
 
   IconData _deviceIcon(DeviceType t) => switch (t) {

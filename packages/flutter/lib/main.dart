@@ -3,6 +3,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:upgrader/upgrader.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'providers/bookmark_provider.dart';
 import 'providers/settings_provider.dart';
 import 'screens/home_screen.dart';
@@ -20,9 +21,18 @@ const _appcastUrl = String.fromEnvironment('APPCAST_URL');
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await EasyLocalization.ensureInitialized();
   await NotificationService().initialize();
   await localWebServer.start();
-  runApp(const ProviderScope(child: AgentSpacesApp()));
+  runApp(
+    EasyLocalization(
+      supportedLocales: const [Locale('zh'), Locale('en')],
+      path: 'assets/translations',
+      fallbackLocale: const Locale('zh'),
+      useOnlyLangCode: true,
+      child: const ProviderScope(child: AgentSpacesApp()),
+    ),
+  );
 }
 
 final _router = GoRouter(
@@ -71,6 +81,9 @@ class AgentSpacesApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'Agent Spaces',
       debugShowCheckedModeBanner: false,
+      localizationsDelegates: context.localizationDelegates,
+      supportedLocales: context.supportedLocales,
+      locale: context.locale,
       theme: ThemeData(
         colorSchemeSeed: const Color(0xFF2563EB),
         useMaterial3: true,

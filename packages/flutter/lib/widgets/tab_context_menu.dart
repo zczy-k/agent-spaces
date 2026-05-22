@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../models/browser_tab.dart';
 import '../providers/browser_provider.dart';
 import '../providers/bookmark_provider.dart';
@@ -28,14 +29,14 @@ void showTabContextMenu(
       position.dy + 1,
     ),
     items: [
-      const PopupMenuItem<String>(
+      PopupMenuItem<String>(
         value: 'navigate',
         height: 36,
         child: Row(
           children: [
-            Icon(Icons.open_in_browser, size: 16),
-            SizedBox(width: 8),
-            Text('跳转', style: TextStyle(fontSize: 13)),
+            const Icon(Icons.open_in_browser, size: 16),
+            const SizedBox(width: 8),
+            Text('tab_navigate'.tr(), style: const TextStyle(fontSize: 13)),
           ],
         ),
       ),
@@ -46,7 +47,7 @@ void showTabContextMenu(
           children: [
             Icon(deviceIcon(tab.device.type), size: 16),
             const SizedBox(width: 8),
-            const Text('切换设备', style: TextStyle(fontSize: 13)),
+            Text('settings_device_selector'.tr(), style: const TextStyle(fontSize: 13)),
             const Spacer(),
             Text(
               tab.device.name,
@@ -66,7 +67,7 @@ void showTabContextMenu(
             ),
             const SizedBox(width: 8),
             Text(
-              isBookmarked ? '从书签移除' : '添加到书签',
+              isBookmarked ? 'tab_remove_bookmark'.tr() : 'tab_add_bookmark'.tr(),
               style: const TextStyle(fontSize: 13),
             ),
           ],
@@ -79,53 +80,53 @@ void showTabContextMenu(
           children: [
             Icon(Icons.open_in_new, size: 16),
             SizedBox(width: 8),
-            Text('用浏览器打开', style: TextStyle(fontSize: 13)),
+            Text('tab_open_in_browser', style: TextStyle(fontSize: 13)),
           ],
         ),
       ),
-      const PopupMenuItem<String>(
+      PopupMenuItem<String>(
         value: 'refresh',
         height: 36,
         child: Row(
           children: [
-            Icon(Icons.refresh, size: 16),
-            SizedBox(width: 8),
-            Text('刷新', style: TextStyle(fontSize: 13)),
+            const Icon(Icons.refresh, size: 16),
+            const SizedBox(width: 8),
+            Text('tab_refresh'.tr(), style: const TextStyle(fontSize: 13)),
           ],
         ),
       ),
-      const PopupMenuItem<String>(
+      PopupMenuItem<String>(
         value: 'debug',
         height: 36,
         child: Row(
           children: [
-            Icon(Icons.bug_report_outlined, size: 16),
-            SizedBox(width: 8),
-            Text('调试', style: TextStyle(fontSize: 13)),
+            const Icon(Icons.bug_report_outlined, size: 16),
+            const SizedBox(width: 8),
+            Text('tab_debug'.tr(), style: const TextStyle(fontSize: 13)),
           ],
         ),
       ),
-      const PopupMenuItem<String>(
+      PopupMenuItem<String>(
         value: 'console',
         height: 36,
         child: Row(
           children: [
-            Icon(Icons.terminal, size: 16),
-            SizedBox(width: 8),
-            Text('查看控制台', style: TextStyle(fontSize: 13)),
+            const Icon(Icons.terminal, size: 16),
+            const SizedBox(width: 8),
+            Text('tab_view_console'.tr(), style: const TextStyle(fontSize: 13)),
           ],
         ),
       ),
-      const PopupMenuItem<String>(
+      PopupMenuItem<String>(
         value: 'split',
         height: 36,
         child: Row(
           children: [
-            Icon(Icons.view_column, size: 16),
-            SizedBox(width: 8),
-            Text('分屏布局', style: TextStyle(fontSize: 13)),
-            Spacer(),
-            Icon(Icons.chevron_right, size: 16),
+            const Icon(Icons.view_column, size: 16),
+            const SizedBox(width: 8),
+            Text('tab_split_layout'.tr(), style: const TextStyle(fontSize: 13)),
+            const Spacer(),
+            const Icon(Icons.chevron_right, size: 16),
           ],
         ),
       ),

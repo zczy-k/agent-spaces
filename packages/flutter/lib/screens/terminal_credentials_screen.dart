@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 import '../models/terminal_credential.dart';
 import '../providers/terminal_credentials_provider.dart';
@@ -13,17 +14,17 @@ class TerminalCredentialsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Terminal 凭证管理'),
+        title: Text('terminal_credentials'.tr()),
         actions: [
           IconButton(
-            tooltip: '新增凭证',
+            tooltip: 'terminal_credential_add'.tr(),
             icon: const Icon(Icons.add),
             onPressed: () => _showCredentialDialog(context, ref),
           ),
         ],
       ),
       body: credentials.isEmpty
-          ? const Center(child: Text('暂无保存的 Terminal 凭证'))
+          ? Center(child: Text('terminal_credential_empty'.tr()))
           : ListView.separated(
               itemCount: credentials.length,
               separatorBuilder: (_, separatorIndex) => const Divider(height: 1),
@@ -35,7 +36,7 @@ class TerminalCredentialsScreen extends ConsumerWidget {
                   ),
                   title: Text(credential.name),
                   subtitle: Text(
-                    '${credential.username}@${credential.host}:${credential.port} · ${credential.usesPrivateKey ? '私钥' : '密码'}登录',
+                    '${credential.username}@${credential.host}:${credential.port} · ${credential.usesPrivateKey ? 'terminal_private_key'.tr() : 'terminal_password'.tr()}',
                   ),
                   trailing: PopupMenuButton<String>(
                     onSelected: (value) {
@@ -45,9 +46,9 @@ class TerminalCredentialsScreen extends ConsumerWidget {
                         _confirmDelete(context, ref, credential);
                       }
                     },
-                    itemBuilder: (context) => const [
-                      PopupMenuItem(value: 'edit', child: Text('编辑')),
-                      PopupMenuItem(value: 'delete', child: Text('删除')),
+                    itemBuilder: (context) => [
+                      PopupMenuItem(value: 'edit', child: Text('edit'.tr())),
+                      PopupMenuItem(value: 'delete', child: Text('delete'.tr())),
                     ],
                   ),
                   onTap: () => _showCredentialDialog(context, ref, credential),
@@ -57,7 +58,7 @@ class TerminalCredentialsScreen extends ConsumerWidget {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showCredentialDialog(context, ref),
         icon: const Icon(Icons.add),
-        label: const Text('新增凭证'),
+        label: Text('terminal_credential_add'.tr()),
       ),
     );
   }
@@ -70,16 +71,16 @@ class TerminalCredentialsScreen extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('删除凭证'),
-        content: Text('确定删除「${credential.name}」吗？'),
+        title: Text('terminal_credential_delete_title'.tr()),
+        content: Text('terminal_credential_delete_confirm'.tr(args: [credential.name])),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
+            child: Text('cancel'.tr()),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('删除'),
+            child: Text('delete'.tr()),
           ),
         ],
       ),
@@ -118,7 +119,7 @@ class TerminalCredentialsScreen extends ConsumerWidget {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: Text(credential == null ? '新增凭证' : '编辑凭证'),
+          title: Text(credential == null ? 'terminal_credential_add'.tr() : 'terminal_credential_edit'.tr()),
           content: SizedBox(
             width: 520,
             child: SingleChildScrollView(
@@ -129,45 +130,45 @@ class TerminalCredentialsScreen extends ConsumerWidget {
                   children: [
                     TextFormField(
                       controller: nameController,
-                      decoration: const InputDecoration(labelText: '名称'),
+                      decoration: InputDecoration(labelText: 'terminal_credential_name_label'.tr()),
                       validator: (value) =>
                           value == null || value.trim().isEmpty
-                          ? '请输入名称'
+                          ? 'terminal_credential_name_hint'.tr()
                           : null,
                     ),
                     TextFormField(
                       controller: hostController,
-                      decoration: const InputDecoration(labelText: '主机'),
+                      decoration: InputDecoration(labelText: 'terminal_credential_host_label'.tr()),
                       validator: (value) =>
                           value == null || value.trim().isEmpty
-                          ? '请输入主机'
+                          ? 'terminal_credential_host_hint'.tr()
                           : null,
                     ),
                     TextFormField(
                       controller: portController,
-                      decoration: const InputDecoration(labelText: '端口'),
+                      decoration: InputDecoration(labelText: 'terminal_credential_port_label'.tr()),
                       keyboardType: TextInputType.number,
                       validator: (value) {
                         final port = int.tryParse(value ?? '');
                         if (port == null || port <= 0 || port > 65535) {
-                          return '端口无效';
+                          return 'terminal_port_invalid'.tr();
                         }
                         return null;
                       },
                     ),
                     TextFormField(
                       controller: usernameController,
-                      decoration: const InputDecoration(labelText: '用户名'),
+                      decoration: InputDecoration(labelText: 'terminal_credential_username_label'.tr()),
                       validator: (value) =>
                           value == null || value.trim().isEmpty
-                          ? '请输入用户名'
+                          ? 'terminal_credential_username_hint'.tr()
                           : null,
                     ),
                     const SizedBox(height: 12),
                     SegmentedButton<bool>(
-                      segments: const [
-                        ButtonSegment(value: false, label: Text('密码')),
-                        ButtonSegment(value: true, label: Text('私钥')),
+                      segments: [
+                        ButtonSegment(value: false, label: Text('terminal_password'.tr())),
+                        ButtonSegment(value: true, label: Text('terminal_private_key'.tr())),
                       ],
                       selected: {usePrivateKey},
                       onSelectionChanged: (values) {
@@ -178,23 +179,23 @@ class TerminalCredentialsScreen extends ConsumerWidget {
                     if (usePrivateKey) ...[
                       TextFormField(
                         controller: privateKeyController,
-                        decoration: const InputDecoration(labelText: '私钥 PEM'),
+                        decoration: InputDecoration(labelText: 'terminal_private_key_pem'.tr()),
                         minLines: 4,
                         maxLines: 8,
                         validator: (value) =>
                             value == null || value.trim().isEmpty
-                            ? '请输入私钥'
+                            ? 'terminal_private_key_hint'.tr()
                             : null,
                       ),
                       TextFormField(
                         controller: passphraseController,
-                        decoration: const InputDecoration(labelText: '私钥口令'),
+                        decoration: InputDecoration(labelText: 'terminal_key_passphrase'.tr()),
                         obscureText: true,
                       ),
                     ] else
                       TextFormField(
                         controller: passwordController,
-                        decoration: const InputDecoration(labelText: '密码'),
+                        decoration: InputDecoration(labelText: 'terminal_password'.tr()),
                         obscureText: true,
                       ),
                   ],
@@ -205,7 +206,7 @@ class TerminalCredentialsScreen extends ConsumerWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('取消'),
+              child: Text('cancel'.tr()),
             ),
             FilledButton(
               onPressed: () {
@@ -245,7 +246,7 @@ class TerminalCredentialsScreen extends ConsumerWidget {
                 }
                 Navigator.of(context).pop();
               },
-              child: const Text('保存'),
+              child: Text('save'.tr()),
             ),
           ],
         ),

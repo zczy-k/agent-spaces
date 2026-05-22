@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../providers/browser_provider.dart';
 import '../providers/settings_provider.dart';
 import '../services/notification_service.dart';
@@ -53,19 +54,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('授权管理'),
-        content: const Text('Agent Spaces 需要通知权限，用于发送系统通知。'),
+        title: Text('settings_notification_permission_title'.tr()),
+        content: Text('settings_notification_permission_msg'.tr()),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('稍后'),
+            child: Text('settings_notification_later'.tr()),
           ),
           FilledButton(
             onPressed: () async {
               await _notificationService.requestPermission();
               if (context.mounted) Navigator.of(context).pop();
             },
-            child: const Text('授权通知'),
+            child: Text('settings_notification_authorize'.tr()),
           ),
         ],
       ),

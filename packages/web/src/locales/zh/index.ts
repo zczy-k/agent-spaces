@@ -1,4 +1,5 @@
 import agent from './agent.json';
+import agentCommands from './agentCommands.json';
 import chat from './chat.json';
 import commandPalette from './commandPalette.json';
 import commands from './commands.json';
@@ -29,6 +30,7 @@ import workspaces from './workspaces.json';
 
 export default {
   agent,
+  agentCommands,
   chat,
   commandPalette,
   commands,

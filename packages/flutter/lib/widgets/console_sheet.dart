@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../providers/console_log_provider.dart';
 
 class ConsoleSheet extends ConsumerWidget {
@@ -24,7 +25,7 @@ class ConsoleSheet extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
               child: Row(
                 children: [
-                  Text('控制台', style: theme.textTheme.titleSmall),
+                  Text('console_title'.tr(), style: theme.textTheme.titleSmall),
                   const Spacer(),
                   Switch(
                     value: state.capturing,
@@ -33,7 +34,7 @@ class ConsoleSheet extends ConsumerWidget {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    '捕获日志',
+                    'console_capture_logs'.tr(),
                     style: TextStyle(
                       fontSize: 12,
                       color: theme.colorScheme.onSurfaceVariant,
@@ -48,14 +49,14 @@ class ConsoleSheet extends ConsumerWidget {
                               ClipboardData(text: notifier.allLogsText),
                             );
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('已复制'),
-                                duration: Duration(seconds: 1),
+                              SnackBar(
+                                content: Text('console_copied'.tr()),
+                                duration: const Duration(seconds: 1),
                               ),
                             );
                           },
                     icon: const Icon(Icons.copy, size: 18),
-                    tooltip: '复制所有日志',
+                    tooltip: 'console_copy_all'.tr(),
                     style: IconButton.styleFrom(
                       minimumSize: const Size(32, 32),
                       padding: EdgeInsets.zero,
@@ -64,7 +65,7 @@ class ConsoleSheet extends ConsumerWidget {
                   IconButton(
                     onPressed: state.logs.isEmpty ? null : notifier.clearLogs,
                     icon: const Icon(Icons.delete_outline, size: 18),
-                    tooltip: '清空日志',
+                    tooltip: 'console_clear'.tr(),
                     style: IconButton.styleFrom(
                       minimumSize: const Size(32, 32),
                       padding: EdgeInsets.zero,
@@ -78,7 +79,7 @@ class ConsoleSheet extends ConsumerWidget {
               child: state.logs.isEmpty
                   ? Center(
                       child: Text(
-                        state.capturing ? '暂无日志' : '开启捕获以记录控制台日志',
+                        state.capturing ? 'console_empty'.tr() : 'console_empty_desc'.tr(),
                         style: TextStyle(
                           fontSize: 13,
                           color: theme.colorScheme.onSurfaceVariant,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../models/browser_tab.dart';
 import '../providers/browser_provider.dart';
 import '../providers/settings_provider.dart';
@@ -21,13 +22,13 @@ void showNewTabDialog(BuildContext context, BrowserNotifier notifier) {
   showDialog(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: const Text('新建标签页', style: TextStyle(fontSize: 15)),
+      title: Text('tab_new_tab'.tr(), style: const TextStyle(fontSize: 15)),
       contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
       content: TextField(
         controller: controller,
         autofocus: true,
         style: const TextStyle(fontSize: 13),
-        decoration: const InputDecoration(isDense: true, hintText: '输入 URL'),
+        decoration: InputDecoration(isDense: true, hintText: 'tab_enter_url'.tr()),
         onSubmitted: (url) {
           if (url.isNotEmpty) {
             final normalized = url.startsWith('http') ? url : 'http://$url';
@@ -39,7 +40,7 @@ void showNewTabDialog(BuildContext context, BrowserNotifier notifier) {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(),
-          child: const Text('取消'),
+          child: Text('cancel'.tr()),
         ),
         TextButton(
           onPressed: () {
@@ -50,7 +51,7 @@ void showNewTabDialog(BuildContext context, BrowserNotifier notifier) {
               Navigator.of(ctx).pop();
             }
           },
-          child: const Text('打开'),
+          child: Text('tab_open'.tr()),
         ),
       ],
     ),
@@ -66,16 +67,16 @@ void showNavigateDialog(
   showDialog(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: const Text('跳转', style: TextStyle(fontSize: 15)),
+      title: Text('tab_navigate'.tr(), style: const TextStyle(fontSize: 15)),
       contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
       content: TextField(
         controller: controller,
         autofocus: true,
         style: const TextStyle(fontSize: 13),
-        decoration: const InputDecoration(
+        decoration: InputDecoration(
           isDense: true,
-          hintText: '输入 URL',
-          prefixIcon: Icon(Icons.language, size: 16),
+          hintText: 'tab_enter_url'.tr(),
+          prefixIcon: const Icon(Icons.language, size: 16),
         ),
         onSubmitted: (url) {
           if (url.isNotEmpty) {
@@ -89,7 +90,7 @@ void showNavigateDialog(
       actions: [
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(),
-          child: const Text('取消'),
+          child: Text('cancel'.tr()),
         ),
         TextButton(
           onPressed: () {
@@ -102,7 +103,7 @@ void showNavigateDialog(
               Navigator.of(ctx).pop();
             }
           },
-          child: const Text('跳转'),
+          child: Text('tab_navigate'.tr()),
         ),
       ],
     ),
@@ -117,7 +118,7 @@ void showDeviceMenu(
   showDialog(
     context: context,
     builder: (ctx) => SimpleDialog(
-      title: const Text('切换设备', style: TextStyle(fontSize: 15)),
+      title: Text('settings_device_selector'.tr(), style: const TextStyle(fontSize: 15)),
       children: DeviceProfile.defaults.map((d) {
         final selected = d.type == tab.device.type;
         return SimpleDialogOption(
@@ -160,7 +161,7 @@ void showDebugDialog(BuildContext context, WidgetRef ref, BrowserTab tab) {
   showDialog(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: const Text('调试', style: TextStyle(fontSize: 15)),
+      title: Text('tab_debug'.tr(), style: const TextStyle(fontSize: 15)),
       contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
       content: SizedBox(
         width: 420,
@@ -169,12 +170,12 @@ void showDebugDialog(BuildContext context, WidgetRef ref, BrowserTab tab) {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              DebugInfoRow(label: '标签页', value: tab.title),
+              DebugInfoRow(label: 'tab_tab_label'.tr(), value: tab.title),
               const SizedBox(height: 8),
-              DebugInfoRow(label: 'URL', value: tab.url),
+              DebugInfoRow(label: 'tab_url_label'.tr(), value: tab.url),
               const SizedBox(height: 8),
               DebugInfoRow(
-                label: '设备',
+                label: 'tab_device_label'.tr(),
                 value:
                     '${tab.device.name} '
                     '${tab.device.width.toInt()}x'
@@ -183,8 +184,8 @@ void showDebugDialog(BuildContext context, WidgetRef ref, BrowserTab tab) {
               const SizedBox(height: 12),
               Text(
                 webViewDebuggingEnabled
-                    ? 'WebView inspectable 已启用。'
-                    : 'WebView inspectable 当前未启用，可在"设置 > 浏览器 > WebView 调试"中打开。',
+                    ? 'tab_debug_inspectable_enabled'.tr()
+                    : 'tab_debug_inspectable_disabled'.tr(),
                 style: TextStyle(
                   fontSize: 12,
                   height: 1.4,
@@ -192,28 +193,28 @@ void showDebugDialog(BuildContext context, WidgetRef ref, BrowserTab tab) {
                 ),
               ),
               const SizedBox(height: 12),
-              const DebugStepsSection(
-                title: 'macOS Safari',
+              DebugStepsSection(
+                title: 'tab_debug_macos_safari'.tr(),
                 steps: [
-                  'Safari > 设置 > 高级，开启"在菜单栏中显示开发菜单"。',
-                  '保持当前 App 和这个 WebView 页面打开。',
-                  'Safari 菜单栏打开"开发"，选择当前 Mac、App 或页面。',
-                  '点击对应页面后打开 Web Inspector。',
+                  'tab_debug_safari_step1'.tr(),
+                  'tab_debug_safari_step2'.tr(),
+                  'tab_debug_safari_step3'.tr(),
+                  'tab_debug_safari_step4'.tr(),
                 ],
               ),
               const SizedBox(height: 12),
-              const DebugStepsSection(
-                title: 'Android Chrome',
+              DebugStepsSection(
+                title: 'tab_debug_android_chrome'.tr(),
                 steps: [
-                  '保持当前 App 和这个 WebView 页面打开。',
-                  '在 Chrome 地址栏打开 chrome://inspect。',
-                  '在 Remote Target 中找到当前 WebView。',
-                  '点击 inspect 打开 DevTools。',
+                  'tab_debug_chrome_step1'.tr(),
+                  'tab_debug_chrome_step2'.tr(),
+                  'tab_debug_chrome_step3'.tr(),
+                  'tab_debug_chrome_step4'.tr(),
                 ],
               ),
               const SizedBox(height: 8),
               Text(
-                '要求：iOS 16.4+ 或 macOS 13.3+ 支持 isInspectable。',
+                'tab_debug_requirement'.tr(),
                 style: TextStyle(
                   fontSize: 12,
                   height: 1.4,
@@ -231,7 +232,7 @@ void showDebugDialog(BuildContext context, WidgetRef ref, BrowserTab tab) {
             Navigator.of(ctx).pop();
           },
           icon: const Icon(Icons.refresh, size: 16),
-          label: const Text('刷新'),
+          label: Text('tab_refresh_label'.tr()),
         ),
         TextButton.icon(
           onPressed: () {
@@ -243,24 +244,24 @@ void showDebugDialog(BuildContext context, WidgetRef ref, BrowserTab tab) {
             );
           },
           icon: const Icon(Icons.terminal, size: 16),
-          label: const Text('控制台'),
+          label: Text('tab_console_label'.tr()),
         ),
         TextButton.icon(
           onPressed: () {
             Clipboard.setData(ClipboardData(text: tab.url));
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('已复制 URL'),
-                duration: Duration(seconds: 1),
+              SnackBar(
+                content: Text('tab_url_copied'.tr()),
+                duration: const Duration(seconds: 1),
               ),
             );
           },
           icon: const Icon(Icons.copy, size: 16),
-          label: const Text('复制 URL'),
+          label: Text('tab_copy_url'.tr()),
         ),
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(),
-          child: const Text('知道了'),
+          child: Text('ok'.tr()),
         ),
       ],
     ),
