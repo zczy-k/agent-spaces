@@ -1,11 +1,11 @@
 {
-  "version": "1.8.0",
-  "timestamp": "2026-05-20T14:08:52+08:00",
+  "version": "1.9.0",
+  "timestamp": "2026-05-22T12:52:36+08:00",
   "project": {
     "name": "agent-spaces",
     "type": "pnpm-monorepo + flutter",
     "language": "TypeScript + Dart",
-    "description": "多 Agent 协同编程平台（含四运行时 Agent 编排、Workflow DAG 可视化编排、Hook 系统、输出风格管理、i18n 中英文切换、通知中心、用量统计、订阅管理、语音识别、快捷命令、代码搜索、Agent SSE API、Command Palette、代码收藏、Prompt 模板管理、TypeScript LSP、DOM Inspector、持久上下文加载、Flutter 多平台客户端）"
+    "description": "多 Agent 协同编程平台（含四运行时 Agent 编排、Workflow DAG 可视化编排、Hook 系统、输出风格管理、i18n 中英文切换、通知中心、用量统计、订阅管理、语音识别、快捷命令、代码搜索、Agent SSE API、Command Palette、代码收藏、Prompt 模板管理、TypeScript LSP、DOM Inspector、持久上下文加载、Kanban 看板、Notion 风格文档数据库、Flutter 多平台客户端）"
   },
   "modules": [
     {
@@ -34,7 +34,9 @@
         "NotificationType", "AppNotification",
         "SpeechRecognitionProvider", "SpeechRecognitionConfig", "SpeechRecognitionResult", "TencentSpeechCredentials",
         "CodeFavorite",
-        "HookConfig", "HookRule"
+        "HookConfig", "HookRule",
+        "DocNode", "PRESET_COVERS",
+        "KanbanBoard", "KanbanColumn", "KanbanTask", "KanbanPriority", "KanbanLayoutMode"
       ],
       "api": [],
       "tests": [],
@@ -57,12 +59,14 @@
         "packages/shared/src/types/notification.ts",
         "packages/shared/src/types/speech.ts",
         "packages/shared/src/types/code-favorites.ts",
-        "packages/shared/src/types/hooks.ts"
+        "packages/shared/src/types/hooks.ts",
+        "packages/shared/src/types/database.ts",
+        "packages/shared/src/types/kanban.ts"
       ],
       "claudeMd": "packages/shared/CLAUDE.md",
       "coverage": {
-        "scanned": 20,
-        "total": 20,
+        "scanned": 22,
+        "total": 22,
         "percentage": 100,
         "gaps": []
       }
@@ -72,7 +76,7 @@
       "path": "packages/server",
       "packageId": "@agent-spaces/server",
       "language": "TypeScript",
-      "role": "Express REST API + WebSocket + 认证中间件 + 四运行时 Agent 编排 + Workflow 系统 + Hook 系统 + 输出风格管理 + 通知中心 + 应用内通知 + Agent SSE API + 代码搜索 + 订阅管理 + 语音识别 + 快捷命令 + Agent Designer + Skill/MCP 管理 + 用户设置 + Prompt 模板 + 代码收藏 + 持久上下文 + TypeScript LSP + DOM Inspector",
+      "role": "Express REST API + WebSocket + 认证中间件 + 四运行时 Agent 编排 + Workflow 系统 + Hook 系统 + 输出风格管理 + 通知中心 + 应用内通知 + Agent SSE API + 代码搜索 + 订阅管理 + 语音识别 + 快捷命令 + Agent Designer + Skill/MCP 管理 + 用户设置 + Prompt 模板 + 代码收藏 + 持久上下文 + TypeScript LSP + DOM Inspector + Kanban Board + DocNode 文档数据库",
       "entry": "src/app.ts",
       "types": [],
       "api": [
@@ -131,6 +135,15 @@
         "GET|PUT|DELETE /api/workspaces/:id/hooks/:name",
         "POST /api/workspaces/:id/hooks/upload",
         "POST /api/workspaces/:id/hooks/:name/apply",
+        "GET|PUT /api/workspaces/:id/kanban",
+        "GET /api/workspaces/:id/database",
+        "GET /api/workspaces/:id/database/:nodeId",
+        "POST /api/workspaces/:id/database",
+        "PUT /api/workspaces/:id/database/:nodeId",
+        "PUT /api/workspaces/:id/database/:nodeId/move",
+        "PUT /api/workspaces/:id/database/:nodeId/trash",
+        "PUT /api/workspaces/:id/database/:nodeId/restore",
+        "DELETE /api/workspaces/:id/database/:nodeId",
         "GET|POST /api/workflows",
         "GET|PUT|DELETE /api/workflows/:workflowId",
         "POST /api/workflows/:workflowId/duplicate",
@@ -243,6 +256,8 @@
         "packages/server/src/routes/prompt-template.ts",
         "packages/server/src/routes/hooks.ts",
         "packages/server/src/routes/output-style.ts",
+        "packages/server/src/routes/kanban.ts",
+        "packages/server/src/routes/database.ts",
         "packages/server/src/agents/scheduler-agent.ts",
         "packages/server/src/agents/issue-task-controller.ts",
         "packages/server/src/agents/issue-agent-runner.ts",
@@ -258,6 +273,7 @@
         "packages/server/src/adapters/claude-code-runtime/",
         "packages/server/src/services/workflow.ts",
         "packages/server/src/services/agent.ts",
+        "packages/server/src/services/issue.ts",
         "packages/server/src/services/hook-engine.ts",
         "packages/server/src/services/output-style.ts",
         "packages/server/src/services/search.ts",
@@ -267,6 +283,7 @@
         "packages/server/src/services/persistent-agent-context.ts",
         "packages/server/src/services/prompt-template.ts",
         "packages/server/src/services/code-favorites.ts",
+        "packages/server/src/services/kanban.ts",
         "packages/server/src/services/subscription/",
         "packages/server/src/services/speech-recognition/",
         "packages/server/src/services/notification-hub/",
@@ -280,6 +297,8 @@
         "packages/server/src/ws/typescript-lsp.ts",
         "packages/server/src/storage/code-favorites-store.ts",
         "packages/server/src/storage/hook-store.ts",
+        "packages/server/src/storage/kanban-store.ts",
+        "packages/server/src/storage/database-store.ts",
         "packages/server/src/storage/subscription-store.ts",
         "packages/server/src/storage/command-store.ts",
         "packages/server/src/storage/speech-recognition-store.ts",
@@ -287,8 +306,8 @@
       ],
       "claudeMd": "packages/server/CLAUDE.md",
       "coverage": {
-        "scanned": 118,
-        "total": 118,
+        "scanned": 128,
+        "total": 128,
         "percentage": 100,
         "gaps": []
       }
@@ -298,7 +317,7 @@
       "path": "packages/web",
       "packageId": "@agent-spaces/web",
       "language": "TypeScript/TSX",
-      "role": "Next.js 前端 SPA（Hook 管理 + 输出风格管理 + 频道管理 + Issue 拖拽排序 + Git Context Menu + Providers 对话框 + Skills 子目录 + TypeScript LSP + 代码收藏 + Prompt 模板 + DOM Inspector + Monaco Action Registry + Command Palette + 订阅面板 + 语音识别 + 快捷命令 + 代码搜索 + Iframe Tab + 应用内通知 + Skill/MCP 管理 + 独立设置页 + Monaco Models + Tauri Zoom/Viewport 适配）",
+      "role": "Next.js 前端 SPA（Kanban 看板 + 文档数据库 + Workflow 编辑器 + Issue 拖拽排序 + Git Context Menu + Providers 对话框 + Skills 子目录 + TypeScript LSP + 代码收藏 + Prompt 模板 + DOM Inspector + Monaco Action Registry + Command Palette + 订阅面板 + 语音识别 + 快捷命令 + 代码搜索 + Iframe Tab + 应用内通知 + Skill/MCP 管理 + 独立设置页 + Monaco Models + Tauri Zoom/Viewport 适配 + Timeline 版本线 + Settings 6 Tab 拆分）",
       "entry": "src/app/layout.tsx",
       "types": [],
       "api": [],
@@ -325,76 +344,20 @@
         "packages/web/src/components/zoom-wrapper.tsx",
         "packages/web/src/components/viewport-insets.tsx",
         "packages/web/src/components/theme-provider.tsx",
-        "packages/web/src/components/common/console-panel.tsx",
-        "packages/web/src/components/common/iframe-manager.tsx",
-        "packages/web/src/components/common/member-picker.tsx",
-        "packages/web/src/components/common/floating-panel.tsx",
-        "packages/web/src/components/common/floating-ball.tsx",
-        "packages/web/src/components/editor/search-panel.tsx",
-        "packages/web/src/components/editor/import-file-dialog.tsx",
-        "packages/web/src/components/editor/code-favorites-panel.tsx",
-        "packages/web/src/components/editor/add-favorite-dialog.tsx",
-        "packages/web/src/components/editor/code-editor-menu-bar.tsx",
-        "packages/web/src/components/editor/code-editor-navigation.ts",
-        "packages/web/src/components/editor/code-editor-utils.ts",
-        "packages/web/src/components/editor/code-editor-clipboard.ts",
-        "packages/web/src/components/editor/code-editor-mobile.ts",
-        "packages/web/src/components/editor/code-editor-mobile-overlay.tsx",
-        "packages/web/src/components/chat/message-tool-step.tsx",
-        "packages/web/src/components/chat/message-context-panel.tsx",
-        "packages/web/src/components/chat/message-context-usage.tsx",
-        "packages/web/src/components/chat/message-item.tsx",
-        "packages/web/src/components/chat/message-navigator.tsx",
-        "packages/web/src/components/chat/channel-dialog.tsx",
-        "packages/web/src/components/chat/channel-list.tsx",
-        "packages/web/src/components/chat/channel-info-panel.tsx",
-        "packages/web/src/components/chat/member-info-dialog.tsx",
-        "packages/web/src/components/chat/add-member-dialog.tsx",
-        "packages/web/src/components/chat/chat-input-utils.ts",
-        "packages/web/src/components/chat/chat-input-attachments.ts",
-        "packages/web/src/components/chat/chat-input-agent-bar.tsx",
-        "packages/web/src/components/chat/chat-input-info-bar.tsx",
-        "packages/web/src/components/composer/create-file-search-extension.ts",
-        "packages/web/src/components/composer/suggestion-list.tsx",
-        "packages/web/src/components/composer/composer-shell.tsx",
-        "packages/web/src/components/issue/edit-issue-dialog.tsx",
-        "packages/web/src/components/issue/issue-detail-header.tsx",
-        "packages/web/src/components/issue/issue-detail-comments.tsx",
-        "packages/web/src/components/issue/issue-detail-tasks-panel.tsx",
-        "packages/web/src/components/issue/task-row.tsx",
-        "packages/web/src/components/git/use-git-sync.ts",
-        "packages/web/src/components/git/git-settings-form.tsx",
-        "packages/web/src/components/git/commit-diff-viewer.tsx",
-        "packages/web/src/components/git/git-prompt-dialog.tsx",
-        "packages/web/src/components/git/git-gitignore-dialog.tsx",
-        "packages/web/src/components/git/git-file-context-menu.tsx",
-        "packages/web/src/components/git/git-commit-context-menu.tsx",
-        "packages/web/src/components/git/git-commit-utils.ts",
-        "packages/web/src/components/git/git-commit-detail-dialog.tsx",
-        "packages/web/src/components/git/git-discard-dialog.tsx",
-        "packages/web/src/components/git/diff-viewer.tsx",
-        "packages/web/src/components/terminal/command-dialog.tsx",
-        "packages/web/src/components/terminal/command-sidebar.tsx",
-        "packages/web/src/components/terminal/virtual-keyboard.tsx",
-        "packages/web/src/components/sidebar/skills-dialog/",
-        "packages/web/src/components/sidebar/hooks-dialog.tsx",
-        "packages/web/src/components/sidebar/output-styles-dialog.tsx",
-        "packages/web/src/components/sidebar/providers-dialog.tsx",
-        "packages/web/src/components/sidebar/prompts-dialog.tsx",
-        "packages/web/src/components/sidebar/notification-center-dialog.tsx",
-        "packages/web/src/components/sidebar/nav-notifications.tsx",
-        "packages/web/src/components/settings/settings-page-layout.tsx",
-        "packages/web/src/components/settings/notification-settings-tab.tsx",
-        "packages/web/src/components/settings/workspace-prompt-section.tsx",
-        "packages/web/src/components/settings/workspace-info-section.tsx",
-        "packages/web/src/stores/command.ts",
-        "packages/web/src/stores/command-palette.ts",
-        "packages/web/src/stores/notification.ts",
-        "packages/web/src/stores/code-favorites.ts",
-        "packages/web/src/stores/hooks.ts",
-        "packages/web/src/stores/inspector-history.ts",
-        "packages/web/src/stores/iframe-tabs.ts",
-        "packages/web/src/stores/search-commands/",
+        "packages/web/src/components/timeline/timeline-component.tsx",
+        "packages/web/src/components/kanban/kanban-board.tsx",
+        "packages/web/src/components/kanban/kanban-card.tsx",
+        "packages/web/src/components/kanban/kanban-column.tsx",
+        "packages/web/src/components/kanban/task-modal.tsx",
+        "packages/web/src/components/kanban/column-modal.tsx",
+        "packages/web/src/components/database/database-panel.tsx",
+        "packages/web/src/components/database/notion-editor.tsx",
+        "packages/web/src/components/database/markdown-editor.tsx",
+        "packages/web/src/components/database/quick-search-modal.tsx",
+        "packages/web/src/components/database/trash-bin-modal.tsx",
+        "packages/web/src/stores/kanban.ts",
+        "packages/web/src/stores/database.ts",
+        "packages/web/src/lib/converter.ts",
         "packages/web/src/lib/monaco-language-client.ts",
         "packages/web/src/lib/monaco-action-registry.ts",
         "packages/web/src/lib/monaco-builtin-actions.ts",
@@ -402,15 +365,15 @@
         "packages/web/src/lib/api-polyfill.ts",
         "packages/web/src/lib/navigate.ts",
         "packages/web/src/lib/routes.ts",
-        "packages/web/src/hooks/use-speech-recognition.ts",
-        "packages/web/src/hooks/use-user-avatar.ts",
-        "packages/web/DESIGN.md",
-        "packages/web/AGENTS.md"
+        "packages/web/src/lib/server.ts",
+        "packages/web/src/lib/converter.ts",
+        "packages/web/src/DESIGN.md",
+        "packages/web/src/AGENTS.md"
       ],
       "claudeMd": "packages/web/CLAUDE.md",
       "coverage": {
-        "scanned": 265,
-        "total": 265,
+        "scanned": 296,
+        "total": 296,
         "percentage": 100,
         "gaps": []
       }
@@ -420,7 +383,7 @@
       "path": "packages/flutter",
       "packageId": "agent_spaces",
       "language": "Dart",
-      "role": "Flutter 多平台原生壳应用（Android/iOS/macOS/Windows/Web），内嵌 InAppWebView 加载 Web 前端，提供原生通知、设备模拟、书签管理、内网服务器发现、JS Bridge 双向通信、控制台日志捕获、Tab 管理",
+      "role": "Flutter 多平台原生壳应用（Android/iOS/macOS/Windows/Web），内嵌 InAppWebView 加载 Web 前端，提供原生通知、设备模拟、书签管理、内网服务器发现、JS Bridge 双向通信、Docking 多窗口布局、控制台日志捕获、Tab 管理、Split Layout、右键菜单、调试工具",
       "entry": "lib/main.dart",
       "types": ["BrowserTab", "DeviceProfile", "DeviceType", "Bookmark", "AppSettings", "BrowserState", "ConsoleLog", "ConsoleLogState"],
       "api": [],
@@ -441,7 +404,12 @@
         "packages/flutter/lib/widgets/webview_instance.dart",
         "packages/flutter/lib/widgets/home_page.dart",
         "packages/flutter/lib/widgets/home_cards.dart",
-        "packages/flutter/lib/widgets/browser_tab_bar.dart",
+        "packages/flutter/lib/widgets/split_layout.dart",
+        "packages/flutter/lib/widgets/tab_context_menu.dart",
+        "packages/flutter/lib/widgets/tab_dialogs.dart",
+        "packages/flutter/lib/widgets/tab_widgets.dart",
+        "packages/flutter/lib/widgets/console_sheet.dart",
+        "packages/flutter/lib/widgets/debug_widgets.dart",
         "packages/flutter/lib/widgets/device_selector.dart",
         "packages/flutter/lib/services/storage_service.dart",
         "packages/flutter/lib/services/notification_service.dart",
@@ -451,134 +419,36 @@
       ],
       "claudeMd": "packages/flutter/CLAUDE.md",
       "coverage": {
-        "scanned": 21,
-        "total": 21,
+        "scanned": 26,
+        "total": 26,
         "percentage": 100,
         "gaps": []
       }
     }
   ],
   "docs": [
-    {
-      "path": "docs/agent-lifecycle.md",
-      "description": "Agent Preset 创建、更新、工作空间导入、运行时工作目录行为"
-    },
-    {
-      "path": "docs/issue-agent-automation.md",
-      "description": "Issue 自动化编排链路（Scheduler -> Planner -> TaskCreator -> Executor -> Reviewer）"
-    },
-    {
-      "path": "docs/workflow-system.md",
-      "description": "Workflow 系统架构：数据模型、DAG 校验、Task 映射、执行语义、修改指南"
-    },
-    {
-      "path": "docs/codex-runtime-limitations.md",
-      "description": "Codex 运行时的已知限制与解决方法"
-    },
-    {
-      "path": "docs/anthropic-bridge.md",
-      "description": "Anthropic Messages 到 OpenAI Chat/Responses 的协议中转机制"
-    },
-    {
-      "path": "docs/function-call-tools.md",
-      "description": "Agent Function Call 工具层"
-    },
-    {
-      "path": "docs/ai-message-rendering.md",
-      "description": "AI 消息结构化渲染链路（MessagePart/chain/tool-detail/diff）"
-    },
-    {
-      "path": "docs/model-usage-accounting.md",
-      "description": "Token 用量统计与计费流程"
-    },
-    {
-      "path": "docs/bot-notification-workflow.md",
-      "description": "飞书/企微 Bot 通知系统架构、命令系统和扩展指南"
-    },
-    {
-      "path": "docs/persistent-agent-context.md",
-      "description": "持久上下文加载方案（CLAUDE.md/AGENTS.md 自动注入 Agent prompt）"
-    },
-    {
-      "path": "docs/reply-ai-message-workflow.md",
-      "description": "回复 AI 消息的端到端工作流（replies 嵌套 + Agent 续跑）"
-    },
-    {
-      "path": "docs/monaco-typescript-lsp.md",
-      "description": "Monaco TypeScript LSP 实现架构（monaco-languageclient + typescript-language-server + vscode-ws-jsonrpc）"
-    },
-    {
-      "path": "docs/dom-inspector-integration.md",
-      "description": "DOM Inspector 源码定位集成方案（dom-inspector-hook + /api/inspector/track + inspector.jump WS 广播）"
-    },
-    {
-      "path": "docs/flex-truncate-fix.md",
-      "description": "Flex 布局中 truncate 不生效的解决方案（w-0 flex-1 模式）"
-    },
-    {
-      "path": "docs/superpowers/specs/2026-05-06-i18n-design.md",
-      "description": "i18n 中英文多语言切换设计文档"
-    },
-    {
-      "path": "docs/superpowers/specs/2026-05-07-workflow-visual-editor-design.md",
-      "description": "Workflow Visual Editor 设计文档"
-    },
-    {
-      "path": "docs/superpowers/specs/2026-05-08-quick-command-design.md",
-      "description": "快捷命令设计文档"
-    },
-    {
-      "path": "docs/superpowers/specs/2026-05-14-editor-search-and-monaco-models-design.md",
-      "description": "编辑器搜索和 Monaco Models 设计文档"
-    },
-    {
-      "path": "docs/superpowers/specs/2026-05-20-hook-system-design.md",
-      "description": "Hook 系统设计文档（PreToolUse/PostToolUse 钩子，per-tool-call 粒度）"
-    },
-    {
-      "path": "docs/superpowers/plans/2026-05-06-i18n-wave1-infrastructure.md",
-      "description": "i18n 第 1 波实施计划（基础设施）"
-    },
-    {
-      "path": "docs/superpowers/plans/2026-05-06-i18n-wave2-core-ui.md",
-      "description": "i18n 第 2 波实施计划（核心 UI）"
-    },
-    {
-      "path": "docs/superpowers/plans/2026-05-06-i18n-wave3-chat.md",
-      "description": "i18n 第 3 波实施计划（Chat 组件）"
-    },
-    {
-      "path": "docs/superpowers/plans/2026-05-06-i18n-wave3-panels.md",
-      "description": "i18n 第 3 波实施计划（功能面板）"
-    },
-    {
-      "path": "docs/superpowers/plans/2026-05-07-workflow-visual-editor.md",
-      "description": "Workflow Visual Editor 实施计划"
-    },
-    {
-      "path": "docs/superpowers/plans/2026-05-08-quick-command.md",
-      "description": "快捷命令实施计划"
-    },
-    {
-      "path": "docs/superpowers/plans/2026-05-14-editor-search-and-monaco-models.md",
-      "description": "编辑器搜索和 Monaco Models 实施计划"
-    },
-    {
-      "path": "docs/superpowers/plans/2026-05-20-hook-system.md",
-      "description": "Hook 系统实施计划"
-    },
-    {
-      "path": "PRD.md",
-      "description": "产品需求文档"
-    },
-    {
-      "path": "packages/web/DESIGN.md",
-      "description": "UI 设计规范（MiniMax 风格参考）"
-    },
-    {
-      "path": "packages/web/AGENTS.md",
-      "description": "Next.js 16 Breaking Changes 提示"
-    }
+    { "path": "docs/agent-lifecycle.md", "description": "Agent Preset 创建、更新、工作空间导入、运行时工作目录行为" },
+    { "path": "docs/issue-agent-automation.md", "description": "Issue 自动化编排链路（Scheduler -> Planner -> TaskCreator -> Executor -> Reviewer）" },
+    { "path": "docs/workflow-system.md", "description": "Workflow 系统架构：数据模型、DAG 校验、Task 映射、执行语义、修改指南" },
+    { "path": "docs/codex-runtime-limitations.md", "description": "Codex 运行时的已知限制与解决方法" },
+    { "path": "docs/anthropic-bridge.md", "description": "Anthropic Messages 到 OpenAI Chat/Responses 的协议中转机制" },
+    { "path": "docs/function-call-tools.md", "description": "Agent Function Call 工具层" },
+    { "path": "docs/ai-message-rendering.md", "description": "AI 消息结构化渲染链路（MessagePart/chain/tool-detail/diff）" },
+    { "path": "docs/model-usage-accounting.md", "description": "Token 用量统计与计费流程" },
+    { "path": "docs/bot-notification-workflow.md", "description": "飞书/企微 Bot 通知系统架构、命令系统和扩展指南" },
+    { "path": "docs/persistent-agent-context.md", "description": "持久上下文加载方案（CLAUDE.md/AGENTS.md 自动注入 Agent prompt）" },
+    { "path": "docs/reply-ai-message-workflow.md", "description": "回复 AI 消息的端到端工作流（replies 嵌套 + Agent 续跑）" },
+    { "path": "docs/monaco-typescript-lsp.md", "description": "Monaco TypeScript LSP 实现架构" },
+    { "path": "docs/dom-inspector-integration.md", "description": "DOM Inspector 源码定位集成方案" },
+    { "path": "docs/flex-truncate-fix.md", "description": "Flex 布局中 truncate 不生效的解决方案" },
+    { "path": "docs/superpowers/specs/2026-05-06-i18n-design.md", "description": "i18n 中英文多语言切换设计文档" },
+    { "path": "docs/superpowers/specs/2026-05-07-workflow-visual-editor-design.md", "description": "Workflow Visual Editor 设计文档" },
+    { "path": "docs/superpowers/specs/2026-05-08-quick-command-design.md", "description": "快捷命令设计文档" },
+    { "path": "docs/superpowers/specs/2026-05-14-editor-search-and-monaco-models-design.md", "description": "编辑器搜索和 Monaco Models 设计文档" },
+    { "path": "docs/superpowers/specs/2026-05-20-hook-system-design.md", "description": "Hook 系统设计文档" },
+    { "path": "PRD.md", "description": "产品需求文档" },
+    { "path": "packages/web/DESIGN.md", "description": "UI 设计规范（MiniMax 风格参考）" },
+    { "path": "packages/web/AGENTS.md", "description": "Next.js 16 Breaking Changes 提示" }
   ],
   "rootFiles": [
     "package.json",
@@ -589,8 +459,8 @@
     "Dockerfile.server"
   ],
   "scanCoverage": {
-    "totalSourceFiles": 424,
-    "scannedFiles": 424,
+    "totalSourceFiles": 472,
+    "scannedFiles": 472,
     "coveragePercentage": 100,
     "ignoredDirectories": [
       "node_modules",
@@ -605,102 +475,114 @@
     "truncated": false,
     "gapDetails": [],
     "moduleBreakdown": {
-      "shared": { "total": 20, "scanned": 20, "percentage": 100 },
-      "server": { "total": 118, "scanned": 118, "percentage": 100 },
-      "web": { "total": 265, "scanned": 265, "percentage": 100 },
-      "flutter": { "total": 21, "scanned": 21, "percentage": 100 }
+      "shared": { "total": 22, "scanned": 22, "percentage": 100 },
+      "server": { "total": 128, "scanned": 128, "percentage": 100 },
+      "web": { "total": 296, "scanned": 296, "percentage": 100 },
+      "flutter": { "total": 26, "scanned": 26, "percentage": 100 }
     }
   },
   "changesFromPrevious": {
-    "previousVersion": "1.7.0",
-    "previousTimestamp": "2026-05-19T09:45:03+08:00",
-    "summary": "Hook 系统（Agent 工具调用前后自定义钩子）、输出风格管理（OutputStyle 模板 CRUD）、Issue Task Controller 从 issue-agent-runner 独立拆分（689 行）、Agent 运行时接口独立文件、Bot Agent 从 notification-hub 提取、Web 大规模组件拆分（聊天/Issue/Git/Composer/Skills Dialog/UI 基础组件）、Providers 管理对话框。文件总数 398->424（+26），新增 3 篇文档。",
+    "previousVersion": "1.8.0",
+    "previousTimestamp": "2026-05-20T14:08:52+08:00",
+    "summary": "Kanban 看板系统（SQLite + @dnd-kit 拖拽）、Notion 风格文档数据库（SQLite 树形存储）、Issue 服务层独立、Flutter Docking 多窗口布局重构、Web 大规模组件扩展（Settings 拆分、Timeline、Editor 增强、Composer 扩展、UI 组件库扩展、Kanban、Database）、server 版本 0.3.62->0.3.63。文件总数 424->472（+48）。",
     "newFiles": {
       "shared": [
-        "src/types/hooks.ts (HookConfig + HookRule 类型)"
+        "src/types/database.ts (DocNode + PRESET_COVERS 类型)",
+        "src/types/kanban.ts (KanbanBoard + KanbanColumn + KanbanTask + KanbanPriority + KanbanLayoutMode 类型)"
       ],
       "server": [
-        "src/routes/hooks.ts (Hook CRUD + upload + apply 路由)",
-        "src/services/hook-engine.ts (Hook 引擎 + wrapOnEventWithHooks)",
-        "src/storage/hook-store.ts (Hook .hook.json 持久化)",
-        "src/routes/output-style.ts (输出风格模板 CRUD 路由)",
-        "src/services/output-style.ts (输出风格模板管理 + resolveOutputStyleContent)",
-        "src/agents/issue-task-controller.ts (从 issue-agent-runner 拆分的 689 行任务控制器)",
-        "src/adapters/agent-runtime-types.ts (Agent 运行时接口独立文件)",
-        "src/services/notification-hub/bot-agent.ts (Bot Agent 从 notification-hub 提取)"
+        "src/routes/database.ts (DocNode CRUD + move/trash/restore 路由)",
+        "src/routes/kanban.ts (Kanban Board GET/PUT 路由)",
+        "src/storage/database-store.ts (DocNode SQLite 存储层)",
+        "src/storage/kanban-store.ts (Kanban SQLite 三表存储层)",
+        "src/services/kanban.ts (Kanban 业务逻辑 + ensureBoard)",
+        "src/services/issue.ts (Issue 业务逻辑独立文件 214 行)"
       ],
       "web": [
-        "src/stores/hooks.ts (Hook Store)",
-        "src/components/sidebar/hooks-dialog.tsx (Hook 管理对话框)",
-        "src/components/sidebar/output-styles-dialog.tsx (输出风格管理对话框)",
-        "src/components/sidebar/providers-dialog.tsx (LLM 供应商管理对话框)",
-        "src/app/settings/output-styles/page.tsx (输出风格设置页)",
-        "src/components/chat/message-item.tsx (消息项组件)",
-        "src/components/chat/message-navigator.tsx (消息导航器)",
-        "src/components/chat/context.tsx (通用 context 组件)",
-        "src/components/chat/channel-dialog.tsx (频道对话框)",
-        "src/components/chat/channel-list.tsx (频道列表)",
-        "src/components/chat/channel-info-panel.tsx (频道信息面板)",
-        "src/components/chat/member-info-dialog.tsx (成员信息对话框)",
-        "src/components/chat/add-member-dialog.tsx (添加成员对话框)",
-        "src/components/issue/edit-issue-dialog.tsx (编辑议题对话框)",
-        "src/components/issue/issue-detail-header.tsx (议题详情头部)",
-        "src/components/issue/issue-detail-comments.tsx (议题评论区域)",
-        "src/components/issue/issue-detail-tasks-panel.tsx (拖拽排序任务面板)",
-        "src/components/issue/task-row.tsx (可拖拽任务行)",
-        "src/components/git/use-git-sync.ts (Git 远程同步 Hook)",
-        "src/components/git/git-prompt-dialog.tsx (通用输入对话框)",
-        "src/components/git/git-gitignore-dialog.tsx (.gitignore 编辑)",
-        "src/components/git/git-file-context-menu.tsx (文件右键菜单)",
-        "src/components/git/git-commit-context-menu.tsx (提交右键菜单)",
-        "src/components/git/git-commit-utils.ts (Git 工具函数)",
-        "src/components/git/git-commit-detail-dialog.tsx (提交详情对话框)",
-        "src/components/git/git-discard-dialog.tsx (丢弃确认)",
-        "src/components/git/diff-viewer.tsx (通用 Diff 查看器)",
-        "src/components/composer/suggestion-list.tsx (TipTap 建议列表)",
-        "src/components/composer/composer-shell.tsx (Composer 外壳)",
-        "src/components/sidebar/skills-dialog/ (Skills Dialog 子目录 7 文件)",
-        "src/components/ui/search-select.tsx (搜索选择器)",
-        "src/components/ui/markdown.tsx (Markdown 渲染)",
-        "src/components/ui/skeleton.tsx (骨架屏)",
-        "src/components/ui/drawer.tsx (抽屉组件)",
-        "src/components/ui/dialog.tsx (@base-ui/dialog 重写)",
-        "src/components/ui/sheet.tsx (@base-ui/dialog 侧边面板)",
-        "src/components/ui/alert-dialog.tsx (@base-ui/alert-dialog)",
-        "src/components/ui/input.tsx (@base-ui/input + IME)",
-        "src/components/theme-provider.tsx (主题提供者)"
+        "src/components/kanban/kanban-board.tsx (Kanban 看板主组件)",
+        "src/components/kanban/kanban-card.tsx (看板卡片)",
+        "src/components/kanban/kanban-column.tsx (看板列)",
+        "src/components/kanban/task-modal.tsx (任务编辑对话框)",
+        "src/components/kanban/column-modal.tsx (列编辑对话框)",
+        "src/components/database/database-panel.tsx (文档数据库面板)",
+        "src/components/database/notion-editor.tsx (Notion 风格编辑器)",
+        "src/components/database/markdown-editor.tsx (Markdown 编辑器)",
+        "src/components/database/quick-search-modal.tsx (快速搜索)",
+        "src/components/database/trash-bin-modal.tsx (回收站)",
+        "src/components/timeline/timeline-component.tsx (版本时间线)",
+        "src/components/timeline/content/v1-1-0.tsx (v1.1.0 版本内容)",
+        "src/components/timeline/content/v1-2-0.tsx (v1.2.0 版本内容)",
+        "src/components/timeline/content/v1-3-0.tsx (v1.3.0 版本内容)",
+        "src/components/sidebar/settings/account-tab.tsx (账户设置)",
+        "src/components/sidebar/settings/appearance-tab.tsx (外观设置)",
+        "src/components/sidebar/settings/custom-font-dialog.tsx (自定义字体)",
+        "src/components/sidebar/settings/language-tab.tsx (语言设置)",
+        "src/components/sidebar/settings/security-tab.tsx (安全设置)",
+        "src/components/sidebar/settings/speech-settings-tab.tsx (语音设置)",
+        "src/components/editor/file-tree.tsx (文件树组件)",
+        "src/components/editor/file-icon.tsx (文件图标映射)",
+        "src/components/editor/file-context-menu.tsx (文件右键菜单)",
+        "src/components/editor/editor-tabs.tsx (编辑器标签页)",
+        "src/components/editor/editor-panel.tsx (编辑器面板)",
+        "src/components/editor/code-editor.tsx (Monaco 编辑器集成)",
+        "src/components/editor/useMobileReadonlyOverlay.ts (移动端只读覆盖)",
+        "src/components/composer/create-slash-extension.ts (slash 命令扩展)",
+        "src/components/composer/create-agent-resource-extension.ts (agent resource 扩展)",
+        "src/components/composer/composer-editor.tsx (TipTap 编辑器主组件)",
+        "src/components/composer/composer-dialog.tsx (Composer 对话框)",
+        "src/components/layout/tab-config.tsx (Tab 配置)",
+        "src/components/home/subscription-panel.tsx (订阅面板)",
+        "src/components/home/usage-dashboard.tsx (用量仪表盘)",
+        "src/components/common/agent-picker-dialog.tsx (Agent 选择器)",
+        "src/components/common/agent-icon.tsx (Agent 图标)",
+        "src/components/common/user-icon.tsx (用户图标)",
+        "src/components/issue/issue-detail-info-panel.tsx (Issue 详情信息面板)",
+        "src/components/issue/issue-detail.tsx (Issue 详情主组件)",
+        "src/components/git/git-commits-panel.tsx (Git 提交面板)",
+        "src/components/ui/resizable.tsx (ResizablePanel)",
+        "src/components/ui/scroll-area.tsx (滚动区域)",
+        "src/components/ui/status-badge.tsx (状态徽章)",
+        "src/components/ui/empty.tsx (空状态)",
+        "src/components/ui/toggle.tsx (切换按钮)",
+        "src/components/ui/toggle-group.tsx (切换组)",
+        "src/components/ui/sidebar.tsx (侧边栏)",
+        "src/components/ui/folder-picker.tsx (文件夹选择器)",
+        "src/components/ui/file-upload.tsx (文件上传)",
+        "src/stores/kanban.ts (Kanban Store)",
+        "src/stores/database.ts (Database Store)",
+        "src/stores/search-commands/server-search.ts (服务器搜索)",
+        "src/lib/converter.ts (html/markdown 互转)",
+        "src/lib/commands.ts (命令工具)",
+        "src/lib/server.ts (服务器管理)"
       ],
-      "flutter": []
+      "flutter": [
+        "lib/widgets/split_layout.dart (Docking 多窗口布局)",
+        "lib/widgets/tab_context_menu.dart (Tab 右键菜单)",
+        "lib/widgets/tab_dialogs.dart (Tab 对话框)",
+        "lib/widgets/tab_widgets.dart (Tab 组件)",
+        "lib/widgets/console_sheet.dart (控制台面板)",
+        "lib/widgets/debug_widgets.dart (调试工具)"
+      ]
     },
     "dependencyChanges": {
-      "server": {
-        "added": [],
-        "removed": []
-      },
-      "web": {
-        "added": [],
-        "removed": []
-      },
-      "flutter": {
-        "added": [],
-        "removed": []
-      }
+      "server": { "added": [], "removed": [] },
+      "web": { "added": [], "removed": [] },
+      "flutter": { "added": ["docking"], "removed": [] }
     }
   },
   "nextSteps": {
-    "description": "全部核心模块已完整扫描（424/424 文件，100% 覆盖率）。",
+    "description": "全部核心模块已完整扫描（472/472 文件，100% 覆盖率）。",
     "suggestions": [
-      "Hook 系统测试（hook-engine 规则匹配、命令执行、wrapOnEventWithHooks 拦截）",
-      "输出风格测试（CRUD + resolveOutputStyleContent 注入）",
-      "Issue Task Controller 测试（依赖调度 + Hook 集成 + Workflow 映射）",
-      "频道管理组件测试（CRUD + 成员管理 + 频道信息面板）",
-      "Issue 拖拽排序测试（@dnd-kit 集成 + Task 状态更新）",
-      "Git Context Menu 测试（文件/提交右键菜单 + 丢弃确认）",
-      "Skills Dialog 子目录集成测试（import/sync/bind/edit）",
+      "Kanban 看板测试（SQLite CRUD + @dnd-kit 拖拽排序 + 水平/垂直布局切换）",
+      "文档数据库测试（DocNode 树形 CRUD + 移动 + 软删除/恢复 + 搜索）",
+      "Issue 服务层测试（ensureChannel + ensureRetryDefaults + list/create/update）",
+      "Flutter Docking 布局测试（多 WebView Tab 拖拽 + 右键菜单 + 对话框）",
+      "Settings 对话框 6 Tab 集成测试（Appearance/Language/Account/Security/Git/Speech）",
+      "Timeline 版本线测试（版本内容渲染 + 样式）",
+      "Editor 完整组件测试（file-tree/file-icon/editor-tabs/code-editor/file-context-menu）",
+      "Composer 扩展测试（slash 命令 + agent resource + TipTap 编辑器）",
       "i18n 翻译 key 完整性校验工具（对比 en.json 和 zh.json）",
-      "ws/agent-runner.ts 进一步模块化拆分",
-      "Flutter Provider 单元测试（BrowserNotifier/BookmarkNotifier 状态变更）",
-      "Flutter JsBridge 集成测试（事件收发、RPC 调用、Promise 回调）"
+      "htmlToMarkdown/markdownToHtml 转换测试"
     ]
   }
 }

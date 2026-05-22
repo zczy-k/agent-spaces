@@ -4,7 +4,7 @@
 
 ## 模块职责
 
-前后端共享的 TypeScript 类型定义包。定义了所有核心数据模型、WebSocket 事件契约、结构化消息 Parts、内置工具声明、通知设置、Agent 用量统计、Workflow 模板、快捷命令、订阅管理、代码搜索、语音识别、应用内通知、代码收藏、Hook 配置等接口类型，供 server 和 web 包共同引用。
+前后端共享的 TypeScript 类型定义包。定义了所有核心数据模型、WebSocket 事件契约、结构化消息 Parts、内置工具声明、通知设置、Agent 用量统计、Workflow 模板、快捷命令、订阅管理、代码搜索、语音识别、应用内通知、代码收藏、Hook 配置、DocNode 文档数据库、Kanban 看板等接口类型，供 server 和 web 包共同引用。
 
 ## 入口与启动
 
@@ -34,7 +34,9 @@
 | `types/notification.ts` | `NotificationType`, `AppNotification` | 应用内通知类型和模型（issue_completed/issue_failed/task_completed/task_failed） |
 | `types/speech.ts` | `SpeechRecognitionProvider`, `SpeechRecognitionConfig`, `SpeechRecognitionResult`, `TencentSpeechCredentials` | 语音识别配置和结果（腾讯语音） |
 | `types/code-favorites.ts` | `CodeFavorite` | 代码收藏（id/path/line/column/endLine/endColumn/label/snippet/workspaceId） |
-| `types/hooks.ts` | `HookConfig`, `HookRule` | Hook 配置（PreToolUse/PostToolUse 钩子，shell/webhook/script 动作）（**新**） |
+| `types/hooks.ts` | `HookConfig`, `HookRule` | Hook 配置（PreToolUse/PostToolUse 钩子，shell/webhook/script 动作） |
+| `types/database.ts` | `DocNode`, `PRESET_COVERS` | Notion 风格文档数据库节点（id/title/icon/cover/content/parentId/isTrash + 预设封面渐变）（**新**） |
+| `types/kanban.ts` | `KanbanBoard`, `KanbanColumn`, `KanbanTask`, `KanbanPriority`, `KanbanLayoutMode` | Kanban 看板系统（Board + Column + Task + 优先级 + 布局模式）（**新**） |
 | `types/events.ts` | `WSEvent<T>`, `ClientEventMap`, `ServerEventMap` | WebSocket 事件契约（含 workflow + command + notification + inspector 事件） |
 
 ### AgentConfig 与 Role 体系
@@ -62,11 +64,26 @@
 
 ### HookConfig 与 HookRule
 
-Hook 配置系统（**新**）：
+Hook 配置系统：
 - `HookConfig`: Hook 配置（name, description?, enabled, hooks: { PreToolUse?, PostToolUse? }）
 - `HookRule`: 钩子规则（matcher: string, type: 'command' | 'webhook' | 'script', command?, url?, function?, timeout?）
 - matcher 支持三种模式：`*` 通配、`/regex/` 正则、精确字符串匹配
 - 遵循 Claude Code `hooks.json` 格式约定
+
+### DocNode 与 PRESET_COVERS（新）
+
+Notion 风格文档数据库类型：
+- `DocNode`: 文档节点（id, title, icon, cover, content, parentId, createdAt, updatedAt, isTrash）
+- `PRESET_COVERS`: 7 种预设封面渐变色数组（linear-gradient）
+
+### KanbanBoard 详情（新）
+
+Kanban 看板系统类型：
+- `KanbanPriority`: 'low' | 'medium' | 'high'
+- `KanbanLayoutMode`: 'horizontal' | 'vertical'
+- `KanbanColumn`: 列（id, title, color, order）
+- `KanbanTask`: 任务（id, title, description, priority, columnId, order, createdAt, dueDate?）
+- `KanbanBoard`: 看板（id, workspaceId, title, layoutMode, columns[], tasks[], createdAt, updatedAt）
 
 ### CodeFavorite 详情
 
@@ -215,6 +232,8 @@ TodoItemStatus: pending | in_progress | completed
 - **Q: QuickCommand 的 autoRestart 是什么？** A: 命令进程意外退出时自动重启。
 - **Q: CodeFavorite 的 endLine/endColumn 有什么用？** A: 标记收藏的代码范围（可以是多行选中区域），前端显示时使用 label 和 snippet 预览。
 - **Q: HookConfig 的 matcher 支持哪些格式？** A: `*` 匹配所有工具、`/regex/` 正则表达式匹配、精确字符串匹配工具名。
+- **Q: DocNode 的 parentId 有什么用？** A: 实现树形文档结构，null 表示根节点，非 null 表示子文档。
+- **Q: KanbanLayoutMode 有哪些选项？** A: `horizontal`（水平排列列）和 `vertical`（垂直排列列）。
 
 ## 相关文件清单
 
@@ -243,13 +262,16 @@ packages/shared/
       notification.ts           # NotificationType + AppNotification（应用内通知）
       speech.ts                 # SpeechRecognitionProvider + SpeechRecognitionConfig + SpeechRecognitionResult + TencentSpeechCredentials（语音识别）
       code-favorites.ts         # CodeFavorite（代码收藏）
-      hooks.ts                  # HookConfig + HookRule（Hook 系统）（新增）
+      hooks.ts                  # HookConfig + HookRule（Hook 系统）
+      database.ts               # DocNode + PRESET_COVERS（Notion 风格文档数据库）（新增）
+      kanban.ts                 # KanbanBoard + KanbanColumn + KanbanTask + KanbanPriority + KanbanLayoutMode（Kanban 看板）（新增）
 ```
 
 ## 变更记录 (Changelog)
 
 | 时间 | 操作 | 说明 |
 |------|------|------|
+| 2026-05-22T12:52:36+08:00 | 增量更新 | 新增 database.ts（DocNode + PRESET_COVERS 类型：Notion 风格文档数据库节点，含 id/title/icon/cover/content/parentId/isTrash/createdAt/updatedAt + 7 种预设封面渐变）；新增 kanban.ts（KanbanBoard + KanbanColumn + KanbanTask + KanbanPriority + KanbanLayoutMode 类型：Kanban 看板系统）；types/index.ts 新增导出；**文件数 20->22** |
 | 2026-05-20T14:08:52+08:00 | 增量更新 | 新增 hooks.ts（HookConfig + HookRule 类型：PreToolUse/PostToolUse 钩子，matcher 通配/正则/精确匹配，type: command/webhook/script 三种动作）；types/index.ts 新增导出；**文件数 19->20** |
 | 2026-05-19T09:45:03+08:00 | 增量更新 | 新增 code-favorites.ts（CodeFavorite 类型：id/path/line/column/endLine/endColumn/label/snippet/createdAt/workspaceId）；types/index.ts 新增导出 |
 | 2026-05-16T17:36:40+08:00 | 增量更新 | 新增 command.ts（QuickCommand/CommandProcess/CommandProcessEvent）、subscription.ts（SubscriptionProvider/SubscriptionConfig/SubscriptionQuota/SubscriptionLimit）、search.ts（CodeSearchResult/FileSearchResult/SearchCodeOptions）、notification.ts（NotificationType/AppNotification）、speech.ts（SpeechRecognitionProvider/SpeechRecognitionConfig/SpeechRecognitionResult/TencentSpeechCredentials）；events.ts ServerEventMap 新增 command.started/stopped/restarted + notification.created/cleared 事件 |

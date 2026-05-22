@@ -34,6 +34,41 @@ export const BUILT_IN_AGENT_TOOLS = [
     label: 'Stop Quick Command',
     description: 'Stop a running quick command by its ID.',
   },
+  {
+    name: 'ListDatabaseNodes',
+    label: 'List Database Nodes',
+    description: 'List knowledge base nodes under a path, optionally filtered by title.',
+  },
+  {
+    name: 'SearchDatabaseNodes',
+    label: 'Search Database Nodes',
+    description: 'Search knowledge base nodes by title or content under a path.',
+  },
+  {
+    name: 'ReadDatabaseNode',
+    label: 'Read Database Node',
+    description: 'Read knowledge base node metadata and content by ID.',
+  },
+  {
+    name: 'WriteDatabaseNode',
+    label: 'Write Database Node',
+    description: 'Insert, replace, or overwrite knowledge base node content by ID.',
+  },
+  {
+    name: 'DeleteDatabaseNode',
+    label: 'Delete Database Node',
+    description: 'Trash or permanently delete a knowledge base node and its descendants.',
+  },
+  {
+    name: 'MoveDatabaseNode',
+    label: 'Move Database Node',
+    description: 'Move a knowledge base node or directory to another parent path or ID.',
+  },
+  {
+    name: 'UpdateDatabaseNodeMeta',
+    label: 'Update Database Meta',
+    description: 'Update knowledge base node metadata such as title, icon, cover, parent, or trash state.',
+  },
 ] as const;
 
 export type BuiltInAgentToolName = typeof BUILT_IN_AGENT_TOOLS[number]['name'];

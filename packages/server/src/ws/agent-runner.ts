@@ -4,7 +4,7 @@ import { broadcastToWorkspace } from './connection-manager.js';
 import { createMessage, updateMessage, listMessages } from '../services/message.js';
 import { getChannel, updateChannel } from '../services/channel.js';
 import * as issueService from '../services/issue.js';
-import { createIssueFunctionTools, createCommandFunctionTools } from '../services/builtin-tools.js';
+import { createIssueFunctionTools, createCommandFunctionTools, createDatabaseFunctionTools } from '../services/builtin-tools.js';
 import { startScheduler } from '../agents/scheduler-agent.js';
 import * as agentService from '../services/agent.js';
 import * as wsService from '../services/workspace.js';
@@ -224,7 +224,8 @@ export async function runMentionedAgent(
       senderId: preset.id,
       senderRole: preset.role,
     }, preset.tools),
-    ...createCommandFunctionTools(workspaceId),
+    ...createCommandFunctionTools(workspaceId, preset.tools),
+    ...createDatabaseFunctionTools(workspaceId, preset.tools),
   ];
   const workingDir = agentService.resolveWorkingDir(workspaceId, preset);
   const startTime = Date.now();
