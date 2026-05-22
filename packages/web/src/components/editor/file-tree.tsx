@@ -677,7 +677,7 @@ export function FileTreeNodes({ nodes }: { nodes: FileNode[] }) {
         const rootDropLineId = rootDropTargetId ? `${rootDropTargetId}:${node.path}` : undefined
         const rootDropLine = state.level === 0 && node.type === "directory" && onRootDropLineDrop ? (
           <div
-            className="h-4 px-2"
+            className="flex h-1.5 items-center px-2"
             draggable={false}
             onDragEnterCapture={rootDropLineId ? (event) => onRootDropLineDragEnter?.(event, rootDropLineId) : undefined}
             onDragOverCapture={rootDropLineId ? (event) => onRootDropLineDragOver?.(event, rootDropLineId) : undefined}
@@ -690,7 +690,7 @@ export function FileTreeNodes({ nodes }: { nodes: FileNode[] }) {
           >
             <div
               className={cn(
-                "h-0.5 rounded-full bg-primary opacity-0 transition-opacity",
+                "h-px flex-1 rounded-full bg-primary opacity-0 transition-opacity",
                 rootDropLineId && draggedOverPath === rootDropLineId && "opacity-100",
               )}
             />

@@ -342,7 +342,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
             )}
             {mediaType === 'markdown' && activeContent && (
               <div className="prose prose-sm dark:prose-invert max-w-none w-full max-w-4xl mx-auto">
-                <Markdown content={activeContent} />
+                <Markdown content={activeContent} workspaceId={workspaceId} />
               </div>
             )}
           </div>

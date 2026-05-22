@@ -113,7 +113,7 @@ export function ModelsDialog({
     setDraft({
       modelId: "",
       name: "",
-      provider: "Other",
+      provider: providerNames.length > 0 ? providerNames[0] : "Other",
       cost: { inputPerMillion: 0, outputPerMillion: 0 },
       maxContextTokens: 128_000,
       thinkingEnabled: true,
@@ -357,7 +357,7 @@ function ModelForm({
   const t = useTranslations("models");
   const nameEditedByUser = useRef(false);
   const [contextIdx, setContextIdx] = useState(() => getContextSliderIndex(draft.maxContextTokens));
-  const options = providerNames.length > 0 ? providerNames : ["Other"];
+  const options = providerNames.length > 0 ? [...providerNames, "Other"] : ["Other"];
   return (
     <div className="flex flex-col gap-5 p-5">
       <div className="flex flex-col gap-2.5">

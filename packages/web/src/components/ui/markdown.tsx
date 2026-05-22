@@ -3,8 +3,23 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { Components } from 'react-markdown';
+import { useEditorStore } from '@/stores/editor';
+import { useCallback } from 'react';
 
-const components: Components = {
+function looksLikeFilePath(href: string): boolean {
+  if (!href.startsWith('/')) return false;
+  if (href.startsWith('//')) return false;
+  if (href.startsWith('/api/')) return false;
+  return true;
+}
+
+function parseFileRef(href: string): { path: string; line?: number; column?: number } {
+  const m = href.match(/^(.+?)(?::(\d+))?(?::(\d+))?$/);
+  if (!m) return { path: href };
+  return { path: m[1], line: m[2] ? parseInt(m[2]) : undefined, column: m[3] ? parseInt(m[3]) : undefined };
+}
+
+const staticComponents: Components = {
   pre: ({ children }) => (
     <pre className="bg-background/50 rounded-md p-3 overflow-x-auto text-xs my-2">{children}</pre>
   ),
@@ -28,11 +43,6 @@ const components: Components = {
   blockquote: ({ children }) => (
     <blockquote className="border-l-2 border-muted-foreground/30 pl-3 my-2 text-muted-foreground">{children}</blockquote>
   ),
-  a: ({ href, children }) => (
-    <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary underline hover:no-underline">
-      {children}
-    </a>
-  ),
   table: ({ children }) => (
     <div className="overflow-x-auto my-2">
       <table className="text-xs border-collapse">{children}</table>
@@ -48,9 +58,43 @@ const components: Components = {
 
 interface MarkdownProps {
   content: string;
+  workspaceId?: string;
 }
 
-export function Markdown({ content }: MarkdownProps) {
+export function Markdown({ content, workspaceId }: MarkdownProps) {
+  const openFile = useEditorStore((s) => s.openFile);
+  const jumpToPosition = useEditorStore((s) => s.jumpToPosition);
+
+  const handleFileClick = useCallback(async (e: React.MouseEvent, href: string) => {
+    e.preventDefault();
+    if (!workspaceId) return;
+    const { path, line, column } = parseFileRef(href);
+    await openFile(workspaceId, path);
+    if (line) await jumpToPosition(workspaceId, path, line, column);
+  }, [workspaceId, openFile, jumpToPosition]);
+
+  const components: Components = {
+    ...staticComponents,
+    a: ({ href, children }) => {
+      if (href && workspaceId && looksLikeFilePath(href)) {
+        return (
+          <a
+            href={href}
+            onClick={(e) => handleFileClick(e, href)}
+            className="text-primary underline hover:no-underline cursor-pointer"
+          >
+            {children}
+          </a>
+        );
+      }
+      return (
+        <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary underline hover:no-underline">
+          {children}
+        </a>
+      );
+    },
+  };
+
   return (
     <div className="break-all">
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>

@@ -58,9 +58,11 @@ export function getToolIcon(toolName?: string, status?: "complete" | "active"): 
 export function AiMessageStep({
   text,
   status,
+  workspaceId,
 }: {
   text: string
   status: "complete" | "active"
+  workspaceId?: string
 }) {
   const t = useTranslations('chat')
   const shouldFold = countCharacters(text) >= 300
@@ -87,7 +89,7 @@ export function AiMessageStep({
       }
       status={status}
     >
-      {!shouldFold || open ? <Markdown content={text} /> : null}
+      {!shouldFold || open ? <Markdown content={text} workspaceId={workspaceId} /> : null}
     </ChainOfThoughtStep>
   )
 }

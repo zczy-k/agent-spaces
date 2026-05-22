@@ -167,7 +167,7 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
                 <DialogTitle>{senderName}</DialogTitle>
               </DialogHeader>
               <div className="flex-1 overflow-y-auto px-6 pb-6">
-                <Markdown content={isHTML(message.content) ? message.content.replace(/<[^>]*>/g, '') : message.content} />
+                <Markdown content={isHTML(message.content) ? message.content.replace(/<[^>]*>/g, '') : message.content} workspaceId={workspaceId} />
               </div>
             </DialogContent>
           </DialogPortal>

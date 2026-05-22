@@ -66,7 +66,7 @@ export function MessageParts({ message, isUser, workspaceId }: MessagePartsProps
         />
       )) : null}
       {!hasTextPart && shouldRenderLegacyContent ? (
-        isUser ? <UserContent content={message.content} /> : <Markdown content={dedupeRepeatedTextBlock(message.content)} />
+        isUser ? <UserContent content={message.content} /> : <Markdown content={dedupeRepeatedTextBlock(message.content)} workspaceId={workspaceId} />
       ) : null}
       {message.status === "pending" && parts.length === 0 ? (
         <div className="flex items-center gap-2 text-muted-foreground">
@@ -91,7 +91,7 @@ function MessagePartView({
 
   switch (part.type) {
     case "text":
-      return <Markdown content={part.text} />
+      return <Markdown content={part.text} workspaceId={workspaceId} />
     case "user_message":
       return <UserReplyPart text={part.text} senderName={part.senderName || "用户"} />
     case "reasoning":
@@ -102,7 +102,7 @@ function MessagePartView({
           </ChainOfThoughtHeader>
           <ChainOfThoughtContent className="max-h-[300px] overflow-y-auto">
             <div className="pl-6 text-xs text-muted-foreground">
-              <Markdown content={part.text} />
+              <Markdown content={part.text} workspaceId={workspaceId} />
             </div>
           </ChainOfThoughtContent>
         </ChainOfThought>
@@ -130,6 +130,7 @@ function MessagePartView({
                     key={chain.id}
                     text={chain.text ?? chain.title}
                     status={completed ? "complete" : "active"}
+                    workspaceId={workspaceId}
                   />
                 )
               }
@@ -190,7 +191,7 @@ function MessagePartView({
                 <div className="space-y-2">
                   <span className="font-medium text-muted-foreground text-sm">{t('messageParts.result')}</span>
                   <div className="rounded-md bg-muted/50 p-3 text-sm">
-                    <Markdown content={output} />
+                    <Markdown content={output} workspaceId={workspaceId} />
                   </div>
                 </div>
               ) : null}
