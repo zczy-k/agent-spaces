@@ -32,7 +32,9 @@ import {
   Upload,
   FileText,
   Folder,
+  Rocket,
 } from 'lucide-react';
+import { AgentPickerDialog } from '@/components/common/agent-picker-dialog';
 import { cn } from '@/lib/utils';
 
 const MonacoEditor = dynamic(
@@ -81,6 +83,11 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
   const [editAgentId, setEditAgentId] = useState('');
   const [editContent, setEditContent] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Apply state
+  const [applyCommand, setApplyCommand] = useState<CommandItem | null>(null);
+  const [applySelected, setApplySelected] = useState<string[]>([]);
+  const [applying, setApplying] = useState(false);
 
   const fetchAgents = useCallback(async () => {
     try {
@@ -228,7 +235,27 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
     } catch { /* ignore */ }
   };
 
-  const showMainView = open && !editCommand && !isCreating;
+  const openApplyDialog = (cmd: CommandItem) => {
+    setApplyCommand(cmd);
+    setApplySelected([]);
+  };
+
+  const handleApply = async () => {
+    if (!applyCommand || applySelected.length === 0) return;
+    setApplying(true);
+    try {
+      await fetch(`/api/agent-commands/${applyCommand.agentId}/${applyCommand.name}/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ group: applyCommand.group, agentIds: applySelected }),
+      });
+      setApplyCommand(null);
+      fetchAllCommands();
+    } catch { /* ignore */ }
+    setApplying(false);
+  };
+
+  const showMainView = open && !editCommand && !isCreating && !applyCommand;
 
   const mainBody = (
     <>
@@ -426,6 +453,15 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
                         </p>
                       </div>
                       <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-6 px-1.5 text-xs"
+                          onClick={() => openApplyDialog(cmd)}
+                        >
+                          <Rocket className="size-3 mr-0.5" />
+                          {t('apply')}
+                        </Button>
                         <DropdownMenu>
                           <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="size-7" />}>
                             <MoreVertical className="size-3.5" />
@@ -510,6 +546,26 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
           </div>
         </DialogContent>
       </Dialog>
+
+      <AgentPickerDialog
+        open={!!applyCommand}
+        onClose={() => setApplyCommand(null)}
+        onConfirm={handleApply}
+        title={t('applyTitle', { name: applyCommand?.name || '' })}
+        description={t('applyDescription')}
+        agents={agents.map((a) => ({
+          id: a.agentId,
+          name: a.agentName,
+          avatarUrl: a.avatarUrl,
+        }))}
+        selected={applySelected}
+        onToggle={(id) => setApplySelected((prev) =>
+          prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+        )}
+        cancelText={tc('cancel')}
+        confirmText={t('applyConfirm', { count: applySelected.length })}
+        loading={applying}
+      />
     </>
   );
 }

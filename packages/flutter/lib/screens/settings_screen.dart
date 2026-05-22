@@ -56,7 +56,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (!mounted) return;
     setState(() => _clearingCache = false);
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('settings_cache_cleared'.tr()), duration: const Duration(seconds: 1)),
+      SnackBar(
+        content: Text('settings_cache_cleared'.tr()),
+        duration: const Duration(seconds: 1),
+      ),
     );
   }
 
@@ -80,7 +83,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           SwitchListTile(
             dense: true,
             secondary: const Icon(Icons.restore, size: 20),
-            title: Text('settings_restore_tabs'.tr(), style: const TextStyle(fontSize: 13)),
+            title: Text(
+              'settings_restore_tabs'.tr(),
+              style: const TextStyle(fontSize: 13),
+            ),
             subtitle: Text(
               'settings_restore_tabs_desc'.tr(),
               style: TextStyle(
@@ -91,15 +97,37 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             value: settings.restoreTabsOnStartup,
             onChanged: (v) => notifier.setRestoreTabsOnStartup(v),
           ),
+          SwitchListTile(
+            dense: true,
+            secondary: const Icon(Icons.dashboard_customize_outlined, size: 20),
+            title: Text(
+              'settings_restore_layout'.tr(),
+              style: const TextStyle(fontSize: 13),
+            ),
+            subtitle: Text(
+              'settings_restore_layout_desc'.tr(),
+              style: TextStyle(
+                fontSize: 11,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            value: settings.restoreLayoutOnStartup,
+            onChanged: (v) => notifier.setRestoreLayoutOnStartup(v),
+          ),
           _SectionHeader(title: 'settings_auth'.tr()),
           ListTile(
             dense: true,
             leading: const Icon(Icons.notifications_outlined, size: 20),
-            title: Text('settings_notification'.tr(), style: const TextStyle(fontSize: 13)),
+            title: Text(
+              'settings_notification'.tr(),
+              style: const TextStyle(fontSize: 13),
+            ),
             subtitle: Text(
               _loadingNotificationPermission
                   ? 'settings_notification_checking'.tr()
-                  : (_notificationAllowed ? 'settings_notification_allowed'.tr() : 'settings_notification_denied'.tr()),
+                  : (_notificationAllowed
+                        ? 'settings_notification_allowed'.tr()
+                        : 'settings_notification_denied'.tr()),
               style: TextStyle(
                 fontSize: 11,
                 color: _notificationAllowed
@@ -108,13 +136,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ),
             trailing: _notificationAllowed
-                ? Icon(Icons.check_circle, size: 20, color: theme.colorScheme.primary)
+                ? Icon(
+                    Icons.check_circle,
+                    size: 20,
+                    color: theme.colorScheme.primary,
+                  )
                 : TextButton(
                     onPressed: _requestingNotificationPermission
                         ? null
                         : _requestNotificationPermission,
                     child: Text(
-                      _requestingNotificationPermission ? 'settings_notification_authorizing'.tr() : 'settings_notification_authorize'.tr(),
+                      _requestingNotificationPermission
+                          ? 'settings_notification_authorizing'.tr()
+                          : 'settings_notification_authorize'.tr(),
                     ),
                   ),
           ),
@@ -122,7 +156,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           SwitchListTile(
             dense: true,
             secondary: const Icon(Icons.bug_report_outlined, size: 20),
-            title: Text('settings_webview_debug'.tr(), style: const TextStyle(fontSize: 13)),
+            title: Text(
+              'settings_webview_debug'.tr(),
+              style: const TextStyle(fontSize: 13),
+            ),
             subtitle: Text(
               'settings_webview_debug_desc'.tr(),
               style: TextStyle(
@@ -137,7 +174,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(v ? 'settings_webview_debug_enabled'.tr() : 'settings_webview_debug_disabled'.tr()),
+                  content: Text(
+                    v
+                        ? 'settings_webview_debug_enabled'.tr()
+                        : 'settings_webview_debug_disabled'.tr(),
+                  ),
                   duration: const Duration(seconds: 1),
                 ),
               );
@@ -146,7 +187,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           SwitchListTile(
             dense: true,
             secondary: const Icon(Icons.visibility_off_outlined, size: 20),
-            title: Text('settings_incognito'.tr(), style: const TextStyle(fontSize: 13)),
+            title: Text(
+              'settings_incognito'.tr(),
+              style: const TextStyle(fontSize: 13),
+            ),
             subtitle: Text(
               'settings_incognito_desc'.tr(),
               style: TextStyle(
@@ -159,7 +203,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               notifier.setIncognito(v);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(v ? 'settings_incognito_enabled'.tr() : 'settings_incognito_disabled'.tr()),
+                  content: Text(
+                    v
+                        ? 'settings_incognito_enabled'.tr()
+                        : 'settings_incognito_disabled'.tr(),
+                  ),
                   duration: const Duration(seconds: 1),
                 ),
               );
@@ -168,7 +216,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ListTile(
             dense: true,
             leading: const Icon(Icons.cleaning_services_outlined, size: 20),
-            title: Text('settings_clear_cache'.tr(), style: const TextStyle(fontSize: 13)),
+            title: Text(
+              'settings_clear_cache'.tr(),
+              style: const TextStyle(fontSize: 13),
+            ),
             subtitle: Text(
               'settings_clear_cache_desc'.tr(),
               style: TextStyle(
@@ -189,7 +240,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ListTile(
             dense: true,
             leading: const Icon(Icons.key_outlined, size: 20),
-            title: Text('settings_terminal_credentials'.tr(), style: const TextStyle(fontSize: 13)),
+            title: Text(
+              'settings_terminal_credentials'.tr(),
+              style: const TextStyle(fontSize: 13),
+            ),
             subtitle: Text(
               'settings_terminal_credentials_desc'.tr(),
               style: TextStyle(
@@ -204,7 +258,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ListTile(
             dense: true,
             leading: const Icon(Icons.language, size: 20),
-            title: Text('settings_language'.tr(), style: const TextStyle(fontSize: 13)),
+            title: Text(
+              'settings_language'.tr(),
+              style: const TextStyle(fontSize: 13),
+            ),
             subtitle: Text(
               'settings_language_desc'.tr(),
               style: TextStyle(
@@ -216,8 +273,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  context.locale.languageCode == 'zh' ? 'language_zh'.tr() : 'language_en'.tr(),
-                  style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurfaceVariant),
+                  context.locale.languageCode == 'zh'
+                      ? 'language_zh'.tr()
+                      : 'language_en'.tr(),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 const SizedBox(width: 4),
                 const Icon(Icons.chevron_right, size: 20),
@@ -229,7 +291,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ListTile(
             dense: true,
             leading: const Icon(Icons.dark_mode_outlined, size: 20),
-            title: Text('settings_theme'.tr(), style: const TextStyle(fontSize: 13)),
+            title: Text(
+              'settings_theme'.tr(),
+              style: const TextStyle(fontSize: 13),
+            ),
             subtitle: Text(
               _themeLabel(AdaptiveTheme.of(context).mode),
               style: TextStyle(
@@ -275,7 +340,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 Text('language_zh'.tr(), style: const TextStyle(fontSize: 14)),
                 const Spacer(),
                 if (context.locale.languageCode == 'zh')
-                  Icon(Icons.check, size: 18, color: Theme.of(context).colorScheme.primary),
+                  Icon(
+                    Icons.check,
+                    size: 18,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
               ],
             ),
           ),
@@ -289,7 +358,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 Text('language_en'.tr(), style: const TextStyle(fontSize: 14)),
                 const Spacer(),
                 if (context.locale.languageCode == 'en')
-                  Icon(Icons.check, size: 18, color: Theme.of(context).colorScheme.primary),
+                  Icon(
+                    Icons.check,
+                    size: 18,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
               ],
             ),
           ),
@@ -323,7 +396,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 Text(_themeLabel(mode), style: const TextStyle(fontSize: 14)),
                 const Spacer(),
                 if (mode == current)
-                  Icon(Icons.check, size: 18, color: Theme.of(context).colorScheme.primary),
+                  Icon(
+                    Icons.check,
+                    size: 18,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
               ],
             ),
           );

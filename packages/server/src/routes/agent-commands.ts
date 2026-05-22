@@ -7,6 +7,7 @@ import {
   createCommand,
   updateCommand,
   deleteCommand,
+  applyCommandToAgents,
 } from '../services/agent-commands.js';
 import type { Request, Response } from 'express';
 
@@ -73,6 +74,18 @@ router.delete('/:agentId/:name', (req: Request, res: Response) => {
     return;
   }
   res.json({ success: true });
+});
+
+router.post('/:agentId/:name/apply', (req: Request, res: Response) => {
+  const agentId = typeof req.params.agentId === 'string' ? req.params.agentId : req.params.agentId[0];
+  const name = typeof req.params.name === 'string' ? req.params.name : req.params.name[0];
+  const { group, agentIds } = req.body as { group?: string; agentIds?: string[] };
+  if (!Array.isArray(agentIds) || agentIds.length === 0) {
+    res.status(400).json({ error: 'agentIds required' });
+    return;
+  }
+  const applied = applyCommandToAgents(agentId, name, group || '', agentIds);
+  res.json({ applied });
 });
 
 export default router;

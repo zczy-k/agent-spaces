@@ -45,22 +45,27 @@ class Bookmark {
 
 class AppSettings {
   final bool restoreTabsOnStartup;
+  final bool restoreLayoutOnStartup;
   final bool webViewDebuggingEnabled;
   final bool incognito;
 
   const AppSettings({
     this.restoreTabsOnStartup = true,
+    this.restoreLayoutOnStartup = true,
     this.webViewDebuggingEnabled = kDebugMode,
     this.incognito = false,
   });
 
   AppSettings copyWith({
     bool? restoreTabsOnStartup,
+    bool? restoreLayoutOnStartup,
     bool? webViewDebuggingEnabled,
     bool? incognito,
   }) {
     return AppSettings(
       restoreTabsOnStartup: restoreTabsOnStartup ?? this.restoreTabsOnStartup,
+      restoreLayoutOnStartup:
+          restoreLayoutOnStartup ?? this.restoreLayoutOnStartup,
       webViewDebuggingEnabled:
           webViewDebuggingEnabled ?? this.webViewDebuggingEnabled,
       incognito: incognito ?? this.incognito,
@@ -69,12 +74,14 @@ class AppSettings {
 
   Map<String, dynamic> toJson() => {
     'restoreTabsOnStartup': restoreTabsOnStartup,
+    'restoreLayoutOnStartup': restoreLayoutOnStartup,
     'webViewDebuggingEnabled': webViewDebuggingEnabled,
     'incognito': incognito,
   };
 
   factory AppSettings.fromJson(Map<String, dynamic> json) => AppSettings(
-    restoreTabsOnStartup: json['restoreTabsOnStartup'] as bool? ?? false,
+    restoreTabsOnStartup: json['restoreTabsOnStartup'] as bool? ?? true,
+    restoreLayoutOnStartup: json['restoreLayoutOnStartup'] as bool? ?? true,
     webViewDebuggingEnabled:
         json['webViewDebuggingEnabled'] as bool? ?? kDebugMode,
     incognito: json['incognito'] as bool? ?? false,

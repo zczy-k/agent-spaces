@@ -65,6 +65,7 @@ class BrowserState {
 class BrowserNotifier extends StateNotifier<BrowserState> {
   static const _uuid = Uuid();
   bool _restoreOnStartup = false;
+  bool _restoreLayoutOnStartup = true;
 
   BrowserNotifier() : super(const BrowserState());
 
@@ -72,6 +73,14 @@ class BrowserNotifier extends StateNotifier<BrowserState> {
     final savedHomeUrl = await StorageService.loadHomeUrl();
     if (savedHomeUrl != null) {
       state = state.copyWith(homeUrl: savedHomeUrl);
+    }
+
+    if (_restoreLayoutOnStartup) {
+      final savedLayout = await StorageService.loadSplitLayout();
+      final splitLayout = _parseSplitLayout(savedLayout);
+      if (splitLayout != null) {
+        state = state.copyWith(splitLayout: splitLayout);
+      }
     }
 
     if (_restoreOnStartup) {
@@ -89,6 +98,8 @@ class BrowserNotifier extends StateNotifier<BrowserState> {
   }
 
   void setRestoreOnStartup(bool value) => _restoreOnStartup = value;
+
+  void setRestoreLayoutOnStartup(bool value) => _restoreLayoutOnStartup = value;
 
   void addTab({String? url, String? title, DeviceProfile? device}) {
     final tab = BrowserTab(
@@ -171,10 +182,19 @@ class BrowserNotifier extends StateNotifier<BrowserState> {
 
   void setSplitLayout(SplitLayout layout) {
     state = state.copyWith(splitLayout: layout);
+    StorageService.saveSplitLayout(layout.name);
   }
 
   void _persistTabs() {
     StorageService.saveTabs(state.tabs, state.activeTabId);
+  }
+
+  SplitLayout? _parseSplitLayout(String? name) {
+    if (name == null) return null;
+    for (final layout in SplitLayout.values) {
+      if (layout.name == name) return layout;
+    }
+    return null;
   }
 }
 

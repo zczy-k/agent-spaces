@@ -38,6 +38,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     final browserNotifier = ref.read(browserProvider.notifier);
     browserNotifier.setRestoreOnStartup(settings.restoreTabsOnStartup);
+    browserNotifier.setRestoreLayoutOnStartup(settings.restoreLayoutOnStartup);
     await browserNotifier.init();
 
     final seenPermissionDialog = await StorageService.hasSeenPermissionDialog();

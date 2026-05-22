@@ -18,5 +18,9 @@
   "allAgents": "所有 Agent",
   "noAgents": "暂无 Agent 模板",
   "filterGroups": "分组",
-  "filterNoGroup": "未分组"
+  "filterNoGroup": "未分组",
+  "apply": "应用",
+  "applyTitle": "应用到 Agent - {name}",
+  "applyDescription": "选择要将此 Command 复制到的 Agent",
+  "applyConfirm": "应用到 {count} 个 Agent"
 }

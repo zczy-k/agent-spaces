@@ -16,6 +16,11 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     StorageService.saveSettings(state);
   }
 
+  void setRestoreLayoutOnStartup(bool value) {
+    state = state.copyWith(restoreLayoutOnStartup: value);
+    StorageService.saveSettings(state);
+  }
+
   void setWebViewDebuggingEnabled(bool value) {
     state = state.copyWith(webViewDebuggingEnabled: value);
     StorageService.saveSettings(state);

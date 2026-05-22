@@ -90,184 +90,186 @@ class _TerminalInstanceState extends ConsumerState<TerminalInstance> {
         color: theme.colorScheme.surface,
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520, maxHeight: double.infinity),
+            constraints: const BoxConstraints(maxWidth: 520),
             child: Card(
               margin: const EdgeInsets.all(20),
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(20),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Icon(Icons.terminal, color: theme.colorScheme.primary),
-                      const SizedBox(width: 10),
-                      Text(
-                        'terminal_new'.tr(),
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                  if (credentials.isNotEmpty) ...[
-                    DropdownButtonFormField<String>(
-                      initialValue: _selectedCredentialId,
-                      decoration: InputDecoration(
-                        labelText: 'terminal_select_saved_credential'.tr(),
-                        border: const OutlineInputBorder(),
-                      ),
-                      items: credentials
-                          .map(
-                            (credential) => DropdownMenuItem(
-                              value: credential.id,
-                              child: Text(
-                                '${credential.name} (${credential.username}@${credential.host}:${credential.port})',
-                              ),
+                      Row(
+                        children: [
+                          Icon(Icons.terminal, color: theme.colorScheme.primary),
+                          const SizedBox(width: 10),
+                          Text(
+                            'terminal_new'.tr(),
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
                             ),
-                          )
-                          .toList(),
-                      onChanged: (id) {
-                        final credential = credentials.firstWhere(
-                          (item) => item.id == id,
-                        );
-                        setState(() {
-                          _selectedCredentialId = id;
-                          _applyCredential(credential);
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 14),
-                  ],
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 3,
-                        child: TextFormField(
-                          controller: _hostController,
-                          decoration: InputDecoration(
-                            labelText: 'terminal_host'.tr(),
-                            hintText: 'example.com',
-                            border: const OutlineInputBorder(),
                           ),
-                          validator: (value) =>
-                              value == null || value.trim().isEmpty
-                              ? 'terminal_host_hint'.tr()
-                              : null,
-                        ),
+                        ],
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextFormField(
-                          controller: _portController,
+                      const SizedBox(height: 18),
+                      if (credentials.isNotEmpty) ...[
+                        DropdownButtonFormField<String>(
+                          initialValue: _selectedCredentialId,
                           decoration: InputDecoration(
-                            labelText: 'terminal_port'.tr(),
+                            labelText: 'terminal_select_saved_credential'.tr(),
                             border: const OutlineInputBorder(),
                           ),
-                          keyboardType: TextInputType.number,
-                          validator: (value) {
-                            final port = int.tryParse(value ?? '');
-                            if (port == null || port <= 0 || port > 65535) {
-                              return 'terminal_port_invalid'.tr();
-                            }
-                            return null;
+                          items: credentials
+                              .map(
+                                (credential) => DropdownMenuItem(
+                                  value: credential.id,
+                                  child: Text(
+                                    '${credential.name} (${credential.username}@${credential.host}:${credential.port})',
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (id) {
+                            final credential = credentials.firstWhere(
+                              (item) => item.id == id,
+                            );
+                            setState(() {
+                              _selectedCredentialId = id;
+                              _applyCredential(credential);
+                            });
                           },
                         ),
+                        const SizedBox(height: 14),
+                      ],
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: TextFormField(
+                              controller: _hostController,
+                              decoration: InputDecoration(
+                                labelText: 'terminal_host'.tr(),
+                                hintText: 'example.com',
+                                border: const OutlineInputBorder(),
+                              ),
+                              validator: (value) =>
+                                  value == null || value.trim().isEmpty
+                                  ? 'terminal_host_hint'.tr()
+                                  : null,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _portController,
+                              decoration: InputDecoration(
+                                labelText: 'terminal_port'.tr(),
+                                border: const OutlineInputBorder(),
+                              ),
+                              keyboardType: TextInputType.number,
+                              validator: (value) {
+                                final port = int.tryParse(value ?? '');
+                                if (port == null || port <= 0 || port > 65535) {
+                                  return 'terminal_port_invalid'.tr();
+                                }
+                                return null;
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      TextFormField(
+                        controller: _usernameController,
+                        decoration: InputDecoration(
+                          labelText: 'terminal_username'.tr(),
+                          border: const OutlineInputBorder(),
+                        ),
+                        validator: (value) =>
+                            value == null || value.trim().isEmpty ? 'terminal_username_hint'.tr() : null,
+                      ),
+                      const SizedBox(height: 10),
+                      SegmentedButton<bool>(
+                        segments: [
+                          ButtonSegment(value: false, label: Text('terminal_password_login'.tr())),
+                          ButtonSegment(value: true, label: Text('terminal_key_login'.tr())),
+                        ],
+                        selected: {_usePrivateKey},
+                        onSelectionChanged: (values) {
+                          setState(() => _usePrivateKey = values.first);
+                        },
+                      ),
+                      const SizedBox(height: 14),
+                      if (_usePrivateKey) ...[
+                        TextFormField(
+                          controller: _privateKeyController,
+                          decoration: InputDecoration(
+                            labelText: 'terminal_private_key_pem'.tr(),
+                            hintText: '-----BEGIN OPENSSH PRIVATE KEY-----',
+                            border: const OutlineInputBorder(),
+                          ),
+                          minLines: 4,
+                          maxLines: 8,
+                          validator: (value) =>
+                              value == null || value.trim().isEmpty
+                              ? 'terminal_private_key_hint'.tr()
+                              : null,
+                        ),
+                        const SizedBox(height: 14),
+                        TextFormField(
+                          controller: _passphraseController,
+                          decoration: InputDecoration(
+                            labelText: 'terminal_key_passphrase'.tr(),
+                            border: const OutlineInputBorder(),
+                          ),
+                          obscureText: true,
+                        ),
+                      ] else
+                        TextFormField(
+                          controller: _passwordController,
+                          decoration: InputDecoration(
+                            labelText: 'terminal_password'.tr(),
+                            border: const OutlineInputBorder(),
+                          ),
+                          obscureText: true,
+                        ),
+                      const SizedBox(height: 8),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text('terminal_save_credential'.tr()),
+                        subtitle: Text('terminal_save_credential_desc'.tr()),
+                        value: _saveCredential,
+                        onChanged: (value) =>
+                            setState(() => _saveCredential = value),
+                      ),
+                      if (_saveCredential) ...[
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _nameController,
+                          decoration: InputDecoration(
+                            labelText: 'terminal_credential_name'.tr(),
+                            border: const OutlineInputBorder(),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 16),
+                      FilledButton.icon(
+                        onPressed: _connecting ? null : _connect,
+                        icon: _connecting
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.login),
+                        label: Text(_connecting ? 'terminal_connecting'.tr() : 'terminal_login'.tr()),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 14),
-                  TextFormField(
-                    controller: _usernameController,
-                    decoration: InputDecoration(
-                      labelText: 'terminal_username'.tr(),
-                      border: const OutlineInputBorder(),
-                    ),
-                    validator: (value) =>
-                        value == null || value.trim().isEmpty ? 'terminal_username_hint'.tr() : null,
-                  ),
-                  const SizedBox(height: 10),
-                  SegmentedButton<bool>(
-                    segments: [
-                      ButtonSegment(value: false, label: Text('terminal_password_login'.tr())),
-                      ButtonSegment(value: true, label: Text('terminal_key_login'.tr())),
-                    ],
-                    selected: {_usePrivateKey},
-                    onSelectionChanged: (values) {
-                      setState(() => _usePrivateKey = values.first);
-                    },
-                  ),
-                  const SizedBox(height: 14),
-                  if (_usePrivateKey) ...[
-                    TextFormField(
-                      controller: _privateKeyController,
-                      decoration: InputDecoration(
-                        labelText: 'terminal_private_key_pem'.tr(),
-                        hintText: '-----BEGIN OPENSSH PRIVATE KEY-----',
-                        border: const OutlineInputBorder(),
-                      ),
-                      minLines: 4,
-                      maxLines: 8,
-                      validator: (value) =>
-                          value == null || value.trim().isEmpty
-                          ? 'terminal_private_key_hint'.tr()
-                          : null,
-                    ),
-                    const SizedBox(height: 14),
-                    TextFormField(
-                      controller: _passphraseController,
-                      decoration: InputDecoration(
-                        labelText: 'terminal_key_passphrase'.tr(),
-                        border: const OutlineInputBorder(),
-                      ),
-                      obscureText: true,
-                    ),
-                  ] else
-                    TextFormField(
-                      controller: _passwordController,
-                      decoration: InputDecoration(
-                        labelText: 'terminal_password'.tr(),
-                        border: const OutlineInputBorder(),
-                      ),
-                      obscureText: true,
-                    ),
-                  const SizedBox(height: 8),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text('terminal_save_credential'.tr()),
-                    subtitle: Text('terminal_save_credential_desc'.tr()),
-                    value: _saveCredential,
-                    onChanged: (value) =>
-                        setState(() => _saveCredential = value),
-                  ),
-                  if (_saveCredential) ...[
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _nameController,
-                      decoration: InputDecoration(
-                        labelText: 'terminal_credential_name'.tr(),
-                        border: const OutlineInputBorder(),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 16),
-                  FilledButton.icon(
-                    onPressed: _connecting ? null : _connect,
-                    icon: _connecting
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.login),
-                    label: Text(_connecting ? 'terminal_connecting'.tr() : 'terminal_login'.tr()),
-                  ),
-                ],
+                ),
               ),
             ),
           ),

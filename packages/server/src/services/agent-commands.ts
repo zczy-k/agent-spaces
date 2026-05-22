@@ -172,3 +172,18 @@ export function deleteCommand(agentId: string, name: string, group?: string): bo
   unlinkSync(filePath);
   return true;
 }
+
+export function applyCommandToAgents(sourceAgentId: string, name: string, group: string, targetAgentIds: string[]): number {
+  const src = getCommand(sourceAgentId, name, group);
+  if (!src) return 0;
+
+  let applied = 0;
+  for (const targetId of targetAgentIds) {
+    if (targetId === sourceAgentId) continue;
+    try {
+      createCommand(targetId, src.name, src.content, src.group || undefined);
+      applied++;
+    } catch { /* skip */ }
+  }
+  return applied;
+}

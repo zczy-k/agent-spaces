@@ -90,6 +90,7 @@ class _WebViewPanelState extends ConsumerState<WebViewPanel> {
         visibleTabs: state.splitLayout == SplitLayout.single
             ? state.tabs
             : state.visibleTabs,
+        activeTabId: state.activeTabId,
         webViewDebuggingEnabled: webViewDebuggingEnabled,
         onTitleChanged: (tabId, title, url, faviconUrl) {
           notifier.updateTab(

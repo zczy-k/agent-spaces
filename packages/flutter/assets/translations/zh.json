@@ -15,6 +15,8 @@
   "settings_startup": "启动",
   "settings_restore_tabs": "启动时恢复 Tabs",
   "settings_restore_tabs_desc": "打开应用后恢复上次关闭时的标签页",
+  "settings_restore_layout": "启动时恢复布局",
+  "settings_restore_layout_desc": "打开应用后恢复上次使用的分屏布局",
   "settings_auth": "授权管理",
   "settings_notification": "通知",
   "settings_notification_checking": "检查中...",

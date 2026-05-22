@@ -9,6 +9,7 @@ class StorageService {
   static const _settingsKey = 'app_settings';
   static const _tabsKey = 'saved_tabs';
   static const _activeTabKey = 'saved_active_tab';
+  static const _splitLayoutKey = 'saved_split_layout';
   static const _homeUrlKey = 'home_url';
   static const _permissionDialogSeenKey = 'permission_dialog_seen';
   static const _terminalCredentialsKey = 'terminal_credentials';
@@ -92,6 +93,16 @@ class StorageService {
   static Future<String?> loadActiveTabId() async {
     final prefs = await _prefs;
     return prefs.getString(_activeTabKey);
+  }
+
+  static Future<void> saveSplitLayout(String layoutName) async {
+    final prefs = await _prefs;
+    await prefs.setString(_splitLayoutKey, layoutName);
+  }
+
+  static Future<String?> loadSplitLayout() async {
+    final prefs = await _prefs;
+    return prefs.getString(_splitLayoutKey);
   }
 
   static Future<void> saveHomeUrl(String url) async {

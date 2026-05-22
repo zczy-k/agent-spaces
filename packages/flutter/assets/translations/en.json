@@ -15,6 +15,8 @@
   "settings_startup": "Startup",
   "settings_restore_tabs": "Restore Tabs on Startup",
   "settings_restore_tabs_desc": "Restore previously open tabs when the app starts",
+  "settings_restore_layout": "Restore Layout on Startup",
+  "settings_restore_layout_desc": "Restore the last split layout when the app starts",
   "settings_auth": "Permissions",
   "settings_notification": "Notifications",
   "settings_notification_checking": "Checking...",

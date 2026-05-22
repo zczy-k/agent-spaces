@@ -157,6 +157,7 @@ void _showDockingMenu(BuildContext context, DockingMenuBuilder menuBuilder) {
 class SplitLayoutView extends StatefulWidget {
   final SplitLayout layout;
   final List<BrowserTab> visibleTabs;
+  final String activeTabId;
   final bool webViewDebuggingEnabled;
   final TitleChangedCallback onTitleChanged;
   final TabSelectedCallback onTabSelected;
@@ -169,6 +170,7 @@ class SplitLayoutView extends StatefulWidget {
     super.key,
     required this.layout,
     required this.visibleTabs,
+    required this.activeTabId,
     required this.webViewDebuggingEnabled,
     required this.onTitleChanged,
     required this.onTabSelected,
@@ -263,21 +265,25 @@ class _SplitLayoutViewState extends State<SplitLayoutView> {
     return switch (widget.layout) {
       SplitLayout.single => _buildDockingTabs(
         widget.visibleTabs,
+        widget.activeTabId,
         widget.webViewDebuggingEnabled,
         widget.onTitleChanged,
       ),
       SplitLayout.horizontal2 => _buildDockingRow(
         _buildTabGroups(widget.visibleTabs, 2),
+        widget.activeTabId,
         widget.webViewDebuggingEnabled,
         widget.onTitleChanged,
       ),
       SplitLayout.vertical2 => _buildDockingColumn(
         _buildTabGroups(widget.visibleTabs, 2),
+        widget.activeTabId,
         widget.webViewDebuggingEnabled,
         widget.onTitleChanged,
       ),
       SplitLayout.horizontal3 => _buildDockingRow(
         _buildTabGroups(widget.visibleTabs, 3),
+        widget.activeTabId,
         widget.webViewDebuggingEnabled,
         widget.onTitleChanged,
       ),
@@ -286,11 +292,13 @@ class _SplitLayoutViewState extends State<SplitLayoutView> {
             .map(
               (rowGroups) => _buildDockingRow(
                 rowGroups,
+                widget.activeTabId,
                 widget.webViewDebuggingEnabled,
                 widget.onTitleChanged,
               ),
             )
             .toList(),
+        widget.activeTabId,
         widget.webViewDebuggingEnabled,
         widget.onTitleChanged,
       ),
@@ -326,6 +334,8 @@ class _SplitLayoutViewState extends State<SplitLayoutView> {
       );
     }
 
+    _selectDockingItem(layout, widget.activeTabId);
+
     for (final area in layout.layoutAreas()) {
       if (area is! DockingItem || area.value is! String) continue;
       final tab = tabsById[area.value as String];
@@ -346,6 +356,7 @@ Widget buildSplitLayout({
   required BuildContext context,
   required SplitLayout layout,
   required List<BrowserTab> visibleTabs,
+  required String activeTabId,
   required bool webViewDebuggingEnabled,
   required TitleChangedCallback onTitleChanged,
   required TabSelectedCallback onTabSelected,
@@ -358,6 +369,7 @@ Widget buildSplitLayout({
   return SplitLayoutView(
     layout: layout,
     visibleTabs: visibleTabs,
+    activeTabId: activeTabId,
     webViewDebuggingEnabled: webViewDebuggingEnabled,
     onTitleChanged: onTitleChanged,
     onTabSelected: onTabSelected,
@@ -389,6 +401,7 @@ List<List<List<BrowserTab>>> _chunkTabGroups(
 
 DockingArea _buildDockingRow(
   List<dynamic> children,
+  String activeTabId,
   bool webViewDebuggingEnabled,
   TitleChangedCallback onTitleChanged,
 ) {
@@ -396,6 +409,7 @@ DockingArea _buildDockingRow(
     if (child is DockingArea) return child;
     return _buildDockingTabs(
       child as List<BrowserTab>,
+      activeTabId,
       webViewDebuggingEnabled,
       onTitleChanged,
     );
@@ -405,6 +419,7 @@ DockingArea _buildDockingRow(
 
 DockingArea _buildDockingColumn(
   List<dynamic> children,
+  String activeTabId,
   bool webViewDebuggingEnabled,
   TitleChangedCallback onTitleChanged,
 ) {
@@ -412,6 +427,7 @@ DockingArea _buildDockingColumn(
     if (child is DockingArea) return child;
     return _buildDockingTabs(
       child as List<BrowserTab>,
+      activeTabId,
       webViewDebuggingEnabled,
       onTitleChanged,
     );
@@ -421,6 +437,7 @@ DockingArea _buildDockingColumn(
 
 DockingArea _buildDockingTabs(
   List<BrowserTab> tabs,
+  String activeTabId,
   bool webViewDebuggingEnabled,
   TitleChangedCallback onTitleChanged,
 ) {
@@ -431,7 +448,26 @@ DockingArea _buildDockingTabs(
       )
       .toList();
 
-  return items.length == 1 ? items.first : DockingTabs(items);
+  if (items.length == 1) return items.first;
+
+  final dockingTabs = DockingTabs(items);
+  final selectedIndex = tabs.indexWhere((tab) => tab.id == activeTabId);
+  if (selectedIndex >= 0) {
+    dockingTabs.selectedIndex = selectedIndex;
+  }
+  return dockingTabs;
+}
+
+void _selectDockingItem(DockingLayout layout, String tabId) {
+  if (tabId.isEmpty) return;
+  final dockingTabs = layout.findDockingTabsWithItem(tabId);
+  if (dockingTabs == null) return;
+  for (var i = 0; i < dockingTabs.childrenCount; i++) {
+    if (dockingTabs.childAt(i).id == tabId) {
+      dockingTabs.selectedIndex = i;
+      return;
+    }
+  }
 }
 
 DockingItem _buildDockingItem(

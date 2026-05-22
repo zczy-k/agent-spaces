@@ -18,5 +18,9 @@
   "allAgents": "All Agents",
   "noAgents": "No agent templates",
   "filterGroups": "Groups",
-  "filterNoGroup": "Ungrouped"
+  "filterNoGroup": "Ungrouped",
+  "apply": "Apply",
+  "applyTitle": "Apply to Agents - {name}",
+  "applyDescription": "Select agents to copy this command to",
+  "applyConfirm": "Apply to {count} agents"
 }
