@@ -12,6 +12,7 @@ export interface GitStatusResult {
   clean: boolean;
   insertions: number;
   deletions: number;
+  headHash?: string;
 }
 
 export interface GitLogEntry {

@@ -76,6 +76,7 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
   const [groupMode, setGroupMode] = useState<GroupMode>('none');
   const [groupOpen, setGroupOpen] = useState<Record<string, boolean>>({});
   const [clearArchiveOpen, setClearArchiveOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Channel | null>(null);
   const [sortField, setSortField] = useState<'createdAt' | 'lastReply' | 'type'>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [initialLoading, setInitialLoading] = useState(true);
@@ -193,9 +194,19 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
             <Archive className="size-3.5" />
             {t('channel.archive')}
           </ContextMenuItem>
+          <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteTarget(ch)}>
+            <Trash2 className="size-3.5" />
+            {tc('delete')}
+          </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
     );
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    await deleteChannel(workspaceId, deleteTarget.id);
+    setDeleteTarget(null);
   };
 
   const handleSubmit = async (data: { name: string; type: Channel['type']; members: string[] }) => {
@@ -417,6 +428,21 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
           <AlertDialogFooter>
             <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleClearArchived}>{tc('delete')}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{tc('delete')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('channel.deleteConfirm', { name: deleteTarget?.name ?? '' })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>{tc('delete')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

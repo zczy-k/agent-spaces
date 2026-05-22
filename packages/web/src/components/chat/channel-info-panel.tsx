@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
-import { Hash, Bot, AlertCircle, Info, Users, Pencil, UserPlus, Trash2 } from 'lucide-react';
+import { Hash, Bot, AlertCircle, Info, Users, Pencil, UserPlus, Trash2, Archive } from 'lucide-react';
 import { ChannelDialog } from './channel-dialog';
 import { MemberCard } from './member-card';
 import { MemberInfoDialog } from './member-info-dialog';
@@ -132,8 +132,16 @@ export function ChannelInfoPanel({ workspaceId, channel, agents, allChannels, on
         </ScrollArea>
       </Tabs>
 
-      {/* 底部删除按钮 */}
-      <div className="shrink-0 p-3 border-t">
+      {/* 底部操作按钮 */}
+      <div className="shrink-0 p-3 border-t space-y-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full text-xs"
+          onClick={() => updateChannel(workspaceId, channel.id, { archived: !channel.archived })}
+        >
+          <Archive className="size-3.5 mr-1" />{channel.archived ? t('channel.unarchive') : t('channel.archive')}
+        </Button>
         <Button
           variant="ghost"
           size="sm"

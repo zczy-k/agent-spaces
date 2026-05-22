@@ -352,17 +352,19 @@ export function GitCommitsPanel({ workspaceId }: Props) {
             )}
             {log.map((entry, i) => {
               const isRemoteHead = i === remoteHeadIndex;
+              const isHead = !!status?.headHash && entry.hash.startsWith(status.headHash.substring(0, 7));
               return (
                 <ContextMenu key={entry.hash}>
                   <ContextMenuTrigger>
                     <div
                       onClick={() => setDetailEntry(entry)}
-                      className={`px-2 py-1.5 border-b hover:bg-accent cursor-pointer ${isRemoteHead ? 'border-l-2 border-l-blue-500' : ''}`}
+                      className={`px-2 py-1.5 border-b hover:bg-accent cursor-pointer ${isHead ? 'bg-accent/50' : ''} ${isRemoteHead ? 'border-l-2 border-l-blue-500' : ''}`}
                     >
                       <div className="flex items-center gap-2">
                         {isRemoteHead && <span title={t('remoteTrackingBranch')}><GitCommitHorizontal size={13} className="shrink-0 text-blue-500" /></span>}
                         <code className="text-xs font-mono text-blue-600 shrink-0">{entry.hash.slice(0, 7)}</code>
                         <span className="text-xs truncate">{entry.message.split("\n")[0]}</span>
+                        {isHead && <span className="text-[10px] font-medium text-muted-foreground bg-muted px-1 rounded">HEAD</span>}
                       </div>
                       <div className={`flex items-center gap-2 mt-0.5 ${isRemoteHead ? 'pl-[21px]' : ''}`}>
                         <span className="text-xs text-muted-foreground">{entry.author}</span>

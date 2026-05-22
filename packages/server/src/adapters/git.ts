@@ -97,6 +97,11 @@ export async function gitStatus(workspaceId: string): Promise<GitStatusResult> {
   const raw = await git.status();
   const result = mapStatus(raw);
 
+  try {
+    const headHash = await git.revparse(['--short', 'HEAD']);
+    result.headHash = headHash.trim();
+  } catch {}
+
   if (!result.clean) {
     try {
       // Tracked changes: modified/deleted/renamed
