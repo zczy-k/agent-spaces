@@ -12,6 +12,13 @@ import { useDatabaseStore } from '@/stores/database';
 import { PRESET_COVERS } from '@agent-spaces/shared';
 import type { DocNode } from '@agent-spaces/shared';
 
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from '@/components/ui/resizable'
+import { Panel, type PanelImperativeHandle } from 'react-resizable-panels'
+
 import TreeItem from './tree-item';
 import NotionEditor from './notion-editor';
 import MarkdownEditor from './markdown-editor';
@@ -32,7 +39,7 @@ export default function DatabasePanel({ workspaceId }: Props) {
     closeTab,
   } = useDatabaseStore();
 
-  const [sidebarExpanded, setSidebarExpanded] = useState(true);
+  const sidebarPanelRef = useRef<PanelImperativeHandle>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isTrashOpen, setIsTrashOpen] = useState(false);
   const [draggedNodeId, setDraggedNodeId] = useState<string | null>(null);
@@ -156,13 +163,19 @@ export default function DatabasePanel({ workspaceId }: Props) {
   }
 
   return (
-    <div className="flex w-full h-full overflow-hidden bg-background font-sans text-foreground antialiased">
+    <div className="w-full h-full bg-background font-sans text-foreground antialiased">
+      <ResizablePanelGroup orientation="horizontal" autoSaveId="database-panel-layout" className="h-full">
 
       {/* Sidebar */}
-      <div className={cn(
-        "h-full bg-sidebar border-r border-border flex flex-col transition-all duration-300 z-30 relative shrink-0",
-        sidebarExpanded ? "w-80 translate-x-0" : "w-0 -translate-x-full select-none pointer-events-none overflow-hidden"
-      )}>
+      <Panel
+        panelRef={sidebarPanelRef}
+        defaultSize={25}
+        minSize={15}
+        maxSize={40}
+        collapsible
+        collapsedSize={0}
+        className="h-full bg-sidebar border-r border-border flex flex-col"
+      >
         {/* Sidebar header */}
         <div className="px-4 py-3 border-b border-border bg-sidebar/80 backdrop-blur-md">
           <div className="flex items-center gap-2.5">
@@ -264,10 +277,11 @@ export default function DatabasePanel({ workspaceId }: Props) {
             )}
           </button>
         </div>
-      </div>
+      </Panel>
+      <ResizableHandle withHandle />
 
       {/* Main editor area */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden bg-background relative">
+      <ResizablePanel defaultSize={75} className="flex flex-col h-full overflow-hidden bg-background relative">
         {showSaveSuccess && (
           <div className="absolute top-4 right-1/2 translate-x-1/2 bg-card border border-border text-foreground text-xs font-semibold px-4 py-2 rounded-full flex items-center gap-2 shadow-2xl z-50">
             <CheckCircle className="w-3.5 h-3.5 text-emerald-400" /><span>内容已自动保存</span>
@@ -303,7 +317,7 @@ export default function DatabasePanel({ workspaceId }: Props) {
         {/* Top nav bar */}
         <div className="h-14 px-6 border-b border-border flex items-center justify-between bg-background/80 backdrop-blur-md sticky top-0 z-10 select-none shrink-0">
           <div className="flex items-center gap-3">
-            <button onClick={() => setSidebarExpanded(!sidebarExpanded)}
+            <button onClick={() => sidebarPanelRef.current?.isCollapsed() ? sidebarPanelRef.current?.expand() : sidebarPanelRef.current?.collapse()}
               className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors mr-1 cursor-pointer">
               <Sidebar className="w-4 h-4" />
             </button>
@@ -466,7 +480,8 @@ export default function DatabasePanel({ workspaceId }: Props) {
             </button>
           </div>
         )}
-      </div>
+      </ResizablePanel>
+      </ResizablePanelGroup>
 
       <QuickSearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} nodes={nodes}
         onSelectNode={(id) => { setActiveId(id); setIsSearchOpen(false); }} />
