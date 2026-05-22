@@ -27,7 +27,7 @@ export function formatMessage(message: SDKMessage): string | null {
     case 'tool_progress':
       return `${message.tool_name} running (${message.elapsed_time_seconds}s)`;
     case 'tool_use_summary':
-      return message.summary;
+      return null;
     default:
       return null;
   }
