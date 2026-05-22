@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   Plus, X, ChevronRight, Sidebar, Layers, BookOpen,
   Minimize2, Maximize2, Check, MoreHorizontal,
-  CheckCircle, Sparkles, FileCheck,
+  CheckCircle, Sparkles, FileCheck, List,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { htmlToMarkdown, markdownToHtml } from '@/lib/converter';
@@ -12,6 +12,7 @@ import { useDatabaseStore } from '@/stores/database';
 import { PRESET_COVERS } from '@agent-spaces/shared';
 import NotionEditor from './notion-editor';
 import MarkdownEditor from './markdown-editor';
+import { TableOfContents, extractTocFromHtml, extractTocFromMarkdown } from './table-of-contents';
 import type { PanelImperativeHandle } from 'react-resizable-panels';
 
 interface DatabaseMainPanelProps {
@@ -34,6 +35,7 @@ export function DatabaseMainPanel({
   } = useDatabaseStore();
 
   const [settingsDropdownOpen, setSettingsDropdownOpen] = useState(false);
+  const [tocOpen, setTocOpen] = useState(true);
   const settingsDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -46,6 +48,12 @@ export function DatabaseMainPanel({
 
   const activeNode = nodes.find(n => n.id === activeId);
   const wordCount = activeNode ? (activeNode.content.replace(/<[^>]*>/g, '').trim().length || 0) : 0;
+  const tocHeadings = useMemo(() => {
+    if (!activeNode) return [];
+    return editorMode === 'notion'
+      ? extractTocFromHtml(activeNode.content)
+      : extractTocFromMarkdown(activeNode.content);
+  }, [activeNode, editorMode]);
 
   const handleAddChild = useCallback(async (parentId: string | null) => {
     await createNode(workspaceId, parentId);
@@ -143,6 +151,12 @@ export function DatabaseMainPanel({
               </button>
             </div>
             <div className="w-[1px] h-5 bg-border" />
+            <button onClick={() => setTocOpen(!tocOpen)} title={tocOpen ? '关闭目录' : '打开目录'}
+              className={cn("w-9 h-9 rounded-xl border border-border bg-card transition-all cursor-pointer flex items-center justify-center shrink-0",
+                tocOpen ? "text-foreground border-muted-foreground/40" : "text-muted-foreground hover:text-foreground hover:border-muted-foreground/40")}>
+              <List className="w-4 h-4" />
+            </button>
+            <div className="w-[1px] h-5 bg-border" />
             <div className="relative" ref={settingsDropdownRef}>
               <button onClick={() => setSettingsDropdownOpen(!settingsDropdownOpen)}
                 className="w-9 h-9 rounded-xl border border-border hover:border-muted-foreground/40 bg-card text-muted-foreground hover:text-foreground transition-all cursor-pointer flex items-center justify-center shrink-0">
@@ -186,7 +200,9 @@ export function DatabaseMainPanel({
 
       {/* Content */}
       {activeNode ? (
-        <div className="flex-1 overflow-y-auto w-full flex flex-col">
+        <div className="flex-1 min-h-0 flex flex-col">
+        <TableOfContents headings={tocHeadings} open={tocOpen} />
+        <div className="flex-1 overflow-y-auto w-full flex flex-col" data-editor-content>
           <div className="w-full h-44 shrink-0 relative group border-b border-border"
             style={{ background: activeNode.cover || 'linear-gradient(to right, #0284c7, #06b6d4)' }}>
             <div className="absolute bottom-3 right-4 opacity-0 group-hover:opacity-100 transition-opacity bg-card/90 backdrop-blur-md rounded-xl p-1.5 border border-border flex items-center gap-1 shadow-xl">
@@ -234,6 +250,7 @@ export function DatabaseMainPanel({
               </div>
             </div>
           </div>
+        </div>
         </div>
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center p-8 bg-background select-none text-center">
