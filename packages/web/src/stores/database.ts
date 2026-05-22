@@ -79,21 +79,25 @@ function withDatabase(path: string, databaseId: string | null): string {
   return `${path}${separator}databaseId=${encodeURIComponent(databaseId)}`;
 }
 
-const contentSaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const contentSaveTimers = new Map<string, { timer: ReturnType<typeof setTimeout>; content: string }>();
 
 function scheduleContentSave(workspaceId: string, databaseId: string | null, nodeId: string, content: string): void {
   const key = `${workspaceId}:${databaseId ?? 'default'}:${nodeId}`;
   const existing = contentSaveTimers.get(key);
-  if (existing) clearTimeout(existing);
+  if (existing) {
+    existing.content = content;
+    return;
+  }
 
   const timer = setTimeout(() => {
+    const pending = contentSaveTimers.get(key);
     contentSaveTimers.delete(key);
     void api(workspaceId, withDatabase(`/${nodeId}`, databaseId), {
       method: 'PUT',
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content: pending?.content ?? content }),
     });
-  }, 800);
-  contentSaveTimers.set(key, timer);
+  }, 3_000);
+  contentSaveTimers.set(key, { timer, content });
 }
 
 export const useDatabaseStore = create<DatabaseState & DatabaseActions>((set, get) => ({

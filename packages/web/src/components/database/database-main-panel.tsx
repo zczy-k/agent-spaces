@@ -6,6 +6,7 @@ import {
   Minimize2, Maximize2, Check, MoreHorizontal,
   CheckCircle, Sparkles, FileCheck, List, History,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { htmlToMarkdown, markdownToHtml } from '@/lib/converter';
 import { useDatabaseStore } from '@/stores/database';
@@ -35,6 +36,8 @@ export function DatabaseMainPanel({
     setActiveId, createNode, updateContent, renameNode, updateCover,
     setEditorMode, setTheme, setIsFullWidth, closeTab, listNodeVersions,
   } = useDatabaseStore();
+  const t = useTranslations('database');
+  const tc = useTranslations('common');
 
   const [settingsDropdownOpen, setSettingsDropdownOpen] = useState(false);
   const [tocOpen, setTocOpen] = useState(true);
@@ -93,13 +96,19 @@ export function DatabaseMainPanel({
       setVersions(items);
       setSelectedVersionId(items[0]?.id ?? null);
     } catch (error) {
-      setHistoryError(error instanceof Error ? error.message : '加载历史版本失败');
+      setHistoryError(error instanceof Error ? error.message : t('loadHistoryFailed'));
       setVersions([]);
       setSelectedVersionId(null);
     } finally {
       setHistoryLoading(false);
     }
-  }, [activeNode, listNodeVersions, workspaceId]);
+  }, [activeNode, listNodeVersions, workspaceId, t]);
+
+  const themeOptions = useMemo(() => [
+    { key: 'sans' as const, label: t('themeSans'), fontClass: 'font-sans' },
+    { key: 'serif' as const, label: t('themeSerif'), fontClass: 'font-serif' },
+    { key: 'mono' as const, label: t('themeMono'), fontClass: 'font-mono' },
+  ], [t]);
 
   const selectedVersion = useMemo(
     () => versions.find((item) => item.id === selectedVersionId) ?? versions[0] ?? null,
@@ -110,7 +119,7 @@ export function DatabaseMainPanel({
     <>
       {showSaveSuccess && (
         <div className="absolute top-4 right-1/2 translate-x-1/2 bg-card border border-border text-foreground text-xs font-semibold px-4 py-2 rounded-full flex items-center gap-2 shadow-2xl z-50">
-          <CheckCircle className="w-3.5 h-3.5 text-emerald-400" /><span>内容已自动保存</span>
+          <CheckCircle className="w-3.5 h-3.5 text-emerald-400" /><span>{t('autoSaved')}</span>
         </div>
       )}
 
@@ -125,7 +134,7 @@ export function DatabaseMainPanel({
                 className={cn("flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs cursor-pointer transition-all shrink-0 group border",
                   activeId === tabId ? "bg-card text-foreground border-border font-semibold" : "text-muted-foreground hover:text-foreground hover:bg-muted border-transparent")}>
                 <span className="text-sm select-none shrink-0">{tabNode.icon || '📝'}</span>
-                <span className="truncate max-w-[120px]">{tabNode.title || '未命名文档'}</span>
+                <span className="truncate max-w-[120px]">{tabNode.title || t('untitled')}</span>
                 <button onClick={(e) => handleCloseTab(e, tabId)}
                   className="p-0.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors ml-1 opacity-60 group-hover:opacity-100">
                   <X className="w-3 h-3" />
@@ -149,21 +158,21 @@ export function DatabaseMainPanel({
           </button>
           {activeNode ? (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
-              <span>知识库</span>
+              <span>{t('knowledgeBase')}</span>
               <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/50" />
               {activeNode.parentId && (
                 <>
                   <span onClick={() => activeNode.parentId && setActiveId(activeNode.parentId)}
                     className="hover:text-foreground hover:underline cursor-pointer">
-                    {nodes.find(n => n.id === activeNode.parentId)?.title || '母目录'}
+                    {nodes.find(n => n.id === activeNode.parentId)?.title || t('parentDir')}
                   </span>
                   <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/50" />
                 </>
               )}
-              <span className="text-foreground font-semibold truncate max-w-[180px]">{activeNode.title || '当前文档'}</span>
+              <span className="text-foreground font-semibold truncate max-w-[180px]">{activeNode.title || t('currentDoc')}</span>
             </div>
           ) : (
-            <div className="text-xs text-muted-foreground font-medium">多层级知识树</div>
+            <div className="text-xs text-muted-foreground font-medium">{t('knowledgeTree')}</div>
           )}
         </div>
 
@@ -173,16 +182,16 @@ export function DatabaseMainPanel({
               <button onClick={() => handleModeToggle('notion')}
                 className={cn("flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer",
                   editorMode === 'notion' ? "bg-muted text-foreground font-bold" : "text-muted-foreground hover:text-foreground")}>
-                <Layers className="w-3.5 h-3.5" /><span>Notion 编辑器</span>
+                <Layers className="w-3.5 h-3.5" /><span>{t('notionEditor')}</span>
               </button>
               <button onClick={() => handleModeToggle('markdown')}
                 className={cn("flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer",
                   editorMode === 'markdown' ? "bg-muted text-foreground font-bold" : "text-muted-foreground hover:text-foreground")}>
-                <BookOpen className="w-3.5 h-3.5" /><span>Markdown 编辑器</span>
+                <BookOpen className="w-3.5 h-3.5" /><span>{t('markdownEditor')}</span>
               </button>
             </div>
             <div className="w-[1px] h-5 bg-border" />
-            <button onClick={() => setTocOpen(!tocOpen)} title={tocOpen ? '关闭目录' : '打开目录'}
+            <button onClick={() => setTocOpen(!tocOpen)} title={tocOpen ? t('closeToc') : t('openToc')}
               className={cn("w-9 h-9 rounded-xl border border-border bg-card transition-all cursor-pointer flex items-center justify-center shrink-0",
                 tocOpen ? "text-foreground border-muted-foreground/40" : "text-muted-foreground hover:text-foreground hover:border-muted-foreground/40")}>
               <List className="w-4 h-4" />
@@ -195,20 +204,16 @@ export function DatabaseMainPanel({
               </button>
               {settingsDropdownOpen && (
                 <div className="absolute right-0 top-[calc(100%+6px)] w-56 bg-popover border border-border rounded-xl shadow-2xl py-2 z-50 text-left">
-                  <div className="px-3.5 py-1.5 border-b border-border bg-muted/50 text-muted-foreground text-[10px] font-bold uppercase tracking-wider select-none mb-1">排版风格与字体</div>
-                  {([
-                    ['sans', '无衬线现代 (Sans)', 'font-sans'],
-                    ['serif', '衬线优雅风格 (Serif)', 'font-serif'],
-                    ['mono', '程序员等宽 (Mono)', 'font-mono'],
-                  ] as const).map(([t, label, fontClass]) => (
-                    <button key={t} onClick={() => { setTheme(t as 'sans' | 'serif' | 'mono'); setSettingsDropdownOpen(false); }}
+                  <div className="px-3.5 py-1.5 border-b border-border bg-muted/50 text-muted-foreground text-[10px] font-bold uppercase tracking-wider select-none mb-1">{t('typographyAndFont')}</div>
+                  {themeOptions.map(({ key, label, fontClass }) => (
+                    <button key={key} onClick={() => { setTheme(key); setSettingsDropdownOpen(false); }}
                       className={cn("w-full text-left px-3.5 py-2 flex items-center justify-between text-xs transition-colors cursor-pointer",
-                        theme === t ? "text-foreground font-semibold bg-accent" : "text-muted-foreground hover:text-foreground hover:bg-accent/50")}>
+                        theme === key ? "text-foreground font-semibold bg-accent" : "text-muted-foreground hover:text-foreground hover:bg-accent/50")}>
                       <div className="flex items-center gap-2">
                         <span className={cn("text-xs bg-muted text-foreground px-1.5 py-0.5 rounded border border-border font-medium", fontClass)}>Ag</span>
                         <span className={fontClass}>{label}</span>
                       </div>
-                      {theme === t && <Check className="w-3.5 h-3.5 text-foreground" />}
+                      {theme === key && <Check className="w-3.5 h-3.5 text-foreground" />}
                     </button>
                   ))}
                   <div className="h-[1px] bg-border my-1.5" />
@@ -216,17 +221,17 @@ export function DatabaseMainPanel({
                     className="w-full text-left px-3.5 py-2 flex items-center justify-between text-xs transition-colors cursor-pointer text-muted-foreground hover:text-foreground hover:bg-accent/50">
                     <div className="flex items-center gap-2">
                       <History className="w-3.5 h-3.5 text-muted-foreground" />
-                      <span>查看历史版本</span>
+                      <span>{t('viewHistory')}</span>
                     </div>
                   </button>
                   <div className="h-[1px] bg-border my-1.5" />
-                  <div className="px-3.5 py-1 bg-muted/30 text-muted-foreground text-[10px] font-bold uppercase tracking-wider select-none mb-1">页面宽度</div>
+                  <div className="px-3.5 py-1 bg-muted/30 text-muted-foreground text-[10px] font-bold uppercase tracking-wider select-none mb-1">{t('pageWidth')}</div>
                   <button onClick={() => { setIsFullWidth(!isFullWidth); setSettingsDropdownOpen(false); }}
                     className={cn("w-full text-left px-3.5 py-2 flex items-center justify-between text-xs transition-colors cursor-pointer",
                       isFullWidth ? "text-foreground font-semibold bg-accent" : "text-muted-foreground hover:text-foreground hover:bg-accent/50")}>
                     <div className="flex items-center gap-2">
                       {isFullWidth ? <Minimize2 className="w-3.5 h-3.5 text-muted-foreground" /> : <Maximize2 className="w-3.5 h-3.5 text-muted-foreground" />}
-                      <span>{isFullWidth ? "还原常规宽度" : "宽尺寸自适应"}</span>
+                      <span>{isFullWidth ? t('restoreWidth') : t('fullWidth')}</span>
                     </div>
                     {isFullWidth && <Check className="w-3.5 h-3.5 text-foreground" />}
                   </button>
@@ -245,7 +250,7 @@ export function DatabaseMainPanel({
           <div className="w-full h-44 shrink-0 relative group border-b border-border"
             style={{ background: activeNode.cover || 'linear-gradient(to right, #0284c7, #06b6d4)' }}>
             <div className="absolute bottom-3 right-4 opacity-0 group-hover:opacity-100 transition-opacity bg-card/90 backdrop-blur-md rounded-xl p-1.5 border border-border flex items-center gap-1 shadow-xl">
-              <span className="text-[10px] text-muted-foreground font-bold px-2">封面：</span>
+              <span className="text-[10px] text-muted-foreground font-bold px-2">{t('cover')}</span>
               {PRESET_COVERS.map((preset, idx) => (
                 <button key={idx} onClick={() => { updateCover(workspaceId, activeNode.id, preset); onSave(); }}
                   style={{ background: preset }}
@@ -261,11 +266,11 @@ export function DatabaseMainPanel({
                 {activeNode.icon || '📝'}
               </span>
               <div className="text-[11px] text-muted-foreground font-semibold mb-2 flex items-center gap-1 mt-4">
-                <Sparkles className="w-3.5 h-3.5 text-muted-foreground/60" /><span>自动保存已开启</span>
+                <Sparkles className="w-3.5 h-3.5 text-muted-foreground/60" /><span>{t('autoSaveEnabled')}</span>
               </div>
               <input type="text" value={activeNode.title}
                 onChange={(e) => { renameNode(workspaceId, activeNode.id, e.target.value); onSave(); }}
-                placeholder="未命名文档"
+                placeholder={t('untitled')}
                 className={cn("w-full text-3xl md:text-4xl font-extrabold text-foreground border-none outline-none focus:ring-0 p-0 tracking-tight bg-transparent placeholder:text-muted-foreground/40 select-text",
                   theme === 'serif' && 'font-serif', theme === 'mono' && 'font-mono')} />
             </div>
@@ -280,9 +285,9 @@ export function DatabaseMainPanel({
 
             <div className="sticky bottom-0 bg-background border-t border-border py-3 px-6 md:px-12 flex flex-col sm:flex-row items-center justify-between text-[11px] text-muted-foreground font-medium gap-2">
               <div className="flex items-center gap-5">
-                <span>字数：<strong className="text-foreground">{wordCount}</strong></span>
-                <span className="hidden sm:inline">创建：{new Date(activeNode.createdAt).toLocaleDateString()}</span>
-                <span>修改：{new Date(activeNode.updatedAt).toLocaleTimeString()}</span>
+                <span>{t('wordCount')}<strong className="text-foreground">{wordCount}</strong></span>
+                <span className="hidden sm:inline">{t('createdAt')}{new Date(activeNode.createdAt).toLocaleDateString()}</span>
+                <span>{t('modifiedAt')}{new Date(activeNode.updatedAt).toLocaleTimeString()}</span>
               </div>
               <div className="flex items-center gap-1.5 text-foreground bg-card border border-border px-3 py-1 rounded-full font-semibold shrink-0">
                 <FileCheck className="w-3 h-3 text-emerald-500 animate-pulse" /><span>SAVED</span>
@@ -294,32 +299,32 @@ export function DatabaseMainPanel({
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center p-8 bg-background select-none text-center">
           <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-muted to-muted/80 border border-border flex items-center justify-center text-4xl mb-6 shadow-md shadow-black/10 text-muted-foreground animate-bounce">📁</div>
-          <h2 className="text-xl font-bold text-foreground tracking-tight">知识编辑器</h2>
+          <h2 className="text-xl font-bold text-foreground tracking-tight">{t('knowledgeEditor')}</h2>
           <p className="text-xs text-muted-foreground mt-1.5 max-w-[340px] leading-relaxed">
-            点击左侧目录树中的页面开始编辑，或点击上方按钮创建新文档。
+            {t('emptyHint')}
           </p>
           <div className="mt-8 bg-card border border-border rounded-2xl p-4 shadow-xl max-w-sm w-full">
-            <div className="text-[10px] font-bold text-muted-foreground mb-2.5 uppercase tracking-wider text-left">快捷键</div>
+            <div className="text-[10px] font-bold text-muted-foreground mb-2.5 uppercase tracking-wider text-left">{t('shortcuts')}</div>
             <div className="space-y-1.5 font-medium text-xs text-muted-foreground">
               <div className="flex items-center justify-between text-[11px]">
-                <span>全局搜索</span>
+                <span>{t('globalSearch')}</span>
                 <div className="flex items-center gap-0.5">
                   <kbd className="bg-background border border-border rounded px-1.5 py-0.2 text-[9px] font-mono text-muted-foreground">Ctrl</kbd>+<kbd className="bg-background border border-border rounded px-1.5 py-0.2 text-[9px] font-mono text-muted-foreground">K</kbd>
                 </div>
               </div>
               <div className="flex items-center justify-between text-[11px]">
-                <span>编辑器模式切换</span>
-                <span className="text-muted-foreground/60">右上角标签</span>
+                <span>{t('editorModeSwitch')}</span>
+                <span className="text-muted-foreground/60">{t('topRightTab')}</span>
               </div>
               <div className="flex items-center justify-between text-[11px]">
-                <span>嵌套归档</span>
-                <span className="text-muted-foreground/60">侧边栏拖拽</span>
+                <span>{t('nestedArchive')}</span>
+                <span className="text-muted-foreground/60">{t('sidebarDrag')}</span>
               </div>
             </div>
           </div>
           <button onClick={() => handleAddChild(null)}
             className="mt-6 px-5 h-10 rounded-xl bg-muted hover:bg-muted/80 border border-border text-foreground font-semibold text-xs cursor-pointer flex items-center gap-2">
-            <Plus className="w-4 h-4" /><span>快速创建首篇文档</span>
+            <Plus className="w-4 h-4" /><span>{t('quickCreateFirst')}</span>
           </button>
         </div>
       )}
@@ -327,16 +332,16 @@ export function DatabaseMainPanel({
       <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
         <DialogContent className="!flex !w-[min(1080px,calc(100vw-2rem))] !max-w-[min(1080px,calc(100vw-2rem))] h-[min(760px,calc(100vh-4rem))] flex-col gap-0 overflow-hidden p-0">
           <DialogHeader className="shrink-0 border-b border-border px-5 py-4">
-            <DialogTitle className="text-sm">历史版本</DialogTitle>
+            <DialogTitle className="text-sm">{t('historyVersions')}</DialogTitle>
           </DialogHeader>
           <div className="flex min-h-0 flex-1">
             <div className="w-64 shrink-0 border-r border-border overflow-y-auto bg-muted/20">
               {historyLoading ? (
-                <div className="p-4 text-xs text-muted-foreground">加载中...</div>
+                <div className="p-4 text-xs text-muted-foreground">{tc('loading')}</div>
               ) : historyError ? (
                 <div className="p-4 text-xs text-destructive">{historyError}</div>
               ) : versions.length === 0 ? (
-                <div className="p-4 text-xs text-muted-foreground">暂无历史版本</div>
+                <div className="p-4 text-xs text-muted-foreground">{t('noHistory')}</div>
               ) : (
                 versions.map((version) => (
                   <button
@@ -347,7 +352,7 @@ export function DatabaseMainPanel({
                       selectedVersion?.id === version.id ? "bg-background text-foreground" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
                     )}
                   >
-                    <div className="truncate font-semibold">{version.title || activeNode?.title || '未命名文档'}</div>
+                    <div className="truncate font-semibold">{version.title || activeNode?.title || t('untitled')}</div>
                     <div className="mt-1 text-[11px]">{new Date(version.createdAt).toLocaleString()}</div>
                     <div className="mt-1 text-[10px] font-mono">
                       -{version.patch.deleteText.length} +{version.patch.insertText.length}
@@ -366,7 +371,7 @@ export function DatabaseMainPanel({
                 />
               ) : (
                 <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                  选择一个版本查看 Diff
+                  {t('selectVersionDiff')}
                 </div>
               )}
             </div>

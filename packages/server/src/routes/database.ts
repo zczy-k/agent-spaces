@@ -4,6 +4,8 @@ import * as store from '../storage/database-store.js';
 import * as databaseVector from '../services/database-vector.js';
 
 const router = Router({ mergeParams: true });
+const pendingContentSaves = new Map<string, { timer: NodeJS.Timeout; content: string }>();
+const CONTENT_SAVE_IDLE_MS = 30_000;
 
 const wid = (req: Request): string => req.params.id as string;
 const databaseId = (req: Request): string => req.query.databaseId as string || store.getDefaultDatabase(wid(req)).id;
@@ -75,6 +77,7 @@ router.get('/:nodeId', (req: Request, res: Response) => {
 });
 
 router.get('/:nodeId/versions', (req: Request, res: Response) => {
+  flushPendingContentSave(wid(req), databaseId(req), req.params.nodeId as string);
   const limit = typeof req.query.limit === 'string' ? Number(req.query.limit) : 50;
   const versions = store.listNodeVersions(wid(req), req.params.nodeId as string, databaseId(req), limit);
   res.json(versions);
@@ -88,8 +91,22 @@ router.post('/', (req: Request, res: Response) => {
 
 // Update node
 router.put('/:nodeId', (req: Request, res: Response) => {
-  const node = store.updateNode(wid(req), req.params.nodeId as string, req.body, databaseId(req));
+  const workspaceId = wid(req);
+  const activeDatabaseId = databaseId(req);
+  const nodeId = req.params.nodeId as string;
+  const body = req.body as Record<string, unknown>;
+  const { content, ...metadataUpdates } = body;
+
+  let node = Object.keys(metadataUpdates).length > 0
+    ? store.updateNode(workspaceId, nodeId, metadataUpdates, activeDatabaseId)
+    : store.getNode(workspaceId, nodeId, activeDatabaseId);
   if (!node) return res.status(404).json({ error: 'Node not found' });
+
+  if (typeof content === 'string') {
+    scheduleContentSave(workspaceId, activeDatabaseId, nodeId, content);
+    node = { ...node, content, updatedAt: Date.now() };
+  }
+
   res.json(node);
 });
 
@@ -122,5 +139,25 @@ router.delete('/:nodeId', (req: Request, res: Response) => {
   }
   res.json({ ok: true });
 });
+
+function scheduleContentSave(workspaceId: string, activeDatabaseId: string, nodeId: string, content: string): void {
+  const key = `${workspaceId}:${activeDatabaseId}:${nodeId}`;
+  const existing = pendingContentSaves.get(key);
+  if (existing) clearTimeout(existing.timer);
+
+  const timer = setTimeout(() => {
+    flushPendingContentSave(workspaceId, activeDatabaseId, nodeId);
+  }, CONTENT_SAVE_IDLE_MS);
+  pendingContentSaves.set(key, { timer, content });
+}
+
+function flushPendingContentSave(workspaceId: string, activeDatabaseId: string, nodeId: string): void {
+  const key = `${workspaceId}:${activeDatabaseId}:${nodeId}`;
+  const pending = pendingContentSaves.get(key);
+  if (!pending) return;
+  clearTimeout(pending.timer);
+  pendingContentSaves.delete(key);
+  store.updateNode(workspaceId, nodeId, { content: pending.content }, activeDatabaseId);
+}
 
 export default router;
