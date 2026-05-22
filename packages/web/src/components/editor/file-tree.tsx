@@ -588,7 +588,12 @@ export function NestedTree<TNode>({
     const rowProps: NestedTreeRowProps = {
       draggable: !!onDragStart,
       style: { paddingLeft: `${Math.max(4, level * indent)}px` },
-      onDragStart: onDragStart ? (event) => onDragStart(event, nodeId) : undefined,
+      onDragStart: onDragStart
+        ? (event) => {
+            event.stopPropagation()
+            onDragStart(event, nodeId)
+          }
+        : undefined,
       onDragOver: onDragOver
         ? (event) => {
             event.stopPropagation()
@@ -602,7 +607,12 @@ export function NestedTree<TNode>({
             onDrop(event, nodeId)
           }
         : undefined,
-      onDragEnd,
+      onDragEnd: onDragEnd
+        ? (event) => {
+            event.stopPropagation()
+            onDragEnd(event)
+          }
+        : undefined,
     }
     const shouldShowChildren = state.hasChildren && (shouldRenderChildren?.(node, state) ?? true)
 

@@ -82,6 +82,7 @@ function collectAllFiles(nodes: FileNode[]): FileNode[] {
 
 const STORAGE_KEY_PREFIX = 'agent-spaces:file-tree-expanded:';
 const ROOT_DROP_TARGET = '__file_tree_root_drop_target__';
+const FILE_TREE_DRAG_MIME = 'application/x-agent-spaces-file-path';
 
 function loadExpandedPaths(workspaceId: string): Set<string> {
   try {
@@ -272,6 +273,18 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
     return index > -1 ? path.slice(0, index) : '';
   }, []);
 
+  const getDragSourcePath = useCallback((event: React.DragEvent<HTMLDivElement>) => (
+    draggedPathRef.current
+    || draggedPath
+    || event.dataTransfer.getData(FILE_TREE_DRAG_MIME)
+    || event.dataTransfer.getData('text/plain')
+  ), [draggedPath]);
+
+  const getDropTargetDir = useCallback((targetPath: string) => {
+    const targetNode = findTreeNode(targetPath);
+    return targetNode?.type === 'directory' ? targetPath : getParentDir(targetPath);
+  }, [findTreeNode, getParentDir]);
+
   const reloadExpandedTree = useCallback(async () => {
     await loadTree(workspaceId);
     for (const dir of expandedPaths) {
@@ -302,6 +315,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
   const handleTreeDragStart = useCallback((event: React.DragEvent<HTMLDivElement>, path: string) => {
     draggedPathRef.current = path;
     setDraggedPath(path);
+    event.dataTransfer.setData(FILE_TREE_DRAG_MIME, path);
     event.dataTransfer.setData('text/plain', path);
     event.dataTransfer.effectAllowed = 'move';
   }, []);
@@ -314,19 +328,19 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
 
   const handleTreeDragOver = useCallback((event: React.DragEvent<HTMLDivElement>, targetPath: string) => {
     event.preventDefault();
-    const sourcePath = draggedPathRef.current || draggedPath || event.dataTransfer.getData('text/plain');
+    const sourcePath = getDragSourcePath(event);
     if (!sourcePath || sourcePath === targetPath) return;
 
-    const targetNode = findTreeNode(targetPath);
-    const targetDir = targetNode?.type === 'directory' ? targetPath : getParentDir(targetPath);
+    const targetDir = getDropTargetDir(targetPath);
     if (targetDir === sourcePath || targetDir.startsWith(`${sourcePath}/`)) {
+      setDraggedOverPath(null);
       event.dataTransfer.dropEffect = 'none';
       return;
     }
 
     setDraggedOverPath(targetPath);
     event.dataTransfer.dropEffect = 'move';
-  }, [draggedPath, findTreeNode, getParentDir]);
+  }, [getDragSourcePath, getDropTargetDir]);
 
   const handleTreeDragLeave = useCallback(() => {
     setDraggedOverPath(null);
@@ -334,16 +348,15 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
 
   const handleTreeDrop = useCallback(async (event: React.DragEvent<HTMLDivElement>, targetPath: string) => {
     event.preventDefault();
-    const sourcePath = draggedPathRef.current || draggedPath || event.dataTransfer.getData('text/plain');
+    const sourcePath = getDragSourcePath(event);
     setDraggedOverPath(null);
     setDraggedPath(null);
     draggedPathRef.current = null;
     if (!sourcePath || sourcePath === targetPath) return;
 
-    const targetNode = findTreeNode(targetPath);
-    const targetDir = targetNode?.type === 'directory' ? targetPath : getParentDir(targetPath);
+    const targetDir = getDropTargetDir(targetPath);
     await movePathToDirectory(sourcePath, targetDir);
-  }, [draggedPath, findTreeNode, getParentDir, movePathToDirectory]);
+  }, [getDragSourcePath, getDropTargetDir, movePathToDirectory]);
 
   const handleTreeRootDragOver = useCallback((event: React.DragEvent<HTMLDivElement>, targetId: string) => {
     event.preventDefault();
@@ -355,13 +368,13 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
   const handleTreeRootDrop = useCallback(async (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.stopPropagation();
-    const sourcePath = draggedPathRef.current || draggedPath || event.dataTransfer.getData('text/plain');
+    const sourcePath = getDragSourcePath(event);
     setDraggedOverPath(null);
     setDraggedPath(null);
     draggedPathRef.current = null;
     if (!sourcePath) return;
     await movePathToDirectory(sourcePath, '');
-  }, [draggedPath, movePathToDirectory]);
+  }, [getDragSourcePath, movePathToDirectory]);
 
   const handleTreeRootDragLeave = useCallback((_event: React.DragEvent<HTMLDivElement>, targetId: string) => {
     setDraggedOverPath((path) => path === targetId ? null : path);
