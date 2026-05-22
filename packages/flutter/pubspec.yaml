@@ -94,6 +94,7 @@ flutter:
     - assets/web/settings/prompts/
     - assets/web/settings/providers/
     - assets/web/settings/skills/
+    - assets/web/settings/tools/
     - assets/web/workflows/
     - assets/web/workspace/
     - assets/web/workspace/_/
