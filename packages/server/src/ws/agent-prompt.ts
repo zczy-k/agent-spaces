@@ -192,22 +192,61 @@ function formatBuiltInToolContext(workspaceId: string, tools: BuiltInToolContext
   const firstTool = tools[0];
   const firstIssueTool = tools.find((tool) => tool.issueId);
   const lines = [
-    'Built-in issue tool rules:',
+    'Built-in Agent Spaces tool rules:',
     '- These are real function-call tools exposed by the Agent Spaces runtime.',
     '- They are not agent-configured MCP servers and must be reported only as Agent Spaces channel tools.',
+    '- Use the exact Agent Spaces tool names listed below when operating on Agent Spaces data.',
     '- Tool calls that require workspaceId must use the current workspace id.',
-    '- Issue tool calls must use the current channel id.',
   ];
   lines.push(`- Current workspace id: ${workspaceId}`);
   if (firstTool?.channelId) lines.push(`- Current channel id: ${firstTool.channelId}`);
-  if (firstIssueTool?.issueId) {
-    lines.push(`- Current channel issue id: ${firstIssueTool.issueId}`);
-    lines.push(`- Current channel issue title: ${firstIssueTool.issueTitle || 'Untitled issue'}`);
-  } else {
-    lines.push('- Current channel is not bound to an issue yet. Use CreateCurrentChannelIssue before viewing or commenting.');
+
+  if (tools.some((tool) => isIssueToolName(tool.name))) {
+    lines.push('- Issue tool calls must use the current channel id.');
+    if (firstIssueTool?.issueId) {
+      lines.push(`- Current channel issue id: ${firstIssueTool.issueId}`);
+      lines.push(`- Current channel issue title: ${firstIssueTool.issueTitle || 'Untitled issue'}`);
+    } else {
+      lines.push('- Current channel is not bound to an issue yet. Use CreateCurrentChannelIssue before viewing or commenting.');
+    }
   }
+
+  if (tools.some((tool) => isDatabaseToolName(tool.name))) {
+    lines.push(
+      'Knowledge base database tool rules:',
+      '- Knowledge base/database documents are Agent Spaces database nodes, not workspace filesystem files.',
+      '- In Claude Code, call Agent Spaces database tools with their MCP names, for example mcp__agent-spaces__ListDatabaseNodes.',
+      '- To list database files, call mcp__agent-spaces__ListDatabaseNodes with path and optional filter.',
+      '- To search database files, call mcp__agent-spaces__SearchDatabaseNodes with path and optional filter.',
+      '- To read database content, call mcp__agent-spaces__ReadDatabaseNode with an existing node id.',
+      '- To write database content, call mcp__agent-spaces__WriteDatabaseNode with an existing node id, mode, replace when needed, and content.',
+      '- Do not call the Claude Code native Write tool for knowledge base/database documents; native Write requires file_path and writes workspace files.',
+      '- Do not invent database node ids. If the target id is unknown, call mcp__agent-spaces__ListDatabaseNodes or mcp__agent-spaces__SearchDatabaseNodes first.',
+    );
+  }
+
   for (const tool of tools) {
-    lines.push(`- ${tool.name}: ${tool.description}`);
+    lines.push(`- ${formatCallableToolName(tool.name)}: ${tool.description}`);
   }
   return lines;
+}
+
+function formatCallableToolName(name: string): string {
+  return `mcp__agent-spaces__${name}`;
+}
+
+function isIssueToolName(name: string): boolean {
+  return name === 'CreateCurrentChannelIssue'
+    || name === 'ViewCurrentChannelIssue'
+    || name === 'AddCurrentChannelComment';
+}
+
+function isDatabaseToolName(name: string): boolean {
+  return name === 'ListDatabaseNodes'
+    || name === 'SearchDatabaseNodes'
+    || name === 'ReadDatabaseNode'
+    || name === 'WriteDatabaseNode'
+    || name === 'DeleteDatabaseNode'
+    || name === 'MoveDatabaseNode'
+    || name === 'UpdateDatabaseNodeMeta';
 }

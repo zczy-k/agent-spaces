@@ -310,6 +310,14 @@ export const FileTreeFolder = ({
             <FolderPlus className="size-4" />
             {t('newFolder')}
           </ContextMenuItem>
+          <ContextMenuItem onClick={handleReveal}>
+            <ExternalLink className="size-4" />
+            {t('revealInFinder')}
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => setDeleteConfirmOpen(true)} className="text-destructive focus:text-destructive">
+            <Trash2 className="size-4" />
+            {tc('delete')}
+          </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
       <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
@@ -450,6 +458,7 @@ export const FileTreeFile = ({
           onRename={() => onRename?.(path)}
           onMove={() => onMove?.(path)}
           onCopyItem={() => onCopyItem?.(path)}
+          onDelete={() => setDeleteConfirmOpen(true)}
         />
       </ContextMenu>
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>

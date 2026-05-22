@@ -1,6 +1,6 @@
 "use client"
 
-import { Pencil, MoveRight, Copy, ExternalLink, Download, Link } from "lucide-react"
+import { Pencil, MoveRight, Copy, ExternalLink, Download, Link, Trash2 } from "lucide-react"
 import { ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from "@/components/ui/context-menu"
 import { useTranslations } from "next-intl"
 
@@ -11,9 +11,10 @@ interface FileContextMenuProps {
   onRename?: () => void
   onMove?: () => void
   onCopyItem?: () => void
+  onDelete?: () => void
 }
 
-export function FileContextMenu({ filePath, workspaceId, boundDir, onRename, onMove, onCopyItem }: FileContextMenuProps) {
+export function FileContextMenu({ filePath, workspaceId, boundDir, onRename, onMove, onCopyItem, onDelete }: FileContextMenuProps) {
   const t = useTranslations('editor')
 
   const handleCopyPath = () => {
@@ -68,6 +69,15 @@ export function FileContextMenu({ filePath, workspaceId, boundDir, onRename, onM
         <ExternalLink className="size-4" />
         {t('revealInFinder')}
       </ContextMenuItem>
+      {onDelete && (
+        <>
+          <ContextMenuSeparator />
+          <ContextMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
+            <Trash2 className="size-4" />
+            {t('deleteFileTitle')}
+          </ContextMenuItem>
+        </>
+      )}
       <ContextMenuSeparator />
       <ContextMenuItem onClick={handleDownload}>
         <Download className="size-4" />

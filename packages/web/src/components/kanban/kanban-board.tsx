@@ -165,7 +165,7 @@ export default function KanbanBoardPanel({ workspaceId }: KanbanBoardProps) {
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-stone-400" />
           <input type="text" placeholder={t('searchPlaceholder')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-8 pr-3 py-1.5 bg-stone-50 dark:bg-neutral-800 border border-stone-200 dark:border-neutral-600 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-stone-500/10 transition" />
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 ml-auto">
           {(['all', 'high', 'medium', 'low'] as const).map((p) => (
             <button key={p} onClick={() => setPriorityFilter(p)} className={`px-2.5 py-1 text-[10px] rounded-full border transition font-medium cursor-pointer ${priorityFilter === p ? 'bg-stone-800 dark:bg-neutral-100 dark:text-neutral-900 border-stone-800 text-white' : 'bg-white dark:bg-neutral-800 dark:border-neutral-600 dark:text-neutral-300 hover:bg-stone-50 text-stone-600 border-stone-200'}`}>{priorityLabels[p]}</button>
           ))}

@@ -693,11 +693,11 @@ function resolveIssueChannelContext(
 }
 
 function isAgentSpacesIssueTool(name: string | undefined): boolean {
-  return Boolean(name && /(?:agent-spaces\.)?(?:CreateCurrentChannelIssue|ViewCurrentChannelIssue|AddCurrentChannelComment)/.test(name));
+  return Boolean(name && /(?:agent-spaces\.|mcp__agent-spaces__)?(?:CreateCurrentChannelIssue|ViewCurrentChannelIssue|AddCurrentChannelComment)/.test(name));
 }
 
 function isCreateCurrentChannelIssueTool(name: string | undefined): boolean {
-  return Boolean(name && /(?:agent-spaces\.)?CreateCurrentChannelIssue/.test(name));
+  return Boolean(name && /(?:agent-spaces\.|mcp__agent-spaces__)?CreateCurrentChannelIssue/.test(name));
 }
 
 function channelRunKey(workspaceId: string, channelId: string): string {
