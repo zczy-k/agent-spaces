@@ -16,6 +16,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { DatabaseTreeNode } from './database-tree-node';
+import { ImportFileDialog } from '@/components/editor/import-file-dialog';
+import { markdownToHtml } from '@/lib/converter';
+import { fetchWithAuth } from '@/lib/auth';
 import type { DocNode, DatabaseMeta } from '@agent-spaces/shared';
 
 interface DatabaseSidebarProps {
@@ -45,6 +48,7 @@ export function DatabaseSidebar({
   } = useDatabaseStore();
 
   const [newDropdownOpen, setNewDropdownOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [draggedNodeId, setDraggedNodeId] = useState<string | null>(null);
   const [draggedOverNodeId, setDraggedOverNodeId] = useState<string | null>(null);
   const newDropdownRef = useRef<HTMLDivElement>(null);
@@ -125,6 +129,28 @@ export function DatabaseSidebar({
     if (!confirm(`Delete database "${activeDatabase.name}" and all nodes inside it?`)) return;
     await deleteDatabase(workspaceId, activeDatabase.id);
   }, [activeDatabase, databases.length, deleteDatabase, workspaceId]);
+
+  const handleImportMdFiles = useCallback(async (files: File[]) => {
+    const { activeDatabaseId } = useDatabaseStore.getState();
+    if (!activeDatabaseId) return;
+    for (const file of files) {
+      const text = await file.text();
+      const html = markdownToHtml(text);
+      const title = file.name.replace(/\.md$/i, '');
+      const res = await fetchWithAuth(
+        `/api/workspaces/${workspaceId}/database?databaseId=${encodeURIComponent(activeDatabaseId)}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, icon: '📝', content: html, parentId: null }),
+        },
+      );
+      if (!res.ok) throw new Error('Failed to create node');
+      const node = await res.json() as DocNode;
+      useDatabaseStore.setState(s => ({ nodes: [...s.nodes, node] }));
+    }
+    onSave();
+  }, [workspaceId, onSave]);
 
   return (
     <>
@@ -207,6 +233,10 @@ export function DatabaseSidebar({
                   className="w-full text-left px-3 py-1.5 flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer">
                   <span className="text-sm">📝</span><span className="font-medium">新建文档</span>
                 </button>
+                <button onClick={() => { setImportOpen(true); setNewDropdownOpen(false); }}
+                  className="w-full text-left px-3 py-1.5 flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer">
+                  <span className="text-sm">📥</span><span className="font-medium">导入 Markdown</span>
+                </button>
               </div>
             )}
           </div>
@@ -283,6 +313,16 @@ export function DatabaseSidebar({
           )}
         </button>
       </div>
+
+      <ImportFileDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        workspaceId={workspaceId}
+        targetPath=""
+        onImported={onSave}
+        accept={{ 'text/markdown': ['.md'], 'text/x-markdown': ['.md'] }}
+        onUploadFiles={handleImportMdFiles}
+      />
     </>
   );
 }

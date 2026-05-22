@@ -11,6 +11,7 @@ import { Loader2, Globe, FolderInput, Upload } from "lucide-react";
 import { fetchWithAuth } from "@/lib/auth";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+import type { Accept } from "react-dropzone";
 
 interface ImportFileDialogProps {
   open: boolean;
@@ -18,6 +19,8 @@ interface ImportFileDialogProps {
   workspaceId: string;
   targetPath: string;
   onImported: () => void;
+  accept?: Accept;
+  onUploadFiles?: (files: File[]) => Promise<void>;
 }
 
 function fileToBase64(file: File): Promise<string> {
@@ -32,7 +35,7 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
-export function ImportFileDialog({ open, onOpenChange, workspaceId, targetPath, onImported }: ImportFileDialogProps) {
+export function ImportFileDialog({ open, onOpenChange, workspaceId, targetPath, onImported, accept, onUploadFiles }: ImportFileDialogProps) {
   const t = useTranslations("editor");
   const [loading, setLoading] = useState(false);
   const [url, setUrl] = useState("");
@@ -104,23 +107,30 @@ export function ImportFileDialog({ open, onOpenChange, workspaceId, targetPath, 
     if (uploadFiles.length === 0) return;
     setLoading(true);
     try {
-      const filesData = await Promise.all(
-        uploadFiles.map(async (f) => ({
-          name: f.file.name,
-          content: await fileToBase64(f.file),
-        })),
-      );
-      const res = await fetchWithAuth(`/api/workspaces/${workspaceId}/files/upload`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetDir: targetPath, files: filesData }),
-      });
-      if (res.ok) {
+      if (onUploadFiles) {
+        await onUploadFiles(uploadFiles.map((f) => f.file));
         toast.success(t("importSuccess"));
         onImported();
         handleClose(false);
       } else {
-        toast.error(t("importFailed"));
+        const filesData = await Promise.all(
+          uploadFiles.map(async (f) => ({
+            name: f.file.name,
+            content: await fileToBase64(f.file),
+          })),
+        );
+        const res = await fetchWithAuth(`/api/workspaces/${workspaceId}/files/upload`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ targetDir: targetPath, files: filesData }),
+        });
+        if (res.ok) {
+          toast.success(t("importSuccess"));
+          onImported();
+          handleClose(false);
+        } else {
+          toast.error(t("importFailed"));
+        }
       }
     } catch {
       toast.error(t("importFailed"));
@@ -152,7 +162,7 @@ export function ImportFileDialog({ open, onOpenChange, workspaceId, targetPath, 
             </TabsTrigger>
           </TabsList>
            <TabsContent value="upload" className="space-y-3 pt-2">
-            <FileUpload value={uploadFiles} onChange={setUploadFiles} />
+            <FileUpload value={uploadFiles} onChange={setUploadFiles} accept={accept} />
             <Button className="w-full" onClick={handleUpload} disabled={uploadFiles.length === 0 || loading}>
               {loading ? <Loader2 className="size-4 animate-spin" /> : t("importUpload")}
             </Button>

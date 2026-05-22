@@ -120,14 +120,13 @@ export default function KanbanBoardPanel({ workspaceId }: KanbanBoardProps) {
       columnId, order: tasks.filter((t) => t.columnId === columnId).length,
       createdAt: Date.now(),
     };
-    const newTasks = [...tasks, newTask];
-    updateTasks(workspaceId, newTasks);
     setSelectedTask(newTask);
     setIsTaskModalOpen(true);
   };
 
   const handleSaveTask = (updatedTask: KanbanTask) => {
-    updateTasks(workspaceId, tasks.map((t) => t.id === updatedTask.id ? updatedTask : t));
+    const exists = tasks.some((t) => t.id === updatedTask.id);
+    updateTasks(workspaceId, exists ? tasks.map((t) => t.id === updatedTask.id ? updatedTask : t) : [...tasks, updatedTask]);
   };
 
   const handleDeleteTask = (taskId: string) => {
