@@ -50,6 +50,11 @@ export const BUILT_IN_AGENT_TOOLS = [
     description: 'Read knowledge base node metadata and content by ID.',
   },
   {
+    name: 'CreateDatabaseNode',
+    label: 'Create Database Node',
+    description: 'Create a knowledge base node under a parent path or parent ID.',
+  },
+  {
     name: 'WriteDatabaseNode',
     label: 'Write Database Node',
     description: 'Insert, replace, or overwrite knowledge base node content by ID.',

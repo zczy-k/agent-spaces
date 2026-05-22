@@ -219,9 +219,11 @@ function formatBuiltInToolContext(workspaceId: string, tools: BuiltInToolContext
       '- To list database files, call mcp__agent-spaces__ListDatabaseNodes with path and optional filter.',
       '- To search database files, call mcp__agent-spaces__SearchDatabaseNodes with path and optional filter.',
       '- To read database content, call mcp__agent-spaces__ReadDatabaseNode with an existing node id.',
+      '- To create a new database document, call mcp__agent-spaces__CreateDatabaseNode with title, optional content, and optional parentId or path.',
       '- To write database content, call mcp__agent-spaces__WriteDatabaseNode with an existing node id, mode, replace when needed, and content.',
       '- Do not call the Claude Code native Write tool for knowledge base/database documents; native Write requires file_path and writes workspace files.',
       '- Do not invent database node ids. If the target id is unknown, call mcp__agent-spaces__ListDatabaseNodes or mcp__agent-spaces__SearchDatabaseNodes first.',
+      '- If the database is empty or no existing node matches the requested document, call mcp__agent-spaces__CreateDatabaseNode instead of WriteDatabaseNode.',
     );
   }
 
@@ -245,6 +247,7 @@ function isDatabaseToolName(name: string): boolean {
   return name === 'ListDatabaseNodes'
     || name === 'SearchDatabaseNodes'
     || name === 'ReadDatabaseNode'
+    || name === 'CreateDatabaseNode'
     || name === 'WriteDatabaseNode'
     || name === 'DeleteDatabaseNode'
     || name === 'MoveDatabaseNode'

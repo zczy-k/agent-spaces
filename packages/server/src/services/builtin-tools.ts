@@ -137,6 +137,38 @@ const readDatabaseNodeInputSchema = {
   additionalProperties: false,
 };
 
+const createDatabaseNodeInputSchema = {
+  type: 'object',
+  properties: {
+    title: {
+      type: 'string',
+      description: 'Knowledge base node title.',
+    },
+    content: {
+      type: 'string',
+      description: 'Initial content. Defaults to empty.',
+    },
+    parentId: {
+      type: 'string',
+      description: 'Optional parent node ID. Omit for root.',
+    },
+    path: {
+      type: 'string',
+      description: 'Optional parent path using titles. Ignored when parentId is provided.',
+    },
+    icon: {
+      type: 'string',
+      description: 'Optional icon.',
+    },
+    cover: {
+      type: 'string',
+      description: 'Optional cover value.',
+    },
+  },
+  required: ['title'],
+  additionalProperties: false,
+};
+
 const writeDatabaseNodeInputSchema = {
   type: 'object',
   properties: {
@@ -470,7 +502,7 @@ export function createCommandFunctionTools(workspaceId: string, allowedTools?: B
 }
 
 export function createDatabaseFunctionTools(workspaceId: string, allowedTools?: BuiltInAgentToolName[]): AgentFunctionTool[] {
-  const allowedToolNames = new Set(allowedTools ?? BUILT_IN_AGENT_TOOLS.map((tool) => tool.name));
+  const allowedToolNames = getAllowedDatabaseToolNames(allowedTools);
   const tools: AgentFunctionTool[] = [
     {
       name: 'ListDatabaseNodes',
@@ -492,6 +524,13 @@ export function createDatabaseFunctionTools(workspaceId: string, allowedTools?: 
       inputSchema: readDatabaseNodeInputSchema,
       annotations: { readOnly: true, openWorld: false },
       execute: async (input) => readDatabaseNode(workspaceId, input),
+    },
+    {
+      name: 'CreateDatabaseNode',
+      description: 'Create a knowledge base file or directory. Use this when the database is empty or the target document does not exist.',
+      inputSchema: createDatabaseNodeInputSchema,
+      annotations: { destructive: false, openWorld: false },
+      execute: async (input) => createDatabaseNode(workspaceId, input),
     },
     {
       name: 'WriteDatabaseNode',
@@ -524,6 +563,13 @@ export function createDatabaseFunctionTools(workspaceId: string, allowedTools?: 
   ];
 
   return tools.filter((tool) => allowedToolNames.has(tool.name as BuiltInAgentToolName));
+}
+
+function getAllowedDatabaseToolNames(allowedTools?: BuiltInAgentToolName[]): Set<BuiltInAgentToolName> {
+  const names = new Set(allowedTools ?? BUILT_IN_AGENT_TOOLS.map((tool) => tool.name));
+  const hasDatabaseTools = Array.from(names).some((name) => isDatabaseToolName(name));
+  if (hasDatabaseTools) names.add('CreateDatabaseNode');
+  return names;
 }
 
 interface DatabaseNodeSummary {
@@ -579,6 +625,30 @@ function readDatabaseNode(workspaceId: string, input: unknown): DocNode & { path
     children: nodes
       .filter((child) => child.parentId === node.id)
       .map((child) => summarizeDatabaseNode(child, nodes)),
+  };
+}
+
+function createDatabaseNode(workspaceId: string, input: unknown): DocNode & { path: string } {
+  const data = assertRecord(input);
+  const title = readRequiredString(data.title, 'title');
+  const nodes = databaseStore.listNodes(workspaceId);
+  const parentId = resolveMoveParentId(nodes, data);
+  if (parentId) {
+    const parent = nodes.find((node) => node.id === parentId);
+    if (!parent) throw new Error(`Target parent not found: ${parentId}`);
+  }
+
+  const node = databaseStore.createNode(workspaceId, {
+    title,
+    content: readStringOrDefault(data.content, ''),
+    parentId,
+    icon: readOptionalString(data.icon) ?? '馃摑',
+    cover: readStringOrDefault(data.cover, ''),
+  });
+  const nextNodes = [...nodes, node];
+  return {
+    ...node,
+    path: buildDatabaseNodePath(node, nextNodes),
   };
 }
 
@@ -762,4 +832,19 @@ function readOptionalString(value: unknown): string | undefined {
 
 function normalizeSearchText(value: string | undefined): string {
   return (value ?? '').trim().toLowerCase();
+}
+
+function isDatabaseToolName(name: string): boolean {
+  return name === 'ListDatabaseNodes'
+    || name === 'SearchDatabaseNodes'
+    || name === 'ReadDatabaseNode'
+    || name === 'CreateDatabaseNode'
+    || name === 'WriteDatabaseNode'
+    || name === 'DeleteDatabaseNode'
+    || name === 'MoveDatabaseNode'
+    || name === 'UpdateDatabaseNodeMeta';
+}
+
+function readStringOrDefault(value: unknown, fallback: string): string {
+  return typeof value === 'string' ? value : fallback;
 }
