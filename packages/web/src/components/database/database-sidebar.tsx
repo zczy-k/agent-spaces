@@ -17,7 +17,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { DatabaseTreeNode } from './database-tree-node';
 import { ImportFileDialog } from '@/components/editor/import-file-dialog';
-import { markdownToHtml } from '@/lib/converter';
 import { fetchWithAuth } from '@/lib/auth';
 import type { DocNode, DatabaseMeta } from '@agent-spaces/shared';
 
@@ -134,15 +133,14 @@ export function DatabaseSidebar({
     const { activeDatabaseId } = useDatabaseStore.getState();
     if (!activeDatabaseId) return;
     for (const file of files) {
-      const text = await file.text();
-      const html = markdownToHtml(text);
+      const content = await file.text();
       const title = file.name.replace(/\.md$/i, '');
       const res = await fetchWithAuth(
         `/api/workspaces/${workspaceId}/database?databaseId=${encodeURIComponent(activeDatabaseId)}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title, icon: '📝', content: html, parentId: null }),
+          body: JSON.stringify({ title, icon: '📝', content, parentId: null }),
         },
       );
       if (!res.ok) throw new Error('Failed to create node');
