@@ -36,6 +36,8 @@
     "pushNCommits": "Push {count} commits",
     "pullNCommits": "Pull {count} commits",
     "noCommits": "No commits",
+    "fullLog": "Full Log",
+    "fullLogTitle": "Full Log ({count} entries)",
     "settingsTitle": "Git Settings",
     "remoteTrackingBranch": "Remote tracking branch",
     "pushedSuccessfully": "Pushed successfully",

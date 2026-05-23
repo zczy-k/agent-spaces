@@ -1,8 +1,11 @@
 'use client';
 
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { IssueMessage } from '@/components/issue/issue-message';
 import { CommentNavigator } from '@/components/issue/comment-navigator';
-import type { IssueComment, Issue } from '@agent-spaces/shared';
+import { useChannelStore } from '@/stores/channel';
+import { getWS } from '@/lib/ws';
+import type { IssueComment, Issue, Message } from '@agent-spaces/shared';
 
 interface IssueDetailCommentsProps {
   issue: Issue;
@@ -19,7 +22,7 @@ interface IssueDetailCommentsProps {
 }
 
 export function IssueDetailComments({
-  issue: _issue,
+  issue,
   workspaceId,
   comments,
   expandedCommentIds,
@@ -31,6 +34,58 @@ export function IssueDetailComments({
   scrollToComment,
   t,
 }: IssueDetailCommentsProps) {
+  const [replyingCommentId, setReplyingCommentId] = useState<string | null>(null);
+  const messages = useChannelStore((s) => s.messages);
+  const loadMessages = useChannelStore((s) => s.loadMessages);
+  const sendMessage = useChannelStore((s) => s.sendMessage);
+  const addMessage = useChannelStore((s) => s.addMessage);
+  const updateMessage = useChannelStore((s) => s.updateMessage);
+  const deleteMessage = useChannelStore((s) => s.deleteMessage);
+  const channelId = issue.channelId;
+
+  useEffect(() => {
+    if (!channelId) return;
+    void loadMessages(workspaceId, channelId);
+  }, [workspaceId, channelId, loadMessages]);
+
+  useEffect(() => {
+    if (!channelId) return;
+    const ws = getWS(workspaceId);
+    const handleMessage = (data: unknown) => {
+      const message = data as Message;
+      if (message.channelId === channelId) addMessage(channelId, message);
+    };
+    const handleUpdated = (data: unknown) => {
+      const message = data as Message;
+      if (message.channelId === channelId) updateMessage(channelId, message);
+    };
+    const handleDeleted = (data: unknown) => {
+      const message = data as { channelId: string; messageId: string };
+      if (message.channelId === channelId) deleteMessage(channelId, message.messageId);
+    };
+
+    const unsubMessage = ws.on('channel.message', handleMessage);
+    const unsubUpdated = ws.on('channel.message.updated', handleUpdated);
+    const unsubDeleted = ws.on('channel.message.deleted', handleDeleted);
+    return () => {
+      unsubMessage();
+      unsubUpdated();
+      unsubDeleted();
+    };
+  }, [workspaceId, channelId, addMessage, updateMessage, deleteMessage]);
+
+  const messageById = useMemo(() => {
+    return new Map((messages[channelId] ?? []).map((message) => [message.id, message]));
+  }, [messages, channelId]);
+
+  const handleReplySubmit = useCallback((commentId: string, content: string) => {
+    const comment = comments.find((item) => item.id === commentId);
+    const replyToMessageId = comment?.metadata?.messageId;
+    if (!channelId || !replyToMessageId) return;
+    sendMessage(workspaceId, channelId, content, [], [], replyToMessageId);
+    setReplyingCommentId(null);
+  }, [comments, workspaceId, channelId, sendMessage]);
+
   return (
     <div className="flex-1 min-h-0 flex flex-col border-t">
       <div className="shrink-0 px-4 pt-2">
@@ -50,15 +105,19 @@ export function IssueDetailComments({
                       commentRefs.current.delete(comment.id);
                     }
                   }}
-                  className="px-4"
                 >
                   <IssueMessage
                     comment={comment}
                     expanded={expandedCommentIds.has(comment.id)}
                     workspaceId={workspaceId}
+                    replies={messageById.get(comment.metadata?.messageId ?? '')?.replies ?? []}
+                    replying={replyingCommentId === comment.id}
                     onDelete={onDeleteComment}
                     onUpdate={onUpdateComment}
                     onExpandedChange={onExpandedChange}
+                    onReplyStart={setReplyingCommentId}
+                    onReplyCancel={() => setReplyingCommentId(null)}
+                    onReplySubmit={handleReplySubmit}
                   />
                 </div>
               ))}

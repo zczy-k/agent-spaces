@@ -131,7 +131,9 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
     set((s) => ({
       messages: {
         ...s.messages,
-        [channelId]: [...(s.messages[channelId] || []), message],
+        [channelId]: (s.messages[channelId] || []).some((item) => item.id === message.id)
+          ? s.messages[channelId] || []
+          : [...(s.messages[channelId] || []), message],
       },
     }));
   },
@@ -140,9 +142,9 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
     set((s) => ({
       messages: {
         ...s.messages,
-        [channelId]: (s.messages[channelId] || []).map((item) =>
-          item.id === message.id ? message : item,
-        ),
+        [channelId]: (s.messages[channelId] || []).some((item) => item.id === message.id)
+          ? (s.messages[channelId] || []).map((item) => item.id === message.id ? message : item)
+          : [...(s.messages[channelId] || []), message],
       },
     }));
   },

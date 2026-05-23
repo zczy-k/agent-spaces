@@ -36,6 +36,8 @@
     "pushNCommits": "推送 {count} 个提交",
     "pullNCommits": "拉取 {count} 个提交",
     "noCommits": "暂无提交",
+    "fullLog": "完整日志",
+    "fullLogTitle": "完整日志 ({count} 条)",
     "settingsTitle": "Git 设置",
     "remoteTrackingBranch": "远程跟踪分支",
     "pushedSuccessfully": "推送成功",

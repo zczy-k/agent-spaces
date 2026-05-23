@@ -5,6 +5,7 @@ import {
   Upload, Loader2, RefreshCw, ArrowUp, ArrowDown,
   FileCode, RotateCcw, Trash2, ChevronDown, GitBranch,
   Sparkles, Settings2, FileDiff, Plus, Minus, AlertTriangle,
+  ScrollText,
 } from "lucide-react";
 import type { GitLogEntry } from "@agent-spaces/shared";
 import { useGitStore } from "@/stores/git";
@@ -61,6 +62,23 @@ export function GitCommitsPanel({ workspaceId }: Props) {
   const [gitignoreSaving, setGitignoreSaving] = useState(false);
   const [discardConfirm, setDiscardConfirm] = useState<DiscardConfirm>(null);
   const [detailEntry, setDetailEntry] = useState<GitLogEntry | null>(null);
+  const [fullLogOpen, setFullLogOpen] = useState(false);
+  const [fullLog, setFullLog] = useState<GitLogEntry[]>([]);
+  const [fullLogLoading, setFullLogLoading] = useState(false);
+
+  const openFullLog = useCallback(async () => {
+    setFullLogOpen(true);
+    setFullLogLoading(true);
+    try {
+      const res = await fetch(`/api/workspaces/${workspaceId}/git/log?maxCount=1000`);
+      if (!res.ok) throw new Error(await res.text());
+      setFullLog(await res.json());
+    } catch {
+      setFullLog([]);
+    } finally {
+      setFullLogLoading(false);
+    }
+  }, [workspaceId]);
 
   const ahead = status?.ahead ?? 0;
   const behind = status?.behind ?? 0;
@@ -345,6 +363,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
             </button>
             <button onClick={refresh} className="p-1 text-muted-foreground hover:text-foreground active:scale-90 transition-all duration-100 cursor-pointer"><RefreshCw size={13} /></button>
             <button onClick={() => setGitSettingsOpen(true)} className="p-1 text-muted-foreground hover:text-foreground active:scale-90 transition-all duration-100 cursor-pointer" title={t('settingsTitle')}><Settings2 size={13} /></button>
+            <button onClick={openFullLog} className="p-1 text-muted-foreground hover:text-foreground active:scale-90 transition-all duration-100 cursor-pointer" title={t('fullLog')}><ScrollText size={13} /></button>
           </div>
         </div>
 
@@ -439,6 +458,34 @@ export function GitCommitsPanel({ workspaceId }: Props) {
         entry={detailEntry}
         onClose={() => setDetailEntry(null)}
       />
+
+      <Dialog open={fullLogOpen} onOpenChange={setFullLogOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>{t('fullLogTitle', { count: fullLog.length })}</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            {fullLogLoading ? (
+              <div className="p-4 text-center text-xs text-muted-foreground">{tc('loading')}</div>
+            ) : fullLog.length === 0 ? (
+              <div className="p-4 text-center text-xs text-muted-foreground">{t('noCommits')}</div>
+            ) : (
+              fullLog.map((entry) => {
+                const shortHash = entry.hash.slice(0, 7);
+                const firstLine = entry.message.split("\n")[0];
+                return (
+                  <div key={entry.hash} onClick={() => { setDetailEntry(entry); setFullLogOpen(false); }}
+                    className="flex items-center gap-2 px-3 py-2 text-xs border-b hover:bg-accent cursor-pointer">
+                    <span className="shrink-0 font-mono text-muted-foreground">{shortHash}</span>
+                    <span className="min-w-0 flex-1 truncate">{firstLine}</span>
+                    <span className="shrink-0 text-muted-foreground">{entry.author}</span>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
