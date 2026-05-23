@@ -89,17 +89,20 @@ function mapStatus(raw: StatusResult): GitStatusResult {
 }
 
 async function getUpstreamRef(git: SimpleGit, branch?: string): Promise<string | null> {
+  const refExists = async (ref: string): Promise<boolean> => {
+    return git.raw(['rev-parse', '--verify', '--quiet', ref])
+      .then(() => true)
+      .catch(() => false);
+  };
+
   const upstream = await git.raw(['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'])
     .then(v => v.trim())
     .catch(() => '');
-  if (upstream) return upstream;
+  if (upstream && await refExists(upstream)) return upstream;
 
   if (!branch || branch === 'HEAD') return null;
   const originBranch = `origin/${branch}`;
-  const hasOriginBranch = await git.raw(['rev-parse', '--verify', '--quiet', originBranch])
-    .then(() => true)
-    .catch(() => false);
-  return hasOriginBranch ? originBranch : null;
+  return await refExists(originBranch) ? originBranch : null;
 }
 
 function splitConflictSides(content: string): { left: string; right: string; hasConflict: boolean } {
@@ -293,7 +296,11 @@ export async function gitLog(workspaceId: string, maxCount = 50): Promise<GitLog
   const upstream = await getUpstreamRef(git, status.current || 'HEAD');
   const refs = upstream ? ['HEAD', upstream] : ['HEAD'];
   const pretty = '%H%x1f%s%x1f%an%x1f%aI%x1e';
-  const raw = await git.raw(['log', `--max-count=${maxCount}`, `--pretty=format:${pretty}`, ...refs]);
+  const logArgs = ['log', `--max-count=${maxCount}`, `--pretty=format:${pretty}`];
+  const raw = await git.raw([...logArgs, ...refs]).catch((err: unknown) => {
+    if (!upstream) throw err;
+    return git.raw([...logArgs, 'HEAD']);
+  });
 
   return raw.split('\x1e')
     .map(record => record.trim())

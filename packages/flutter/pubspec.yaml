@@ -39,6 +39,8 @@ dependencies:
   dartssh2: ^2.17.1
   easy_localization: ^3.0.8
   adaptive_theme: ^3.7.2
+  webdav_client: ^1.2.2
+  ftpconnect: ^2.0.10
 
 dev_dependencies:
   flutter_test:
