@@ -8,20 +8,13 @@ import { useMobilePanelStore } from '@/stores/mobile-panel';
 import { useTaskStore } from '@/stores/task';
 import { useAgentStore } from '@/stores/agent';
 import { EditIssueDialog } from '@/components/issue/edit-issue-dialog';
-import { ComposerShell } from '@/components/composer/composer-shell';
-import { createSuggestionRenderer } from '@/components/composer/create-suggestion-renderer';
-import { createSlashExtension } from '@/components/composer/create-slash-extension';
+import { ChatComposerInput } from '@/components/chat/chat-composer-input';
 import { normalizeChannelMembersToAgentIds } from '@/lib/agent-members';
 import { getWS } from '@/lib/ws';
-import { useEditor } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import Placeholder from '@tiptap/extension-placeholder';
-import Mention from '@tiptap/extension-mention';
 import { IssueDetailHeader, type IssueDetailHeaderRef } from './issue-detail-header';
 import { IssueDetailTasksPanel } from './issue-detail-tasks-panel';
 import { IssueDetailComments } from './issue-detail-comments';
 import { IssueDetailInfoPanel } from './issue-detail-info-panel';
-import { collectMentionIds } from './collect-mention-ids';
 import { MessageSquare, X } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -33,20 +26,11 @@ interface IssueDetailProps {
   workspaceId: string;
 }
 
-type AgentCommandItem = {
-  name: string;
-  content?: string;
-  group?: string;
-  agentId: string;
-  agentName?: string;
-};
-
 export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const { issues, activeIssueId, startIssue, resumeIssue, continueIssue, interruptIssue, updateIssue, deleteIssue } = useIssueStore();
   const { tasks, loading: tasksLoading, loadTasks, retryTask, cancelTask, createTask, updateTask, deleteTask, reorderTasks } = useTaskStore();
   const agents = useAgentStore((s) => s.agents);
   const ensureAgents = useAgentStore((s) => s.ensure);
-  const commandsRef = useRef<AgentCommandItem[]>([]);
   const [infoOpen, setInfoOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [comments, setComments] = useState<IssueComment[]>([]);
@@ -91,19 +75,6 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   }, [ensureAgents]);
 
   useEffect(() => {
-    let cancelled = false;
-    fetch('/api/agent-commands/all')
-      .then((res) => res.ok ? res.json() : [])
-      .then((items: AgentCommandItem[]) => {
-        if (!cancelled) commandsRef.current = items;
-      })
-      .catch(() => {
-        if (!cancelled) commandsRef.current = [];
-      });
-    return () => { cancelled = true; };
-  }, []);
-
-  useEffect(() => {
     if (!issue) return;
     const ws = getWS(workspaceId);
     const issueId = issue.id;
@@ -114,98 +85,25 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     return () => { unsubIssueUpdated(); };
   }, [issue, workspaceId, loadComments]);
 
-  const mentionExtension = useMemo(
-    () =>
-      Mention.configure({
-        HTMLAttributes: { class: 'mention' },
-        suggestion: {
-          char: '@',
-          items: ({ query }: { query: string }) => {
-            const keyword = query.toLowerCase();
-            return agents
-              .filter((agent) =>
-                agent.enabled !== false &&
-                `${agent.name} ${agent.role} ${agent.description || ''}`.toLowerCase().includes(keyword)
-              )
-              .slice(0, 6)
-              .map((agent) => ({
-                id: agent.id,
-                label: agent.name || agent.role,
-                description: `${agent.role}${agent.description ? ` · ${agent.description}` : ''}`,
-              }));
-          },
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          command: ({ editor, range, props }: any) => {
-            editor.chain().focus().insertContentAt(range, [{ type: 'mention', attrs: props }]).run();
-          },
-          render: () => createSuggestionRenderer(),
-        },
-      }),
-    [agents]
-  );
-
-  const slashExtension = useMemo(
-    () => createSlashExtension(
-      () => [],
-      () => commandsRef.current.map((command) => ({
-        id: `${command.agentId}:${command.group || 'root'}:${command.name}`,
-        name: command.agentName ? `${command.agentName}/${command.name}` : command.name,
-        content: command.content,
-        insertText: command.name,
-      })),
-    ),
-    [],
-  );
-
-  const editor = useEditor({
-    immediatelyRender: false,
-    extensions: [
-      StarterKit,
-      Placeholder.configure({ placeholder: t('detail.commentPlaceholder') }),
-      mentionExtension,
-      slashExtension,
-    ],
-    editorProps: {
-      attributes: { class: 'tiptap tiptap-chat' },
-      handleKeyDown: (_view, event) => {
-        if (event.key === 'Enter' && !event.shiftKey) {
-          const hasPopup = document.querySelector('.suggestion-menu');
-          if (hasPopup) return false;
-          event.preventDefault();
-          handleSendComment();
-          return true;
-        }
-        return false;
-      },
-    },
-    content: '',
-  });
-
-  const handleSendComment = useCallback(() => {
-    if (!editor || !issue) return;
-    const text = editor.getText().trim();
+  const handleSendComment = useCallback(async (content: string, mentions: string[]) => {
+    if (!issue) return;
+    const text = content.trim();
     if (!text) return;
-    const mentions = collectMentionIds(editor.getJSON());
-    void fetch(`/api/workspaces/${workspaceId}/issues/${issue.id}/comments`, {
+    const res = await fetch(`/api/workspaces/${workspaceId}/issues/${issue.id}/comments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content: text, mentions }),
-    })
-      .then(async (res) => {
-        if (!res.ok) return;
-        const comment: IssueComment = await res.json();
-        setComments((current) => [...current, comment]);
-        editor.commands.clearContent();
-        setTimeout(() => {
-          commentsViewportRef.current?.scrollTo({
-            top: commentsViewportRef.current.scrollHeight,
-            behavior: 'smooth',
-          });
-        }, 50);
+    });
+    if (!res.ok) return;
+    const comment: IssueComment = await res.json();
+    setComments((current) => [...current, comment]);
+    setTimeout(() => {
+      commentsViewportRef.current?.scrollTo({
+        top: commentsViewportRef.current.scrollHeight,
+        behavior: 'smooth',
       });
-  }, [editor, issue, workspaceId]);
-
-  const canSubmit = !!editor?.getText().trim();
+    }, 50);
+  }, [issue, workspaceId]);
 
   const handleAddMembers = async (newMembers: string[]) => {
     if (!issue) return;
@@ -387,11 +285,13 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
               >
                 <X className="size-3.5" />
               </button>
-              <ComposerShell
+              <ChatComposerInput
                 workspaceId={workspaceId}
-                editor={editor}
-                canSubmit={canSubmit}
-                onSubmit={handleSendComment}
+                agents={enabledAgents}
+                placeholder={t('detail.commentPlaceholder')}
+                onSubmit={(content, mentions) => handleSendComment(content, mentions)}
+                enableAutoMode={false}
+                enableAgentResources={false}
               />
             </div>
           </div>

@@ -5,7 +5,7 @@ import { IssueMessage } from '@/components/issue/issue-message';
 import { CommentNavigator } from '@/components/issue/comment-navigator';
 import { useChannelStore } from '@/stores/channel';
 import { getWS } from '@/lib/ws';
-import type { IssueComment, Issue, Message } from '@agent-spaces/shared';
+import type { Attachment as MessageAttachment, IssueComment, Issue, Message } from '@agent-spaces/shared';
 
 interface IssueDetailCommentsProps {
   issue: Issue;
@@ -79,11 +79,11 @@ export function IssueDetailComments({
     return new Map((Array.isArray(channelMessages) ? channelMessages : []).map((message) => [message.id, message]));
   }, [messages, channelId]);
 
-  const handleReplySubmit = useCallback((commentId: string, content: string) => {
+  const handleReplySubmit = useCallback((commentId: string, content: string, mentions: string[], attachments: MessageAttachment[]) => {
     const comment = comments.find((item) => item.id === commentId);
     const replyToMessageId = comment?.metadata?.messageId;
     if (!channelId || !replyToMessageId) return;
-    sendMessage(workspaceId, channelId, content, [], [], replyToMessageId);
+    sendMessage(workspaceId, channelId, content, mentions, attachments, replyToMessageId);
     setReplyingCommentId(null);
   }, [comments, workspaceId, channelId, sendMessage]);
 

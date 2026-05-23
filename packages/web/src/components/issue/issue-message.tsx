@@ -2,14 +2,15 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import { Check, ChevronDown, ChevronRight, Copy, ExternalLink, MessageCircle, Pencil, Send, Trash2, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, Copy, ExternalLink, MessageCircle, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AgentIcon } from '@/components/common/agent-icon';
+import { ChatComposerInput } from '@/components/chat/chat-composer-input';
 import { useAgentStore } from '@/stores/agent';
 import { useChannelStore } from '@/stores/channel';
 import { useUserAvatar } from '@/hooks/use-user-avatar';
-import type { IssueComment, MessageReply } from '@agent-spaces/shared';
+import type { Attachment as MessageAttachment, IssueComment, MessageReply } from '@agent-spaces/shared';
 
 interface IssueMessageProps {
   comment: IssueComment;
@@ -22,7 +23,7 @@ interface IssueMessageProps {
   onExpandedChange?: (commentId: string, expanded: boolean) => void;
   onReplyStart?: (commentId: string) => void;
   onReplyCancel?: () => void;
-  onReplySubmit?: (commentId: string, content: string) => void;
+  onReplySubmit?: (commentId: string, content: string, mentions: string[], attachments: MessageAttachment[]) => void;
 }
 
 export function IssueMessage({
@@ -40,12 +41,10 @@ export function IssueMessage({
 }: IssueMessageProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(comment.content);
-  const [replyDraft, setReplyDraft] = useState('');
   const [repliesExpanded, setRepliesExpanded] = useState(true);
   const [copied, setCopied] = useState(false);
   const [overflowing, setOverflowing] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const replyInputRef = useRef<HTMLTextAreaElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const isUser = comment.senderId === 'user';
   const agents = useAgentStore((s) => s.agents);
@@ -64,14 +63,6 @@ export function IssueMessage({
     setDraft(comment.content);
     setEditing(false);
   }, [comment.id, comment.content]);
-
-  useEffect(() => {
-    if (replying) {
-      replyInputRef.current?.focus();
-    } else {
-      setReplyDraft('');
-    }
-  }, [replying]);
 
   useEffect(() => {
     const el = contentRef.current;
@@ -119,11 +110,9 @@ export function IssueMessage({
     setEditing(false);
   };
 
-  const handleReplySubmit = () => {
-    const content = replyDraft.trim();
+  const handleReplySubmit = (content: string, mentions: string[], attachments: MessageAttachment[]) => {
     if (!content) return;
-    onReplySubmit?.(comment.id, content);
-    setReplyDraft('');
+    onReplySubmit?.(comment.id, content, mentions, attachments);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -262,34 +251,18 @@ export function IssueMessage({
           {replying ? (
             <div className="relative pl-8 pt-3">
               <div className="absolute left-4 top-0 h-full w-px bg-border" />
-              <div className="rounded-md border bg-background p-2">
-                <textarea
-                  ref={replyInputRef}
-                  value={replyDraft}
-                  onChange={(event) => setReplyDraft(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' && !event.shiftKey) {
-                      event.preventDefault();
-                      handleReplySubmit();
-                    }
-                    if (event.key === 'Escape') {
-                      onReplyCancel?.();
-                    }
-                  }}
-                  placeholder="回复此消息"
-                  className="min-h-[64px] w-full resize-none bg-transparent text-sm outline-none"
-                />
-                <div className="mt-2 flex justify-end gap-1">
-                  <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs" onClick={onReplyCancel}>
-                    <X className="size-3" />
-                    取消
-                  </Button>
-                  <Button size="sm" className="h-7 gap-1 px-2 text-xs" disabled={!replyDraft.trim()} onClick={handleReplySubmit}>
-                    <Send className="size-3" />
-                    发送
-                  </Button>
-                </div>
-              </div>
+              <ChatComposerInput
+                workspaceId={workspaceId}
+                agents={agents.filter((item) => item.enabled !== false)}
+                placeholder="回复此消息"
+                onSubmit={handleReplySubmit}
+                replyLabel={senderName}
+                onCancelReply={onReplyCancel}
+                initialMentionAgentId={!isUser ? comment.senderId : undefined}
+                enableAutoMode={false}
+                enableAgentResources={false}
+                disableMentionSuggestions={Boolean(!isUser)}
+              />
             </div>
           ) : null}
           {repliesExpanded && replies.length > 0 ? (

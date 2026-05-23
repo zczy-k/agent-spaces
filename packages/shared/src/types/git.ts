@@ -39,3 +39,13 @@ export interface GitBranch {
   name: string;
   current: boolean;
 }
+
+export interface GitOperationEntry {
+  id: string;
+  operation: string;
+  input: Record<string, unknown>;
+  output: unknown;
+  error?: string;
+  timestamp: string;
+  duration: number;
+}

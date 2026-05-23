@@ -7,7 +7,7 @@ import {
   Sparkles, Settings2, FileDiff, Plus, Minus, AlertTriangle,
   ScrollText,
 } from "lucide-react";
-import type { GitLogEntry } from "@agent-spaces/shared";
+import type { GitLogEntry, GitOperationEntry } from "@agent-spaces/shared";
 import { useGitStore } from "@/stores/git";
 import { useEditorStore } from "@/stores/editor";
 import { GitNotInitialized } from "./git-not-initialized";
@@ -62,21 +62,21 @@ export function GitCommitsPanel({ workspaceId }: Props) {
   const [gitignoreSaving, setGitignoreSaving] = useState(false);
   const [discardConfirm, setDiscardConfirm] = useState<DiscardConfirm>(null);
   const [detailEntry, setDetailEntry] = useState<GitLogEntry | null>(null);
-  const [fullLogOpen, setFullLogOpen] = useState(false);
-  const [fullLog, setFullLog] = useState<GitLogEntry[]>([]);
-  const [fullLogLoading, setFullLogLoading] = useState(false);
+  const [opLogOpen, setOpLogOpen] = useState(false);
+  const [opLog, setOpLog] = useState<GitOperationEntry[]>([]);
+  const [opLogLoading, setOpLogLoading] = useState(false);
 
-  const openFullLog = useCallback(async () => {
-    setFullLogOpen(true);
-    setFullLogLoading(true);
+  const openOpLog = useCallback(async () => {
+    setOpLogOpen(true);
+    setOpLogLoading(true);
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/git/log?maxCount=1000`);
+      const res = await fetch(`/api/workspaces/${workspaceId}/git/operations`);
       if (!res.ok) throw new Error(await res.text());
-      setFullLog(await res.json());
+      setOpLog(await res.json());
     } catch {
-      setFullLog([]);
+      setOpLog([]);
     } finally {
-      setFullLogLoading(false);
+      setOpLogLoading(false);
     }
   }, [workspaceId]);
 
@@ -363,7 +363,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
             </button>
             <button onClick={refresh} className="p-1 text-muted-foreground hover:text-foreground active:scale-90 transition-all duration-100 cursor-pointer"><RefreshCw size={13} /></button>
             <button onClick={() => setGitSettingsOpen(true)} className="p-1 text-muted-foreground hover:text-foreground active:scale-90 transition-all duration-100 cursor-pointer" title={t('settingsTitle')}><Settings2 size={13} /></button>
-            <button onClick={openFullLog} className="p-1 text-muted-foreground hover:text-foreground active:scale-90 transition-all duration-100 cursor-pointer" title={t('fullLog')}><ScrollText size={13} /></button>
+            <button onClick={openOpLog} className="p-1 text-muted-foreground hover:text-foreground active:scale-90 transition-all duration-100 cursor-pointer" title={t('operationLog')}><ScrollText size={13} /></button>
           </div>
         </div>
 
@@ -459,29 +459,43 @@ export function GitCommitsPanel({ workspaceId }: Props) {
         onClose={() => setDetailEntry(null)}
       />
 
-      <Dialog open={fullLogOpen} onOpenChange={setFullLogOpen}>
-        <DialogContent className="sm:max-w-2xl max-h-[80vh] flex flex-col">
+      <Dialog open={opLogOpen} onOpenChange={setOpLogOpen}>
+        <DialogContent className="sm:max-w-3xl max-h-[85vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>{t('fullLogTitle', { count: fullLog.length })}</DialogTitle>
+            <DialogTitle>{t('operationLogTitle', { count: opLog.length })}</DialogTitle>
           </DialogHeader>
           <div className="flex-1 min-h-0 overflow-y-auto">
-            {fullLogLoading ? (
+            {opLogLoading ? (
               <div className="p-4 text-center text-xs text-muted-foreground">{tc('loading')}</div>
-            ) : fullLog.length === 0 ? (
-              <div className="p-4 text-center text-xs text-muted-foreground">{t('noCommits')}</div>
+            ) : opLog.length === 0 ? (
+              <div className="p-4 text-center text-xs text-muted-foreground">{t('noOperations')}</div>
             ) : (
-              fullLog.map((entry) => {
-                const shortHash = entry.hash.slice(0, 7);
-                const firstLine = entry.message.split("\n")[0];
-                return (
-                  <div key={entry.hash} onClick={() => { setDetailEntry(entry); setFullLogOpen(false); }}
-                    className="flex items-center gap-2 px-3 py-2 text-xs border-b hover:bg-accent cursor-pointer">
-                    <span className="shrink-0 font-mono text-muted-foreground">{shortHash}</span>
-                    <span className="min-w-0 flex-1 truncate">{firstLine}</span>
-                    <span className="shrink-0 text-muted-foreground">{entry.author}</span>
+              opLog.map((entry) => (
+                <details key={entry.id} className="group border-b">
+                  <summary className="flex items-center gap-2 px-3 py-2 text-xs cursor-pointer hover:bg-accent select-none list-none">
+                    <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium ${entry.error ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'}`}>
+                      {entry.error ? 'FAIL' : 'OK'}
+                    </span>
+                    <span className="shrink-0 font-mono font-medium text-foreground">{entry.operation}</span>
+                    {Object.keys(entry.input).length > 0 && (
+                      <span className="min-w-0 flex-1 truncate text-muted-foreground">
+                        {Object.entries(entry.input).filter(([, v]) => v !== undefined && v !== null && v !== '').map(([k, v]) => `${k}=${String(v)}`).join(' ')}
+                      </span>
+                    )}
+                    <span className="shrink-0 text-muted-foreground">{entry.duration}ms</span>
+                    <span className="shrink-0 text-muted-foreground">{new Date(entry.timestamp).toLocaleTimeString()}</span>
+                    <span className="shrink-0 text-muted-foreground group-open:rotate-90 transition-transform">▸</span>
+                  </summary>
+                  <div className="px-3 pb-2 space-y-1 text-xs font-mono">
+                    {entry.error && (
+                      <div className="text-red-600 dark:text-red-400 whitespace-pre-wrap break-all">{entry.error}</div>
+                    )}
+                    {entry.output !== undefined && !entry.error && (
+                      <pre className="text-muted-foreground whitespace-pre-wrap break-all max-h-40 overflow-auto">{typeof entry.output === 'string' ? entry.output : JSON.stringify(entry.output, null, 2)}</pre>
+                    )}
                   </div>
-                );
-              })
+                </details>
+              ))
             )}
           </div>
         </DialogContent>
