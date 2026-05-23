@@ -298,17 +298,16 @@ export function DatabaseSidebar({
       </div>
 
       {/* Sidebar bottom */}
-      <div className="p-3.5 border-t border-border bg-sidebar flex items-center gap-3 shrink-0">
+      <div className="px-2 py-1.5 border-t border-border bg-sidebar flex items-center gap-1.5 shrink-0">
         <button onClick={onOpenSearch}
-          className="flex-1 flex items-center justify-between bg-background hover:bg-muted border border-border text-muted-foreground hover:text-foreground transition-all h-11 px-4 rounded-full text-xs cursor-pointer shadow-sm">
-          <div className="flex items-center gap-2"><Search className="w-4 h-4 text-muted-foreground" /><span className="font-semibold text-muted-foreground">{t('globalSearch')}</span></div>
-          <span className="bg-sidebar text-muted-foreground text-[10px] font-mono font-medium px-2 py-0.5 rounded-full border border-border scale-90">⌘K</span>
+          className="flex-1 flex items-center justify-between bg-background hover:bg-muted border border-border text-muted-foreground hover:text-foreground transition-all h-7 px-2.5 rounded-md text-[11px] cursor-pointer">
+          <div className="flex items-center gap-1.5"><Search className="w-3 h-3" /><span>{t('globalSearch')}</span></div>
         </button>
         <button onClick={onOpenTrash}
-          className="relative w-11 h-11 shrink-0 flex items-center justify-center rounded-full bg-background hover:bg-muted text-muted-foreground hover:text-rose-400 border border-border transition-all cursor-pointer shadow-sm group" title={t('trashBin')}>
-          <Trash className="w-4 h-4 text-rose-500 transition-transform group-hover:scale-110" />
+          className="relative w-7 h-7 shrink-0 flex items-center justify-center rounded-md bg-background hover:bg-muted text-muted-foreground hover:text-rose-400 border border-border transition-all cursor-pointer group" title={t('trashBin')}>
+          <Trash className="w-3 h-3 text-rose-500" />
           {nodes.filter(n => n.isTrash).length > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 bg-rose-600 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-semibold border border-sidebar shadow-sm">
+            <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[8px] w-3.5 h-3.5 rounded-full flex items-center justify-center font-semibold border border-sidebar">
               {nodes.filter(n => n.isTrash).length}
             </span>
           )}

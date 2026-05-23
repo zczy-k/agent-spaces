@@ -106,7 +106,7 @@ export function DatabaseMainPanel({
   );
 
   return (
-    <>
+    <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
       {showSaveSuccess && (
         <div className="absolute top-4 right-1/2 translate-x-1/2 bg-card border border-border text-foreground text-xs font-semibold px-4 py-2 rounded-full flex items-center gap-2 shadow-2xl z-50">
           <CheckCircle className="w-3.5 h-3.5 text-emerald-400" /><span>{t('autoSaved')}</span>
@@ -114,7 +114,7 @@ export function DatabaseMainPanel({
       )}
 
       {/* Tabs bar */}
-      <div className="flex items-center justify-between bg-muted/50 border-b border-border px-4 min-h-[44px] select-none z-10 shrink-0">
+      <div className="sticky top-0 flex items-center justify-between bg-muted/50 border-b border-border px-4 min-h-[44px] select-none z-10 shrink-0">
         <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-1 flex-1 pr-4">
           {openTabs.map((tabId) => {
             const tabNode = nodes.find(n => n.id === tabId);
@@ -139,36 +139,37 @@ export function DatabaseMainPanel({
         </div>
       </div>
 
-      {/* Top nav bar */}
-      <div className="h-14 px-6 border-b border-border flex items-center justify-between bg-background/80 backdrop-blur-md sticky top-0 z-50 select-none shrink-0">
-        <div className="flex items-center gap-3">
-          {sidebarPanelRef && (
-            <button onClick={() => sidebarPanelRef.current?.isCollapsed() ? sidebarPanelRef.current?.expand() : sidebarPanelRef.current?.collapse()}
-              className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors mr-1 cursor-pointer">
-              <Sidebar className="w-4 h-4" />
-            </button>
-          )}
-          {activeNode ? (
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
-              <span>{t('knowledgeBase')}</span>
-              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/50" />
-              {activeNode.parentId && (
-                <>
-                  <span onClick={() => activeNode.parentId && setActiveId(activeNode.parentId)}
-                    className="hover:text-foreground hover:underline cursor-pointer">
-                    {nodes.find(n => n.id === activeNode.parentId)?.title || t('parentDir')}
-                  </span>
-                  <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/50" />
-                </>
-              )}
-              <span className="text-foreground font-semibold truncate max-w-[180px]">{activeNode.title || t('currentDoc')}</span>
-            </div>
-          ) : (
-            <div className="text-xs text-muted-foreground font-medium">{t('knowledgeTree')}</div>
-          )}
-        </div>
 
-        {activeNode && (
+      {/* Content */}
+      {activeNode ? (
+        <div className="flex-1 min-h-0 flex flex-col">
+        <TableOfContents headings={tocHeadings} open={tocOpen} />
+        <div className="flex-1 overflow-y-auto w-full flex flex-col" data-editor-content>
+
+          {/* Top nav bar - inside scroll container for sticky */}
+          <div className="h-12 px-6 border-b border-border flex items-center justify-between bg-background/90 backdrop-blur-md sticky top-0 z-50 select-none shrink-0">
+            <div className="flex items-center gap-3">
+              {sidebarPanelRef && (
+                <button onClick={() => sidebarPanelRef.current?.isCollapsed() ? sidebarPanelRef.current?.expand() : sidebarPanelRef.current?.collapse()}
+                  className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors mr-1 cursor-pointer">
+                  <Sidebar className="w-4 h-4" />
+                </button>
+              )}
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
+                <span>{t('knowledgeBase')}</span>
+                <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/50" />
+                {activeNode.parentId && (
+                  <>
+                    <span onClick={() => activeNode.parentId && setActiveId(activeNode.parentId)}
+                      className="hover:text-foreground hover:underline cursor-pointer">
+                      {nodes.find(n => n.id === activeNode.parentId)?.title || t('parentDir')}
+                    </span>
+                    <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/50" />
+                  </>
+                )}
+                <span className="text-foreground font-semibold truncate max-w-[180px]">{activeNode.title || t('currentDoc')}</span>
+              </div>
+            </div>
           <div className="flex items-center gap-4">
             <div className="flex bg-card border border-border p-1 rounded-xl shrink-0">
               <button onClick={() => handleModeToggle('notion')}
@@ -229,14 +230,7 @@ export function DatabaseMainPanel({
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-        )}
-      </div>
-
-      {/* Content */}
-      {activeNode ? (
-        <div className="flex-1 min-h-0 flex flex-col">
-        <TableOfContents headings={tocHeadings} open={tocOpen} />
-        <div className="flex-1 overflow-y-auto w-full flex flex-col" data-editor-content>
+          </div>
           <div className="w-full h-44 shrink-0 relative group border-b border-border"
             style={{ background: activeNode.cover || 'linear-gradient(to right, #0284c7, #06b6d4)' }}>
             <div className="absolute bottom-3 right-4 opacity-0 group-hover:opacity-100 transition-opacity bg-card/90 backdrop-blur-md rounded-xl p-1.5 border border-border flex items-center gap-1 shadow-xl">
@@ -376,7 +370,7 @@ export function DatabaseMainPanel({
           </div>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }
 
