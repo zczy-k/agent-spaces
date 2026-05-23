@@ -91,9 +91,8 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   );
 
   const activateAgent = useCallback((agent: MentionedAgent) => {
-    if (composerState.mentionedAgentIds[0] === agent.id) return;
     composerRef.current?.setMentionAgent(agent);
-  }, [composerState.mentionedAgentIds]);
+  }, []);
 
   const togglePin = useCallback(() => {
     const currentMentionId = composerState.mentionedAgentIds[0];

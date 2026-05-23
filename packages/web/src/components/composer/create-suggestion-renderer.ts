@@ -1,19 +1,30 @@
 import { ReactRenderer } from '@tiptap/react';
 import tippy, { type Instance } from 'tippy.js';
-import type { SuggestionProps } from '@tiptap/suggestion';
+import { exitSuggestion, type SuggestionProps } from '@tiptap/suggestion';
+import type { PluginKey } from '@tiptap/pm/state';
 
 import { SuggestionList } from './suggestion-list';
 
 type SuggestionRendererProps = SuggestionProps<Record<string, unknown>>;
 
-export function createSuggestionRenderer() {
+function createListProps(props: SuggestionRendererProps, pluginKey?: PluginKey): SuggestionRendererProps {
+  return {
+    ...props,
+    command: (item) => {
+      props.command(item);
+      exitSuggestion(props.editor.view, pluginKey);
+    },
+  };
+}
+
+export function createSuggestionRenderer(pluginKey?: PluginKey) {
   let component: ReactRenderer | null = null;
   let popup: Instance[] | null = null;
 
   return {
     onStart(props: SuggestionRendererProps) {
       component = new ReactRenderer(SuggestionList, {
-        props,
+        props: createListProps(props, pluginKey),
         editor: props.editor,
       });
       if (!props.clientRect) return;
@@ -29,7 +40,7 @@ export function createSuggestionRenderer() {
       });
     },
     onUpdate(props: SuggestionRendererProps) {
-      component?.updateProps(props);
+      component?.updateProps(createListProps(props, pluginKey));
       if (popup?.[0] && props.clientRect) {
         popup[0].setProps({ getReferenceClientRect: () => props.clientRect?.() ?? new DOMRect() });
       }
@@ -43,6 +54,8 @@ export function createSuggestionRenderer() {
     onExit() {
       popup?.[0]?.destroy();
       component?.destroy();
+      popup = null;
+      component = null;
     },
   };
 }

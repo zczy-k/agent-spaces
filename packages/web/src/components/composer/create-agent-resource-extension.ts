@@ -94,7 +94,7 @@ export function createAgentResourceExtension(getResources: GetAgentResources = (
               .insertContent(`[use ${props.kind}: ${props.value}]`)
               .run();
           },
-          render: () => createSuggestionRenderer(),
+          render: () => createSuggestionRenderer(agentResourcePluginKey),
         },
       };
     },

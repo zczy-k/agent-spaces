@@ -1,5 +1,25 @@
 import type * as Monaco from 'monaco-editor';
 
+function normalizePath(path: string): string {
+  return path
+    .replace(/\\/g, '/')
+    .replace(/^\/?([a-zA-Z]):\//, (match, drive: string) => match.replace(drive, drive.toLowerCase()))
+    .replace(/\/+$/, '');
+}
+
+function safeDecodePath(path: string): string {
+  try {
+    return decodeURIComponent(path);
+  } catch {
+    return path;
+  }
+}
+
+function getRootPathCandidates(rootPath: string): string[] {
+  if (!/^[a-zA-Z]:\//.test(rootPath)) return [rootPath];
+  return [rootPath, `/${rootPath}`];
+}
+
 export function getFilePathFromModelPath(modelPath: string | undefined, workspaceId: string): string | null {
   if (!modelPath) return null;
   const workspacePrefix = `/workspace/${workspaceId}/`;
@@ -21,12 +41,19 @@ export function getFilePathFromModelUri(
 ): string | null {
   if (!modelUri) return null;
 
-  const rootPath = (workspaceRoot || inferredWorkspaceRoot || '').replace(/\/+$/, '');
-  if (rootPath && modelUri.path.startsWith(`${rootPath}/`)) {
-    return decodeURIComponent(modelUri.path.slice(rootPath.length + 1));
+  const rootPath = normalizePath(workspaceRoot || inferredWorkspaceRoot || '');
+  const encodedModelPath = normalizePath(modelUri.path);
+  const decodedModelPath = normalizePath(safeDecodePath(modelUri.path));
+  for (const candidate of getRootPathCandidates(rootPath)) {
+    if (candidate && decodedModelPath.startsWith(`${candidate}/`)) {
+      return decodedModelPath.slice(candidate.length + 1);
+    }
+    if (candidate && encodedModelPath.startsWith(`${candidate}/`)) {
+      return safeDecodePath(encodedModelPath.slice(candidate.length + 1));
+    }
   }
 
-  return getFilePathFromModelPath(modelUri.path, workspaceId);
+  return getFilePathFromModelPath(encodedModelPath, workspaceId);
 }
 
 export function inferWorkspaceRootFromModelUri(

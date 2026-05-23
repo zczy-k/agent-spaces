@@ -155,6 +155,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   const activeFilePath = useEditorStore((s) => s.activeFilePath);
   const activeChannelId = useChannelStore((s) => s.activeChannelId);
   const channelSelectSeq = useChannelStore((s) => s.channelSelectSeq);
+  const loadChannels = useChannelStore((s) => s.loadChannels);
   const gitStatus = useGitStore((s) => s.status);
   const terminalSessions = useTerminalStore((s) => s.sessions);
   const channelMessages = useChannelStore((s) => s.messages);
@@ -195,7 +196,8 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
 
   useEffect(() => {
     loadEditorState(workspaceId);
-  }, [workspaceId, loadEditorState]);
+    loadChannels(workspaceId);
+  }, [workspaceId, loadEditorState, loadChannels]);
 
   useEffect(() => {
     if (!isMobile) return;

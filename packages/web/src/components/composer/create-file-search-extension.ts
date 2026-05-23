@@ -60,7 +60,7 @@ export function createFileSearchExtension(workspaceId: string) {
           }) => {
             editor.chain().focus().deleteRange(range).insertContent(props.description + ' ').run();
           },
-          render: () => createSuggestionRenderer(),
+          render: () => createSuggestionRenderer(fileSearchPluginKey),
         },
       };
     },

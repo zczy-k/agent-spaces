@@ -127,6 +127,7 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
   const onSubmitRef = useRef(onSubmit);
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const restoredDraftKeyRef = useRef<string | null>(null);
+  const activeSkillsRef = useRef<string[]>([]);
   const activeCommandsRef = useRef<AgentCommandItem[]>([]);
   const activeResourcesRef = useRef<{ mcps: string[]; tools: { name: string; label: string }[] }>({ mcps: [], tools: [] });
 
@@ -157,11 +158,12 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
   }, [mentionedAgentIds, activeAgent, activeMcps, activeSkills, activeTools, onStateChange]);
 
   useEffect(() => {
+    activeSkillsRef.current = activeSkills;
     activeResourcesRef.current = {
       mcps: activeMcps,
       tools: activeTools.map((tool) => ({ name: tool.name, label: tool.label })),
     };
-  }, [activeMcps, activeTools]);
+  }, [activeMcps, activeSkills, activeTools]);
 
   useEffect(() => {
     if (!activeAgent?.id || !enableSlashCommands) {
@@ -244,7 +246,7 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
   const slashExtension = useMemo(
     () =>
       createSlashExtension(
-        () => activeSkills,
+        () => activeSkillsRef.current,
         () => activeCommandsRef.current.map((command) => ({
           id: `${command.group || "root"}:${command.name}`,
           name: command.group ? `${command.group}/${command.name}` : command.name,
@@ -252,7 +254,7 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
           insertText: command.name,
         })),
       ),
-    [activeSkills],
+    [],
   );
 
   const fileSearchExtension = useMemo(() => createFileSearchExtension(workspaceId), [workspaceId]);
@@ -351,17 +353,19 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
   useEffect(() => { editorRef.current = editor; }, [editor]);
 
   const setMentionAgent = useCallback((agent: MentionedAgent) => {
-    const currentEditor = editorRef.current;
+    const currentEditor = editorRef.current ?? editor;
     if (!currentEditor) return;
-    removeExistingMentions(currentEditor, agent.id);
+    removeExistingMentions(currentEditor);
     const plainText = currentEditor.getText().trim();
     const content: JSONContent[] = [
       { type: "mention", attrs: { id: agent.id, label: agent.name || agent.role } },
       { type: "text", text: plainText ? ` ${plainText}` : " " },
     ];
     currentEditor.commands.setContent({ type: "doc", content: [{ type: "paragraph", content }] }, { emitUpdate: true });
+    setMentionedAgentIds([agent.id]);
+    scheduleDraftSave(currentEditor.getHTML());
     currentEditor.commands.focus("end");
-  }, [removeExistingMentions]);
+  }, [editor, removeExistingMentions, scheduleDraftSave]);
 
   useEffect(() => {
     if (!editor || !draftKey || restoredDraftKeyRef.current === draftKey) return;

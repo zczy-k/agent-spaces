@@ -3,17 +3,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useDropzone } from 'react-dropzone';
-import { EditorContent, ReactRenderer, useEditor } from '@tiptap/react';
+import { EditorContent, useEditor } from '@tiptap/react';
 import type { Editor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Mention, { type MentionNodeAttrs } from '@tiptap/extension-mention';
-import tippy from 'tippy.js';
 
 import { USERS } from '@/lib/users';
 import { useAgentStore } from '@/stores/agent';
 import { createSlashExtension } from './create-slash-extension';
-import { SuggestionList } from './suggestion-list';
+import { createSuggestionRenderer } from './create-suggestion-renderer';
 
 type Attachment = {
   file: File;
@@ -25,53 +24,6 @@ function stripSimpleParagraphs(html: string): string {
   const stripped = html.replace(/<\/?p>/g, "");
   if (/<[^>]+>/.test(stripped)) return html;
   return html.replace(/<\/p>\s*<p>/g, "\n").replace(/<\/?p>/g, "");
-}
-
-function createSuggestionRenderer() {
-  let component: ReactRenderer | null = null;
-  let popup: ReturnType<typeof tippy> | null = null;
-
-  return {
-    onStart(props: { editor: Editor; clientRect?: (() => DOMRect | null) | null }) {
-      component = new ReactRenderer(SuggestionList, {
-        props,
-        editor: props.editor,
-      });
-
-      if (!props.clientRect) return;
-
-      popup = tippy('body', {
-        getReferenceClientRect: () => props.clientRect!() ?? new DOMRect(),
-        appendTo: () => document.body,
-        content: component.element,
-        showOnCreate: true,
-        interactive: true,
-        trigger: 'manual',
-        placement: 'bottom-start',
-      });
-    },
-
-    onUpdate(props: { editor: Editor; clientRect?: (() => DOMRect | null) | null }) {
-      component?.updateProps(props);
-      if (popup?.[0] && props.clientRect) {
-        popup[0].setProps({
-          getReferenceClientRect: () => props.clientRect!() ?? new DOMRect(),
-        });
-      }
-    },
-
-    onKeyDown(props: { event: KeyboardEvent }) {
-      if (component?.ref && typeof component.ref === 'object' && 'onKeyDown' in component.ref) {
-        return (component.ref as { onKeyDown: (props: { event: KeyboardEvent }) => boolean }).onKeyDown(props);
-      }
-      return false;
-    },
-
-    onExit() {
-      popup?.[0]?.destroy();
-      component?.destroy();
-    },
-  };
 }
 
 export function ComposerEditor({

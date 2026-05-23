@@ -68,6 +68,8 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
   messages: {},
 
   loadChannels: async (workspaceId) => {
+    const { workspaceId: currentWid } = get();
+    if (currentWid === workspaceId && get().channels.length > 0) return;
     const res = await fetch(`/api/workspaces/${workspaceId}/channels`);
     const channels: Channel[] = await res.json();
     const activeChannelId = getStoredActiveId(workspaceId, channels);
