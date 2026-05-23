@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:xterm/xterm.dart';
 import 'package:easy_localization/easy_localization.dart';
 
@@ -30,16 +31,20 @@ class _TerminalInstanceState extends ConsumerState<TerminalInstance> {
   final _privateKeyController = TextEditingController();
   final _passphraseController = TextEditingController();
   final _nameController = TextEditingController();
+  final _pasteController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
   SSHClient? _client;
   SSHSession? _session;
   StreamSubscription<String>? _stdoutSubscription;
   StreamSubscription<String>? _stderrSubscription;
+  final List<String> _commandHistory = [];
+  final StringBuffer _currentCommand = StringBuffer();
   bool _connecting = false;
   bool _connected = false;
   bool _saveCredential = false;
   bool _usePrivateKey = false;
+  bool _virtualKeyboardOpen = false;
   String? _selectedCredentialId;
 
   @override
@@ -61,6 +66,7 @@ class _TerminalInstanceState extends ConsumerState<TerminalInstance> {
     _privateKeyController.dispose();
     _passphraseController.dispose();
     _nameController.dispose();
+    _pasteController.dispose();
     super.dispose();
   }
 
@@ -72,11 +78,29 @@ class _TerminalInstanceState extends ConsumerState<TerminalInstance> {
 
     return ColoredBox(
       color: Colors.black,
-      child: TerminalView(
-        _terminal,
-        autofocus: true,
-        padding: const EdgeInsets.all(8),
-        backgroundOpacity: 1,
+      child: Column(
+        children: [
+          Expanded(
+            child: TerminalView(
+              _terminal,
+              autofocus: true,
+              padding: const EdgeInsets.all(8),
+              backgroundOpacity: 1,
+            ),
+          ),
+          if (_virtualKeyboardOpen)
+            _TerminalVirtualKeyboard(onKey: _sendTerminalInput),
+          _TerminalToolbar(
+            historyEnabled: _commandHistory.isNotEmpty,
+            keyboardOpen: _virtualKeyboardOpen,
+            onSend: _sendTerminalInput,
+            onHistory: _showCommandHistory,
+            onToggleKeyboard: () {
+              setState(() => _virtualKeyboardOpen = !_virtualKeyboardOpen);
+            },
+            onPaste: _showPasteCommandDialog,
+          ),
+        ],
       ),
     );
   }
@@ -326,7 +350,7 @@ class _TerminalInstanceState extends ConsumerState<TerminalInstance> {
       _session = session;
       _terminal.buffer.clear();
       _terminal.buffer.setCursor(0, 0);
-      _terminal.onOutput = (data) => session.write(utf8.encode(data));
+      _terminal.onOutput = _sendTerminalInput;
       _terminal.onResize = (width, height, pixelWidth, pixelHeight) {
         session.resizeTerminal(width, height, pixelWidth, pixelHeight);
       };
@@ -389,5 +413,436 @@ class _TerminalInstanceState extends ConsumerState<TerminalInstance> {
     _client?.close();
     _session = null;
     _client = null;
+  }
+
+  void _sendTerminalInput(String data) {
+    final session = _session;
+    if (session == null || data.isEmpty) return;
+
+    _recordLocalInput(data);
+    session.write(utf8.encode(data));
+  }
+
+  void _recordLocalInput(String data) {
+    for (final codeUnit in data.codeUnits) {
+      switch (codeUnit) {
+        case 3:
+          _currentCommand.clear();
+        case 8:
+        case 127:
+          final text = _currentCommand.toString();
+          _currentCommand
+            ..clear()
+            ..write(text.isEmpty ? '' : text.substring(0, text.length - 1));
+        case 10:
+        case 13:
+          _pushCommandHistory(_currentCommand.toString());
+          _currentCommand.clear();
+        case 27:
+          break;
+        default:
+          if (codeUnit >= 32) {
+            _currentCommand.writeCharCode(codeUnit);
+          }
+      }
+    }
+  }
+
+  void _pushCommandHistory(String command) {
+    final value = command.trim();
+    if (value.isEmpty) return;
+
+    _commandHistory.remove(value);
+    _commandHistory.insert(0, value);
+    if (_commandHistory.length > 50) {
+      _commandHistory.removeRange(50, _commandHistory.length);
+    }
+  }
+
+  Future<void> _showCommandHistory() async {
+    if (_commandHistory.isEmpty) return;
+
+    final command = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('terminal_command_history'.tr()),
+        content: SizedBox(
+          width: 520,
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: _commandHistory.length,
+            separatorBuilder: (_, __) => const Divider(height: 1),
+            itemBuilder: (context, index) {
+              final command = _commandHistory[index];
+              return ListTile(
+                dense: true,
+                title: Text(
+                  command,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontFamily: 'monospace'),
+                ),
+                onTap: () => Navigator.of(context).pop(command),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('cancel'.tr()),
+          ),
+        ],
+      ),
+    );
+
+    if (command != null) {
+      _sendTerminalInput(command);
+    }
+  }
+
+  Future<void> _showPasteCommandDialog() async {
+    final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
+    _pasteController.text = clipboardData?.text ?? '';
+    if (!mounted) return;
+
+    final commands = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('terminal_paste_command'.tr()),
+        content: SizedBox(
+          width: 520,
+          child: TextField(
+            controller: _pasteController,
+            minLines: 5,
+            maxLines: 10,
+            style: const TextStyle(fontFamily: 'monospace'),
+            decoration: InputDecoration(
+              hintText: 'terminal_paste_command_placeholder'.tr(),
+              border: const OutlineInputBorder(),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('cancel'.tr()),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(_pasteController.text),
+            child: Text('confirm'.tr()),
+          ),
+        ],
+      ),
+    );
+
+    if (commands == null || commands.trim().isEmpty) return;
+    final normalized = commands.endsWith('\n') || commands.endsWith('\r')
+        ? commands
+        : '$commands\n';
+    _sendTerminalInput(normalized.replaceAll('\n', '\r'));
+  }
+}
+
+class _TerminalToolbar extends StatelessWidget {
+  const _TerminalToolbar({
+    required this.historyEnabled,
+    required this.keyboardOpen,
+    required this.onSend,
+    required this.onHistory,
+    required this.onToggleKeyboard,
+    required this.onPaste,
+  });
+
+  final bool historyEnabled;
+  final bool keyboardOpen;
+  final ValueChanged<String> onSend;
+  final VoidCallback onHistory;
+  final VoidCallback onToggleKeyboard;
+  final VoidCallback onPaste;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade900,
+          border: Border(top: BorderSide(color: Colors.grey.shade800)),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _TerminalToolButton(
+                icon: Icons.keyboard_arrow_up,
+                tooltip: 'terminal_cursor_up'.tr(),
+                onPressed: () => onSend('\x1b[A'),
+              ),
+              _TerminalToolButton(
+                icon: Icons.keyboard_arrow_down,
+                tooltip: 'terminal_cursor_down'.tr(),
+                onPressed: () => onSend('\x1b[B'),
+              ),
+              _TerminalToolButton(
+                icon: Icons.keyboard_arrow_left,
+                tooltip: 'terminal_cursor_left'.tr(),
+                onPressed: () => onSend('\x1b[D'),
+              ),
+              _TerminalToolButton(
+                icon: Icons.keyboard_arrow_right,
+                tooltip: 'terminal_cursor_right'.tr(),
+                onPressed: () => onSend('\x1b[C'),
+              ),
+              const _TerminalToolbarDivider(),
+              _TerminalToolButton(
+                icon: Icons.history,
+                label: 'terminal_command_history_short'.tr(),
+                tooltip: 'terminal_command_history'.tr(),
+                onPressed: historyEnabled ? onHistory : null,
+              ),
+              _TerminalToolButton(
+                icon: Icons.keyboard,
+                selected: keyboardOpen,
+                label: 'terminal_virtual_keyboard'.tr(),
+                tooltip: 'terminal_virtual_keyboard'.tr(),
+                onPressed: onToggleKeyboard,
+              ),
+              _TerminalToolButton(
+                icon: Icons.power_settings_new,
+                label: 'terminal_exit'.tr(),
+                tooltip: 'terminal_exit'.tr(),
+                onPressed: () => onSend('\x03'),
+              ),
+              _TerminalToolButton(
+                icon: Icons.cleaning_services,
+                label: 'terminal_clear_screen'.tr(),
+                tooltip: 'terminal_clear_screen'.tr(),
+                onPressed: () => onSend('clear\r'),
+              ),
+              _TerminalToolButton(
+                icon: Icons.content_paste,
+                label: 'terminal_paste_command_short'.tr(),
+                tooltip: 'terminal_paste_command'.tr(),
+                onPressed: onPaste,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TerminalToolbarDivider extends StatelessWidget {
+  const _TerminalToolbarDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      height: 24,
+      margin: const EdgeInsets.symmetric(horizontal: 6),
+      color: Colors.grey.shade700,
+    );
+  }
+}
+
+class _TerminalToolButton extends StatelessWidget {
+  const _TerminalToolButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+    this.label,
+    this.selected = false,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+  final String? label;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = selected ? Colors.white : Colors.grey.shade300;
+    final background = selected ? Colors.blueGrey.shade700 : Colors.transparent;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: Tooltip(
+        message: tooltip,
+        child: TextButton.icon(
+          onPressed: onPressed,
+          icon: Icon(icon, size: 18),
+          label: label == null ? const SizedBox.shrink() : Text(label!),
+          style: TextButton.styleFrom(
+            backgroundColor: background,
+            foregroundColor: foreground,
+            disabledForegroundColor: Colors.grey.shade600,
+            minimumSize: const Size(40, 36),
+            padding: EdgeInsets.symmetric(horizontal: label == null ? 8 : 10),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TerminalVirtualKeyboard extends StatefulWidget {
+  const _TerminalVirtualKeyboard({required this.onKey});
+
+  final ValueChanged<String> onKey;
+
+  @override
+  State<_TerminalVirtualKeyboard> createState() =>
+      _TerminalVirtualKeyboardState();
+}
+
+class _TerminalVirtualKeyboardState extends State<_TerminalVirtualKeyboard> {
+  static const _rows = [
+    ['`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '='],
+    ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', r'\'],
+    ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'", 'Enter'],
+    ['z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 'Back'],
+  ];
+
+  static const _ctrlMap = {
+    'a': '\x01',
+    'b': '\x02',
+    'c': '\x03',
+    'd': '\x04',
+    'e': '\x05',
+    'f': '\x06',
+    'g': '\x07',
+    'h': '\x08',
+    'i': '\x09',
+    'j': '\x0a',
+    'k': '\x0b',
+    'l': '\x0c',
+    'm': '\x0d',
+    'n': '\x0e',
+    'o': '\x0f',
+    'p': '\x10',
+    'q': '\x11',
+    'r': '\x12',
+    's': '\x13',
+    't': '\x14',
+    'u': '\x15',
+    'v': '\x16',
+    'w': '\x17',
+    'x': '\x18',
+    'y': '\x19',
+    'z': '\x1a',
+    '[': '\x1b',
+    ']': '\x1d',
+    r'\': '\x1c',
+  };
+
+  final Set<String> _modifiers = {};
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      color: Colors.grey.shade950,
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              _modifierKey('ctrl'),
+              _modifierKey('alt'),
+              _modifierKey('shift'),
+              _key('Tab', '\t'),
+              _key('Esc', '\x1b'),
+              _key('Up', '\x1b[A'),
+              _key('Down', '\x1b[B'),
+              _key('Left', '\x1b[D'),
+              _key('Right', '\x1b[C'),
+            ],
+          ),
+          const SizedBox(height: 4),
+          for (final row in _rows) ...[
+            Row(children: row.map(_characterKey).toList()),
+            const SizedBox(height: 4),
+          ],
+          Row(children: [_key('Space', ' ', flex: 5)]),
+        ],
+      ),
+    );
+  }
+
+  Widget _modifierKey(String value) {
+    final selected = _modifiers.contains(value);
+    return _key(
+      value.toUpperCase(),
+      '',
+      selected: selected,
+      onTap: () {
+        setState(() {
+          selected ? _modifiers.remove(value) : _modifiers.add(value);
+        });
+      },
+    );
+  }
+
+  Widget _characterKey(String value) {
+    return _key(
+      value,
+      value,
+      flex: value == 'Enter' || value == 'Back' ? 2 : 1,
+      onTap: () => _sendCharacter(value),
+    );
+  }
+
+  Widget _key(
+    String label,
+    String value, {
+    int flex = 1,
+    bool selected = false,
+    VoidCallback? onTap,
+  }) {
+    return Expanded(
+      flex: flex,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: SizedBox(
+          height: 36,
+          child: TextButton(
+            onPressed: onTap ?? () => widget.onKey(value),
+            style: TextButton.styleFrom(
+              backgroundColor:
+                  selected ? Colors.blueGrey.shade700 : Colors.grey.shade850,
+              foregroundColor: Colors.grey.shade100,
+              padding: EdgeInsets.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              textStyle: const TextStyle(fontSize: 12),
+            ),
+            child: FittedBox(child: Text(label)),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _sendCharacter(String value) {
+    final ctrl = _modifiers.contains('ctrl');
+    final alt = _modifiers.contains('alt');
+    final shift = _modifiers.contains('shift');
+
+    final data = switch (value) {
+      'Enter' => '\r',
+      'Back' => '\x7f',
+      _ when ctrl && _ctrlMap.containsKey(value) => _ctrlMap[value]!,
+      _ => shift ? value.toUpperCase() : value,
+    };
+
+    widget.onKey(alt ? '\x1b$data' : data);
+    setState(_modifiers.clear);
   }
 }

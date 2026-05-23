@@ -188,7 +188,7 @@ export function ChannelInfoPanel({ workspaceId, channel, agents, allChannels, on
           <DialogHeader>
             <DialogTitle>{t('channel.delete')}</DialogTitle>
             <DialogDescription>
-              {t('channel.deleteConfirm')}
+              {t('channel.deleteConfirm', { name: channel.name })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
