@@ -1,0 +1,9 @@
+{
+  "name": "@agent-spaces/agents",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate-index": "node generate-index.mjs"
+  }
+}

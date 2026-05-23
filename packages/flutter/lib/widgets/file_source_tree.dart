@@ -101,7 +101,8 @@ class _FileSourceTreeState extends State<FileSourceTree> {
 
   Widget _buildToolbar(BuildContext context) {
     final theme = Theme.of(context);
-    return SizedBox(
+    return Container(
+      color: theme.colorScheme.surface,
       height: 44,
       child: Row(
         children: [
@@ -137,21 +138,38 @@ class _FileSourceTreeState extends State<FileSourceTree> {
   }
 
   Widget _buildBody(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    final theme = Theme.of(context);
+    if (_loading) {
+      return Container(
+        color: theme.colorScheme.surface,
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
     if (_error != null) {
+      final theme = Theme.of(context);
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(_error!, textAlign: TextAlign.center),
-            const SizedBox(height: 12),
-            FilledButton(onPressed: _init, child: const Text('Retry')),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _error!,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: theme.colorScheme.error),
+              ),
+              const SizedBox(height: 12),
+              FilledButton(onPressed: _init, child: const Text('Retry')),
+            ],
+          ),
         ),
       );
     }
 
-    return TreeView.simpleTyped<_FileNodeData, TreeNode<_FileNodeData>>(
+    final theme = Theme.of(context);
+    return Container(
+      color: theme.colorScheme.surface,
+      child: TreeView.simpleTyped<_FileNodeData, TreeNode<_FileNodeData>>(
       tree: _tree,
       showRootNode: true,
       indentation: const Indentation(width: 18),
@@ -160,6 +178,7 @@ class _FileSourceTreeState extends State<FileSourceTree> {
       builder: (context, node) {
         final data = node.data;
         if (data == null) return const SizedBox.shrink();
+        final theme = Theme.of(context);
         return GestureDetector(
           onLongPressStart: (details) =>
               _showNodeMenu(node, details.globalPosition),
@@ -171,20 +190,29 @@ class _FileSourceTreeState extends State<FileSourceTree> {
                   ? Icons.folder_outlined
                   : Icons.insert_drive_file_outlined,
               size: 18,
+              color: data.isDirectory
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurfaceVariant,
             ),
             title: Text(
               data.name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: theme.colorScheme.onSurface),
             ),
             subtitle: Text(
               _subtitle(data),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
         );
       },
+      ),
     );
   }
 
