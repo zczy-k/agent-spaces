@@ -51,6 +51,7 @@ class _FileSourceTreeState extends State<FileSourceTree> {
   late final FileSource _source;
   late TreeNode<_FileNodeData> _tree;
   TreeViewController<_FileNodeData, TreeNode<_FileNodeData>>? _controller;
+  Set<String>? _pendingExpandedPaths;
   int _treeVersion = 0;
   bool _loading = true;
   String? _error;
@@ -177,7 +178,10 @@ class _FileSourceTreeState extends State<FileSourceTree> {
         tree: _tree,
         showRootNode: true,
         indentation: const Indentation(width: 18),
-        onTreeReady: (controller) => _controller = controller,
+        onTreeReady: (controller) {
+          _controller = controller;
+          _restorePendingExpansion();
+        },
         onItemTap: _handleTap,
         builder: (context, node) {
           final data = node.data;
@@ -269,7 +273,7 @@ class _FileSourceTreeState extends State<FileSourceTree> {
       } else {
         await _source.createFile(path);
       }
-      await _loadChildren(_tree);
+      await _reloadPreservingExpansion(_tree);
     });
   }
 
@@ -354,9 +358,75 @@ class _FileSourceTreeState extends State<FileSourceTree> {
   Future<void> _reloadParent(TreeNode<_FileNodeData> node) async {
     final parent = node.parent;
     if (parent is TreeNode<_FileNodeData>) {
-      await _loadChildren(parent);
+      await _reloadPreservingExpansion(parent);
     } else {
-      await _loadChildren(_tree);
+      await _reloadPreservingExpansion(_tree);
+    }
+  }
+
+  Future<void> _reloadPreservingExpansion(TreeNode<_FileNodeData> node) async {
+    final expandedPaths = _expandedPaths();
+    await _loadChildren(node, rebuildTree: false);
+    await _reloadExpandedChildren(node, expandedPaths);
+    if (!mounted) return;
+    _pendingExpandedPaths = expandedPaths;
+    setState(() => _treeVersion++);
+  }
+
+  Future<void> _reloadExpandedChildren(
+    TreeNode<_FileNodeData> node,
+    Set<String> expandedPaths,
+  ) async {
+    final children = node.childrenAsList.cast<TreeNode<_FileNodeData>>();
+    for (final child in children) {
+      final data = child.data;
+      if (data == null ||
+          !data.isDirectory ||
+          !expandedPaths.contains(data.path)) {
+        continue;
+      }
+      await _loadChildren(child, rebuildTree: false);
+      await _reloadExpandedChildren(child, expandedPaths);
+    }
+  }
+
+  Set<String> _expandedPaths() {
+    final paths = <String>{};
+    _visitNodes(_tree, (node) {
+      final data = node.data;
+      if (data != null && data.isDirectory && node.isExpanded) {
+        paths.add(data.path);
+      }
+    });
+    return paths;
+  }
+
+  void _restorePendingExpansion() {
+    final expandedPaths = _pendingExpandedPaths;
+    if (expandedPaths == null) return;
+    _pendingExpandedPaths = null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _visitNodes(_tree, (node) => node.expansionNotifier.value = false);
+      _visitNodes(_tree, (node) {
+        final data = node.data;
+        if (data != null &&
+            data.isDirectory &&
+            expandedPaths.contains(data.path) &&
+            node.childrenAsList.isNotEmpty) {
+          _controller?.expandNode(node);
+        }
+      });
+    });
+  }
+
+  void _visitNodes(
+    TreeNode<_FileNodeData> node,
+    void Function(TreeNode<_FileNodeData> node) visitor,
+  ) {
+    visitor(node);
+    for (final child in node.childrenAsList.cast<TreeNode<_FileNodeData>>()) {
+      _visitNodes(child, visitor);
     }
   }
 

@@ -382,6 +382,9 @@ class _FileSourceDialogState extends ConsumerState<_FileSourceDialog> {
   String _formatTestError(Object error) {
     final rootPath = _currentConfig.rootPath;
     final message = error.toString();
+    if (_currentConfig.type == FileSourceType.ftp) {
+      return 'FTP root path "$rootPath" is not accessible or writable. For the local FTP test server, use root path "/". $message';
+    }
     if (message.toLowerCase().contains('permission')) {
       return 'Root path "$rootPath" is not writable. For the local SFTP test server, use root path "upload". $message';
     }
