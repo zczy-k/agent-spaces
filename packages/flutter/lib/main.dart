@@ -11,6 +11,7 @@ import 'screens/home_screen.dart';
 import 'screens/bookmarks_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/terminal_credentials_screen.dart';
+import 'screens/file_source_credentials_screen.dart';
 import 'screens/about_screen.dart';
 import 'services/notification_service.dart';
 
@@ -51,6 +52,10 @@ final _router = GoRouter(
     GoRoute(
       path: '/settings/terminal-credentials',
       builder: (context, state) => const TerminalCredentialsScreen(),
+    ),
+    GoRoute(
+      path: '/settings/file-source-credentials',
+      builder: (context, state) => const FileSourceCredentialsScreen(),
     ),
     GoRoute(path: '/about', builder: (context, state) => const AboutScreen()),
   ],

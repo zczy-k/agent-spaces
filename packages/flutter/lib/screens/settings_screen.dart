@@ -254,6 +254,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             trailing: const Icon(Icons.chevron_right, size: 20),
             onTap: () => context.push('/settings/terminal-credentials'),
           ),
+          ListTile(
+            dense: true,
+            leading: const Icon(Icons.folder_outlined, size: 20),
+            title: Text(
+              'settings_file_source_credentials'.tr(),
+              style: const TextStyle(fontSize: 13),
+            ),
+            subtitle: Text(
+              'settings_file_source_credentials_desc'.tr(),
+              style: TextStyle(
+                fontSize: 11,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            trailing: const Icon(Icons.chevron_right, size: 20),
+            onTap: () => context.push('/settings/file-source-credentials'),
+          ),
           _SectionHeader(title: 'settings_language'.tr()),
           ListTile(
             dense: true,

@@ -1,0 +1,10 @@
+[
+  {
+    "id": "code-writing",
+    "name": "代码编写",
+    "description": "Planner → Executor → Reviewer → Commit 四阶段代码编写流程",
+    "filename": "code-writing.json",
+    "nodeCount": 4,
+    "agentCount": 4
+  }
+]

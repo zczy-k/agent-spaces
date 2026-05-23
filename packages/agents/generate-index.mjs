@@ -64,3 +64,24 @@ function scanSkillStore() {
 scanPromptStore();
 scanOutputStyleStore();
 scanSkillStore();
+
+function scanWorkflowStore() {
+  const dir = join(agentsDir, 'workflows');
+  if (!existsSync(dir)) return;
+  const files = readdirSync(dir).filter((f) => f.endsWith('.json') && f !== 'index.json');
+  const index = files.map((filename) => {
+    const raw = readFileSync(join(dir, filename), 'utf-8');
+    const data = JSON.parse(raw);
+    return {
+      id: data.id || basename(filename, '.json'),
+      name: data.name || basename(filename, '.json'),
+      description: data.description || '',
+      filename,
+      nodeCount: data.data?.nodes?.length || 0,
+      agentCount: data.data?.agents ? Object.keys(data.data.agents).length : 0,
+    };
+  });
+  writeFileSync(join(dir, 'index.json'), JSON.stringify(index, null, 2), 'utf-8');
+  console.log(`[workflows] ${index.length} templates`);
+}
+scanWorkflowStore();

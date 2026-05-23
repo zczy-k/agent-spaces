@@ -146,7 +146,6 @@ class _FileSourceTreeState extends State<FileSourceTree> {
       );
     }
     if (_error != null) {
-      final theme = Theme.of(context);
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -166,16 +165,15 @@ class _FileSourceTreeState extends State<FileSourceTree> {
       );
     }
 
-    final theme = Theme.of(context);
     return Container(
       color: theme.colorScheme.surface,
       child: TreeView.simpleTyped<_FileNodeData, TreeNode<_FileNodeData>>(
-      tree: _tree,
-      showRootNode: true,
-      indentation: const Indentation(width: 18),
-      onTreeReady: (controller) => _controller = controller,
-      onItemTap: _handleTap,
-      builder: (context, node) {
+        tree: _tree,
+        showRootNode: true,
+        indentation: const Indentation(width: 18),
+        onTreeReady: (controller) => _controller = controller,
+        onItemTap: _handleTap,
+        builder: (context, node) {
         final data = node.data;
         if (data == null) return const SizedBox.shrink();
         final theme = Theme.of(context);

@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../models/file_source_config.dart';
+import '../models/file_source_credential.dart';
 import '../providers/browser_provider.dart';
+import '../providers/file_source_credentials_provider.dart';
+import '../services/file_sources/file_source_factory.dart';
 import '../services/webview_service.dart';
 
 class NavButton extends StatelessWidget {
@@ -133,85 +136,261 @@ Future<void> _showFileSourceDialog(
 
   final config = await showDialog<FileSourceConfig>(
     context: context,
-    builder: (context) => AlertDialog(
-      title: Text('New ${_fileSourceLabel(type)} Tab'),
+    builder: (context) => _FileSourceDialog(
+      type: type,
+      labelController: labelController,
+      rootController: rootController,
+      hostController: hostController,
+      portController: portController,
+      usernameController: usernameController,
+      passwordController: passwordController,
+      baseUrlController: baseUrlController,
+    ),
+  );
+
+  if (config != null) onCreate(config);
+}
+
+class _FileSourceDialog extends ConsumerStatefulWidget {
+  final FileSourceType type;
+  final TextEditingController labelController;
+  final TextEditingController rootController;
+  final TextEditingController hostController;
+  final TextEditingController portController;
+  final TextEditingController usernameController;
+  final TextEditingController passwordController;
+  final TextEditingController baseUrlController;
+
+  const _FileSourceDialog({
+    required this.type,
+    required this.labelController,
+    required this.rootController,
+    required this.hostController,
+    required this.portController,
+    required this.usernameController,
+    required this.passwordController,
+    required this.baseUrlController,
+  });
+
+  @override
+  ConsumerState<_FileSourceDialog> createState() => _FileSourceDialogState();
+}
+
+class _FileSourceDialogState extends ConsumerState<_FileSourceDialog> {
+  String? _selectedCredentialId;
+  bool _saveCredential = false;
+  bool _testing = false;
+  String? _testResult; // null=未测试, 成功消息, 错误消息
+
+  FileSourceConfig get _currentConfig => FileSourceConfig(
+    type: widget.type,
+    label: widget.labelController.text.trim().isEmpty
+        ? _fileSourceLabel(widget.type)
+        : widget.labelController.text.trim(),
+    rootPath: widget.rootController.text.trim().isEmpty
+        ? '/'
+        : widget.rootController.text.trim(),
+    host: widget.hostController.text.trim(),
+    port: int.tryParse(widget.portController.text.trim()) ?? 0,
+    username: widget.usernameController.text.trim(),
+    password: widget.passwordController.text,
+    baseUrl: widget.baseUrlController.text.trim(),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final credentials = ref
+        .watch(fileSourceCredentialsProvider)
+        .where((c) => c.type == widget.type)
+        .toList();
+    final canTest = widget.type != FileSourceType.storage;
+
+    return AlertDialog(
+      title: Text('New ${_fileSourceLabel(widget.type)} Tab'),
       content: SizedBox(
         width: 420,
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (credentials.isNotEmpty) ...[
+                DropdownButtonFormField<String>(
+                  initialValue: _selectedCredentialId,
+                  decoration: InputDecoration(
+                    labelText: 'file_source_select_credential'.tr(),
+                    border: const OutlineInputBorder(),
+                  ),
+                  items: credentials
+                      .map(
+                        (c) => DropdownMenuItem(
+                          value: c.id,
+                          child: Text(
+                            '${c.name} (${c.summary})',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (id) {
+                    final credential = credentials.firstWhere(
+                      (c) => c.id == id,
+                    );
+                    setState(() {
+                      _selectedCredentialId = id;
+                      _testResult = null;
+                    });
+                    _applyCredential(credential);
+                  },
+                ),
+                const SizedBox(height: 14),
+              ],
               TextField(
-                controller: labelController,
+                controller: widget.labelController,
                 decoration: const InputDecoration(labelText: 'Name'),
               ),
               TextField(
-                controller: rootController,
+                controller: widget.rootController,
                 decoration: const InputDecoration(labelText: 'Root path'),
               ),
-              if (type == FileSourceType.webdav)
+              if (widget.type == FileSourceType.webdav)
                 TextField(
-                  controller: baseUrlController,
+                  controller: widget.baseUrlController,
                   decoration: const InputDecoration(labelText: 'Base URL'),
                 ),
-              if (type == FileSourceType.sftp ||
-                  type == FileSourceType.ftp) ...[
+              if (widget.type == FileSourceType.sftp ||
+                  widget.type == FileSourceType.ftp) ...[
                 TextField(
-                  controller: hostController,
+                  controller: widget.hostController,
                   decoration: const InputDecoration(labelText: 'Host'),
                 ),
                 TextField(
-                  controller: portController,
+                  controller: widget.portController,
                   decoration: const InputDecoration(labelText: 'Port'),
                   keyboardType: TextInputType.number,
                 ),
               ],
-              if (type != FileSourceType.storage) ...[
+              if (widget.type != FileSourceType.storage) ...[
                 TextField(
-                  controller: usernameController,
+                  controller: widget.usernameController,
                   decoration: const InputDecoration(labelText: 'Username'),
                 ),
                 TextField(
-                  controller: passwordController,
+                  controller: widget.passwordController,
                   decoration: const InputDecoration(labelText: 'Password'),
                   obscureText: true,
                 ),
+              ],
+              if (canTest) ...[
+                const SizedBox(height: 8),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text('file_source_save_credential'.tr()),
+                  subtitle: Text('file_source_save_credential_desc'.tr()),
+                  value: _saveCredential,
+                  onChanged: (v) => setState(() => _saveCredential = v),
+                ),
+                const SizedBox(height: 4),
+                if (_testResult != null)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: _testResult!.startsWith('✓')
+                          ? Colors.green.withValues(alpha: 0.1)
+                          : Colors.red.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      _testResult!,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: _testResult!.startsWith('✓')
+                            ? Colors.green
+                            : Colors.red,
+                      ),
+                    ),
+                  ),
               ],
             ],
           ),
         ),
       ),
       actions: [
+        if (canTest)
+          TextButton.icon(
+            onPressed: _testing ? null : _testConnection,
+            icon: _testing
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.wifi_tethering, size: 16),
+            label: Text('file_source_test_connection'.tr()),
+          ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: Text('cancel'.tr()),
         ),
         FilledButton(
           onPressed: () {
-            Navigator.of(context).pop(
-              FileSourceConfig(
-                type: type,
-                label: labelController.text.trim().isEmpty
-                    ? _fileSourceLabel(type)
-                    : labelController.text.trim(),
-                rootPath: rootController.text.trim().isEmpty
-                    ? '/'
-                    : rootController.text.trim(),
-                host: hostController.text.trim(),
-                port: int.tryParse(portController.text.trim()) ?? 0,
-                username: usernameController.text.trim(),
-                password: passwordController.text,
-                baseUrl: baseUrlController.text.trim(),
-              ),
-            );
+            if (_saveCredential) _saveCurrentCredential();
+            Navigator.of(context).pop(_currentConfig);
           },
           child: Text('ok'.tr()),
         ),
       ],
-    ),
-  );
+    );
+  }
 
-  if (config != null) onCreate(config);
+  Future<void> _testConnection() async {
+    setState(() {
+      _testing = true;
+      _testResult = null;
+    });
+    try {
+      final source = createFileSource(_currentConfig);
+      await source.connect();
+      await source.disconnect();
+      if (!mounted) return;
+      setState(() {
+        _testing = false;
+        _testResult = '✓ ${'file_source_test_success'.tr()}';
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _testing = false;
+        _testResult = '✗ $e';
+      });
+    }
+  }
+
+  void _saveCurrentCredential() {
+    final config = _currentConfig;
+    ref.read(fileSourceCredentialsProvider.notifier).add(
+      name: config.label,
+      type: config.type,
+      host: config.host,
+      port: config.port,
+      username: config.username,
+      password: config.password,
+      baseUrl: config.baseUrl,
+      rootPath: config.rootPath,
+    );
+  }
+
+  void _applyCredential(FileSourceCredential credential) {
+    widget.labelController.text = credential.name;
+    widget.rootController.text = credential.rootPath;
+    widget.hostController.text = credential.host;
+    widget.portController.text = credential.port > 0
+        ? credential.port.toString()
+        : _defaultPort(widget.type);
+    widget.usernameController.text = credential.username;
+    widget.passwordController.text = credential.password;
+    widget.baseUrlController.text = credential.baseUrl;
+  }
 }
 
 String _fileSourceLabel(FileSourceType type) {

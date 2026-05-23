@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/bookmark.dart';
 import '../models/browser_tab.dart';
+import '../models/file_source_credential.dart';
 import '../models/terminal_credential.dart';
 
 class StorageService {
@@ -14,6 +15,7 @@ class StorageService {
   static const _homeUrlKey = 'home_url';
   static const _permissionDialogSeenKey = 'permission_dialog_seen';
   static const _terminalCredentialsKey = 'terminal_credentials';
+  static const _fileSourceCredentialsKey = 'file_source_credentials';
 
   static SharedPreferences? _instance;
 
@@ -154,6 +156,27 @@ class StorageService {
     await prefs.setString(
       _terminalCredentialsKey,
       jsonEncode(credentials.map((credential) => credential.toJson()).toList()),
+    );
+  }
+
+  // File source credentials
+  static Future<List<FileSourceCredential>> loadFileSourceCredentials() async {
+    final prefs = await _prefs;
+    final raw = prefs.getString(_fileSourceCredentialsKey);
+    if (raw == null) return [];
+    final list = jsonDecode(raw) as List;
+    return list
+        .map((e) => FileSourceCredential.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  static Future<void> saveFileSourceCredentials(
+    List<FileSourceCredential> credentials,
+  ) async {
+    final prefs = await _prefs;
+    await prefs.setString(
+      _fileSourceCredentialsKey,
+      jsonEncode(credentials.map((c) => c.toJson()).toList()),
     );
   }
 }
