@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:animated_tree_view/animated_tree_view.dart';
@@ -50,6 +51,7 @@ class _FileSourceTreeState extends State<FileSourceTree> {
   late final FileSource _source;
   late TreeNode<_FileNodeData> _tree;
   TreeViewController<_FileNodeData, TreeNode<_FileNodeData>>? _controller;
+  int _treeVersion = 0;
   bool _loading = true;
   String? _error;
 
@@ -171,48 +173,49 @@ class _FileSourceTreeState extends State<FileSourceTree> {
     return Container(
       color: theme.colorScheme.surface,
       child: TreeView.simpleTyped<_FileNodeData, TreeNode<_FileNodeData>>(
+        key: ValueKey(_treeVersion),
         tree: _tree,
         showRootNode: true,
         indentation: const Indentation(width: 18),
         onTreeReady: (controller) => _controller = controller,
         onItemTap: _handleTap,
         builder: (context, node) {
-        final data = node.data;
-        if (data == null) return const SizedBox.shrink();
-        final theme = Theme.of(context);
-        return GestureDetector(
-          onLongPressStart: (details) =>
-              _showNodeMenu(node, details.globalPosition),
-          child: ListTile(
-            dense: true,
-            minLeadingWidth: 18,
-            leading: Icon(
-              data.isDirectory
-                  ? Icons.folder_outlined
-                  : Icons.insert_drive_file_outlined,
-              size: 18,
-              color: data.isDirectory
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.onSurfaceVariant,
-            ),
-            title: Text(
-              data.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: theme.colorScheme.onSurface),
-            ),
-            subtitle: Text(
-              _subtitle(data),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 12,
-                color: theme.colorScheme.onSurfaceVariant,
+          final data = node.data;
+          if (data == null) return const SizedBox.shrink();
+          final theme = Theme.of(context);
+          return GestureDetector(
+            onLongPressStart: (details) =>
+                _showNodeMenu(node, details.globalPosition),
+            child: ListTile(
+              dense: true,
+              minLeadingWidth: 18,
+              leading: Icon(
+                data.isDirectory
+                    ? Icons.folder_outlined
+                    : Icons.insert_drive_file_outlined,
+                size: 18,
+                color: data.isDirectory
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.onSurfaceVariant,
+              ),
+              title: Text(
+                data.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: theme.colorScheme.onSurface),
+              ),
+              subtitle: Text(
+                _subtitle(data),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
       ),
     );
   }
@@ -221,24 +224,29 @@ class _FileSourceTreeState extends State<FileSourceTree> {
     final data = node.data;
     if (data == null || !data.isDirectory) return;
     if (!data.loaded) {
-      await _loadChildren(node);
+      await _loadChildren(node, rebuildTree: false);
+      if (node.childrenAsList.isNotEmpty) {
+        _controller?.expandNode(node);
+      }
     }
-    _controller?.toggleExpansion(node);
   }
 
-  Future<void> _loadChildren(TreeNode<_FileNodeData> node) async {
+  Future<void> _loadChildren(
+    TreeNode<_FileNodeData> node, {
+    bool rebuildTree = true,
+  }) async {
     final data = node.data;
     if (data == null || !data.isDirectory) return;
     final entries = await _source.list(data.path);
     node.clear();
     node.addAll(entries.map(_toNode));
     node.data = data.copyWith(loaded: true);
-    if (mounted) setState(() => _tree = _cloneRoot());
+    if (mounted && rebuildTree) setState(() => _treeVersion++);
   }
 
   TreeNode<_FileNodeData> _toNode(FileSourceEntry entry) {
     return TreeNode<_FileNodeData>(
-      key: entry.path,
+      key: base64Url.encode(utf8.encode(entry.path)),
       data: _FileNodeData(
         name: entry.name,
         path: entry.path,
@@ -423,12 +431,6 @@ class _FileSourceTreeState extends State<FileSourceTree> {
         ],
       ),
     );
-  }
-
-  TreeNode<_FileNodeData> _cloneRoot() {
-    final root = TreeNode<_FileNodeData>.root(data: _tree.data);
-    root.addAll(_tree.childrenAsList.cast<TreeNode<_FileNodeData>>());
-    return root;
   }
 
   IconData _sourceIcon() {

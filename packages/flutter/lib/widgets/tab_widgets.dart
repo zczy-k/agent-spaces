@@ -7,6 +7,7 @@ import '../models/file_source_credential.dart';
 import '../providers/browser_provider.dart';
 import '../providers/file_source_credentials_provider.dart';
 import '../services/file_sources/file_source_factory.dart';
+import '../services/file_sources/path_utils.dart';
 import '../services/webview_service.dart';
 
 class NavButton extends StatelessWidget {
@@ -348,10 +349,16 @@ class _FileSourceDialogState extends ConsumerState<_FileSourceDialog> {
       _testing = true;
       _testResult = null;
     });
+    final source = createFileSource(_currentConfig);
     try {
-      final source = createFileSource(_currentConfig);
       await source.connect();
-      await source.disconnect();
+      await source.list(_currentConfig.rootPath);
+      final probePath = joinRemotePath(
+        _currentConfig.rootPath,
+        '.agent_spaces_write_test_${DateTime.now().microsecondsSinceEpoch}',
+      );
+      await source.createFile(probePath);
+      await source.delete(probePath, isDirectory: false);
       if (!mounted) return;
       setState(() {
         _testing = false;
@@ -361,23 +368,40 @@ class _FileSourceDialogState extends ConsumerState<_FileSourceDialog> {
       if (!mounted) return;
       setState(() {
         _testing = false;
-        _testResult = '✗ $e';
+        _testResult = '✗ ${_formatTestError(e)}';
       });
+    } finally {
+      try {
+        await source.disconnect();
+      } catch (_) {
+        // Preserve the original connection or permission error.
+      }
     }
+  }
+
+  String _formatTestError(Object error) {
+    final rootPath = _currentConfig.rootPath;
+    final message = error.toString();
+    if (message.toLowerCase().contains('permission')) {
+      return 'Root path "$rootPath" is not writable. For the local SFTP test server, use root path "upload". $message';
+    }
+    return message;
   }
 
   void _saveCurrentCredential() {
     final config = _currentConfig;
-    ref.read(fileSourceCredentialsProvider.notifier).add(
-      name: config.label,
-      type: config.type,
-      host: config.host,
-      port: config.port,
-      username: config.username,
-      password: config.password,
-      baseUrl: config.baseUrl,
-      rootPath: config.rootPath,
-    );
+    ref
+        .read(fileSourceCredentialsProvider.notifier)
+        .add(
+          name: config.label,
+          type: config.type,
+          host: config.host,
+          port: config.port,
+          username: config.username,
+          password: config.password,
+          baseUrl: config.baseUrl,
+          rootPath: config.rootPath,
+        );
   }
 
   void _applyCredential(FileSourceCredential credential) {
