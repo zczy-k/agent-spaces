@@ -20,6 +20,8 @@ import { AgentIcon } from '@/components/common/agent-icon';
 import { AvatarGroup, AvatarGroupCount } from '@/components/ui/avatar';
 import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/components/ui/hover-card';
 import { MemberInfoCard } from './member-info-card';
+import { AgentEditor } from '@/components/sidebar/agent-editor';
+import { normalizeAgent } from '@/components/sidebar/agent-shared';
 
 import { useIssueStore } from '@/stores/issue';
 import { useMobilePanelStore } from '@/stores/mobile-panel';

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { MessageSquare, Bot, Wrench, Plug, FileText, Sparkles, ChevronDown } from 'lucide-react';
+import { MessageSquare, Bot, Wrench, Plug, FileText, Sparkles, ChevronDown, Settings } from 'lucide-react';
 import { useAgentStore } from '@/stores/agent';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { useUserAvatar } from '@/hooks/use-user-avatar';
@@ -106,9 +106,10 @@ export interface MemberInfoCardProps {
   displayName?: string;
   channels?: string[];
   compact?: boolean;
+  onConfigure?: () => void;
 }
 
-export function MemberInfoCard({ agentId, displayName, channels = [], compact = false }: MemberInfoCardProps) {
+export function MemberInfoCard({ agentId, displayName, channels = [], compact = false, onConfigure }: MemberInfoCardProps) {
   const agents = useAgentStore((s) => s.agents);
   const agent = agents.find((a) => a.id === agentId);
   const resolvedName = displayName || agent?.name || agentId;
@@ -140,6 +141,14 @@ export function MemberInfoCard({ agentId, displayName, channels = [], compact = 
             ))}
           </div>
         </div>
+        {agent && onConfigure && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onConfigure(); }}
+            className="shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+          >
+            <Settings className="size-4" />
+          </button>
+        )}
       </div>
       {agent && <AgentDetails agent={agent} />}
       {!compact && channels.length > 0 && (

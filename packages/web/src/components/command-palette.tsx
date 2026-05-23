@@ -132,7 +132,7 @@ export function CommandPalette() {
             <>
               <CommandGroup heading="Search">
                 {prefixHints.map((hint) => (
-                  <CommandItem key={hint.id} value={hint.label} className="data-selected:bg-transparent! [&>svg:last-child]:hidden!" onSelect={() => setQuery(hint.label + ' ')}>
+                  <CommandItem key={hint.id} value={hint.label} className="[&>svg:last-child]:hidden!" onSelect={() => setQuery(hint.label + ' ')}>
                     {hint.icon && <hint.icon className="size-4 shrink-0" />}
                     <span className="truncate min-w-0">{hint.label}</span>
                     {hint.description && (
