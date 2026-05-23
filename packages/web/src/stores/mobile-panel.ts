@@ -9,7 +9,9 @@ export type MobilePanel =
   | "code-editor"
   | "terminal"
   | "git-commits"
-  | "project-settings";
+  | "project-settings"
+  | "database"
+  | "database-list";
 
 interface MobileOverlay {
   id: string;

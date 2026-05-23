@@ -5,7 +5,6 @@ import { SendHorizontal, Settings, SlidersHorizontal, Trash2 } from 'lucide-reac
 import { FloatingPanel } from '@/components/common/floating-panel';
 import { AgentDialog } from '@/components/sidebar/agent-dialog';
 import { Markdown } from '@/components/ui/markdown';
-import { Button } from '@/components/ui/button';
 import {
   Popover,
   PopoverContent,
@@ -17,6 +16,7 @@ type ChatMessage = {
   id: string;
   role: 'user' | 'agent';
   content: string;
+  timestamp: Date;
 };
 
 const PANEL_WIDTH = 420;
@@ -34,6 +34,10 @@ function getInitialPanelPosition() {
   };
 }
 
+function formatTime(date: Date) {
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
 interface DatabaseAiChatProps {
   workspaceId: string;
   onClose: () => void;
@@ -46,7 +50,7 @@ export function DatabaseAiChat({ workspaceId, onClose, onMinimize }: DatabaseAiC
   const [sending, setSending] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const listRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLOListElement>(null);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
@@ -56,7 +60,7 @@ export function DatabaseAiChat({ workspaceId, onClose, onMinimize }: DatabaseAiC
     const content = input.trim();
     if (!content || sending) return;
 
-    const userMessage: ChatMessage = { id: crypto.randomUUID(), role: 'user', content };
+    const userMessage: ChatMessage = { id: crypto.randomUUID(), role: 'user', content, timestamp: new Date() };
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setSending(true);
@@ -74,20 +78,12 @@ export function DatabaseAiChat({ workspaceId, onClose, onMinimize }: DatabaseAiC
       const finalMessage = res.ok ? data.finalMessage : data.error;
       setMessages((prev) => [
         ...prev,
-        {
-          id: crypto.randomUUID(),
-          role: 'agent',
-          content: finalMessage || '未收到有效回复。',
-        },
+        { id: crypto.randomUUID(), role: 'agent', content: finalMessage || '未收到有效回复。', timestamp: new Date() },
       ]);
     } catch (err) {
       setMessages((prev) => [
         ...prev,
-        {
-          id: crypto.randomUUID(),
-          role: 'agent',
-          content: err instanceof Error ? err.message : '发送失败。',
-        },
+        { id: crypto.randomUUID(), role: 'agent', content: err instanceof Error ? err.message : '发送失败。', timestamp: new Date() },
       ]);
     } finally {
       setSending(false);
@@ -96,9 +92,16 @@ export function DatabaseAiChat({ workspaceId, onClose, onMinimize }: DatabaseAiC
 
   return (
     <>
+      <style>{`
+        @keyframes db-chat-dot {
+          0%, 60%, 100% { transform: translateY(0); }
+          30% { transform: translateY(-4px); }
+        }
+        .db-chat-dot { animation: db-chat-dot 1.4s infinite ease-in-out; }
+      `}</style>
       <FloatingPanel
         id={`database-ai-chat:${workspaceId}`}
-        title="数据库会话"
+        title=""
         defaultWidth={PANEL_WIDTH}
         defaultHeight={PANEL_HEIGHT}
         defaultPosition={getInitialPanelPosition()}
@@ -106,111 +109,145 @@ export function DatabaseAiChat({ workspaceId, onClose, onMinimize }: DatabaseAiC
         minHeight={420}
         onClose={onClose}
         onMinimize={onMinimize}
-        headerActions={
-          <Popover open={menuOpen} onOpenChange={setMenuOpen}>
-            <PopoverTrigger
-              render={
-                <button
-                  className="p-1 rounded hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors text-gray-500 dark:text-gray-400 cursor-pointer"
-                  title="设置"
-                >
-                  <Settings size={14} />
-                </button>
-              }
-            />
-            <PopoverContent
-              align="end"
-              side="bottom"
-              sideOffset={6}
-              positionerClassName="z-[100002]"
-              className="w-36 gap-1 p-1"
-            >
-              <button
-                type="button"
-                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
-                onClick={() => {
-                  setMenuOpen(false);
-                  setSettingsOpen(true);
-                }}
-              >
-                <SlidersHorizontal className="size-3.5" />
-                <span>模型设置</span>
-              </button>
-              <button
-                type="button"
-                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-destructive hover:bg-destructive/10 cursor-pointer"
-                onClick={() => {
-                  setMenuOpen(false);
-                  setMessages([]);
-                }}
-              >
-                <Trash2 className="size-3.5" />
-                <span>清空消息</span>
-              </button>
-            </PopoverContent>
-          </Popover>
-        }
       >
-        <div className="flex h-full flex-col bg-background">
-          <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-3">
-            {messages.length === 0 && (
+        <div className="flex h-full flex-col bg-card">
+          {/* Chat header */}
+          <div className="flex items-center gap-3 border-b px-4 py-3">
+            <div className="relative">
+              <span className="flex size-9 items-center justify-center rounded-full bg-muted font-mono text-xs font-semibold text-foreground">
+                AI
+              </span>
+              <span
+                aria-hidden="true"
+                className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-card bg-emerald-500"
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-semibold text-foreground">Database Agent</div>
+              <div className="flex items-center gap-1.5 truncate text-xs text-muted-foreground">
+                <span className="size-1 rounded-full bg-emerald-500" aria-hidden="true" />
+                {sending ? 'typing…' : 'online'}
+              </div>
+            </div>
+            <Popover open={menuOpen} onOpenChange={setMenuOpen}>
+              <PopoverTrigger
+                render={
+                  <button
+                    className="p-1 rounded hover:bg-muted/50 transition-colors text-muted-foreground cursor-pointer"
+                    title="设置"
+                  >
+                    <Settings size={14} />
+                  </button>
+                }
+              />
+              <PopoverContent
+                align="end"
+                side="bottom"
+                sideOffset={6}
+                positionerClassName="z-[100002]"
+                className="w-36 gap-1 p-1"
+              >
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setSettingsOpen(true);
+                  }}
+                >
+                  <SlidersHorizontal className="size-3.5" />
+                  <span>模型设置</span>
+                </button>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-destructive hover:bg-destructive/10 cursor-pointer"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setMessages([]);
+                  }}
+                >
+                  <Trash2 className="size-3.5" />
+                  <span>清空消息</span>
+                </button>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* Messages */}
+          <ol ref={listRef} className="flex flex-1 flex-col gap-3 overflow-y-auto bg-muted/10 px-4 py-5">
+            {messages.length === 0 && !sending && (
               <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
                 暂无消息
               </div>
             )}
-            <div className="space-y-3">
-              {messages.map((message) => (
+            {messages.map((message) => (
+              <li
+                key={message.id}
+                className={cn('flex', message.role === 'user' ? 'justify-end' : 'justify-start')}
+              >
                 <div
-                  key={message.id}
-                  className={cn('flex', message.role === 'user' ? 'justify-end' : 'justify-start')}
+                  className={cn(
+                    'max-w-[85%] px-4 py-2.5 text-sm leading-relaxed rounded-2xl',
+                    message.role === 'user'
+                      ? 'rounded-br-sm bg-foreground text-background'
+                      : 'rounded-bl-sm bg-muted text-foreground',
+                  )}
                 >
+                  {message.role === 'agent' ? (
+                    <Markdown content={message.content} workspaceId={workspaceId} />
+                  ) : (
+                    <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                  )}
                   <div
                     className={cn(
-                      'max-w-[84%] rounded-lg px-3 py-2 text-sm leading-6',
-                      message.role === 'user'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted text-foreground',
+                      'mt-1 text-right font-mono text-[10px]',
+                      message.role === 'user' ? 'text-background/60' : 'text-muted-foreground',
                     )}
                   >
-                    {message.role === 'agent' ? (
-                      <Markdown content={message.content} workspaceId={workspaceId} />
-                    ) : (
-                      <div className="whitespace-pre-wrap break-words">{message.content}</div>
-                    )}
+                    {formatTime(message.timestamp)}
                   </div>
                 </div>
-              ))}
-              {sending && (
-                <div className="flex justify-start">
-                  <div className="rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">思考中...</div>
+              </li>
+            ))}
+            {sending && (
+              <li className="flex justify-start" aria-label="AI is typing">
+                <div className="max-w-[85%] px-4 py-2.5 text-sm leading-relaxed rounded-2xl rounded-bl-sm bg-muted text-foreground">
+                  <div className="flex items-center gap-1" role="status" aria-label="typing">
+                    <span className="db-chat-dot size-1.5 rounded-full bg-muted-foreground/70" />
+                    <span className="db-chat-dot size-1.5 rounded-full bg-muted-foreground/70" style={{ animationDelay: '0.15s' }} />
+                    <span className="db-chat-dot size-1.5 rounded-full bg-muted-foreground/70" style={{ animationDelay: '0.3s' }} />
+                  </div>
                 </div>
-              )}
-            </div>
-          </div>
-          <div className="border-t p-3">
-            <div className="flex items-end gap-2 rounded-xl border bg-background px-3 py-2">
+              </li>
+            )}
+          </ol>
+
+          {/* Input */}
+          <div className="flex items-center gap-2 border-t px-3 py-2.5">
+            <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full border bg-background px-3 py-1.5">
               <textarea
                 value={input}
-                onChange={(event) => setInput(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && !event.shiftKey) {
-                    event.preventDefault();
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
                     void sendMessage();
                   }
                 }}
-                placeholder="输入消息"
-                className="min-h-9 max-h-28 flex-1 resize-none bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground"
+                placeholder="回复 Database Agent…"
+                className="min-h-6 max-h-28 flex-1 resize-none bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                 rows={1}
               />
-              <Button
-                size="icon"
-                className="size-9 shrink-0 rounded-full"
-                disabled={!input.trim() || sending}
-                onClick={() => void sendMessage()}
-              >
-                <SendHorizontal className="size-4" />
-              </Button>
             </div>
+            <button
+              type="button"
+              aria-label="发送消息"
+              className="flex size-9 shrink-0 items-center justify-center rounded-full bg-foreground text-background hover:bg-foreground/90 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+              disabled={!input.trim() || sending}
+              onClick={() => void sendMessage()}
+            >
+              <SendHorizontal className="size-4" />
+            </button>
           </div>
         </div>
       </FloatingPanel>

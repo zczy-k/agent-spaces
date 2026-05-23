@@ -21,8 +21,8 @@ import type { PanelImperativeHandle } from 'react-resizable-panels';
 
 interface DatabaseMainPanelProps {
   workspaceId: string;
-  sidebarPanelRef: React.RefObject<PanelImperativeHandle | null>;
-  showSaveSuccess: boolean;
+  sidebarPanelRef?: React.RefObject<PanelImperativeHandle | null>;
+  showSaveSuccess?: boolean;
   onSave: () => void;
 }
 
@@ -142,10 +142,12 @@ export function DatabaseMainPanel({
       {/* Top nav bar */}
       <div className="h-14 px-6 border-b border-border flex items-center justify-between bg-background/80 backdrop-blur-md sticky top-0 z-10 select-none shrink-0">
         <div className="flex items-center gap-3">
-          <button onClick={() => sidebarPanelRef.current?.isCollapsed() ? sidebarPanelRef.current?.expand() : sidebarPanelRef.current?.collapse()}
-            className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors mr-1 cursor-pointer">
-            <Sidebar className="w-4 h-4" />
-          </button>
+          {sidebarPanelRef && (
+            <button onClick={() => sidebarPanelRef.current?.isCollapsed() ? sidebarPanelRef.current?.expand() : sidebarPanelRef.current?.collapse()}
+              className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors mr-1 cursor-pointer">
+              <Sidebar className="w-4 h-4" />
+            </button>
+          )}
           {activeNode ? (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
               <span>{t('knowledgeBase')}</span>
