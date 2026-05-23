@@ -146,20 +146,23 @@ class _FileSourceTreeState extends State<FileSourceTree> {
       );
     }
     if (_error != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                _error!,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: theme.colorScheme.error),
-              ),
-              const SizedBox(height: 12),
-              FilledButton(onPressed: _init, child: const Text('Retry')),
-            ],
+      return Container(
+        color: theme.colorScheme.errorContainer,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _error!,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: theme.colorScheme.onErrorContainer),
+                ),
+                const SizedBox(height: 12),
+                FilledButton(onPressed: _init, child: const Text('Retry')),
+              ],
+            ),
           ),
         ),
       );
