@@ -42,6 +42,7 @@ dependencies:
   webdav_client: ^1.2.2
   ftpconnect: ^2.0.10
   animated_tree_view: ^2.3.0
+  file_selector: ^1.1.0
 
 dev_dependencies:
   flutter_test:

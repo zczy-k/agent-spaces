@@ -16,10 +16,15 @@ class StorageFileSource extends FileSource {
 
   @override
   Future<List<FileSourceEntry>> list(String path) async {
-    final entities = await Directory(path).list().toList();
+    final entities = await _listDirectory(path);
     final entries = <FileSourceEntry>[];
     for (final entity in entities) {
-      entries.add(await _entry(entity));
+      try {
+        entries.add(await _entry(entity));
+      } on FileSystemException {
+        // Some macOS sandboxed/system directories can be listed but not stat'ed.
+        // Skip them so one protected child does not break the whole folder.
+      }
     }
     entries.sort((a, b) {
       if (a.isDirectory != b.isDirectory) return a.isDirectory ? -1 : 1;
@@ -77,6 +82,18 @@ class StorageFileSource extends FileSource {
     return _entry(
       type == FileSystemEntityType.directory ? Directory(path) : File(path),
     );
+  }
+
+  Future<List<FileSystemEntity>> _listDirectory(String path) async {
+    try {
+      return await Directory(path).list().toList();
+    } on FileSystemException catch (error) {
+      throw FileSystemException(
+        'Cannot list directory. On macOS, choose the folder with the system directory picker to grant access.',
+        path,
+        error.osError,
+      );
+    }
   }
 
   Future<FileSourceEntry> _entry(FileSystemEntity entity) async {

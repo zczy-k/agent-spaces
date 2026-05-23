@@ -228,7 +228,15 @@ class _FileSourceTreeState extends State<FileSourceTree> {
     final data = node.data;
     if (data == null || !data.isDirectory) return;
     if (!data.loaded) {
-      await _loadChildren(node, rebuildTree: false);
+      try {
+        await _loadChildren(node, rebuildTree: false);
+      } catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
+        return;
+      }
       if (node.childrenAsList.isNotEmpty) {
         _controller?.expandNode(node);
       }

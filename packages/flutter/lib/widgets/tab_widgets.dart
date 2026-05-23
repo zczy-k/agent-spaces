@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:go_router/go_router.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../models/file_source_config.dart';
@@ -252,9 +253,27 @@ class _FileSourceDialogState extends ConsumerState<_FileSourceDialog> {
                 controller: widget.labelController,
                 decoration: const InputDecoration(labelText: 'Name'),
               ),
-              TextField(
-                controller: widget.rootController,
-                decoration: const InputDecoration(labelText: 'Root path'),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: widget.rootController,
+                      decoration: const InputDecoration(labelText: 'Root path'),
+                    ),
+                  ),
+                  if (widget.type == FileSourceType.storage) ...[
+                    const SizedBox(width: 8),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: IconButton(
+                        tooltip: 'Choose folder',
+                        icon: const Icon(Icons.folder_open_outlined),
+                        onPressed: _pickStorageRoot,
+                      ),
+                    ),
+                  ],
+                ],
               ),
               if (widget.type == FileSourceType.webdav)
                 TextField(
@@ -380,6 +399,13 @@ class _FileSourceDialogState extends ConsumerState<_FileSourceDialog> {
         // Preserve the original connection or permission error.
       }
     }
+  }
+
+  Future<void> _pickStorageRoot() async {
+    final path = await getDirectoryPath();
+    if (path == null) return;
+    widget.rootController.text = path;
+    setState(() => _testResult = null);
   }
 
   String _formatTestError(Object error) {
