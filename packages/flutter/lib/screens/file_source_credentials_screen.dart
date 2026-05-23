@@ -5,6 +5,7 @@ import 'package:easy_localization/easy_localization.dart';
 import '../models/file_source_config.dart';
 import '../models/file_source_credential.dart';
 import '../providers/file_source_credentials_provider.dart';
+import '../services/file_sources/webdav_url.dart';
 
 class FileSourceCredentialsScreen extends ConsumerWidget {
   const FileSourceCredentialsScreen({super.key});
@@ -66,11 +67,7 @@ class FileSourceCredentialsScreen extends ConsumerWidget {
     };
   }
 
-  Widget _buildList(
-    BuildContext context,
-    WidgetRef ref,
-    FileSourceType type,
-  ) {
+  Widget _buildList(BuildContext context, WidgetRef ref, FileSourceType type) {
     final credentials = ref
         .watch(fileSourceCredentialsProvider)
         .where((c) => c.type == type)
@@ -192,8 +189,7 @@ class FileSourceCredentialsScreen extends ConsumerWidget {
                     decoration: InputDecoration(
                       labelText: 'file_source_credential_name_label'.tr(),
                     ),
-                    validator: (value) =>
-                        value == null || value.trim().isEmpty
+                    validator: (value) => value == null || value.trim().isEmpty
                         ? 'file_source_credential_name_hint'.tr()
                         : null,
                   ),
@@ -261,6 +257,9 @@ class FileSourceCredentialsScreen extends ConsumerWidget {
             onPressed: () {
               if (!(formKey.currentState?.validate() ?? false)) return;
               final notifier = ref.read(fileSourceCredentialsProvider.notifier);
+              final baseUrl = type == FileSourceType.webdav
+                  ? normalizeWebDavBaseUrl(baseUrlController.text)
+                  : baseUrlController.text.trim();
               if (credential == null) {
                 notifier.add(
                   name: nameController.text.trim(),
@@ -269,7 +268,7 @@ class FileSourceCredentialsScreen extends ConsumerWidget {
                   port: int.tryParse(portController.text.trim()) ?? 0,
                   username: usernameController.text.trim(),
                   password: passwordController.text,
-                  baseUrl: baseUrlController.text.trim(),
+                  baseUrl: baseUrl,
                   rootPath: rootPathController.text.trim().isEmpty
                       ? '/'
                       : rootPathController.text.trim(),
@@ -282,7 +281,7 @@ class FileSourceCredentialsScreen extends ConsumerWidget {
                     port: int.tryParse(portController.text.trim()) ?? 0,
                     username: usernameController.text.trim(),
                     password: passwordController.text,
-                    baseUrl: baseUrlController.text.trim(),
+                    baseUrl: baseUrl,
                     rootPath: rootPathController.text.trim().isEmpty
                         ? '/'
                         : rootPathController.text.trim(),

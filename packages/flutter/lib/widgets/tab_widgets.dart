@@ -8,6 +8,7 @@ import '../providers/browser_provider.dart';
 import '../providers/file_source_credentials_provider.dart';
 import '../services/file_sources/file_source_factory.dart';
 import '../services/file_sources/path_utils.dart';
+import '../services/file_sources/webdav_url.dart';
 import '../services/webview_service.dart';
 
 class NavButton extends StatelessWidget {
@@ -195,7 +196,9 @@ class _FileSourceDialogState extends ConsumerState<_FileSourceDialog> {
     port: int.tryParse(widget.portController.text.trim()) ?? 0,
     username: widget.usernameController.text.trim(),
     password: widget.passwordController.text,
-    baseUrl: widget.baseUrlController.text.trim(),
+    baseUrl: widget.type == FileSourceType.webdav
+        ? normalizeWebDavBaseUrl(widget.baseUrlController.text)
+        : widget.baseUrlController.text.trim(),
   );
 
   @override
