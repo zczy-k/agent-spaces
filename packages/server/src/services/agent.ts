@@ -23,6 +23,7 @@ export const AGENT_GENERATOR_PRESET_ID = 'agent-generator';
 export const AGENT_COMMIT_PRESET_ID = 'commit-agent';
 const VALID_RUNTIME_KINDS: NonNullable<AgentConfig['runtimeKind']>[] = ['open-agent-sdk', 'claude-code', 'codex', 'langchain'];
 const VALID_TOOL_NAMES = new Set(BUILT_IN_AGENT_TOOLS.map((tool) => tool.name));
+const CLAUDE_BUILT_IN_DIRS = ['agents', 'commands'] as const;
 const ANTHROPIC_BRIDGE_PROVIDERS: Array<NonNullable<AgentConfig['modelProvider']>> = [
   'openai-responses-to-anthropic-messages',
   'openai-chat-completions-to-anthropic-messages',
@@ -639,8 +640,26 @@ function writeWorkspaceAgentCopy(preset: AgentConfig, agentspaceDir: string): vo
 function ensureWorkspaceAgentCopy(preset: AgentConfig, agentspaceDir: string): void {
   const workspaceAgentDir = getWorkspaceAgentDir(agentspaceDir, preset.id);
   const requiredFiles = ['agent.json', 'mcp.json'];
-  if (requiredFiles.every((file) => existsSync(join(workspaceAgentDir, file)))) return;
+  const sourceDir = getGlobalAgentTemplateDir(preset.id);
+  const missingRequiredFile = requiredFiles.some((file) => !existsSync(join(workspaceAgentDir, file)));
+  const missingBuiltInDir = CLAUDE_BUILT_IN_DIRS.some((dir) => {
+    const sourceBuiltInDir = join(sourceDir, dir);
+    const targetBuiltInDir = join(workspaceAgentDir, dir);
+    return existsSync(sourceBuiltInDir)
+      && statSync(sourceBuiltInDir).isDirectory()
+      && countFiles(sourceBuiltInDir) > countFiles(targetBuiltInDir);
+  });
+  if (!missingRequiredFile && !missingBuiltInDir) return;
   writeWorkspaceAgentCopy(preset, agentspaceDir);
+}
+
+function countFiles(dir: string): number {
+  if (!existsSync(dir) || !statSync(dir).isDirectory()) return 0;
+  return readdirSync(dir, { withFileTypes: true }).reduce((count, entry) => {
+    const fullPath = join(dir, entry.name);
+    if (entry.isDirectory()) return count + countFiles(fullPath);
+    return entry.isFile() ? count + 1 : count;
+  }, 0);
 }
 
 export function readAgentTemplate(agentId: string): AgentConfig | null {

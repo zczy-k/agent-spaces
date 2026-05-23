@@ -8,12 +8,11 @@ import type { Editor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Mention, { type MentionNodeAttrs } from '@tiptap/extension-mention';
-import { Extension } from '@tiptap/core';
-import Suggestion from '@tiptap/suggestion';
 import tippy from 'tippy.js';
 
 import { USERS } from '@/lib/users';
 import { useAgentStore } from '@/stores/agent';
+import { createSlashExtension } from './create-slash-extension';
 import { SuggestionList } from './suggestion-list';
 
 type Attachment = {
@@ -73,54 +72,6 @@ function createSuggestionRenderer() {
       component?.destroy();
     },
   };
-}
-
-function createSlashExtension(skills: string[]) {
-  return Extension.create({
-    name: 'slashCommand',
-
-    addOptions() {
-      return {
-        suggestion: {
-          char: '/',
-          items: ({ query }: { query: string }) => {
-            const keyword = query.toLowerCase();
-            return skills
-              .filter((s) => s.toLowerCase().includes(keyword))
-              .map((s) => ({ id: s, title: s, description: 'skill' }));
-          },
-
-          command: ({
-            editor,
-            range,
-            props,
-          }: {
-            editor: Editor;
-            range: { from: number; to: number };
-            props: { id: string };
-          }) => {
-            editor
-              .chain()
-              .focus()
-              .deleteRange(range)
-              .insertContent(`[use skill: ${props.id}]`)
-              .run();
-          },
-
-          render: () => createSuggestionRenderer(),
-        },
-      };
-    },
-
-    addProseMirrorPlugins() {
-      return [
-        Suggestion({
-          editor: this.editor,
-          ...this.options.suggestion,
-        }),
-      ];
-    },
-  });
 }
 
 export function ComposerEditor({
@@ -220,7 +171,7 @@ export function ComposerEditor({
   }, [agents]);
 
   const slashExtension = useMemo(() => {
-    return createSlashExtension(allSkills);
+    return createSlashExtension(() => allSkills);
   }, [allSkills]);
 
   const editor = useEditor({

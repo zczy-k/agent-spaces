@@ -5,26 +5,56 @@ import { createSuggestionRenderer } from './create-suggestion-renderer';
 
 type EditorRange = { from: number; to: number };
 type GetSkills = () => string[];
+type SlashCommand = {
+  id: string;
+  name: string;
+  content?: string;
+  insertText?: string;
+};
+type GetCommands = () => SlashCommand[];
+type SlashItem = {
+  id: string;
+  title: string;
+  description: 'skill' | 'command';
+  insertText?: string;
+};
 
-function getSkillItems(skills: string[], query: string) {
+function getSlashItems(skills: string[], commands: SlashCommand[], query: string): SlashItem[] {
   const keyword = query.toLowerCase();
-  const seen = new Set<string>();
+  const seenSkills = new Set<string>();
+  const seenCommands = new Set<string>();
 
-  return skills
+  const skillItems = skills
     .map((skill) => skill.trim())
     .filter((skill) => {
-      if (!skill || seen.has(skill)) return false;
-      seen.add(skill);
+      if (!skill || seenSkills.has(skill)) return false;
+      seenSkills.add(skill);
       return skill.toLowerCase().includes(keyword);
     })
     .map((skill) => ({
       id: skill,
       title: skill,
-      description: 'skill',
+      description: 'skill' as const,
     }));
+
+  const commandItems = commands
+    .filter((command) => {
+      const name = command.name.trim();
+      if (!command.id || !name || seenCommands.has(command.id)) return false;
+      seenCommands.add(command.id);
+      return `${name} ${command.content ?? ''}`.toLowerCase().includes(keyword);
+    })
+    .map((command) => ({
+      id: command.id,
+      title: command.name,
+      description: 'command' as const,
+      insertText: command.insertText,
+    }));
+
+  return [...skillItems, ...commandItems];
 }
 
-export function createSlashExtension(getSkills: GetSkills = () => []) {
+export function createSlashExtension(getSkills: GetSkills = () => [], getCommands: GetCommands = () => []) {
   return Extension.create({
     name: 'slashCommand',
     addOptions() {
@@ -32,7 +62,7 @@ export function createSlashExtension(getSkills: GetSkills = () => []) {
         suggestion: {
           char: '/',
           items: ({ query }: { query: string }) => {
-            return getSkillItems(getSkills(), query);
+            return getSlashItems(getSkills(), getCommands(), query);
           },
           command: ({
             editor,
@@ -41,13 +71,16 @@ export function createSlashExtension(getSkills: GetSkills = () => []) {
           }: {
             editor: Editor;
             range: EditorRange;
-            props: { id: string; title: string; description: string };
+            props: SlashItem;
           }) => {
+            const content = props.description === 'command'
+              ? `/${props.insertText ?? props.id}`
+              : `[use skill: ${props.id}]`;
             editor
               .chain()
               .focus()
               .deleteRange(range)
-              .insertContent(`[use skill: ${props.id}]`)
+              .insertContent(content)
               .run();
           },
           render: () => createSuggestionRenderer(),

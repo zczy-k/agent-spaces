@@ -8,6 +8,7 @@ import type { AgentFunctionTool, AgentRuntimeConfig } from '../agent-runtime-typ
 import { isAnthropicBridgeProvider } from './types.js';
 
 const require = createRequire(import.meta.url);
+const CLAUDE_BUILT_IN_DIRS = ['agents', 'commands'] as const;
 
 export function buildEnv(
   config: AgentRuntimeConfig,
@@ -153,6 +154,8 @@ export function prepareConfigDir(configDir: string, agentDir?: string): void {
   mkdirSync(configDir, { recursive: true });
   if (!agentDir) return;
 
+  copyClaudeBuiltInDirs(agentDir, configDir);
+
   const sourceSkillsDir = join(agentDir, 'skills');
   const targetSkillsDir = join(configDir, 'skills');
   rmSync(targetSkillsDir, { recursive: true, force: true });
@@ -181,6 +184,16 @@ export function prepareConfigDir(configDir: string, agentDir?: string): void {
     mkdirSync(targetSkillDir, { recursive: true });
     writeFileSync(join(targetSkillDir, 'SKILL.md'), readFileSync(source, 'utf-8'), 'utf-8');
     copyFileSync(source, join(targetSkillsDir, `${skillName}.md`));
+  }
+}
+
+function copyClaudeBuiltInDirs(agentDir: string, configDir: string): void {
+  for (const dir of CLAUDE_BUILT_IN_DIRS) {
+    const sourceDir = join(agentDir, dir);
+    const targetDir = join(configDir, dir);
+    rmSync(targetDir, { recursive: true, force: true });
+    if (!existsSync(sourceDir) || !statSync(sourceDir).isDirectory()) continue;
+    cpSync(sourceDir, targetDir, { recursive: true, force: true });
   }
 }
 

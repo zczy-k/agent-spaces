@@ -33,11 +33,20 @@ interface IssueDetailProps {
   workspaceId: string;
 }
 
+type AgentCommandItem = {
+  name: string;
+  content?: string;
+  group?: string;
+  agentId: string;
+  agentName?: string;
+};
+
 export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const { issues, activeIssueId, startIssue, resumeIssue, continueIssue, interruptIssue, updateIssue, deleteIssue } = useIssueStore();
   const { tasks, loading: tasksLoading, loadTasks, retryTask, cancelTask, createTask, updateTask, deleteTask, reorderTasks } = useTaskStore();
   const agents = useAgentStore((s) => s.agents);
   const ensureAgents = useAgentStore((s) => s.ensure);
+  const commandsRef = useRef<AgentCommandItem[]>([]);
   const [infoOpen, setInfoOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [comments, setComments] = useState<IssueComment[]>([]);
@@ -82,6 +91,19 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   }, [ensureAgents]);
 
   useEffect(() => {
+    let cancelled = false;
+    fetch('/api/agent-commands/all')
+      .then((res) => res.ok ? res.json() : [])
+      .then((items: AgentCommandItem[]) => {
+        if (!cancelled) commandsRef.current = items;
+      })
+      .catch(() => {
+        if (!cancelled) commandsRef.current = [];
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
     if (!issue) return;
     const ws = getWS(workspaceId);
     const issueId = issue.id;
@@ -122,7 +144,18 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     [agents]
   );
 
-  const slashExtension = useMemo(() => createSlashExtension(), []);
+  const slashExtension = useMemo(
+    () => createSlashExtension(
+      () => [],
+      () => commandsRef.current.map((command) => ({
+        id: `${command.agentId}:${command.group || 'root'}:${command.name}`,
+        name: command.agentName ? `${command.agentName}/${command.name}` : command.name,
+        content: command.content,
+        insertText: command.name,
+      })),
+    ),
+    [],
+  );
 
   const editor = useEditor({
     immediatelyRender: false,

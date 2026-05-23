@@ -67,6 +67,13 @@ import {
 import { ChatInputAgentBar } from "./chat-input-agent-bar";
 import { ChatInputInfoBar } from "./chat-input-info-bar";
 
+type AgentCommandItem = {
+  name: string;
+  content?: string;
+  group?: string;
+  agentId: string;
+};
+
 interface ChatInputProps {
   channelName: string;
   channelId: string;
@@ -106,6 +113,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const agentsRef = useRef(agents);
   const channelRef = useRef(channel);
   const activeSkillsRef = useRef<string[]>([]);
+  const activeCommandsRef = useRef<AgentCommandItem[]>([]);
   const activeResourcesRef = useRef<{
     mcps: string[];
     tools: { name: string; label: string }[];
@@ -165,6 +173,23 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   useEffect(() => { agentsRef.current = agents; }, [agents]);
   useEffect(() => { channelRef.current = channel; }, [channel]);
   useEffect(() => { activeSkillsRef.current = activeSkills; }, [activeSkills]);
+  useEffect(() => {
+    if (!activeAgent?.id) {
+      activeCommandsRef.current = [];
+      return;
+    }
+
+    let cancelled = false;
+    fetch(`/api/agent-commands/${activeAgent.id}`)
+      .then((res) => res.ok ? res.json() : [])
+      .then((items: AgentCommandItem[]) => {
+        if (!cancelled) activeCommandsRef.current = items;
+      })
+      .catch(() => {
+        if (!cancelled) activeCommandsRef.current = [];
+      });
+    return () => { cancelled = true; };
+  }, [activeAgent?.id]);
   useEffect(() => {
     activeResourcesRef.current = {
       mcps: activeMcps,
@@ -307,7 +332,15 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
 
   const slashExtension = useMemo(
     () =>
-      createSlashExtension(() => activeSkillsRef.current),
+      createSlashExtension(
+        () => activeSkillsRef.current,
+        () => activeCommandsRef.current.map((command) => ({
+          id: `${command.group || 'root'}:${command.name}`,
+          name: command.group ? `${command.group}/${command.name}` : command.name,
+          content: command.content,
+          insertText: command.name,
+        })),
+      ),
     []
   );
 
