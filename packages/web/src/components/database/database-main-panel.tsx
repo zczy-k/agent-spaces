@@ -37,7 +37,6 @@ export function DatabaseMainPanel({
     setEditorMode, setTheme, setIsFullWidth, closeTab, listNodeVersions,
   } = useDatabaseStore();
   const t = useTranslations('database');
-  const tc = useTranslations('common');
 
   const [tocOpen, setTocOpen] = useState(true);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -98,11 +97,6 @@ export function DatabaseMainPanel({
     { key: 'serif' as const, label: t('themeSerif'), fontClass: 'font-serif' },
     { key: 'mono' as const, label: t('themeMono'), fontClass: 'font-mono' },
   ], [t]);
-
-  const selectedVersion = useMemo(
-    () => versions.find((item) => item.id === selectedVersionId) ?? versions[0] ?? null,
-    [selectedVersionId, versions],
-  );
 
   return (
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
@@ -312,90 +306,17 @@ export function DatabaseMainPanel({
         </div>
       )}
 
-      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
-        <DialogContent className="!flex !w-[min(1080px,calc(100vw-2rem))] !max-w-[min(1080px,calc(100vw-2rem))] h-[min(760px,calc(100vh-4rem))] flex-col gap-0 overflow-hidden p-0">
-          <DialogHeader className="shrink-0 border-b border-border px-5 py-4">
-            <DialogTitle className="text-sm">{t('historyVersions')}</DialogTitle>
-          </DialogHeader>
-          <div className="flex min-h-0 flex-1">
-            <div className="w-64 shrink-0 border-r border-border overflow-y-auto bg-muted/20">
-              {historyLoading ? (
-                <div className="p-4 text-xs text-muted-foreground">{tc('loading')}</div>
-              ) : historyError ? (
-                <div className="p-4 text-xs text-destructive">{historyError}</div>
-              ) : versions.length === 0 ? (
-                <div className="p-4 text-xs text-muted-foreground">{t('noHistory')}</div>
-              ) : (
-                versions.map((version) => (
-                  <button
-                    key={version.id}
-                    onClick={() => setSelectedVersionId(version.id)}
-                    className={cn(
-                      "w-full border-b border-border px-4 py-3 text-left text-xs transition-colors",
-                      selectedVersion?.id === version.id ? "bg-background text-foreground" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
-                    )}
-                  >
-                    <div className="truncate font-semibold">{version.title || activeNode?.title || t('untitled')}</div>
-                    <div className="mt-1 text-[11px]">{new Date(version.createdAt).toLocaleString()}</div>
-                    <div className="mt-1 text-[10px] font-mono">
-                      -{version.patch.deleteText.length} +{version.patch.insertText.length}
-                    </div>
-                  </button>
-                ))
-              )}
-            </div>
-            <div className="min-w-0 flex-1 overflow-y-auto">
-              {selectedVersion ? (
-                <div className="grid min-h-full grid-rows-2">
-                  <MarkdownVersionPane
-                    title="Before"
-                    content={selectedVersion.oldContent}
-                    workspaceId={workspaceId}
-                    tone="old"
-                  />
-                  <MarkdownVersionPane
-                    title="After"
-                    content={selectedVersion.newContent}
-                    workspaceId={workspaceId}
-                    tone="new"
-                  />
-                </div>
-              ) : (
-                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                  {t('selectVersionDiff')}
-                </div>
-              )}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <VersionHistoryDialog
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        versions={versions}
+        selectedVersionId={selectedVersionId}
+        onSelectVersion={setSelectedVersionId}
+        loading={historyLoading}
+        error={historyError}
+        workspaceId={workspaceId}
+        activeNodeTitle={activeNode?.title}
+      />
     </div>
-  );
-}
-
-function MarkdownVersionPane({
-  title,
-  content,
-  workspaceId,
-  tone,
-}: {
-  title: string;
-  content: string;
-  workspaceId: string;
-  tone: 'old' | 'new';
-}) {
-  return (
-    <section className="min-h-0 border-b border-border last:border-b-0">
-      <div className={cn(
-        "sticky top-0 z-10 flex items-center justify-between border-b border-border px-4 py-2 text-xs font-semibold",
-        tone === 'old' ? "bg-red-500/10 text-red-700 dark:text-red-300" : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-      )}>
-        <span>{title}</span>
-        <span className="font-mono text-[10px] opacity-70">{content.length} chars</span>
-      </div>
-      <div className="prose prose-sm dark:prose-invert max-w-none px-5 py-4 text-sm">
-        <Markdown content={content || '_Empty content_'} workspaceId={workspaceId} />
-      </div>
-    </section>
   );
 }

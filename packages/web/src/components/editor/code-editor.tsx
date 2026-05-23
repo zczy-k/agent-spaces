@@ -68,10 +68,10 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   const workspaceRoot = useWorkspaceStore((s) => s.workspaces.find((w) => w.id === workspaceId)?.boundDirs?.[0]);
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<typeof Monaco | null>(null);
-  const editorContainerRef = useRef<HTMLDivElement | null>(null);
   const navigationDisposablesRef = useRef<Monaco.IDisposable[]>([]);
   const actionRegistryDisposablesRef = useRef<Monaco.IDisposable[]>([]);
   const favoriteDecorationsRef = useRef<string[]>([]);
+  const wheelZoomCleanupRef = useRef<(() => void) | null>(null);
   const [isReadOnly, setIsReadOnly] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [wordWrap, setWordWrap] = useState(() => localStorage.getItem('editor-word-wrap') === 'true');
@@ -133,6 +133,30 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     });
   }, [activeFilePath, jumpToPosition, workspaceId, workspaceRoot]);
 
+  const attachWheelZoom = useCallback((editor: Monaco.editor.IStandaloneCodeEditor) => {
+    wheelZoomCleanupRef.current?.();
+
+    const node = editor.getDomNode();
+    if (!node) return;
+
+    const handler = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setFontSize((prev) => {
+        const next = prev + (e.deltaY < 0 ? 1 : -1);
+        const clamped = Math.min(Math.max(next, 8), 40);
+        localStorage.setItem('editor-font-size', String(clamped));
+        return clamped;
+      });
+    };
+
+    node.addEventListener('wheel', handler, { passive: false, capture: true });
+    wheelZoomCleanupRef.current = () => {
+      node.removeEventListener('wheel', handler, true);
+    };
+  }, []);
+
   const handleMount = useCallback((editor: Monaco.editor.IStandaloneCodeEditor, _monaco: typeof Monaco) => {
     editorRef.current = editor;
     monacoRef.current = _monaco;
@@ -142,6 +166,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     syncReadOnly(editor, isReadOnly);
     editor.updateOptions({ fontSize });
     registerNavigation(editor, _monaco);
+    attachWheelZoom(editor);
 
     for (const d of actionRegistryDisposablesRef.current) d.dispose();
     actionRegistryDisposablesRef.current = applyRegisteredActions(editor, { workspaceId, workspaceRoot });
@@ -154,7 +179,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
       keybindings: [2048 | 49], // KeyMod.CtrlCmd | KeyCode.KeyS
       run: () => handleSaveRef.current(),
     });
-  }, [isReadOnly, registerNavigation, syncReadOnly, workspaceId, workspaceRoot]);
+  }, [attachWheelZoom, isReadOnly, registerNavigation, syncReadOnly, workspaceId, workspaceRoot, fontSize]);
 
   useEffect(() => {
     if (!editorRef.current || !workspaceRoot) return;
@@ -172,6 +197,8 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
 
   useEffect(() => {
     return () => {
+      wheelZoomCleanupRef.current?.();
+      wheelZoomCleanupRef.current = null;
       for (const disposable of navigationDisposablesRef.current) {
         disposable.dispose();
       }
@@ -256,25 +283,6 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     editor.updateOptions({ fontSize });
   }, [fontSize]);
 
-  // Ctrl+scroll to zoom (capture phase to intercept before Monaco)
-  useEffect(() => {
-    const el = editorContainerRef.current;
-    if (!el) return;
-    const handler = (e: WheelEvent) => {
-      if (!e.ctrlKey && !e.metaKey) return;
-      e.preventDefault();
-      e.stopPropagation();
-      setFontSize((prev) => {
-        const next = prev + (e.deltaY < 0 ? 1 : -1);
-        const clamped = Math.min(Math.max(next, 8), 40);
-        localStorage.setItem('editor-font-size', String(clamped));
-        return clamped;
-      });
-    };
-    el.addEventListener('wheel', handler, { passive: false, capture: true });
-    return () => el.removeEventListener('wheel', handler, true as unknown as EventListenerOptions);
-  }, []);
-
   // Register model when active file changes
   useEffect(() => {
     if (!activeFile || !activeFilePath) return;
@@ -338,7 +346,6 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
       <EditorTabs workspaceId={workspaceId} />
       <EditorMenuBar editorRef={editorRef} workspaceId={workspaceId} isReadOnly={isReadOnly} onToggleReadOnly={() => setIsReadOnly(r => !r)} isFullscreen={isFullscreen} onToggleFullscreen={() => setIsFullscreen(f => !f)} wordWrap={wordWrap} onToggleWordWrap={() => { const v = !wordWrap; setWordWrap(v); localStorage.setItem('editor-word-wrap', String(v)); }} minimap={minimap} onToggleMinimap={() => { const v = !minimap; setMinimap(v); localStorage.setItem('editor-minimap', String(v)); }} fontSize={fontSize} onZoomIn={() => setFontSize(s => { const n = Math.min(s + 1, 40); localStorage.setItem('editor-font-size', String(n)); return n; })} onZoomOut={() => setFontSize(s => { const n = Math.max(s - 1, 8); localStorage.setItem('editor-font-size', String(n)); return n; })} onZoomReset={() => { setFontSize(13); localStorage.setItem('editor-font-size', '13'); }} />
       <div
-        ref={editorContainerRef}
         className="relative flex-1 min-h-0"
         {...mobile.containerProps}
       >

@@ -50,5 +50,11 @@
   "noMatch": "No matching items",
   "emptyState": "No pages yet. Click above to create one.",
   "recentEdits": "Recent Edits",
-  "trashBin": "Trash"
+  "trashBin": "Trash",
+  "versions": "versions",
+  "justNow": "just now",
+  "minutesAgo": "min ago",
+  "hoursAgo": "hr ago",
+  "daysAgo": "days ago",
+  "restore": "Restore"
 }
