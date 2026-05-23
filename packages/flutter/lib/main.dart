@@ -24,7 +24,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
   await NotificationService().initialize();
-  await localWebServer.start();
+  await localWebServer.start(); 
   final savedThemeMode = await AdaptiveTheme.getThemeMode();
   runApp(
     EasyLocalization(

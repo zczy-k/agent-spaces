@@ -19,6 +19,7 @@ interface DatabaseState {
   vectorIndexing: boolean;
   loading: boolean;
   loaded: boolean;
+  loadedWorkspaceId: string | null;
 }
 
 interface DatabaseActions {
@@ -117,8 +118,11 @@ export const useDatabaseStore = create<DatabaseState & DatabaseActions>((set, ge
   vectorIndexing: false,
   loading: false,
   loaded: false,
+  loadedWorkspaceId: null,
 
   load: async (workspaceId) => {
+    const { loadedWorkspaceId } = get();
+    if (loadedWorkspaceId === workspaceId && get().loaded) return;
     set({ loading: true });
     try {
       const databases = await api<DatabaseMeta[]>(workspaceId, '/databases');
@@ -137,6 +141,7 @@ export const useDatabaseStore = create<DatabaseState & DatabaseActions>((set, ge
         vectorStats,
         loading: false,
         loaded: true,
+        loadedWorkspaceId: workspaceId,
         activeId: activeDocs.length > 0 ? activeDocs[0].id : null,
         openTabs: [],
         recentIds: [],

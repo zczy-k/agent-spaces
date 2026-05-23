@@ -12,12 +12,12 @@ interface Props {
 }
 
 export default function DatabasePanel({ workspaceId }: Props) {
-  const { loading, loaded, load } = useDatabaseStore();
+  const { loading, loadedWorkspaceId, load } = useDatabaseStore();
   const [aiChatOpen, setAiChatOpen] = useState(false);
 
-  useEffect(() => { if (!loaded) load(workspaceId); }, [loaded, load, workspaceId]);
+  useEffect(() => { load(workspaceId); }, [load, workspaceId]);
 
-  if (loading && !loaded) {
+  if (loading && loadedWorkspaceId !== workspaceId) {
     return <div className="flex items-center justify-center h-full text-muted-foreground text-sm">加载中...</div>;
   }
 
