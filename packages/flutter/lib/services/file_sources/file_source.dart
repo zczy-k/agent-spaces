@@ -39,6 +39,8 @@ abstract class FileSource {
 
   Future<void> move(String path, String newPath) => rename(path, newPath);
 
+  Future<void> upload(File localFile, String path);
+
   Future<void> download(String path, File localFile);
 
   Future<void> delete(String path, {required bool isDirectory});

@@ -4,6 +4,7 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   awesome_notifications
+  desktop_drop
   file_selector_windows
   flutter_inappwebview_windows
   share_plus

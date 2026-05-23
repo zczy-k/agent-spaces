@@ -9,20 +9,23 @@ import 'webdav_url.dart';
 class WebDavFileSource extends FileSource {
   WebDavFileSource(super.config);
 
-  late final webdav.Client _client;
+  webdav.Client? _clientInstance;
 
   @override
   Future<void> connect() async {
-    _client = webdav.newClient(
+    final client = webdav.newClient(
       normalizeWebDavBaseUrl(config.baseUrl),
       user: config.username,
       password: config.password,
     );
-    await _withWebDavError(() => _client.ping());
+    await _withWebDavError(() => client.ping());
+    _clientInstance = client;
   }
 
   @override
-  Future<void> disconnect() async {}
+  Future<void> disconnect() async {
+    _clientInstance = null;
+  }
 
   @override
   Future<List<FileSourceEntry>> list(String path) async {
@@ -63,6 +66,10 @@ class WebDavFileSource extends FileSource {
       _withWebDavError(() => _client.copy(path, newPath, true));
 
   @override
+  Future<void> upload(io.File localFile, String path) =>
+      _withWebDavError(() => _client.writeFromFile(localFile.path, path));
+
+  @override
   Future<void> download(String path, io.File localFile) async {
     await localFile.parent.create(recursive: true);
     await _withWebDavError(() => _client.read2File(path, localFile.path));
@@ -86,6 +93,12 @@ class WebDavFileSource extends FileSource {
   int _compareEntries(FileSourceEntry a, FileSourceEntry b) {
     if (a.isDirectory != b.isDirectory) return a.isDirectory ? -1 : 1;
     return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+  }
+
+  webdav.Client get _client {
+    final client = _clientInstance;
+    if (client == null) throw StateError('WebDAV is not connected.');
+    return client;
   }
 
   Future<T> _withWebDavError<T>(Future<T> Function() action) async {

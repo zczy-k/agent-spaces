@@ -12,6 +12,7 @@
         "awesome_notifications",
         "cupertino_icons",
         "dartssh2",
+        "desktop_drop",
         "docking",
         "easy_localization",
         "file_selector",
@@ -133,6 +134,17 @@
         "stream_channel",
         "test_api",
         "vector_math"
+      ]
+    },
+    {
+      "name": "desktop_drop",
+      "version": "0.7.1",
+      "dependencies": [
+        "cross_file",
+        "flutter",
+        "flutter_web_plugins",
+        "universal_platform",
+        "web"
       ]
     },
     {
@@ -869,6 +881,26 @@
       ]
     },
     {
+      "name": "universal_platform",
+      "version": "1.1.0",
+      "dependencies": []
+    },
+    {
+      "name": "cross_file",
+      "version": "0.3.5+2",
+      "dependencies": [
+        "meta",
+        "web"
+      ]
+    },
+    {
+      "name": "flutter_web_plugins",
+      "version": "0.0.0",
+      "dependencies": [
+        "flutter"
+      ]
+    },
+    {
       "name": "file_selector_windows",
       "version": "0.9.3+5",
       "dependencies": [
@@ -1163,21 +1195,6 @@
         "path_provider",
         "plugin_platform_interface",
         "uuid"
-      ]
-    },
-    {
-      "name": "flutter_web_plugins",
-      "version": "0.0.0",
-      "dependencies": [
-        "flutter"
-      ]
-    },
-    {
-      "name": "cross_file",
-      "version": "0.3.5+2",
-      "dependencies": [
-        "meta",
-        "web"
       ]
     },
     {

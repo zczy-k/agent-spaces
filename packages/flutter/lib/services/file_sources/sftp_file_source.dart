@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:dartssh2/dartssh2.dart';
 
@@ -13,6 +14,8 @@ class SftpFileSource extends FileSource {
 
   @override
   Future<void> connect() async {
+    await disconnect();
+
     final ssh = SSHClient(
       await SSHSocket.connect(config.host, config.port == 0 ? 22 : config.port),
       username: config.username,
@@ -26,6 +29,8 @@ class SftpFileSource extends FileSource {
   Future<void> disconnect() async {
     _sftp?.close();
     _ssh?.close();
+    _sftp = null;
+    _ssh = null;
   }
 
   @override
@@ -80,6 +85,23 @@ class SftpFileSource extends FileSource {
       await writer.done;
     } finally {
       await source.close();
+      await target.close();
+    }
+  }
+
+  @override
+  Future<void> upload(File localFile, String path) async {
+    final target = await _client.open(
+      path,
+      mode:
+          SftpFileOpenMode.create |
+          SftpFileOpenMode.write |
+          SftpFileOpenMode.truncate,
+    );
+    try {
+      final writer = target.write(localFile.openRead().map(Uint8List.fromList));
+      await writer.done;
+    } finally {
       await target.close();
     }
   }

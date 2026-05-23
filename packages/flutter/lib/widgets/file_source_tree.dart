@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:animated_tree_view/animated_tree_view.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
 import '../models/file_source_config.dart';
@@ -47,13 +48,34 @@ class _FileNodeData {
   }
 }
 
+class _DownloadProgress {
+  final int completed;
+  final int total;
+  final String currentName;
+  final bool finished;
+  final bool failed;
+
+  const _DownloadProgress({
+    required this.completed,
+    required this.total,
+    required this.currentName,
+    this.finished = false,
+    this.failed = false,
+  });
+
+  double? get value => total == 0 ? null : completed / total;
+}
+
 class _FileSourceTreeState extends State<FileSourceTree> {
   late final FileSource _source;
   late TreeNode<_FileNodeData> _tree;
   TreeViewController<_FileNodeData, TreeNode<_FileNodeData>>? _controller;
   Set<String>? _pendingExpandedPaths;
+  final Set<String> _selectedPaths = <String>{};
+  _DownloadProgress? _downloadProgress;
   int _treeVersion = 0;
   bool _loading = true;
+  bool _multiSelect = false;
   String? _error;
 
   @override
@@ -80,6 +102,7 @@ class _FileSourceTreeState extends State<FileSourceTree> {
     setState(() {
       _loading = true;
       _error = null;
+      _selectedPaths.clear();
     });
     try {
       await _source.connect();
@@ -98,12 +121,17 @@ class _FileSourceTreeState extends State<FileSourceTree> {
         _buildToolbar(context),
         const Divider(height: 1),
         Expanded(child: _buildBody(context)),
+        if (_downloadProgress != null) ...[
+          const Divider(height: 1),
+          _buildDownloadProgress(context),
+        ],
       ],
     );
   }
 
   Widget _buildToolbar(BuildContext context) {
     final theme = Theme.of(context);
+    final selectedCount = _selectedPaths.length;
     return Container(
       color: theme.colorScheme.surface,
       height: 44,
@@ -120,20 +148,134 @@ class _FileSourceTreeState extends State<FileSourceTree> {
               style: theme.textTheme.titleSmall,
             ),
           ),
-          IconButton(
-            tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh, size: 18),
-            onPressed: _init,
+          if (_multiSelect) ...[
+            if (selectedCount > 0)
+              Padding(
+                padding: const EdgeInsets.only(right: 4),
+                child: Text(
+                  '$selectedCount',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ),
+            IconButton(
+              tooltip: '取消选择',
+              icon: const Icon(Icons.deselect_outlined, size: 18),
+              onPressed: selectedCount == 0 ? null : _clearSelection,
+            ),
+            IconButton(
+              tooltip: '反选',
+              icon: const Icon(Icons.select_all_outlined, size: 18),
+              onPressed: _invertSelection,
+            ),
+            IconButton(
+              tooltip: '下载',
+              icon: const Icon(Icons.download_outlined, size: 18),
+              onPressed: selectedCount == 0 ? null : _downloadSelected,
+            ),
+            IconButton(
+              tooltip: '删除',
+              icon: const Icon(Icons.delete_outline, size: 18),
+              onPressed: selectedCount == 0 ? null : _deleteSelected,
+            ),
+            IconButton(
+              tooltip: '移动',
+              icon: const Icon(Icons.drive_file_move_outline, size: 18),
+              onPressed: selectedCount == 0 ? null : _moveSelected,
+            ),
+            IconButton(
+              tooltip: '退出多选',
+              icon: const Icon(Icons.close, size: 18),
+              onPressed: _exitMultiSelect,
+            ),
+          ] else ...[
+            IconButton(
+              tooltip: 'Refresh',
+              icon: const Icon(Icons.refresh, size: 18),
+              onPressed: _init,
+            ),
+            IconButton(
+              tooltip: 'Upload File',
+              icon: const Icon(Icons.upload_file_outlined, size: 18),
+              onPressed: _uploadFile,
+            ),
+            IconButton(
+              tooltip: 'Multi Select',
+              icon: const Icon(Icons.checklist_outlined, size: 18),
+              onPressed: _enterMultiSelect,
+            ),
+            IconButton(
+              tooltip: 'New File',
+              icon: const Icon(Icons.note_add_outlined, size: 18),
+              onPressed: () => _create(isDirectory: false),
+            ),
+            IconButton(
+              tooltip: 'New Folder',
+              icon: const Icon(Icons.create_new_folder_outlined, size: 18),
+              onPressed: () => _create(isDirectory: true),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDownloadProgress(BuildContext context) {
+    final progress = _downloadProgress;
+    if (progress == null) return const SizedBox.shrink();
+
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final status = progress.failed
+        ? '下载失败'
+        : progress.finished
+        ? '下载完成'
+        : '下载中';
+    final icon = progress.failed
+        ? Icons.error_outline
+        : progress.finished
+        ? Icons.check_circle_outline
+        : Icons.downloading_outlined;
+    final color = progress.failed ? colorScheme.error : colorScheme.primary;
+
+    return Container(
+      color: colorScheme.surface,
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '$status ${progress.completed}/${progress.total}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelMedium?.copyWith(color: color),
+                ),
+              ),
+              Text(
+                '${((progress.value ?? 0) * 100).round()}%',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
           ),
-          IconButton(
-            tooltip: 'New File',
-            icon: const Icon(Icons.note_add_outlined, size: 18),
-            onPressed: () => _create(isDirectory: false),
-          ),
-          IconButton(
-            tooltip: 'New Folder',
-            icon: const Icon(Icons.create_new_folder_outlined, size: 18),
-            onPressed: () => _create(isDirectory: true),
+          const SizedBox(height: 6),
+          LinearProgressIndicator(value: progress.value),
+          const SizedBox(height: 4),
+          Text(
+            progress.currentName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),
@@ -182,39 +324,61 @@ class _FileSourceTreeState extends State<FileSourceTree> {
           _controller = controller;
           _restorePendingExpansion();
         },
-        onItemTap: _handleTap,
         builder: (context, node) {
           final data = node.data;
           if (data == null) return const SizedBox.shrink();
           final theme = Theme.of(context);
-          return GestureDetector(
-            onLongPressStart: (details) =>
-                _showNodeMenu(node, details.globalPosition),
-            child: ListTile(
-              dense: true,
-              minLeadingWidth: 18,
-              leading: Icon(
-                data.isDirectory
-                    ? Icons.folder_outlined
-                    : Icons.insert_drive_file_outlined,
-                size: 18,
-                color: data.isDirectory
-                    ? theme.colorScheme.primary
-                    : theme.colorScheme.onSurfaceVariant,
-              ),
-              title: Text(
-                data.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: theme.colorScheme.onSurface),
-              ),
-              subtitle: Text(
-                _subtitle(data),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: theme.colorScheme.onSurfaceVariant,
+          final selected = _selectedPaths.contains(data.path);
+          return Builder(
+            builder: (tileContext) => GestureDetector(
+              onLongPressStart: (details) {
+                if (_multiSelect) {
+                  _toggleSelection(data);
+                  return;
+                }
+                _showNodeMenu(node, details.globalPosition);
+              },
+              child: ListTile(
+                dense: true,
+                selected: selected,
+                minLeadingWidth: 18,
+                onTap: () => _handleTap(tileContext, node),
+                leading: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_multiSelect && !node.isRoot) ...[
+                      Checkbox(
+                        value: selected,
+                        visualDensity: VisualDensity.compact,
+                        onChanged: (_) => _toggleSelection(data),
+                      ),
+                      const SizedBox(width: 4),
+                    ],
+                    Icon(
+                      data.isDirectory
+                          ? Icons.folder_outlined
+                          : Icons.insert_drive_file_outlined,
+                      size: 18,
+                      color: data.isDirectory
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ],
+                ),
+                title: Text(
+                  data.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: theme.colorScheme.onSurface),
+                ),
+                subtitle: Text(
+                  _subtitle(data),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
             ),
@@ -224,23 +388,53 @@ class _FileSourceTreeState extends State<FileSourceTree> {
     );
   }
 
-  Future<void> _handleTap(TreeNode<_FileNodeData> node) async {
+  Future<void> _handleTap(
+    BuildContext tileContext,
+    TreeNode<_FileNodeData> node,
+  ) async {
     final data = node.data;
-    if (data == null || !data.isDirectory) return;
+    if (data == null) return;
+    if (_multiSelect) {
+      _toggleSelection(data);
+      return;
+    }
+    if (!node.isRoot) {
+      final menuPosition = _menuPositionFor(tileContext);
+      if (data.isDirectory && !data.loaded) {
+        final loaded = await _loadAndExpandDirectory(node);
+        if (!loaded) return;
+      }
+      await _showNodeMenu(node, menuPosition);
+      return;
+    }
+    if (!data.isDirectory) return;
+    await _loadAndExpandDirectory(node);
+  }
+
+  Future<bool> _loadAndExpandDirectory(TreeNode<_FileNodeData> node) async {
+    final data = node.data;
+    if (data == null || !data.isDirectory) return false;
     if (!data.loaded) {
       try {
         await _loadChildren(node, rebuildTree: false);
       } catch (error) {
-        if (!mounted) return;
+        if (!mounted) return false;
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(error.toString())));
-        return;
+        return false;
       }
       if (node.childrenAsList.isNotEmpty) {
         _controller?.expandNode(node);
       }
     }
+    return true;
+  }
+
+  Offset _menuPositionFor(BuildContext tileContext) {
+    final box = tileContext.findRenderObject() as RenderBox?;
+    if (box == null) return Offset.zero;
+    return box.localToGlobal(Offset(40, box.size.height / 2));
   }
 
   Future<void> _loadChildren(
@@ -267,6 +461,135 @@ class _FileSourceTreeState extends State<FileSourceTree> {
         modifiedAt: entry.modifiedAt,
       ),
     );
+  }
+
+  Future<void> _uploadFile() async {
+    final localFile = await openFile();
+    if (localFile == null) return;
+    final root = _tree.data;
+    if (root == null) return;
+    final targetPath = _join(root.path, localBasename(localFile.path));
+    await _runAction(() async {
+      await _source.upload(File(localFile.path), targetPath);
+      await _reloadPreservingExpansion(_tree);
+    });
+  }
+
+  void _enterMultiSelect() {
+    setState(() => _multiSelect = true);
+  }
+
+  void _exitMultiSelect() {
+    setState(() {
+      _multiSelect = false;
+      _selectedPaths.clear();
+    });
+  }
+
+  void _clearSelection() {
+    setState(_selectedPaths.clear);
+  }
+
+  void _invertSelection() {
+    final selectablePaths = _selectablePaths();
+    setState(() {
+      final nextSelection = selectablePaths.difference(_selectedPaths);
+      _selectedPaths
+        ..clear()
+        ..addAll(nextSelection);
+    });
+  }
+
+  void _toggleSelection(_FileNodeData data) {
+    if (data.path == _tree.data?.path) return;
+    setState(() {
+      if (!_selectedPaths.add(data.path)) {
+        _selectedPaths.remove(data.path);
+      }
+    });
+  }
+
+  Set<String> _selectablePaths() {
+    final paths = <String>{};
+    _visitNodes(_tree, (node) {
+      final data = node.data;
+      if (data != null && !node.isRoot) paths.add(data.path);
+    });
+    return paths;
+  }
+
+  List<(TreeNode<_FileNodeData>, _FileNodeData)> _selectedEntries() {
+    final entries = <(TreeNode<_FileNodeData>, _FileNodeData)>[];
+    _visitNodes(_tree, (node) {
+      final data = node.data;
+      if (data != null && !node.isRoot && _selectedPaths.contains(data.path)) {
+        entries.add((node, data));
+      }
+    });
+    return entries;
+  }
+
+  Future<void> _downloadSelected() async {
+    final entries = _selectedEntries();
+    final files = entries.where((entry) => !entry.$2.isDirectory).toList();
+    if (files.isEmpty) {
+      _showMessage('No files selected to download.');
+      return;
+    }
+    final targetDirectory = await getDirectoryPath();
+    if (targetDirectory == null || targetDirectory.trim().isEmpty) return;
+    await _runAction(() async {
+      await _downloadFiles(
+        files
+            .map(
+              (entry) => (
+                data: entry.$2,
+                target: File(joinLocalPath(targetDirectory, entry.$2.name)),
+              ),
+            )
+            .toList(),
+      );
+    });
+    final skipped = entries.length - files.length;
+    if (skipped > 0) {
+      _showMessage(
+        'Downloaded ${files.length} file(s), skipped $skipped folder(s).',
+      );
+    }
+  }
+
+  Future<void> _deleteSelected() async {
+    final entries = _selectedEntries()
+      ..sort((a, b) => b.$2.path.length.compareTo(a.$2.path.length));
+    if (entries.isEmpty) return;
+    final confirmed = await _confirm(
+      'Delete ${entries.length} selected item(s)?',
+    );
+    if (!confirmed) return;
+    await _runAction(() async {
+      for (final entry in entries) {
+        final data = entry.$2;
+        await _source.delete(data.path, isDirectory: data.isDirectory);
+      }
+      _selectedPaths.clear();
+      await _reloadPreservingExpansion(_tree);
+    });
+  }
+
+  Future<void> _moveSelected() async {
+    final entries = _selectedEntries()
+      ..sort((a, b) => b.$2.path.length.compareTo(a.$2.path.length));
+    if (entries.isEmpty) return;
+    final targetDirectory = await _prompt('Move to folder path');
+    if (targetDirectory == null || targetDirectory.trim().isEmpty) return;
+    await _runAction(() async {
+      for (final entry in entries) {
+        final data = entry.$2;
+        await _source.move(data.path, _join(targetDirectory.trim(), data.name));
+      }
+      _selectedPaths.clear();
+      await _reloadPreservingExpansion(_tree);
+    });
   }
 
   Future<void> _create({required bool isDirectory}) async {
@@ -349,7 +672,7 @@ class _FileSourceTreeState extends State<FileSourceTree> {
         );
         if (target == null || target.trim().isEmpty) return;
         await _runAction(
-          () => _source.download(data.path, File(target.trim())),
+          () => _downloadFiles([(data: data, target: File(target.trim()))]),
         );
       case 'delete':
         final confirmed = await _confirm('Delete ${data.name}?');
@@ -438,15 +761,84 @@ class _FileSourceTreeState extends State<FileSourceTree> {
     }
   }
 
+  Future<void> _downloadFiles(
+    List<({File target, _FileNodeData data})> downloads,
+  ) async {
+    if (downloads.isEmpty) return;
+
+    var completed = 0;
+    _setDownloadProgress(
+      completed: completed,
+      total: downloads.length,
+      currentName: downloads.first.data.name,
+    );
+
+    try {
+      for (final download in downloads) {
+        _setDownloadProgress(
+          completed: completed,
+          total: downloads.length,
+          currentName: download.data.name,
+        );
+        await _source.download(download.data.path, download.target);
+        completed++;
+        _setDownloadProgress(
+          completed: completed,
+          total: downloads.length,
+          currentName: download.data.name,
+        );
+      }
+      _setDownloadProgress(
+        completed: completed,
+        total: downloads.length,
+        currentName: downloads.last.data.name,
+        finished: true,
+      );
+    } catch (_) {
+      _setDownloadProgress(
+        completed: completed,
+        total: downloads.length,
+        currentName:
+            downloads[completed.clamp(0, downloads.length - 1)].data.name,
+        failed: true,
+      );
+      rethrow;
+    }
+  }
+
+  void _setDownloadProgress({
+    required int completed,
+    required int total,
+    required String currentName,
+    bool finished = false,
+    bool failed = false,
+  }) {
+    if (!mounted) return;
+    setState(() {
+      _downloadProgress = _DownloadProgress(
+        completed: completed,
+        total: total,
+        currentName: currentName,
+        finished: finished,
+        failed: failed,
+      );
+    });
+  }
+
   Future<void> _runAction(Future<void> Function() action) async {
     try {
       await action();
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
+      _showMessage(error.toString());
     }
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<String?> _prompt(String title, {String initialValue = ''}) async {

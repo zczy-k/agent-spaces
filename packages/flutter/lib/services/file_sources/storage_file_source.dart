@@ -62,6 +62,12 @@ class StorageFileSource extends FileSource {
   }
 
   @override
+  Future<void> upload(File localFile, String path) async {
+    await File(path).parent.create(recursive: true);
+    await localFile.copy(path);
+  }
+
+  @override
   Future<void> download(String path, File localFile) async {
     await localFile.parent.create(recursive: true);
     await File(path).copy(localFile.path);

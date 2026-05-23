@@ -21,6 +21,7 @@ let package = Package(
         .package(name: "share_plus", path: "../.packages/share_plus-10.1.4"),
         .package(name: "path_provider_foundation", path: "../.packages/path_provider_foundation-2.5.1"),
         .package(name: "file_selector_macos", path: "../.packages/file_selector_macos-0.9.5"),
+        .package(name: "desktop_drop", path: "../.packages/desktop_drop-0.7.1"),
         .package(name: "FlutterFramework", path: "../.packages/FlutterFramework")
     ],
     targets: [
@@ -33,6 +34,7 @@ let package = Package(
                 .product(name: "share-plus", package: "share_plus"),
                 .product(name: "path-provider-foundation", package: "path_provider_foundation"),
                 .product(name: "file-selector-macos", package: "file_selector_macos"),
+                .product(name: "desktop-drop", package: "desktop_drop"),
                 .product(name: "FlutterFramework", package: "FlutterFramework")
             ]
         )

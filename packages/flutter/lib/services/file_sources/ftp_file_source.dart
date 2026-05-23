@@ -9,23 +9,29 @@ import 'path_utils.dart';
 class FtpFileSource extends FileSource {
   FtpFileSource(super.config);
 
-  late final FTPConnect _client;
+  FTPConnect? _clientInstance;
 
   @override
   Future<void> connect() async {
-    _client = FTPConnect(
+    await disconnect();
+
+    final client = FTPConnect(
       config.host,
       port: config.port == 0 ? 21 : config.port,
       user: config.username,
       pass: config.password,
     );
-    _client.listCommand = ListCommand.list;
-    await _client.connect();
+    client.listCommand = ListCommand.list;
+    await client.connect();
+    _clientInstance = client;
   }
 
   @override
   Future<void> disconnect() async {
-    await _client.disconnect().timeout(
+    final client = _clientInstance;
+    _clientInstance = null;
+    if (client == null) return;
+    await client.disconnect().timeout(
       const Duration(seconds: 2),
       onTimeout: () => false,
     );
@@ -94,6 +100,17 @@ class FtpFileSource extends FileSource {
   }
 
   @override
+  Future<void> upload(File localFile, String path) async {
+    final uploaded = await _inDirectory(
+      dirnameOf(path),
+      () => _client.uploadFile(localFile, sRemoteName: basenameOf(path)),
+    );
+    if (!uploaded) {
+      throw FTPConnectException('Could not upload ${basenameOf(path)}');
+    }
+  }
+
+  @override
   Future<void> download(String path, File localFile) async {
     await localFile.parent.create(recursive: true);
     final downloaded = await _inDirectory(
@@ -146,5 +163,11 @@ class FtpFileSource extends FileSource {
   int _compareEntries(FileSourceEntry a, FileSourceEntry b) {
     if (a.isDirectory != b.isDirectory) return a.isDirectory ? -1 : 1;
     return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+  }
+
+  FTPConnect get _client {
+    final client = _clientInstance;
+    if (client == null) throw StateError('FTP is not connected.');
+    return client;
   }
 }
