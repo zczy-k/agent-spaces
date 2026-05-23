@@ -1,4 +1,6 @@
 import type { WebSocket } from 'ws';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import type { Channel, Message, MessageAgentOutputItem } from '@agent-spaces/shared';
 import { broadcastToWorkspace } from './connection-manager.js';
 import { createMessage, updateMessage, listMessages } from '../services/message.js';
@@ -279,6 +281,7 @@ export async function runMentionedAgent(
   let activeRun: ActiveChannelRun | undefined;
   const liveReasoning: Array<{ text: string; status?: 'streaming' | 'completed' }> = [];
   let agentPrompt = '';
+  let runtimeUserPrompt = prompt;
   let runtimeSessionId = options.resumeSessionId ?? existingMessage?.metadata?.runtimeSessionId;
   const persistentContext = buildPersistentAgentContextDetails({
     workspaceId,
@@ -311,9 +314,10 @@ export async function runMentionedAgent(
       excludeReplyIds: options.excludeHistoryReplyIds,
     });
     const isRuntimeSessionResume = Boolean(options.resumeSessionId && (preset.runtimeKind === 'claude-code' || preset.runtimeKind === 'codex'));
+    runtimeUserPrompt = expandAgentSlashCommandPrompt(prompt, configDir);
     agentPrompt = isRuntimeSessionResume
-      ? prompt
-      : buildAgentPrompt(workspaceId, preset.systemPrompt, prompt, history, runtimePromptConfig);
+      ? runtimeUserPrompt
+      : buildAgentPrompt(workspaceId, preset.systemPrompt, runtimeUserPrompt, history, runtimePromptConfig);
     const liveOutput: string[] = [...(options.seedOutput ?? [])];
     const liveOutputItems: MessageAgentOutputItem[] = liveOutput.map((line, index) => buildOutputItem({
       id: `seed-${index}`,
@@ -338,7 +342,7 @@ export async function runMentionedAgent(
         runtime: preset.runtimeKind,
         model: preset.modelId,
         systemPrompt: preset.systemPrompt,
-        userPrompt: prompt,
+        userPrompt: runtimeUserPrompt,
         fullPrompt: agentPrompt,
         persistentContext,
         mcpServers: runtimePromptConfig.mcpServers,
@@ -507,7 +511,7 @@ export async function runMentionedAgent(
         runtime: preset.runtimeKind,
         model: preset.modelId,
         systemPrompt: preset.systemPrompt,
-        userPrompt: prompt,
+        userPrompt: runtimeUserPrompt,
         fullPrompt: agentPrompt,
         persistentContext,
         mcpServers: runtimePromptConfig.mcpServers,
@@ -580,7 +584,7 @@ export async function runMentionedAgent(
       model: preset.modelId,
       usage: result.usage,
       systemPrompt: preset.systemPrompt,
-      userPrompt: prompt,
+      userPrompt: runtimeUserPrompt,
       fullPrompt: agentPrompt,
       persistentContext,
       mcpServers: runtimePromptConfig.mcpServers,
@@ -633,7 +637,7 @@ export async function runMentionedAgent(
       runtime: preset.runtimeKind,
       model: preset.modelId,
       systemPrompt: preset.systemPrompt,
-      userPrompt: prompt,
+      userPrompt: runtimeUserPrompt,
       fullPrompt: agentPrompt,
       persistentContext,
       mcpServers: runtimePromptConfig.mcpServers,
@@ -671,6 +675,80 @@ export async function runMentionedAgent(
 }
 
 // --- Internal helpers ---
+
+function expandAgentSlashCommandPrompt(prompt: string, agentDir: string | undefined): string {
+  if (!agentDir) return prompt;
+
+  const commandMatch = matchLeadingSlashCommand(prompt);
+  if (!commandMatch) return prompt;
+
+  const { commandName, args, rest } = commandMatch;
+  if (!commandName || commandName.includes('..')) return prompt;
+
+  const commandFile = findAgentCommandFile(agentDir, commandName);
+  if (!commandFile) return prompt;
+
+  const commandContent = readFileSync(commandFile, 'utf-8').replace(/\$ARGUMENTS/g, args);
+  return [
+    `User selected Agent slash command: /${commandName}`,
+    args ? `Command arguments: ${args}` : 'Command arguments: none',
+    '',
+    'Command instructions:',
+    commandContent.trim(),
+    rest ? ['', 'Additional user message:', rest].join('\n') : '',
+  ].filter(Boolean).join('\n');
+}
+
+function matchLeadingSlashCommand(prompt: string): { commandName: string; args: string; rest: string } | null {
+  const slashIndex = prompt.indexOf('/');
+  if (slashIndex < 0) return null;
+
+  const prefix = prompt.slice(0, slashIndex).trim();
+  if (prefix && !prefix.startsWith('@')) return null;
+
+  const match = prompt.slice(slashIndex).match(/^\/([A-Za-z0-9._/-]+)(?:\s+([^\r\n]*))?([\s\S]*)$/);
+  if (!match) return null;
+
+  return {
+    commandName: match[1]?.trim() ?? '',
+    args: match[2]?.trim() ?? '',
+    rest: match[3]?.trim() ?? '',
+  };
+}
+
+function findAgentCommandFile(agentDir: string, commandName: string): string | undefined {
+  const commandsDir = join(agentDir, 'commands');
+  if (!existsSync(commandsDir) || !statSync(commandsDir).isDirectory()) return undefined;
+
+  const directParts = commandName.split('/').filter(Boolean);
+  if (directParts.length > 0 && directParts.every(isSafeCommandPathPart)) {
+    const directPath = join(commandsDir, ...directParts.slice(0, -1), `${directParts.at(-1)}.md`);
+    if (existsSync(directPath) && statSync(directPath).isFile()) return directPath;
+  }
+
+  const targetName = commandName.split('/').filter(Boolean).at(-1);
+  if (!targetName || !isSafeCommandPathPart(targetName)) return undefined;
+  return findCommandFileByName(commandsDir, targetName);
+}
+
+function findCommandFileByName(dir: string, commandName: string): string | undefined {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const fullPath = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      const nested = findCommandFileByName(fullPath, commandName);
+      if (nested) return nested;
+      continue;
+    }
+    if (entry.isFile() && entry.name.toLowerCase() === `${commandName}.md`.toLowerCase()) {
+      return fullPath;
+    }
+  }
+  return undefined;
+}
+
+function isSafeCommandPathPart(part: string): boolean {
+  return /^[A-Za-z0-9._-]+$/.test(part) && part !== '.' && part !== '..';
+}
 
 function getRuntimeBaseURL(provider?: string, apiBase?: string): string | undefined {
   if (

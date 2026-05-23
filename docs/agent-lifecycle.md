@@ -14,6 +14,10 @@ Agent 数据分为全局应用数据和工作空间数据两部分。
     {agentId}/
       agent.json
       mcp.json
+      agents/
+        {subAgentName}.md
+      commands/
+        {commandName}.md
       skills/
         {skillName}/
           SKILL.md
@@ -32,6 +36,15 @@ Agent 数据分为全局应用数据和工作空间数据两部分。
     {agentId}/
       agent.json
       mcp.json
+      agents/
+        {subAgentName}.md
+      commands/
+        {commandName}.md
+      .claude/
+        agents/
+          {subAgentName}.md
+        commands/
+          {commandName}.md
       skills/
         {skillName}/
           SKILL.md
@@ -60,6 +73,13 @@ Agent 数据分为全局应用数据和工作空间数据两部分。
 
 全局技能采用文件夹结构：每个技能是一个以技能名命名的文件夹，内含 `SKILL.md` 作为主文件。绑定技能到 Agent 时，整个技能文件夹会被复制到 Agent 的 `skills/` 目录下，而非只复制单个 `.md` 文件。
 
+Claude Code 内置资源采用 Claude 原生目录结构：
+
+- `commands/` 存储 Agent slash command Markdown 文件，例如 `commands/init-project.md`。
+- `agents/` 存储 Claude 子 Agent Markdown 文件，例如 `agents/init-architect.md`。
+
+这些目录属于 Agent 模板本身，创建工作空间副本和运行时配置目录时会整体复制。
+
 ## 创建 Agent Preset
 
 UI 入口：
@@ -75,6 +95,8 @@ UI 入口：
 3. 服务端在 `~/.agent-spaces-data/agent-templates/{agentId}` 下写入全局模板：
    - `agent.json`
    - `mcp.json`
+   - `agents/`（Claude 子 Agent 目录）
+   - `commands/`（Claude slash command 目录）
    - `skills/{skillName}/SKILL.md`（从全局技能文件夹复制）
 4. 如果 `workingDir` 为空，服务端同时将模板复制到工作空间作为配置存储：
    - `{workspace.agentspaceDir}/agents/{agentId}`
@@ -101,6 +123,32 @@ UI 入口：
 5. `workspace.agents` 中的工作空间 Preset 被更新。
 
 当前行为：更新现有 Preset 会刷新全局模板。除非更新路径显式写入工作空间副本，否则不会自动将完整模板文件夹重新复制到每个工作空间。
+
+## 同步全局 Agent 模板到所有工作空间
+
+UI 入口：
+
+- `packages/web/src/components/sidebar/agent-dialog.tsx`
+- Agent 预设列表头部的“同步模板”按钮
+
+API：
+
+- `POST /api/agents/presets/sync-workspaces`
+
+服务端：`packages/server/src/services/agent.ts` 中的 `syncTemplatesToAllWorkspaces()`
+
+同步行为：
+
+1. 服务端读取磁盘上真实存在的 `~/.agent-spaces-data/agent-templates/{agentId}` 模板目录。
+2. 遍历所有已登记工作空间。
+3. 对每个工作空间，将每个全局模板完整复制到：
+   - `{workspace.agentspaceDir}/agents/{agentId}`
+4. 工作空间副本中的 `agent.json` 会被重写，使 `workingDir` 指向该工作空间本地 Agent 文件夹。
+5. 模板内的 `agents/`、`commands/`、`skills/`、`mcp.json` 等目录和文件会随模板一起同步。
+6. 模板内的技能文件夹也会同步到工作空间级：
+   - `{workspace.agentspaceDir}/skills`
+
+该入口用于在全局模板更新后，将 `.agent-spaces-data/agent-templates` 的最新内容刷新到所有工作空间的 `.agentspace/agents` 副本中。
 
 ## 将全局 Agent 模板添加到工作空间
 
@@ -142,6 +190,39 @@ API：
 3. 如果找不到工作空间，运行时回退到 `process.cwd()`。
 
 这样默认将编码 Agent 保持在实际的项目目录中。Agent 配置、MCP 文件和技能仍然存储在 `.agentspace` 下。
+
+运行时配置目录：
+
+1. 运行前服务端通过 `getAgentConfigDir()` 确保工作空间 Agent 副本存在。
+2. 如果工作空间副本缺少 `agent.json`、`mcp.json`，或全局模板存在 `agents/`、`commands/` 但工作空间副本缺失/不完整，会重新复制模板。
+3. Claude Code 运行时使用：
+   - `{workspace.agentspaceDir}/agents/{agentId}/.claude`
+4. 创建 `.claude` 配置目录时，服务端会从工作空间 Agent 副本复制：
+   - `skills/` -> `.claude/skills/`
+   - `commands/` -> `.claude/commands/`
+   - `agents/` -> `.claude/agents/`
+
+因此 Claude Code 运行时能读取当前 Agent 的技能、slash command 和子 Agent 文件。
+
+## Agent Slash Command 运行方式
+
+UI 入口：
+
+- `packages/web/src/components/composer/create-slash-extension.ts`
+- 聊天输入框输入 `/` 时会搜索当前 Agent 的 `commands/` 目录，并展示命令建议。
+
+后端行为：
+
+1. 聊天消息发送后，`packages/server/src/ws/handler.ts` 会调用 `runMentionedAgent()`。
+2. `runMentionedAgent()` 在构建最终 prompt 前识别用户消息开头的 slash command，例如：
+   - `/init-project todo`
+   - `@Agent /init-project todo`
+3. 服务端从当前 Agent 工作空间副本读取：
+   - `{workspace.agentspaceDir}/agents/{agentId}/commands/{commandName}.md`
+4. 如果命令存在，服务端会展开 Markdown 内容，并将 `$ARGUMENTS` 替换为命令后的参数。
+5. 展开后的内容作为 `Command instructions` 注入到 Agent prompt 中，再交给 Claude Code runtime 执行。
+
+注意：Claude SDK 的 `query({ prompt })` 不会自动把 prompt 字符串中的 `/command` 当作交互式 slash command 执行。因此 Agent Spaces 在服务端显式展开命令文件，而不是依赖 SDK 解析用户输入中的 `/command`。
 
 ## MCP 运行时工具选择
 
