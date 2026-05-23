@@ -75,7 +75,8 @@ export function IssueDetailComments({
   }, [workspaceId, channelId, addMessage, updateMessage, deleteMessage]);
 
   const messageById = useMemo(() => {
-    return new Map((messages[channelId] ?? []).map((message) => [message.id, message]));
+    const channelMessages = messages[channelId];
+    return new Map((Array.isArray(channelMessages) ? channelMessages : []).map((message) => [message.id, message]));
   }, [messages, channelId]);
 
   const handleReplySubmit = useCallback((commentId: string, content: string) => {

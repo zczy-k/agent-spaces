@@ -121,7 +121,7 @@ export function getTabBadge(
 
   if (comp === 'channel-list') {
     const hasRunning = Object.values(channelMessages).some((msgs) =>
-      msgs.some((m) => m.status === 'streaming' || m.status === 'pending')
+      Array.isArray(msgs) && msgs.some((m) => m.status === 'streaming' || m.status === 'pending')
     );
     if (hasRunning) {
       return { trailing: null, badge: runningBadge };

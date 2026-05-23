@@ -112,7 +112,12 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
 
   loadMessages: async (workspaceId, channelId) => {
     const res = await fetch(`/api/workspaces/${workspaceId}/channels/${channelId}/messages`);
-    const msgs: Message[] = await res.json();
+    if (!res.ok) {
+      set((s) => ({ messages: { ...s.messages, [channelId]: [] } }));
+      return;
+    }
+    const data: unknown = await res.json();
+    const msgs: Message[] = Array.isArray(data) ? data : [];
     set((s) => ({ messages: { ...s.messages, [channelId]: msgs } }));
   },
 
@@ -131,9 +136,9 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
     set((s) => ({
       messages: {
         ...s.messages,
-        [channelId]: (s.messages[channelId] || []).some((item) => item.id === message.id)
-          ? s.messages[channelId] || []
-          : [...(s.messages[channelId] || []), message],
+        [channelId]: ensureMessageArray(s.messages[channelId]).some((item) => item.id === message.id)
+          ? ensureMessageArray(s.messages[channelId])
+          : [...ensureMessageArray(s.messages[channelId]), message],
       },
     }));
   },
@@ -142,9 +147,9 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
     set((s) => ({
       messages: {
         ...s.messages,
-        [channelId]: (s.messages[channelId] || []).some((item) => item.id === message.id)
-          ? (s.messages[channelId] || []).map((item) => item.id === message.id ? message : item)
-          : [...(s.messages[channelId] || []), message],
+        [channelId]: ensureMessageArray(s.messages[channelId]).some((item) => item.id === message.id)
+          ? ensureMessageArray(s.messages[channelId]).map((item) => item.id === message.id ? message : item)
+          : [...ensureMessageArray(s.messages[channelId]), message],
       },
     }));
   },
@@ -153,7 +158,7 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
     set((s) => ({
       messages: {
         ...s.messages,
-        [channelId]: (s.messages[channelId] || []).map((message) =>
+        [channelId]: ensureMessageArray(s.messages[channelId]).map((message) =>
           message.status === 'pending' || message.status === 'streaming' || message.status === 'waiting_for_user'
             ? { ...message, status: 'error', content: message.content || 'Stopped by user' }
             : message,
@@ -166,7 +171,7 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
     set((s) => ({
       messages: {
         ...s.messages,
-        [channelId]: (s.messages[channelId] || []).filter((item) => item.id !== messageId),
+        [channelId]: ensureMessageArray(s.messages[channelId]).filter((item) => item.id !== messageId),
       },
     }));
   },
@@ -251,3 +256,7 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
     get().setActiveChannel(channelId);
   },
 }));
+
+function ensureMessageArray(value: unknown): Message[] {
+  return Array.isArray(value) ? value : [];
+}
