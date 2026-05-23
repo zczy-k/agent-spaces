@@ -23,9 +23,13 @@ interface EditorMenuBarProps {
   onToggleWordWrap: () => void;
   minimap: boolean;
   onToggleMinimap: () => void;
+  fontSize: number;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onZoomReset: () => void;
 }
 
-export function EditorMenuBar({ editorRef, workspaceId, isReadOnly, onToggleReadOnly, isFullscreen, onToggleFullscreen, wordWrap, onToggleWordWrap, minimap, onToggleMinimap }: EditorMenuBarProps) {
+export function EditorMenuBar({ editorRef, workspaceId, isReadOnly, onToggleReadOnly, isFullscreen, onToggleFullscreen, wordWrap, onToggleWordWrap, minimap, onToggleMinimap, fontSize, onZoomIn, onZoomOut, onZoomReset }: EditorMenuBarProps) {
   const { saveFile, activeFilePath } = useEditorStore();
   const t = useTranslations('editor');
 
@@ -108,6 +112,18 @@ export function EditorMenuBar({ editorRef, workspaceId, isReadOnly, onToggleRead
           </DropdownMenuItem>
           <DropdownMenuItem onClick={onToggleMinimap}>
             {minimap ? t('disableMinimap') : t('enableMinimap')}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={onZoomIn}>
+            {t('zoomIn')}
+            <DropdownMenuShortcut>⌘+</DropdownMenuShortcut>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onZoomOut}>
+            {t('zoomOut')}
+            <DropdownMenuShortcut>⌘-</DropdownMenuShortcut>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onZoomReset} disabled={fontSize === 13}>
+            {t('zoomReset')} ({fontSize}px)
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

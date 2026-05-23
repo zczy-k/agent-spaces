@@ -1,6 +1,8 @@
+import 'file_source_config.dart';
+
 enum DeviceType { phone, tablet, desktop }
 
-enum BrowserTabType { webview, terminal }
+enum BrowserTabType { webview, terminal, fileSource }
 
 class DeviceProfile {
   final DeviceType type;
@@ -61,6 +63,7 @@ class BrowserTab {
   final String? faviconUrl;
   final DeviceProfile device;
   final BrowserTabType type;
+  final FileSourceConfig? fileSourceConfig;
   final DateTime createdAt;
 
   BrowserTab({
@@ -70,6 +73,7 @@ class BrowserTab {
     this.faviconUrl,
     this.device = DeviceProfile.desktop,
     this.type = BrowserTabType.webview,
+    this.fileSourceConfig,
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
@@ -84,6 +88,9 @@ class BrowserTab {
       DeviceType.values[json['deviceType'] as int],
     ),
     type: BrowserTabType.values[json['type'] as int? ?? 0],
+    fileSourceConfig: FileSourceConfig.maybeFromJson(
+      json['fileSourceConfig'] as Map<String, dynamic>?,
+    ),
     createdAt: DateTime.parse(json['createdAt'] as String),
   );
 
@@ -93,6 +100,7 @@ class BrowserTab {
     String? faviconUrl,
     DeviceProfile? device,
     BrowserTabType? type,
+    FileSourceConfig? fileSourceConfig,
   }) {
     return BrowserTab(
       id: id,
@@ -101,6 +109,7 @@ class BrowserTab {
       faviconUrl: faviconUrl ?? this.faviconUrl,
       device: device ?? this.device,
       type: type ?? this.type,
+      fileSourceConfig: fileSourceConfig ?? this.fileSourceConfig,
       createdAt: createdAt,
     );
   }

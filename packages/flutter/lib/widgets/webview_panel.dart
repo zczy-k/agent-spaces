@@ -112,6 +112,7 @@ class _WebViewPanelState extends ConsumerState<WebViewPanel> {
           activeTabId: state.activeTabId,
           onNewTab: () => showNewTabDialog(context, notifier),
           onNewTerminal: notifier.addTerminalTab,
+          onNewFileSource: notifier.addFileSourceTab,
         ),
       );
     }

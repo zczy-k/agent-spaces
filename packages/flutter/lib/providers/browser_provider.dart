@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../models/browser_tab.dart';
+import '../models/file_source_config.dart';
 import '../services/storage_service.dart';
 
 enum SplitLayout { single, horizontal2, vertical2, horizontal3, quad }
@@ -126,6 +127,18 @@ class BrowserNotifier extends StateNotifier<BrowserState> {
       title: 'Terminal',
       url: 'terminal://new',
       type: BrowserTabType.terminal,
+    );
+    state = state.copyWith(tabs: [...state.tabs, tab], activeTabId: tab.id);
+    _persistTabs();
+  }
+
+  void addFileSourceTab(FileSourceConfig config) {
+    final tab = BrowserTab(
+      id: _uuid.v4(),
+      title: config.label,
+      url: '${config.type.name}://${config.host}${config.rootPath}',
+      type: BrowserTabType.fileSource,
+      fileSourceConfig: config,
     );
     state = state.copyWith(tabs: [...state.tabs, tab], activeTabId: tab.id);
     _persistTabs();

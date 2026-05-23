@@ -72,6 +72,7 @@ class StorageService {
                 'faviconUrl': t.faviconUrl,
                 'deviceType': t.device.type.index,
                 'type': t.type.index,
+                'fileSourceConfig': t.fileSourceConfig?.toJson(),
                 'createdAt': t.createdAt.toIso8601String(),
               },
             )

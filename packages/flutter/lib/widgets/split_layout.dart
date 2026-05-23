@@ -2,7 +2,9 @@ import 'package:docking/docking.dart';
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../models/browser_tab.dart';
+import '../models/file_source_config.dart';
 import '../providers/browser_provider.dart';
+import 'file_source_tree.dart';
 import 'tab_widgets.dart';
 import 'terminal_instance.dart';
 import 'webview_instance.dart';
@@ -76,6 +78,10 @@ Widget _buildTabPane(
       tab: tab,
       onTitleChanged: (title) => onTitleChanged(tab.id, title, tab.url, null),
     ),
+    BrowserTabType.fileSource => FileSourceTree(
+      key: ValueKey(tab.id),
+      config: tab.fileSourceConfig ?? FileSourceConfig.storage(),
+    ),
   };
 }
 
@@ -83,6 +89,19 @@ Widget _buildTabLeading(BuildContext context, BrowserTab tab) {
   if (tab.type == BrowserTabType.terminal) {
     return Icon(
       Icons.terminal,
+      size: 14,
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+    );
+  }
+  if (tab.type == BrowserTabType.fileSource) {
+    final type = tab.fileSourceConfig?.type ?? FileSourceType.storage;
+    return Icon(
+      switch (type) {
+        FileSourceType.sftp => Icons.security,
+        FileSourceType.ftp => Icons.cloud_queue,
+        FileSourceType.storage => Icons.storage,
+        FileSourceType.webdav => Icons.cloud_sync_outlined,
+      },
       size: 14,
       color: Theme.of(context).colorScheme.onSurfaceVariant,
     );

@@ -76,6 +76,10 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [wordWrap, setWordWrap] = useState(() => localStorage.getItem('editor-word-wrap') === 'true');
   const [minimap, setMinimap] = useState(() => localStorage.getItem('editor-minimap') === 'true');
+  const [fontSize, setFontSize] = useState(() => {
+    const saved = localStorage.getItem('editor-font-size');
+    return saved ? parseInt(saved, 10) : 13;
+  });
   const [editorReadyTick, setEditorReadyTick] = useState(0);
   const [jumpRetryTick, setJumpRetryTick] = useState(0);
   const [showPreview, setShowPreview] = useState(true);
@@ -136,6 +140,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
       startTypeScriptLanguageClient(workspaceId, workspaceRoot);
     }
     syncReadOnly(editor, isReadOnly);
+    editor.updateOptions({ fontSize });
     registerNavigation(editor, _monaco);
 
     for (const d of actionRegistryDisposablesRef.current) d.dispose();
@@ -244,6 +249,31 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     editor.updateOptions({ minimap: { enabled: minimap } });
   }, [minimap]);
 
+  // Sync fontSize with Monaco editor
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.updateOptions({ fontSize });
+  }, [fontSize]);
+
+  // Ctrl+scroll to zoom
+  useEffect(() => {
+    const el = editorContainerRef.current;
+    if (!el) return;
+    const handler = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      setFontSize((prev) => {
+        const next = prev + (e.deltaY < 0 ? 1 : -1);
+        const clamped = Math.min(Math.max(next, 8), 40);
+        localStorage.setItem('editor-font-size', String(clamped));
+        return clamped;
+      });
+    };
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => el.removeEventListener('wheel', handler);
+  }, []);
+
   // Register model when active file changes
   useEffect(() => {
     if (!activeFile || !activeFilePath) return;
@@ -305,7 +335,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   return (
     <div className={`flex flex-col h-full ${isFullscreen ? 'fixed inset-0 z-50 bg-background' : ''}`}>
       <EditorTabs workspaceId={workspaceId} />
-      <EditorMenuBar editorRef={editorRef} workspaceId={workspaceId} isReadOnly={isReadOnly} onToggleReadOnly={() => setIsReadOnly(r => !r)} isFullscreen={isFullscreen} onToggleFullscreen={() => setIsFullscreen(f => !f)} wordWrap={wordWrap} onToggleWordWrap={() => { const v = !wordWrap; setWordWrap(v); localStorage.setItem('editor-word-wrap', String(v)); }} minimap={minimap} onToggleMinimap={() => { const v = !minimap; setMinimap(v); localStorage.setItem('editor-minimap', String(v)); }} />
+      <EditorMenuBar editorRef={editorRef} workspaceId={workspaceId} isReadOnly={isReadOnly} onToggleReadOnly={() => setIsReadOnly(r => !r)} isFullscreen={isFullscreen} onToggleFullscreen={() => setIsFullscreen(f => !f)} wordWrap={wordWrap} onToggleWordWrap={() => { const v = !wordWrap; setWordWrap(v); localStorage.setItem('editor-word-wrap', String(v)); }} minimap={minimap} onToggleMinimap={() => { const v = !minimap; setMinimap(v); localStorage.setItem('editor-minimap', String(v)); }} fontSize={fontSize} onZoomIn={() => setFontSize(s => { const n = Math.min(s + 1, 40); localStorage.setItem('editor-font-size', String(n)); return n; })} onZoomOut={() => setFontSize(s => { const n = Math.max(s - 1, 8); localStorage.setItem('editor-font-size', String(n)); return n; })} onZoomReset={() => { setFontSize(13); localStorage.setItem('editor-font-size', '13'); }} />
       <div
         ref={editorContainerRef}
         className="relative flex-1 min-h-0"
@@ -374,7 +404,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
               }}
               onMount={handleMount}
               options={{
-                fontSize: 13,
+                fontSize,
                 minimap: { enabled: minimap },
                 scrollBeyondLastLine: false,
                 glyphMargin: true,
@@ -407,7 +437,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
               }}
               onMount={handleMount}
               options={{
-                fontSize: 13,
+                fontSize,
                 minimap: { enabled: minimap },
                 scrollBeyondLastLine: false,
                 glyphMargin: true,

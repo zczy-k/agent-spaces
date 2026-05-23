@@ -8,6 +8,7 @@
       "version": "0.1.0+1",
       "dependencies": [
         "adaptive_theme",
+        "animated_tree_view",
         "awesome_notifications",
         "cupertino_icons",
         "dartssh2",
@@ -131,6 +132,17 @@
         "stream_channel",
         "test_api",
         "vector_math"
+      ]
+    },
+    {
+      "name": "animated_tree_view",
+      "version": "2.3.0",
+      "dependencies": [
+        "collection",
+        "diffutil_dart",
+        "flutter",
+        "scroll_to_index",
+        "uuid"
       ]
     },
     {
@@ -839,6 +851,18 @@
         "stream_channel",
         "string_scanner",
         "term_glyph"
+      ]
+    },
+    {
+      "name": "diffutil_dart",
+      "version": "4.0.1",
+      "dependencies": []
+    },
+    {
+      "name": "scroll_to_index",
+      "version": "3.0.1",
+      "dependencies": [
+        "flutter"
       ]
     },
     {
