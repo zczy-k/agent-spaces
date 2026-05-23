@@ -45,21 +45,45 @@ type PendingQuestion = {
 function ChannelMemberAvatars({ members }: { members: string[] }) {
   const visible = members.filter((m) => m !== 'user').slice(0, MAX_VISIBLE);
   const remaining = members.length - visible.length - (members.includes('user') ? 1 : 0);
+  const [configAgentId, setConfigAgentId] = useState<string | null>(null);
+  const agents = useAgentStore((s) => s.agents);
 
   return (
-    <AvatarGroup className="ml-1 [&>[data-slot=avatar]]:size-5">
-      {visible.map((agentId) => (
-        <HoverCard key={agentId}>
-          <HoverCardTrigger>
-            <AgentIcon agentId={agentId} className="size-5 rounded-full cursor-default" />
-          </HoverCardTrigger>
-          <HoverCardContent side="bottom" align="start" className="w-72">
-            <MemberInfoCard agentId={agentId} compact />
-          </HoverCardContent>
-        </HoverCard>
-      ))}
-      {remaining > 0 && <AvatarGroupCount className="!size-5 text-[10px]">+{remaining}</AvatarGroupCount>}
-    </AvatarGroup>
+    <>
+      <AvatarGroup className="ml-1 [&>[data-slot=avatar]]:size-5">
+        {visible.map((agentId) => (
+          <HoverCard key={agentId}>
+            <HoverCardTrigger>
+              <AgentIcon agentId={agentId} className="size-5 rounded-full cursor-default" />
+            </HoverCardTrigger>
+            <HoverCardContent side="bottom" align="start" className="w-72">
+              <MemberInfoCard agentId={agentId} compact onConfigure={() => setConfigAgentId(agentId)} />
+            </HoverCardContent>
+          </HoverCard>
+        ))}
+        {remaining > 0 && <AvatarGroupCount className="!size-5 text-[10px]">+{remaining}</AvatarGroupCount>}
+      </AvatarGroup>
+      {configAgentId && (() => {
+        const agent = agents.find((a) => a.id === configAgentId);
+        if (!agent) return null;
+        return (
+          <Dialog open={Boolean(configAgentId)} onOpenChange={(open) => { if (!open) setConfigAgentId(null); }}>
+            <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">
+              <DialogHeader className="border-b px-5 py-3">
+                <DialogTitle>配置 Agent</DialogTitle>
+                <DialogDescription />
+              </DialogHeader>
+              <AgentEditor
+                agent={normalizeAgent(agent)}
+                onSaved={() => setConfigAgentId(null)}
+                onBack={() => setConfigAgentId(null)}
+                showFooter
+              />
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
+    </>
   );
 }
 

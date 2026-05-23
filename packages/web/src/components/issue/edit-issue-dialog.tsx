@@ -76,10 +76,11 @@ export function EditIssueDialog({ issue, open, onOpenChange, agents = [], onSave
   };
 
   const memberCandidates: MemberCandidate[] = useMemo(
-    () => agents.filter((a) => a.enabled !== false).map((a) => ({
+    () => agents.filter((a) => a.enabled !== false).map((a, i) => ({
       id: a.id,
       label: getMemberDisplayName(agents, a.id),
       description: a.role,
+      sortIndex: i,
     })),
     [agents],
   );

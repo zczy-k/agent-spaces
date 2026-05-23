@@ -41,7 +41,7 @@ export function ChannelDialog({ open, onOpenChange, channel, agents = [], onSubm
 
   const candidates = agents
     .filter((a) => a.enabled !== false)
-    .map((a) => ({ id: a.id, label: getMemberDisplayName(agents, a.id) }));
+    .map((a, i) => ({ id: a.id, label: getMemberDisplayName(agents, a.id), sortIndex: i }));
 
   useEffect(() => {
     if (!open) return;

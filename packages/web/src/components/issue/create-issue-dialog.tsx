@@ -36,7 +36,7 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], onSubmit }:
 
   const candidates = agents
     .filter((a) => a.enabled !== false)
-    .map((a) => ({ id: a.id, label: getMemberDisplayName(agents, a.id) }));
+    .map((a, i) => ({ id: a.id, label: getMemberDisplayName(agents, a.id), sortIndex: i }));
 
   useEffect(() => {
     if (open) loadWorkflows();

@@ -9,6 +9,8 @@ export interface MemberCandidate {
   id: string;
   label: string;
   description?: string;
+  /** 排序权重，值越小越靠前 */
+  sortIndex?: number;
 }
 
 interface MemberPickerProps {
@@ -36,7 +38,9 @@ export function MemberPicker({
 }: MemberPickerProps) {
   const [query, setQuery] = useState('');
 
-  const eligible = candidates.filter(filter ?? DEFAULT_FILTER);
+  const eligible = candidates
+    .filter(filter ?? DEFAULT_FILTER)
+    .sort((a, b) => (a.sortIndex ?? 0) - (b.sortIndex ?? 0));
   const filtered = eligible.filter((c) =>
     `${c.label} ${c.description || ''}`.toLowerCase().includes(query.toLowerCase()),
   );
