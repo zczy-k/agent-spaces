@@ -25,7 +25,6 @@ import {
   Upload,
   Search,
   FileText,
-  RefreshCw,
   Rocket,
   Trash2,
   MoreVertical,
@@ -43,14 +42,12 @@ interface SkillListProps {
   skills: SkillInfo[];
   agents: AgentCandidate[];
   loading: boolean;
-  syncLoading: boolean;
   onToggleFavorite: (skill: SkillInfo) => void;
   onDelete: (skill: SkillInfo) => void;
   onEdit: (skill: SkillInfo) => void;
   onBind: (skill: SkillInfo) => void;
   onImportBatch: (items: ImportSkillItem[]) => void;
   onImportFromGit: (url: string) => Promise<ImportSkillItem[] | null>;
-  onSyncCheck: () => Promise<unknown>;
   onBindAll: () => void;
 }
 
@@ -58,14 +55,12 @@ export function SkillList({
   skills,
   agents,
   loading,
-  syncLoading,
   onToggleFavorite,
   onDelete,
   onEdit,
   onBind,
   onImportBatch,
   onImportFromGit,
-  onSyncCheck,
   onBindAll,
 }: SkillListProps) {
   const t = useTranslations('skills');
@@ -287,10 +282,6 @@ export function SkillList({
       />
 
       <div className="flex items-center gap-2 ml-auto shrink-0 pt-2">
-            <Button variant="outline" size="sm" onClick={onSyncCheck} disabled={syncLoading}>
-              <RefreshCw className={cn("size-3.5 mr-1", syncLoading && "animate-spin")} />
-              {t('syncToAgents')}
-            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={

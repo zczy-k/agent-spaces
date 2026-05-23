@@ -12,7 +12,7 @@ import {
   getAgentUsageDashboard,
   recordAgentUsage,
 } from '../storage/agent-store.js';
-import { getWorkspace } from '../storage/workspace-store.js';
+import { getWorkspace, listWorkspaces } from '../storage/workspace-store.js';
 import { listIssues, updateIssue } from '../storage/issue-store.js';
 import { listChannels, updateChannel } from './channel.js';
 import { ensureDir, getDataDir } from '../storage/json-store.js';
@@ -431,6 +431,22 @@ export function getAgentConfigDir(workspaceId: string, preset: AgentConfig): str
   const workspaceAgentDir = getWorkspaceAgentDir(ws.agentspaceDir, preset.id);
   ensureWorkspaceAgentCopy(preset, ws.agentspaceDir);
   return workspaceAgentDir;
+}
+
+export function syncTemplatesToAllWorkspaces(): { workspaces: number; agents: number } {
+  const templates = listTemplates().filter((template) => existsSync(getGlobalAgentTemplateDir(template.id)));
+  const workspaces = listWorkspaces();
+  let agents = 0;
+
+  for (const workspace of workspaces) {
+    if (!workspace.agentspaceDir) continue;
+    for (const template of templates) {
+      writeWorkspaceAgentCopy(template, workspace.agentspaceDir);
+      agents++;
+    }
+  }
+
+  return { workspaces: workspaces.length, agents };
 }
 
 export function getAvailableSkillNames(agentDir: string | undefined, skills?: string[]): string[] {

@@ -19,12 +19,11 @@ import {
   Search,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import type { SkillInfo, SkillSyncItem, SkillsDialogProps, StoreSkillItem } from './skills-dialog/types';
+import type { SkillInfo, SkillsDialogProps, StoreSkillItem } from './skills-dialog/types';
 import { useSkillsData, useSkillActions } from './skills-dialog/use-skills-data';
 import { SkillList } from './skills-dialog/skill-list';
 import { SkillEditDialog } from './skills-dialog/skill-edit-dialog';
 import { SkillBindDialog } from './skills-dialog/skill-bind-dialog';
-import { SkillSyncDialog } from './skills-dialog/skill-sync-dialog';
 
 type TabType = 'local' | 'store';
 
@@ -41,10 +40,6 @@ export function SkillsDialog({ open, onOpenChange, standalone }: SkillsDialogPro
   const [editContent, setEditContent] = useState('');
   const [bindDialogSkill, setBindDialogSkill] = useState<SkillInfo | null>(null);
   const [bindSelected, setBindSelected] = useState<string[]>([]);
-  const [syncItems, setSyncItems] = useState<SkillSyncItem[]>([]);
-  const [syncSelected, setSyncSelected] = useState<Set<string>>(new Set());
-  const [syncOpen, setSyncOpen] = useState(false);
-  const [syncLoading, setSyncLoading] = useState(false);
 
   // Store state
   const [storeGroupFilter, setStoreGroupFilter] = useState('');
@@ -93,33 +88,6 @@ export function SkillsDialog({ open, onOpenChange, standalone }: SkillsDialogPro
       await actions.bindConfirm(bindDialogSkill, bindSelected, agents);
     }
     setBindDialogSkill(null);
-  };
-
-  const handleSyncCheck = async () => {
-    setSyncLoading(true);
-    const items = await actions.syncCheck();
-    if (items.length > 0) {
-      setSyncItems(items);
-      setSyncSelected(new Set(items.map((item) => `${item.agentId}::${item.skillName}`)));
-      setSyncOpen(true);
-    }
-    setSyncLoading(false);
-  };
-
-  const handleSyncConfirm = async () => {
-    const items = syncItems.filter((item) => syncSelected.has(`${item.agentId}::${item.skillName}`));
-    if (items.length === 0) return;
-    const ok = await actions.syncConfirm(items);
-    if (ok) setSyncOpen(false);
-  };
-
-  const toggleSyncItem = (agentId: string, skillName: string) => {
-    const key = `${agentId}::${skillName}`;
-    setSyncSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
-      return next;
-    });
   };
 
   const showMainDialog = (standalone || open) && !bindDialogSkill && !editSkill;
@@ -281,14 +249,12 @@ export function SkillsDialog({ open, onOpenChange, standalone }: SkillsDialogPro
           skills={skills}
           agents={agents}
           loading={loading}
-          syncLoading={syncLoading}
           onToggleFavorite={actions.toggleFavorite}
           onDelete={actions.deleteSkill}
           onEdit={openEditDialog}
           onBind={openBindDialog}
           onImportBatch={actions.importBatch}
           onImportFromGit={actions.importFromGit}
-          onSyncCheck={handleSyncCheck}
           onBindAll={openBindAllDialog}
         />
       ) : (
@@ -332,15 +298,6 @@ export function SkillsDialog({ open, onOpenChange, standalone }: SkillsDialogPro
         )}
         onClose={() => setBindDialogSkill(null)}
         onConfirm={handleBindConfirm}
-      />
-
-      <SkillSyncDialog
-        open={syncOpen}
-        onOpenChange={setSyncOpen}
-        items={syncItems}
-        selected={syncSelected}
-        onToggle={toggleSyncItem}
-        onConfirm={handleSyncConfirm}
       />
     </>
   );

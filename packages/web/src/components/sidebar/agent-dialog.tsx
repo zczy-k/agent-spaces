@@ -25,6 +25,7 @@ import {
   Bot,
   ChevronDown,
   Plus,
+  RefreshCw,
   RotateCcw,
   WandSparkles,
 } from "lucide-react";
@@ -70,6 +71,7 @@ export function AgentDialog({
   const [autoGenerate, setAutoGenerate] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [syncingTemplates, setSyncingTemplates] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const roleFilterSet = roleFilter
     ? new Set(Array.isArray(roleFilter) ? roleFilter : [roleFilter])
@@ -179,6 +181,19 @@ export function AgentDialog({
     setAutoGenerate(false);
   };
 
+  const handleSyncTemplates = async () => {
+    setSyncingTemplates(true);
+    setError(null);
+    try {
+      const res = await fetch(`${presetBasePath}/sync-workspaces`, { method: "POST" });
+      if (!res.ok) throw new Error(await res.text());
+    } catch {
+      setError(t('error.syncFailed'));
+    } finally {
+      setSyncingTemplates(false);
+    }
+  };
+
   const addDropdown = (compact?: boolean) => (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -254,6 +269,10 @@ export function AgentDialog({
           )}
           {!selectedAgent && !singleAgent && (
             <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleSyncTemplates} disabled={syncingTemplates}>
+                <RefreshCw className={cn("size-3.5", syncingTemplates && "animate-spin")} />
+                {t('dialog.syncTemplates')}
+              </Button>
               <Button variant="outline" size="sm" onClick={() => {
                 const draft = addRoleOptions[0] ? newAgentDraft(addRoleOptions[0]) : newEmptyAgent();
                 setError(null);
@@ -270,6 +289,10 @@ export function AgentDialog({
       )}
       {standalone && !selectedAgent && !singleAgent && (
         <div className="flex items-center justify-end gap-2 px-5 py-3 border-b">
+          <Button variant="outline" size="sm" onClick={handleSyncTemplates} disabled={syncingTemplates}>
+            <RefreshCw className={cn("size-3.5", syncingTemplates && "animate-spin")} />
+            {t('dialog.syncTemplates')}
+          </Button>
           <Button variant="outline" size="sm" onClick={() => {
             const draft = addRoleOptions[0] ? newAgentDraft(addRoleOptions[0]) : newEmptyAgent();
             setError(null);

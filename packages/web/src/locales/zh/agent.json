@@ -33,7 +33,8 @@
     "saveFailed": "保存 Agent 预设失败",
     "connectionTestFailed": "连接测试失败",
     "noWorkspace": "请先打开工作空间再添加 Agent 预设",
-    "deleteFailed": "删除 Agent 预设失败"
+    "deleteFailed": "删除 Agent 预设失败",
+    "syncFailed": "同步 Agent 模板失败"
   },
   "dialog": {
     "title": "Agent 预设",
@@ -41,6 +42,7 @@
     "listDescription": "管理工作空间的 Agent 预设",
     "add": "添加",
     "addEmpty": "空白",
+    "syncTemplates": "同步模板",
     "noWorkspace": "未选择工作空间",
     "loading": "加载 Agent 预设中..."
   },

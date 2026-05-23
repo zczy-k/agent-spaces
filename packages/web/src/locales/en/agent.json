@@ -33,7 +33,8 @@
     "saveFailed": "Failed to save agent preset",
     "connectionTestFailed": "Connection test failed",
     "noWorkspace": "Open a workspace before adding agent presets",
-    "deleteFailed": "Failed to delete agent preset"
+    "deleteFailed": "Failed to delete agent preset",
+    "syncFailed": "Failed to sync agent templates"
   },
   "dialog": {
     "title": "Agent Presets",
@@ -41,6 +42,7 @@
     "listDescription": "Manage agent presets for workspace automation",
     "add": "Add",
     "addEmpty": "Empty",
+    "syncTemplates": "Sync templates",
     "noWorkspace": "No workspace selected",
     "loading": "Loading agent presets..."
   },
