@@ -127,7 +127,10 @@ class _TerminalInstanceState extends ConsumerState<TerminalInstance> {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.terminal, color: theme.colorScheme.primary),
+                          Icon(
+                            Icons.terminal,
+                            color: theme.colorScheme.primary,
+                          ),
                           const SizedBox(width: 10),
                           Text(
                             'terminal_new'.tr(),
@@ -213,13 +216,21 @@ class _TerminalInstanceState extends ConsumerState<TerminalInstance> {
                           border: const OutlineInputBorder(),
                         ),
                         validator: (value) =>
-                            value == null || value.trim().isEmpty ? 'terminal_username_hint'.tr() : null,
+                            value == null || value.trim().isEmpty
+                            ? 'terminal_username_hint'.tr()
+                            : null,
                       ),
                       const SizedBox(height: 10),
                       SegmentedButton<bool>(
                         segments: [
-                          ButtonSegment(value: false, label: Text('terminal_password_login'.tr())),
-                          ButtonSegment(value: true, label: Text('terminal_key_login'.tr())),
+                          ButtonSegment(
+                            value: false,
+                            label: Text('terminal_password_login'.tr()),
+                          ),
+                          ButtonSegment(
+                            value: true,
+                            label: Text('terminal_key_login'.tr()),
+                          ),
                         ],
                         selected: {_usePrivateKey},
                         onSelectionChanged: (values) {
@@ -286,10 +297,16 @@ class _TerminalInstanceState extends ConsumerState<TerminalInstance> {
                             ? const SizedBox(
                                 width: 16,
                                 height: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : const Icon(Icons.login),
-                        label: Text(_connecting ? 'terminal_connecting'.tr() : 'terminal_login'.tr()),
+                        label: Text(
+                          _connecting
+                              ? 'terminal_connecting'.tr()
+                              : 'terminal_login'.tr(),
+                        ),
                       ),
                     ],
                   ),
@@ -395,9 +412,13 @@ class _TerminalInstanceState extends ConsumerState<TerminalInstance> {
       if (!mounted) return;
       setState(() => _connecting = false);
       _terminal.write('Connection failed: $error\r\n');
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('terminal_connection_failed'.tr(args: [error.toString()]))));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'terminal_connection_failed'.tr(args: [error.toString()]),
+          ),
+        ),
+      );
     }
   }
 
@@ -452,10 +473,14 @@ class _TerminalInstanceState extends ConsumerState<TerminalInstance> {
     final value = command.trim();
     if (value.isEmpty) return;
 
+    final wasEmpty = _commandHistory.isEmpty;
     _commandHistory.remove(value);
     _commandHistory.insert(0, value);
     if (_commandHistory.length > 50) {
       _commandHistory.removeRange(50, _commandHistory.length);
+    }
+    if (wasEmpty && mounted) {
+      setState(() {});
     }
   }
 
@@ -816,8 +841,9 @@ class _TerminalVirtualKeyboardState extends State<_TerminalVirtualKeyboard> {
           child: TextButton(
             onPressed: onTap ?? () => widget.onKey(value),
             style: TextButton.styleFrom(
-              backgroundColor:
-                  selected ? Colors.blueGrey.shade700 : Colors.grey.shade850,
+              backgroundColor: selected
+                  ? Colors.blueGrey.shade700
+                  : Colors.grey.shade850,
               foregroundColor: Colors.grey.shade100,
               padding: EdgeInsets.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,

@@ -18,6 +18,8 @@ import { ChannelInfoPanel } from './channel-info-panel';
 import { MessageNavigator } from './message-navigator';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { AvatarGroup, AvatarGroupCount } from '@/components/ui/avatar';
+import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/components/ui/hover-card';
+import { MemberInfoCard } from './member-info-card';
 
 import { useIssueStore } from '@/stores/issue';
 import { useMobilePanelStore } from '@/stores/mobile-panel';
@@ -45,7 +47,14 @@ function ChannelMemberAvatars({ members }: { members: string[] }) {
   return (
     <AvatarGroup className="ml-1 [&>[data-slot=avatar]]:size-5">
       {visible.map((agentId) => (
-        <AgentIcon key={agentId} agentId={agentId} className="size-5 rounded-full" />
+        <HoverCard key={agentId}>
+          <HoverCardTrigger>
+            <AgentIcon agentId={agentId} className="size-5 rounded-full cursor-default" />
+          </HoverCardTrigger>
+          <HoverCardContent side="bottom" align="start" className="w-72">
+            <MemberInfoCard agentId={agentId} compact />
+          </HoverCardContent>
+        </HoverCard>
       ))}
       {remaining > 0 && <AvatarGroupCount className="!size-5 text-[10px]">+{remaining}</AvatarGroupCount>}
     </AvatarGroup>
