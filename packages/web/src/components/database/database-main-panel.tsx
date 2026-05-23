@@ -140,7 +140,7 @@ export function DatabaseMainPanel({
       </div>
 
       {/* Top nav bar */}
-      <div className="h-14 px-6 border-b border-border flex items-center justify-between bg-background/80 backdrop-blur-md sticky top-0 z-10 select-none shrink-0">
+      <div className="h-14 px-6 border-b border-border flex items-center justify-between bg-background/80 backdrop-blur-md sticky top-0 z-50 select-none shrink-0">
         <div className="flex items-center gap-3">
           {sidebarPanelRef && (
             <button onClick={() => sidebarPanelRef.current?.isCollapsed() ? sidebarPanelRef.current?.expand() : sidebarPanelRef.current?.collapse()}

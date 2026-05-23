@@ -154,9 +154,9 @@ export function DatabaseSidebar({
   }, [workspaceId, onSave]);
 
   return (
-    <>
+    <div className="flex flex-col h-full">
       {/* Sidebar header */}
-      <div className="px-4 py-3 border-b border-border bg-sidebar/80 backdrop-blur-md">
+      <div className="px-4 py-3 border-b border-border bg-sidebar/80 backdrop-blur-md shrink-0">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-muted to-muted-foreground/20 flex items-center justify-center font-bold text-base text-foreground border border-muted-foreground/20">📁</div>
           <div className="hidden">
@@ -202,7 +202,7 @@ export function DatabaseSidebar({
       </div>
 
       {/* Tree content */}
-      <div className="flex-1 overflow-y-auto px-3.5 py-4" onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }} onDrop={handleDropOnRoot}>
+      <div className="flex-1 min-h-0 overflow-y-auto px-3.5 py-4" onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }} onDrop={handleDropOnRoot}>
         <div className="mb-6">
           <div className="flex items-center justify-between text-[11px] font-bold text-muted-foreground px-1 mb-2.5 uppercase tracking-wider">
             <span>{t('sidebarTree')}</span>
@@ -324,6 +324,6 @@ export function DatabaseSidebar({
         accept={{ 'text/markdown': ['.md'], 'text/x-markdown': ['.md'] }}
         onUploadFiles={handleImportMdFiles}
       />
-    </>
+    </div>
   );
 }

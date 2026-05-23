@@ -730,6 +730,8 @@
 * {
   scrollbar-width: thin;
   scrollbar-color: rgba(155, 155, 155, 0.3) transparent;
+  -webkit-user-select: none;
+  user-select: none;
 }
 *::-webkit-scrollbar {
   width: 6px;
