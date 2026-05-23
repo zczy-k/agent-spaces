@@ -11,12 +11,11 @@ import { cn } from '@/lib/utils';
 import { htmlToMarkdown, markdownToHtml } from '@/lib/converter';
 import { useDatabaseStore } from '@/stores/database';
 import { PRESET_COVERS, type DatabaseNodeVersion } from '@agent-spaces/shared';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { Markdown } from '@/components/ui/markdown';
 import NotionEditor from './notion-editor';
 import MarkdownEditor from './markdown-editor';
 import { TableOfContents, extractTocFromHtml, extractTocFromMarkdown } from './table-of-contents';
+import { VersionHistoryDialog } from './version-history-dialog';
 import type { PanelImperativeHandle } from 'react-resizable-panels';
 
 interface DatabaseMainPanelProps {

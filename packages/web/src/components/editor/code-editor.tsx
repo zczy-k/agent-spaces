@@ -256,13 +256,14 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     editor.updateOptions({ fontSize });
   }, [fontSize]);
 
-  // Ctrl+scroll to zoom
+  // Ctrl+scroll to zoom (capture phase to intercept before Monaco)
   useEffect(() => {
     const el = editorContainerRef.current;
     if (!el) return;
     const handler = (e: WheelEvent) => {
       if (!e.ctrlKey && !e.metaKey) return;
       e.preventDefault();
+      e.stopPropagation();
       setFontSize((prev) => {
         const next = prev + (e.deltaY < 0 ? 1 : -1);
         const clamped = Math.min(Math.max(next, 8), 40);
@@ -270,8 +271,8 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
         return clamped;
       });
     };
-    el.addEventListener('wheel', handler, { passive: false });
-    return () => el.removeEventListener('wheel', handler);
+    el.addEventListener('wheel', handler, { passive: false, capture: true });
+    return () => el.removeEventListener('wheel', handler, true as unknown as EventListenerOptions);
   }, []);
 
   // Register model when active file changes
