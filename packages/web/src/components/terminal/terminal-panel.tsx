@@ -17,10 +17,54 @@ import { TerminalToolbar } from './terminal-toolbar';
 import { getShellOptions, getShellLabel } from './terminal-utils';
 import type { QuickCommand } from '@agent-spaces/shared';
 import { useTranslations } from 'next-intl';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+import type { Layout } from 'react-resizable-panels';
 
 interface TerminalPanelProps {
   workspaceId: string;
   boundDirs: string[];
+}
+
+const TERMINAL_LAYOUT_KEY = 'agent-spaces:terminal-layout';
+const COMMAND_SIDEBAR_PANEL_ID = 'sidebar';
+const TERMINAL_PANEL_ID = 'terminal';
+
+const TERMINAL_LAYOUT_LIMITS = {
+  sidebarMin: 12,
+  sidebarMax: 40,
+  terminalMin: 30,
+} as const;
+
+function loadTerminalLayout(): Layout | undefined {
+  try {
+    const raw = localStorage.getItem(TERMINAL_LAYOUT_KEY);
+    if (!raw) return undefined;
+
+    const layout = JSON.parse(raw) as Partial<Layout>;
+    const sidebar = layout[COMMAND_SIDEBAR_PANEL_ID];
+    const terminal = layout[TERMINAL_PANEL_ID];
+
+    return typeof sidebar === 'number'
+      && typeof terminal === 'number'
+      && sidebar >= TERMINAL_LAYOUT_LIMITS.sidebarMin
+      && sidebar <= TERMINAL_LAYOUT_LIMITS.sidebarMax
+      && terminal >= TERMINAL_LAYOUT_LIMITS.terminalMin
+      ? { [COMMAND_SIDEBAR_PANEL_ID]: sidebar, [TERMINAL_PANEL_ID]: terminal }
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function isValidTerminalLayout(layout: Layout): boolean {
+  const sidebar = layout[COMMAND_SIDEBAR_PANEL_ID];
+  const terminal = layout[TERMINAL_PANEL_ID];
+
+  return typeof sidebar === 'number'
+    && typeof terminal === 'number'
+    && sidebar >= TERMINAL_LAYOUT_LIMITS.sidebarMin
+    && sidebar <= TERMINAL_LAYOUT_LIMITS.sidebarMax
+    && terminal >= TERMINAL_LAYOUT_LIMITS.terminalMin;
 }
 
 export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
@@ -29,6 +73,14 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
   const { sendInput } = useTerminalStore();
   const t = useTranslations('terminal');
   const tc = useTranslations('commands');
+
+  const terminalLayout = useMemo<Layout | undefined>(() => {
+    return loadTerminalLayout();
+  }, []);
+  const onTerminalLayoutChange = useCallback((layout: Layout) => {
+    if (!isValidTerminalLayout(layout)) return;
+    try { localStorage.setItem(TERMINAL_LAYOUT_KEY, JSON.stringify(layout)); } catch {}
+  }, []);
 
   const [dirPickerOpen, setDirPickerOpen] = useState(false);
   const [pendingShell, setPendingShell] = useState<string | undefined>(undefined);
@@ -249,9 +301,9 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
       </div>
 
       {/* Content: command sidebar + terminal */}
-      <div className="flex flex-row flex-1 overflow-hidden">
+      <ResizablePanelGroup orientation="horizontal" defaultLayout={terminalLayout} onLayoutChange={onTerminalLayoutChange} className="flex-1 overflow-hidden">
         {/* Command sidebar - hidden on small screens */}
-        <div className="hidden md:flex w-[200px] flex-col border-r border-border shrink-0 overflow-hidden">
+        <ResizablePanel id={COMMAND_SIDEBAR_PANEL_ID} defaultSize="18%" minSize="12%" maxSize="40%" className="hidden md:flex flex-col overflow-hidden">
           <CommandSidebar
             search={search}
             onSearchChange={setSearch}
@@ -275,10 +327,12 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
             onSelectSession={setActive}
             tc={tc}
           />
-        </div>
+        </ResizablePanel>
+
+        <ResizableHandle withHandle />
 
         {/* Terminal content */}
-        <div className="flex-1 overflow-hidden relative">
+        <ResizablePanel id={TERMINAL_PANEL_ID} defaultSize="82%" minSize="30%" className="overflow-hidden relative">
           {sessions.length === 0 ? (
             <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
               {t('noSession')}
@@ -297,8 +351,8 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
               </div>
             ))
           )}
-        </div>
-      </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
 
       {/* Bottom toolbar */}
       <TerminalToolbar activeId={activeId} sendInput={sendInput} onPaste={handlePaste} />

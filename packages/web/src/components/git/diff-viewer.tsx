@@ -7,7 +7,8 @@ import type { editor } from "monaco-editor";
 import { useTheme } from "@/components/theme-provider";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
-import { Check, Filter, Split } from "lucide-react";
+import { Check, FileQuestion, Filter, Split } from "lucide-react";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 
 interface DiffViewerProps {
   oldContent: string;
@@ -206,6 +207,10 @@ export function DiffViewer({
     }
   }, [newContent, oldContent, onResolve, resolving]);
 
+  const oldEmpty = !oldContent;
+  const newEmpty = !newContent;
+  const bothEmpty = oldEmpty && newEmpty;
+
   return (
     <div className="h-full w-full flex flex-col">
       <div className="flex items-center justify-between px-2 py-1 border-b bg-muted/30">
@@ -215,39 +220,45 @@ export function DiffViewer({
         <div className="flex items-center gap-1">
           {mergeMode && onResolve && (
             <>
-              <button
-                onClick={() => handleResolve("left")}
-                disabled={resolving !== null}
-                className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-50"
-                title="保留左侧"
-              >
-                {resolving === "left" ? <Check className="h-3 w-3" /> : <Split className="h-3 w-3 rotate-180" />}
-                保留左侧
-              </button>
-              <button
-                onClick={() => handleResolve("right")}
-                disabled={resolving !== null}
-                className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-50"
-                title="保留右侧"
-              >
-                {resolving === "right" ? <Check className="h-3 w-3" /> : <Split className="h-3 w-3" />}
-                保留右侧
-              </button>
+              {!oldEmpty && (
+                <button
+                  onClick={() => handleResolve("left")}
+                  disabled={resolving !== null}
+                  className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-50"
+                  title="保留左侧"
+                >
+                  {resolving === "left" ? <Check className="h-3 w-3" /> : <Split className="h-3 w-3 rotate-180" />}
+                  保留左侧
+                </button>
+              )}
+              {!newEmpty && (
+                <button
+                  onClick={() => handleResolve("right")}
+                  disabled={resolving !== null}
+                  className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-50"
+                  title="保留右侧"
+                >
+                  {resolving === "right" ? <Check className="h-3 w-3" /> : <Split className="h-3 w-3" />}
+                  保留右侧
+                </button>
+              )}
             </>
           )}
-          <button
-            onClick={() => setCompact(v => !v)}
-            className={cn(
-              "flex items-center gap-1 text-xs px-1.5 py-0.5 rounded transition-colors",
-              compact
-                ? "text-blue-600 dark:text-blue-400 bg-blue-500/10"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-            title={compact ? "显示全部代码" : "只看修改部分"}
-          >
-            <Filter className="h-3 w-3" />
-            {compact ? "紧凑" : "全部"}
-          </button>
+          {!bothEmpty && !isBinary && (
+            <button
+              onClick={() => setCompact(v => !v)}
+              className={cn(
+                "flex items-center gap-1 text-xs px-1.5 py-0.5 rounded transition-colors",
+                compact
+                  ? "text-blue-600 dark:text-blue-400 bg-blue-500/10"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              title={compact ? "显示全部代码" : "只看修改部分"}
+            >
+              <Filter className="h-3 w-3" />
+              {compact ? "紧凑" : "全部"}
+            </button>
+          )}
         </div>
       </div>
       <div className="flex-1">
@@ -256,22 +267,48 @@ export function DiffViewer({
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
             二进制文件，不支持预览
           </div>
+        ) : bothEmpty ? (
+          <Empty className="h-full border-0">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <FileQuestion />
+              </EmptyMedia>
+              <EmptyTitle>无内容</EmptyTitle>
+              <EmptyDescription>该文件没有可显示的内容</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : oldEmpty ? (
+          <DiffEditor
+            original=""
+            modified={displayNew}
+            language={language}
+            theme={resolvedTheme === "dark" ? "vs-dark" : "vs"}
+            onMount={handleMount}
+            options={{
+              readOnly: true,
+              renderSideBySide: false,
+              minimap: { enabled: false },
+              scrollBeyondLastLine: false,
+              fontSize: 13,
+              lineNumbers: "on",
+            }}
+          />
         ) : (
-        <DiffEditor
-          original={displayOld}
-          modified={displayNew}
-          language={language}
-          theme={resolvedTheme === "dark" ? "vs-dark" : "vs"}
-          onMount={handleMount}
-          options={{
-            readOnly: true,
-            renderSideBySide: !isMobile,
-            minimap: { enabled: false },
-            scrollBeyondLastLine: false,
-            fontSize: 13,
-            lineNumbers: "on",
-          }}
-        />
+          <DiffEditor
+            original={displayOld}
+            modified={displayNew}
+            language={language}
+            theme={resolvedTheme === "dark" ? "vs-dark" : "vs"}
+            onMount={handleMount}
+            options={{
+              readOnly: true,
+              renderSideBySide: !isMobile,
+              minimap: { enabled: false },
+              scrollBeyondLastLine: false,
+              fontSize: 13,
+              lineNumbers: "on",
+            }}
+          />
         )}
       </div>
     </div>

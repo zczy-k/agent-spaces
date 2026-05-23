@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState, useMemo } from "react";
 import {
   Upload, Loader2, RefreshCw, ArrowUp, ArrowDown,
   FileCode, RotateCcw, Trash2, ChevronDown, GitBranch,
@@ -19,6 +19,8 @@ import { Skeleton, SkeletonGroup } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+import type { Layout } from 'react-resizable-panels';
 
 import { statusColors, statusLabels, errMsg } from "./git-commit-utils";
 import { useGitSync } from "./use-git-sync";
@@ -33,11 +35,70 @@ interface Props {
   workspaceId: string;
 }
 
+const GIT_LAYOUT_KEY = 'agent-spaces:git-layout';
+const GIT_CHANGES_PANEL_ID = 'changes';
+const GIT_COMMITS_PANEL_ID = 'commits';
+
+const GIT_LAYOUT_LIMITS = {
+  desktop: {
+    changesMin: 15,
+    changesMax: 60,
+    commitsMin: 30,
+  },
+  mobile: {
+    changesMin: 15,
+    changesMax: 60,
+    commitsMin: 30,
+  },
+} as const;
+
+function loadGitLayout(isMobile: boolean): Layout | undefined {
+  try {
+    const raw = localStorage.getItem(GIT_LAYOUT_KEY);
+    if (!raw) return undefined;
+
+    const layout = JSON.parse(raw) as Partial<Layout>;
+    const limits = isMobile ? GIT_LAYOUT_LIMITS.mobile : GIT_LAYOUT_LIMITS.desktop;
+    const changes = layout[GIT_CHANGES_PANEL_ID];
+    const commits = layout[GIT_COMMITS_PANEL_ID];
+
+    return typeof changes === 'number'
+      && typeof commits === 'number'
+      && changes >= limits.changesMin
+      && changes <= limits.changesMax
+      && commits >= limits.commitsMin
+      ? { [GIT_CHANGES_PANEL_ID]: changes, [GIT_COMMITS_PANEL_ID]: commits }
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function isValidGitLayout(layout: Layout, isMobile: boolean): boolean {
+  const limits = isMobile ? GIT_LAYOUT_LIMITS.mobile : GIT_LAYOUT_LIMITS.desktop;
+  const changes = layout[GIT_CHANGES_PANEL_ID];
+  const commits = layout[GIT_COMMITS_PANEL_ID];
+
+  return typeof changes === 'number'
+    && typeof commits === 'number'
+    && changes >= limits.changesMin
+    && changes <= limits.changesMax
+    && commits >= limits.commitsMin;
+}
+
 export function GitCommitsPanel({ workspaceId }: Props) {
   const tc = useTranslations('common');
   const t = useTranslations('git.commits');
   const tChanges = useTranslations('git.changes');
   const isMobile = useIsMobile();
+
+  const gitLayout = useMemo<Layout | undefined>(() => {
+    return loadGitLayout(isMobile);
+  }, [isMobile]);
+  const onGitLayoutChange = useCallback((layout: Layout) => {
+    if (!isValidGitLayout(layout, isMobile)) return;
+    try { localStorage.setItem(GIT_LAYOUT_KEY, JSON.stringify(layout)); } catch {}
+  }, [isMobile]);
 
   const {
     log, loading, notGitRepo, status, branches, diffs, selectedFile,
@@ -240,9 +301,9 @@ export function GitCommitsPanel({ workspaceId }: Props) {
   }
 
   return (
-    <div className={`flex h-full overflow-hidden rounded-t-xl bg-background ${isMobile ? 'flex-col' : ''}`}>
+    <ResizablePanelGroup orientation={isMobile ? "vertical" : "horizontal"} defaultLayout={gitLayout} onLayoutChange={onGitLayoutChange} className="h-full overflow-hidden rounded-t-xl bg-background">
       {/* Left: Changes panel */}
-      <div className={`flex flex-col bg-muted/20 ${isMobile ? 'w-full border-b max-h-[40%]' : 'w-64 border-r'}`}>
+      <ResizablePanel id={GIT_CHANGES_PANEL_ID} defaultSize={isMobile ? "40%" : "25%"} minSize="15%" maxSize="60%" className="flex flex-col bg-muted/20 overflow-hidden">
         {/* Header with branch selector */}
         <div className="flex items-center gap-1 px-2 py-1.5 border-b">
           <div className="relative flex-1 min-w-0">
@@ -335,10 +396,12 @@ export function GitCommitsPanel({ workspaceId }: Props) {
             </button>
           </div>
         ) : null}
-      </div>
+      </ResizablePanel>
+
+      <ResizableHandle withHandle />
 
       {/* Right: Commits + Diff */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <ResizablePanel id={GIT_COMMITS_PANEL_ID} defaultSize={isMobile ? "60%" : "75%"} minSize="30%" className="flex flex-col min-w-0 overflow-hidden">
         {/* Commits header */}
         <div className="flex items-center justify-between px-2 py-1.5 border-b shrink-0">
           <span className="text-xs font-medium text-muted-foreground">
@@ -409,9 +472,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
             {!loading && !log.length && <div className="p-2 text-xs text-muted-foreground">{t('noCommits')}</div>}
           </div>
         )}
-      </div>
-
-      {/* File context menu */}
+      </ResizablePanel>
       {ctxMenu && (
         <GitFileContextMenu x={ctxMenu.x} y={ctxMenu.y} path={ctxMenu.path} onAddToGitignore={addToGitignore} onOpenFile={(p) => openFile(workspaceId, p)} onDiscard={(p) => setDiscardConfirm({ type: 'single', path: p })} onClose={() => setCtxMenu(null)} />
       )}
@@ -500,6 +561,6 @@ export function GitCommitsPanel({ workspaceId }: Props) {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </ResizablePanelGroup>
   );
 }
