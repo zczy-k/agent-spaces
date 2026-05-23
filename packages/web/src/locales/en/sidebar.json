@@ -12,6 +12,7 @@
     "mcps": "MCP Servers",
     "models": "Models",
     "providers": "Providers",
+    "workflows": "Workflows",
     "hooks": "Hooks",
     "tools": "Tools",
     "commands": "Agent Commands"

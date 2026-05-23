@@ -2,7 +2,7 @@
 
 import { useEffect, useCallback, useState } from "react";
 import {
-  Upload, Loader2, GitCommitHorizontal, RefreshCw, ArrowUp, ArrowDown,
+  Upload, Loader2, RefreshCw, ArrowUp, ArrowDown,
   FileCode, RotateCcw, Trash2, ChevronDown, GitBranch,
   Sparkles, Settings2, FileDiff, Plus, Minus, AlertTriangle,
 } from "lucide-react";
@@ -15,10 +15,6 @@ import { DiffViewer } from "./diff-viewer";
 import { GitSettingsForm } from "@/components/git/git-settings-form";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Skeleton, SkeletonGroup } from "@/components/ui/skeleton";
-import {
-  ContextMenu,
-  ContextMenuTrigger,
-} from "@/components/ui/context-menu";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -29,8 +25,8 @@ import { GitPromptDialog } from "./git-prompt-dialog";
 import { GitDiscardDialog, type DiscardConfirm } from "./git-discard-dialog";
 import { GitGitignoreDialog } from "./git-gitignore-dialog";
 import { GitFileContextMenu } from "./git-file-context-menu";
-import { GitCommitContextMenu } from "./git-commit-context-menu";
 import { GitCommitDetailDialog } from "./git-commit-detail-dialog";
+import { GitCommitLogList } from "./git-commit-log-list";
 
 interface Props {
   workspaceId: string;
@@ -384,32 +380,13 @@ export function GitCommitsPanel({ workspaceId }: Props) {
                 </SkeletonGroup>
               </div>
             )}
-            {log.map((entry) => {
-              const isRemoteHead = !!status?.remoteHeadHash && entry.hash.startsWith(status.remoteHeadHash.substring(0, 7));
-              const isHead = !!status?.headHash && entry.hash.startsWith(status.headHash.substring(0, 7));
-              return (
-                <ContextMenu key={entry.hash}>
-                  <ContextMenuTrigger>
-                    <div
-                      onClick={() => setDetailEntry(entry)}
-                      className={`px-2 py-1.5 border-b border-l-2 hover:bg-accent cursor-pointer ${isHead ? 'border-l-foreground' : isRemoteHead ? 'border-l-blue-500' : 'border-l-transparent'}`}
-                    >
-                      <div className="flex items-center gap-2">
-                        {isRemoteHead && <span title={t('remoteTrackingBranch')}><GitCommitHorizontal size={13} className="shrink-0 text-blue-500" /></span>}
-                        <code className="text-xs font-mono text-blue-600 shrink-0">{entry.hash.slice(0, 7)}</code>
-                        <span className="text-xs truncate">{entry.message.split("\n")[0]}</span>
-                        {isHead && <span className="text-[10px] font-medium text-muted-foreground bg-muted px-1 rounded">HEAD</span>}
-                      </div>
-                      <div className={`flex items-center gap-2 mt-0.5 ${isRemoteHead ? 'pl-[21px]' : ''}`}>
-                        <span className="text-xs text-muted-foreground">{entry.author}</span>
-                        <span className="text-xs text-muted-foreground">{new Date(entry.date).toLocaleDateString()}</span>
-                      </div>
-                    </div>
-                  </ContextMenuTrigger>
-                  <GitCommitContextMenu workspaceId={workspaceId} entry={entry} onRefreshAll={refreshAll} onOpenPrompt={openPromptDialog} />
-                </ContextMenu>
-              );
-            })}
+            <GitCommitLogList
+              workspaceId={workspaceId}
+              log={log}
+              onSelectEntry={setDetailEntry}
+              onRefreshAll={refreshAll}
+              onOpenPrompt={openPromptDialog}
+            />
             {!loading && !log.length && <div className="p-2 text-xs text-muted-foreground">{t('noCommits')}</div>}
           </div>
         )}
