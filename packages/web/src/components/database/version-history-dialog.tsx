@@ -1,12 +1,12 @@
 'use client';
 
-import React from 'react';
+import { useState, useEffect } from 'react';
 import { FileText, RotateCcw } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import type { DatabaseNodeVersion } from '@agent-spaces/shared';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Markdown } from '@/components/ui/markdown';
+import { DiffViewer } from '@/components/git/diff-viewer';
 
 interface VersionHistoryDialogProps {
   open: boolean;
@@ -16,7 +16,7 @@ interface VersionHistoryDialogProps {
   onSelectVersion: (id: string) => void;
   loading: boolean;
   error: string | null;
-  workspaceId: string;
+  workspaceId?: string;
   activeNodeTitle?: string;
 }
 
@@ -28,7 +28,7 @@ export function VersionHistoryDialog({
   onSelectVersion,
   loading,
   error,
-  workspaceId,
+  workspaceId: _workspaceId,
   activeNodeTitle,
 }: VersionHistoryDialogProps) {
   const t = useTranslations('database');
@@ -36,8 +36,11 @@ export function VersionHistoryDialog({
 
   const selectedVersion = versions.find(v => v.id === selectedVersionId) ?? null;
 
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => { if (open) setNow(Date.now()); }, [open]);
+
   const formatTimeAgo = (timestamp: number) => {
-    const diff = Date.now() - timestamp;
+    const diff = now - timestamp;
     const minutes = Math.floor(diff / 60000);
     if (minutes < 1) return t('justNow');
     if (minutes < 60) return `${minutes} ${t('minutesAgo')}`;
@@ -162,21 +165,14 @@ export function VersionHistoryDialog({
 
                     {/* Expanded diff view */}
                     {isSelected && (
-                      <div className="ml-8 mb-4 overflow-hidden rounded-lg border border-border bg-card">
-                        <div className="grid min-h-0 grid-rows-2">
-                          <MarkdownVersionPane
-                            title="Before"
-                            content={version.oldContent}
-                            workspaceId={workspaceId}
-                            tone="old"
-                          />
-                          <MarkdownVersionPane
-                            title="After"
-                            content={version.newContent}
-                            workspaceId={workspaceId}
-                            tone="new"
-                          />
-                        </div>
+                      <div className="ml-8 mb-4 h-[400px] overflow-hidden rounded-lg border border-border">
+                        <DiffViewer
+                          oldContent={version.oldContent}
+                          newContent={version.newContent}
+                          path={`${version.title || activeNodeTitle || t('untitled')}.md`}
+                          language="markdown"
+                          compactDiff={false}
+                        />
                       </div>
                     )}
                   </div>
@@ -187,36 +183,5 @@ export function VersionHistoryDialog({
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function MarkdownVersionPane({
-  title,
-  content,
-  workspaceId,
-  tone,
-}: {
-  title: string;
-  content: string;
-  workspaceId: string;
-  tone: 'old' | 'new';
-}) {
-  return (
-    <section className="min-h-0 border-b border-border last:border-b-0">
-      <div
-        className={cn(
-          "sticky top-0 z-10 flex items-center justify-between border-b border-border px-4 py-2 text-xs font-semibold",
-          tone === 'old'
-            ? "bg-red-500/10 text-red-700 dark:text-red-300"
-            : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-        )}
-      >
-        <span>{title}</span>
-        <span className="font-mono text-[10px] opacity-70">{content.length} chars</span>
-      </div>
-      <div className="prose prose-sm dark:prose-invert max-w-none px-5 py-4 text-sm">
-        <Markdown content={content || '_Empty content_'} workspaceId={workspaceId} />
-      </div>
-    </section>
   );
 }
