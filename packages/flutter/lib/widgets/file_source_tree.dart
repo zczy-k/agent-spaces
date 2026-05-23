@@ -2,13 +2,17 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:animated_tree_view/animated_tree_view.dart';
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
 import '../models/file_source_config.dart';
+import '../services/notification_service.dart';
 import '../services/file_sources/file_source.dart';
 import '../services/file_sources/file_source_factory.dart';
 import '../services/file_sources/path_utils.dart';
+
+final _notificationService = NotificationService();
 
 class FileSourceTree extends StatefulWidget {
   final FileSourceConfig config;
@@ -66,6 +70,36 @@ class _DownloadProgress {
   double? get value => total == 0 ? null : completed / total;
 }
 
+class _UploadProgress {
+  final int completed;
+  final int total;
+  final String currentName;
+  final bool finished;
+  final bool failed;
+
+  const _UploadProgress({
+    required this.completed,
+    required this.total,
+    required this.currentName,
+    this.finished = false,
+    this.failed = false,
+  });
+
+  double? get value => total == 0 ? null : completed / total;
+}
+
+class _DroppedUploadFile {
+  final String name;
+  final String path;
+  final int? size;
+
+  const _DroppedUploadFile({
+    required this.name,
+    required this.path,
+    required this.size,
+  });
+}
+
 class _FileSourceTreeState extends State<FileSourceTree> {
   late final FileSource _source;
   late TreeNode<_FileNodeData> _tree;
@@ -73,8 +107,11 @@ class _FileSourceTreeState extends State<FileSourceTree> {
   Set<String>? _pendingExpandedPaths;
   final Set<String> _selectedPaths = <String>{};
   _DownloadProgress? _downloadProgress;
+  _UploadProgress? _uploadProgress;
+  Future<void> _uploadQueue = Future<void>.value();
   int _treeVersion = 0;
   bool _loading = true;
+  bool _dragging = false;
   bool _multiSelect = false;
   String? _error;
 
@@ -116,16 +153,80 @@ class _FileSourceTreeState extends State<FileSourceTree> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _buildToolbar(context),
-        const Divider(height: 1),
-        Expanded(child: _buildBody(context)),
-        if (_downloadProgress != null) ...[
-          const Divider(height: 1),
-          _buildDownloadProgress(context),
+    final theme = Theme.of(context);
+    return DropTarget(
+      onDragDone: _handleDragDone,
+      onDragEntered: (_) => setState(() => _dragging = true),
+      onDragExited: (_) => setState(() => _dragging = false),
+      child: Stack(
+        children: [
+          Column(
+            children: [
+              _buildToolbar(context),
+              const Divider(height: 1),
+              Expanded(child: _buildBody(context)),
+              if (_downloadProgress != null) ...[
+                const Divider(height: 1),
+                _buildDownloadProgress(context),
+              ],
+              if (_uploadProgress != null) ...[
+                const Divider(height: 1),
+                _buildUploadProgress(context),
+              ],
+            ],
+          ),
+          if (_dragging)
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.10),
+                  border: Border.all(
+                    color: theme.colorScheme.primary,
+                    width: 2,
+                  ),
+                ),
+                child: Center(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          blurRadius: 16,
+                          color: theme.colorScheme.shadow.withValues(
+                            alpha: 0.14,
+                          ),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 12,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.upload_file_outlined,
+                            color: theme.colorScheme.primary,
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            '释放以上传文件',
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
-      ],
+      ),
     );
   }
 
@@ -237,6 +338,67 @@ class _FileSourceTreeState extends State<FileSourceTree> {
         : progress.finished
         ? Icons.check_circle_outline
         : Icons.downloading_outlined;
+    final color = progress.failed ? colorScheme.error : colorScheme.primary;
+
+    return Container(
+      color: colorScheme.surface,
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '$status ${progress.completed}/${progress.total}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelMedium?.copyWith(color: color),
+                ),
+              ),
+              Text(
+                '${((progress.value ?? 0) * 100).round()}%',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          LinearProgressIndicator(value: progress.value),
+          const SizedBox(height: 4),
+          Text(
+            progress.currentName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUploadProgress(BuildContext context) {
+    final progress = _uploadProgress;
+    if (progress == null) return const SizedBox.shrink();
+
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final status = progress.failed
+        ? '上传失败'
+        : progress.finished
+        ? '上传完成'
+        : '上传中';
+    final icon = progress.failed
+        ? Icons.error_outline
+        : progress.finished
+        ? Icons.check_circle_outline
+        : Icons.cloud_upload_outlined;
     final color = progress.failed ? colorScheme.error : colorScheme.primary;
 
     return Container(
@@ -473,6 +635,356 @@ class _FileSourceTreeState extends State<FileSourceTree> {
       await _source.upload(File(localFile.path), targetPath);
       await _reloadPreservingExpansion(_tree);
     });
+  }
+
+  Future<void> _handleDragDone(DropDoneDetails detail) async {
+    if (mounted) setState(() => _dragging = false);
+    final files = <_DroppedUploadFile>[];
+    for (final file in detail.files) {
+      final localFile = File(file.path);
+      if (!await localFile.exists()) continue;
+      files.add(
+        _DroppedUploadFile(
+          name: localBasename(file.path),
+          path: file.path,
+          size: await localFile.length(),
+        ),
+      );
+    }
+    if (files.isEmpty) {
+      _showMessage('未接收到可上传的文件。');
+      return;
+    }
+    final targetDirectory = await _showDroppedFilesDialog(files);
+    if (targetDirectory == null || targetDirectory.trim().isEmpty) return;
+    _enqueueUploads(files, targetDirectory);
+  }
+
+  Future<String?> _showDroppedFilesDialog(
+    List<_DroppedUploadFile> files,
+  ) async {
+    String? selectedDirectory;
+    final rootPath = _tree.data?.path ?? widget.config.rootPath;
+    return showDialog<String>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('上传文件'),
+              content: SizedBox(
+                width: 560,
+                height: 420,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '已接收 ${files.length} 个文件',
+                      style: Theme.of(context).textTheme.labelLarge,
+                    ),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: ListView.separated(
+                        itemCount: files.length,
+                        separatorBuilder: (_, _) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final file = files[index];
+                          return ListTile(
+                            dense: true,
+                            leading: const Icon(
+                              Icons.insert_drive_file_outlined,
+                              size: 18,
+                            ),
+                            title: Text(
+                              file.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            subtitle: Text(
+                              '${_formatSize(file.size)}  ${file.path}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            selectedDirectory ?? rootPath,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        OutlinedButton.icon(
+                          onPressed: () async {
+                            final directory =
+                                await _showRemoteDirectoryPickerDialog();
+                            if (directory == null) return;
+                            setDialogState(() {
+                              selectedDirectory = directory;
+                            });
+                          },
+                          icon: const Icon(
+                            Icons.folder_open_outlined,
+                            size: 18,
+                          ),
+                          label: const Text('选择保存路径'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('取消'),
+                ),
+                FilledButton(
+                  onPressed: () =>
+                      Navigator.of(context).pop(selectedDirectory ?? rootPath),
+                  child: const Text('开始上传'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<String?> _showRemoteDirectoryPickerDialog() async {
+    final rootData = _tree.data;
+    if (rootData == null) return null;
+    final pickerRoot = TreeNode<_FileNodeData>.root(data: rootData);
+    TreeViewController<_FileNodeData, TreeNode<_FileNodeData>>?
+    pickerController;
+    String? selectedPath = rootData.path;
+    var loading = true;
+    var treeVersion = 0;
+    String? error;
+
+    Future<void> loadDirectories(TreeNode<_FileNodeData> node) async {
+      final data = node.data;
+      if (data == null || !data.isDirectory) return;
+      final entries = await _source.list(data.path);
+      node.clear();
+      node.addAll(
+        entries
+            .where((entry) => entry.isDirectory)
+            .map(
+              (entry) => TreeNode<_FileNodeData>(
+                key: base64Url.encode(utf8.encode(entry.path)),
+                data: _FileNodeData(
+                  name: entry.name,
+                  path: entry.path,
+                  isDirectory: entry.isDirectory,
+                  size: entry.size,
+                  modifiedAt: entry.modifiedAt,
+                ),
+              ),
+            ),
+      );
+      node.data = data.copyWith(loaded: true);
+    }
+
+    return showDialog<String>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            if (loading) {
+              loading = false;
+              loadDirectories(pickerRoot)
+                  .then((_) {
+                    if (!context.mounted) return;
+                    setDialogState(() => treeVersion++);
+                  })
+                  .catchError((Object loadError) {
+                    if (!context.mounted) return;
+                    setDialogState(() => error = loadError.toString());
+                  });
+            }
+
+            return AlertDialog(
+              title: const Text('选择保存路径'),
+              content: SizedBox(
+                width: 560,
+                height: 420,
+                child: error != null
+                    ? Center(child: Text(error!))
+                    : TreeView.simpleTyped<
+                        _FileNodeData,
+                        TreeNode<_FileNodeData>
+                      >(
+                        key: ValueKey('directory-picker-$treeVersion'),
+                        tree: pickerRoot,
+                        showRootNode: true,
+                        indentation: const Indentation(width: 18),
+                        onTreeReady: (controller) {
+                          pickerController = controller;
+                        },
+                        builder: (context, node) {
+                          final data = node.data;
+                          if (data == null) return const SizedBox.shrink();
+                          final selected = selectedPath == data.path;
+                          return ListTile(
+                            dense: true,
+                            selected: selected,
+                            minLeadingWidth: 18,
+                            leading: Icon(
+                              Icons.folder_outlined,
+                              size: 18,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            title: Text(
+                              data.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            subtitle: Text(
+                              data.path,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            onTap: () async {
+                              setDialogState(() {
+                                selectedPath = data.path;
+                              });
+                              if (data.loaded) {
+                                pickerController?.expandNode(node);
+                                return;
+                              }
+                              try {
+                                await loadDirectories(node);
+                                if (!context.mounted) return;
+                                setDialogState(() => treeVersion++);
+                                WidgetsBinding.instance.addPostFrameCallback((
+                                  _,
+                                ) {
+                                  pickerController?.expandNode(node);
+                                });
+                              } catch (loadError) {
+                                if (!context.mounted) return;
+                                setDialogState(
+                                  () => error = loadError.toString(),
+                                );
+                              }
+                            },
+                          );
+                        },
+                      ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('取消'),
+                ),
+                FilledButton(
+                  onPressed: selectedPath == null
+                      ? null
+                      : () => Navigator.of(context).pop(selectedPath),
+                  child: const Text('完成选择'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _enqueueUploads(List<_DroppedUploadFile> files, String targetDirectory) {
+    _uploadQueue = _uploadQueue.then((_) async {
+      await _uploadFiles(files, targetDirectory);
+    });
+  }
+
+  Future<void> _uploadFiles(
+    List<_DroppedUploadFile> files,
+    String targetDirectory,
+  ) async {
+    var completed = 0;
+    _setUploadProgress(
+      completed: completed,
+      total: files.length,
+      currentName: files.first.name,
+    );
+
+    try {
+      for (final file in files) {
+        _setUploadProgress(
+          completed: completed,
+          total: files.length,
+          currentName: file.name,
+        );
+        await _source.upload(
+          File(file.path),
+          _join(targetDirectory, file.name),
+        );
+        completed++;
+        _setUploadProgress(
+          completed: completed,
+          total: files.length,
+          currentName: file.name,
+        );
+      }
+      await _reloadPreservingExpansion(_tree);
+      _setUploadProgress(
+        completed: completed,
+        total: files.length,
+        currentName: files.last.name,
+        finished: true,
+      );
+      await _notifyUploadFinished(files.length, failed: false);
+    } catch (error) {
+      _setUploadProgress(
+        completed: completed,
+        total: files.length,
+        currentName: files[completed.clamp(0, files.length - 1)].name,
+        failed: true,
+      );
+      _showMessage(error.toString());
+      await _notifyUploadFinished(files.length, failed: true);
+    }
+  }
+
+  void _setUploadProgress({
+    required int completed,
+    required int total,
+    required String currentName,
+    bool finished = false,
+    bool failed = false,
+  }) {
+    if (!mounted) return;
+    setState(() {
+      _uploadProgress = _UploadProgress(
+        completed: completed,
+        total: total,
+        currentName: currentName,
+        finished: finished,
+        failed: failed,
+      );
+    });
+  }
+
+  Future<void> _notifyUploadFinished(int count, {required bool failed}) async {
+    try {
+      await _notificationService.showNotification(
+        title: failed ? '文件上传失败' : '文件上传完成',
+        body: failed ? '$count 个文件上传任务未完成。' : '已上传 $count 个文件。',
+      );
+    } catch (_) {
+      if (mounted) {
+        _showMessage(failed ? '文件上传失败。' : '文件上传完成。');
+      }
+    }
   }
 
   void _enterMultiSelect() {
@@ -925,5 +1437,15 @@ class _FileSourceTreeState extends State<FileSourceTree> {
     if (data.isDirectory) return data.path;
     final size = data.size == null ? '-' : '${data.size} B';
     return '$size  ${data.path}';
+  }
+
+  String _formatSize(int? bytes) {
+    if (bytes == null) return '-';
+    if (bytes < 1024) return '$bytes B';
+    final kib = bytes / 1024;
+    if (kib < 1024) return '${kib.toStringAsFixed(1)} KB';
+    final mib = kib / 1024;
+    if (mib < 1024) return '${mib.toStringAsFixed(1)} MB';
+    return '${(mib / 1024).toStringAsFixed(1)} GB';
   }
 }
