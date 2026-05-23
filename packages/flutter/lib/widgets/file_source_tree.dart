@@ -155,6 +155,7 @@ class _FileSourceTreeState extends State<FileSourceTree> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return DropTarget(
+      enable: _dropTargetEnabled(context),
       onDragDone: _handleDragDone,
       onDragEntered: (_) => setState(() => _dragging = true),
       onDragExited: (_) => setState(() => _dragging = false),
@@ -638,6 +639,7 @@ class _FileSourceTreeState extends State<FileSourceTree> {
   }
 
   Future<void> _handleDragDone(DropDoneDetails detail) async {
+    if (!_isDropInsideThisTree(detail.globalPosition)) return;
     if (mounted) setState(() => _dragging = false);
     final files = <_DroppedUploadFile>[];
     for (final file in detail.files) {
@@ -658,6 +660,26 @@ class _FileSourceTreeState extends State<FileSourceTree> {
     final targetDirectory = await _showDroppedFilesDialog(files);
     if (targetDirectory == null || targetDirectory.trim().isEmpty) return;
     _enqueueUploads(files, targetDirectory);
+  }
+
+  bool _dropTargetEnabled(BuildContext context) {
+    var enabled = true;
+    context.visitAncestorElements((element) {
+      final widget = element.widget;
+      if (widget is Offstage && widget.offstage) {
+        enabled = false;
+        return false;
+      }
+      return true;
+    });
+    return enabled;
+  }
+
+  bool _isDropInsideThisTree(Offset globalPosition) {
+    final renderBox = context.findRenderObject() as RenderBox?;
+    if (renderBox == null || !renderBox.hasSize) return false;
+    final localPosition = renderBox.globalToLocal(globalPosition);
+    return renderBox.paintBounds.contains(localPosition);
   }
 
   Future<String?> _showDroppedFilesDialog(
