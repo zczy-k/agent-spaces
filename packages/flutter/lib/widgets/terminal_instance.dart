@@ -496,7 +496,7 @@ class _TerminalInstanceState extends ConsumerState<TerminalInstance> {
           child: ListView.separated(
             shrinkWrap: true,
             itemCount: _commandHistory.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
+            separatorBuilder: (_, _) => const Divider(height: 1),
             itemBuilder: (context, index) {
               final command = _commandHistory[index];
               return ListTile(
@@ -773,7 +773,7 @@ class _TerminalVirtualKeyboardState extends State<_TerminalVirtualKeyboard> {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      color: Colors.grey.shade950,
+      color: const Color(0xFF121212),
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -843,7 +843,7 @@ class _TerminalVirtualKeyboardState extends State<_TerminalVirtualKeyboard> {
             style: TextButton.styleFrom(
               backgroundColor: selected
                   ? Colors.blueGrey.shade700
-                  : Colors.grey.shade850,
+                  : const Color(0xFF1E1E1E),
               foregroundColor: Colors.grey.shade100,
               padding: EdgeInsets.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,

@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { getStoreApiBase, setStoreApiBase } from "@/lib/agent-store";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -10,7 +13,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { User, Palette, Globe, Shield, Mic, GitBranch } from "lucide-react";
+import { User, Palette, Globe, Shield, Mic, GitBranch, Store } from "lucide/react";
 import { GitSettingsForm } from "@/components/git/git-settings-form";
 import { AppearanceTab } from "./settings/appearance-tab";
 import { LanguageTab } from "./settings/language-tab";
@@ -23,6 +26,7 @@ const tabs = [
   { key: "language", icon: Globe },
   { key: "account", icon: User },
   { key: "security", icon: Shield },
+  { key: "agent_store", icon: Store },
   { key: "git", icon: GitBranch },
   { key: "speech", icon: Mic },
 ] as const;
@@ -46,6 +50,7 @@ export function SettingsDialog({
     language: t("language"),
     account: t("userAvatar"),
     security: t("security"),
+    agent_store: t("agentStore"),
     git: t("git"),
     speech: t("speech"),
   };
@@ -60,6 +65,8 @@ export function SettingsDialog({
         return <AccountTab />;
       case "security":
         return <SecurityTab />;
+      case "agent_store":
+        return <AgentStoreTab />;
       case "git":
         return <GitSettings />;
       case "speech":
@@ -116,6 +123,42 @@ function GitSettings() {
           Git
         </label>
         <GitSettingsForm scope="global" />
+      </div>
+    </div>
+  );
+}
+
+function AgentStoreTab() {
+  const [url, setUrl] = useState(() => getStoreApiBase());
+  const [saved, setSaved] = useState(false);
+  const t = useTranslations("settings");
+
+  const handleSave = () => {
+    setStoreApiBase(url);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1500);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2.5 block">
+          {t("storeApiBase")}
+        </label>
+        <div className="flex gap-2">
+          <Input
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://raw.githubusercontent.com/user/repo/main/packages/agents"
+            className="text-sm"
+          />
+          <Button size="sm" onClick={handleSave}>
+            {saved ? "✓" : t("save")}
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1.5">
+          {t("storeApiBaseDesc")}
+        </p>
       </div>
     </div>
   );

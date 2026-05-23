@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { fetchStoreIndex } from '@/lib/agent-store';
 import type { AgentCandidate, ImportSkillItem, SkillInfo, SkillSyncItem, StoreSkillItem } from './types';
 
 export function useSkillsData(open: boolean, standalone?: boolean) {
@@ -42,8 +43,8 @@ export function useSkillsData(open: boolean, standalone?: boolean) {
   const fetchStoreSkills = useCallback(async () => {
     setStoreLoading(true);
     try {
-      const res = await fetch('/public/skills/index.json');
-      if (res.ok) setStoreSkills(await res.json());
+      const data = await fetchStoreIndex('skills/index.json');
+      setStoreSkills(data);
     } catch { /* ignore */ }
     setStoreLoading(false);
   }, []);
