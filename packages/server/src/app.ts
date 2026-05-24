@@ -34,6 +34,7 @@ import searchRouter from './routes/search.js';
 import notificationRouter from './routes/notification.js';
 import databaseRouter from './routes/database.js';
 import kanbanRouter from './routes/kanban.js';
+import { worktreeRouter } from './routes/worktree.js';
 import speechRecognitionRouter, { handleSpeechStream } from './routes/speech-recognition.js';
 import agentCommandsRouter from './routes/agent-commands.js';
 import robotAccountRouter from './routes/robot-account.js';
@@ -191,6 +192,7 @@ app.post('/api/git-config', async (req, res) => {
 app.use('/api/workspaces/:id/search', searchRouter);
 app.use('/api/workspaces/:id/database', databaseRouter);
 app.use('/api/workspaces/:id/kanban', kanbanRouter);
+app.use('/api/workspaces/:id/worktrees', worktreeRouter);
 app.use('/api/workspaces/:id/notifications', notificationRouter);
 app.use('/api/agents', agentRouter);
 app.use('/api', llmRouter);
