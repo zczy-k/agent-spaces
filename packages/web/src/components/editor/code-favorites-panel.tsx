@@ -7,6 +7,7 @@ import { FileCode, Trash2, MapPin, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 
 interface CodeFavoritesPanelProps {
   workspaceId: string;
@@ -15,6 +16,7 @@ interface CodeFavoritesPanelProps {
 export function CodeFavoritesPanel({ workspaceId }: CodeFavoritesPanelProps) {
   const { favorites, load, removeFavorite } = useCodeFavoritesStore();
   const jumpToPosition = useEditorStore((s) => s.jumpToPosition);
+  const t = useTranslations('editor');
 
   useEffect(() => {
     load(workspaceId);
@@ -24,8 +26,8 @@ export function CodeFavoritesPanel({ workspaceId }: CodeFavoritesPanelProps) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-sm gap-2">
         <FileCode size={32} className="opacity-30" />
-        <span>暂无代码收藏</span>
-        <span className="text-xs">在编辑器中右键 → 添加到代码收藏</span>
+        <span>{t('noFavorites')}</span>
+        <span className="text-xs">{t('noFavoritesHint')}</span>
       </div>
     );
   }
@@ -58,6 +60,7 @@ function FavoriteCard({
   onJump: (wid: string, path: string, line: number, col?: number, endLine?: number, endColumn?: number) => Promise<void>;
   onRemove: (id: string) => void;
 }) {
+  const t = useTranslations('editor');
   const handleClick = () => {
     onJump(workspaceId, favorite.path, favorite.line, favorite.column, favorite.endLine, favorite.endColumn);
   };
@@ -66,7 +69,7 @@ function FavoriteCard({
     e.stopPropagation();
     const pos = `${favorite.path}:${favorite.line}:${favorite.endLine}`;
     navigator.clipboard.writeText(pos).then(() => {
-      toast.success(`已复制: ${pos}`);
+      toast.success(t('copiedPosition', { pos }));
     });
   }, [favorite]);
 
@@ -90,7 +93,7 @@ function FavoriteCard({
             size="icon"
             className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
             onClick={handleCopy}
-            title="复制代码位置"
+            title={t('copyPosition')}
           >
             <Copy size={12} />
           </Button>

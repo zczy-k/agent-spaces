@@ -87,5 +87,10 @@
   "code": "Code",
   "preview": "Preview",
   "switchToCode": "Switch to Code",
-  "switchToPreview": "Switch to Preview"
+  "switchToPreview": "Switch to Preview",
+  "copyPosition": "Copy Code Position",
+  "addToFavorites": "Add to Code Favorites",
+  "noFavorites": "No code favorites yet",
+  "noFavoritesHint": "Right-click in editor → Add to Code Favorites",
+  "copiedPosition": "Copied: {pos}"
 }
