@@ -57,7 +57,7 @@ export type Route = {
   manageLink?: string;
 };
 
-export default function DashboardNavigation({ routes }: { routes: Route[] }) {
+export default function DashboardNavigation({ routes, pathname }: { routes: Route[]; pathname?: string }) {
   const { state, isMobile, setOpenMobile } = useSidebar();
   const isCollapsed = state === "collapsed";
   const [openSet, setOpenSet] = useState<Set<string>>(new Set());
@@ -90,7 +90,12 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
                           <button
                             type="button"
                             onClick={subRoute.onClick}
-                            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                            className={cn(
+                              "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm cursor-pointer",
+                              pathname === subRoute.link
+                                ? "bg-accent text-accent-foreground font-medium"
+                                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                            )}
                           >
                             {subRoute.icon}
                             {subRoute.title}
@@ -99,7 +104,12 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
                           <button
                             type="button"
                             onClick={() => navigate(subRoute.link)}
-                            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                            className={cn(
+                              "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm cursor-pointer",
+                              pathname === subRoute.link
+                                ? "bg-accent text-accent-foreground font-medium"
+                                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                            )}
                           >
                             {subRoute.icon}
                             {subRoute.title}
@@ -197,9 +207,19 @@ export default function DashboardNavigation({ routes }: { routes: Route[] }) {
                                   ? <button
                                     type="button"
                                     onClick={subRoute.onClick}
-                                    className="flex w-full items-center rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-muted hover:text-foreground cursor-pointer"
+                                    className={cn(
+                                      "flex w-full items-center rounded-md px-4 py-1.5 text-sm font-medium cursor-pointer",
+                                      pathname === subRoute.link
+                                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                                        : "text-muted-foreground hover:bg-sidebar-muted hover:text-foreground",
+                                    )}
                                   />
-                                  : <button type="button" onClick={() => navigate(subRoute.link)} className="flex w-full items-center rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-muted hover:text-foreground cursor-pointer" />
+                                  : <button type="button" onClick={() => navigate(subRoute.link)} className={cn(
+                                    "flex w-full items-center rounded-md px-4 py-1.5 text-sm font-medium cursor-pointer",
+                                    pathname === subRoute.link
+                                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                                      : "text-muted-foreground hover:bg-sidebar-muted hover:text-foreground",
+                                  )} />
                               }
                             >{subRoute.title}</SidebarMenuSubButton>
 

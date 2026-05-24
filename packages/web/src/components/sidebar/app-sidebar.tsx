@@ -462,7 +462,7 @@ export function DashboardSidebar() {
         </motion.div>
       </SidebarHeader>
       <SidebarContent className="min-h-0 overflow-y-auto group-data-[collapsible=icon]:overflow-y-auto gap-2 mx-2 my-2 rounded-xl border border-border bg-card p-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-        <DashboardNavigation routes={dashboardRoutes} />
+        <DashboardNavigation routes={dashboardRoutes} pathname={pathname} />
       </SidebarContent>
       <SidebarFooter className="shrink-0 mx-2 mb-2 rounded-xl border border-border bg-card p-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <ServerSwitcher />

@@ -733,6 +733,11 @@
   -webkit-user-select: none;
   user-select: none;
 }
+.select-text,
+.select-text * {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+}
 *::-webkit-scrollbar {
   width: 6px;
   height: 6px;
