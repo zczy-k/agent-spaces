@@ -4,7 +4,7 @@ import { z } from 'zod';
 import {
   listWorkspaceWorktrees, getWorkspaceWorktree,
   createWorkspaceWorktree, deleteWorkspaceWorktree,
-  getWorktreeDiff, createWorktreePR, mergeWorktreePR,
+  getWorktreeDiff, createWorktreePR, mergeWorktreePR, getWorktreePRDraft,
 } from '../services/worktree.js';
 
 export const worktreeRouter = Router({ mergeParams: true });
@@ -20,6 +20,10 @@ const createSchema = z.object({
 const prSchema = z.object({
   title: z.string().optional(),
   body: z.string().optional(),
+});
+
+const prDraftSchema = z.object({
+  title: z.string().optional(),
 });
 
 worktreeRouter.get('/', (req: Request<{ id: string }>, res: Response) => {
@@ -71,6 +75,17 @@ worktreeRouter.post('/:wtId/pr', async (req: Request<{ id: string; wtId: string 
     const { title, body } = prSchema.parse(req.body);
     const prUrl = await createWorktreePR(id, wtId, title, body);
     res.json({ prUrl });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+worktreeRouter.post('/:wtId/pr/draft', async (req: Request<{ id: string; wtId: string }>, res: Response) => {
+  try {
+    const { id, wtId } = req.params;
+    const { title } = prDraftSchema.parse(req.body);
+    const draft = await getWorktreePRDraft(id, wtId, title);
+    res.json(draft);
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }

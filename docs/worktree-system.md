@@ -87,6 +87,18 @@ POST /api/workspaces/:id/worktrees/:wtId/merge
 6. 广播 worktree.merged WebSocket 事件
 ```
 
+### PR 创建流程
+
+```
+POST /api/workspaces/:id/worktrees/:wtId/pr
+  ↓
+1. 校验 worktree 分支相对默认分支有提交
+2. git push -u origin <branch>
+3. gh pr create --base <default-branch> --head <branch>
+4. 写回 prUrl 到 WorktreeInfo
+5. 广播 worktree.pr_created WebSocket 事件
+```
+
 ## 前端集成
 
 ### 底部 Tab 面板

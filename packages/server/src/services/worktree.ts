@@ -14,6 +14,7 @@ import {
   deleteWorkspace,
 } from '../storage/workspace-store.js';
 import { broadcastToWorkspace } from '../ws/connection-manager.js';
+import { runPullRequestAgent } from '../agents/pull-request-agent.js';
 
 function worktreesBaseDir(workspaceId: string) {
   return join(getDataDir(), 'workspaces', workspaceId, 'worktrees');
@@ -136,8 +137,21 @@ export async function createWorktreePR(
     throw new Error('Cannot create PR: no commits on this branch. Make changes and commit first.');
   }
 
+  try {
+    await git.push('origin', info.branch, ['--set-upstream']);
+  } catch (e: any) {
+    const msg = e?.stderr || e?.message || String(e);
+    throw new Error(`Failed to push branch before creating PR: ${msg.replace(/^(Command failed: )?git\s*/, '').trim()}`);
+  }
+
   const prTitle = title || `[${info.name}] ${info.branch}`;
-  const ghArgs = ['pr', 'create', '--head', info.branch, '--title', prTitle, '--body', body || ''];
+  const ghArgs = [
+    'pr', 'create',
+    '--base', defaultBranch,
+    '--head', info.branch,
+    '--title', prTitle,
+    '--body', body || '',
+  ];
 
   let result: string;
   try {
@@ -155,6 +169,34 @@ export async function createWorktreePR(
 
   broadcastToWorkspace(workspaceId, 'worktree.pr_created', info);
   return info.prUrl;
+}
+
+export async function getWorktreePRDraft(
+  workspaceId: string, worktreeId: string, title?: string
+): Promise<{ title: string; body: string; baseBranch: string }> {
+  const info = getWorktree(workspaceId, worktreeId);
+  if (!info) throw new Error('Worktree not found');
+
+  const ws = getWorkspace(workspaceId);
+  if (!ws) throw new Error('Workspace not found');
+
+  const git = simpleGit(ws.boundDirs[0]);
+  const defaultBranch = await getDefaultBranch(git);
+  const commits = await git.log([`${defaultBranch}..${info.branch}`])
+    .then((log) => log.all.map((entry) => entry.message));
+  const diff = await git.diff([`${defaultBranch}...${info.branch}`]);
+  const body = await runPullRequestAgent(workspaceId, {
+    worktree: info,
+    baseBranch: defaultBranch,
+    commits,
+    diff,
+  });
+
+  return {
+    title: title || `[${info.name}] ${info.branch}`,
+    body,
+    baseBranch: defaultBranch,
+  };
 }
 
 export async function mergeWorktreePR(

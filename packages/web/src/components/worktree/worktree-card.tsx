@@ -8,9 +8,11 @@ import { useEditorStore } from "@/stores/editor";
 import { useRouter, usePathname } from "next/navigation";
 import { tauriNavigate } from "@/lib/navigate";
 import {
-  GitBranch, ExternalLink, Trash2, GitPullRequest, ArrowRightLeft, FileDiff,
+  GitBranch, ExternalLink, Trash2, GitPullRequest, ArrowRightLeft, FileDiff, Sparkles, Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
@@ -23,6 +25,10 @@ export function WorktreeCard({ worktree: wt, workspaceId }: WorktreeCardProps) {
   const { remove, createPR, merge } = useWorktreeStore();
   const [prLoading, setPrLoading] = useState(false);
   const [mergeLoading, setMergeLoading] = useState(false);
+  const [prDialogOpen, setPrDialogOpen] = useState(false);
+  const [draftLoading, setDraftLoading] = useState(false);
+  const [prTitle, setPrTitle] = useState(`[${wt.name}] ${wt.branch}`);
+  const [prBody, setPrBody] = useState("");
   const router = useRouter();
   const pathname = usePathname();
   const isCurrent = pathname === `/workspace/${wt.id}`;
@@ -53,16 +59,43 @@ export function WorktreeCard({ worktree: wt, workspaceId }: WorktreeCardProps) {
   }, [workspaceId, wt.id, wt.name, wt.branch]);
 
   const handleCreatePR = useCallback(async () => {
+    setPrTitle(`[${wt.name}] ${wt.branch}`);
+    setPrBody("");
+    setPrDialogOpen(true);
+  }, [wt.name, wt.branch]);
+
+  const handleGenerateDraft = useCallback(async () => {
+    if (draftLoading || prLoading) return;
+    setDraftLoading(true);
+    try {
+      const res = await fetch(`/api/workspaces/${workspaceId}/worktrees/${wt.id}/pr/draft`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: prTitle }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to generate PR draft");
+      if (data.title) setPrTitle(data.title);
+      if (data.body) setPrBody(data.body);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    } finally {
+      setDraftLoading(false);
+    }
+  }, [workspaceId, wt.id, prTitle, draftLoading, prLoading]);
+
+  const handleSubmitPR = useCallback(async () => {
     setPrLoading(true);
     try {
-      await createPR(workspaceId, wt.id);
+      await createPR(workspaceId, wt.id, { title: prTitle, body: prBody });
+      setPrDialogOpen(false);
       toast.success("PR created");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : String(err));
     } finally {
       setPrLoading(false);
     }
-  }, [workspaceId, wt.id, createPR]);
+  }, [workspaceId, wt.id, createPR, prTitle, prBody]);
 
   const handleMerge = useCallback(async () => {
     setMergeLoading(true);
@@ -140,10 +173,9 @@ export function WorktreeCard({ worktree: wt, workspaceId }: WorktreeCardProps) {
               size="sm"
               className="h-6 text-xs"
               onClick={handleCreatePR}
-              disabled={prLoading}
             >
               <GitPullRequest size={12} className="mr-1" />
-              {prLoading ? "..." : t("card.createPR")}
+              {t("card.createPR")}
             </Button>
           </>
         )}
@@ -180,6 +212,50 @@ export function WorktreeCard({ worktree: wt, workspaceId }: WorktreeCardProps) {
           </Button>
         )}
       </div>
+      <Dialog open={prDialogOpen} onOpenChange={setPrDialogOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{t("prDialog.title")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">{t("prDialog.prTitle")}</label>
+              <input
+                value={prTitle}
+                onChange={(e) => setPrTitle(e.target.value)}
+                className="w-full h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              />
+            </div>
+            <div className="relative">
+              <label className="text-sm font-medium">{t("prDialog.body")}</label>
+              <Textarea
+                value={prBody}
+                onChange={(e) => setPrBody(e.target.value)}
+                rows={10}
+                className="mt-1 resize-none pr-10 text-sm"
+                placeholder={t("prDialog.bodyPlaceholder")}
+              />
+              <button
+                type="button"
+                onClick={handleGenerateDraft}
+                disabled={draftLoading || prLoading}
+                className="absolute right-2 bottom-2 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent active:scale-90 transition-all duration-100 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                title={t("prDialog.generate")}
+              >
+                {draftLoading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+              </button>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPrDialogOpen(false)}>
+              {t("prDialog.cancel")}
+            </Button>
+            <Button onClick={handleSubmitPR} disabled={prLoading || !prTitle.trim()}>
+              {prLoading ? "..." : t("prDialog.submit")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

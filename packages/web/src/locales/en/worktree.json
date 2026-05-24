@@ -21,6 +21,15 @@
     "confirmDelete": "Delete this Worktree? Uncommitted changes will be lost.",
     "current": "Current"
   },
+  "prDialog": {
+    "title": "Create PR",
+    "prTitle": "Title",
+    "body": "PR body",
+    "bodyPlaceholder": "Describe the changes for this pull request",
+    "generate": "AI generate PR body",
+    "cancel": "Cancel",
+    "submit": "Create PR"
+  },
   "dialog": {
     "createTitle": "Create Worktree",
     "name": "Name",
