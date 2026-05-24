@@ -27,6 +27,7 @@ export interface AgentRunOptions {
   configDir?: string;
   sandboxDirs?: string[];
   systemPrompt?: string;
+  userPrompt?: string;
   outputStyle?: string;
   resumeSessionId?: string;
   onEvent?: (event: AgentRuntimeEvent) => void;

@@ -63,7 +63,15 @@ export class ClaudeCodeRuntime implements AgentRuntime {
         sandboxDirs: additionalDirectories,
         resumeSessionId: options?.resumeSessionId,
       });
-      emitHook('UserPromptSubmit', '*', { prompt, cwd, configDir });
+      const hookUserPrompt = options?.userPrompt ?? prompt;
+      emitHook('UserPromptSubmit', '*', {
+        prompt: hookUserPrompt,
+        message: hookUserPrompt,
+        userMessage: hookUserPrompt,
+        fullPrompt: prompt,
+        cwd,
+        configDir,
+      });
       if (/CLAUDE\.md|AGENTS\.md|\.claude\/rules\//.test(prompt)) {
         emitHook('InstructionsLoaded', '*', { source: 'prompt', promptPreview: prompt.slice(0, 1000) });
       }
@@ -182,7 +190,17 @@ export class ClaudeCodeRuntime implements AgentRuntime {
       const elapsed = Date.now() - startTime;
       if (waitingForUserAnswer) {
         d(`waiting for user answer ${elapsed}ms | turns=${turns} tokens=${tokenCount}`);
-        emitHook('Stop', '*', { status: 'waiting_for_user_answer', elapsedMs: elapsed, turns, tokenCount, sessionId });
+        const message = resultText || output.at(-1) || 'Waiting for user answer';
+        emitHook('Stop', '*', {
+          status: 'waiting_for_user_answer',
+          message,
+          finalMessage: message,
+          output,
+          elapsedMs: elapsed,
+          turns,
+          tokenCount,
+          sessionId,
+        });
         if (usageLine) output.push(usageLine);
         return {
           success: true,
@@ -216,7 +234,17 @@ export class ClaudeCodeRuntime implements AgentRuntime {
 
       if (waitingForUserAnswer && (!error || isAskUserQuestionAutoResult(error))) {
         d(`waiting for user answer ${elapsed}ms | turns=${turns} tokens=${tokenCount}`);
-        emitHook('Stop', '*', { status: 'waiting_for_user_answer', elapsedMs: elapsed, turns, tokenCount, sessionId });
+        const message = resultText || output.at(-1) || 'Waiting for user answer';
+        emitHook('Stop', '*', {
+          status: 'waiting_for_user_answer',
+          message,
+          finalMessage: message,
+          output,
+          elapsedMs: elapsed,
+          turns,
+          tokenCount,
+          sessionId,
+        });
         if (usageLine) output.push(usageLine);
         return {
           success: true,
@@ -255,7 +283,18 @@ export class ClaudeCodeRuntime implements AgentRuntime {
 
       const finalOutput = resultText && !output.includes(resultText) ? [...output, resultText] : output;
       if (usageLine && !finalOutput.includes(usageLine)) finalOutput.push(usageLine);
-      emitHook('Stop', '*', { status: 'success', elapsedMs: elapsed, turns, tokenCount, sessionId, usage, costUsd });
+      emitHook('Stop', '*', {
+        status: 'success',
+        message: text,
+        finalMessage: text,
+        output: finalOutput,
+        elapsedMs: elapsed,
+        turns,
+        tokenCount,
+        sessionId,
+        usage,
+        costUsd,
+      });
 
       return {
         success: true,

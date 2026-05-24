@@ -79,11 +79,13 @@ export async function syncIssueTasksAfterPlanning(
     },
   });
   const runtime = createRuntimeForPreset(taskSyncPreset);
+  const taskSyncUserPrompt = buildTaskSyncPrompt(issue, input, taskSyncWorkingDir);
   const result = await runtime.execute(
-    buildIssueAgentPrompt(workspaceId, buildTaskSyncPrompt(issue, input, taskSyncWorkingDir), taskSyncWorkingDir, taskSyncPreset),
+    buildIssueAgentPrompt(workspaceId, taskSyncUserPrompt, taskSyncWorkingDir, taskSyncPreset),
     taskSyncWorkingDir,
     {
       maxTurns: 20,
+      userPrompt: taskSyncUserPrompt,
       mcpServers: undefined,
       functionTools: createTaskSyncTools(workspaceId, issue, taskSyncPreset, ctx),
       skills: [],
@@ -257,11 +259,13 @@ export async function runIssueTask(
 
   let result: AgentRunResult;
   try {
+    const taskUserPrompt = buildTaskAgentPrompt(issue, runningTask, taskAgentPreset, agentWorkingDir);
     result = await runtime.execute(
-      buildIssueAgentPrompt(workspaceId, buildTaskAgentPrompt(issue, runningTask, taskAgentPreset, agentWorkingDir), agentWorkingDir, taskAgentPreset),
+      buildIssueAgentPrompt(workspaceId, taskUserPrompt, agentWorkingDir, taskAgentPreset),
       agentWorkingDir,
       {
         maxTurns: 100,
+        userPrompt: taskUserPrompt,
         mcpServers: agentService.getMcpServers(taskAgentPreset.mcps),
         functionTools: createCurrentIssueTools(workspaceId, issue, taskAgentPreset),
         skills: agentService.getAvailableSkillNames(agentService.getAgentConfigDir(workspaceId, taskAgentPreset), taskAgentPreset.skills),

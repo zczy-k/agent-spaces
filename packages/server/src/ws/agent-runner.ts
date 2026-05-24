@@ -380,6 +380,7 @@ export async function runMentionedAgent(
       sandboxDirs: preset.sandboxDirs,
       outputStyle: preset.outputStyle,
       resumeSessionId: isRuntimeSessionResume ? options.resumeSessionId : undefined,
+      userPrompt: runtimeUserPrompt,
       onEvent: wrapOnEventWithHooks((event) => {
         if (activeRun?.stopped) return;
         if (event.type === 'session') {

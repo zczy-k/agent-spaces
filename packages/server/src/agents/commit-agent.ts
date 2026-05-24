@@ -32,15 +32,16 @@ export async function runCommitAgent(workspaceId: string): Promise<string> {
   const workingDir = agentService.resolveWorkingDir(workspaceId, commitAgent);
   const systemPrompt = commitAgent.systemPrompt?.trim() || DEFAULT_SYSTEM_PROMPT;
   const truncatedDiff = diff.length > 8000 ? diff.substring(0, 8000) + '\n... (truncated)' : diff;
+  const userPrompt = [
+    'Generate exactly one commit message for these changes.',
+    'Do not inspect files or run commands. Use only this diff.',
+    'Output only the commit message.',
+    '',
+    truncatedDiff,
+  ].join('\n');
 
   const result = await runtime.execute(
-    prependPersistentAgentContext([
-      'Generate exactly one commit message for these changes.',
-      'Do not inspect files or run commands. Use only this diff.',
-      'Output only the commit message.',
-      '',
-      truncatedDiff,
-    ].join('\n'), {
+    prependPersistentAgentContext(userPrompt, {
       workspaceId,
       workingDir,
       boundDirs: ws.boundDirs,
@@ -50,6 +51,7 @@ export async function runCommitAgent(workspaceId: string): Promise<string> {
     workingDir,
     {
       maxTurns: 1,
+      userPrompt,
       systemPrompt,
       outputStyle: commitAgent.outputStyle,
     },
