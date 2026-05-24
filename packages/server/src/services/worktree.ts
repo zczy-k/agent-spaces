@@ -105,7 +105,8 @@ export async function getWorktreeDiff(
   if (!ws) throw new Error('Workspace not found');
 
   const git = simpleGit(ws.boundDirs[0]);
-  const diff = await git.diff([`main...${info.branch}`]);
+  const defaultBranch = await getDefaultBranch(git);
+  const diff = await git.diff([`${defaultBranch}...${info.branch}`]);
   return diff;
 }
 
@@ -159,4 +160,17 @@ export async function mergeWorktreePR(
   updateWorktree(workspaceId, info);
 
   broadcastToWorkspace(workspaceId, 'worktree.merged', info);
+}
+
+async function getDefaultBranch(git: ReturnType<typeof simpleGit>): Promise<string> {
+  try {
+    const result = await git.raw(['symbolic-ref', 'refs/remotes/origin/HEAD']);
+    const match = result.match(/refs\/remotes\/origin\/(.+)/);
+    if (match) return match[1].trim();
+  } catch {}
+  // Fallback: try common names
+  const branches = await git.branch();
+  if (branches.all.includes('main')) return 'main';
+  if (branches.all.includes('master')) return 'master';
+  return 'main';
 }
