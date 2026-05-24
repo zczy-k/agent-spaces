@@ -60,8 +60,8 @@ jobs:
     - name: Export Docker image tar
       run: |
         mkdir -p dist
-        TAR_PATH="dist/agent_spaces-server-${GITHUB_REF_NAME}-linux-amd64.tar"
-        docker save --output "$TAR_PATH" "agent_spaces-server:${GITHUB_REF_NAME}"
+        TAR_PATH="dist/agent_spaces-server-${GITHUB_REF_NAME}-linux-amd64.tar.gz"
+        docker save "agent_spaces-server:${GITHUB_REF_NAME}" | gzip -9 > "$TAR_PATH"
         sha256sum "$TAR_PATH" > "$TAR_PATH.sha256"
         ls -lh "$TAR_PATH" "$TAR_PATH.sha256"
 
@@ -70,8 +70,8 @@ jobs:
         TAG="${GITHUB_REF_NAME}"
         gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --generate-notes
         gh release upload "$TAG" \
-          "dist/agent_spaces-server-${TAG}-linux-amd64.tar" \
-          "dist/agent_spaces-server-${TAG}-linux-amd64.tar.sha256" \
+          "dist/agent_spaces-server-${TAG}-linux-amd64.tar.gz" \
+          "dist/agent_spaces-server-${TAG}-linux-amd64.tar.gz.sha256" \
           --clobber
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

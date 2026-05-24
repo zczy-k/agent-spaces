@@ -19,13 +19,7 @@ IconData deviceIcon(DeviceType type) {
 
 void showNewTabDialog(BuildContext context, BrowserNotifier notifier) {
   final controller = TextEditingController();
-  String? normalizeUrl(String url) {
-    final trimmed = url.trim();
-    if (trimmed.isEmpty) return null;
-    return trimmed.startsWith('http') ? trimmed : 'http://$trimmed';
-  }
-
-  showDialog<String>(
+  showDialog(
     context: context,
     builder: (ctx) => AlertDialog(
       title: Text('tab_new_tab'.tr(), style: const TextStyle(fontSize: 15)),
@@ -39,7 +33,11 @@ void showNewTabDialog(BuildContext context, BrowserNotifier notifier) {
           hintText: 'tab_enter_url'.tr(),
         ),
         onSubmitted: (url) {
-          Navigator.of(ctx).pop(normalizeUrl(url));
+          if (url.isNotEmpty) {
+            final normalized = url.startsWith('http') ? url : 'http://$url';
+            notifier.addTab(url: normalized);
+            Navigator.of(ctx).pop();
+          }
         },
       ),
       actions: [
@@ -49,19 +47,18 @@ void showNewTabDialog(BuildContext context, BrowserNotifier notifier) {
         ),
         TextButton(
           onPressed: () {
-            Navigator.of(ctx).pop(normalizeUrl(controller.text));
+            final url = controller.text;
+            if (url.isNotEmpty) {
+              final normalized = url.startsWith('http') ? url : 'http://$url';
+              notifier.addTab(url: normalized);
+              Navigator.of(ctx).pop();
+            }
           },
           child: Text('tab_open'.tr()),
         ),
       ],
     ),
-  ).then((url) {
-    controller.dispose();
-    if (url == null) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      notifier.addTab(url: url);
-    });
-  });
+  );
 }
 
 void showNavigateDialog(
