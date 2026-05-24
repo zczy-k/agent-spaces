@@ -155,6 +155,14 @@ export function GitCommitsPanel({ workspaceId }: Props) {
     ]);
   }, [workspaceId, fetchRemote, loadStatus, loadDiffs, loadLog]);
 
+  const handleRefreshClick = useCallback(async () => {
+    await refresh();
+    const nextStatus = useGitStore.getState().status;
+    if ((nextStatus?.files.length ?? 0) === 0) {
+      toast.info(tChanges('noChanges'));
+    }
+  }, [refresh, tChanges]);
+
   const refreshAll = useCallback(() => { refresh(); loadBranches(workspaceId); }, [workspaceId, refresh, loadBranches]);
 
   const { syncing, remoteDialogOpen, setRemoteDialogOpen, handleSync, handleRemoteSubmit, handleSyncChanges } = useGitSync(workspaceId, refresh);
@@ -338,7 +346,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
           }} disabled={!hasFiles} className="p-1 text-muted-foreground hover:text-foreground active:scale-90 transition-all duration-100 cursor-pointer disabled:opacity-30" title={tChanges('viewDiff')}>
             <FileDiff size={13} />
           </button>
-          <button onClick={refresh} className="p-1 text-muted-foreground hover:text-foreground active:scale-90 transition-all duration-100 cursor-pointer" title={tc('refresh')}>
+          <button onClick={handleRefreshClick} className="p-1 text-muted-foreground hover:text-foreground active:scale-90 transition-all duration-100 cursor-pointer" title={tc('refresh')}>
             <RefreshCw size={13} />
           </button>
         </div>
@@ -424,7 +432,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
                 <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-foreground px-1 text-[9px] font-medium leading-none text-background">{behind}</span>
               )}
             </button>
-            <button onClick={refresh} className="p-1 text-muted-foreground hover:text-foreground active:scale-90 transition-all duration-100 cursor-pointer"><RefreshCw size={13} /></button>
+            <button onClick={handleRefreshClick} className="p-1 text-muted-foreground hover:text-foreground active:scale-90 transition-all duration-100 cursor-pointer"><RefreshCw size={13} /></button>
             <button onClick={() => setGitSettingsOpen(true)} className="p-1 text-muted-foreground hover:text-foreground active:scale-90 transition-all duration-100 cursor-pointer" title={t('settingsTitle')}><Settings2 size={13} /></button>
             <button onClick={openOpLog} className="p-1 text-muted-foreground hover:text-foreground active:scale-90 transition-all duration-100 cursor-pointer" title={t('operationLog')}><ScrollText size={13} /></button>
           </div>
@@ -465,6 +473,8 @@ export function GitCommitsPanel({ workspaceId }: Props) {
             <GitCommitLogList
               workspaceId={workspaceId}
               log={log}
+              currentHeadHash={status?.headHash}
+              currentBranch={status?.branch}
               onSelectEntry={setDetailEntry}
               onRefreshAll={refreshAll}
               onOpenPrompt={openPromptDialog}

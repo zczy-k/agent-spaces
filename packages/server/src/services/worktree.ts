@@ -21,7 +21,7 @@ function worktreesBaseDir(workspaceId: string) {
 }
 
 export function listWorkspaceWorktrees(workspaceId: string): WorktreeInfo[] {
-  return listWorktrees(workspaceId).filter(wt => wt.status !== 'deleted');
+  return listWorktrees(workspaceId).filter(wt => wt.status === 'active');
 }
 
 export function getWorkspaceWorktree(workspaceId: string, worktreeId: string): WorktreeInfo | null {

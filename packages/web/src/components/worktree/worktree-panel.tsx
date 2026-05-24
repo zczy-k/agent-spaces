@@ -18,6 +18,7 @@ export function WorktreePanel({ workspaceId }: WorktreePanelProps) {
   const { worktrees, loading, load } = useWorktreeStore();
   const [createOpen, setCreateOpen] = useState(false);
   const t = useTranslations("worktree");
+  const activeWorktrees = worktrees.filter((worktree) => worktree.status === "active");
 
   // Resolve to parent workspace for worktree data
   const currentWs = useWorkspaceStore((s) => s.workspaces.find((w) => w.id === workspaceId));
@@ -27,7 +28,7 @@ export function WorktreePanel({ workspaceId }: WorktreePanelProps) {
     load(ownerId);
   }, [ownerId, load]);
 
-  if (worktrees.length === 0 && !loading) {
+  if (activeWorktrees.length === 0 && !loading) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-sm gap-2">
         <GitBranch size={32} className="opacity-30" />
@@ -46,7 +47,7 @@ export function WorktreePanel({ workspaceId }: WorktreePanelProps) {
     <ScrollArea className="h-full">
       <div className="flex items-center justify-between p-2 pb-0">
         <span className="text-xs text-muted-foreground">
-          {t("panel.title")} ({worktrees.length})
+          {t("panel.title")} ({activeWorktrees.length})
         </span>
         <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setCreateOpen(true)}>
           <Plus size={12} className="mr-1" />
@@ -54,7 +55,7 @@ export function WorktreePanel({ workspaceId }: WorktreePanelProps) {
         </Button>
       </div>
       <div className="grid gap-2 p-2" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }}>
-        {worktrees.map((wt) => (
+        {activeWorktrees.map((wt) => (
           <WorktreeCard key={wt.id} worktree={wt} workspaceId={ownerId} />
         ))}
       </div>

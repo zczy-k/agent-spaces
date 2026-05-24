@@ -195,6 +195,11 @@ export async function gitStatus(workspaceId: string): Promise<GitStatusResult> {
   try {
     const upstream = await getUpstreamRef(git, result.branch);
     if (upstream) {
+      const counts = await git.raw(['rev-list', '--left-right', '--count', `HEAD...${upstream}`]);
+      const [ahead, behind] = counts.trim().split(/\s+/).map((value) => Number(value));
+      if (Number.isFinite(ahead)) result.ahead = ahead;
+      if (Number.isFinite(behind)) result.behind = behind;
+
       const remoteHeadHash = await git.revparse(['--short', upstream]);
       result.remoteHeadHash = remoteHeadHash.trim();
     }
@@ -413,7 +418,7 @@ export async function gitPush(workspaceId: string): Promise<void> {
   const remotes = await git.getRemotes(true);
   if (!remotes.length) throw new Error('No remote repository configured. Please add a remote first.');
 
-  await git.push('origin', branch);
+  await git.push('origin', branch, ['--set-upstream']);
 }
 
 export async function gitFetch(workspaceId: string): Promise<void> {
@@ -431,6 +436,12 @@ export async function gitPull(workspaceId: string): Promise<void> {
   const git = getGit(ws);
   const status = await git.status();
   const branch = status.current || 'HEAD';
+  const upstream = await getUpstreamRef(git, branch);
+
+  if (upstream?.startsWith('origin/')) {
+    await git.pull('origin', upstream.slice('origin/'.length));
+    return;
+  }
 
   await git.pull('origin', branch);
 }

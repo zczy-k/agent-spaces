@@ -87,7 +87,7 @@ export async function runPullRequestAgent(
     throw new Error(result.error || 'Pull request agent failed');
   }
 
-  const body = sanitizePullRequestBody(result.output.join('\n'));
+  const body = sanitizePullRequestBody(result.output);
   if (!body) throw new Error('Empty response from pull request agent');
   return body;
 }
@@ -101,13 +101,30 @@ function findPullRequestAgent(workspaceId: string): AgentConfig {
   return agentService.listTemplates().find((a) => a.id === AGENT_GENERATOR_PRESET_ID) ?? agentService.listTemplates()[0];
 }
 
-function sanitizePullRequestBody(output: string): string {
-  return output
+function sanitizePullRequestBody(output: string[] | string): string {
+  const chunks = (Array.isArray(output) ? output : [output])
+    .map((chunk) => cleanOutputChunk(chunk))
+    .filter(Boolean);
+  const uniqueChunks = dedupeAdjacentChunks(chunks);
+  return (uniqueChunks.at(-1) || uniqueChunks.join('\n\n')).trim();
+}
+
+function cleanOutputChunk(chunk: string): string {
+  return chunk
     .split('\n')
     .filter((line) => !isRuntimeNoise(line))
     .join('\n')
     .replace(/```(?:\w+)?\n([\s\S]*?)```/g, '$1')
     .trim();
+}
+
+function dedupeAdjacentChunks(chunks: string[]): string[] {
+  const result: string[] = [];
+  for (const chunk of chunks) {
+    if (result.at(-1)?.trim() === chunk.trim()) continue;
+    result.push(chunk);
+  }
+  return result;
 }
 
 function isRuntimeNoise(line: string): boolean {
