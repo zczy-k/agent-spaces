@@ -1,13 +1,13 @@
 import { v4 as uuid } from 'uuid';
 import simpleGit from 'simple-git';
 import { join } from 'node:path';
-import type { WorktreeInfo, CreateWorktreeInput } from '@agent-spaces/shared';
-import { getDataDir, ensureDir } from '../storage/json-store.js';
+import type { WorktreeInfo, CreateWorktreeInput, Workspace } from '@agent-spaces/shared';
+import { getDataDir, ensureDir, writeJsonFile, deleteFile } from '../storage/json-store.js';
 import {
   listWorktrees, getWorktree, createWorktree as storeCreate,
   updateWorktree, deleteWorktreeFromIndex,
 } from '../storage/worktree-store.js';
-import { getWorkspace } from '../storage/workspace-store.js';
+import { getWorkspace, listWorkspaces } from '../storage/workspace-store.js';
 import { broadcastToWorkspace } from '../ws/connection-manager.js';
 
 function worktreesBaseDir(workspaceId: string) {
@@ -45,6 +45,18 @@ export async function createWorkspaceWorktree(
   };
 
   storeCreate(workspaceId, info);
+
+  // Write virtual workspace.json so getWorkspace(wtId) resolves for all sub-routes
+  const virtualWs: Workspace = {
+    id, name: `${input.name} (Worktree)`, boundDirs: [wtPath],
+    agentspaceDir: join(wtPath, '.agentspace'),
+    isWorktree: true, parentWorkspaceId: workspaceId,
+    createdAt: now, updatedAt: now, activeChannels: [], activeIssues: [],
+  };
+  const wtWorkspaceDir = join(getDataDir(), 'workspaces', id);
+  ensureDir(wtWorkspaceDir);
+  writeJsonFile(join(wtWorkspaceDir, 'workspace.json'), virtualWs);
+
   broadcastToWorkspace(workspaceId, 'worktree.created', info);
   return info;
 }
@@ -60,6 +72,9 @@ export async function deleteWorkspaceWorktree(
 
   const git = simpleGit(ws.boundDirs[0]);
   await git.raw(['worktree', 'remove', info.path, '--force']).catch(() => {});
+
+  // Clean up virtual workspace.json
+  deleteFile(join(getDataDir(), 'workspaces', worktreeId, 'workspace.json'));
 
   info.status = 'deleted';
   info.updatedAt = new Date().toISOString();
@@ -123,6 +138,9 @@ export async function mergeWorktreePR(
   await git.raw(['pr', 'merge', info.prUrl, '--merge']);
   await git.raw(['worktree', 'remove', info.path]).catch(() => {});
   await git.raw(['branch', '-d', info.branch]).catch(() => {});
+
+  // Clean up virtual workspace.json
+  deleteFile(join(getDataDir(), 'workspaces', worktreeId, 'workspace.json'));
 
   info.status = 'merged';
   info.updatedAt = new Date().toISOString();

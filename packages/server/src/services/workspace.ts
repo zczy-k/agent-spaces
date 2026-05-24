@@ -1,7 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import type { Workspace, CreateWorkspaceInput } from '@agent-spaces/shared';
 import { listWorkspaces, getWorkspace, createWorkspace, updateWorkspace, deleteWorkspace } from '../storage/workspace-store.js';
-import { getWorktree as getWorktreeById } from '../storage/worktree-store.js';
 import { ensureDir } from '../storage/json-store.js';
 import { join } from 'node:path';
 import { existsSync, writeFileSync } from 'node:fs';
@@ -30,28 +29,7 @@ export function getAll(): Workspace[] {
 }
 
 export function getById(id: string): Workspace | null {
-  const ws = getWorkspace(id);
-  if (ws) return ws;
-
-  // Fallback: check if this is a worktree virtual workspace id
-  for (const parent of listWorkspaces()) {
-    const wt = getWorktreeById(parent.id, id);
-    if (wt && wt.status === 'active') {
-      return {
-        id: wt.id,
-        name: `${wt.name} (Worktree)`,
-        boundDirs: [wt.path],
-        agentspaceDir: join(wt.path, '.agentspace'),
-        isWorktree: true,
-        parentWorkspaceId: parent.id,
-        createdAt: wt.createdAt,
-        updatedAt: wt.updatedAt,
-        activeChannels: [],
-        activeIssues: [],
-      };
-    }
-  }
-  return null;
+  return getWorkspace(id);
 }
 
 export function create(input: CreateWorkspaceInput): Workspace {
