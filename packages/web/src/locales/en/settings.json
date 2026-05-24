@@ -10,6 +10,7 @@
   "languageZh": "中文",
   "languageEn": "English",
   "security": "Security",
+  "robots": "Robot Accounts",
   "newSecretPlaceholder": "New secret key (leave empty to remove)",
   "redirecting": "Redirecting to login...",
   "zoom": "Page Zoom",

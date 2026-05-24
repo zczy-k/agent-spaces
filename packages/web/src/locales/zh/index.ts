@@ -19,6 +19,7 @@ import outputStyles from './outputStyles.json';
 import projectSettings from './projectSettings.json';
 import prompts from './prompts.json';
 import providers from './providers.json';
+import robotAccounts from './robotAccounts.json';
 import settings from './settings.json';
 import sidebar from './sidebar.json';
 import skills from './skills.json';
@@ -50,6 +51,7 @@ export default {
   projectSettings,
   prompts,
   providers,
+  robotAccounts,
   settings,
   sidebar,
   skills,

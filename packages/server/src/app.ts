@@ -36,6 +36,7 @@ import databaseRouter from './routes/database.js';
 import kanbanRouter from './routes/kanban.js';
 import speechRecognitionRouter, { handleSpeechStream } from './routes/speech-recognition.js';
 import agentCommandsRouter from './routes/agent-commands.js';
+import robotAccountRouter from './routes/robot-account.js';
 import { getUserSettings, setUserAvatarUrl, removeUserAvatarUrl } from './storage/user-settings-store.js';
 import { authMiddleware, verifyToken } from './middleware/auth.js';
 import { handleConnection } from './ws/handler.js';
@@ -201,6 +202,7 @@ app.use('/api/mcps', mcpRouter);
 app.use('/api/subscriptions', subscriptionRouter);
 app.use('/api/speech-recognition', speechRecognitionRouter);
 app.use('/api/agent-commands', agentCommandsRouter);
+app.use('/api/robot-accounts', robotAccountRouter);
 
 // Serve static web frontend in production (after API routes, before catch-all)
 const webDir = resolveRuntimeDir('web');
