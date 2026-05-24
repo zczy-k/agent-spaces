@@ -87,6 +87,10 @@ const KanbanBoard = dynamic(() => import("@/components/kanban/kanban-board").the
   ssr: false,
   loading: panelLoader,
 });
+const WorktreePanel = dynamic(() => import("@/components/worktree/worktree-panel").then((mod) => mod.WorktreePanel), {
+  ssr: false,
+  loading: panelLoader,
+});
 
 type FlutterBridge = { emit?: (event: string, data: unknown) => void };
 
@@ -117,6 +121,7 @@ const defaultJson: IJsonModel = {
         { type: "tab", name: "Terminal", component: "terminal" },
         { type: "tab", name: "Commits", component: "git-commits" },
         { type: "tab", name: "Favorites", component: "code-favorites", id: "code-favorites" },
+        { type: "tab", name: "Worktrees", component: "worktree-panel", id: "worktree-panel" },
       ],
     },
   ],
@@ -182,6 +187,9 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
         const bottom = borders?.find((b) => b.location === 'bottom');
         if (bottom && !bottom.children.some((c) => { const t = c as Record<string, unknown>; return t.id === 'code-favorites' || t.component === 'code-favorites'; })) {
           bottom.children.push({ type: 'tab', name: 'Favorites', component: 'code-favorites', id: 'code-favorites' });
+        }
+        if (bottom && !bottom.children.some((c) => { const t = c as Record<string, unknown>; return t.id === 'worktree-panel' || t.component === 'worktree-panel'; })) {
+          bottom.children.push({ type: 'tab', name: 'Worktrees', component: 'worktree-panel', id: 'worktree-panel' });
         }
         m = Model.fromJson(json);
       } else {
@@ -449,6 +457,8 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
           return <ProjectSettingsPanel workspaceId={workspaceId} />;
         case "code-favorites":
           return <CodeFavoritesPanel workspaceId={workspaceId} />;
+        case "worktree-panel":
+          return <WorktreePanel workspaceId={workspaceId} />;
         case "database":
           return <DatabasePanel workspaceId={workspaceId} />;
         case "database-list":

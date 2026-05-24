@@ -362,7 +362,7 @@ export function DashboardSidebar() {
       addLabel: ts('nav.addWorkspace'),
       manageLink: "/workspaces",
       subs: [
-        ...workspaces.map((ws) => ({
+        ...workspaces.filter(ws => !ws.isWorktree).map((ws) => ({
           title: ws.name,
           link: buildWorkspaceHref(ws.id),
           icon: <FolderOpen className="size-4" />,
