@@ -29,6 +29,12 @@
   "updateFailed": "更新账号失败",
   "deleteSuccess": "账号已删除",
   "deleteFailed": "删除账号失败",
+  "wechatQrDescription": "使用微信扫描二维码，登录后自动创建账号",
+  "getQr": "获取二维码",
+  "refreshQr": "刷新二维码",
+  "wechatWaitScan": "等待扫码...",
+  "wechatScanned": "已扫码，请在手机上确认登录",
+  "wechatExpired": "二维码已过期，请刷新",
   "save": "保存",
   "cancel": "取消"
 }

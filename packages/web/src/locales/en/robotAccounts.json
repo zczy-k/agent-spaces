@@ -29,6 +29,12 @@
   "updateFailed": "Failed to update account",
   "deleteSuccess": "Account deleted",
   "deleteFailed": "Failed to delete account",
+  "wechatQrDescription": "Scan the QR code with WeChat. An account will be created automatically after login.",
+  "getQr": "Get QR Code",
+  "refreshQr": "Refresh QR Code",
+  "wechatWaitScan": "Waiting for scan...",
+  "wechatScanned": "Scanned. Confirm login on your phone.",
+  "wechatExpired": "QR code expired. Please refresh.",
   "save": "Save",
   "cancel": "Cancel"
 }

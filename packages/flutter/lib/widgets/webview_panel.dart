@@ -152,8 +152,8 @@ class _WebViewPanelState extends ConsumerState<WebViewPanel> {
             top: 8,
             right: 8,
             child: _ServerMenuButton(
-              menuItems: buildBrowserMenuItems(
-                context,
+              menuBuilder: (menuContext) => buildBrowserMenuItems(
+                menuContext,
                 ref,
                 activeTabId: null,
                 onNewTab: () => showNewTabDialog(context, notifier),
@@ -168,9 +168,10 @@ class _WebViewPanelState extends ConsumerState<WebViewPanel> {
 }
 
 class _ServerMenuButton extends StatelessWidget {
-  final List<PopupMenuEntry<VoidCallback>> menuItems;
+  final List<PopupMenuEntry<VoidCallback>> Function(BuildContext context)
+  menuBuilder;
 
-  const _ServerMenuButton({required this.menuItems});
+  const _ServerMenuButton({required this.menuBuilder});
 
   @override
   Widget build(BuildContext context) {
@@ -179,12 +180,14 @@ class _ServerMenuButton extends StatelessWidget {
       borderRadius: BorderRadius.circular(8),
       elevation: 1,
       child: InkWell(
-        onTap: () {
+        onTap: () async {
           final renderBox = context.findRenderObject() as RenderBox;
           final overlay =
               Overlay.of(context).context.findRenderObject() as RenderBox;
-          final offset =
-              renderBox.localToGlobal(Offset.zero, ancestor: overlay);
+          final offset = renderBox.localToGlobal(
+            Offset.zero,
+            ancestor: overlay,
+          );
           final position = RelativeRect.fromRect(
             Rect.fromLTWH(
               offset.dx,
@@ -194,17 +197,24 @@ class _ServerMenuButton extends StatelessWidget {
             ),
             Offset.zero & overlay.size,
           );
-          showMenu<VoidCallback>(
+          final action = await showMenu<VoidCallback>(
             context: context,
             position: position,
-            items: menuItems,
-          ).then((action) => action?.call());
+            items: menuBuilder(context),
+          );
+          if (!context.mounted || action == null) return;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (context.mounted) action();
+          });
         },
         borderRadius: BorderRadius.circular(8),
         child: Padding(
           padding: const EdgeInsets.all(6),
-          child: Icon(Icons.more_vert,
-              size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
+          child: Icon(
+            Icons.more_vert,
+            size: 16,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
       ),
     );

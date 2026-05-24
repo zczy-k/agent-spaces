@@ -304,11 +304,9 @@ class _SplitLayoutViewState extends State<SplitLayoutView> {
   }
 
   String _buildStructureKey() {
-    final tabStructure = widget.layout == SplitLayout.single
-        ? widget.visibleTabs.map((tab) => tab.device.type.name).join('|')
-        : widget.visibleTabs
-              .map((tab) => '${tab.id}:${tab.device.type.name}')
-              .join('|');
+    final tabStructure = widget.visibleTabs
+        .map((tab) => '${tab.id}:${tab.device.type.name}')
+        .join('|');
     return '${widget.layout.name}:${widget.webViewDebuggingEnabled}:$tabStructure';
   }
 
@@ -421,6 +419,13 @@ class _SplitLayoutViewState extends State<SplitLayoutView> {
       layout.removeItemByIds(removedIds);
     }
 
+    if (layout.root == null) {
+      layout.root = _buildRoot();
+      _selectDockingItem(layout, widget.activeTabId);
+      _lastSavedDockingLayout = _stringifyLayout(layout);
+      return;
+    }
+
     for (final tab in widget.visibleTabs) {
       if (layout.findDockingItem(tab.id) != null) continue;
       layout.addItemOnRoot(
@@ -468,6 +473,13 @@ Widget buildSplitLayout({
 }) {
   if (visibleTabs.isEmpty) return const SizedBox.shrink();
   return SplitLayoutView(
+    key: ValueKey(
+      [
+        layout.name,
+        webViewDebuggingEnabled,
+        ...visibleTabs.map((tab) => '${tab.id}:${tab.device.type.name}'),
+      ].join('|'),
+    ),
     layout: layout,
     visibleTabs: visibleTabs,
     activeTabId: activeTabId,

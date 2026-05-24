@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 import { listRobotAccounts, createAccount, updateAccount, deleteRobotAccount } from '../services/robot-account.js';
+import { getGlobalWeChatQRCode, pollGlobalWeChatQRCode } from '../services/global-wechat-qr.js';
 
 type Params = { id: string };
 
@@ -41,6 +42,26 @@ router.delete('/:id', (req: Request<Params>, res: Response) => {
   const deleted = deleteRobotAccount(req.params.id);
   if (!deleted) { res.status(404).json({ error: 'Not found' }); return; }
   res.json({ ok: true });
+});
+
+// Global WeChat QR login (not bound to a workspace)
+router.post('/wechat/qr', async (_req: Request, res: Response) => {
+  try {
+    const result = await getGlobalWeChatQRCode();
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : 'Failed to get WeChat QR code' });
+  }
+});
+
+router.post('/wechat/qr/poll', async (req: Request, res: Response) => {
+  try {
+    const { sessionId } = req.body as { sessionId?: string };
+    const result = await pollGlobalWeChatQRCode(sessionId);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : 'Failed to poll WeChat QR status' });
+  }
 });
 
 export default router;
