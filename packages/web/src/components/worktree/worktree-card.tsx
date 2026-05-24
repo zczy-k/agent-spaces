@@ -83,10 +83,11 @@ export function WorktreeCard({ worktree: wt, workspaceId }: WorktreeCardProps) {
     try {
       await remove(workspaceId, wt.id);
       removeWorkspace(wt.id);
+      if (isCurrent) tauriNavigate(router, `/workspace/${workspaceId}`);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : String(err));
     }
-  }, [workspaceId, wt.id, remove, removeWorkspace, t]);
+  }, [workspaceId, wt.id, remove, removeWorkspace, t, isCurrent, router]);
 
   return (
     <div className="group border rounded-lg p-3 hover:bg-accent/50 transition-colors">
