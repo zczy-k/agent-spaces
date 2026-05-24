@@ -2,10 +2,7 @@ export interface HookConfig {
   name: string;
   description?: string;
   enabled: boolean;
-  hooks: {
-    PreToolUse?: HookRule[];
-    PostToolUse?: HookRule[];
-  };
+  hooks: Partial<Record<ClaudeHookEventName, HookRule[]>>;
 }
 
 export interface HookRule {
@@ -16,3 +13,29 @@ export interface HookRule {
   function?: string;
   timeout?: number;
 }
+
+export type ClaudeHookEventName =
+  | 'SessionStart'
+  | 'UserPromptSubmit'
+  | 'UserPromptExpansion'
+  | 'PreToolUse'
+  | 'PermissionDenied'
+  | 'PostToolUse'
+  | 'PostToolUseFailure'
+  | 'PostToolBatch'
+  | 'Notification'
+  | 'SubagentStart'
+  | 'SubagentStop'
+  | 'TaskCreated'
+  | 'TaskCompleted'
+  | 'Stop'
+  | 'StopFailure'
+  | 'TeammateIdle'
+  | 'InstructionsLoaded'
+  | 'CwdChanged'
+  | 'WorktreeRemove'
+  | 'PreCompact'
+  | 'PostCompact'
+  | 'Elicitation'
+  | 'ElicitationResult'
+  | 'SessionEnd';

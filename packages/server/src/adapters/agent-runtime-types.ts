@@ -1,5 +1,5 @@
 import type { AgentOptions, ApiType } from '@codeany/open-agent-sdk';
-import type { MessageTokenUsage } from '@agent-spaces/shared';
+import type { ClaudeHookEventName, MessageTokenUsage } from '@agent-spaces/shared';
 import { resolveOutputStyleContent } from '../services/output-style.js';
 
 export interface AgentRunResult {
@@ -37,7 +37,8 @@ export type AgentRuntimeEvent =
   | { type: 'session'; sessionId: string }
   | { type: 'reasoning'; text: string; status?: 'streaming' | 'completed' }
   | { type: 'tool_use'; id: string; name: string; input?: unknown; line: string }
-  | { type: 'tool_result'; toolUseId?: string; result: unknown };
+  | { type: 'tool_result'; toolUseId?: string; result: unknown }
+  | { type: 'hook_event'; event: ClaudeHookEventName; matcher?: string; payload?: unknown };
 
 export interface AgentFunctionTool {
   name: string;

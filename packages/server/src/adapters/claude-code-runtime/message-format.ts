@@ -1,5 +1,5 @@
 import type { SDKMessage } from '@anthropic-ai/claude-agent-sdk';
-import type { MessageTokenUsage } from '@agent-spaces/shared';
+import type { ClaudeHookEventName, MessageTokenUsage } from '@agent-spaces/shared';
 
 export function formatMessage(message: SDKMessage): string | null {
   switch (message.type) {
@@ -99,6 +99,35 @@ export function extractToolResultEvent(message: SDKMessage): { toolUseId?: strin
   }
 
   return null;
+}
+
+export function extractClaudeHookEvents(message: SDKMessage): Array<{ event: ClaudeHookEventName; matcher?: string; payload?: unknown }> {
+  const events: Array<{ event: ClaudeHookEventName; matcher?: string; payload?: unknown }> = [];
+
+  if (message.type === 'system') {
+    if (message.subtype === 'task_started') {
+      events.push({ event: 'SubagentStart', matcher: '*', payload: message });
+    } else if (message.subtype === 'task_notification') {
+      events.push({ event: 'Notification', matcher: '*', payload: message });
+    } else if (message.subtype === 'local_command_output') {
+      events.push({ event: 'Notification', matcher: 'local_command_output', payload: message });
+    }
+  }
+
+  if (message.type === 'tool_use_summary') {
+    events.push({ event: 'PostToolBatch', matcher: '*', payload: message });
+  }
+
+  for (const toolUse of extractToolUseEvents(message)) {
+    if (toolUse.name === 'TaskCreate') {
+      events.push({ event: 'TaskCreated', matcher: toolUse.name, payload: toolUse });
+    }
+    if (toolUse.name === 'TaskCompleted') {
+      events.push({ event: 'TaskCompleted', matcher: toolUse.name, payload: toolUse });
+    }
+  }
+
+  return events;
 }
 
 export function logToolDebug(
