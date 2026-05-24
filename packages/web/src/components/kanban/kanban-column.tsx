@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState } from 'react';
-import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { Plus, Trash2, Edit2, ChevronDown, ChevronUp } from 'lucide-react';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { useDroppable } from '@dnd-kit/core';
+import { Plus, ChevronDown, ChevronUp } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { KanbanColumn as KanbanColumnType, KanbanTask, KanbanLayoutMode } from '@agent-spaces/shared';
 import KanbanCard from './kanban-card';
@@ -14,8 +14,6 @@ interface KanbanColumnProps {
   layoutMode: KanbanLayoutMode;
   onCardClick: (task: KanbanTask) => void;
   onAddTask: (columnId: string) => void;
-  onEditColumn: (column: KanbanColumnType) => void;
-  onDeleteColumn: (columnId: string) => void;
 }
 
 const COLOR_OPTIONS = [
@@ -31,11 +29,9 @@ const DOT_COLORS: Record<string, string> = {
   slate: 'bg-stone-400', sky: 'bg-sky-400', emerald: 'bg-emerald-400', amber: 'bg-amber-400', rose: 'bg-rose-400', purple: 'bg-purple-400',
 };
 
-export default function KanbanColumn({ column, tasks, layoutMode, onCardClick, onAddTask, onEditColumn, onDeleteColumn }: KanbanColumnProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({ id: column.id });
-  const style = { transform: CSS.Transform.toString(transform), transition };
+export default function KanbanColumn({ column, tasks, layoutMode, onCardClick, onAddTask }: KanbanColumnProps) {
+  const { setNodeRef, isOver } = useDroppable({ id: column.id });
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const activeColor = COLOR_OPTIONS.find((c) => c.name === column.color) || COLOR_OPTIONS[0];
   const taskIds = tasks.map((t) => t.id);
   const t = useTranslations('kanban');
@@ -43,35 +39,19 @@ export default function KanbanColumn({ column, tasks, layoutMode, onCardClick, o
   return (
     <div
       ref={setNodeRef}
-      style={style}
-      className={`flex flex-col rounded-2xl border transition-all duration-200 dark:border-neutral-700 ${isDragging ? 'opacity-30 border-dashed' : ''} ${isOver && !isDragging ? 'bg-stone-100/60 dark:bg-neutral-700/40 scale-[1.01] shadow-xs' : 'bg-stone-50/25 dark:bg-neutral-800/50 border-stone-200 dark:border-neutral-700'} ${layoutMode === 'horizontal' ? 'w-full md:w-[310px] lg:w-[330px] shrink-0 h-full max-h-[75vh] md:max-h-[80vh]' : 'w-full'}`}
+      className={`flex flex-col rounded-2xl border transition-all duration-200 dark:border-neutral-700 ${isOver ? 'bg-stone-100/60 dark:bg-neutral-700/40 scale-[1.01] shadow-xs' : 'bg-stone-50/25 dark:bg-neutral-800/50 border-stone-200 dark:border-neutral-700'} ${layoutMode === 'horizontal' ? 'w-full md:w-[310px] lg:w-[330px] shrink-0 h-full max-h-[75vh] md:max-h-[80vh]' : 'w-full'}`}
     >
-      <div {...attributes} {...listeners} className={`px-4 py-3.5 border-t-2 rounded-t-2xl border-b border-stone-200/80 dark:border-neutral-700 flex flex-col gap-2.5 relative cursor-grab active:cursor-grabbing select-none ${activeColor.headerBg}`}>
-        <div className="flex items-center justify-between w-full">
-          <div className="flex items-center gap-2.5 flex-1 min-w-0">
-            <span className={`block h-3 w-3 rounded-full ${DOT_COLORS[column.color] || 'bg-stone-400'}`} />
-            <div className="flex items-center gap-2 truncate flex-1 cursor-pointer" onClick={() => onEditColumn(column)}>
-              <h3 className="text-sm font-bold truncate">{column.title}</h3>
-              <span className="bg-stone-200/70 dark:bg-neutral-600 text-stone-700 dark:text-neutral-300 text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[18px] text-center">{tasks.length}</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-1">
-            <button onClick={() => onEditColumn(column)} className="p-1 text-stone-400 hover:text-stone-700 dark:hover:text-neutral-200 hover:bg-stone-100 dark:hover:bg-neutral-700 rounded-md transition cursor-pointer"><Edit2 className="h-3.5 w-3.5" /></button>
-            {layoutMode === 'vertical' && (
-              <button onClick={() => setIsCollapsed(!isCollapsed)} className="p-1 text-stone-400 hover:text-stone-700 dark:hover:text-neutral-200 hover:bg-stone-100 dark:hover:bg-neutral-700 rounded-md transition cursor-pointer">
-                {isCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
-              </button>
-            )}
-            {isConfirmingDelete ? (
-              <div className="flex items-center gap-1 bg-stone-100 dark:bg-neutral-700 p-0.5 border border-stone-200 dark:border-neutral-600 rounded-md">
-                <button onClick={() => { onDeleteColumn(column.id); setIsConfirmingDelete(false); }} className="px-1.5 py-0.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-[9px] rounded transition cursor-pointer">{t('confirm')}</button>
-                <button onClick={() => setIsConfirmingDelete(false)} className="px-1 py-0.5 bg-white dark:bg-neutral-600 border border-stone-200 dark:border-neutral-500 text-stone-600 dark:text-neutral-300 text-[9px] rounded transition cursor-pointer">{t('no')}</button>
-              </div>
-            ) : (
-              <button onClick={() => setIsConfirmingDelete(true)} className="p-1 text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-md transition cursor-pointer"><Trash2 className="h-3.5 w-3.5" /></button>
-            )}
-          </div>
+      <div className={`px-4 py-3.5 border-t-2 rounded-t-2xl border-b border-stone-200/80 dark:border-neutral-700 flex items-center justify-between ${activeColor.headerBg}`}>
+        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+          <span className={`block h-3 w-3 rounded-full ${DOT_COLORS[column.color] || 'bg-stone-400'}`} />
+          <h3 className="text-sm font-bold truncate">{column.title}</h3>
+          <span className="bg-stone-200/70 dark:bg-neutral-600 text-stone-700 dark:text-neutral-300 text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[18px] text-center">{tasks.length}</span>
         </div>
+        {layoutMode === 'vertical' && (
+          <button onClick={() => setIsCollapsed(!isCollapsed)} className="p-1 text-stone-400 hover:text-stone-700 dark:hover:text-neutral-200 hover:bg-stone-100 dark:hover:bg-neutral-700 rounded-md transition cursor-pointer">
+            {isCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+          </button>
+        )}
       </div>
 
       {(!isCollapsed || layoutMode === 'horizontal') && (

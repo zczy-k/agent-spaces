@@ -37,5 +37,6 @@
   "sectionNamePlaceholder": "e.g. Backlog, Review",
   "theme": "Theme",
   "newTask": "New Task",
-  "useTemplate": "Use Template"
+  "useTemplate": "Use Template",
+  "manageSections": "Manage Sections"
 }
