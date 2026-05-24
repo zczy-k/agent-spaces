@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Trash2Icon, CheckCheckIcon } from "lucide-react";
+import { Trash2Icon, CheckCheckIcon, ArrowLeftIcon } from "lucide-react";
 import { useTranslations } from 'next-intl';
 import { useNotificationStore } from "@/stores/notification";
 import { formatDistanceToNow } from "date-fns";
@@ -20,6 +20,7 @@ const typeIcon: Record<string, string> = {
   issue_failed: "✕",
   task_completed: "✓",
   task_failed: "✕",
+  channel_agent_completed: "✓",
 };
 
 const typeColor: Record<string, string> = {
@@ -27,6 +28,7 @@ const typeColor: Record<string, string> = {
   issue_failed: "text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-400",
   task_completed: "text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400",
   task_failed: "text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-400",
+  channel_agent_completed: "text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400",
 };
 
 export function NotificationCenterDialog({
@@ -45,6 +47,7 @@ export function NotificationCenterDialog({
   const markRead = useNotificationStore((s) => s.markRead);
   const markAllRead = useNotificationStore((s) => s.markAllRead);
   const clearAll = useNotificationStore((s) => s.clearAll);
+  const remove = useNotificationStore((s) => s.remove);
   const [detail, setDetail] = useState<AppNotification | null>(null);
 
   const show = initialNotification && !detail ? initialNotification : detail;
@@ -62,22 +65,22 @@ export function NotificationCenterDialog({
                 </span>
               )}
             </div>
-            {notifications.some((n) => !n.read) && (
-              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => markAllRead(workspaceId)}>
-                <CheckCheckIcon className="size-3.5" />
-                {t('markAllRead')}
-              </Button>
-            )}
           </div>
         </DialogHeader>
 
         <div className="min-h-0 flex-1 overflow-y-auto">
           {show ? (
             <div className="px-6 py-4">
-              <div className={cn("inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium mb-3", typeColor[show.type] ?? "")}>
-                {typeIcon[show.type] ?? ""} {show.type}
+              <button onClick={() => setDetail(null)} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-3 transition-colors">
+                <ArrowLeftIcon className="size-3.5" />
+                {t('backToList')}
+              </button>
+              <div className="flex items-center gap-2 mb-2">
+                <h3 className="text-lg font-semibold truncate">{show.title}</h3>
+                <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium", typeColor[show.type] ?? "")}>
+                  {typeIcon[show.type] ?? ""} {t(`type.${show.type}`, { defaultValue: show.type })}
+                </span>
               </div>
-              <h3 className="text-lg font-semibold mb-2">{show.title}</h3>
               {show.description && (
                 <p className="text-sm text-muted-foreground mb-3">{show.description}</p>
               )}
@@ -127,11 +130,26 @@ export function NotificationCenterDialog({
           )}
         </div>
 
-        {notifications.length > 0 && (
-          <div className="px-6 py-3 border-t shrink-0 flex justify-end">
+        {!show && notifications.length > 0 && (
+          <div className="px-6 py-3 border-t shrink-0 flex items-center justify-between">
+            {notifications.some((n) => !n.read) && (
+              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => markAllRead(workspaceId)}>
+                <CheckCheckIcon className="size-3.5" />
+                {t('markAllRead')}
+              </Button>
+            )}
+            <div className="flex-1" />
             <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-destructive" onClick={() => { clearAll(workspaceId); onOpenChange(false); }}>
               <Trash2Icon className="size-3.5" />
               {t('clearAll')}
+            </Button>
+          </div>
+        )}
+        {show && (
+          <div className="px-6 py-3 border-t shrink-0 flex justify-end">
+            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-destructive" onClick={() => { remove(workspaceId, show.id); setDetail(null); }}>
+              <Trash2Icon className="size-3.5" />
+              {t('delete')}
             </Button>
           </div>
         )}

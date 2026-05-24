@@ -65,6 +65,15 @@ export function clearAll(workspaceId: string): void {
   broadcastToWorkspace(workspaceId, 'notification.cleared', null);
 }
 
+export function removeNotification(workspaceId: string, notificationId: string): AppNotification | null {
+  const all = readAll(workspaceId);
+  const idx = all.findIndex((n) => n.id === notificationId);
+  if (idx === -1) return null;
+  const [removed] = all.splice(idx, 1);
+  writeAll(workspaceId, all);
+  return removed;
+}
+
 export function unreadCount(workspaceId: string): number {
   return readAll(workspaceId).filter((n) => !n.read).length;
 }

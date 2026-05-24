@@ -25,7 +25,15 @@
     "empty": "No notifications",
     "clearAll": "Clear all",
     "markAllRead": "Mark all read",
-    "backToList": "Back to list"
+    "backToList": "Back to list",
+    "type": {
+      "issue_completed": "Issue Completed",
+      "issue_failed": "Issue Failed",
+      "task_completed": "Task Completed",
+      "task_failed": "Task Failed",
+      "channel_agent_completed": "Agent Completed"
+    },
+    "delete": "Delete"
   },
   "server": {
     "servers": "Servers",

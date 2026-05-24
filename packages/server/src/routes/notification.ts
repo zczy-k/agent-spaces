@@ -32,4 +32,12 @@ router.delete('/', (req: Request<Params>, res: Response) => {
   res.json({ ok: true });
 });
 
+router.delete('/:notificationId', (req: Request<Params, { id: string; notificationId: string }>, res: Response) => {
+  const workspaceId = req.params.id;
+  const notificationId = req.params.notificationId;
+  const removed = nc.removeNotification(workspaceId, notificationId);
+  if (!removed) { res.status(404).json({ error: 'Not found' }); return; }
+  res.json({ ok: true });
+});
+
 export default router;
