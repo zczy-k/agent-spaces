@@ -13,6 +13,11 @@
     "autoProcess": "自动处理议题",
     "autoProcessDescription": "调度者将自动规划和执行开放议题"
   },
+  "hooks": {
+    "title": "Hooks",
+    "enableHooks": "启用 Hooks",
+    "enableHooksDescription": "为此工作空间启用每次工具调用的钩子"
+  },
   "notifications": {
     "title": "通知",
     "messageNotifications": "消息通知",

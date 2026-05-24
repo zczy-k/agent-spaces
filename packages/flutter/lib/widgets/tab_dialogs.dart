@@ -19,7 +19,13 @@ IconData deviceIcon(DeviceType type) {
 
 void showNewTabDialog(BuildContext context, BrowserNotifier notifier) {
   final controller = TextEditingController();
-  showDialog(
+  String? normalizeUrl(String url) {
+    final trimmed = url.trim();
+    if (trimmed.isEmpty) return null;
+    return trimmed.startsWith('http') ? trimmed : 'http://$trimmed';
+  }
+
+  showDialog<String>(
     context: context,
     builder: (ctx) => AlertDialog(
       title: Text('tab_new_tab'.tr(), style: const TextStyle(fontSize: 15)),
@@ -28,13 +34,12 @@ void showNewTabDialog(BuildContext context, BrowserNotifier notifier) {
         controller: controller,
         autofocus: true,
         style: const TextStyle(fontSize: 13),
-        decoration: InputDecoration(isDense: true, hintText: 'tab_enter_url'.tr()),
+        decoration: InputDecoration(
+          isDense: true,
+          hintText: 'tab_enter_url'.tr(),
+        ),
         onSubmitted: (url) {
-          if (url.isNotEmpty) {
-            final normalized = url.startsWith('http') ? url : 'http://$url';
-            notifier.addTab(url: normalized);
-            Navigator.of(ctx).pop();
-          }
+          Navigator.of(ctx).pop(normalizeUrl(url));
         },
       ),
       actions: [
@@ -44,18 +49,19 @@ void showNewTabDialog(BuildContext context, BrowserNotifier notifier) {
         ),
         TextButton(
           onPressed: () {
-            final url = controller.text;
-            if (url.isNotEmpty) {
-              final normalized = url.startsWith('http') ? url : 'http://$url';
-              notifier.addTab(url: normalized);
-              Navigator.of(ctx).pop();
-            }
+            Navigator.of(ctx).pop(normalizeUrl(controller.text));
           },
           child: Text('tab_open'.tr()),
         ),
       ],
     ),
-  );
+  ).then((url) {
+    controller.dispose();
+    if (url == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      notifier.addTab(url: url);
+    });
+  });
 }
 
 void showNavigateDialog(
@@ -118,7 +124,10 @@ void showDeviceMenu(
   showDialog(
     context: context,
     builder: (ctx) => SimpleDialog(
-      title: Text('settings_device_selector'.tr(), style: const TextStyle(fontSize: 15)),
+      title: Text(
+        'settings_device_selector'.tr(),
+        style: const TextStyle(fontSize: 15),
+      ),
       children: DeviceProfile.defaults.map((d) {
         final selected = d.type == tab.device.type;
         return SimpleDialogOption(

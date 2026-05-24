@@ -94,14 +94,14 @@ export function WorkspaceInfoSection({ workspace, channelCount, issueCount }: Wo
       </div>
 
       <div className="space-y-3">
-        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Hooks</h4>
+        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('hooks.title')}</h4>
         <div className="flex items-center justify-between rounded-md border px-3 py-2.5">
           <div className="space-y-0.5 pr-4">
             <Label htmlFor="hooks-enabled" className="text-sm font-medium">
-              Enable Hooks
+              {t('hooks.enableHooks')}
             </Label>
             <p className="text-xs text-muted-foreground">
-              Enable per-tool-call hooks for this workspace
+              {t('hooks.enableHooksDescription')}
             </p>
           </div>
           <div className="flex items-center gap-2">
