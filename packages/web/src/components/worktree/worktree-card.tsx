@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import type { WorktreeInfo } from "@agent-spaces/shared";
+import type { WorktreeInfo, GitDiffResult } from "@agent-spaces/shared";
 import { useWorktreeStore } from "@/stores/worktree";
 import { useWorkspaceStore } from "@/stores/workspace";
+import { useEditorStore } from "@/stores/editor";
 import { useRouter, usePathname } from "next/navigation";
 import { tauriNavigate } from "@/lib/navigate";
 import {
@@ -22,8 +23,6 @@ export function WorktreeCard({ worktree: wt, workspaceId }: WorktreeCardProps) {
   const { remove, createPR, merge } = useWorktreeStore();
   const [prLoading, setPrLoading] = useState(false);
   const [mergeLoading, setMergeLoading] = useState(false);
-  const [showDiff, setShowDiff] = useState(false);
-  const [diffContent, setDiffContent] = useState<string | null>(null);
   const router = useRouter();
   const pathname = usePathname();
   const isCurrent = pathname === `/workspace/${wt.id}`;
@@ -37,13 +36,21 @@ export function WorktreeCard({ worktree: wt, workspaceId }: WorktreeCardProps) {
   const handleDiff = useCallback(async () => {
     try {
       const res = await fetch(`/api/workspaces/${workspaceId}/worktrees/${wt.id}/diff`);
-      const text = await res.text();
-      setDiffContent(text);
-      setShowDiff(true);
+      const diffs: GitDiffResult[] = await res.json();
+      if (diffs.length === 0) {
+        toast.info("No changes");
+        return;
+      }
+      useEditorStore.getState().openCommitDiff(
+        workspaceId,
+        `worktree-${wt.id}`,
+        `${wt.name} → ${wt.branch}`,
+        diffs,
+      );
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : String(err));
     }
-  }, [workspaceId, wt.id]);
+  }, [workspaceId, wt.id, wt.name, wt.branch]);
 
   const handleCreatePR = useCallback(async () => {
     setPrLoading(true);
@@ -170,11 +177,6 @@ export function WorktreeCard({ worktree: wt, workspaceId }: WorktreeCardProps) {
           </Button>
         )}
       </div>
-      {showDiff && diffContent !== null && (
-        <pre className="text-[11px] bg-muted/50 rounded px-2 py-1 mt-2 max-h-40 overflow-auto whitespace-pre font-mono">
-          {diffContent || "(No changes)"}
-        </pre>
-      )}
     </div>
   );
 }

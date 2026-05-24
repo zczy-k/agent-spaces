@@ -58,8 +58,8 @@ worktreeRouter.delete('/:wtId', async (req: Request<{ id: string; wtId: string }
 worktreeRouter.get('/:wtId/diff', async (req: Request<{ id: string; wtId: string }>, res: Response) => {
   try {
     const { id, wtId } = req.params;
-    const diff = await getWorktreeDiff(id, wtId);
-    res.type('text/plain').send(diff);
+    const diffs = await getWorktreeDiff(id, wtId);
+    res.json(diffs);
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }

@@ -1,8 +1,9 @@
 import { v4 as uuid } from 'uuid';
 import simpleGit from 'simple-git';
 import { join } from 'node:path';
-import type { WorktreeInfo, CreateWorktreeInput, Workspace } from '@agent-spaces/shared';
+import type { WorktreeInfo, CreateWorktreeInput, Workspace, GitDiffResult } from '@agent-spaces/shared';
 import { getDataDir, ensureDir } from '../storage/json-store.js';
+import { isBinaryPath } from '../adapters/git.js';
 import {
   listWorktrees, getWorktree, createWorktree as storeCreate,
   updateWorktree,
@@ -97,7 +98,7 @@ export async function deleteWorkspaceWorktree(
 
 export async function getWorktreeDiff(
   workspaceId: string, worktreeId: string
-): Promise<string> {
+): Promise<GitDiffResult[]> {
   const info = getWorktree(workspaceId, worktreeId);
   if (!info) throw new Error('Worktree not found');
 
@@ -106,8 +107,17 @@ export async function getWorktreeDiff(
 
   const git = simpleGit(ws.boundDirs[0]);
   const defaultBranch = await getDefaultBranch(git);
-  const diff = await git.diff([`${defaultBranch}...${info.branch}`]);
-  return diff;
+  const nameOnlyRaw = await git.diff(['--name-only', `${defaultBranch}...${info.branch}`]);
+  const files = nameOnlyRaw.split('\n').filter(Boolean);
+
+  const diffs: GitDiffResult[] = [];
+  for (const f of files) {
+    const binary = isBinaryPath(f);
+    const oldContent = binary ? '' : await git.show([`${defaultBranch}:${f}`]).catch(() => '');
+    const newContent = binary ? '' : await git.show([`${info.branch}:${f}`]).catch(() => '');
+    diffs.push({ path: f, oldContent, newContent, isBinary: binary, isNew: !oldContent, isDeleted: !newContent });
+  }
+  return diffs;
 }
 
 export async function createWorktreePR(
