@@ -180,7 +180,7 @@ export default function KanbanBoardPanel({ workspaceId }: KanbanBoardProps) {
           </div>
         ) : (
           <DndContext sensors={sensors} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
-            <div className={`flex-1 h-full ${layoutMode === 'horizontal' ? 'flex flex-row overflow-x-auto items-start gap-4 pb-4' : 'flex flex-col gap-4'}`}>
+            <div className={`flex-1 h-full ${layoutMode === 'horizontal' ? 'flex flex-row overflow-x-auto items-start gap-4 pb-4' : 'flex flex-col gap-4 overflow-y-auto'}`}>
               <SortableContext items={columns.map((c) => c.id)} strategy={layoutMode === 'horizontal' ? horizontalListSortingStrategy : verticalListSortingStrategy}>
                 {columns.map((col) => (
                   <KanbanColumnComponent
