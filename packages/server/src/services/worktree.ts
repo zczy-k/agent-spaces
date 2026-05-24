@@ -1,9 +1,9 @@
 import { v4 as uuid } from 'uuid';
 import simpleGit from 'simple-git';
 import { join } from 'node:path';
+import { execFileSync } from 'node:child_process';
 import type { WorktreeInfo, CreateWorktreeInput, Workspace, GitDiffResult } from '@agent-spaces/shared';
 import { getDataDir, ensureDir } from '../storage/json-store.js';
-import { isBinaryPath } from '../adapters/git.js';
 import {
   listWorktrees, getWorktree, createWorktree as storeCreate,
   updateWorktree,
@@ -130,13 +130,24 @@ export async function createWorktreePR(
   if (!ws) throw new Error('Workspace not found');
 
   const git = simpleGit(ws.boundDirs[0]);
-  const prTitle = title || `[${info.name}] ${info.branch}`;
-  const args = ['pr', 'create', '--head', info.branch, '--title', prTitle];
-  if (body) args.push('--body', body);
+  const defaultBranch = await getDefaultBranch(git);
+  const log = await git.log([`${defaultBranch}..${info.branch}`]);
+  if (log.total === 0) {
+    throw new Error('Cannot create PR: no commits on this branch. Make changes and commit first.');
+  }
 
-  const result = await git.raw(args);
+  const prTitle = title || `[${info.name}] ${info.branch}`;
+  const ghArgs = ['pr', 'create', '--head', info.branch, '--title', prTitle, '--body', body || ''];
+
+  let result: string;
+  try {
+    result = execFileSync('gh', ghArgs, { cwd: ws.boundDirs[0], encoding: 'utf-8' });
+  } catch (e: any) {
+    const msg = e?.stderr || e?.message || String(e);
+    throw new Error(`Failed to create PR: ${msg.replace(/^(Command failed: )?gh\s*/, '').trim()}`);
+  }
   const urlMatch = result.match(/https:\/\/[^\s]+/);
-  if (!urlMatch) throw new Error('Failed to parse PR URL from gh output');
+  if (!urlMatch) throw new Error('PR created but failed to parse URL from output');
 
   info.prUrl = urlMatch[0];
   info.updatedAt = new Date().toISOString();
@@ -158,7 +169,12 @@ export async function mergeWorktreePR(
 
   const git = simpleGit(ws.boundDirs[0]);
 
-  await git.raw(['pr', 'merge', info.prUrl, '--merge']);
+  try {
+    execFileSync('gh', ['pr', 'merge', info.prUrl, '--merge'], { cwd: ws.boundDirs[0], encoding: 'utf-8' });
+  } catch (e: any) {
+    const msg = e?.stderr || e?.message || String(e);
+    throw new Error(`Failed to merge PR: ${msg.replace(/^(Command failed: )?gh\s*/, '').trim()}`);
+  }
   await git.raw(['worktree', 'remove', info.path]).catch(() => {});
   await git.raw(['branch', '-d', info.branch]).catch(() => {});
 
@@ -170,6 +186,13 @@ export async function mergeWorktreePR(
   updateWorktree(workspaceId, info);
 
   broadcastToWorkspace(workspaceId, 'worktree.merged', info);
+}
+
+const BINARY_EXTS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.ico', '.webp', '.avif', '.mp3', '.mp4', '.zip', '.gz', '.tar', '.woff', '.woff2', '.ttf', '.eot', '.pdf', '.wasm']);
+
+function isBinaryPath(filePath: string): boolean {
+  const ext = filePath.slice(filePath.lastIndexOf('.')).toLowerCase();
+  return BINARY_EXTS.has(ext);
 }
 
 async function getDefaultBranch(git: ReturnType<typeof simpleGit>): Promise<string> {
