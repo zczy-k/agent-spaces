@@ -28,6 +28,7 @@ import terminal from './terminal.json';
 import tools from './tools.json';
 import workspace from './workspace.json';
 import workspaces from './workspaces.json';
+import worktree from './worktree.json';
 
 export default {
   agent,
@@ -59,4 +60,5 @@ export default {
   terminal,
   tools,
   workspace,
-  workspaces,};
+  workspaces,
+  worktree,};
