@@ -96,20 +96,22 @@ export function WorktreeCard({ worktree: wt, workspaceId }: WorktreeCardProps) {
           <GitBranch size={14} className="shrink-0 text-muted-foreground" />
           <span className="text-sm font-medium truncate">{wt.name}</span>
         </div>
-        <span
-          className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${
-            wt.status === "active"
-              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-              : "bg-muted text-muted-foreground"
-          }`}
-        >
-          {t(`card.${wt.status}`)}
-        </span>
-        {isCurrent && (
-          <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-            {t("card.current")}
+        <div className="flex items-center gap-1 shrink-0 ml-auto">
+          <span
+            className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+              wt.status === "active"
+                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                : "bg-muted text-muted-foreground"
+            }`}
+          >
+            {t(`card.${wt.status}`)}
           </span>
-        )}
+          {isCurrent && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+              {t("card.current")}
+            </span>
+          )}
+        </div>
       </div>
       <div className="text-xs text-muted-foreground mt-1">
         <span className="inline-flex items-center gap-0.5">
