@@ -3,13 +3,28 @@ import type { HookConfig, HookRule } from '@agent-spaces/shared';
 import type { AgentRuntimeEvent } from '../adapters/agent-runtime-types.js';
 import { listHooks } from '../storage/hook-store.js';
 
+type HookPhase = 'PreToolUse' | 'PostToolUse';
+
+function logDebug(message: string, details?: Record<string, unknown>): void {
+  if (details) {
+    console.debug(`[HookEngine] ${message}`, details);
+    return;
+  }
+  console.debug(`[HookEngine] ${message}`);
+}
+
 function matchToolName(matcher: string, toolName: string): boolean {
   if (matcher === '*') return true;
   if (matcher.startsWith('/') && matcher.endsWith('/')) {
     try {
       const regex = new RegExp(matcher.slice(1, -1));
       return regex.test(toolName);
-    } catch {
+    } catch (error: any) {
+      console.warn(`[HookEngine] invalid matcher regex, falling back to exact match`, {
+        matcher,
+        toolName,
+        error: error.message,
+      });
       return matcher === toolName;
     }
   }
@@ -22,7 +37,8 @@ function executeCommand(
   timeout: number,
 ): Promise<void> {
   return new Promise((resolve) => {
-    exec(command, { env: { ...process.env, ...env }, timeout: Math.min(timeout, 30000) }, (error) => {
+    const cappedTimeout = Math.min(timeout, 30000);
+    exec(command, { env: { ...process.env, ...env }, timeout: cappedTimeout }, (error) => {
       if (error) console.warn(`[HookEngine] command error: ${error.message}`);
       resolve();
     });
@@ -36,14 +52,22 @@ async function executeWebhook(
 ): Promise<void> {
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), Math.min(timeout, 30000));
-    await fetch(url, {
+    const cappedTimeout = Math.min(timeout, 30000);
+    const timer = setTimeout(() => controller.abort(), cappedTimeout);
+    const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
       signal: controller.signal,
     });
     clearTimeout(timer);
+    if (!response.ok) {
+      console.warn(`[HookEngine] webhook non-2xx response`, {
+        url,
+        status: response.status,
+        statusText: response.statusText,
+      });
+    }
   } catch (error: any) {
     console.warn(`[HookEngine] webhook error: ${error.message}`);
   }
@@ -51,12 +75,24 @@ async function executeWebhook(
 
 async function executeRule(
   rule: HookRule,
-  phase: 'PreToolUse' | 'PostToolUse',
+  phase: HookPhase,
   toolName: string,
   workspaceId: string,
   context: { toolInput?: unknown; toolResult?: unknown },
+  hookName?: string,
 ): Promise<void> {
   const timeout = rule.timeout ?? 10000;
+  const startedAt = Date.now();
+
+  logDebug('rule start', {
+    workspaceId,
+    phase,
+    hookName,
+    toolName,
+    matcher: rule.matcher,
+    type: rule.type,
+    timeout,
+  });
 
   if (rule.type === 'command' && rule.command) {
     await executeCommand(rule.command, {
@@ -76,8 +112,35 @@ async function executeRule(
       workspaceId,
     }, timeout);
   } else if (rule.type === 'script') {
-    console.warn(`[HookEngine] script type not implemented, skipping rule in ${phase}`);
+    console.warn(`[HookEngine] script type not implemented, skipping rule`, {
+      workspaceId,
+      phase,
+      hookName,
+      toolName,
+      matcher: rule.matcher,
+    });
+  } else {
+    console.warn(`[HookEngine] invalid rule configuration, skipping rule`, {
+      workspaceId,
+      phase,
+      hookName,
+      toolName,
+      matcher: rule.matcher,
+      type: rule.type,
+      hasCommand: Boolean(rule.command),
+      hasUrl: Boolean(rule.url),
+    });
   }
+
+  logDebug('rule finished', {
+    workspaceId,
+    phase,
+    hookName,
+    toolName,
+    matcher: rule.matcher,
+    type: rule.type,
+    durationMs: Date.now() - startedAt,
+  });
 }
 
 export class HookEngine {
@@ -90,6 +153,12 @@ export class HookEngine {
 
   load(): void {
     this.hooks = listHooks(this.workspaceId);
+    logDebug('loaded hooks', {
+      workspaceId: this.workspaceId,
+      totalHooks: this.hooks.length,
+      enabledHooks: this.hooks.filter(h => h.enabled).length,
+      hookNames: this.hooks.map(h => h.name),
+    });
   }
 
   reload(): void {
@@ -101,24 +170,55 @@ export class HookEngine {
   }
 
   async executeHooks(
-    phase: 'PreToolUse' | 'PostToolUse',
+    phase: HookPhase,
     toolName: string,
     context: { toolInput?: unknown; toolResult?: unknown },
   ): Promise<void> {
     const enabledHooks = this.hooks.filter(h => h.enabled);
     const promises: Promise<void>[] = [];
+    let checkedRules = 0;
+    let matchedRules = 0;
+
+    logDebug('trigger received', {
+      workspaceId: this.workspaceId,
+      phase,
+      toolName,
+      totalHooks: this.hooks.length,
+      enabledHooks: enabledHooks.length,
+      hasToolInput: context.toolInput !== undefined,
+      hasToolResult: context.toolResult !== undefined,
+    });
 
     for (const hook of enabledHooks) {
       const rules = hook.hooks[phase];
       if (!rules) continue;
       for (const rule of rules) {
+        checkedRules += 1;
         if (matchToolName(rule.matcher, toolName)) {
-          promises.push(executeRule(rule, phase, toolName, this.workspaceId, context));
+          matchedRules += 1;
+          logDebug('rule matched', {
+            workspaceId: this.workspaceId,
+            phase,
+            hookName: hook.name,
+            toolName,
+            matcher: rule.matcher,
+            type: rule.type,
+          });
+          promises.push(executeRule(rule, phase, toolName, this.workspaceId, context, hook.name));
         }
       }
     }
 
-    await Promise.allSettled(promises);
+    const results = await Promise.allSettled(promises);
+    const rejectedRules = results.filter(result => result.status === 'rejected').length;
+    logDebug('trigger finished', {
+      workspaceId: this.workspaceId,
+      phase,
+      toolName,
+      checkedRules,
+      matchedRules,
+      rejectedRules,
+    });
   }
 }
 
@@ -127,7 +227,10 @@ export function wrapOnEventWithHooks(
   workspaceId: string,
   hooksEnabled: boolean | undefined,
 ): (event: AgentRuntimeEvent) => void {
-  if (!hooksEnabled) return onEvent;
+  if (!hooksEnabled) {
+    logDebug('hooks disabled for workspace', { workspaceId });
+    return onEvent;
+  }
 
   const engine = new HookEngine(workspaceId);
   engine.load();
@@ -137,12 +240,27 @@ export function wrapOnEventWithHooks(
     onEvent(event);
     if (event.type === 'tool_use') {
       toolNameById.set(event.id, event.name);
+      logDebug('tool_use event mapped', {
+        workspaceId,
+        toolUseId: event.id,
+        toolName: event.name,
+      });
       engine.executeHooks('PreToolUse', event.name, { toolInput: event.input });
     }
     if (event.type === 'tool_result') {
       const toolName = event.toolUseId ? (toolNameById.get(event.toolUseId) ?? '') : '';
       if (toolName) {
+        logDebug('tool_result event resolved', {
+          workspaceId,
+          toolUseId: event.toolUseId,
+          toolName,
+        });
         engine.executeHooks('PostToolUse', toolName, { toolResult: event.result });
+      } else {
+        logDebug('tool_result event skipped without matching tool_use', {
+          workspaceId,
+          toolUseId: event.toolUseId,
+        });
       }
     }
   };
