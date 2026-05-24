@@ -322,6 +322,15 @@ class _SplitLayoutViewState extends State<SplitLayoutView> {
     if (!restored) {
       widget.onDockingLayoutChanged(_lastSavedDockingLayout);
     }
+    _refreshAfterDockingMount(layout);
+  }
+
+  void _refreshAfterDockingMount(DockingLayout layout) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !identical(_dockingLayout, layout)) return;
+      layout.rebuild();
+      setState(() {});
+    });
   }
 
   bool _restoreSavedDockingLayout(DockingLayout layout) {
@@ -423,6 +432,7 @@ class _SplitLayoutViewState extends State<SplitLayoutView> {
       layout.root = _buildRoot();
       _selectDockingItem(layout, widget.activeTabId);
       _lastSavedDockingLayout = _stringifyLayout(layout);
+      _refreshAfterDockingMount(layout);
       return;
     }
 
@@ -472,6 +482,24 @@ Widget buildSplitLayout({
   required DockingLayoutChangedCallback onDockingLayoutChanged,
 }) {
   if (visibleTabs.isEmpty) return const SizedBox.shrink();
+  if (layout == SplitLayout.single && visibleTabs.length == 1) {
+    return _SingleTabLayoutView(
+      key: ValueKey(
+        [
+          layout.name,
+          webViewDebuggingEnabled,
+          visibleTabs.first.id,
+          visibleTabs.first.device.type.name,
+        ].join('|'),
+      ),
+      tab: visibleTabs.first,
+      webViewDebuggingEnabled: webViewDebuggingEnabled,
+      onTitleChanged: onTitleChanged,
+      onTabSelected: onTabSelected,
+      onTabClosed: onTabClosed,
+      onBuildMenu: onBuildMenu,
+    );
+  }
   return SplitLayoutView(
     key: ValueKey(
       [
@@ -493,6 +521,126 @@ Widget buildSplitLayout({
     onBuildMenu: onBuildMenu,
     onDockingLayoutChanged: onDockingLayoutChanged,
   );
+}
+
+class _SingleTabLayoutView extends StatelessWidget {
+  final BrowserTab tab;
+  final bool webViewDebuggingEnabled;
+  final TitleChangedCallback onTitleChanged;
+  final TabSelectedCallback onTabSelected;
+  final TabClosedCallback onTabClosed;
+  final DockingMenuBuilder onBuildMenu;
+
+  const _SingleTabLayoutView({
+    super.key,
+    required this.tab,
+    required this.webViewDebuggingEnabled,
+    required this.onTitleChanged,
+    required this.onTabSelected,
+    required this.onTabClosed,
+    required this.onBuildMenu,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final borderColor = colorScheme.outlineVariant.withValues(alpha: 0.8);
+
+    return Column(
+      children: [
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            border: Border(bottom: BorderSide(color: borderColor)),
+          ),
+          child: SizedBox(
+            height: 44,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 4, 4, 0),
+                      child: Material(
+                        color: colorScheme.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        child: InkWell(
+                          onTap: () => onTabSelected(tab.id),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            constraints: const BoxConstraints(maxWidth: 280),
+                            padding: const EdgeInsets.fromLTRB(10, 6, 4, 5),
+                            decoration: BoxDecoration(
+                              border: Border(
+                                bottom: BorderSide(
+                                  color: colorScheme.primary,
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _buildTabLeading(context, tab),
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: Text(
+                                    tab.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.labelLarge?.copyWith(
+                                      color: colorScheme.onSurface,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                IconButton(
+                                  onPressed: () => onTabClosed(tab.id),
+                                  icon: const Icon(Icons.close, size: 16),
+                                  tooltip: MaterialLocalizations.of(
+                                    context,
+                                  ).closeButtonTooltip,
+                                  color: colorScheme.onSurface,
+                                  style: IconButton.styleFrom(
+                                    minimumSize: const Size(28, 28),
+                                    padding: EdgeInsets.zero,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Builder(
+                  builder: (buttonContext) => IconButton(
+                    onPressed: () =>
+                        _showDockingMenu(buttonContext, onBuildMenu),
+                    icon: const Icon(Icons.more_vert, size: 18),
+                    tooltip: 'tab_more'.tr(),
+                    color: colorScheme.onSurfaceVariant,
+                    style: IconButton.styleFrom(
+                      minimumSize: const Size(32, 32),
+                      padding: const EdgeInsets.all(4),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+              ],
+            ),
+          ),
+        ),
+        Expanded(
+          child: _buildTabPane(tab, webViewDebuggingEnabled, onTitleChanged),
+        ),
+      ],
+    );
+  }
 }
 
 List<List<BrowserTab>> _buildTabGroups(List<BrowserTab> tabs, int groupCount) {
