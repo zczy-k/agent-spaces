@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useWorktreeStore } from "@/stores/worktree";
+import { useWorkspaceStore } from "@/stores/workspace";
 import { WorktreeCard } from "./worktree-card";
 import { CreateWorktreeDialog } from "./create-worktree-dialog";
 import { GitBranch, Plus } from "lucide-react";
@@ -18,9 +19,13 @@ export function WorktreePanel({ workspaceId }: WorktreePanelProps) {
   const [createOpen, setCreateOpen] = useState(false);
   const t = useTranslations("worktree");
 
+  // Resolve to parent workspace for worktree data
+  const currentWs = useWorkspaceStore((s) => s.workspaces.find((w) => w.id === workspaceId));
+  const ownerId = currentWs?.isWorktree && currentWs.parentWorkspaceId ? currentWs.parentWorkspaceId : workspaceId;
+
   useEffect(() => {
-    load(workspaceId);
-  }, [workspaceId, load]);
+    load(ownerId);
+  }, [ownerId, load]);
 
   if (worktrees.length === 0 && !loading) {
     return (
@@ -32,7 +37,7 @@ export function WorktreePanel({ workspaceId }: WorktreePanelProps) {
           <Plus size={14} className="mr-1" />
           {t("panel.create")}
         </Button>
-        <CreateWorktreeDialog open={createOpen} onOpenChange={setCreateOpen} workspaceId={workspaceId} />
+        <CreateWorktreeDialog open={createOpen} onOpenChange={setCreateOpen} workspaceId={ownerId} />
       </div>
     );
   }
@@ -50,10 +55,10 @@ export function WorktreePanel({ workspaceId }: WorktreePanelProps) {
       </div>
       <div className="grid gap-2 p-2" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }}>
         {worktrees.map((wt) => (
-          <WorktreeCard key={wt.id} worktree={wt} workspaceId={workspaceId} />
+          <WorktreeCard key={wt.id} worktree={wt} workspaceId={ownerId} />
         ))}
       </div>
-      <CreateWorktreeDialog open={createOpen} onOpenChange={setCreateOpen} workspaceId={workspaceId} />
+      <CreateWorktreeDialog open={createOpen} onOpenChange={setCreateOpen} workspaceId={ownerId} />
     </ScrollArea>
   );
 }
