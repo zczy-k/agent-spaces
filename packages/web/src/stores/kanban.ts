@@ -1,21 +1,25 @@
 import { create } from 'zustand';
 import { fetchWithAuth } from '@/lib/auth';
+import { getWS } from '@/lib/ws';
 import type { KanbanBoard, KanbanColumn, KanbanTask } from '@agent-spaces/shared';
 
 interface KanbanState {
   board: KanbanBoard | null;
   loading: boolean;
+  wsAttached: boolean;
   load: (workspaceId: string) => Promise<void>;
   save: (workspaceId: string) => Promise<void>;
   setBoard: (board: KanbanBoard) => void;
   updateLayoutMode: (workspaceId: string, layoutMode: string) => void;
   updateColumns: (workspaceId: string, columns: KanbanColumn[]) => void;
   updateTasks: (workspaceId: string, tasks: KanbanTask[]) => void;
+  attachWS: (workspaceId: string) => void;
 }
 
 export const useKanbanStore = create<KanbanState>((set, get) => ({
   board: null,
   loading: false,
+  wsAttached: false,
 
   load: async (workspaceId: string) => {
     set({ loading: true });
@@ -63,5 +67,20 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
     if (!board) return;
     set({ board: { ...board, tasks } });
     get().save(workspaceId);
+  },
+
+  attachWS: (workspaceId: string) => {
+    if (get().wsAttached) return;
+    const ws = getWS(workspaceId);
+
+    ws.on('kanban.updated', (data) => {
+      set({ board: data as KanbanBoard });
+    });
+
+    ws.on('kanban.deleted', () => {
+      set({ board: null });
+    });
+
+    set({ wsAttached: true });
   },
 }));

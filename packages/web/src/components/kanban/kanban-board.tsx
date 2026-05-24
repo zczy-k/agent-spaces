@@ -20,7 +20,7 @@ interface KanbanBoardProps {
 }
 
 export default function KanbanBoardPanel({ workspaceId }: KanbanBoardProps) {
-  const { board, load, updateLayoutMode, updateColumns, updateTasks, setBoard } = useKanbanStore();
+  const { board, load, updateLayoutMode, updateColumns, updateTasks, setBoard, attachWS } = useKanbanStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<'all' | KanbanPriority>('all');
   const [selectedTask, setSelectedTask] = useState<KanbanTask | null>(null);
@@ -32,7 +32,7 @@ export default function KanbanBoardPanel({ workspaceId }: KanbanBoardProps) {
   const t = useTranslations('kanban');
   const tc = useTranslations('common');
 
-  useEffect(() => { load(workspaceId); }, [workspaceId, load]);
+  useEffect(() => { load(workspaceId); attachWS(workspaceId); }, [workspaceId, load, attachWS]);
 
   const columns = board?.columns ?? [];
   const tasks = board?.tasks ?? [];

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+enum _HapticStyle { light, medium }
 
 class TerminalVirtualKeyboard extends StatefulWidget {
   const TerminalVirtualKeyboard({super.key, required this.onKey});
@@ -91,6 +94,7 @@ class _TerminalVirtualKeyboardState extends State<TerminalVirtualKeyboard> {
       value.toUpperCase(),
       '',
       selected: selected,
+      hapticStyle: _HapticStyle.medium,
       onTap: () {
         setState(() {
           selected ? _modifiers.remove(value) : _modifiers.add(value);
@@ -113,6 +117,7 @@ class _TerminalVirtualKeyboardState extends State<TerminalVirtualKeyboard> {
     String value, {
     int flex = 1,
     bool selected = false,
+    _HapticStyle hapticStyle = _HapticStyle.light,
     VoidCallback? onTap,
   }) {
     return Expanded(
@@ -122,7 +127,10 @@ class _TerminalVirtualKeyboardState extends State<TerminalVirtualKeyboard> {
         child: SizedBox(
           height: 36,
           child: TextButton(
-            onPressed: onTap ?? () => widget.onKey(value),
+            onPressed: () {
+              _performHaptic(hapticStyle);
+              (onTap ?? () => widget.onKey(value))();
+            },
             style: TextButton.styleFrom(
               backgroundColor: selected
                   ? Colors.blueGrey.shade700
@@ -137,6 +145,14 @@ class _TerminalVirtualKeyboardState extends State<TerminalVirtualKeyboard> {
         ),
       ),
     );
+  }
+
+  void _performHaptic(_HapticStyle style) {
+    if (style == _HapticStyle.medium) {
+      HapticFeedback.mediumImpact();
+    } else {
+      HapticFeedback.selectionClick();
+    }
   }
 
   void _sendCharacter(String value) {
