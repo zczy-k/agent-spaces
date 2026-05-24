@@ -29,12 +29,22 @@ export async function createWorkspaceWorktree(
   if (!ws) throw new Error('Workspace not found');
 
   const id = uuid();
-  const branch = input.branch || `${input.name}-${Date.now()}`;
+  let branch = input.branch || `${input.name}-${Date.now()}`;
   const wtPath = join(worktreesBaseDir(workspaceId), id);
 
   ensureDir(join(worktreesBaseDir(workspaceId)));
 
   const git = simpleGit(ws.boundDirs[0]);
+
+  // Auto-resolve branch name conflicts
+  const branches = await git.branch();
+  let suffix = 1;
+  const baseBranch = branch;
+  while (branches.all.includes(branch)) {
+    suffix++;
+    branch = `${baseBranch}-${suffix}`;
+  }
+
   await git.raw(['worktree', 'add', wtPath, '-b', branch]);
 
   const now = new Date().toISOString();
