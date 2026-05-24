@@ -55,15 +55,16 @@ export function create(input: CreateWorkspaceInput): Workspace {
   return ws;
 }
 
-export function update(id: string, data: Partial<Pick<Workspace, 'name' | 'boundDirs' | 'autoProcessIssues' | 'notificationSettings'>>): Workspace | null {
+export function update(id: string, data: Partial<Pick<Workspace, 'name' | 'boundDirs' | 'autoProcessIssues' | 'notificationSettings' | 'hooksEnabled'>>): Workspace | null {
   const ws = getWorkspace(id);
   if (!ws) return null;
 
-  const allowed: Partial<Pick<Workspace, 'name' | 'boundDirs' | 'autoProcessIssues' | 'notificationSettings'>> = {};
+  const allowed: Partial<Pick<Workspace, 'name' | 'boundDirs' | 'autoProcessIssues' | 'notificationSettings' | 'hooksEnabled'>> = {};
   if (Object.hasOwn(data, 'name')) allowed.name = data.name;
   if (Object.hasOwn(data, 'boundDirs')) allowed.boundDirs = data.boundDirs;
   if (Object.hasOwn(data, 'autoProcessIssues')) allowed.autoProcessIssues = data.autoProcessIssues;
   if (Object.hasOwn(data, 'notificationSettings')) allowed.notificationSettings = data.notificationSettings;
+  if (Object.hasOwn(data, 'hooksEnabled')) allowed.hooksEnabled = data.hooksEnabled;
 
   Object.assign(ws, allowed, { updatedAt: new Date().toISOString() });
   updateWorkspace(ws);
