@@ -15,6 +15,8 @@ export interface Workspace {
   autoProcessIssues?: boolean;
   notificationSettings?: WorkspaceNotificationSettings;
   hooksEnabled?: boolean;
+  isWorktree?: boolean;
+  parentWorkspaceId?: string;
 }
 
 export type NotificationProvider = 'lark' | 'wechat' | 'native';
