@@ -43,7 +43,7 @@ export function useSkillsData(open: boolean, standalone?: boolean) {
   const fetchStoreSkills = useCallback(async () => {
     setStoreLoading(true);
     try {
-      const data = await fetchStoreIndex('skills/index.json');
+      const data = await fetchStoreIndex<StoreSkillItem>('skills/index.json');
       setStoreSkills(data);
     } catch { /* ignore */ }
     setStoreLoading(false);

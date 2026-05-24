@@ -123,7 +123,7 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
   const fetchStoreTemplates = useCallback(async () => {
     setStoreLoading(true);
     try {
-      const data = await fetchStoreIndex('output-styles/index.json');
+      const data = await fetchStoreIndex<StoreTemplate>('output-styles/index.json');
       setStoreTemplates(data);
     } catch { /* ignore */ }
     setStoreLoading(false);

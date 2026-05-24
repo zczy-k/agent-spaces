@@ -122,7 +122,7 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
   const fetchStoreTemplates = useCallback(async () => {
     setStoreLoading(true);
     try {
-      const data = await fetchStoreIndex('prompt/index.json');
+      const data = await fetchStoreIndex<StoreTemplate>('prompt/index.json');
       setStoreTemplates(data);
     } catch { /* ignore */ }
     setStoreLoading(false);
