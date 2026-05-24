@@ -445,11 +445,6 @@ class _SplitLayoutViewState extends State<SplitLayoutView> {
       final tab = tabsById[area.value as String];
       if (tab == null) continue;
       area.name = tab.title;
-      area.widget = _buildTabPane(
-        tab,
-        widget.webViewDebuggingEnabled,
-        widget.onTitleChanged,
-      );
       area.leading = (context, status) => _buildTabLeading(context, tab);
     }
     layout.rebuild();
@@ -592,7 +587,7 @@ DockingItem _buildDockingItem(
     closable: true,
     weight: weight,
     maximized: maximized,
-    keepAlive: false,
+    keepAlive: true,
     leading: (context, status) => _buildTabLeading(context, tab),
     widget: _buildTabPane(tab, webViewDebuggingEnabled, onTitleChanged),
   );
