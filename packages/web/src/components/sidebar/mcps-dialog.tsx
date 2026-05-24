@@ -280,7 +280,7 @@ export function McpsDialog({ open, onOpenChange, standalone }: McpsDialogProps) 
   const mainBody = (
     <>
       <DialogHeader>
-        <div className="flex items-center justify-end pr-8 pt-2">
+        <div className="flex items-center justify-between pr-8 pt-2">
           <div className="hidden md:block">
             {standalone
               ? <h2 className="text-base font-semibold">{t('title')}</h2>
