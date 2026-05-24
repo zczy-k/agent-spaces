@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import type { WorktreeInfo } from "@agent-spaces/shared";
 import { useWorktreeStore } from "@/stores/worktree";
 import { useWorkspaceStore } from "@/stores/workspace";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { tauriNavigate } from "@/lib/navigate";
 import {
   GitBranch, ExternalLink, Trash2, GitPullRequest, ArrowRightLeft, FileDiff,
@@ -25,6 +25,8 @@ export function WorktreeCard({ worktree: wt, workspaceId }: WorktreeCardProps) {
   const [showDiff, setShowDiff] = useState(false);
   const [diffContent, setDiffContent] = useState<string | null>(null);
   const router = useRouter();
+  const pathname = usePathname();
+  const isCurrent = pathname === `/workspace/${wt.id}`;
   const t = useTranslations("worktree");
   const removeWorkspace = useWorkspaceStore((s) => s.removeWorkspace);
 
@@ -95,6 +97,11 @@ export function WorktreeCard({ worktree: wt, workspaceId }: WorktreeCardProps) {
         >
           {t(`card.${wt.status}`)}
         </span>
+        {isCurrent && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+            {t("card.current")}
+          </span>
+        )}
       </div>
       <div className="text-xs text-muted-foreground mt-1">
         <span className="inline-flex items-center gap-0.5">

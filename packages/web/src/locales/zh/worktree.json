@@ -18,7 +18,8 @@
     "agent": "Agent",
     "issue": "Issue",
     "createdAt": "创建于",
-    "confirmDelete": "确认删除该 Worktree？未提交的变更将丢失。"
+    "confirmDelete": "确认删除该 Worktree？未提交的变更将丢失。",
+    "current": "当前"
   },
   "dialog": {
     "createTitle": "创建 Worktree",

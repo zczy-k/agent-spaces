@@ -18,7 +18,8 @@
     "agent": "Agent",
     "issue": "Issue",
     "createdAt": "Created",
-    "confirmDelete": "Delete this Worktree? Uncommitted changes will be lost."
+    "confirmDelete": "Delete this Worktree? Uncommitted changes will be lost.",
+    "current": "Current"
   },
   "dialog": {
     "createTitle": "Create Worktree",
