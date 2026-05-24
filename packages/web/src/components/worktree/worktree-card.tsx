@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import type { WorktreeInfo, Workspace } from "@agent-spaces/shared";
+import type { WorktreeInfo } from "@agent-spaces/shared";
 import { useWorktreeStore } from "@/stores/worktree";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useRouter } from "next/navigation";
@@ -26,25 +26,11 @@ export function WorktreeCard({ worktree: wt, workspaceId }: WorktreeCardProps) {
   const [diffContent, setDiffContent] = useState<string | null>(null);
   const router = useRouter();
   const t = useTranslations("worktree");
-  const upsertWorkspace = useWorkspaceStore((s) => s.upsertWorkspace);
   const removeWorkspace = useWorkspaceStore((s) => s.removeWorkspace);
 
   const handleSwitch = useCallback(() => {
-    const virtualWs: Workspace = {
-      id: wt.id,
-      name: `${wt.name} (Worktree)`,
-      boundDirs: [wt.path],
-      agentspaceDir: wt.path + "/.agentspace",
-      isWorktree: true,
-      parentWorkspaceId: workspaceId,
-      createdAt: wt.createdAt,
-      updatedAt: wt.updatedAt,
-      activeChannels: [],
-      activeIssues: [],
-    };
-    upsertWorkspace(virtualWs);
     tauriNavigate(router, `/workspace/${wt.id}`);
-  }, [wt, workspaceId, upsertWorkspace, router]);
+  }, [wt.id, router]);
 
   const handleDiff = useCallback(async () => {
     try {

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import type { WorktreeInfo, CreateWorktreeInput } from '@agent-spaces/shared';
+import type { WorktreeInfo, CreateWorktreeInput, Workspace } from '@agent-spaces/shared';
 import { fetchWithAuth } from '@/lib/auth';
+import { useWorkspaceStore } from './workspace';
 
 interface WorktreeStore {
   worktrees: WorktreeInfo[];
@@ -10,6 +11,39 @@ interface WorktreeStore {
   remove: (workspaceId: string, worktreeId: string) => Promise<void>;
   createPR: (workspaceId: string, worktreeId: string, opts?: { title?: string; body?: string }) => Promise<string>;
   merge: (workspaceId: string, worktreeId: string) => Promise<void>;
+}
+
+function worktreeToWorkspace(worktree: WorktreeInfo): Workspace {
+  return {
+    id: worktree.id,
+    name: `${worktree.name} (Worktree)`,
+    boundDirs: [worktree.path],
+    agentspaceDir: `${worktree.path}/.agentspace`,
+    isWorktree: true,
+    parentWorkspaceId: worktree.workspaceId,
+    createdAt: worktree.createdAt,
+    updatedAt: worktree.updatedAt,
+    activeChannels: [],
+    activeIssues: [],
+  };
+}
+
+function syncWorktreeWorkspaces(parentWorkspaceId: string, worktrees: WorktreeInfo[]) {
+  const workspaceStore = useWorkspaceStore.getState();
+  const activeWorktrees = worktrees.filter((worktree) => worktree.status === 'active');
+  const nextWorktreeIds = new Set(activeWorktrees.map((worktree) => worktree.id));
+
+  workspaceStore.workspaces
+    .filter((workspace) =>
+      workspace.isWorktree &&
+      workspace.parentWorkspaceId === parentWorkspaceId &&
+      !nextWorktreeIds.has(workspace.id)
+    )
+    .forEach((workspace) => workspaceStore.removeWorkspace(workspace.id));
+
+  activeWorktrees.forEach((worktree) => {
+    workspaceStore.upsertWorkspace(worktreeToWorkspace(worktree));
+  });
 }
 
 export const useWorktreeStore = create<WorktreeStore>((set) => ({
@@ -23,6 +57,7 @@ export const useWorktreeStore = create<WorktreeStore>((set) => ({
       if (res.ok) {
         const worktrees: WorktreeInfo[] = await res.json();
         set({ worktrees });
+        syncWorktreeWorkspaces(workspaceId, worktrees);
       }
     } finally {
       set({ loading: false });
@@ -38,6 +73,7 @@ export const useWorktreeStore = create<WorktreeStore>((set) => ({
     if (!res.ok) throw new Error((await res.json()).error);
     const info: WorktreeInfo = await res.json();
     set((s) => ({ worktrees: [...s.worktrees, info] }));
+    useWorkspaceStore.getState().upsertWorkspace(worktreeToWorkspace(info));
     return info;
   },
 
@@ -47,6 +83,7 @@ export const useWorktreeStore = create<WorktreeStore>((set) => ({
     });
     if (!res.ok) throw new Error((await res.json()).error);
     set((s) => ({ worktrees: s.worktrees.filter((wt) => wt.id !== worktreeId) }));
+    useWorkspaceStore.getState().removeWorkspace(worktreeId);
   },
 
   createPR: async (workspaceId, worktreeId, opts) => {
@@ -73,5 +110,6 @@ export const useWorktreeStore = create<WorktreeStore>((set) => ({
     set((s) => ({
       worktrees: s.worktrees.filter((wt) => wt.id !== worktreeId),
     }));
+    useWorkspaceStore.getState().removeWorkspace(worktreeId);
   },
 }));

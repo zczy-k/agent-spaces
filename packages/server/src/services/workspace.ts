@@ -1,6 +1,7 @@
 import { v4 as uuid } from 'uuid';
-import type { Workspace, CreateWorkspaceInput } from '@agent-spaces/shared';
+import type { Workspace, CreateWorkspaceInput, WorktreeInfo } from '@agent-spaces/shared';
 import { listWorkspaces, getWorkspace, createWorkspace, updateWorkspace, deleteWorkspace } from '../storage/workspace-store.js';
+import { listWorktrees } from '../storage/worktree-store.js';
 import { ensureDir } from '../storage/json-store.js';
 import { join } from 'node:path';
 import { existsSync, writeFileSync } from 'node:fs';
@@ -25,7 +26,17 @@ function initAgentspace(agentspaceDir: string): void {
 }
 
 export function getAll(): Workspace[] {
-  return listWorkspaces();
+  const workspaces = listWorkspaces();
+  const workspaceIds = new Set(workspaces.map((workspace) => workspace.id));
+  const worktreeWorkspaces = workspaces
+    .filter((workspace) => !workspace.isWorktree)
+    .flatMap((workspace) =>
+      listWorktrees(workspace.id)
+        .filter((worktree) => worktree.status === 'active' && !workspaceIds.has(worktree.id))
+        .map(worktreeToWorkspace)
+    );
+
+  return [...workspaces, ...worktreeWorkspaces];
 }
 
 export function getById(id: string): Workspace | null {
@@ -76,4 +87,19 @@ export function remove(id: string): boolean {
   if (!ws) return false;
   deleteWorkspace(id);
   return true;
+}
+
+function worktreeToWorkspace(worktree: WorktreeInfo): Workspace {
+  return {
+    id: worktree.id,
+    name: `${worktree.name} (Worktree)`,
+    boundDirs: [worktree.path],
+    agentspaceDir: join(worktree.path, '.agentspace'),
+    isWorktree: true,
+    parentWorkspaceId: worktree.workspaceId,
+    createdAt: worktree.createdAt,
+    updatedAt: worktree.updatedAt,
+    activeChannels: [],
+    activeIssues: [],
+  };
 }
