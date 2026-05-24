@@ -31,7 +31,7 @@ export function WorktreeCard({ worktree: wt, workspaceId }: WorktreeCardProps) {
 
   const handleSwitch = useCallback(() => {
     const virtualWs: Workspace = {
-      id: `${workspaceId}__${wt.id}`,
+      id: wt.id,
       name: `${wt.name} (Worktree)`,
       boundDirs: [wt.path],
       agentspaceDir: wt.path + "/.agentspace",
@@ -43,7 +43,7 @@ export function WorktreeCard({ worktree: wt, workspaceId }: WorktreeCardProps) {
       activeIssues: [],
     };
     upsertWorkspace(virtualWs);
-    tauriNavigate(router, `/workspace/${virtualWs.id}`);
+    tauriNavigate(router, `/workspace/${wt.id}`);
   }, [wt, workspaceId, upsertWorkspace, router]);
 
   const handleDiff = useCallback(async () => {
@@ -73,7 +73,7 @@ export function WorktreeCard({ worktree: wt, workspaceId }: WorktreeCardProps) {
     setMergeLoading(true);
     try {
       await merge(workspaceId, wt.id);
-      removeWorkspace(`${workspaceId}__${wt.id}`);
+      removeWorkspace(wt.id);
       tauriNavigate(router, `/workspace/${workspaceId}`);
       toast.success("Merged and cleaned up");
     } catch (err: unknown) {
@@ -87,7 +87,7 @@ export function WorktreeCard({ worktree: wt, workspaceId }: WorktreeCardProps) {
     if (!confirm(t("card.confirmDelete"))) return;
     try {
       await remove(workspaceId, wt.id);
-      removeWorkspace(`${workspaceId}__${wt.id}`);
+      removeWorkspace(wt.id);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : String(err));
     }

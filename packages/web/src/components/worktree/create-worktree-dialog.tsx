@@ -79,7 +79,7 @@ export function CreateWorktreeDialog({ open, onOpenChange, workspaceId }: Create
             <select
               value={agentId}
               onChange={(e) => setAgentId(e.target.value)}
-              className="mt-1 w-full h-9 rounded-md border bg-transparent px-3 text-sm"
+              className="mt-1 w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
             >
               <option value="">-</option>
               {agents.map((a) => (
