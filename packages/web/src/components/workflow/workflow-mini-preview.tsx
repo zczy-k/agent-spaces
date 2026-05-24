@@ -28,8 +28,11 @@ function layoutNodes(template: WorkflowTemplate): { nodes: Node[]; edges: Edge[]
   g.setDefaultEdgeLabel(() => ({}));
   g.setGraph({ rankdir: 'LR', nodesep: 20, ranksep: 40 });
 
+  const nodeIds = new Set(template.nodes.map(n => n.id));
   const nodes: Node[] = template.nodes.map(n => ({ id: n.id, type: 'agent', position: n.position, data: n.data }));
-  const edges: Edge[] = template.edges.map(e => ({ id: e.id, source: e.source, target: e.target, type: 'smoothstep' }));
+  const edges: Edge[] = template.edges
+    .filter(e => nodeIds.has(e.source) && nodeIds.has(e.target))
+    .map(e => ({ id: e.id, source: e.source, target: e.target, type: 'smoothstep' }));
 
   for (const node of nodes) g.setNode(node.id, { width: 80, height: 24 });
   for (const edge of edges) g.setEdge(edge.source, edge.target);

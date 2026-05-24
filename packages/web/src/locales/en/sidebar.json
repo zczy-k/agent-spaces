@@ -15,7 +15,7 @@
     "workflows": "Workflows",
     "hooks": "Hooks",
     "tools": "Tools",
-    "commands": "Agent Commands"
+    "commands": "Commands"
   },
   "notifications": {
     "openAriaLabel": "Open notifications",

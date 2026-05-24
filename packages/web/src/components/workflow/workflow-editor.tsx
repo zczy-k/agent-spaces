@@ -87,7 +87,7 @@ function WorkflowEditorInner({
 
   const onConnect = useCallback(
     (connection: Connection) => {
-      setEdges((eds) => addEdge({ ...connection, type: 'smoothstep' }, eds));
+      setEdges((eds) => addEdge({ ...connection, type: 'smoothstep', sourceHandle: connection.sourceHandle ?? undefined, targetHandle: connection.targetHandle ?? undefined }, eds));
       markDirty();
     },
     [markDirty]

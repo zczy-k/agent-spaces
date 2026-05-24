@@ -1,5 +1,5 @@
 {
-  "title": "Agent Commands",
+  "title": "Commands",
   "description": "Manage command files in agent template directories",
   "search": "Search commands...",
   "empty": "No command files",
