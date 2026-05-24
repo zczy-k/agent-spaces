@@ -280,7 +280,7 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
         prev.forEach((item) => URL.revokeObjectURL(item.preview));
         return [];
       });
-      setMentionedAgentIds([]);
+      // setMentionedAgentIds([]);
       onCancelReply?.();
       onDraftClear?.();
     } finally {

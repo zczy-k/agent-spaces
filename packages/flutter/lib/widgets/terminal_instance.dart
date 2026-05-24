@@ -9,6 +9,8 @@ import 'package:xterm/xterm.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 import '../models/browser_tab.dart';
+import '../models/terminal_credential.dart';
+import '../providers/browser_provider.dart';
 import '../providers/terminal_credentials_provider.dart';
 import 'terminal_login_form.dart';
 import 'terminal_toolbar.dart';
@@ -26,6 +28,7 @@ class TerminalInstance extends ConsumerStatefulWidget {
 
 class _TerminalInstanceState extends ConsumerState<TerminalInstance> {
   late final Terminal _terminal;
+  late final TerminalController _terminalController;
   final _pasteController = TextEditingController();
 
   SSHClient? _client;
@@ -42,14 +45,20 @@ class _TerminalInstanceState extends ConsumerState<TerminalInstance> {
   void initState() {
     super.initState();
     _terminal = Terminal();
+    _terminalController = TerminalController();
     _terminal.onTitleChange = (title) {
       widget.onTitleChanged?.call(title.isEmpty ? 'Terminal' : title);
     };
+    final credential = widget.tab.terminalCredential;
+    if (credential != null) {
+      Future.microtask(() => _connectWithCredential(credential));
+    }
   }
 
   @override
   void dispose() {
     _disconnect();
+    _terminalController.dispose();
     _pasteController.dispose();
     super.dispose();
   }
@@ -57,10 +66,7 @@ class _TerminalInstanceState extends ConsumerState<TerminalInstance> {
   @override
   Widget build(BuildContext context) {
     if (!_connected) {
-      return TerminalLoginForm(
-        connecting: _connecting,
-        onConnect: _connect,
-      );
+      return TerminalLoginForm(connecting: _connecting, onConnect: _connect);
     }
 
     return ColoredBox(
@@ -70,6 +76,7 @@ class _TerminalInstanceState extends ConsumerState<TerminalInstance> {
           Expanded(
             child: TerminalView(
               _terminal,
+              controller: _terminalController,
               autofocus: true,
               padding: const EdgeInsets.all(8),
               backgroundOpacity: 1,
@@ -78,6 +85,8 @@ class _TerminalInstanceState extends ConsumerState<TerminalInstance> {
           if (_virtualKeyboardOpen)
             TerminalVirtualKeyboard(onKey: _sendTerminalInput),
           TerminalToolbar(
+            terminal: _terminal,
+            terminalController: _terminalController,
             historyEnabled: _commandHistory.isNotEmpty,
             keyboardOpen: _virtualKeyboardOpen,
             onSend: _sendTerminalInput,
@@ -148,11 +157,26 @@ class _TerminalInstanceState extends ConsumerState<TerminalInstance> {
         setState(() => _connected = false);
       });
 
+      final tabCredential = TerminalCredential(
+        id: widget.tab.terminalCredential?.id ?? 'tab-${widget.tab.id}',
+        name: credentialName.isEmpty ? '$username@$host' : credentialName,
+        host: host,
+        port: port,
+        username: username,
+        password: usePrivateKey ? null : password,
+        privateKey: usePrivateKey ? privateKey : null,
+        passphrase: usePrivateKey ? passphrase : null,
+        createdAt: widget.tab.terminalCredential?.createdAt ?? DateTime.now(),
+      );
+      ref
+          .read(browserProvider.notifier)
+          .setTerminalCredential(widget.tab.id, tabCredential);
+
       if (saveCredential) {
         ref
             .read(terminalCredentialsProvider.notifier)
             .add(
-              name: credentialName.isEmpty ? '$username@$host' : credentialName,
+              name: tabCredential.name,
               host: host,
               port: port,
               username: username,
@@ -185,6 +209,20 @@ class _TerminalInstanceState extends ConsumerState<TerminalInstance> {
         );
       }
     }
+  }
+
+  Future<void> _connectWithCredential(TerminalCredential credential) {
+    return _connect(
+      host: credential.host,
+      port: credential.port,
+      username: credential.username,
+      password: credential.password ?? '',
+      privateKey: credential.privateKey ?? '',
+      passphrase: credential.passphrase ?? '',
+      usePrivateKey: credential.usesPrivateKey,
+      saveCredential: false,
+      credentialName: credential.name,
+    );
   }
 
   void _disconnect() {

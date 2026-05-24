@@ -141,6 +141,7 @@
   "terminal_paste_command": "Paste Commands",
   "terminal_paste_command_short": "Paste",
   "terminal_paste_command_placeholder": "One command per line...",
+  "terminal_copy": "Copy",
 
   "console_title": "Console",
   "console_capture_logs": "Capture Logs",

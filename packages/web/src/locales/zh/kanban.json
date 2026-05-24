@@ -36,5 +36,6 @@
   "sectionName": "分区名称",
   "sectionNamePlaceholder": "例如：待办、审核",
   "theme": "主题",
-  "newTask": "新任务"
+  "newTask": "新任务",
+  "useTemplate": "使用模板"
 }

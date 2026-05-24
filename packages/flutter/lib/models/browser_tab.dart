@@ -1,4 +1,5 @@
 import 'file_source_config.dart';
+import 'terminal_credential.dart';
 
 enum DeviceType { phone, tablet, desktop }
 
@@ -64,6 +65,7 @@ class BrowserTab {
   final DeviceProfile device;
   final BrowserTabType type;
   final FileSourceConfig? fileSourceConfig;
+  final TerminalCredential? terminalCredential;
   final DateTime createdAt;
 
   BrowserTab({
@@ -74,6 +76,7 @@ class BrowserTab {
     this.device = DeviceProfile.desktop,
     this.type = BrowserTabType.webview,
     this.fileSourceConfig,
+    this.terminalCredential,
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
@@ -91,6 +94,9 @@ class BrowserTab {
     fileSourceConfig: FileSourceConfig.maybeFromJson(
       json['fileSourceConfig'] as Map<String, dynamic>?,
     ),
+    terminalCredential: _terminalCredentialFromJson(
+      json['terminalCredential'] as Map<String, dynamic>?,
+    ),
     createdAt: DateTime.parse(json['createdAt'] as String),
   );
 
@@ -101,6 +107,7 @@ class BrowserTab {
     DeviceProfile? device,
     BrowserTabType? type,
     FileSourceConfig? fileSourceConfig,
+    TerminalCredential? terminalCredential,
   }) {
     return BrowserTab(
       id: id,
@@ -110,7 +117,14 @@ class BrowserTab {
       device: device ?? this.device,
       type: type ?? this.type,
       fileSourceConfig: fileSourceConfig ?? this.fileSourceConfig,
+      terminalCredential: terminalCredential ?? this.terminalCredential,
       createdAt: createdAt,
     );
+  }
+
+  static TerminalCredential? _terminalCredentialFromJson(
+    Map<String, dynamic>? json,
+  ) {
+    return json == null ? null : TerminalCredential.fromJson(json);
   }
 }

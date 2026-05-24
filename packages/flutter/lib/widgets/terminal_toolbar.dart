@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:xterm/xterm.dart';
 
 class TerminalToolbar extends StatelessWidget {
   const TerminalToolbar({
     super.key,
+    required this.terminal,
+    required this.terminalController,
     required this.historyEnabled,
     required this.keyboardOpen,
     required this.onSend,
@@ -12,6 +16,8 @@ class TerminalToolbar extends StatelessWidget {
     required this.onPaste,
   });
 
+  final Terminal terminal;
+  final TerminalController terminalController;
   final bool historyEnabled;
   final bool keyboardOpen;
   final ValueChanged<String> onSend;
@@ -79,6 +85,18 @@ class TerminalToolbar extends StatelessWidget {
                 label: 'terminal_clear_screen'.tr(),
                 tooltip: 'terminal_clear_screen'.tr(),
                 onPressed: () => onSend('clear\r'),
+              ),
+              TerminalToolButton(
+                icon: Icons.copy,
+                label: 'terminal_copy'.tr(),
+                tooltip: 'terminal_copy'.tr(),
+                onPressed: () {
+                  final selection = terminalController.selection;
+                  if (selection == null) return;
+                  final text = terminal.buffer.getText(selection);
+                  if (text.isEmpty) return;
+                  Clipboard.setData(ClipboardData(text: text));
+                },
               ),
               TerminalToolButton(
                 icon: Icons.content_paste,

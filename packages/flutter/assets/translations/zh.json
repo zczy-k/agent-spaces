@@ -141,6 +141,7 @@
   "terminal_paste_command": "粘贴命令",
   "terminal_paste_command_short": "粘贴",
   "terminal_paste_command_placeholder": "每行一条命令...",
+  "terminal_copy": "复制",
 
   "console_title": "控制台",
   "console_capture_logs": "捕获日志",

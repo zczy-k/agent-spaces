@@ -6,7 +6,7 @@ import {
   DragOverlay, defaultDropAnimationSideEffects, Active,
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates, arrayMove, SortableContext, horizontalListSortingStrategy, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { Plus, LayoutGrid, Layout, Search, Layers } from 'lucide-react';
+import { Plus, LayoutGrid, Layout, Search, Layers, WandSparkles } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useKanbanStore } from '@/stores/kanban';
 import type { KanbanColumn, KanbanTask, KanbanLayoutMode, KanbanPriority } from '@agent-spaces/shared';
@@ -138,6 +138,19 @@ export default function KanbanBoardPanel({ workspaceId }: KanbanBoardProps) {
     updateColumns(workspaceId, [...columns, newCol]);
   };
 
+  const handleApplyTemplate = () => {
+    const template: { title: string; color: string }[] = [
+      { title: 'Draft', color: 'slate' },
+      { title: 'Todo', color: 'sky' },
+      { title: 'In Progress', color: 'amber' },
+      { title: 'Done', color: 'emerald' },
+      { title: 'Bug', color: 'rose' },
+    ];
+    const now = Date.now();
+    const newCols = template.map((t, i) => ({ id: `col-${now + i}`, title: t.title, color: t.color, order: i }));
+    updateColumns(workspaceId, [...columns, ...newCols]);
+  };
+
   const handleEditColumn = (colId: string, newTitle: string, color: string) => {
     updateColumns(workspaceId, columns.map((c) => c.id === colId ? { ...c, title: newTitle, color } : c));
   };
@@ -180,7 +193,10 @@ export default function KanbanBoardPanel({ workspaceId }: KanbanBoardProps) {
           <div className="flex-1 flex flex-col items-center justify-center py-16 border border-dashed border-stone-200 dark:border-neutral-600 rounded-3xl">
             <Layers className="h-10 w-10 text-stone-300 mb-3" />
             <p className="text-sm font-bold text-stone-500 dark:text-neutral-400">{t('noSections')}</p>
-            <button onClick={() => setIsColumnModalOpen(true)} className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-xs font-bold cursor-pointer">{t('addSection')}</button>
+            <div className="flex gap-2 mt-4">
+              <button onClick={handleApplyTemplate} className="px-4 py-2 bg-white dark:bg-neutral-800 border border-stone-200 dark:border-neutral-600 text-stone-600 dark:text-neutral-300 rounded-xl text-xs font-bold cursor-pointer hover:bg-stone-50 dark:hover:bg-neutral-700 transition"><WandSparkles className="h-3.5 w-3.5 inline mr-1 -mt-0.5" />{t('useTemplate')}</button>
+              <button onClick={() => setIsColumnModalOpen(true)} className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-xs font-bold cursor-pointer">{t('addSection')}</button>
+            </div>
           </div>
         ) : (
           <DndContext sensors={sensors} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>

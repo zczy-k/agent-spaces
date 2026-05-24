@@ -75,6 +75,7 @@ class StorageService {
                 'deviceType': t.device.type.index,
                 'type': t.type.index,
                 'fileSourceConfig': t.fileSourceConfig?.toJson(),
+                'terminalCredential': t.terminalCredential?.toJson(),
                 'createdAt': t.createdAt.toIso8601String(),
               },
             )
