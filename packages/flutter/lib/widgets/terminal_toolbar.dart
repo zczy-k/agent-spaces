@@ -27,13 +27,16 @@ class TerminalToolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return SafeArea(
       top: false,
       child: Container(
         width: double.infinity,
         decoration: BoxDecoration(
-          color: Colors.grey.shade900,
-          border: Border(top: BorderSide(color: Colors.grey.shade800)),
+          color: colorScheme.surfaceContainerHighest,
+          border: Border(top: BorderSide(color: colorScheme.outlineVariant)),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         child: SingleChildScrollView(
@@ -117,11 +120,13 @@ class TerminalToolbarDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Container(
       width: 1,
       height: 24,
       margin: const EdgeInsets.symmetric(horizontal: 6),
-      color: Colors.grey.shade700,
+      color: colorScheme.outlineVariant,
     );
   }
 }
@@ -144,8 +149,13 @@ class TerminalToolButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final foreground = selected ? Colors.white : Colors.grey.shade300;
-    final background = selected ? Colors.blueGrey.shade700 : Colors.transparent;
+    final colorScheme = Theme.of(context).colorScheme;
+    final foreground = selected
+        ? colorScheme.onPrimaryContainer
+        : colorScheme.onSurfaceVariant;
+    final background = selected
+        ? colorScheme.primaryContainer
+        : Colors.transparent;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2),
@@ -158,7 +168,9 @@ class TerminalToolButton extends StatelessWidget {
           style: TextButton.styleFrom(
             backgroundColor: background,
             foregroundColor: foreground,
-            disabledForegroundColor: Colors.grey.shade600,
+            disabledForegroundColor: colorScheme.onSurface.withValues(
+              alpha: 0.38,
+            ),
             minimumSize: const Size(40, 36),
             padding: EdgeInsets.symmetric(horizontal: label == null ? 8 : 10),
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,

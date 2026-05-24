@@ -67,6 +67,14 @@ const AddFavoriteDialog = dynamic(() => import("@/components/editor/add-favorite
   ssr: false,
   loading: () => null,
 });
+const SendToChannelDialog = dynamic(() => import("@/components/editor/send-to-channel-dialog").then((mod) => mod.SendToChannelDialog), {
+  ssr: false,
+  loading: () => null,
+});
+const SendToIssueDialog = dynamic(() => import("@/components/editor/send-to-issue-dialog").then((mod) => mod.SendToIssueDialog), {
+  ssr: false,
+  loading: () => null,
+});
 const DatabasePanel = dynamic(() => import("@/components/database/database-panel"), {
   ssr: false,
   loading: panelLoader,
@@ -501,6 +509,8 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
       <div className="relative h-full w-full">
         <MobilePanelRenderer panel={activePanel} workspaceId={workspaceId} boundDirs={boundDirs} />
         <AddFavoriteDialog />
+        <SendToChannelDialog />
+        <SendToIssueDialog />
       </div>
     );
   }
@@ -509,6 +519,8 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
     <div className="relative h-full w-full">
       <Layout model={model} factory={factory} onRenderTab={onRenderTab} onModelChange={onModelChange} />
       <AddFavoriteDialog />
+      <SendToChannelDialog />
+      <SendToIssueDialog />
     </div>
   );
 }

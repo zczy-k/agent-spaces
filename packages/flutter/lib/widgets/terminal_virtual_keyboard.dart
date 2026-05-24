@@ -57,9 +57,11 @@ class _TerminalVirtualKeyboardState extends State<TerminalVirtualKeyboard> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Container(
       width: double.infinity,
-      color: const Color(0xFF121212),
+      color: colorScheme.surfaceContainerHighest,
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -120,6 +122,8 @@ class _TerminalVirtualKeyboardState extends State<TerminalVirtualKeyboard> {
     _HapticStyle hapticStyle = _HapticStyle.light,
     VoidCallback? onTap,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Expanded(
       flex: flex,
       child: Padding(
@@ -133,9 +137,11 @@ class _TerminalVirtualKeyboardState extends State<TerminalVirtualKeyboard> {
             },
             style: TextButton.styleFrom(
               backgroundColor: selected
-                  ? Colors.blueGrey.shade700
-                  : const Color(0xFF1E1E1E),
-              foregroundColor: Colors.grey.shade100,
+                  ? colorScheme.primaryContainer
+                  : colorScheme.surfaceContainer,
+              foregroundColor: selected
+                  ? colorScheme.onPrimaryContainer
+                  : colorScheme.onSurface,
               padding: EdgeInsets.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               textStyle: const TextStyle(fontSize: 12),

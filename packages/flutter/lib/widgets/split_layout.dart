@@ -247,6 +247,7 @@ class _SplitLayoutViewState extends State<SplitLayoutView> {
   String _structureKey = '';
   String _lastSavedDockingLayout = '';
   bool _hasRestoredSavedDockingLayout = false;
+  bool _saveDockingLayoutAfterPointerFrame = false;
 
   @override
   void initState() {
@@ -276,29 +277,33 @@ class _SplitLayoutViewState extends State<SplitLayoutView> {
     final layout = _dockingLayout;
     if (layout == null) return const SizedBox.shrink();
 
-    return TabbedViewTheme(
-      data: _buildDockingTabTheme(Theme.of(context)),
-      child: Docking(
-        layout: layout,
-        onItemSelection: (item) {
-          final tabId = item.value;
-          if (tabId is String) widget.onTabSelected(tabId);
-        },
-        onItemClose: (item) {
-          final tabId = item.value;
-          if (tabId is String) widget.onTabClosed(tabId);
-        },
-        dockingButtonsBuilder: (context, dockingTabs, dockingItem) => [
-          TabButton(
-            icon: IconProvider.data(Icons.more_vert),
-            toolTip: 'tab_more'.tr(),
-            onPressed: () => _showDockingMenu(context, widget.onBuildMenu),
-          ),
-        ],
-        draggable: true,
-        maximizableItem: false,
-        maximizableTab: false,
-        maximizableTabsArea: false,
+    return Listener(
+      onPointerUp: (_) => _saveDockingLayoutAfterPointer(),
+      onPointerCancel: (_) => _saveDockingLayoutAfterPointer(),
+      child: TabbedViewTheme(
+        data: _buildDockingTabTheme(Theme.of(context)),
+        child: Docking(
+          layout: layout,
+          onItemSelection: (item) {
+            final tabId = item.value;
+            if (tabId is String) widget.onTabSelected(tabId);
+          },
+          onItemClose: (item) {
+            final tabId = item.value;
+            if (tabId is String) widget.onTabClosed(tabId);
+          },
+          dockingButtonsBuilder: (context, dockingTabs, dockingItem) => [
+            TabButton(
+              icon: IconProvider.data(Icons.more_vert),
+              toolTip: 'tab_more'.tr(),
+              onPressed: () => _showDockingMenu(context, widget.onBuildMenu),
+            ),
+          ],
+          draggable: true,
+          maximizableItem: false,
+          maximizableTab: false,
+          maximizableTabsArea: false,
+        ),
       ),
     );
   }
@@ -356,6 +361,16 @@ class _SplitLayoutViewState extends State<SplitLayoutView> {
     if (serialized == _lastSavedDockingLayout) return;
     _lastSavedDockingLayout = serialized;
     widget.onDockingLayoutChanged(serialized);
+  }
+
+  void _saveDockingLayoutAfterPointer() {
+    if (_saveDockingLayoutAfterPointerFrame) return;
+    _saveDockingLayoutAfterPointerFrame = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _saveDockingLayoutAfterPointerFrame = false;
+      if (!mounted) return;
+      _handleDockingLayoutChanged();
+    });
   }
 
   DockingArea _buildRoot() {

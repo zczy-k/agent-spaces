@@ -69,8 +69,11 @@ class _TerminalInstanceState extends ConsumerState<TerminalInstance> {
       return TerminalLoginForm(connecting: _connecting, onConnect: _connect);
     }
 
+    final theme = Theme.of(context);
+    final terminalTheme = _buildTerminalTheme(theme);
+
     return ColoredBox(
-      color: Colors.black,
+      color: terminalTheme.background,
       child: Column(
         children: [
           Expanded(
@@ -79,6 +82,7 @@ class _TerminalInstanceState extends ConsumerState<TerminalInstance> {
               controller: _terminalController,
               autofocus: true,
               padding: const EdgeInsets.all(8),
+              theme: terminalTheme,
               backgroundOpacity: 1,
             ),
           ),
@@ -98,6 +102,68 @@ class _TerminalInstanceState extends ConsumerState<TerminalInstance> {
           ),
         ],
       ),
+    );
+  }
+
+  TerminalTheme _buildTerminalTheme(ThemeData theme) {
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final selection = colorScheme.primary.withValues(
+      alpha: isDark ? 0.32 : 0.22,
+    );
+
+    if (isDark) {
+      return TerminalTheme(
+        cursor: colorScheme.primary,
+        selection: selection,
+        foreground: colorScheme.onSurface,
+        background: colorScheme.surface,
+        black: const Color(0xFF000000),
+        red: const Color(0xFFF87171),
+        green: const Color(0xFF34D399),
+        yellow: const Color(0xFFFBBF24),
+        blue: const Color(0xFF60A5FA),
+        magenta: const Color(0xFFC084FC),
+        cyan: const Color(0xFF22D3EE),
+        white: const Color(0xFFE5E7EB),
+        brightBlack: const Color(0xFF6B7280),
+        brightRed: const Color(0xFFFCA5A5),
+        brightGreen: const Color(0xFF86EFAC),
+        brightYellow: const Color(0xFFFDE68A),
+        brightBlue: const Color(0xFF93C5FD),
+        brightMagenta: const Color(0xFFD8B4FE),
+        brightCyan: const Color(0xFF67E8F9),
+        brightWhite: const Color(0xFFFFFFFF),
+        searchHitBackground: const Color(0xFFFFFF2B),
+        searchHitBackgroundCurrent: colorScheme.primary,
+        searchHitForeground: const Color(0xFF000000),
+      );
+    }
+
+    return TerminalTheme(
+      cursor: colorScheme.primary,
+      selection: selection,
+      foreground: colorScheme.onSurface,
+      background: colorScheme.surface,
+      black: const Color(0xFF111827),
+      red: const Color(0xFFB91C1C),
+      green: const Color(0xFF047857),
+      yellow: const Color(0xFFB45309),
+      blue: const Color(0xFF1D4ED8),
+      magenta: const Color(0xFF7E22CE),
+      cyan: const Color(0xFF0E7490),
+      white: const Color(0xFF4B5563),
+      brightBlack: const Color(0xFF6B7280),
+      brightRed: const Color(0xFFDC2626),
+      brightGreen: const Color(0xFF059669),
+      brightYellow: const Color(0xFFD97706),
+      brightBlue: const Color(0xFF2563EB),
+      brightMagenta: const Color(0xFF9333EA),
+      brightCyan: const Color(0xFF0891B2),
+      brightWhite: const Color(0xFF111827),
+      searchHitBackground: const Color(0xFFFFF59D),
+      searchHitBackgroundCurrent: colorScheme.primaryContainer,
+      searchHitForeground: colorScheme.onPrimaryContainer,
     );
   }
 

@@ -81,6 +81,7 @@ Future<void> _configureDesktopWindow(AdaptiveThemeMode? themeMode) async {
   windowManager.addListener(_windowStateController);
 
   final initialTheme = _buildAppTheme(_initialBrightnessFor(themeMode));
+  await windowManager.setBrightness(initialTheme.brightness);
   await windowManager.waitUntilReadyToShow(
     WindowOptions(
       size: _windowDefaultSize,
@@ -185,6 +186,7 @@ class _WindowThemeSync extends StatefulWidget {
 class _WindowThemeSyncState extends State<_WindowThemeSync>
     with WidgetsBindingObserver {
   Color? _lastChromeColor;
+  Brightness? _lastBrightness;
 
   @override
   void initState() {
@@ -216,14 +218,17 @@ class _WindowThemeSyncState extends State<_WindowThemeSync>
     }
 
     final chromeColor = _windowChromeColor(Theme.of(context));
-    if (chromeColor == _lastChromeColor) {
+    final brightness = Theme.of(context).brightness;
+    if (chromeColor == _lastChromeColor && brightness == _lastBrightness) {
       return;
     }
 
     _lastChromeColor = chromeColor;
+    _lastBrightness = brightness;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         unawaited(windowManager.setBackgroundColor(chromeColor));
+        unawaited(windowManager.setBrightness(brightness));
       }
     });
   }
