@@ -79,6 +79,16 @@
     "addHeader": "Add",
     "noHeaders": "No headers",
     "cookiePlaceholder": "Paste browser Cookie",
-    "editTitle": "Edit Subscription"
+    "editTitle": "Edit Subscription",
+    "networkError": "Network error",
+    "limitTypes": {
+      "TIME_LIMIT": "Time Limit",
+      "TOKENS_LIMIT": "Token Limit",
+      "MiniMax-M*": "MiniMax-M*",
+      "coding-plan-vlm": "Coding Plan VLM",
+      "coding-plan-search": "Coding Plan Search",
+      "balance": "Balance",
+      "bonusBalance": "Bonus Balance"
+    }
   }
 }

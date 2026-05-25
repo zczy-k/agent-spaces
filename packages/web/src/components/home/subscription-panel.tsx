@@ -9,16 +9,6 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { SubscriptionDialog } from "./subscription-dialog"
 
-const LIMIT_TYPE_LABELS: Record<string, string> = {
-  TIME_LIMIT: '时间额度',
-  TOKENS_LIMIT: 'Token 额度',
-  'MiniMax-M*': 'MiniMax-M*',
-  'coding-plan-vlm': 'Coding Plan VLM',
-  'coding-plan-search': 'Coding Plan Search',
-  balance: '余额',
-  bonusBalance: '赠送余额',
-}
-
 function formatLimitValue(limit: SubscriptionLimit): string | null {
   if (limit.type === 'TIME_LIMIT') {
     if (limit.currentValue !== undefined && limit.usage !== undefined) {
@@ -64,7 +54,7 @@ export function SubscriptionPanel() {
             map.set(item.id, { error: body.error ?? `${res.status} ${res.statusText}` })
           }
         } catch (err: unknown) {
-          map.set(item.id, { error: err instanceof Error ? err.message : 'Network error' })
+          map.set(item.id, { error: err instanceof Error ? err.message : t('subscription.networkError') })
         }
       })
     )
@@ -151,7 +141,7 @@ export function SubscriptionPanel() {
               <div className="grid grid-cols-2 gap-2">
                 {quota.limits.map((limit, i) => (
                   <div key={i} className="rounded-md bg-muted/50 px-3 py-2">
-                    <div className="text-[10px] text-muted-foreground">{LIMIT_TYPE_LABELS[limit.type] || limit.type}</div>
+                    <div className="text-[10px] text-muted-foreground">{t(`subscription.limitTypes.${limit.type}` as Parameters<typeof t>[0]) || limit.type}</div>
                     <div className="mt-0.5 font-semibold text-sm tabular-nums">
                       {limit.currentValue?.toFixed(2) ?? '—'}
                     </div>
@@ -166,7 +156,7 @@ export function SubscriptionPanel() {
                   <div key={i} className="space-y-1">
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] text-muted-foreground">
-                        {LIMIT_TYPE_LABELS[limit.type] || limit.type}
+                        {t(`subscription.limitTypes.${limit.type}` as Parameters<typeof t>[0]) || limit.type}
                       </span>
                       {displayValue && (
                         <span className="font-mono text-[11px] tabular-nums">{displayValue}</span>

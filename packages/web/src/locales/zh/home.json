@@ -79,6 +79,16 @@
     "addHeader": "添加",
     "noHeaders": "暂无请求头",
     "cookiePlaceholder": "粘贴浏览器 Cookie",
-    "editTitle": "编辑订阅平台"
+    "editTitle": "编辑订阅平台",
+    "networkError": "网络错误",
+    "limitTypes": {
+      "TIME_LIMIT": "时间额度",
+      "TOKENS_LIMIT": "Token 额度",
+      "MiniMax-M*": "MiniMax-M*",
+      "coding-plan-vlm": "Coding Plan VLM",
+      "coding-plan-search": "Coding Plan Search",
+      "balance": "余额",
+      "bonusBalance": "赠送余额"
+    }
   }
 }
