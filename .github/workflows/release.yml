@@ -228,10 +228,10 @@ jobs:
           keyAlias=${ANDROID_KEY_ALIAS:-upload}
           EOF
         env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEYSTORE_BASE64: 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
+          ANDROID_KEYSTORE_PASSWORD: agent-spaces-release-2026
+          ANDROID_KEY_PASSWORD: agent-spaces-release-2026
+          ANDROID_KEY_ALIAS: upload
 
       - name: Build Android APK
         working-directory: packages/flutter
@@ -243,9 +243,9 @@ jobs:
             --build-number "$BUILD_NUMBER" \
             --dart-define "APPCAST_URL=https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/appcast.xml"
         env:
-          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEYSTORE_PASSWORD: agent-spaces-release-2026
+          KEY_PASSWORD: agent-spaces-release-2026
+          KEY_ALIAS: upload
 
       - name: Build Android AAB
         working-directory: packages/flutter
@@ -257,9 +257,9 @@ jobs:
             --build-number "$BUILD_NUMBER" \
             --dart-define "APPCAST_URL=https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/appcast.xml"
         env:
-          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEYSTORE_PASSWORD: agent-spaces-release-2026
+          KEY_PASSWORD: agent-spaces-release-2026
+          KEY_ALIAS: upload
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
