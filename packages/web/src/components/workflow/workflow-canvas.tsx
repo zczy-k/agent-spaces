@@ -24,8 +24,11 @@ import { WorkflowAgentNode } from './workflow-agent-node';
 import { WorkflowCommandNode } from './workflow-command-node';
 import { X } from 'lucide-react';
 
-type AgentNodeData = WorkflowNode['data'];
+type AgentNodeData = Extract<WorkflowNode, { type: 'agent' }>['data'];
+type CommandNodeData = Extract<WorkflowNode, { type: 'command' }>['data'];
 type AgentNode = Node<AgentNodeData, 'agent'>;
+type CommandNode = Node<CommandNodeData, 'command'>;
+type WorkflowNodeRF = AgentNode | CommandNode;
 
 function DeletableEdge({
   id,
@@ -72,12 +75,12 @@ const nodeTypes = { agent: WorkflowAgentNode, command: WorkflowCommandNode };
 const edgeTypes = { smoothstep: DeletableEdge };
 
 interface WorkflowCanvasProps {
-  nodes: AgentNode[];
+  nodes: WorkflowNodeRF[];
   edges: Edge[];
-  onNodesChange: OnNodesChange<AgentNode>;
+  onNodesChange: OnNodesChange<WorkflowNodeRF>;
   onEdgesChange: OnEdgesChange;
   onConnect: OnConnect;
-  onNodeAdd?: (node: AgentNode) => void;
+  onNodeAdd?: (node: WorkflowNodeRF) => void;
   onNodeDoubleClick?: (_: React.MouseEvent, node: any) => void;
 }
 
@@ -135,7 +138,7 @@ export function WorkflowCanvas({ nodes, edges, onNodesChange, onEdgesChange, onC
 }
 
 // Auto-layout: creates fresh Graph each call
-export function getAutoLayoutedNodes(nodes: AgentNode[], edges: Edge[]): AgentNode[] {
+export function getAutoLayoutedNodes(nodes: WorkflowNodeRF[], edges: Edge[]): WorkflowNodeRF[] {
   const g = new Dagre.graphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
   g.setGraph({ rankdir: 'TB', nodesep: 80, ranksep: 100 });

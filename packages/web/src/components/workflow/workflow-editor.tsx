@@ -53,10 +53,10 @@ function WorkflowEditorInner({
     () =>
       template?.nodes.map((n) => ({
         id: n.id,
-        type: n.type as 'agent' | 'command',
+        type: n.type,
         position: n.position,
         data: n.data,
-      })) ?? []
+      } as WorkflowNodeRF)) ?? []
   );
   const [edges, setEdges] = useState<Edge[]>(
     () =>
@@ -85,7 +85,7 @@ function WorkflowEditorInner({
   const handleCommandSave = useCallback((data: CommandNodeData) => {
     if (!editCommandNode) return;
     setNodes((nds) =>
-      nds.map((n) => n.id === editCommandNode.id ? { ...n, data } : n)
+      nds.map((n) => n.id === editCommandNode.id ? ({ ...n, data } as CommandNode) : n)
     );
     markDirty();
   }, [editCommandNode, markDirty]);
@@ -132,10 +132,10 @@ function WorkflowEditorInner({
     try {
       const workflowNodes: WorkflowNode[] = nodes.map((n) => ({
         id: n.id,
-        type: n.type as 'agent' | 'command',
+        type: n.type,
         position: n.position,
         data: n.data,
-      }));
+      } as WorkflowNode));
       const workflowEdges: WorkflowEdge[] = edges.map((e) => ({
         id: e.id,
         source: e.source,
@@ -166,6 +166,7 @@ function WorkflowEditorInner({
   const handleExport = useCallback(() => {
     const agentMap: Record<string, Omit<AgentConfig, 'apiKey'>> = {};
     for (const node of nodes) {
+      if (node.type !== 'agent') continue;
       const agentId = node.data.agentConfigId;
       if (agentId && !agentMap[agentId]) {
         const agent = allAgents.find((a) => a.id === agentId);
