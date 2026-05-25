@@ -34,5 +34,18 @@ sidebar_position: 1
 - 工作空间配置信息
 - Agent 上下文和知识库（`claude.md`）
 - 工具详情历史记录
+- Hook 配置（`.hook.json`）
+- 输出风格模板
 
 建议将 `.agentspace` 加入 `.gitignore`，避免提交到远程仓库。
+
+## Worktree 子工作空间
+
+通过 Worktree 创建的并行开发分支会作为子工作空间存在：
+
+- 子工作空间的 `isWorktree` 字段为 `true`
+- 通过 `parentWorkspaceId` 关联到父工作空间
+- 子工作空间拥有独立的分支和文件状态
+- 在 Worktree 面板中管理所有子工作空间
+
+详见 [Worktree 并行开发](/docs/features/worktree)。

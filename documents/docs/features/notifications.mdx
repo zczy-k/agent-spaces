@@ -98,3 +98,29 @@ Bot Agent 支持自然语言对话和 16 个内置斜杠命令。
 7. 保存配置
 
 系统支持后端重启后自动恢复通知服务（通过 `serviceRunning` 配置项）。
+
+## Robot Account 凭证管理
+
+Robot Account 是集中管理飞书/企微通知凭证的机制，避免在每个工作空间中重复配置：
+
+### 凭证管理
+
+- 在项目设置的「Robot Accounts」标签中管理凭证
+- 支持创建、编辑、删除 Robot Account
+- 每个 Robot Account 存储飞书或企微的应用凭证
+- 工作空间通过 `robotAccountId` 引用凭证，不直接存储敏感信息
+
+### 企业微信 QR Code 登录
+
+支持全局企业微信 QR Code 扫码登录，系统自动创建 Robot Account 凭证：
+
+1. 在 Robot Accounts 标签点击「企微扫码登录」
+2. 扫描二维码完成授权
+3. 系统自动创建包含凭证的 Robot Account
+4. 工作空间可直接引用该凭证
+
+### 优势
+
+- **凭证隔离** — 敏感凭证集中存储，工作空间只引用 ID
+- **复用** — 多个工作空间可共享同一个 Robot Account
+- **安全** — 修改凭证只需更新一处，所有引用自动生效

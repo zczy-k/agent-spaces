@@ -1,0 +1,106 @@
+---
+sidebar_position: 16
+---
+
+# Hook 系统
+
+Hook 系统允许你在 Agent 工具调用前后执行自定义操作，实现精细化的 Agent 行为控制。
+
+## 核心概念
+
+Hook 是 per-tool-call 粒度的钩子，支持在 Agent 调用工具前（PreToolUse）和调用后（PostToolUse）触发自定义动作。
+
+## Hook 类型
+
+### PreToolUse
+
+在 Agent 调用工具之前触发：
+
+- 可以拦截工具调用
+- 可以修改工具输入参数
+- 可以记录调用信息
+
+### PostToolUse
+
+在 Agent 工具调用完成后触发：
+
+- 可以处理工具输出
+- 可以发送通知
+- 可以触发后续操作
+
+## 动作类型
+
+每种 Hook 支持三种动作类型：
+
+### Shell Command
+
+执行本地 Shell 命令：
+
+- 在工作空间目录下执行
+- 可以访问工具调用的上下文信息
+- 支持环境变量注入
+
+### Webhook
+
+发送 HTTP 请求到指定 URL：
+
+- 支持 POST/GET 等 HTTP 方法
+- 请求体包含工具调用的完整信息
+- 可用于集成外部系统
+
+### Script
+
+执行自定义脚本：
+
+- 支持 JavaScript 脚本
+- 可以访问工具调用的输入/输出
+- 灵活的处理逻辑
+
+## Hook 配置
+
+Hook 配置存储在工作空间的 `.hook.json` 文件中：
+
+```json
+{
+  "hooks": [
+    {
+      "name": "通知代码修改",
+      "phase": "PostToolUse",
+      "toolName": "Edit",
+      "action": {
+        "type": "webhook",
+        "url": "https://example.com/notify"
+      }
+    }
+  ]
+}
+```
+
+## 管理 Hook
+
+### 通过设置页面
+
+在 `/settings/hooks` 页面管理所有 Hook：
+
+- 创建新 Hook
+- 编辑 Hook 配置
+- 删除不需要的 Hook
+- 上传 `.hook.json` 文件
+- Monaco 编辑器直接编辑 JSON
+
+### 通过侧边栏
+
+在工作空间侧边栏的 Hooks 对话框中管理：
+
+- 快速查看当前工作空间的 Hook
+- 启用/禁用 Hook
+- 测试 Hook 是否正常工作
+
+## 技术实现
+
+Hook 系统通过 `wrapOnEventWithHooks()` 函数拦截 `AgentRuntimeEvent`：
+
+1. Agent 运行时产生工具调用事件
+2. Hook 引擎匹配对应的 Hook 规则
+3. 按规则执行 shell/webhook/script 动作
+4. 将处理结果返回给运行时
