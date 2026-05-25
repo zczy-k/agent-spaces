@@ -21,7 +21,7 @@ import { extractUsageFromOutput } from '../storage/usage.js';
 const DEFAULT_AGENT_ROLE: AgentConfig['role'] = 'agent';
 export const AGENT_GENERATOR_PRESET_ID = 'agent-generator';
 export const AGENT_COMMIT_PRESET_ID = 'commit-agent';
-const VALID_RUNTIME_KINDS: NonNullable<AgentConfig['runtimeKind']>[] = ['open-agent-sdk', 'claude-code', 'codex', 'langchain'];
+const VALID_RUNTIME_KINDS: NonNullable<AgentConfig['runtimeKind']>[] = ['open-agent-sdk', 'claude-code', 'codex', 'langchain', 'hermes'];
 const VALID_TOOL_NAMES = new Set(BUILT_IN_AGENT_TOOLS.map((tool) => tool.name));
 const CLAUDE_BUILT_IN_DIRS = ['agents', 'commands'] as const;
 const ANTHROPIC_BRIDGE_PROVIDERS: Array<NonNullable<AgentConfig['modelProvider']>> = [

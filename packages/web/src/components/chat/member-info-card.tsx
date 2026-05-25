@@ -12,6 +12,7 @@ const RUNTIME_LABELS: Record<string, string> = {
   'claude-code': 'Claude Code',
   'codex': 'Codex',
   'langchain': 'LangChain',
+  'hermes': 'Hermes',
 };
 
 const PROVIDER_LABELS: Record<string, string> = {

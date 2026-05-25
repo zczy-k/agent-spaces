@@ -5,6 +5,7 @@
 import type { AgentRuntime, AgentRuntimeConfig } from './agent-runtime-types.js';
 import { ClaudeCodeRuntime } from './claude-code-runtime/index.js';
 import { CodexRuntime } from './codex-runtime.js';
+import { HermesRuntime } from './hermes-runtime.js';
 import { LangChainRuntime } from './langchain-runtime.js';
 import { OpenAgentSdkRuntime } from './open-agent-sdk-runtime.js';
 
@@ -17,6 +18,7 @@ export type {
 } from './agent-runtime-types.js';
 export { ClaudeCodeRuntime } from './claude-code-runtime/index.js';
 export { CodexRuntime } from './codex-runtime.js';
+export { HermesRuntime } from './hermes-runtime.js';
 export { LangChainRuntime } from './langchain-runtime.js';
 export { OpenAgentSdkRuntime } from './open-agent-sdk-runtime.js';
 
@@ -40,5 +42,7 @@ export function createAgentRuntime(
       return new CodexRuntime(config);
     case 'langchain':
       return new LangChainRuntime(config);
+    case 'hermes':
+      return new HermesRuntime(config);
   }
 }

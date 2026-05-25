@@ -11,7 +11,8 @@
     "openAgentSdk": "Open Agent SDK",
     "claudeCode": "Claude Code",
     "codex": "Codex",
-    "langchain": "LangChain"
+    "langchain": "LangChain",
+    "hermes": "Hermes"
   },
   "role": {
     "agent": {
