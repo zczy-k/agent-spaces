@@ -37,7 +37,8 @@ export function ServerManagerDialog({ open, onOpenChange, servers, activeId, onU
   const [newUrl, setNewUrl] = React.useState("");
   const [newSecret, setNewSecret] = React.useState("");
   const [diagnostics, setDiagnostics] = React.useState("");
-  const [testingId, setTestingId] = React.useState<string | null>(null);
+  const [diagOpen, setDiagOpen] = React.useState(false);
+  const [diagServerName, setDiagServerName] = React.useState("");
 
   const startEdit = (server: ServerConfig) => {
     setEditId(server.id);
@@ -81,8 +82,9 @@ export function ServerManagerDialog({ open, onOpenChange, servers, activeId, onU
   }, []);
 
   const runDiagnostics = async (server: ServerConfig) => {
-    setTestingId(server.id);
     setDiagnostics("");
+    setDiagServerName(server.name);
+    setDiagOpen(true);
 
     const baseUrl = server.url.replace(/\/$/, "");
     const healthUrl = `${baseUrl}/api/health`;
@@ -149,8 +151,6 @@ export function ServerManagerDialog({ open, onOpenChange, servers, activeId, onU
         finish(`websocket: FAILED ${err.name}: ${err.message}`);
       }
     });
-
-    setTestingId(null);
   };
 
   return (
@@ -226,28 +226,21 @@ export function ServerManagerDialog({ open, onOpenChange, servers, activeId, onU
             </div>
           </div>
         )}
-        <div className="border-t pt-3 mt-2 space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="text-xs font-medium text-muted-foreground">Network diagnostics</div>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 px-2 text-xs"
-              disabled={!servers.find((server) => server.id === activeId) || testingId !== null}
-              onClick={() => {
-                const active = servers.find((server) => server.id === activeId);
-                if (active) runDiagnostics(active);
-              }}
-            >
-              {testingId ? "Testing..." : "Test active"}
-            </Button>
-          </div>
-          <Textarea
-            readOnly
-            value={diagnostics || "Tap the Wi-Fi icon next to a server, or use Test active."}
-            className="h-36 resize-none font-mono text-[11px]"
-          />
-        </div>
+        {diagOpen && (
+          <Dialog open={diagOpen} onOpenChange={setDiagOpen}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Network diagnostics</DialogTitle>
+                <DialogDescription>{diagServerName}</DialogDescription>
+              </DialogHeader>
+              <Textarea
+                readOnly
+                value={diagnostics || "Running..."}
+                className="h-64 resize-none font-mono text-[11px]"
+              />
+            </DialogContent>
+          </Dialog>
+        )}
       </DialogContent>
     </Dialog>
   );
