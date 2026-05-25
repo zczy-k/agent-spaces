@@ -1,4 +1,5 @@
 import { exec } from 'child_process';
+import type { ExecException } from 'child_process';
 import type { WorkflowCommandNode } from '@agent-spaces/shared';
 import { getWorkspace } from '../storage/workspace-store.js';
 
@@ -20,15 +21,15 @@ export async function executeCommandNode(
     exec(node.data.script, {
       cwd,
       env: { ...process.env, ...node.data.env },
-      shell: node.data.shell || true,
+      shell: node.data.shell || undefined,
       timeout: 300_000,
       maxBuffer: 10 * 1024 * 1024,
-    }, (error, stdout, stderr) => {
+    }, (error: ExecException | null, stdout: string, stderr: string) => {
       resolve({
         success: !error,
         exitCode: error ? (typeof error.code === 'number' ? error.code : 1) : 0,
-        stdout: stdout?.toString() || '',
-        stderr: stderr?.toString() || '',
+        stdout: stdout || '',
+        stderr: stderr || '',
       });
     });
   });

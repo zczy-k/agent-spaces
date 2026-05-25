@@ -1,5 +1,5 @@
 import type { AgentConfig, Issue, Task, TaskResult, TaskStatus } from '@agent-spaces/shared';
-import type { WorkflowTemplate } from '@agent-spaces/shared';
+import type { WorkflowTemplate, WorkflowCommandNode } from '@agent-spaces/shared';
 import type { AgentContext } from './agent-context.js';
 import type { AgentFunctionTool, AgentRunResult, AgentRuntime } from '../adapters/agent-runtime-types.js';
 import { createAgentRuntime } from '../adapters/agent-runtime.js';
@@ -8,12 +8,13 @@ import * as channelService from '../services/channel.js';
 import * as issueService from '../services/issue.js';
 import * as taskService from '../services/task.js';
 import * as workspaceService from '../services/workspace.js';
-import { mapWorkflowToTaskDrafts, validateWorkflowForRun } from '../services/workflow.js';
+import { getWorkflow, mapWorkflowToTaskDrafts, validateWorkflowForRun } from '../services/workflow.js';
 import { createIssueFunctionTools } from '../services/builtin-tools/index.js';
 import { getThinkingRuntimeConfig } from '../services/llm-model-config.js';
 import { prependPersistentAgentContext } from '../services/persistent-agent-context.js';
 import { completeIssueAgentProgress, createIssueAgentProgress, createIssueAgentProgressTracker } from './issue-agent-progress.js';
 import { wrapOnEventWithHooks } from '../services/hook-engine.js';
+import { executeCommandNode } from '../services/workflow-command-runner.js';
 
 const ACTIVE_TASK_STATUSES: TaskStatus[] = ['running', 'reviewing', 'retrying', 'waiting_review'];
 const activeIssueRuntimes = new Map<string, Map<string, AgentRuntime>>();
@@ -191,6 +192,14 @@ export async function runIssueTask(
     return;
   }
 
+  // Check if this task came from a command workflow node
+  const workflow = findWorkflowForIssue(workspaceId, issue);
+  const commandNode = findCommandNodeForTask(workflow, task);
+  if (commandNode) {
+    await runCommandTask(workspaceId, issueId, taskId, commandNode, ctx);
+    return;
+  }
+
   const taskAgentPreset = findAgentForTask(workspaceId, issue, task);
   if (!taskAgentPreset) {
     if (issueService.getById(workspaceId, issueId)?.status === 'error') return;
@@ -337,6 +346,60 @@ export async function runIssueTask(
 
   const completedTask = taskService.complete(workspaceId, taskId, result);
   broadcastTaskUpdate(ctx, completedTask, 'running');
+  if (issueService.getById(workspaceId, issueId)?.continuousRun !== false) {
+    await scheduleRunnableIssueTasks(workspaceId, issueId, ctx);
+  }
+}
+
+async function runCommandTask(
+  workspaceId: string,
+  issueId: string,
+  taskId: string,
+  commandNode: WorkflowCommandNode,
+  ctx: AgentContext,
+): Promise<void> {
+  const task = taskService.getById(workspaceId, taskId);
+  if (!task || task.status !== 'pending') return;
+
+  const runningTask = taskService.updateStatus(workspaceId, taskId, 'running');
+  if (!runningTask) return;
+  broadcastTaskUpdate(ctx, runningTask, 'pending');
+
+  ctx.broadcast('task.output', { taskId, data: `$ ${commandNode.data.script.split('\n')[0]}${commandNode.data.script.includes('\n') ? ' ...' : ''}` });
+
+  const result = await executeCommandNode(workspaceId, commandNode);
+
+  ctx.broadcast('task.output', { taskId, data: result.stdout });
+  if (result.stderr) {
+    ctx.broadcast('task.output', { taskId, data: result.stderr });
+  }
+
+  if (!result.success) {
+    const failedTask = taskService.updateStatus(workspaceId, taskId, 'failed', {
+      result: {
+        success: false,
+        summary: `Command failed with exit code ${result.exitCode}`,
+        artifacts: [],
+        error: result.stderr || `Exit code: ${result.exitCode}`,
+      },
+    });
+    broadcastTaskUpdate(ctx, failedTask, 'running');
+    await handleTaskFailure(workspaceId, issueId, taskId, {
+      success: false,
+      summary: `Command failed with exit code ${result.exitCode}`,
+      artifacts: [],
+      error: result.stderr || `Exit code: ${result.exitCode}`,
+    }, ctx);
+    return;
+  }
+
+  const completedTask = taskService.complete(workspaceId, taskId, {
+    success: true,
+    summary: result.stdout.slice(-500) || 'Command completed',
+    artifacts: [],
+  });
+  broadcastTaskUpdate(ctx, completedTask, 'running');
+
   if (issueService.getById(workspaceId, issueId)?.continuousRun !== false) {
     await scheduleRunnableIssueTasks(workspaceId, issueId, ctx);
   }
@@ -628,6 +691,22 @@ function unregisterActiveIssueRuntime(workspaceId: string, issueId: string, agen
 
 function issueRunKey(workspaceId: string, issueId: string): string {
   return `${workspaceId}:${issueId}`;
+}
+
+function findWorkflowForIssue(workspaceId: string, issue: Issue): WorkflowTemplate | null {
+  if (!issue.workflowId) return null;
+  return getWorkflow(issue.workflowId);
+}
+
+function findCommandNodeForTask(workflow: WorkflowTemplate | null, task: Task): WorkflowCommandNode | null {
+  if (!workflow) return null;
+  if (task.agentConfigId) return null;
+  for (const node of workflow.nodes) {
+    if (node.type === 'command' && (task.title === node.data.label || task.description?.startsWith('Command:'))) {
+      return node;
+    }
+  }
+  return null;
 }
 
 function broadcastTaskUpdate(ctx: AgentContext, task: Task | null, from: TaskStatus): void {
