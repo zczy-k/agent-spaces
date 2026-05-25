@@ -12,18 +12,22 @@ import {
   type NodeChange,
   type EdgeChange,
 } from '@xyflow/react';
-import type { WorkflowTemplate, WorkflowNode, WorkflowEdge, AgentConfig } from '@agent-spaces/shared';
+import type { WorkflowTemplate, WorkflowNode, WorkflowEdge, AgentConfig, WorkflowCommandNode } from '@agent-spaces/shared';
 
 import { useWorkflowStore } from '@/stores/workflow';
 import { WorkflowCanvas, getAutoLayoutedNodes } from './workflow-canvas';
 import { WorkflowAgentPalette } from './workflow-agent-palette';
 import { WorkflowToolbar } from './workflow-toolbar';
+import { WorkflowCommandEditDialog } from './workflow-command-edit-dialog';
 import { Input } from '@/components/ui/input';
 import { ArrowLeft } from 'lucide-react';
 import { authHeaders } from '@/lib/auth';
 
-type AgentNodeData = WorkflowNode['data'];
+type AgentNodeData = Extract<WorkflowNode, { type: 'agent' }>['data'];
+type CommandNodeData = Extract<WorkflowNode, { type: 'command' }>['data'];
 type AgentNode = Node<AgentNodeData, 'agent'>;
+type CommandNode = Node<CommandNodeData, 'command'>;
+type WorkflowNodeRF = AgentNode | CommandNode;
 
 function WorkflowEditorInner({
   template,
@@ -45,11 +49,11 @@ function WorkflowEditorInner({
 
   const [name, setName] = useState(template?.name ?? 'New Workflow');
   const [description, _setDescription] = useState(template?.description ?? '');
-  const [nodes, setNodes] = useState<AgentNode[]>(
+  const [nodes, setNodes] = useState<WorkflowNodeRF[]>(
     () =>
       template?.nodes.map((n) => ({
         id: n.id,
-        type: 'agent' as const,
+        type: n.type as 'agent' | 'command',
         position: n.position,
         data: n.data,
       })) ?? []
@@ -65,12 +69,29 @@ function WorkflowEditorInner({
   );
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [editCommandNode, setEditCommandNode] = useState<CommandNode | null>(null);
+  const [commandDialogOpen, setCommandDialogOpen] = useState(false);
   const templateId = template?.id;
 
   const markDirty = useCallback(() => setIsDirty(true), []);
 
+  const handleNodeDoubleClick = useCallback((_: React.MouseEvent, node: WorkflowNodeRF) => {
+    if (node.type === 'command') {
+      setEditCommandNode(node as CommandNode);
+      setCommandDialogOpen(true);
+    }
+  }, []);
+
+  const handleCommandSave = useCallback((data: CommandNodeData) => {
+    if (!editCommandNode) return;
+    setNodes((nds) =>
+      nds.map((n) => n.id === editCommandNode.id ? { ...n, data } : n)
+    );
+    markDirty();
+  }, [editCommandNode, markDirty]);
+
   const onNodesChange = useCallback(
-    (changes: NodeChange<AgentNode>[]) => {
+    (changes: NodeChange<WorkflowNodeRF>[]) => {
       setNodes((nds) => applyNodeChanges(changes, nds));
       markDirty();
     },
@@ -94,7 +115,7 @@ function WorkflowEditorInner({
   );
 
   const onNodeAdd = useCallback(
-    (node: AgentNode) => {
+    (node: WorkflowNodeRF) => {
       setNodes((nds) => [...nds, node]);
       markDirty();
     },
@@ -111,7 +132,7 @@ function WorkflowEditorInner({
     try {
       const workflowNodes: WorkflowNode[] = nodes.map((n) => ({
         id: n.id,
-        type: 'agent' as const,
+        type: n.type as 'agent' | 'command',
         position: n.position,
         data: n.data,
       }));
@@ -198,6 +219,7 @@ function WorkflowEditorInner({
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           onNodeAdd={onNodeAdd}
+          onNodeDoubleClick={handleNodeDoubleClick}
         />
       </div>
       <WorkflowToolbar
@@ -206,6 +228,12 @@ function WorkflowEditorInner({
         onExport={handleExport}
         isDirty={isDirty}
         isSaving={isSaving}
+      />
+      <WorkflowCommandEditDialog
+        open={commandDialogOpen}
+        onOpenChange={setCommandDialogOpen}
+        data={editCommandNode?.data ?? { label: '', script: '' }}
+        onSave={handleCommandSave}
       />
     </div>
   );
