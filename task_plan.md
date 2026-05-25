@@ -18,6 +18,7 @@ Add a Hermes runtime option to Agent Spaces with a minimal, maintainable CLI-bac
 | 3 | complete | Add shared/web runtime kind support and labels |
 | 4 | complete | Run focused type/build checks and fix issues |
 | 5 | complete | Document behavior, limitations, and verification steps |
+| 6 | complete | Add user-facing Hermes runtime documentation under `docs/` |
 
 ## Decisions
 - Use a CLI subprocess adapter for Hermes because the target integration is the `hermes` command.

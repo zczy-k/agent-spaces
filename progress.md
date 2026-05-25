@@ -13,3 +13,5 @@
 - `pnpm --filter @agent-spaces/server build` passed after the Hermes argument adjustment.
 - `pnpm --filter @agent-spaces/web build` exited with code 0 and passed TypeScript; it logged an existing Next deprecation warning and an `ENVIRONMENT_FALLBACK` page-generation message.
 - Documented verification results and known limitations in `task_plan.md`.
+- Started follow-up documentation task for `docs/hermes-agent-runtime.md`.
+- Added `docs/hermes-agent-runtime.md` describing current behavior, configuration mapping, known limitations, troubleshooting, and verification steps.
