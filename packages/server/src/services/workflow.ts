@@ -4,7 +4,7 @@
 //       Route handlers wrap in async for Express compatibility.
 
 import { v4 as uuid } from 'uuid';
-import type { WorkflowTemplate, WorkflowNode, WorkflowEdge, AgentConfig } from '@agent-spaces/shared';
+import type { WorkflowTemplate, WorkflowNode, WorkflowEdge, WorkflowCommandNode, AgentConfig } from '@agent-spaces/shared';
 import * as workflowStore from '../storage/workflow-store.js';
 import { getWorkspace } from '../storage/workspace-store.js';
 import { listTemplates } from './agent.js';
@@ -83,6 +83,7 @@ function resolveStaleRoles(nodes: WorkflowNode[]): { nodes: WorkflowNode[]; inva
   const invalidIds: string[] = [];
 
   const resolved = nodes.map(node => {
+    if (node.type === 'command') return node;
     const agent = agentMap.get(node.data.agentConfigId);
     if (!agent) {
       invalidIds.push(node.id);
@@ -209,6 +210,7 @@ export interface TaskDraftForWorkflow {
   agentConfigId?: string;
   dependsOnKeys?: string[];
   sandboxDirs?: string[];
+  commandNode?: WorkflowCommandNode;
 }
 
 export function mapWorkflowToTaskDrafts(template: WorkflowTemplate): TaskDraftForWorkflow[] {
@@ -220,14 +222,27 @@ export function mapWorkflowToTaskDrafts(template: WorkflowTemplate): TaskDraftFo
     dependsOn.get(edge.target)?.push(edge.source);
   }
 
-  return template.nodes.map(node => ({
-    key: node.id,
-    title: node.data.taskTitleTemplate || node.data.label,
-    description: node.data.taskDescriptionTemplate || `Task assigned to ${node.data.label} (${node.data.role})`,
-    agentConfigId: node.data.agentConfigId,
-    dependsOnKeys: dependsOn.get(node.id)?.length ? dependsOn.get(node.id) : undefined,
-    sandboxDirs: undefined,
-  }));
+  return template.nodes.map(node => {
+    if (node.type === 'command') {
+      return {
+        key: node.id,
+        title: node.data.label,
+        description: `Run command: ${node.data.label}`,
+        agentConfigId: undefined,
+        dependsOnKeys: dependsOn.get(node.id)?.length ? dependsOn.get(node.id) : undefined,
+        sandboxDirs: undefined,
+        commandNode: node,
+      };
+    }
+    return {
+      key: node.id,
+      title: node.data.taskTitleTemplate || node.data.label,
+      description: node.data.taskDescriptionTemplate || `Task assigned to ${node.data.label} (${node.data.role})`,
+      agentConfigId: node.data.agentConfigId,
+      dependsOnKeys: dependsOn.get(node.id)?.length ? dependsOn.get(node.id) : undefined,
+      sandboxDirs: undefined,
+    };
+  });
 }
 
 // --- Run-time Validation ---
@@ -236,6 +251,7 @@ export function validateWorkflowForRun(_workspaceId: string, template: WorkflowT
   const agentMap = new Map(listTemplates().map((a) => [a.id, a]));
 
   for (const node of template.nodes) {
+    if (node.type === 'command') continue;
     const agent = agentMap.get(node.data.agentConfigId);
     if (!agent) return `Agent "${node.data.label}" (${node.data.agentConfigId}) no longer exists`;
     if (!agent.enabled) return `Agent "${agent.name}" is disabled`;

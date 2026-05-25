@@ -506,7 +506,7 @@ function ensureWorkflowAgentsForRun(
   template: WorkflowTemplate,
   ctx: AgentContext,
 ): void {
-  const workflowAgentIds = [...new Set(template.nodes.map((node) => node.data.agentConfigId).filter(Boolean))];
+  const workflowAgentIds = [...new Set(template.nodes.filter((n) => n.type === 'agent').map((node) => node.data.agentConfigId).filter(Boolean))];
 
   const mergedMembers = [...new Set([...(issue.members ?? []), ...workflowAgentIds])];
   const membersChanged = mergedMembers.length !== (issue.members ?? []).length
