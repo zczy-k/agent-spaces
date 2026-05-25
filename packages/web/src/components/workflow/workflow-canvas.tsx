@@ -21,6 +21,7 @@ import '@xyflow/react/dist/style.css';
 import Dagre from '@dagrejs/dagre';
 import type { WorkflowNode, AgentConfig } from '@agent-spaces/shared';
 import { WorkflowAgentNode } from './workflow-agent-node';
+import { WorkflowCommandNode } from './workflow-command-node';
 import { X } from 'lucide-react';
 
 type AgentNodeData = WorkflowNode['data'];
@@ -67,7 +68,7 @@ function DeletableEdge({
   );
 }
 
-const nodeTypes = { agent: WorkflowAgentNode };
+const nodeTypes = { agent: WorkflowAgentNode, command: WorkflowCommandNode };
 const edgeTypes = { smoothstep: DeletableEdge };
 
 interface WorkflowCanvasProps {
@@ -77,9 +78,10 @@ interface WorkflowCanvasProps {
   onEdgesChange: OnEdgesChange;
   onConnect: OnConnect;
   onNodeAdd?: (node: AgentNode) => void;
+  onNodeDoubleClick?: (_: React.MouseEvent, node: any) => void;
 }
 
-export function WorkflowCanvas({ nodes, edges, onNodesChange, onEdgesChange, onConnect, onNodeAdd }: WorkflowCanvasProps) {
+export function WorkflowCanvas({ nodes, edges, onNodesChange, onEdgesChange, onConnect, onNodeAdd, onNodeDoubleClick }: WorkflowCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
 
@@ -90,6 +92,19 @@ export function WorkflowCanvas({ nodes, edges, onNodesChange, onEdgesChange, onC
 
   const onDrop = useCallback((event: React.DragEvent) => {
     event.preventDefault();
+
+    const commandData = event.dataTransfer.getData('application/x-workflow-command');
+    if (commandData) {
+      const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+      onNodeAdd?.({
+        id: `node-${Date.now()}`,
+        type: 'command',
+        position,
+        data: { label: 'Command', script: '' },
+      });
+      return;
+    }
+
     const agentJson = event.dataTransfer.getData('application/json');
     if (!agentJson) return;
     const agent: AgentConfig = JSON.parse(agentJson);
@@ -107,7 +122,7 @@ export function WorkflowCanvas({ nodes, edges, onNodesChange, onEdgesChange, onC
       <ReactFlow
         nodes={nodes} edges={edges}
         onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect}
-        onDragOver={onDragOver} onDrop={onDrop}
+        onDragOver={onDragOver} onDrop={onDrop} onNodeDoubleClick={onNodeDoubleClick}
         nodeTypes={nodeTypes} edgeTypes={edgeTypes} fitView snapToGrid snapGrid={[15, 15]}
         deleteKeyCode={['Backspace', 'Delete']}
         defaultEdgeOptions={{ type: 'smoothstep', animated: false, style: { strokeWidth: 2 } }}
