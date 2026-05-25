@@ -1,6 +1,7 @@
 import { BUILT_IN_AGENT_TOOLS, type BuiltInAgentToolName, type KanbanBoard, type KanbanColumn, type KanbanLayoutMode, type KanbanPriority, type KanbanTask } from '@agent-spaces/shared';
 import type { AgentFunctionTool } from '../../adapters/agent-runtime-types.js';
 import * as kanbanStore from '../../storage/kanban-store.js';
+import { broadcastToWorkspace } from '../../ws/connection-manager.js';
 import { assertRecord, readOptionalString, readRequiredString, readString } from './input-helpers.js';
 
 const kanbanLayoutModes = ['horizontal', 'vertical'] as const satisfies readonly KanbanLayoutMode[];
@@ -170,6 +171,7 @@ function createKanbanBoard(workspaceId: string, input: unknown): KanbanBoard {
 
   const created = kanbanStore.getBoard(workspaceId);
   if (!created) throw new Error('Failed to create Kanban board.');
+  broadcastToWorkspace(workspaceId, 'kanban.updated', created);
   return created;
 }
 
@@ -197,6 +199,7 @@ function updateKanbanBoard(workspaceId: string, input: unknown): KanbanBoard {
 
   const updated = kanbanStore.listBoards(workspaceId).find((item) => item.id === board.id);
   if (!updated) throw new Error(`Kanban board not found: ${board.id}`);
+  broadcastToWorkspace(workspaceId, 'kanban.updated', updated);
   return updated;
 }
 
@@ -205,6 +208,7 @@ function deleteKanbanBoard(workspaceId: string, input: unknown): { ok: true; del
   const board = resolveKanbanBoard(workspaceId, readOptionalString(data.boardId));
   const ok = kanbanStore.deleteBoard(workspaceId, board.id);
   if (!ok) throw new Error(`Kanban board not found: ${board.id}`);
+  broadcastToWorkspace(workspaceId, 'kanban.deleted', { boardId: board.id });
   return { ok: true, deletedBoardId: board.id };
 }
 

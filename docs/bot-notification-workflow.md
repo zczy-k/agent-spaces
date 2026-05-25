@@ -15,14 +15,27 @@ packages/shared/src/types/workspace.ts
 ```ts
 notificationSettings?: {
   enabled: boolean;
-  provider: 'lark' | 'wechat';
-  events: Array<'issue_started' | 'issue_completed' | 'issue_task_completed'>;
+  provider: 'lark' | 'wechat' | 'native';
+  events: Array<'issue_started' | 'issue_completed' | 'issue_task_completed' | 'channel_agent_completed'>;
   serviceRunning?: boolean;
   botAgentId?: string;
+  robotAccountId?: string;  // 引用全局 RobotAccount
   lark?: {
     appId?: string;
     appSecret?: string;
     chatIds?: string[];
+  };
+  wechat?: {
+    token?: string;
+    baseUrl?: string;
+    accountId?: string;
+    userId?: string;
+    userIds?: string[];
+    getUpdatesBuf?: string;
+  };
+  native?: {
+    permissionGranted?: boolean;
+    androidOngoingTaskNotification?: boolean;
   };
 }
 ```
@@ -30,18 +43,91 @@ notificationSettings?: {
 关系如下：
 
 ```text
+RobotAccount (全局)
+  -> id, name, type: 'lark' | 'wechat'
+  -> lark?: { appId, appSecret }
+  -> wechat?: { token, baseUrl, accountId, userId }
+  -> 存储: ~/.agent-spaces-data/robot-accounts.json
+
 Workspace
   -> notificationSettings
+    -> robotAccountId: 引用全局 RobotAccount（推荐方式）
     -> provider: 当前机器人平台
     -> serviceRunning: 后端重启后是否自动恢复服务
     -> events: 哪些 issue/task 事件需要主动推送
     -> botAgentId: 普通用户消息交给哪个 bot agent 处理
     -> lark.chatIds: 已和飞书 bot 交互过的会话，用于后续推送
+    -> wechat.userIds: 已和企微 bot 交互过的用户，用于后续推送
 
 Workspace.agents
   -> role === 'bot' 的 agent preset
     -> 被 notificationSettings.botAgentId 引用
 ```
+
+## Robot Account 系统
+
+飞书和企微的 Bot 凭证统一管理为全局 Robot Account，各 Workspace 通过 `robotAccountId` 引用。
+
+### 类型定义
+
+```ts
+interface RobotAccount {
+  id: string;
+  name: string;
+  type: 'lark' | 'wechat';
+  lark?: { appId: string; appSecret: string };
+  wechat?: { token: string; baseUrl?: string; accountId: string; userId?: string };
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+### 后端文件
+
+```text
+packages/server/src/
+├── storage/robot-account-store.ts    # JSON CRUD（robot-accounts.json）
+├── services/robot-account.ts         # CRUD + resolveCredentials()
+├── services/global-wechat-qr.ts      # 全局企微 QR 扫码（不绑定 workspace）
+└── routes/robot-account.ts           # REST API + QR 端点
+```
+
+### API
+
+```text
+GET    /api/robot-accounts              # 列出所有账号
+POST   /api/robot-accounts              # 创建账号（飞书用表单）
+PUT    /api/robot-accounts/:id          # 更新账号
+DELETE /api/robot-accounts/:id          # 删除账号
+POST   /api/robot-accounts/wechat/qr    # 获取全局企微 QR 二维码
+POST   /api/robot-accounts/wechat/qr/poll  # 轮询 QR 扫码状态
+```
+
+### 凭证解析逻辑
+
+`resolveCredentials(settings)` 在 `services/robot-account.ts` 中：
+
+1. 若 `settings.robotAccountId` 存在，从 `robot-accounts.json` 查找对应账号返回凭证
+2. 否则 fallback 到 `settings.lark` / `settings.wechat` 内嵌凭证（兼容旧数据）
+
+### 前端管理
+
+Settings Dialog 新增 "Robot 账号" Tab：
+
+```text
+packages/web/src/components/sidebar/settings/robot-accounts-tab.tsx
+```
+
+- 添加飞书账号：表单输入 name + appId + appSecret
+- 添加企微账号：QR 扫码登录，自动创建账号
+- 编辑飞书账号 / 删除账号
+
+### Workspace 通知配置引用
+
+Workspace 的通知设置面板（`notification-settings-tab.tsx`）中：
+
+- 飞书/企微 Tab 改为 select 下拉选择已有的 Robot Account
+- 选择后调用 `patchNotifications({ robotAccountId: account.id })`
 
 `bot` 是一个普通 agent preset 角色，类型定义在：
 
@@ -79,7 +165,7 @@ packages/server/src/services/notification-hub/
 ├── bot-agent.ts          # Bot Agent 执行、上下文构建
 ├── bot-commands.ts       # Bot 命令解析、执行、格式化
 ├── events.ts             # 事件发布、信封构建
-└── service.ts            # 服务生命周期管理
+└── service.ts            # 服务生命周期管理（使用 resolveCredentials）
 ```
 
 后端路由：
@@ -109,7 +195,7 @@ notificationSettings.enabled === true
 notificationSettings.serviceRunning === true
 ```
 
-满足条件的 workspace 会自动恢复对应平台的长连接。
+满足条件的 workspace 会自动恢复对应平台的长连接。启动时通过 `resolveCredentials()` 获取凭证，优先使用 `robotAccountId` 引用的全局账号，fallback 到内嵌凭证。
 
 ## 主动事件推送流程
 
@@ -339,21 +425,20 @@ packages/shared/src/types/workspace.ts
 例如：
 
 ```ts
-export type NotificationProvider = 'lark' | 'wechat' | 'slack';
+export type NotificationProvider = 'lark' | 'wechat' | 'native' | 'slack';
 
-notificationSettings?: {
-  provider: NotificationProvider;
-  slack?: {
-    botToken?: string;
-    channelIds?: string[];
-  };
+// RobotAccount 的 type 也需扩展
+interface RobotAccount {
+  type: 'lark' | 'wechat' | 'slack';
+  slack?: { botToken: string; ... };
+  ...
 }
 ```
 
-2. 在前端设置页添加配置表单：
+2. 在 Robot 账号管理面板添加该平台的创建表单：
 
 ```text
-packages/web/src/components/settings/project-settings-panel.tsx
+packages/web/src/components/sidebar/settings/robot-accounts-tab.tsx
 ```
 
 3. 在 `notification-hub/` 新增 adapter（如 `slack-adapter.ts`）：
@@ -367,11 +452,16 @@ class SlackNotificationAdapter implements BotAdapter {
 }
 ```
 
-4. 在 `service.ts` 的 `startWorkspaceNotificationService()` 里分发：
+4. 在 `service.ts` 的 `startWorkspaceNotificationService()` 里分发（注意使用 `resolveCredentials`）：
 
 ```ts
 if (settings.provider === 'slack') {
-  const adapter = new SlackNotificationAdapter(workspace, settings);
+  const credentials = resolveCredentials(settings);
+  if (!credentials || credentials.type !== 'slack') {
+    throw new Error('Slack credentials not found.');
+  }
+  const mergedSettings = { ...settings, slack: { ...settings.slack, ...credentials } };
+  const adapter = new SlackNotificationAdapter(workspace, mergedSettings);
   await adapter.start();
   adapters.set(workspaceId, adapter);
   persistServiceRunning(workspaceId, true);
@@ -435,24 +525,40 @@ Task result success/summary/error
 
 ## 前端配置流程
 
+### Robot 账号管理（Settings Dialog）
+
 设置面板位置：
 
 ```text
-packages/web/src/components/settings/project-settings-panel.tsx
+packages/web/src/components/sidebar/settings/robot-accounts-tab.tsx
 ```
 
 用户流程：
 
-1. 打开 project settings。
+1. 打开 Settings（Ctrl+K 或侧边栏）。
+2. 切换到 "Robot 账号" Tab。
+3. 添加飞书账号：输入名称、App ID、App Secret → 保存。
+4. 添加企微账号：点击"添加微信账号" → 扫码登录 → 自动创建。
+5. 管理已有账号：编辑名称/凭证、删除。
+
+### Workspace 通知配置
+
+设置面板位置：
+
+```text
+packages/web/src/components/settings/notification-settings-tab.tsx
+```
+
+用户流程：
+
+1. 打开项目设置面板。
 2. 开启 Message Notifications。
-3. 选择平台：
-   - Feishu
-   - WeChat(todo)
-4. 输入平台配置。
+3. 选择平台：Feishu / WeChat / System。
+4. 从下拉列表选择已创建的 Robot 账号。
 5. 选择通知事件。
 6. 选择 Bot Agent。
 7. Start Service。
-8. 在飞书里给 bot 发任意消息，后端会记录 `chat_id`。
+8. 在飞书/企微里给 bot 发任意消息，后端会记录 chatId/userId。
 9. Test Send 验证主动推送。
 
 Bot Agent 管理复用了：
@@ -471,6 +577,12 @@ packages/web/src/components/sidebar/agent-dialog.tsx
 
 ## 常见问题
 
+### Robot Account 和 Workspace 通知设置是什么关系？
+
+Robot Account 是全局的 Bot 凭证（飞书 appId/appSecret 或企微 token/accountId），在 Settings Dialog 的 "Robot 账号" Tab 中管理。Workspace 通知设置通过 `robotAccountId` 引用一个 Robot Account，不直接存储凭证。
+
+旧数据兼容：如果 Workspace 没设 `robotAccountId` 但有内嵌凭证，`resolveCredentials()` 会自动 fallback。
+
 ### 后端重启后为什么没有推送？
 
 检查：
@@ -478,10 +590,12 @@ packages/web/src/components/sidebar/agent-dialog.tsx
 ```text
 notificationSettings.enabled === true
 notificationSettings.serviceRunning === true
-notificationSettings.lark.chatIds.length > 0
+notificationSettings.robotAccountId 存在且对应账号有效
+  或 settings.lark.appId/appSecret 有值（旧数据兼容）
+  或 settings.wechat.token/accountId 有值（旧数据兼容）
 ```
 
-如果 `chatIds` 为空，需要先在飞书里给 bot 发一条消息。
+飞书还需 `chatIds.length > 0`，企微需 `userIds.length > 0`。如果没有，需要先在对应平台给 bot 发一条消息。
 
 ### 为什么普通消息没有进入 agent？
 

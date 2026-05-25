@@ -28,7 +28,10 @@ void showNewTabDialog(BuildContext context, BrowserNotifier notifier) {
         controller: controller,
         autofocus: true,
         style: const TextStyle(fontSize: 13),
-        decoration: InputDecoration(isDense: true, hintText: 'tab_enter_url'.tr()),
+        decoration: InputDecoration(
+          isDense: true,
+          hintText: 'tab_enter_url'.tr(),
+        ),
         onSubmitted: (url) {
           if (url.isNotEmpty) {
             final normalized = url.startsWith('http') ? url : 'http://$url';
@@ -118,7 +121,10 @@ void showDeviceMenu(
   showDialog(
     context: context,
     builder: (ctx) => SimpleDialog(
-      title: Text('settings_device_selector'.tr(), style: const TextStyle(fontSize: 15)),
+      title: Text(
+        'settings_device_selector'.tr(),
+        style: const TextStyle(fontSize: 15),
+      ),
       children: DeviceProfile.defaults.map((d) {
         final selected = d.type == tab.device.type;
         return SimpleDialogOption(

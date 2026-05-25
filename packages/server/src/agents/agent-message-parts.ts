@@ -71,7 +71,7 @@ export function createAgentMessagePartsTracker(input: {
         return;
       }
 
-      if (event.type === 'session') return;
+      if (event.type === 'session' || event.type === 'hook_event') return;
 
       output.push(event.line);
       input.onOutput?.(event.line);

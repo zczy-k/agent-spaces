@@ -31,7 +31,7 @@ export function WorkspaceTabs() {
         <PanelLeft size={16} />
       </button>
       <div className="flex items-center gap-1 rounded-xl p-1">
-        {workspaces.map((ws) => (
+        {workspaces.filter(ws => !ws.isWorktree).map((ws) => (
           <button
             key={ws.id}
             onClick={() => tauriNavigate(router, buildWorkspaceHref(ws.id))}

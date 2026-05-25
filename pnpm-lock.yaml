@@ -61,6 +61,8 @@ importers:
         specifier: ~6.0.2
         version: 6.0.3
 
+  packages/agents: {}
+
   packages/dom-inspector-hook:
     devDependencies:
       code-inspector-plugin:

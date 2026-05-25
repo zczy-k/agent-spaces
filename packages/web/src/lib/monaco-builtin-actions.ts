@@ -1,11 +1,22 @@
 import { registerMonacoAction, toRelativePath } from './monaco-action-registry';
 import { useCodeFavoritesStore } from '@/stores/code-favorites';
+import { useEditorSendStore } from '@/stores/editor-send';
 import { toast } from 'sonner';
+import zhEditor from '@/locales/zh/editor.json';
+import enEditor from '@/locales/en/editor.json';
+
+const localeMap = { zh: zhEditor, en: enEditor } as const;
+
+function t(key: string) {
+  const locale = (typeof localStorage !== 'undefined' && localStorage.getItem('agent-spaces-locale')) || 'zh';
+  const msgs = localeMap[(locale === 'en' ? 'en' : 'zh') as keyof typeof localeMap];
+  return (msgs as Record<string, string>)[key] ?? key;
+}
 
 export const monacoBuiltinActions = [
   {
   id: 'copyPosition',
-  label: '复制代码位置',
+  label: t('copyPosition'),
   contextMenuGroupId: '9_cutcopypaste',
   contextMenuOrder: 10,
   run: (editor, ctx) => {
@@ -15,13 +26,13 @@ export const monacoBuiltinActions = [
     const relPath = toRelativePath(model.uri.path, ctx);
     const pos = `${relPath || model.uri.path}:${sel.startLineNumber}:${sel.endLineNumber}`;
     navigator.clipboard.writeText(pos).then(() => {
-      toast.success(`已复制: ${pos}`);
+      toast.success(t('copiedPosition').replace('{pos}', pos));
     });
   },
   },
   {
   id: 'addToFavorites',
-  label: '添加到代码收藏',
+  label: t('addToFavorites'),
   contextMenuGroupId: '9_cutcopypaste',
   contextMenuOrder: 11,
   run: (editor, ctx) => {
@@ -58,6 +69,40 @@ export const monacoBuiltinActions = [
       endColumn,
       label: `${fileName}:${lineLabel}`,
       snippet,
+    });
+  },
+  },
+  {
+  id: 'sendToNewChannel',
+  label: t('sendToNewChannel'),
+  contextMenuGroupId: '9_cutcopypaste',
+  contextMenuOrder: 12,
+  run: (editor, ctx) => {
+    const model = editor.getModel();
+    const sel = editor.getSelection();
+    if (!model || !sel) return;
+    const relPath = toRelativePath(model.uri.path, ctx);
+    const pos = `${relPath || model.uri.path}:${sel.startLineNumber}:${sel.endLineNumber}`;
+    useEditorSendStore.getState().setPendingSendToChannel({
+      workspaceId: ctx.workspaceId,
+      position: pos,
+    });
+  },
+  },
+  {
+  id: 'sendToNewIssue',
+  label: t('sendToNewIssue'),
+  contextMenuGroupId: '9_cutcopypaste',
+  contextMenuOrder: 13,
+  run: (editor, ctx) => {
+    const model = editor.getModel();
+    const sel = editor.getSelection();
+    if (!model || !sel) return;
+    const relPath = toRelativePath(model.uri.path, ctx);
+    const pos = `${relPath || model.uri.path}:${sel.startLineNumber}:${sel.endLineNumber}`;
+    useEditorSendStore.getState().setPendingSendToIssue({
+      workspaceId: ctx.workspaceId,
+      position: pos,
     });
   },
   },

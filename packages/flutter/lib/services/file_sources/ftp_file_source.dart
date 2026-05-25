@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:ftpconnect/ftpconnect.dart';
@@ -8,21 +9,33 @@ import 'path_utils.dart';
 class FtpFileSource extends FileSource {
   FtpFileSource(super.config);
 
-  late final FTPConnect _client;
+  FTPConnect? _clientInstance;
 
   @override
   Future<void> connect() async {
-    _client = FTPConnect(
+    await disconnect();
+
+    final client = FTPConnect(
       config.host,
       port: config.port == 0 ? 21 : config.port,
       user: config.username,
       pass: config.password,
     );
-    await _client.connect();
+    client.listCommand = ListCommand.list;
+    await client.connect();
+    _clientInstance = client;
   }
 
   @override
-  Future<void> disconnect() => _client.disconnect();
+  Future<void> disconnect() async {
+    final client = _clientInstance;
+    _clientInstance = null;
+    if (client == null) return;
+    await client.disconnect().timeout(
+      const Duration(seconds: 2),
+      onTimeout: () => false,
+    );
+  }
 
   @override
   Future<List<FileSourceEntry>> list(String path) async {
@@ -49,26 +62,36 @@ class FtpFileSource extends FileSource {
     final tmp = await File(
       '${Directory.systemTemp.path}/agent_spaces_empty_file',
     ).create();
-    await _inDirectory(
+    await tmp.writeAsBytes(const []);
+    final uploaded = await _inDirectory(
       dirnameOf(path),
       () => _client.uploadFile(tmp, sRemoteName: basenameOf(path)),
     );
+    if (!uploaded) {
+      throw FTPConnectException('Could not create file ${basenameOf(path)}');
+    }
   }
 
   @override
-  Future<void> createFolder(String path) {
-    return _inDirectory(
+  Future<void> createFolder(String path) async {
+    final created = await _inDirectory(
       dirnameOf(path),
       () => _client.makeDirectory(basenameOf(path)),
     );
+    if (!created) {
+      throw FTPConnectException('Could not create folder ${basenameOf(path)}');
+    }
   }
 
   @override
-  Future<void> rename(String path, String newPath) {
-    return _inDirectory(
+  Future<void> rename(String path, String newPath) async {
+    final renamed = await _inDirectory(
       dirnameOf(path),
       () => _client.rename(basenameOf(path), newPath),
     );
+    if (!renamed) {
+      throw FTPConnectException('Could not rename ${basenameOf(path)}');
+    }
   }
 
   @override
@@ -77,22 +100,39 @@ class FtpFileSource extends FileSource {
   }
 
   @override
-  Future<void> download(String path, File localFile) async {
-    await localFile.parent.create(recursive: true);
-    await _inDirectory(
+  Future<void> upload(File localFile, String path) async {
+    final uploaded = await _inDirectory(
       dirnameOf(path),
-      () => _client.downloadFile(basenameOf(path), localFile),
+      () => _client.uploadFile(localFile, sRemoteName: basenameOf(path)),
     );
+    if (!uploaded) {
+      throw FTPConnectException('Could not upload ${basenameOf(path)}');
+    }
   }
 
   @override
-  Future<void> delete(String path, {required bool isDirectory}) {
-    return _inDirectory(dirnameOf(path), () {
+  Future<void> download(String path, File localFile) async {
+    await localFile.parent.create(recursive: true);
+    final downloaded = await _inDirectory(
+      dirnameOf(path),
+      () => _client.downloadFile(basenameOf(path), localFile),
+    );
+    if (!downloaded) {
+      throw FTPConnectException('Could not download ${basenameOf(path)}');
+    }
+  }
+
+  @override
+  Future<void> delete(String path, {required bool isDirectory}) async {
+    final deleted = await _inDirectory(dirnameOf(path), () {
       final name = basenameOf(path);
       return isDirectory
-          ? _client.deleteDirectory(name)
+          ? _client.deleteEmptyDirectory(name)
           : _client.deleteFile(name);
     });
+    if (!deleted) {
+      throw FTPConnectException('Could not delete ${basenameOf(path)}');
+    }
   }
 
   @override
@@ -106,17 +146,28 @@ class FtpFileSource extends FileSource {
   Future<T> _inDirectory<T>(String path, Future<T> Function() action) async {
     final current = await _client.currentDirectory();
     if (path.isNotEmpty && path != current) {
-      await _client.changeDirectory(path);
+      final changed = await _client.changeDirectory(path);
+      if (!changed) {
+        throw FTPConnectException("Couldn't change directory to $path");
+      }
     }
     try {
       return await action();
     } finally {
-      await _client.changeDirectory(current);
+      if (current != path) {
+        await _client.changeDirectory(current);
+      }
     }
   }
 
   int _compareEntries(FileSourceEntry a, FileSourceEntry b) {
     if (a.isDirectory != b.isDirectory) return a.isDirectory ? -1 : 1;
     return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+  }
+
+  FTPConnect get _client {
+    final client = _clientInstance;
+    if (client == null) throw StateError('FTP is not connected.');
+    return client;
   }
 }

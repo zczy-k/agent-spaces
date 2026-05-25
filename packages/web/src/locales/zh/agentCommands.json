@@ -1,5 +1,5 @@
 {
-  "title": "Agent Commands",
+  "title": "Commands",
   "description": "管理 Agent 模板目录下的 Command 文件",
   "search": "搜索 commands...",
   "empty": "暂无 command 文件",

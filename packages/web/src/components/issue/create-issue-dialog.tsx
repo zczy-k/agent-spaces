@@ -22,10 +22,11 @@ interface CreateIssueDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   agents?: AgentConfig[];
+  defaultDescription?: string;
   onSubmit: (data: { title: string; description: string; members: string[]; workflowId?: string }) => void;
 }
 
-export function CreateIssueDialog({ open, onOpenChange, agents = [], onSubmit }: CreateIssueDialogProps) {
+export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultDescription, onSubmit }: CreateIssueDialogProps) {
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
   const [members, setMembers] = useState<string[]>([]);
@@ -41,6 +42,10 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], onSubmit }:
   useEffect(() => {
     if (open) loadWorkflows();
   }, [open, loadWorkflows]);
+
+  useEffect(() => {
+    if (open && defaultDescription) setDesc(defaultDescription);
+  }, [open, defaultDescription]);
 
   const handleClose = (val: boolean) => {
     if (!val) {

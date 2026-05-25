@@ -1,4 +1,5 @@
 import * as workspaceService from '../workspace.js';
+import { resolveCredentials } from '../robot-account.js';
 import type { BroadcastEnvelope } from './types.js';
 import { adapters } from './types.js';
 import { persistServiceRunning } from './helpers.js';
@@ -12,8 +13,14 @@ export async function startWorkspaceNotificationService(workspaceId: string): Pr
 
   await stopWorkspaceNotificationService(workspaceId);
 
+  const credentials = resolveCredentials(settings);
+
   if (settings.provider === 'lark') {
-    const adapter = new LarkNotificationAdapter(workspace, settings);
+    if (!credentials || credentials.type !== 'lark') {
+      throw new Error('Lark credentials not found. Link a Robot Account or configure appId/appSecret.');
+    }
+    const mergedSettings = { ...settings, lark: { ...settings.lark, appId: credentials.appId, appSecret: credentials.appSecret } };
+    const adapter = new LarkNotificationAdapter(workspace, mergedSettings);
     await adapter.start();
     adapters.set(workspaceId, adapter);
     persistServiceRunning(workspaceId, true);
@@ -21,7 +28,11 @@ export async function startWorkspaceNotificationService(workspaceId: string): Pr
   }
 
   if (settings.provider === 'wechat') {
-    const adapter = new WeChatNotificationAdapter(workspace, settings);
+    if (!credentials || credentials.type !== 'wechat') {
+      throw new Error('WeChat credentials not found. Link a Robot Account or scan QR code first.');
+    }
+    const mergedSettings = { ...settings, wechat: { ...settings.wechat, token: credentials.token, baseUrl: credentials.baseUrl, accountId: credentials.accountId, userId: credentials.userId } };
+    const adapter = new WeChatNotificationAdapter(workspace, mergedSettings);
     await adapter.start();
     adapters.set(workspaceId, adapter);
     persistServiceRunning(workspaceId, true);

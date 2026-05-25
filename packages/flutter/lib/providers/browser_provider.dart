@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../models/browser_tab.dart';
 import '../models/file_source_config.dart';
+import '../models/terminal_credential.dart';
 import '../services/storage_service.dart';
 
 enum SplitLayout { single, horizontal2, vertical2, horizontal3, quad }
@@ -181,6 +182,18 @@ class BrowserNotifier extends StateNotifier<BrowserState> {
       }
       changed = true;
       return t.copyWith(title: title, url: url, faviconUrl: faviconUrl);
+    }).toList();
+    if (!changed) return;
+    state = state.copyWith(tabs: tabs);
+    _persistTabs();
+  }
+
+  void setTerminalCredential(String tabId, TerminalCredential credential) {
+    var changed = false;
+    final tabs = state.tabs.map((t) {
+      if (t.id != tabId) return t;
+      changed = true;
+      return t.copyWith(terminalCredential: credential);
     }).toList();
     if (!changed) return;
     state = state.copyWith(tabs: tabs);

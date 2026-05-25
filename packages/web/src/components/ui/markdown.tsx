@@ -96,7 +96,7 @@ export function Markdown({ content, workspaceId }: MarkdownProps) {
   };
 
   return (
-    <div className="break-all">
+    <div className="break-all select-text" style={{ WebkitUserSelect: 'text', userSelect: 'text' }}>
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
         {content}
       </ReactMarkdown>

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
+import { fetchStoreIndex } from '@/lib/agent-store';
 import {
   Dialog,
   DialogContent,
@@ -121,8 +122,8 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
   const fetchStoreTemplates = useCallback(async () => {
     setStoreLoading(true);
     try {
-      const res = await fetch('/public/prompt/index.json');
-      if (res.ok) setStoreTemplates(await res.json());
+      const data = await fetchStoreIndex<StoreTemplate>('prompt/index.json');
+      setStoreTemplates(data);
     } catch { /* ignore */ }
     setStoreLoading(false);
   }, []);

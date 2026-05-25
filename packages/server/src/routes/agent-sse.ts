@@ -121,6 +121,7 @@ router.post('/run', async (req: Request, res: Response) => {
         skills,
         configDir,
         sandboxDirs: preset.sandboxDirs,
+        userPrompt,
         outputStyle: body.outputStyle ?? preset.outputStyle,
         onEvent: wrapOnEventWithHooks((event) => {
           if (event.type === 'output') output.push(event.line);

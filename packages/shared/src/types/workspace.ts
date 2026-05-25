@@ -15,11 +15,23 @@ export interface Workspace {
   autoProcessIssues?: boolean;
   notificationSettings?: WorkspaceNotificationSettings;
   hooksEnabled?: boolean;
+  isWorktree?: boolean;
+  parentWorkspaceId?: string;
 }
 
 export type NotificationProvider = 'lark' | 'wechat' | 'native';
 
 export type NotificationEventKey = 'issue_started' | 'issue_completed' | 'issue_task_completed' | 'channel_agent_completed';
+
+export interface RobotAccount {
+  id: string;
+  name: string;
+  type: 'lark' | 'wechat';
+  lark?: { appId: string; appSecret: string };
+  wechat?: { token: string; baseUrl?: string; accountId: string; userId?: string };
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface WorkspaceNotificationSettings {
   enabled: boolean;
@@ -28,6 +40,7 @@ export interface WorkspaceNotificationSettings {
   serviceRunning?: boolean;
   botAgentId?: string;
   botMarkdown?: boolean;
+  robotAccountId?: string;
   lark?: {
     appId?: string;
     appSecret?: string;

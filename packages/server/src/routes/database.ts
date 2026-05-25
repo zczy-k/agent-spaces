@@ -93,6 +93,7 @@ router.post('/chat', async (req: Request, res: Response) => {
 
   const result = await runtime.execute(buildDatabaseAgentPrompt(workspaceId, agent, prompt, history ?? []), workingDir, {
     maxTurns: 60,
+    userPrompt: prompt,
     functionTools,
     mcpServers: {},
     skills: [],

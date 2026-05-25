@@ -1,12 +1,13 @@
 import { join } from 'node:path';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import type { Options, Query } from '@anthropic-ai/claude-agent-sdk';
+import type { ClaudeHookEventName } from '@agent-spaces/shared';
 import type { AgentRunOptions, AgentRunResult, AgentRuntime, AgentRuntimeConfig } from '../agent-runtime-types.js';
 import { summarizeResult } from '../agent-runtime-types.js';
 import { prepareClaudeOutputStyleFile } from '../../services/output-style.js';
 import { normalizeAdditionalDirectories, normalizePermissionMode, normalizeSkillNames, prepareConfigDir, resolveBundledClaudeExecutable, buildEnv, normalizeMcpServers } from './sdk-config.js';
 import { startClaudeAdapterIfNeeded, getClaudeCodeModel } from './adapter-pool.js';
-import { extractThinkingEvents, extractToolUseEvents, extractToolResultEvent, logToolDebug, formatMessage, isAskUserQuestionAutoResult, countUsageTokens, formatUsageLine, normalizeUsage } from './message-format.js';
+import { extractClaudeHookEvents, extractThinkingEvents, extractToolUseEvents, extractToolResultEvent, logToolDebug, formatMessage, isAskUserQuestionAutoResult, countUsageTokens, formatUsageLine, normalizeUsage } from './message-format.js';
 
 type ClaudeQueryOptions = Options & {
   outputStyle?: string;
@@ -46,8 +47,35 @@ export class ClaudeCodeRuntime implements AgentRuntime {
     d(`sdk mcp servers | ${sdkMcpServerNames.join(',') || '-'}`);
 
     const stderrLines: string[] = [];
+    let sessionId = options?.resumeSessionId;
+    const emitHook = (event: ClaudeHookEventName, matcher = '*', payload?: unknown) => {
+      options?.onEvent?.({ type: 'hook_event', event, matcher, payload });
+    };
 
     try {
+      emitHook('SessionStart', '*', {
+        cwd,
+        model,
+        provider: this.config.provider,
+        baseURL,
+        permissionMode,
+        configDir,
+        sandboxDirs: additionalDirectories,
+        resumeSessionId: options?.resumeSessionId,
+      });
+      const hookUserPrompt = options?.userPrompt ?? prompt;
+      emitHook('UserPromptSubmit', '*', {
+        prompt: hookUserPrompt,
+        message: hookUserPrompt,
+        userMessage: hookUserPrompt,
+        fullPrompt: prompt,
+        cwd,
+        configDir,
+      });
+      if (/CLAUDE\.md|AGENTS\.md|\.claude\/rules\//.test(prompt)) {
+        emitHook('InstructionsLoaded', '*', { source: 'prompt', promptPreview: prompt.slice(0, 1000) });
+      }
+
       const queryOptions: Options & { outputStyle?: string } = {
         cwd,
         model,
@@ -85,12 +113,15 @@ export class ClaudeCodeRuntime implements AgentRuntime {
       let usageLine: string | null = null;
       let usage: AgentRunResult['usage'];
       let costUsd: number | undefined;
-      let sessionId = options?.resumeSessionId;
       let sawResult = false;
       const pendingAskUserQuestionToolIds = new Set<string>();
       let waitingForUserAnswer = false;
 
       for await (const message of this.activeQuery) {
+        for (const hookEvent of extractClaudeHookEvents(message)) {
+          emitHook(hookEvent.event, hookEvent.matcher, hookEvent.payload);
+        }
+
         const nextSessionId = readSessionId(message);
         if (nextSessionId && nextSessionId !== sessionId) {
           sessionId = nextSessionId;
@@ -159,6 +190,17 @@ export class ClaudeCodeRuntime implements AgentRuntime {
       const elapsed = Date.now() - startTime;
       if (waitingForUserAnswer) {
         d(`waiting for user answer ${elapsed}ms | turns=${turns} tokens=${tokenCount}`);
+        const message = resultText || output.at(-1) || 'Waiting for user answer';
+        emitHook('Stop', '*', {
+          status: 'waiting_for_user_answer',
+          message,
+          finalMessage: message,
+          output,
+          elapsedMs: elapsed,
+          turns,
+          tokenCount,
+          sessionId,
+        });
         if (usageLine) output.push(usageLine);
         return {
           success: true,
@@ -175,6 +217,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
         const runtimeError = extractRuntimeError([...stderrLines, ...output])
           || 'Claude Code execution stopped before reporting a final result';
         d(`failed ${elapsed}ms | turns=${turns} tokens=${tokenCount} | ${runtimeError}`);
+        emitHook('StopFailure', '*', { error: runtimeError, elapsedMs: elapsed, turns, tokenCount, sessionId, stderr: stderrLines });
         appendUnique(output, stderrLines);
         appendUnique(output, [runtimeError]);
         return {
@@ -191,6 +234,17 @@ export class ClaudeCodeRuntime implements AgentRuntime {
 
       if (waitingForUserAnswer && (!error || isAskUserQuestionAutoResult(error))) {
         d(`waiting for user answer ${elapsed}ms | turns=${turns} tokens=${tokenCount}`);
+        const message = resultText || output.at(-1) || 'Waiting for user answer';
+        emitHook('Stop', '*', {
+          status: 'waiting_for_user_answer',
+          message,
+          finalMessage: message,
+          output,
+          elapsedMs: elapsed,
+          turns,
+          tokenCount,
+          sessionId,
+        });
         if (usageLine) output.push(usageLine);
         return {
           success: true,
@@ -206,6 +260,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
       if (error) {
         const runtimeError = extractRuntimeError([error, ...stderrLines, ...output]) || error;
         d(`failed ${elapsed}ms | turns=${turns} tokens=${tokenCount} | ${runtimeError}`);
+        emitHook('StopFailure', '*', { error: runtimeError, elapsedMs: elapsed, turns, tokenCount, sessionId, stderr: stderrLines });
         appendUnique(output, stderrLines);
         if (usageLine) output.push(usageLine);
         return {
@@ -228,6 +283,18 @@ export class ClaudeCodeRuntime implements AgentRuntime {
 
       const finalOutput = resultText && !output.includes(resultText) ? [...output, resultText] : output;
       if (usageLine && !finalOutput.includes(usageLine)) finalOutput.push(usageLine);
+      emitHook('Stop', '*', {
+        status: 'success',
+        message: text,
+        finalMessage: text,
+        output: finalOutput,
+        elapsedMs: elapsed,
+        turns,
+        tokenCount,
+        sessionId,
+        usage,
+        costUsd,
+      });
 
       return {
         success: true,
@@ -244,11 +311,13 @@ export class ClaudeCodeRuntime implements AgentRuntime {
       const runtimeError = extractRuntimeError([message, ...stderrLines, ...output]) || message;
       d(`failed ${elapsed}ms | ${runtimeError}`);
       if (err instanceof Error && err.stack) console.error(err.stack);
+      emitHook('StopFailure', '*', { error: runtimeError, elapsedMs: elapsed, stderr: stderrLines, stack: err instanceof Error ? err.stack : undefined });
 
       appendUnique(output, stderrLines);
       appendUnique(output, [runtimeError]);
       return { success: false, summary: 'Claude Code execution failed', artifacts: [], error: runtimeError, output, sessionId: options?.resumeSessionId };
     } finally {
+      emitHook('SessionEnd', '*', { cwd, sessionId });
       this.activeQuery?.close();
       this.activeQuery = null;
       await this.adapterRun?.release();

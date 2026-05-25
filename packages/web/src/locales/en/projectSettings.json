@@ -13,6 +13,11 @@
     "autoProcess": "Auto Process Issues",
     "autoProcessDescription": "Scheduler will automatically plan and execute open issues"
   },
+  "hooks": {
+    "title": "Hooks",
+    "enableHooks": "Enable Hooks",
+    "enableHooksDescription": "Enable per-tool-call hooks for this workspace"
+  },
   "notifications": {
     "title": "Notifications",
     "messageNotifications": "Message Notifications",
@@ -45,7 +50,10 @@
     "nativePermissionGrantedToast": "Notification permission granted",
     "nativePermissionDeniedToast": "Notification permission denied",
     "androidOngoingTaskNotification": "Ongoing task notification",
-    "androidOngoingTaskNotificationDescription": "Update an ongoing notification in the system notification panel when tasks change. Android only; foreground service support may be required."
+    "androidOngoingTaskNotificationDescription": "Update an ongoing notification in the system notification panel when tasks change. Android only; foreground service support may be required.",
+    "selectRobotAccount": "Select Robot Account",
+    "noRobotAccount": "No accounts yet. Add one in Settings first.",
+    "addRobotAccount": "Add Account"
   },
   "wechat": {
     "robot": "WeChat iLink Robot",

@@ -139,6 +139,10 @@ export type ServerEventMap = {
   'command.restarted': CommandProcessEvent;
   'notification.created': AppNotification;
   'notification.cleared': null;
+  'worktree.created': import('./worktree.js').WorktreeInfo;
+  'worktree.deleted': { id: string; workspaceId: string };
+  'worktree.pr_created': import('./worktree.js').WorktreeInfo;
+  'worktree.merged': import('./worktree.js').WorktreeInfo;
 };
 
 export type ClientEventName = keyof ClientEventMap;

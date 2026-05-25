@@ -18,3 +18,4 @@ export * from './code-favorites.js';
 export * from './hooks.js';
 export * from './database.js';
 export * from './kanban.js';
+export * from './worktree.js';

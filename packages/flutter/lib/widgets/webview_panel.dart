@@ -126,10 +126,9 @@ class _WebViewPanelState extends ConsumerState<WebViewPanel> {
         child,
         Positioned(
           top: 8,
-          right: 8,
-          child: Column(
+          left: 8,
+          child: Row(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               if (_backendAvailable)
                 _ServerBadge(
@@ -138,7 +137,7 @@ class _WebViewPanelState extends ConsumerState<WebViewPanel> {
                   onTap: () => _openServer('http://127.0.0.1:3100'),
                 ),
               if (_frontendAvailable) ...[
-                const SizedBox(height: 6),
+                const SizedBox(width: 6),
                 _ServerBadge(
                   label: '前端服务器',
                   color: Theme.of(context).colorScheme.tertiary,
@@ -148,7 +147,76 @@ class _WebViewPanelState extends ConsumerState<WebViewPanel> {
             ],
           ),
         ),
+        if (_backendAvailable || _frontendAvailable)
+          Positioned(
+            top: 8,
+            right: 8,
+            child: _ServerMenuButton(
+              menuBuilder: (menuContext) => buildBrowserMenuItems(
+                menuContext,
+                ref,
+                activeTabId: null,
+                onNewTab: () => showNewTabDialog(context, notifier),
+                onNewTerminal: notifier.addTerminalTab,
+                onNewFileSource: notifier.addFileSourceTab,
+              ),
+            ),
+          ),
       ],
+    );
+  }
+}
+
+class _ServerMenuButton extends StatelessWidget {
+  final List<PopupMenuEntry<VoidCallback>> Function(BuildContext context)
+  menuBuilder;
+
+  const _ServerMenuButton({required this.menuBuilder});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(8),
+      elevation: 1,
+      child: InkWell(
+        onTap: () async {
+          final renderBox = context.findRenderObject() as RenderBox;
+          final overlay =
+              Overlay.of(context).context.findRenderObject() as RenderBox;
+          final offset = renderBox.localToGlobal(
+            Offset.zero,
+            ancestor: overlay,
+          );
+          final position = RelativeRect.fromRect(
+            Rect.fromLTWH(
+              offset.dx,
+              offset.dy + renderBox.size.height,
+              renderBox.size.width,
+              renderBox.size.height,
+            ),
+            Offset.zero & overlay.size,
+          );
+          final action = await showMenu<VoidCallback>(
+            context: context,
+            position: position,
+            items: menuBuilder(context),
+          );
+          if (!context.mounted || action == null) return;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (context.mounted) action();
+          });
+        },
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: Icon(
+            Icons.more_vert,
+            size: 16,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ),
     );
   }
 }

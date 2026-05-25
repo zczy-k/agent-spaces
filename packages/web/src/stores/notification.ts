@@ -8,6 +8,7 @@ interface NotificationState {
   load: (workspaceId: string) => Promise<void>;
   addNotification: (notification: AppNotification) => void;
   clearAll: (workspaceId: string) => Promise<void>;
+  remove: (workspaceId: string, notificationId: string) => Promise<void>;
   markRead: (workspaceId: string, notificationId: string) => Promise<void>;
   markAllRead: (workspaceId: string) => Promise<void>;
   reset: () => void;
@@ -36,6 +37,13 @@ export const useNotificationStore = create<NotificationState>((set, _get) => ({
   clearAll: async (workspaceId: string) => {
     await fetchWithAuth(`/api/workspaces/${workspaceId}/notifications`, { method: 'DELETE' });
     set({ notifications: [] });
+  },
+
+  remove: async (workspaceId: string, notificationId: string) => {
+    await fetchWithAuth(`/api/workspaces/${workspaceId}/notifications/${notificationId}`, { method: 'DELETE' }).catch(() => {});
+    set((state) => ({
+      notifications: state.notifications.filter((n) => n.id !== notificationId),
+    }));
   },
 
   markRead: async (workspaceId: string, notificationId: string) => {

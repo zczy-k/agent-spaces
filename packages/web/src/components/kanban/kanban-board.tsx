@@ -3,10 +3,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   DndContext, useSensor, useSensors, PointerSensor, TouchSensor, KeyboardSensor,
-  DragOverlay, defaultDropAnimationSideEffects, Active,
+  DragOverlay, defaultDropAnimationSideEffects, type Active,
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates, arrayMove, SortableContext, horizontalListSortingStrategy, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { Plus, LayoutGrid, Layout, Search, Layers } from 'lucide-react';
+import { Plus, LayoutGrid, Search, Layers, WandSparkles } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useKanbanStore } from '@/stores/kanban';
 import type { KanbanColumn, KanbanTask, KanbanLayoutMode, KanbanPriority } from '@agent-spaces/shared';
@@ -14,25 +14,26 @@ import KanbanColumnComponent from './kanban-column';
 import KanbanCard from './kanban-card';
 import TaskModal from './task-modal';
 import ColumnModal from './column-modal';
+import ColumnManageDialog from './column-manage-dialog';
 
 interface KanbanBoardProps {
   workspaceId: string;
 }
 
 export default function KanbanBoardPanel({ workspaceId }: KanbanBoardProps) {
-  const { board, load, updateLayoutMode, updateColumns, updateTasks, setBoard } = useKanbanStore();
+  const { board, load, updateLayoutMode, updateColumns, updateTasks, setBoard, attachWS } = useKanbanStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<'all' | KanbanPriority>('all');
   const [selectedTask, setSelectedTask] = useState<KanbanTask | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [activeDragTask, setActiveDragTask] = useState<KanbanTask | null>(null);
-  const [activeDragColumn, setActiveDragColumn] = useState<KanbanColumn | null>(null);
   const [isColumnModalOpen, setIsColumnModalOpen] = useState(false);
   const [editingColumn, setEditingColumn] = useState<KanbanColumn | null>(null);
+  const [isManageOpen, setIsManageOpen] = useState(false);
   const t = useTranslations('kanban');
   const tc = useTranslations('common');
 
-  useEffect(() => { load(workspaceId); }, [workspaceId, load]);
+  useEffect(() => { load(workspaceId); attachWS(workspaceId); }, [workspaceId, load, attachWS]);
 
   const columns = board?.columns ?? [];
   const tasks = board?.tasks ?? [];
@@ -50,30 +51,18 @@ export default function KanbanBoardPanel({ workspaceId }: KanbanBoardProps) {
     return matchesSearch && matchesPriority;
   });
 
-  // --- Drag handlers ---
+  // --- Drag handlers (tasks only) ---
   const handleDragStart = useCallback(({ active }: { active: Active }) => {
     const taskObj = tasks.find((t) => t.id === active.id);
     if (taskObj) setActiveDragTask(taskObj);
-    else {
-      const colObj = columns.find((c) => c.id === active.id);
-      if (colObj) setActiveDragColumn(colObj);
-    }
-  }, [tasks, columns]);
+  }, [tasks]);
 
   const handleDragOver = useCallback(({ active, over }: { active: Active; over: { id: string | number } | null }) => {
     if (!over) return;
     const activeId = active.id.toString();
     const overId = over.id.toString();
     if (activeId === overId) return;
-
-    if (columns.some((col) => col.id === activeId)) {
-      const overTaskObj = tasks.find((t) => t.id === overId);
-      const realOverId = overTaskObj ? overTaskObj.columnId : overId;
-      const ai = columns.findIndex((c) => c.id === activeId);
-      const oi = columns.findIndex((c) => c.id === realOverId);
-      if (ai !== -1 && oi !== -1 && ai !== oi) updateColumns(workspaceId, arrayMove(columns, ai, oi));
-      return;
-    }
+    if (columns.some((col) => col.id === activeId)) return;
 
     const activeTaskObj = tasks.find((t) => t.id === activeId);
     if (!activeTaskObj) return;
@@ -82,23 +71,14 @@ export default function KanbanBoardPanel({ workspaceId }: KanbanBoardProps) {
     if (targetColumnId && activeTaskObj.columnId !== targetColumnId) {
       updateTasks(workspaceId, tasks.map((t) => t.id === activeId ? { ...t, columnId: targetColumnId } : t));
     }
-  }, [columns, tasks, workspaceId, updateColumns, updateTasks]);
+  }, [columns, tasks, workspaceId, updateTasks]);
 
   const handleDragEnd = useCallback(({ active, over }: { active: Active; over: { id: string | number } | null }) => {
     setActiveDragTask(null);
-    setActiveDragColumn(null);
     if (!over) return;
     const activeId = active.id.toString();
     const overId = over.id.toString();
-
-    if (columns.some((col) => col.id === activeId)) {
-      const overTaskObj = tasks.find((t) => t.id === overId);
-      const realOverId = overTaskObj ? overTaskObj.columnId : overId;
-      const ai = columns.findIndex((c) => c.id === activeId);
-      const oi = columns.findIndex((c) => c.id === realOverId);
-      if (ai !== -1 && oi !== -1 && ai !== oi) updateColumns(workspaceId, arrayMove(columns, ai, oi));
-      return;
-    }
+    if (columns.some((col) => col.id === activeId)) return;
 
     const activeTaskObj = tasks.find((t) => t.id === activeId);
     if (!activeTaskObj) return;
@@ -111,7 +91,7 @@ export default function KanbanBoardPanel({ workspaceId }: KanbanBoardProps) {
     const updated = tasks.map((t) => t.id === activeId ? { ...t, columnId: targetColumnId! } : t);
     if (oi !== -1) updateTasks(workspaceId, arrayMove(updated, ai, oi));
     else updateTasks(workspaceId, updated);
-  }, [columns, tasks, workspaceId, updateColumns, updateTasks]);
+  }, [columns, tasks, workspaceId, updateTasks]);
 
   // --- Actions ---
   const handleAddTask = (columnId: string) => {
@@ -136,6 +116,19 @@ export default function KanbanBoardPanel({ workspaceId }: KanbanBoardProps) {
   const handleAddColumn = (title: string, color: string) => {
     const newCol: KanbanColumn = { id: `col-${Date.now()}`, title, color, order: columns.length };
     updateColumns(workspaceId, [...columns, newCol]);
+  };
+
+  const handleApplyTemplate = () => {
+    const template: { title: string; color: string }[] = [
+      { title: 'Draft', color: 'slate' },
+      { title: 'Todo', color: 'sky' },
+      { title: 'In Progress', color: 'amber' },
+      { title: 'Done', color: 'emerald' },
+      { title: 'Bug', color: 'rose' },
+    ];
+    const now = Date.now();
+    const newCols = template.map((t, i) => ({ id: `col-${now + i}`, title: t.title, color: t.color, order: i }));
+    updateColumns(workspaceId, [...columns, ...newCols]);
   };
 
   const handleEditColumn = (colId: string, newTitle: string, color: string) => {
@@ -170,7 +163,7 @@ export default function KanbanBoardPanel({ workspaceId }: KanbanBoardProps) {
           ))}
         </div>
         <button onClick={() => handleAddTask(columns[0]?.id || '')} disabled={columns.length === 0} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-semibold shadow-xs transition cursor-pointer disabled:opacity-50"><Plus className="h-3.5 w-3.5" />{t('newCard')}</button>
-        <button onClick={() => setIsColumnModalOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-neutral-800 border border-stone-200 dark:border-neutral-600 rounded-lg text-xs font-semibold text-stone-600 dark:text-neutral-300 shadow-xs transition cursor-pointer"><Layout className="h-3.5 w-3.5" />{t('section')}</button>
+        <button onClick={() => setIsManageOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-neutral-800 border border-stone-200 dark:border-neutral-600 rounded-lg text-xs font-semibold text-stone-600 dark:text-neutral-300 shadow-xs transition cursor-pointer"><Layers className="h-3.5 w-3.5" />{t('section')}</button>
         <button onClick={() => updateLayoutMode(workspaceId, layoutMode === 'horizontal' ? 'vertical' : 'horizontal')} className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-neutral-800 border border-stone-200 dark:border-neutral-600 rounded-lg text-xs font-semibold text-stone-600 dark:text-neutral-300 shadow-xs transition cursor-pointer"><LayoutGrid className="h-3.5 w-3.5" />{layoutMode === 'horizontal' ? t('vertical') : t('horizontal')}</button>
       </div>
 
@@ -180,18 +173,20 @@ export default function KanbanBoardPanel({ workspaceId }: KanbanBoardProps) {
           <div className="flex-1 flex flex-col items-center justify-center py-16 border border-dashed border-stone-200 dark:border-neutral-600 rounded-3xl">
             <Layers className="h-10 w-10 text-stone-300 mb-3" />
             <p className="text-sm font-bold text-stone-500 dark:text-neutral-400">{t('noSections')}</p>
-            <button onClick={() => setIsColumnModalOpen(true)} className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-xs font-bold cursor-pointer">{t('addSection')}</button>
+            <div className="flex gap-2 mt-4">
+              <button onClick={handleApplyTemplate} className="px-4 py-2 bg-white dark:bg-neutral-800 border border-stone-200 dark:border-neutral-600 text-stone-600 dark:text-neutral-300 rounded-xl text-xs font-bold cursor-pointer hover:bg-stone-50 dark:hover:bg-neutral-700 transition"><WandSparkles className="h-3.5 w-3.5 inline mr-1 -mt-0.5" />{t('useTemplate')}</button>
+              <button onClick={() => setIsColumnModalOpen(true)} className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-xs font-bold cursor-pointer">{t('addSection')}</button>
+            </div>
           </div>
         ) : (
           <DndContext sensors={sensors} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
-            <div className={`flex-1 h-full ${layoutMode === 'horizontal' ? 'flex flex-row overflow-x-auto items-start gap-4 pb-4' : 'flex flex-col gap-4'}`}>
+            <div className={`flex-1 h-full ${layoutMode === 'horizontal' ? 'flex flex-row overflow-x-auto items-start gap-4 pb-4' : 'flex flex-col gap-4 overflow-y-auto'}`}>
               <SortableContext items={columns.map((c) => c.id)} strategy={layoutMode === 'horizontal' ? horizontalListSortingStrategy : verticalListSortingStrategy}>
                 {columns.map((col) => (
                   <KanbanColumnComponent
                     key={col.id} column={col} tasks={filteredTasks.filter((t) => t.columnId === col.id)}
                     layoutMode={layoutMode} onCardClick={(task) => { setSelectedTask(task); setIsTaskModalOpen(true); }}
-                    onAddTask={handleAddTask} onEditColumn={(c) => { setEditingColumn(c); setIsColumnModalOpen(true); }}
-                    onDeleteColumn={handleDeleteColumn}
+                    onAddTask={handleAddTask}
                   />
                 ))}
               </SortableContext>
@@ -202,11 +197,7 @@ export default function KanbanBoardPanel({ workspaceId }: KanbanBoardProps) {
               )}
             </div>
             <DragOverlay dropAnimation={{ sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.4' } } }) }}>
-              {activeDragTask ? <KanbanCard task={activeDragTask} onClick={() => {}} isOverlay /> : activeDragColumn ? (
-                <div className="opacity-80 scale-98 pointer-events-none">
-                  <KanbanColumnComponent column={activeDragColumn} tasks={filteredTasks.filter((t) => t.columnId === activeDragColumn.id)} layoutMode={layoutMode} onCardClick={() => {}} onAddTask={() => {}} onEditColumn={() => {}} onDeleteColumn={() => {}} />
-                </div>
-              ) : null}
+              {activeDragTask ? <KanbanCard task={activeDragTask} onClick={() => {}} isOverlay /> : null}
             </DragOverlay>
           </DndContext>
         )}
@@ -214,6 +205,15 @@ export default function KanbanBoardPanel({ workspaceId }: KanbanBoardProps) {
 
       <TaskModal task={selectedTask} columns={columns} isOpen={isTaskModalOpen} onClose={() => { setIsTaskModalOpen(false); setSelectedTask(null); }} onSave={handleSaveTask} onDelete={handleDeleteTask} />
       <ColumnModal isOpen={isColumnModalOpen} onClose={() => { setIsColumnModalOpen(false); setEditingColumn(null); }} onCreate={handleAddColumn} onEdit={handleEditColumn} editingColumn={editingColumn} />
+      <ColumnManageDialog
+        isOpen={isManageOpen}
+        onClose={() => setIsManageOpen(false)}
+        columns={columns}
+        onReorder={(newCols) => updateColumns(workspaceId, newCols.map((c, i) => ({ ...c, order: i })))}
+        onEdit={(col) => { setIsManageOpen(false); setEditingColumn(col); setIsColumnModalOpen(true); }}
+        onDelete={handleDeleteColumn}
+        onAdd={() => { setIsManageOpen(false); setIsColumnModalOpen(true); }}
+      />
     </div>
   );
 }

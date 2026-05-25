@@ -32,8 +32,9 @@ export async function runBotAgent(workspaceId: string, preset: AgentConfig, mess
   const workspace = workspaceService.getById(workspaceId);
 
   try {
+    const userPrompt = buildBotPrompt(message);
     const result = await runtime.execute(
-      prependPersistentAgentContext(buildBotPrompt(message), {
+      prependPersistentAgentContext(userPrompt, {
         workspaceId,
         workingDir,
         boundDirs: workspace?.boundDirs,
@@ -43,6 +44,7 @@ export async function runBotAgent(workspaceId: string, preset: AgentConfig, mess
       workingDir,
       {
         maxTurns: 20,
+        userPrompt,
         mcpServers: agentService.getMcpServers(preset.mcps),
         skills: agentService.getAvailableSkillNames(agentService.getAgentConfigDir(workspaceId, preset), preset.skills),
         configDir: agentService.getAgentConfigDir(workspaceId, preset),

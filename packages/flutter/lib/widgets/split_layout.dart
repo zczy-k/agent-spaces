@@ -1,10 +1,12 @@
 import 'package:docking/docking.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../models/browser_tab.dart';
 import '../models/file_source_config.dart';
 import '../providers/browser_provider.dart';
 import 'file_source_tree.dart';
+import 'tab_context_menu.dart';
 import 'tab_widgets.dart';
 import 'terminal_instance.dart';
 import 'webview_instance.dart';
@@ -24,11 +26,13 @@ class _BrowserDockingAreaBuilder extends AreaBuilder with AreaBuilderMixin {
     required this.tabsById,
     required this.webViewDebuggingEnabled,
     required this.onTitleChanged,
+    required this.ref,
   });
 
   final Map<String, BrowserTab> tabsById;
   final bool webViewDebuggingEnabled;
   final TitleChangedCallback onTitleChanged;
+  final WidgetRef ref;
 
   @override
   DockingItem buildDockingItem({
@@ -44,6 +48,7 @@ class _BrowserDockingAreaBuilder extends AreaBuilder with AreaBuilderMixin {
       tab,
       webViewDebuggingEnabled,
       onTitleChanged,
+      ref: ref,
       weight: weight,
       maximized: maximized,
     );
@@ -85,17 +90,17 @@ Widget _buildTabPane(
   };
 }
 
-Widget _buildTabLeading(BuildContext context, BrowserTab tab) {
+Widget _buildTabLeading(BuildContext context, BrowserTab tab, WidgetRef? ref) {
+  Widget icon;
   if (tab.type == BrowserTabType.terminal) {
-    return Icon(
+    icon = Icon(
       Icons.terminal,
       size: 14,
       color: Theme.of(context).colorScheme.onSurfaceVariant,
     );
-  }
-  if (tab.type == BrowserTabType.fileSource) {
+  } else if (tab.type == BrowserTabType.fileSource) {
     final type = tab.fileSourceConfig?.type ?? FileSourceType.storage;
-    return Icon(
+    icon = Icon(
       switch (type) {
         FileSourceType.sftp => Icons.security,
         FileSourceType.ftp => Icons.cloud_queue,
@@ -105,8 +110,38 @@ Widget _buildTabLeading(BuildContext context, BrowserTab tab) {
       size: 14,
       color: Theme.of(context).colorScheme.onSurfaceVariant,
     );
+  } else {
+    icon = FaviconIcon(url: tab.effectiveFaviconUrl);
   }
-  return FaviconIcon(url: tab.effectiveFaviconUrl);
+
+  if (ref == null) return icon;
+  return GestureDetector(
+    behavior: HitTestBehavior.translucent,
+    onSecondaryTapDown: (details) =>
+        showTabContextMenu(context, ref, tab, details.globalPosition),
+    onLongPressStart: (details) =>
+        showTabContextMenu(context, ref, tab, details.globalPosition),
+    child: icon,
+  );
+}
+
+List<TabbedViewMenuItem> _showTabMenuFromButton(
+  BuildContext context,
+  WidgetRef ref,
+  BrowserTab tab,
+) {
+  final overlay = Overlay.of(context).context.findRenderObject();
+  final renderBox = context.findRenderObject();
+  if (overlay is RenderBox && renderBox is RenderBox) {
+    final offset = renderBox.localToGlobal(Offset.zero, ancestor: overlay);
+    showTabContextMenu(
+      context,
+      ref,
+      tab,
+      Offset(offset.dx, offset.dy + renderBox.size.height),
+    );
+  }
+  return [];
 }
 
 TabbedViewThemeData _buildDockingTabTheme(ThemeData theme) {
@@ -207,7 +242,7 @@ void _showDockingMenu(BuildContext context, DockingMenuBuilder menuBuilder) {
   ).then((action) => action?.call());
 }
 
-class SplitLayoutView extends StatefulWidget {
+class SplitLayoutView extends ConsumerStatefulWidget {
   final SplitLayout layout;
   final List<BrowserTab> visibleTabs;
   final String activeTabId;
@@ -238,15 +273,16 @@ class SplitLayoutView extends StatefulWidget {
   });
 
   @override
-  State<SplitLayoutView> createState() => _SplitLayoutViewState();
+  ConsumerState<SplitLayoutView> createState() => _SplitLayoutViewState();
 }
 
-class _SplitLayoutViewState extends State<SplitLayoutView> {
+class _SplitLayoutViewState extends ConsumerState<SplitLayoutView> {
   static final _layoutParser = _StringLayoutParser();
   DockingLayout? _dockingLayout;
   String _structureKey = '';
   String _lastSavedDockingLayout = '';
   bool _hasRestoredSavedDockingLayout = false;
+  bool _saveDockingLayoutAfterPointerFrame = false;
 
   @override
   void initState() {
@@ -276,39 +312,41 @@ class _SplitLayoutViewState extends State<SplitLayoutView> {
     final layout = _dockingLayout;
     if (layout == null) return const SizedBox.shrink();
 
-    return TabbedViewTheme(
-      data: _buildDockingTabTheme(Theme.of(context)),
-      child: Docking(
-        layout: layout,
-        onItemSelection: (item) {
-          final tabId = item.value;
-          if (tabId is String) widget.onTabSelected(tabId);
-        },
-        onItemClose: (item) {
-          final tabId = item.value;
-          if (tabId is String) widget.onTabClosed(tabId);
-        },
-        dockingButtonsBuilder: (context, dockingTabs, dockingItem) => [
-          TabButton(
-            icon: IconProvider.data(Icons.more_vert),
-            toolTip: 'tab_more'.tr(),
-            onPressed: () => _showDockingMenu(context, widget.onBuildMenu),
-          ),
-        ],
-        draggable: true,
-        maximizableItem: false,
-        maximizableTab: false,
-        maximizableTabsArea: false,
+    return Listener(
+      onPointerUp: (_) => _saveDockingLayoutAfterPointer(),
+      onPointerCancel: (_) => _saveDockingLayoutAfterPointer(),
+      child: TabbedViewTheme(
+        data: _buildDockingTabTheme(Theme.of(context)),
+        child: Docking(
+          layout: layout,
+          onItemSelection: (item) {
+            final tabId = item.value;
+            if (tabId is String) widget.onTabSelected(tabId);
+          },
+          onItemClose: (item) {
+            final tabId = item.value;
+            if (tabId is String) widget.onTabClosed(tabId);
+          },
+          dockingButtonsBuilder: (context, dockingTabs, dockingItem) => [
+            TabButton(
+              icon: IconProvider.data(Icons.more_vert),
+              toolTip: 'tab_more'.tr(),
+              onPressed: () => _showDockingMenu(context, widget.onBuildMenu),
+            ),
+          ],
+          draggable: true,
+          maximizableItem: false,
+          maximizableTab: false,
+          maximizableTabsArea: false,
+        ),
       ),
     );
   }
 
   String _buildStructureKey() {
-    final tabStructure = widget.layout == SplitLayout.single
-        ? widget.visibleTabs.map((tab) => tab.device.type.name).join('|')
-        : widget.visibleTabs
-              .map((tab) => '${tab.id}:${tab.device.type.name}')
-              .join('|');
+    final tabStructure = widget.visibleTabs
+        .map((tab) => '${tab.id}:${tab.device.type.name}')
+        .join('|');
     return '${widget.layout.name}:${widget.webViewDebuggingEnabled}:$tabStructure';
   }
 
@@ -342,6 +380,7 @@ class _SplitLayoutViewState extends State<SplitLayoutView> {
           tabsById: {for (final tab in widget.visibleTabs) tab.id: tab},
           webViewDebuggingEnabled: widget.webViewDebuggingEnabled,
           onTitleChanged: widget.onTitleChanged,
+          ref: ref,
         ),
       );
       return true;
@@ -360,6 +399,16 @@ class _SplitLayoutViewState extends State<SplitLayoutView> {
     widget.onDockingLayoutChanged(serialized);
   }
 
+  void _saveDockingLayoutAfterPointer() {
+    if (_saveDockingLayoutAfterPointerFrame) return;
+    _saveDockingLayoutAfterPointerFrame = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _saveDockingLayoutAfterPointerFrame = false;
+      if (!mounted) return;
+      _handleDockingLayoutChanged();
+    });
+  }
+
   DockingArea _buildRoot() {
     return switch (widget.layout) {
       SplitLayout.single => _buildDockingTabs(
@@ -367,24 +416,28 @@ class _SplitLayoutViewState extends State<SplitLayoutView> {
         widget.activeTabId,
         widget.webViewDebuggingEnabled,
         widget.onTitleChanged,
+        ref,
       ),
       SplitLayout.horizontal2 => _buildDockingRow(
         _buildTabGroups(widget.visibleTabs, 2),
         widget.activeTabId,
         widget.webViewDebuggingEnabled,
         widget.onTitleChanged,
+        ref,
       ),
       SplitLayout.vertical2 => _buildDockingColumn(
         _buildTabGroups(widget.visibleTabs, 2),
         widget.activeTabId,
         widget.webViewDebuggingEnabled,
         widget.onTitleChanged,
+        ref,
       ),
       SplitLayout.horizontal3 => _buildDockingRow(
         _buildTabGroups(widget.visibleTabs, 3),
         widget.activeTabId,
         widget.webViewDebuggingEnabled,
         widget.onTitleChanged,
+        ref,
       ),
       SplitLayout.quad => _buildDockingColumn(
         _chunkTabGroups(_buildTabGroups(widget.visibleTabs, 4), 2)
@@ -394,12 +447,14 @@ class _SplitLayoutViewState extends State<SplitLayoutView> {
                 widget.activeTabId,
                 widget.webViewDebuggingEnabled,
                 widget.onTitleChanged,
+                ref,
               ),
             )
             .toList(),
         widget.activeTabId,
         widget.webViewDebuggingEnabled,
         widget.onTitleChanged,
+        ref,
       ),
     };
   }
@@ -421,6 +476,13 @@ class _SplitLayoutViewState extends State<SplitLayoutView> {
       layout.removeItemByIds(removedIds);
     }
 
+    if (layout.root == null) {
+      layout.root = _buildRoot();
+      _selectDockingItem(layout, widget.activeTabId);
+      _lastSavedDockingLayout = _stringifyLayout(layout);
+      return;
+    }
+
     for (final tab in widget.visibleTabs) {
       if (layout.findDockingItem(tab.id) != null) continue;
       layout.addItemOnRoot(
@@ -428,6 +490,7 @@ class _SplitLayoutViewState extends State<SplitLayoutView> {
           tab,
           widget.webViewDebuggingEnabled,
           widget.onTitleChanged,
+          ref: ref,
         ),
         dropIndex: layout.layoutAreas().whereType<DockingItem>().length,
       );
@@ -440,12 +503,7 @@ class _SplitLayoutViewState extends State<SplitLayoutView> {
       final tab = tabsById[area.value as String];
       if (tab == null) continue;
       area.name = tab.title;
-      area.widget = _buildTabPane(
-        tab,
-        widget.webViewDebuggingEnabled,
-        widget.onTitleChanged,
-      );
-      area.leading = (context, status) => _buildTabLeading(context, tab);
+      area.leading = (context, status) => _buildTabLeading(context, tab, ref);
     }
     layout.rebuild();
   }
@@ -507,6 +565,7 @@ DockingArea _buildDockingRow(
   String activeTabId,
   bool webViewDebuggingEnabled,
   TitleChangedCallback onTitleChanged,
+  WidgetRef? ref,
 ) {
   final areas = children.map((child) {
     if (child is DockingArea) return child;
@@ -515,6 +574,7 @@ DockingArea _buildDockingRow(
       activeTabId,
       webViewDebuggingEnabled,
       onTitleChanged,
+      ref,
     );
   }).toList();
   return areas.length == 1 ? areas.first : DockingRow(areas);
@@ -525,6 +585,7 @@ DockingArea _buildDockingColumn(
   String activeTabId,
   bool webViewDebuggingEnabled,
   TitleChangedCallback onTitleChanged,
+  WidgetRef? ref,
 ) {
   final areas = children.map((child) {
     if (child is DockingArea) return child;
@@ -533,6 +594,7 @@ DockingArea _buildDockingColumn(
       activeTabId,
       webViewDebuggingEnabled,
       onTitleChanged,
+      ref,
     );
   }).toList();
   return areas.length == 1 ? areas.first : DockingColumn(areas);
@@ -543,11 +605,16 @@ DockingArea _buildDockingTabs(
   String activeTabId,
   bool webViewDebuggingEnabled,
   TitleChangedCallback onTitleChanged,
+  WidgetRef? ref,
 ) {
   final items = tabs
       .map(
-        (tab) =>
-            _buildDockingItem(tab, webViewDebuggingEnabled, onTitleChanged),
+        (tab) => _buildDockingItem(
+          tab,
+          webViewDebuggingEnabled,
+          onTitleChanged,
+          ref: ref,
+        ),
       )
       .toList();
 
@@ -577,6 +644,7 @@ DockingItem _buildDockingItem(
   BrowserTab tab,
   bool webViewDebuggingEnabled,
   TitleChangedCallback onTitleChanged, {
+  WidgetRef? ref,
   double? weight,
   bool maximized = false,
 }) {
@@ -588,7 +656,17 @@ DockingItem _buildDockingItem(
     weight: weight,
     maximized: maximized,
     keepAlive: true,
-    leading: (context, status) => _buildTabLeading(context, tab),
+    leading: (context, status) => _buildTabLeading(context, tab, ref),
+    buttons: ref == null
+        ? null
+        : [
+            TabButton(
+              icon: IconProvider.data(Icons.more_vert),
+              toolTip: 'tab_more'.tr(),
+              menuBuilder: (context) =>
+                  _showTabMenuFromButton(context, ref, tab),
+            ),
+          ],
     widget: _buildTabPane(tab, webViewDebuggingEnabled, onTitleChanged),
   );
 }

@@ -248,9 +248,10 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
               <button
                 type="button"
                 onClick={selectCurrent}
-                className="rounded-lg bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
+                className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
+                title={t('select')}
               >
-                {t('select')}
+                <Check className="size-3.5" />
               </button>
             )}
           </div>

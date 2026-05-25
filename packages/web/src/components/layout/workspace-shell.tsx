@@ -67,6 +67,14 @@ const AddFavoriteDialog = dynamic(() => import("@/components/editor/add-favorite
   ssr: false,
   loading: () => null,
 });
+const SendToChannelDialog = dynamic(() => import("@/components/editor/send-to-channel-dialog").then((mod) => mod.SendToChannelDialog), {
+  ssr: false,
+  loading: () => null,
+});
+const SendToIssueDialog = dynamic(() => import("@/components/editor/send-to-issue-dialog").then((mod) => mod.SendToIssueDialog), {
+  ssr: false,
+  loading: () => null,
+});
 const DatabasePanel = dynamic(() => import("@/components/database/database-panel"), {
   ssr: false,
   loading: panelLoader,
@@ -76,6 +84,10 @@ const DatabaseSidebarPanel = dynamic(() => import("@/components/database/databas
   loading: panelLoader,
 });
 const KanbanBoard = dynamic(() => import("@/components/kanban/kanban-board").then((mod) => mod.default), {
+  ssr: false,
+  loading: panelLoader,
+});
+const WorktreePanel = dynamic(() => import("@/components/worktree/worktree-panel").then((mod) => mod.WorktreePanel), {
   ssr: false,
   loading: panelLoader,
 });
@@ -109,6 +121,7 @@ const defaultJson: IJsonModel = {
         { type: "tab", name: "Terminal", component: "terminal" },
         { type: "tab", name: "Commits", component: "git-commits" },
         { type: "tab", name: "Favorites", component: "code-favorites", id: "code-favorites" },
+        { type: "tab", name: "Worktrees", component: "worktree-panel", id: "worktree-panel" },
       ],
     },
   ],
@@ -174,6 +187,9 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
         const bottom = borders?.find((b) => b.location === 'bottom');
         if (bottom && !bottom.children.some((c) => { const t = c as Record<string, unknown>; return t.id === 'code-favorites' || t.component === 'code-favorites'; })) {
           bottom.children.push({ type: 'tab', name: 'Favorites', component: 'code-favorites', id: 'code-favorites' });
+        }
+        if (bottom && !bottom.children.some((c) => { const t = c as Record<string, unknown>; return t.id === 'worktree-panel' || t.component === 'worktree-panel'; })) {
+          bottom.children.push({ type: 'tab', name: 'Worktrees', component: 'worktree-panel', id: 'worktree-panel' });
         }
         m = Model.fromJson(json);
       } else {
@@ -441,6 +457,8 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
           return <ProjectSettingsPanel workspaceId={workspaceId} />;
         case "code-favorites":
           return <CodeFavoritesPanel workspaceId={workspaceId} />;
+        case "worktree-panel":
+          return <WorktreePanel workspaceId={workspaceId} />;
         case "database":
           return <DatabasePanel workspaceId={workspaceId} />;
         case "database-list":
@@ -501,6 +519,8 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
       <div className="relative h-full w-full">
         <MobilePanelRenderer panel={activePanel} workspaceId={workspaceId} boundDirs={boundDirs} />
         <AddFavoriteDialog />
+        <SendToChannelDialog />
+        <SendToIssueDialog />
       </div>
     );
   }
@@ -509,6 +529,8 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
     <div className="relative h-full w-full">
       <Layout model={model} factory={factory} onRenderTab={onRenderTab} onModelChange={onModelChange} />
       <AddFavoriteDialog />
+      <SendToChannelDialog />
+      <SendToIssueDialog />
     </div>
   );
 }

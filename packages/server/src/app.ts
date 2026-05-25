@@ -34,8 +34,10 @@ import searchRouter from './routes/search.js';
 import notificationRouter from './routes/notification.js';
 import databaseRouter from './routes/database.js';
 import kanbanRouter from './routes/kanban.js';
+import { worktreeRouter } from './routes/worktree.js';
 import speechRecognitionRouter, { handleSpeechStream } from './routes/speech-recognition.js';
 import agentCommandsRouter from './routes/agent-commands.js';
+import robotAccountRouter from './routes/robot-account.js';
 import { getUserSettings, setUserAvatarUrl, removeUserAvatarUrl } from './storage/user-settings-store.js';
 import { authMiddleware, verifyToken } from './middleware/auth.js';
 import { handleConnection } from './ws/handler.js';
@@ -83,68 +85,9 @@ app.use('/api', authMiddleware);
 const publicDir = resolveRuntimeDir('public');
 app.use('/public', express.static(publicDir));
 
-// Scan public/prompt/ and generate index.json for the prompt store
-function scanPromptStore() {
-  const promptDir = join(publicDir, 'prompt');
-  if (!existsSync(promptDir)) return;
-  const files = readdirSync(promptDir).filter((f) => f.endsWith('.md'));
-  const index = files.map((filename) => {
-    const id = basename(filename, '.md');
-    const content = readFileSync(join(promptDir, filename), 'utf-8');
-    const firstHeading = content.split('\n').find((l) => /^#\s+/.test(l));
-    const name = firstHeading ? firstHeading.replace(/^#\s+/, '').trim() : id.replace(/[-_]/g, ' ');
-    return { id, name, filename };
-  });
-  writeFileSync(join(promptDir, 'index.json'), JSON.stringify(index, null, 2), 'utf-8');
-  console.log(`[prompt-store] scanned ${index.length} templates`);
-}
-scanPromptStore();
-
-// Scan public/output-styles/ and generate index.json
-function scanOutputStyleStore() {
-  const dir = join(publicDir, 'output-styles');
-  if (!existsSync(dir)) return;
-  const files = readdirSync(dir).filter((f) => f.endsWith('.md'));
-  const index = files.map((filename) => {
-    const id = basename(filename, '.md');
-    const content = readFileSync(join(dir, filename), 'utf-8');
-    const firstHeading = content.split('\n').find((l) => /^#\s+/.test(l));
-    const name = firstHeading ? firstHeading.replace(/^#\s+/, '').trim() : id.replace(/[-_]/g, ' ');
-    return { id, name, filename };
-  });
-  writeFileSync(join(dir, 'index.json'), JSON.stringify(index, null, 2), 'utf-8');
-  console.log(`[output-style-store] scanned ${index.length} templates`);
-}
-scanOutputStyleStore();
-
-// Scan public/skills/{group}/{skill-name}/SKILL.md and generate index.json
-function scanSkillStore() {
-  const dir = join(publicDir, 'skills');
-  if (!existsSync(dir)) return;
-  const index: Array<{ id: string; name: string; group: string; path: string }> = [];
-  for (const groupEntry of readdirSync(dir, { withFileTypes: true })) {
-    if (!groupEntry.isDirectory()) continue;
-    const group = groupEntry.name;
-    const groupDir = join(dir, group);
-    for (const skillEntry of readdirSync(groupDir, { withFileTypes: true })) {
-      if (!skillEntry.isDirectory()) continue;
-      const skillName = skillEntry.name;
-      const skillFile = join(groupDir, skillName, 'SKILL.md');
-      if (!existsSync(skillFile)) continue;
-      const content = readFileSync(skillFile, 'utf-8');
-      const fm = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-      let name = skillName;
-      if (fm) {
-        const nameLine = fm[1].split(/\r?\n/).find((l: string) => /^\s*name\s*:/i.test(l));
-        if (nameLine) name = nameLine.split(':', 2)[1].trim() || skillName;
-      }
-      index.push({ id: skillName, name, group, path: `${group}/${skillName}` });
-    }
-  }
-  writeFileSync(join(dir, 'index.json'), JSON.stringify(index, null, 2), 'utf-8');
-  console.log(`[skill-store] scanned ${index.length} skills`);
-}
-scanSkillStore();
+// Serve agents store from packages/agents/
+const agentsDir = resolveRuntimeDir('../agents');
+app.use('/agents-store', express.static(agentsDir));
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), platform: process.platform });
@@ -249,6 +192,7 @@ app.post('/api/git-config', async (req, res) => {
 app.use('/api/workspaces/:id/search', searchRouter);
 app.use('/api/workspaces/:id/database', databaseRouter);
 app.use('/api/workspaces/:id/kanban', kanbanRouter);
+app.use('/api/workspaces/:id/worktrees', worktreeRouter);
 app.use('/api/workspaces/:id/notifications', notificationRouter);
 app.use('/api/agents', agentRouter);
 app.use('/api', llmRouter);
@@ -260,6 +204,7 @@ app.use('/api/mcps', mcpRouter);
 app.use('/api/subscriptions', subscriptionRouter);
 app.use('/api/speech-recognition', speechRecognitionRouter);
 app.use('/api/agent-commands', agentCommandsRouter);
+app.use('/api/robot-accounts', robotAccountRouter);
 
 // Serve static web frontend in production (after API routes, before catch-all)
 const webDir = resolveRuntimeDir('web');
