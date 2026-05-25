@@ -9,12 +9,21 @@ export interface InspectorHistoryEntry {
   timestamp: number;
 }
 
+export interface PendingInspectorJump {
+  workspaceId: string;
+  path: string;
+  line: number;
+  column: number;
+}
+
 interface InspectorHistoryState {
   histories: Record<string, InspectorHistoryEntry[]>;
+  pendingJump: PendingInspectorJump | null;
   loadHistory: (workspaceId: string) => void;
   addEntry: (workspaceId: string, entry: Omit<InspectorHistoryEntry, 'id'> & { id?: string }) => void;
   setHistory: (workspaceId: string, history: InspectorHistoryEntry[]) => void;
   clearHistory: (workspaceId: string) => void;
+  setPendingJump: (data: PendingInspectorJump | null) => void;
 }
 
 const MAX_HISTORY = 50;
@@ -56,6 +65,9 @@ function writeHistory(workspaceId: string, history: InspectorHistoryEntry[]) {
 
 export const useInspectorHistoryStore = create<InspectorHistoryState>((set) => ({
   histories: {},
+  pendingJump: null,
+
+  setPendingJump: (data) => set({ pendingJump: data }),
 
   loadHistory: (workspaceId) => {
     const history = readHistory(workspaceId);

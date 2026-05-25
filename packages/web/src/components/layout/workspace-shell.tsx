@@ -75,6 +75,10 @@ const SendToIssueDialog = dynamic(() => import("@/components/editor/send-to-issu
   ssr: false,
   loading: () => null,
 });
+const InspectorActionDialog = dynamic(() => import("@/components/editor/inspector-action-dialog").then((mod) => mod.InspectorActionDialog), {
+  ssr: false,
+  loading: () => null,
+});
 const DatabasePanel = dynamic(() => import("@/components/database/database-panel"), {
   ssr: false,
   loading: panelLoader,
@@ -91,13 +95,6 @@ const WorktreePanel = dynamic(() => import("@/components/worktree/worktree-panel
   ssr: false,
   loading: panelLoader,
 });
-
-type FlutterBridge = { emit?: (event: string, data: unknown) => void };
-
-function emitFlutterInspectorJump(data: { path: string; line: number; column?: number }) {
-  const bridge = (window as Window & { __flutterBridge?: FlutterBridge }).__flutterBridge;
-  bridge?.emit?.('inspector.jump', data);
-}
 
 function PanelLoading() {
   return <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Loading...</div>;
@@ -426,8 +423,12 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
           column: normalizedColumn,
           timestamp: timestamp ?? Date.now(),
         });
-        useEditorStore.getState().jumpToPosition(workspaceId, path, line, column);
-        emitFlutterInspectorJump({ path, line, column: normalizedColumn });
+        useInspectorHistoryStore.getState().setPendingJump({
+          workspaceId,
+          path,
+          line,
+          column: normalizedColumn,
+        });
       }),
     ];
     return () => unsubs.forEach((u) => u());
@@ -521,6 +522,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
         <AddFavoriteDialog />
         <SendToChannelDialog />
         <SendToIssueDialog />
+        <InspectorActionDialog />
       </div>
     );
   }
@@ -531,6 +533,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
       <AddFavoriteDialog />
       <SendToChannelDialog />
       <SendToIssueDialog />
+      <InspectorActionDialog />
     </div>
   );
 }
