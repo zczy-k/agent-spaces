@@ -1,0 +1,81 @@
+---
+sidebar_position: 15
+---
+
+# Worktree 并行开发
+
+Worktree 基于 Git worktree 机制，允许你在一个工作空间内同时开发多个功能分支，互不干扰。
+
+## 核心概念
+
+Worktree 将一个 Git 仓库的多个分支 checkout 到不同的目录，每个目录都是独立的工作区。Agent Spaces 为每个 Worktree 创建独立的子工作空间。
+
+## 创建 Worktree
+
+1. 在工作空间中打开 Worktree 面板
+2. 点击「创建 Worktree」
+3. 输入新分支名称
+4. 系统自动创建 Worktree 并关联新分支
+
+创建后，Worktree 会出现在面板中，显示分支名称和状态。
+
+## Diff 查看
+
+选择任意 Worktree，查看与主分支或其他分支的代码差异：
+
+- 文件级别的变更列表
+- 行级别的 diff 对比
+- 支持选择对比基准分支
+
+## PR 创建
+
+1. 选择 Worktree 点击「创建 PR」
+2. Pull Request Agent 自动分析代码变更
+3. AI 生成 PR 标题和详细描述
+4. 确认后创建 Pull Request
+
+## PR 合并
+
+在 Worktree 面板中直接合并 PR：
+
+- 选择目标分支
+- 确认合并操作
+- 合并后可选择删除 Worktree
+
+## 删除 Worktree
+
+不再需要的 Worktree 可以删除：
+
+1. 在面板中点击删除按钮
+2. 确认删除操作
+3. 系统清理 Worktree 目录和关联数据
+
+## WebSocket 事件
+
+Worktree 相关事件通过 WebSocket 实时推送：
+
+- `worktree.created` — Worktree 创建成功
+- `worktree.deleted` — Worktree 删除
+- `worktree.pr_created` — PR 创建成功
+- `worktree.merged` — PR 合并完成
+
+## 子工作空间
+
+Worktree 创建后会作为父工作空间的子工作空间存在：
+
+- `isWorktree` 标识为 Worktree 子空间
+- `parentWorkspaceId` 指向父工作空间
+- 拥有独立的文件状态和分支
+
+## API 参考
+
+```
+GET  /api/workspaces/:id/worktrees           # 列出 Worktree
+POST /api/workspaces/:id/worktrees           # 创建 Worktree
+DELETE /api/workspaces/:id/worktrees/:wtId   # 删除 Worktree
+GET  /api/workspaces/:id/worktrees/:wtId/diff # 查看 Diff
+GET  /api/workspaces/:id/worktrees/:wtId/pr   # 查看 PR 信息
+POST /api/workspaces/:id/worktrees/:wtId/pr   # 创建 PR
+GET  /api/workspaces/:id/worktrees/:wtId/pr-draft # AI PR 草稿
+POST /api/workspaces/:id/worktrees/:wtId/merge    # 合并 PR
+```
