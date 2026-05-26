@@ -2,7 +2,8 @@
 
 本地多 Agent 协同编程平台。创建工作空间、绑定代码目录，通过可视化 Workflow 编辑器编排 Agent 执行流程，或在频道聊天中 @mention Agent 直接触发执行。支持六种 Agent 角色、四种 Agent 运行时、飞书/企微 Bot 通知、Kanban 看板、Notion 风格文档数据库、用量统计仪表盘、中英文切换。
 
-![preview](screenshots/preview.jpg)
+![preview1](screenshots/preview1.jpg)
+![preview2](screenshots/preview2.jpg)
 
 ## 功能
 
