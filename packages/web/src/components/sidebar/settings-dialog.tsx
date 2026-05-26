@@ -154,7 +154,7 @@ function AgentStoreTab() {
           <Input
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://raw.githubusercontent.com/user/repo/main/packages/agents"
+            placeholder="https://gh-proxy.org/https://github.com/hunmer/agent-spaces/raw/refs/heads/main/packages/agents/workflows/index.json"
             className="text-sm"
           />
           <Button size="sm" onClick={handleSave}>
