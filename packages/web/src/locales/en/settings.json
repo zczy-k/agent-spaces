@@ -43,5 +43,22 @@
   "fontUploadPlaceholder": "Drop font file here, supports .ttf .otf .woff .woff2",
   "fontUrlHint": "Enter a direct URL to a font file (e.g., Google Fonts woff2 file URL)",
   "fontAdded": "Font added",
-  "fontAddFailed": "Failed to add font"
+  "fontAddFailed": "Failed to add font",
+  "about": "About",
+  "aboutInfo": "Information",
+  "aboutVersion": "Current Version",
+  "aboutLatestVersion": "Latest Version",
+  "aboutPlatform": "Platform",
+  "aboutLinks": "Links",
+  "aboutUpdates": "Updates",
+  "aboutAutoCheck": "Auto-check for updates",
+  "aboutCheckNow": "Check for Updates",
+  "aboutChecking": "Checking...",
+  "aboutCheckFailed": "Failed to check for updates",
+  "aboutNewVersion": "New version available: v{version}",
+  "aboutUpdateNow": "Update Now",
+  "aboutUpToDate": "Already up to date",
+  "aboutUpdateConfirmTitle": "Confirm Update",
+  "aboutUpdateConfirmDesc": "The application will stop and restart to install the update. Make sure all work is saved.",
+  "aboutUpdating": "Updating and restarting..."
 }

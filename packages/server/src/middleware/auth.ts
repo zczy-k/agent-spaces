@@ -4,7 +4,7 @@ import { getSecret } from '../services/auth-store.js';
 export function authMiddleware(req: Request, res: Response, next: NextFunction) {
   const secret = getSecret();
 
-  const openPaths = ['/api/health', '/api/auth/login', '/api/auth/check'];
+  const openPaths = ['/api/health', '/api/auth/login', '/api/auth/check', '/api/version', '/api/version/check'];
   if (openPaths.includes(req.path)) return next();
 
   const auth = req.headers.authorization;

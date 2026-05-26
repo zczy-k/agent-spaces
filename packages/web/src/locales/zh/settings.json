@@ -43,5 +43,22 @@
   "fontUploadPlaceholder": "拖拽字体文件到此处，支持 .ttf .otf .woff .woff2",
   "fontUrlHint": "输入字体文件的直链 URL（如 Google Fonts 的 woff2 文件地址）",
   "fontAdded": "字体已添加",
-  "fontAddFailed": "字体添加失败"
+  "fontAddFailed": "字体添加失败",
+  "about": "关于",
+  "aboutInfo": "项目信息",
+  "aboutVersion": "当前版本",
+  "aboutLatestVersion": "最新版本",
+  "aboutPlatform": "运行平台",
+  "aboutLinks": "链接",
+  "aboutUpdates": "更新",
+  "aboutAutoCheck": "自动检查更新",
+  "aboutCheckNow": "检查更新",
+  "aboutChecking": "正在检查...",
+  "aboutCheckFailed": "检查更新失败",
+  "aboutNewVersion": "发现新版本：v{version}",
+  "aboutUpdateNow": "立即更新",
+  "aboutUpToDate": "已是最新版本",
+  "aboutUpdateConfirmTitle": "确认更新",
+  "aboutUpdateConfirmDesc": "应用将停止并重启以安装更新，请确保已保存所有工作。",
+  "aboutUpdating": "正在更新并重启..."
 }

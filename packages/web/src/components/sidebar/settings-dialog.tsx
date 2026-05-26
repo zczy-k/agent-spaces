@@ -13,7 +13,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { User, Palette, Globe, Shield, Mic, GitBranch, Store, Bot } from "lucide-react";
+import { User, Palette, Globe, Shield, Mic, GitBranch, Store, Bot, Info } from "lucide-react";
 import { GitSettingsForm } from "@/components/git/git-settings-form";
 import { AppearanceTab } from "./settings/appearance-tab";
 import { LanguageTab } from "./settings/language-tab";
@@ -21,6 +21,7 @@ import { AccountTab } from "./settings/account-tab";
 import { SecurityTab } from "./settings/security-tab";
 import { SpeechSettingsTab } from "./settings/speech-settings-tab";
 import { RobotAccountsTab } from "./settings/robot-accounts-tab";
+import { AboutTab } from "./settings/about-tab";
 
 const tabs = [
   { key: "appearance", icon: Palette },
@@ -31,6 +32,7 @@ const tabs = [
   { key: "agent_store", icon: Store },
   { key: "git", icon: GitBranch },
   { key: "speech", icon: Mic },
+  { key: "about", icon: Info },
 ] as const;
 
 type TabKey = (typeof tabs)[number]["key"];
@@ -56,6 +58,7 @@ export function SettingsDialog({
     agent_store: t("agentStore"),
     git: t("git"),
     speech: t("speech"),
+    about: t("about"),
   };
 
   const renderContent = () => {
@@ -76,6 +79,8 @@ export function SettingsDialog({
         return <GitSettings />;
       case "speech":
         return <SpeechSettingsTab />;
+      case "about":
+        return <AboutTab />;
     }
   };
 
