@@ -60,5 +60,6 @@
   "aboutUpToDate": "已是最新版本",
   "aboutUpdateConfirmTitle": "确认更新",
   "aboutUpdateConfirmDesc": "应用将停止并重启以安装更新，请确保已保存所有工作。",
-  "aboutUpdating": "正在更新并重启..."
+  "aboutUpdating": "正在更新并重启...",
+  "aboutDevMode": "开发模式下更新检查已禁用"
 }

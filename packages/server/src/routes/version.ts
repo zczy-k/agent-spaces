@@ -6,12 +6,17 @@ import { join } from 'node:path';
 import { getLocalVersion, getCachedLatest, fetchLatestVersion, isNewerVersion } from '../services/version.js';
 
 const router = Router();
+const isDev = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
 
 let isUpdating = false;
 
 // GET /version — cached version info (openPaths in auth.ts)
 router.get('/version', async (_req: Request, res: Response) => {
   const local = getLocalVersion();
+  if (isDev) {
+    res.json({ local, latest: null, updateAvailable: false, dev: true });
+    return;
+  }
   let latest = getCachedLatest();
   if (!latest) {
     latest = await fetchLatestVersion(false);
@@ -22,6 +27,10 @@ router.get('/version', async (_req: Request, res: Response) => {
 // GET /version/check — force npm lookup (openPaths in auth.ts)
 router.get('/version/check', async (_req: Request, res: Response) => {
   const local = getLocalVersion();
+  if (isDev) {
+    res.json({ local, latest: null, updateAvailable: false, dev: true });
+    return;
+  }
   const latest = await fetchLatestVersion(true);
   res.json({
     local,
@@ -32,6 +41,10 @@ router.get('/version/check', async (_req: Request, res: Response) => {
 
 // POST /version/update — trigger self-update (requires auth)
 router.post('/version/update', (_req: Request, res: Response) => {
+  if (isDev) {
+    res.status(403).json({ error: 'Updates are disabled in development mode' });
+    return;
+  }
   if (isUpdating) {
     res.status(409).json({ error: 'Update already in progress' });
     return;

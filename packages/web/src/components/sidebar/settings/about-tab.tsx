@@ -25,6 +25,7 @@ interface VersionInfo {
   local: string;
   latest: string | null;
   updateAvailable?: boolean;
+  dev?: boolean;
 }
 
 export function AboutTab() {
@@ -102,7 +103,8 @@ export function AboutTab() {
 
   const localVersion = version?.local ?? "-";
   const latestVersion = version?.latest;
-  const updateAvailable = version?.updateAvailable ?? false;
+  const isDev = version?.dev === true;
+  const updateAvailable = !isDev && (version?.updateAvailable ?? false);
 
   return (
     <div className="space-y-5">
@@ -157,39 +159,45 @@ export function AboutTab() {
         </a>
       </div>
 
-      {/* Updates */}
-      <div>
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2.5 block">
-          {t("aboutUpdates")}
-        </label>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm">{t("aboutAutoCheck")}</span>
-            <Switch
-              size="sm"
-              checked={autoCheck}
-              onCheckedChange={(checked: boolean) => {
-                setAutoCheck(checked);
-                localStorage.setItem(AUTO_CHECK_KEY, String(checked));
-              }}
-            />
-          </div>
-          <Button variant="outline" size="sm" onClick={handleCheck} disabled={checking}>
-            <RefreshCw className={cn("size-3.5 mr-1.5", checking && "animate-spin")} />
-            {checking ? t("aboutChecking") : t("aboutCheckNow")}
-          </Button>
-          {updateAvailable && latestVersion && (
-            <div className="rounded-lg border p-3 text-sm space-y-2">
-              <p className="text-muted-foreground">
-                {t("aboutNewVersion", { version: latestVersion })}
-              </p>
-              <Button size="sm" onClick={() => setConfirmOpen(true)}>
-                {t("aboutUpdateNow")}
-              </Button>
+      {/* Updates (production only) */}
+      {!isDev && (
+        <div>
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2.5 block">
+            {t("aboutUpdates")}
+          </label>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm">{t("aboutAutoCheck")}</span>
+              <Switch
+                size="sm"
+                checked={autoCheck}
+                onCheckedChange={(checked: boolean) => {
+                  setAutoCheck(checked);
+                  localStorage.setItem(AUTO_CHECK_KEY, String(checked));
+                }}
+              />
             </div>
-          )}
+            <Button variant="outline" size="sm" onClick={handleCheck} disabled={checking}>
+              <RefreshCw className={cn("size-3.5 mr-1.5", checking && "animate-spin")} />
+              {checking ? t("aboutChecking") : t("aboutCheckNow")}
+            </Button>
+            {updateAvailable && latestVersion && (
+              <div className="rounded-lg border p-3 text-sm space-y-2">
+                <p className="text-muted-foreground">
+                  {t("aboutNewVersion", { version: latestVersion })}
+                </p>
+                <Button size="sm" onClick={() => setConfirmOpen(true)}>
+                  {t("aboutUpdateNow")}
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
+
+      {isDev && (
+        <p className="text-xs text-muted-foreground">{t("aboutDevMode")}</p>
+      )}
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>

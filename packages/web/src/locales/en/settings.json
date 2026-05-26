@@ -60,5 +60,6 @@
   "aboutUpToDate": "Already up to date",
   "aboutUpdateConfirmTitle": "Confirm Update",
   "aboutUpdateConfirmDesc": "The application will stop and restart to install the update. Make sure all work is saved.",
-  "aboutUpdating": "Updating and restarting..."
+  "aboutUpdating": "Updating and restarting...",
+  "aboutDevMode": "Update checking is disabled in development mode"
 }
