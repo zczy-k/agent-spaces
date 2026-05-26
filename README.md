@@ -1,6 +1,6 @@
 # Agent Spaces
 
-本地多 Agent 协同编程平台。创建工作空间、绑定代码目录，通过可视化 Workflow 编辑器编排 Agent 执行流程，或在频道聊天中 @mention Agent 直接触发执行。支持六种 Agent 角色、三种 Agent 运行时、飞书/企微 Bot 通知、用量统计仪表盘、中英文切换。
+本地多 Agent 协同编程平台。创建工作空间、绑定代码目录，通过可视化 Workflow 编辑器编排 Agent 执行流程，或在频道聊天中 @mention Agent 直接触发执行。支持六种 Agent 角色、四种 Agent 运行时、飞书/企微 Bot 通知、Kanban 看板、Notion 风格文档数据库、用量统计仪表盘、中英文切换。
 
 ![preview](screenshots/preview.jpg)
 
@@ -8,15 +8,29 @@
 
 - **可视化 Workflow 编排** — DAG 拓扑编辑器，拖拽 Agent 节点、连线定义依赖，替代硬编码 pipeline
 - **六种 Agent 角色** — agent / scheduler / task_creator / bot + 自定义角色，各司其职
-- **三种 Agent 运行时** — OpenAgentSdk / Claude Code / OpenAI Codex，通过配置切换
-- **IDE 级别前端** — Monaco 代码编辑器、xterm.js 终端、FlexLayout 可拖拽布局
+- **四种 Agent 运行时** — OpenAgentSdk / Claude Code / OpenAI Codex / LangChain，通过配置切换
+- **IDE 级别前端** — Monaco 代码编辑器（含 TypeScript LSP 定义跳转/引用/诊断）、xterm.js 终端、FlexLayout 可拖拽布局
 - **结构化 AI 消息** — 工具调用链、执行详情、代码 Diff 实时渲染
 - **频道聊天** — TipTap 富文本编辑，@mention 直接触发 Agent 执行
 - **议题管理** — Issue 创建、选择 Workflow 模板、自动编排 Task 执行
 - **Git 集成** — 仓库操作面板，分支管理，Commit Agent 自动提交
 - **通知中心** — 飞书/企业微信 Bot 推送 + Native 通知（Tauri/Browser），远程操控
+- **Hook 系统** — Agent 工具调用前后的自定义钩子（shell/webhook/script），per-tool-call 粒度
+- **输出风格管理** — 自定义 Agent 输出格式模板，按工作空间持久化
+- **Kanban 看板** — @dnd-kit 拖拽排序，水平/垂直布局切换，优先级筛选
+- **文档数据库** — Notion 风格树形文档系统，Notion/Markdown 双编辑器，回收站
 - **LLM 管理** — 多模型配置，API Key 管理，Anthropic Bridge 协议中转
 - **用量统计仪表盘** — Token 消耗趋势、费用估算、按模型统计
+- **订阅管理** — 智谱/MiniMax/AI Code 余额与配额查询
+- **代码搜索** — ripgrep 优先 + Node.js 回退，正则/文件模式/大小写选项
+- **代码收藏** — Monaco 编辑器右键收藏，侧面板查看/跳转
+- **Prompt 模板** — CRUD + 批量应用到多个 Agent 预设
+- **快捷命令** — 自定义命令 CRUD + 运行/停止/自动重启
+- **语音识别** — 腾讯语音实时识别（WebSocket 流式）
+- **Command Palette** — Ctrl+K 快捷命令面板，全局搜索
+- **DOM Inspector** — Alt+Shift 点击元素自动在编辑器中打开源文件
+- **Agent SSE API** — HTTP Server-Sent Events 流式调用，支持外部集成
+- **持久上下文** — 自动加载 CLAUDE.md/AGENTS.md 指令文件注入 Agent 运行时
 - **i18n 国际化** — 中英文切换，52 个组件已完成改造
 - **多服务器支持** — 配置和切换多个后端服务器实例
 - **认证系统** — 基于 Secret Key 的 Bearer Token 认证
@@ -29,15 +43,19 @@
 | 运行时 | Node.js | >= 20 |
 | 包管理 | pnpm | >= 9 |
 | 语言 | TypeScript | 5.8+ |
-| 前端框架 | Next.js | 16 (App Router) |
-| UI 库 | shadcn/ui + TailwindCSS 4 | - |
+| 前端框架 | Next.js | 16.2 (App Router) |
+| UI 库 | shadcn/ui (base-nova) + TailwindCSS 4 | - |
 | 布局引擎 | FlexLayout React | 0.9 |
-| DAG 编辑器 | @xyflow/react + @dagrejs/dagre | 12.10 / 3.0 |
+| DAG 编辑器 | @xyflow/react | 12.10 |
+| DAG 布局 | @dagrejs/dagre | 3.0 |
 | 状态管理 | Zustand | 5 |
 | 代码编辑 | Monaco Editor | 4.7 |
-| 终端 | xterm.js | 6 |
+| Monaco LSP 客户端 | monaco-languageclient | 10.7 |
+| TypeScript LSP 服务端 | typescript-language-server | 5.2 |
+| 终端 | xterm.js (@xterm/xterm) | 6 |
 | 富文本编辑 | TipTap | 3.22 |
 | i18n | next-intl | 4.11 |
+| Command Palette | cmdk | 1.1 |
 | 后端框架 | Express | 5 |
 | WebSocket | ws | 8 |
 | PTY | node-pty | 1.1 |
@@ -47,8 +65,15 @@
 | Agent SDK 1 | @codeany/open-agent-sdk | ^0.2.1 |
 | Agent SDK 2 | @anthropic-ai/claude-agent-sdk | ^0.2.126 |
 | Agent SDK 3 | @openai/codex-sdk | ^0.128.0 |
+| Agent SDK 4 | langchain + @langchain/openai + @langchain/anthropic + @langchain/google-genai | ^1.4.0 |
 | 飞书 SDK | @larksuiteoapi/node-sdk | ^1.62.1 |
 | 图表 | Recharts | 3.8 |
+| 拖拽 | @dnd-kit/core + @dnd-kit/sortable | ^6.3.1 |
+| 拖放面板 | react-resizable-panels | - |
+| 移动端框架 | Flutter | ^3.10.1 |
+| 移动端状态管理 | flutter_riverpod | ^2.6.1 |
+| 移动端 WebView | flutter_inappwebview | ^6.1.5 |
+| 移动端通知 | awesome_notifications | ^0.11.0 |
 
 ## 下载客户端
 
@@ -66,7 +91,7 @@
 ### 一键安装（推荐）
 
 ```bash
-npm i @agent-spaces/server -g
+npm i @agent-spaces/server -g -registry https://registry.npmmirror.com
 agent-spaces-server
 ```
 
@@ -100,6 +125,12 @@ npm run start
 
 > **Claude Code 部署注意**：由于 Claude Code 对 root/sudo 权限和 `/root` 目录有安全限制，工程目录尽量不要放在 `/root` 下。建议部署到普通用户可读写的目录，例如 `/home/agent-spaces/app` 或 `/opt/agent-spaces` 并将目录 owner 设置为运行用户。
 
+### Docker 构建
+
+```bash
+pnpm build:docker
+```
+
 ## 环境变量
 
 | 变量 | 默认值 | 说明 |
@@ -114,14 +145,16 @@ npm run start
 | `CODEX_API_KEY` / `OPENAI_API_KEY` | - | CodexRuntime 使用的 API Key |
 | `CODEX_HOME` | - | Codex 配置目录 |
 | `SERVER_URL` | `http://localhost:3100` | 前端 SSR 时连接后端的 URL |
+| `CORS_ORIGIN` | `*` | CORS 允许的来源 |
 
 ## 项目结构
 
 ```
 agent-spaces/
-├── packages/shared/    # 前后端共享类型定义（13 文件）
-├── packages/server/    # Express API + Agent 编排 + WebSocket（73 文件）
-└── packages/web/       # Next.js 前端（168 文件）
+├── packages/shared/     # 前后端共享类型定义（22 文件）
+├── packages/server/     # Express API + Agent 编排 + WebSocket（128 文件）
+├── packages/web/        # Next.js 前端（296 文件）
+└── packages/flutter/    # Flutter 多平台客户端（26 文件）
 ```
 
 ## License
