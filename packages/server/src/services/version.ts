@@ -4,12 +4,12 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-let localVersion: string | null = null;
+let localVersion = '';
 let cachedLatest: { version: string; ts: number } | null = null;
 const CACHE_TTL = 3600_000; // 1 hour
 
 export function getLocalVersion(): string {
-  if (localVersion) return localVersion;
+  if (localVersion !== '') return localVersion;
   try {
     const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf-8'));
     localVersion = pkg.version || '0.0.0';

@@ -53,7 +53,7 @@ export function AboutTab() {
     // Load basic info
     fetch("/api/health")
       .then(r => r.ok ? r.json() : {})
-      .then(d => setPlatform(d.platform ?? ""))
+      .then((d: { platform?: string }) => setPlatform(d.platform ?? ""))
       .catch(() => {});
 
     loadVersion();
