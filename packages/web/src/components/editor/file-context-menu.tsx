@@ -1,8 +1,10 @@
 "use client"
 
-import { Pencil, MoveRight, Copy, ExternalLink, Download, Link, Trash2 } from "lucide-react"
+import { Pencil, MoveRight, Copy, ExternalLink, Download, Link, Trash2, Terminal, Files } from "lucide-react"
 import { ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from "@/components/ui/context-menu"
 import { useTranslations } from "next-intl"
+import { useTerminalStore } from "@/stores/terminal"
+import { toast } from "sonner"
 
 interface FileContextMenuProps {
   filePath: string
@@ -61,6 +63,31 @@ export function FileContextMenu({ filePath, workspaceId, boundDir, onRename, onM
           {t('copyFile')}
         </ContextMenuItem>
       )}
+      <ContextMenuItem onClick={async () => {
+        const fileName = filePath.split('/').pop() || 'file';
+        const dir = filePath.substring(0, filePath.lastIndexOf('/'));
+        const dot = fileName.lastIndexOf('.');
+        let copyName: string;
+        if (dot > 0) {
+          copyName = fileName.substring(0, dot) + ' copy' + fileName.substring(dot);
+        } else {
+          copyName = fileName + ' copy';
+        }
+        const destPath = dir ? `${dir}/${copyName}` : copyName;
+        const res = await fetch(`/api/workspaces/${workspaceId}/files/copy`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ srcPath: filePath, destPath }),
+        });
+        if (res.ok) {
+          toast.success(t('duplicateSuccess'));
+        } else {
+          toast.error(t('duplicateFailed'));
+        }
+      }}>
+        <Files className="size-4" />
+        {t('duplicateFile')}
+      </ContextMenuItem>
       <ContextMenuItem onClick={handleCopyPath}>
         <Copy className="size-4" />
         {t('copyPath')}
@@ -68,6 +95,14 @@ export function FileContextMenu({ filePath, workspaceId, boundDir, onRename, onM
       <ContextMenuItem onClick={handleReveal}>
         <ExternalLink className="size-4" />
         {t('revealInFinder')}
+      </ContextMenuItem>
+      <ContextMenuItem onClick={() => {
+        const absPath = boundDir ? boundDir.replace(/\/+$/, '') + '/' + filePath : filePath;
+        const dirPath = absPath.replace(/\/[^/]+$/, '');
+        useTerminalStore.getState().createSession(undefined, dirPath);
+      }}>
+        <Terminal className="size-4" />
+        {t('openInTerminal')}
       </ContextMenuItem>
       {onDelete && (
         <>

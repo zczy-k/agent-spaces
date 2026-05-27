@@ -92,6 +92,7 @@ function SortableTab({
             file.pinned && "border-l-2 border-l-primary/60",
           )}
           onClick={onClick}
+          title={file.path}
         >
           {file.pinned && <Pin size={10} className="text-primary/70 shrink-0 -ml-1 mr-0.5" />}
           {isCommitDiffPath(file.path) ? (

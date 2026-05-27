@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, ChevronDown, ChevronRight, X, Search, Upload, Play, Pencil, Trash2 } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, X, Search, Upload, Play, Pencil, Trash2, Terminal } from 'lucide-react';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
+import { useTerminalStore } from '@/stores/terminal';
 import type { QuickCommand } from '@agent-spaces/shared';
 
 function CommandListItem({ command, running, onRun, onClose, onEdit, onDelete, onSelect }: {
@@ -31,22 +32,20 @@ function CommandListItem({ command, running, onRun, onClose, onEdit, onDelete, o
       </button>
       <span className="truncate flex-1 font-mono">{command.name}</span>
       {running && <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shrink-0" />}
-      {hovered && (
-        <>
-          <button
-            onClick={(event) => { event.stopPropagation(); onEdit(); }}
-            className="shrink-0 p-0.5 text-muted-foreground hover:text-foreground cursor-pointer"
-          >
-            <Pencil size={11} />
-          </button>
-          <button
-            onClick={(event) => { event.stopPropagation(); onDelete(); }}
-            className="shrink-0 p-0.5 text-muted-foreground hover:text-destructive cursor-pointer"
-          >
-            <Trash2 size={11} />
-          </button>
-        </>
-      )}
+      <div className={`shrink-0 flex items-center gap-0.5 md:opacity-0 ${hovered ? 'opacity-100' : 'opacity-0'} md:group-hover:opacity-100 transition-opacity max-md:!opacity-100`}>
+        <button
+          onClick={(event) => { event.stopPropagation(); onEdit(); }}
+          className="p-0.5 text-muted-foreground hover:text-foreground cursor-pointer"
+        >
+          <Pencil size={11} />
+        </button>
+        <button
+          onClick={(event) => { event.stopPropagation(); onDelete(); }}
+          className="p-0.5 text-muted-foreground hover:text-destructive cursor-pointer"
+        >
+          <Trash2 size={11} />
+        </button>
+      </div>
     </div>
   );
 }
@@ -109,7 +108,10 @@ export function CommandSidebar({
       {/* Command list with collapsible groups */}
       <div className="flex-1 overflow-y-auto py-1">
         {commands.length === 0 ? (
-          <div className="text-xs text-muted-foreground text-center py-4">{tc('noCommands')}</div>
+          <div className="text-xs text-muted-foreground text-center py-4 flex flex-col items-center gap-2">
+            <span>{tc('noCommands')}</span>
+            <button onClick={onAddCommand} className="text-primary hover:underline cursor-pointer">{tc('addCommand')}</button>
+          </div>
         ) : (
           <>
             {customCommands.length > 0 && (
@@ -122,7 +124,7 @@ export function CommandSidebar({
                   </CollapsibleTrigger>
                   <button
                     onClick={onAddCommand}
-                    className="shrink-0 p-0.5 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                    className="shrink-0 p-0.5 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer max-md:!opacity-100"
                     title={tc('addCommand')}
                   >
                     <Plus size={12} />
@@ -167,6 +169,13 @@ export function CommandSidebar({
                     <span className="truncate">{folder.split('/').pop() || folder}</span>
                     <span className="text-muted-foreground/60">({cmds.length})</span>
                   </CollapsibleTrigger>
+                  <button
+                    onClick={() => useTerminalStore.getState().createSession(undefined, folder)}
+                    className="shrink-0 p-0.5 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer max-md:!opacity-100"
+                    title={tc('openTerminal') || 'Open Terminal'}
+                  >
+                    <Terminal size={12} />
+                  </button>
                 </div>
                 <CollapsibleContent>
                   {cmds.map(cmd => (
@@ -197,7 +206,7 @@ export function CommandSidebar({
                 <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex-1">{tc('customCommands')}</span>
                 <button
                   onClick={onAddCommand}
-                  className="shrink-0 p-0.5 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                  className="shrink-0 p-0.5 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer max-md:!opacity-100"
                   title={tc('addCommand')}
                 >
                   <Plus size={12} />

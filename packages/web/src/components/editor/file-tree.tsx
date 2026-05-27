@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronRightIcon, FileIcon, FolderIcon, FolderOpenIcon, Trash2, ExternalLink, Upload, Copy, FolderPlus, FilePlus, AlertTriangle, Pencil, MoveRight } from "lucide-react"
+import { ChevronRightIcon, FileIcon, FolderIcon, FolderOpenIcon, Trash2, ExternalLink, Upload, Copy, FolderPlus, FilePlus, AlertTriangle, Pencil, MoveRight, Terminal } from "lucide-react"
 import { createContext, Fragment, type CSSProperties, type DragEvent, type HTMLAttributes, type ReactNode, useContext, useState, useCallback, useEffect, useRef } from "react"
 /**
  * @title React AI File Tree
@@ -31,6 +31,7 @@ import { FileContextMenu } from "./file-context-menu"
 import { useTranslations } from 'next-intl'
 import type { FileNode } from "@agent-spaces/shared"
 import { FileIconImg, FolderIconImg } from "./file-icon"
+import { useTerminalStore } from "@/stores/terminal"
 
 interface FileTreeContextType {
   expandedPaths: Set<string>
@@ -313,6 +314,13 @@ export const FileTreeFolder = ({
           <ContextMenuItem onClick={handleReveal}>
             <ExternalLink className="size-4" />
             {t('revealInFinder')}
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => {
+            const absPath = boundDir ? boundDir.replace(/\/+$/, '') + '/' + path : path;
+            useTerminalStore.getState().createSession(undefined, absPath);
+          }}>
+            <Terminal className="size-4" />
+            {t('openInTerminal')}
           </ContextMenuItem>
           <ContextMenuItem onClick={() => setDeleteConfirmOpen(true)} className="text-destructive focus:text-destructive">
             <Trash2 className="size-4" />

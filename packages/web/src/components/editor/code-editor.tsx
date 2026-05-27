@@ -15,7 +15,7 @@ import { useTranslations } from 'next-intl';
 import { CommitDiffViewer } from "@/components/git/commit-diff-viewer";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useCodeFavoritesStore } from "@/stores/code-favorites";
-import { Code, Eye } from "lucide-react";
+import { Code, Eye, FileText, AlignLeft, Binary } from "lucide-react";
 import {
   getModelUri,
   getOrCreateModel,
@@ -34,6 +34,48 @@ import type * as Monaco from 'monaco-editor';
 function EditorLoadingFallback() {
   const t = useTranslations('editor');
   return <div className="flex items-center justify-center h-full text-muted-foreground text-sm">{t('loadingEditor')}</div>;
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function detectEncoding(content: string): string {
+  // Content from API is UTF-8 string; non-ASCII chars present → UTF-8, else ASCII (subset of UTF-8)
+  if (/^[\x00-\x7F]*$/.test(content)) return 'ASCII';
+  return 'UTF-8';
+}
+
+function EditorStatusBar({ file, content, t }: {
+  file: OpenFile;
+  content: string;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const lines = content ? content.split('\n').length : 0;
+  const sizeBytes = new Blob([content]).size;
+  const encoding = detectEncoding(content);
+
+  return (
+    <div className="flex items-center px-3 py-1 text-[11px] text-muted-foreground border-t bg-muted/30 select-none shrink-0 overflow-hidden">
+      <span className="truncate flex items-center gap-1" title={file.path}>
+        <FileText size={11} className="shrink-0" />
+        {file.path}
+      </span>
+      <div className="ml-auto flex items-center gap-3 shrink-0">
+        <span className="flex items-center gap-0.5">
+          <Binary size={11} />
+          {formatFileSize(sizeBytes)}
+        </span>
+        <span className="flex items-center gap-0.5">
+          <AlignLeft size={11} />
+          {lines} {t('lines')}
+        </span>
+        <span>{encoding}</span>
+      </div>
+    </div>
+  );
 }
 
 import { Markdown } from '@/components/ui/markdown';
@@ -488,6 +530,9 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
           </div>
         )}
       </div>
+      {activeFile && !isCommitDiff && (
+        <EditorStatusBar file={activeFile} content={activeContent} t={t} />
+      )}
     </div>
   );
 }

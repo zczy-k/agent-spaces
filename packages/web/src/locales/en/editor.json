@@ -2,6 +2,7 @@
   "explorer": "EXPLORER",
   "noFiles": "No files found",
   "revealInFinder": "Reveal in Finder",
+  "openInTerminal": "Open in Terminal",
   "loading": "Loading...",
   "loadingEditor": "Loading editor...",
   "openFileToEdit": "Open a file to start editing",
@@ -59,6 +60,9 @@
   "importSuccess": "Import successful",
   "importFailed": "Import failed",
   "copyPath": "Copy Path",
+  "duplicateFile": "Duplicate",
+  "duplicateSuccess": "Duplicate created",
+  "duplicateFailed": "Failed to create duplicate",
   "rename": "Rename",
   "move": "Move",
   "copyFile": "Copy",
@@ -94,5 +98,6 @@
   "sendToNewIssue": "Send to New Issue",
   "noFavorites": "No code favorites yet",
   "noFavoritesHint": "Right-click in editor → Add to Code Favorites",
-  "copiedPosition": "Copied: {pos}"
+  "copiedPosition": "Copied: {pos}",
+  "lines": "lines"
 }

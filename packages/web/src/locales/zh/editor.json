@@ -2,6 +2,7 @@
   "explorer": "资源管理器",
   "noFiles": "未找到文件",
   "revealInFinder": "在 Finder 中显示",
+  "openInTerminal": "在终端中打开",
   "loading": "加载中...",
   "loadingEditor": "编辑器加载中...",
   "openFileToEdit": "打开文件开始编辑",
@@ -59,6 +60,9 @@
   "importSuccess": "导入成功",
   "importFailed": "导入失败",
   "copyPath": "复制路径",
+  "duplicateFile": "复制副本",
+  "duplicateSuccess": "副本已创建",
+  "duplicateFailed": "创建副本失败",
   "rename": "重命名",
   "move": "移动",
   "copyFile": "复制",
@@ -94,5 +98,6 @@
   "sendToNewIssue": "发送到新议题",
   "noFavorites": "暂无代码收藏",
   "noFavoritesHint": "在编辑器中右键 → 添加到代码收藏",
-  "copiedPosition": "已复制: {pos}"
+  "copiedPosition": "已复制: {pos}",
+  "lines": "行"
 }

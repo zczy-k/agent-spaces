@@ -182,7 +182,7 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
     <div className={cn("relative", className)}>
       <div className="flex gap-1.5">
         <Input
-          className="rounded-xl py-2.5"
+          className="h-auto rounded-xl py-2.5"
           placeholder={placeholder}
           value={value}
           onChange={handleInputChange}
