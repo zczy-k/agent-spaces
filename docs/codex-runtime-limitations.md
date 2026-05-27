@@ -182,6 +182,41 @@ HTTP MCP 会映射：
 - 新增 MCP 类型时，先用 `codex mcp add` 或 `codex debug prompt-input --config ...` 验证 Codex CLI 是否接受该配置。
 - 对重要 MCP server 保留一份 Codex 原生 TOML 示例，便于排查配置差异。
 
+## 内置 function tools
+
+Agent Spaces 的内置工具（例如 `ListDatabases`、`ListDatabaseNodes`、`ViewKanbanBoard`）不是 agent 配置里的外部 MCP server，而是服务端内存中的 `AgentFunctionTool`。Claude Code runtime 可以用进程内 SDK MCP server 直接暴露这些工具；Codex CLI 只能通过 MCP 配置连接真实 MCP server。
+
+当前解决方法：
+
+- 当 `AgentRunOptions.functionTools` 非空时，Codex runtime 会为本次运行启动一个短生命周期的本地 Streamable HTTP MCP server：
+
+```text
+http://127.0.0.1:{randomPort}/mcp
+```
+
+- 该 server 名为 `agent-spaces`，并注册到 Codex config override：
+
+```ts
+{
+  mcp_servers: {
+    'agent-spaces': {
+      url: 'http://127.0.0.1:{randomPort}/mcp'
+    }
+  }
+}
+```
+
+- `tools/list` 原样返回每个 `AgentFunctionTool.inputSchema`。
+- `tools/call` 在当前 server 进程中执行对应的 `AgentFunctionTool.execute(input)`，并把 JSON 结果返回给 Codex。
+- Codex run 结束、失败或被中断后，runtime 会关闭这个本地 MCP server。
+
+注意：
+
+- 这只桥接当前运行传入的 `functionTools`，不会把 Agent Spaces 内置工具写入 agent 的持久 MCP 配置。
+- 如果同名外部 MCP server 已经使用 `agent-spaces`，当前内置工具 bridge 会覆盖该名称，行为与 Claude Code runtime 的内置 `agent-spaces` server 对齐。
+- 本地 bridge 只监听 `127.0.0.1`，用于 Codex 子进程回连当前 server 进程。
+- 如果日志里 `functionTools=-`，说明上游没有把内置工具传入 runtime，Codex 仍然无法调用 `ListDatabases`。
+
 ## 事件模型不同
 
 Claude Code runtime 输出的是 Claude SDK message。Codex SDK 输出的是 `ThreadEvent`，主要 item 类型包括：
@@ -316,8 +351,9 @@ Codex agent 运行失败时，优先检查：
 3. agent 是否配置了可用 API key。
 4. `CODEX_HOME` 下是否生成了期望的 `skills/`。
 5. MCP 配置是否符合 Codex `mcp_servers` 结构。
-6. 工作目录是否存在，是否需要指向真实 Git repo。
-7. 日志中 `[codex] failed ...` 的 stderr/错误内容。
+6. 需要调用 Agent Spaces 内置工具时，日志中是否出现 `functionTools=...` 和 `function tool bridge started`。
+7. 工作目录是否存在，是否需要指向真实 Git repo。
+8. 日志中 `[codex] failed ...` 的 stderr/错误内容。
 
 最小验证命令：
 

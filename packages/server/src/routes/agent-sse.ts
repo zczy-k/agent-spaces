@@ -106,6 +106,7 @@ router.post('/run', async (req: Request, res: Response) => {
         userPrompt,
         normalizeMessages(body.messages),
         {
+          runtimeKind: preset.runtimeKind,
           mcpServers: Object.keys(mcpServers ?? {}),
           skills,
           boundDirs: workspace.boundDirs,

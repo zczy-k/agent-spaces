@@ -15,3 +15,14 @@
 - Documented verification results and known limitations in `task_plan.md`.
 - Started follow-up documentation task for `docs/hermes-agent-runtime.md`.
 - Added `docs/hermes-agent-runtime.md` describing current behavior, configuration mapping, known limitations, troubleshooting, and verification steps.
+
+## 2026-05-28
+- Started Codex runtime tool-call investigation after `ListDatabases` was unavailable in Codex.
+- Confirmed `CodexRuntime` ignores `AgentRunOptions.functionTools`, while Claude Code bridges them through an SDK MCP server named `agent-spaces`.
+- Added Codex follow-up phases and root-cause notes to `task_plan.md` and `findings.md`.
+- Added `codex-function-tool-bridge.ts`, a short-lived local Streamable HTTP MCP bridge for Codex `functionTools`.
+- Wired Codex runtime to start the bridge, inject it into `mcp_servers.agent-spaces`, and close it after each run.
+- Updated prompt runtime context so Codex is no longer described as Claude Code, and made built-in database/Kanban tool instructions runtime-neutral.
+- Updated Codex/function-tool docs for the new bridge behavior.
+- `pnpm --filter @agent-spaces/shared build && pnpm --filter @agent-spaces/server build` passed.
+- MCP client smoke test against the compiled bridge passed for `listTools()` and `callTool()`.

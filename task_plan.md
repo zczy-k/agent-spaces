@@ -36,7 +36,46 @@ Add a Hermes runtime option to Agent Spaces with a minimal, maintainable CLI-bac
 - Agent Spaces built-in function tools are not bridged into Hermes yet; MCP is the intended future integration path.
 - Custom base URL is passed through environment variables, not a CLI flag, because the current Hermes CLI examples do not document a `chat --base-url` option.
 
+## Follow-up: Codex Runtime Tool Calls
+
+## Goal
+Make Agent Spaces built-in function tools such as `ListDatabases` actually callable from the Codex runtime, rather than only describing them in the prompt.
+
+## Scope
+- Trace how `AgentFunctionTool[]` reaches runtime adapters.
+- Identify why Codex cannot call `ListDatabases`.
+- Add a real Codex-compatible bridge for built-in function tools if supported by the local SDK/CLI.
+- Update documentation and run focused verification.
+
+## Phases
+
+| Phase | Status | Work |
+| --- | --- | --- |
+| C1 | complete | Inspect existing Codex runtime, prompt, and function tool flow |
+| C2 | complete | Determine the smallest Codex-compatible tool bridge |
+| C3 | complete | Implement the bridge and wire it into `CodexRuntime` |
+| C4 | complete | Update docs for Codex function-tool support and limitations |
+| C5 | complete | Run focused build/tests |
+
+## Initial Finding
+- `CodexRuntime` currently passes configured external `mcpServers` but ignores `options.functionTools`.
+- `ListDatabases` is created as an `AgentFunctionTool` in `createDatabaseFunctionTools()` and passed through `runMentionedAgent()`.
+- Claude Code converts `functionTools` into an SDK MCP server named `agent-spaces`; Codex has no equivalent bridge yet, so the model sees prompt instructions but has no actual callable tool.
+
+## Codex Follow-up Decisions
+- Bridge Codex `functionTools` through a short-lived local Streamable HTTP MCP server named `agent-spaces`.
+- Start the bridge only for the current run when `AgentRunOptions.functionTools` is non-empty.
+- Listen only on `127.0.0.1` with a random port, then inject that URL into Codex `mcp_servers`.
+- Use a stateful MCP transport because the MCP SDK does not allow reusing a stateless transport across initialize/list/call requests.
+- Keep Agent Spaces channel tools separate from agent-configured MCP server names in prompt context.
+
+## Codex Follow-up Verification
+- `pnpm --filter @agent-spaces/shared build && pnpm --filter @agent-spaces/server build`
+- Standard MCP client smoke test against `startCodexFunctionToolBridge()`: `listTools()` returned `EchoTool`; `callTool()` returned the expected JSON and `structuredContent`.
+
 ## Errors Encountered
 | Error | Attempt | Resolution |
 | --- | --- | --- |
 | `TS18048: 'options' is possibly 'undefined'` in `hermes-runtime.ts` | Server build attempt 1 | Introduced local `agentDir` variable so TypeScript can safely narrow config directory usage |
+| Type errors in `codex-function-tool-bridge.ts` around `structuredContent` and schema properties | Codex server build attempt 1 | Return `structuredContent` only for object results and normalize JSON Schema properties to object-valued maps |
+| MCP SDK stateless Streamable HTTP transport cannot be reused across requests | Bridge review before final verification | Switched the bridge to a stateful transport with random session IDs |

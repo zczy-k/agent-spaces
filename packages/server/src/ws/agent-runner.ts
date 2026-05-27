@@ -233,6 +233,7 @@ export async function runMentionedAgent(
   const workingDir = agentService.resolveWorkingDir(workspaceId, preset);
   const startTime = Date.now();
   const runtimePromptConfig = {
+    runtimeKind: preset.runtimeKind,
     mcpServers: Object.keys(mcpServers ?? {}),
     skills,
     boundDirs: workspace?.boundDirs,

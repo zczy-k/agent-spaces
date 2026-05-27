@@ -83,9 +83,22 @@ Claude 集成使用 Claude Agent SDK 的进程内 SDK MCP Server：
 
 ### 其他运行时
 
-`codex` 和 `open-agent-sdk` 当前未暴露相同的本地 function-tool 注册路径。
+#### Codex runtime
 
-它们不应通过仅 prompt 的方式假装支持这些工具。后续适配器工作应将各自的原生自定义工具 API（如果有）映射到相同的 `AgentFunctionTool` 抽象。
+Codex CLI 通过 MCP 配置发现外部工具。Codex runtime 会在当前运行有 `functionTools` 时启动一个短生命周期的本地 Streamable HTTP MCP server，并以 `agent-spaces` 名称注册到 Codex 的 `mcp_servers` config override。
+
+这个本地 MCP server：
+
+- 只监听 `127.0.0.1` 的随机端口。
+- 在 `tools/list` 中暴露当前运行传入的 `AgentFunctionTool`。
+- 在 `tools/call` 中执行当前 server 进程里的 `AgentFunctionTool.execute(input)`。
+- 在 Codex run 结束、失败或中断后关闭。
+
+#### OpenAgent SDK runtime
+
+`open-agent-sdk` 当前未暴露相同的本地 function-tool 注册路径。
+
+该 runtime 不应通过仅 prompt 的方式假装支持这些工具。后续适配器工作应将其原生自定义工具 API（如果有）映射到相同的 `AgentFunctionTool` 抽象。
 
 ## 执行流程
 

@@ -29,6 +29,7 @@
     "@langchain/google-genai": "^2.1.30",
     "@langchain/openai": "^1.4.5",
     "@larksuiteoapi/node-sdk": "^1.62.1",
+    "@modelcontextprotocol/sdk": "1.29.0",
     "@openai/codex-sdk": "^0.128.0",
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",

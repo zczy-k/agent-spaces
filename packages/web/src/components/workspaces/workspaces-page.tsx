@@ -27,6 +27,8 @@ export function WorkspacesPage({ initialWorkspaces }: { initialWorkspaces: Works
   const removeWorkspace = useWorkspaceStore((store) => store.removeWorkspace)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingWs, setEditingWs] = useState<Workspace | null>(null)
+  const createDialogOpen = useWorkspaceStore((s) => s.createDialogOpen)
+  const setCreateDialogOpen = useWorkspaceStore((s) => s.setCreateDialogOpen)
 
   useEffect(() => {
     setWorkspaces(initialWorkspaces)
@@ -134,9 +136,15 @@ export function WorkspacesPage({ initialWorkspaces }: { initialWorkspaces: Works
       </main>
 
       <WorkspaceDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        workspace={editingWs}
+        open={dialogOpen || createDialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open)
+          if (!open) {
+            setCreateDialogOpen(false)
+            setEditingWs(null)
+          }
+        }}
+        workspace={createDialogOpen ? null : editingWs}
         onSubmit={handleWsSubmit}
       />
     </div>

@@ -15,6 +15,7 @@ import { useMobilePanelStore } from "@/stores/mobile-panel";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useTerminalStore } from "@/stores/terminal";
+import { useAgentStore } from "@/stores/agent";
 import { sendAndroidOngoingTaskNotification, sendNativeNotification } from "@/lib/native-notification";
 import { useNotificationStore } from "@/stores/notification";
 import { useInspectorHistoryStore } from "@/stores/inspector-history";
@@ -95,6 +96,14 @@ const WorktreePanel = dynamic(() => import("@/components/worktree/worktree-panel
   ssr: false,
   loading: panelLoader,
 });
+const ChannelDialog = dynamic(() => import("@/components/chat/channel-dialog").then((mod) => mod.ChannelDialog), {
+  ssr: false,
+  loading: () => null,
+});
+const CreateIssueDialog = dynamic(() => import("@/components/issue/create-issue-dialog").then((mod) => mod.CreateIssueDialog), {
+  ssr: false,
+  loading: () => null,
+});
 
 function PanelLoading() {
   return <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Loading...</div>;
@@ -173,6 +182,13 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   const loadEditorState = useEditorStore((s) => s.loadEditorState);
   const revealPath = useEditorStore((s) => s.revealPath);
   const _clearRevealPath = useEditorStore((s) => s.clearRevealPath);
+  const channelCreateOpen = useChannelStore((s) => s.createDialogOpen);
+  const setChannelCreateOpen = useChannelStore((s) => s.setCreateDialogOpen);
+  const issueCreateOpen = useIssueStore((s) => s.createDialogOpen);
+  const setIssueCreateOpen = useIssueStore((s) => s.setCreateDialogOpen);
+  const agents = useAgentStore((s) => s.agents);
+  const createChannel = useChannelStore((s) => s.createChannel);
+  const createIssue = useIssueStore((s) => s.createIssue);
   const [model, setModel] = useState(() => {
     let m: Model;
     try {
@@ -523,6 +539,19 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
         <SendToChannelDialog />
         <SendToIssueDialog />
         <InspectorActionDialog />
+        <ChannelDialog
+          open={channelCreateOpen}
+          onOpenChange={(open) => { if (!open) setChannelCreateOpen(false); }}
+          workspaceId={workspaceId}
+          agents={agents}
+          onSubmit={(data) => createChannel(workspaceId, data.name, data.type, data.members)}
+        />
+        <CreateIssueDialog
+          open={issueCreateOpen}
+          onOpenChange={(open) => { if (!open) setIssueCreateOpen(false); }}
+          agents={agents}
+          onSubmit={(data) => createIssue(workspaceId, data.title, data.description, data.members, data.workflowId)}
+        />
       </div>
     );
   }
@@ -534,6 +563,19 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
       <SendToChannelDialog />
       <SendToIssueDialog />
       <InspectorActionDialog />
+      <ChannelDialog
+        open={channelCreateOpen}
+        onOpenChange={(open) => { if (!open) setChannelCreateOpen(false); }}
+        workspaceId={workspaceId}
+        agents={agents}
+        onSubmit={(data) => createChannel(workspaceId, data.name, data.type, data.members)}
+      />
+      <CreateIssueDialog
+        open={issueCreateOpen}
+        onOpenChange={(open) => { if (!open) setIssueCreateOpen(false); }}
+        agents={agents}
+        onSubmit={(data) => createIssue(workspaceId, data.title, data.description, data.members, data.workflowId)}
+      />
     </div>
   );
 }

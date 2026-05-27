@@ -20,6 +20,7 @@ export function buildAgentPrompt(
   userPrompt: string,
   history: Message[] = [],
   runtimeConfig?: {
+    runtimeKind?: string;
     mcpServers: string[];
     skills: string[];
     boundDirs?: string[];
@@ -38,7 +39,7 @@ export function buildAgentPrompt(
       `- Current workspace id: ${workspaceId}`,
       `- MCP servers configured for this agent: ${runtimeConfig.mcpServers.length ? runtimeConfig.mcpServers.join(', ') : 'none'}`,
       `- Skills configured for this agent: ${runtimeConfig.skills.length ? runtimeConfig.skills.join(', ') : 'none'}`,
-      '- Runtime tools available through Claude Code: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, Task, TodoWrite, WebFetch, WebSearch',
+      formatRuntimeToolsLine(runtimeConfig.runtimeKind),
       `- Agent Spaces channel tools configured for this channel: ${runtimeConfig.builtInTools?.length ? runtimeConfig.builtInTools.map((tool) => tool.name).join(', ') : 'none'}`,
     ];
     if (runtimeConfig.boundDirs?.length) {
@@ -215,7 +216,7 @@ function formatBuiltInToolContext(workspaceId: string, tools: BuiltInToolContext
     lines.push(
       'Knowledge base database tool rules:',
       '- Knowledge base/database documents are Agent Spaces database nodes, not workspace filesystem files.',
-      '- In Claude Code, call Agent Spaces database tools with their MCP names, for example mcp__agent-spaces__ListDatabaseNodes.',
+      '- Call Agent Spaces database tools with their MCP names, for example mcp__agent-spaces__ListDatabaseNodes.',
       '- To list available knowledge base databases and valid database IDs, call mcp__agent-spaces__ListDatabases.',
       '- If the user does not specify a database, omit databaseId and the first database will be used automatically.',
       '- Never use the workspace id as databaseId.',
@@ -226,7 +227,7 @@ function formatBuiltInToolContext(workspaceId: string, tools: BuiltInToolContext
       '- To inspect database document edit history, call mcp__agent-spaces__ListDatabaseNodeVersions with an existing node id.',
       '- To create a new database document, call mcp__agent-spaces__CreateDatabaseNode with title, optional content, and optional parentId or path.',
       '- To write database content, call mcp__agent-spaces__WriteDatabaseNode with an existing node id, mode, replace when needed, and content.',
-      '- Do not call the Claude Code native Write tool for knowledge base/database documents; native Write requires file_path and writes workspace files.',
+      '- Do not use native filesystem write/edit tools for knowledge base/database documents; those tools write workspace files, not Agent Spaces database nodes.',
       '- Do not invent database node ids. If the target id is unknown, call mcp__agent-spaces__ListDatabaseNodes or mcp__agent-spaces__SearchDatabaseNodes first.',
       '- If the database is empty or no existing node matches the requested document, call mcp__agent-spaces__CreateDatabaseNode instead of WriteDatabaseNode.',
     );
@@ -236,7 +237,7 @@ function formatBuiltInToolContext(workspaceId: string, tools: BuiltInToolContext
     lines.push(
       'Kanban tool rules:',
       '- Kanban boards are Agent Spaces workspace data, not workspace filesystem files.',
-      '- In Claude Code, call Agent Spaces Kanban tools with their MCP names, for example mcp__agent-spaces__ListKanbanBoards.',
+      '- Call Agent Spaces Kanban tools with their MCP names, for example mcp__agent-spaces__ListKanbanBoards.',
       '- Agent Spaces currently uses one Kanban board per workspace.',
       '- To inspect board state, call mcp__agent-spaces__ListKanbanBoards or mcp__agent-spaces__ViewKanbanBoard first.',
       '- To create a board, call mcp__agent-spaces__CreateKanbanBoard only when no board exists.',
@@ -253,6 +254,38 @@ function formatBuiltInToolContext(workspaceId: string, tools: BuiltInToolContext
 
 function formatCallableToolName(name: string): string {
   return `mcp__agent-spaces__${name}`;
+}
+
+function formatRuntimeToolsLine(runtimeKind?: string): string {
+  const runtimeName = formatRuntimeName(runtimeKind);
+  const tools = runtimeKind === 'claude-code'
+    ? 'Read, Write, Edit, MultiEdit, Bash, Grep, Glob, Task, TodoWrite, WebFetch, WebSearch'
+    : runtimeKind === 'codex'
+      ? 'Bash, file edits, WebSearch, todo list, MCP tools'
+      : runtimeKind === 'langchain'
+        ? 'Agent Spaces function tools'
+        : runtimeKind === 'hermes'
+          ? 'Hermes CLI tools and configured skills'
+          : 'runtime-specific tools exposed by the selected adapter';
+
+  return `- Runtime tools available through ${runtimeName}: ${tools}`;
+}
+
+function formatRuntimeName(runtimeKind?: string): string {
+  switch (runtimeKind) {
+    case 'claude-code':
+      return 'Claude Code';
+    case 'codex':
+      return 'Codex';
+    case 'langchain':
+      return 'LangChain';
+    case 'hermes':
+      return 'Hermes';
+    case 'open-agent-sdk':
+      return 'OpenAgent SDK';
+    default:
+      return 'the selected runtime';
+  }
 }
 
 function isIssueToolName(name: string): boolean {

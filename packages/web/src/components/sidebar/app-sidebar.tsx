@@ -95,6 +95,8 @@ export function DashboardSidebar() {
   const [toolsDialogOpen, setToolsDialogOpen] = useState(false);
   const [wsDialogOpen, setWsDialogOpen] = useState(false);
   const [editingWs, setEditingWs] = useState<Workspace | null>(null);
+  const createDialogOpen = useWorkspaceStore((s) => s.createDialogOpen);
+  const setCreateDialogOpen = useWorkspaceStore((s) => s.setCreateDialogOpen);
   const [modelsDialogProvider, setModelsDialogProvider] = useState<string | undefined>(undefined);
 
   const refreshWorkspaces = useCallback(() => {
@@ -500,9 +502,15 @@ export function DashboardSidebar() {
         }}
       />
       <WorkspaceDialog
-        open={wsDialogOpen}
-        onOpenChange={setWsDialogOpen}
-        workspace={editingWs}
+        open={wsDialogOpen || createDialogOpen}
+        onOpenChange={(open) => {
+          setWsDialogOpen(open)
+          if (!open) {
+            setCreateDialogOpen(false)
+            setEditingWs(null)
+          }
+        }}
+        workspace={createDialogOpen ? null : editingWs}
         onSubmit={handleWsSubmit}
       />
     </Sidebar>

@@ -3,6 +3,8 @@ import type { Workspace } from "@agent-spaces/shared";
 
 interface WorkspaceStore {
   workspaces: Workspace[];
+  createDialogOpen: boolean;
+  setCreateDialogOpen: (open: boolean) => void;
   setWorkspaces: (workspaces: Workspace[]) => void;
   upsertWorkspace: (workspace: Workspace) => void;
   removeWorkspace: (workspaceId: string) => void;
@@ -10,6 +12,8 @@ interface WorkspaceStore {
 
 export const useWorkspaceStore = create<WorkspaceStore>((set) => ({
   workspaces: [],
+  createDialogOpen: false,
+  setCreateDialogOpen: (open) => set({ createDialogOpen: open }),
 
   setWorkspaces: (workspaces) => set({ workspaces }),
 

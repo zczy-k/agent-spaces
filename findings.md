@@ -17,3 +17,31 @@
 - Agent Spaces built-in function tools cannot be passed directly to Hermes without a bridge; MCP is the pragmatic future bridge.
 - Official CLI examples show `hermes chat -q`, `--model`, `--provider`, `--verbose`, and `-s` for preloading skills.
 - Configuration docs state settings live under `~/.hermes/`, and `HERMES_HOME` is supported for scoped home/config files.
+
+# Codex Runtime Tool Findings
+
+## Root Cause
+- `runMentionedAgent()` builds built-in Agent Spaces tools via `createIssueFunctionTools()`, `createCommandFunctionTools()`, `createDatabaseFunctionTools()`, and `createKanbanFunctionTools()`, then passes them as `AgentRunOptions.functionTools`.
+- `ClaudeCodeRuntime` converts those `functionTools` into an in-process SDK MCP server named `agent-spaces`.
+- `CodexRuntime` currently only normalizes `options.mcpServers`; it does not include `options.functionTools` in Codex config.
+- The prompt still tells the model to call names such as `mcp__agent-spaces__ListDatabases`, but Codex has no actual `agent-spaces` MCP server/tool registered, so the model reports that the tool is unavailable.
+
+## Fix
+- Added a Codex-only bridge that exposes `AgentFunctionTool[]` as a short-lived local Streamable HTTP MCP server named `agent-spaces`.
+- `CodexRuntime` starts the bridge before creating the Codex thread, merges its URL into `mcp_servers`, and closes it in `finally`.
+- The bridge uses stateful MCP sessions because the MCP SDK rejects reusing a stateless transport across the initialize/list/call request sequence.
+- Prompt context now receives `runtimeKind`, so Codex prompts say runtime tools are available through Codex instead of Claude Code.
+- Database and Kanban built-in tool instructions are now runtime-neutral and still use the MCP callable names such as `mcp__agent-spaces__ListDatabases`.
+
+## Verification
+- `pnpm --filter @agent-spaces/shared build && pnpm --filter @agent-spaces/server build` passed.
+- Standard MCP client smoke test against `startCodexFunctionToolBridge()` passed: `listTools()` returned `EchoTool`, and `callTool()` returned the expected JSON response with `structuredContent`.
+
+## Relevant Files
+- `packages/server/src/adapters/codex-runtime.ts`
+- `packages/server/src/adapters/codex-function-tool-bridge.ts`
+- `packages/server/src/adapters/agent-runtime-types.ts`
+- `packages/server/src/adapters/claude-code-runtime/sdk-config.ts`
+- `packages/server/src/ws/agent-runner.ts`
+- `packages/server/src/ws/agent-prompt.ts`
+- `docs/function-call-tools.md`

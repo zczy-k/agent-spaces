@@ -10,6 +10,8 @@ import type { Workspace } from '@agent-spaces/shared'
 export function HomePage({ initialWorkspaces }: { initialWorkspaces: Workspace[] }) {
   const setWorkspaces = useWorkspaceStore((store) => store.setWorkspaces)
   const upsertWorkspace = useWorkspaceStore((store) => store.upsertWorkspace)
+  const createDialogOpen = useWorkspaceStore((s) => s.createDialogOpen)
+  const setCreateDialogOpen = useWorkspaceStore((s) => s.setCreateDialogOpen)
   const [dialogOpen, setDialogOpen] = useState(false)
 
   useEffect(() => {
@@ -33,8 +35,11 @@ export function HomePage({ initialWorkspaces }: { initialWorkspaces: Workspace[]
       </main>
 
       <WorkspaceDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        open={dialogOpen || createDialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open)
+          if (!open) setCreateDialogOpen(false)
+        }}
         onSubmit={handleWsSubmit}
       />
     </div>

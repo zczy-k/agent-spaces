@@ -19,6 +19,8 @@ interface IssueStore {
   /** 每次 setActiveIssue 递增，用于触发 tab 切换 */
   issueSelectSeq: number;
   loading: boolean;
+  createDialogOpen: boolean;
+  setCreateDialogOpen: (open: boolean) => void;
 
   loadIssues: (workspaceId: string) => Promise<void>;
   createIssue: (workspaceId: string, title: string, description: string, members?: string[], workflowId?: string) => Promise<void>;
@@ -52,6 +54,8 @@ export const useIssueStore = create<IssueStore>((set, get) => ({
   activeIssueId: null,
   issueSelectSeq: 0,
   loading: false,
+  createDialogOpen: false,
+  setCreateDialogOpen: (open) => set({ createDialogOpen: open }),
 
   loadIssues: async (workspaceId) => {
     set({ loading: true });

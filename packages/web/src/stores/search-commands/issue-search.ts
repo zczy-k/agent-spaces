@@ -1,4 +1,4 @@
-import { CircleDot, AlertCircle } from 'lucide-react';
+import { CircleDot, AlertCircle, Plus } from 'lucide-react';
 import type { SearchCommandProvider } from './types';
 import { useIssueStore } from '../issue';
 
@@ -8,9 +8,17 @@ export const issueSearch: SearchCommandProvider = {
   label: 'Issue',
   icon: CircleDot,
   search: (keyword) => {
-    const { issues, setActiveIssue } = useIssueStore.getState();
+    const { issues, setActiveIssue, setCreateDialogOpen } = useIssueStore.getState();
     const lower = keyword.toLowerCase();
-    return issues
+
+    const createItem = {
+      id: '__create_issue__',
+      label: '新建议题',
+      icon: Plus,
+      action: () => setTimeout(() => setCreateDialogOpen(true), 300),
+    };
+
+    const filtered = issues
       .filter((issue) =>
         issue.title.toLowerCase().includes(lower) ||
         issue.description?.toLowerCase().includes(lower),
@@ -22,5 +30,7 @@ export const issueSearch: SearchCommandProvider = {
         icon: AlertCircle,
         action: () => setActiveIssue(issue.id),
       }));
+
+    return [createItem, ...filtered];
   },
 };

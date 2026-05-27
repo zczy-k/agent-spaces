@@ -22,6 +22,7 @@ import type {
   AgentRuntimeConfig,
 } from './agent-runtime-types.js';
 import { appendOutputStyleToPrompt, summarizeResult } from './agent-runtime-types.js';
+import { startCodexFunctionToolBridge, type CodexFunctionToolBridge } from './codex-function-tool-bridge.js';
 
 /**
  * Runtime backed by OpenAI's Codex SDK.
@@ -42,14 +43,17 @@ export class CodexRuntime implements AgentRuntime {
     const codexHome = agentDir ? join(agentDir, '.codex') : undefined;
     if (codexHome) prepareCodexHome(codexHome, agentDir);
     const skillNames = normalizeSkillNames(options?.skills, codexHome);
-    const configOverrides = buildCodexConfig(this.config, options, skillNames);
     const sandboxMode = normalizeSandboxMode(this.config.permissionMode);
     const approvalPolicy = normalizeApprovalPolicy(this.config.permissionMode);
+    let functionToolBridge: CodexFunctionToolBridge | undefined;
 
-    d(`starting | cwd=${cwd} model=${this.config.model ?? 'default'} sandboxMode=${sandboxMode} approvalPolicy=${approvalPolicy} maxTurns=${options?.maxTurns ?? '∞'} mcpServers=${Object.keys(options?.mcpServers ?? {}).join(',') || '-'} skills=${skillNames.join(',') || '-'} codexHome=${codexHome ?? 'default'} sandboxDirs=${options?.sandboxDirs?.join(',') ?? '-'}`);
+    d(`starting | cwd=${cwd} model=${this.config.model ?? 'default'} sandboxMode=${sandboxMode} approvalPolicy=${approvalPolicy} maxTurns=${options?.maxTurns ?? '∞'} mcpServers=${Object.keys(options?.mcpServers ?? {}).join(',') || '-'} functionTools=${options?.functionTools?.map((tool) => tool.name).join(',') || '-'} skills=${skillNames.join(',') || '-'} codexHome=${codexHome ?? 'default'} sandboxDirs=${options?.sandboxDirs?.join(',') ?? '-'}`);
     d(`prompt: ${prompt.slice(0, 300)}${prompt.length > 300 ? '...' : ''}`);
 
     try {
+      functionToolBridge = await startCodexFunctionToolBridge(options?.functionTools, d);
+      const mcpServers = withFunctionToolBridge(options?.mcpServers, functionToolBridge);
+      const configOverrides = buildCodexConfig(this.config, mcpServers, skillNames);
       const codex = new Codex({
         apiKey: this.config.apiKey,
         baseUrl: shouldUseCodexOpenAIBaseUrl(this.config) ? this.config.baseURL : undefined,
@@ -151,6 +155,12 @@ export class CodexRuntime implements AgentRuntime {
 
       return { success: false, summary: 'Codex execution failed', artifacts: [], error: message, output, sessionId: options?.resumeSessionId };
     } finally {
+      try {
+        await functionToolBridge?.close();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        d(`function tool bridge close failed | ${message}`);
+      }
       this.abortController = null;
     }
   }
@@ -175,7 +185,7 @@ function buildEnv(config: AgentRuntimeConfig, codexHome?: string): Record<string
 
 function buildCodexConfig(
   runtimeConfig: AgentRuntimeConfig,
-  options: AgentRunOptions | undefined,
+  rawMcpServers: Record<string, unknown> | undefined,
   skillNames: string[],
 ): CodexConfigObject {
   const config: CodexConfigObject = {};
@@ -183,12 +193,23 @@ function buildCodexConfig(
   if (runtimeConfig.thinkingEnabled !== false) {
     config.model_reasoning_effort = runtimeConfig.thinkingEffort ?? 'medium';
   }
-  const mcpServers = normalizeMcpServers(options?.mcpServers);
+  const mcpServers = normalizeMcpServers(rawMcpServers);
   if (mcpServers) config.mcp_servers = mcpServers as CodexConfigValue;
   if (skillNames.length > 0) {
     config.skills = { enabled: skillNames };
   }
   return removeUndefined(config) as CodexConfigObject;
+}
+
+function withFunctionToolBridge(
+  mcpServers: Record<string, unknown> | undefined,
+  bridge: CodexFunctionToolBridge | undefined,
+): Record<string, unknown> | undefined {
+  if (!bridge) return mcpServers;
+  return {
+    ...(mcpServers ?? {}),
+    [bridge.name]: { url: bridge.url },
+  };
 }
 
 function buildCodexProviderConfig(runtimeConfig: AgentRuntimeConfig): CodexConfigObject {

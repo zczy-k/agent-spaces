@@ -9,6 +9,8 @@ interface ChannelStore {
   /** 每次 setActiveChannel 递增，用于触发 tab 切换 */
   channelSelectSeq: number;
   messages: Record<string, Message[]>;
+  createDialogOpen: boolean;
+  setCreateDialogOpen: (open: boolean) => void;
 
   loadChannels: (workspaceId: string) => Promise<void>;
   createChannel: (workspaceId: string, name: string, type?: Channel['type'], members?: string[]) => Promise<void>;
@@ -66,6 +68,8 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
   activeChannelId: null,
   channelSelectSeq: 0,
   messages: {},
+  createDialogOpen: false,
+  setCreateDialogOpen: (open) => set({ createDialogOpen: open }),
 
   loadChannels: async (workspaceId) => {
     const { workspaceId: currentWid } = get();
