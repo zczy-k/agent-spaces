@@ -64,6 +64,7 @@
   "aboutDevMode": "Update checking is disabled in development mode",
   "shortcuts": "Keyboard Shortcuts",
   "openCommandPalette": "Open Command Palette",
+  "toggleSidebar": "Toggle Sidebar",
   "recordingShortcut": "Press shortcut...",
   "recordShortcut": "Record Shortcut",
   "resetShortcut": "Reset Shortcut"

@@ -14,6 +14,11 @@ export const SHORTCUT_DEFS: ShortcutDef[] = [
     defaultKeys: 'ctrl+shift+p',
     labelKey: 'openCommandPalette',
   },
+  {
+    id: 'toggleSidebar',
+    defaultKeys: 'shift+tab',
+    labelKey: 'toggleSidebar',
+  },
 ];
 
 interface ShortcutState {

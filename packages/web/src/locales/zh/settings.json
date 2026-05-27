@@ -64,6 +64,7 @@
   "aboutDevMode": "开发模式下更新检查已禁用",
   "shortcuts": "快捷键",
   "openCommandPalette": "打开命令窗口",
+  "toggleSidebar": "切换侧边栏",
   "recordingShortcut": "按下快捷键...",
   "recordShortcut": "录制快捷键",
   "resetShortcut": "重置快捷键"

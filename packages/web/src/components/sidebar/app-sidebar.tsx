@@ -58,6 +58,7 @@ import { useCommandPalette } from "@/stores/command-palette";
 import { useChannelStore } from "@/stores/channel";
 import { useIssueStore } from "@/stores/issue";
 import { useMobilePanelStore } from "@/stores/mobile-panel";
+import { useKeyboardShortcuts } from "@/stores/keyboard-shortcuts";
 import type { Workspace } from "@agent-spaces/shared";
 import { isWorkspacePath, workspaceIdFromLocation } from "@/lib/routes";
 
@@ -67,6 +68,7 @@ function buildWorkspaceHref(id: string) {
 
 export function DashboardSidebar() {
   const { state, toggleSidebar } = useSidebar();
+  const { matchesEvent } = useKeyboardShortcuts();
   const pathname = usePathname();
   const router = useRouter();
   const ts = useTranslations('sidebar');
@@ -149,6 +151,18 @@ export function DashboardSidebar() {
       window.removeEventListener('open-dialog', dialogHandler);
     };
   }, [toggleSidebar, isMobile]);
+
+  // 快捷键：切换侧边栏
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (matchesEvent('toggleSidebar', e)) {
+        e.preventDefault();
+        toggleSidebar();
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [toggleSidebar, matchesEvent]);
 
   // 注册命令面板快捷命令
   const registerCommands = useCommandPalette((s) => s.registerMany);
