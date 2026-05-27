@@ -61,5 +61,10 @@
   "aboutUpdateConfirmTitle": "Confirm Update",
   "aboutUpdateConfirmDesc": "The application will stop and restart to install the update. Make sure all work is saved.",
   "aboutUpdating": "Updating and restarting...",
-  "aboutDevMode": "Update checking is disabled in development mode"
+  "aboutDevMode": "Update checking is disabled in development mode",
+  "shortcuts": "Keyboard Shortcuts",
+  "openCommandPalette": "Open Command Palette",
+  "recordingShortcut": "Press shortcut...",
+  "recordShortcut": "Record Shortcut",
+  "resetShortcut": "Reset Shortcut"
 }

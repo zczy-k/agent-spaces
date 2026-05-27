@@ -12,24 +12,26 @@ import {
   CommandShortcut,
 } from '@/components/ui/command';
 import { useCommandPalette } from '@/stores/command-palette';
+import { useKeyboardShortcuts } from '@/stores/keyboard-shortcuts';
 import { matchProvider, searchProviders, type SearchResult } from '@/stores/search-commands';
 import { useTranslations } from 'next-intl';
 
 export function CommandPalette() {
   const t = useTranslations('commandPalette');
   const { open, setOpen, toggle, commands } = useCommandPalette();
+  const { matchesEvent } = useKeyboardShortcuts();
   const [query, setQuery] = useState('');
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      if (matchesEvent('commandPalette', e)) {
         e.preventDefault();
         toggle();
       }
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, [toggle]);
+  }, [toggle, matchesEvent]);
 
   // Reset search when closing
   useEffect(() => {
