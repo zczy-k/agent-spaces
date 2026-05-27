@@ -9,8 +9,12 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuShortcut,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
 import type * as Monaco from 'monaco-editor';
+import { useTerminalStore } from "@/stores/terminal";
 
 interface EditorMenuBarProps {
   editorRef: React.RefObject<Monaco.editor.IStandaloneCodeEditor | null>;
@@ -125,6 +129,33 @@ export function EditorMenuBar({ editorRef, workspaceId, isReadOnly, onToggleRead
           <DropdownMenuItem onClick={onZoomReset} disabled={fontSize === 13}>
             {t('zoomReset')} ({fontSize}px)
           </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger className="px-3 h-full text-xs hover:bg-accent outline-none cursor-default">
+          {t('menuRun')}
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" sideOffset={0}>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>{t('openInTerminal')}</DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              <DropdownMenuItem onClick={() => {
+                const state = useEditorStore.getState();
+                const file = state.activeFilePath;
+                if (!file) return;
+                const dir = file.includes('/') ? file.substring(0, file.lastIndexOf('/')) : '';
+                useTerminalStore.getState().createSession(undefined, dir || undefined);
+              }}>
+                {t('openCurrentDir')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => {
+                useTerminalStore.getState().createSession();
+              }}>
+                {t('openWorkspaceRoot')}
+              </DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
         </DropdownMenuContent>
       </DropdownMenu>
 
