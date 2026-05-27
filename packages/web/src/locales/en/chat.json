@@ -21,7 +21,12 @@
     "unarchive": "Unarchive",
     "archived": "Archived",
     "clearArchived": "Clear Archived",
-    "clearArchivedConfirm": "Delete {count} archived {count, plural, one {channel} other {channels}}? This cannot be undone."
+    "clearArchivedConfirm": "Delete {count} archived {count, plural, one {channel} other {channels}}? This cannot be undone.",
+    "initialMessage": "Initial message",
+    "initialMessagePlaceholder": "Type a message to send to the member after creation",
+    "created": "Channel created",
+    "createFailed": "Failed to create channel",
+    "creating": "Creating..."
   },
   "channelType": {
     "general": "General",

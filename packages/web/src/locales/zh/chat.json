@@ -22,7 +22,12 @@
     "unarchive": "取消归档",
     "archived": "已归档",
     "clearArchived": "清空归档",
-    "clearArchivedConfirm": "确认删除 {count} 个已归档的频道？此操作不可撤销。"
+    "clearArchivedConfirm": "确认删除 {count} 个已归档的频道？此操作不可撤销。",
+    "initialMessage": "初始消息",
+    "initialMessagePlaceholder": "输入消息，创建后自动发送给成员",
+    "created": "频道已创建",
+    "createFailed": "创建频道失败",
+    "creating": "创建中..."
   },
   "channelType": {
     "general": "通用",

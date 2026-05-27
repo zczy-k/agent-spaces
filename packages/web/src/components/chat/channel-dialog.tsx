@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { SearchSelect } from '@/components/ui/search-select';
 import { MemberPicker } from '@/components/common/member-picker';
 import { getMemberDisplayName } from '@/lib/agent-members';
 
@@ -23,25 +22,23 @@ interface ChannelDialogProps {
   workspaceId: string;
   channel?: Channel | null;
   agents?: AgentConfig[];
-  onSubmit: (data: { name: string; type: Channel['type']; members: string[] }) => void;
+  onSubmit: (data: { name: string; type: Channel['type']; members: string[]; initialMessage?: string }) => void;
 }
 
 export function ChannelDialog({ open, onOpenChange, channel, agents = [], onSubmit }: ChannelDialogProps) {
   const t = useTranslations('chat');
   const tc = useTranslations('common');
-  const channelTypeOptions = [
-    { value: 'general', label: t('channel.general') },
-    { value: 'issue', label: t('channel.issue') },
-    { value: 'agent', label: t('channel.agent') },
-  ];
   const [name, setName] = useState('');
   const [type, setType] = useState<Channel['type']>('general');
   const [members, setMembers] = useState<string[]>([]);
+  const [initialMessage, setInitialMessage] = useState('');
   const [dialogKey, setDialogKey] = useState(0);
 
   const candidates = agents
     .filter((a) => a.enabled !== false)
     .map((a, i) => ({ id: a.id, label: getMemberDisplayName(agents, a.id), sortIndex: i }));
+
+  const singleMember = members.length === 1 ? members[0] : null;
 
   useEffect(() => {
     if (!open) return;
@@ -54,8 +51,9 @@ export function ChannelDialog({ open, onOpenChange, channel, agents = [], onSubm
       } else {
         setName('');
         setType('general');
-        setMembers(['user']);
+        setMembers([]);
       }
+      setInitialMessage('');
       setDialogKey((k) => k + 1);
     });
   }, [open, channel]);
@@ -67,7 +65,12 @@ export function ChannelDialog({ open, onOpenChange, channel, agents = [], onSubm
   };
 
   const handleSubmit = () => {
-    onSubmit({ name: name.trim(), type, members });
+    onSubmit({
+      name: name.trim(),
+      type,
+      members,
+      initialMessage: singleMember && initialMessage.trim() ? initialMessage.trim() : undefined,
+    });
     onOpenChange(false);
   };
 
@@ -91,16 +94,6 @@ export function ChannelDialog({ open, onOpenChange, channel, agents = [], onSubm
               onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
             />
           </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">{t('channel.type')}</label>
-            <SearchSelect
-              value={type}
-              onChange={(v) => setType(v as Channel['type'])}
-              options={channelTypeOptions}
-              allowCustom={false}
-              placeholder={t('channel.selectType')}
-            />
-          </div>
           <MemberPicker
             key={dialogKey}
             candidates={candidates}
@@ -110,6 +103,17 @@ export function ChannelDialog({ open, onOpenChange, channel, agents = [], onSubm
             searchPlaceholder={t('channel.addMember')}
             emptyText={t('channel.noAgents') || 'No agents found'}
           />
+          {singleMember && !channel && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{t('channel.initialMessage')}</label>
+              <Input
+                value={initialMessage}
+                onChange={(e) => setInitialMessage(e.target.value)}
+                placeholder={t('channel.initialMessagePlaceholder')}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }}
+              />
+            </div>
+          )}
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>{tc('cancel')}</Button>
             <Button onClick={handleSubmit}>

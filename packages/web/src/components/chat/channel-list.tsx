@@ -68,7 +68,7 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
   const tc = useTranslations('common');
   const {
     channels, activeChannelId, messages,
-    loadChannels, createChannel, updateChannel, deleteChannel, setActiveChannel, upsertChannel,
+    loadChannels, createChannel, updateChannel, deleteChannel, setActiveChannel, upsertChannel, sendMessage,
   } = useChannelStore();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
@@ -209,7 +209,7 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
     setDeleteTarget(null);
   };
 
-  const handleSubmit = async (data: { name: string; type: Channel['type']; members: string[] }) => {
+  const handleSubmit = async (data: { name: string; type: Channel['type']; members: string[]; initialMessage?: string }) => {
     const memberIds = normalizeChannelMembersToAgentIds(agents, data.members);
     if (editingChannel) {
       await updateChannel(workspaceId, editingChannel.id, {
@@ -219,6 +219,16 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
       });
     } else {
       await createChannel(workspaceId, data.name, data.type, memberIds);
+      if (data.initialMessage && memberIds.length === 1) {
+        const agent = agents.find((a) => a.id === memberIds[0]);
+        const agentName = agent?.name || memberIds[0];
+        const { channels } = useChannelStore.getState();
+        const created = channels[channels.length - 1];
+        if (created) {
+          const mentionHtml = `<span data-type="mention" data-id="${memberIds[0]}" data-label="${agentName}"></span>`;
+          sendMessage(workspaceId, created.id, `${mentionHtml} ${data.initialMessage}`, memberIds);
+        }
+      }
     }
   };
 

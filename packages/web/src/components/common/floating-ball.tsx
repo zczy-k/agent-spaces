@@ -70,6 +70,15 @@ export const FloatingBall = forwardRef<HTMLDivElement, FloatingBallProps>(
       posRef.current = initial;
       setPos(initial);
       setMounted(true);
+
+      // 恢复边缘自动隐藏
+      const w = window.innerWidth;
+      if (initial.x <= snapThreshold || initial.x >= w - size - snapThreshold) {
+        const edge: 'left' | 'right' = initial.x < w / 2 ? 'left' : 'right';
+        edgeRef.current = edge;
+        snappedEdge.current = edge;
+        minimizeTimer.current = setTimeout(() => doMinimize(edge), minimizeDelay);
+      }
     }, [lsKey, size, defaultPosition]);
 
     const doMinimize = useCallback((edge: 'left' | 'right') => {
