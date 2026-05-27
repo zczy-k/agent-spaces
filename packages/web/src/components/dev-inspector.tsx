@@ -82,14 +82,10 @@ export function DevInspector() {
       if (!(target instanceof HTMLElement)) return;
 
       const codeInfo = getCodeInfo(target);
-      console.debug("[react-dev-inspector] native click", codeInfo);
       setActive(false);
 
       if (codeInfo) {
         gotoServerEditor(codeInfo);
-      }
-      else {
-        console.warn("[react-dev-inspector] no React source info found", target);
       }
     };
 
@@ -104,19 +100,9 @@ export function DevInspector() {
     <>
       <Inspector
         active={active}
-        onActiveChange={(nextActive) => {
-          console.debug("[react-dev-inspector] active", nextActive);
-          setActive(nextActive);
-        }}
-        onClickElement={({ codeInfo, fiber, name }) => {
-          console.debug("[react-dev-inspector] click", {
-            codeInfo,
-            hasFiber: Boolean(fiber),
-            name,
-          });
-        }}
+        onActiveChange={setActive}
+        onClickElement={() => {}}
         onInspectElement={({ codeInfo }) => {
-          console.debug("[react-dev-inspector] inspect", codeInfo);
           gotoServerEditor(codeInfo);
         }}
       />
