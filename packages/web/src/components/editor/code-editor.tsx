@@ -8,6 +8,7 @@ import "@/components/editor/code-editor-clipboard";
 import { applyRegisteredActions } from "@/lib/monaco-action-registry";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useEditorStore, isCommitDiffPath, getCommitHashFromPath, getMediaType } from "@/stores/editor";
+import type { OpenFile } from "@/stores/editor";
 import { EditorTabs } from "./editor-tabs";
 import { EditorMenuBar } from "./code-editor-menu-bar";
 import { useTheme } from "@/components/theme-provider";
