@@ -22,7 +22,7 @@ export function startScheduler(workspaceId: string, ctx: AgentContext): void {
   const tick = async () => {
     // 检查 workspace 是否关闭了自动处理
     const workspace = workspaceService.getById(workspaceId);
-    if (workspace && workspace.autoProcessIssues === false) {
+    if (workspace && workspace.autoProcessIssues !== true) {
       console.log(`[scheduler:${workspaceId}] auto-processing disabled for this workspace, skip`);
       return;
     }

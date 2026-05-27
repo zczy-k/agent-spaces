@@ -25,7 +25,7 @@ interface WorkspaceInfoSectionProps {
 
 export function WorkspaceInfoSection({ workspace, channelCount, issueCount }: WorkspaceInfoSectionProps) {
   const t = useTranslations('projectSettings');
-  const [autoProcess, setAutoProcess] = useState(workspace.autoProcessIssues !== false);
+  const [autoProcess, setAutoProcess] = useState(workspace.autoProcessIssues === true);
   const [hooksEnabled, setHooksEnabled] = useState(workspace.hooksEnabled !== false);
   const [saving, setSaving] = useState(false);
 
@@ -39,7 +39,7 @@ export function WorkspaceInfoSection({ workspace, channelCount, issueCount }: Wo
         body: JSON.stringify({ autoProcessIssues: checked }),
       });
       const updated: Workspace = await res.json();
-      setAutoProcess(updated.autoProcessIssues !== false);
+      setAutoProcess(updated.autoProcessIssues === true);
     } finally {
       setSaving(false);
     }
