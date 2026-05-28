@@ -177,6 +177,21 @@ export function DiffViewer({
 
   const handleMount: DiffOnMount = useCallback((editor) => {
     editorRef.current = editor;
+    // 左侧面板占 35%
+    const container = editor.getContainerDomNode();
+    const applyRatio = () => {
+      const views = container.querySelectorAll<HTMLElement>('.split-view-view');
+      if (views.length >= 2) {
+        const sashEl = container.querySelector<HTMLElement>('.split-view-sash-view');
+        const sashWidth = sashEl?.offsetWidth ?? 4;
+        const available = container.offsetWidth - sashWidth;
+        views[0].style.width = `${Math.round(available * 0.35)}px`;
+        views[1].style.width = `${Math.round(available * 0.65)}px`;
+      }
+    };
+    requestAnimationFrame(applyRatio);
+    const ro = new ResizeObserver(() => requestAnimationFrame(applyRatio));
+    ro.observe(container);
   }, []);
 
   useEffect(() => {

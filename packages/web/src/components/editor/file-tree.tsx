@@ -1,7 +1,8 @@
 "use client"
 
 import { ChevronRightIcon, FileIcon, FolderIcon, FolderOpenIcon, Trash2, ExternalLink, Upload, Copy, FolderPlus, FilePlus, AlertTriangle, Pencil, MoveRight, Terminal } from "lucide-react"
-import { createContext, Fragment, type CSSProperties, type DragEvent, type HTMLAttributes, type ReactNode, useContext, useState, useCallback, useEffect, useRef } from "react"
+import { createContext, type CSSProperties, type DragEvent, type HTMLAttributes, type ReactNode, useContext, useState, useCallback, useEffect, useRef } from "react"
+import { useHeTree, type Stat } from "he-tree-react"
 /**
  * @title React AI File Tree
  * @credit {"name": "Vercel", "url": "https://ai-sdk.dev/elements", "license": {"name": "Apache License 2.0", "url": "https://www.apache.org/licenses/LICENSE-2.0"}}
@@ -550,122 +551,36 @@ export type NestedTreeRowProps = HTMLAttributes<HTMLDivElement> & {
   style?: CSSProperties
 }
 
-export type NestedTreeRenderArgs<TNode> = {
-  node: TNode
-  state: NestedTreeRenderState
-  rowProps: NestedTreeRowProps
-  children: ReactNode
+type HeTreeFileNode = FileNode & Record<string, unknown>
+type HeTreePlaceholder = {
+  parentStat: Stat<HeTreeFileNode> | null
+  level: number
+  index: number
+} | null | undefined
+
+const asFileTreeDragEvent = (event: DragEvent<HTMLElement>) => (
+  event as unknown as DragEvent<HTMLDivElement>
+)
+
+const canDropIntoDirectory = (sourcePath: string | null | undefined, targetDir: string) => {
+  if (!sourcePath) return true
+  return targetDir !== sourcePath && !targetDir.startsWith(`${sourcePath}/`)
 }
 
-export type NestedTreeProps<TNode> = {
-  nodes: TNode[]
-  getNodeId: (node: TNode) => string
-  getChildren: (node: TNode) => TNode[]
-  renderNode: (args: NestedTreeRenderArgs<TNode>) => ReactNode
-  activeId?: string | null
-  expandedIds?: Record<string, boolean>
-  draggedOverId?: string | null
-  level?: number
-  indent?: number
-  onDragStart?: (event: DragEvent<HTMLDivElement>, nodeId: string) => void
-  onDragOver?: (event: DragEvent<HTMLDivElement>, nodeId: string) => void
-  onDragLeave?: (event: DragEvent<HTMLDivElement>) => void
-  onDrop?: (event: DragEvent<HTMLDivElement>, nodeId: string) => void
-  onDragEnd?: (event: DragEvent<HTMLDivElement>) => void
-  shouldRenderChildren?: (node: TNode, state: NestedTreeRenderState) => boolean
-}
-
-export function NestedTree<TNode>({
-  nodes,
-  getNodeId,
-  getChildren,
-  renderNode,
-  activeId,
-  expandedIds,
-  draggedOverId,
-  level = 0,
-  indent = 12,
-  onDragStart,
-  onDragOver,
-  onDragLeave,
-  onDrop,
-  onDragEnd,
-  shouldRenderChildren,
-}: NestedTreeProps<TNode>) {
-  return nodes.map((node) => {
-    const nodeId = getNodeId(node)
-    const childNodes = getChildren(node)
-    const state: NestedTreeRenderState = {
-      level,
-      hasChildren: childNodes.length > 0,
-      isExpanded: expandedIds ? !!expandedIds[nodeId] : true,
-      isActive: activeId === nodeId,
-      isDraggedOver: draggedOverId === nodeId,
-    }
-    const rowProps: NestedTreeRowProps = {
-      draggable: !!onDragStart,
-      style: { paddingLeft: `${Math.max(4, level * indent)}px` },
-      onDragStart: onDragStart
-        ? (event) => {
-            event.stopPropagation()
-            onDragStart(event, nodeId)
-          }
-        : undefined,
-      onDragOver: onDragOver
-        ? (event) => {
-            event.stopPropagation()
-            onDragOver(event, nodeId)
-          }
-        : undefined,
-      onDragLeave,
-      onDrop: onDrop
-        ? (event) => {
-            event.stopPropagation()
-            onDrop(event, nodeId)
-          }
-        : undefined,
-      onDragEnd: onDragEnd
-        ? (event) => {
-            event.stopPropagation()
-            onDragEnd(event)
-          }
-        : undefined,
-    }
-    const shouldShowChildren = state.hasChildren && (shouldRenderChildren?.(node, state) ?? true)
-
-    return (
-      <Fragment key={nodeId}>
-        {renderNode({
-          node,
-          state,
-          rowProps,
-          children: shouldShowChildren ? (
-            <NestedTree
-              nodes={childNodes}
-              getNodeId={getNodeId}
-              getChildren={getChildren}
-              renderNode={renderNode}
-              activeId={activeId}
-              expandedIds={expandedIds}
-              draggedOverId={draggedOverId}
-              level={level + 1}
-              indent={indent}
-              onDragStart={onDragStart}
-              onDragOver={onDragOver}
-              onDragLeave={onDragLeave}
-              onDrop={onDrop}
-              onDragEnd={onDragEnd}
-              shouldRenderChildren={shouldRenderChildren}
-            />
-          ) : null,
-        })}
-      </Fragment>
-    )
-  })
+const hasIgnoredParent = (stat: Stat<HeTreeFileNode>) => {
+  let parent = stat.parentStat
+  while (parent) {
+    if (parent.node.ignored) return true
+    parent = parent.parentStat
+  }
+  return false
 }
 
 export function FileTreeNodes({ nodes }: { nodes: FileNode[] }) {
   const {
+    expandedPaths,
+    togglePath,
+    onLoadDirectory,
     draggedOverPath,
     onItemDragStart,
     onItemDragOver,
@@ -678,77 +593,148 @@ export function FileTreeNodes({ nodes }: { nodes: FileNode[] }) {
     onRootDropLineDragLeave,
     onRootDropLineDrop,
   } = useContext(FileTreeContext)
+  const draggingPathRef = useRef<string | null>(null)
+  const dragOpenedPathsRef = useRef(new Set<string>())
+  const placeholderRef = useRef<HeTreePlaceholder>(undefined)
 
-  return (
-    <NestedTree
-      nodes={nodes}
-      getNodeId={(node) => node.path}
-      getChildren={(node) => node.type === "directory" ? node.children ?? [] : []}
-      draggedOverId={draggedOverPath}
-      onDragStart={onItemDragStart}
-      onDragOver={onItemDragOver}
-      onDragLeave={onItemDragLeave}
-      onDrop={onItemDrop}
-      onDragEnd={onItemDragEnd}
-      renderNode={({ node, state, rowProps, children }) => {
-        const rootDropLineId = rootDropTargetId ? `${rootDropTargetId}:${node.path}` : undefined
-        const rootDropLine = state.level === 0 && node.type === "directory" && onRootDropLineDrop ? (
-          <div
-            className="flex h-1.5 items-center px-2"
-            draggable={false}
-            onDragEnterCapture={rootDropLineId ? (event) => onRootDropLineDragEnter?.(event, rootDropLineId) : undefined}
-            onDragOverCapture={rootDropLineId ? (event) => onRootDropLineDragOver?.(event, rootDropLineId) : undefined}
-            onDragLeaveCapture={rootDropLineId ? (event) => onRootDropLineDragLeave?.(event, rootDropLineId) : undefined}
-            onDropCapture={rootDropLineId ? (event) => onRootDropLineDrop(event, rootDropLineId) : undefined}
-            onDragEnter={rootDropLineId ? (event) => onRootDropLineDragEnter?.(event, rootDropLineId) : undefined}
-            onDragOver={rootDropLineId ? (event) => onRootDropLineDragOver?.(event, rootDropLineId) : undefined}
-            onDragLeave={rootDropLineId ? (event) => onRootDropLineDragLeave?.(event, rootDropLineId) : undefined}
-            onDrop={rootDropLineId ? (event) => onRootDropLineDrop(event, rootDropLineId) : undefined}
-          >
-            <div
-              className={cn(
-                "h-px flex-1 rounded-full bg-primary opacity-0 transition-opacity",
-                rootDropLineId && draggedOverPath === rootDropLineId && "opacity-100",
-              )}
-            />
+  const tree = useHeTree<HeTreeFileNode>({
+    data: nodes as HeTreeFileNode[],
+    dataType: "tree",
+    idKey: "path",
+    childrenKey: "children",
+    indent: 16,
+    openIds: [...expandedPaths],
+    dragOpen: true,
+    onChange: () => undefined,
+    canDrop: (stat) => {
+      if (stat.node.type !== "directory") return undefined
+      return canDropIntoDirectory(draggingPathRef.current, stat.node.path)
+    },
+    canDropToRoot: () => true,
+    onDragStart: (event, stat) => {
+      draggingPathRef.current = stat.node.path
+      onItemDragStart?.(asFileTreeDragEvent(event), stat.node.path)
+    },
+    onDragOver: (event, stat) => {
+      onItemDragOver?.(asFileTreeDragEvent(event), stat.node.path)
+    },
+    onDragEnd: (event, _stat) => {
+      const dragEvent = asFileTreeDragEvent(event)
+      const placeholder = placeholderRef.current
+
+      if (!placeholder) {
+        onItemDragEnd?.(dragEvent)
+        draggingPathRef.current = null
+        dragOpenedPathsRef.current.clear()
+        return false
+      }
+      if (placeholder.parentStat) {
+        onItemDrop?.(dragEvent, placeholder.parentStat.node.path)
+      } else if (rootDropTargetId) {
+        onRootDropLineDrop?.(dragEvent, rootDropTargetId)
+      }
+
+      onItemDragEnd?.(dragEvent)
+      draggingPathRef.current = null
+      dragOpenedPathsRef.current.clear()
+      return false
+    },
+    onDragOpen: (stat) => {
+      if (stat.node.type !== "directory" || expandedPaths.has(stat.node.path)) return
+      if (!dragOpenedPathsRef.current.has(stat.node.path)) {
+        dragOpenedPathsRef.current.add(stat.node.path)
+        togglePath(stat.node.path)
+        onLoadDirectory?.(stat.node.path)
+      }
+    },
+    renderNodeBox: ({ stat, attrs, isPlaceholder }) => {
+      if (isPlaceholder) {
+        return (
+          <div key="__file_tree_drag_placeholder__" {...attrs} draggable={false} className="flex h-1.5 items-center px-2">
+            <div className="h-px flex-1 rounded-full bg-primary opacity-100 transition-opacity" />
           </div>
-        ) : null
+        )
+      }
 
-        return node.type === "directory" ? (
-          <>
-            {rootDropLine}
-            <FileTreeFolder
-              key={node.path}
-              {...rowProps}
-              style={undefined}
-              path={node.path}
-              name={node.name}
-              ignored={node.ignored}
-              className={cn(
-                state.isDraggedOver && "rounded border border-dashed border-primary/40 bg-primary/5",
-                rowProps.className,
-              )}
-              folderIcon={(isOpen) => <FolderIconImg name={node.name} isOpen={isOpen} />}
-            >
-              {children}
-            </FileTreeFolder>
-          </>
-        ) : (
-          <FileTreeFile
-            key={node.path}
-            {...rowProps}
-            style={undefined}
-            path={node.path}
-            name={node.name}
-            icon={<FileIconImg name={node.name} />}
-            ignored={node.ignored}
+      const node = stat.node
+      const isIgnored = node.ignored || hasIgnoredParent(stat)
+      const state: NestedTreeRenderState = {
+        level: stat.level - 1,
+        hasChildren: node.type === "directory" && (node.children?.length ?? 0) > 0,
+        isExpanded: expandedPaths.has(node.path),
+        isActive: false,
+        isDraggedOver: draggedOverPath === node.path,
+      }
+      const rowProps: NestedTreeRowProps = {
+        ...attrs,
+        style: attrs.style,
+        onDragLeave: onItemDragLeave,
+      }
+      const levelPadding = Math.max(0, state.level * 16)
+      const rootDropLineId = rootDropTargetId ? `${rootDropTargetId}:${node.path}` : undefined
+      const rootDropLine = state.level === 0 && node.type === "directory" && onRootDropLineDrop ? (
+        <div
+          className="flex h-1.5 items-center px-2"
+          draggable={false}
+          onDragEnterCapture={rootDropLineId ? (event) => onRootDropLineDragEnter?.(event, rootDropLineId) : undefined}
+          onDragOverCapture={rootDropLineId ? (event) => onRootDropLineDragOver?.(event, rootDropLineId) : undefined}
+          onDragLeaveCapture={rootDropLineId ? (event) => onRootDropLineDragLeave?.(event, rootDropLineId) : undefined}
+          onDropCapture={rootDropLineId ? (event) => onRootDropLineDrop(event, rootDropLineId) : undefined}
+          onDragEnter={rootDropLineId ? (event) => onRootDropLineDragEnter?.(event, rootDropLineId) : undefined}
+          onDragOver={rootDropLineId ? (event) => onRootDropLineDragOver?.(event, rootDropLineId) : undefined}
+          onDragLeave={rootDropLineId ? (event) => onRootDropLineDragLeave?.(event, rootDropLineId) : undefined}
+          onDrop={rootDropLineId ? (event) => onRootDropLineDrop(event, rootDropLineId) : undefined}
+        >
+          <div
             className={cn(
-              state.isDraggedOver && "border border-dashed border-primary/40 bg-primary/5",
-              rowProps.className,
+              "h-px flex-1 rounded-full bg-primary opacity-0 transition-opacity",
+              rootDropLineId && draggedOverPath === rootDropLineId && "opacity-100",
             )}
           />
-        )
-      }}
-    />
+        </div>
+      ) : null
+
+      return node.type === "directory" ? (
+        <div key={node.path}>
+          {rootDropLine}
+          <FileTreeFolder
+            {...rowProps}
+            style={{ paddingLeft: levelPadding }}
+            path={node.path}
+            name={node.name}
+            ignored={isIgnored}
+            className={cn(
+              state.isDraggedOver && "rounded border border-dashed border-primary/40 bg-primary/5",
+              rowProps.className,
+            )}
+            folderIcon={(isOpen) => <FolderIconImg name={node.name} isOpen={isOpen} />}
+          />
+        </div>
+      ) : (
+        <FileTreeFile
+          key={node.path}
+          {...rowProps}
+          style={{ paddingLeft: levelPadding }}
+          path={node.path}
+          name={node.name}
+          icon={<FileIconImg name={node.name} />}
+          ignored={isIgnored}
+          className={cn(
+            state.isDraggedOver && "border border-dashed border-primary/40 bg-primary/5",
+            rowProps.className,
+          )}
+        />
+      )
+    },
+  })
+
+  placeholderRef.current = tree.placeholder
+
+  return (
+    tree.renderTree({
+      className: "contents",
+      listClassName: "contents",
+      listInnerClassName: "contents",
+    })
   )
 }
