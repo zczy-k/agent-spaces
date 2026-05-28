@@ -34,6 +34,7 @@ import {
   X,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Empty, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty"
 
 // Types
 
@@ -397,9 +398,11 @@ function LogViewerTerminal({
         aria-label={title}
       >
         {filteredEntries.length === 0 ? (
-          <div className="flex items-center justify-center py-10 text-sm text-muted-foreground">
-            {searchQuery ? "No matching log entries." : "No log entries."}
-          </div>
+          <Empty className="py-10">
+            <EmptyMedia variant="icon"><Terminal className="size-4" /></EmptyMedia>
+            <EmptyTitle>{searchQuery ? "No matching log entries" : "No log entries"}</EmptyTitle>
+            <EmptyDescription>{searchQuery ? "Try adjusting your search query" : "Logs will appear here as events occur"}</EmptyDescription>
+          </Empty>
         ) : (
           filteredEntries.map((entry, i) => {
             const colors = resolveLevelColors(entry.level, colorScale)
@@ -503,9 +506,11 @@ function LogViewerMinimal({
         aria-label="Log output"
       >
         {entries.length === 0 ? (
-          <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
-            No log entries.
-          </div>
+          <Empty className="py-8">
+            <EmptyMedia variant="icon"><Terminal className="size-4" /></EmptyMedia>
+            <EmptyTitle>No log entries</EmptyTitle>
+            <EmptyDescription>Logs will appear here as events occur</EmptyDescription>
+          </Empty>
         ) : (
           entries.map((entry, i) => {
             const colors = resolveLevelColors(entry.level, colorScale)
@@ -738,21 +743,26 @@ function LogViewerFilterable({
         aria-label={title}
       >
         {filteredEntries.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-1 py-10 text-sm text-muted-foreground">
-            <span>No matching log entries.</span>
-            {(searchQuery || activeLevels.size < levels.length) && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchQuery("")
-                  setActiveLevels(new Set(levels))
-                }}
-                className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-              >
-                Reset filters
-              </button>
-            )}
-          </div>
+          <Empty className="py-10">
+            <EmptyMedia variant="icon"><Terminal className="size-4" /></EmptyMedia>
+            <EmptyTitle>No matching log entries</EmptyTitle>
+            <EmptyDescription>
+              {searchQuery || activeLevels.size < levels.length ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery("")
+                    setActiveLevels(new Set(levels))
+                  }}
+                  className="underline underline-offset-2 hover:text-foreground"
+                >
+                  Reset filters
+                </button>
+              ) : (
+                "Logs will appear here as events occur"
+              )}
+            </EmptyDescription>
+          </Empty>
         ) : (
           filteredEntries.map((entry, i) => {
             const colors = resolveLevelColors(entry.level, colorScale)

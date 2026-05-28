@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { tauriNavigate } from "@/lib/navigate";
@@ -76,6 +76,15 @@ export function DashboardSidebar() {
   const tc = useTranslations('common');
 
   const isCollapsed = state === "collapsed";
+  const [userToggled, setUserToggled] = useState(false);
+  const isFirstMount = useRef(true);
+  useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
+    }
+    setUserToggled(true);
+  }, [isCollapsed]);
   const isWorkspace = isWorkspacePath(pathname);
   const isMobile = useIsMobile();
   const currentWorkspaceId = workspaceIdFromLocation(pathname, typeof window !== "undefined" ? window.location.search : "");
@@ -451,9 +460,9 @@ export function DashboardSidebar() {
             "flex items-center gap-2",
             isCollapsed ? "flex-row md:flex-col-reverse" : "flex-row"
           )}
-          initial={{ opacity: 0 }}
+          initial={userToggled ? { opacity: 0 } : false}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.8 }}
+          transition={userToggled ? { duration: 0.8 } : { duration: 0 }}
         >
           <AnimatedThemeToggler />
           <NotificationsPopover workspaceId={currentWorkspaceId ?? ''} />
