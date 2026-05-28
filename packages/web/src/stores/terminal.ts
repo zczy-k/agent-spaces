@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { WorkspaceWS } from '@/lib/ws';
 import { toast } from 'sonner';
+import { disposeAllTerminalSessions } from '@/lib/terminal-registry';
 
 // Buffer cache for terminal session reconnection, consumed by TerminalInstance
 const sessionBufferCache = new Map<string, string>();
@@ -52,6 +53,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
     if (state._initialized && state.ws === ws) return;
     const workspaceChanged = state.workspaceId !== ws.workspaceId;
     if (workspaceChanged) {
+      disposeAllTerminalSessions(state.ws);
       sessionBufferCache.clear();
     }
     set({

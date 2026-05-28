@@ -16,6 +16,8 @@ interface SearchPanelProps {
   workspaceId: string;
 }
 
+const FILE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.json', '.md', '.css', '.html', '.py', '.go', '.rs'];
+
 interface GroupedResults {
   [file: string]: CodeSearchResult[];
 }
@@ -26,6 +28,7 @@ export function SearchPanel({ workspaceId }: SearchPanelProps) {
   const [query, setQuery] = useState("");
   const [isRegex, setIsRegex] = useState(false);
   const [isCaseSensitive, setIsCaseSensitive] = useState(false);
+  const [extFilters, setExtFilters] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [codeResults, setCodeResults] = useState<GroupedResults>({});
   const [codeTotal, setCodeTotal] = useState(0);
@@ -46,6 +49,10 @@ export function SearchPanel({ workspaceId }: SearchPanelProps) {
         regex: String(isRegex),
         caseSensitive: String(isCaseSensitive),
       });
+      if (extFilters.size > 0) {
+        const patterns = [...extFilters].map(ext => `*${ext}`).join(',');
+        params.set('filePattern', patterns);
+      }
       const res = await fetch(`/api/workspaces/${workspaceId}/search/code?${params}`);
       const data = await res.json();
       const results: CodeSearchResult[] = data.results || [];
@@ -65,7 +72,7 @@ export function SearchPanel({ workspaceId }: SearchPanelProps) {
     } finally {
       setLoading(false);
     }
-  }, [workspaceId, isRegex, isCaseSensitive]);
+  }, [workspaceId, isRegex, isCaseSensitive, extFilters]);
 
   const handleInput = useCallback((value: string) => {
     setQuery(value);
@@ -75,7 +82,7 @@ export function SearchPanel({ workspaceId }: SearchPanelProps) {
 
   useEffect(() => {
     if (query.trim()) doSearch(query);
-  }, [doSearch, isCaseSensitive, isRegex, query]);
+  }, [doSearch, isCaseSensitive, isRegex, extFilters, query]);
 
   const toggleFile = (file: string) => {
     setExpandedFiles((prev) => {
@@ -121,6 +128,24 @@ export function SearchPanel({ workspaceId }: SearchPanelProps) {
           >
             <Regex className="size-3" />
           </button>
+          <div className="ml-1 flex items-center gap-px flex-wrap">
+            {FILE_EXTENSIONS.map(ext => (
+              <button
+                key={ext}
+                onClick={() => setExtFilters(prev => {
+                  const next = new Set(prev);
+                  if (next.has(ext)) next.delete(ext); else next.add(ext);
+                  return next;
+                })}
+                className={cn(
+                  "px-1 py-0 rounded text-[10px] font-mono leading-4 cursor-pointer",
+                  extFilters.has(ext) ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                )}
+              >
+                {ext}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

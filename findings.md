@@ -45,3 +45,16 @@
 - `packages/server/src/ws/agent-runner.ts`
 - `packages/server/src/ws/agent-prompt.ts`
 - `docs/function-call-tools.md`
+
+# Web Memory Usage Findings
+
+## Likely Retention Points
+- `packages/web/src/components/terminal/terminal-instance.tsx` keeps a global `terminalRegistry` alive across mounts; old session terminals are only disposed when the session is explicitly removed.
+- `packages/web/src/stores/terminal.ts` clears session state on workspace switch, but does not clear the global terminal registry, so old xterm instances can survive a workspace change.
+- `packages/web/src/stores/activity-log.ts` starts websocket listeners per workspace and exposes `stopActivityLogListeners()`, but current callers do not clean them up on unmount.
+- `packages/web/src/components/layout/workspace-shell.tsx` starts activity-log listeners and loads workspace state on mount, making it the right place to dispose listeners on unmount.
+
+## Reporting Approach
+- Use a lightweight periodic snapshot rather than a heavy profiler.
+- Prefer counts and aggregate string lengths from stores plus `performance.memory` when the browser exposes it.
+- Surface the history through an existing global command entry so the report is easy to open without adding another always-visible panel.

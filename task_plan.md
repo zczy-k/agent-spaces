@@ -79,3 +79,23 @@ Make Agent Spaces built-in function tools such as `ListDatabases` actually calla
 | `TS18048: 'options' is possibly 'undefined'` in `hermes-runtime.ts` | Server build attempt 1 | Introduced local `agentDir` variable so TypeScript can safely narrow config directory usage |
 | Type errors in `codex-function-tool-bridge.ts` around `structuredContent` and schema properties | Codex server build attempt 1 | Return `structuredContent` only for object results and normalize JSON Schema properties to object-valued maps |
 | MCP SDK stateless Streamable HTTP transport cannot be reused across requests | Bridge review before final verification | Switched the bridge to a stateful transport with random session IDs |
+| Web build failed in `src/components/activity-graph.tsx` on unsupported `Tooltip.Trigger render` prop | Web memory verification | Treated as existing unrelated blocker; targeted ESLint and filtered tsc output for touched files passed |
+
+## Follow-up: Web Memory Usage Optimization
+
+## Goal
+Reduce likely long-lived web tab memory retention and add a periodic background report that exposes content/cache size details.
+
+## Scope
+- Clean up terminal xterm registry entries when switching workspaces.
+- Clean up activity-log websocket listeners when workspace panels unmount.
+- Add lightweight content usage snapshots for editor files, channels/messages, terminal sessions, database nodes, activity logs, and browser JS heap when available.
+- Make recent reports viewable from the command palette.
+
+## Phases
+
+| Phase | Status | Work |
+| --- | --- | --- |
+| M1 | complete | Identify likely long-lived terminal/activity-log retention points |
+| M2 | complete | Implement cleanup and content usage reporting |
+| M3 | complete | Run focused type/build checks; full web build is blocked by an unrelated existing type error in `activity-graph.tsx` |

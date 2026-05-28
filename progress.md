@@ -26,3 +26,13 @@
 - Updated Codex/function-tool docs for the new bridge behavior.
 - `pnpm --filter @agent-spaces/shared build && pnpm --filter @agent-spaces/server build` passed.
 - MCP client smoke test against the compiled bridge passed for `listTools()` and `callTool()`.
+
+## 2026-05-29
+- Investigated background-tab memory growth in the web app and identified terminal registry retention plus activity-log listener cleanup as the highest-risk spots.
+- Moved the terminal xterm registry into a shared utility module so session cleanup can happen on workspace switches, not only when sessions are explicitly closed.
+- Added workspace-switch cleanup for terminal registry entries in `useTerminalStore.init()`.
+- Added `stopActivityLogListeners()` cleanup to `WorkspaceShell` unmount so websocket listeners do not accumulate across workspace changes.
+- Added a periodic content usage reporter with a command-palette entry and a dialog for viewing recent snapshots.
+- The reporter captures heap, editor, terminal, chat, issue/task, database, command, notification, and activity-log counts.
+- Ran targeted ESLint on the touched web files successfully.
+- Ran `pnpm --filter @agent-spaces/web build`, which failed in an unrelated existing type error in `src/components/activity-graph.tsx` before reaching this patch's files.

@@ -12,7 +12,7 @@ import { useEditorStore } from "@/stores/editor";
 import { useChannelStore } from "@/stores/channel";
 import { useGitStore } from "@/stores/git";
 import { useMobilePanelStore } from "@/stores/mobile-panel";
-import { startActivityLogListeners } from "@/stores/activity-log";
+import { startActivityLogListeners, stopActivityLogListeners } from "@/stores/activity-log";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useTerminalStore } from "@/stores/terminal";
@@ -470,7 +470,10 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
         });
       }),
     ];
-    return () => unsubs.forEach((u) => u());
+    return () => {
+      unsubs.forEach((u) => u());
+      stopActivityLogListeners(workspaceId);
+    };
   }, [workspaceId, upsertIssue, upsertTask, loadTasks, getNativeNotificationConfig, formatOngoingTaskNotificationBody]);
 
   const factory = useCallback(

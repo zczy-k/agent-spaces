@@ -9,6 +9,7 @@ import { DevInspector } from "@/components/dev-inspector";
 import { WorkspaceDialog } from "@/components/workspace/workspace-dialog";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { isLoginPath } from "@/lib/routes";
+import { ContentUsageReporter } from "@/components/content-usage-reporter";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -38,6 +39,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </SidebarInset>
       </SidebarProvider>
+      <ContentUsageReporter />
       <GlobalWorkspaceDialog />
     </>
   );

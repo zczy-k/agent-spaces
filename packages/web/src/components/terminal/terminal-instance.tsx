@@ -8,19 +8,15 @@ import '@xterm/xterm/css/xterm.css';
 import { useTheme } from '@/components/theme-provider';
 import { getWS } from '@/lib/ws';
 import { useTerminalStore, consumeSessionBuffer } from '@/stores/terminal';
+import {
+  disposeTerminalSession as disposeTerminalRegistrySession,
+  getTerminalRegistryEntry,
+  getTerminalRegistrySize,
+  registerTerminalRegistryEntry,
+  updateTerminalResize,
+} from '@/lib/terminal-registry';
 
 const DEBUG_TERMINAL_DUP = '[DEBUG-terminal-dup]';
-
-// Global registry to persist xterm instances across mount/unmount cycles.
-// xterm itself is a singleton per session, so its WS input/output bindings must
-// also be singleton per session. Otherwise duplicate mounts write output twice.
-const terminalRegistry = new Map<string, {
-  xterm: Terminal;
-  fit: FitAddon;
-  inputDisposable?: { dispose: () => void };
-  outputHandler?: (data: unknown) => void;
-  lastResize?: { cols: number; rows: number };
-}>();
 
 function disableXtermMobileKeyboard(xterm: Terminal) {
   const textarea = xterm.textarea;
@@ -30,7 +26,7 @@ function disableXtermMobileKeyboard(xterm: Terminal) {
 }
 
 function sendResizeIfChanged(workspaceId: string, sessionId: string, xterm: Terminal) {
-  const registryEntry = terminalRegistry.get(sessionId);
+  const registryEntry = getTerminalRegistryEntry(sessionId);
   if (
     registryEntry?.lastResize
     && registryEntry.lastResize.cols === xterm.cols
@@ -44,7 +40,7 @@ function sendResizeIfChanged(workspaceId: string, sessionId: string, xterm: Term
     return;
   }
 
-  registryEntry!.lastResize = { cols: xterm.cols, rows: xterm.rows };
+  updateTerminalResize(sessionId, xterm.cols, xterm.rows);
   console.debug(DEBUG_TERMINAL_DUP, 'client send terminal.resize', {
     sessionId,
     cols: xterm.cols,
@@ -55,24 +51,6 @@ function sendResizeIfChanged(workspaceId: string, sessionId: string, xterm: Term
     cols: xterm.cols,
     rows: xterm.rows,
   });
-}
-
-export function disposeTerminalSession(sessionId: string) {
-  const cached = terminalRegistry.get(sessionId);
-  if (cached) {
-    console.debug(DEBUG_TERMINAL_DUP, 'client disposeTerminalSession', {
-      sessionId,
-      hasOutputHandler: Boolean(cached.outputHandler),
-      hasInputDisposable: Boolean(cached.inputDisposable),
-    });
-    const ws = useTerminalStore.getState().ws;
-    if (cached.outputHandler) {
-      ws?.off('terminal.output', cached.outputHandler);
-    }
-    cached.inputDisposable?.dispose();
-    cached.xterm.dispose();
-    terminalRegistry.delete(sessionId);
-  }
 }
 
 const TERM_THEMES = {
@@ -157,12 +135,12 @@ export function TerminalInstance({ sessionId, workspaceId, active }: TerminalIns
     let xterm: Terminal;
     let fit: FitAddon;
 
-    const cached = terminalRegistry.get(sessionId);
+    const cached = getTerminalRegistryEntry(sessionId);
     if (cached) {
       console.debug(DEBUG_TERMINAL_DUP, 'client TerminalInstance reuse', {
         sessionId,
         workspaceId,
-        registrySize: terminalRegistry.size,
+        registrySize: getTerminalRegistrySize(),
         hasOutputHandler: Boolean(cached.outputHandler),
         active,
       });
@@ -180,7 +158,7 @@ export function TerminalInstance({ sessionId, workspaceId, active }: TerminalIns
       console.debug(DEBUG_TERMINAL_DUP, 'client TerminalInstance create xterm', {
         sessionId,
         workspaceId,
-        registrySize: terminalRegistry.size,
+        registrySize: getTerminalRegistrySize(),
         active,
       });
       // Create new terminal instance
@@ -212,7 +190,7 @@ export function TerminalInstance({ sessionId, workspaceId, active }: TerminalIns
         sendResizeIfChanged(workspaceId, sessionId, xterm);
       });
 
-      terminalRegistry.set(sessionId, { xterm, fit });
+      registerTerminalRegistryEntry(sessionId, { xterm, fit });
     }
     disableXtermMobileKeyboard(xterm);
 
@@ -232,7 +210,7 @@ export function TerminalInstance({ sessionId, workspaceId, active }: TerminalIns
     xtermRef.current = xterm;
     fitRef.current = fit;
 
-    const registryEntry = terminalRegistry.get(sessionId);
+    const registryEntry = getTerminalRegistryEntry(sessionId);
     if (registryEntry && !registryEntry.outputHandler) {
       console.debug(DEBUG_TERMINAL_DUP, 'client bind terminal io', {
         sessionId,
@@ -284,7 +262,7 @@ export function TerminalInstance({ sessionId, workspaceId, active }: TerminalIns
       // If session was removed from store (user/server closed it), dispose terminal
       const { sessions } = useTerminalStore.getState();
       if (!sessions.some(s => s.id === sessionId)) {
-        disposeTerminalSession(sessionId);
+        disposeTerminalRegistrySession(sessionId, useTerminalStore.getState().ws);
       }
     };
   }, [sessionId, workspaceId, active]);
