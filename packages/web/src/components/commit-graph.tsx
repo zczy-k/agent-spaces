@@ -21,7 +21,7 @@
  */
 
 import * as React from "react"
-import { Popover } from "radix-ui"
+import { HoverCard } from "radix-ui"
 import { cn } from "@/lib/utils"
 
 interface CommitAuthor {
@@ -341,10 +341,10 @@ function CommitDetail({
   children: React.ReactNode
 }) {
   return (
-    <Popover.Root>
-      <Popover.Trigger className="block w-full overflow-hidden">{children}</Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Content
+    <HoverCard.Root openDelay={200} closeDelay={100}>
+      <HoverCard.Trigger asChild>{children}</HoverCard.Trigger>
+      <HoverCard.Portal>
+        <HoverCard.Content
           side="right"
           sideOffset={8}
           className="z-50 w-80 rounded-lg border border-border bg-popover p-3 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2"
@@ -403,10 +403,10 @@ function CommitDetail({
               </div>
             )}
           </div>
-          <Popover.Arrow className="fill-popover" />
-        </Popover.Content>
-      </Popover.Portal>
-    </Popover.Root>
+          <HoverCard.Arrow className="fill-popover" />
+        </HoverCard.Content>
+      </HoverCard.Portal>
+    </HoverCard.Root>
   )
 }
 

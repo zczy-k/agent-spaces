@@ -12,6 +12,7 @@ import { useEditorStore } from "@/stores/editor";
 import { useChannelStore } from "@/stores/channel";
 import { useGitStore } from "@/stores/git";
 import { useMobilePanelStore } from "@/stores/mobile-panel";
+import { startActivityLogListeners } from "@/stores/activity-log";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useTerminalStore } from "@/stores/terminal";
@@ -367,6 +368,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
 
   useEffect(() => {
     const ws = getWS(workspaceId);
+    startActivityLogListeners(workspaceId);
     const notificationStore = useNotificationStore.getState();
     notificationStore.load(workspaceId);
     const unsubs = [
