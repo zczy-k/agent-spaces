@@ -9,6 +9,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useTerminalStore } from '@/stores/terminal';
 import { useCommandStore } from '@/stores/command';
 import { getWS } from '@/lib/ws';
+import { fetchWithAuth } from '@/lib/auth';
+import { toast } from 'sonner';
 import { TerminalInstance } from './terminal-instance';
 import { CommandDialog } from './command-dialog';
 import { ImportCommandsDialog } from './import-commands-dialog';
@@ -193,6 +195,32 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
     }
   };
 
+  const handleUpdatePackage = async () => {
+    const folderCommands = commands.filter(c => c.folder);
+    if (folderCommands.length === 0) {
+      toast.error(tc('noPackageCommands'));      return;
+    }
+    const folders = [...new Set(folderCommands.map(c => c.folder!))];
+    let updated = 0;
+    for (const folder of folders) {
+      try {
+        const res = await fetchWithAuth(`/api/folder/read-file?path=${encodeURIComponent(folder + '/package.json')}`);
+        if (!res.ok) continue;
+        const pkg = await res.json();
+        if (!pkg.scripts) continue;
+        const existing = folderCommands.filter(c => c.folder === folder);
+        for (const cmd of existing) {
+          const newCommand = pkg.scripts[cmd.name];
+          if (newCommand !== undefined && newCommand !== cmd.command) {
+            await update(workspaceId, cmd.id, { command: String(newCommand) });
+            updated++;
+          }
+        }
+      } catch { /* skip folder */ }
+    }
+    toast.success(tc('packageUpdated', { count: updated }));
+  };
+
   const handlePaste = async () => {
     try {
       const text = await navigator.clipboard.readText();
@@ -287,6 +315,7 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
                 collapsedFolders={collapsedFolders}
                 onToggleFolder={toggleFolder}
                 onImport={() => { setImportOpen(true); setCommandPopoverOpen(false); }}
+                onUpdatePackage={() => { handleUpdatePackage(); setCommandPopoverOpen(false); }}
                 onAddCommand={() => { setEditingCommand(undefined); setDialogOpen(true); setCommandPopoverOpen(false); }}
                 onRemoveFolder={removeFolder}
                 workspaceId={workspaceId}
@@ -323,6 +352,7 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
             collapsedFolders={collapsedFolders}
             onToggleFolder={toggleFolder}
             onImport={() => setImportOpen(true)}
+            onUpdatePackage={handleUpdatePackage}
             onAddCommand={() => { setEditingCommand(undefined); setDialogOpen(true); }}
             onRemoveFolder={removeFolder}
             workspaceId={workspaceId}

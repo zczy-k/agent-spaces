@@ -47,6 +47,7 @@ import { McpsDialog } from "@/components/sidebar/mcps-dialog";
 import { HooksDialog } from "@/components/sidebar/hooks-dialog";
 import { AgentCommandsDialog } from "@/components/sidebar/agent-commands-dialog";
 import { ToolsDialog } from "@/components/sidebar/tools-dialog";
+import { AnimatedThemeToggler } from "@/components/animated-theme-toggler";
 import type { Route } from "./nav-main";
 import DashboardNavigation from "@/components/sidebar/nav-main";
 import { NotificationsPopover } from "@/components/sidebar/nav-notifications";
@@ -454,6 +455,7 @@ export function DashboardSidebar() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8 }}
         >
+          <AnimatedThemeToggler />
           <NotificationsPopover workspaceId={currentWorkspaceId ?? ''} />
           <SidebarTrigger />
         </motion.div>

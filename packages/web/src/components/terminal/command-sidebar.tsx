@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, ChevronDown, ChevronRight, X, Search, Upload, Play, Pencil, Trash2, Terminal } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, X, Search, MoreVertical, Play, Pencil, Trash2, Terminal } from 'lucide-react';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { useTerminalStore } from '@/stores/terminal';
 import type { QuickCommand } from '@agent-spaces/shared';
 
@@ -53,7 +54,7 @@ function CommandListItem({ command, running, onRun, onClose, onEdit, onDelete, o
 export function CommandSidebar({
   search, onSearchChange, commands, customCommands, folderGroups,
   customOpen, onCustomOpenChange, collapsedFolders, onToggleFolder,
-  onImport, onAddCommand, onRemoveFolder, workspaceId, isRunning, runningMap,
+  onImport, onUpdatePackage, onAddCommand, onRemoveFolder, workspaceId, isRunning, runningMap,
   removeSession, run, remove, setEditingCommand, setDialogOpen, onSelectSession, tc,
 }: {
   search: string;
@@ -66,6 +67,7 @@ export function CommandSidebar({
   collapsedFolders: Record<string, boolean>;
   onToggleFolder: (f: string) => void;
   onImport: () => void;
+  onUpdatePackage: () => void;
   onAddCommand: () => void;
   onRemoveFolder: (folder: string) => void;
   workspaceId: string;
@@ -97,13 +99,15 @@ export function CommandSidebar({
             </button>
           )}
         </div>
-        <button
-          onClick={onImport}
-          className="shrink-0 p-1 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-          title={tc('import')}
-        >
-          <Upload size={13} />
-        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger className="shrink-0 p-1 text-muted-foreground hover:text-foreground transition-colors cursor-pointer outline-none">
+            <MoreVertical size={13} />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-40">
+            <DropdownMenuItem onClick={onImport}>{tc('importPackage')}</DropdownMenuItem>
+            <DropdownMenuItem onClick={onUpdatePackage}>{tc('updatePackage')}</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Command list with collapsible groups */}

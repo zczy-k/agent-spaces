@@ -96,6 +96,10 @@ const WorktreePanel = dynamic(() => import("@/components/worktree/worktree-panel
   ssr: false,
   loading: panelLoader,
 });
+const ActivityLogPanel = dynamic(() => import("@/components/activity-log-panel").then((mod) => mod.ActivityLogPanel), {
+  ssr: false,
+  loading: panelLoader,
+});
 const ChannelDialog = dynamic(() => import("@/components/chat/channel-dialog").then((mod) => mod.ChannelDialog), {
   ssr: false,
   loading: () => null,
@@ -128,6 +132,7 @@ const defaultJson: IJsonModel = {
         { type: "tab", name: "Commits", component: "git-commits" },
         { type: "tab", name: "Favorites", component: "code-favorites", id: "code-favorites" },
         { type: "tab", name: "Worktrees", component: "worktree-panel", id: "worktree-panel" },
+        { type: "tab", name: "Logger", component: "activity-log", id: "activity-log" },
       ],
     },
   ],
@@ -203,6 +208,9 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
         }
         if (bottom && !bottom.children.some((c) => { const t = c as Record<string, unknown>; return t.id === 'worktree-panel' || t.component === 'worktree-panel'; })) {
           bottom.children.push({ type: 'tab', name: 'Worktrees', component: 'worktree-panel', id: 'worktree-panel' });
+        }
+        if (bottom && !bottom.children.some((c) => { const t = c as Record<string, unknown>; return t.id === 'activity-log' || t.component === 'activity-log'; })) {
+          bottom.children.push({ type: 'tab', name: 'Logger', component: 'activity-log', id: 'activity-log' });
         }
         m = Model.fromJson(json);
       } else {
@@ -476,6 +484,8 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
           return <CodeFavoritesPanel workspaceId={workspaceId} />;
         case "worktree-panel":
           return <WorktreePanel workspaceId={workspaceId} />;
+        case "activity-log":
+          return <ActivityLogPanel workspaceId={workspaceId} />;
         case "database":
           return <DatabasePanel workspaceId={workspaceId} />;
         case "database-list":
