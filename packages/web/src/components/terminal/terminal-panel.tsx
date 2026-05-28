@@ -19,7 +19,7 @@ import { ImportCommandsDialog } from './import-commands-dialog';
 import { CommandSidebar } from './command-sidebar';
 import { TerminalToolbar } from './terminal-toolbar';
 import { getShellOptions, getShellLabel } from './terminal-utils';
-import type { QuickCommand, Channel } from '@agent-spaces/shared';
+import type { QuickCommand } from '@agent-spaces/shared';
 import { useTranslations } from 'next-intl';
 import { ChannelDialog } from '@/components/chat/channel-dialog';
 import { normalizeChannelMembersToAgentIds } from '@/lib/agent-members';

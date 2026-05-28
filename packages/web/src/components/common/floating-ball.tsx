@@ -58,6 +58,12 @@ export const FloatingBall = forwardRef<HTMLDivElement, FloatingBallProps>(
 
     const halfSize = size / 2;
 
+    const doMinimize = useCallback((edge: 'left' | 'right') => {
+      setMinimized(true);
+      posRef.current = { x: edge === 'left' ? -halfSize : window.innerWidth - halfSize, y: posRef.current.y };
+      setPos(posRef.current);
+    }, [halfSize]);
+
     useEffect(() => {
       const saved = loadPos(lsKey);
       const fallback: Pos = {
@@ -79,13 +85,7 @@ export const FloatingBall = forwardRef<HTMLDivElement, FloatingBallProps>(
         snappedEdge.current = edge;
         minimizeTimer.current = setTimeout(() => doMinimize(edge), minimizeDelay);
       }
-    }, [lsKey, size, defaultPosition]);
-
-    const doMinimize = useCallback((edge: 'left' | 'right') => {
-      setMinimized(true);
-      posRef.current = { x: edge === 'left' ? -halfSize : window.innerWidth - halfSize, y: posRef.current.y };
-      setPos(posRef.current);
-    }, [halfSize]);
+    }, [lsKey, size, defaultPosition, doMinimize, minimizeDelay, snapThreshold]);
 
     const cancelTimers = useCallback(() => {
       clearTimeout(minimizeTimer.current);

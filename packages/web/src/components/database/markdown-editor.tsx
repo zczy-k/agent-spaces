@@ -44,6 +44,7 @@ export default function MarkdownEditor({ contentMarkdown, onChange, theme = 'san
   return (
     <div className="w-full flex flex-col h-[550px] lg:h-[650px] bg-background border border-border rounded-xl overflow-hidden">
       <div className="bg-background border-b border-border px-3 py-2 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+        {/* eslint-disable-next-line react-hooks/refs -- insert() only called on click, refs not accessed during render */}
         <div className="flex flex-wrap items-center gap-1">
           {btn(() => insert('### ', '', '小标题'), '标题', <Heading className="w-4 h-4" />)}
           {btn(() => insert('**', '**', '加粗'), '加粗', <Bold className="w-4 h-4" />)}

@@ -2,14 +2,14 @@
 
 import { useEffect } from "react"
 import { LogViewerTerminal } from "@/components/log-viewer"
-import { useActivityLogStore, startActivityLogListeners } from "@/stores/activity-log"
+import { getActivityLogStore, startActivityLogListeners } from "@/stores/activity-log"
 
 interface ActivityLogPanelProps {
   workspaceId: string
 }
 
 export function ActivityLogPanel({ workspaceId }: ActivityLogPanelProps) {
-  const store = useActivityLogStore(workspaceId)
+  const store = getActivityLogStore(workspaceId)
   const entries = store((s) => s.entries)
   const clear = store((s) => s.clear)
 

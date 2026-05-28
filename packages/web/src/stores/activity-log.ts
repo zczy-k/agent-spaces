@@ -30,7 +30,7 @@ function wsLabel(workspaceId: string): string {
   return w?.name ? `[${w.name}] ` : ""
 }
 
-export function useActivityLogStore(workspaceId: string): UseBoundStore<StoreApi<ActivityLogState>> {
+export function getActivityLogStore(workspaceId: string): UseBoundStore<StoreApi<ActivityLogState>> {
   let store = storeMap.get(workspaceId)
   if (!store) {
     store = create<ActivityLogState>((set) => ({

@@ -33,7 +33,10 @@ export function useSidebarEvents({
   setUserToggled: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
   const setterMapRef = useRef(setterMap);
-  setterMapRef.current = setterMap;
+
+  useEffect(() => {
+    setterMapRef.current = setterMap;
+  });
 
   useEffect(() => {
     const toggleHandler = () => toggleSidebarWithAnimation();

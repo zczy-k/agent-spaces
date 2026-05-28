@@ -29,7 +29,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set) => ({
     if (open) {
       set({ dialogOpen: true, editingWorkspace: null, createDialogOpen: true });
     } else {
-      set((s) => ({ dialogOpen: false, editingWorkspace: null, createDialogOpen: false }));
+      set((_s) => ({ dialogOpen: false, editingWorkspace: null, createDialogOpen: false }));
     }
   },
 

@@ -59,7 +59,7 @@ export function ChannelDialog({ open, onOpenChange, channel, agents = [], onSubm
       }
       setDialogKey((k) => k + 1);
     });
-  }, [open, channel]);
+  }, [open, channel, defaultInitialMessage, defaultMembers]);
 
   const toggleMember = (id: string) => {
     setMembers((prev) =>

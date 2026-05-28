@@ -19,7 +19,7 @@ import {
 import { DatabaseTreeNode } from './database-tree-node';
 import { ImportFileDialog } from '@/components/editor/import-file-dialog';
 import { fetchWithAuth } from '@/lib/auth';
-import type { DocNode, DatabaseMeta } from '@agent-spaces/shared';
+import type { DocNode } from '@agent-spaces/shared';
 
 interface DatabaseSidebarProps {
   workspaceId: string;
@@ -130,7 +130,7 @@ export function DatabaseSidebar({
     if (!activeDatabase || databases.length <= 1) return;
     if (!confirm(t('deleteConfirm', { name: activeDatabase.name }))) return;
     await deleteDatabase(workspaceId, activeDatabase.id);
-  }, [activeDatabase, databases.length, deleteDatabase, workspaceId]);
+  }, [activeDatabase, databases.length, deleteDatabase, workspaceId, t]);
 
   const handleImportMdFiles = useCallback(async (files: File[]) => {
     const { activeDatabaseId } = useDatabaseStore.getState();

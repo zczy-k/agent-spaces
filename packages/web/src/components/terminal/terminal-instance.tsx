@@ -287,7 +287,7 @@ export function TerminalInstance({ sessionId, workspaceId, active }: TerminalIns
         disposeTerminalSession(sessionId);
       }
     };
-  }, [sessionId, workspaceId]);
+  }, [sessionId, workspaceId, active]);
 
   useEffect(() => {
     if (!active) return;

@@ -28,7 +28,6 @@ import {
   Trash2,
   Save,
   Plus,
-  Terminal,
   Upload,
   FileText,
   Folder,

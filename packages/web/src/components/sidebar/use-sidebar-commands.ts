@@ -194,5 +194,5 @@ export function useSidebarCommands({
       },
     ];
     return registerCommands(cmds);
-  }, [registerCommands, toggleSidebarWithAnimation, isMobile]);
+  }, [registerCommands, toggleSidebarWithAnimation, isMobile, dialogs, router]);
 }

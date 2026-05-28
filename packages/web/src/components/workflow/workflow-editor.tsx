@@ -12,7 +12,7 @@ import {
   type NodeChange,
   type EdgeChange,
 } from '@xyflow/react';
-import type { WorkflowTemplate, WorkflowNode, WorkflowEdge, AgentConfig, WorkflowCommandNode } from '@agent-spaces/shared';
+import type { WorkflowTemplate, WorkflowNode, WorkflowEdge, AgentConfig } from '@agent-spaces/shared';
 
 import { useWorkflowStore } from '@/stores/workflow';
 import { WorkflowCanvas, getAutoLayoutedNodes } from './workflow-canvas';

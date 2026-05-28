@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useState, useImperativeHandle, useEffect } from "react";
+import { forwardRef, useState, useImperativeHandle } from "react";
 import { useTranslations } from "next-intl";
 import { type AgentConfig } from "@agent-spaces/shared";
 import { useAgentStore } from "@/stores/agent";
