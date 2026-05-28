@@ -7,14 +7,37 @@ interface Avatar {
   name: string;
 }
 
+type AvatarSize = 'sm' | 'md';
+
+const sizeMap: Record<AvatarSize, { avatar: string; text: string; space: string; border: string; nameText: string; hoverPad: string }> = {
+  sm: {
+    avatar: 'h-5 w-5',
+    text: 'text-[10px] font-medium',
+    space: '-space-x-2',
+    border: 'border',
+    nameText: 'text-xs',
+    hoverPad: 'pr-3 pl-1 py-1',
+  },
+  md: {
+    avatar: 'h-10 w-10',
+    text: 'text-sm font-medium',
+    space: '-space-x-4',
+    border: 'border-2',
+    nameText: 'text-sm',
+    hoverPad: 'pr-6 pl-2 py-2',
+  },
+};
+
 interface AvatarGroupProps {
   className?: string;
   avatarUrls: Avatar[];
+  size?: AvatarSize;
 }
 
-const AvatarGroup = ({ className, avatarUrls }: AvatarGroupProps) => {
+const AvatarGroup = ({ className, avatarUrls, size = 'md' }: AvatarGroupProps) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const s = sizeMap[size];
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent | TouchEvent) => {
@@ -46,7 +69,7 @@ const AvatarGroup = ({ className, avatarUrls }: AvatarGroupProps) => {
   return (
     <div
       ref={containerRef}
-      className={cn('z-10 flex -space-x-4 rtl:space-x-reverse', className)}
+      className={cn('z-10 flex rtl:space-x-reverse', s.space, className)}
     >
       {avatarUrls.map((avatar, index) => {
         const isHovered = hoveredIndex === index;
@@ -62,22 +85,34 @@ const AvatarGroup = ({ className, avatarUrls }: AvatarGroupProps) => {
             className={cn(
               'relative flex items-center gap-0 rounded-full cursor-pointer touch-none',
               'transition-all duration-500 ease-out',
-              ' hover:z-10',
-              showName ? 'pr-6 pl-2 py-2' : 'p-0.5',
+              'hover:z-10',
+              showName ? s.hoverPad : 'p-0.5',
             )}
           >
             <div className='relative shrink-0'>
-              <img
-                src={avatar.imageUrl}
-                alt={avatar.name}
-                width={40}
-                height={40}
-                className={cn(
-                  'h-10 w-10 rounded-full object-cover border-2 border-white dark:border-gray-800',
-                  'transition-all duration-500 ease-out',
-                  'hover:scale-105',
-                )}
-              />
+              {avatar.imageUrl ? (
+                <img
+                  src={avatar.imageUrl}
+                  alt={avatar.name}
+                  className={cn(
+                    s.avatar,
+                    'rounded-full object-cover border-white dark:border-gray-800',
+                    s.border,
+                    'transition-all duration-500 ease-out',
+                    'hover:scale-105',
+                  )}
+                />
+              ) : (
+                <div className={cn(
+                  s.avatar,
+                  'rounded-full border-white dark:border-gray-800',
+                  s.border,
+                  'flex items-center justify-center bg-muted text-foreground',
+                  s.text,
+                )}>
+                  {avatar.name.charAt(0).toUpperCase()}
+                </div>
+              )}
             </div>
 
             <div
@@ -91,7 +126,8 @@ const AvatarGroup = ({ className, avatarUrls }: AvatarGroupProps) => {
               <div className='overflow-hidden'>
                 <span
                   className={cn(
-                    'text-sm font-medium whitespace-nowrap block',
+                    s.nameText,
+                    'font-medium whitespace-nowrap block',
                     'transition-colors duration-300 text-foreground',
                   )}
                 >

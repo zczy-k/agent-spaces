@@ -17,6 +17,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '
 import { ChannelInfoPanel } from './channel-info-panel';
 import { MessageNavigator } from './message-navigator';
 import { AvatarGroup as CollapsibleAvatarGroup } from '@/components/ui/avatar-group';
+import { getProviderIconUrl } from '@/components/common/agent-icon';
+import { resolveServerAssetUrl } from '@/lib/server';
 import { AgentEditor } from '@/components/sidebar/agent-editor';
 import { normalizeAgent } from '@/components/sidebar/agent-shared';
 
@@ -48,10 +50,11 @@ function ChannelMemberAvatars({ members }: { members: string[] }) {
     <>
       <CollapsibleAvatarGroup
         className="ml-1"
+        size="sm"
         avatarUrls={visible.map((agentId) => {
           const agent = agents.find((a) => a.id === agentId);
           return {
-            imageUrl: agent?.avatarUrl || '',
+            imageUrl: resolveServerAssetUrl(agent?.avatarUrl) || getProviderIconUrl(agent?.apiBase) || '',
             name: agent?.name || agentId,
           };
         })}

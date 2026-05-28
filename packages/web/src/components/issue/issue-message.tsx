@@ -128,11 +128,11 @@ export function IssueMessage({
 
   const replyable = Boolean(onReplySubmit && linkedMessageId);
   const visibleMetadata = [
-    comment.senderRole,
-    comment.metadata?.model,
-    phase?.replace('_', ' '),
-    taskId ? t('message.task', { taskId: taskId.slice(0, 8) }) : undefined,
-  ].filter((item): item is string => Boolean(item));
+    { key: 'sender-role', label: comment.senderRole },
+    { key: 'model', label: comment.metadata?.model },
+    { key: 'phase', label: phase?.replace('_', ' ') },
+    { key: 'task', label: taskId ? t('message.task', { taskId: taskId.slice(0, 8) }) : undefined },
+  ].filter((item): item is { key: string; label: string } => Boolean(item.label));
 
   return (
     <div className="group p-4">
@@ -150,8 +150,8 @@ export function IssueMessage({
               {new Date(comment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
             {visibleMetadata.map((item) => (
-              <Badge key={item} variant="secondary" className="h-4 px-1.5 text-[10px]">
-                {item}
+              <Badge key={item.key} variant="secondary" className="h-4 px-1.5 text-[10px]">
+                {item.label}
               </Badge>
             ))}
           </div>
