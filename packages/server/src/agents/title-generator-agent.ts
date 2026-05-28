@@ -17,7 +17,6 @@ export async function runTitleGeneratorAgent(input: {
 }): Promise<string> {
   const requirement = input.requirement.trim();
   const description = input.description?.trim() ?? '';
-  if (!requirement && !description) return FALLBACK_TITLE;
 
   const preset = findTitleGeneratorAgent(input.workspaceId);
   if (!preset.apiBase || !preset.apiKey || !preset.modelId) {
@@ -27,6 +26,17 @@ export async function runTitleGeneratorAgent(input: {
     });
     return FALLBACK_TITLE;
   }
+
+  console.info('[title-generator] starting', {
+    workspaceId: input.workspaceId,
+    target: input.target,
+    agentId: AGENT_TITLE_GENERATOR_PRESET_ID,
+    modelProvider: preset.modelProvider,
+    modelId: preset.modelId,
+    apiBase: maskUrl(preset.apiBase),
+    requirementLength: requirement.length,
+    descriptionLength: description.length,
+  });
 
   const session = agentService.create(input.workspaceId, preset.role, preset.id);
   agentService.updateStatus(input.workspaceId, session.id, 'active');
@@ -46,6 +56,7 @@ export async function runTitleGeneratorAgent(input: {
     `Target: ${input.target}`,
     requirement ? `User requirement: ${requirement}` : undefined,
     description ? `Description: ${description}` : undefined,
+    !requirement && !description ? 'No user-provided title context is available. Generate a generic short title for this target.' : undefined,
     'Generate exactly one short title.',
   ].filter(Boolean).join('\n');
 
@@ -105,7 +116,7 @@ function sanitizeTitle(output: string): string {
 
   return title
     ?.replace(/^["'`\u201c\u201d\u2018\u2019]+|["'`\u201c\u201d\u2018\u2019]+$/g, '')
-    .replace(/[\u3002.!！?？:：;；]+$/g, '')
+    .replace(/[\u3002\u002e\u0021\uff01\u003f\uff1f\u003a\uff1a\u003b\uff1b]+$/g, '')
     .trim()
     .slice(0, 80) ?? '';
 }
@@ -129,4 +140,14 @@ function getRuntimeBaseURL(provider?: string, apiBase?: string): string | undefi
     || provider === 'openai-chat-completions-to-anthropic-messages'
   ) return undefined;
   return apiBase;
+}
+
+function maskUrl(url?: string): string | undefined {
+  if (!url) return undefined;
+  try {
+    const parsed = new URL(url);
+    return `${parsed.origin}${parsed.pathname}`;
+  } catch {
+    return url.slice(0, 80);
+  }
 }

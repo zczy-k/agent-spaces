@@ -8,6 +8,7 @@ export function scheduleChannelTitleGeneration(input: {
   requirement: string;
   broadcast: (event: string, data: unknown) => void;
 }): void {
+  if (!input.requirement.trim()) return;
   void generateChannelTitle(input).catch((err) => {
     console.error('[title-generator] channel title generation failed', {
       workspaceId: input.workspaceId,

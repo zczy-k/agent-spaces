@@ -6,6 +6,7 @@ import { hasActiveChannelRuns, stopChannelRuns } from '../ws/agent-runner.js';
 import { getToolDetail } from '../services/tool-detail.js';
 import * as issueService from '../services/issue.js';
 import { scheduleChannelTitleGeneration } from '../services/generated-title.js';
+import { stripHtml } from '../ws/html-utils.js';
 
 const router = Router({ mergeParams: true });
 
@@ -124,6 +125,15 @@ router.post('/:channelId/messages', (req: Request<ChannelParams>, res: Response)
   if (!getChannel(id, channelId!)) { res.status(404).json({ error: 'channel not found' }); return; }
   const message = createMessage(id, channelId!, { senderId: 'user', content, type, attachments });
   broadcastToWorkspace(id, 'channel.message', message);
+  const channel = getChannel(id, channelId!);
+  if (channel && !channel.name.trim()) {
+    scheduleChannelTitleGeneration({
+      workspaceId: id,
+      channelId: channelId!,
+      requirement: stripHtml(content),
+      broadcast: (event, data) => broadcastToWorkspace(id, event, data),
+    });
+  }
   res.status(201).json(message);
 });
 

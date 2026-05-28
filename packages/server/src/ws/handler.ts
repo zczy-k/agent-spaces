@@ -4,6 +4,7 @@ import { addConnection, broadcastToWorkspace } from './connection-manager.js';
 import { handleTerminalEvent, sendTerminalSessions } from './terminal-handler.js';
 import { appendMessageReply, createMessage } from '../services/message.js';
 import { getChannel } from '../services/channel.js';
+import { scheduleChannelTitleGeneration } from '../services/generated-title.js';
 import * as agentService from '../services/agent.js';
 import { runMentionedAgent, stopChannelRuns, handleAnswerQuestion, ensureScheduler, makeContext } from './agent-runner.js';
 import { stripHtml, extractMentionIds } from './html-utils.js';
@@ -73,7 +74,8 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
     replyToMessageId?: string;
   };
   if (!channelId || (!content && !attachments?.length)) return;
-  if (!getChannel(workspaceId, channelId)) return;
+  const channel = getChannel(workspaceId, channelId);
+  if (!channel) return;
   if (replyToMessageId) {
     const updated = appendMessageReply(workspaceId, channelId, replyToMessageId, {
       senderId: 'user',
@@ -102,6 +104,14 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
     attachments,
   });
   broadcastToWorkspace(workspaceId, 'channel.message', message);
+  if (!channel.name.trim()) {
+    scheduleChannelTitleGeneration({
+      workspaceId,
+      channelId,
+      requirement: stripHtml(content),
+      broadcast: (event, payload) => broadcastToWorkspace(workspaceId, event, payload),
+    });
+  }
 
   const agentIds = [...new Set([...(mentions || []), ...extractMentionIds(content)].filter(Boolean))];
   for (const agentId of agentIds) {
