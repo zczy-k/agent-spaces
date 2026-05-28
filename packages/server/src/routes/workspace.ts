@@ -1,6 +1,8 @@
 import { Router } from 'express';
+import { join } from 'node:path';
 import { exec } from 'child_process';
 import * as wsService from '../services/workspace.js';
+import { getDataDir } from '../storage/json-store.js';
 import * as agentService from '../services/agent.js';
 import { readWorkspacePrompt, writeWorkspacePrompt } from '../services/workspace-prompt.js';
 import {
@@ -168,10 +170,17 @@ router.post('/:id/reveal', (req, res) => {
     res.status(404).json({ error: 'Workspace not found' });
     return;
   }
-  const dir = ws.boundDirs?.[0];
-  if (!dir) {
-    res.status(400).json({ error: 'Workspace has no bound directory' });
-    return;
+
+  const target = req.query.target as string;
+  let dir: string;
+  if (target === 'data') {
+    dir = join(getDataDir(), 'workspaces', ws.id);
+  } else {
+    dir = ws.boundDirs?.[0];
+    if (!dir) {
+      res.status(400).json({ error: 'Workspace has no bound directory' });
+      return;
+    }
   }
 
   console.log('[reveal:workspace] workspace:', ws.id, 'dir:', dir);

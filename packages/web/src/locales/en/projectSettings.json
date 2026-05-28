@@ -5,6 +5,7 @@
   "info": {
     "title": "Info",
     "path": "Path",
+    "workspace": "Workspace",
     "channels": "Channels",
     "issues": "Issues"
   },

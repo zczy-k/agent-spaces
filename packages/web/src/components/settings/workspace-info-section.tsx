@@ -4,15 +4,20 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { FolderOpen, Hash, ListChecks, Loader2 } from 'lucide-react';
+import { FolderOpen, Hash, ListChecks, Loader2, Database } from 'lucide-react';
 import type { Workspace } from '@agent-spaces/shared';
 
-function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function InfoRow({ icon, label, value, onClick }: { icon: React.ReactNode; label: string; value: string; onClick?: () => void }) {
+  const clickable = !!onClick;
   return (
-    <div className="flex items-center gap-2 text-sm">
+    <div
+      className={`flex items-center gap-2 text-sm ${clickable ? 'cursor-pointer hover:bg-muted/50 rounded px-1 py-0.5 -mx-1 transition-colors' : ''}`}
+      onClick={onClick}
+      title={clickable ? value : undefined}
+    >
       <span className="text-muted-foreground">{icon}</span>
       <span className="text-muted-foreground shrink-0">{label}</span>
-      <span className="truncate text-foreground ml-auto" title={value}>{value}</span>
+      <span className="truncate text-foreground ml-auto" title={!clickable ? value : undefined}>{value}</span>
     </div>
   );
 }
@@ -28,6 +33,13 @@ export function WorkspaceInfoSection({ workspace, channelCount, issueCount }: Wo
   const [autoProcess, setAutoProcess] = useState(workspace.autoProcessIssues === true);
   const [hooksEnabled, setHooksEnabled] = useState(workspace.hooksEnabled !== false);
   const [saving, setSaving] = useState(false);
+
+  const handleReveal = async (target?: string) => {
+    const url = target
+      ? `/api/workspaces/${workspace.id}/reveal?target=${target}`
+      : `/api/workspaces/${workspace.id}/reveal`;
+    await fetch(url, { method: 'POST' });
+  };
 
   const handleToggleAutoProcess = async (checked: boolean) => {
     if (saving) return;
@@ -65,9 +77,24 @@ export function WorkspaceInfoSection({ workspace, channelCount, issueCount }: Wo
     <>
       <div className="space-y-3">
         <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('info.title')}</h4>
-        <InfoRow icon={<FolderOpen size={14} />} label={t('info.path')} value={workspace.boundDirs[0] ?? '-'} />
-        <InfoRow icon={<Hash size={14} />} label={t('info.channels')} value={String(channelCount)} />
-        <InfoRow icon={<ListChecks size={14} />} label={t('info.issues')} value={String(issueCount)} />
+        <InfoRow icon={<FolderOpen size={14} />} label={t('info.path')} value={workspace.boundDirs[0] ?? '-'} onClick={workspace.boundDirs[0] ? () => handleReveal() : undefined} />
+        <InfoRow icon={<Database size={14} />} label={t('info.workspace')} value={`.agent-spaces-data/workspaces/${workspace.id}`} onClick={() => handleReveal('data')} />
+        <div className="grid grid-cols-2 gap-2">
+          <div className="flex items-center gap-2 rounded-md border px-3 py-2">
+            <Hash size={14} className="text-muted-foreground shrink-0" />
+            <div className="min-w-0">
+              <div className="text-xs text-muted-foreground">{t('info.channels')}</div>
+              <div className="text-sm font-medium">{channelCount}</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 rounded-md border px-3 py-2">
+            <ListChecks size={14} className="text-muted-foreground shrink-0" />
+            <div className="min-w-0">
+              <div className="text-xs text-muted-foreground">{t('info.issues')}</div>
+              <div className="text-sm font-medium">{issueCount}</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="space-y-3">

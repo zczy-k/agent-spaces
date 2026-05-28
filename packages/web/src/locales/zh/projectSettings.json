@@ -5,6 +5,7 @@
   "info": {
     "title": "信息",
     "path": "路径",
+    "workspace": "工作空间",
     "channels": "频道",
     "issues": "议题"
   },

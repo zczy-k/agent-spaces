@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { minimatch } from 'minimatch';
 
 export interface IgnoreFilter {
   isIgnored: (relPath: string, name: string, isDir: boolean) => boolean;
@@ -7,18 +8,34 @@ export interface IgnoreFilter {
 
 const cache = new Map<string, { mtime: number; filter: IgnoreFilter }>();
 
-function matchPattern(pattern: string, name: string): boolean {
-  if (pattern.startsWith('*.')) {
-    return name.endsWith(pattern.slice(1));
+interface IgnorePattern {
+  pattern: string;
+  dirOnly: boolean;
+  negated: boolean;
+  hasSlash: boolean;
+}
+
+function normalizeRelPath(path: string): string {
+  return path.replace(/\\/g, '/').replace(/^\/+/, '');
+}
+
+function matchesDirPattern(pattern: string, relPath: string, hasSlash: boolean): boolean {
+  if (!hasSlash) {
+    return relPath.split('/').includes(pattern);
   }
-  if (pattern.startsWith('*.') && pattern.includes('/')) {
-    return name.endsWith(pattern.split('/').pop()!);
+  return relPath === pattern || relPath.startsWith(`${pattern}/`);
+}
+
+function matchesPattern(pattern: IgnorePattern, relPath: string, name: string, isDir: boolean): boolean {
+  if (pattern.dirOnly) {
+    return matchesDirPattern(pattern.pattern, relPath, pattern.hasSlash);
   }
-  if (pattern.includes('*')) {
-    const re = new RegExp('^' + pattern.replace(/\*/g, '.*').replace(/\?/g, '.') + '$');
-    return re.test(name);
+
+  if (!pattern.hasSlash) {
+    return minimatch(name, pattern.pattern, { dot: true, nocase: process.platform === 'win32' });
   }
-  return name === pattern;
+
+  return minimatch(relPath, pattern.pattern, { dot: true, nocase: process.platform === 'win32' });
 }
 
 export async function createGitignoreFilter(rootDir: string): Promise<IgnoreFilter> {
@@ -35,7 +52,7 @@ export async function createGitignoreFilter(rootDir: string): Promise<IgnoreFilt
   const cached = cache.get(rootDir);
   if (cached && cached.mtime === mtime) return cached.filter;
 
-  let patterns: { raw: string; dirOnly: boolean; negated: boolean; fullPath: string }[] = [];
+  let patterns: IgnorePattern[] = [];
   try {
     const content = await readFile(gitignorePath, 'utf-8');
     patterns = content.split('\n')
@@ -46,9 +63,8 @@ export async function createGitignoreFilter(rootDir: string): Promise<IgnoreFilt
         let p = negated ? raw.slice(1) : raw;
         const dirOnly = p.endsWith('/');
         if (dirOnly) p = p.slice(0, -1);
-        // extract the last segment for name matching
-        const namePart = p.includes('/') ? p.split('/').filter(Boolean).pop()! : p;
-        return { raw: namePart, dirOnly, negated, fullPath: p };
+        p = normalizeRelPath(p);
+        return { pattern: p, dirOnly, negated, hasSlash: p.includes('/') };
       });
   } catch {
     // no .gitignore
@@ -56,13 +72,14 @@ export async function createGitignoreFilter(rootDir: string): Promise<IgnoreFilt
 
   const filter: IgnoreFilter = {
     isIgnored(relPath: string, name: string, isDir: boolean) {
+      const normalizedRelPath = normalizeRelPath(relPath);
+      let ignored = false;
+
       for (const p of patterns) {
-        if (p.dirOnly && !isDir) continue;
-        if (matchPattern(p.raw, name) || matchPattern(p.fullPath, relPath)) {
-          return !p.negated;
-        }
+        if (matchesPattern(p, normalizedRelPath, name, isDir)) ignored = !p.negated;
       }
-      return false;
+
+      return ignored;
     },
   };
 
