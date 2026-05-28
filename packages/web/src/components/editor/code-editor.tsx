@@ -23,7 +23,6 @@ import {
 } from "@/lib/monaco-models";
 import { startTypeScriptLanguageClient, stopTypeScriptLanguageClient } from "@/lib/monaco-language-client";
 import {
-  getFilePathFromModelUri,
   getLanguage,
 } from "./code-editor-utils";
 import { registerNavigationActions } from "./code-editor-navigation";
@@ -417,6 +416,11 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     ? getModelUri(workspaceId, activeFilePath, workspaceRoot).toString()
     : undefined;
 
+  const handleEditorChange = useCallback((filePath: string, value: string | undefined, event: Monaco.editor.IModelContentChangedEvent) => {
+    if (event.isFlush) return;
+    updateContent(filePath, value || "");
+  }, [updateContent]);
+
   return (
     <div className={`flex flex-col h-full ${isFullscreen ? 'fixed inset-0 z-50 bg-background' : ''}`}>
       <EditorTabs workspaceId={workspaceId} />
@@ -481,15 +485,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
               value={activeContent}
               path={modelPath}
               onChange={(value, event) => {
-                if (event.isFlush) return;
-                const v = value || "";
-                const modelFilePath = getFilePathFromModelUri(
-                  editorRef.current?.getModel()?.uri,
-                  workspaceId,
-                  workspaceRoot,
-                );
-                if (!modelFilePath || modelFilePath !== activeFile.path) return;
-                updateContent(modelFilePath, v);
+                handleEditorChange(activeFile.path, value, event);
               }}
               onMount={handleMount}
               options={{
@@ -514,15 +510,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
               value={activeContent}
               path={modelPath}
               onChange={(value, event) => {
-                if (event.isFlush) return;
-                const v = value || "";
-                const modelFilePath = getFilePathFromModelUri(
-                  editorRef.current?.getModel()?.uri,
-                  workspaceId,
-                  workspaceRoot,
-                );
-                if (!modelFilePath || modelFilePath !== activeFile.path) return;
-                updateContent(modelFilePath, v);
+                handleEditorChange(activeFile.path, value, event);
               }}
               onMount={handleMount}
               options={{

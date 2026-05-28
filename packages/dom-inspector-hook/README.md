@@ -323,7 +323,7 @@ export default defineConfig({
 import { bindCaptureListener } from 'dom-inspector-hook'
 
 bindCaptureListener({
-  url: 'http://localhost:3999', // POST 目标地址
+  url: 'http://127.0.0.1:3100/api/inspector/track', // POST 目标地址
 })
 ```
 
@@ -357,7 +357,7 @@ createBehavior({ copy: true }) // 点击时自动复制源码位置信息
 import { bindCaptureListener } from 'dom-inspector-hook'
 
 const unbind = bindCaptureListener({
-  url: 'http://localhost:3999',
+  url: 'http://127.0.0.1:3100/api/inspector/track',
   mode: 'auto',
   copy: true,
 })
@@ -427,7 +427,7 @@ const server = http.createServer((req, res) => {
   }
 })
 
-server.listen(3999)
+server.listen(3100)
 ```
 
 ## License
