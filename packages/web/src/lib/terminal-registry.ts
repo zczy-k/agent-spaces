@@ -10,6 +10,14 @@ export interface TerminalRegistryEntry {
   lastResize?: { cols: number; rows: number };
 }
 
+export interface TerminalRegistrySessionStats {
+  sessionId: string;
+  bufferLines: number;
+  outputBytes: number;
+  cols: number;
+  rows: number;
+}
+
 const terminalRegistry = new Map<string, TerminalRegistryEntry>();
 
 export function getTerminalRegistryEntry(sessionId: string): TerminalRegistryEntry | undefined {
@@ -46,10 +54,42 @@ export function disposeAllTerminalSessions(ws?: WorkspaceWS | null): void {
   }
 }
 
-export function getTerminalRegistryStats(): { sessionCount: number; sessionIds: string[] } {
+function getXtermOutputBytes(xterm: Terminal): { bufferLines: number; outputBytes: number } {
+  const buffer = xterm.buffer.active;
+  let outputBytes = 0;
+
+  for (let index = 0; index < buffer.length; index += 1) {
+    outputBytes += buffer.getLine(index)?.translateToString(true).length ?? 0;
+  }
+
+  return {
+    bufferLines: buffer.length,
+    outputBytes,
+  };
+}
+
+export function getTerminalRegistryStats(): {
+  sessionCount: number;
+  sessionIds: string[];
+  sessions: TerminalRegistrySessionStats[];
+  outputBytes: number;
+} {
+  const sessions = [...terminalRegistry.entries()].map(([sessionId, entry]) => {
+    const output = getXtermOutputBytes(entry.xterm);
+    return {
+      sessionId,
+      bufferLines: output.bufferLines,
+      outputBytes: output.outputBytes,
+      cols: entry.xterm.cols,
+      rows: entry.xterm.rows,
+    };
+  });
+
   return {
     sessionCount: terminalRegistry.size,
     sessionIds: [...terminalRegistry.keys()],
+    sessions,
+    outputBytes: sessions.reduce((total, session) => total + session.outputBytes, 0),
   };
 }
 

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ContentUsageSnapshot, formatContentUsageSnapshot } from '@/stores/content-usage-report';
-import { RefreshCw, Trash2 } from 'lucide-react';
+import { Eraser, RefreshCw, Trash2 } from 'lucide-react';
 
 interface ContentUsageReportDialogProps {
   open: boolean;
@@ -13,6 +13,7 @@ interface ContentUsageReportDialogProps {
   reports: ContentUsageSnapshot[];
   onCaptureNow: () => void;
   onClear: () => void;
+  onAttemptGc: () => void;
 }
 
 function formatBytes(bytes: number): string {
@@ -42,6 +43,7 @@ export function ContentUsageReportDialog({
   reports,
   onCaptureNow,
   onClear,
+  onAttemptGc,
 }: ContentUsageReportDialogProps) {
   const latest = reports[reports.length - 1] ?? null;
 
@@ -64,6 +66,10 @@ export function ContentUsageReportDialog({
             <Trash2 className="size-4" />
             Clear
           </Button>
+          <Button type="button" variant="outline" size="sm" onClick={onAttemptGc}>
+            <Eraser className="size-4" />
+            Attempt GC
+          </Button>
           <Badge variant="secondary" className="ml-auto">
             {reports.length} snapshots
           </Badge>
@@ -77,8 +83,9 @@ export function ContentUsageReportDialog({
             <Metric label="Open files" value={`${latest.counts.openFiles} (${formatBytes(latest.counts.openFileBytes)})`} />
             <Metric label="Modified bytes" value={formatBytes(latest.counts.modifiedBytes)} />
             <Metric label="Terminal sessions" value={`${latest.counts.terminalSessions} / ${latest.counts.terminalRegistrySessions}`} />
+            <Metric label="Terminal output" value={formatBytes(latest.counts.terminalOutputBytes)} />
             <Metric label="Channel messages" value={`${latest.counts.channelMessages} (${formatBytes(latest.counts.channelMessageBytes)})`} />
-            <Metric label="Activity log entries" value={String(latest.counts.activityLogEntries)} />
+            <Metric label="Activity logs" value={`${latest.counts.activityLogEntries} (${formatBytes(latest.counts.activityLogBytes)})`} />
           </div>
         ) : (
           <div className="rounded-md border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">

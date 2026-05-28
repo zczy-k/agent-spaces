@@ -58,3 +58,5 @@
 - Use a lightweight periodic snapshot rather than a heavy profiler.
 - Prefer counts and aggregate string lengths from stores plus `performance.memory` when the browser exposes it.
 - Surface the history through an existing global command entry so the report is easy to open without adding another always-visible panel.
+- xterm exposes enough buffer metadata to estimate retained terminal output per session from the active buffer.
+- Browser-side GC is not a standard production control surface. It can only be requested in diagnostic environments where `window.gc` is exposed, so the real fix path remains disposing objects and limiting retained buffers.

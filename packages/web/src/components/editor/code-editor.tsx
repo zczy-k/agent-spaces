@@ -289,15 +289,17 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   useEffect(() => {
     const editor = editorRef.current;
     const monaco = monacoRef.current;
-    if (!editor || !monaco || !activeFilePath) {
-      if (editor) favoriteDecorationsRef.current = editor.deltaDecorations(favoriteDecorationsRef.current, []);
+    if (!editor || !monaco || !activeFilePath || !editor.getModel() || !editor.getDomNode()) {
+      if (editor) {
+        try { favoriteDecorationsRef.current = editor.deltaDecorations(favoriteDecorationsRef.current, []); } catch {}
+      }
       return;
     }
     const matched = favorites.filter(
       (f) => f.path === activeFilePath && f.workspaceId === workspaceId,
     );
     if (matched.length === 0) {
-      favoriteDecorationsRef.current = editor.deltaDecorations(favoriteDecorationsRef.current, []);
+      try { favoriteDecorationsRef.current = editor.deltaDecorations(favoriteDecorationsRef.current, []); } catch {}
       return;
     }
     const decorations = matched.map((f) => ({
@@ -309,7 +311,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
         className: 'favorite-line-bg',
       },
     }));
-    favoriteDecorationsRef.current = editor.deltaDecorations(favoriteDecorationsRef.current, decorations);
+    try { favoriteDecorationsRef.current = editor.deltaDecorations(favoriteDecorationsRef.current, decorations); } catch {}
   }, [activeFilePath, favorites, workspaceId, editorReadyTick]);
 
   // Poll for external file changes (skip if user has unsaved edits)

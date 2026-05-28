@@ -14,6 +14,14 @@ import { getActivityLogStore } from '@/stores/activity-log';
 import { useInspectorHistoryStore } from '@/stores/inspector-history';
 import { useGitStore } from '@/stores/git';
 
+export interface TerminalUsageDetail {
+  sessionId: string;
+  bufferLines: number;
+  outputBytes: number;
+  cols: number;
+  rows: number;
+}
+
 export interface ContentUsageSnapshot {
   id: string;
   capturedAt: string;
@@ -39,16 +47,19 @@ export interface ContentUsageSnapshot {
     runningCommands: number;
     terminalSessions: number;
     terminalRegistrySessions: number;
+    terminalOutputBytes: number;
     openFiles: number;
     openFileBytes: number;
     modifiedBytes: number;
     treeNodes: number;
     activityLogEntries: number;
+    activityLogBytes: number;
     inspectorHistoryEntries: number;
     gitDiffEntries: number;
     gitLogEntries: number;
     gitBranchEntries: number;
   };
+  terminalDetails: TerminalUsageDetail[];
 }
 
 interface ContentUsageReportState {
@@ -100,9 +111,15 @@ function sumChannelMessages(): { count: number; bytes: number } {
   return { count, bytes };
 }
 
-function sumActivityLogEntries(): number {
+function sumActivityLogEntries(): { count: number; bytes: number } {
   const workspaces = useWorkspaceStore.getState().workspaces;
-  return workspaces.reduce((total, workspace) => total + getActivityLogStore(workspace.id).getState().entries.length, 0);
+  return workspaces.reduce((total, workspace) => {
+    const entries = getActivityLogStore(workspace.id).getState().entries;
+    return {
+      count: total.count + entries.length,
+      bytes: total.bytes + entries.reduce((sum, entry) => sum + entry.message.length, 0),
+    };
+  }, { count: 0, bytes: 0 });
 }
 
 function getJsHeap() {
@@ -141,6 +158,8 @@ export function captureContentUsageSnapshot(): ContentUsageSnapshot {
   const treeNodes = countTreeNodes(editor.tree);
   const heap = getJsHeap();
   const activeGitDiffs = Object.keys(editor.commitDiffs).length;
+  const terminalUsage = getTerminalRegistryStats();
+  const activityLogUsage = sumActivityLogEntries();
 
   return {
     id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -162,17 +181,20 @@ export function captureContentUsageSnapshot(): ContentUsageSnapshot {
       commands: command.commands.length,
       runningCommands: Object.keys(command.runningMap).length,
       terminalSessions: terminal.sessions.length,
-      terminalRegistrySessions: getTerminalRegistryStats().sessionCount,
+      terminalRegistrySessions: terminalUsage.sessionCount,
+      terminalOutputBytes: terminalUsage.outputBytes,
       openFiles: editor.openFiles.length,
       openFileBytes,
       modifiedBytes,
       treeNodes,
-      activityLogEntries: sumActivityLogEntries(),
+      activityLogEntries: activityLogUsage.count,
+      activityLogBytes: activityLogUsage.bytes,
       inspectorHistoryEntries: Object.values(inspector.histories).reduce((total, entries) => total + entries.length, 0),
       gitDiffEntries: activeGitDiffs,
       gitLogEntries: git.log.length,
       gitBranchEntries: git.branches.length,
     },
+    terminalDetails: terminalUsage.sessions,
   };
 }
 
@@ -190,12 +212,13 @@ export function formatContentUsageSnapshot(report: ContentUsageSnapshot): string
   lines.push(
     `Editor: ${report.counts.openFiles} files, ${bytesToString(report.counts.openFileBytes)} content, ${bytesToString(report.counts.modifiedBytes)} modified`,
     `Tree: ${report.counts.treeNodes} nodes`,
-    `Terminal: ${report.counts.terminalSessions} sessions, ${report.counts.terminalRegistrySessions} tracked`,
+    `Terminal: ${report.counts.terminalSessions} sessions, ${report.counts.terminalRegistrySessions} tracked, ${bytesToString(report.counts.terminalOutputBytes)} buffered output`,
+    `Terminal sessions: ${report.terminalDetails.length > 0 ? report.terminalDetails.map((session) => `${session.sessionId.slice(0, 8)} ${bytesToString(session.outputBytes)} ${session.bufferLines} lines ${session.cols}x${session.rows}`).join('; ') : 'none'}`,
     `Chat: ${report.counts.channels} channels, ${report.counts.channelMessages} messages, ${bytesToString(report.counts.channelMessageBytes)} text`,
     `Work items: ${report.counts.issues} issues, ${report.counts.tasks} tasks`,
     `Knowledge base: ${report.counts.databases} databases, ${report.counts.databaseNodes} nodes`,
     `Automation: ${report.counts.commands} commands, ${report.counts.runningCommands} running`,
-    `Events: ${report.counts.notifications} notifications, ${report.counts.activityLogEntries} activity log entries`,
+    `Events: ${report.counts.notifications} notifications, ${report.counts.activityLogEntries} activity log entries, ${bytesToString(report.counts.activityLogBytes)} log text`,
     `History: ${report.counts.inspectorHistoryEntries} inspector jumps, ${report.counts.gitLogEntries} git log entries, ${report.counts.gitBranchEntries} git branches, ${report.counts.gitDiffEntries} open diffs`,
     `Workspace: ${report.counts.workspaces} loaded, ${report.counts.agents} agents`,
   );

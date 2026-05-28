@@ -36,3 +36,6 @@
 - The reporter captures heap, editor, terminal, chat, issue/task, database, command, notification, and activity-log counts.
 - Ran targeted ESLint on the touched web files successfully.
 - Ran `pnpm --filter @agent-spaces/web build`, which failed in an unrelated existing type error in `src/components/activity-graph.tsx` before reaching this patch's files.
+- Added terminal registry session details to content usage reports, including buffered output bytes, buffer line count, dimensions, and registry session IDs.
+- Added activity-log text byte totals and message text byte totals to console/dialog reports.
+- Added a best-effort browser GC action in the diagnostics command palette and content usage report dialog; it only works when the browser exposes `window.gc`.
