@@ -5,7 +5,6 @@ import { AuthGuard } from "@/components/auth-guard";
 import { AppShell } from "@/components/app-shell";
 import { ConsolePanel } from "@/components/common/console-panel";
 import { ViewportInsets } from "@/components/viewport-insets";
-import { ZoomWrapper } from "@/components/zoom-wrapper";
 import { CommandPalette } from "@/components/command-palette";
 import { ThemeStyleInit } from "@/components/theme-style-init";
 import { Toaster } from "sonner";
@@ -43,7 +42,6 @@ export default function RootLayout({
     >
       <head />
       <body className="h-[var(--app-content-height)] overflow-hidden font-sans">
-        <ZoomWrapper>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <ThemeStyleInit />
           <LocaleProvider>
@@ -56,7 +54,6 @@ export default function RootLayout({
             <ConsolePanel />
           </LocaleProvider>
         </ThemeProvider>
-        </ZoomWrapper>
       </body>
     </html>
   );
