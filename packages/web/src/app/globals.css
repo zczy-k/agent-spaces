@@ -195,6 +195,7 @@
 
 .flexlayout__tab {
   border-radius: var(--radius);
+  background-color: var(--card) !important;
 }
 
 /* Splitter — invisible, gap-based spacing */

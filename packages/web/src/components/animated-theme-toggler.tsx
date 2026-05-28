@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef, useId } from "react";
+import { useRef, useId } from "react";
 import { motion } from "motion/react";
+import { useTheme } from "./theme-provider";
 
 /**
  * Animated Theme Toggler — sun↔moon morph.
@@ -75,28 +76,19 @@ function tick(last: React.MutableRefObject<number>) {
 export function AnimatedThemeToggler({
   sound = true,
 }: AnimatedThemeTogglerProps) {
+  const { resolvedTheme, setTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
+
   const rawId = useId();
   const maskId = `att${rawId.replace(/:/g, "")}`;
   const lastSnd = useRef(0);
-  const isFirst = useRef(true);
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    setIsDark(document.documentElement.classList.contains("dark"));
-    requestAnimationFrame(() => {
-      isFirst.current = false;
-    });
-  }, []);
 
   const toggle = () => {
-    const dark = document.documentElement.classList.toggle("dark");
-    setIsDark(dark);
+    setTheme(isDark ? 'light' : 'dark');
     if (sound) tick(lastSnd);
   };
 
-  const spring = isFirst.current
-    ? { duration: 0 }
-    : { type: "spring" as const, stiffness: 380, damping: 30 };
+  const spring = { type: "spring" as const, stiffness: 380, damping: 30 };
 
   return (
     <>
