@@ -91,7 +91,7 @@ export function SettingsDialog({
 
   const sidebar = (
     <div className="flex min-h-0 flex-1 flex-col sm:flex-row">
-      <div className="flex sm:flex-col sm:w-36 sm:border-r sm:py-3 sm:px-2 shrink-0 overflow-x-auto border-b sm:border-b-0 gap-1 px-2 py-2">
+      <div className="flex sm:flex-col sm:w-48 sm:border-r sm:py-3 sm:px-2 shrink-0 overflow-x-auto overflow-y-auto border-b sm:border-b-0 gap-1 px-2 py-2">
         {tabs.map(({ key, icon: Icon }) => (
           <button
             key={key}
@@ -119,7 +119,7 @@ export function SettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[85vh] p-0 gap-0 flex flex-col overflow-hidden">
+      <DialogContent className="sm:max-w-2xl max-h-[85vh] p-0 gap-0 flex flex-col overflow-hidden">
         <DialogHeader className="px-5 py-4 border-b shrink-0">
           <DialogTitle className="text-base">{t("title")}</DialogTitle>
           <DialogDescription className="text-xs">{t("description")}</DialogDescription>

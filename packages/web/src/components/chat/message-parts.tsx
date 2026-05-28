@@ -275,7 +275,7 @@ function UserContent({ content }: { content: string }) {
   if (/<[a-z][\s\S]*>/i.test(content)) {
     return <span className="tiptap tiptap-message" dangerouslySetInnerHTML={{ __html: content }} />
   }
-  return <span className="whitespace-pre-wrap break-all">{content}</span>
+  return <span className="whitespace-pre-wrap break-all select-text">{content}</span>
 }
 
 function dedupeDisplayPart(part: MessagePart): MessagePart {
