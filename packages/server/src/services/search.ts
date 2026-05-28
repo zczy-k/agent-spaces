@@ -1,7 +1,7 @@
 // packages/server/src/services/search.ts
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { readdir, stat, readFile } from 'node:fs/promises';
-import { join, relative } from 'node:path';
+import { isAbsolute, join, relative, resolve } from 'node:path';
 import { minimatch } from 'minimatch';
 import type { Workspace, CodeSearchResult, FileSearchResult, SearchCodeOptions } from '@agent-spaces/shared';
 import { resolvePath } from './file.js';
@@ -15,6 +15,13 @@ const MAX_PRELOAD_SIZE = 500 * 1024; // 500KB
 function isBinaryPath(path: string): boolean {
   const ext = path.split('.').pop()?.toLowerCase() || '';
   return BINARY_EXTENSIONS.has(`.${ext}`) || ext === path;
+}
+
+function toWorkspaceRelativePath(basePath: string, path: string): string | null {
+  const absPath = isAbsolute(path) ? resolve(path) : resolve(basePath, path);
+  const relPath = relative(basePath, absPath);
+  if (relPath.startsWith('..') || isAbsolute(relPath)) return null;
+  return relPath;
 }
 
 // --- ripgrep implementation ---
@@ -31,7 +38,7 @@ interface RgMatch {
 }
 
 function searchWithRipgrep(basePath: string, options: SearchCodeOptions): CodeSearchResult[] {
-  const args = ['rg', '--json', '--max-count', String(options.maxResults || 200)];
+  const args = ['--json', '--max-count', String(options.maxResults || 200)];
 
   if (!options.caseSensitive) args.push('-i');
   if (options.regex) {
@@ -41,10 +48,11 @@ function searchWithRipgrep(basePath: string, options: SearchCodeOptions): CodeSe
   }
   if (options.filePattern) args.push('--glob', options.filePattern);
 
-  args.push('--', '.', basePath);
+  args.push('--', '.');
 
   try {
-    const output = execSync(args.join(' '), {
+    const output = execFileSync('rg', args, {
+      cwd: basePath,
       encoding: 'utf-8',
       maxBuffer: 50 * 1024 * 1024,
       timeout: 30000,
@@ -57,7 +65,9 @@ function searchWithRipgrep(basePath: string, options: SearchCodeOptions): CodeSe
         const parsed: RgMatch = JSON.parse(line);
         if (parsed.type !== 'match') continue;
 
-        const filePath = relative(basePath, parsed.data.path.text);
+        const filePath = toWorkspaceRelativePath(basePath, parsed.data.path.text);
+        if (!filePath) continue;
+
         const text = parsed.data.lines.text.trimEnd();
         const sub = parsed.data.submatches[0];
         if (!sub) continue;

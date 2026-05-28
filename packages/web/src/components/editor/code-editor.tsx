@@ -227,7 +227,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
       startTypeScriptLanguageClient(workspaceId, workspaceRoot);
     }
     syncReadOnly(editor, isReadOnly);
-    editor.updateOptions({ fontSize });
+    editor.updateOptions({ fontSize, quickSuggestions: false, renderValidationDecorations: 'off' });
     registerNavigation(editor, _monaco);
     attachWheelZoom(editor);
 
