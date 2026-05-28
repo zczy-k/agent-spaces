@@ -183,14 +183,14 @@ export function CommandSidebar({
                   <button
                     onClick={() => useTerminalStore.getState().createSession(undefined, folder)}
                     className="shrink-0 p-0.5 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer max-md:!opacity-100"
-                    title={tc('openTerminal') || 'Open Terminal'}
+                    title={'Open Terminal'}
                   >
                     <Terminal size={12} />
                   </button>
                   <button
                     onClick={() => onRemoveFolder(folder)}
                     className="shrink-0 p-0.5 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer max-md:!opacity-100"
-                    title={tc('deleteFolder') || 'Delete Folder'}
+                    title={'Delete Folder'}
                   >
                     <Trash2 size={12} />
                   </button>

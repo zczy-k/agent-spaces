@@ -1,13 +1,15 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
-import { Plus, ChevronDown, X, FolderOpen, Terminal } from 'lucide-react';
+import { Plus, ChevronDown, X, FolderOpen, Terminal, Bot } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useTerminalStore } from '@/stores/terminal';
 import { useCommandStore } from '@/stores/command';
+import { useChannelStore } from '@/stores/channel';
+import { useAgentStore } from '@/stores/agent';
 import { getWS } from '@/lib/ws';
 import { fetchWithAuth } from '@/lib/auth';
 import { toast } from 'sonner';
@@ -17,9 +19,12 @@ import { ImportCommandsDialog } from './import-commands-dialog';
 import { CommandSidebar } from './command-sidebar';
 import { TerminalToolbar } from './terminal-toolbar';
 import { getShellOptions, getShellLabel } from './terminal-utils';
-import type { QuickCommand } from '@agent-spaces/shared';
+import type { QuickCommand, Channel } from '@agent-spaces/shared';
 import { useTranslations } from 'next-intl';
+import { ChannelDialog } from '@/components/chat/channel-dialog';
+import { normalizeChannelMembersToAgentIds } from '@/lib/agent-members';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Layout } from 'react-resizable-panels';
 
 interface TerminalPanelProps {
@@ -73,8 +78,13 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
   const { sessions, activeId, init, createSession, setActive, removeSession } = useTerminalStore();
   const { commands, load: loadCommands, run, remove, update, create, isRunning, runningMap } = useCommandStore();
   const { sendInput } = useTerminalStore();
+  const { agents } = useAgentStore();
+  const { createChannel, sendMessage } = useChannelStore();
   const t = useTranslations('terminal');
   const tc = useTranslations('commands');
+
+  const [aiFixDialogOpen, setAiFixDialogOpen] = useState(false);
+  const [aiFixSessionId, setAiFixSessionId] = useState('');
 
   const terminalLayout = useMemo<Layout | undefined>(() => {
     return loadTerminalLayout();
@@ -120,22 +130,11 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
   }, [pendingShell, createSession]);
 
   const initRef = useRef<string | null>(null);
-  const defaultSessionRequestedRef = useRef<string | null>(null);
   useEffect(() => {
     const ws = getWS(workspaceId);
-    init(ws, () => {
-      // After server sessions restored, create default if none exist
-      if (
-        useTerminalStore.getState().sessions.length === 0
-        && defaultSessionRequestedRef.current !== workspaceId
-      ) {
-        defaultSessionRequestedRef.current = workspaceId;
-        handleCreateSession();
-      }
-    });
+    init(ws);
     if (initRef.current !== workspaceId) {
       initRef.current = workspaceId;
-      defaultSessionRequestedRef.current = null;
     }
   }, [workspaceId]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -238,42 +237,54 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <Tabs value={activeId ?? undefined} onValueChange={setActive} className="flex flex-col h-full gap-0 bg-background">
       {/* Tab bar */}
-      <div className="flex items-center gap-0.5 px-1 py-0.5 bg-muted border-b border-border overflow-x-auto">
-        {sessions.map((session) => (
-          <ContextMenu key={session.id}>
-            <ContextMenuTrigger>
-              <button
-                onClick={() => setActive(session.id)}
-                className={`flex items-center gap-1 px-2 py-1 text-xs rounded-t transition-colors shrink-0 ${
-                  activeId === session.id
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
-                }`}
-              >
-                <span className="font-mono text-[10px] opacity-60">{session.name ?? getShellLabel(session.shell, shellOptions)}</span>
-                {!session.name && <span>{sessions.indexOf(session) + 1}</span>}
-                <span
-                  onClick={(e) => { e.stopPropagation(); removeSession(session.id); }}
-                  className="ml-1 hover:text-destructive cursor-pointer"
+      <div className="flex items-center gap-0.5 bg-muted border-b border-border px-1 py-0.5">
+        <TabsList className="flex h-auto min-w-0 flex-1 justify-start gap-0.5 rounded-none bg-transparent p-0 overflow-x-auto">
+          {sessions.map((session) => (
+            <ContextMenu key={session.id}>
+              <ContextMenuTrigger>
+                <TabsTrigger
+                  value={session.id}
+                  className={`flex-none items-center gap-1 px-2 py-1 text-xs rounded-t transition-colors shrink-0 ${
+                    activeId === session.id
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
+                  }`}
                 >
-                  <X size={12} />
-                </span>
-              </button>
-            </ContextMenuTrigger>
-            <ContextMenuContent>
-              <ContextMenuItem
-                onClick={() => {
-                  void navigator.clipboard?.writeText(session.id);
-                }}
-                className="text-xs"
-              >
-                复制终端id
-              </ContextMenuItem>
-            </ContextMenuContent>
-          </ContextMenu>
-        ))}
+                  <span className="font-mono text-[10px] opacity-60">{session.name ?? getShellLabel(session.shell, shellOptions)}</span>
+                  {!session.name && <span>{sessions.indexOf(session) + 1}</span>}
+                  <span
+                    onClick={(e) => { e.stopPropagation(); removeSession(session.id); }}
+                    className="ml-1 hover:text-destructive cursor-pointer"
+                  >
+                    <X size={12} />
+                  </span>
+                </TabsTrigger>
+              </ContextMenuTrigger>
+              <ContextMenuContent>
+                <ContextMenuItem
+                  onClick={() => {
+                    void navigator.clipboard?.writeText(session.id);
+                  }}
+                  className="text-xs"
+                >
+                  复制终端id
+                </ContextMenuItem>
+                <ContextMenuItem
+                  onClick={() => {
+                    setAiFixSessionId(session.id);
+                    setAiFixDialogOpen(true);
+                  }}
+                  className="text-xs"
+                >
+                  <Bot size={12} className="mr-1.5" />
+                  AI一键修复
+                </ContextMenuItem>
+              </ContextMenuContent>
+            </ContextMenu>
+          ))}
+        </TabsList>
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
@@ -384,16 +395,17 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
             </div>
           ) : (
             sessions.map((session) => (
-              <div
+              <TabsContent
                 key={session.id}
-                className="absolute inset-0"
-                style={{ display: activeId === session.id ? 'block' : 'none' }}
+                value={session.id}
+                className="absolute inset-0 m-0 h-full w-full"
               >
                 <TerminalInstance
                   sessionId={session.id}
                   workspaceId={workspaceId}
+                  active={activeId === session.id}
                 />
-              </div>
+              </TabsContent>
             ))
           )}
         </ResizablePanel>
@@ -490,6 +502,29 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+
+      {/* AI fix - create channel with default message */}
+      <ChannelDialog
+        open={aiFixDialogOpen}
+        onOpenChange={setAiFixDialogOpen}
+        workspaceId={workspaceId}
+        agents={agents}
+        defaultInitialMessage={`[use tool: ReadTerminalOutput] 查看并修复终端 id: ${aiFixSessionId} 的问题`}
+        onSubmit={async (data) => {
+          const memberIds = normalizeChannelMembersToAgentIds(agents, data.members);
+          await createChannel(workspaceId, data.name, data.type, memberIds);
+          if (data.initialMessage && memberIds.length === 1) {
+            const agent = agents.find((a) => a.id === memberIds[0]);
+            const agentName = agent?.name || memberIds[0];
+            const { channels } = useChannelStore.getState();
+            const created = channels[channels.length - 1];
+            if (created) {
+              const mentionHtml = `<span data-type="mention" data-id="${memberIds[0]}" data-label="${agentName}"></span>`;
+              sendMessage(workspaceId, created.id, `${mentionHtml} ${data.initialMessage}`, memberIds);
+            }
+          }
+        }}
+      />
+    </Tabs>
   );
 }

@@ -22,10 +22,12 @@ interface ChannelDialogProps {
   workspaceId: string;
   channel?: Channel | null;
   agents?: AgentConfig[];
+  defaultInitialMessage?: string;
+  defaultMembers?: string[];
   onSubmit: (data: { name: string; type: Channel['type']; members: string[]; initialMessage?: string }) => void;
 }
 
-export function ChannelDialog({ open, onOpenChange, channel, agents = [], onSubmit }: ChannelDialogProps) {
+export function ChannelDialog({ open, onOpenChange, channel, agents = [], onSubmit, defaultInitialMessage, defaultMembers }: ChannelDialogProps) {
   const t = useTranslations('chat');
   const tc = useTranslations('common');
   const [name, setName] = useState('');
@@ -48,12 +50,13 @@ export function ChannelDialog({ open, onOpenChange, channel, agents = [], onSubm
         setName(channel.name);
         setType(channel.type);
         setMembers([...channel.members]);
+        setInitialMessage('');
       } else {
         setName('');
         setType('general');
-        setMembers([]);
+        setMembers(defaultMembers ?? []);
+        setInitialMessage(defaultInitialMessage ?? '');
       }
-      setInitialMessage('');
       setDialogKey((k) => k + 1);
     });
   }, [open, channel]);

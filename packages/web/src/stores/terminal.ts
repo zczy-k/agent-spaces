@@ -63,7 +63,9 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
     ws.on('terminal.created', (data) => {
       const { sessionId, cwd, shell } = data as { sessionId: string; cwd: string; shell?: string };
       set((s) => {
-        if (s.sessions.some((t) => t.id === sessionId)) return s;
+        if (s.sessions.some((t) => t.id === sessionId)) {
+          return { activeId: sessionId };
+        }
         return {
           sessions: [...s.sessions, { id: sessionId, cwd, shell }],
           activeId: sessionId,
@@ -71,7 +73,13 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       });
     });
     ws.on('terminal.error', (data) => {
-      const { error } = data as { sessionId?: string; error: string };
+      const { sessionId, error } = data as { sessionId?: string; error: string };
+      if (sessionId) {
+        set((s) => {
+          if (s.activeId !== sessionId) return s;
+          return { activeId: s.sessions[0]?.id ?? null };
+        });
+      }
       toast.error(error);
     });
     ws.on('terminal.closed', (data) => {
@@ -122,7 +130,9 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
 
   createSession: (shell?: string, cwd?: string) => {
     const { ws } = get();
-    ws?.send('terminal.create', { sessionId: crypto.randomUUID?.() ?? crypto.getRandomValues(new Uint8Array(16)).reduce((s, b) => s + b.toString(16).padStart(2, '0'), ''), shell, cwd });
+    const sessionId = crypto.randomUUID?.() ?? crypto.getRandomValues(new Uint8Array(16)).reduce((s, b) => s + b.toString(16).padStart(2, '0'), '');
+    set({ activeId: sessionId });
+    ws?.send('terminal.create', { sessionId, shell, cwd });
   },
 
   setActive: (id) => set({ activeId: id }),

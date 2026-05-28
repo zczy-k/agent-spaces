@@ -79,9 +79,10 @@ const TERM_THEMES = {
 interface TerminalInstanceProps {
   sessionId: string;
   workspaceId: string;
+  active: boolean;
 }
 
-export function TerminalInstance({ sessionId, workspaceId }: TerminalInstanceProps) {
+export function TerminalInstance({ sessionId, workspaceId, active }: TerminalInstanceProps) {
   const termRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
@@ -97,6 +98,21 @@ export function TerminalInstance({ sessionId, workspaceId }: TerminalInstancePro
       xtermRef.current.write(output);
     }
   }, [sessionId]);
+
+  const fitAndResize = useCallback(() => {
+    const xterm = xtermRef.current;
+    const fit = fitRef.current;
+    const container = termRef.current;
+    if (!xterm || !fit || !container || container.clientWidth === 0 || container.clientHeight === 0) return;
+
+    const ws = getWS(workspaceId);
+    try { fit.fit(); } catch { /* ignore */ }
+    ws.send('terminal.resize', {
+      sessionId,
+      cols: xterm.cols,
+      rows: xterm.rows,
+    });
+  }, [sessionId, workspaceId]);
 
   useEffect(() => {
     if (!termRef.current) return;
@@ -201,6 +217,16 @@ export function TerminalInstance({ sessionId, workspaceId }: TerminalInstancePro
       }
     };
   }, [sessionId, workspaceId, handleOutput]);
+
+  useEffect(() => {
+    if (!active) return;
+
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(fitAndResize);
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [active, fitAndResize]);
 
   // Sync theme without recreating terminal
   useEffect(() => {
