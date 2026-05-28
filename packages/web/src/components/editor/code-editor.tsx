@@ -390,7 +390,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
       <EditorTabs workspaceId={workspaceId} />
       <EditorMenuBar editorRef={editorRef} workspaceId={workspaceId} isReadOnly={isReadOnly} onToggleReadOnly={() => setIsReadOnly(r => !r)} isFullscreen={isFullscreen} onToggleFullscreen={() => setIsFullscreen(f => !f)} wordWrap={wordWrap} onToggleWordWrap={() => { const v = !wordWrap; setWordWrap(v); localStorage.setItem('editor-word-wrap', String(v)); }} minimap={minimap} onToggleMinimap={() => { const v = !minimap; setMinimap(v); localStorage.setItem('editor-minimap', String(v)); }} fontSize={fontSize} onZoomIn={() => setFontSize(s => { const n = Math.min(s + 1, 40); localStorage.setItem('editor-font-size', String(n)); return n; })} onZoomOut={() => setFontSize(s => { const n = Math.max(s - 1, 8); localStorage.setItem('editor-font-size', String(n)); return n; })} onZoomReset={() => { setFontSize(13); localStorage.setItem('editor-font-size', '13'); }} />
       <div
-        className="relative flex-1 min-h-0"
+        className="relative flex-1 min-h-0 bg-background"
         {...mobile.containerProps}
       >
         {isCommitDiff && commitDiffData ? (

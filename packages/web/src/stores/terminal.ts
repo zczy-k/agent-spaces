@@ -112,8 +112,12 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       });
       onRestored?.();
     });
-    // Server pushes terminal.sessions on each WS connection (handleConnection),
-    // no need to request terminal.list here.
+    // Server also pushes terminal.sessions on connection, but getWS() starts
+    // connecting before store listeners are registered. Request explicitly so a
+    // fast initial push cannot be missed after page refresh.
+    const requestSessions = () => ws.send('terminal.list', {});
+    ws.on('connected', requestSessions);
+    requestSessions();
   },
 
   createSession: (shell?: string, cwd?: string) => {

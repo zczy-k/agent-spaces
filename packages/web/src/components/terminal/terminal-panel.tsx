@@ -120,16 +120,22 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
   }, [pendingShell, createSession]);
 
   const initRef = useRef<string | null>(null);
+  const defaultSessionRequestedRef = useRef<string | null>(null);
   useEffect(() => {
     const ws = getWS(workspaceId);
     init(ws, () => {
       // After server sessions restored, create default if none exist
-      if (useTerminalStore.getState().sessions.length === 0) {
+      if (
+        useTerminalStore.getState().sessions.length === 0
+        && defaultSessionRequestedRef.current !== workspaceId
+      ) {
+        defaultSessionRequestedRef.current = workspaceId;
         handleCreateSession();
       }
     });
     if (initRef.current !== workspaceId) {
       initRef.current = workspaceId;
+      defaultSessionRequestedRef.current = null;
     }
   }, [workspaceId]); // eslint-disable-line react-hooks/exhaustive-deps
 
