@@ -181,7 +181,7 @@
 }
 
 .flexlayout__tabset {
-  border-radius: 12px;
+  border-radius: var(--radius);
   border: 1px solid #e5e7eb;
   background-color: #ffffff !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
@@ -194,7 +194,7 @@
 }
 
 .flexlayout__tab {
-  border-radius: 12px;
+  border-radius: var(--radius);
 }
 
 /* Splitter — invisible, gap-based spacing */
@@ -227,7 +227,7 @@
 
 /* Border bar — floating card */
 .flexlayout__border {
-  border-radius: 12px;
+  border-radius: var(--radius);
   border: 1px solid #e5e7eb;
   background-color: #ffffff !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
@@ -241,16 +241,16 @@
 
 /* Border tab bar — match tabset header style */
 .flexlayout__border_inner {
-  border-radius: 12px 12px 0 0;
+  border-radius: var(--radius) var(--radius) 0 0;
   background-color: #fafafa;
 }
 
 .flexlayout__border_bottom .flexlayout__border_inner {
-  border-radius: 0 0 12px 12px;
+  border-radius: 0 0 var(--radius) var(--radius);
 }
 
 .flexlayout__border_tab_contents {
-  border-radius: 12px;
+  border-radius: var(--radius);
   background-color: #ffffff !important;
   overflow: hidden !important;
 }
@@ -374,7 +374,7 @@
 .flexlayout__tabset_tabbar_outer_top {
   border-bottom: 1px solid #f2f3f5 !important;
   padding: 6px 8px !important;
-  border-radius: 12px 12px 0 0;
+  border-radius: var(--radius) var(--radius) 0 0;
   background-color: #fafafa;
 }
 
@@ -578,7 +578,7 @@
 .suggestion-menu {
   width: 320px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius);
   background: var(--popover);
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14);
   overflow: hidden;
