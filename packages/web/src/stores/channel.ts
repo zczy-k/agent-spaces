@@ -13,7 +13,7 @@ interface ChannelStore {
   setCreateDialogOpen: (open: boolean) => void;
 
   loadChannels: (workspaceId: string) => Promise<void>;
-  createChannel: (workspaceId: string, name: string, type?: Channel['type'], members?: string[]) => Promise<void>;
+  createChannel: (workspaceId: string, name: string, type?: Channel['type'], members?: string[], titlePrompt?: string) => Promise<void>;
   updateChannel: (workspaceId: string, channelId: string, data: Partial<Pick<Channel, 'name' | 'type' | 'issueId' | 'members' | 'pinnedMentionId' | 'draft' | 'todos' | 'notifyOnComplete' | 'archived'>>) => Promise<Channel>;
   setActiveChannel: (id: string) => void;
   loadMessages: (workspaceId: string, channelId: string) => Promise<void>;
@@ -80,11 +80,11 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
     set({ workspaceId, channels, activeChannelId });
   },
 
-  createChannel: async (workspaceId, name, type = 'general', members) => {
+  createChannel: async (workspaceId, name, type = 'general', members, titlePrompt) => {
     const res = await fetch(`/api/workspaces/${workspaceId}/channels`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, type, members }),
+      body: JSON.stringify({ name, type, members, titlePrompt }),
     });
     const channel: Channel = await res.json();
     set((s) => {

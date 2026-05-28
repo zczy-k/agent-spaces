@@ -10,6 +10,13 @@ import { cn } from "@/lib/utils";
 import type { AgentPreset } from "./agent-shared";
 
 const AGENT_GENERATOR_PRESET_ID = "agent-generator";
+const AGENT_COMMIT_PRESET_ID = "commit-agent";
+const AGENT_TITLE_GENERATOR_PRESET_ID = "title-generator";
+const BUILT_IN_AGENT_IDS = new Set([
+  AGENT_GENERATOR_PRESET_ID,
+  AGENT_COMMIT_PRESET_ID,
+  AGENT_TITLE_GENERATOR_PRESET_ID,
+]);
 
 export function AgentList({
   agents,
@@ -23,10 +30,11 @@ export function AgentList({
   onToggleEnabled?: (id: string) => void;
 }) {
   const t = useTranslations('agent');
+  const sortedAgents = [...agents].sort((a, b) => Number(!BUILT_IN_AGENT_IDS.has(a.id)) - Number(!BUILT_IN_AGENT_IDS.has(b.id)));
   return (
     <div className="flex flex-col p-2">
-      {agents.map((agent) => {
-        const fixed = agent.id === AGENT_GENERATOR_PRESET_ID;
+      {sortedAgents.map((agent) => {
+        const fixed = BUILT_IN_AGENT_IDS.has(agent.id);
         return (
           <div
             key={agent.id}

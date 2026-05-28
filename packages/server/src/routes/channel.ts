@@ -5,6 +5,7 @@ import { broadcastToWorkspace } from '../ws/connection-manager.js';
 import { hasActiveChannelRuns, stopChannelRuns } from '../ws/agent-runner.js';
 import { getToolDetail } from '../services/tool-detail.js';
 import * as issueService from '../services/issue.js';
+import { scheduleChannelTitleGeneration } from '../services/generated-title.js';
 
 const router = Router({ mergeParams: true });
 
@@ -20,10 +21,21 @@ router.get('/', (req: Request<ChannelParams>, res: Response) => {
 
 // POST /api/workspaces/:id/channels
 router.post('/', (req: Request<ChannelParams>, res: Response) => {
-  const { name, type, members } = req.body;
-  const channel = createChannel(req.params.id, { name: name || 'General', type: type || 'general', members });
+  const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
+  const titlePrompt = typeof req.body.titlePrompt === 'string' ? req.body.titlePrompt.trim() : '';
+  const { type, members } = req.body;
+  const channel = createChannel(req.params.id, { name, type: type || 'general', members });
   broadcastToWorkspace(req.params.id, 'channel.updated', channel);
   res.status(201).json(channel);
+
+  if (!name) {
+    scheduleChannelTitleGeneration({
+      workspaceId: req.params.id,
+      channelId: channel.id,
+      requirement: titlePrompt,
+      broadcast: (event, data) => broadcastToWorkspace(req.params.id, event, data),
+    });
+  }
 });
 
 // PUT /api/workspaces/:id/channels/:channelId

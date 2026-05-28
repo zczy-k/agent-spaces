@@ -13,6 +13,7 @@ import { retryIssue } from '../services/issue-retry.js';
 import { hasActiveIssueAutomation, runIssueAutomation } from '../agents/issue-agent-runner.js';
 import { continueIssueTaskScheduling, stopIssueAutomation } from '../agents/issue-task-controller.js';
 import * as workflowService from '../services/workflow.js';
+import { scheduleIssueTitleGeneration } from '../services/generated-title.js';
 
 const router = Router({ mergeParams: true });
 
@@ -24,13 +25,15 @@ router.get('/', (req: Request<{ id: string }>, res: Response) => {
 
 router.post('/', (req: Request<{ id: string }>, res: Response) => {
   const { title, description, members, workflowId } = req.body;
-  if (!title) {
-    res.status(400).json({ error: 'title is required' });
+  const trimmedTitle = typeof title === 'string' ? title.trim() : '';
+  const trimmedDescription = typeof description === 'string' ? description.trim() : '';
+  if (!trimmedTitle && !trimmedDescription) {
+    res.status(400).json({ error: 'title or description is required' });
     return;
   }
   const issue = issueService.create(req.params.id, {
-    title,
-    description: description || '',
+    title: trimmedTitle,
+    description: trimmedDescription,
     members: mergeWorkflowMembers(members, workflowId),
     workflowId,
   });
@@ -38,6 +41,16 @@ router.post('/', (req: Request<{ id: string }>, res: Response) => {
   if (channel) broadcastToWorkspace(req.params.id, 'channel.updated', channel);
   broadcastToWorkspace(req.params.id, 'issue.created', issue);
   res.status(201).json(issue);
+
+  if (!trimmedTitle) {
+    scheduleIssueTitleGeneration({
+      workspaceId: req.params.id,
+      issueId: issue.id,
+      requirement: trimmedDescription,
+      description: trimmedDescription,
+      broadcast: (event, data) => broadcastToWorkspace(req.params.id, event, data),
+    });
+  }
 });
 
 router.get('/:issueId', (req: Request<{ id: string; issueId: string }>, res: Response) => {

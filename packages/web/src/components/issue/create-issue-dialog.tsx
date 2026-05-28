@@ -64,7 +64,7 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultDesc
   };
 
   const handleSubmit = () => {
-    if (!title.trim()) return;
+    if (!title.trim() && !desc.trim()) return;
     onSubmit({ title: title.trim(), description: desc.trim(), members, workflowId: selectedWorkflowId || undefined });
     handleClose(false);
   };
@@ -127,7 +127,7 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultDesc
 
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => handleClose(false)}>{tc('cancel')}</Button>
-            <Button onClick={handleSubmit} disabled={!title.trim()}>
+            <Button onClick={handleSubmit} disabled={!title.trim() && !desc.trim()}>
               {t('create.submit')}
             </Button>
           </div>

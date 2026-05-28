@@ -21,6 +21,12 @@ import { extractUsageFromOutput } from '../storage/usage.js';
 const DEFAULT_AGENT_ROLE: AgentConfig['role'] = 'agent';
 export const AGENT_GENERATOR_PRESET_ID = 'agent-generator';
 export const AGENT_COMMIT_PRESET_ID = 'commit-agent';
+export const AGENT_TITLE_GENERATOR_PRESET_ID = 'title-generator';
+const BUILT_IN_AGENT_IDS = [
+  AGENT_GENERATOR_PRESET_ID,
+  AGENT_COMMIT_PRESET_ID,
+  AGENT_TITLE_GENERATOR_PRESET_ID,
+];
 const VALID_RUNTIME_KINDS: NonNullable<AgentConfig['runtimeKind']>[] = ['open-agent-sdk', 'claude-code', 'codex', 'langchain', 'hermes'];
 const VALID_TOOL_NAMES = new Set(BUILT_IN_AGENT_TOOLS.map((tool) => tool.name));
 const CLAUDE_BUILT_IN_DIRS = ['agents', 'commands'] as const;
@@ -67,19 +73,13 @@ export function isValidRole(role: unknown): role is AgentConfig['role'] {
 
 export function listTemplates(): AgentConfig[] {
   const root = getGlobalAgentTemplatesDir();
-  if (!existsSync(root)) return [getDefaultAgentGeneratorPreset(), getDefaultCommitAgentPreset()];
+  if (!existsSync(root)) return getDefaultBuiltInAgentPresets();
 
   const templates = readdirSync(root, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => readAgentTemplate(entry.name))
     .filter((template): template is AgentConfig => Boolean(template));
-  if (!templates.some((template) => template.id === AGENT_GENERATOR_PRESET_ID)) {
-    templates.unshift(getDefaultAgentGeneratorPreset());
-  }
-  if (!templates.some((template) => template.id === AGENT_COMMIT_PRESET_ID)) {
-    templates.unshift(getDefaultCommitAgentPreset());
-  }
-  return templates;
+  return withBuiltInTemplatesFirst(templates);
 }
 
 export async function testConnection(
@@ -681,17 +681,35 @@ function countFiles(dir: string): number {
 export function readAgentTemplate(agentId: string): AgentConfig | null {
   const filePath = join(getGlobalAgentTemplateDir(agentId), 'agent.json');
   if (!existsSync(filePath)) {
-    return agentId === AGENT_GENERATOR_PRESET_ID ? getDefaultAgentGeneratorPreset()
-      : agentId === AGENT_COMMIT_PRESET_ID ? getDefaultCommitAgentPreset()
-      : null;
+    return getDefaultBuiltInAgentPreset(agentId);
   }
   try {
     return JSON.parse(readFileSync(filePath, 'utf-8')) as AgentConfig;
   } catch {
-    return agentId === AGENT_GENERATOR_PRESET_ID ? getDefaultAgentGeneratorPreset()
-      : agentId === AGENT_COMMIT_PRESET_ID ? getDefaultCommitAgentPreset()
-      : null;
+    return getDefaultBuiltInAgentPreset(agentId);
   }
+}
+
+function getDefaultBuiltInAgentPresets(): AgentConfig[] {
+  return [
+    getDefaultAgentGeneratorPreset(),
+    getDefaultCommitAgentPreset(),
+    getDefaultTitleGeneratorPreset(),
+  ];
+}
+
+function getDefaultBuiltInAgentPreset(agentId: string): AgentConfig | null {
+  if (agentId === AGENT_GENERATOR_PRESET_ID) return getDefaultAgentGeneratorPreset();
+  if (agentId === AGENT_COMMIT_PRESET_ID) return getDefaultCommitAgentPreset();
+  if (agentId === AGENT_TITLE_GENERATOR_PRESET_ID) return getDefaultTitleGeneratorPreset();
+  return null;
+}
+
+function withBuiltInTemplatesFirst(templates: AgentConfig[]): AgentConfig[] {
+  const byId = new Map(templates.map((template) => [template.id, template]));
+  const builtIns = getDefaultBuiltInAgentPresets().map((preset) => byId.get(preset.id) ?? preset);
+  const custom = templates.filter((template) => !BUILT_IN_AGENT_IDS.includes(template.id));
+  return [...builtIns, ...custom];
 }
 
 function getDefaultAgentGeneratorPreset(): AgentConfig {
@@ -759,6 +777,35 @@ export function getDefaultCommitAgentPreset(): AgentConfig {
   };
 }
 
+export function getDefaultTitleGeneratorPreset(): AgentConfig {
+  return {
+    id: AGENT_TITLE_GENERATOR_PRESET_ID,
+    name: 'Title Generator',
+    role: 'agent',
+    description: 'Generate short titles for channels and issues from user requirements.',
+    runtimeKind: 'claude-code',
+    modelProvider: undefined,
+    modelId: '',
+    apiBase: '',
+    apiKey: '',
+    workingDir: '',
+    mcps: {},
+    skills: [],
+    tools: [],
+    systemPrompt: [
+      'You generate concise UI titles for Agent Spaces.',
+      'Return exactly one title and nothing else.',
+      'Use the same language as the user request when it is clear.',
+      'Keep the title under 20 characters for Chinese or under 8 words for English.',
+      'Do not use quotes, markdown, punctuation-only endings, prefixes, explanations, or multiple options.',
+      'Prefer a concrete noun phrase that captures the user intent.',
+    ].join(' '),
+    temperature: 0.2,
+    maxTokens: 64,
+    enabled: true,
+  };
+}
+
 function sanitizeMarkdownFilename(name: string): string {
   const raw = basename(name).replace(/\.md$/i, '');
   const safe = raw.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'skill';
@@ -766,8 +813,7 @@ function sanitizeMarkdownFilename(name: string): string {
 }
 
 export function deletePreset(workspaceId: string, presetId: string): boolean | null {
-  if (presetId === AGENT_GENERATOR_PRESET_ID) return false;
-  if (presetId === AGENT_COMMIT_PRESET_ID) return false;
+  if (BUILT_IN_AGENT_IDS.includes(presetId)) return false;
 
   const ws = getWorkspace(workspaceId);
   if (!ws) return null;
@@ -865,8 +911,7 @@ export function updateGlobalPreset(presetId: string, data: Partial<AgentConfig>)
 }
 
 export function deleteGlobalPreset(presetId: string): boolean {
-  if (presetId === AGENT_GENERATOR_PRESET_ID) return false;
-  if (presetId === AGENT_COMMIT_PRESET_ID) return false;
+  if (BUILT_IN_AGENT_IDS.includes(presetId)) return false;
 
   const templateDir = getGlobalAgentTemplateDir(presetId);
   if (!existsSync(templateDir)) return false;

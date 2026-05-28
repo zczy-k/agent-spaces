@@ -44,7 +44,8 @@ import { AgentEditor, type AgentEditorHandle } from "./agent-editor";
 
 const AGENT_GENERATOR_PRESET_ID = "agent-generator";
 const AGENT_COMMIT_PRESET_ID = "commit-agent";
-const FIXED_AGENT_IDS = new Set([AGENT_GENERATOR_PRESET_ID, AGENT_COMMIT_PRESET_ID]);
+const AGENT_TITLE_GENERATOR_PRESET_ID = "title-generator";
+const FIXED_AGENT_IDS = new Set([AGENT_GENERATOR_PRESET_ID, AGENT_COMMIT_PRESET_ID, AGENT_TITLE_GENERATOR_PRESET_ID]);
 
 export function AgentDialog({
   open,

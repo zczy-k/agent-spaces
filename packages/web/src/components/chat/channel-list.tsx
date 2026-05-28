@@ -218,7 +218,7 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
         members: memberIds,
       });
     } else {
-      await createChannel(workspaceId, data.name, data.type, memberIds);
+      await createChannel(workspaceId, data.name, data.type, memberIds, data.initialMessage);
       if (data.initialMessage && memberIds.length === 1) {
         const agent = agents.find((a) => a.id === memberIds[0]);
         const agentName = agent?.name || memberIds[0];
