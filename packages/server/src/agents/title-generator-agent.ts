@@ -112,7 +112,7 @@ function buildUserPrompt(target: 'channel' | 'issue', requirement: string, descr
 }
 
 function sanitizeTitle(output: string): string {
-  const title = output
+  const title = stripThinkBlocks(output)
     .split('\n')
     .filter((line) => !isRuntimeNoise(line))
     .map((line) => stripCodeFence(line).trim())
@@ -123,6 +123,13 @@ function sanitizeTitle(output: string): string {
     .replace(/[\u3002\u002e\u0021\uff01\u003f\uff1f\u003a\uff1a\u003b\uff1b]+$/g, '')
     .trim()
     .slice(0, 80) ?? '';
+}
+
+function stripThinkBlocks(text: string): string {
+  return text
+    .replace(/<think\b[^>]*>[\s\S]*?<\/think>/gi, '')
+    .replace(/<think\b[^>]*>[\s\S]*$/gi, '')
+    .replace(/<\/think>/gi, '');
 }
 
 function stripCodeFence(line: string): string {

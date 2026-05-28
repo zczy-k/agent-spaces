@@ -31,6 +31,8 @@ interface AgentPickerDialogProps {
   cancelText?: string;
   confirmText?: string;
   loading?: boolean;
+  /** 开启后点击 Agent 立即选中并关闭对话框 */
+  singleSelect?: boolean;
 }
 
 export function AgentPickerDialog({
@@ -45,6 +47,7 @@ export function AgentPickerDialog({
   cancelText,
   confirmText,
   loading,
+  singleSelect,
 }: AgentPickerDialogProps) {
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
@@ -59,7 +62,10 @@ export function AgentPickerDialog({
               <button
                 key={agent.id}
                 type="button"
-                onClick={() => onToggle(agent.id)}
+                onClick={() => {
+                  onToggle(agent.id);
+                  if (singleSelect) onConfirm();
+                }}
                 className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md hover:bg-muted text-left text-sm transition-colors"
               >
                 <AgentIcon agentId={agent.id} name={agent.name} avatarUrl={agent.avatarUrl} className="size-5 rounded-full" />
@@ -80,7 +86,7 @@ export function AgentPickerDialog({
               </button>
             ))}
           </div>
-          {selected.length > 0 && (
+          {!singleSelect && selected.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {selected.map((id) => {
                 const agent = agents.find((a) => a.id === id);
@@ -97,6 +103,7 @@ export function AgentPickerDialog({
             </div>
           )}
         </div>
+        {!singleSelect && (
         <div className="shrink-0 flex justify-end gap-2 border-t px-6 py-4">
           <Button variant="outline" onClick={onClose}>
             {cancelText || 'Cancel'}
@@ -105,6 +112,7 @@ export function AgentPickerDialog({
             {confirmText || 'Confirm'}
           </Button>
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );

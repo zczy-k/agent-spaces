@@ -10,6 +10,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { MemberPicker } from '@/components/common/member-picker';
 import { getMemberDisplayName } from '@/lib/agent-members';
@@ -108,12 +109,12 @@ export function ChannelDialog({ open, onOpenChange, channel, agents = [], onSubm
           />
           {singleMember && !channel && (
             <div className="space-y-2">
-              <label className="text-sm font-medium">{t('channel.initialMessage')}</label>
-              <Input
+              <label className="text-sm font-medium pb-1 block">{t('channel.initialMessage')}</label>
+              <Textarea
                 value={initialMessage}
                 onChange={(e) => setInitialMessage(e.target.value)}
                 placeholder={t('channel.initialMessagePlaceholder')}
-                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }}
+                rows={3}
               />
             </div>
           )}

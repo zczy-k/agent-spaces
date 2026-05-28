@@ -133,6 +133,7 @@ export function SendToChannelDialog() {
         selected={selectedAgent}
         onToggle={(id: string) => setSelectedAgent([id])}
         confirmText="选择"
+        singleSelect
       />
     </>
   );

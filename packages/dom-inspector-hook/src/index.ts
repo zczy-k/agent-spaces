@@ -34,7 +34,7 @@ function showActionDialog(info: CapturedSourceInfo, options: InspectorHookOption
       position: 'fixed',
       inset: '0',
       background: 'rgba(0,0,0,0.3)',
-      zIndex: '99999',
+      zIndex: '9999999',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
