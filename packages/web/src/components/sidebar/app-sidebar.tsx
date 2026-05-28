@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { tauriNavigate } from "@/lib/navigate";
@@ -77,14 +77,10 @@ export function DashboardSidebar() {
 
   const isCollapsed = state === "collapsed";
   const [userToggled, setUserToggled] = useState(false);
-  const isFirstMount = useRef(true);
-  useEffect(() => {
-    if (isFirstMount.current) {
-      isFirstMount.current = false;
-      return;
-    }
+  const toggleSidebarWithAnimation = useCallback(() => {
     setUserToggled(true);
-  }, [isCollapsed]);
+    toggleSidebar();
+  }, [toggleSidebar]);
   const isWorkspace = isWorkspacePath(pathname);
   const isMobile = useIsMobile();
   const currentWorkspaceId = workspaceIdFromLocation(pathname, typeof window !== "undefined" ? window.location.search : "");
@@ -129,7 +125,7 @@ export function DashboardSidebar() {
 
   // 监听全局事件（来自 search-commands）
   useEffect(() => {
-    const toggleHandler = () => toggleSidebar();
+    const toggleHandler = () => toggleSidebarWithAnimation();
     const dialogHandler = (e: Event) => {
       const detail = (e as CustomEvent).detail as string;
       const routeMap: Record<string, string> = {
@@ -169,19 +165,25 @@ export function DashboardSidebar() {
       window.removeEventListener('toggle-sidebar', toggleHandler);
       window.removeEventListener('open-dialog', dialogHandler);
     };
-  }, [toggleSidebar, isMobile]);
+  }, [toggleSidebarWithAnimation, isMobile]);
 
   // 快捷键：切换侧边栏
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (matchesEvent('toggleSidebar', e)) {
         e.preventDefault();
-        toggleSidebar();
+        e.stopPropagation();
+        toggleSidebarWithAnimation();
+        return;
+      }
+
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'b') {
+        setUserToggled(true);
       }
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, [toggleSidebar, matchesEvent]);
+  }, [toggleSidebarWithAnimation, matchesEvent]);
 
   // 注册命令面板快捷命令
   const registerCommands = useCommandPalette((s) => s.registerMany);
@@ -199,7 +201,7 @@ export function DashboardSidebar() {
         label: 'Toggle Sidebar',
         group: 'View',
         icon: PanelLeftClose,
-        action: () => toggleSidebar(),
+        action: () => toggleSidebarWithAnimation(),
       },
       {
         id: 'latest-channel',
@@ -338,7 +340,7 @@ export function DashboardSidebar() {
       },
     ];
     return registerCommands(cmds);
-  }, [registerCommands, toggleSidebar, isMobile]);
+  }, [registerCommands, toggleSidebarWithAnimation, isMobile]);
 
   const handleDelete = async (ws: Workspace) => {
     await fetch(`/api/workspaces/${ws.id}`, { method: "DELETE" });
@@ -433,6 +435,7 @@ export function DashboardSidebar() {
     <Sidebar
       variant="floating"
       collapsible="icon"
+      animateStateChange={userToggled}
       className={cn(
         "overflow-hidden",
         isWorkspace && "bg-[#f2f3f5] dark:bg-[#0f1117]"
@@ -466,7 +469,7 @@ export function DashboardSidebar() {
         >
           <AnimatedThemeToggler />
           <NotificationsPopover workspaceId={currentWorkspaceId ?? ''} />
-          <SidebarTrigger />
+          <SidebarTrigger onClick={() => setUserToggled(true)} />
         </motion.div>
       </SidebarHeader>
       <SidebarContent className="min-h-0 overflow-y-auto group-data-[collapsible=icon]:overflow-y-auto gap-2 mx-2 my-2 rounded-xl border border-border bg-card p-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
