@@ -516,7 +516,7 @@ function CommitGraph({
 
               {/* Row 1: message + refs, Row 2: tags */}
               <div className="min-w-0 flex-1 px-2 py-1">
-                <div className="truncate text-sm text-foreground/80">
+                <div className="truncate text-start text-sm text-foreground/80">
                   {row.commit.message}
                   {row.commit.refs?.map((ref) => (
                     <span

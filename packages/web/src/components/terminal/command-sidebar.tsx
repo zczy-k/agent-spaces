@@ -21,18 +21,24 @@ function CommandListItem({ command, running, onRun, onClose, onEdit, onDelete, o
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <button
-        onClick={(event) => {
-          event.stopPropagation();
-          if (running) onClose();
-          else onRun();
-        }}
-        className={`shrink-0 p-0.5 rounded ${running ? 'text-green-500 hover:text-destructive' : 'text-muted-foreground hover:text-foreground'}`}
-      >
-        {running ? <X size={12} /> : <Play size={12} />}
-      </button>
+      {!running && (
+        <button
+          onClick={(event) => { event.stopPropagation(); onRun(); }}
+          className="shrink-0 p-0.5 rounded text-muted-foreground hover:text-foreground"
+        >
+          <Play size={12} />
+        </button>
+      )}
+      {running && <span className="shrink-0 p-0.5"><span className="block w-3 h-3 rounded-full bg-green-500 animate-pulse" /></span>}
       <span className="truncate flex-1 font-mono">{command.name}</span>
-      {running && <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shrink-0" />}
+      {running && (
+        <button
+          onClick={(event) => { event.stopPropagation(); onClose(); }}
+          className={`shrink-0 p-0.5 rounded text-red-500 hover:text-red-600 ${hovered ? 'opacity-100' : 'opacity-0'} transition-opacity`}
+        >
+          <X size={12} />
+        </button>
+      )}
       <div className={`shrink-0 flex items-center gap-0.5 md:opacity-0 ${hovered ? 'opacity-100' : 'opacity-0'} md:group-hover:opacity-100 transition-opacity max-md:!opacity-100`}>
         <button
           onClick={(event) => { event.stopPropagation(); onEdit(); }}
