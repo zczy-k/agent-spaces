@@ -16,6 +16,7 @@ export function useSidebarDialogs() {
   const [hooksDialogOpen, setHooksDialogOpen] = useState(false);
   const [agentCommandsDialogOpen, setAgentCommandsDialogOpen] = useState(false);
   const [toolsDialogOpen, setToolsDialogOpen] = useState(false);
+  const [layoutDialogOpen, setLayoutDialogOpen] = useState(false);
   const [modelsDialogProvider, setModelsDialogProvider] = useState<string | undefined>(undefined);
 
   const setterMap: DialogSetterMap = {
@@ -29,6 +30,7 @@ export function useSidebarDialogs() {
     hooks: setHooksDialogOpen,
     commands: setAgentCommandsDialogOpen,
     tools: setToolsDialogOpen,
+    layout: setLayoutDialogOpen,
     settings: setSettingsDialogOpen,
   };
 
@@ -55,6 +57,8 @@ export function useSidebarDialogs() {
     setAgentCommandsDialogOpen,
     toolsDialogOpen,
     setToolsDialogOpen,
+    layoutDialogOpen,
+    setLayoutDialogOpen,
     modelsDialogProvider,
     setModelsDialogProvider,
     setterMap,

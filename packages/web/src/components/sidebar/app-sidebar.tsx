@@ -20,6 +20,7 @@ import { NotificationsPopover } from "@/components/sidebar/nav-notifications";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ServerSwitcher } from "@/components/sidebar/server-switcher";
 import { AnimatedThemeToggler } from "@/components/animated-theme-toggler";
+import { LayoutTemplateIcon } from "lucide-react";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useKeyboardShortcuts } from "@/stores/keyboard-shortcuts";
 import type { Workspace } from "@agent-spaces/shared";
@@ -174,6 +175,15 @@ export function DashboardSidebar() {
           }
         >
           <AnimatedThemeToggler />
+          {currentWorkspaceId && (
+            <button
+              className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+              onClick={() => dialogs.setLayoutDialogOpen(true)}
+              title="布局管理"
+            >
+              <LayoutTemplateIcon className="size-4" />
+            </button>
+          )}
           <NotificationsPopover workspaceId={currentWorkspaceId ?? ""} />
           <SidebarTrigger onClick={() => setUserToggled(true)} />
         </motion.div>
@@ -184,7 +194,7 @@ export function DashboardSidebar() {
       <SidebarFooter className="shrink-0 mx-2 mb-2 rounded-xl border border-border bg-card p-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <ServerSwitcher />
       </SidebarFooter>
-      <SidebarDialogGroup dialogs={dialogs} />
+      <SidebarDialogGroup dialogs={dialogs} currentWorkspaceId={currentWorkspaceId} />
     </Sidebar>
   );
 }

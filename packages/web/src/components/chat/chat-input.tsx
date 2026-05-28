@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { IconChevronUp } from "@tabler/icons-react";
 import type { Attachment as MessageAttachment, Channel, Message } from "@agent-spaces/shared";
@@ -89,6 +89,10 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     }),
     [],
   );
+
+  useEffect(() => {
+    if (replyTo) composerRef.current?.focus();
+  }, [replyTo]);
 
   const activateAgent = useCallback((agent: MentionedAgent) => {
     composerRef.current?.setMentionAgent(agent);

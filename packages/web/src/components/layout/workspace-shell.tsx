@@ -225,12 +225,24 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   });
 
   useEffect(() => {
-    const handler = () => {
+    const resetHandler = () => {
       localStorage.removeItem(`flexlayout-${workspaceId}`);
       setModel(Model.fromJson(defaultJson));
     };
-    window.addEventListener("reset-layout", handler);
-    return () => window.removeEventListener("reset-layout", handler);
+    const applyHandler = (e: Event) => {
+      const { workspaceId: wsId } = (e as CustomEvent).detail ?? {};
+      if (wsId !== workspaceId) return;
+      const saved = localStorage.getItem(`flexlayout-${workspaceId}`);
+      if (saved) {
+        try { setModel(Model.fromJson(JSON.parse(saved))); } catch { /* ignore */ }
+      }
+    };
+    window.addEventListener("reset-layout", resetHandler);
+    window.addEventListener("apply-layout", applyHandler);
+    return () => {
+      window.removeEventListener("reset-layout", resetHandler);
+      window.removeEventListener("apply-layout", applyHandler);
+    };
   }, [workspaceId]);
 
   useEffect(() => {

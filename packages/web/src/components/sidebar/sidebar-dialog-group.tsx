@@ -11,12 +11,15 @@ import { McpsDialog } from "@/components/sidebar/mcps-dialog";
 import { HooksDialog } from "@/components/sidebar/hooks-dialog";
 import { AgentCommandsDialog } from "@/components/sidebar/agent-commands-dialog";
 import { ToolsDialog } from "@/components/sidebar/tools-dialog";
+import { LayoutManagerDialog } from "@/components/sidebar/layout-manager-dialog";
 import type { useSidebarDialogs } from "./use-sidebar-dialogs";
 
 export function SidebarDialogGroup({
   dialogs,
+  currentWorkspaceId,
 }: {
   dialogs: ReturnType<typeof useSidebarDialogs>;
+  currentWorkspaceId: string | null;
 }) {
   return (
     <>
@@ -37,6 +40,11 @@ export function SidebarDialogGroup({
           dialogs.setModelsDialogProvider(providerName);
           dialogs.setModelsDialogOpen(true);
         }}
+      />
+      <LayoutManagerDialog
+        open={dialogs.layoutDialogOpen}
+        onOpenChange={dialogs.setLayoutDialogOpen}
+        workspaceId={currentWorkspaceId}
       />
     </>
   );
