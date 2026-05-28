@@ -328,7 +328,7 @@ function CommitDetail({
 }) {
   return (
     <Popover.Root>
-      <Popover.Trigger>{children}</Popover.Trigger>
+      <Popover.Trigger className="block w-full overflow-hidden">{children}</Popover.Trigger>
       <Popover.Portal>
         <Popover.Content
           side="right"
@@ -488,8 +488,8 @@ function CommitGraph({
               <button
                 type="button"
                 data-slot="commit-entry"
-                className="flex w-full items-center gap-0 border-b border-border/30 transition-colors hover:bg-muted/30 focus-visible:bg-muted/30 focus-visible:outline-none last:border-b-0"
-                style={{ height: ROW_HEIGHT }}
+                className="flex w-full items-center gap-0 overflow-hidden border-b border-border/30 transition-colors hover:bg-muted/30 focus-visible:bg-muted/30 focus-visible:outline-none last:border-b-0"
+                style={{ minHeight: ROW_HEIGHT }}
                 onClick={onCommitClick ? () => onCommitClick(row.commit) : undefined}
               >
               {/* Rails */}
@@ -497,44 +497,43 @@ function CommitGraph({
                 <RailsSVG row={row} prevRow={i > 0 ? rows[i - 1] : null} railWidth={railWidth} maxRails={maxRails} />
               </div>
 
-              {/* Refs */}
-              <div className="flex shrink-0 items-center gap-1 px-2">
-                {row.commit.refs?.map((ref) => (
-                  <span
-                    key={ref}
-                    className="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold leading-none"
-                    style={{
-                      borderColor: `${color(row.rail)}40`,
-                      backgroundColor: `${color(row.rail)}10`,
-                      color: color(row.rail),
-                    }}
-                  >
-                    {ref}
-                  </span>
-                ))}
+              {/* Message + Refs inline, Tags below */}
+              <div className="min-w-0 flex-1 px-2">
+                <div className="flex items-center gap-2">
+                  <p className="truncate text-left text-sm text-foreground/80">
+                    {row.commit.message}
+                  </p>
+                  {row.commit.refs?.map((ref) => (
+                    <span
+                      key={ref}
+                      className="inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold leading-none"
+                      style={{
+                        borderColor: `${color(row.rail)}40`,
+                        backgroundColor: `${color(row.rail)}10`,
+                        color: color(row.rail),
+                      }}
+                    >
+                      {ref}
+                    </span>
+                  ))}
+                </div>
                 {row.commit.tag && (
-                  <span
-                    className="inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold leading-none"
-                    style={{
-                      backgroundColor: `${color(row.rail)}20`,
-                      color: color(row.rail),
-                    }}
-                  >
-                    {row.commit.tag}
-                  </span>
+                  <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                    <span
+                      className="inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold leading-none"
+                      style={{
+                        backgroundColor: `${color(row.rail)}20`,
+                        color: color(row.rail),
+                      }}
+                    >
+                      {row.commit.tag}
+                    </span>
+                  </div>
                 )}
               </div>
 
-              {/* Message */}
-              <p className="min-w-0 flex-1 truncate px-2 text-left text-sm text-foreground/80">
-                {row.commit.message}
-              </p>
-
               {/* Meta - fixed width right side */}
               <div className="flex shrink-0 items-center gap-3 px-3 bg-card">
-                <code className="font-mono text-[11px] text-muted-foreground/60">
-                  {row.commit.hash.slice(0, truncateHash)}
-                </code>
                 <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
                   {row.commit.author.avatarUrl ? (
                     <img

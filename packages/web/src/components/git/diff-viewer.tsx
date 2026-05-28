@@ -1,10 +1,7 @@
 "use client";
 
-import "@/lib/monaco-loader";
-import { DiffEditor, type DiffOnMount } from "@monaco-editor/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { editor } from "monaco-editor";
-import { useTheme } from "@/components/theme-provider";
+import { useCallback, useMemo, useState } from "react";
+import { DiffViewer as DiffViewerBase } from "@/components/diff-viewer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { Check, FileQuestion, Filter, Split } from "lucide-react";
@@ -169,40 +166,9 @@ export function DiffViewer({
   onResolve,
 }: DiffViewerProps) {
   const language = detectLanguage(path);
-  const editorRef = useRef<editor.IStandaloneDiffEditor | null>(null);
-  const { resolvedTheme } = useTheme();
   const isMobile = useIsMobile();
   const [compact, setCompact] = useState(compactDiff);
   const [resolving, setResolving] = useState<"left" | "right" | null>(null);
-
-  const handleMount: DiffOnMount = useCallback((editor) => {
-    editorRef.current = editor;
-    // 左侧面板占 35%
-    const container = editor.getContainerDomNode();
-    const applyRatio = () => {
-      const views = container.querySelectorAll<HTMLElement>('.split-view-view');
-      if (views.length >= 2) {
-        const sashEl = container.querySelector<HTMLElement>('.split-view-sash-view');
-        const sashWidth = sashEl?.offsetWidth ?? 4;
-        const available = container.offsetWidth - sashWidth;
-        views[0].style.width = `${Math.round(available * 0.35)}px`;
-        views[1].style.width = `${Math.round(available * 0.65)}px`;
-      }
-    };
-    requestAnimationFrame(applyRatio);
-    const ro = new ResizeObserver(() => requestAnimationFrame(applyRatio));
-    ro.observe(container);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      const editor = editorRef.current;
-      if (editor) {
-        editor.setModel(null);
-        editorRef.current = null;
-      }
-    };
-  }, []);
 
   const compactResult = useMemo(() => {
     if (!compact) return null;
@@ -293,36 +259,18 @@ export function DiffViewer({
             </EmptyHeader>
           </Empty>
         ) : oldEmpty ? (
-          <DiffEditor
-            original=""
-            modified={displayNew}
+          <DiffViewerBase
+            oldCode=""
+            newCode={displayNew}
             language={language}
-            theme={resolvedTheme === "dark" ? "vs-dark" : "vs"}
-            onMount={handleMount}
-            options={{
-              readOnly: true,
-              renderSideBySide: false,
-              minimap: { enabled: false },
-              scrollBeyondLastLine: false,
-              fontSize: 13,
-              lineNumbers: "on",
-            }}
+            layout="unified"
           />
         ) : (
-          <DiffEditor
-            original={displayOld}
-            modified={displayNew}
+          <DiffViewerBase
+            oldCode={displayOld}
+            newCode={displayNew}
             language={language}
-            theme={resolvedTheme === "dark" ? "vs-dark" : "vs"}
-            onMount={handleMount}
-            options={{
-              readOnly: true,
-              renderSideBySide: !isMobile,
-              minimap: { enabled: false },
-              scrollBeyondLastLine: false,
-              fontSize: 13,
-              lineNumbers: "on",
-            }}
+            layout={isMobile ? "unified" : "split"}
           />
         )}
       </div>
