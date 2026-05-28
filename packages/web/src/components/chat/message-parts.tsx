@@ -57,14 +57,18 @@ export function MessageParts({ message, isUser, workspaceId }: MessagePartsProps
       {message.attachments?.length ? (
         <MessageAttachments attachments={message.attachments} isUser={isUser} />
       ) : null}
-      {parts.length > 0 ? parts.map((part) => (
-        <MessagePartView
-          key={part.id}
-          part={dedupeDisplayPart(part)}
-          message={message}
-          workspaceId={workspaceId}
-        />
-      )) : null}
+      {parts.length > 0 ? (() => {
+        const lastChainIdx = parts.findLastIndex((p) => p.type === "chain")
+        return parts.map((part, index) => (
+          <MessagePartView
+            key={part.id}
+            part={dedupeDisplayPart(part)}
+            message={message}
+            workspaceId={workspaceId}
+            isLastChain={index === lastChainIdx}
+          />
+        ))
+      })() : null}
       {!hasTextPart && shouldRenderLegacyContent ? (
         isUser ? <UserContent content={message.content} /> : <Markdown content={dedupeRepeatedTextBlock(message.content)} workspaceId={workspaceId} />
       ) : null}
@@ -82,10 +86,12 @@ function MessagePartView({
   part,
   message,
   workspaceId,
+  isLastChain,
 }: {
   part: MessagePart
   message: Message
   workspaceId: string
+  isLastChain?: boolean
 }) {
   const t = useTranslations('chat')
 
@@ -114,12 +120,15 @@ function MessagePartView({
       })
       const visibleChainStepCount = visibleChains.filter((chain) => chain.kind !== "message").length
       if (visibleChains.length === 0) return null
+      const isActive = message.status === "pending" || message.status === "streaming"
+      const lastToolChain = [...visibleChains].reverse().find((c) => c.kind !== "message")
+      const headerText = isActive && lastToolChain
+        ? `${lastToolChain.toolName ?? lastToolChain.title} · ${t('messageParts.chainSteps', { count: visibleChainStepCount })}`
+        : t('messageParts.chainSteps', { count: visibleChainStepCount })
       return (
         <ChainOfThought defaultOpen={message.status === "pending"} className="max-w-none">
-          <ChainOfThoughtHeader
-            loading={message.status === "pending" || message.status === "streaming"}
-          >
-            {t('messageParts.chainSteps', { count: visibleChainStepCount })}
+          <ChainOfThoughtHeader loading={isActive && isLastChain}>
+            {headerText}
           </ChainOfThoughtHeader>
           <ChainOfThoughtContent className="max-h-[300px] overflow-y-auto">
             {visibleChains.map((chain) => {

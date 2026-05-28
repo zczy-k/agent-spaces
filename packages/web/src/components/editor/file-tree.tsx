@@ -551,6 +551,85 @@ export type NestedTreeRowProps = HTMLAttributes<HTMLDivElement> & {
   style?: CSSProperties
 }
 
+export type NestedTreeRenderArgs<TNode> = {
+  node: TNode
+  state: NestedTreeRenderState
+  rowProps: NestedTreeRowProps
+  children: ReactNode
+}
+
+export type NestedTreeProps<TNode> = {
+  nodes: TNode[]
+  getNodeId: (node: TNode) => string
+  getChildren: (node: TNode) => TNode[]
+  activeId?: string | null
+  expandedIds?: Record<string, boolean> | Set<string>
+  draggedOverId?: string | null
+  onDragStart?: (event: DragEvent<HTMLDivElement>, nodeId: string) => void
+  onDragOver?: (event: DragEvent<HTMLDivElement>, nodeId: string) => void
+  onDragLeave?: (event: DragEvent<HTMLDivElement>, nodeId: string) => void
+  onDrop?: (event: DragEvent<HTMLDivElement>, nodeId: string) => void
+  shouldRenderChildren?: (node: TNode, state: NestedTreeRenderState) => boolean
+  renderNode: (args: NestedTreeRenderArgs<TNode>) => ReactNode
+}
+
+const hasExpandedId = (expandedIds: NestedTreeProps<unknown>["expandedIds"], id: string) => {
+  if (!expandedIds) return false
+  if (expandedIds instanceof Set) return expandedIds.has(id)
+  return !!expandedIds[id]
+}
+
+export function NestedTree<TNode>({
+  nodes,
+  getNodeId,
+  getChildren,
+  activeId,
+  expandedIds,
+  draggedOverId,
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  shouldRenderChildren,
+  renderNode,
+}: NestedTreeProps<TNode>) {
+  const renderBranch = (branchNodes: TNode[], level: number): ReactNode => (
+    branchNodes.map((node) => {
+      const id = getNodeId(node)
+      const childrenNodes = getChildren(node)
+      const state: NestedTreeRenderState = {
+        level,
+        hasChildren: childrenNodes.length > 0,
+        isExpanded: hasExpandedId(expandedIds, id),
+        isActive: activeId === id,
+        isDraggedOver: draggedOverId === id,
+      }
+      const showChildren = state.hasChildren && (shouldRenderChildren?.(node, state) ?? state.isExpanded)
+      const rowProps: NestedTreeRowProps = {
+        draggable: true,
+        style: { paddingLeft: level * 12 },
+        onDragStart: (event) => onDragStart?.(event, id),
+        onDragOver: (event) => onDragOver?.(event, id),
+        onDragLeave: (event) => onDragLeave?.(event, id),
+        onDrop: (event) => onDrop?.(event, id),
+      }
+
+      return (
+        <React.Fragment key={id}>
+          {renderNode({
+            node,
+            state,
+            rowProps,
+            children: showChildren ? renderBranch(childrenNodes, level + 1) : null,
+          })}
+        </React.Fragment>
+      )
+    })
+  )
+
+  return <>{renderBranch(nodes, 0)}</>
+}
+
 type HeTreeFileNode = FileNode & Record<string, unknown>
 type HeTreePlaceholder = {
   parentStat: Stat<HeTreeFileNode> | null
