@@ -198,6 +198,13 @@
   background-color: var(--card) !important;
 }
 
+.flexlayout__tab_border_bottom {
+  border-top-left-radius: var(--radius);
+  border-top-right-radius: var(--radius);
+  border: 1.5px solid var(--border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
 /* Splitter — invisible, gap-based spacing */
 .flexlayout__splitter {
   background-color: transparent !important;
@@ -248,6 +255,7 @@
 
 .flexlayout__border_bottom .flexlayout__border_inner {
   border-radius: 0 0 var(--radius) var(--radius);
+  border: 1px solid var(--border);
 }
 
 .flexlayout__border_tab_contents {

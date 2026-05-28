@@ -66,6 +66,7 @@ export type MessagePart =
   | { id: string; type: 'reasoning'; text: string; duration?: number; status?: 'streaming' | 'completed' }
   | { id: string; type: 'chain'; chains: MessageChain[] }
   | { id: string; type: 'terminal'; command?: string; output: string; status?: 'streaming' | 'completed' | 'error' }
+  | { id: string; type: 'error'; title?: string; message: string }
   | { id: string; type: 'confirmation'; title: string; description?: string; approval?: MessageApproval }
   | { id: string; type: 'context'; usedTokens: number; maxTokens: number; modelId?: string; usage?: MessageTokenUsage; agentContext?: MessageAgentContext }
   | { id: string; type: 'subagent'; name: string; model?: string; instructions?: string; output?: string; tools?: MessageTool[] }

@@ -102,10 +102,10 @@ export function stopChannelRuns(workspaceId: string, channelId: string): void {
       'status' in part && part.status === 'streaming' ? { ...part, status: 'completed' as const } : part
     );
     const stoppedPart = {
-      id: `terminal-stopped-${run.agentId}`,
-      type: 'terminal' as const,
-      output: 'Stopped by user',
-      status: 'error' as const,
+      id: `error-stopped-${run.agentId}`,
+      type: 'error' as const,
+      title: 'Stopped by user',
+      message: 'The agent run was stopped by user.',
     };
     const message = updateMessage(workspaceId, channelId, run.messageId, {
       status: 'error',

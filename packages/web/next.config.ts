@@ -23,6 +23,11 @@ const nextConfig: NextConfig = {
   },
   webpack(config, { dev }) {
     if (dev) {
+      // Webpack's dev filesystem cache can grow to hundreds of MB here because
+      // the editor bundle pulls in Monaco and vscode-languageclient. Compressing
+      // those cache packs has been enough to exhaust Node's default heap.
+      config.cache = false;
+
       config.module.rules.push({
         test: /\.[jt]sx?$/,
         include: path.join(projectRoot, "src"),

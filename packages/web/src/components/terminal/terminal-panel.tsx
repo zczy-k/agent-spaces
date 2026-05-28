@@ -277,7 +277,6 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
                   }}
                   className="text-xs"
                 >
-                  <Bot size={12} className="mr-1.5" />
                   AI一键修复
                 </ContextMenuItem>
               </ContextMenuContent>

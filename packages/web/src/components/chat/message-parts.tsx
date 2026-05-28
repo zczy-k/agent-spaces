@@ -1,7 +1,9 @@
 "use client"
 
 import type { Message, MessagePart } from "@agent-spaces/shared"
+import { AlertCircleIcon } from "lucide-react"
 import { useTranslations } from "next-intl"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Markdown } from "@/components/ui/markdown"
 import { Loader } from "@/components/ui/loader"
 import {
@@ -163,6 +165,14 @@ function MessagePartView({
           isStreaming={part.status === "streaming"}
           className={part.status === "error" ? "border-destructive/40" : undefined}
         />
+      )
+    case "error":
+      return (
+        <Alert variant="destructive" className="max-w-md">
+          <AlertCircleIcon />
+          {part.title ? <AlertTitle>{part.title}</AlertTitle> : null}
+          <AlertDescription>{part.message}</AlertDescription>
+        </Alert>
       )
     case "confirmation": {
       const approval = normalizeApproval(part.id, part.approval)
