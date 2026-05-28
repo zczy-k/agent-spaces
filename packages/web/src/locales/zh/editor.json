@@ -41,6 +41,8 @@
   "zoomIn": "放大",
   "zoomOut": "缩小",
   "zoomReset": "重置字体大小",
+  "editorTheme": "编辑器主题",
+  "themeDefault": "默认",
   "revealInTree": "在文件树中显示",
   "copyFilePath": "复制文件路径",
   "copyRelativePath": "复制相对路径",

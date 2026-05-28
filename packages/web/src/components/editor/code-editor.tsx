@@ -124,6 +124,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     const saved = localStorage.getItem('editor-font-size');
     return saved ? parseInt(saved, 10) : 13;
   });
+  const [monacoTheme, setMonacoTheme] = useState<string | null>(null);
   const [editorReadyTick, setEditorReadyTick] = useState(0);
   const [jumpRetryTick, setJumpRetryTick] = useState(0);
   const [showPreview, setShowPreview] = useState(true);
@@ -166,6 +167,25 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
 
   const syncReadOnly = useCallback((editor: Monaco.editor.IStandaloneCodeEditor, readOnly: boolean) => {
     editor.updateOptions({ readOnly });
+  }, []);
+
+  const applyMonacoTheme = useCallback(async (themeName: string | null) => {
+    if (themeName === null) {
+      setMonacoTheme(null);
+      localStorage.removeItem('editor-monaco-theme');
+      return;
+    }
+    try {
+      const res = await fetch(`/monaco-themes/${encodeURIComponent(themeName)}.json`);
+      const data = await res.json();
+      const monaco = monacoRef.current;
+      if (monaco) {
+        monaco.editor.defineTheme(themeName, data);
+        monaco.editor.setTheme(themeName);
+      }
+      setMonacoTheme(themeName);
+      localStorage.setItem('editor-monaco-theme', themeName);
+    } catch {}
   }, []);
 
   const registerNavigation = useCallback((editor: Monaco.editor.IStandaloneCodeEditor, monaco: typeof Monaco) => {
@@ -223,6 +243,18 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
       keybindings: [2048 | 49], // KeyMod.CtrlCmd | KeyCode.KeyS
       run: () => handleSaveRef.current(),
     });
+
+    const savedTheme = localStorage.getItem('editor-monaco-theme');
+    if (savedTheme) {
+      fetch(`/monaco-themes/${encodeURIComponent(savedTheme)}.json`)
+        .then(r => r.json())
+        .then(data => {
+          _monaco.editor.defineTheme(savedTheme, data);
+          _monaco.editor.setTheme(savedTheme);
+          setMonacoTheme(savedTheme);
+        })
+        .catch(() => {});
+    }
   }, [attachWheelZoom, isReadOnly, registerNavigation, syncReadOnly, workspaceId, workspaceRoot, fontSize]);
 
   useEffect(() => {
@@ -388,7 +420,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   return (
     <div className={`flex flex-col h-full ${isFullscreen ? 'fixed inset-0 z-50 bg-background' : ''}`}>
       <EditorTabs workspaceId={workspaceId} />
-      <EditorMenuBar editorRef={editorRef} workspaceId={workspaceId} isReadOnly={isReadOnly} onToggleReadOnly={() => setIsReadOnly(r => !r)} isFullscreen={isFullscreen} onToggleFullscreen={() => setIsFullscreen(f => !f)} wordWrap={wordWrap} onToggleWordWrap={() => { const v = !wordWrap; setWordWrap(v); localStorage.setItem('editor-word-wrap', String(v)); }} minimap={minimap} onToggleMinimap={() => { const v = !minimap; setMinimap(v); localStorage.setItem('editor-minimap', String(v)); }} fontSize={fontSize} onZoomIn={() => setFontSize(s => { const n = Math.min(s + 1, 40); localStorage.setItem('editor-font-size', String(n)); return n; })} onZoomOut={() => setFontSize(s => { const n = Math.max(s - 1, 8); localStorage.setItem('editor-font-size', String(n)); return n; })} onZoomReset={() => { setFontSize(13); localStorage.setItem('editor-font-size', '13'); }} />
+      <EditorMenuBar editorRef={editorRef} workspaceId={workspaceId} isReadOnly={isReadOnly} onToggleReadOnly={() => setIsReadOnly(r => !r)} isFullscreen={isFullscreen} onToggleFullscreen={() => setIsFullscreen(f => !f)} wordWrap={wordWrap} onToggleWordWrap={() => { const v = !wordWrap; setWordWrap(v); localStorage.setItem('editor-word-wrap', String(v)); }} minimap={minimap} onToggleMinimap={() => { const v = !minimap; setMinimap(v); localStorage.setItem('editor-minimap', String(v)); }} fontSize={fontSize} onZoomIn={() => setFontSize(s => { const n = Math.min(s + 1, 40); localStorage.setItem('editor-font-size', String(n)); return n; })} onZoomOut={() => setFontSize(s => { const n = Math.max(s - 1, 8); localStorage.setItem('editor-font-size', String(n)); return n; })} onZoomReset={() => { setFontSize(13); localStorage.setItem('editor-font-size', '13'); }} monacoTheme={monacoTheme} onThemeChange={applyMonacoTheme} />
       <div
         className="relative flex-1 min-h-0 bg-background"
         {...mobile.containerProps}
@@ -471,7 +503,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
                 readOnly: isReadOnly,
                 wordWrap: wordWrap ? 'on' : 'off',
               }}
-              theme={resolvedTheme === "dark" ? "vs-dark" : "vs"}
+              theme={monacoTheme || (resolvedTheme === "dark" ? "vs-dark" : "vs")}
             />
           </div>
         ) : activeFile ? (
@@ -511,7 +543,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
                   multipleReferences: 'goto',
                 },
               }}
-              theme={resolvedTheme === "dark" ? "vs-dark" : "vs"}
+              theme={monacoTheme || (resolvedTheme === "dark" ? "vs-dark" : "vs")}
             />
             {mobile.showMobileReadonlyOverlay ? (
               <MobileReadonlyOverlay

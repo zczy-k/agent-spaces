@@ -41,6 +41,8 @@
   "zoomIn": "Zoom In",
   "zoomOut": "Zoom Out",
   "zoomReset": "Reset Font Size",
+  "editorTheme": "Editor Theme",
+  "themeDefault": "Default",
   "revealInTree": "Reveal in File Tree",
   "copyFilePath": "Copy File Path",
   "copyRelativePath": "Copy Relative Path",

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useEditorStore } from "@/stores/editor";
 import { useTranslations } from 'next-intl';
 import {
@@ -31,11 +32,23 @@ interface EditorMenuBarProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onZoomReset: () => void;
+  monacoTheme: string | null;
+  onThemeChange: (theme: string | null) => void;
 }
 
-export function EditorMenuBar({ editorRef, workspaceId, isReadOnly, onToggleReadOnly, isFullscreen, onToggleFullscreen, wordWrap, onToggleWordWrap, minimap, onToggleMinimap, fontSize, onZoomIn, onZoomOut, onZoomReset }: EditorMenuBarProps) {
+export function EditorMenuBar({ editorRef, workspaceId, isReadOnly, onToggleReadOnly, isFullscreen, onToggleFullscreen, wordWrap, onToggleWordWrap, minimap, onToggleMinimap, fontSize, onZoomIn, onZoomOut, onZoomReset, monacoTheme, onThemeChange }: EditorMenuBarProps) {
   const { saveFile, activeFilePath } = useEditorStore();
   const t = useTranslations('editor');
+  const [themeList, setThemeList] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    fetch('/monaco-themes/themelist.json')
+      .then(r => r.json())
+      .then(setThemeList)
+      .catch(() => {});
+  }, []);
+
+  const sortedThemes = Object.entries(themeList).sort(([, a], [, b]) => a.localeCompare(b));
 
   const exec = (action: string) => {
     requestAnimationFrame(() => {
@@ -117,6 +130,21 @@ export function EditorMenuBar({ editorRef, workspaceId, isReadOnly, onToggleRead
           <DropdownMenuItem onClick={onToggleMinimap}>
             {minimap ? t('disableMinimap') : t('enableMinimap')}
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>{t('editorTheme')}</DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="max-h-80 overflow-y-auto">
+              <DropdownMenuItem onClick={() => onThemeChange(null)}>
+                {monacoTheme === null && '✓ '}{t('themeDefault')}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {sortedThemes.map(([slug, name]) => (
+                <DropdownMenuItem key={slug} onClick={() => onThemeChange(name)}>
+                  {monacoTheme === name && '✓ '}{name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={onZoomIn}>
             {t('zoomIn')}
