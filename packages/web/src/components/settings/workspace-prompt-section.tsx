@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Info, Loader2 } from 'lucide-react';
@@ -50,24 +49,21 @@ export function WorkspacePromptSection({ workspaceId, initialPrompt }: Workspace
 
   return (
     <div className="space-y-3">
-      <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('prompt.title')}</h4>
+      <div className="flex items-center gap-1.5">
+        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('prompt.title')}</h4>
+        <TooltipProvider delay={200}>
+          <Tooltip>
+            <TooltipTrigger className="inline-flex">
+              <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-xs">
+              <p>{t('prompt.description')}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
 
-      <div className="space-y-3 rounded-md border px-3 py-3">
-        <div className="flex items-center gap-1.5">
-          <Label htmlFor="workspace-prompt" className="text-sm font-medium">
-            {t('prompt.workspacePrompt')}
-          </Label>
-          <TooltipProvider delay={200}>
-            <Tooltip>
-              <TooltipTrigger className="inline-flex">
-                <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-              </TooltipTrigger>
-              <TooltipContent side="top" className="max-w-xs">
-                <p>{t('prompt.description')}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
+      <div className="space-y-3">
         <Textarea
           id="workspace-prompt"
           value={prompt}

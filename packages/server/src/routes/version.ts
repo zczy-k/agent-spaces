@@ -6,7 +6,8 @@ import { join } from 'node:path';
 import { getLocalVersion, getCachedLatest, fetchLatestVersion, isNewerVersion } from '../services/version.js';
 
 const router = Router();
-const isDev = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
+const isSourceRuntime = /[\\/]src[\\/]routes$/.test(import.meta.dirname);
+const isDev = process.env.NODE_ENV === 'development' || (!process.env.NODE_ENV && isSourceRuntime);
 
 let isUpdating = false;
 

@@ -88,6 +88,7 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultDesc
             value={desc}
             onChange={(e) => setDesc(e.target.value)}
             rows={3}
+            className="max-h-48 resize-none"
           />
 
           <div className="space-y-1.5">

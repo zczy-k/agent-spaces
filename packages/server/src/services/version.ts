@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -10,12 +10,24 @@ const CACHE_TTL = 3600_000; // 1 hour
 
 export function getLocalVersion(): string {
   if (localVersion !== '') return localVersion;
-  try {
-    const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf-8'));
-    localVersion = pkg.version || '0.0.0';
-  } catch {
-    localVersion = '0.0.0';
+
+  const packageJsonPaths = [
+    join(__dirname, '..', '..', 'package.json'),
+    join(__dirname, '..', 'package.json'),
+  ];
+
+  for (const packageJsonPath of packageJsonPaths) {
+    if (!existsSync(packageJsonPath)) continue;
+    try {
+      const pkg = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
+      localVersion = pkg.version || '0.0.0';
+      return localVersion;
+    } catch {
+      // Try the next package.json candidate before falling back.
+    }
   }
+
+  localVersion = '0.0.0';
   return localVersion;
 }
 
