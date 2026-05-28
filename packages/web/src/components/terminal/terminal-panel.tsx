@@ -175,6 +175,13 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
     setCollapsedFolders(prev => ({ ...prev, [folder]: !prev[folder] }));
   };
 
+  const removeFolder = async (folder: string) => {
+    const cmds = commands.filter(c => c.folder === folder);
+    for (const cmd of cmds) {
+      await remove(workspaceId, cmd.id);
+    }
+  };
+
   const handleImport = async (scripts: { name: string; command: string; folder: string }[]) => {
     for (const s of scripts) {
       await create(workspaceId, {
@@ -281,6 +288,7 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
                 onToggleFolder={toggleFolder}
                 onImport={() => { setImportOpen(true); setCommandPopoverOpen(false); }}
                 onAddCommand={() => { setEditingCommand(undefined); setDialogOpen(true); setCommandPopoverOpen(false); }}
+                onRemoveFolder={removeFolder}
                 workspaceId={workspaceId}
                 isRunning={isRunning}
                 runningMap={runningMap}
@@ -316,6 +324,7 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
             onToggleFolder={toggleFolder}
             onImport={() => setImportOpen(true)}
             onAddCommand={() => { setEditingCommand(undefined); setDialogOpen(true); }}
+            onRemoveFolder={removeFolder}
             workspaceId={workspaceId}
             isRunning={isRunning}
             runningMap={runningMap}

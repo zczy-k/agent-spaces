@@ -83,7 +83,8 @@ export function ImportCommandsDialog({ open, onOpenChange, defaultPath, onImport
     setSubmitting(true);
     try {
       // folder for grouping = directory containing the package.json
-      const dir = folder.includes('/') ? folder.substring(0, folder.lastIndexOf('/')) : folder;
+      const lastSep = Math.max(folder.lastIndexOf('/'), folder.lastIndexOf('\\'));
+      const dir = lastSep >= 0 ? folder.substring(0, lastSep) : folder;
       await onImport(selected.map(s => ({ name: s.name, command: s.command, folder: dir })));
       onOpenChange(false);
     } finally {

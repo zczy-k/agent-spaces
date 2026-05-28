@@ -53,7 +53,7 @@ function CommandListItem({ command, running, onRun, onClose, onEdit, onDelete, o
 export function CommandSidebar({
   search, onSearchChange, commands, customCommands, folderGroups,
   customOpen, onCustomOpenChange, collapsedFolders, onToggleFolder,
-  onImport, onAddCommand, workspaceId, isRunning, runningMap,
+  onImport, onAddCommand, onRemoveFolder, workspaceId, isRunning, runningMap,
   removeSession, run, remove, setEditingCommand, setDialogOpen, onSelectSession, tc,
 }: {
   search: string;
@@ -67,6 +67,7 @@ export function CommandSidebar({
   onToggleFolder: (f: string) => void;
   onImport: () => void;
   onAddCommand: () => void;
+  onRemoveFolder: (folder: string) => void;
   workspaceId: string;
   isRunning: (id: string) => boolean;
   runningMap: Record<string, { sessionId: string }>;
@@ -166,7 +167,7 @@ export function CommandSidebar({
                     className="flex items-center gap-1 flex-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground"
                   >
                     {isOpen ? <ChevronDown size={10} className="shrink-0" /> : <ChevronRight size={10} className="shrink-0" />}
-                    <span className="truncate">{folder.split('/').pop() || folder}</span>
+                    <span className="truncate">{folder.split(/[/\\]/).pop() || folder}</span>
                     <span className="text-muted-foreground/60">({cmds.length})</span>
                   </CollapsibleTrigger>
                   <button
@@ -175,6 +176,13 @@ export function CommandSidebar({
                     title={tc('openTerminal') || 'Open Terminal'}
                   >
                     <Terminal size={12} />
+                  </button>
+                  <button
+                    onClick={() => onRemoveFolder(folder)}
+                    className="shrink-0 p-0.5 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer max-md:!opacity-100"
+                    title={tc('deleteFolder') || 'Delete Folder'}
+                  >
+                    <Trash2 size={12} />
                   </button>
                 </div>
                 <CollapsibleContent>
