@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import { Trash2, RotateCcw, X, Search, AlertTriangle, Info } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import type { DocNode } from '@agent-spaces/shared';
 
 interface Props {

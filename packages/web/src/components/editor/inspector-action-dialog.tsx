@@ -1,7 +1,7 @@
 'use client';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { useInspectorHistoryStore, type PendingInspectorJump } from '@/stores/inspector-history';
+import { useInspectorHistoryStore } from '@/stores/inspector-history';
 import { useEditorStore } from '@/stores/editor';
 import { useEditorSendStore } from '@/stores/editor-send';
 import { toast } from 'sonner';

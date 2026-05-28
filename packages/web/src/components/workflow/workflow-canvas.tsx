@@ -81,7 +81,7 @@ interface WorkflowCanvasProps {
   onEdgesChange: OnEdgesChange;
   onConnect: OnConnect;
   onNodeAdd?: (node: WorkflowNodeRF) => void;
-  onNodeDoubleClick?: (_: React.MouseEvent, node: any) => void;
+  onNodeDoubleClick?: (_: React.MouseEvent, node: Record<string, unknown>) => void;
 }
 
 export function WorkflowCanvas({ nodes, edges, onNodesChange, onEdgesChange, onConnect, onNodeAdd, onNodeDoubleClick }: WorkflowCanvasProps) {

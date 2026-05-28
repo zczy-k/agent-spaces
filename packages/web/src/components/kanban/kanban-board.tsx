@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   DndContext, useSensor, useSensors, PointerSensor, TouchSensor, KeyboardSensor,
   DragOverlay, defaultDropAnimationSideEffects, type Active,
@@ -9,7 +9,7 @@ import { sortableKeyboardCoordinates, arrayMove, SortableContext, horizontalList
 import { Plus, LayoutGrid, Search, Layers, WandSparkles } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useKanbanStore } from '@/stores/kanban';
-import type { KanbanColumn, KanbanTask, KanbanLayoutMode, KanbanPriority } from '@agent-spaces/shared';
+import type { KanbanColumn, KanbanTask, KanbanPriority } from '@agent-spaces/shared';
 import KanbanColumnComponent from './kanban-column';
 import KanbanCard from './kanban-card';
 import TaskModal from './task-modal';
@@ -21,7 +21,7 @@ interface KanbanBoardProps {
 }
 
 export default function KanbanBoardPanel({ workspaceId }: KanbanBoardProps) {
-  const { board, load, updateLayoutMode, updateColumns, updateTasks, setBoard, attachWS } = useKanbanStore();
+  const { board, load, updateLayoutMode, updateColumns, updateTasks, attachWS } = useKanbanStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<'all' | KanbanPriority>('all');
   const [selectedTask, setSelectedTask] = useState<KanbanTask | null>(null);
@@ -35,8 +35,8 @@ export default function KanbanBoardPanel({ workspaceId }: KanbanBoardProps) {
 
   useEffect(() => { load(workspaceId); attachWS(workspaceId); }, [workspaceId, load, attachWS]);
 
-  const columns = board?.columns ?? [];
-  const tasks = board?.tasks ?? [];
+  const columns = useMemo(() => board?.columns ?? [], [board?.columns]);
+  const tasks = useMemo(() => board?.tasks ?? [], [board?.tasks]);
   const layoutMode = board?.layoutMode ?? 'horizontal';
 
   const sensors = useSensors(

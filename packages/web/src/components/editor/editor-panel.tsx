@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FileTree, FileTreeNodes, FileTreeFolder, FileTreeFile } from "./file-tree";
+import { FileTree, FileTreeNodes } from "./file-tree";
 import { SearchPanel } from "./search-panel";
 import { ImportFileDialog } from "./import-file-dialog";
 import { useEditorStore } from "@/stores/editor";

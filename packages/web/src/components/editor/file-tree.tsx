@@ -808,7 +808,7 @@ export function FileTreeNodes({ nodes }: { nodes: FileNode[] }) {
     },
   })
 
-  placeholderRef.current = tree.placeholder
+  useEffect(() => { placeholderRef.current = tree.placeholder })
 
   return (
     tree.renderTree({

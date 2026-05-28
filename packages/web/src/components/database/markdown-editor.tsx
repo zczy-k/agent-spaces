@@ -44,7 +44,7 @@ export default function MarkdownEditor({ contentMarkdown, onChange, theme = 'san
   return (
     <div className="w-full flex flex-col h-[550px] lg:h-[650px] bg-background border border-border rounded-xl overflow-hidden">
       <div className="bg-background border-b border-border px-3 py-2 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
-        {/* eslint-disable-next-line react-hooks/refs -- insert() only called on click, refs not accessed during render */}
+        {/* eslint-disable react-hooks/refs -- insert() only runs on click, not during render */}
         <div className="flex flex-wrap items-center gap-1">
           {btn(() => insert('### ', '', '小标题'), '标题', <Heading className="w-4 h-4" />)}
           {btn(() => insert('**', '**', '加粗'), '加粗', <Bold className="w-4 h-4" />)}
@@ -61,6 +61,7 @@ export default function MarkdownEditor({ contentMarkdown, onChange, theme = 'san
           {btn(() => insert('| 标题1 | 标题2 |\n| ---- | ---- |\n| 单元格1 | 单元格2 |'), '表格', <Table className="w-4 h-4" />)}
           {btn(() => insert('[', '](url)', '链接'), '链接', <Link className="w-4 h-4" />)}
         </div>
+        {/* eslint-enable react-hooks/refs */}
         <div className="flex items-center gap-1 bg-card p-1 rounded-lg shrink-0">
           {(['edit', 'split', 'preview'] as const).map(m => (
             <button key={m} type="button" onClick={() => setViewMode(m)}

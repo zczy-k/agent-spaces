@@ -71,7 +71,7 @@ function FavoriteCard({
     navigator.clipboard.writeText(pos).then(() => {
       toast.success(t('copiedPosition', { pos }));
     });
-  }, [favorite]);
+  }, [favorite, t]);
 
   return (
     <div

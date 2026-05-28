@@ -165,10 +165,15 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     const fallback = taskOrder.length;
     return filtered.sort((a, b) => (orderMap.get(a.id) ?? fallback) - (orderMap.get(b.id) ?? fallback));
   }, [tasks, issue]);
-  const members = issue?.members ?? [];
+  const issueMembers = issue?.members;
+  const members = useMemo(() => Array.from(new Set(issueMembers ?? [])), [issueMembers]);
+  const normalizedIssue = useMemo(
+    () => (issue ? { ...issue, members } : undefined),
+    [issue, members],
+  );
   const enabledAgents = agents.filter((agent) => agent.enabled !== false);
 
-  if (!issue) {
+  if (!issue || !normalizedIssue) {
     return (
       <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
         {t('detail.selectIssue')}
@@ -182,7 +187,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden relative">
         <IssueDetailHeader
           ref={headerRef}
-          issue={issue}
+          issue={normalizedIssue}
           workspaceId={workspaceId}
           t={t}
           tc={tc}
@@ -217,7 +222,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
           </div>
         ) : (
           <IssueDetailTasksPanel
-            issue={issue}
+            issue={normalizedIssue}
             workspaceId={workspaceId}
             issueTasks={issueTasks}
             t={t}
@@ -253,7 +258,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
           </div>
         ) : (
           <IssueDetailComments
-            issue={issue}
+            issue={normalizedIssue}
             workspaceId={workspaceId}
             comments={comments}
             expandedCommentIds={expandedCommentIds}
@@ -299,7 +304,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
       </div>
 
       <IssueDetailInfoPanel
-        issue={issue}
+        issue={normalizedIssue}
         workspaceId={workspaceId}
         open={infoOpen}
         onOpenChange={setInfoOpen}
@@ -313,7 +318,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
 
       {issue && (
         <EditIssueDialog
-          issue={issue}
+          issue={normalizedIssue}
           open={editOpen}
           onOpenChange={setEditOpen}
           agents={enabledAgents}

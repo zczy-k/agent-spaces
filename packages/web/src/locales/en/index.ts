@@ -30,7 +30,7 @@ import workspace from './workspace.json';
 import workspaces from './workspaces.json';
 import worktree from './worktree.json';
 
-export default {
+const messages = {
   agent,
   agentCommands,
   chat,
@@ -61,4 +61,7 @@ export default {
   tools,
   workspace,
   workspaces,
-  worktree,};
+  worktree,
+};
+
+export default messages;
