@@ -283,15 +283,51 @@ function LogViewerTerminal({
   const [paused, setPaused] = React.useState(false)
   const [searchOpen, setSearchOpen] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState("")
+  const allLevels = React.useMemo(() => {
+    const seen = new Set<LogLevel>()
+    for (const e of entries) seen.add(e.level)
+    return [...seen]
+  }, [entries])
+  const [activeLevels, setActiveLevels] = React.useState<Set<LogLevel>>(() => new Set())
+  const activeLevelsRef = React.useRef(activeLevels)
+  activeLevelsRef.current = activeLevels
   const { copied, copy } = useCopy()
   const { scrollRef, isAtBottom, handleScroll, scrollToBottom } = useAutoScroll(
     entries,
     autoScroll && !paused
   )
 
-  const filteredEntries = searchQuery
-    ? entries.filter((e) => e.message.toLowerCase().includes(searchQuery.toLowerCase()))
-    : entries
+  React.useEffect(() => {
+    if (activeLevelsRef.current.size === 0 && allLevels.length > 0) {
+      setActiveLevels(new Set(allLevels))
+    }
+  }, [allLevels])
+
+  function toggleLevel(level: LogLevel) {
+    setActiveLevels((prev) => {
+      const next = new Set(prev)
+      if (next.has(level)) {
+        next.delete(level)
+      } else {
+        next.add(level)
+      }
+      return next
+    })
+  }
+
+  const levelCounts = React.useMemo(() => {
+    const counts: Partial<Record<LogLevel, number>> = {}
+    for (const entry of entries) {
+      counts[entry.level] = (counts[entry.level] ?? 0) + 1
+    }
+    return counts
+  }, [entries])
+
+  const filteredEntries = entries.filter((e) => {
+    if (activeLevels.size > 0 && !activeLevels.has(e.level)) return false
+    if (searchQuery && !e.message.toLowerCase().includes(searchQuery.toLowerCase())) return false
+    return true
+  })
 
   const lineNumberWidth = Math.max(String(entries.length).length, 3)
 
@@ -320,6 +356,42 @@ function LogViewerTerminal({
         <span className="flex-1 truncate text-sm font-medium text-foreground">
           {title}
         </span>
+
+        {/* Level filter tags */}
+        {allLevels.length > 1 && (
+          <div className="flex items-center gap-0.5">
+            {allLevels.map((level) => {
+              const colors = resolveLevelColors(level, colorScale)
+              const isActive = activeLevels.has(level)
+              const count = levelCounts[level] ?? 0
+              return (
+                <button
+                  key={level}
+                  type="button"
+                  onClick={() => toggleLevel(level)}
+                  role="checkbox"
+                  aria-checked={isActive}
+                  aria-label={`${isActive ? "Hide" : "Show"} ${level} logs`}
+                  className={cn(
+                    "inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors outline-none",
+                    isActive
+                      ? colors.badge
+                      : "bg-muted/50 text-muted-foreground/40 line-through"
+                  )}
+                >
+                  <Circle
+                    className={cn(
+                      "size-1 fill-current",
+                      isActive ? colors.text : "text-muted-foreground/30"
+                    )}
+                  />
+                  {LEVEL_LABELS[level]}
+                  {count > 0 && <span className="tabular-nums">{count}</span>}
+                </button>
+              )
+            })}
+          </div>
+        )}
 
         <span className="mr-1 text-[10px] tabular-nums text-muted-foreground">
           {filteredEntries.length}
