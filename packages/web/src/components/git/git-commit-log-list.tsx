@@ -51,7 +51,7 @@ export function GitCommitLogList({ workspaceId, log, currentHeadHash, onSelectEn
         if (entry) onSelectEntry(entry);
       }}
       renderCommitWrapper={(commit: Commit, children: React.ReactNode) => (
-        <ContextMenu>
+        <ContextMenu key={commit.hash}>
           <ContextMenuTrigger>{children}</ContextMenuTrigger>
           <GitCommitContextMenu
             workspaceId={workspaceId}
