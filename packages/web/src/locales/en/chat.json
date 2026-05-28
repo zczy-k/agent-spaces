@@ -14,6 +14,7 @@
     "memberCount": "Member count",
     "createdAt": "Created",
     "noMembers": "No members yet",
+    "noAgents": "No agents found",
     "delete": "Delete Channel",
     "deleteConfirm": "Are you sure you want to delete channel \"{name}\"? This action cannot be undone.",
     "namePlaceholder": "Channel name",

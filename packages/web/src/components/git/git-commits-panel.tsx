@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback, useState, useMemo } from "react";
+import { useEffect, useCallback, useState, useMemo, useRef } from "react";
 import {
   Upload, Loader2, RefreshCw, ArrowUp, ArrowDown,
   FileCode, RotateCcw, Trash2, ChevronDown, GitBranch,
@@ -91,14 +91,26 @@ export function GitCommitsPanel({ workspaceId }: Props) {
   const t = useTranslations('git.commits');
   const tChanges = useTranslations('git.changes');
   const isMobile = useIsMobile();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [narrow, setNarrow] = useState(false);
+  const vertical = isMobile || narrow;
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setNarrow(el.clientWidth < 480));
+    ro.observe(el);
+    setNarrow(el.clientWidth < 480);
+    return () => ro.disconnect();
+  }, []);
 
   const gitLayout = useMemo<Layout | undefined>(() => {
-    return loadGitLayout(isMobile);
-  }, [isMobile]);
+    return loadGitLayout(vertical);
+  }, [vertical]);
   const onGitLayoutChange = useCallback((layout: Layout) => {
-    if (!isValidGitLayout(layout, isMobile)) return;
+    if (!isValidGitLayout(layout, vertical)) return;
     try { localStorage.setItem(GIT_LAYOUT_KEY, JSON.stringify(layout)); } catch {}
-  }, [isMobile]);
+  }, [vertical]);
 
   const {
     log, loading, notGitRepo, status, branches, diffs, selectedFile,
@@ -126,6 +138,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
   const [opLogOpen, setOpLogOpen] = useState(false);
   const [opLog, setOpLog] = useState<GitOperationEntry[]>([]);
   const [opLogLoading, setOpLogLoading] = useState(false);
+  const [commitDialogOpen, setCommitDialogOpen] = useState(false);
 
   const openOpLog = useCallback(async () => {
     setOpLogOpen(true);
@@ -204,10 +217,6 @@ export function GitCommitsPanel({ workspaceId }: Props) {
     } catch (err: unknown) { toast.error(errMsg(err) || tChanges('failedCommitMessage')); }
     finally { setGenerating(false); }
   }, [workspaceId, generating, committing, setCommitMsg, tChanges]);
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleCommit();
-  }, [handleCommit]);
 
   // ---- changes file actions ----
   const handleFileClick = useCallback((path: string) => {
@@ -309,9 +318,10 @@ export function GitCommitsPanel({ workspaceId }: Props) {
   }
 
   return (
-    <ResizablePanelGroup orientation={isMobile ? "vertical" : "horizontal"} defaultLayout={gitLayout} onLayoutChange={onGitLayoutChange} className="h-full overflow-hidden rounded-t-xl bg-background">
+    <div ref={containerRef} className="h-full">
+    <ResizablePanelGroup orientation={vertical ? "vertical" : "horizontal"} defaultLayout={gitLayout} onLayoutChange={onGitLayoutChange} className="h-full overflow-hidden rounded-t-xl bg-background">
       {/* Left: Changes panel */}
-      <ResizablePanel id={GIT_CHANGES_PANEL_ID} defaultSize={isMobile ? "40%" : "25%"} minSize="15%" maxSize="60%" className="flex flex-col bg-muted/20 overflow-hidden">
+      <ResizablePanel id={GIT_CHANGES_PANEL_ID} defaultSize={vertical ? "40%" : "25%"} minSize="15%" maxSize="60%" className="flex flex-col bg-muted/20 overflow-hidden">
         {/* Header with branch selector */}
         <div className="flex items-center gap-1 px-2 py-1.5 border-b">
           <div className="relative flex-1 min-w-0">
@@ -376,21 +386,10 @@ export function GitCommitsPanel({ workspaceId }: Props) {
           {status?.clean && <div className="p-2 text-xs text-muted-foreground">{tChanges('noChanges')}</div>}
         </div>
 
-        {/* Commit input */}
+        {/* Commit button */}
         {hasFiles ? (
-          <div className="border-t p-2 space-y-1.5">
-            <div className="relative">
-              <textarea value={commitMsg} onChange={(e) => setCommitMsg(e.target.value)} onKeyDown={handleKeyDown}
-                placeholder={tChanges('commitMessagePlaceholder')} rows={3}
-                className="w-full resize-none text-xs px-2 pt-1 pr-8 pb-7 border rounded bg-background disabled:opacity-50"
-                disabled={committing || generating} />
-              <button type="button" onClick={handleGenerateCommit} disabled={generating || committing || !hasFiles}
-                className="absolute bottom-1.5 right-1.5 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent active:scale-90 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-100"
-                title="AI generate commit message">
-                {generating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-              </button>
-            </div>
-            <button onClick={handleCommit} disabled={!commitMsg.trim() || committing}
+          <div className="border-t p-2">
+            <button onClick={() => setCommitDialogOpen(true)} disabled={committing}
               className="w-full text-xs px-2 py-1 rounded bg-primary text-primary-foreground active:scale-[0.98] transition-all duration-100 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
               {committing ? tChanges('committing') : tChanges('commit')}
             </button>
@@ -409,7 +408,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
       <ResizableHandle withHandle />
 
       {/* Right: Commits + Diff */}
-      <ResizablePanel id={GIT_COMMITS_PANEL_ID} defaultSize={isMobile ? "60%" : "75%"} minSize="30%" className="flex flex-col min-w-0 overflow-hidden">
+      <ResizablePanel id={GIT_COMMITS_PANEL_ID} defaultSize={vertical ? "60%" : "75%"} minSize="30%" className="flex flex-col min-w-0 overflow-hidden">
         {/* Commits header */}
         <div className="flex items-center justify-between px-2 py-1.5 border-b shrink-0">
           <span className="text-xs font-medium text-muted-foreground">
@@ -517,6 +516,36 @@ export function GitCommitsPanel({ workspaceId }: Props) {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={commitDialogOpen} onOpenChange={setCommitDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{tChanges('commit')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="relative">
+              <textarea value={commitMsg} onChange={(e) => setCommitMsg(e.target.value)}
+                placeholder={tChanges('commitMessagePlaceholder')} rows={4} autoFocus
+                className="w-full resize-none text-xs px-2 pt-1 pr-8 pb-1 border rounded bg-background" />
+              <button type="button" onClick={handleGenerateCommit} disabled={generating || committing}
+                className="absolute top-1.5 right-1.5 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent active:scale-90 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-100"
+                title="AI generate commit message">
+                {generating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+              </button>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setCommitDialogOpen(false)} disabled={committing}
+                className="text-xs px-3 py-1.5 rounded border hover:bg-accent active:scale-[0.98] transition-all duration-100 cursor-pointer disabled:opacity-50">
+                {tc('cancel')}
+              </button>
+              <button onClick={async () => { await handleCommit(); setCommitDialogOpen(false); }} disabled={!commitMsg.trim() || committing}
+                className="text-xs px-3 py-1.5 rounded bg-primary text-primary-foreground active:scale-[0.98] transition-all duration-100 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                {committing ? tChanges('committing') : tChanges('commit')}
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <GitDiscardDialog
         confirm={discardConfirm}
         open={!!discardConfirm}
@@ -572,5 +601,6 @@ export function GitCommitsPanel({ workspaceId }: Props) {
         </DialogContent>
       </Dialog>
     </ResizablePanelGroup>
+    </div>
   );
 }

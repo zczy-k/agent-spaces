@@ -7,6 +7,7 @@ import { ConsolePanel } from "@/components/common/console-panel";
 import { ViewportInsets } from "@/components/viewport-insets";
 import { ZoomWrapper } from "@/components/zoom-wrapper";
 import { CommandPalette } from "@/components/command-palette";
+import { ThemeStyleInit } from "@/components/theme-style-init";
 import { Toaster } from "sonner";
 import "flexlayout-react/style/light.css";
 import "tippy.js/dist/tippy.css";
@@ -40,9 +41,11 @@ export default function RootLayout({
       className="h-[var(--app-content-height)] overflow-hidden antialiased"
       suppressHydrationWarning
     >
+      <head />
       <body className="h-[var(--app-content-height)] overflow-hidden font-sans">
         <ZoomWrapper>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <ThemeStyleInit />
           <LocaleProvider>
             <ViewportInsets />
             <AuthGuard>
