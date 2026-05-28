@@ -309,13 +309,13 @@ function LogViewerTerminal({
     <div
       data-slot="log-viewer-terminal"
       className={cn(
-        "flex flex-col overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm",
+        "flex h-full flex-col overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm",
         className
       )}
       {...props}
     >
       {/* Toolbar */}
-      <div className="flex items-center gap-2 border-b border-border/40 bg-muted/30 px-3 py-2">
+      <div className="flex shrink-0 items-center gap-2 border-b border-border/40 bg-muted/30 px-3 py-2">
         <Terminal className="size-3.5 shrink-0 text-muted-foreground" />
         <span className="flex-1 truncate text-sm font-medium text-foreground">
           {title}
@@ -364,7 +364,7 @@ function LogViewerTerminal({
 
       {/* Search bar */}
       {searchOpen && (
-        <div className="flex items-center gap-2 border-b border-border/40 bg-muted/20 px-3 py-1.5">
+        <div className="flex shrink-0 items-center gap-2 border-b border-border/40 bg-muted/20 px-3 py-1.5">
           <Search className="size-3.5 shrink-0 text-muted-foreground" />
           <input
             type="text"
@@ -391,8 +391,7 @@ function LogViewerTerminal({
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="overflow-auto bg-card font-mono text-xs leading-relaxed [scrollbar-width:thin]"
-        style={{ maxHeight }}
+        className="min-h-0 flex-1 overflow-y-auto bg-card font-mono text-xs leading-relaxed [scrollbar-width:thin]"
         role="log"
         aria-live="polite"
         aria-label={title}

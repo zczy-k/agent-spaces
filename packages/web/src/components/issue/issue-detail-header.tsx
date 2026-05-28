@@ -178,7 +178,7 @@ export const IssueDetailHeader = forwardRef<IssueDetailHeaderRef, IssueDetailHea
         )}
       </div>
       {issue.description && (
-        <p className="text-sm text-muted-foreground mt-2">{issue.description}</p>
+        <p className="text-sm text-muted-foreground mt-2 max-h-40 overflow-y-auto">{issue.description}</p>
       )}
       <div className="mt-2 flex items-center gap-2">
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
