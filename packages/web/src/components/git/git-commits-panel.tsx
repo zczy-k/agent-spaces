@@ -1,93 +1,38 @@
 "use client";
 
 import { useEffect, useCallback, useState, useMemo, useRef } from "react";
-import {
-  Upload, Loader2, RefreshCw, ArrowUp, ArrowDown,
-  FileCode, RotateCcw, Trash2, ChevronDown, GitBranch,
-  Sparkles, Settings2, FileDiff, Plus, Minus, AlertTriangle,
-  ScrollText,
-} from "lucide-react";
+import { toast } from "sonner";
+import { useTranslations } from "next-intl";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ResizablePanelGroup, ResizableHandle } from "@/components/ui/resizable";
+import type { Layout } from 'react-resizable-panels';
 import type { GitLogEntry, GitOperationEntry } from "@agent-spaces/shared";
+
 import { useGitStore } from "@/stores/git";
 import { useEditorStore } from "@/stores/editor";
 import { GitNotInitialized } from "./git-not-initialized";
 import { GitRemoteDialog } from "./git-remote-dialog";
-import { DiffViewer } from "./diff-viewer";
 import { GitSettingsForm } from "@/components/git/git-settings-form";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Skeleton, SkeletonGroup } from "@/components/ui/skeleton";
-import { toast } from "sonner";
-import { useTranslations } from "next-intl";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import type { Layout } from 'react-resizable-panels';
-
-import { statusColors, statusLabels, errMsg } from "./git-commit-utils";
+import { errMsg } from "./git-commit-utils";
 import { useGitSync } from "./use-git-sync";
 import { GitPromptDialog } from "./git-prompt-dialog";
 import { GitDiscardDialog, type DiscardConfirm } from "./git-discard-dialog";
 import { GitGitignoreDialog } from "./git-gitignore-dialog";
 import { GitFileContextMenu } from "./git-file-context-menu";
 import { GitCommitDetailDialog } from "./git-commit-detail-dialog";
-import { GitCommitLogList } from "./git-commit-log-list";
+
+import { loadGitLayout, isValidGitLayout } from "./git-panel-layout";
+import { GitChangesPanel } from "./git-changes-panel";
+import { GitCommitsSection } from "./git-commits-section";
+import { GitOpLogDialog } from "./git-op-log-dialog";
+import { GitCommitDialog } from "./git-commit-dialog";
 
 interface Props {
   workspaceId: string;
 }
 
-const GIT_LAYOUT_KEY = 'agent-spaces:git-layout';
-const GIT_CHANGES_PANEL_ID = 'changes';
-const GIT_COMMITS_PANEL_ID = 'commits';
-
-const GIT_LAYOUT_LIMITS = {
-  desktop: {
-    changesMin: 15,
-    changesMax: 60,
-    commitsMin: 30,
-  },
-  mobile: {
-    changesMin: 15,
-    changesMax: 60,
-    commitsMin: 30,
-  },
-} as const;
-
-function loadGitLayout(isMobile: boolean): Layout | undefined {
-  try {
-    const raw = localStorage.getItem(GIT_LAYOUT_KEY);
-    if (!raw) return undefined;
-
-    const layout = JSON.parse(raw) as Partial<Layout>;
-    const limits = isMobile ? GIT_LAYOUT_LIMITS.mobile : GIT_LAYOUT_LIMITS.desktop;
-    const changes = layout[GIT_CHANGES_PANEL_ID];
-    const commits = layout[GIT_COMMITS_PANEL_ID];
-
-    return typeof changes === 'number'
-      && typeof commits === 'number'
-      && changes >= limits.changesMin
-      && changes <= limits.changesMax
-      && commits >= limits.commitsMin
-      ? { [GIT_CHANGES_PANEL_ID]: changes, [GIT_COMMITS_PANEL_ID]: commits }
-      : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-function isValidGitLayout(layout: Layout, isMobile: boolean): boolean {
-  const limits = isMobile ? GIT_LAYOUT_LIMITS.mobile : GIT_LAYOUT_LIMITS.desktop;
-  const changes = layout[GIT_CHANGES_PANEL_ID];
-  const commits = layout[GIT_COMMITS_PANEL_ID];
-
-  return typeof changes === 'number'
-    && typeof commits === 'number'
-    && changes >= limits.changesMin
-    && changes <= limits.changesMax
-    && commits >= limits.commitsMin;
-}
-
 export function GitCommitsPanel({ workspaceId }: Props) {
-  const tc = useTranslations('common');
   const t = useTranslations('git.commits');
   const tChanges = useTranslations('git.changes');
   const isMobile = useIsMobile();
@@ -109,7 +54,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
   }, [vertical]);
   const onGitLayoutChange = useCallback((layout: Layout) => {
     if (!isValidGitLayout(layout, vertical)) return;
-    try { localStorage.setItem(GIT_LAYOUT_KEY, JSON.stringify(layout)); } catch {}
+    try { localStorage.setItem('agent-spaces:git-layout', JSON.stringify(layout)); } catch {}
   }, [vertical]);
 
   const {
@@ -121,7 +66,6 @@ export function GitCommitsPanel({ workspaceId }: Props) {
   const openFile = useEditorStore((s) => s.openFile);
   const openCommitDiff = useEditorStore((s) => s.openCommitDiff);
 
-  const [branchOpen, setBranchOpen] = useState(false);
   const [committing, setCommitting] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [promptDialog, setPromptDialog] = useState<{
@@ -189,7 +133,6 @@ export function GitCommitsPanel({ workspaceId }: Props) {
 
   // ---- branch ----
   const handleBranchCheckout = useCallback(async (branch: string) => {
-    setBranchOpen(false);
     await checkout(workspaceId, branch);
     refresh();
     loadBranches(workspaceId);
@@ -320,168 +263,56 @@ export function GitCommitsPanel({ workspaceId }: Props) {
   return (
     <div ref={containerRef} className="h-full">
     <ResizablePanelGroup orientation={vertical ? "vertical" : "horizontal"} defaultLayout={gitLayout} onLayoutChange={onGitLayoutChange} className="h-full overflow-hidden rounded-t-xl bg-background">
-      {/* Left: Changes panel */}
-      <ResizablePanel id={GIT_CHANGES_PANEL_ID} defaultSize={vertical ? "40%" : "25%"} minSize="15%" maxSize="60%" className="flex flex-col bg-muted/20 overflow-hidden">
-        {/* Header with branch selector */}
-        <div className="flex items-center gap-1 px-2 py-1.5 border-b">
-          <div className="relative flex-1 min-w-0">
-            <button onClick={() => setBranchOpen(!branchOpen)} className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground active:opacity-70 transition-all duration-100 cursor-pointer w-full">
-              <GitBranch size={13} className="shrink-0" />
-              <span className="truncate">{status?.branch ?? "..."}</span>
-              {status && hasFiles && <span className="text-muted-foreground">({status.files.length})</span>}
-              <ChevronDown size={12} className="shrink-0" />
-            </button>
-            {branchOpen && (
-              <>
-                <div className="absolute left-0 top-full z-50 mt-1 w-48 bg-popover border rounded shadow-md py-0.5 max-h-60 overflow-auto">
-                  {branches.map((b) => (
-                    <button key={b.name} onClick={() => handleBranchCheckout(b.name)}
-                      className={`w-full text-left px-2 py-1 text-xs hover:bg-accent active:scale-[0.98] active:bg-accent transition-all duration-100 cursor-pointer truncate ${b.current ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
-                      {b.name}
-                    </button>
-                  ))}
-                  {branches.length === 0 && <div className="px-2 py-1 text-xs text-muted-foreground">{tChanges('noBranches')}</div>}
-                </div>
-                <div className="fixed inset-0 z-40" onClick={() => setBranchOpen(false)} />
-              </>
-            )}
-          </div>
-          {hasFiles && (
-            <button onClick={handleDiscardAll} className="p-1 text-muted-foreground hover:text-destructive active:scale-90 transition-all duration-100 cursor-pointer" title={tChanges('discardAll')}>
-              <Trash2 size={13} />
-            </button>
-          )}
-          <button onClick={() => {
-            if (diffs.length > 0) openCommitDiff(workspaceId, 'unstaged', tChanges('unstagedChanges'), diffs);
-          }} disabled={!hasFiles} className="p-1 text-muted-foreground hover:text-foreground active:scale-90 transition-all duration-100 cursor-pointer disabled:opacity-30" title={tChanges('viewDiff')}>
-            <FileDiff size={13} />
-          </button>
-          <button onClick={handleRefreshClick} className="p-1 text-muted-foreground hover:text-foreground active:scale-90 transition-all duration-100 cursor-pointer" title={tc('refresh')}>
-            <RefreshCw size={13} />
-          </button>
-        </div>
-
-        {/* File list */}
-         <div className="flex-1 overflow-auto">
-          {status?.files.map((f) => (
-            <div key={f.path} onClick={() => handleFileClick(f.path)} onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, path: f.path }); }}
-              className={`group w-full text-left px-2 py-1 text-xs font-mono flex items-center gap-1.5 hover:bg-accent cursor-pointer ${selectedFile === f.path ? "bg-accent" : ""}`}>
-              <span className={`w-4 text-center font-bold shrink-0 ${statusColors[f.status]}`}>{statusLabels[f.status]}</span>
-              {f.conflicted && <AlertTriangle size={12} className="shrink-0 text-red-500" />}
-              <span className="truncate flex-1">{f.path}</span>
-              <span className="hidden group-hover:flex md:flex items-center gap-0.5 shrink-0">
-                <button
-                  onClick={(e) => handleStageToggle(e, f.path, f.staged)}
-                  disabled={f.conflicted}
-                  className="p-0.5 rounded hover:bg-accent/80 active:scale-90 transition-all duration-100 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                  title={f.staged ? "Unstage" : "Stage"}
-                >
-                  {f.staged ? <Minus size={13} /> : <Plus size={13} />}
-                </button>
-                <button onClick={(e) => handleOpenFile(e, f.path)} className="p-0.5 rounded hover:bg-accent/80 active:scale-90 transition-all duration-100 cursor-pointer" title={tc('open')}><FileCode size={13} /></button>
-                <button onClick={(e) => handleDiscard(e, f.path)} className="p-0.5 rounded hover:bg-accent/80 active:scale-90 transition-all duration-100 cursor-pointer" title={tChanges('discardAll')}><RotateCcw size={13} /></button>
-              </span>
-            </div>
-          ))}
-          {status?.clean && <div className="p-2 text-xs text-muted-foreground">{tChanges('noChanges')}</div>}
-        </div>
-
-        {/* Commit button */}
-        {hasFiles ? (
-          <div className="border-t p-2">
-            <button onClick={() => setCommitDialogOpen(true)} disabled={committing}
-              className="w-full text-xs px-2 py-1 rounded bg-primary text-primary-foreground active:scale-[0.98] transition-all duration-100 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-              {committing ? tChanges('committing') : tChanges('commit')}
-            </button>
-          </div>
-        ) : ahead > 0 ? (
-          <div className="border-t p-2">
-            <button onClick={handleSyncChanges} disabled={syncing !== null}
-              className="w-full text-xs px-2 py-1 rounded bg-primary text-primary-foreground active:scale-[0.98] transition-all duration-100 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5">
-              {syncing ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
-              {syncing ? tChanges('syncing') : tChanges('syncChanges')}
-            </button>
-          </div>
-        ) : null}
-      </ResizablePanel>
+      <GitChangesPanel
+        workspaceId={workspaceId}
+        branch={status?.branch}
+        branches={branches}
+        files={status?.files ?? []}
+        hasFiles={hasFiles}
+        ahead={ahead}
+        selectedFile={selectedFile}
+        syncing={syncing}
+        clean={!!status?.clean}
+        onFileClick={handleFileClick}
+        onOpenFile={handleOpenFile}
+        onDiscard={handleDiscard}
+        onStageToggle={handleStageToggle}
+        onDiscardAll={handleDiscardAll}
+        onBranchCheckout={handleBranchCheckout}
+        onCommitDialogOpen={() => setCommitDialogOpen(true)}
+        onSyncChanges={handleSyncChanges}
+        onViewDiff={() => {
+          if (diffs.length > 0) openCommitDiff(workspaceId, 'unstaged', tChanges('unstagedChanges'), diffs);
+        }}
+        onRefreshClick={handleRefreshClick}
+        onContextMenu={(e, path) => setCtxMenu({ x: e.clientX, y: e.clientY, path })}
+        isVertical={vertical}
+      />
 
       <ResizableHandle withHandle />
 
-      {/* Right: Commits + Diff */}
-      <ResizablePanel id={GIT_COMMITS_PANEL_ID} defaultSize={vertical ? "60%" : "75%"} minSize="30%" className="flex flex-col min-w-0 overflow-hidden">
-        {/* Commits header */}
-        <div className="flex items-center justify-between px-2 py-1.5 border-b shrink-0">
-          <span className="text-xs font-medium text-muted-foreground">
-            {log.length > 0 ? t('titleWithCount', { count: log.length }) : t('title')}
-          </span>
-          <div className="flex items-center gap-1">
-            <button onClick={() => handleSync("push")} disabled={syncing !== null}
-              className="relative p-1 text-muted-foreground hover:text-foreground active:scale-90 transition-all duration-100 cursor-pointer disabled:opacity-50"
-              title={ahead > 0 ? t('pushNCommits', { count: ahead }) : "Push"}>
-              {syncing === "push" ? <Loader2 size={13} className="animate-spin" /> : <ArrowUp size={13} />}
-              {ahead > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-foreground px-1 text-[9px] font-medium leading-none text-background">{ahead}</span>
-              )}
-            </button>
-            <button onClick={() => handleSync("pull")} disabled={syncing !== null}
-              className="relative p-1 text-muted-foreground hover:text-foreground active:scale-90 transition-all duration-100 cursor-pointer disabled:opacity-50"
-              title={behind > 0 ? t('pullNCommits', { count: behind }) : "Pull"}>
-              {syncing === "pull" ? <Loader2 size={13} className="animate-spin" /> : <ArrowDown size={13} />}
-              {behind > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-foreground px-1 text-[9px] font-medium leading-none text-background">{behind}</span>
-              )}
-            </button>
-            <button onClick={handleRefreshClick} className="p-1 text-muted-foreground hover:text-foreground active:scale-90 transition-all duration-100 cursor-pointer"><RefreshCw size={13} /></button>
-            <button onClick={() => setGitSettingsOpen(true)} className="p-1 text-muted-foreground hover:text-foreground active:scale-90 transition-all duration-100 cursor-pointer" title={t('settingsTitle')}><Settings2 size={13} /></button>
-            <button onClick={openOpLog} className="p-1 text-muted-foreground hover:text-foreground active:scale-90 transition-all duration-100 cursor-pointer" title={t('operationLog')}><ScrollText size={13} /></button>
-          </div>
-        </div>
+      <GitCommitsSection
+        workspaceId={workspaceId}
+        log={log}
+        loading={loading}
+        ahead={ahead}
+        behind={behind}
+        syncing={syncing}
+        currentHeadHash={status?.headHash}
+        currentBranch={status?.branch}
+        selectedDiff={selectedDiff}
+        onPush={() => handleSync("push")}
+        onPull={() => handleSync("pull")}
+        onRefreshClick={handleRefreshClick}
+        onSettingsOpen={() => setGitSettingsOpen(true)}
+        onOpLogOpen={openOpLog}
+        onSelectEntry={setDetailEntry}
+        onRefreshAll={refreshAll}
+        onOpenPrompt={openPromptDialog}
+        onResolveConflict={handleResolveConflict}
+        isVertical={vertical}
+      />
 
-        {/* Commit list or Diff */}
-        {selectedDiff ? (
-          <div className="flex-1 min-h-0">
-            <DiffViewer
-              oldContent={selectedDiff.oldContent}
-              newContent={selectedDiff.newContent}
-              path={selectedDiff.path}
-              isBinary={selectedDiff.isBinary}
-              mergeMode={!!selectedDiff.isConflict}
-              onResolve={selectedDiff.isConflict ? (content) => handleResolveConflict(selectedDiff.path, content) : undefined}
-            />
-          </div>
-        ) : (
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            {loading && !log.length && (
-              <div className="p-2 space-y-1">
-                <SkeletonGroup count={6}>
-                  {(i) => (
-                    <div key={i} className="px-2 py-1.5 border-b space-y-1.5">
-                      <div className="flex items-center gap-2">
-                        <Skeleton className="h-3 w-10 rounded" />
-                        <Skeleton className="h-3 flex-1" />
-                      </div>
-                      <div className="flex items-center gap-2 pl-7">
-                        <Skeleton className="h-3 w-20" />
-                        <Skeleton className="h-3 w-16" />
-                      </div>
-                    </div>
-                  )}
-                </SkeletonGroup>
-              </div>
-            )}
-            <GitCommitLogList
-              workspaceId={workspaceId}
-              log={log}
-              currentHeadHash={status?.headHash}
-              currentBranch={status?.branch}
-              onSelectEntry={setDetailEntry}
-              onRefreshAll={refreshAll}
-              onOpenPrompt={openPromptDialog}
-            />
-            {!loading && !log.length && <div className="p-2 text-xs text-muted-foreground">{t('noCommits')}</div>}
-          </div>
-        )}
-      </ResizablePanel>
       {ctxMenu && (
         <GitFileContextMenu x={ctxMenu.x} y={ctxMenu.y} path={ctxMenu.path} onAddToGitignore={addToGitignore} onOpenFile={(p) => openFile(workspaceId, p)} onDiscard={(p) => setDiscardConfirm({ type: 'single', path: p })} onClose={() => setCtxMenu(null)} />
       )}
@@ -516,35 +347,16 @@ export function GitCommitsPanel({ workspaceId }: Props) {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={commitDialogOpen} onOpenChange={setCommitDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{tChanges('commit')}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="relative">
-              <textarea value={commitMsg} onChange={(e) => setCommitMsg(e.target.value)}
-                placeholder={tChanges('commitMessagePlaceholder')} rows={4} autoFocus
-                className="w-full resize-none text-xs px-2 pt-1 pr-8 pb-1 border rounded bg-background" />
-              <button type="button" onClick={handleGenerateCommit} disabled={generating || committing}
-                className="absolute top-1.5 right-1.5 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent active:scale-90 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-100"
-                title="AI generate commit message">
-                {generating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-              </button>
-            </div>
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setCommitDialogOpen(false)} disabled={committing}
-                className="text-xs px-3 py-1.5 rounded border hover:bg-accent active:scale-[0.98] transition-all duration-100 cursor-pointer disabled:opacity-50">
-                {tc('cancel')}
-              </button>
-              <button onClick={async () => { await handleCommit(); setCommitDialogOpen(false); }} disabled={!commitMsg.trim() || committing}
-                className="text-xs px-3 py-1.5 rounded bg-primary text-primary-foreground active:scale-[0.98] transition-all duration-100 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-                {committing ? tChanges('committing') : tChanges('commit')}
-              </button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <GitCommitDialog
+        open={commitDialogOpen}
+        onOpenChange={setCommitDialogOpen}
+        commitMsg={commitMsg}
+        onCommitMsgChange={setCommitMsg}
+        committing={committing}
+        generating={generating}
+        onCommit={handleCommit}
+        onGenerate={handleGenerateCommit}
+      />
 
       <GitDiscardDialog
         confirm={discardConfirm}
@@ -559,47 +371,12 @@ export function GitCommitsPanel({ workspaceId }: Props) {
         onClose={() => setDetailEntry(null)}
       />
 
-      <Dialog open={opLogOpen} onOpenChange={setOpLogOpen}>
-        <DialogContent className="sm:max-w-3xl max-h-[85vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>{t('operationLogTitle', { count: opLog.length })}</DialogTitle>
-          </DialogHeader>
-          <div className="flex-1 min-h-0 overflow-y-auto">
-            {opLogLoading ? (
-              <div className="p-4 text-center text-xs text-muted-foreground">{tc('loading')}</div>
-            ) : opLog.length === 0 ? (
-              <div className="p-4 text-center text-xs text-muted-foreground">{t('noOperations')}</div>
-            ) : (
-              opLog.map((entry) => (
-                <details key={entry.id} className="group border-b">
-                  <summary className="flex items-center gap-2 px-3 py-2 text-xs cursor-pointer hover:bg-accent select-none list-none">
-                    <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium ${entry.error ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'}`}>
-                      {entry.error ? 'FAIL' : 'OK'}
-                    </span>
-                    <span className="shrink-0 font-mono font-medium text-foreground">{entry.operation}</span>
-                    {Object.keys(entry.input).length > 0 && (
-                      <span className="min-w-0 flex-1 truncate text-muted-foreground">
-                        {Object.entries(entry.input).filter(([, v]) => v !== undefined && v !== null && v !== '').map(([k, v]) => `${k}=${String(v)}`).join(' ')}
-                      </span>
-                    )}
-                    <span className="shrink-0 text-muted-foreground">{entry.duration}ms</span>
-                    <span className="shrink-0 text-muted-foreground">{new Date(entry.timestamp).toLocaleTimeString()}</span>
-                    <span className="shrink-0 text-muted-foreground group-open:rotate-90 transition-transform">▸</span>
-                  </summary>
-                  <div className="px-3 pb-2 space-y-1 text-xs font-mono">
-                    {entry.error && (
-                      <div className="text-red-600 dark:text-red-400 whitespace-pre-wrap break-all">{entry.error}</div>
-                    )}
-                    {entry.output !== undefined && !entry.error && (
-                      <pre className="text-muted-foreground whitespace-pre-wrap break-all max-h-40 overflow-auto">{typeof entry.output === 'string' ? entry.output : JSON.stringify(entry.output, null, 2)}</pre>
-                    )}
-                  </div>
-                </details>
-              ))
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      <GitOpLogDialog
+        open={opLogOpen}
+        onOpenChange={setOpLogOpen}
+        entries={opLog}
+        loading={opLogLoading}
+      />
     </ResizablePanelGroup>
     </div>
   );

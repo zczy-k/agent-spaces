@@ -14,54 +14,22 @@ import {
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
-import {
-  Home,
-  FolderOpen,
-  Settings,
-  Bot,
-  Brain,
-  Server,
-  Pencil,
-  Trash2,
-  FolderSearch,
-  GitBranch,
-  Sparkles,
-  MessageSquare,
-  Plug,
-  PanelLeftClose,
-  Hash,
-  CircleDot,
-  Zap,
-  Wrench,
-  Terminal,
-} from "lucide-react";
 import { UserIcon } from "@/components/common/user-icon";
-import { AgentDialog } from "@/components/sidebar/agent-dialog";
-import { ModelsDialog } from "@/components/sidebar/models-dialog";
-import { ProvidersDialog } from "@/components/sidebar/providers-dialog";
-import { SettingsDialog } from "@/components/sidebar/settings-dialog";
-import { SkillsDialog } from "@/components/sidebar/skills-dialog";
-import { PromptsDialog } from "@/components/sidebar/prompts-dialog";
-import { OutputStylesDialog } from "@/components/sidebar/output-styles-dialog";
-import { McpsDialog } from "@/components/sidebar/mcps-dialog";
-import { HooksDialog } from "@/components/sidebar/hooks-dialog";
-import { AgentCommandsDialog } from "@/components/sidebar/agent-commands-dialog";
-import { ToolsDialog } from "@/components/sidebar/tools-dialog";
-import { AnimatedThemeToggler } from "@/components/animated-theme-toggler";
-import type { Route } from "./nav-main";
 import DashboardNavigation from "@/components/sidebar/nav-main";
 import { NotificationsPopover } from "@/components/sidebar/nav-notifications";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ServerSwitcher } from "@/components/sidebar/server-switcher";
+import { AnimatedThemeToggler } from "@/components/animated-theme-toggler";
 import { useWorkspaceStore } from "@/stores/workspace";
-import { useCommandPalette } from "@/stores/command-palette";
-import { useChannelStore } from "@/stores/channel";
-import { useIssueStore } from "@/stores/issue";
-import { useMobilePanelStore } from "@/stores/mobile-panel";
 import { useKeyboardShortcuts } from "@/stores/keyboard-shortcuts";
 import type { Workspace } from "@agent-spaces/shared";
 import { isWorkspacePath, workspaceIdFromLocation } from "@/lib/routes";
 import { getWS } from "@/lib/ws";
+import { useSidebarDialogs } from "./use-sidebar-dialogs";
+import { useSidebarEvents } from "./use-sidebar-events";
+import { useSidebarCommands } from "./use-sidebar-commands";
+import { buildDashboardRoutes } from "./sidebar-dashboard-routes";
+import { SidebarDialogGroup } from "./sidebar-dialog-group";
 
 function buildWorkspaceHref(id: string) {
   return `/workspace/${id}`;
@@ -72,8 +40,7 @@ export function DashboardSidebar() {
   const { matchesEvent } = useKeyboardShortcuts();
   const pathname = usePathname();
   const router = useRouter();
-  const ts = useTranslations('sidebar');
-  const tc = useTranslations('common');
+  const ts = useTranslations("sidebar");
 
   const isCollapsed = state === "collapsed";
   const [userToggled, setUserToggled] = useState(false);
@@ -83,30 +50,29 @@ export function DashboardSidebar() {
   }, [toggleSidebar]);
   const isWorkspace = isWorkspacePath(pathname);
   const isMobile = useIsMobile();
-  const currentWorkspaceId = workspaceIdFromLocation(pathname, typeof window !== "undefined" ? window.location.search : "");
+  const currentWorkspaceId = workspaceIdFromLocation(
+    pathname,
+    typeof window !== "undefined" ? window.location.search : ""
+  );
   const workspaces = useWorkspaceStore((store) => store.workspaces);
   const setWorkspaces = useWorkspaceStore((store) => store.setWorkspaces);
-  const upsertWorkspace = useWorkspaceStore((store) => store.upsertWorkspace);
   const removeWorkspace = useWorkspaceStore((store) => store.removeWorkspace);
-  const [agentDialogOpen, setAgentDialogOpen] = useState(false);
-  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
-  const [modelsDialogOpen, setModelsDialogOpen] = useState(false);
-  const [providersDialogOpen, setProvidersDialogOpen] = useState(false);
-  const [skillsDialogOpen, setSkillsDialogOpen] = useState(false);
-  const [promptsDialogOpen, setPromptsDialogOpen] = useState(false);
-  const [outputStylesDialogOpen, setOutputStylesDialogOpen] = useState(false);
-  const [mcpsDialogOpen, setMcpsDialogOpen] = useState(false);
-  const [hooksDialogOpen, setHooksDialogOpen] = useState(false);
-  const [agentCommandsDialogOpen, setAgentCommandsDialogOpen] = useState(false);
-  const [toolsDialogOpen, setToolsDialogOpen] = useState(false);
   const openWorkspaceDialog = useWorkspaceStore((s) => s.openWorkspaceDialog);
-  const [modelsDialogProvider, setModelsDialogProvider] = useState<string | undefined>(undefined);
   const [wsConnected, setWsConnected] = useState(false);
+  const dialogs = useSidebarDialogs();
 
-  // 轮询 WS 连接状态
   useEffect(() => {
-    if (!currentWorkspaceId) { setWsConnected(false); return; }
-    const check = () => { try { setWsConnected(getWS(currentWorkspaceId).connected); } catch { setWsConnected(false); } };
+    if (!currentWorkspaceId) {
+      setWsConnected(false);
+      return;
+    }
+    const check = () => {
+      try {
+        setWsConnected(getWS(currentWorkspaceId).connected);
+      } catch {
+        setWsConnected(false);
+      }
+    };
     check();
     const id = setInterval(check, 3000);
     return () => clearInterval(id);
@@ -123,313 +89,49 @@ export function DashboardSidebar() {
     refreshWorkspaces();
   }, [refreshWorkspaces]);
 
-  // 监听全局事件（来自 search-commands）
-  useEffect(() => {
-    const toggleHandler = () => toggleSidebarWithAnimation();
-    const dialogHandler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as string;
-      const routeMap: Record<string, string> = {
-        agents: '/settings/agents',
-        skills: '/settings/skills',
-        prompts: '/settings/prompts',
-        'output-styles': '/settings/output-styles',
-        mcps: '/settings/mcps',
-        models: '/settings/models',
-        providers: '/settings/providers',
-        hooks: '/settings',
-        commands: '/settings',
-        settings: '/settings',
-      };
-      if (isMobile && routeMap[detail]) {
-        router.push(routeMap[detail]);
-        return;
+  const handleDelete = useCallback(
+    async (ws: Workspace) => {
+      await fetch(`/api/workspaces/${ws.id}`, { method: "DELETE" });
+      removeWorkspace(ws.id);
+      if (currentWorkspaceId === ws.id) {
+        const remaining = workspaces.filter((w) => w.id !== ws.id);
+        tauriNavigate(
+          router,
+          remaining.length > 0
+            ? buildWorkspaceHref(remaining[0].id)
+            : "/"
+        );
       }
-      const setterMap: Record<string, React.Dispatch<React.SetStateAction<boolean>>> = {
-        agents: setAgentDialogOpen,
-        skills: setSkillsDialogOpen,
-        prompts: setPromptsDialogOpen,
-        'output-styles': setOutputStylesDialogOpen,
-        mcps: setMcpsDialogOpen,
-        models: setModelsDialogOpen,
-        providers: setProvidersDialogOpen,
-        hooks: setHooksDialogOpen,
-        commands: setAgentCommandsDialogOpen,
-        tools: setToolsDialogOpen,
-        settings: setSettingsDialogOpen,
-      };
-      if (setterMap[detail]) setterMap[detail](true);
-    };
-    window.addEventListener('toggle-sidebar', toggleHandler);
-    window.addEventListener('open-dialog', dialogHandler);
-    return () => {
-      window.removeEventListener('toggle-sidebar', toggleHandler);
-      window.removeEventListener('open-dialog', dialogHandler);
-    };
-  }, [toggleSidebarWithAnimation, isMobile]);
-
-  // 快捷键：切换侧边栏
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (matchesEvent('toggleSidebar', e)) {
-        e.preventDefault();
-        e.stopPropagation();
-        toggleSidebarWithAnimation();
-        return;
-      }
-
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'b') {
-        setUserToggled(true);
-      }
-    };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, [toggleSidebarWithAnimation, matchesEvent]);
-
-  // 注册命令面板快捷命令
-  const registerCommands = useCommandPalette((s) => s.registerMany);
-  useEffect(() => {
-    const openSettingsPage = (path: string, setter?: React.Dispatch<React.SetStateAction<boolean>>) => {
-      if (isMobile || !setter) {
-        router.push(path);
-      } else {
-        setter(true);
-      }
-    };
-    const cmds = [
-      {
-        id: 'toggle-sidebar',
-        label: 'Toggle Sidebar',
-        group: 'View',
-        icon: PanelLeftClose,
-        action: () => toggleSidebarWithAnimation(),
-      },
-      {
-        id: 'latest-channel',
-        label: 'Open Latest Channel',
-        group: 'Navigation',
-        icon: Hash,
-        action: () => {
-          const { channels, setActiveChannel } = useChannelStore.getState();
-          if (channels.length > 0) {
-            setActiveChannel(channels[channels.length - 1].id);
-            useMobilePanelStore.getState().setActivePanel('chat');
-          }
-        },
-      },
-      {
-        id: 'latest-issue',
-        label: 'Open Latest Issue',
-        group: 'Navigation',
-        icon: CircleDot,
-        action: () => {
-          const { issues, setActiveIssue } = useIssueStore.getState();
-          if (issues.length > 0) {
-            setActiveIssue(issues[issues.length - 1].id);
-            useMobilePanelStore.getState().setActivePanel('issue-detail');
-          }
-        },
-      },
-      {
-        id: 'open-settings',
-        label: 'Open General Settings',
-        group: 'Settings',
-        icon: Settings,
-        action: () => openSettingsPage('/settings', setSettingsDialogOpen),
-      },
-      {
-        id: 'open-agents',
-        label: 'Open Agent Settings',
-        group: 'Settings',
-        icon: Bot,
-        action: () => openSettingsPage('/settings/agents', setAgentDialogOpen),
-      },
-      {
-        id: 'open-skills',
-        label: 'Open Skills Settings',
-        group: 'Settings',
-        icon: Sparkles,
-        action: () => openSettingsPage('/settings/skills', setSkillsDialogOpen),
-      },
-      {
-        id: 'open-prompts',
-        label: 'Open Prompt Settings',
-        group: 'Settings',
-        icon: MessageSquare,
-        action: () => openSettingsPage('/settings/prompts', setPromptsDialogOpen),
-      },
-      {
-        id: 'open-output-styles',
-        label: 'Open Output Style Settings',
-        group: 'Settings',
-        icon: Pencil,
-        action: () => openSettingsPage('/settings/output-styles', setOutputStylesDialogOpen),
-      },
-      {
-        id: 'open-mcps',
-        label: 'Open MCP Settings',
-        group: 'Settings',
-        icon: Plug,
-        action: () => openSettingsPage('/settings/mcps', setMcpsDialogOpen),
-      },
-      {
-        id: 'open-models',
-        label: 'Open Model Settings',
-        group: 'Settings',
-        icon: Brain,
-        action: () => {
-          if (isMobile) {
-            router.push('/settings/models');
-          } else {
-            setModelsDialogProvider(undefined);
-            setModelsDialogOpen(true);
-          }
-        },
-      },
-      {
-        id: 'open-providers',
-        label: 'Open Provider Settings',
-        group: 'Settings',
-        icon: Server,
-        action: () => openSettingsPage('/settings/providers', setProvidersDialogOpen),
-      },
-      {
-        id: 'open-hooks',
-        label: 'Open Hook Settings',
-        group: 'Settings',
-        icon: Zap,
-        action: () => {
-          if (isMobile) {
-            router.push('/settings');
-          } else {
-            setHooksDialogOpen(true);
-          }
-        },
-      },
-      {
-        id: 'open-commands',
-        label: 'Open Agent Commands',
-        group: 'Settings',
-        icon: Terminal,
-        action: () => {
-          if (isMobile) {
-            router.push('/settings');
-          } else {
-            setAgentCommandsDialogOpen(true);
-          }
-        },
-      },
-      {
-        id: 'open-tools',
-        label: 'Open Tools Settings',
-        group: 'Settings',
-        icon: Wrench,
-        action: () => {
-          if (isMobile) {
-            router.push('/settings/tools');
-          } else {
-            setToolsDialogOpen(true);
-          }
-        },
-      },
-      {
-        id: 'open-workflows',
-        label: 'Open Workflow Settings',
-        group: 'Navigation',
-        icon: GitBranch,
-        action: () => { router.push('/workflows'); },
-      },
-    ];
-    return registerCommands(cmds);
-  }, [registerCommands, toggleSidebarWithAnimation, isMobile]);
-
-  const handleDelete = async (ws: Workspace) => {
-    await fetch(`/api/workspaces/${ws.id}`, { method: "DELETE" });
-    removeWorkspace(ws.id);
-    if (currentWorkspaceId === ws.id) {
-      const remaining = workspaces.filter((w) => w.id !== ws.id);
-      tauriNavigate(router, remaining.length > 0 ? buildWorkspaceHref(remaining[0].id) : "/");
-    }
-  };
-
-  const dashboardRoutes: Route[] = [
-    {
-      id: "home",
-      title: ts('nav.home'),
-      icon: <Home className="size-4" />,
-      link: "/",
     },
-    {
-      id: "workspaces",
-      title: ts('nav.workspaces'),
-      icon: <FolderOpen className="size-4" />,
-      link: "/",
-      onAdd: () => openWorkspaceDialog(),
-      addLabel: ts('nav.addWorkspace'),
-      manageLink: "/workspaces",
-      subs: [
-        ...workspaces.filter(ws => !ws.isWorktree).map((ws) => ({
-          title: ws.name,
-          link: buildWorkspaceHref(ws.id),
-          icon: <FolderOpen className="size-4" />,
-          menuItems: [
-            {
-              label: tc('edit'),
-              icon: <Pencil className="size-3.5" />,
-              onClick: () => openWorkspaceDialog(ws),
-            },
-            {
-              label: tc('open'),
-              icon: <FolderSearch className="size-3.5" />,
-              onClick: () => fetch(`/api/workspaces/${ws.id}/reveal`, { method: 'POST' }),
-            },
-            {
-              label: tc('delete'),
-              icon: <Trash2 className="size-3.5" />,
-              variant: "destructive" as const,
-              onClick: () => handleDelete(ws),
-            },
-          ],
-        })),
-      ],
-    },
-    {
-      id: "workflows",
-      title: ts('nav.workflows'),
-      icon: <GitBranch className="size-4" />,
-      link: "/workflows",
-    },
-    {
-      id: "settings",
-      title: ts('nav.settings'),
-      icon: <Settings className="size-4" />,
-      link: "#",
-      subs: isMobile
-        ? [
-            { title: ts('nav.general'), link: "/settings", icon: <Wrench className="size-3.5" /> },
-            { title: ts('nav.agents'), link: "/settings/agents", icon: <Bot className="size-3.5" /> },
-            { title: ts('nav.skills'), link: "/settings/skills", icon: <Sparkles className="size-3.5" /> },
-            { title: ts('nav.prompts'), link: "/settings/prompts", icon: <MessageSquare className="size-3.5" /> },
-            { title: ts('nav.outputStyles'), link: "/settings/output-styles", icon: <Pencil className="size-3.5" /> },
-            { title: ts('nav.mcps'), link: "/settings/mcps", icon: <Plug className="size-3.5" /> },
-            { title: ts('nav.tools'), link: "/settings/tools", icon: <Wrench className="size-3.5" /> },
-            { title: ts('nav.models'), link: "/settings/models", icon: <Brain className="size-3.5" /> },
-            { title: ts('nav.providers'), link: "/settings/providers", icon: <Server className="size-3.5" /> },
-          ]
-        : [
-            { title: ts('nav.general'), link: "#", icon: <Wrench className="size-3.5" />, onClick: () => setSettingsDialogOpen(true) },
-            { title: ts('nav.agents'), link: "#", icon: <Bot className="size-3.5" />, onClick: () => setAgentDialogOpen(true) },
-            { title: ts('nav.skills'), link: "#", icon: <Sparkles className="size-3.5" />, onClick: () => setSkillsDialogOpen(true) },
-            { title: ts('nav.prompts'), link: "#", icon: <MessageSquare className="size-3.5" />, onClick: () => setPromptsDialogOpen(true) },
-            { title: ts('nav.outputStyles'), link: "#", icon: <Pencil className="size-3.5" />, onClick: () => setOutputStylesDialogOpen(true) },
-            { title: ts('nav.mcps'), link: "#", icon: <Plug className="size-3.5" />, onClick: () => setMcpsDialogOpen(true) },
-            { title: ts('nav.tools'), link: "#", icon: <Wrench className="size-3.5" />, onClick: () => setToolsDialogOpen(true) },
-            { title: ts('nav.models'), link: "#", icon: <Brain className="size-3.5" />, onClick: () => { setModelsDialogProvider(undefined); setModelsDialogOpen(true); } },
-            { title: ts('nav.providers'), link: "#", icon: <Server className="size-3.5" />, onClick: () => setProvidersDialogOpen(true) },
-            { title: ts('nav.hooks'), link: "#", icon: <Zap className="size-3.5" />, onClick: () => setHooksDialogOpen(true) },
-            { title: ts('nav.commands'), link: "#", icon: <Terminal className="size-3.5" />, onClick: () => setAgentCommandsDialogOpen(true) },
-          ],
-    },
-  ];
+    [removeWorkspace, currentWorkspaceId, workspaces, router]
+  );
+
+  useSidebarEvents({
+    toggleSidebarWithAnimation,
+    isMobile,
+    router,
+    setterMap: dialogs.setterMap,
+    matchesEvent,
+    setUserToggled,
+  });
+
+  useSidebarCommands({
+    isMobile,
+    router,
+    toggleSidebarWithAnimation,
+    dialogs,
+  });
+
+  const dashboardRoutes = buildDashboardRoutes({
+    tSidebar: ts,
+    tCommon: useTranslations("common"),
+    isMobile,
+    workspaces,
+    openWorkspaceDialog,
+    handleDelete,
+    setterMap: dialogs.setterMap,
+    setModelsDialogProvider: dialogs.setModelsDialogProvider,
+  });
 
   return (
     <Sidebar
@@ -451,10 +153,12 @@ export function DashboardSidebar() {
       >
         <a href="#" className="flex items-center gap-2 relative">
           <UserIcon size={isCollapsed ? "sm" : "md"} />
-          <span className={cn(
-            "absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-card",
-            wsConnected ? "bg-green-500" : "bg-yellow-500"
-          )} />
+          <span
+            className={cn(
+              "absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-card",
+              wsConnected ? "bg-green-500" : "bg-yellow-500"
+            )}
+          />
         </a>
 
         <motion.div
@@ -465,10 +169,12 @@ export function DashboardSidebar() {
           )}
           initial={userToggled ? { opacity: 0 } : false}
           animate={{ opacity: 1 }}
-          transition={userToggled ? { duration: 0.8 } : { duration: 0 }}
+          transition={
+            userToggled ? { duration: 0.8 } : { duration: 0 }
+          }
         >
           <AnimatedThemeToggler />
-          <NotificationsPopover workspaceId={currentWorkspaceId ?? ''} />
+          <NotificationsPopover workspaceId={currentWorkspaceId ?? ""} />
           <SidebarTrigger onClick={() => setUserToggled(true)} />
         </motion.div>
       </SidebarHeader>
@@ -478,24 +184,7 @@ export function DashboardSidebar() {
       <SidebarFooter className="shrink-0 mx-2 mb-2 rounded-xl border border-border bg-card p-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <ServerSwitcher />
       </SidebarFooter>
-      <AgentDialog open={agentDialogOpen} onOpenChange={setAgentDialogOpen} />
-      <SkillsDialog open={skillsDialogOpen} onOpenChange={setSkillsDialogOpen} />
-      <PromptsDialog open={promptsDialogOpen} onOpenChange={setPromptsDialogOpen} />
-      <OutputStylesDialog open={outputStylesDialogOpen} onOpenChange={setOutputStylesDialogOpen} />
-      <McpsDialog open={mcpsDialogOpen} onOpenChange={setMcpsDialogOpen} />
-      <HooksDialog open={hooksDialogOpen} onOpenChange={setHooksDialogOpen} />
-      <AgentCommandsDialog open={agentCommandsDialogOpen} onOpenChange={setAgentCommandsDialogOpen} />
-      <ToolsDialog open={toolsDialogOpen} onOpenChange={setToolsDialogOpen} />
-      <SettingsDialog open={settingsDialogOpen} onOpenChange={setSettingsDialogOpen} />
-      <ModelsDialog open={modelsDialogOpen} onOpenChange={setModelsDialogOpen} initialProvider={modelsDialogProvider} />
-      <ProvidersDialog
-        open={providersDialogOpen}
-        onOpenChange={setProvidersDialogOpen}
-        onAddModel={(providerName) => {
-          setModelsDialogProvider(providerName);
-          setModelsDialogOpen(true);
-        }}
-      />
+      <SidebarDialogGroup dialogs={dialogs} />
     </Sidebar>
   );
 }
