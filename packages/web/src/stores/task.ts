@@ -17,6 +17,15 @@ interface TaskStore {
   upsertTask: (task: Task) => void;
 }
 
+function uniqueTasksById(tasks: Task[]): Task[] {
+  const seen = new Set<string>();
+  return tasks.filter((task) => {
+    if (seen.has(task.id)) return false;
+    seen.add(task.id);
+    return true;
+  });
+}
+
 export const useTaskStore = create<TaskStore>((set, get) => ({
   tasks: [],
   loading: false,
@@ -27,7 +36,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       const params = issueId ? `?issueId=${issueId}` : '';
       const res = await fetch(`/api/workspaces/${workspaceId}/tasks${params}`);
       const tasks: Task[] = await res.json();
-      set({ tasks, loading: false });
+      set({ tasks: uniqueTasksById(tasks), loading: false });
     } catch {
       set({ loading: false });
     }

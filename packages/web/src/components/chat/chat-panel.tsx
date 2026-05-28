@@ -16,10 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { ChannelInfoPanel } from './channel-info-panel';
 import { MessageNavigator } from './message-navigator';
-import { AgentIcon } from '@/components/common/agent-icon';
-import { AvatarGroup, AvatarGroupCount } from '@/components/ui/avatar';
-import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/components/ui/hover-card';
-import { MemberInfoCard } from './member-info-card';
+import { AvatarGroup as CollapsibleAvatarGroup } from '@/components/ui/avatar-group';
 import { AgentEditor } from '@/components/sidebar/agent-editor';
 import { normalizeAgent } from '@/components/sidebar/agent-shared';
 
@@ -44,25 +41,21 @@ type PendingQuestion = {
 
 function ChannelMemberAvatars({ members }: { members: string[] }) {
   const visible = members.filter((m) => m !== 'user').slice(0, MAX_VISIBLE);
-  const remaining = members.length - visible.length - (members.includes('user') ? 1 : 0);
   const [configAgentId, setConfigAgentId] = useState<string | null>(null);
   const agents = useAgentStore((s) => s.agents);
 
   return (
     <>
-      <AvatarGroup className="ml-1 [&>[data-slot=avatar]]:size-5">
-        {visible.map((agentId) => (
-          <HoverCard key={agentId}>
-            <HoverCardTrigger>
-              <AgentIcon agentId={agentId} className="size-5 rounded-full cursor-default" />
-            </HoverCardTrigger>
-            <HoverCardContent side="bottom" align="start" className="w-72">
-              <MemberInfoCard agentId={agentId} compact onConfigure={() => setConfigAgentId(agentId)} />
-            </HoverCardContent>
-          </HoverCard>
-        ))}
-        {remaining > 0 && <AvatarGroupCount className="!size-5 text-[10px]">+{remaining}</AvatarGroupCount>}
-      </AvatarGroup>
+      <CollapsibleAvatarGroup
+        className="ml-1"
+        avatarUrls={visible.map((agentId) => {
+          const agent = agents.find((a) => a.id === agentId);
+          return {
+            imageUrl: agent?.avatarUrl || '',
+            name: agent?.name || agentId,
+          };
+        })}
+      />
       {configAgentId && (() => {
         const agent = agents.find((a) => a.id === configAgentId);
         if (!agent) return null;
@@ -124,7 +117,7 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
         .map((agent) => [agent.id, agent]),
     );
 
-    return channel.members
+    return [...new Set(channel.members)]
       .map((member) => enabledById.get(member))
       .filter((agent): agent is AgentConfig => Boolean(agent));
   }, [agents, channel]);

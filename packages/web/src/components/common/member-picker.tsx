@@ -28,6 +28,15 @@ const DEFAULT_FILTER = (c: MemberCandidate) =>
   !['scheduler', 'task_creator', 'bot'].includes(c.description || '')
   && !['agent-generator', 'commit-agent', 'title-generator'].includes(c.id);
 
+function uniqueById<T extends { id: string }>(items: T[]): T[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+}
+
 export function MemberPicker({
   candidates,
   selected,
@@ -38,8 +47,9 @@ export function MemberPicker({
   filter,
 }: MemberPickerProps) {
   const [query, setQuery] = useState('');
+  const uniqueSelected = [...new Set(selected)];
 
-  const eligible = candidates
+  const eligible = uniqueById(candidates)
     .filter(filter ?? DEFAULT_FILTER)
     .sort((a, b) => (a.sortIndex ?? 0) - (b.sortIndex ?? 0));
   const filtered = eligible.filter((c) =>
@@ -78,7 +88,7 @@ export function MemberPicker({
             </span>
             <div
               className={`flex items-center justify-center size-4 rounded border shrink-0 ${
-                selected.includes(candidate.id)
+                uniqueSelected.includes(candidate.id)
                   ? 'bg-primary border-primary text-primary-foreground'
                   : 'border-input'
               }`}
@@ -86,9 +96,9 @@ export function MemberPicker({
           </button>
         ))}
       </div>
-      {selected.length > 0 && (
+      {uniqueSelected.length > 0 && (
         <div className="flex flex-wrap gap-1.5 pt-2 border-t shrink-0">
-          {selected.map((id) => {
+          {uniqueSelected.map((id) => {
             const candidate = candidates.find((c) => c.id === id);
             const displayLabel = candidate?.label || id;
             return (

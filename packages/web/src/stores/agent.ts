@@ -9,6 +9,15 @@ interface AgentStore {
   toggleEnabled: (id: string) => Promise<void>;
 }
 
+function uniqueAgentsById(agents: AgentConfig[]): AgentConfig[] {
+  const seen = new Set<string>();
+  return agents.filter((agent) => {
+    if (seen.has(agent.id)) return false;
+    seen.add(agent.id);
+    return true;
+  });
+}
+
 export const useAgentStore = create<AgentStore>((set, get) => ({
   agents: [],
   loaded: false,
@@ -23,7 +32,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
       const res = await fetch('/api/agents/presets');
       if (!res.ok) return;
       const data: AgentConfig[] = await res.json();
-      set({ agents: data, loaded: true });
+      set({ agents: uniqueAgentsById(data), loaded: true });
     } catch { /* ignore */ }
     finally {
       set({ loading: false });

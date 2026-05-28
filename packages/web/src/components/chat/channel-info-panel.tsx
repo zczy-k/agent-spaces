@@ -36,6 +36,7 @@ export function ChannelInfoPanel({ workspaceId, channel, agents, allChannels, on
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const enabledAgents = agents.filter((agent) => agent.enabled !== false);
+  const members = [...new Set(channel.members)];
   const candidateMembers = enabledAgents.map((agent) => ({
     id: agent.id,
     label: getAgentDisplayName(agent),
@@ -98,7 +99,7 @@ export function ChannelInfoPanel({ workspaceId, channel, agents, allChannels, on
               </div>
               <div className="flex justify-between py-1 border-b">
                 <span className="text-muted-foreground">{t('channel.memberCount')}</span>
-                <span>{channel.members.length}</span>
+                <span>{members.length}</span>
               </div>
               <div className="flex justify-between py-1 border-b">
                 <span className="text-muted-foreground">{t('channel.createdAt')}</span>
@@ -108,10 +109,10 @@ export function ChannelInfoPanel({ workspaceId, channel, agents, allChannels, on
           </TabsContent>
 
           <TabsContent value="members" className="p-4 mt-0 space-y-1">
-            {channel.members.length === 0 && (
+            {members.length === 0 && (
               <p className="text-sm text-muted-foreground py-4 text-center">{t('channel.noMembers')}</p>
             )}
-            {channel.members.map((member) => (
+            {members.map((member) => (
               <MemberCard
                 key={member}
                 name={getMemberDisplayName(enabledAgents, member)}
@@ -178,7 +179,7 @@ export function ChannelInfoPanel({ workspaceId, channel, agents, allChannels, on
         open={addMemberOpen}
         onOpenChange={setAddMemberOpen}
         candidates={candidateMembers}
-        defaultSelected={channel.members}
+        defaultSelected={members}
         onAdd={handleAddMembers}
       />
 

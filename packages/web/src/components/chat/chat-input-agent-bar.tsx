@@ -40,6 +40,7 @@ export function ChatInputAgentBar({
   const t = useTranslations("chat");
   const [configAgentId, setConfigAgentId] = useState<string | null>(null);
   const storeAgents = useAgentStore((s) => s.agents);
+  const visibleAgents = [...new Map(agents.map((agent) => [agent.id, agent])).values()];
 
   return (
     <>
@@ -53,7 +54,7 @@ export function ChatInputAgentBar({
           >
             <IconUserPlus className="size-3.5" />
           </button>
-          {agents.map((agent) => {
+          {visibleAgents.map((agent) => {
             const isActive = agent.id === activeAgent?.id;
             return (
               <HoverCard key={agent.id}>

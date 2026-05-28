@@ -160,14 +160,27 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const issueTasks = useMemo(() => {
     if (!issue) return [];
     const filtered = tasks.filter((t) => t.issueId === issue.id);
+    const seen = new Set<string>();
+    const uniqueTasks = filtered.filter((task) => {
+      if (seen.has(task.id)) return false;
+      seen.add(task.id);
+      return true;
+    });
     const taskOrder = issue.tasks ?? [];
     const orderMap = new Map(taskOrder.map((id, idx) => [id, idx]));
     const fallback = taskOrder.length;
-    return filtered.sort((a, b) => (orderMap.get(a.id) ?? fallback) - (orderMap.get(b.id) ?? fallback));
+    return uniqueTasks.sort((a, b) => (orderMap.get(a.id) ?? fallback) - (orderMap.get(b.id) ?? fallback));
   }, [tasks, issue]);
   const members = Array.from(new Set(issue?.members ?? []));
   const normalizedIssue = issue ? { ...issue, members } : undefined;
-  const enabledAgents = agents.filter((agent) => agent.enabled !== false);
+  const enabledAgents = useMemo(() => {
+    const seen = new Set<string>();
+    return agents.filter((agent) => {
+      if (agent.enabled === false || seen.has(agent.id)) return false;
+      seen.add(agent.id);
+      return true;
+    });
+  }, [agents]);
 
   if (!issue || !normalizedIssue) {
     return (

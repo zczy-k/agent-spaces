@@ -62,6 +62,14 @@ function isChannel(channel: Partial<Channel> & Pick<Channel, 'id'>): channel is 
     && typeof channel.createdAt === 'string';
 }
 
+function uniqueMembers(members: string[] | undefined): string[] {
+  return [...new Set(members ?? [])];
+}
+
+function normalizeChannel(channel: Channel): Channel {
+  return { ...channel, members: uniqueMembers(channel.members) };
+}
+
 export const useChannelStore = create<ChannelStore>((set, get) => ({
   workspaceId: null,
   channels: [],
@@ -75,7 +83,7 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
     const { workspaceId: currentWid } = get();
     if (currentWid === workspaceId && get().channels.length > 0) return;
     const res = await fetch(`/api/workspaces/${workspaceId}/channels`);
-    const channels: Channel[] = await res.json();
+    const channels: Channel[] = (await res.json()).map(normalizeChannel);
     const activeChannelId = getStoredActiveId(workspaceId, channels);
     set({ workspaceId, channels, activeChannelId });
   },
@@ -86,7 +94,7 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, type, members, titlePrompt }),
     });
-    const channel: Channel = await res.json();
+    const channel: Channel = normalizeChannel(await res.json());
     set((s) => {
       const exists = s.channels.some((c) => c.id === channel.id);
       return {
@@ -103,7 +111,7 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
       body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error('Failed to update channel');
-    const updated: Channel = await res.json();
+    const updated: Channel = normalizeChannel(await res.json());
     set((s) => ({ channels: s.channels.map((c) => (c.id === channelId ? updated : c)) }));
     return updated;
   },
@@ -219,7 +227,7 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
       copy[idx] = {
         ...current,
         ...channel,
-        members: Array.isArray(channel.members) ? channel.members : current.members,
+        members: Array.isArray(channel.members) ? uniqueMembers(channel.members) : current.members,
       };
       return { channels: copy };
     });
@@ -255,7 +263,7 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
     if (!channels.some((c) => c.id === channelId)) {
       const res = await fetch(`/api/workspaces/${workspaceId}/channels`);
       if (res.ok) {
-        const all: Channel[] = await res.json();
+        const all: Channel[] = (await res.json()).map(normalizeChannel);
         set({ channels: all });
       }
     }
