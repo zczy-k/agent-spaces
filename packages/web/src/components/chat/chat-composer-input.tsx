@@ -510,23 +510,23 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
           <span className="text-xs">{t("input.autoMode")}</span>
         </Button>
       ) : null}
-
-      {enableVoice ? (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={toggleVoice}
-          className={cn("h-7 w-7 p-0 rounded-full border border-border hover:bg-accent", {
-            "bg-red-500/10 text-red-500 border-red-500/30 animate-pulse": isVoiceRecording,
-            "text-muted-foreground": !isVoiceRecording,
-          })}
-          title={isVoiceRecording ? t("input.voiceStop") : t("input.voiceStart")}
-        >
-          <IconMicrophone className="size-3" />
-        </Button>
-      ) : null}
     </>
   );
+
+  const voiceAction = enableVoice ? (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={toggleVoice}
+      className={cn("h-7 w-7 p-0 rounded-full border border-border hover:bg-accent", {
+        "bg-red-500/10 text-red-500 border-red-500/30 animate-pulse": isVoiceRecording,
+        "text-muted-foreground": !isVoiceRecording,
+      })}
+      title={isVoiceRecording ? t("input.voiceStop") : t("input.voiceStart")}
+    >
+      <IconMicrophone className="size-3" />
+    </Button>
+  ) : null;
 
   return (
     <div className={className}>
@@ -538,6 +538,7 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
         onStop={onStop}
         isProcessing={isProcessing || submitting}
         actions={actions}
+        voiceAction={voiceAction}
         dropzoneProps={enableAttachments ? getRootProps() : undefined}
         hiddenInput={enableAttachments ? <input {...getInputProps()} data-chat-file-input="" /> : undefined}
         replyLabel={replyLabel}

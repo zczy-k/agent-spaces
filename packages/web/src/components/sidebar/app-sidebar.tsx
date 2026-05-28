@@ -60,6 +60,7 @@ import { useMobilePanelStore } from "@/stores/mobile-panel";
 import { useKeyboardShortcuts } from "@/stores/keyboard-shortcuts";
 import type { Workspace } from "@agent-spaces/shared";
 import { isWorkspacePath, workspaceIdFromLocation } from "@/lib/routes";
+import { getWS } from "@/lib/ws";
 
 function buildWorkspaceHref(id: string) {
   return `/workspace/${id}`;
@@ -94,6 +95,16 @@ export function DashboardSidebar() {
   const [toolsDialogOpen, setToolsDialogOpen] = useState(false);
   const openWorkspaceDialog = useWorkspaceStore((s) => s.openWorkspaceDialog);
   const [modelsDialogProvider, setModelsDialogProvider] = useState<string | undefined>(undefined);
+  const [wsConnected, setWsConnected] = useState(false);
+
+  // 轮询 WS 连接状态
+  useEffect(() => {
+    if (!currentWorkspaceId) { setWsConnected(false); return; }
+    const check = () => { try { setWsConnected(getWS(currentWorkspaceId).connected); } catch { setWsConnected(false); } };
+    check();
+    const id = setInterval(check, 3000);
+    return () => clearInterval(id);
+  }, [currentWorkspaceId]);
 
   const refreshWorkspaces = useCallback(() => {
     fetch("/api/workspaces")
@@ -425,8 +436,12 @@ export function DashboardSidebar() {
             : "flex-row items-center justify-between"
         )}
       >
-        <a href="#" className="flex items-center gap-2">
+        <a href="#" className="flex items-center gap-2 relative">
           <UserIcon size={isCollapsed ? "sm" : "md"} />
+          <span className={cn(
+            "absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-card",
+            wsConnected ? "bg-green-500" : "bg-yellow-500"
+          )} />
         </a>
 
         <motion.div

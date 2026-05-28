@@ -665,11 +665,12 @@ export function FileTreeNodes({ nodes }: { nodes: FileNode[] }) {
         isActive: false,
         isDraggedOver: draggedOverPath === node.path,
       }
-      const rowProps: NestedTreeRowProps = {
-        ...attrs,
+      const { key: _rowKey, ...restAttrs } = attrs as typeof attrs & { key?: string }
+      const rowProps = {
+        ...restAttrs,
         style: attrs.style,
         onDragLeave: onItemDragLeave,
-      }
+      } as NestedTreeRowProps
       const levelPadding = Math.max(0, state.level * 16)
       const rootDropLineId = rootDropTargetId ? `${rootDropTargetId}:${node.path}` : undefined
       const rootDropLine = state.level === 0 && node.type === "directory" && onRootDropLineDrop ? (

@@ -57,6 +57,8 @@ interface CommitGraphProps extends Omit<React.ComponentProps<"div">, "children">
   onCommitClick?: (commit: Commit) => void
   /** Wrap each commit row with custom element (e.g. ContextMenu). */
   renderCommitWrapper?: (commit: Commit, children: React.ReactNode) => React.ReactNode
+  /** Hash of the current HEAD commit, used to highlight it. */
+  currentHeadHash?: string
 }
 
 const RAIL_COLORS = [
@@ -184,11 +186,13 @@ function RailsSVG({
   prevRow,
   railWidth,
   maxRails,
+  isHead,
 }: {
   row: GraphRow
   prevRow: GraphRow | null
   railWidth: number
   maxRails: number
+  isHead?: boolean
 }) {
   const w = maxRails * railWidth
   const h = ROW_HEIGHT
@@ -305,10 +309,20 @@ function RailsSVG({
 
       {/* Commit dot (drawn last, on top) */}
       <circle
-        cx={commitX} cy={cy} r={5}
-        fill={color(row.rail)}
-        stroke="var(--color-background)" strokeWidth={2}
+        cx={commitX} cy={cy} r={isHead ? 6 : 5}
+        fill={isHead ? "var(--color-background)" : color(row.rail)}
+        stroke={isHead ? "#f59e0b" : "var(--color-background)"}
+        strokeWidth={isHead ? 2.5 : 2}
       />
+      {isHead && (
+        <circle
+          cx={commitX} cy={cy} r={8}
+          fill="none"
+          stroke="#f59e0b"
+          strokeWidth={1.5}
+          strokeOpacity={0.4}
+        />
+      )}
     </svg>
   )
 }
@@ -437,6 +451,7 @@ function CommitGraph({
   className,
   onCommitClick,
   renderCommitWrapper,
+  currentHeadHash,
   ...props
 }: CommitGraphProps) {
   // Simple mode: if no commit has parents, infer a linear topology
@@ -485,28 +500,28 @@ function CommitGraph({
               hashLength={truncateHash}
               railColor={color(row.rail)}
             >
-              <button
-                type="button"
+              <div
+                role="button"
+                tabIndex={0}
                 data-slot="commit-entry"
-                className="flex w-full items-center gap-0 overflow-hidden border-b border-border/30 transition-colors hover:bg-muted/30 focus-visible:bg-muted/30 focus-visible:outline-none last:border-b-0"
+                className="flex w-full items-center gap-0 overflow-hidden border-b border-border/30 transition-colors hover:bg-muted/30 focus-visible:bg-muted/30 focus-visible:outline-none last:border-b-0 cursor-default"
                 style={{ minHeight: ROW_HEIGHT }}
                 onClick={onCommitClick ? () => onCommitClick(row.commit) : undefined}
+                onKeyDown={onCommitClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onCommitClick(row.commit) } } : undefined}
               >
               {/* Rails */}
               <div style={{ width: svgWidth }} className="shrink-0">
-                <RailsSVG row={row} prevRow={i > 0 ? rows[i - 1] : null} railWidth={railWidth} maxRails={maxRails} />
+                <RailsSVG row={row} prevRow={i > 0 ? rows[i - 1] : null} railWidth={railWidth} maxRails={maxRails} isHead={row.commit.hash === currentHeadHash} />
               </div>
 
-              {/* Message + Refs inline, Tags below */}
-              <div className="min-w-0 flex-1 px-2">
-                <div className="flex items-center gap-2">
-                  <p className="truncate text-left text-sm text-foreground/80">
-                    {row.commit.message}
-                  </p>
+              {/* Row 1: message + refs, Row 2: tags */}
+              <div className="min-w-0 flex-1 px-2 py-1">
+                <div className="truncate text-sm text-foreground/80">
+                  {row.commit.message}
                   {row.commit.refs?.map((ref) => (
                     <span
                       key={ref}
-                      className="inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold leading-none"
+                      className="ml-1.5 inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold leading-none align-middle"
                       style={{
                         borderColor: `${color(row.rail)}40`,
                         backgroundColor: `${color(row.rail)}10`,
@@ -518,7 +533,7 @@ function CommitGraph({
                   ))}
                 </div>
                 {row.commit.tag && (
-                  <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                  <div className="mt-0.5">
                     <span
                       className="inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold leading-none"
                       style={{
@@ -554,7 +569,7 @@ function CommitGraph({
                   {formatDate(row.commit.date)}
                 </span>
               </div>
-            </button>
+            </div>
           </CommitDetail>
           )
 

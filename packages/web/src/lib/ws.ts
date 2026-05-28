@@ -10,6 +10,8 @@ export class WorkspaceWS {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private url: string;
   private disposed = false;
+  private _connected = false;
+  get connected() { return this._connected; }
 
   constructor(readonly workspaceId: string) {
     const serverUrl = getActiveServerUrl();
@@ -26,6 +28,7 @@ export class WorkspaceWS {
     this.ws = new WebSocket(this.url);
 
     this.ws.onopen = () => {
+      this._connected = true;
       console.log('[WS] connected');
       const handlers = this.handlers.get('connected');
       if (handlers) {
@@ -46,6 +49,7 @@ export class WorkspaceWS {
     };
 
     this.ws.onclose = (ev) => {
+      this._connected = false;
       console.log(`[WS] disconnected (${ev.code}${ev.reason ? `: ${ev.reason}` : ''}), reconnecting...`);
       this.reconnectTimer = setTimeout(() => this.connect(), 3000);
     };

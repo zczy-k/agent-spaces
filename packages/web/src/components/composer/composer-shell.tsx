@@ -16,6 +16,7 @@ interface ComposerShellProps {
   onStop?: () => void;
   isProcessing?: boolean;
   actions?: ReactNode;
+  voiceAction?: ReactNode;
   className?: string;
   dropzoneProps?: Record<string, unknown>;
   hiddenInput?: ReactNode;
@@ -33,6 +34,7 @@ export function ComposerShell({
   onStop,
   isProcessing = false,
   actions,
+  voiceAction,
   className,
   dropzoneProps,
   hiddenInput,
@@ -132,23 +134,29 @@ export function ComposerShell({
               </PopoverContent>
             </Popover>
           </div>
-          {isProcessing ? (
-            <Button
-              type="button"
-              onClick={onStop}
-              className="size-7 p-0 rounded-full bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-            >
-              <Square className="size-3" fill="currentColor" />
-            </Button>
-          ) : canSubmit ? (
-            <Button
-              type="button"
-              onClick={onSubmit}
-              className="size-7 p-0 rounded-full bg-primary"
-            >
-              <Send className="size-3" />
-            </Button>
-          ) : null}
+          <div className="flex items-center gap-1">
+            {isProcessing ? (
+              <Button
+                type="button"
+                onClick={onStop}
+                className="size-7 p-0 rounded-full bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+              >
+                <Square className="size-3" fill="currentColor" />
+              </Button>
+            ) : (
+              <>
+                {voiceAction}
+                <Button
+                  type="button"
+                  onClick={onSubmit}
+                  disabled={!canSubmit}
+                  className="size-7 p-0 rounded-full bg-primary disabled:opacity-40 disabled:pointer-events-none"
+                >
+                  <Send className="size-3" />
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

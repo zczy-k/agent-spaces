@@ -20,17 +20,23 @@ interface Props {
 }
 
 function toCommits(log: GitLogEntry[]): Commit[] {
-  return log.map((entry) => ({
-    hash: entry.hash,
-    message: entry.message.split("\n")[0],
-    author: { name: entry.author },
-    date: entry.date,
-    parents: entry.parents ?? [],
-    refs: entry.refs ?? [],
-  }));
+  return log.map((entry) => {
+    const rawRefs = entry.refs ?? []
+    const tag = rawRefs.find(r => r.startsWith('tag: '))?.replace('tag: ', '')
+    const refs = rawRefs.filter(r => !r.startsWith('tag: '))
+    return {
+      hash: entry.hash,
+      message: entry.message.split("\n")[0],
+      author: { name: entry.author },
+      date: entry.date,
+      parents: entry.parents ?? [],
+      refs,
+      tag,
+    }
+  })
 }
 
-export function GitCommitLogList({ workspaceId, log, onSelectEntry, onRefreshAll, onOpenPrompt }: Props) {
+export function GitCommitLogList({ workspaceId, log, currentHeadHash, onSelectEntry, onRefreshAll, onOpenPrompt }: Props) {
   const commits = toCommits(log);
 
   if (commits.length === 0) return null;
@@ -38,6 +44,7 @@ export function GitCommitLogList({ workspaceId, log, onSelectEntry, onRefreshAll
   return (
     <CommitGraph
       commits={commits}
+      currentHeadHash={currentHeadHash}
       className="border-0 rounded-none shadow-none"
       onCommitClick={(commit: Commit) => {
         const entry = log.find((e) => e.hash === commit.hash);
