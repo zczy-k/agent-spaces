@@ -476,7 +476,7 @@ function CommitGraph({
       )}
       {...props}
     >
-      <div className="overflow-x-auto">
+      <div className="overflow-hidden">
         {rows.map((row, i) => {
           const commitButton = (
             <CommitDetail
@@ -530,8 +530,8 @@ function CommitGraph({
                 {row.commit.message}
               </p>
 
-              {/* Meta */}
-              <div className="flex shrink-0 items-center gap-3 px-3">
+              {/* Meta - fixed width right side */}
+              <div className="flex shrink-0 items-center gap-3 px-3 bg-card">
                 <code className="font-mono text-[11px] text-muted-foreground/60">
                   {row.commit.hash.slice(0, truncateHash)}
                 </code>
@@ -551,7 +551,7 @@ function CommitGraph({
                   )}
                   <span className="hidden sm:inline">{row.commit.author.name}</span>
                 </span>
-                <span className="text-[11px] text-muted-foreground/50">
+                <span className="text-[11px] text-muted-foreground/50 whitespace-nowrap">
                   {formatDate(row.commit.date)}
                 </span>
               </div>

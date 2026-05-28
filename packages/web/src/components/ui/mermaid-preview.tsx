@@ -102,7 +102,6 @@ export function MermaidPreview({ chart, theme: appTheme = "light" }: MermaidPrev
   const handlePointerUp = useCallback(() => setIsPanning(false), []);
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
-    if (!e.ctrlKey && !e.metaKey) return;
     e.preventDefault();
     setScale((s) => Math.min(Math.max(s + (e.deltaY < 0 ? 0.1 : -0.1), 0.25), 5));
   }, []);
@@ -192,10 +191,10 @@ export function MermaidPreview({ chart, theme: appTheme = "light" }: MermaidPrev
           onWheel={handleWheel}
         >
           <div
-            className="flex justify-center items-start min-h-full p-6 origin-center transition-transform"
+            className="flex justify-center items-center min-h-full [&>svg]:w-full [&>svg]:h-full [&>svg]:max-w-none"
             style={{
               transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
-              transformOrigin: "center top",
+              transformOrigin: "center center",
             }}
             dangerouslySetInnerHTML={{ __html: svg }}
           />

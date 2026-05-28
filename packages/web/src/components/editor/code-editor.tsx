@@ -396,7 +396,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
         {isCommitDiff && commitDiffData ? (
           <CommitDiffViewer diffs={commitDiffData.diffs} message={commitDiffData.message} />
         ) : isPreviewable && showPreview && (mediaUrl || mediaType === 'markdown' || mediaType === 'mermaid') ? (
-          <div className="relative flex justify-center h-full bg-muted/20 overflow-auto p-4">
+          <div className="relative flex justify-center h-full bg-muted/20 overflow-auto">
             {isCodePreviewToggle && (
               <button
                 onClick={() => setShowPreview(false)}
@@ -428,7 +428,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
               </div>
             )}
             {mediaType === 'mermaid' && activeContent && (
-              <div className="w-full max-w-4xl mx-auto p-4">
+              <div className="w-full mx-auto">
                 <MermaidPreview chart={activeContent} theme={resolvedTheme} />
               </div>
             )}
