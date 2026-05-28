@@ -5,6 +5,7 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
+  DialogFooter,
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
@@ -62,28 +63,26 @@ export function AddMemberDialog({ open, onOpenChange, candidates, defaultSelecte
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-sm">
+      <DialogContent className="w-[80vw] max-w-[80vw] flex flex-col" style={{ height: '80vh' }}>
         <DialogHeader>
           <DialogTitle>管理成员</DialogTitle>
           <DialogDescription>选择或取消选择频道成员</DialogDescription>
         </DialogHeader>
-        <div className="space-y-3 pt-2">
-          <MemberPicker
-            key={dialogKey}
-            candidates={candidates}
-            filter={filter}
-            selected={selected}
-            onToggle={toggle}
-            searchPlaceholder="搜索成员..."
-            emptyText="无可用成员"
-          />
-          <div className="flex justify-end gap-2 pt-1">
-            <Button variant="outline" onClick={() => handleClose(false)}>取消</Button>
-            <Button onClick={handleConfirm} disabled={selected.length === 0}>
-              <UserPlus className="size-3.5 mr-1" />确认 ({selected.length})
-            </Button>
-          </div>
-        </div>
+        <MemberPicker
+          key={dialogKey}
+          candidates={candidates}
+          filter={filter}
+          selected={selected}
+          onToggle={toggle}
+          searchPlaceholder="搜索成员..."
+          emptyText="无可用成员"
+        />
+        <DialogFooter>
+          <Button variant="outline" onClick={() => handleClose(false)}>取消</Button>
+          <Button onClick={handleConfirm} disabled={selected.length === 0}>
+            <UserPlus className="size-3.5 mr-1" />确认 ({selected.length})
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

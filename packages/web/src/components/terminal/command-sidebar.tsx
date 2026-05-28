@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, ChevronDown, ChevronRight, X, Search, MoreVertical, Play, Pencil, Trash2, Terminal } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, X, Search, MoreVertical, Play, Pencil, Trash2, Terminal, RotateCw } from 'lucide-react';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
@@ -32,12 +32,20 @@ function CommandListItem({ command, running, onRun, onClose, onEdit, onDelete, o
       {running && <span className="shrink-0 p-0.5"><span className="block w-3 h-3 rounded-full bg-green-500 animate-pulse" /></span>}
       <span className="truncate flex-1 font-mono">{command.name}</span>
       {running && (
-        <button
-          onClick={(event) => { event.stopPropagation(); onClose(); }}
-          className={`shrink-0 p-0.5 rounded text-red-500 hover:text-red-600 ${hovered ? 'opacity-100' : 'opacity-0'} transition-opacity`}
-        >
-          <X size={12} />
-        </button>
+        <>
+          <button
+            onClick={(event) => { event.stopPropagation(); onClose(); onRun(); }}
+            className={`shrink-0 p-0.5 rounded text-muted-foreground hover:text-foreground ${hovered ? 'opacity-100' : 'opacity-0'} transition-opacity`}
+          >
+            <RotateCw size={12} />
+          </button>
+          <button
+            onClick={(event) => { event.stopPropagation(); onClose(); }}
+            className={`shrink-0 p-0.5 rounded text-red-500 hover:text-red-600 ${hovered ? 'opacity-100' : 'opacity-0'} transition-opacity`}
+          >
+            <X size={12} />
+          </button>
+        </>
       )}
       <div className={`shrink-0 flex items-center gap-0.5 md:opacity-0 ${hovered ? 'opacity-100' : 'opacity-0'} md:group-hover:opacity-100 transition-opacity max-md:!opacity-100`}>
         <button

@@ -97,17 +97,19 @@ export function stopChannelRuns(workspaceId: string, channelId: string): void {
       error: 'Stopped by user',
     });
 
+    const existing = listMessages(workspaceId, channelId).find((m) => m.id === run.messageId);
+    const preservedParts = (existing?.parts ?? []).map((part) =>
+      'status' in part && part.status === 'streaming' ? { ...part, status: 'completed' as const } : part
+    );
+    const stoppedPart = {
+      id: `terminal-stopped-${run.agentId}`,
+      type: 'terminal' as const,
+      output: 'Stopped by user',
+      status: 'error' as const,
+    };
     const message = updateMessage(workspaceId, channelId, run.messageId, {
-      content: 'Stopped by user',
       status: 'error',
-      parts: [
-        {
-          id: `terminal-stopped-${run.agentId}`,
-          type: 'terminal',
-          output: 'Stopped by user',
-          status: 'error',
-        },
-      ],
+      parts: [...preservedParts, stoppedPart],
     });
     if (message) broadcastToWorkspace(workspaceId, 'channel.message.updated', message);
   }

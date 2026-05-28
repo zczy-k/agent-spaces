@@ -46,14 +46,14 @@ export function MemberPicker({
   );
 
   return (
-    <div className="space-y-2">
+    <div className="flex flex-col gap-2 min-h-0 flex-1">
       {label && <label className="text-sm font-medium">{label}</label>}
       <Input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder={searchPlaceholder}
       />
-      <div className="max-h-40 overflow-y-auto space-y-0.5">
+      <div className="flex-1 overflow-y-auto space-y-0.5 min-h-0">
         {filtered.length === 0 && (
           <p className="text-sm text-muted-foreground py-2 text-center">{emptyText || 'No items found'}</p>
         )}
@@ -86,7 +86,7 @@ export function MemberPicker({
         ))}
       </div>
       {selected.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1.5 pt-2 border-t shrink-0">
           {selected.map((id) => {
             const candidate = candidates.find((c) => c.id === id);
             const displayLabel = candidate?.label || id;
