@@ -27,5 +27,6 @@
   "noScripts": "未找到 scripts",
   "addSelected": "添加选中命令",
   "customCommands": "自定义命令",
-  "folder": "分组"
+  "folder": "分组",
+  "deleteFolder": "删除分组"
 }

@@ -248,7 +248,7 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
                 onClick={() => setActive(session.id)}
                 className={`flex items-center gap-1 px-2 py-1 text-xs rounded-t transition-colors shrink-0 ${
                   activeId === session.id
-                    ? 'bg-background text-foreground'
+                    ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
                 }`}
               >

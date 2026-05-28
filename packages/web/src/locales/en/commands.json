@@ -27,5 +27,6 @@
   "noScripts": "No scripts found",
   "addSelected": "Add Selected",
   "customCommands": "Custom Commands",
-  "folder": "Folder"
+  "folder": "Folder",
+  "deleteFolder": "Delete Folder"
 }

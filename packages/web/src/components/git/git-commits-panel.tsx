@@ -362,7 +362,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
         </div>
 
         {/* File list */}
-        <div className="flex-1 overflow-auto">
+         <div className="flex-1 overflow-auto">
           {status?.files.map((f) => (
             <div key={f.path} onClick={() => handleFileClick(f.path)} onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, path: f.path }); }}
               className={`group w-full text-left px-2 py-1 text-xs font-mono flex items-center gap-1.5 hover:bg-accent cursor-pointer ${selectedFile === f.path ? "bg-accent" : ""}`}>
