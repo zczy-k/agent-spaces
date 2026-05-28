@@ -1,7 +1,7 @@
 "use client"
 
 import { ChevronRightIcon, FileIcon, FolderIcon, FolderOpenIcon, Trash2, ExternalLink, Upload, Copy, FolderPlus, FilePlus, AlertTriangle, Pencil, MoveRight, Terminal } from "lucide-react"
-import { createContext, type CSSProperties, type DragEvent, type HTMLAttributes, type ReactNode, useContext, useState, useCallback, useEffect, useRef } from "react"
+import { Fragment, createContext, type CSSProperties, type DragEvent, type HTMLAttributes, type ReactNode, useContext, useState, useCallback, useEffect, useRef } from "react"
 import { useHeTree, type Stat } from "he-tree-react"
 /**
  * @title React AI File Tree
@@ -615,14 +615,14 @@ export function NestedTree<TNode>({
       }
 
       return (
-        <React.Fragment key={id}>
+        <Fragment key={id}>
           {renderNode({
             node,
             state,
             rowProps,
             children: showChildren ? renderBranch(childrenNodes, level + 1) : null,
           })}
-        </React.Fragment>
+        </Fragment>
       )
     })
   )

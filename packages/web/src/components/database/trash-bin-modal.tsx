@@ -43,7 +43,7 @@ export default function TrashBinModal({ isOpen, onClose, nodes, onRestore, onDel
           {trashed.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center"><span className="text-3xl mb-1.5">🍃</span><p className="text-sm text-muted-foreground">回收站是空的</p></div>
           ) : filtered.length === 0 ? (
-            <div className="py-12 text-center text-xs text-muted-foreground italic">未匹配到 "{filter}"</div>
+            <div className="py-12 text-center text-xs text-muted-foreground italic">未匹配到 &ldquo;{filter}&rdquo;</div>
           ) : (
             <div className="space-y-1">
               <div className="flex items-center gap-1.5 text-[10px] text-amber-500 bg-amber-950/20 py-1.5 px-3 rounded-lg mb-2 border border-amber-900/30">

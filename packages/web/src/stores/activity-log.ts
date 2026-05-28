@@ -55,7 +55,7 @@ export function startActivityLogListeners(workspaceId: string) {
 
   const ws = getWS(workspaceId)
   const ts = () => new Date().toISOString()
-  const store = useActivityLogStore(workspaceId)
+  const store = getActivityLogStore(workspaceId)
 
   const handlers: Array<() => void> = [
     ws.on("agent.started", (data) => {

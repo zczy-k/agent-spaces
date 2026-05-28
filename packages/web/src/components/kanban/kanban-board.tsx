@@ -83,11 +83,11 @@ export default function KanbanBoardPanel({ workspaceId }: KanbanBoardProps) {
     const activeTaskObj = tasks.find((t) => t.id === activeId);
     if (!activeTaskObj) return;
     const isOverAColumn = columns.some((col) => col.id === overId);
-    let targetColumnId = isOverAColumn ? overId : tasks.find((t) => t.id === overId)?.columnId;
+    const targetColumnId = isOverAColumn ? overId : tasks.find((t) => t.id === overId)?.columnId;
     if (!targetColumnId) return;
 
     const ai = tasks.findIndex((t) => t.id === activeId);
-    let oi = tasks.findIndex((t) => t.id === overId);
+    const oi = tasks.findIndex((t) => t.id === overId);
     const updated = tasks.map((t) => t.id === activeId ? { ...t, columnId: targetColumnId! } : t);
     if (oi !== -1) updateTasks(workspaceId, arrayMove(updated, ai, oi));
     else updateTasks(workspaceId, updated);

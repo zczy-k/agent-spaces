@@ -15,6 +15,17 @@ export type TextShimmerProps = {
   style?: React.CSSProperties;
 };
 
+const motionCache = new Map<string, ReturnType<typeof motion.create>>()
+
+function getMotionComponent(tag: keyof JSX.IntrinsicElements) {
+  let mc = motionCache.get(tag)
+  if (!mc) {
+    mc = motion.create(tag)
+    motionCache.set(tag, mc)
+  }
+  return mc
+}
+
 function TextShimmerComponent({
   children,
   as: Component = "p",
@@ -25,9 +36,7 @@ function TextShimmerComponent({
   shimmerColor,
   style,
 }: TextShimmerProps) {
-  const MotionComponent = motion.create(
-    Component as keyof JSX.IntrinsicElements,
-  );
+  const MotionComponent = getMotionComponent(Component as keyof JSX.IntrinsicElements)
 
   const dynamicSpread = useMemo(() => {
     return children.length * spread;
