@@ -52,7 +52,6 @@ import DashboardNavigation from "@/components/sidebar/nav-main";
 import { NotificationsPopover } from "@/components/sidebar/nav-notifications";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ServerSwitcher } from "@/components/sidebar/server-switcher";
-import { WorkspaceDialog } from "@/components/workspace/workspace-dialog";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useCommandPalette } from "@/stores/command-palette";
 import { useChannelStore } from "@/stores/channel";
@@ -93,10 +92,7 @@ export function DashboardSidebar() {
   const [hooksDialogOpen, setHooksDialogOpen] = useState(false);
   const [agentCommandsDialogOpen, setAgentCommandsDialogOpen] = useState(false);
   const [toolsDialogOpen, setToolsDialogOpen] = useState(false);
-  const [wsDialogOpen, setWsDialogOpen] = useState(false);
-  const [editingWs, setEditingWs] = useState<Workspace | null>(null);
-  const createDialogOpen = useWorkspaceStore((s) => s.createDialogOpen);
-  const setCreateDialogOpen = useWorkspaceStore((s) => s.setCreateDialogOpen);
+  const openWorkspaceDialog = useWorkspaceStore((s) => s.openWorkspaceDialog);
   const [modelsDialogProvider, setModelsDialogProvider] = useState<string | undefined>(undefined);
 
   const refreshWorkspaces = useCallback(() => {
@@ -323,26 +319,6 @@ export function DashboardSidebar() {
     return registerCommands(cmds);
   }, [registerCommands, toggleSidebar, isMobile]);
 
-  const handleWsSubmit = async (data: { name: string; boundDirs: string[] }) => {
-    if (editingWs) {
-      const res = await fetch(`/api/workspaces/${editingWs.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      const updated = await res.json();
-      upsertWorkspace(updated);
-    } else {
-      const res = await fetch("/api/workspaces", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      const ws = await res.json();
-      upsertWorkspace(ws);
-    }
-  };
-
   const handleDelete = async (ws: Workspace) => {
     await fetch(`/api/workspaces/${ws.id}`, { method: "DELETE" });
     removeWorkspace(ws.id);
@@ -350,16 +326,6 @@ export function DashboardSidebar() {
       const remaining = workspaces.filter((w) => w.id !== ws.id);
       tauriNavigate(router, remaining.length > 0 ? buildWorkspaceHref(remaining[0].id) : "/");
     }
-  };
-
-  const openEditDialog = (ws: Workspace) => {
-    setEditingWs(ws);
-    setWsDialogOpen(true);
-  };
-
-  const openCreateDialog = () => {
-    setEditingWs(null);
-    setWsDialogOpen(true);
   };
 
   const dashboardRoutes: Route[] = [
@@ -374,7 +340,7 @@ export function DashboardSidebar() {
       title: ts('nav.workspaces'),
       icon: <FolderOpen className="size-4" />,
       link: "/",
-      onAdd: openCreateDialog,
+      onAdd: () => openWorkspaceDialog(),
       addLabel: ts('nav.addWorkspace'),
       manageLink: "/workspaces",
       subs: [
@@ -386,7 +352,7 @@ export function DashboardSidebar() {
             {
               label: tc('edit'),
               icon: <Pencil className="size-3.5" />,
-              onClick: () => openEditDialog(ws),
+              onClick: () => openWorkspaceDialog(ws),
             },
             {
               label: tc('open'),
@@ -500,18 +466,6 @@ export function DashboardSidebar() {
           setModelsDialogProvider(providerName);
           setModelsDialogOpen(true);
         }}
-      />
-      <WorkspaceDialog
-        open={wsDialogOpen || createDialogOpen}
-        onOpenChange={(open) => {
-          setWsDialogOpen(open)
-          if (!open) {
-            setCreateDialogOpen(false)
-            setEditingWs(null)
-          }
-        }}
-        workspace={createDialogOpen ? null : editingWs}
-        onSubmit={handleWsSubmit}
       />
     </Sidebar>
   );

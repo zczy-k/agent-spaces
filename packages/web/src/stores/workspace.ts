@@ -3,7 +3,13 @@ import type { Workspace } from "@agent-spaces/shared";
 
 interface WorkspaceStore {
   workspaces: Workspace[];
+  dialogOpen: boolean;
+  editingWorkspace: Workspace | null;
+  openWorkspaceDialog: (workspace?: Workspace | null) => void;
+  closeWorkspaceDialog: () => void;
+  /** @deprecated use openWorkspaceDialog() instead */
   createDialogOpen: boolean;
+  /** @deprecated use closeWorkspaceDialog() instead */
   setCreateDialogOpen: (open: boolean) => void;
   setWorkspaces: (workspaces: Workspace[]) => void;
   upsertWorkspace: (workspace: Workspace) => void;
@@ -12,8 +18,20 @@ interface WorkspaceStore {
 
 export const useWorkspaceStore = create<WorkspaceStore>((set) => ({
   workspaces: [],
+  dialogOpen: false,
+  editingWorkspace: null,
+  openWorkspaceDialog: (workspace) => set({ dialogOpen: true, editingWorkspace: workspace ?? null }),
+  closeWorkspaceDialog: () => set({ dialogOpen: false, editingWorkspace: null }),
+
+  // deprecated compat
   createDialogOpen: false,
-  setCreateDialogOpen: (open) => set({ createDialogOpen: open }),
+  setCreateDialogOpen: (open) => {
+    if (open) {
+      set({ dialogOpen: true, editingWorkspace: null, createDialogOpen: true });
+    } else {
+      set((s) => ({ dialogOpen: false, editingWorkspace: null, createDialogOpen: false }));
+    }
+  },
 
   setWorkspaces: (workspaces) => set({ workspaces }),
 

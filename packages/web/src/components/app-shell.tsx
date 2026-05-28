@@ -6,6 +6,8 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { DashboardSidebar } from "@/components/sidebar/app-sidebar";
 import { WorkspaceTabs } from "@/components/layout/workspace-tabs";
 import { DevInspector } from "@/components/dev-inspector";
+import { WorkspaceDialog } from "@/components/workspace/workspace-dialog";
+import { useWorkspaceStore } from "@/stores/workspace";
 import { isLoginPath } from "@/lib/routes";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -36,6 +38,43 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </SidebarInset>
       </SidebarProvider>
+      <GlobalWorkspaceDialog />
     </>
+  );
+}
+
+function GlobalWorkspaceDialog() {
+  const dialogOpen = useWorkspaceStore((s) => s.dialogOpen);
+  const editingWorkspace = useWorkspaceStore((s) => s.editingWorkspace);
+  const closeWorkspaceDialog = useWorkspaceStore((s) => s.closeWorkspaceDialog);
+  const upsertWorkspace = useWorkspaceStore((s) => s.upsertWorkspace);
+
+  const handleSubmit = async (data: { name: string; boundDirs: string[] }) => {
+    if (editingWorkspace) {
+      const res = await fetch(`/api/workspaces/${editingWorkspace.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const ws = await res.json();
+      upsertWorkspace(ws);
+    } else {
+      const res = await fetch("/api/workspaces", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const ws = await res.json();
+      upsertWorkspace(ws);
+    }
+  };
+
+  return (
+    <WorkspaceDialog
+      open={dialogOpen}
+      onOpenChange={(open) => { if (!open) closeWorkspaceDialog(); }}
+      workspace={editingWorkspace}
+      onSubmit={handleSubmit}
+    />
   );
 }
