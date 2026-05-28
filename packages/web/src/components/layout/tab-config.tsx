@@ -132,7 +132,7 @@ export function getTabBadge(
     }
   }
 
-  if (comp === 'issue-detail') {
+  if (comp === 'issue-list') {
     const hasRunning = tasks.some((t) =>
       t.status === 'pending' || t.status === 'running' || t.status === 'retrying' || t.status === 'waiting_review'
     );

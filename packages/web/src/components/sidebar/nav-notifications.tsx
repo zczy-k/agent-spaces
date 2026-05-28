@@ -42,7 +42,7 @@ export function NotificationsPopover({ workspaceId }: { workspaceId: string }) {
             <BellIcon className="size-5" />
             {unreadCount > 0 && (
               <span className="absolute -top-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-medium text-white">
-                {unreadCount > 9 ? '9+' : unreadCount}
+                {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
         </PopoverTrigger>

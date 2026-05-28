@@ -123,12 +123,13 @@ function linePrefix(type: DiffLine["type"]) {
   return " "
 }
 
-function UnifiedView({ lines, numWidth }: { lines: DiffLine[]; numWidth: number }) {
+function UnifiedView({ lines, numWidth, hideOld }: { lines: DiffLine[]; numWidth: number; hideOld?: boolean }) {
   return (
     <table className="w-full border-collapse font-mono text-[13px] leading-relaxed">
       <tbody>
         {lines.map((line, i) => (
           <tr key={i} className={cn(lineColor(line.type, "bg"))}>
+            {!hideOld && (
             <td
               className={cn(
                 "select-none px-2 text-right align-top",
@@ -138,6 +139,7 @@ function UnifiedView({ lines, numWidth }: { lines: DiffLine[]; numWidth: number 
             >
               {line.oldNumber ?? ""}
             </td>
+            )}
             <td
               className={cn(
                 "select-none px-2 text-right align-top",
@@ -165,7 +167,7 @@ function UnifiedView({ lines, numWidth }: { lines: DiffLine[]; numWidth: number 
   )
 }
 
-function SplitView({ lines, numWidth }: { lines: DiffLine[]; numWidth: number }) {
+function SplitView({ lines, numWidth, hideOld }: { lines: DiffLine[]; numWidth: number; hideOld?: boolean }) {
   const leftLines: (DiffLine | null)[] = []
   const rightLines: (DiffLine | null)[] = []
 
@@ -201,6 +203,38 @@ function SplitView({ lines, numWidth }: { lines: DiffLine[]; numWidth: number })
     } else {
       i++
     }
+  }
+
+  if (hideOld) {
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse font-mono text-[13px] leading-relaxed">
+          <tbody>
+            {rightLines.map((line, idx) => (
+              <tr key={idx} className={cn(line ? lineColor(line.type, "bg") : "")}>
+                <td
+                  className={cn(
+                    "select-none px-2 text-right align-top",
+                    line ? lineColor(line.type, "num") : "text-muted-foreground/30"
+                  )}
+                  style={{ minWidth: `${numWidth + 2}ch` }}
+                >
+                  {line?.newNumber ?? ""}
+                </td>
+                <td
+                  className={cn(
+                    "whitespace-pre px-3 align-top",
+                    line ? lineColor(line.type, "text") : ""
+                  )}
+                >
+                  {line?.content || "\u00A0"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
   }
 
   return (
@@ -289,6 +323,7 @@ export function DiffViewer({
 
   const fullCode = lines.map((l) => l.content).join("\n")
   const showHeader = oldTitle || newTitle
+  const hideOld = lines.length > 0 && lines.every(l => l.type === "added")
 
   return (
     <div
@@ -338,9 +373,9 @@ export function DiffViewer({
 
       <div className="overflow-x-auto">
         {layout === "split" ? (
-          <SplitView lines={lines} numWidth={numWidth} />
+          <SplitView lines={lines} numWidth={numWidth} hideOld={hideOld} />
         ) : (
-          <UnifiedView lines={lines} numWidth={numWidth} />
+          <UnifiedView lines={lines} numWidth={numWidth} hideOld={hideOld} />
         )}
       </div>
     </div>

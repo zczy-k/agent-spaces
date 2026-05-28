@@ -93,7 +93,7 @@ function DesktopLayout({ diffs, selectedFile, onSelect, selectedDiff }: {
           </button>
         ))}
       </div>
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 overflow-auto">
         {selectedDiff ? (
           <DiffViewer oldContent={selectedDiff.oldContent} newContent={selectedDiff.newContent} path={selectedDiff.path} isBinary={selectedDiff.isBinary} />
         ) : (
