@@ -513,6 +513,12 @@
   font-size: 14px;
 }
 
+.tiptap-fullscreen .tiptap-chat {
+  max-height: none;
+  flex: 1;
+  min-height: 0;
+}
+
 .tiptap-message {
   min-height: unset;
   font-size: 14px;

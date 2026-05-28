@@ -78,7 +78,7 @@ export function ComposerShell({
               </Button>
             </div>
           </div>
-          <div className="flex-1 flex flex-col overflow-y-auto p-4 [&_.tiptap]:flex-1 [&_.tiptap]:min-h-full [&_.tiptap]:outline-none">
+          <div className="tiptap-fullscreen flex-1 flex flex-col overflow-y-auto p-4 [&>div]:flex-1 [&>div]:flex [&>div]:flex-col [&_.tiptap]:flex-1 [&_.tiptap]:min-h-0 [&_.tiptap]:outline-none">
             <EditorContent editor={editor} />
           </div>
         </div>
