@@ -32,7 +32,8 @@ interface WorkflowAgentPaletteProps {
 }
 
 export function WorkflowAgentPalette({ agents, onNodeAdd }: WorkflowAgentPaletteProps) {
-  const grouped = groupByRole(agents);
+  const uniqueAgents = agents.filter((agent, index, list) => list.findIndex((item) => item.id === agent.id) === index);
+  const grouped = groupByRole(uniqueAgents);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogAgentId, setDialogAgentId] = useState<string | undefined>();
 
@@ -76,7 +77,7 @@ export function WorkflowAgentPalette({ agents, onNodeAdd }: WorkflowAgentPalette
     });
   }, [onNodeAdd]);
 
-  const enabledAgents = agents.filter(a => a.enabled);
+  const enabledAgents = uniqueAgents.filter(a => a.enabled);
 
   return (
     <>

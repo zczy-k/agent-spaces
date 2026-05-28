@@ -8,7 +8,6 @@ import {
   type AgentConfig,
   type LLMProvider,
 } from "@agent-spaces/shared";
-import type { BuiltInAgentToolName } from "@agent-spaces/shared";
 import { AgentIcon } from "@/components/common/agent-icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -88,6 +87,7 @@ export function AgentDetail({
 
   const { models: allLlmModels, providers: llmProviders, ensure: ensureLLM } = useLLMStore();
   const llmModels = allLlmModels.filter((m) => !m.embedding);
+  const uniqueRoleOptions = Array.from(new Set(roleOptions));
 
   useEffect(() => {
     ensureLLM();
@@ -236,7 +236,7 @@ export function AgentDetail({
                 onChange={(e) => onChange("role", e.target.value as AgentConfig["role"])}
                 className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring dark:bg-input/30"
               >
-                {roleOptions.map((role) => (
+                {uniqueRoleOptions.map((role) => (
                   <option key={role} value={role}>
                     {role}
                   </option>

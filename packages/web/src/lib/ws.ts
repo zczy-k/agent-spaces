@@ -25,9 +25,23 @@ export class WorkspaceWS {
   }
 
   connect() {
-    this.ws = new WebSocket(this.url);
+    if (this.disposed) return;
+    if (this.ws && this.ws.readyState !== WebSocket.CLOSED && this.ws.readyState !== WebSocket.CLOSING) {
+      return;
+    }
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
 
-    this.ws.onopen = () => {
+    const socket = new WebSocket(this.url);
+    this.ws = socket;
+
+    socket.onopen = () => {
+      if (this.disposed || this.ws !== socket) {
+        socket.close();
+        return;
+      }
       this._connected = true;
       console.log('[WS] connected');
       const handlers = this.handlers.get('connected');
@@ -36,7 +50,8 @@ export class WorkspaceWS {
       }
     };
 
-    this.ws.onmessage = (ev) => {
+    socket.onmessage = (ev) => {
+      if (this.disposed || this.ws !== socket) return;
       try {
         const msg = JSON.parse(ev.data) as WSEvent;
         const handlers = this.handlers.get(msg.event);
@@ -48,14 +63,21 @@ export class WorkspaceWS {
       }
     };
 
-    this.ws.onclose = (ev) => {
+    socket.onclose = (ev) => {
+      if (this.ws === socket) {
+        this.ws = null;
+      }
       this._connected = false;
+      if (this.disposed) return;
       console.log(`[WS] disconnected (${ev.code}${ev.reason ? `: ${ev.reason}` : ''}), reconnecting...`);
-      this.reconnectTimer = setTimeout(() => this.connect(), 3000);
+      this.reconnectTimer = setTimeout(() => {
+        this.reconnectTimer = null;
+        this.connect();
+      }, 3000);
     };
 
-    this.ws.onerror = () => {
-      this.ws?.close();
+    socket.onerror = () => {
+      socket.close();
     };
   }
 
@@ -72,10 +94,16 @@ export class WorkspaceWS {
 
   disconnect() {
     this.disposed = true;
+    this._connected = false;
     document.removeEventListener('visibilitychange', this.onVisibilityChange);
-    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
-    this.ws?.close();
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    const socket = this.ws;
     this.ws = null;
+    this.handlers.clear();
+    socket?.close();
   }
 
   send(event: ClientEventName, data: unknown) {

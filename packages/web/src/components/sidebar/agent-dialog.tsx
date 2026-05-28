@@ -76,10 +76,12 @@ export function AgentDialog({
   const roleFilterSet = roleFilter
     ? new Set(Array.isArray(roleFilter) ? roleFilter : [roleFilter])
     : null;
-  const visibleAgents = roleFilterSet
+  const visibleAgents = (roleFilterSet
     ? agents.filter((agent) => FIXED_AGENT_IDS.has(agent.id) || roleFilterSet.has(agent.role))
-    : agents;
-  const addRoleOptions = roleFilterSet ? ROLE_OPTIONS.filter((role) => roleFilterSet.has(role)) : ROLE_OPTIONS;
+    : agents).filter((agent, index, list) => list.findIndex((item) => item.id === agent.id) === index);
+  const addRoleOptions = Array.from(
+    new Set(roleFilterSet ? ROLE_OPTIONS.filter((role) => roleFilterSet.has(role)) : ROLE_OPTIONS),
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -216,7 +218,7 @@ export function AgentDialog({
               <span>{t('dialog.addEmpty')}</span>
             </DropdownMenuItem>
           )}
-          {ROLE_OPTIONS.map((role) => (
+          {Array.from(new Set(ROLE_OPTIONS)).map((role) => (
             <DropdownMenuItem
               key={role}
               className="gap-2"

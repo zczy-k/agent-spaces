@@ -172,10 +172,9 @@ interface WorkspaceShellProps {
 
 export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) {
   const isMobile = useIsMobile();
-  const issueStore = useIssueStore();
-  const taskStore = useTaskStore();
   const activeIssueId = useIssueStore((s) => s.activeIssueId);
   const issueSelectSeq = useIssueStore((s) => s.issueSelectSeq);
+  const upsertIssue = useIssueStore((s) => s.upsertIssue);
   const activeFilePath = useEditorStore((s) => s.activeFilePath);
   const activeChannelId = useChannelStore((s) => s.activeChannelId);
   const channelSelectSeq = useChannelStore((s) => s.channelSelectSeq);
@@ -191,6 +190,8 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   const setChannelCreateOpen = useChannelStore((s) => s.setCreateDialogOpen);
   const issueCreateOpen = useIssueStore((s) => s.createDialogOpen);
   const setIssueCreateOpen = useIssueStore((s) => s.setCreateDialogOpen);
+  const upsertTask = useTaskStore((s) => s.upsertTask);
+  const loadTasks = useTaskStore((s) => s.loadTasks);
   const agents = useAgentStore((s) => s.agents);
   const createChannel = useChannelStore((s) => s.createChannel);
   const createIssue = useIssueStore((s) => s.createIssue);
@@ -369,8 +370,8 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
     const notificationStore = useNotificationStore.getState();
     notificationStore.load(workspaceId);
     const unsubs = [
-      ws.on('issue.created', (data) => issueStore.upsertIssue(data as Issue)),
-      ws.on('issue.updated', (data) => issueStore.upsertIssue(data as Issue)),
+      ws.on('issue.created', (data) => upsertIssue(data as Issue)),
+      ws.on('issue.updated', (data) => upsertIssue(data as Issue)),
       ws.on('issue.status_changed', (data) => {
         const ns = getNativeNotificationConfig();
         if (ns) {
@@ -388,7 +389,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
       }),
       ws.on('task.created', (data) => {
         const task = data as Task;
-        taskStore.upsertTask(task);
+        upsertTask(task);
         const ns = getNativeNotificationConfig();
         if (ns?.native?.androidOngoingTaskNotification) {
           sendAndroidOngoingTaskNotification(formatOngoingTaskNotificationBody(task));
@@ -396,7 +397,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
       }),
       ws.on('task.updated', (data) => {
         const task = data as Task;
-        taskStore.upsertTask(task);
+        upsertTask(task);
         const ns = getNativeNotificationConfig();
         if (ns?.native?.androidOngoingTaskNotification) {
           sendAndroidOngoingTaskNotification(formatOngoingTaskNotificationBody(task));
@@ -405,7 +406,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
       ws.on('task.status_changed', (data) => {
         const activeIssueId = useIssueStore.getState().activeIssueId;
         if (activeIssueId) {
-          taskStore.loadTasks(workspaceId, activeIssueId);
+          loadTasks(workspaceId, activeIssueId);
         }
         const ns = getNativeNotificationConfig();
         if (ns) {
@@ -456,7 +457,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
       }),
     ];
     return () => unsubs.forEach((u) => u());
-  }, [issueStore, taskStore, workspaceId, getNativeNotificationConfig, formatOngoingTaskNotificationBody]);
+  }, [workspaceId, upsertIssue, upsertTask, loadTasks, getNativeNotificationConfig, formatOngoingTaskNotificationBody]);
 
   const factory = useCallback(
     (node: TabNode) => {
