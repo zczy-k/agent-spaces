@@ -35,6 +35,7 @@
   },
   "chart": {
     "dailyTokenUsage": "每日 Token 用量",
+    "activityHeatmap": "使用频率",
     "input": "输入",
     "output": "输出",
     "costByModel": "按模型费用",

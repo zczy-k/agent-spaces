@@ -30,6 +30,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { usePagination } from "@/hooks/use-pagination"
 import { cn, textColorClass, textToColor } from "@/lib/utils"
+import { ActivityGraph, type ActivityEntry } from "@/components/activity-graph"
 import { SubscriptionPanel } from "./subscription-panel"
 
 // ── model -> provider icon mapping ──
@@ -74,6 +75,23 @@ export function UsageDashboard() {
   const [period, setPeriod] = useState<PeriodKey>('30d')
   const [customRange, setCustomRange] = useState<{ from: Date; to: Date } | undefined>()
   const [data, setData] = useState<AgentUsageDashboardData | null>(null)
+  const [heatmapEntries, setHeatmapEntries] = useState<ActivityEntry[]>([])
+
+  // Fetch 365-day heatmap data independently
+  useEffect(() => {
+    const controller = new AbortController()
+    fetch(`/api/agents/usage/dashboard?days=365`, { signal: controller.signal })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((d) => {
+        if (!d?.daily) return setHeatmapEntries([])
+        setHeatmapEntries(d.daily.map((item: { date: string; totalTokens: number }) => ({
+          date: item.date,
+          count: item.totalTokens > 0 ? 1 : 0,
+        })))
+      })
+      .catch(() => setHeatmapEntries([]))
+    return () => controller.abort()
+  }, [])
 
   const formatRelative = useCallback((value: string) => {
     const delta = Date.now() - new Date(value).getTime()
@@ -316,6 +334,15 @@ export function UsageDashboard() {
         <Metric label={t('metric.totalCost')} value={formatCurrency(totals.totalCostUsd)} helper={t('metric.totalCostHelper')} icon={DollarSign} totalCostLabel={t('metric.totalCost')} />
         <Metric label={t('metric.avgDuration')} value={formatDuration(totals.avgDurationMs)} helper={t('metric.avgDurationHelper')} icon={Clock3} last totalCostLabel={t('metric.totalCost')} />
       </div>
+
+      {heatmapEntries.length > 0 && (
+        <div className="border-b px-4 py-3">
+          <span className="font-medium text-xs">{t('chart.activityHeatmap')}</span>
+          <div className="mt-2">
+            <ActivityGraph data={heatmapEntries} />
+          </div>
+        </div>
+      )}
 
       <div className="grid border-b lg:grid-cols-3">
         <div className="border-b p-4 lg:col-span-2 lg:border-r lg:border-b-0">

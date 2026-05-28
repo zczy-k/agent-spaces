@@ -4,6 +4,7 @@ import dynamic from "next/dynamic"
 import "@/lib/monaco-loader"
 import { useTheme } from "@/components/theme-provider"
 import { useTranslations } from "next-intl"
+import { JsonViewer } from "@/components/json-viewer"
 
 function ReadonlyCodeBlockLoading() {
   const t = useTranslations('chat')
@@ -36,6 +37,27 @@ export function ReadonlyCodeBlock({
   height = 220,
 }: ReadonlyCodeBlockProps) {
   const { resolvedTheme } = useTheme()
+
+  if (language === "json") {
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(value)
+    } catch {
+      // parse failed, fall through to Monaco
+    }
+    if (parsed !== undefined && typeof parsed === "object" && parsed !== null) {
+      return (
+        <JsonViewer
+          data={parsed as Parameters<typeof JsonViewer>[0]["data"]}
+          title={title}
+          rootName={title ?? "root"}
+          defaultExpanded={1}
+          colorTheme={resolvedTheme === "dark" ? "github-dark" : "github-light"}
+        />
+      )
+    }
+  }
+
   return (
     <div className="overflow-hidden rounded-md border bg-background">
       {title ? (

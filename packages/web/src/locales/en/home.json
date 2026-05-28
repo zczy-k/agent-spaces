@@ -35,6 +35,7 @@
   },
   "chart": {
     "dailyTokenUsage": "Daily Token Usage",
+    "activityHeatmap": "Activity",
     "input": "Input",
     "output": "Output",
     "costByModel": "Cost by Model",
