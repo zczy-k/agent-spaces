@@ -28,6 +28,7 @@
     "@ss-themes": "https://shadcnstudio.com/r/themes/{name}.json",
     "@blocks-so": "https://blocks.so/r/{name}.json",
     "@loading-ui": "https://loading-ui.com/r/{name}.json",
-    "@jalco": "https://ui.justinlevine.me/r/{name}.json"
+    "@jalco": "https://ui.justinlevine.me/r/{name}.json",
+    "@forgeui": "https://forgeui.in/r/{name}.json"
   }
 }
