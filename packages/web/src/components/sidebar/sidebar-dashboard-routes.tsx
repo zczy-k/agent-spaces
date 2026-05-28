@@ -101,36 +101,31 @@ export function buildDashboardRoutes(config: DashboardRoutesConfig): Route[] {
       icon: <GitBranch className="size-4" />,
       link: "/workflows",
     },
-    {
-      id: "settings",
-      title: ts("nav.settings"),
-      icon: <Settings className="size-4" />,
-      link: "#",
-      subs: isMobile
-        ? [
-            { title: ts("nav.general"), link: "/settings", icon: <Wrench className="size-3.5" /> },
-            { title: ts("nav.agents"), link: "/settings/agents", icon: <Bot className="size-3.5" /> },
-            { title: ts("nav.skills"), link: "/settings/skills", icon: <Sparkles className="size-3.5" /> },
-            { title: ts("nav.prompts"), link: "/settings/prompts", icon: <MessageSquare className="size-3.5" /> },
-            { title: ts("nav.outputStyles"), link: "/settings/output-styles", icon: <Pencil className="size-3.5" /> },
-            { title: ts("nav.mcps"), link: "/settings/mcps", icon: <Plug className="size-3.5" /> },
-            { title: ts("nav.tools"), link: "/settings/tools", icon: <Wrench className="size-3.5" /> },
-            { title: ts("nav.models"), link: "/settings/models", icon: <Brain className="size-3.5" /> },
-            { title: ts("nav.providers"), link: "/settings/providers", icon: <Server className="size-3.5" /> },
-          ]
-        : [
-            { title: ts("nav.general"), link: "#", icon: <Wrench className="size-3.5" />, onClick: () => setterMap.settings?.(true) },
-            { title: ts("nav.agents"), link: "#", icon: <Bot className="size-3.5" />, onClick: () => setterMap.agents?.(true) },
-            { title: ts("nav.skills"), link: "#", icon: <Sparkles className="size-3.5" />, onClick: () => setterMap.skills?.(true) },
-            { title: ts("nav.prompts"), link: "#", icon: <MessageSquare className="size-3.5" />, onClick: () => setterMap.prompts?.(true) },
-            { title: ts("nav.outputStyles"), link: "#", icon: <Pencil className="size-3.5" />, onClick: () => setterMap["output-styles"]?.(true) },
-            { title: ts("nav.mcps"), link: "#", icon: <Plug className="size-3.5" />, onClick: () => setterMap.mcps?.(true) },
-            { title: ts("nav.tools"), link: "#", icon: <Wrench className="size-3.5" />, onClick: () => setterMap.tools?.(true) },
-            { title: ts("nav.models"), link: "#", icon: <Brain className="size-3.5" />, onClick: () => { setModelsDialogProvider(undefined); setterMap.models?.(true); } },
-            { title: ts("nav.providers"), link: "#", icon: <Server className="size-3.5" />, onClick: () => setterMap.providers?.(true) },
-            { title: ts("nav.hooks"), link: "#", icon: <Zap className="size-3.5" />, onClick: () => setterMap.hooks?.(true) },
-            { title: ts("nav.commands"), link: "#", icon: <Terminal className="size-3.5" />, onClick: () => setterMap.commands?.(true) },
-          ],
-    },
+    ...(isMobile
+      ? [
+          { id: "settings", title: ts("nav.general"), icon: <Wrench className="size-4" />, link: "/settings" },
+          { id: "settings-agents", title: ts("nav.agents"), icon: <Bot className="size-4" />, link: "/settings/agents" },
+          { id: "settings-skills", title: ts("nav.skills"), icon: <Sparkles className="size-4" />, link: "/settings/skills" },
+          { id: "settings-prompts", title: ts("nav.prompts"), icon: <MessageSquare className="size-4" />, link: "/settings/prompts" },
+          { id: "settings-output-styles", title: ts("nav.outputStyles"), icon: <Pencil className="size-4" />, link: "/settings/output-styles" },
+          { id: "settings-mcps", title: ts("nav.mcps"), icon: <Plug className="size-4" />, link: "/settings/mcps" },
+          { id: "settings-tools", title: ts("nav.tools"), icon: <Wrench className="size-4" />, link: "/settings/tools" },
+          { id: "settings-models", title: ts("nav.models"), icon: <Brain className="size-4" />, link: "/settings/models" },
+          { id: "settings-providers", title: ts("nav.providers"), icon: <Server className="size-4" />, link: "/settings/providers" },
+        ]
+      : [
+          { id: "settings", title: ts("nav.general"), icon: <Settings className="size-4" />, link: "#", onClick: () => setterMap.settings?.(true) },
+          { id: "settings-agents", title: ts("nav.agents"), icon: <Bot className="size-4" />, link: "#", onClick: () => setterMap.agents?.(true) },
+          { id: "settings-skills", title: ts("nav.skills"), icon: <Sparkles className="size-4" />, link: "#", onClick: () => setterMap.skills?.(true) },
+          { id: "settings-prompts", title: ts("nav.prompts"), icon: <MessageSquare className="size-4" />, link: "#", onClick: () => setterMap.prompts?.(true) },
+          { id: "settings-output-styles", title: ts("nav.outputStyles"), icon: <Pencil className="size-4" />, link: "#", onClick: () => setterMap["output-styles"]?.(true) },
+          { id: "settings-mcps", title: ts("nav.mcps"), icon: <Plug className="size-4" />, link: "#", onClick: () => setterMap.mcps?.(true) },
+          { id: "settings-tools", title: ts("nav.tools"), icon: <Wrench className="size-4" />, link: "#", onClick: () => setterMap.tools?.(true) },
+          { id: "settings-models", title: ts("nav.models"), icon: <Brain className="size-4" />, link: "#", onClick: () => { setModelsDialogProvider(undefined); setterMap.models?.(true); } },
+          { id: "settings-providers", title: ts("nav.providers"), icon: <Server className="size-4" />, link: "#", onClick: () => setterMap.providers?.(true) },
+          { id: "settings-hooks", title: ts("nav.hooks"), icon: <Zap className="size-4" />, link: "#", onClick: () => setterMap.hooks?.(true) },
+          { id: "settings-commands", title: ts("nav.commands"), icon: <Terminal className="size-4" />, link: "#", onClick: () => setterMap.commands?.(true) },
+        ]
+    ),
   ];
 }

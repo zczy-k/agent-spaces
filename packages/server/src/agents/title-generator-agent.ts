@@ -8,6 +8,16 @@ import { createAgentRuntime } from '../adapters/agent-runtime.js';
 import { getThinkingRuntimeConfig } from '../services/llm-model-config.js';
 
 const FALLBACK_TITLE = 'Untitled';
+const TITLE_GENERATOR_CONSTRAINTS = [
+  'Hard constraints:',
+  '- Generate an objective scene title only.',
+  '- Do not answer the user message.',
+  '- Do not include a subject such as I, you, user, assistant, 我, 你, 用户, 助手.',
+  '- Do not include greetings, questions, offers to help, or conversational replies.',
+  '- The title must be a noun phrase that names the scenario, task, intent, problem, discussion, or analysis.',
+  '- For "你好", return "打招呼场景".',
+  '- Return exactly one title and nothing else.',
+].join('\n');
 
 export async function runTitleGeneratorAgent(input: {
   workspaceId: string;
@@ -65,7 +75,10 @@ export async function runTitleGeneratorAgent(input: {
   try {
     const result = await runtime.execute(userPrompt, workingDir, {
       maxTurns: 1,
-      systemPrompt: preset.systemPrompt || getDefaultTitleGeneratorPreset().systemPrompt,
+      systemPrompt: [
+        preset.systemPrompt || getDefaultTitleGeneratorPreset().systemPrompt,
+        TITLE_GENERATOR_CONSTRAINTS,
+      ].join('\n\n'),
       userPrompt,
       outputStyle: preset.outputStyle,
     });

@@ -51,6 +51,7 @@ export type Route = {
   title: string;
   icon?: React.ReactNode;
   link: string;
+  onClick?: () => void;
   subs?: SubMenuItem[];
   addLabel?: string;
   onAdd?: () => void;
@@ -277,7 +278,7 @@ export default function DashboardNavigation({ routes, pathname }: { routes: Rout
                 </Collapsible>
               )
             ) : (
-              <SidebarMenuButton tooltip={route.title} render={<button type="button" onClick={() => navigate(route.link)} className={cn(
+              <SidebarMenuButton tooltip={route.title} render={<button type="button" onClick={() => route.onClick ? route.onClick() : navigate(route.link)} className={cn(
                 "flex items-center rounded-lg px-2 transition-colors cursor-pointer text-muted-foreground hover:bg-sidebar-muted hover:text-foreground",
                 isCollapsed && "justify-center"
               )} />}>{route.icon}{!isCollapsed && (
