@@ -165,12 +165,8 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     const fallback = taskOrder.length;
     return filtered.sort((a, b) => (orderMap.get(a.id) ?? fallback) - (orderMap.get(b.id) ?? fallback));
   }, [tasks, issue]);
-  const issueMembers = issue?.members;
-  const members = useMemo(() => Array.from(new Set(issueMembers ?? [])), [issueMembers]);
-  const normalizedIssue = useMemo(
-    () => (issue ? { ...issue, members } : undefined),
-    [issue, members],
-  );
+  const members = Array.from(new Set(issue?.members ?? []));
+  const normalizedIssue = issue ? { ...issue, members } : undefined;
   const enabledAgents = agents.filter((agent) => agent.enabled !== false);
 
   if (!issue || !normalizedIssue) {
