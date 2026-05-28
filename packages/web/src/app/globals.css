@@ -167,7 +167,7 @@
 .flexlayout__layout {
   --splitter-size: 2px;
   --splitter-active-size: 2px;
-  background-color: #f2f3f5 !important;
+  background-color: var(--muted) !important;
   padding: 6px;
   gap: 0;
 }
@@ -182,15 +182,15 @@
 
 .flexlayout__tabset {
   border-radius: var(--radius);
-  border: 1px solid #e5e7eb;
-  background-color: #ffffff !important;
+  border: 1px solid var(--border);
+  background-color: var(--card) !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   overflow: hidden !important;
 }
 
 .flexlayout__tabset-selected {
-  background-color: #ffffff !important;
-  border-color: #d1d5db;
+  background-color: var(--card) !important;
+  border-color: var(--border);
 }
 
 .flexlayout__tab {
@@ -221,15 +221,15 @@
 }
 
 .flexlayout__splitter:hover {
-  background-color: rgba(20, 86, 240, 0.08) !important;
+  background-color: var(--accent) !important;
   border-radius: 4px;
 }
 
 /* Border bar — floating card */
 .flexlayout__border {
   border-radius: var(--radius);
-  border: 1px solid #e5e7eb;
-  background-color: #ffffff !important;
+  border: 1px solid var(--border);
+  background-color: var(--card) !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   overflow: hidden !important;
 }
@@ -242,7 +242,7 @@
 /* Border tab bar — match tabset header style */
 .flexlayout__border_inner {
   border-radius: var(--radius) var(--radius) 0 0;
-  background-color: #fafafa;
+  background-color: var(--secondary);
 }
 
 .flexlayout__border_bottom .flexlayout__border_inner {
@@ -251,7 +251,7 @@
 
 .flexlayout__border_tab_contents {
   border-radius: var(--radius);
-  background-color: #ffffff !important;
+  background-color: var(--card) !important;
   overflow: hidden !important;
 }
 
@@ -272,59 +272,59 @@
 
 /* Dark mode floating card */
 .dark .flexlayout__layout {
-  background-color: #0f1117 !important;
-  --color-text: #e5e7eb;
-  --color-background: #1a1b23;
-  --color-base: #1a1b23;
-  --color-1: rgba(255, 255, 255, 0.05);
-  --color-2: rgba(255, 255, 255, 0.08);
-  --color-3: rgba(255, 255, 255, 0.1);
-  --color-4: rgba(255, 255, 255, 0.12);
-  --color-5: rgba(255, 255, 255, 0.15);
-  --color-6: rgba(255, 255, 255, 0.18);
-  --color-icon: #8b8fa3;
-  --color-overflow: #8b8fa3;
-  --color-tabset-background: #1a1b23;
-  --color-tabset-background-selected: #1e1f2b;
-  --color-border-tab-content: #1a1b23;
-  --color-border-background: #1a1b23;
-  --color-tab-content: #1a1b23;
-  --color-tab-selected: #e5e7eb;
-  --color-tab-unselected: #8b8fa3;
-  --color-border-tab-selected: #e5e7eb;
-  --color-border-tab-unselected: #8b8fa3;
-  --color-popup-border: rgba(255, 255, 255, 0.12);
-  --color-popup-unselected: #e5e7eb;
-  --color-popup-unselected-background: #1a1b23;
+  background-color: var(--background) !important;
+  --color-text: var(--foreground);
+  --color-background: var(--card);
+  --color-base: var(--card);
+  --color-1: var(--accent);
+  --color-2: var(--border);
+  --color-3: var(--input);
+  --color-4: color-mix(in srgb, var(--foreground) 12%, transparent);
+  --color-5: color-mix(in srgb, var(--foreground) 15%, transparent);
+  --color-6: color-mix(in srgb, var(--foreground) 18%, transparent);
+  --color-icon: var(--muted-foreground);
+  --color-overflow: var(--muted-foreground);
+  --color-tabset-background: var(--card);
+  --color-tabset-background-selected: var(--muted);
+  --color-border-tab-content: var(--card);
+  --color-border-background: var(--card);
+  --color-tab-content: var(--card);
+  --color-tab-selected: var(--foreground);
+  --color-tab-unselected: var(--muted-foreground);
+  --color-border-tab-selected: var(--foreground);
+  --color-border-tab-unselected: var(--muted-foreground);
+  --color-popup-border: var(--input);
+  --color-popup-unselected: var(--foreground);
+  --color-popup-unselected-background: var(--card);
 }
 
 .dark .flexlayout__tabset {
-  background-color: #1a1b23 !important;
-  border-color: rgba(255, 255, 255, 0.08);
+  background-color: var(--card) !important;
+  border-color: var(--border);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .dark .flexlayout__tabset-selected {
-  background-color: #1a1b23 !important;
-  border-color: rgba(255, 255, 255, 0.12);
+  background-color: var(--card) !important;
+  border-color: var(--input);
 }
 
 .dark .flexlayout__border {
-  background-color: #1a1b23 !important;
-  border-color: rgba(255, 255, 255, 0.08);
+  background-color: var(--card) !important;
+  border-color: var(--border);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .dark .flexlayout__border_inner {
-  background-color: #1e1f2b;
+  background-color: var(--muted);
 }
 
 .dark .flexlayout__border_tab_contents {
-  background-color: #1a1b23 !important;
+  background-color: var(--card) !important;
 }
 
 .dark .flexlayout__splitter:hover {
-  background-color: rgba(59, 130, 246, 0.1) !important;
+  background-color: var(--accent) !important;
 }
 
 /* FlexLayout tab buttons — pill/capsule style */
@@ -338,18 +338,18 @@
 }
 
 .flexlayout__tab_button--selected {
-  background-color: #1456f0 !important;
-  color: #ffffff !important;
+  background-color: var(--primary) !important;
+  color: var(--primary-foreground) !important;
 }
 
 .flexlayout__tab_button--unselected {
-  background-color: rgba(0, 0, 0, 0.05) !important;
-  color: #45515e !important;
+  background-color: var(--accent) !important;
+  color: var(--muted-foreground) !important;
 }
 
 .flexlayout__tab_button--unselected:hover {
-  background-color: rgba(0, 0, 0, 0.08) !important;
-  color: #222222 !important;
+  background-color: var(--input) !important;
+  color: var(--foreground) !important;
 }
 
 .flexlayout__tab_button--selected .flexlayout__tab_button_trailing {
@@ -367,15 +367,15 @@
 }
 
 .flexlayout__tab_button--unselected .flexlayout__tab_button_trailing:hover {
-  background-color: rgba(0, 0, 0, 0.08);
+  background-color: var(--accent);
 }
 
 /* Tab bar */
 .flexlayout__tabset_tabbar_outer_top {
-  border-bottom: 1px solid #f2f3f5 !important;
+  border-bottom: 1px solid var(--border) !important;
   padding: 6px 8px !important;
   border-radius: var(--radius) var(--radius) 0 0;
-  background-color: #fafafa;
+  background-color: var(--secondary);
 }
 
 .flexlayout__tabset_tabbar_inner_tab_container {
@@ -395,60 +395,60 @@
 }
 
 .flexlayout__border_button--selected {
-  background-color: #1456f0 !important;
-  color: #ffffff !important;
+  background-color: var(--primary) !important;
+  color: var(--primary-foreground) !important;
 }
 
 .flexlayout__border_button--unselected {
-  background-color: rgba(0, 0, 0, 0.05) !important;
-  color: #45515e !important;
+  background-color: var(--accent) !important;
+  color: var(--muted-foreground) !important;
 }
 
 .flexlayout__border_button--unselected:hover {
-  background-color: rgba(0, 0, 0, 0.08) !important;
-  color: #222222 !important;
+  background-color: var(--input) !important;
+  color: var(--foreground) !important;
 }
 
 /* Dark mode FlexLayout overrides */
 .dark .flexlayout__tab_button--selected {
-  background-color: #3b82f6 !important;
+  background-color: var(--primary) !important;
 }
 
 .dark .flexlayout__tab_button--unselected {
-  background-color: rgba(255, 255, 255, 0.06) !important;
-  color: #8b8fa3 !important;
+  background-color: var(--accent) !important;
+  color: var(--muted-foreground) !important;
 }
 
 .dark .flexlayout__tab_button--unselected:hover {
-  background-color: rgba(255, 255, 255, 0.1) !important;
-  color: #e5e7eb !important;
+  background-color: var(--input) !important;
+  color: var(--foreground) !important;
 }
 
 .dark .flexlayout__tabset_tabbar_outer_top {
-  border-bottom-color: rgba(255, 255, 255, 0.06) !important;
-  background-color: #1e1f2b;
+  border-bottom-color: var(--border) !important;
+  background-color: var(--muted);
 }
 
 .dark .flexlayout__border_button--selected {
-  background-color: #3b82f6 !important;
+  background-color: var(--primary) !important;
 }
 
 .dark .flexlayout__border_button--unselected {
-  background-color: rgba(255, 255, 255, 0.06) !important;
-  color: #8b8fa3 !important;
+  background-color: var(--accent) !important;
+  color: var(--muted-foreground) !important;
 }
 
 .dark .flexlayout__border_button--unselected:hover {
-  background-color: rgba(255, 255, 255, 0.1) !important;
-  color: #e5e7eb !important;
+  background-color: var(--input) !important;
+  color: var(--foreground) !important;
 }
 
 /* ========== Tiptap Composer ========== */
 
 .btn {
-  border: 1px solid #cbd5e1;
-  background: white;
-  color: #0f172a;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--foreground);
   border-radius: 10px;
   padding: 10px 14px;
   cursor: pointer;
@@ -456,23 +456,23 @@
 }
 
 .btn:hover {
-  background: #f1f5f9;
+  background: var(--muted);
 }
 
 .btn-primary {
-  background: #2563eb;
-  color: white;
-  border-color: #2563eb;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-color: var(--primary);
 }
 
 .btn-primary:hover {
-  background: #1d4ed8;
+  background: color-mix(in srgb, var(--primary) 85%, black);
 }
 
 .btn-danger {
-  background: #fee2e2;
-  border-color: #fecaca;
-  color: #b91c1c;
+  background: color-mix(in srgb, var(--destructive) 10%, var(--card));
+  border-color: color-mix(in srgb, var(--destructive) 25%, var(--border));
+  color: var(--destructive);
 }
 
 .btn-ghost {
@@ -481,10 +481,10 @@
 }
 
 .editor-shell {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border);
   border-radius: 14px;
   overflow: hidden;
-  background: #fff;
+  background: var(--card);
 }
 
 .editor-toolbar {
@@ -492,8 +492,8 @@
   flex-wrap: wrap;
   gap: 8px;
   padding: 12px;
-  border-bottom: 1px solid #e2e8f0;
-  background: #f8fafc;
+  border-bottom: 1px solid var(--border);
+  background: var(--muted);
 }
 
 .editor-area {
@@ -539,15 +539,15 @@
 }
 
 .tiptap blockquote {
-  border-left: 4px solid #cbd5e1;
+  border-left: 4px solid var(--border);
   margin: 0 0 10px;
   padding-left: 12px;
-  color: #475569;
+  color: var(--muted-foreground);
 }
 
 .tiptap hr {
   border: none;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--border);
   margin: 14px 0;
 }
 
@@ -559,7 +559,7 @@
 
 .tiptap p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
-  color: #94a3b8;
+  color: var(--muted-foreground);
   float: left;
   height: 0;
   pointer-events: none;
@@ -570,8 +570,8 @@
   padding: 0 6px;
   margin: 0 5px;
   border-radius: 999px;
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: color-mix(in srgb, var(--primary) 12%, var(--card));
+  color: var(--primary);
   font-weight: 600;
 }
 
@@ -652,7 +652,7 @@
 
 .modal {
   width: min(900px, 100%);
-  background: white;
+  background: var(--card);
   border-radius: 16px;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
   overflow: hidden;
@@ -663,7 +663,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 18px 20px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border);
 }
 
 .modal-header h2 {
@@ -686,10 +686,10 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border);
   border-radius: 999px;
   padding: 8px 12px;
-  background: #f8fafc;
+  background: var(--muted);
 }
 
 .attachment-chip img {
@@ -716,7 +716,7 @@
 
 .dropzone-hint {
   margin-top: 10px;
-  color: #64748b;
+  color: var(--muted-foreground);
   font-size: 12px;
 }
 

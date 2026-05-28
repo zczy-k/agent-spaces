@@ -80,6 +80,7 @@ function EditorStatusBar({ file, content, t }: {
 }
 
 import { Markdown } from '@/components/ui/markdown';
+import { MermaidPreview } from '@/components/ui/mermaid-preview';
 
 
 const MonacoEditor = dynamic(
@@ -132,8 +133,8 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
   const isCommitDiff = activeFilePath ? isCommitDiffPath(activeFilePath) : false;
   const commitDiffData = isCommitDiff && activeFilePath ? commitDiffs[getCommitHashFromPath(activeFilePath)] : null;
   const mediaType = activeFile?.mediaType ?? (activeFilePath ? getMediaType(activeFilePath) : null);
-  const isPreviewable = mediaType === 'image' || mediaType === 'video' || mediaType === 'audio' || mediaType === 'svg' || mediaType === 'markdown';
-  const isCodePreviewToggle = mediaType === 'svg' || mediaType === 'markdown';
+  const isPreviewable = mediaType === 'image' || mediaType === 'video' || mediaType === 'audio' || mediaType === 'svg' || mediaType === 'markdown' || mediaType === 'mermaid';
+  const isCodePreviewToggle = mediaType === 'svg' || mediaType === 'markdown' || mediaType === 'mermaid';
   const mediaUrl = activeFilePath && mediaType
     ? `/api/workspaces/${workspaceId}/files/content?path=${encodeURIComponent(activeFilePath)}&raw=true`
     : null;
@@ -394,7 +395,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
       >
         {isCommitDiff && commitDiffData ? (
           <CommitDiffViewer diffs={commitDiffData.diffs} message={commitDiffData.message} />
-        ) : isPreviewable && showPreview && (mediaUrl || mediaType === 'markdown') ? (
+        ) : isPreviewable && showPreview && (mediaUrl || mediaType === 'markdown' || mediaType === 'mermaid') ? (
           <div className="relative flex justify-center h-full bg-muted/20 overflow-auto p-4">
             {isCodePreviewToggle && (
               <button
@@ -424,6 +425,11 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
             {mediaType === 'markdown' && activeContent && (
               <div className="prose prose-sm dark:prose-invert max-w-none w-full max-w-4xl mx-auto">
                 <Markdown content={activeContent} workspaceId={workspaceId} />
+              </div>
+            )}
+            {mediaType === 'mermaid' && activeContent && (
+              <div className="w-full max-w-4xl mx-auto p-4">
+                <MermaidPreview chart={activeContent} theme={resolvedTheme} />
               </div>
             )}
           </div>
