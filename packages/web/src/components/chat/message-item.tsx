@@ -12,6 +12,7 @@ import { useUserAvatar } from '@/hooks/use-user-avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { MemberInfoDialog } from './member-info-dialog';
 import { MessageContextUsage, MessageParts } from './message-parts';
+import { TextShimmer } from '@/components/text-shimmer';
 
 interface MessageItemProps {
   message: Message;
@@ -92,6 +93,11 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
         )}
         <div className={`min-w-0 max-w-full text-sm rounded-lg px-3 py-2 ${isUser ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
           <MessageParts message={message} isUser={isUser} workspaceId={workspaceId} />
+          {!isUser && isStreaming && (
+            <div className="mt-1">
+              <TextShimmer className="text-xs text-muted-foreground">Thinking</TextShimmer>
+            </div>
+          )}
           {(replies.length > 0 || showDuration) && (
             <div className="mt-1 flex items-center justify-between gap-3 border-t border-border/30 pt-1">
               <MessageRepliesPopover replies={replies} currentUserLabel={tc('you')} />

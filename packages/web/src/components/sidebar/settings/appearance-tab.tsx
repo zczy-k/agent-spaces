@@ -253,6 +253,7 @@ export function AppearanceTab() {
             { value: "", label: "Default" },
             { value: "mira", label: "Mira" },
             { value: "lyra", label: "Lyra" },
+            { value: "luma", label: "Luma" },
             { value: "rhea", label: "Rhea" },
             { value: "custom", label: "Custom" },
           ]}

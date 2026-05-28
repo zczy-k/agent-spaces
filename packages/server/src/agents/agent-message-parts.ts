@@ -105,7 +105,8 @@ function buildAgentMessageParts(input: {
   success: boolean;
   error?: string;
 }): MessagePart[] {
-  const lines = normalizeOutputLines(input.output);
+  const extractedReasoning = extractInlineReasoning(normalizeOutputLines(input.output));
+  const lines = extractedReasoning.lines;
   const finalTextRange = findFinalTextRange(lines);
   const finalText = finalTextRange
     ? collapseRepeatedTextBlock(lines.slice(finalTextRange.start, finalTextRange.end + 1)).join('\n').trim()
@@ -114,7 +115,10 @@ function buildAgentMessageParts(input: {
   const parts: MessagePart[] = [];
   const chainItems = buildChainItems(lines, finalTextRange, finalText, input.workspaceRoot, input.toolDetails, input.persistentContext);
 
-  const reasoningText = normalizeReasoningText(input.reasoning);
+  const reasoningText = normalizeReasoningText([
+    ...(input.reasoning ?? []),
+    ...extractedReasoning.reasoning.map((text) => ({ text })),
+  ]);
   if (reasoningText) {
     parts.push({
       id: `reasoning-${input.sessionId}`,
@@ -174,6 +178,59 @@ function normalizeReasoningText(reasoning?: Array<{ text: string }>): string {
       .map((item) => item.text.trim())
       .filter(Boolean),
   ).join('\n\n').trim();
+}
+
+function extractInlineReasoning(lines: string[]): { lines: string[]; reasoning: string[] } {
+  const reasoning: string[] = [];
+  const outputLines: string[] = [];
+  let buffer: string[] = [];
+  let inThinkBlock = false;
+
+  const flushReasoning = () => {
+    const text = buffer.join('\n').trim();
+    if (text) reasoning.push(text);
+    buffer = [];
+  };
+
+  for (const line of lines) {
+    let rest = line;
+    let visible = '';
+
+    while (rest) {
+      if (inThinkBlock) {
+        const closeIndex = rest.search(/<\/think>/i);
+        if (closeIndex < 0) {
+          buffer.push(rest);
+          rest = '';
+          continue;
+        }
+
+        buffer.push(rest.slice(0, closeIndex));
+        flushReasoning();
+        rest = rest.slice(closeIndex).replace(/^<\/think>/i, '');
+        inThinkBlock = false;
+        continue;
+      }
+
+      const openIndex = rest.search(/<think>/i);
+      if (openIndex < 0) {
+        visible += rest;
+        rest = '';
+        continue;
+      }
+
+      visible += rest.slice(0, openIndex);
+      rest = rest.slice(openIndex).replace(/^<think>/i, '');
+      inThinkBlock = true;
+    }
+
+    const cleaned = visible.trimEnd();
+    if (cleaned.trim()) outputLines.push(cleaned);
+  }
+
+  if (inThinkBlock) flushReasoning();
+
+  return { lines: outputLines, reasoning };
 }
 
 function hasTokenUsage(usage: MessageTokenUsage): boolean {
