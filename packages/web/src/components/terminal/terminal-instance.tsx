@@ -9,6 +9,8 @@ import { useTheme } from '@/components/theme-provider';
 import { getWS } from '@/lib/ws';
 import { useTerminalStore, consumeSessionBuffer } from '@/stores/terminal';
 
+const DEBUG_TERMINAL_DUP = '[DEBUG-terminal-dup]';
+
 // Global registry to persist xterm instances across mount/unmount cycles.
 // xterm itself is a singleton per session, so its WS input/output bindings must
 // also be singleton per session. Otherwise duplicate mounts write output twice.
@@ -17,6 +19,7 @@ const terminalRegistry = new Map<string, {
   fit: FitAddon;
   inputDisposable?: { dispose: () => void };
   outputHandler?: (data: unknown) => void;
+  lastResize?: { cols: number; rows: number };
 }>();
 
 function disableXtermMobileKeyboard(xterm: Terminal) {
@@ -26,9 +29,42 @@ function disableXtermMobileKeyboard(xterm: Terminal) {
   textarea.setAttribute('inputmode', 'none');
 }
 
+function sendResizeIfChanged(workspaceId: string, sessionId: string, xterm: Terminal) {
+  const registryEntry = terminalRegistry.get(sessionId);
+  if (
+    registryEntry?.lastResize
+    && registryEntry.lastResize.cols === xterm.cols
+    && registryEntry.lastResize.rows === xterm.rows
+  ) {
+    console.debug(DEBUG_TERMINAL_DUP, 'client skip terminal.resize unchanged', {
+      sessionId,
+      cols: xterm.cols,
+      rows: xterm.rows,
+    });
+    return;
+  }
+
+  registryEntry!.lastResize = { cols: xterm.cols, rows: xterm.rows };
+  console.debug(DEBUG_TERMINAL_DUP, 'client send terminal.resize', {
+    sessionId,
+    cols: xterm.cols,
+    rows: xterm.rows,
+  });
+  getWS(workspaceId).send('terminal.resize', {
+    sessionId,
+    cols: xterm.cols,
+    rows: xterm.rows,
+  });
+}
+
 export function disposeTerminalSession(sessionId: string) {
   const cached = terminalRegistry.get(sessionId);
   if (cached) {
+    console.debug(DEBUG_TERMINAL_DUP, 'client disposeTerminalSession', {
+      sessionId,
+      hasOutputHandler: Boolean(cached.outputHandler),
+      hasInputDisposable: Boolean(cached.inputDisposable),
+    });
     const ws = useTerminalStore.getState().ws;
     if (cached.outputHandler) {
       ws?.off('terminal.output', cached.outputHandler);
@@ -110,13 +146,8 @@ export function TerminalInstance({ sessionId, workspaceId, active }: TerminalIns
     const container = termRef.current;
     if (!xterm || !fit || !container || container.clientWidth === 0 || container.clientHeight === 0) return;
 
-    const ws = getWS(workspaceId);
     try { fit.fit(); } catch { /* ignore */ }
-    ws.send('terminal.resize', {
-      sessionId,
-      cols: xterm.cols,
-      rows: xterm.rows,
-    });
+    sendResizeIfChanged(workspaceId, sessionId, xterm);
   }, [sessionId, workspaceId]);
 
   useEffect(() => {
@@ -128,14 +159,30 @@ export function TerminalInstance({ sessionId, workspaceId, active }: TerminalIns
 
     const cached = terminalRegistry.get(sessionId);
     if (cached) {
+      console.debug(DEBUG_TERMINAL_DUP, 'client TerminalInstance reuse', {
+        sessionId,
+        workspaceId,
+        registrySize: terminalRegistry.size,
+        hasOutputHandler: Boolean(cached.outputHandler),
+        active,
+      });
       // Reuse existing terminal — move DOM element to new container
       xterm = cached.xterm;
       fit = cached.fit;
       if (xterm.element) {
         termRef.current.appendChild(xterm.element);
       }
-      requestAnimationFrame(() => fit.fit());
+      requestAnimationFrame(() => {
+        try { fit.fit(); } catch { /* ignore */ }
+        sendResizeIfChanged(workspaceId, sessionId, xterm);
+      });
     } else {
+      console.debug(DEBUG_TERMINAL_DUP, 'client TerminalInstance create xterm', {
+        sessionId,
+        workspaceId,
+        registrySize: terminalRegistry.size,
+        active,
+      });
       // Create new terminal instance
       xterm = new Terminal({
         cursorBlink: true,
@@ -160,7 +207,10 @@ export function TerminalInstance({ sessionId, workspaceId, active }: TerminalIns
         return true;
       });
 
-      requestAnimationFrame(() => fit.fit());
+      requestAnimationFrame(() => {
+        try { fit.fit(); } catch { /* ignore */ }
+        sendResizeIfChanged(workspaceId, sessionId, xterm);
+      });
 
       terminalRegistry.set(sessionId, { xterm, fit });
     }
@@ -169,6 +219,12 @@ export function TerminalInstance({ sessionId, workspaceId, active }: TerminalIns
     // Restore buffered output supplied by the server for reconnected sessions.
     const buffer = consumeSessionBuffer(sessionId);
     if (buffer) {
+      console.debug(DEBUG_TERMINAL_DUP, 'client consumeSessionBuffer write', {
+        sessionId,
+        bufferLength: buffer.length,
+        cached: Boolean(cached),
+        preview: buffer.slice(0, 80),
+      });
       if (cached) xterm.clear();
       xterm.write(buffer);
     }
@@ -178,6 +234,10 @@ export function TerminalInstance({ sessionId, workspaceId, active }: TerminalIns
 
     const registryEntry = terminalRegistry.get(sessionId);
     if (registryEntry && !registryEntry.outputHandler) {
+      console.debug(DEBUG_TERMINAL_DUP, 'client bind terminal io', {
+        sessionId,
+        workspaceId,
+      });
       registryEntry.inputDisposable = xterm.onData((data) => {
         ws.send('terminal.input', { sessionId, data });
       });
@@ -185,27 +245,28 @@ export function TerminalInstance({ sessionId, workspaceId, active }: TerminalIns
       registryEntry.outputHandler = (data: unknown) => {
         const { sessionId: sid, data: output } = data as { sessionId: string; data: string };
         if (sid === sessionId) {
+          console.debug(DEBUG_TERMINAL_DUP, 'client write terminal.output', {
+            sessionId,
+            outputLength: output.length,
+            preview: output.slice(0, 80),
+          });
           xterm.write(output);
         }
       };
       ws.on('terminal.output', registryEntry.outputHandler);
+    } else {
+      console.debug(DEBUG_TERMINAL_DUP, 'client skip duplicate terminal io bind', {
+        sessionId,
+        workspaceId,
+        hasRegistryEntry: Boolean(registryEntry),
+        hasOutputHandler: Boolean(registryEntry?.outputHandler),
+      });
     }
-
-    // Send initial size
-    ws.send('terminal.resize', {
-      sessionId,
-      cols: xterm.cols,
-      rows: xterm.rows,
-    });
 
     // Handle resize
     const resizeObserver = new ResizeObserver(() => {
       try { fit.fit(); } catch { /* ignore */ }
-      ws.send('terminal.resize', {
-        sessionId,
-        cols: xterm.cols,
-        rows: xterm.rows,
-      });
+      sendResizeIfChanged(workspaceId, sessionId, xterm);
     });
     const terminalElement = termRef.current;
     resizeObserver.observe(terminalElement);

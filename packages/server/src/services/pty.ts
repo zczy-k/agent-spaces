@@ -4,6 +4,7 @@ import { accessSync, constants } from 'node:fs';
 
 const MAX_BUFFER_LINES = 1000;
 const DEFAULT_READ_LIMIT = 100;
+const DEBUG_TERMINAL_DUP = '[DEBUG-terminal-dup]';
 
 interface PtySession {
   id: string;
@@ -27,6 +28,13 @@ export function createSession(
   sessionId?: string,
 ): string {
   const id = sessionId || uuid();
+  console.log(DEBUG_TERMINAL_DUP, 'server pty.createSession start', {
+    workspaceId,
+    sessionId: id,
+    cwd,
+    shell,
+    existingSessionIds: Array.from(sessions.keys()),
+  });
   if (sessions.has(id)) {
     throw new Error(`Terminal session already exists: ${id}`);
   }
@@ -47,6 +55,12 @@ export function createSession(
   const session: PtySession = { id, pty: ptyProcess, workspaceId, cwd, shell: resolvedShell, buffer: [], output: '' };
 
   ptyProcess.onData((data) => {
+    console.log(DEBUG_TERMINAL_DUP, 'server pty.onData', {
+      workspaceId,
+      sessionId: id,
+      outputLength: data.length,
+      preview: data.slice(0, 80),
+    });
     session.buffer.push(data);
     if (session.buffer.length > MAX_BUFFER_LINES) {
       session.buffer = session.buffer.slice(-MAX_BUFFER_LINES);
@@ -57,6 +71,12 @@ export function createSession(
   ptyProcess.onExit(({ exitCode }) => onExit(id, exitCode ?? 0));
 
   sessions.set(id, session);
+  console.log(DEBUG_TERMINAL_DUP, 'server pty.createSession stored', {
+    workspaceId,
+    sessionId: id,
+    resolvedShell,
+    sessionCount: sessions.size,
+  });
   return id;
 }
 

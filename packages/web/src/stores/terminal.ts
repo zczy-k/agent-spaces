@@ -4,6 +4,8 @@ import { toast } from 'sonner';
 
 // Buffer cache for terminal session reconnection, consumed by TerminalInstance
 const sessionBufferCache = new Map<string, string>();
+const DEBUG_TERMINAL_DUP = '[DEBUG-terminal-dup]';
+
 export function consumeSessionBuffer(sessionId: string): string | undefined {
   const buf = sessionBufferCache.get(sessionId);
   sessionBufferCache.delete(sessionId);
@@ -62,6 +64,13 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
     });
     ws.on('terminal.created', (data) => {
       const { sessionId, cwd, shell } = data as { sessionId: string; cwd: string; shell?: string };
+      console.debug(DEBUG_TERMINAL_DUP, 'client terminal.created', {
+        sessionId,
+        cwd,
+        shell,
+        existingSessions: get().sessions.map((session) => session.id),
+        activeId: get().activeId,
+      });
       set((s) => {
         if (s.sessions.some((t) => t.id === sessionId)) {
           return { activeId: sessionId };
@@ -96,6 +105,14 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       const { sessions: remoteSessions } = data as {
         sessions: Array<{ sessionId: string; cwd: string; shell?: string; buffer?: string }>;
       };
+      console.debug(DEBUG_TERMINAL_DUP, 'client terminal.sessions', {
+        remoteSessions: remoteSessions.map((session) => ({
+          sessionId: session.sessionId,
+          bufferLength: session.buffer?.length ?? 0,
+        })),
+        existingSessions: get().sessions.map((session) => session.id),
+        activeId: get().activeId,
+      });
       set((s) => {
         const previousById = new Map(s.sessions.map(t => [t.id, t]));
         const sessions = remoteSessions.map((rs) => {
@@ -131,6 +148,14 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
   createSession: (shell?: string, cwd?: string) => {
     const { ws } = get();
     const sessionId = crypto.randomUUID?.() ?? crypto.getRandomValues(new Uint8Array(16)).reduce((s, b) => s + b.toString(16).padStart(2, '0'), '');
+    console.debug(DEBUG_TERMINAL_DUP, 'client createSession send', {
+      sessionId,
+      shell,
+      cwd,
+      connected: ws?.connected,
+      previousActiveId: get().activeId,
+      sessions: get().sessions.map((session) => session.id),
+    });
     set({ activeId: sessionId });
     ws?.send('terminal.create', { sessionId, shell, cwd });
   },

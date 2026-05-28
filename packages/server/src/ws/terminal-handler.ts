@@ -3,8 +3,17 @@ import type { ClientEventName, TerminalCreatePayload, TerminalInputPayload, Term
 import * as ptyService from '../services/pty.js';
 import { broadcastToWorkspace } from './connection-manager.js';
 
+const DEBUG_TERMINAL_DUP = '[DEBUG-terminal-dup]';
+
 export function sendTerminalSessions(ws: WebSocket, workspaceId: string) {
   const existingSessions = ptyService.getSessionsByWorkspace(workspaceId);
+  console.log(DEBUG_TERMINAL_DUP, 'server sendTerminalSessions', {
+    workspaceId,
+    sessions: existingSessions.map(s => ({
+      sessionId: s.id,
+      bufferLength: s.buffer.join('').length,
+    })),
+  });
   ws.send(JSON.stringify({
     event: 'terminal.sessions',
     workspaceId,
@@ -30,11 +39,23 @@ export function handleTerminalEvent(
     case 'terminal.create': {
       const payload = data as TerminalCreatePayload;
       const cwd = payload.cwd || process.env.HOME || process.env.USERPROFILE || (process.platform === 'win32' ? process.env.SYSTEMROOT || 'C:\\' : '/tmp');
+      console.log(DEBUG_TERMINAL_DUP, 'server terminal.create received', {
+        workspaceId,
+        sessionId: payload.sessionId,
+        shell: payload.shell,
+        cwd,
+      });
       try {
         const sessionId = ptyService.createSession(
           workspaceId,
           cwd,
           (id, output) => {
+            console.log(DEBUG_TERMINAL_DUP, 'server terminal.output broadcast', {
+              workspaceId,
+              sessionId: id,
+              outputLength: output.length,
+              preview: output.slice(0, 80),
+            });
             broadcastToWorkspace(workspaceId, 'terminal.output', { sessionId: id, data: output });
           },
           (id, exitCode) => {
@@ -45,6 +66,12 @@ export function handleTerminalEvent(
           payload.sessionId,
         );
         const session = ptyService.getSession(sessionId);
+        console.log(DEBUG_TERMINAL_DUP, 'server terminal.created broadcast', {
+          workspaceId,
+          sessionId,
+          cwd,
+          shell: session?.shell ?? payload.shell,
+        });
         broadcastToWorkspace(workspaceId, 'terminal.created', { sessionId, cwd, shell: session?.shell ?? payload.shell });
       } catch (err: any) {
         broadcastToWorkspace(workspaceId, 'terminal.error', { sessionId: payload.sessionId, error: err.message || String(err) });
