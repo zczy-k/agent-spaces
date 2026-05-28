@@ -9,8 +9,15 @@ import { useTheme } from '@/components/theme-provider';
 import { getWS } from '@/lib/ws';
 import { useTerminalStore, consumeSessionBuffer } from '@/stores/terminal';
 
-// Global registry to persist xterm instances across mount/unmount cycles
-const terminalRegistry = new Map<string, { xterm: Terminal; fit: FitAddon }>();
+// Global registry to persist xterm instances across mount/unmount cycles.
+// xterm itself is a singleton per session, so its WS input/output bindings must
+// also be singleton per session. Otherwise duplicate mounts write output twice.
+const terminalRegistry = new Map<string, {
+  xterm: Terminal;
+  fit: FitAddon;
+  inputDisposable?: { dispose: () => void };
+  outputHandler?: (data: unknown) => void;
+}>();
 
 function disableXtermMobileKeyboard(xterm: Terminal) {
   const textarea = xterm.textarea;
@@ -22,6 +29,11 @@ function disableXtermMobileKeyboard(xterm: Terminal) {
 export function disposeTerminalSession(sessionId: string) {
   const cached = terminalRegistry.get(sessionId);
   if (cached) {
+    const ws = useTerminalStore.getState().ws;
+    if (cached.outputHandler) {
+      ws?.off('terminal.output', cached.outputHandler);
+    }
+    cached.inputDisposable?.dispose();
     cached.xterm.dispose();
     terminalRegistry.delete(sessionId);
   }
@@ -91,13 +103,6 @@ export function TerminalInstance({ sessionId, workspaceId, active }: TerminalIns
   // A separate effect below syncs the theme on existing terminals.
   const themeForCreateRef = useRef(resolvedTheme);
   useEffect(() => { themeForCreateRef.current = resolvedTheme; }, [resolvedTheme]);
-
-  const handleOutput = useCallback((data: unknown) => {
-    const { sessionId: sid, data: output } = data as { sessionId: string; data: string };
-    if (sid === sessionId && xtermRef.current) {
-      xtermRef.current.write(output);
-    }
-  }, [sessionId]);
 
   const fitAndResize = useCallback(() => {
     const xterm = xtermRef.current;
@@ -171,13 +176,20 @@ export function TerminalInstance({ sessionId, workspaceId, active }: TerminalIns
     xtermRef.current = xterm;
     fitRef.current = fit;
 
-    // Send terminal input to server
-    const inputDisposable = xterm.onData((data) => {
-      ws.send('terminal.input', { sessionId, data });
-    });
+    const registryEntry = terminalRegistry.get(sessionId);
+    if (registryEntry && !registryEntry.outputHandler) {
+      registryEntry.inputDisposable = xterm.onData((data) => {
+        ws.send('terminal.input', { sessionId, data });
+      });
 
-    // Listen for output
-    ws.on('terminal.output', handleOutput);
+      registryEntry.outputHandler = (data: unknown) => {
+        const { sessionId: sid, data: output } = data as { sessionId: string; data: string };
+        if (sid === sessionId) {
+          xterm.write(output);
+        }
+      };
+      ws.on('terminal.output', registryEntry.outputHandler);
+    }
 
     // Send initial size
     ws.send('terminal.resize', {
@@ -208,15 +220,13 @@ export function TerminalInstance({ sessionId, workspaceId, active }: TerminalIns
     return () => {
       resizeObserver.disconnect();
       terminalElement.removeEventListener('contextmenu', handleContextMenu, { capture: true });
-      inputDisposable.dispose();
-      ws.off('terminal.output', handleOutput);
       // If session was removed from store (user/server closed it), dispose terminal
       const { sessions } = useTerminalStore.getState();
       if (!sessions.some(s => s.id === sessionId)) {
         disposeTerminalSession(sessionId);
       }
     };
-  }, [sessionId, workspaceId, handleOutput]);
+  }, [sessionId, workspaceId]);
 
   useEffect(() => {
     if (!active) return;

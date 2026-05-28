@@ -24,7 +24,6 @@ import { useTranslations } from 'next-intl';
 import { ChannelDialog } from '@/components/chat/channel-dialog';
 import { normalizeChannelMembersToAgentIds } from '@/lib/agent-members';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Layout } from 'react-resizable-panels';
 
 interface TerminalPanelProps {
@@ -237,16 +236,16 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
   };
 
   return (
-    <Tabs value={activeId ?? undefined} onValueChange={setActive} className="flex flex-col h-full gap-0 bg-background">
+    <div className="flex flex-col h-full bg-background">
       {/* Tab bar */}
       <div className="flex items-center gap-0.5 bg-muted border-b border-border px-1 py-0.5">
-        <TabsList className="flex h-auto min-w-0 flex-1 justify-start gap-0.5 rounded-none bg-transparent p-0 overflow-x-auto">
+        <div className="flex min-w-0 flex-1 justify-start gap-0.5 overflow-x-auto">
           {sessions.map((session) => (
             <ContextMenu key={session.id}>
               <ContextMenuTrigger>
-                <TabsTrigger
-                  value={session.id}
-                  className={`flex-none items-center gap-1 px-2 py-1 text-xs rounded-t transition-colors shrink-0 ${
+                <button
+                  onClick={() => setActive(session.id)}
+                  className={`flex items-center gap-1 px-2 py-1 text-xs rounded-t transition-colors shrink-0 ${
                     activeId === session.id
                       ? 'bg-primary text-primary-foreground'
                       : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
@@ -260,7 +259,7 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
                   >
                     <X size={12} />
                   </span>
-                </TabsTrigger>
+                </button>
               </ContextMenuTrigger>
               <ContextMenuContent>
                 <ContextMenuItem
@@ -284,7 +283,7 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
               </ContextMenuContent>
             </ContextMenu>
           ))}
-        </TabsList>
+        </div>
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
@@ -395,17 +394,20 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
             </div>
           ) : (
             sessions.map((session) => (
-              <TabsContent
+              <div
                 key={session.id}
-                value={session.id}
-                className="absolute inset-0 m-0 h-full w-full"
+                className={`absolute inset-0 h-full w-full ${
+                  activeId === session.id
+                    ? 'visible z-10'
+                    : 'invisible pointer-events-none z-0'
+                }`}
               >
                 <TerminalInstance
                   sessionId={session.id}
                   workspaceId={workspaceId}
                   active={activeId === session.id}
                 />
-              </TabsContent>
+              </div>
             ))
           )}
         </ResizablePanel>
@@ -525,6 +527,6 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
           }
         }}
       />
-    </Tabs>
+    </div>
   );
 }
