@@ -23,6 +23,8 @@ export interface GitLogEntry {
   message: string;
   author: string;
   date: string;
+  parents?: string[];
+  refs?: string[];
 }
 
 export interface GitDiffResult {

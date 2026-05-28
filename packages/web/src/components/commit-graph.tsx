@@ -53,6 +53,10 @@ interface CommitGraphProps extends Omit<React.ComponentProps<"div">, "children">
   truncateHash?: number
   /** Pixel width per rail column. @default 24 */
   railWidth?: number
+  /** Called when a commit row is clicked. */
+  onCommitClick?: (commit: Commit) => void
+  /** Wrap each commit row with custom element (e.g. ContextMenu). */
+  renderCommitWrapper?: (commit: Commit, children: React.ReactNode) => React.ReactNode
 }
 
 const RAIL_COLORS = [
@@ -431,6 +435,8 @@ function CommitGraph({
   truncateHash = 7,
   railWidth = 24,
   className,
+  onCommitClick,
+  renderCommitWrapper,
   ...props
 }: CommitGraphProps) {
   // Simple mode: if no commit has parents, infer a linear topology
@@ -471,19 +477,21 @@ function CommitGraph({
       {...props}
     >
       <div className="overflow-x-auto">
-        {rows.map((row, i) => (
-          <CommitDetail
-            key={`${row.commit.hash}-${i}`}
-            commit={row.commit}
-            hashLength={truncateHash}
-            railColor={color(row.rail)}
-          >
-            <button
-              type="button"
-              data-slot="commit-entry"
-              className="flex w-full items-center gap-0 border-b border-border/30 transition-colors hover:bg-muted/30 focus-visible:bg-muted/30 focus-visible:outline-none last:border-b-0"
-              style={{ height: ROW_HEIGHT }}
+        {rows.map((row, i) => {
+          const commitButton = (
+            <CommitDetail
+              key={`${row.commit.hash}-${i}`}
+              commit={row.commit}
+              hashLength={truncateHash}
+              railColor={color(row.rail)}
             >
+              <button
+                type="button"
+                data-slot="commit-entry"
+                className="flex w-full items-center gap-0 border-b border-border/30 transition-colors hover:bg-muted/30 focus-visible:bg-muted/30 focus-visible:outline-none last:border-b-0"
+                style={{ height: ROW_HEIGHT }}
+                onClick={onCommitClick ? () => onCommitClick(row.commit) : undefined}
+              >
               {/* Rails */}
               <div style={{ width: svgWidth }} className="shrink-0">
                 <RailsSVG row={row} prevRow={i > 0 ? rows[i - 1] : null} railWidth={railWidth} maxRails={maxRails} />
@@ -549,7 +557,12 @@ function CommitGraph({
               </div>
             </button>
           </CommitDetail>
-        ))}
+          )
+
+          return renderCommitWrapper
+            ? renderCommitWrapper(row.commit, commitButton)
+            : commitButton
+        })}
       </div>
     </div>
   )

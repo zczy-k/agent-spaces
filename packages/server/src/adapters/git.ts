@@ -300,7 +300,7 @@ export async function gitLog(workspaceId: string, maxCount = 50): Promise<GitLog
   const status = await git.status();
   const upstream = await getUpstreamRef(git, status.current || 'HEAD');
   const refs = upstream ? ['HEAD', upstream] : ['HEAD'];
-  const pretty = '%H%x1f%s%x1f%an%x1f%aI%x1e';
+  const pretty = '%H%x1f%P%x1f%s%x1f%an%x1f%aI%x1f%D%x1e';
   const logArgs = ['log', `--max-count=${maxCount}`, `--pretty=format:${pretty}`];
   const raw = await git.raw([...logArgs, ...refs]).catch((err: unknown) => {
     if (!upstream) throw err;
@@ -311,12 +311,16 @@ export async function gitLog(workspaceId: string, maxCount = 50): Promise<GitLog
     .map(record => record.trim())
     .filter(Boolean)
     .map(record => {
-      const [hash = '', message = '', author = '', date = ''] = record.split('\x1f');
+      const [hash = '', parentHashes = '', message = '', author = '', date = '', refsRaw = ''] = record.split('\x1f');
+      const parents = parentHashes ? parentHashes.split(' ').map(p => p.substring(0, 7)) : [];
+      const refs = refsRaw ? refsRaw.split(', ').map(r => r.trim()).filter(Boolean) : [];
       return {
         hash: hash.substring(0, 7),
+        parents,
         message,
         author,
         date,
+        refs,
       };
     });
 }
