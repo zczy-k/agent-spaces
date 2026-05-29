@@ -318,26 +318,25 @@ export function UsageDashboard() {
         <Metric label={t('metric.avgDuration')} value={formatDuration(totals.avgDurationMs)} helper={t('metric.avgDurationHelper')} icon={Clock3} last totalCostLabel={t('metric.totalCost')} />
       </div>
 
-      {daily.length > 0 && (() => {
-        const days = fetchDays()
-        const weeks = Math.max(1, Math.ceil(days / 7))
-        return (
-          <div className="border-b px-4 py-3">
-            <span className="font-medium text-xs">{t('chart.activityHeatmap')}</span>
-            <div className="mt-2">
-              <ActivityGraph
-                blockSize={11}
-                weeks={weeks}
-                data={daily.map((item) => ({ date: item.date, count: item.requests }))}
-                formatCount={(count) => `${formatNumber(count)} session${count === 1 ? "" : "s"}`}
-              />
+      <div className="grid border-b lg:grid-cols-2">
+        {daily.length > 0 && (() => {
+          const days = fetchDays()
+          const weeks = Math.max(1, Math.ceil(days / 7))
+          return (
+            <div className="border-b p-4 lg:border-r lg:border-b-0">
+              <span className="font-medium text-xs">{t('chart.activityHeatmap')}</span>
+              <div className="mt-2">
+                <ActivityGraph
+                  blockSize={11}
+                  weeks={weeks}
+                  data={daily.map((item) => ({ date: item.date, count: item.requests }))}
+                  formatCount={(count) => `${formatNumber(count)} session${count === 1 ? "" : "s"}`}
+                />
+              </div>
             </div>
-          </div>
-        )
-      })()}
-
-      <div className="grid border-b lg:grid-cols-3">
-        <div className="border-b p-4 lg:col-span-2 lg:border-r lg:border-b-0">
+          )
+        })()}
+        <div className="p-4">
           <div className="mb-3 flex items-center justify-between">
             <span className="font-medium text-xs">{t('chart.dailyTokenUsage')}</span>
             <div className="flex items-center gap-3">
@@ -366,8 +365,10 @@ export function UsageDashboard() {
             {daily.length === 0 ? <EmptyBars label={t('chart.noTokenData')} /> : null}
           </div>
         </div>
+      </div>
 
-        <div className="p-4">
+      <div className="grid border-b lg:grid-cols-3">
+        <div className="border-b p-4 lg:border-r lg:border-b-0">
           <span className="font-medium text-xs">{t('chart.costByModel')}</span>
           <div className="mt-3 space-y-2.5">
             {byModel.length === 0 ? (
@@ -397,9 +398,6 @@ export function UsageDashboard() {
             ))}
           </div>
         </div>
-      </div>
-
-      <div className="grid border-b lg:grid-cols-2">
         <div className="border-b p-4 lg:border-r lg:border-b-0">
           <span className="font-medium text-xs">{t('chart.tokenDistribution')}</span>
           <TokenPieChart inputTokens={totals.inputTokens} outputTokens={totals.outputTokens} />
