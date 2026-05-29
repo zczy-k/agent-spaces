@@ -305,6 +305,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                 placeholder={t('detail.commentPlaceholder')}
                 onSubmit={(content, mentions) => handleSendComment(content, mentions)}
                 enableAutoMode={false}
+                enableContextControl={false}
                 enableAgentResources={false}
               />
             </div>

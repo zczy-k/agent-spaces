@@ -205,9 +205,9 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
     };
   }, [activeChannelId, workspaceId, channelActive, lastMessageStatus, loadMessages, loadChannelState]);
 
-  const handleSend = useCallback((content: string, mentions: string[], attachments?: Message['attachments'], replyToMessageId?: string) => {
+  const handleSend = useCallback((content: string, mentions: string[], attachments?: Message['attachments'], replyToMessageId?: string, contextLength?: number) => {
     if (!activeChannelId) return;
-    sendMessage(workspaceId, activeChannelId, content, mentions, attachments, replyToMessageId);
+    sendMessage(workspaceId, activeChannelId, content, mentions, attachments, replyToMessageId, contextLength);
   }, [workspaceId, activeChannelId, sendMessage]);
 
   const isProcessing = channelActive || (msgs.length > 0

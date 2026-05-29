@@ -65,14 +65,16 @@ for (const evt of terminalEvents) {
 
 // Register channel handlers
 registerHandler('channel.message', (_ws, workspaceId, data) => {
-  const { channelId, content, type, mentions, attachments, replyToMessageId } = data as {
+  const { channelId, content, type, mentions, attachments, replyToMessageId, contextLength } = data as {
     channelId: string;
     content: string;
     type?: string;
     mentions?: string[];
     attachments?: Message['attachments'];
     replyToMessageId?: string;
+    contextLength?: number;
   };
+  const normalizedContextLength = normalizeContextLength(contextLength);
   if (!channelId || (!content && !attachments?.length)) return;
   const channel = getChannel(workspaceId, channelId);
   if (!channel) return;
@@ -91,8 +93,9 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
       void runMentionedAgent(workspaceId, channelId, agentId, stripHtml(content), {
         messageId: updated.id,
         appendUserMessage: stripHtml(content),
-        resumeSessionId: updated.metadata?.runtimeSessionId,
+        resumeSessionId: normalizedContextLength > 0 ? updated.metadata?.runtimeSessionId : undefined,
         excludeHistoryReplyIds: latestReplyId ? [latestReplyId] : undefined,
+        contextLength: normalizedContextLength,
       });
     }
     return;
@@ -117,9 +120,15 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
   for (const agentId of agentIds) {
     void runMentionedAgent(workspaceId, channelId, agentId, stripHtml(content), {
       excludeHistoryMessageIds: [message.id],
+      contextLength: normalizedContextLength,
     });
   }
 });
+
+function normalizeContextLength(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 20;
+  return Math.min(20, Math.max(0, Math.trunc(value)));
+}
 
 registerHandler('channel.stop', (_ws, workspaceId, data) => {
   const { channelId } = data as { channelId?: string };

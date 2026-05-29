@@ -23,7 +23,7 @@ interface IssueMessageProps {
   onExpandedChange?: (commentId: string, expanded: boolean) => void;
   onReplyStart?: (commentId: string) => void;
   onReplyCancel?: () => void;
-  onReplySubmit?: (commentId: string, content: string, mentions: string[], attachments: MessageAttachment[]) => void;
+  onReplySubmit?: (commentId: string, content: string, mentions: string[], attachments: MessageAttachment[], contextLength: number) => void;
 }
 
 export function IssueMessage({
@@ -110,9 +110,9 @@ export function IssueMessage({
     setEditing(false);
   };
 
-  const handleReplySubmit = (content: string, mentions: string[], attachments: MessageAttachment[]) => {
+  const handleReplySubmit = (content: string, mentions: string[], attachments: MessageAttachment[], contextLength: number) => {
     if (!content) return;
-    onReplySubmit?.(comment.id, content, mentions, attachments);
+    onReplySubmit?.(comment.id, content, mentions, attachments, contextLength);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

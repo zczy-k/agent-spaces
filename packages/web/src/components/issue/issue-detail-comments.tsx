@@ -79,11 +79,11 @@ export function IssueDetailComments({
     return new Map((Array.isArray(channelMessages) ? channelMessages : []).map((message) => [message.id, message]));
   }, [messages, channelId]);
 
-  const handleReplySubmit = useCallback((commentId: string, content: string, mentions: string[], attachments: MessageAttachment[]) => {
+  const handleReplySubmit = useCallback((commentId: string, content: string, mentions: string[], attachments: MessageAttachment[], contextLength: number) => {
     const comment = comments.find((item) => item.id === commentId);
     const replyToMessageId = comment?.metadata?.messageId;
     if (!channelId || !replyToMessageId) return;
-    sendMessage(workspaceId, channelId, content, mentions, attachments, replyToMessageId);
+    sendMessage(workspaceId, channelId, content, mentions, attachments, replyToMessageId, contextLength);
     setReplyingCommentId(null);
   }, [comments, workspaceId, channelId, sendMessage]);
 

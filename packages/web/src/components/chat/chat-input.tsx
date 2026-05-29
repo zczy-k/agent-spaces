@@ -21,7 +21,7 @@ interface ChatInputProps {
   channel: Channel;
   agents: MentionedAgent[];
   messages?: Message[];
-  onSend: (message: string, mentions: string[], attachments?: MessageAttachment[], replyToMessageId?: string) => void;
+  onSend: (message: string, mentions: string[], attachments?: MessageAttachment[], replyToMessageId?: string, contextLength?: number) => void;
   isProcessing?: boolean;
   onStop?: () => void;
   replyTo?: { id: string; label: string } | null;
@@ -105,8 +105,8 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     updateChannel(workspaceId, channelId, { pinnedMentionId: newPinnedId });
   }, [composerState.mentionedAgentIds, isPinned, workspaceId, channelId, updateChannel]);
 
-  const handleSubmit = useCallback((content: string, mentions: string[], attachments: MessageAttachment[]) => {
-    onSend(content, mentions, attachments, replyTo?.id);
+  const handleSubmit = useCallback((content: string, mentions: string[], attachments: MessageAttachment[], contextLength: number) => {
+    onSend(content, mentions, attachments, replyTo?.id, contextLength);
   }, [onSend, replyTo?.id]);
 
   return (

@@ -50,6 +50,8 @@ type AgentCommandItem = {
   group?: string;
 };
 
+const DEFAULT_CONTEXT_LENGTH = 20;
+
 export interface ChatComposerInputState {
   mentionedAgentIds: string[];
   activeAgent?: MentionedAgent;
@@ -68,7 +70,7 @@ interface ChatComposerInputProps {
   workspaceId: string;
   agents: MentionedAgent[];
   placeholder: string;
-  onSubmit: (content: string, mentions: string[], attachments: MessageAttachment[]) => void | Promise<void>;
+  onSubmit: (content: string, mentions: string[], attachments: MessageAttachment[], contextLength: number) => void | Promise<void>;
   className?: string;
   isProcessing?: boolean;
   onStop?: () => void;
@@ -83,6 +85,7 @@ interface ChatComposerInputProps {
   enableAttachments?: boolean;
   enableVoice?: boolean;
   enableAutoMode?: boolean;
+  enableContextControl?: boolean;
   enableSlashCommands?: boolean;
   enableAgentResources?: boolean;
   onStateChange?: (state: ChatComposerInputState) => void;
@@ -108,6 +111,7 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
     enableAttachments = true,
     enableVoice = true,
     enableAutoMode = true,
+    enableContextControl = true,
     enableSlashCommands = true,
     enableAgentResources = true,
     onStateChange,
@@ -120,6 +124,7 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
   const [attachments, setAttachments] = useState<LocalAttachment[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [autoMode, setAutoMode] = useState(false);
+  const [contextLength, setContextLength] = useState(DEFAULT_CONTEXT_LENGTH);
   const editorRef = useRef<Editor | null>(null);
   const agentsRef = useRef(agents);
   const submittingRef = useRef(false);
@@ -260,7 +265,7 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
   const fileSearchExtension = useMemo(() => createFileSearchExtension(workspaceId), [workspaceId]);
   const agentResourceExtension = useMemo(() => createAgentResourceExtension(() => activeResourcesRef.current), []);
 
-  const submitCurrentMessage = useCallback(async () => {
+  const submitCurrentMessage = useCallback(async (selectedContextLength = contextLength) => {
     const currentEditor = editorRef.current;
     if (!currentEditor || isProcessingRef.current || submittingRef.current) return;
     const text = currentEditor.getText().trim();
@@ -274,7 +279,7 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
     }
     try {
       const uploaded = enableAttachments ? await Promise.all(attachments.map(uploadAttachment)) : [];
-      await onSubmitRef.current(text ? stripSimpleParagraphs(currentEditor.getHTML()) : "", mentions, uploaded);
+      await onSubmitRef.current(text ? stripSimpleParagraphs(currentEditor.getHTML()) : "", mentions, uploaded, selectedContextLength);
       currentEditor.commands.clearContent();
       setAttachments((prev) => {
         prev.forEach((item) => URL.revokeObjectURL(item.preview));
@@ -287,7 +292,7 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
       submittingRef.current = false;
       setSubmitting(false);
     }
-  }, [attachments, enableAttachments, onCancelReply, onDraftClear]);
+  }, [attachments, contextLength, enableAttachments, onCancelReply, onDraftClear]);
 
   const submitRef = useRef(submitCurrentMessage);
   submitRef.current = submitCurrentMessage;
@@ -534,7 +539,10 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
         workspaceId={workspaceId}
         editor={editor}
         canSubmit={canSubmit}
-        onSubmit={() => { void submitCurrentMessage(); }}
+        contextLength={contextLength}
+        onContextLengthChange={setContextLength}
+        enableContextControl={enableContextControl}
+        onSubmit={(contextLength) => { void submitCurrentMessage(contextLength); }}
         onStop={onStop}
         isProcessing={isProcessing || submitting}
         actions={actions}

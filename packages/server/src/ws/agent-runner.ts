@@ -43,6 +43,7 @@ interface RunMentionedAgentOptions {
   seedQuestions?: PendingAskUserQuestion[];
   appendUserMessage?: string;
   resumeSessionId?: string;
+  contextLength?: number;
   excludeHistoryMessageIds?: string[];
   excludeHistoryReplyIds?: string[];
 }
@@ -285,7 +286,10 @@ export async function runMentionedAgent(
   const liveReasoning: Array<{ text: string; status?: 'streaming' | 'completed' }> = [];
   let agentPrompt = '';
   let runtimeUserPrompt = prompt;
-  let runtimeSessionId = options.resumeSessionId ?? existingMessage?.metadata?.runtimeSessionId;
+  const contextLength = normalizeContextLength(options.contextLength);
+  let runtimeSessionId = contextLength === 0
+    ? undefined
+    : options.resumeSessionId ?? existingMessage?.metadata?.runtimeSessionId;
   const persistentContext = buildPersistentAgentContextDetails({
     workspaceId,
     workingDir: workspace?.boundDirs?.[0] || workingDir,
@@ -309,13 +313,15 @@ export async function runMentionedAgent(
       runtime,
     };
     trackChannelRun(workspaceId, channelId, activeRun);
-    const history = filterPromptHistory(listMessages(workspaceId, channelId, { limit: 20 }), {
-      excludeMessageIds: [
-        ...(!existingMessage ? [pending.id] : []),
-        ...(options.excludeHistoryMessageIds ?? []),
-      ],
-      excludeReplyIds: options.excludeHistoryReplyIds,
-    });
+    const history = contextLength === 0
+      ? []
+      : filterPromptHistory(listMessages(workspaceId, channelId, { limit: contextLength }), {
+        excludeMessageIds: [
+          ...(!existingMessage ? [pending.id] : []),
+          ...(options.excludeHistoryMessageIds ?? []),
+        ],
+        excludeReplyIds: options.excludeHistoryReplyIds,
+      });
     const isRuntimeSessionResume = Boolean(options.resumeSessionId && (preset.runtimeKind === 'claude-code' || preset.runtimeKind === 'codex'));
     runtimeUserPrompt = expandAgentSlashCommandPrompt(prompt, configDir);
     agentPrompt = isRuntimeSessionResume
@@ -946,4 +952,9 @@ function estimateTextTokens(text: string): number {
   const nonCjkText = text.replace(/[\u3400-\u9fff\uf900-\ufaff]/g, ' ');
   const words = nonCjkText.match(/[A-Za-z0-9_]+|[^\sA-Za-z0-9_]/g)?.length ?? 0;
   return Math.max(1, Math.ceil(cjkChars + words * 0.75));
+}
+
+function normalizeContextLength(value: number | undefined): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 20;
+  return Math.min(20, Math.max(0, Math.trunc(value)));
 }

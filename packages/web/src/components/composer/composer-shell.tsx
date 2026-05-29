@@ -5,14 +5,18 @@ import { useState } from 'react';
 import { EditorContent, type Editor } from '@tiptap/react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Slider } from '@/components/ui/slider';
 import { useInspectorHistoryStore } from '@/stores/inspector-history';
-import { Code2, Maximize2, Send, Square, X } from 'lucide-react';
+import { Code2, History, Maximize2, Send, Square, X } from 'lucide-react';
 
 interface ComposerShellProps {
   workspaceId: string;
   editor: Editor | null;
   canSubmit: boolean;
-  onSubmit: () => void;
+  onSubmit: (contextLength: number) => void;
+  contextLength: number;
+  onContextLengthChange: (contextLength: number) => void;
+  enableContextControl?: boolean;
   onStop?: () => void;
   isProcessing?: boolean;
   actions?: ReactNode;
@@ -25,12 +29,16 @@ interface ComposerShellProps {
 }
 
 const EMPTY_HISTORY: never[] = [];
+const DEFAULT_CONTEXT_LENGTH = 20;
 
 export function ComposerShell({
   workspaceId,
   editor,
   canSubmit,
   onSubmit,
+  contextLength,
+  onContextLengthChange,
+  enableContextControl = true,
   onStop,
   isProcessing = false,
   actions,
@@ -42,6 +50,7 @@ export function ComposerShell({
   onCancelReply,
 }: ComposerShellProps) {
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [contextOpen, setContextOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const history = useInspectorHistoryStore((s) => s.histories[workspaceId] ?? EMPTY_HISTORY);
   const loadHistory = useInspectorHistoryStore((s) => s.loadHistory);
@@ -71,7 +80,7 @@ export function ComposerShell({
               <Button
                 size="sm"
                 disabled={!canSubmit}
-                onClick={() => { setFullscreen(false); onSubmit(); }}
+                onClick={() => { setFullscreen(false); onSubmit(contextLength); }}
               >
                 <Send className="size-3.5 mr-1.5" />
                 发送
@@ -176,6 +185,46 @@ export function ComposerShell({
                 )}
               </PopoverContent>
             </Popover>
+            {enableContextControl ? (
+              <Popover open={contextOpen} onOpenChange={setContextOpen}>
+                <PopoverTrigger
+                  render={
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 rounded-full border border-border hover:bg-accent text-muted-foreground"
+                      title={contextLength === 0 ? '全新 Agent' : `上下文 ${contextLength} 条`}
+                    />
+                  }
+                >
+                  <History className="size-3" />
+                  <span className="text-xs">{contextLength}</span>
+                </PopoverTrigger>
+                <PopoverContent align="start" sideOffset={6} className="w-64 p-3">
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <span className="text-xs font-medium text-muted-foreground">上下文长度</span>
+                    <span className="text-xs font-mono text-foreground">
+                      {contextLength === 0 ? '全新 Agent' : `${contextLength} 条`}
+                    </span>
+                  </div>
+                  <Slider
+                    value={contextLength}
+                    min={0}
+                    max={20}
+                    step={1}
+                    onValueChange={(value) => {
+                      const nextValue = Array.isArray(value) ? value[0] : value;
+                      onContextLengthChange(nextValue ?? DEFAULT_CONTEXT_LENGTH);
+                    }}
+                  />
+                  <div className="mt-2 flex justify-between text-[11px] text-muted-foreground">
+                    <span>0</span>
+                    <span>20</span>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            ) : null}
           </div>
           <div className="flex items-center gap-1">
             {isProcessing ? (
@@ -191,7 +240,7 @@ export function ComposerShell({
                 {voiceAction}
                 <Button
                   type="button"
-                  onClick={onSubmit}
+                  onClick={() => onSubmit(contextLength)}
                   disabled={!canSubmit}
                   className="size-7 p-0 rounded-full bg-primary disabled:opacity-40 disabled:pointer-events-none"
                 >

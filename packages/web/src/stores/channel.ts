@@ -18,7 +18,7 @@ interface ChannelStore {
   setActiveChannel: (id: string) => void;
   loadMessages: (workspaceId: string, channelId: string) => Promise<void>;
   loadChannelState: (workspaceId: string, channelId: string) => Promise<ChannelState | null>;
-  sendMessage: (workspaceId: string, channelId: string, content: string, mentions?: string[], attachments?: Message['attachments'], replyToMessageId?: string) => void;
+  sendMessage: (workspaceId: string, channelId: string, content: string, mentions?: string[], attachments?: Message['attachments'], replyToMessageId?: string, contextLength?: number) => void;
   addMessage: (channelId: string, message: Message) => void;
   updateMessage: (channelId: string, message: Message) => void;
   stopProcessingMessages: (channelId: string) => void;
@@ -141,9 +141,9 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
     return await res.json() as ChannelState;
   },
 
-  sendMessage: (workspaceId, channelId, content, mentions = [], attachments = [], replyToMessageId) => {
+  sendMessage: (workspaceId, channelId, content, mentions = [], attachments = [], replyToMessageId, contextLength) => {
     const ws = getWS(workspaceId);
-    ws.send('channel.message', { channelId, content, mentions, attachments, replyToMessageId });
+    ws.send('channel.message', { channelId, content, mentions, attachments, replyToMessageId, contextLength });
   },
 
   addMessage: (channelId, message) => {
