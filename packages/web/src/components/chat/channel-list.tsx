@@ -1,17 +1,18 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useChannelStore } from '@/stores/channel';
 import { useAgentStore } from '@/stores/agent';
-import { Bot, Hash, MessageCircle, AlertCircle, Plus, Pencil, FolderOpen, Archive, ArchiveRestore, MoreHorizontal, Trash2, Check, ArrowUpDown, CheckSquare, Square } from 'lucide-react';
+import { Bot, Hash, MessageCircle, AlertCircle, Plus, Pencil, FolderOpen, Archive, ArchiveRestore, Trash2, CheckSquare, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { Skeleton, SkeletonGroup } from '@/components/ui/skeleton';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ChannelDialog } from './channel-dialog';
 import { normalizeChannelMembersToAgentIds } from '@/lib/agent-members';
 import { getWS } from '@/lib/ws';
+import { ItemListPanel, type ItemCtx } from '@/components/common/item-list-panel';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -19,12 +20,9 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { ChevronRight } from 'lucide-react';
 
-import type {  Channel, Message } from '@agent-spaces/shared';
+import type { Channel, Message } from '@agent-spaces/shared';
 
 const typeBadgeConfig: Record<Channel['type'], { className: string; icon: typeof Hash }> = {
   general: { className: 'bg-muted text-muted-foreground', icon: Hash },
@@ -40,25 +38,6 @@ function lastMsgPreview(msgs: Message[] | undefined): { text: string; status: Me
   return { text: text || '...', status: last.status };
 }
 
-type GroupMode = 'none' | 'time' | 'status';
-
-const TIME_GROUP_ORDER = ['today', 'yesterday', 'thisWeek', 'earlier'] as const;
-const TIME_LABEL_KEYS: Record<string, string> = {
-  today: 'timeToday', yesterday: 'timeYesterday', thisWeek: 'timeThisWeek', earlier: 'timeEarlier',
-};
-
-function getTimeGroup(dateStr: string): string {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const yesterday = new Date(today.getTime() - 86400000);
-  const weekAgo = new Date(today.getTime() - 7 * 86400000);
-  if (date >= today) return 'today';
-  if (date >= yesterday) return 'yesterday';
-  if (date >= weekAgo) return 'thisWeek';
-  return 'earlier';
-}
-
 interface ChannelListProps {
   workspaceId: string;
 }
@@ -72,63 +51,14 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
   } = useChannelStore();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
-  const [archivedOpen, setArchivedOpen] = useState(false);
-  const [groupMode, setGroupMode] = useState<GroupMode>('none');
-  const [groupOpen, setGroupOpen] = useState<Record<string, boolean>>({});
-  const [clearArchiveOpen, setClearArchiveOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Channel | null>(null);
-  const [sortField, setSortField] = useState<'createdAt' | 'lastReply' | 'type'>('createdAt');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [batchDeleteInfo, setBatchDeleteInfo] = useState<{ ids: Set<string>; exit: () => void } | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
-  const [multiSelect, setMultiSelect] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const agents = useAgentStore((s) => s.agents);
-  const ensureAgents = useAgentStore((s) => s.ensure);
+  const agents = useAgentStore(s => s.agents);
+  const ensureAgents = useAgentStore(s => s.ensure);
 
-  const activeChannels = useMemo(() => channels.filter((c) => !c.archived), [channels]);
-  const archivedChannels = useMemo(() => channels.filter((c) => c.archived), [channels]);
-
-  const sortedActiveChannels = useMemo(() => {
-    const sorted = [...activeChannels];
-    sorted.sort((a, b) => {
-      let cmp = 0;
-      switch (sortField) {
-        case 'createdAt':
-          cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-          break;
-        case 'lastReply': {
-          const aLast = messages[a.id]?.at(-1)?.createdAt;
-          const bLast = messages[b.id]?.at(-1)?.createdAt;
-          cmp = (aLast ? new Date(aLast).getTime() : 0) - (bLast ? new Date(bLast).getTime() : 0);
-          break;
-        }
-        case 'type':
-          cmp = a.type.localeCompare(b.type);
-          break;
-      }
-      return sortOrder === 'desc' ? -cmp : cmp;
-    });
-    return sorted;
-  }, [activeChannels, sortField, sortOrder, messages]);
-
-  const channelGroups = useMemo(() => {
-    if (groupMode === 'none') return null;
-    if (groupMode === 'time') {
-      const groups: Record<string, Channel[]> = {};
-      for (const ch of sortedActiveChannels) {
-        const key = getTimeGroup(ch.createdAt);
-        if (!groups[key]) groups[key] = [];
-        groups[key].push(ch);
-      }
-      return TIME_GROUP_ORDER
-        .filter(k => groups[k]?.length)
-        .map(k => ({ key: k, label: tc(TIME_LABEL_KEYS[k]), items: groups[k]! }));
-    }
-    const types: Channel['type'][] = ['general', 'issue', 'agent'];
-    return types
-      .filter(type => sortedActiveChannels.some(ch => ch.type === type))
-      .map(type => ({ key: type, label: t(`channel.${type}`), items: sortedActiveChannels.filter(ch => ch.type === type) }));
-  }, [groupMode, sortedActiveChannels, tc, t]);
+  const activeChannels = useMemo(() => channels.filter(c => !c.archived), [channels]);
+  const archivedChannels = useMemo(() => channels.filter(c => c.archived), [channels]);
 
   useEffect(() => {
     setInitialLoading(true);
@@ -136,7 +66,6 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
     ensureAgents();
   }, [workspaceId, loadChannels, ensureAgents]);
 
-  // WS: 自动同步频道变更（新建/更新）
   useEffect(() => {
     const ws = getWS(workspaceId);
     const unsub = ws.on('channel.updated', (data: unknown) => {
@@ -145,62 +74,76 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
     return () => { unsub(); };
   }, [workspaceId, upsertChannel]);
 
-  const toggleSelect = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
+  const sortCompare = useCallback((a: Channel, b: Channel, field: string) => {
+    switch (field) {
+      case 'createdAt':
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      case 'lastReply': {
+        const aLast = messages[a.id]?.at(-1)?.createdAt;
+        const bLast = messages[b.id]?.at(-1)?.createdAt;
+        return (aLast ? new Date(aLast).getTime() : 0) - (bLast ? new Date(bLast).getTime() : 0);
+      }
+      case 'type':
+        return a.type.localeCompare(b.type);
+      default: return 0;
+    }
+  }, [messages]);
+
+  const getStatusGroups = useCallback((sorted: Channel[]) => {
+    const types: Channel['type'][] = ['general', 'issue', 'agent'];
+    return types
+      .filter(type => sorted.some(ch => ch.type === type))
+      .map(type => ({ key: type, label: t(`channel.${type}`), items: sorted.filter(ch => ch.type === type) }));
+  }, [t]);
+
+  const handleSubmit = async (data: { name: string; type: Channel['type']; members: string[]; initialMessage?: string }) => {
+    const memberIds = normalizeChannelMembersToAgentIds(agents, data.members);
+    if (editingChannel) {
+      await updateChannel(workspaceId, editingChannel.id, { name: data.name, type: data.type, members: memberIds });
+    } else {
+      await createChannel(workspaceId, data.name, data.type, memberIds, data.initialMessage);
+      if (data.initialMessage && memberIds.length === 1) {
+        const agent = agents.find(a => a.id === memberIds[0]);
+        const agentName = agent?.name || memberIds[0];
+        const { channels } = useChannelStore.getState();
+        const created = channels[channels.length - 1];
+        if (created) {
+          const mentionHtml = `<span data-type="mention" data-id="${memberIds[0]}" data-label="${agentName}"></span>`;
+          sendMessage(workspaceId, created.id, `${mentionHtml} ${data.initialMessage}`, memberIds);
+        }
+      }
+    }
   };
 
-  const exitMultiSelect = () => {
-    setMultiSelect(false);
-    setSelectedIds(new Set());
+  const handleToggleArchive = async (channel: Channel) => {
+    await updateChannel(workspaceId, channel.id, { archived: !channel.archived });
   };
 
-  const handleBatchArchive = async () => {
-    await Promise.all([...selectedIds].map((id) => {
-      const ch = channels.find((c) => c.id === id);
-      return ch ? updateChannel(workspaceId, id, { archived: true }) : null;
-    }));
-    exitMultiSelect();
+  const handleReveal = async (channelId: string) => {
+    await fetch(`/api/workspaces/${workspaceId}/files/reveal?channelId=${channelId}`, { method: 'POST' });
   };
 
-  const handleBatchDelete = async () => {
-    await Promise.all([...selectedIds].map((id) => deleteChannel(workspaceId, id)));
-    setDeleteTarget(null);
-    exitMultiSelect();
-  };
-
-  const selectedChannels = useMemo(() => [...selectedIds].map((id) => channels.find((c) => c.id === id)).filter(Boolean) as Channel[], [selectedIds, channels]);
-
-  const renderActiveChannel = (ch: Channel) => {
+  const renderChannelItem = (ch: Channel, ctx: ItemCtx) => {
     const preview = lastMsgPreview(messages[ch.id]);
     const badge = typeBadgeConfig[ch.type];
     const isRunning = preview?.status === 'streaming' || preview?.status === 'pending';
-    const agentMembers = ch.members.filter((m) => m !== 'user');
-    const isSelected = selectedIds.has(ch.id);
+    const agentMembers = ch.members.filter(m => m !== 'user');
 
     const trigger = (
       <div
-        key={ch.id}
         className={cn(
           'flex items-start gap-2.5 w-full px-3 py-2 text-sm hover:bg-accent transition-colors text-left',
-          activeChannelId === ch.id && 'bg-accent text-accent-foreground',
-          isSelected && multiSelect && 'bg-blue-500/10',
+          ctx.isActive && 'bg-accent text-accent-foreground',
+          ctx.selected && ctx.multiSelect && 'bg-blue-500/10',
         )}
         onClick={() => {
-          if (multiSelect) { toggleSelect(ch.id); }
-          else { setActiveChannel(ch.id); }
+          if (ctx.multiSelect) ctx.toggleSelect();
+          else setActiveChannel(ch.id);
         }}
       >
-        {multiSelect && (
-          <button
-            type="button"
-            className="shrink-0 mt-0.5"
-            onClick={(e) => { e.stopPropagation(); toggleSelect(ch.id); }}
-          >
-            {isSelected ? <CheckSquare className="size-3.5 text-blue-500" /> : <Square className="size-3.5 text-muted-foreground" />}
+        {ctx.multiSelect && (
+          <button type="button" className="shrink-0 mt-0.5" onClick={e => { e.stopPropagation(); ctx.toggleSelect(); }}>
+            {ctx.selected ? <CheckSquare className="size-3.5 text-blue-500" /> : <Square className="size-3.5 text-muted-foreground" />}
           </button>
         )}
         {(() => { const Icon = badge.icon; return <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-1" />; })()}
@@ -227,302 +170,188 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
       </div>
     );
 
-    if (multiSelect) return trigger;
+    if (ctx.multiSelect) return trigger;
 
     return (
       <ContextMenu key={ch.id}>
         <ContextMenuTrigger>{trigger}</ContextMenuTrigger>
         <ContextMenuContent>
-          <ContextMenuItem onClick={() => handleEdit(ch)}>
-            <Pencil className="size-3.5" />
-            {tc('edit')}
+          <ContextMenuItem onClick={() => { setEditingChannel(ch); setDialogOpen(true); }}>
+            <Pencil className="size-3.5" />{tc('edit')}
           </ContextMenuItem>
           <ContextMenuItem onClick={() => handleReveal(ch.id)}>
-            <FolderOpen className="size-3.5" />
-            {tc('open')}
+            <FolderOpen className="size-3.5" />{tc('open')}
           </ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuItem onClick={() => handleToggleArchive(ch)}>
-            <Archive className="size-3.5" />
-            {t('channel.archive')}
+            <Archive className="size-3.5" />{t('channel.archive')}
           </ContextMenuItem>
           <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteTarget(ch)}>
-            <Trash2 className="size-3.5" />
-            {tc('delete')}
+            <Trash2 className="size-3.5" />{tc('delete')}
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
     );
   };
 
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
-    await deleteChannel(workspaceId, deleteTarget.id);
-    setDeleteTarget(null);
-  };
+  const renderArchivedChannel = (ch: Channel) => {
+    const preview = lastMsgPreview(messages[ch.id]);
+    const badge = typeBadgeConfig[ch.type];
 
-  const handleSubmit = async (data: { name: string; type: Channel['type']; members: string[]; initialMessage?: string }) => {
-    const memberIds = normalizeChannelMembersToAgentIds(agents, data.members);
-    if (editingChannel) {
-      await updateChannel(workspaceId, editingChannel.id, {
-        name: data.name,
-        type: data.type,
-        members: memberIds,
-      });
-    } else {
-      await createChannel(workspaceId, data.name, data.type, memberIds, data.initialMessage);
-      if (data.initialMessage && memberIds.length === 1) {
-        const agent = agents.find((a) => a.id === memberIds[0]);
-        const agentName = agent?.name || memberIds[0];
-        const { channels } = useChannelStore.getState();
-        const created = channels[channels.length - 1];
-        if (created) {
-          const mentionHtml = `<span data-type="mention" data-id="${memberIds[0]}" data-label="${agentName}"></span>`;
-          sendMessage(workspaceId, created.id, `${mentionHtml} ${data.initialMessage}`, memberIds);
-        }
-      }
-    }
-  };
-
-  const handleEdit = (channel: Channel) => {
-    setEditingChannel(channel);
-    setDialogOpen(true);
-  };
-
-  const handleDialogOpenChange = (open: boolean) => {
-    setDialogOpen(open);
-    if (!open) setEditingChannel(null);
-  };
-
-  const handleReveal = async (channelId: string) => {
-    await fetch(`/api/workspaces/${workspaceId}/files/reveal?channelId=${channelId}`, { method: 'POST' });
-  };
-
-  const handleToggleArchive = async (channel: Channel) => {
-    await updateChannel(workspaceId, channel.id, { archived: !channel.archived });
-  };
-
-  const handleClearArchived = async () => {
-    await Promise.all(archivedChannels.map((c) => deleteChannel(workspaceId, c.id)));
-    setClearArchiveOpen(false);
+    return (
+      <ContextMenu key={ch.id}>
+        <ContextMenuTrigger
+          className={cn(
+            'flex items-start gap-2.5 w-full px-3 py-2 text-sm hover:bg-accent transition-colors text-left opacity-60',
+            activeChannelId === ch.id && 'bg-accent text-accent-foreground opacity-100',
+          )}
+          onClick={() => setActiveChannel(ch.id)}
+        >
+          {(() => { const Icon = badge.icon; return <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-1" />; })()}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="truncate font-medium text-[13px]">{ch.name}</span>
+              <Badge variant="secondary" className={cn('text-[10px] px-1 py-0 h-4 rounded', badge.className)}>
+                {t(`channel.${ch.type}`)}
+              </Badge>
+            </div>
+            {preview ? (
+              <p className="text-xs text-muted-foreground truncate mt-0.5">{preview.text}</p>
+            ) : (
+              <p className="text-xs text-muted-foreground/50 mt-0.5">{t('emptyState')}</p>
+            )}
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem onClick={() => setActiveChannel(ch.id)}>
+            <FolderOpen className="size-3.5" />{tc('open')}
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem onClick={() => handleToggleArchive(ch)}>
+            <ArchiveRestore className="size-3.5" />{t('channel.unarchive')}
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+    );
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-2 py-1.5 border-b text-xs font-medium text-muted-foreground">
-        <span>{t('channel.general')}</span>
-        <div className="flex items-center gap-0.5">
-          {multiSelect && selectedIds.size > 0 && (
-            <>
-              <button onClick={handleBatchArchive} className="p-0.5 hover:bg-accent rounded cursor-pointer" title={t('channel.archive')}>
-                <Archive className="size-3.5" />
-              </button>
-              <button onClick={() => setDeleteTarget(selectedChannels[0])} className="p-0.5 hover:bg-accent rounded cursor-pointer text-destructive" title={tc('delete')}>
-                <Trash2 className="size-3.5" />
-              </button>
-            </>
-          )}
-          <button onClick={() => { if (multiSelect) exitMultiSelect(); else setMultiSelect(true); }} className={cn('p-0.5 hover:bg-accent rounded cursor-pointer', multiSelect && 'bg-accent')} title={t('channel.multiSelect')}>
-            <CheckSquare className="size-3.5" />
-          </button>
-          <button onClick={() => setDialogOpen(true)} className="p-0.5 hover:bg-accent rounded cursor-pointer">
-            <Plus className="size-3.5" />
-          </button>
-          <DropdownMenu>
-            <DropdownMenuTrigger className="p-0.5 hover:bg-accent rounded">
-              <ArrowUpDown className="size-3.5" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-40">
-              {([
-                { field: 'createdAt' as const, label: tc('sortByCreated') },
-                { field: 'lastReply' as const, label: tc('sortByLastReply') },
-                { field: 'type' as const, label: tc('sortByStatus') },
-              ]).map(({ field, label }) => (
-                <DropdownMenuItem key={field} onClick={() => {
-                  if (sortField === field) setSortOrder((o) => o === 'asc' ? 'desc' : 'asc');
-                  else { setSortField(field); setSortOrder('desc'); }
-                }}>
-                  {sortField === field && <Check className="size-3.5" />}
-                  {label}
-                  {sortField === field && <span className="ml-auto text-[10px] text-muted-foreground">{sortOrder === 'asc' ? '↑' : '↓'}</span>}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <DropdownMenu>
-            <DropdownMenuTrigger className="p-0.5 hover:bg-accent rounded">
-              <MoreHorizontal className="size-3.5" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-48">
-              <DropdownMenuItem onClick={() => setGroupMode('none')}>
-                {groupMode === 'none' && <Check className="size-3.5" />}
-                {tc('groupNone')}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setGroupMode('time')}>
-                {groupMode === 'time' && <Check className="size-3.5" />}
-                {tc('groupByTime')}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setGroupMode('status')}>
-                {groupMode === 'status' && <Check className="size-3.5" />}
-                {tc('groupByStatus')}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                disabled={archivedChannels.length === 0}
-                onClick={() => setClearArchiveOpen(true)}
-              >
-                <Trash2 className="size-3.5" />
-                {t('channel.clearArchived')}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+    <ItemListPanel
+      title={t('channel.general')}
+      items={activeChannels}
+      archivedItems={archivedChannels}
+      getItemId={ch => ch.id}
+      getItemDate={ch => ch.createdAt}
+      activeId={activeChannelId ?? undefined}
+      loading={initialLoading}
+      sortFields={[
+        { value: 'createdAt', label: tc('sortByCreated') },
+        { value: 'lastReply', label: tc('sortByLastReply') },
+        { value: 'type', label: tc('sortByStatus') },
+      ]}
+      defaultSortField="createdAt"
+      sortCompare={sortCompare}
+      defaultGroupMode="none"
+      getStatusGroups={getStatusGroups}
+      renderItem={renderChannelItem}
+      renderArchivedItem={renderArchivedChannel}
+      renderSkeleton={i => (
+        <div key={i} className="flex items-start gap-2.5 px-3 py-2">
+          <Skeleton className="size-3.5 rounded shrink-0 mt-1" />
+          <div className="flex-1 min-w-0 space-y-1.5">
+            <div className="flex items-center gap-1.5">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-4 w-8 rounded-full" />
+            </div>
+            <Skeleton className="h-3 w-3/4" />
+          </div>
         </div>
-      </div>
-      <div className="flex-1 overflow-y-auto">
-        {initialLoading ? (
-          <div className="p-2 space-y-1">
-            <SkeletonGroup count={4}>
-              {(i) => (
-                <div key={i} className="flex items-start gap-2.5 px-3 py-2">
-                  <Skeleton className="size-3.5 rounded shrink-0 mt-1" />
-                  <div className="flex-1 min-w-0 space-y-1.5">
-                    <div className="flex items-center gap-1.5">
-                      <Skeleton className="h-4 w-20" />
-                      <Skeleton className="h-4 w-8 rounded-full" />
-                    </div>
-                    <Skeleton className="h-3 w-3/4" />
-                  </div>
-                </div>
-              )}
-            </SkeletonGroup>
+      )}
+      skeletonCount={4}
+      emptyState={
+        <div className="flex flex-col items-center justify-center h-full gap-3 px-4 text-center">
+          <div className="rounded-full bg-muted p-3">
+            <MessageCircle className="h-5 w-5 text-muted-foreground" />
           </div>
-        ) : null}
-        {!initialLoading && activeChannels.length === 0 && archivedChannels.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full gap-3 px-4 text-center">
-            <div className="rounded-full bg-muted p-3">
-              <MessageCircle className="h-5 w-5 text-muted-foreground" />
-            </div>
-            <div>
-              <p className="text-sm font-medium">{t('channel.noMembers')}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{t('channel.create')}</p>
-            </div>
-            <Button size="sm" variant="outline" onClick={() => setDialogOpen(true)}>
-              <Plus className="h-3.5 w-3.5 mr-1" />
-              {tc('add')}
-            </Button>
+          <div>
+            <p className="text-sm font-medium">{t('channel.noMembers')}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{t('channel.create')}</p>
           </div>
-        ) : null}
-        {!initialLoading && groupMode === 'none' && sortedActiveChannels.map((ch) => renderActiveChannel(ch))}
-        {!initialLoading && groupMode !== 'none' && channelGroups?.map((group) => (
-          <Collapsible key={group.key} open={groupOpen[group.key] !== false} onOpenChange={(open) => setGroupOpen((prev) => ({ ...prev, [group.key]: open }))}>
-            <CollapsibleTrigger className="flex items-center gap-1 w-full px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent transition-colors">
-              <ChevronRight className={cn('size-3 transition-transform', groupOpen[group.key] !== false && 'rotate-90')} />
-              {group.label} ({group.items.length})
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              {group.items.map((ch) => renderActiveChannel(ch))}
-            </CollapsibleContent>
-          </Collapsible>
-        ))}
-
-        {!initialLoading && archivedChannels.length > 0 && (
-          <Collapsible open={archivedOpen} onOpenChange={setArchivedOpen}>
-            <CollapsibleTrigger className="flex items-center gap-1 w-full px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent transition-colors">
-              <ChevronRight className={cn('size-3 transition-transform', archivedOpen && 'rotate-90')} />
-              <Archive className="size-3" />
-              {t('channel.archived')} ({archivedChannels.length})
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              {archivedChannels.map((ch) => {
-                const preview = lastMsgPreview(messages[ch.id]);
-                const badge = typeBadgeConfig[ch.type];
-
-                return (
-                  <ContextMenu key={ch.id}>
-                    <ContextMenuTrigger
-                      className={cn(
-                        'flex items-start gap-2.5 w-full px-3 py-2 text-sm hover:bg-accent transition-colors text-left opacity-60',
-                        activeChannelId === ch.id && 'bg-accent text-accent-foreground opacity-100',
-                      )}
-                      onClick={() => setActiveChannel(ch.id)}
-                    >
-                      {(() => {
-                        const Icon = badge.icon;
-                        return <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-1" />;
-                      })()}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className="truncate font-medium text-[13px]">{ch.name}</span>
-                          <Badge variant="secondary" className={cn('text-[10px] px-1 py-0 h-4 rounded', badge.className)}>
-                            {t(`channel.${ch.type}`)}
-                          </Badge>
-                        </div>
-                        {preview ? (
-                          <p className="text-xs text-muted-foreground truncate mt-0.5">{preview.text}</p>
-                        ) : (
-                          <p className="text-xs text-muted-foreground/50 mt-0.5">{t('emptyState')}</p>
-                        )}
-                      </div>
-                    </ContextMenuTrigger>
-                    <ContextMenuContent>
-                      <ContextMenuItem onClick={() => setActiveChannel(ch.id)}>
-                        <FolderOpen className="size-3.5" />
-                        {tc('open')}
-                      </ContextMenuItem>
-                      <ContextMenuSeparator />
-                      <ContextMenuItem onClick={() => handleToggleArchive(ch)}>
-                        <ArchiveRestore className="size-3.5" />
-                        {t('channel.unarchive')}
-                      </ContextMenuItem>
-                    </ContextMenuContent>
-                  </ContextMenu>
-                );
-              })}
-            </CollapsibleContent>
-          </Collapsible>
-        )}
-      </div>
-
-      <ChannelDialog
-        open={dialogOpen}
-        onOpenChange={handleDialogOpenChange}
-        workspaceId={workspaceId}
-        channel={editingChannel}
-        agents={agents}
-        onSubmit={handleSubmit}
-      />
-
-      <AlertDialog open={clearArchiveOpen} onOpenChange={setClearArchiveOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('channel.clearArchived')}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t('channel.clearArchivedConfirm', { count: archivedChannels.length })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleClearArchived}>{tc('delete')}</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{tc('delete')}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {multiSelect && selectedIds.size > 1
-                ? t('channel.batchDeleteConfirm', { count: selectedIds.size })
-                : t('channel.deleteConfirm', { name: deleteTarget?.name ?? '' })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={multiSelect && selectedIds.size > 1 ? handleBatchDelete : handleDelete}>{tc('delete')}</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+          <Button size="sm" variant="outline" onClick={() => setDialogOpen(true)}>
+            <Plus className="h-3.5 w-3.5 mr-1" />{tc('add')}
+          </Button>
+        </div>
+      }
+      archivedLabel={t('channel.archived')}
+      clearArchivedTitle={t('channel.clearArchived')}
+      clearArchivedConfirm={t('channel.clearArchivedConfirm', { count: archivedChannels.length })}
+      onClearArchived={() => Promise.all(archivedChannels.map(c => deleteChannel(workspaceId, c.id)))}
+      enableMultiSelect
+      multiSelectLabel={t('channel.multiSelect')}
+      batchActions={(ids, exit) => (
+        <>
+          <button onClick={() => Promise.all([...ids].map(id => updateChannel(workspaceId, id, { archived: true }))).then(exit)} className="p-0.5 hover:bg-accent rounded cursor-pointer" title={t('channel.archive')}>
+            <Archive className="size-3.5" />
+          </button>
+          <button onClick={() => setBatchDeleteInfo({ ids: new Set(ids), exit })} className="p-0.5 hover:bg-accent rounded cursor-pointer text-destructive" title={tc('delete')}>
+            <Trash2 className="size-3.5" />
+          </button>
+        </>
+      )}
+      tc={tc}
+      headerButtons={
+        <button onClick={() => setDialogOpen(true)} className="p-0.5 hover:bg-accent rounded cursor-pointer">
+          <Plus className="size-3.5" />
+        </button>
+      }
+      dialogs={
+        <>
+          <ChannelDialog
+            open={dialogOpen}
+            onOpenChange={open => { setDialogOpen(open); if (!open) setEditingChannel(null); }}
+            workspaceId={workspaceId}
+            channel={editingChannel}
+            agents={agents}
+            onSubmit={handleSubmit}
+          />
+          <AlertDialog open={!!deleteTarget} onOpenChange={open => !open && setDeleteTarget(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{tc('delete')}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {t('channel.deleteConfirm', { name: deleteTarget?.name ?? '' })}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
+                <AlertDialogAction onClick={async () => {
+                  if (deleteTarget) await deleteChannel(workspaceId, deleteTarget.id);
+                  setDeleteTarget(null);
+                }}>{tc('delete')}</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <AlertDialog open={!!batchDeleteInfo} onOpenChange={open => !open && setBatchDeleteInfo(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{tc('delete')}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {t('channel.batchDeleteConfirm', { count: batchDeleteInfo?.ids.size ?? 0 })}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
+                <AlertDialogAction onClick={async () => {
+                  if (!batchDeleteInfo) return;
+                  await Promise.all([...batchDeleteInfo.ids].map(id => deleteChannel(workspaceId, id)));
+                  batchDeleteInfo.exit();
+                  setBatchDeleteInfo(null);
+                }}>{tc('delete')}</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
+      }
+    />
   );
 }

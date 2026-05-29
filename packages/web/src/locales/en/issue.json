@@ -20,7 +20,9 @@
     "unarchive": "Unarchive",
     "archived": "Archived",
     "clearArchived": "Clear Archived",
-    "clearArchivedConfirm": "Delete {count} archived {count, plural, one {issue} other {issues}}? This cannot be undone."
+    "clearArchivedConfirm": "Delete {count} archived {count, plural, one {issue} other {issues}}? This cannot be undone.",
+    "batchDeleteConfirm": "Delete {count} {count, plural, one {issue} other {issues}}? This cannot be undone.",
+    "multiSelect": "Multi select"
   },
   "detail": {
     "selectIssue": "Select an issue to view details",

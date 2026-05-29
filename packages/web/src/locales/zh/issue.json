@@ -20,7 +20,9 @@
     "unarchive": "取消归档",
     "archived": "已归档",
     "clearArchived": "清空归档",
-    "clearArchivedConfirm": "确认删除 {count} 个已归档的议题？此操作不可撤销。"
+    "clearArchivedConfirm": "确认删除 {count} 个已归档的议题？此操作不可撤销。",
+    "batchDeleteConfirm": "确认删除 {count} 个议题？此操作不可撤销。",
+    "multiSelect": "多选"
   },
   "detail": {
     "selectIssue": "选择一个议题查看详情",
