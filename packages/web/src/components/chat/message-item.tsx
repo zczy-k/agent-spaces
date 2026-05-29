@@ -91,7 +91,20 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
           <span className="text-[10px] text-muted-foreground">{time}</span>
         </div>
         )}
-        <div className={`min-w-0 max-w-full text-sm rounded-lg px-3 py-2 ${isUser ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+        <div className={`relative overflow-hidden rounded-lg ${!isUser && isStreaming ? 'p-[1px]' : ''}`}>
+          {!isUser && isStreaming && (
+            <>
+              <div
+                className="absolute w-[300%] h-[50%] opacity-70 bottom-[-11px] right-[-250%] rounded-full animate-star-movement-bottom z-0"
+                style={{ background: 'radial-gradient(circle, hsl(var(--primary) / 0.8), transparent 10%)' }}
+              />
+              <div
+                className="absolute w-[300%] h-[50%] opacity-70 top-[-10px] left-[-250%] rounded-full animate-star-movement-top z-0"
+                style={{ background: 'radial-gradient(circle, hsl(var(--primary) / 0.8), transparent 10%)' }}
+              />
+            </>
+          )}
+        <div className={`min-w-0 max-w-full text-sm rounded-lg px-3 py-2 relative z-[1] ${isUser ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
           <MessageParts message={message} isUser={isUser} workspaceId={workspaceId} />
           {!isUser && isStreaming && (
             <div className="mt-1">
@@ -120,6 +133,7 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
               </div>
             </div>
           )}
+        </div>
         </div>
         <div className="flex items-center gap-0.5 h-6 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
