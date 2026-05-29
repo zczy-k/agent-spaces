@@ -74,5 +74,6 @@
   "aspectRatio": "裁剪比例",
   "aspectCircle": "圆形",
   "aspect3x4": "3:4",
-  "aspect16x9": "16:9"
+  "aspect16x9": "16:9",
+  "primaryColor": "主题色"
 }

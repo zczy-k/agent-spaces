@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
-import { fetchStoreIndex } from '@/lib/agent-store';
+import { fetchStoreIndex, getStoreApiBase } from '@/lib/agent-store';
 import {
   Dialog,
   DialogContent,
@@ -294,7 +294,11 @@ export function McpsDialog({ open, onOpenChange, standalone }: McpsDialogProps) 
     if (importedStoreIds.has(storeItem.name) || importingIds.has(storeItem.id)) return;
     setImportingIds((prev) => new Set(prev).add(storeItem.id));
     try {
-      const contentRes = await fetch(`/agents-store/mcps/${storeItem.filename}`);
+      const base = getStoreApiBase();
+      const contentUrl = base
+        ? `${base.replace(/\/+$/, '')}/mcps/${storeItem.filename}`
+        : `/agents-store/mcps/${storeItem.filename}`;
+      const contentRes = await fetch(contentUrl);
       if (!contentRes.ok) return;
       const jsonText = await contentRes.text();
       const res = await fetch('/api/mcps/import', {
@@ -336,7 +340,281 @@ export function McpsDialog({ open, onOpenChange, standalone }: McpsDialogProps) 
 
   const showMainDialog = (standalone || open) && !bindDialogMcp && !editMcp;
 
-  // Extract main body content (DialogHeader + filters + cards)
+  const localView = (
+    <div className="flex flex-1 min-h-0 gap-4 pt-2">
+      <div className="hidden md:flex w-44 shrink-0 flex-col gap-3">
+        <div className="space-y-1">
+          <Button
+            variant={filterMode === 'all' ? 'secondary' : 'ghost'}
+            size="sm"
+            className="w-full justify-start"
+            onClick={() => { setFilterMode('all'); setFilterAgentId(''); }}
+          >
+            <Plug className="size-3.5 mr-1.5" />
+            {t('filterAll')}
+          </Button>
+          <Button
+            variant={filterMode === 'favorites' ? 'secondary' : 'ghost'}
+            size="sm"
+            className="w-full justify-start"
+            onClick={() => { setFilterMode('favorites'); setFilterAgentId(''); }}
+          >
+            <Star className="size-3.5 mr-1.5" />
+            {t('filterFavorites')}
+          </Button>
+        </div>
+
+        {agents.length > 0 && (
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-muted-foreground px-2">{t('filterByAgent')}</p>
+            <ScrollArea className="max-h-48">
+              {agents.map((agent) => (
+                <Button
+                  key={agent.id}
+                  variant={filterMode === 'agent' && filterAgentId === agent.id ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="w-full justify-start"
+                  onClick={() => { setFilterMode('agent'); setFilterAgentId(agent.id); }}
+                >
+                  <AgentIcon agentId={agent.id} name={agent.name} avatarUrl={agent.avatarUrl} className="size-4 mr-1.5 rounded-full" />
+                  <span className="truncate">{agent.name}</span>
+                </Button>
+              ))}
+            </ScrollArea>
+          </div>
+        )}
+      </div>
+
+      <div className="flex-1 min-w-0 flex flex-col gap-3">
+        <div className="flex md:hidden flex-col gap-2">
+          <div className="relative">
+            <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t('search')}
+              className="pl-8"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex rounded-lg border border-input p-0.5">
+              <button
+                type="button"
+                className={cn(
+                  'px-2.5 py-1 rounded-md text-xs font-medium transition-colors',
+                  filterMode === 'all' ? 'bg-muted' : 'text-muted-foreground hover:text-foreground',
+                )}
+                onClick={() => { setFilterMode('all'); setFilterAgentId(''); }}
+              >
+                {t('filterAll')}
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  'px-2.5 py-1 rounded-md text-xs font-medium transition-colors',
+                  filterMode === 'favorites' ? 'bg-muted' : 'text-muted-foreground hover:text-foreground',
+                )}
+                onClick={() => { setFilterMode('favorites'); setFilterAgentId(''); }}
+              >
+                <Star className="size-3 inline-block mr-0.5 -mt-px" />
+                {t('filterFavorites')}
+              </button>
+            </div>
+            {agents.length > 0 && (
+              <SearchSelect
+                value={filterMode === 'agent' ? filterAgentId : ''}
+                onChange={(v) => {
+                  if (v) { setFilterMode('agent'); setFilterAgentId(v); }
+                  else { setFilterMode('all'); setFilterAgentId(''); }
+                }}
+                options={agents.map((a) => ({ value: a.id, label: a.name }))}
+                placeholder={t('filterByAgent')}
+                allowCustom={false}
+                className="flex-1 min-w-0"
+              />
+            )}
+          </div>
+        </div>
+
+        <div className="hidden md:block relative">
+          <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t('search')}
+            className="pl-8"
+          />
+        </div>
+
+        <ScrollArea className="flex-1">
+          {loading ? (
+            <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
+              {tc('loading')}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
+              {t('empty')}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 pr-2">
+              {filtered.map((mcp) => (
+                <div
+                  key={mcp.name}
+                  className="rounded-xl border border-border bg-background p-4 hover:bg-accent/30 transition-colors cursor-pointer"
+                  onClick={() => openEditDialog(mcp)}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <Plug className="size-3.5 text-muted-foreground" />
+                        <span className="font-medium text-sm">{mcp.name}</span>
+                        <button
+                          type="button"
+                          className="flex items-center justify-center size-5 rounded hover:bg-accent cursor-pointer"
+                          onClick={(e) => { e.stopPropagation(); handleToggleFavorite(mcp); }}
+                        >
+                          {mcp.favorited ? (
+                            <Star className="size-3.5 text-yellow-500 fill-yellow-500" />
+                          ) : (
+                            <StarOff className="size-3.5 text-muted-foreground" />
+                          )}
+                        </button>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                        {mcp.description || mcp.config.command || mcp.config.url || JSON.stringify(mcp.config).slice(0, 100)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openBindDialog(mcp)}
+                      >
+                        <Rocket className="size-3.5 mr-1" />
+                        {t('apply')}
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          render={
+                            <Button variant="ghost" size="icon" className="size-7" />
+                          }
+                        >
+                          <MoreVertical className="size-3.5" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => handleDeleteMcp(mcp)}
+                          >
+                            <Trash2 className="size-3.5 mr-1.5" />
+                            {t('delete')}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+
+                  {mcp.boundAgents.length > 0 && (
+                    <div className="flex items-center gap-1.5 mt-2.5 pt-2.5 border-t border-border/50">
+                      {mcp.boundAgents.map((agent) => (
+                        <AgentIcon
+                          key={agent.id}
+                          agentId={agent.id}
+                          name={agent.name}
+                          avatarUrl={agent.avatarUrl}
+                          className="size-5 rounded-full"
+                        />
+                      ))}
+                      <span className="text-xs text-muted-foreground ml-1">
+                        {mcp.boundAgents.length}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </ScrollArea>
+      </div>
+    </div>
+  );
+
+  const storeView = (
+    <div className="flex flex-1 min-h-0 gap-4 pt-2">
+      <div className="flex-1 min-w-0 flex flex-col gap-3">
+        <div className="relative">
+          <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t('search')}
+            className="pl-8"
+          />
+        </div>
+
+        <ScrollArea className="flex-1">
+          {storeLoading ? (
+            <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
+              {tc('loading')}
+            </div>
+          ) : filteredStore.length === 0 ? (
+            <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
+              {t('storeEmpty')}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pr-2">
+              {filteredStore.map((item) => {
+                const isImported = importedStoreIds.has(item.name);
+                const isImporting = importingIds.has(item.id);
+                return (
+                  <div
+                    key={item.id}
+                    className="rounded-xl border border-border bg-background p-4 hover:bg-accent/30 transition-colors"
+                  >
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <Store className="size-3.5 text-muted-foreground shrink-0" />
+                          <span className="font-medium text-sm truncate">{item.name}</span>
+                        </div>
+                        <Button
+                          variant={isImported ? 'ghost' : 'outline'}
+                          size="sm"
+                          className="h-6 px-1.5 text-xs shrink-0"
+                          disabled={isImported || isImporting}
+                          onClick={() => handleStoreImport(item)}
+                        >
+                          {isImported ? (
+                            <>{t('imported')}</>
+                          ) : isImporting ? (
+                            <>{t('importing')}</>
+                          ) : (
+                            <>
+                              <Download className="size-3 mr-0.5" />
+                              {t('importTo')}
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground line-clamp-2">
+                        {item.description}
+                      </p>
+                      {item.needsEnv && item.needsEnv.length > 0 && (
+                        <p className="text-xs text-amber-500">
+                          {t('needsEnv', { keys: item.needsEnv.join(', ') })}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </ScrollArea>
+      </div>
+    </div>
+  );
+
   const mainBody = (
     <>
       <DialogHeader>
@@ -388,7 +666,6 @@ export function McpsDialog({ open, onOpenChange, standalone }: McpsDialogProps) 
         </div>
       </DialogHeader>
 
-      {/* Tabs */}
       <div className="flex items-center gap-1 border-b border-border px-1">
         {([['local', Plug, t('tabLocal')], ['store', Store, t('tabStore')]] as const).map(([key, Icon, label]) => (
           <button
@@ -407,210 +684,6 @@ export function McpsDialog({ open, onOpenChange, standalone }: McpsDialogProps) 
       </div>
 
       {activeTab === 'local' ? localView : storeView}
-    </>
-  );
-
-  const localView = (
-    <div className="flex flex-1 min-h-0 gap-4 pt-2">
-        <div className="hidden md:flex w-44 shrink-0 flex-col gap-3">
-          <div className="space-y-1">
-            <Button
-              variant={filterMode === 'all' ? 'secondary' : 'ghost'}
-              size="sm"
-              className="w-full justify-start"
-              onClick={() => { setFilterMode('all'); setFilterAgentId(''); }}
-            >
-              <Plug className="size-3.5 mr-1.5" />
-              {t('filterAll')}
-            </Button>
-            <Button
-              variant={filterMode === 'favorites' ? 'secondary' : 'ghost'}
-              size="sm"
-              className="w-full justify-start"
-              onClick={() => { setFilterMode('favorites'); setFilterAgentId(''); }}
-            >
-              <Star className="size-3.5 mr-1.5" />
-              {t('filterFavorites')}
-            </Button>
-          </div>
-
-          {agents.length > 0 && (
-            <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground px-2">{t('filterByAgent')}</p>
-              <ScrollArea className="max-h-48">
-                {agents.map((agent) => (
-                  <Button
-                    key={agent.id}
-                    variant={filterMode === 'agent' && filterAgentId === agent.id ? 'secondary' : 'ghost'}
-                    size="sm"
-                    className="w-full justify-start"
-                    onClick={() => { setFilterMode('agent'); setFilterAgentId(agent.id); }}
-                  >
-                    <AgentIcon agentId={agent.id} name={agent.name} avatarUrl={agent.avatarUrl} className="size-4 mr-1.5 rounded-full" />
-                    <span className="truncate">{agent.name}</span>
-                  </Button>
-                ))}
-              </ScrollArea>
-            </div>
-          )}
-        </div>
-
-        {/* Right: MCP cards */}
-        <div className="flex-1 min-w-0 flex flex-col gap-3">
-          {/* Mobile: Top filters */}
-          <div className="flex md:hidden flex-col gap-2">
-            <div className="relative">
-              <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={t('search')}
-                className="pl-8"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="flex rounded-lg border border-input p-0.5">
-                <button
-                  type="button"
-                  className={cn(
-                    'px-2.5 py-1 rounded-md text-xs font-medium transition-colors',
-                    filterMode === 'all' ? 'bg-muted' : 'text-muted-foreground hover:text-foreground',
-                  )}
-                  onClick={() => { setFilterMode('all'); setFilterAgentId(''); }}
-                >
-                  {t('filterAll')}
-                </button>
-                <button
-                  type="button"
-                  className={cn(
-                    'px-2.5 py-1 rounded-md text-xs font-medium transition-colors',
-                    filterMode === 'favorites' ? 'bg-muted' : 'text-muted-foreground hover:text-foreground',
-                  )}
-                  onClick={() => { setFilterMode('favorites'); setFilterAgentId(''); }}
-                >
-                  <Star className="size-3 inline-block mr-0.5 -mt-px" />
-                  {t('filterFavorites')}
-                </button>
-              </div>
-              {agents.length > 0 && (
-                <SearchSelect
-                  value={filterMode === 'agent' ? filterAgentId : ''}
-                  onChange={(v) => {
-                    if (v) { setFilterMode('agent'); setFilterAgentId(v); }
-                    else { setFilterMode('all'); setFilterAgentId(''); }
-                  }}
-                  options={agents.map((a) => ({ value: a.id, label: a.name }))}
-                  placeholder={t('filterByAgent')}
-                  allowCustom={false}
-                  className="flex-1 min-w-0"
-                />
-              )}
-            </div>
-          </div>
-
-          {/* Desktop: Search bar */}
-          <div className="hidden md:block relative">
-            <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t('search')}
-              className="pl-8"
-            />
-          </div>
-
-          <ScrollArea className="flex-1">
-            {loading ? (
-              <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
-                {tc('loading')}
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
-                {t('empty')}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-3 pr-2">
-                {filtered.map((mcp) => (
-                  <div
-                    key={mcp.name}
-                    className="rounded-xl border border-border bg-background p-4 hover:bg-accent/30 transition-colors cursor-pointer"
-                    onClick={() => openEditDialog(mcp)}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <Plug className="size-3.5 text-muted-foreground" />
-                          <span className="font-medium text-sm">{mcp.name}</span>
-                          <button
-                            type="button"
-                            className="flex items-center justify-center size-5 rounded hover:bg-accent cursor-pointer"
-                            onClick={(e) => { e.stopPropagation(); handleToggleFavorite(mcp); }}
-                          >
-                            {mcp.favorited ? (
-                              <Star className="size-3.5 text-yellow-500 fill-yellow-500" />
-                            ) : (
-                              <StarOff className="size-3.5 text-muted-foreground" />
-                            )}
-                          </button>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                          {mcp.description || mcp.config.command || mcp.config.url || JSON.stringify(mcp.config).slice(0, 100)}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openBindDialog(mcp)}
-                        >
-                          <Rocket className="size-3.5 mr-1" />
-                          {t('apply')}
-                        </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger
-                            render={
-                              <Button variant="ghost" size="icon" className="size-7" />
-                            }
-                          >
-                            <MoreVertical className="size-3.5" />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onClick={() => handleDeleteMcp(mcp)}
-                            >
-                              <Trash2 className="size-3.5 mr-1.5" />
-                              {t('delete')}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-
-                    {/* Bound agents */}
-                    {mcp.boundAgents.length > 0 && (
-                      <div className="flex items-center gap-1.5 mt-2.5 pt-2.5 border-t border-border/50">
-                        {mcp.boundAgents.map((agent) => (
-                          <AgentIcon
-                            key={agent.id}
-                            agentId={agent.id}
-                            name={agent.name}
-                            avatarUrl={agent.avatarUrl}
-                            className="size-5 rounded-full"
-                          />
-                        ))}
-                        <span className="text-xs text-muted-foreground ml-1">
-                          {mcp.boundAgents.length}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </ScrollArea>
-        </div>
-      </div>
     </>
   );
 

@@ -16,5 +16,12 @@
   "editTitle": "编辑 MCP - {name}",
   "editDescription": "编辑 MCP 服务器配置（JSON）",
   "bindTitle": "绑定智能体 - {name}",
-  "bindDescription": "选择要绑定此 MCP 服务器的智能体"
+  "bindDescription": "选择要绑定此 MCP 服务器的智能体",
+  "tabLocal": "本地",
+  "tabStore": "商店",
+  "storeEmpty": "商店暂无 MCP 服务器",
+  "importTo": "导入",
+  "imported": "已导入",
+  "importing": "导入中...",
+  "needsEnv": "需要配置: {keys}"
 }

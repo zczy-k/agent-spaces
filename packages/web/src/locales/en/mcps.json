@@ -16,5 +16,12 @@
   "editTitle": "Edit MCP - {name}",
   "editDescription": "Edit MCP server config (JSON)",
   "bindTitle": "Bind Agents - {name}",
-  "bindDescription": "Select agents to bind this MCP server to"
+  "bindDescription": "Select agents to bind this MCP server to",
+  "tabLocal": "Local",
+  "tabStore": "Store",
+  "storeEmpty": "No MCP servers in store",
+  "importTo": "Import",
+  "imported": "Imported",
+  "importing": "Importing...",
+  "needsEnv": "Requires: {keys}"
 }
