@@ -57,6 +57,7 @@ export interface AgentUsageDashboard {
   daily: Array<{
     date: string;
     label: string;
+    requests: number;
     inputTokens: number;
     outputTokens: number;
     totalTokens: number;

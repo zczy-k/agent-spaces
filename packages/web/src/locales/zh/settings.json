@@ -3,6 +3,7 @@
   "description": "自定义工作空间外观",
   "userAvatar": "用户头像",
   "theme": "主题",
+  "startup": "启动",
   "themeLight": "浅色",
   "themeDark": "深色",
   "themeSystem": "跟随系统",

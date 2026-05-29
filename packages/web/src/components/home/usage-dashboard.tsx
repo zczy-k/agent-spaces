@@ -325,7 +325,12 @@ export function UsageDashboard() {
           <div className="border-b px-4 py-3">
             <span className="font-medium text-xs">{t('chart.activityHeatmap')}</span>
             <div className="mt-2">
-              <ActivityGraph blockSize={11} weeks={weeks} data={daily.map((item) => ({ date: item.date, count: item.totalTokens > 0 ? 1 : 0 }))} />
+              <ActivityGraph
+                blockSize={11}
+                weeks={weeks}
+                data={daily.map((item) => ({ date: item.date, count: item.requests }))}
+                formatCount={(count) => `${formatNumber(count)} session${count === 1 ? "" : "s"}`}
+              />
             </div>
           </div>
         )

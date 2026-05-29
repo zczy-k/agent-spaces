@@ -3,6 +3,7 @@
   "description": "Customize your workspace appearance",
   "userAvatar": "User Avatar",
   "theme": "Theme",
+  "startup": "Startup",
   "themeLight": "Light",
   "themeDark": "Dark",
   "themeSystem": "System",

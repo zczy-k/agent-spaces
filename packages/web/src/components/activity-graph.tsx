@@ -18,13 +18,13 @@
  * - weeks?: number of weeks to display (default 52)
  * - className?: additional CSS classes
  *
- * Dependencies: radix-ui (Tooltip)
+ * Dependencies: shared Tooltip component
  * Inspiration: GitHub contribution graph
  * Data fetching powered by github-contributions-api by @grubersjoe
  */
 
 import * as React from "react"
-import { Tooltip } from "radix-ui"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 
 export interface ActivityEntry {
@@ -52,6 +52,8 @@ export interface ActivityGraphProps extends Omit<React.ComponentProps<"div">, "c
   blockRadius?: number
   /** Number of trailing weeks to display. @default 52 */
   weeks?: number
+  /** Formats the count shown in the cell tooltip. */
+  formatCount?: (count: number) => string
   className?: string
 }
 
@@ -165,6 +167,7 @@ export function ActivityGraph({
   blockSize: fixedBlockSize,
   blockRadius = 2,
   weeks: weekCount = 52,
+  formatCount,
   className,
   ...props
 }: ActivityGraphProps) {
@@ -265,33 +268,32 @@ export function ActivityGraph({
                   {week.map((day, di) => {
                     const intensity = getIntensity(day.count, maxCount)
                     return (
-                      <Tooltip.Provider key={di} delayDuration={100}>
-                        <Tooltip.Root>
-                          <Tooltip.Trigger render={<div className={cn(
-                                                                "transition-colors",
-                                                                colorScale[intensity]
-                                                              )} style={{
-                                                                width: blockSize,
-                                                                height: blockSize,
-                                                                borderRadius: blockRadius,
-                                                              }} />}></Tooltip.Trigger>
-                          <Tooltip.Portal>
-                            <Tooltip.Content
-                              side="top"
-                              sideOffset={4}
-                              className="z-50 rounded-md border border-border bg-popover px-2.5 py-1.5 text-xs text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95"
-                            >
+                      <TooltipProvider key={di} delay={100}>
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={
+                              <div
+                                className={cn("transition-colors", colorScale[intensity])}
+                                style={{
+                                  width: blockSize,
+                                  height: blockSize,
+                                  borderRadius: blockRadius,
+                                }}
+                              />
+                            }
+                          />
+                          <TooltipContent side="top" sideOffset={4}>
+                            <div className="space-y-0.5">
                               <p className="font-medium">
-                                {day.count} contribution{day.count === 1 ? "" : "s"}
+                                {formatCount?.(day.count) ?? `${day.count} contribution${day.count === 1 ? "" : "s"}`}
                               </p>
-                              <p className="text-muted-foreground">
+                              <p className="text-background/70">
                                 {formatDate(day.date)}
                               </p>
-                              <Tooltip.Arrow className="fill-popover" />
-                            </Tooltip.Content>
-                          </Tooltip.Portal>
-                        </Tooltip.Root>
-                      </Tooltip.Provider>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     )
                   })}
                 </div>

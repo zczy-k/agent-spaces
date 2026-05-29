@@ -203,6 +203,7 @@ export function getAgentUsageDashboard(days = 30): AgentUsageDashboard {
     dailyMap.set(key, {
       date: key,
       label: date.toLocaleDateString('en-US', { weekday: 'short' }),
+      requests: 0,
       inputTokens: 0,
       outputTokens: 0,
       totalTokens: 0,
@@ -216,6 +217,7 @@ export function getAgentUsageDashboard(days = 30): AgentUsageDashboard {
   for (const record of records) {
     const day = dailyMap.get(record.completedAt.slice(0, 10));
     if (day) {
+      day.requests += 1;
       day.inputTokens += record.inputTokens + record.cachedInputTokens;
       day.outputTokens += record.outputTokens + record.reasoningTokens;
       day.totalTokens += record.totalTokens;

@@ -13,7 +13,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { User, Palette, Globe, Shield, Mic, GitBranch, Store, Bot, Info, Keyboard } from "lucide-react";
+import { User, Palette, Globe, Shield, Mic, GitBranch, Store, Bot, Info, Keyboard, Rocket } from "lucide-react";
 import { GitSettingsForm } from "@/components/git/git-settings-form";
 import { AppearanceTab } from "./settings/appearance-tab";
 import { LanguageTab } from "./settings/language-tab";
@@ -23,9 +23,11 @@ import { SpeechSettingsTab } from "./settings/speech-settings-tab";
 import { RobotAccountsTab } from "./settings/robot-accounts-tab";
 import { AboutTab } from "./settings/about-tab";
 import { ShortcutsTab } from "./settings/shortcuts-tab";
+import { StartupTab } from "./settings/startup-tab";
 
 const tabs = [
   { key: "appearance", icon: Palette },
+  { key: "startup", icon: Rocket },
   { key: "language", icon: Globe },
   { key: "account", icon: User },
   { key: "security", icon: Shield },
@@ -53,6 +55,7 @@ export function SettingsDialog({
 
   const tabLabels: Record<TabKey, string> = {
     appearance: t("theme"),
+    startup: t("startup"),
     language: t("language"),
     account: t("userAvatar"),
     security: t("security"),
@@ -68,6 +71,8 @@ export function SettingsDialog({
     switch (activeTab) {
       case "appearance":
         return <AppearanceTab />;
+      case "startup":
+        return <StartupTab />;
       case "language":
         return <LanguageTab />;
       case "account":
