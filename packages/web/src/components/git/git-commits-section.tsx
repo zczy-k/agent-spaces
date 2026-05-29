@@ -60,7 +60,7 @@ export function GitCommitsSection({
             title={ahead > 0 ? t('pushNCommits', { count: ahead }) : "Push"}>
             {syncing === "push" ? <Loader2 size={13} className="animate-spin" /> : <ArrowUp size={13} />}
             {ahead > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-foreground px-1 text-[9px] font-medium leading-none text-background">{ahead}</span>
+              <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-medium leading-none text-primary-foreground">{ahead}</span>
             )}
           </button>
           <button onClick={onPull} disabled={syncing !== null}
@@ -68,7 +68,7 @@ export function GitCommitsSection({
             title={behind > 0 ? t('pullNCommits', { count: behind }) : "Pull"}>
             {syncing === "pull" ? <Loader2 size={13} className="animate-spin" /> : <ArrowDown size={13} />}
             {behind > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-foreground px-1 text-[9px] font-medium leading-none text-background">{behind}</span>
+              <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-medium leading-none text-primary-foreground">{behind}</span>
             )}
           </button>
           <button onClick={onRefreshClick} className="p-1 text-muted-foreground hover:text-foreground active:scale-90 transition-all duration-100 cursor-pointer"><RefreshCw size={13} /></button>

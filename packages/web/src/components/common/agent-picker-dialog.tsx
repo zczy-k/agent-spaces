@@ -58,12 +58,17 @@ export function AgentPickerDialog({
   loading,
   singleSelect,
 }: AgentPickerDialogProps) {
-  const { workflows } = useWorkflowStore();
+  const { workflows, loadWorkflows } = useWorkflowStore();
   const [workflowId, setWorkflowId] = useState<string>('');
 
   useEffect(() => {
-    if (open) setWorkflowId('');
-  }, [open]);
+    if (open) {
+      setWorkflowId('');
+      if (useWorkflowStore.getState().workflows.length === 0) {
+        loadWorkflows();
+      }
+    }
+  }, [open, loadWorkflows]);
 
   const filteredAgents = useMemo(() => {
     if (!workflowId || workflowId === '__all__') return agents;

@@ -84,7 +84,7 @@ export function NotificationCenterDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) setDetail(null); onOpenChange(v); }}>
-      <DialogContent className="max-w-[80vw] w-[80vw] h-[80vh] flex flex-col gap-0 overflow-hidden p-0">
+      <DialogContent className="flex flex-col gap-0 overflow-hidden p-0" style={{ maxWidth: '80vw', width: '80vw', height: '80vh' }}>
         <DialogHeader className="px-6 py-4 border-b shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
