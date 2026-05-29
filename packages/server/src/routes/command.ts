@@ -84,4 +84,17 @@ router.post('/:commandId/stop', (req: Request<{ id: string; commandId: string }>
   }
 });
 
+router.post('/:commandId/restart', (req: Request<{ id: string; commandId: string }>, res: Response) => {
+  const { id: workspaceId, commandId } = req.params;
+  if (!workspaceId || !commandId) { res.status(400).json({ error: 'workspaceId and commandId required' }); return; }
+  try {
+    const sessionId = processManager.restartCommand(workspaceId, commandId);
+    console.log(`[command] POST restart: workspace=${workspaceId} command=${commandId} -> session=${sessionId}`);
+    res.json({ sessionId });
+  } catch (error: any) {
+    console.error(`[command] POST restart error: workspace=${workspaceId} command=${commandId}`, error.message);
+    res.status(400).json({ error: error.message });
+  }
+});
+
 export default router;

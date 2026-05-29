@@ -21,6 +21,7 @@ interface CommandStore {
   update: (workspaceId: string, id: string, updates: Partial<QuickCommand>) => Promise<void>;
   remove: (workspaceId: string, id: string) => Promise<void>;
   run: (workspaceId: string, commandId: string) => Promise<void>;
+  restart: (workspaceId: string, commandId: string) => Promise<void>;
   stop: (workspaceId: string, commandId: string) => Promise<void>;
   attachWS: (workspaceId: string) => void;
   isRunning: (commandId: string) => boolean;
@@ -90,6 +91,19 @@ export const useCommandStore = create<CommandStore>((set, get) => ({
       }
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Failed to run command');
+      throw e;
+    }
+  },
+
+  restart: async (workspaceId, commandId) => {
+    try {
+      const res = await fetchWithAuth(`/api/workspaces/${workspaceId}/commands/${commandId}/restart`, { method: 'POST' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(data.error || 'Failed to restart command');
+      }
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to restart command');
       throw e;
     }
   },

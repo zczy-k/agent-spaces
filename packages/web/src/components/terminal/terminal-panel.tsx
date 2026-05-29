@@ -75,7 +75,7 @@ function isValidTerminalLayout(layout: Layout): boolean {
 
 export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
   const { sessions, activeId, init, createSession, setActive, removeSession } = useTerminalStore();
-  const { commands, load: loadCommands, run, remove, update, create, isRunning, runningMap } = useCommandStore();
+  const { commands, load: loadCommands, run, restart, remove, update, create, isRunning, runningMap } = useCommandStore();
   const { sendInput } = useTerminalStore();
   const { agents } = useAgentStore();
   const { createChannel, sendMessage } = useChannelStore();
@@ -338,6 +338,7 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
                 runningMap={runningMap}
                 removeSession={removeSession}
                 run={run}
+                restart={restart}
                 remove={remove}
                 setEditingCommand={setEditingCommand}
                 setDialogOpen={(open) => { setDialogOpen(open); if (!open) return; }}
@@ -375,6 +376,7 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
             runningMap={runningMap}
             removeSession={removeSession}
             run={run}
+            restart={restart}
             remove={remove}
             setEditingCommand={setEditingCommand}
             setDialogOpen={setDialogOpen}

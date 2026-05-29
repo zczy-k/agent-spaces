@@ -93,6 +93,26 @@ export function stopCommand(workspaceId: string, commandId: string): void {
   cmdProcess.status = 'stopping';
 }
 
+export function restartCommand(workspaceId: string, commandId: string): string {
+  const cmdProcess = processes.get(commandId);
+  if (!cmdProcess) return runCommand(workspaceId, commandId);
+
+  console.log(`[command] restartCommand: command=${commandId} session=${cmdProcess.sessionId}`);
+
+  const timer = restartTimers.get(commandId);
+  if (timer) {
+    clearTimeout(timer);
+    restartTimers.delete(commandId);
+  }
+
+  processes.delete(commandId);
+  sessionIndex.delete(cmdProcess.sessionId);
+  ptyService.kill(cmdProcess.sessionId);
+  broadcastToWorkspace(workspaceId, 'terminal.closed', { sessionId: cmdProcess.sessionId });
+
+  return runCommand(workspaceId, commandId);
+}
+
 function handlePtyExit(sessionId: string, exitCode: number): void {
   const commandId = sessionIndex.get(sessionId);
   if (!commandId) return;

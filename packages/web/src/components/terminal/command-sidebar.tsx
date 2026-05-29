@@ -8,9 +8,9 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { useTerminalStore } from '@/stores/terminal';
 import type { QuickCommand } from '@agent-spaces/shared';
 
-function CommandListItem({ command, running, onRun, onClose, onEdit, onDelete, onSelect }: {
+function CommandListItem({ command, running, onRun, onRestart, onClose, onEdit, onDelete, onSelect }: {
   command: QuickCommand; running: boolean;
-  onRun: () => void; onClose: () => void; onEdit: () => void; onDelete: () => void;
+  onRun: () => void; onRestart: () => void; onClose: () => void; onEdit: () => void; onDelete: () => void;
   onSelect: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
@@ -34,7 +34,7 @@ function CommandListItem({ command, running, onRun, onClose, onEdit, onDelete, o
       {running && (
         <>
           <button
-            onClick={(event) => { event.stopPropagation(); onClose(); onRun(); }}
+            onClick={(event) => { event.stopPropagation(); onRestart(); }}
             className={`shrink-0 p-0.5 rounded text-muted-foreground hover:text-foreground ${hovered ? 'opacity-100' : 'opacity-0'} transition-opacity`}
           >
             <RotateCw size={12} />
@@ -69,7 +69,7 @@ export function CommandSidebar({
   search, onSearchChange, commands, customCommands, folderGroups,
   customOpen, onCustomOpenChange, collapsedFolders, onToggleFolder,
   onImport, onUpdatePackage, onAddCommand, onRemoveFolder, workspaceId, isRunning, runningMap,
-  removeSession, run, remove, setEditingCommand, setDialogOpen, onSelectSession, tc,
+  removeSession, run, restart, remove, setEditingCommand, setDialogOpen, onSelectSession, tc,
 }: {
   search: string;
   onSearchChange: (v: string) => void;
@@ -89,6 +89,7 @@ export function CommandSidebar({
   runningMap: Record<string, { sessionId: string }>;
   removeSession: (id: string) => void;
   run: (wid: string, cid: string) => void;
+  restart: (wid: string, cid: string) => void;
   remove: (wid: string, cid: string) => void;
   setEditingCommand: (cmd: QuickCommand | undefined) => void;
   setDialogOpen: (open: boolean) => void;
@@ -156,6 +157,7 @@ export function CommandSidebar({
                       command={cmd}
                       running={isRunning(cmd.id)}
                       onRun={() => run(workspaceId, cmd.id)}
+                      onRestart={() => restart(workspaceId, cmd.id)}
                       onClose={() => {
                         const s = runningMap[cmd.id];
                         if (s) removeSession(s.sessionId);
@@ -210,6 +212,7 @@ export function CommandSidebar({
                       command={cmd}
                       running={isRunning(cmd.id)}
                       onRun={() => run(workspaceId, cmd.id)}
+                      onRestart={() => restart(workspaceId, cmd.id)}
                       onClose={() => {
                         const s = runningMap[cmd.id];
                         if (s) removeSession(s.sessionId);
