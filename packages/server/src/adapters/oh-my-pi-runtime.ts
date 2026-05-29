@@ -1,6 +1,6 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { basename, extname, join } from 'node:path';
 import type {
   AgentRunOptions,
   AgentRunResult,
@@ -236,6 +236,7 @@ function prepareOmpConfigHome(
   const homeDir = join(options.configDir, 'omp-home');
   const agentDir = join(homeDir, '.omp', 'agent');
   mkdirSync(agentDir, { recursive: true });
+  copySkillsToOmpAgentDir(options.configDir, agentDir);
 
   writeFileSync(join(agentDir, 'config.yml'), buildOmpConfigYaml(config), 'utf-8');
   const modelsYaml = buildOmpModelsYaml(config);
@@ -245,6 +246,36 @@ function prepareOmpConfigHome(
   }
 
   return homeDir;
+}
+
+function copySkillsToOmpAgentDir(sourceAgentDir: string, targetAgentDir: string): void {
+  const sourceSkillsDir = join(sourceAgentDir, 'skills');
+  const targetSkillsDir = join(targetAgentDir, 'skills');
+  rmSync(targetSkillsDir, { recursive: true, force: true });
+  mkdirSync(targetSkillsDir, { recursive: true });
+
+  if (!existsSync(sourceSkillsDir)) return;
+  for (const entry of readdirSync(sourceSkillsDir)) {
+    const source = join(sourceSkillsDir, entry);
+    const sourceStat = statSync(source);
+
+    if (sourceStat.isDirectory()) {
+      const skillName = sanitizeSkillName(entry);
+      if (!skillName) continue;
+      const sourceSkillFile = join(source, 'SKILL.md');
+      if (!existsSync(sourceSkillFile) || statSync(sourceSkillFile).size === 0) continue;
+      cpSync(source, join(targetSkillsDir, skillName), { recursive: true, force: true });
+      continue;
+    }
+
+    if (!sourceStat.isFile() || extname(entry).toLowerCase() !== '.md' || sourceStat.size === 0) continue;
+    const skillName = sanitizeSkillName(entry);
+    if (!skillName) continue;
+    const targetSkillDir = join(targetSkillsDir, skillName);
+    mkdirSync(targetSkillDir, { recursive: true });
+    writeFileSync(join(targetSkillDir, 'SKILL.md'), readFileSync(source, 'utf-8'), 'utf-8');
+    copyFileSync(source, join(targetSkillsDir, `${skillName}.md`));
+  }
 }
 
 function withFunctionToolBridge(
@@ -324,6 +355,11 @@ function normalizeOmpApi(provider?: AgentRuntimeConfig['provider']): string {
 function sanitizeProviderName(provider?: AgentRuntimeConfig['provider']): string {
   const raw = String(provider || 'agent-spaces').trim().toLowerCase();
   return raw.replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'agent-spaces';
+}
+
+function sanitizeSkillName(name: string): string {
+  const raw = basename(name).replace(/\.md$/i, '').trim();
+  return raw.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '');
 }
 
 function yamlKey(value: string): string {

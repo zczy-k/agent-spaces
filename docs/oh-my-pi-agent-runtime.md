@@ -194,6 +194,15 @@ Agent Spaces 的 `options.skills` 当前直接映射为：
 
 这符合 OMP CLI 的 run-scoped skill filtering 语义。实际 skill discovery 仍由 OMP CLI 决定。
 
+当使用 Agent Spaces 隔离配置目录时，adapter 会同步：
+
+```text
+<configDir>/skills/
+  -> <configDir>/omp-home/.omp/agent/skills/
+```
+
+目录型技能会保留为 `skills/<name>/SKILL.md`，旧的 flat `<name>.md` 技能会转换为 `skills/<name>/SKILL.md`，并保留一份 flat `.md` 兼容副本。每次运行都会重建 OMP home 内的 `skills/`，避免已解绑技能继续被 OMP discovery 扫到。
+
 ## 事件映射
 
 当前使用 `--mode text`，所以没有 SDK event 或 JSON event stream。映射规则是：
