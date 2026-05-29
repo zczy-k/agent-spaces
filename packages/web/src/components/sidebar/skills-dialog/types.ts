@@ -25,6 +25,9 @@ export interface SkillsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   standalone?: boolean;
+  selectable?: boolean;
+  selectedSkills?: string[];
+  onSelectedSkillsChange?: (skills: string[]) => void;
 }
 
 export type FilterMode = 'all' | 'favorites' | 'agent';

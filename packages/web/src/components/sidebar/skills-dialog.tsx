@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   Dialog,
@@ -17,8 +17,10 @@ import {
   Download,
   Folder,
   Search,
+  Check,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 import type { SkillInfo, SkillsDialogProps, StoreSkillItem } from './skills-dialog/types';
 import { useSkillsData, useSkillActions } from './skills-dialog/use-skills-data';
 import { SkillList } from './skills-dialog/skill-list';
@@ -27,7 +29,7 @@ import { SkillBindDialog } from './skills-dialog/skill-bind-dialog';
 
 type TabType = 'local' | 'store';
 
-export function SkillsDialog({ open, onOpenChange, standalone }: SkillsDialogProps) {
+export function SkillsDialog({ open, onOpenChange, standalone, selectable, selectedSkills, onSelectedSkillsChange }: SkillsDialogProps) {
   const t = useTranslations('skills');
   const tc = useTranslations('common');
 
@@ -91,6 +93,110 @@ export function SkillsDialog({ open, onOpenChange, standalone }: SkillsDialogPro
   };
 
   const showMainDialog = (standalone || open) && !bindDialogSkill && !editSkill;
+
+  // Selectable mode
+  const [selectableSearch, setSelectableSearch] = useState('');
+  const externalSelected = new Set(selectedSkills ?? []);
+  const toggleSkill = useCallback((name: string) => {
+    if (!onSelectedSkillsChange) return;
+    const next = new Set(selectedSkills ?? []);
+    if (next.has(name)) next.delete(name); else next.add(name);
+    onSelectedSkillsChange([...next]);
+  }, [selectedSkills, onSelectedSkillsChange]);
+
+  if (selectable && showMainDialog) {
+    const filteredSelectable = skills.filter((s) => {
+      if (!selectableSearch) return true;
+      const q = selectableSearch.toLowerCase();
+      return s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q);
+    });
+    const allSelected = filteredSelectable.length > 0 && filteredSelectable.every((s) => externalSelected.has(s.name));
+
+    const selectableBody = (
+      <>
+        <DialogHeader>
+          <DialogTitle>{t('title')}</DialogTitle>
+          <DialogDescription>{t('selectDescription')}</DialogDescription>
+        </DialogHeader>
+        <div className="flex items-center gap-2 mb-3">
+          <div className="relative flex-1">
+            <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={selectableSearch}
+              onChange={(e) => setSelectableSearch(e.target.value)}
+              placeholder={t('search')}
+              className="pl-8"
+            />
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (!onSelectedSkillsChange) return;
+              const names = allSelected ? [] : filteredSelectable.map((s) => s.name);
+              onSelectedSkillsChange(names);
+            }}
+          >
+            {allSelected ? tc('deselectAll') : tc('selectAll')}
+          </Button>
+        </div>
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="grid grid-cols-1 gap-2 pr-2">
+            {filteredSelectable.map((skill) => {
+              const checked = externalSelected.has(skill.name);
+              return (
+                <button
+                  key={skill.name}
+                  type="button"
+                  className={cn(
+                    'flex items-center gap-3 rounded-lg border p-3 text-left transition-colors hover:bg-accent/30',
+                    checked && 'border-primary/50 bg-primary/5',
+                  )}
+                  onClick={() => toggleSkill(skill.name)}
+                >
+                  <div className={cn(
+                    'flex size-4 shrink-0 items-center justify-center rounded border',
+                    checked ? 'border-primary bg-primary text-primary-foreground' : 'border-input',
+                  )}>
+                    {checked && <Check className="size-3" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-medium text-sm">{skill.name}</span>
+                      {skill.group && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                          {skill.group}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                      {skill.description || skill.content.slice(0, 80).replace(/^#\s+/, '')}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </ScrollArea>
+        <div className="flex items-center justify-between border-t pt-3 mt-2">
+          <span className="text-xs text-muted-foreground">
+            {t('selectedCount', { count: (selectedSkills ?? []).length })}
+          </span>
+          <Button size="sm" onClick={() => onOpenChange(false)}>
+            {tc('confirm')}
+          </Button>
+        </div>
+      </>
+    );
+
+    return (
+      <Dialog open onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-lg !h-auto max-h-[80vh] flex flex-col overflow-hidden">
+          {selectableBody}
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   // Store groups
   const storeGroups = Array.from(new Set(storeSkills.map((s) => s.group).filter(Boolean)));

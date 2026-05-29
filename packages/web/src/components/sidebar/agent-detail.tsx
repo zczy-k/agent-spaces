@@ -40,11 +40,11 @@ import {
 import { DiffViewer } from "@/components/git/diff-viewer";
 import { ToolsDialog } from "@/components/sidebar/tools-dialog";
 import { McpsDialog } from "@/components/sidebar/mcps-dialog";
+import { SkillsDialog } from "@/components/sidebar/skills-dialog";
 import {
   type AgentPreset,
   type AgentRole,
   type McpDraft,
-  type SkillDraft,
   type ConnectionTestResult,
   PROVIDER_OPTIONS,
   RUNTIME_OPTIONS,
@@ -60,8 +60,6 @@ export function AgentDetail({
   testResult,
   onChange,
   onMcpChange,
-  onAddSkillFiles,
-  onRemoveSkill,
   onTestConnection,
 }: {
   agent: AgentPreset;
@@ -70,8 +68,6 @@ export function AgentDetail({
   testResult: ConnectionTestResult | null;
   onChange: <K extends keyof AgentPreset>(key: K, value: AgentPreset[K]) => void;
   onMcpChange: (value: McpDraft) => void;
-  onAddSkillFiles: (files: SkillDraft[]) => void;
-  onRemoveSkill: (index: number) => void;
   onTestConnection: () => void;
 }) {
   const t = useTranslations("agent");
@@ -84,6 +80,7 @@ export function AgentDetail({
   const [applyPreviewOpen, setApplyPreviewOpen] = useState(false);
   const [toolsDialogOpen, setToolsDialogOpen] = useState(false);
   const [mcpsDialogOpen, setMcpsDialogOpen] = useState(false);
+  const [skillsDialogOpen, setSkillsDialogOpen] = useState(false);
   const [previewPrompt, setPreviewPrompt] = useState("");
 
   const { models: allLlmModels, providers: llmProviders, ensure: ensureLLM } = useLLMStore();
@@ -107,16 +104,6 @@ export function AgentDetail({
     },
     [llmModels, onChange],
   );
-
-  const handleSkillUpload = async (files: FileList | null) => {
-    if (!files?.length) return;
-    const markdownFiles = Array.from(files).filter((file) => file.name.toLowerCase().endsWith(".md"));
-    const next = await Promise.all(markdownFiles.map(async (file) => ({
-      name: file.name,
-      content: await file.text(),
-    })));
-    onAddSkillFiles(next);
-  };
 
   const handleOptimizePrompt = async () => {
     const prompt = optimizePrompt.trim();
@@ -362,32 +349,38 @@ export function AgentDetail({
         />
       </div>
 
-      <Section icon={<Cpu className="size-3.5" />} title={t("detail.skills")}>
-        <div className="mb-2 flex flex-wrap gap-1.5">
-          {agent.skills.map((skill, i) => (
-            <span key={i} className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium text-foreground">
-              {skill.name}
-              <button type="button" onClick={() => onRemoveSkill(i)} className="hover:text-destructive cursor-pointer">
-                <X className="size-2.5" />
-              </button>
-            </span>
-          ))}
+      <div className="flex flex-col gap-2.5">
+        <SectionHeader
+          icon={<Cpu className="size-3.5" />}
+          title={t("detail.skills")}
+          action={
+            <Button variant="ghost" size="icon" className="size-5" onClick={() => setSkillsDialogOpen(true)}>
+              <Settings2 className="size-3.5" />
+            </Button>
+          }
+        />
+        <div className="flex flex-wrap gap-1.5">
+          {agent.skills.length > 0 ? (
+            agent.skills.map((skill) => (
+              <span key={skill.name} className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium text-foreground">
+                {skill.name}
+                <button type="button" onClick={() => onChange("skills", agent.skills.filter((s) => s.name !== skill.name))} className="hover:text-destructive cursor-pointer">
+                  <X className="size-2.5" />
+                </button>
+              </span>
+            ))
+          ) : (
+            <span className="text-xs text-muted-foreground">{t("detail.noSkills")}</span>
+          )}
         </div>
-        <label className="flex h-8 cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-input text-xs text-muted-foreground hover:bg-muted/50">
-          <Upload className="size-3.5" />
-          {t("detail.uploadSkills")}
-          <input
-            type="file"
-            accept=".md,text/markdown"
-            multiple
-            className="hidden"
-            onChange={(e) => {
-              void handleSkillUpload(e.target.files);
-              e.target.value = "";
-            }}
-          />
-        </label>
-      </Section>
+        <SkillsDialog
+          open={skillsDialogOpen}
+          onOpenChange={setSkillsDialogOpen}
+          selectable
+          selectedSkills={agent.skills.map((s) => s.name)}
+          onSelectedSkillsChange={(names) => onChange("skills", names.map((name) => ({ name })))}
+        />
+      </div>
 
       <Section icon={<Sliders className="size-3.5" />} title={t("detail.model")}>
         <div className="space-y-2.5">
