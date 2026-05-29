@@ -38,5 +38,6 @@
   "theme": "Theme",
   "newTask": "New Task",
   "useTemplate": "Use Template",
-  "manageSections": "Manage Sections"
+  "manageSections": "Manage Sections",
+  "createAsIssue": "Create as Issue"
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, AlertCircle, FileText, LayoutGrid, Trash2, Clock } from 'lucide-react';
+import { Calendar, AlertCircle, FileText, LayoutGrid, Trash2, Clock, CircleDot } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { KanbanTask, KanbanPriority, KanbanColumn } from '@agent-spaces/shared';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,7 @@ interface TaskModalProps {
   onClose: () => void;
   onSave: (task: KanbanTask) => void;
   onDelete: (taskId: string) => void;
+  onCreateIssue?: (task: KanbanTask) => void;
 }
 
 const PRIORITY_COLORS: Record<KanbanPriority, { bg: string; activeBg: string; dot: string }> = {
@@ -33,7 +34,7 @@ const PRIORITY_COLORS: Record<KanbanPriority, { bg: string; activeBg: string; do
   high: { bg: 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100', activeBg: '!bg-rose-600 !text-white !border-rose-600', dot: 'bg-rose-500' },
 };
 
-export default function TaskModal({ task, columns, isOpen, onClose, onSave, onDelete }: TaskModalProps) {
+export default function TaskModal({ task, columns, isOpen, onClose, onSave, onDelete, onCreateIssue }: TaskModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<KanbanPriority>('medium');
@@ -168,7 +169,11 @@ export default function TaskModal({ task, columns, isOpen, onClose, onSave, onDe
             </Button>
           )}
           <div className="flex items-center gap-2.5">
-            <Button size="sm" variant="outline" onClick={onClose}>{tc('cancel')}</Button>
+            {onCreateIssue && (
+              <Button size="sm" variant="outline" onClick={() => onCreateIssue(task)}>
+                <CircleDot className="h-4 w-4" />{t('createAsIssue')}
+              </Button>
+            )}
             <Button size="sm" onClick={handleSubmit} disabled={!title.trim()}>{tc('save')}</Button>
           </div>
         </DialogFooter>

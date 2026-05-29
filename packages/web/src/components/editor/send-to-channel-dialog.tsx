@@ -50,7 +50,7 @@ export function SendToChannelDialog() {
     try {
       const agent = agents.find((a: AgentConfig) => a.id === selectedAgent[0]);
       const agentName = agent?.name || selectedAgent[0];
-      await createChannel(pendingSendToChannel.workspaceId, '', 'general', undefined, message);
+      await createChannel(pendingSendToChannel.workspaceId, '', 'general', selectedAgent, message);
       const { channels } = useChannelStore.getState();
       const channel = channels[channels.length - 1];
       if (channel) {

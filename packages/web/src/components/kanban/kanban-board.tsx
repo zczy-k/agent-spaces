@@ -9,12 +9,15 @@ import { sortableKeyboardCoordinates, arrayMove, SortableContext, horizontalList
 import { Plus, LayoutGrid, Search, Layers, WandSparkles } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useKanbanStore } from '@/stores/kanban';
+import { useIssueStore } from '@/stores/issue';
+import { useAgentStore } from '@/stores/agent';
 import type { KanbanColumn, KanbanTask, KanbanPriority } from '@agent-spaces/shared';
 import KanbanColumnComponent from './kanban-column';
 import KanbanCard from './kanban-card';
 import TaskModal from './task-modal';
 import ColumnModal from './column-modal';
 import ColumnManageDialog from './column-manage-dialog';
+import { CreateIssueDialog } from '../issue/create-issue-dialog';
 
 interface KanbanBoardProps {
   workspaceId: string;
@@ -22,6 +25,8 @@ interface KanbanBoardProps {
 
 export default function KanbanBoardPanel({ workspaceId }: KanbanBoardProps) {
   const { board, load, updateLayoutMode, updateColumns, updateTasks, attachWS } = useKanbanStore();
+  const { createIssue } = useIssueStore();
+  const { agents, ensure: ensureAgents } = useAgentStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<'all' | KanbanPriority>('all');
   const [selectedTask, setSelectedTask] = useState<KanbanTask | null>(null);
@@ -30,10 +35,11 @@ export default function KanbanBoardPanel({ workspaceId }: KanbanBoardProps) {
   const [isColumnModalOpen, setIsColumnModalOpen] = useState(false);
   const [editingColumn, setEditingColumn] = useState<KanbanColumn | null>(null);
   const [isManageOpen, setIsManageOpen] = useState(false);
+  const [createIssueTask, setCreateIssueTask] = useState<KanbanTask | null>(null);
   const t = useTranslations('kanban');
   const tc = useTranslations('common');
 
-  useEffect(() => { load(workspaceId); attachWS(workspaceId); }, [workspaceId, load, attachWS]);
+  useEffect(() => { load(workspaceId); attachWS(workspaceId); ensureAgents(); }, [workspaceId, load, attachWS, ensureAgents]);
 
   const columns = useMemo(() => board?.columns ?? [], [board?.columns]);
   const tasks = useMemo(() => board?.tasks ?? [], [board?.tasks]);
@@ -96,7 +102,7 @@ export default function KanbanBoardPanel({ workspaceId }: KanbanBoardProps) {
   // --- Actions ---
   const handleAddTask = (columnId: string) => {
     const newTask: KanbanTask = {
-      id: `task-${Date.now()}`, title: t('newTask'), description: '', priority: 'medium',
+      id: `task-${Date.now()}`, title: '', description: '', priority: 'medium',
       columnId, order: tasks.filter((t) => t.columnId === columnId).length,
       createdAt: Date.now(),
     };
@@ -138,6 +144,11 @@ export default function KanbanBoardPanel({ workspaceId }: KanbanBoardProps) {
   const handleDeleteColumn = (colId: string) => {
     updateColumns(workspaceId, columns.filter((c) => c.id !== colId));
     updateTasks(workspaceId, tasks.filter((t) => t.columnId !== colId));
+  };
+
+  const handleCreateIssue = async (data: { title: string; description: string; members: string[]; workflowId?: string }) => {
+    await createIssue(workspaceId, data.title, data.description, data.members, data.workflowId);
+    setCreateIssueTask(null);
   };
 
   if (!board) return <div className="flex h-full items-center justify-center text-sm text-muted-foreground">{tc('loading')}</div>;
@@ -203,7 +214,7 @@ export default function KanbanBoardPanel({ workspaceId }: KanbanBoardProps) {
         )}
       </div>
 
-      <TaskModal task={selectedTask} columns={columns} isOpen={isTaskModalOpen} onClose={() => { setIsTaskModalOpen(false); setSelectedTask(null); }} onSave={handleSaveTask} onDelete={handleDeleteTask} />
+      <TaskModal task={selectedTask} columns={columns} isOpen={isTaskModalOpen} onClose={() => { setIsTaskModalOpen(false); setSelectedTask(null); }} onSave={handleSaveTask} onDelete={handleDeleteTask} onCreateIssue={(task) => setCreateIssueTask(task)} />
       <ColumnModal isOpen={isColumnModalOpen} onClose={() => { setIsColumnModalOpen(false); setEditingColumn(null); }} onCreate={handleAddColumn} onEdit={handleEditColumn} editingColumn={editingColumn} />
       <ColumnManageDialog
         isOpen={isManageOpen}
@@ -213,6 +224,14 @@ export default function KanbanBoardPanel({ workspaceId }: KanbanBoardProps) {
         onEdit={(col) => { setIsManageOpen(false); setEditingColumn(col); setIsColumnModalOpen(true); }}
         onDelete={handleDeleteColumn}
         onAdd={() => { setIsManageOpen(false); setIsColumnModalOpen(true); }}
+      />
+      <CreateIssueDialog
+        open={!!createIssueTask}
+        onOpenChange={(open) => { if (!open) setCreateIssueTask(null); }}
+        agents={agents}
+        defaultTitle={createIssueTask?.title}
+        defaultDescription={createIssueTask?.description}
+        onSubmit={handleCreateIssue}
       />
     </div>
   );
