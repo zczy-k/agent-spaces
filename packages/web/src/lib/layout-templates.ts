@@ -42,7 +42,9 @@ export function deleteLayoutTemplate(id: string) {
   saveLayoutTemplates(templates);
 }
 
-export function applyLayoutTemplate(workspaceId: string, json: IJsonModel) {
-  localStorage.setItem(`flexlayout-${workspaceId}`, JSON.stringify(json));
-  window.dispatchEvent(new CustomEvent("apply-layout", { detail: { workspaceId } }));
+export const LAYOUT_STORAGE_KEY = "flexlayout-global";
+
+export function applyLayoutTemplate(_workspaceId: string, json: IJsonModel) {
+  localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(json));
+  window.dispatchEvent(new CustomEvent("apply-layout"));
 }

@@ -33,6 +33,7 @@
   "agentStore": "Agent Store",
   "storeApiBase": "Store API Base URL",
   "storeApiBaseDesc": "Configure the online Agent resource store base URL. Leave empty to use built-in local resources. Used for fetching output-styles, prompt templates, skills etc.",
+  "storeApiPresets": "Presets",
   "save": "Save",
   "font": "Font",
   "fontPlaceholder": "Default font",

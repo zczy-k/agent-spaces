@@ -2,9 +2,6 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { getStoreApiBase, setStoreApiBase } from "@/lib/agent-store";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +21,7 @@ import { RobotAccountsTab } from "./settings/robot-accounts-tab";
 import { AboutTab } from "./settings/about-tab";
 import { ShortcutsTab } from "./settings/shortcuts-tab";
 import { StartupTab } from "./settings/startup-tab";
+import { AgentStoreTab } from "./settings/agent-store-tab";
 
 const tabs = [
   { key: "appearance", icon: Palette },
@@ -143,42 +141,6 @@ function GitSettings() {
           Git
         </label>
         <GitSettingsForm scope="global" />
-      </div>
-    </div>
-  );
-}
-
-function AgentStoreTab() {
-  const [url, setUrl] = useState(() => getStoreApiBase());
-  const [saved, setSaved] = useState(false);
-  const t = useTranslations("settings");
-
-  const handleSave = () => {
-    setStoreApiBase(url);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1500);
-  };
-
-  return (
-    <div className="space-y-4">
-      <div>
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2.5 block">
-          {t("storeApiBase")}
-        </label>
-        <div className="flex gap-2">
-          <Input
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://gh-proxy.org/https://github.com/hunmer/agent-spaces/raw/refs/heads/main/packages/agents/workflows/index.json"
-            className="text-sm"
-          />
-          <Button size="sm" onClick={handleSave}>
-            {saved ? "✓" : t("save")}
-          </Button>
-        </div>
-        <p className="text-xs text-muted-foreground mt-1.5">
-          {t("storeApiBaseDesc")}
-        </p>
       </div>
     </div>
   );

@@ -33,6 +33,7 @@
   "agentStore": "在线商店",
   "storeApiBase": "商店 API 地址",
   "storeApiBaseDesc": "配置在线 Agent 资源商店的基础 URL，留空则使用本地内置资源。适用于 output-styles、prompt 模板、skills 等资源的在线获取。",
+  "storeApiPresets": "预设地址",
   "save": "保存",
   "font": "字体",
   "fontPlaceholder": "默认字体",

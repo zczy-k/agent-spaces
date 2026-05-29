@@ -19,6 +19,10 @@ import {
   Trash2,
   MoreVertical,
   FolderOpen,
+  Upload,
+  FileText,
+  FileArchive,
+  GitBranch,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { FilterMode, SkillInfo } from './types';
@@ -36,6 +40,11 @@ interface SkillCardGridProps {
   onEdit: (skill: SkillInfo) => void;
   onBind: (skill: SkillInfo) => void;
   onBindAll: () => void;
+  onImportMd: () => void;
+  onImportFolder: () => void;
+  onImportZip: () => void;
+  onImportGit: () => void;
+  gitLoading: boolean;
 }
 
 export function SkillCardGrid({
@@ -51,6 +60,11 @@ export function SkillCardGrid({
   onEdit,
   onBind,
   onBindAll,
+  onImportMd,
+  onImportFolder,
+  onImportZip,
+  onImportGit,
+  gitLoading,
 }: SkillCardGridProps) {
   const t = useTranslations('skills');
   const tc = useTranslations('common');
@@ -131,8 +145,36 @@ export function SkillCardGrid({
         )}
       </ScrollArea>
 
-      {/* Desktop: Footer with apply all */}
-      <div className="hidden md:flex items-center justify-end gap-3 pt-2 border-t shrink-0">
+      {/* Desktop: Footer with import and apply all */}
+      <div className="hidden md:flex items-center justify-between gap-3 pt-2 border-t shrink-0">
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button variant="outline" size="sm">
+                <Upload className="size-3.5 mr-1" />
+                {t('import')}
+              </Button>
+            }
+          />
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onClick={onImportMd}>
+              <FileText className="size-3.5 mr-1.5" />
+              {t('importFromMd')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onImportFolder}>
+              <FolderOpen className="size-3.5 mr-1.5" />
+              {t('importFromFolder')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onImportZip}>
+              <FileArchive className="size-3.5 mr-1.5" />
+              {t('importFromZip')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onImportGit} disabled={gitLoading}>
+              <GitBranch className="size-3.5 mr-1.5" />
+              {t('importFromGit')}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button
           variant="outline"
           size="sm"

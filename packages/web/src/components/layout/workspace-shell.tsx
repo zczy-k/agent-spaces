@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Layout, Model, TabNode, IJsonModel, Actions, ITabRenderValues, Action } from "flexlayout-react";
 import { RIGHT_TO_LEFT_TAB_MAP, renderTabIcon } from "./tab-config";
 
+import { LAYOUT_STORAGE_KEY } from "@/lib/layout-templates";
 import { getWS } from "@/lib/ws";
 import { useIssueStore } from "@/stores/issue";
 import { useTaskStore } from "@/stores/task";
@@ -199,7 +200,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   const [model, setModel] = useState(() => {
     let m: Model;
     try {
-      const saved = localStorage.getItem(`flexlayout-${workspaceId}`);
+      const saved = localStorage.getItem(LAYOUT_STORAGE_KEY);
       if (saved) {
         const json = JSON.parse(saved);
         // Ensure bottom border has code-favorites tab
@@ -225,14 +226,19 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   });
 
   useEffect(() => {
+    const saved = localStorage.getItem(LAYOUT_STORAGE_KEY);
+    if (saved) {
+      try { setModel(Model.fromJson(JSON.parse(saved))); } catch { /* ignore */ }
+    }
+  }, [workspaceId]);
+
+  useEffect(() => {
     const resetHandler = () => {
-      localStorage.removeItem(`flexlayout-${workspaceId}`);
+      localStorage.removeItem(LAYOUT_STORAGE_KEY);
       setModel(Model.fromJson(defaultJson));
     };
-    const applyHandler = (e: Event) => {
-      const { workspaceId: wsId } = (e as CustomEvent).detail ?? {};
-      if (wsId !== workspaceId) return;
-      const saved = localStorage.getItem(`flexlayout-${workspaceId}`);
+    const applyHandler = () => {
+      const saved = localStorage.getItem(LAYOUT_STORAGE_KEY);
       if (saved) {
         try { setModel(Model.fromJson(JSON.parse(saved))); } catch { /* ignore */ }
       }
@@ -530,7 +536,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
       // 持久化布局（忽略高频的 SELECT_TAB，避免无意义写入）
       if (action.type !== Actions.SELECT_TAB) {
         try {
-          localStorage.setItem(`flexlayout-${workspaceId}`, JSON.stringify(_model.toJson()));
+          localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(_model.toJson()));
         } catch { /* quota exceeded — ignore */ }
       }
 

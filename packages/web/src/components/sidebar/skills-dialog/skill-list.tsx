@@ -1,15 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useTranslations } from 'next-intl';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Upload, FileText, FolderOpen, FileArchive, GitBranch } from 'lucide-react';
 import { SkillImportPanel } from './skill-import-dialog';
 import { SkillFilterSidebar } from './skill-filter-sidebar';
 import { SkillCardGrid } from './skill-card-grid';
@@ -42,8 +33,6 @@ export function SkillList({
   onImportFromGit,
   onBindAll,
 }: SkillListProps) {
-  const t = useTranslations('skills');
-
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
   const [filterAgentId, setFilterAgentId] = useState('');
@@ -100,36 +89,6 @@ export function SkillList({
         onChange={importState.handleZipSelect}
       />
 
-      <div className="flex items-center gap-2 ml-auto shrink-0 pt-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button variant="outline" size="sm">
-                <Upload className="size-3.5 mr-1" />
-                {t('import')}
-              </Button>
-            }
-          />
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => importState.mdInputRef.current?.click()}>
-              <FileText className="size-3.5 mr-1.5" />
-              {t('importFromMd')}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => importState.folderInputRef.current?.click()}>
-              <FolderOpen className="size-3.5 mr-1.5" />
-              {t('importFromFolder')}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => importState.zipInputRef.current?.click()}>
-              <FileArchive className="size-3.5 mr-1.5" />
-              {t('importFromZip')}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => importState.setGitDialogOpen(true)} disabled={importState.gitLoading}>
-              <GitBranch className="size-3.5 mr-1.5" />
-              {t('importFromGit')}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
 
       {importState.importDialogOpen ? (
         <SkillImportPanel
@@ -172,6 +131,11 @@ export function SkillList({
             onEdit={onEdit}
             onBind={onBind}
             onBindAll={onBindAll}
+            onImportMd={() => importState.mdInputRef.current?.click()}
+            onImportFolder={() => importState.folderInputRef.current?.click()}
+            onImportZip={() => importState.zipInputRef.current?.click()}
+            onImportGit={() => importState.setGitDialogOpen(true)}
+            gitLoading={importState.gitLoading}
           />
         </div>
       )}

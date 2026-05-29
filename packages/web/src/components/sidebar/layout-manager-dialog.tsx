@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  LAYOUT_STORAGE_KEY,
   loadLayoutTemplates,
   addLayoutTemplate,
   renameLayoutTemplate,
@@ -43,8 +44,8 @@ export function LayoutManagerDialog({ open, onOpenChange, workspaceId }: LayoutM
   };
 
   const handleSave = () => {
-    if (!newName.trim() || !workspaceId) return;
-    const raw = localStorage.getItem(`flexlayout-${workspaceId}`);
+    if (!newName.trim()) return;
+    const raw = localStorage.getItem(LAYOUT_STORAGE_KEY);
     if (!raw) return;
     addLayoutTemplate(newName.trim(), JSON.parse(raw));
     setNewName("");
