@@ -211,14 +211,29 @@ Agent Spaces 的 `options.skills` 当前直接映射为：
 
 ## Agent Spaces function tools
 
-当前 CLI mode 没有直接把 `AgentRunOptions.functionTools` 转换成 OMP `CustomTool[]`。
+当前 CLI mode 没有直接把 `AgentRunOptions.functionTools` 转换成 OMP `CustomTool[]`，因为 `CustomTool[]` 是 SDK embed API，不是 CLI text mode API。
 
-原因：
+adapter 会复用 Agent Spaces 的本地 Streamable HTTP MCP bridge：
 
-- `CustomTool[]` 是 SDK embed API，不是 CLI text mode API。
-- OMP CLI 可以通过自身 MCP discovery 加载工具，但当前 adapter 没有生成 OMP 原生 MCP config。
+1. 当 `options.functionTools` 非空时，启动短生命周期本地 MCP server。
+2. server 名称固定为 `agent-spaces`。
+3. 写入 `<configDir>/omp-home/.omp/agent/mcp.json`。
+4. OMP CLI 通过原生 MCP discovery 调用这些工具。
 
-因此 Agent Spaces 内置 function tools 当前只会出现在日志中，不会自动注入到 OMP CLI。需要内置工具时，应优先把它们暴露为 OMP 可 discovery 的 MCP server，或后续改用 OMP RPC/ACP 协议接入。
+写入形态：
+
+```json
+{
+  "mcpServers": {
+    "agent-spaces": {
+      "url": "http://127.0.0.1:<port>/mcp",
+      "type": "http"
+    }
+  }
+}
+```
+
+run 结束、失败或 stop 后，adapter 会关闭该本地 MCP server。
 
 ## MCP、extensions、skills、rules
 
@@ -236,9 +251,10 @@ OMP CLI 会按自身 discovery 规则加载配置中的 MCP servers、extensions
 HOME=<configDir>/omp-home
 <configDir>/omp-home/.omp/agent/config.yml
 <configDir>/omp-home/.omp/agent/models.yml
+<configDir>/omp-home/.omp/agent/mcp.json
 ```
 
-当前没有把 `options.mcpServers` 转换为 OMP 原生 MCP 配置，也没有把 Agent Spaces function tools 合并进 MCP 配置。
+`options.mcpServers` 会和 Agent Spaces function tool bridge 合并写入 `mcp.json`。如果外部 MCP server 也命名为 `agent-spaces`，当前内置 bridge 会覆盖该名称，以保持与 Claude Code / Codex runtime 的内置工具命名一致。
 
 ## Resume 行为
 
@@ -319,30 +335,21 @@ Oh My Pi CLI was not found. Install OMP and ensure the `omp` command is availabl
 
 后续可切到 `--mode json`，消费 OMP newline-delimited JSON events。
 
-### 3. Agent Spaces function tools 未注入
+### 3. MCP discovery 仍依赖 OMP 原生加载
 
-当前 `options.functionTools` 只写日志，不会自动变成 OMP CLI 可用工具。
+adapter 已把 `options.mcpServers` 和 Agent Spaces function tool bridge 写入 `mcp.json`，但最终是否加载仍取决于 OMP CLI 的原生 discovery。
 
-后续方向：
+排障重点：
 
-- 复用 Codex function tool bridge，把 Agent Spaces function tools 暴露为 MCP HTTP server。
-- 在 Agent 专属配置目录中生成或合并 OMP MCP 配置。
-- 或使用 OMP `--mode rpc` / `--mode acp` 接入更结构化的工具协议。
+- `<configDir>/omp-home/.omp/agent/mcp.json` 是否存在。
+- server 日志是否出现 `function tool bridge started`。
+- OMP CLI 是否读取 `HOME=<configDir>/omp-home` 下的 user-level `.omp/agent`。
 
-### 4. `options.mcpServers` 未显式覆盖
-
-Agent Spaces 运行时传入的 `mcpServers` 当前只出现在日志中，没有被写入 OMP 原生配置。
-
-风险：
-
-- Agent Preset UI 中配置的 MCP servers 如果没有被写入 OMP 可 discovery 的位置，OMP runtime 不会加载。
-- 用户可能看到 Agent Spaces 配置中有 MCP，但 OMP 实际工具列表没有。
-
-### 5. `baseURL` 通过 models.yml 写入
+### 4. `baseURL` 通过 models.yml 写入
 
 OMP CLI reference 没有通用 `--api-base` flag。当前 adapter 会在 `models.yml` 写入 provider `baseUrl`，同时继续传 `OPENAI_BASE_URL` / `ANTHROPIC_BASE_URL` 作为兼容 fallback。
 
-### 6. 上游 resume 未完整启用
+### 5. 上游 resume 未完整启用
 
 adapter 本身可以传 `--resume`，但上游只对 `claude-code` / `codex` 判断 runtime session resume。
 
@@ -407,20 +414,20 @@ omp --list-models
 omp
 ```
 
-如果 OMP CLI 能看到，但 Agent Spaces Oh My Pi runtime 看不到，重点检查 runtime 传入的 `cwd`、`PI_AGENT_DIR` / `OMP_AGENT_DIR` 和 `--session-dir` 是否符合 OMP discovery 预期。
-
-如果 Agent Spaces UI 配置了 MCP 但 OMP 看不到，这是当前已知限制：`options.mcpServers` 尚未显式转换给 OMP。
-
-### Agent Spaces 内置工具不可用
-
-这是当前 CLI mode 已知限制。检查服务端日志：
+如果 OMP CLI 能看到，但 Agent Spaces Oh My Pi runtime 看不到，重点检查 runtime 生成的：
 
 ```text
-[oh-my-pi] starting | ... functionTools=...
-[oh-my-pi] function tools are not injected directly in OMP CLI mode...
+<configDir>/omp-home/.omp/agent/mcp.json
 ```
 
-如果必须使用 Agent Spaces 内置工具，需要先把这些工具通过 OMP 可 discovery 的 MCP 配置暴露给 `omp`。
+以及服务端日志：
+
+```text
+[oh-my-pi] function tool bridge started | url=http://127.0.0.1:<port>/mcp ...
+[oh-my-pi] resolved tools | mcpServers=...,agent-spaces functionToolBridge=http://127.0.0.1:<port>/mcp
+```
+
+如果 `mcp.json` 存在且日志正常，但模型仍说没有工具，需要用相同 `HOME` 环境运行一次 `omp` 原生命令确认 OMP 是否读取该 user-level config。
 
 ### Stop 不生效
 
@@ -430,10 +437,8 @@ omp
 
 1. 增加真实端到端运行验证，覆盖普通 prompt、stop、失败路径。
 2. 切到 `--mode json`，恢复 structured output、reasoning、tool lifecycle、usage/cost。
-3. 复用 Agent Spaces function tool bridge，并生成 OMP 可 discovery 的 MCP 配置。
-4. 把 Agent Spaces `mcpServers` 显式转换到 OMP 原生配置。
-5. 明确 OMP session id 持久化策略，并在上游启用 `oh-my-pi` resume。
-6. 验证 `--session-dir <configDir>/omp-home/.omp/agent/sessions` 与 OMP session lookup 的兼容性。
-7. 确认 `baseURL` 对不同 provider 的正确 env var 映射。
-8. 为 `maxTurns` 增加等价 OMP 配置或 Agent Spaces wall-clock timeout。
-9. 增加 adapter 单元测试或集成测试，至少覆盖 CLI args、env、stdout/stderr mapping、stop、ENOENT。
+3. 明确 OMP session id 持久化策略，并在上游启用 `oh-my-pi` resume。
+4. 验证 `--session-dir <configDir>/omp-home/.omp/agent/sessions` 与 OMP session lookup 的兼容性。
+5. 确认 `baseURL` 对不同 provider 的正确 env var 映射。
+6. 为 `maxTurns` 增加等价 OMP 配置或 Agent Spaces wall-clock timeout。
+7. 增加 adapter 单元测试或集成测试，至少覆盖 CLI args、env、stdout/stderr mapping、MCP bridge、stop、ENOENT。

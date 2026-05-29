@@ -8,6 +8,7 @@ import type {
   AgentRuntimeConfig,
 } from './agent-runtime-types.js';
 import { appendOutputStyleToPrompt, summarizeResult } from './agent-runtime-types.js';
+import { startCodexFunctionToolBridge, type CodexFunctionToolBridge } from './codex-function-tool-bridge.js';
 
 /**
  * Runtime backed by the external `omp` CLI.
@@ -27,16 +28,19 @@ export class OhMyPiRuntime implements AgentRuntime {
     const startTime = Date.now();
     const d = (message: string) => console.log(`[oh-my-pi] ${message}`);
     const finalPrompt = appendOutputStyleToPrompt(prompt, options?.outputStyle);
-    const ompHome = prepareOmpConfigHome(this.config, options);
-    const args = buildOmpArgs(finalPrompt, this.config, options, ompHome);
+    let functionToolBridge: CodexFunctionToolBridge | undefined;
 
     d(`starting | cwd=${cwd} provider=${this.config.provider ?? 'default'} model=${this.config.model ?? 'default'} baseURL=${this.config.baseURL ?? 'default'} maxTurns=${options?.maxTurns ?? '∞'} allowedTools=${options?.tools?.join(',') ?? 'all'} mcpServers=${Object.keys(options?.mcpServers ?? {}).join(',') || '-'} functionTools=${options?.functionTools?.map((tool) => tool.name).join(',') || '-'} skills=${options?.skills?.join(',') || '-'} sandboxDirs=${options?.sandboxDirs?.join(',') ?? '-'}`);
     d(`prompt: ${prompt.slice(0, 300)}${prompt.length > 300 ? '...' : ''}`);
-    if (options?.functionTools?.length) {
-      d('function tools are not injected directly in OMP CLI mode; configure them through OMP MCP discovery if needed');
-    }
 
-    return new Promise<AgentRunResult>((resolve) => {
+    try {
+      functionToolBridge = await startCodexFunctionToolBridge(options?.functionTools, d);
+      const mcpServers = withFunctionToolBridge(options?.mcpServers, functionToolBridge);
+      const ompHome = prepareOmpConfigHome(this.config, options, mcpServers);
+      const args = buildOmpArgs(finalPrompt, this.config, options, ompHome);
+      d(`resolved tools | mcpServers=${Object.keys(mcpServers ?? {}).join(',') || '-'} functionToolBridge=${functionToolBridge?.url ?? '-'}`);
+
+      return await new Promise<AgentRunResult>((resolve) => {
       let settled = false;
       let stdoutBuffer = '';
       let stderrBuffer = '';
@@ -145,6 +149,28 @@ export class OhMyPiRuntime implements AgentRuntime {
         });
       });
     });
+    } catch (err) {
+      const elapsed = Date.now() - startTime;
+      const message = err instanceof Error ? err.message : String(err);
+      d(`failed ${elapsed}ms | ${message}`);
+      if (err instanceof Error && err.stack) console.error(err.stack);
+
+      return {
+        success: false,
+        summary: 'Oh My Pi execution failed',
+        artifacts: [],
+        error: message,
+        output,
+        sessionId: options?.resumeSessionId,
+      };
+    } finally {
+      try {
+        await functionToolBridge?.close();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        d(`function tool bridge close failed | ${message}`);
+      }
+    }
   }
 
   stop(): void {
@@ -200,7 +226,11 @@ function buildEnv(config: AgentRuntimeConfig, options?: AgentRunOptions, ompHome
   });
 }
 
-function prepareOmpConfigHome(config: AgentRuntimeConfig, options?: AgentRunOptions): string | undefined {
+function prepareOmpConfigHome(
+  config: AgentRuntimeConfig,
+  options?: AgentRunOptions,
+  mcpServers?: Record<string, unknown>,
+): string | undefined {
   if (!options?.configDir) return undefined;
 
   const homeDir = join(options.configDir, 'omp-home');
@@ -210,8 +240,22 @@ function prepareOmpConfigHome(config: AgentRuntimeConfig, options?: AgentRunOpti
   writeFileSync(join(agentDir, 'config.yml'), buildOmpConfigYaml(config), 'utf-8');
   const modelsYaml = buildOmpModelsYaml(config);
   if (modelsYaml) writeFileSync(join(agentDir, 'models.yml'), modelsYaml, 'utf-8');
+  if (mcpServers && Object.keys(mcpServers).length > 0) {
+    writeFileSync(join(agentDir, 'mcp.json'), JSON.stringify({ mcpServers }, null, 2), 'utf-8');
+  }
 
   return homeDir;
+}
+
+function withFunctionToolBridge(
+  mcpServers: Record<string, unknown> | undefined,
+  bridge: CodexFunctionToolBridge | undefined,
+): Record<string, unknown> | undefined {
+  if (!bridge) return mcpServers;
+  return {
+    ...(mcpServers ?? {}),
+    [bridge.name]: { url: bridge.url, type: 'http' },
+  };
 }
 
 function ompAgentDir(ompHome: string | undefined, options?: AgentRunOptions): string | undefined {
