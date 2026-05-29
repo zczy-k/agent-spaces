@@ -170,7 +170,7 @@ export default function TaskModal({ task, columns, isOpen, onClose, onSave, onDe
           )}
           <div className="flex items-center gap-2.5">
             {onCreateIssue && (
-              <Button size="sm" variant="outline" onClick={() => onCreateIssue(task)}>
+              <Button size="sm" variant="outline" onClick={() => { onClose(); onCreateIssue(task); }}>
                 <CircleDot className="h-4 w-4" />{t('createAsIssue')}
               </Button>
             )}

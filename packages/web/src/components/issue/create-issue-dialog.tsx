@@ -63,9 +63,12 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitl
   };
 
   const toggleMember = (id: string) => {
-    setMembers((prev) =>
-      prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id],
-    );
+    setMembers((prev) => {
+      const next = prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id];
+      // 用户手动改了 members，取消 workflow 选择
+      if (selectedWorkflowId) setSelectedWorkflowId('');
+      return next;
+    });
   };
 
   const handleSubmit = () => {
