@@ -1,5 +1,15 @@
 import type { AgentRole } from './workspace.js';
 
+export const BUILTIN_AGENT_IDS = new Set([
+  'agent-generator',
+  'commit-agent',
+  'title-generator',
+]);
+
+export function isBuiltinAgent(id: string): boolean {
+  return BUILTIN_AGENT_IDS.has(id);
+}
+
 export type AgentSessionStatus =
   | 'idle'
   | 'active'

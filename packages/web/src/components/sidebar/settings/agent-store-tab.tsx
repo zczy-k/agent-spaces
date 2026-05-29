@@ -10,7 +10,7 @@ import { Globe } from "lucide-react";
 const PRESETS = [
   { label: "GitHub (Proxy)", url: "https://gh-proxy.org/https://github.com/hunmer/agent-spaces/raw/refs/heads/main/packages/agents/" },
   { label: "GitHub (Direct)", url: "https://github.com/hunmer/agent-spaces/raw/refs/heads/main/packages/agents/" },
-  { label: "Local (8080)", url: "http://localhost:8080/" },
+  { label: "Local (8080)", url: "http://localhost:3101/" },
 ];
 
 export function AgentStoreTab() {

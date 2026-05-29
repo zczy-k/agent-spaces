@@ -9,9 +9,9 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Download } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Input } from '@/components/ui/input';
+import { Download, Folder, Search, FileText } from 'lucide-react';
 import { fetchStoreIndex } from '@/lib/agent-store';
 import type { WorkflowTemplatePreset } from './workflow-templates';
 
@@ -26,6 +26,7 @@ interface WorkflowIndexItem {
   name: string;
   description: string;
   filename: string;
+  category: string;
   nodeCount: number;
   agentCount: number;
 }
@@ -34,6 +35,8 @@ export function WorkflowTemplatesDialog({ open, onOpenChange, onImport }: Workfl
   const [importing, setImporting] = useState<string | null>(null);
   const [templates, setTemplates] = useState<WorkflowIndexItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [search, setSearch] = useState('');
 
   const fetchTemplates = useCallback(async () => {
     setLoading(true);
@@ -65,51 +68,114 @@ export function WorkflowTemplatesDialog({ open, onOpenChange, onImport }: Workfl
     }
   };
 
+  const categories = Array.from(new Set(templates.map((t) => t.category).filter(Boolean)));
+
+  const filtered = templates.filter((t) => {
+    if (categoryFilter && t.category !== categoryFilter) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      if (!t.name.toLowerCase().includes(q) && !t.description.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="!w-[80vw] !max-w-[80vw] !h-[80vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle>工作流模板</DialogTitle>
           <DialogDescription>选择一个模板快速创建工作流</DialogDescription>
         </DialogHeader>
-        <div className="space-y-3 mt-2">
-          {loading ? (
-            <div className="text-center py-8 text-sm text-muted-foreground">加载中...</div>
-          ) : templates.length === 0 ? (
-            <div className="text-center py-8 text-sm text-muted-foreground">暂无模板</div>
-          ) : (
-            templates.map((item) => (
-              <Card key={item.id} className="overflow-hidden">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-sm">{item.name}</span>
-                        <Badge variant="secondary" className="text-xs">
-                          {item.agentCount} 个 Agent
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground">{item.description}</p>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="shrink-0"
-                      disabled={importing !== null}
-                      onClick={() => handleImport(item)}
-                    >
-                      {importing === item.id ? (
-                        <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                      ) : (
-                        <Download className="h-3.5 w-3.5 mr-1" />
-                      )}
-                      导入
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+
+        <div className="flex flex-1 min-h-0 gap-4 pt-2">
+          {categories.length > 0 && (
+            <ScrollArea className="hidden md:block w-44 shrink-0">
+              <div className="flex flex-col gap-1 pr-2">
+                <Button
+                  variant={!categoryFilter ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="w-full justify-start"
+                  onClick={() => setCategoryFilter('')}
+                >
+                  <FileText className="size-3.5 mr-1.5" />
+                  全部
+                </Button>
+                {categories.map((cat) => (
+                  <Button
+                    key={cat}
+                    variant={categoryFilter === cat ? 'secondary' : 'ghost'}
+                    size="sm"
+                    className="w-full justify-start"
+                    onClick={() => setCategoryFilter(categoryFilter === cat ? '' : cat)}
+                  >
+                    <Folder className="size-3.5 mr-1.5" />
+                    <span className="truncate">{cat}</span>
+                  </Button>
+                ))}
+              </div>
+            </ScrollArea>
           )}
+
+          <div className="flex-1 min-w-0 flex flex-col min-h-0">
+            <div className="relative mb-3">
+              <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="搜索工作流模板..."
+                className="pl-8"
+              />
+            </div>
+            <ScrollArea className="flex-1">
+              {loading ? (
+                <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">加载中...</div>
+              ) : filtered.length === 0 ? (
+                <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">暂无模板</div>
+              ) : (
+                <div className="grid grid-cols-1 gap-3 pr-2">
+                  {filtered.map((item) => (
+                    <div
+                      key={item.id}
+                      className="rounded-xl border border-border bg-background p-4 hover:bg-accent/30 transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-medium text-sm">{item.name}</span>
+                            {item.category && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                                {item.category}
+                              </span>
+                            )}
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
+                              {item.agentCount} 个 Agent
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="shrink-0"
+                          disabled={importing !== null}
+                          onClick={() => handleImport(item)}
+                        >
+                          {importing === item.id ? (
+                            <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                          ) : (
+                            <>
+                              <Download className="size-3.5 mr-1" />
+                              导入
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

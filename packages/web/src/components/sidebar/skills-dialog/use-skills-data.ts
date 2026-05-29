@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { fetchStoreIndex } from '@/lib/agent-store';
+import { isBuiltinAgent } from '@agent-spaces/shared';
 import type { AgentCandidate, ImportSkillItem, SkillInfo, SkillSyncItem, StoreSkillItem } from './types';
 
 export function useSkillsData(open: boolean, standalone?: boolean) {
@@ -30,7 +31,7 @@ export function useSkillsData(open: boolean, standalone?: boolean) {
       const res = await fetch('/api/agents/presets');
       if (res.ok) {
         const data = await res.json();
-        setAgents(data.map((a: AgentCandidate) => ({
+        setAgents(data.filter((a: AgentCandidate) => !isBuiltinAgent(a.id)).map((a: AgentCandidate) => ({
           id: a.id,
           name: a.name,
           avatarUrl: a.avatarUrl,

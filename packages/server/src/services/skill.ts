@@ -206,6 +206,8 @@ export function importSkillFromStore(storePath: string, group: string): SkillInf
   const candidates = [
     join(process.cwd(), 'public', 'skills', storePath),
     join(import.meta.dirname ?? '', '..', 'public', 'skills', storePath),
+    join(process.cwd(), 'packages', 'agents', 'skills', storePath),
+    join(import.meta.dirname ?? '', '..', '..', '..', 'agents', 'skills', storePath),
   ];
   for (const c of candidates) {
     if (existsSync(c) && statSync(c).isDirectory()) { srcDir = c; break; }

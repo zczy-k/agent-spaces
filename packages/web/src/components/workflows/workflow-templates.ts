@@ -4,6 +4,7 @@ export interface WorkflowTemplatePreset {
   id: string;
   name: string;
   description: string;
+  category?: string;
   data: {
     name: string;
     description: string;
