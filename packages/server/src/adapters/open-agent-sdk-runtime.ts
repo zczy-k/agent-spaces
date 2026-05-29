@@ -1,4 +1,6 @@
-import { createAgent } from '@codeany/open-agent-sdk';
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { basename, join } from 'node:path';
+import { createAgent, registerSkill, unregisterSkill } from '@codeany/open-agent-sdk';
 import type { Agent, ApiType, SDKMessage } from '@codeany/open-agent-sdk';
 import type {
   AgentRunOptions,
@@ -8,6 +10,8 @@ import type {
 } from './agent-runtime-types.js';
 import { appendOutputStyleToPrompt, summarizeResult } from './agent-runtime-types.js';
 import { startCodexFunctionToolBridge, type CodexFunctionToolBridge } from './codex-function-tool-bridge.js';
+
+const registeredConfiguredSkills = new Set<string>();
 
 /**
  * Runtime backed by @codeany/open-agent-sdk.
@@ -49,6 +53,10 @@ export class OpenAgentSdkRuntime implements AgentRuntime {
         permissionMode: this.config.permissionMode ?? 'bypassPermissions',
         abortController: this.abortController,
       });
+      const registeredSkills = registerConfiguredSkills(options?.configDir, options?.skills);
+      if (options?.skills?.length) {
+        d(`skills registered | requested=${options.skills.join(',') || '-'} registered=${registeredSkills.join(',') || '-'}`);
+      }
 
       d('agent created, sending prompt...');
       const result = await collectQueryResult(
@@ -194,4 +202,88 @@ function normalizeApiType(provider?: string): ApiType | undefined {
     return provider;
   }
   return undefined;
+}
+
+export function registerConfiguredSkills(agentDir: string | undefined, skills?: string[]): string[] {
+  for (const skill of registeredConfiguredSkills) unregisterSkill(skill);
+  registeredConfiguredSkills.clear();
+
+  if (!agentDir || !Array.isArray(skills)) return [];
+
+  const registered: string[] = [];
+  for (const rawSkill of skills) {
+    const skillName = sanitizeSkillName(rawSkill);
+    if (!skillName) continue;
+
+    const skillFile = resolveSkillFile(agentDir, skillName);
+    if (!skillFile) continue;
+
+    const source = readFileSync(skillFile, 'utf-8');
+    const parsed = parseSkillMarkdown(source);
+    const name = sanitizeSkillName(parsed.meta.name) || skillName;
+    const aliases = new Set(parseListMeta(parsed.meta.aliases).map(sanitizeSkillName).filter(Boolean));
+    if (name !== skillName) aliases.add(skillName);
+
+    registerSkill({
+      name,
+      aliases: aliases.size ? [...aliases] : undefined,
+      description: parsed.meta.description || summarizeSkillDescription(parsed.body, skillName),
+      whenToUse: parsed.meta['when-to-use'] || parsed.meta.whenToUse,
+      userInvocable: true,
+      async getPrompt() {
+        return [{ type: 'text', text: parsed.body || source }];
+      },
+    });
+    registeredConfiguredSkills.add(name);
+    registered.push(name);
+  }
+
+  return registered;
+}
+
+function resolveSkillFile(agentDir: string, skillName: string): string | undefined {
+  const skillsBase = join(agentDir, 'skills');
+  const folderSkillFile = join(skillsBase, skillName, 'SKILL.md');
+  if (existsSync(folderSkillFile) && statSync(folderSkillFile).size > 0) return folderSkillFile;
+
+  const legacySkillFile = join(skillsBase, `${skillName}.md`);
+  if (existsSync(legacySkillFile) && statSync(legacySkillFile).size > 0) return legacySkillFile;
+
+  return undefined;
+}
+
+function parseSkillMarkdown(source: string): { meta: Record<string, string>; body: string } {
+  const match = source.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
+  if (!match) return { meta: {}, body: source.trim() };
+
+  const meta: Record<string, string> = {};
+  for (const line of match[1].split(/\r?\n/)) {
+    const parsed = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
+    if (!parsed) continue;
+    meta[parsed[1]] = parsed[2].trim().replace(/^['"]|['"]$/g, '');
+  }
+
+  return { meta, body: source.slice(match[0].length).trim() };
+}
+
+function summarizeSkillDescription(body: string, skillName: string): string {
+  const firstLine = body
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^#+\s*/, '').trim())
+    .find(Boolean);
+  return firstLine || `Configured skill ${skillName}`;
+}
+
+function parseListMeta(value: string | undefined): string[] {
+  if (!value) return [];
+  const trimmed = value.trim();
+  if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+    return trimmed.slice(1, -1).split(',').map((item) => item.trim().replace(/^['"]|['"]$/g, ''));
+  }
+  return trimmed.split(',').map((item) => item.trim());
+}
+
+function sanitizeSkillName(name: string | undefined): string {
+  const raw = basename(name ?? '').replace(/\.md$/i, '').trim();
+  return raw.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '');
 }

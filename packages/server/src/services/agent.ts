@@ -665,7 +665,16 @@ function ensureWorkspaceAgentCopy(preset: AgentConfig, agentspaceDir: string): v
       && statSync(sourceBuiltInDir).isDirectory()
       && countFiles(sourceBuiltInDir) > countFiles(targetBuiltInDir);
   });
-  if (!missingRequiredFile && !missingBuiltInDir) return;
+  const missingSkill = (preset.skills ?? []).some((skill) => {
+    const skillName = skill.replace(/\.md$/i, '');
+    const targetSkillsDir = join(workspaceAgentDir, 'skills');
+    const targetSkillDir = join(targetSkillsDir, skillName);
+    if (existsSync(targetSkillDir) && statSync(targetSkillDir).isDirectory()) {
+      return !existsSync(join(targetSkillDir, 'SKILL.md'));
+    }
+    return !existsSync(join(targetSkillsDir, `${skillName}.md`));
+  });
+  if (!missingRequiredFile && !missingBuiltInDir && !missingSkill) return;
   writeWorkspaceAgentCopy(preset, agentspaceDir);
 }
 

@@ -1,92 +1,23 @@
-import { z } from 'zod';
+import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type {
-  AgentFunctionTool,
   AgentRunOptions,
   AgentRunResult,
   AgentRuntime,
   AgentRuntimeConfig,
-  AgentRuntimeEvent,
 } from './agent-runtime-types.js';
 import { appendOutputStyleToPrompt, summarizeResult } from './agent-runtime-types.js';
 
-type OmpSdk = {
-  createAgentSession: (options: Record<string, unknown>) => Promise<{
-    session: OmpSession;
-    modelFallbackMessage?: string;
-  }>;
-  discoverAuthStorage: (agentDir?: string) => Promise<unknown>;
-  ModelRegistry: new (authStorage: unknown) => OmpModelRegistry;
-  SessionManager: {
-    create(cwd: string): unknown;
-    open(sessionFile: string): Promise<unknown>;
-  };
-};
-
-type OmpSession = {
-  sessionManager: {
-    getSessionFile(): string | undefined;
-    getSessionId(): string;
-  };
-  subscribe(listener: (event: OmpSessionEvent) => void): () => void;
-  prompt(prompt: string): Promise<unknown>;
-  abort(): void;
-  dispose(): Promise<void>;
-};
-
-type OmpModel = {
-  id: string;
-  provider: string;
-};
-
-type OmpModelRegistry = {
-  refresh(): Promise<void>;
-  getAvailable(): OmpModel[];
-  find(provider: string, modelId: string): OmpModel | undefined;
-  registerProvider(providerName: string, config: Record<string, unknown>, sourceId?: string): void;
-};
-
-type OmpSessionEvent =
-  | {
-      type: 'message_update';
-      assistantMessageEvent:
-        | { type: 'text_delta'; delta: string }
-        | { type: 'thinking_delta'; delta: string }
-        | { type: 'error'; error: unknown }
-        | { type: string; [key: string]: unknown };
-    }
-  | { type: 'tool_execution_start'; toolCallId: string; toolName: string; args: unknown }
-  | { type: 'tool_execution_update'; toolCallId: string; toolName: string; partialResult: unknown }
-  | { type: 'tool_execution_end'; toolCallId: string; toolName: string; result: unknown; isError: boolean }
-  | { type: string; [key: string]: unknown };
-
-type OmpMessageUpdateEvent = Extract<OmpSessionEvent, { type: 'message_update' }>;
-type OmpToolExecutionStartEvent = Extract<OmpSessionEvent, { type: 'tool_execution_start' }>;
-type OmpToolExecutionUpdateEvent = Extract<OmpSessionEvent, { type: 'tool_execution_update' }>;
-type OmpToolExecutionEndEvent = Extract<OmpSessionEvent, { type: 'tool_execution_end' }>;
-
-type OmpCustomTool = {
-  name: string;
-  label: string;
-  description: string;
-  parameters: z.ZodType;
-  execute(
-    toolCallId: string,
-    params: unknown,
-    onUpdate: unknown,
-    ctx: unknown,
-    signal?: AbortSignal,
-  ): Promise<{ content: Array<{ type: 'text'; text: string }> }>;
-};
-
 /**
- * Runtime backed by @oh-my-pi/pi-coding-agent.
+ * Runtime backed by the external `omp` CLI.
  *
- * The current published SDK is Bun-native: its exports point at TypeScript
- * source that imports `bun` and uses `Bun.*`. Keep the import lazy so the
- * Node-based Agent Spaces server can start even when this runtime is not used.
+ * The published @oh-my-pi/pi-coding-agent SDK is Bun-native, so the Node server
+ * keeps OMP behind a process boundary and talks to the CLI instead of importing
+ * the SDK into this process.
  */
 export class OhMyPiRuntime implements AgentRuntime {
-  private session: OmpSession | null = null;
+  private child: ChildProcessWithoutNullStreams | null = null;
 
   constructor(private readonly config: AgentRuntimeConfig = {}) {}
 
@@ -95,153 +26,241 @@ export class OhMyPiRuntime implements AgentRuntime {
     const cwd = workingDir || process.cwd();
     const startTime = Date.now();
     const d = (message: string) => console.log(`[oh-my-pi] ${message}`);
+    const finalPrompt = appendOutputStyleToPrompt(prompt, options?.outputStyle);
+    const ompHome = prepareOmpConfigHome(this.config, options);
+    const args = buildOmpArgs(finalPrompt, this.config, options, ompHome);
 
-    d(`starting | cwd=${cwd} provider=${this.config.provider ?? 'discovered'} model=${this.config.model ?? 'discovered'} baseURL=${this.config.baseURL ?? 'discovered'} maxTurns=${options?.maxTurns ?? '∞'} allowedTools=${options?.tools?.join(',') ?? 'all'} mcpServers=${Object.keys(options?.mcpServers ?? {}).join(',') || '-'} functionTools=${options?.functionTools?.map((tool) => tool.name).join(',') || '-'} skills=${options?.skills?.join(',') || '-'} sandboxDirs=${options?.sandboxDirs?.join(',') ?? '-'}`);
+    d(`starting | cwd=${cwd} provider=${this.config.provider ?? 'default'} model=${this.config.model ?? 'default'} baseURL=${this.config.baseURL ?? 'default'} maxTurns=${options?.maxTurns ?? '∞'} allowedTools=${options?.tools?.join(',') ?? 'all'} mcpServers=${Object.keys(options?.mcpServers ?? {}).join(',') || '-'} functionTools=${options?.functionTools?.map((tool) => tool.name).join(',') || '-'} skills=${options?.skills?.join(',') || '-'} sandboxDirs=${options?.sandboxDirs?.join(',') ?? '-'}`);
     d(`prompt: ${prompt.slice(0, 300)}${prompt.length > 300 ? '...' : ''}`);
+    if (options?.functionTools?.length) {
+      d('function tools are not injected directly in OMP CLI mode; configure them through OMP MCP discovery if needed');
+    }
 
-    let unsubscribe: (() => void) | undefined;
-    let resultText = '';
-    let error: string | undefined;
+    return new Promise<AgentRunResult>((resolve) => {
+      let settled = false;
+      let stdoutBuffer = '';
+      let stderrBuffer = '';
+      let sessionId = options?.resumeSessionId;
+      let emittedSessionId = sessionId;
 
-    try {
-      const sdk = await loadOhMyPiSdk();
-      const authStorage = await sdk.discoverAuthStorage(options?.configDir);
-      const modelRegistry = new sdk.ModelRegistry(authStorage);
-      await modelRegistry.refresh();
+      const finish = (result: AgentRunResult): void => {
+        if (settled) return;
+        settled = true;
+        this.child = null;
+        resolve(result);
+      };
 
-      if (this.config.apiKey && this.config.model && this.config.baseURL) {
-        registerRuntimeProvider(modelRegistry, this.config);
+      try {
+        this.child = spawn('omp', args, {
+          cwd,
+          env: buildEnv(this.config, options, ompHome),
+          windowsHide: true,
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        d(`failed to start | ${message}`);
+        finish({
+          success: false,
+          summary: 'Oh My Pi execution failed',
+          artifacts: [],
+          error: message,
+          output,
+          sessionId,
+        });
+        return;
       }
 
-      const model = resolveModel(modelRegistry, this.config);
-      const sessionManager = options?.resumeSessionId
-        ? await sdk.SessionManager.open(options.resumeSessionId)
-        : sdk.SessionManager.create(cwd);
+      this.child.stdout.setEncoding('utf-8');
+      this.child.stderr.setEncoding('utf-8');
 
-      const created = await sdk.createAgentSession({
-        cwd,
-        agentDir: options?.configDir,
-        authStorage,
-        modelRegistry,
-        model,
-        modelPattern: model ? undefined : this.config.model,
-        thinkingLevel: normalizeThinkingLevel(this.config),
-        sessionManager,
-        systemPrompt: options?.systemPrompt ? [options.systemPrompt] : undefined,
-        toolNames: options?.tools,
-        customTools: buildCustomTools(options?.functionTools, output, options, d),
-        enableMCP: true,
-        enableLsp: true,
-        autoApprove: this.config.permissionMode === 'bypassPermissions',
+      this.child.stdout.on('data', (chunk: string) => {
+        stdoutBuffer = consumeLines(stdoutBuffer + chunk, (line) => {
+          if (!line) return;
+          output.push(line);
+          const parsedSessionId = extractSessionId(line);
+          if (parsedSessionId && parsedSessionId !== emittedSessionId) {
+            sessionId = parsedSessionId;
+            emittedSessionId = parsedSessionId;
+            options?.onEvent?.({ type: 'session', sessionId });
+          }
+          options?.onEvent?.({ type: 'output', line });
+        });
       });
 
-      this.session = created.session;
-      if (created.modelFallbackMessage) {
-        output.push(created.modelFallbackMessage);
-        options?.onEvent?.({ type: 'output', line: created.modelFallbackMessage });
-      }
+      this.child.stderr.on('data', (chunk: string) => {
+        stderrBuffer = consumeLines(stderrBuffer + chunk, (line) => {
+          if (!line) return;
+          const formatted = `[stderr] ${line}`;
+          output.push(formatted);
+          options?.onEvent?.({ type: 'output', line: formatted });
+        });
+      });
 
-      const sessionId = created.session.sessionManager.getSessionFile() ?? created.session.sessionManager.getSessionId();
-      if (sessionId) options?.onEvent?.({ type: 'session', sessionId });
+      this.child.on('error', (err) => {
+        const message = err.message.includes('ENOENT')
+          ? 'Oh My Pi CLI was not found. Install OMP and ensure the `omp` command is available on PATH.'
+          : err.message;
+        d(`failed ${Date.now() - startTime}ms | ${message}`);
+        finish({
+          success: false,
+          summary: 'Oh My Pi execution failed',
+          artifacts: [],
+          error: message,
+          output,
+          sessionId,
+        });
+      });
 
-      unsubscribe = created.session.subscribe((event) => {
-        const mapped = mapSessionEvent(event, output);
-        if (mapped.textDelta) resultText += mapped.textDelta;
-        if (mapped.error) error = mapped.error;
-        for (const runtimeEvent of mapped.events) {
-          options?.onEvent?.(runtimeEvent);
+      this.child.on('close', (code, signal) => {
+        stdoutBuffer = flushLine(stdoutBuffer, output, options);
+        stderrBuffer = flushLine(stderrBuffer, output, options, '[stderr] ');
+        void stdoutBuffer;
+        void stderrBuffer;
+
+        const elapsed = Date.now() - startTime;
+        if (code === 0) {
+          const text = lastMeaningfulLine(output);
+          d(`done ${elapsed}ms`);
+          finish({
+            success: true,
+            summary: summarizeResult(text),
+            artifacts: [],
+            output,
+            sessionId,
+          });
+          return;
         }
-      });
 
-      await created.session.prompt(appendOutputStyleToPrompt(prompt, options?.outputStyle));
-      const elapsed = Date.now() - startTime;
-      const finalText = resultText || lastOutputText(output);
-
-      if (error) {
+        const error = signal
+          ? `Oh My Pi execution stopped by signal ${signal}`
+          : `Oh My Pi execution failed with exit code ${code ?? 'unknown'}`;
         d(`failed ${elapsed}ms | ${error}`);
-        return {
+        finish({
           success: false,
           summary: 'Oh My Pi execution failed',
           artifacts: [],
           error,
           output,
           sessionId,
-        };
-      }
-
-      if (finalText && output.at(-1) !== finalText) output.push(finalText);
-      d(`done ${elapsed}ms`);
-      return {
-        success: true,
-        summary: summarizeResult(finalText),
-        artifacts: [],
-        output,
-        sessionId,
-      };
-    } catch (err) {
-      const elapsed = Date.now() - startTime;
-      const message = err instanceof Error ? err.message : String(err);
-      d(`failed ${elapsed}ms | ${message}`);
-      if (err instanceof Error && err.stack) console.error(err.stack);
-
-      return { success: false, summary: 'Oh My Pi execution failed', artifacts: [], error: message, output, sessionId: options?.resumeSessionId };
-    } finally {
-      unsubscribe?.();
-      try {
-        await this.session?.dispose();
-      } finally {
-        this.session = null;
-      }
-    }
+        });
+      });
+    });
   }
 
   stop(): void {
-    this.session?.abort();
+    this.child?.kill();
   }
 }
 
-async function loadOhMyPiSdk(): Promise<OmpSdk> {
-  if (!('Bun' in globalThis)) {
-    throw new Error(
-      'Oh My Pi runtime requires running Agent Spaces server under Bun. The current @oh-my-pi/pi-coding-agent package imports Bun-native APIs such as `bun`/`Bun.*`, so it cannot be embedded in the Node server process. Run the server with Bun or use the Oh My Pi CLI/RPC process boundary instead.',
-    );
-  }
+function buildOmpArgs(
+  prompt: string,
+  config: AgentRuntimeConfig,
+  options?: AgentRunOptions,
+  ompHome?: string,
+): string[] {
+  const args = ['--mode', 'text'];
 
-  try {
-    const specifier = '@oh-my-pi/pi-coding-agent';
-    return await import(specifier) as OmpSdk;
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    throw new Error(`Failed to load @oh-my-pi/pi-coding-agent: ${message}`);
-  }
+  if (options?.resumeSessionId) args.push('--resume', options.resumeSessionId);
+  if (config.model) args.push('--model', config.model);
+  if (config.provider) args.push('--provider', String(config.provider));
+  if (config.apiKey) args.push('--api-key', config.apiKey);
+
+  const thinking = normalizeThinkingLevel(config);
+  if (thinking) args.push('--thinking', thinking);
+
+  if (options?.tools?.length) args.push('--tools', options.tools.join(','));
+  if (options?.systemPrompt?.trim()) args.push('--system-prompt', options.systemPrompt.trim());
+
+  const skills = normalizeSkillNames(options?.skills);
+  if (skills.length) args.push('--skills', skills.join(','));
+
+  const agentDir = ompAgentDir(ompHome, options);
+  if (agentDir) args.push('--session-dir', join(agentDir, 'sessions'));
+
+  args.push('-p', prompt);
+  return args;
 }
 
-function resolveModel(modelRegistry: OmpModelRegistry, config: AgentRuntimeConfig): OmpModel | undefined {
-  if (config.model) {
-    const exact = config.provider ? modelRegistry.find(String(config.provider), config.model) : undefined;
-    if (exact) return exact;
-    const byId = modelRegistry.getAvailable().find((model) => model.id === config.model || `${model.provider}/${model.id}` === config.model);
-    if (byId) return byId;
-  }
-  return modelRegistry.getAvailable()[0];
+function buildEnv(config: AgentRuntimeConfig, options?: AgentRunOptions, ompHome?: string): NodeJS.ProcessEnv {
+  const apiKey = config.apiKey || process.env.PI_API_KEY || process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY;
+  const agentDir = ompAgentDir(ompHome, options);
+  return removeUndefined({
+    ...process.env,
+    HOME: ompHome || process.env.HOME,
+    AGENT_SPACES_OMP_API_KEY: apiKey,
+    PI_API_KEY: apiKey,
+    OMP_API_KEY: apiKey,
+    OPENAI_API_KEY: config.provider === 'anthropic-messages' ? process.env.OPENAI_API_KEY : apiKey,
+    ANTHROPIC_API_KEY: config.provider === 'anthropic-messages' ? apiKey : process.env.ANTHROPIC_API_KEY,
+    OPENAI_BASE_URL: config.baseURL || process.env.OPENAI_BASE_URL,
+    ANTHROPIC_BASE_URL: config.baseURL || process.env.ANTHROPIC_BASE_URL,
+    PI_AGENT_DIR: agentDir || process.env.PI_AGENT_DIR,
+    OMP_AGENT_DIR: agentDir || process.env.OMP_AGENT_DIR,
+    NO_COLOR: process.env.NO_COLOR || '1',
+  });
 }
 
-function registerRuntimeProvider(modelRegistry: OmpModelRegistry, config: AgentRuntimeConfig): void {
+function prepareOmpConfigHome(config: AgentRuntimeConfig, options?: AgentRunOptions): string | undefined {
+  if (!options?.configDir) return undefined;
+
+  const homeDir = join(options.configDir, 'omp-home');
+  const agentDir = join(homeDir, '.omp', 'agent');
+  mkdirSync(agentDir, { recursive: true });
+
+  writeFileSync(join(agentDir, 'config.yml'), buildOmpConfigYaml(config), 'utf-8');
+  const modelsYaml = buildOmpModelsYaml(config);
+  if (modelsYaml) writeFileSync(join(agentDir, 'models.yml'), modelsYaml, 'utf-8');
+
+  return homeDir;
+}
+
+function ompAgentDir(ompHome: string | undefined, options?: AgentRunOptions): string | undefined {
+  if (ompHome) return join(ompHome, '.omp', 'agent');
+  return options?.configDir;
+}
+
+function buildOmpConfigYaml(config: AgentRuntimeConfig): string {
+  const model = config.provider && config.model ? `${sanitizeProviderName(config.provider)}/${config.model}` : config.model;
+  const modelRoles = model ? `modelRoles:\n  default: ${yamlScalar(model)}\n` : '';
+  const thinking = normalizeThinkingLevel(config);
+  const thinkingLine = thinking ? `defaultThinkingLevel: ${yamlScalar(thinking)}\n` : '';
+  return `${modelRoles}${thinkingLine}`;
+}
+
+function buildOmpModelsYaml(config: AgentRuntimeConfig): string | undefined {
+  if (!config.model || !config.baseURL) return undefined;
+
   const providerName = sanitizeProviderName(config.provider);
-  modelRegistry.registerProvider(providerName, {
-    api: normalizeOmpApi(config.provider),
-    baseUrl: config.baseURL,
-    apiKey: config.apiKey,
-    models: [{
-      id: config.model!,
-      name: config.model!,
-      reasoning: config.thinkingEnabled !== false,
-      input: ['text'],
-      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-      contextWindow: 128_000,
-      maxTokens: 16_384,
-    }],
-  }, 'agent-spaces');
+  const api = normalizeOmpApi(config.provider);
+  const apiKeyRef = config.apiKey ? 'AGENT_SPACES_OMP_API_KEY' : undefined;
+  const lines = [
+    'providers:',
+    `  ${yamlKey(providerName)}:`,
+    `    baseUrl: ${yamlScalar(config.baseURL)}`,
+    `    api: ${yamlScalar(api)}`,
+  ];
+
+  if (apiKeyRef) lines.push(`    apiKey: ${yamlScalar(apiKeyRef)}`);
+  else lines.push('    auth: none');
+
+  lines.push(
+    '    models:',
+    `      - id: ${yamlScalar(config.model)}`,
+    `        name: ${yamlScalar(config.model)}`,
+    `        api: ${yamlScalar(api)}`,
+    `        reasoning: ${config.thinkingEnabled === false ? 'false' : 'true'}`,
+    '        input: [text]',
+    '        cost:',
+    '          input: 0',
+    '          output: 0',
+    '          cacheRead: 0',
+    '          cacheWrite: 0',
+    '        contextWindow: 128000',
+    '        maxTokens: 16384',
+    '',
+  );
+
+  return lines.join('\n');
 }
 
 function normalizeOmpApi(provider?: AgentRuntimeConfig['provider']): string {
@@ -263,110 +282,56 @@ function sanitizeProviderName(provider?: AgentRuntimeConfig['provider']): string
   return raw.replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'agent-spaces';
 }
 
+function yamlKey(value: string): string {
+  return /^[A-Za-z0-9_-]+$/.test(value) ? value : yamlScalar(value);
+}
+
+function yamlScalar(value: string): string {
+  return JSON.stringify(value);
+}
+
 function normalizeThinkingLevel(config: AgentRuntimeConfig): string | undefined {
   if (config.thinkingEnabled === false) return 'off';
   return config.thinkingEffort ?? 'medium';
 }
 
-function buildCustomTools(
-  functionTools: AgentFunctionTool[] | undefined,
-  output: string[],
-  options: AgentRunOptions | undefined,
-  log: (message: string) => void,
-): OmpCustomTool[] {
-  if (!functionTools?.length) return [];
-  return functionTools.map((runtimeTool) => ({
-    name: runtimeTool.name,
-    label: runtimeTool.name,
-    description: runtimeTool.description,
-    parameters: z.object({}).passthrough(),
-    async execute(toolCallId: string, params: unknown, _onUpdate: unknown, _ctx: unknown, signal?: AbortSignal) {
-      void signal;
-      const line = `Tool: ${runtimeTool.name} input=${JSON.stringify(params)}`;
-      log(`tool use | id=${toolCallId} name=${runtimeTool.name} input=${JSON.stringify(params)}`);
-      output.push(line);
-      options?.onEvent?.({ type: 'tool_use', id: toolCallId, name: runtimeTool.name, input: params, line });
-      const result = await runtimeTool.execute(params);
-      options?.onEvent?.({ type: 'tool_result', toolUseId: toolCallId, result });
-      return { content: [{ type: 'text', text: stringifyToolResult(result) }] };
-    },
-  }));
+function normalizeSkillNames(skills?: string[]): string[] {
+  if (!Array.isArray(skills)) return [];
+  return skills
+    .map((skill) => skill.trim())
+    .filter(Boolean);
 }
 
-function mapSessionEvent(event: OmpSessionEvent, output: string[]): {
-  textDelta?: string;
-  error?: string;
-  events: AgentRuntimeEvent[];
-} {
-  const events: AgentRuntimeEvent[] = [];
+function consumeLines(buffer: string, onLine: (line: string) => void): string {
+  const lines = buffer.split(/\r?\n/);
+  const remainder = lines.pop() ?? '';
+  for (const line of lines) onLine(stripAnsi(line).trimEnd());
+  return remainder;
+}
 
-  if (isOmpMessageUpdateEvent(event)) {
-    const assistantEvent = event.assistantMessageEvent;
-    if (assistantEvent.type === 'text_delta' && typeof assistantEvent.delta === 'string') {
-      output.push(assistantEvent.delta);
-      events.push({ type: 'output', line: assistantEvent.delta });
-      return { textDelta: assistantEvent.delta, events };
-    }
-    if (assistantEvent.type === 'thinking_delta' && typeof assistantEvent.delta === 'string') {
-      events.push({ type: 'reasoning', text: assistantEvent.delta, status: 'streaming' });
-      return { events };
-    }
-    if (assistantEvent.type === 'error') {
-      return { error: stringifyToolResult(assistantEvent.error), events };
-    }
-    return { events };
+function flushLine(buffer: string, output: string[], options?: AgentRunOptions, prefix = ''): string {
+  const line = stripAnsi(buffer).trimEnd();
+  if (line) {
+    const formatted = `${prefix}${line}`;
+    output.push(formatted);
+    options?.onEvent?.({ type: 'output', line: formatted });
   }
-
-  if (isOmpToolExecutionStartEvent(event)) {
-    const line = `Tool: ${event.toolName} input=${JSON.stringify(event.args)}`;
-    output.push(line);
-    events.push({ type: 'tool_use', id: event.toolCallId, name: event.toolName, input: event.args, line });
-  } else if (isOmpToolExecutionUpdateEvent(event)) {
-    events.push({ type: 'tool_result', toolUseId: event.toolCallId, result: event.partialResult });
-  } else if (isOmpToolExecutionEndEvent(event)) {
-    events.push({ type: 'tool_result', toolUseId: event.toolCallId, result: event.result });
-    if (event.isError) return { error: stringifyToolResult(event.result), events };
-  }
-
-  return { events };
+  return '';
 }
 
-function isOmpMessageUpdateEvent(event: OmpSessionEvent): event is OmpMessageUpdateEvent {
-  return event.type === 'message_update' && isRecord(event.assistantMessageEvent);
+function extractSessionId(line: string): string | undefined {
+  const match = line.match(/\bsession(?:\s+id)?\s*[:=]\s*([a-zA-Z0-9._:/-]+)/i);
+  return match?.[1];
 }
 
-function isOmpToolExecutionStartEvent(event: OmpSessionEvent): event is OmpToolExecutionStartEvent {
-  return event.type === 'tool_execution_start'
-    && typeof event.toolCallId === 'string'
-    && typeof event.toolName === 'string';
+function lastMeaningfulLine(output: string[]): string {
+  return [...output].reverse().find((line) => line.trim() && !line.startsWith('[stderr]')) ?? '';
 }
 
-function isOmpToolExecutionUpdateEvent(event: OmpSessionEvent): event is OmpToolExecutionUpdateEvent {
-  return event.type === 'tool_execution_update'
-    && typeof event.toolCallId === 'string'
-    && typeof event.toolName === 'string';
+function stripAnsi(value: string): string {
+  return value.replace(/\u001b\[[0-9;]*m/g, '');
 }
 
-function isOmpToolExecutionEndEvent(event: OmpSessionEvent): event is OmpToolExecutionEndEvent {
-  return event.type === 'tool_execution_end'
-    && typeof event.toolCallId === 'string'
-    && typeof event.toolName === 'string'
-    && typeof event.isError === 'boolean';
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value && typeof value === 'object');
-}
-
-function stringifyToolResult(result: unknown): string {
-  if (typeof result === 'string') return result;
-  try {
-    return JSON.stringify(result);
-  } catch {
-    return String(result);
-  }
-}
-
-function lastOutputText(output: string[]): string {
-  return [...output].reverse().find((line) => line.trim() && !line.startsWith('Tool:')) ?? '';
+function removeUndefined(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  return Object.fromEntries(Object.entries(env).filter((entry): entry is [string, string] => entry[1] !== undefined));
 }
