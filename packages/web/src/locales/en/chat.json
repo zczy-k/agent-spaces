@@ -42,7 +42,10 @@
     "waitingForUser": "Waiting for confirmation",
     "running": "Running",
     "success": "Success",
-    "error": "Failed"
+    "error": "Failed",
+    "pending": "Pending",
+    "streaming": "Streaming",
+    "completed": "Completed"
   },
   "viewRelatedIssue": "View related issue",
   "deleteMessage": {

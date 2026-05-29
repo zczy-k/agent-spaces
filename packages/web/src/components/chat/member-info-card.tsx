@@ -129,9 +129,11 @@ export function MemberInfoCard({ agentId, displayName, channels = [], compact = 
           className={compact ? 'size-8 rounded-full' : 'size-10 rounded-full'}
         />
         <div className="flex-1 min-w-0">
-          <p className={`font-medium truncate ${compact ? 'text-xs' : 'text-sm'}`}>{resolvedName}</p>
+          <div className="flex items-baseline gap-1.5">
+            <p className={`font-medium truncate ${compact ? 'text-sm' : 'text-base'}`}>{resolvedName}</p>
+            <span className="shrink-0 text-[11px] text-muted-foreground">{agent?.role || agentId}</span>
+          </div>
           <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-            <span className="text-xs text-muted-foreground">{agent?.role || agentId}</span>
             {badges.map((b) => (
               <span
                 key={b.label}

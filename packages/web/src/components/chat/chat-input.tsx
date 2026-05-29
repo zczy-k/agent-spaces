@@ -152,6 +152,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             tools={composerState.activeTools}
             todos={channel.todos}
             onClearTodos={() => updateChannel(workspaceId, channelId, { todos: [] })}
+            onInsertText={(text) => composerRef.current?.insertText(text)}
           />
         </div>
       )}

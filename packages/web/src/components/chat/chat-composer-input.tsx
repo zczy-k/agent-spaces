@@ -64,6 +64,7 @@ export interface ChatComposerInputHandle {
   setContent: (html: string, agents?: MentionedAgent[]) => void;
   focus: () => void;
   setMentionAgent: (agent: MentionedAgent) => void;
+  insertText: (text: string) => void;
 }
 
 interface ChatComposerInputProps {
@@ -443,6 +444,7 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
       },
       focus: () => { editor?.commands.focus("end"); },
       setMentionAgent,
+      insertText: (text: string) => { editor?.chain().focus().insertContent(text).run(); },
     }),
     [editor, setMentionAgent],
   );

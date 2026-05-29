@@ -30,6 +30,14 @@ const typeBadgeConfig: Record<Channel['type'], { className: string; icon: typeof
   agent: { className: 'bg-blue-500/15 text-blue-600', icon: MessageCircle },
 };
 
+const statusBadgeConfig: Record<string, { className: string; label: string }> = {
+  pending: { className: 'bg-yellow-500/15 text-yellow-600', label: 'status.pending' },
+  streaming: { className: 'bg-blue-500/15 text-blue-600', label: 'status.streaming' },
+  waiting_for_user: { className: 'bg-amber-500/15 text-amber-600', label: 'status.waitingForUser' },
+  completed: { className: 'bg-emerald-500/15 text-emerald-600', label: 'status.completed' },
+  error: { className: 'bg-red-500/15 text-red-600', label: 'status.error' },
+};
+
 function lastMsgPreview(msgs: Message[] | undefined): { text: string; status: Message['status'] } | null {
   if (!msgs || msgs.length === 0) return null;
   const last = msgs[msgs.length - 1];
@@ -126,6 +134,7 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
   const renderChannelItem = (ch: Channel, ctx: ItemCtx) => {
     const preview = lastMsgPreview(messages[ch.id]);
     const badge = typeBadgeConfig[ch.type];
+    const statusCfg = preview?.status ? statusBadgeConfig[preview.status] : undefined;
     const isRunning = preview?.status === 'streaming' || preview?.status === 'pending';
     const agentMembers = ch.members.filter(m => m !== 'user');
 
@@ -153,13 +162,17 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
             <Badge variant="secondary" className={cn('text-[10px] px-1 py-0 h-4 rounded', badge.className)}>
               {t(`channel.${ch.type}`)}
             </Badge>
-            {isRunning && (
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
-              </span>
+            {statusCfg && (
+              <Badge variant="secondary" className={cn('text-[10px] px-1 py-0 h-4 rounded flex items-center gap-1', statusCfg.className)}>
+                {isRunning && (
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-current opacity-75" />
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-current" />
+                  </span>
+                )}
+                {t(statusCfg.label)}
+              </Badge>
             )}
-            {agentMembers.length > 0 && <Bot className="h-3 w-3 text-muted-foreground shrink-0" />}
           </div>
           {preview ? (
             <p className="text-xs text-muted-foreground truncate mt-0.5">{preview.text}</p>

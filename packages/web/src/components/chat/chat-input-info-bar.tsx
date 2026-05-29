@@ -42,9 +42,10 @@ interface ChatInputInfoBarProps {
   tools: ToolEntry[];
   todos: Channel["todos"];
   onClearTodos?: () => void;
+  onInsertText?: (text: string) => void;
 }
 
-export function ChatInputInfoBar({ mcps, skills, tools, todos, onClearTodos }: ChatInputInfoBarProps) {
+export function ChatInputInfoBar({ mcps, skills, tools, todos, onClearTodos, onInsertText }: ChatInputInfoBarProps) {
   const t = useTranslations("chat");
 
   return (
@@ -67,7 +68,7 @@ export function ChatInputInfoBar({ mcps, skills, tools, todos, onClearTodos }: C
           <DropdownMenuGroup className="space-y-1">
             {mcps.length ? (
               mcps.map((mcp) => (
-                <DropdownMenuItem key={mcp} className="rounded-[calc(1rem-6px)] text-xs truncate">
+                <DropdownMenuItem key={mcp} className="rounded-[calc(1rem-6px)] text-xs truncate cursor-pointer" onClick={() => onInsertText?.(`[use mcp: ${mcp}]`)}>
                   <IconPlug size={16} className="opacity-60 shrink-0" />
                   <span className="truncate">{mcp}</span>
                 </DropdownMenuItem>
@@ -100,7 +101,7 @@ export function ChatInputInfoBar({ mcps, skills, tools, todos, onClearTodos }: C
           <DropdownMenuGroup className="space-y-1">
             {skills.length ? (
               skills.map((skill) => (
-                <DropdownMenuItem key={skill} className="rounded-[calc(1rem-6px)] text-xs truncate">
+                <DropdownMenuItem key={skill} className="rounded-[calc(1rem-6px)] text-xs truncate cursor-pointer" onClick={() => onInsertText?.(`[use skill: ${skill}]`)}>
                   <IconPuzzle size={16} className="opacity-60 shrink-0" />
                   <span className="truncate">{skill}</span>
                 </DropdownMenuItem>
@@ -133,7 +134,7 @@ export function ChatInputInfoBar({ mcps, skills, tools, todos, onClearTodos }: C
           <DropdownMenuGroup className="space-y-1">
             {tools.length ? (
               tools.map(({ name, label, icon: Icon }) => (
-                <DropdownMenuItem key={name} className="rounded-[calc(1rem-6px)] text-xs truncate">
+                <DropdownMenuItem key={name} className="rounded-[calc(1rem-6px)] text-xs truncate cursor-pointer" onClick={() => onInsertText?.(`[use tool: ${name}]`)}>
                   <Icon size={16} className="opacity-60 shrink-0" />
                   <span className="truncate">{label}</span>
                 </DropdownMenuItem>

@@ -73,7 +73,7 @@ export function ChatInputAgentBar({
                         style={{ background: "radial-gradient(circle, var(--primary), transparent 20%)", animationDuration: "3s" }}
                       />
                       <div className="absolute w-[300%] h-[60%] opacity-80 top-[-10px] left-[-250%] rounded-full animate-star-movement-top z-0 pointer-events-none"
-                        style={{ background: "radial-gradient(circle, var(--primary), transparent 20%)", animationDuration: "3s" }}
+                        style={{ background: "radial-gradient(circle, var(--primary), transparent 10%)", animationDuration: "3s" }}
                       />
                     </>
                   )}
