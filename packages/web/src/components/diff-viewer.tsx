@@ -97,6 +97,14 @@ function lineNumberWidth(lines: DiffLine[]): number {
   return Math.max(String(max).length, 2)
 }
 
+function hasOldContent(input: DiffInput, lines: DiffLine[]): boolean {
+  if ("oldCode" in input) {
+    return (input.oldCode ?? "").trim().length > 0
+  }
+
+  return lines.some((line) => line.oldNumber !== null && line.content.trim().length > 0)
+}
+
 function lineColor(type: DiffLine["type"], element: "bg" | "text" | "num") {
   if (type === "added") {
     return element === "bg"
@@ -323,7 +331,7 @@ export function DiffViewer({
 
   const fullCode = lines.map((l) => l.content).join("\n")
   const showHeader = oldTitle || newTitle
-  const hideOld = lines.length > 0 && lines.every(l => l.type === "added")
+  const hideOld = lines.length > 0 && !hasOldContent(input, lines)
 
   return (
     <div
