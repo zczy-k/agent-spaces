@@ -86,12 +86,15 @@ interface McpsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   standalone?: boolean;
+  selectable?: boolean;
+  selectedMcps?: string[];
+  onSelectedMcpsChange?: (names: string[]) => void;
 }
 
 type TabType = 'local' | 'store';
 type FilterMode = 'all' | 'favorites' | 'agent';
 
-export function McpsDialog({ open, onOpenChange, standalone }: McpsDialogProps) {
+export function McpsDialog({ open, onOpenChange, standalone, selectable, selectedMcps: externalSelected, onSelectedMcpsChange }: McpsDialogProps) {
   const t = useTranslations('mcps');
   const tc = useTranslations('common');
 
@@ -338,9 +341,95 @@ export function McpsDialog({ open, onOpenChange, standalone }: McpsDialogProps) 
     return true;
   });
 
+  const selectedSet = new Set(selectable ? (externalSelected ?? []) : []);
+  const toggleMcp = (name: string) => {
+    if (!onSelectedMcpsChange) return;
+    const next = [...(externalSelected ?? [])];
+    if (next.includes(name)) {
+      onSelectedMcpsChange(next.filter((n) => n !== name));
+    } else {
+      onSelectedMcpsChange([...next, name]);
+    }
+  };
+
   const showMainDialog = (standalone || open) && !bindDialogMcp && !editMcp;
 
-  const localView = (
+  const selectableView = (
+    <div className="flex-1 min-h-0 flex flex-col gap-3 pt-2">
+      <div className="relative">
+        <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder={t('search')}
+          className="pl-8"
+        />
+      </div>
+      {filtered.length > 0 && (
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">
+            {t('enabledCount', { count: filtered.filter((m) => selectedSet.has(m.name)).length, total: filtered.length })}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 text-xs"
+            onClick={() => {
+              const allSelected = filtered.every((m) => selectedSet.has(m.name));
+              const current = [...(externalSelected ?? [])];
+              if (allSelected) {
+                onSelectedMcpsChange?.(current.filter((n) => !filtered.some((m) => m.name === n)));
+              } else {
+                const added = filtered.filter((m) => !current.includes(m.name)).map((m) => m.name);
+                onSelectedMcpsChange?.([...current, ...added]);
+              }
+            }}
+          >
+            {filtered.every((m) => selectedSet.has(m.name)) ? t('deselectAll') : t('selectAll')}
+          </Button>
+        </div>
+      )}
+      <ScrollArea className="flex-1">
+        {loading ? (
+          <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
+            {tc('loading')}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
+            {t('empty')}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-2 pr-2">
+            {filtered.map((mcp) => (
+              <div
+                key={mcp.name}
+                className="rounded-lg border border-border bg-background px-3 py-2 hover:bg-accent/30 transition-colors cursor-pointer"
+                onClick={() => toggleMcp(mcp.name)}
+              >
+                <div className="flex items-start gap-2">
+                  <input
+                    type="checkbox"
+                    checked={selectedSet.has(mcp.name)}
+                    onChange={() => toggleMcp(mcp.name)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="mt-0.5 size-3.5 shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <span className="block text-xs font-medium">{mcp.name}</span>
+                    <span className="block text-[11px] text-muted-foreground line-clamp-2">
+                      {mcp.description || mcp.config.command || mcp.config.url || JSON.stringify(mcp.config).slice(0, 100)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </ScrollArea>
+    </div>
+  );
+
+  const localView = selectable ? selectableView : (
     <div className="flex flex-1 min-h-0 gap-4 pt-2">
       <div className="hidden md:flex w-44 shrink-0 flex-col gap-3">
         <div className="space-y-1">
@@ -621,16 +710,16 @@ export function McpsDialog({ open, onOpenChange, standalone }: McpsDialogProps) 
         <div className="flex items-center justify-between pr-8 pt-2">
           <div className="hidden md:block">
             {standalone
-              ? <h2 className="text-base font-semibold">{t('title')}</h2>
-              : <DialogTitle>{t('title')}</DialogTitle>
+              ? <h2 className="text-base font-semibold">{selectable ? t('selectTitle') : t('title')}</h2>
+              : <DialogTitle>{selectable ? t('selectTitle') : t('title')}</DialogTitle>
             }
             {standalone
-              ? <p className="text-xs text-muted-foreground">{t('description')}</p>
-              : <DialogDescription>{t('description')}</DialogDescription>
+              ? <p className="text-xs text-muted-foreground">{selectable ? t('selectDescription') : t('description')}</p>
+              : <DialogDescription>{selectable ? t('selectDescription') : t('description')}</DialogDescription>
             }
           </div>
           <div className="flex items-center gap-2">
-            {activeTab === 'local' && (
+            {!selectable && activeTab === 'local' && (
               <Popover open={importOpen} onOpenChange={setImportOpen}>
                 <PopoverTrigger render={
                   <Button variant="outline" size="sm">
@@ -666,24 +755,26 @@ export function McpsDialog({ open, onOpenChange, standalone }: McpsDialogProps) 
         </div>
       </DialogHeader>
 
-      <div className="flex items-center gap-1 border-b border-border px-1">
-        {([['local', Plug, t('tabLocal')], ['store', Store, t('tabStore')]] as const).map(([key, Icon, label]) => (
-          <button
-            key={key}
-            onClick={() => setActiveTab(key)}
-            className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === key
-                ? 'border-primary text-foreground'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Icon className="size-3.5" />
-            {label}
-          </button>
-        ))}
-      </div>
+      {!selectable && (
+        <div className="flex items-center gap-1 border-b border-border px-1">
+          {([['local', Plug, t('tabLocal')], ['store', Store, t('tabStore')]] as const).map(([key, Icon, label]) => (
+            <button
+              key={key}
+              onClick={() => setActiveTab(key)}
+              className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === key
+                  ? 'border-primary text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Icon className="size-3.5" />
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
-      {activeTab === 'local' ? localView : storeView}
+      {selectable ? selectableView : (activeTab === 'local' ? localView : storeView)}
     </>
   );
 

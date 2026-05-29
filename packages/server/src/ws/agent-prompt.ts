@@ -266,7 +266,9 @@ function formatRuntimeToolsLine(runtimeKind?: string): string {
         ? 'Agent Spaces function tools'
         : runtimeKind === 'hermes'
           ? 'Hermes CLI tools and configured skills'
-          : 'runtime-specific tools exposed by the selected adapter';
+          : runtimeKind === 'oh-my-pi'
+            ? 'Oh My Pi built-in tools, discovered extensions, MCP tools, skills, and Agent Spaces function tools'
+            : 'runtime-specific tools exposed by the selected adapter';
 
   return `- Runtime tools available through ${runtimeName}: ${tools}`;
 }
@@ -281,6 +283,8 @@ function formatRuntimeName(runtimeKind?: string): string {
       return 'LangChain';
     case 'hermes':
       return 'Hermes';
+    case 'oh-my-pi':
+      return 'Oh My Pi';
     case 'open-agent-sdk':
       return 'OpenAgent SDK';
     default:

@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import { DiffViewer } from "@/components/git/diff-viewer";
 import { ToolsDialog } from "@/components/sidebar/tools-dialog";
+import { McpsDialog } from "@/components/sidebar/mcps-dialog";
 import {
   type AgentPreset,
   type AgentRole,
@@ -74,8 +75,6 @@ export function AgentDetail({
   onTestConnection: () => void;
 }) {
   const t = useTranslations("agent");
-  const [mcpJson, setMcpJson] = useState(() => JSON.stringify(agent.mcps, null, 2));
-  const [mcpError, setMcpError] = useState<string | null>(null);
   const [dynamicModelOptions, setDynamicModelOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [optimizeOpen, setOptimizeOpen] = useState(false);
   const [optimizePrompt, setOptimizePrompt] = useState("");
@@ -84,6 +83,7 @@ export function AgentDetail({
   const [optimizationError, setOptimizationError] = useState<string | null>(null);
   const [applyPreviewOpen, setApplyPreviewOpen] = useState(false);
   const [toolsDialogOpen, setToolsDialogOpen] = useState(false);
+  const [mcpsDialogOpen, setMcpsDialogOpen] = useState(false);
   const [previewPrompt, setPreviewPrompt] = useState("");
 
   const { models: allLlmModels, providers: llmProviders, ensure: ensureLLM } = useLLMStore();
@@ -93,10 +93,6 @@ export function AgentDetail({
   useEffect(() => {
     ensureLLM();
   }, [ensureLLM]);
-
-  useEffect(() => {
-    setMcpJson(JSON.stringify(agent.mcps, null, 2));
-  }, [agent.mcps]);
 
   const handleSelectProvider = useCallback(
     (provider: LLMProvider) => {
@@ -111,20 +107,6 @@ export function AgentDetail({
     },
     [llmModels, onChange],
   );
-
-  const handleMcpJsonChange = (value: string) => {
-    setMcpJson(value);
-    try {
-      const parsed = JSON.parse(value) as McpDraft;
-      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-        throw new Error("MCP config must be a JSON object");
-      }
-      setMcpError(null);
-      onMcpChange(parsed);
-    } catch (err) {
-      setMcpError(err instanceof Error ? err.message : "Invalid JSON");
-    }
-  };
 
   const handleSkillUpload = async (files: FileList | null) => {
     if (!files?.length) return;
@@ -293,15 +275,56 @@ export function AgentDetail({
         />
       </Section>
 
-      <Section icon={<Wrench className="size-3.5" />} title={t("detail.mcpServers")}>
-        <Textarea
-          value={mcpJson}
-          onChange={(e) => handleMcpJsonChange(e.target.value)}
-          placeholder={'{\n  "mcpServers": {}\n}'}
-          className="min-h-28 font-mono text-xs"
+      <div className="flex flex-col gap-2.5">
+        <SectionHeader
+          icon={<Wrench className="size-3.5" />}
+          title={t("detail.mcpServers")}
+          action={
+            <Button variant="ghost" size="icon" className="size-5" onClick={() => setMcpsDialogOpen(true)}>
+              <Settings2 className="size-3.5" />
+            </Button>
+          }
         />
-        {mcpError && <div className="text-xs text-destructive">{mcpError}</div>}
-      </Section>
+        <div className="flex flex-wrap gap-1.5">
+          {(() => {
+            const mcpNames = Object.keys((agent.mcps as Record<string, Record<string, unknown>>)?.mcpServers ?? {});
+            return mcpNames.length > 0 ? (
+              mcpNames.map((name) => (
+                <span key={name} className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium text-foreground">
+                  {name}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const servers = { ...((agent.mcps as Record<string, Record<string, unknown>>)?.mcpServers ?? {}) };
+                      delete servers[name];
+                      onMcpChange({ ...(agent.mcps as Record<string, unknown>), mcpServers: servers });
+                    }}
+                    className="hover:text-destructive cursor-pointer"
+                  >
+                    <X className="size-2.5" />
+                  </button>
+                </span>
+              ))
+            ) : (
+              <span className="text-xs text-muted-foreground">{t("detail.noMcps")}</span>
+            );
+          })()}
+        </div>
+        <McpsDialog
+          open={mcpsDialogOpen}
+          onOpenChange={setMcpsDialogOpen}
+          selectable
+          selectedMcps={Object.keys((agent.mcps as Record<string, Record<string, unknown>>)?.mcpServers ?? {})}
+          onSelectedMcpsChange={(names) => {
+            const oldServers = (agent.mcps as Record<string, Record<string, unknown>>)?.mcpServers ?? {};
+            const newServers: Record<string, unknown> = {};
+            for (const name of names) {
+              newServers[name] = (oldServers as Record<string, unknown>)[name] ?? {};
+            }
+            onMcpChange({ ...(agent.mcps as Record<string, unknown>), mcpServers: newServers });
+          }}
+        />
+      </div>
 
       <div className="flex flex-col gap-2.5">
         <SectionHeader

@@ -63,6 +63,7 @@ export const RUNTIME_OPTIONS: Array<{ value: NonNullable<AgentConfig["runtimeKin
   { value: "codex", labelKey: "codex" },
   { value: "langchain", labelKey: "langchain" },
   { value: "hermes", labelKey: "hermes" },
+  { value: "oh-my-pi", labelKey: "ohMyPi" },
 ];
 
 export const ROLE_OPTIONS: BuiltInRole[] = ["agent", "scheduler", "task_creator", "bot"];

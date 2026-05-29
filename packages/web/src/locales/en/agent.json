@@ -12,7 +12,8 @@
     "claudeCode": "Claude Code",
     "codex": "Codex",
     "langchain": "LangChain",
-    "hermes": "Hermes"
+    "hermes": "Hermes",
+    "ohMyPi": "Oh My Pi"
   },
   "role": {
     "agent": {
@@ -103,7 +104,8 @@
     "maxTokens": "Max Tokens",
     "basic": "Basic",
     "enabledToolsCount": "{count}/{total} tools enabled",
-    "noTools": "No tools configured"
+    "noTools": "No tools configured",
+    "noMcps": "No MCP servers configured"
   },
   "debug": {
     "status": "status:",

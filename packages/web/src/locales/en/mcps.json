@@ -1,6 +1,8 @@
 {
   "title": "MCP Servers",
   "description": "Manage and import MCP server configs, bind to agents",
+  "selectTitle": "Select MCP Servers",
+  "selectDescription": "Select MCP servers to enable",
   "import": "Import",
   "importTitle": "Import MCP Config",
   "importConfirm": "Confirm Import",
@@ -23,5 +25,8 @@
   "importTo": "Import",
   "imported": "Imported",
   "importing": "Importing...",
-  "needsEnv": "Requires: {keys}"
+  "needsEnv": "Requires: {keys}",
+  "enabledCount": "{count}/{total} enabled",
+  "selectAll": "Select all",
+  "deselectAll": "Deselect all"
 }

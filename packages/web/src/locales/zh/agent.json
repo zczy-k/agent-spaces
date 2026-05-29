@@ -12,7 +12,8 @@
     "claudeCode": "Claude Code",
     "codex": "Codex",
     "langchain": "LangChain",
-    "hermes": "Hermes"
+    "hermes": "Hermes",
+    "ohMyPi": "Oh My Pi"
   },
   "role": {
     "agent": {
@@ -103,7 +104,8 @@
     "maxTokens": "最大 Token 数",
     "basic": "基本信息",
     "enabledToolsCount": "已启用 {count}/{total} 个工具",
-    "noTools": "未配置工具"
+    "noTools": "未配置工具",
+    "noMcps": "未配置 MCP 服务器"
   },
   "debug": {
     "status": "状态：",

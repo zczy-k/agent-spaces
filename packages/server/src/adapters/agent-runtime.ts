@@ -7,6 +7,7 @@ import { ClaudeCodeRuntime } from './claude-code-runtime/index.js';
 import { CodexRuntime } from './codex-runtime.js';
 import { HermesRuntime } from './hermes-runtime.js';
 import { LangChainRuntime } from './langchain-runtime.js';
+import { OhMyPiRuntime } from './oh-my-pi-runtime.js';
 import { OpenAgentSdkRuntime } from './open-agent-sdk-runtime.js';
 
 export type {
@@ -20,6 +21,7 @@ export { ClaudeCodeRuntime } from './claude-code-runtime/index.js';
 export { CodexRuntime } from './codex-runtime.js';
 export { HermesRuntime } from './hermes-runtime.js';
 export { LangChainRuntime } from './langchain-runtime.js';
+export { OhMyPiRuntime } from './oh-my-pi-runtime.js';
 export { OpenAgentSdkRuntime } from './open-agent-sdk-runtime.js';
 
 export function createAgentRuntime(config?: AgentRuntimeConfig): AgentRuntime;
@@ -44,5 +46,7 @@ export function createAgentRuntime(
       return new LangChainRuntime(config);
     case 'hermes':
       return new HermesRuntime(config);
+    case 'oh-my-pi':
+      return new OhMyPiRuntime(config);
   }
 }
