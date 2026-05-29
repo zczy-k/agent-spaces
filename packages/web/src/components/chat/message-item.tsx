@@ -10,7 +10,7 @@ import { AgentIcon } from '@/components/common/agent-icon';
 import { useAgentStore } from '@/stores/agent';
 import { useUserAvatar } from '@/hooks/use-user-avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { MemberInfoDialog } from './member-info-dialog';
+import { MemberHoverCard } from './member-hover-card';
 import { MessageContextUsage, MessageParts } from './message-parts';
 import { TextShimmer } from '@/components/text-shimmer';
 
@@ -32,7 +32,6 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
   const userAvatarUrl = useUserAvatar();
   const time = new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const [copied, setCopied] = useState(false);
-  const [memberDialogOpen, setMemberDialogOpen] = useState(false);
   const [fullscreenOpen, setFullscreenOpen] = useState(false);
   const replies = message.replies ?? [];
 
@@ -64,13 +63,22 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
 
   return (
     <div className={`group flex gap-2 px-3 py-1.5 ${isUser ? 'flex-row-reverse' : ''}`}>
-      <AgentIcon
-        agentId={isUser ? undefined : message.senderId}
-        name={senderName}
-        avatarUrl={isUser ? userAvatarUrl || undefined : undefined}
-        onClick={() => setMemberDialogOpen(true)}
-        className="size-7 rounded-full"
-      />
+      {isUser ? (
+        <AgentIcon
+          agentId={undefined}
+          name={senderName}
+          avatarUrl={userAvatarUrl || undefined}
+          className="size-7 rounded-full"
+        />
+      ) : (
+        <MemberHoverCard agentId={message.senderId} displayName={senderName} side="right" align="start">
+          <AgentIcon
+            agentId={message.senderId}
+            name={senderName}
+            className="size-7 rounded-full"
+          />
+        </MemberHoverCard>
+      )}
       <div className={`flex flex-col min-w-0 w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
         {!isUser && (
         <div className="flex items-center gap-2 mb-0.5">
@@ -177,7 +185,6 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
           </button>
         </div>
       </div>
-      <MemberInfoDialog open={memberDialogOpen} onOpenChange={setMemberDialogOpen} memberName={message.senderId} channelId={message.channelId} workspaceId={workspaceId} />
       {!isUser && fullscreenOpen && (
         <Dialog open={fullscreenOpen} onOpenChange={setFullscreenOpen}>
           <DialogPortal>

@@ -102,7 +102,8 @@
     "temperature": "Temperature",
     "maxTokens": "Max Tokens",
     "basic": "Basic",
-    "enabledToolsCount": "{count}/{total} tools enabled"
+    "enabledToolsCount": "{count}/{total} tools enabled",
+    "noTools": "No tools configured"
   },
   "debug": {
     "status": "status:",

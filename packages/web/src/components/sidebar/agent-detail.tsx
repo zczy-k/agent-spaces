@@ -28,6 +28,7 @@ import {
   PlugZap,
   FolderOpen,
   Wrench,
+  Settings2,
   Sparkles,
   MessageSquare,
   Sliders,
@@ -302,10 +303,33 @@ export function AgentDetail({
         {mcpError && <div className="text-xs text-destructive">{mcpError}</div>}
       </Section>
 
-      <Section icon={<Wrench className="size-3.5" />} title={t("detail.tools")}>
-        <Button variant="outline" size="sm" className="w-full" onClick={() => setToolsDialogOpen(true)}>
-          {t("detail.enabledToolsCount", { count: agent.tools.length, total: (BUILT_IN_AGENT_TOOLS ?? []).length })}
-        </Button>
+      <div className="flex flex-col gap-2.5">
+        <SectionHeader
+          icon={<Wrench className="size-3.5" />}
+          title={t("detail.tools")}
+          action={
+            <Button variant="ghost" size="icon" className="size-5" onClick={() => setToolsDialogOpen(true)}>
+              <Settings2 className="size-3.5" />
+            </Button>
+          }
+        />
+        <div className="flex flex-wrap gap-1.5">
+          {agent.tools.length > 0 ? (
+            agent.tools.map((tool) => {
+              const builtIn = BUILT_IN_AGENT_TOOLS.find((t) => t.name === tool);
+              return (
+                <span key={tool} className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium text-foreground">
+                  {builtIn?.label ?? tool}
+                  <button type="button" onClick={() => onChange("tools", agent.tools.filter((t) => t !== tool))} className="hover:text-destructive cursor-pointer">
+                    <X className="size-2.5" />
+                  </button>
+                </span>
+              );
+            })
+          ) : (
+            <span className="text-xs text-muted-foreground">{t("detail.noTools")}</span>
+          )}
+        </div>
         <ToolsDialog
           open={toolsDialogOpen}
           onOpenChange={setToolsDialogOpen}
@@ -313,7 +337,7 @@ export function AgentDetail({
           selectedTools={agent.tools}
           onSelectedToolsChange={(tools) => onChange("tools", tools)}
         />
-      </Section>
+      </div>
 
       <Section icon={<Cpu className="size-3.5" />} title={t("detail.skills")}>
         <div className="mb-2 flex flex-wrap gap-1.5">

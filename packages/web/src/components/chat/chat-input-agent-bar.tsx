@@ -5,12 +5,11 @@ import { cn } from "@/lib/utils";
 import { IconUserPlus, IconBell, IconBellOff } from "@tabler/icons-react";
 import { useTranslations } from "next-intl";
 import { AgentIcon } from "@/components/common/agent-icon";
-import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AgentEditor } from "@/components/sidebar/agent-editor";
 import { normalizeAgent } from "@/components/sidebar/agent-shared";
 import { useAgentStore } from "@/stores/agent";
-import { MemberInfoCard } from "./member-info-card";
+import { MemberHoverCard } from "./member-hover-card";
 import type { Channel } from "@agent-spaces/shared";
 import type { MentionedAgent } from "./chat-input-utils";
 
@@ -54,9 +53,9 @@ export function ChatInputAgentBar({
             const isActive = agent.id === activeAgent?.id;
             const isLastActive = !isActive && agent.id === lastActiveAgentId;
             return (
-              <HoverCard key={agent.id}>
-                <HoverCardTrigger
-                  render={<div />}
+              <MemberHoverCard key={agent.id} agentId={agent.id} displayName={agent.name || agent.role} side="top" align="start" onConfigure={() => setConfigAgentId(agent.id)}>
+                <button
+                  type="button"
                   onClick={() => onActivateAgent(agent)}
                   className={cn(
                     "shrink-0 inline-flex items-center gap-1 h-6 pl-0.5 pr-1.5 rounded-full text-xs transition-all cursor-pointer",
@@ -84,11 +83,8 @@ export function ChatInputAgentBar({
                     className="relative z-10 size-5 rounded-full text-[9px]"
                   />
                   <span className="relative z-10 max-w-[80px] truncate">{agent.name || agent.role}</span>
-                </HoverCardTrigger>
-                <HoverCardContent side="top" align="start" className="w-72">
-                  <MemberInfoCard agentId={agent.id} compact onConfigure={() => setConfigAgentId(agent.id)} />
-                </HoverCardContent>
-              </HoverCard>
+                </button>
+              </MemberHoverCard>
             );
           })}
         </div>
