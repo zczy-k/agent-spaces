@@ -280,12 +280,30 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
     try {
       const uploaded = enableAttachments ? await Promise.all(attachments.map(uploadAttachment)) : [];
       await onSubmitRef.current(text ? stripSimpleParagraphs(currentEditor.getHTML()) : "", mentions, uploaded, selectedContextLength);
-      currentEditor.commands.clearContent();
       setAttachments((prev) => {
         prev.forEach((item) => URL.revokeObjectURL(item.preview));
         return [];
       });
-      // setMentionedAgentIds([]);
+      // Restore active agent mention after send for continuous conversation
+      const activeMentionId = mentions[0];
+      const activeAgent = activeMentionId ? agentsRef.current.find((a) => a.id === activeMentionId) : undefined;
+      if (activeAgent) {
+        const restoreContent: JSONContent = {
+          type: "doc",
+          content: [{
+            type: "paragraph",
+            content: [
+              { type: "mention", attrs: { id: activeAgent.id, label: activeAgent.name || activeAgent.role } },
+              { type: "text", text: " " },
+            ],
+          }],
+        };
+        currentEditor.commands.setContent(restoreContent, { emitUpdate: true });
+        setMentionedAgentIds([activeAgent.id]);
+      } else {
+        currentEditor.commands.clearContent();
+        setMentionedAgentIds([]);
+      }
       onCancelReply?.();
       onDraftClear?.();
     } finally {

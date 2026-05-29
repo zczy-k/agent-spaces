@@ -53,8 +53,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const allAgents = useAgentStore((s) => s.agents);
 
   const activeAgent = composerState.activeAgent;
-  const pinnedMentionId = channel.pinnedMentionId;
-  const isPinned = pinnedMentionId === composerState.mentionedAgentIds[0] && !!pinnedMentionId;
+  const lastActiveAgentId = channel.pinnedMentionId;
 
   const agentLastActive = useMemo(() => {
     const map = new Map<string, string>();
@@ -96,14 +95,8 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
 
   const activateAgent = useCallback((agent: MentionedAgent) => {
     composerRef.current?.setMentionAgent(agent);
-  }, []);
-
-  const togglePin = useCallback(() => {
-    const currentMentionId = composerState.mentionedAgentIds[0];
-    if (!currentMentionId) return;
-    const newPinnedId = isPinned ? undefined : currentMentionId;
-    updateChannel(workspaceId, channelId, { pinnedMentionId: newPinnedId });
-  }, [composerState.mentionedAgentIds, isPinned, workspaceId, channelId, updateChannel]);
+    updateChannel(workspaceId, channelId, { pinnedMentionId: agent.id });
+  }, [workspaceId, channelId, updateChannel]);
 
   const handleSubmit = useCallback((content: string, mentions: string[], attachments: MessageAttachment[], contextLength: number) => {
     onSend(content, mentions, attachments, replyTo?.id, contextLength);
@@ -126,11 +119,9 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             <ChatInputAgentBar
               agents={sortedAgents}
               activeAgent={activeAgent}
-              pinnedMentionId={pinnedMentionId}
-              isPinned={isPinned}
+              lastActiveAgentId={lastActiveAgentId}
               channel={channel}
               onActivateAgent={activateAgent}
-              onTogglePin={togglePin}
               onOpenAddMember={() => setAddMemberOpen(true)}
               onToggleNotify={() => updateChannel(workspaceId, channelId, { notifyOnComplete: !channel.notifyOnComplete })}
             />

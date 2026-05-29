@@ -62,8 +62,6 @@
     "placeholder": "发送消息到 #{channel}... 使用 @ 提及 Agent，输入 / 打开命令",
     "attachFiles": "附件",
     "autoMode": "自动",
-    "unpinAgent": "取消固定",
-    "pinAgent": "固定此 Agent",
     "mcp": "MCP",
     "noMcp": "未配置 MCP",
     "skill": "技能",

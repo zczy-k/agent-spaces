@@ -62,8 +62,6 @@
     "placeholder": "Message #{channel}... Use @ to mention agents, / for commands",
     "attachFiles": "Attach Files",
     "autoMode": "Auto",
-    "unpinAgent": "Unpin Agent",
-    "pinAgent": "Pin Agent",
     "mcp": "MCP",
     "noMcp": "No MCP configured",
     "skill": "Skill",
