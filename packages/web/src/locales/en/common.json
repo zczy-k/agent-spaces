@@ -44,5 +44,7 @@
   "sortByLastReply": "By Last Reply",
   "sortByStatus": "By Status",
   "sortAsc": "Ascending",
-  "sortDesc": "Descending"
+  "sortDesc": "Descending",
+  "selectAll": "Select All",
+  "deselectAll": "Deselect All"
 }

@@ -49,5 +49,7 @@
   "storeEmpty": "商店暂无技能",
   "importTo": "导入",
   "imported": "已导入",
-  "importing": "导入中..."
+  "importing": "导入中...",
+  "selectDescription": "选择要启用的技能",
+  "selectedCount": "已选择 {count} 个技能"
 }

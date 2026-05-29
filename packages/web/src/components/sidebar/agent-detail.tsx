@@ -32,7 +32,6 @@ import {
   Sparkles,
   MessageSquare,
   Sliders,
-  Upload,
   WandSparkles,
   Check,
   X as XIcon,

@@ -105,7 +105,8 @@
     "basic": "Basic",
     "enabledToolsCount": "{count}/{total} tools enabled",
     "noTools": "No tools configured",
-    "noMcps": "No MCP servers configured"
+    "noMcps": "No MCP servers configured",
+    "noSkills": "No skills configured"
   },
   "debug": {
     "status": "status:",

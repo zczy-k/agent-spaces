@@ -44,5 +44,7 @@
   "sortByLastReply": "按最后回复",
   "sortByStatus": "按状态",
   "sortAsc": "正序",
-  "sortDesc": "倒序"
+  "sortDesc": "倒序",
+  "selectAll": "全选",
+  "deselectAll": "取消全选"
 }

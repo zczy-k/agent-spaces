@@ -49,5 +49,7 @@
   "storeEmpty": "No skills in store",
   "importTo": "Import",
   "imported": "Imported",
-  "importing": "Importing..."
+  "importing": "Importing...",
+  "selectDescription": "Select skills to enable",
+  "selectedCount": "{count} skills selected"
 }

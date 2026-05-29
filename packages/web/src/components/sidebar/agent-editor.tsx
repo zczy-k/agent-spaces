@@ -20,7 +20,6 @@ import {
   type BuiltInRole,
   type ConnectionTestResult,
   type McpDraft,
-  type SkillDraft,
   ROLE_OPTIONS,
   normalizeAgent,
   serializeAgent,
@@ -202,30 +201,6 @@ export const AgentEditor = forwardRef<AgentEditorHandle, AgentEditorProps>(
       setEditDraft((prev) => (prev ? { ...prev, mcps: value } : prev));
     };
 
-    const addSkillFiles = (files: SkillDraft[]) => {
-      if (!editDraft) return;
-      const existingNames = new Set(editDraft.skills.map((skill) => skill.name));
-      setEditDraft((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          skills: [
-            ...prev.skills.filter((skill) => !files.some((file) => file.name === skill.name)),
-            ...files.filter((file) => file.name && !existingNames.has(file.name)),
-            ...files.filter((file) => existingNames.has(file.name)),
-          ],
-        };
-      });
-    };
-
-    const removeSkill = (index: number) => {
-      if (!editDraft) return;
-      setEditDraft((prev) => {
-        if (!prev) return prev;
-        return { ...prev, skills: prev.skills.filter((_, i) => i !== index) };
-      });
-    };
-
     return (
       <>
         {error && (
@@ -242,8 +217,6 @@ export const AgentEditor = forwardRef<AgentEditorHandle, AgentEditorProps>(
             testResult={testResult}
             onChange={updateAgentDraft}
             onMcpChange={updateMcpConfig}
-            onAddSkillFiles={addSkillFiles}
-            onRemoveSkill={removeSkill}
             onTestConnection={handleTestConnection}
           />
         </div>
