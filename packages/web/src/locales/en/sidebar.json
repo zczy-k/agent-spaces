@@ -33,7 +33,12 @@
       "task_failed": "Task Failed",
       "channel_agent_completed": "Agent Completed"
     },
-    "delete": "Delete"
+    "delete": "Delete",
+    "allWorkspaces": "All Workspaces",
+    "allTypes": "All Types",
+    "workspaceFilter": "Workspace",
+    "typeFilter": "Type",
+    "noResults": "No matching notifications"
   },
   "server": {
     "servers": "Servers",

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useMemo, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -11,6 +12,14 @@ import { Button } from '@/components/ui/button';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useWorkflowStore } from '@/stores/workflow';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export interface AgentPickerItem {
   id: string;
@@ -49,6 +58,25 @@ export function AgentPickerDialog({
   loading,
   singleSelect,
 }: AgentPickerDialogProps) {
+  const { workflows } = useWorkflowStore();
+  const [workflowId, setWorkflowId] = useState<string>('');
+
+  useEffect(() => {
+    if (open) setWorkflowId('');
+  }, [open]);
+
+  const filteredAgents = useMemo(() => {
+    if (!workflowId || workflowId === '__all__') return agents;
+    const wf = workflows.find((w) => w.id === workflowId);
+    if (!wf) return agents;
+    const agentIds = new Set(
+      wf.nodes
+        .filter((n) => n.type === 'agent')
+        .map((n) => n.data.agentConfigId),
+    );
+    return agents.filter((a) => agentIds.has(a.id));
+  }, [agents, workflowId, workflows]);
+
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="sm:max-w-sm flex flex-col gap-0 overflow-hidden p-0">
@@ -56,9 +84,24 @@ export function AgentPickerDialog({
           <DialogTitle>{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
+        {workflows.length > 0 && (
+          <div className="shrink-0 px-6 pb-3">
+            <Select value={workflowId} onValueChange={setWorkflowId}>
+              <SelectTrigger className="h-8 text-sm">
+                <SelectValue placeholder="按 Workflow 过滤" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">全部 Agent</SelectItem>
+                {workflows.map((wf) => (
+                  <SelectItem key={wf.id} value={wf.id}>{wf.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <div className="min-h-0 flex-1 pb-2 overflow-y-auto px-6 space-y-3">
           <div className="space-y-0.5">
-            {agents.map((agent) => (
+            {filteredAgents.map((agent) => (
               <button
                 key={agent.id}
                 type="button"

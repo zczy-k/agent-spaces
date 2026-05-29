@@ -235,7 +235,7 @@ function RailsSVG({
           <line
             key={`pt-${r}`}
             x1={x} y1={0} x2={x} y2={h}
-            stroke={color(r)} strokeWidth={2} strokeOpacity={0.6}
+            stroke="var(--color-primary)" strokeWidth={2} strokeOpacity={0.6}
           />
         )
       })}
@@ -244,7 +244,7 @@ function RailsSVG({
       {activeAbove.has(row.rail) && (
         <line
           x1={commitX} y1={0} x2={commitX} y2={cy}
-          stroke={color(row.rail)} strokeWidth={2} strokeOpacity={0.6}
+          stroke="var(--color-primary)" strokeWidth={2} strokeOpacity={0.6}
         />
       )}
 
@@ -252,7 +252,7 @@ function RailsSVG({
       {activeBelow.has(row.rail) && (
         <line
           x1={commitX} y1={cy} x2={commitX} y2={h}
-          stroke={color(row.rail)} strokeWidth={2} strokeOpacity={0.6}
+          stroke="var(--color-primary)" strokeWidth={2} strokeOpacity={0.6}
         />
       )}
 
@@ -261,7 +261,7 @@ function RailsSVG({
         <path
           key={`f-${i}`}
           d={`M${rx(edge.fromRail)},${cy} C${rx(edge.fromRail)},${h} ${rx(edge.toRail)},${cy} ${rx(edge.toRail)},${h}`}
-          stroke={edge.color} strokeWidth={2} strokeOpacity={0.6} fill="none"
+          stroke="var(--color-primary)" strokeWidth={2} strokeOpacity={0.6} fill="none"
         />
       ))}
 
@@ -270,8 +270,6 @@ function RailsSVG({
         const isOutgoing = edge.fromRail === row.rail
         const x1 = rx(edge.fromRail)
         const x2 = rx(edge.toRail)
-        // Outgoing: this commit's parent is on another rail — curve from dot down to target
-        // Incoming: another rail merges into this commit — curve from top of source rail to dot
         const d = isOutgoing
           ? `M${x1},${cy} C${x1},${h} ${x2},${cy} ${x2},${h}`
           : `M${x1},${0} C${x1},${cy} ${x2},${0} ${x2},${cy}`
@@ -279,7 +277,7 @@ function RailsSVG({
           <path
             key={`m-${i}`}
             d={d}
-            stroke={edge.color} strokeWidth={2} strokeOpacity={0.6} fill="none"
+            stroke="var(--color-primary)" strokeWidth={2} strokeOpacity={0.6} fill="none"
           />
         )
       })}
@@ -288,13 +286,12 @@ function RailsSVG({
       {Array.from(activeAbove).map((r) => {
         if (r === row.rail) return null
         if (activeBelow.has(r)) return null
-        // This rail ends — draw line from top to center height then stop
         const x = rx(r)
         return (
           <line
             key={`end-${r}`}
             x1={x} y1={0} x2={x} y2={cy}
-            stroke={color(r)} strokeWidth={2} strokeOpacity={0.6}
+            stroke="var(--color-primary)" strokeWidth={2} strokeOpacity={0.6}
           />
         )
       })}
@@ -310,15 +307,15 @@ function RailsSVG({
       {/* Commit dot (drawn last, on top) */}
       <circle
         cx={commitX} cy={cy} r={isHead ? 6 : 5}
-        fill={isHead ? "var(--color-background)" : color(row.rail)}
-        stroke={isHead ? "#f59e0b" : "var(--color-background)"}
+        fill={isHead ? "var(--color-background)" : "var(--color-primary)"}
+        stroke={isHead ? "var(--color-primary)" : "var(--color-background)"}
         strokeWidth={isHead ? 2.5 : 2}
       />
       {isHead && (
         <circle
           cx={commitX} cy={cy} r={8}
           fill="none"
-          stroke="#f59e0b"
+          stroke="var(--color-primary)"
           strokeWidth={1.5}
           strokeOpacity={0.4}
         />

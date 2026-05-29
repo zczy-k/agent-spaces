@@ -33,7 +33,12 @@
       "task_failed": "Task 失败",
       "channel_agent_completed": "Agent 执行完成"
     },
-    "delete": "删除"
+    "delete": "删除",
+    "allWorkspaces": "全部工作空间",
+    "allTypes": "全部类型",
+    "workspaceFilter": "工作空间",
+    "typeFilter": "消息类型",
+    "noResults": "没有匹配的通知"
   },
   "server": {
     "servers": "服务器",
