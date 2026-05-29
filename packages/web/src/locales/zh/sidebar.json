@@ -49,5 +49,6 @@
     "secretOptionalPlaceholder": "密钥（可选）",
     "newServer": "新服务器",
     "switch": "切换"
-  }
+  },
+  "logout": "退出登录"
 }

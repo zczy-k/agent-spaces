@@ -49,5 +49,6 @@
     "secretOptionalPlaceholder": "Secret (optional)",
     "newServer": "New Server",
     "switch": "Switch"
-  }
+  },
+  "logout": "Log out"
 }

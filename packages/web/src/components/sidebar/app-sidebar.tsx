@@ -31,6 +31,9 @@ import { useSidebarEvents } from "./use-sidebar-events";
 import { useSidebarCommands } from "./use-sidebar-commands";
 import { buildDashboardRoutes } from "./sidebar-dashboard-routes";
 import { SidebarDialogGroup } from "./sidebar-dialog-group";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { removeToken } from "@/lib/auth";
+import { LogOut } from "lucide-react";
 
 function buildWorkspaceHref(id: string) {
   return `/workspace/${id}`;
@@ -152,15 +155,23 @@ export function DashboardSidebar() {
             : "flex-row items-center justify-between"
         )}
       >
-        <a href="#" className="flex items-center gap-2 relative">
-          <UserIcon size={isCollapsed ? "sm" : "md"} />
-          <span
-            className={cn(
-              "absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-card",
-              wsConnected ? "bg-green-500" : "bg-yellow-500"
-            )}
-          />
-        </a>
+        <DropdownMenu>
+          <DropdownMenuTrigger className="flex items-center gap-2 relative outline-none">
+            <UserIcon size={isCollapsed ? "sm" : "md"} />
+            <span
+              className={cn(
+                "absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-card",
+                wsConnected ? "bg-green-500" : "bg-yellow-500"
+              )}
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="right" align="start" className="w-48">
+            <DropdownMenuItem onClick={() => { removeToken(); router.push("/login"); }}>
+              <LogOut className="mr-2 h-4 w-4" />
+              {ts("logout")}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <motion.div
           key={isCollapsed ? "header-collapsed" : "header-expanded"}
