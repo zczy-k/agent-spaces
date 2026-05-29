@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -34,8 +34,11 @@ export function LayoutManagerDialog({ open, onOpenChange, workspaceId }: LayoutM
 
   const refresh = useCallback(() => setTemplates(loadLayoutTemplates()), []);
 
+  useEffect(() => {
+    if (open) refresh();
+  }, [open, refresh]);
+
   const handleOpenChange = (val: boolean) => {
-    if (val) refresh();
     onOpenChange(val);
   };
 

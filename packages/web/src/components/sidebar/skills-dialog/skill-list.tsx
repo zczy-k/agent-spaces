@@ -1,41 +1,20 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { AgentIcon } from '@/components/common/agent-icon';
-import {
-  Star,
-  StarOff,
-  Upload,
-  Search,
-  FileText,
-  Rocket,
-  Trash2,
-  MoreVertical,
-  FolderOpen,
-  FileArchive,
-  Folder,
-  GitBranch,
-  Loader2,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Upload, FileText, FolderOpen, FileArchive, GitBranch } from 'lucide-react';
 import { SkillImportPanel } from './skill-import-dialog';
+import { SkillFilterSidebar } from './skill-filter-sidebar';
+import { SkillCardGrid } from './skill-card-grid';
+import { SkillGitImportDialog } from './skill-git-import-dialog';
+import { useSkillImport } from './use-skill-import';
 import type { AgentCandidate, FilterMode, SkillInfo, ImportSkillItem } from './types';
 
 interface SkillListProps {
@@ -64,24 +43,14 @@ export function SkillList({
   onBindAll,
 }: SkillListProps) {
   const t = useTranslations('skills');
-  const tc = useTranslations('common');
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
   const [filterAgentId, setFilterAgentId] = useState('');
   const [filterGroup, setFilterGroup] = useState('');
 
-  const mdInputRef = useRef<HTMLInputElement>(null);
-  const folderInputRef = useRef<HTMLInputElement>(null);
-  const zipInputRef = useRef<HTMLInputElement>(null);
-  const [importItems, setImportItems] = useState<ImportSkillItem[]>([]);
-  const [importDialogOpen, setImportDialogOpen] = useState(false);
-  const [importDefaultGroup, setImportDefaultGroup] = useState('');
-  const [gitUrl, setGitUrl] = useState('');
-  const [gitLoading, setGitLoading] = useState(false);
-  const [gitDialogOpen, setGitDialogOpen] = useState(false);
+  const importState = useSkillImport(onImportBatch, onImportFromGit);
 
-  // Extract unique groups
   const groups = Array.from(new Set(skills.map((s) => s.group).filter(Boolean)));
 
   const filtered = skills.filter((skill) => {
@@ -103,487 +72,118 @@ export function SkillList({
     return true;
   });
 
-
-  // --- Import handlers ---
-
-  const handleMdSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    const items: ImportSkillItem[] = [];
-    for (const file of Array.from(files)) {
-      const content = await file.text();
-      const name = file.name.replace(/\.md$/i, '');
-      items.push({
-        id: `md-${name}-${Math.random().toString(36).slice(2, 8)}`,
-        name,
-        group: '',
-        content,
-        selected: true,
-        sourceName: file.name,
-      });
-    }
-    setImportItems(items);
-    setImportDefaultGroup('');
-    setImportDialogOpen(true);
-    e.target.value = '';
-  };
-
-  const handleFolderSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    // Group files by top-level folder
-    const folderMap = new Map<string, File[]>();
-    for (const file of Array.from(files)) {
-      const parts = file.webkitRelativePath.split('/');
-      const folderName = parts[0];
-      if (!folderMap.has(folderName)) folderMap.set(folderName, []);
-      folderMap.get(folderName)!.push(file);
-    }
-
-    const items: ImportSkillItem[] = [];
-    for (const [folderName, folderFiles] of folderMap) {
-      // Find SKILL.md or first .md file
-      let skillFile = folderFiles.find((f) => f.name === 'SKILL.md');
-      if (!skillFile) skillFile = folderFiles.find((f) => f.name.endsWith('.md'));
-      if (!skillFile) continue;
-
-      const content = await skillFile.text();
-      const name = folderName;
-      items.push({
-        id: `folder-${name}-${Math.random().toString(36).slice(2, 8)}`,
-        name,
-        group: '',
-        content,
-        selected: true,
-        sourceName: folderName,
-      });
-    }
-    setImportItems(items);
-    setImportDefaultGroup('');
-    setImportDialogOpen(true);
-    e.target.value = '';
-  };
-
-  const handleZipSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const JSZip = (await import('jszip')).default;
-      const zip = await JSZip.loadAsync(file);
-      const zipName = file.name.replace(/\.zip$/i, '');
-
-      // Find skill entries: folders with SKILL.md or .md files
-      const folderMap = new Map<string, { file: string; path: string }[]>();
-
-      zip.forEach((relativePath, zipEntry) => {
-        if (zipEntry.dir) return;
-        const fileName = relativePath.split('/').pop() || '';
-        const folderPath = relativePath.substring(0, relativePath.lastIndexOf('/'));
-
-        // Skip root-level files, only process files in subdirectories
-        if (!folderPath) {
-          // Root level .md file -> treat as its own folder
-          if (fileName.endsWith('.md') && fileName !== 'SKILL.md') {
-            const name = fileName.replace(/\.md$/i, '');
-            if (!folderMap.has(name)) folderMap.set(name, []);
-            folderMap.get(name)!.push({ file: fileName, path: relativePath });
-          }
-          return;
-        }
-
-        const topFolder = folderPath.split('/')[0];
-        if (!folderMap.has(topFolder)) folderMap.set(topFolder, []);
-        folderMap.get(topFolder)!.push({ file: fileName, path: relativePath });
-      });
-
-      const items: ImportSkillItem[] = [];
-      for (const [folderName, entries] of folderMap) {
-        // Find SKILL.md or first .md
-        let skillEntry = entries.find((e) => e.file === 'SKILL.md');
-        if (!skillEntry) skillEntry = entries.find((e) => e.file.endsWith('.md'));
-        if (!skillEntry) continue;
-
-        const content = await zip.file(skillEntry.path)!.async('string');
-        items.push({
-          id: `zip-${folderName}-${Math.random().toString(36).slice(2, 8)}`,
-          name: folderName,
-          group: '',
-          content,
-          selected: true,
-          sourceName: folderName,
-        });
-      }
-
-      setImportItems(items);
-      setImportDefaultGroup(zipName);
-      setImportDialogOpen(true);
-    } catch (err) {
-      console.error('Failed to extract ZIP:', err);
-    }
-    e.target.value = '';
-  };
-
-  const handleImportConfirm = (items: ImportSkillItem[]) => {
-    onImportBatch(items);
-    setImportDialogOpen(false);
-    setImportItems([]);
-  };
-
-  const handleImportCancel = () => {
-    setImportDialogOpen(false);
-    setImportItems([]);
-  };
-
-  const handleGitImport = async () => {
-    const url = gitUrl.trim();
-    if (!url) return;
-    setGitLoading(true);
-    const items = await onImportFromGit(url);
-    setGitLoading(false);
-    if (items && items.length > 0) {
-      const repoName = url.split('/').pop()?.replace(/\.git$/i, '') || '';
-      setImportItems(items);
-      setImportDefaultGroup(repoName);
-      setImportDialogOpen(true);
-      setGitDialogOpen(false);
-    }
-    setGitUrl('');
-  };
-
   return (
     <>
       {/* Hidden file inputs */}
       <input
-        ref={mdInputRef}
+        ref={importState.mdInputRef}
         type="file"
         accept=".md"
         multiple
         className="hidden"
-        onChange={handleMdSelect}
+        onChange={importState.handleMdSelect}
       />
       <input
-        ref={folderInputRef}
+        ref={importState.folderInputRef}
         type="file"
         className="hidden"
-        onChange={handleFolderSelect}
+        onChange={importState.handleFolderSelect}
         // @ts-expect-error webkitdirectory is not in React types
         webkitdirectory=""
         directory=""
       />
       <input
-        ref={zipInputRef}
+        ref={importState.zipInputRef}
         type="file"
         accept=".zip"
         className="hidden"
-        onChange={handleZipSelect}
+        onChange={importState.handleZipSelect}
       />
 
       <div className="flex items-center gap-2 ml-auto shrink-0 pt-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button variant="outline" size="sm">
-                    <Upload className="size-3.5 mr-1" />
-                    {t('import')}
-                  </Button>
-                }
-              />
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => mdInputRef.current?.click()}>
-                  <FileText className="size-3.5 mr-1.5" />
-                  {t('importFromMd')}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => folderInputRef.current?.click()}>
-                  <FolderOpen className="size-3.5 mr-1.5" />
-                  {t('importFromFolder')}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => zipInputRef.current?.click()}>
-                  <FileArchive className="size-3.5 mr-1.5" />
-                  {t('importFromZip')}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setGitDialogOpen(true)} disabled={gitLoading}>
-                  <GitBranch className="size-3.5 mr-1.5" />
-                  {t('importFromGit')}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button variant="outline" size="sm">
+                <Upload className="size-3.5 mr-1" />
+                {t('import')}
+              </Button>
+            }
+          />
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => importState.mdInputRef.current?.click()}>
+              <FileText className="size-3.5 mr-1.5" />
+              {t('importFromMd')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => importState.folderInputRef.current?.click()}>
+              <FolderOpen className="size-3.5 mr-1.5" />
+              {t('importFromFolder')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => importState.zipInputRef.current?.click()}>
+              <FileArchive className="size-3.5 mr-1.5" />
+              {t('importFromZip')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => importState.setGitDialogOpen(true)} disabled={importState.gitLoading}>
+              <GitBranch className="size-3.5 mr-1.5" />
+              {t('importFromGit')}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
-      {importDialogOpen ? (
+      {importState.importDialogOpen ? (
         <SkillImportPanel
-          items={importItems}
-          onItemsChange={setImportItems}
-          onConfirm={handleImportConfirm}
-          onCancel={handleImportCancel}
-          defaultGroup={importDefaultGroup}
+          items={importState.importItems}
+          onItemsChange={importState.setImportItems}
+          onConfirm={importState.handleImportConfirm}
+          onCancel={importState.handleImportCancel}
+          defaultGroup={importState.importDefaultGroup}
         />
       ) : (
         <div className="flex flex-1 min-h-0 gap-4 pt-2">
-        <ScrollArea className="hidden md:block w-44 shrink-0">
-          <div className="flex flex-col gap-3 pr-2">
-            <div className="space-y-1">
-              <Button
-                variant={filterMode === 'all' && !filterGroup ? 'secondary' : 'ghost'}
-                size="sm"
-                className="w-full justify-start"
-                onClick={() => { setFilterMode('all'); setFilterAgentId(''); setFilterGroup(''); }}
-              >
-                <FileText className="size-3.5 mr-1.5" />
-                {t('filterAll')}
-              </Button>
-              <Button
-                variant={filterMode === 'favorites' ? 'secondary' : 'ghost'}
-                size="sm"
-                className="w-full justify-start"
-                onClick={() => { setFilterMode('favorites'); setFilterAgentId(''); setFilterGroup(''); }}
-              >
-                <Star className="size-3.5 mr-1.5" />
-                {t('filterFavorites')}
-              </Button>
-            </div>
+          <SkillFilterSidebar
+            agents={agents}
+            groups={groups}
+            hasUngrouped={skills.some((s) => !s.group)}
+            filterMode={filterMode}
+            filterAgentId={filterAgentId}
+            filterGroup={filterGroup}
+            onFilterChange={(mode, agentId, group) => {
+              setFilterMode(mode);
+              setFilterAgentId(agentId);
+              setFilterGroup(group);
+            }}
+          />
 
-            {agents.length > 0 && (
-              <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground px-2">{t('filterByAgent')}</p>
-                {agents.map((agent) => (
-                  <Button
-                    key={agent.id}
-                    variant={filterMode === 'agent' && filterAgentId === agent.id ? 'secondary' : 'ghost'}
-                    size="sm"
-                    className="w-full justify-start"
-                    onClick={() => { setFilterMode('agent'); setFilterAgentId(agent.id); setFilterGroup(''); }}
-                  >
-                    <AgentIcon agentId={agent.id} name={agent.name} avatarUrl={agent.avatarUrl} className="size-4 mr-1.5 rounded-full" />
-                    <span className="truncate">{agent.name}</span>
-                  </Button>
-                ))}
-              </div>
-            )}
-
-            {groups.length > 0 && (
-              <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground px-2">{t('filterGroups')}</p>
-                {groups.map((group) => (
-                  <Button
-                    key={group}
-                    variant={filterGroup === group ? 'secondary' : 'ghost'}
-                    size="sm"
-                    className="w-full justify-start"
-                    onClick={() => { setFilterGroup(filterGroup === group ? '' : group); setFilterMode('all'); setFilterAgentId(''); }}
-                  >
-                    <Folder className="size-3.5 mr-1.5" />
-                    <span className="truncate">{group}</span>
-                  </Button>
-                ))}
-                {skills.some((s) => !s.group) && (
-                  <Button
-                    variant={filterGroup === '__none__' ? 'secondary' : 'ghost'}
-                    size="sm"
-                    className="w-full justify-start"
-                    onClick={() => { setFilterGroup(filterGroup === '__none__' ? '' : '__none__'); setFilterMode('all'); setFilterAgentId(''); }}
-                  >
-                    <FileText className="size-3.5 mr-1.5" />
-                    {t('filterNoGroup')}
-                  </Button>
-                )}
-              </div>
-            )}
-          </div>
-        </ScrollArea>
-
-        {/* Right: Skill cards */}
-        <div className="flex-1 min-w-0 flex flex-col gap-3 min-h-0">
-          {/* Mobile: Top filters */}
-          <div className="flex md:hidden flex-col gap-2">
-            <div className="relative">
-              <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={t('search')}
-                className="pl-8"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="flex rounded-lg border border-input p-0.5">
-                <button
-                  type="button"
-                  className={cn(
-                    'px-2.5 py-1 rounded-md text-xs font-medium transition-colors',
-                    filterMode === 'all' && !filterGroup ? 'bg-muted' : 'text-muted-foreground hover:text-foreground',
-                  )}
-                  onClick={() => { setFilterMode('all'); setFilterAgentId(''); setFilterGroup(''); }}
-                >
-                  {t('filterAll')}
-                </button>
-                <button
-                  type="button"
-                  className={cn(
-                    'px-2.5 py-1 rounded-md text-xs font-medium transition-colors',
-                    filterMode === 'favorites' ? 'bg-muted' : 'text-muted-foreground hover:text-foreground',
-                  )}
-                  onClick={() => { setFilterMode('favorites'); setFilterAgentId(''); setFilterGroup(''); }}
-                >
-                  <Star className="size-3 inline-block mr-0.5 -mt-px" />
-                  {t('filterFavorites')}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Desktop: Search bar */}
-          <div className="hidden md:block relative">
-            <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t('search')}
-              className="pl-8"
-            />
-          </div>
-
-          <ScrollArea className="flex-1 min-h-0">
-            {loading ? (
-              <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
-                {tc('loading')}
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
-                {t('empty')}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-3 pr-2">
-                {filtered.map((skill) => (
-                  <div
-                    key={skill.name}
-                    className="rounded-xl border border-border bg-background p-4 hover:bg-accent/30 transition-colors cursor-pointer"
-                    onClick={() => onEdit(skill)}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-medium text-sm">{skill.name}</span>
-                          {skill.group && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-                              {skill.group}
-                            </span>
-                          )}
-                          <button
-                            type="button"
-                            className="flex items-center justify-center size-5 rounded hover:bg-accent cursor-pointer"
-                            onClick={(e) => { e.stopPropagation(); onToggleFavorite(skill); }}
-                          >
-                            {skill.favorited ? (
-                              <Star className="size-3.5 text-yellow-500 fill-yellow-500" />
-                            ) : (
-                              <StarOff className="size-3.5 text-muted-foreground" />
-                            )}
-                          </button>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                          {skill.description || skill.content.slice(0, 120).replace(/^#\s+/, '')}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => onBind(skill)}
-                        >
-                          <Rocket className="size-3.5 mr-1" />
-                          {t('apply')}
-                        </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger
-                            render={
-                              <Button variant="ghost" size="icon" className="size-7" />
-                            }
-                          >
-                            <MoreVertical className="size-3.5" />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => fetch(`/api/skills/${encodeURIComponent(skill.name)}/reveal`, { method: 'POST' })}
-                            >
-                              <FolderOpen className="size-3.5 mr-1.5" />
-                              {t('revealFolder')}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onClick={() => onDelete(skill)}
-                            >
-                              <Trash2 className="size-3.5 mr-1.5" />
-                              {t('delete')}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-
-                    {skill.boundAgents.length > 0 && (
-                      <div className="flex items-center gap-1.5 mt-2.5 pt-2.5 border-t border-border/50">
-                        {skill.boundAgents.map((agent) => (
-                          <AgentIcon
-                            key={agent.id}
-                            agentId={agent.id}
-                            name={agent.name}
-                            avatarUrl={agent.avatarUrl}
-                            className="size-5 rounded-full"
-                          />
-                        ))}
-                        <span className="text-xs text-muted-foreground ml-1">
-                          {skill.boundAgents.length}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </ScrollArea>
-
-          {/* Desktop: Footer with apply all */}
-          <div className="hidden md:flex items-center justify-end gap-3 pt-2 border-t shrink-0">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onBindAll}
-              disabled={filtered.length === 0}
-            >
-              <Rocket className="size-3.5 mr-1" />
-              {t('applyAllToAgent')}
-            </Button>
-          </div>
+          <SkillCardGrid
+            skills={filtered}
+            loading={loading}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            filterMode={filterMode}
+            filterGroup={filterGroup}
+            onFilterModeChange={(mode, group) => {
+              setFilterMode(mode);
+              setFilterAgentId('');
+              setFilterGroup(group);
+            }}
+            onToggleFavorite={onToggleFavorite}
+            onDelete={onDelete}
+            onEdit={onEdit}
+            onBind={onBind}
+            onBindAll={onBindAll}
+          />
         </div>
-      </div>
       )}
 
-      {/* Git import dialog */}
-      <Dialog open={gitDialogOpen} onOpenChange={setGitDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t('importFromGit')}</DialogTitle>
-            <DialogDescription>{t('importFromGitDesc')}</DialogDescription>
-          </DialogHeader>
-          <div className="flex items-center gap-2">
-            <Input
-              value={gitUrl}
-              onChange={(e) => setGitUrl(e.target.value)}
-              placeholder="https://github.com/user/skills-repo.git"
-              onKeyDown={(e) => { if (e.key === 'Enter') handleGitImport(); }}
-              disabled={gitLoading}
-              autoFocus
-            />
-            <Button onClick={handleGitImport} disabled={gitLoading || !gitUrl.trim()}>
-              {gitLoading ? <Loader2 className="size-4 animate-spin" /> : t('import')}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
+      <SkillGitImportDialog
+        open={importState.gitDialogOpen}
+        onOpenChange={importState.setGitDialogOpen}
+        gitUrl={importState.gitUrl}
+        onGitUrlChange={importState.setGitUrl}
+        loading={importState.gitLoading}
+        onImport={importState.handleGitImport}
+      />
     </>
   );
 }
