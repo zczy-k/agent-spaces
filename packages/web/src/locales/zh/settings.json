@@ -68,5 +68,10 @@
   "toggleSidebar": "切换侧边栏",
   "recordingShortcut": "按下快捷键...",
   "recordShortcut": "录制快捷键",
-  "resetShortcut": "重置快捷键"
+  "resetShortcut": "重置快捷键",
+  "cropAvatar": "裁剪头像",
+  "aspectRatio": "裁剪比例",
+  "aspectCircle": "圆形",
+  "aspect3x4": "3:4",
+  "aspect16x9": "16:9"
 }

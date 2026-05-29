@@ -68,5 +68,10 @@
   "toggleSidebar": "Toggle Sidebar",
   "recordingShortcut": "Press shortcut...",
   "recordShortcut": "Record Shortcut",
-  "resetShortcut": "Reset Shortcut"
+  "resetShortcut": "Reset Shortcut",
+  "cropAvatar": "Crop Avatar",
+  "aspectRatio": "Aspect Ratio",
+  "aspectCircle": "Circle",
+  "aspect3x4": "3:4",
+  "aspect16x9": "16:9"
 }
