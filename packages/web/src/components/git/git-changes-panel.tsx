@@ -10,6 +10,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { DiffViewer } from "@/components/diff-viewer";
 import { useTranslations } from "next-intl";
 
+import { Empty, EmptyDescription, EmptyMedia } from "@/components/ui/empty";
 import { statusColors, statusLabels } from "./git-commit-utils";
 import type { GitFileStatus, GitDiffResult } from "@agent-spaces/shared";
 
@@ -172,7 +173,12 @@ export function GitChangesPanel({
             </span>
           </FileDiffHoverCard>
         ))}
-        {clean && <div className="p-2 text-xs text-muted-foreground">{tChanges('noChanges')}</div>}
+        {clean && (
+          <Empty className="border-0 py-6">
+            <EmptyMedia variant="icon"><GitBranch /></EmptyMedia>
+            <EmptyDescription>{tChanges('noChanges')}</EmptyDescription>
+          </Empty>
+        )}
       </div>
 
       {/* Action button */}
