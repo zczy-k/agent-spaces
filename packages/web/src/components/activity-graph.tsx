@@ -13,7 +13,7 @@
  * Props:
  * - data: array of { date, count } entries
  * - colorScale?: 5-element tuple of CSS classes for intensity levels 0–4
- * - blockSize?: fixed cell size in pixels (omit to auto-fit)
+ * - blockSize?: fixed square cell size in pixels (omit to auto-fit width only)
  * - blockRadius?: cell border radius in pixels (default 2)
  * - weeks?: number of weeks to display (default 52)
  * - className?: additional CSS classes
@@ -123,7 +123,7 @@ function buildWeeks(
   return weeks
 }
 
-function computeBlockSize(containerWidth: number, weekCount: number): number {
+function computeBlockWidth(containerWidth: number, weekCount: number): number {
   const available = containerWidth - DAY_LABEL_WIDTH
   const size = (available - GAP * (weekCount - 1)) / weekCount
   return Math.max(4, Math.floor(size))
@@ -131,7 +131,7 @@ function computeBlockSize(containerWidth: number, weekCount: number): number {
 
 function getMonthLabels(
   weeks: { date: Date; count: number }[][],
-  blockSize: number
+  blockWidth: number
 ): { label: string; offset: number }[] {
   const months: { label: string; offset: number }[] = []
   let lastKey = ""
@@ -143,7 +143,7 @@ function getMonthLabels(
     if (key !== lastKey) {
       months.push({
         label: firstDay.date.toLocaleString("en-US", { month: "short" }),
-        offset: w * (blockSize + GAP),
+        offset: w * (blockWidth + GAP),
       })
       lastKey = key
     }
@@ -172,7 +172,7 @@ export function ActivityGraph({
   ...props
 }: ActivityGraphProps) {
   const containerRef = React.useRef<HTMLDivElement>(null)
-  const [autoSize, setAutoSize] = React.useState<number | null>(null)
+  const [autoWidth, setAutoWidth] = React.useState<number | null>(null)
 
   React.useEffect(() => {
     if (fixedBlockSize != null) return
@@ -183,7 +183,7 @@ export function ActivityGraph({
     const observer = new ResizeObserver((entries) => {
       const width = entries[0]?.contentRect.width
       if (width && width > 0) {
-        setAutoSize(computeBlockSize(width, weekCount))
+        setAutoWidth(computeBlockWidth(width, weekCount))
       }
     })
 
@@ -191,17 +191,21 @@ export function ActivityGraph({
     return () => observer.disconnect()
   }, [fixedBlockSize, weekCount])
 
-  const blockSize = fixedBlockSize ?? autoSize ?? 10
+  const blockWidth = fixedBlockSize ?? autoWidth ?? 10
+  const blockHeight = fixedBlockSize ?? 11
   const weeks = buildWeeks(data, weekCount)
   const maxCount = Math.max(...data.map((d) => d.count), 0)
-  const monthLabels = getMonthLabels(weeks, blockSize)
+  const monthLabels = getMonthLabels(weeks, blockWidth)
 
-  const gridWidth = weeks.length * (blockSize + GAP) - GAP
-  const gridHeight = 7 * (blockSize + GAP) - GAP
+  const gridWidth = weeks.length * (blockWidth + GAP) - GAP
+  const gridHeight = 7 * (blockHeight + GAP) - GAP
   const totalWidth = DAY_LABEL_WIDTH + gridWidth
+  const legendBlockSize = Math.min(blockHeight, 10)
+  const legendBlockRadius = Math.min(blockRadius, legendBlockSize / 2)
+  const cellRadius = Math.min(blockRadius, blockWidth / 2, blockHeight / 2)
 
   const isAutoFit = fixedBlockSize == null
-  const showGraph = fixedBlockSize != null || autoSize != null
+  const showGraph = fixedBlockSize != null || autoWidth != null
 
   return (
     <div
@@ -245,8 +249,8 @@ export function ActivityGraph({
                   left: 0,
                   top:
                     MONTH_LABEL_HEIGHT +
-                    DAY_LABEL_INDICES[i] * (blockSize + GAP) +
-                    blockSize / 2 -
+                    DAY_LABEL_INDICES[i] * (blockHeight + GAP) +
+                    blockHeight / 2 -
                     4,
                 }}
               >
@@ -275,9 +279,9 @@ export function ActivityGraph({
                               <div
                                 className={cn("transition-colors", colorScale[intensity])}
                                 style={{
-                                  width: blockSize,
-                                  height: blockSize,
-                                  borderRadius: blockRadius,
+                                  width: blockWidth,
+                                  height: blockHeight,
+                                  borderRadius: cellRadius,
                                 }}
                               />
                             }
@@ -308,9 +312,9 @@ export function ActivityGraph({
                 key={i}
                 className={cn(cls)}
                 style={{
-                  width: blockSize,
-                  height: blockSize,
-                  borderRadius: blockRadius,
+                  width: legendBlockSize,
+                  height: legendBlockSize,
+                  borderRadius: legendBlockRadius,
                 }}
               />
             ))}
