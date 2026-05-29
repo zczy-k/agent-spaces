@@ -462,7 +462,13 @@ export function getAvailableSkillNames(agentDir: string | undefined, skills?: st
         return readdirSync(skillFolder).some((f) => f.endsWith('.md'));
       }
       const skillFile = join(skillsBase, `${skill}.md`);
-      return existsSync(skillFile) && statSync(skillFile).size > 0;
+      if (existsSync(skillFile) && statSync(skillFile).size > 0) return true;
+
+      const globalSkillFile = join(getDataDir(), 'skills', skill, 'SKILL.md');
+      if (existsSync(globalSkillFile) && statSync(globalSkillFile).size > 0) return true;
+
+      const globalLegacySkillFile = join(getDataDir(), 'skills', `${skill}.md`);
+      return existsSync(globalLegacySkillFile) && statSync(globalLegacySkillFile).size > 0;
     });
 }
 

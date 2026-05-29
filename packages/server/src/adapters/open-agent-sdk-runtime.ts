@@ -12,6 +12,7 @@ import { appendOutputStyleToPrompt, summarizeResult } from './agent-runtime-type
 import { startCodexFunctionToolBridge, type CodexFunctionToolBridge } from './codex-function-tool-bridge.js';
 
 const registeredConfiguredSkills = new Set<string>();
+const DEFAULT_DATA_DIR = join(process.env.HOME || '~', '.agent-spaces-data');
 
 /**
  * Runtime backed by @codeany/open-agent-sdk.
@@ -249,7 +250,17 @@ function resolveSkillFile(agentDir: string, skillName: string): string | undefin
   const legacySkillFile = join(skillsBase, `${skillName}.md`);
   if (existsSync(legacySkillFile) && statSync(legacySkillFile).size > 0) return legacySkillFile;
 
+  const globalSkillFile = join(getDataDir(), 'skills', skillName, 'SKILL.md');
+  if (existsSync(globalSkillFile) && statSync(globalSkillFile).size > 0) return globalSkillFile;
+
+  const globalLegacySkillFile = join(getDataDir(), 'skills', `${skillName}.md`);
+  if (existsSync(globalLegacySkillFile) && statSync(globalLegacySkillFile).size > 0) return globalLegacySkillFile;
+
   return undefined;
+}
+
+function getDataDir(): string {
+  return process.env.AGENT_SPACES_DATA_DIR || DEFAULT_DATA_DIR;
 }
 
 function parseSkillMarkdown(source: string): { meta: Record<string, string>; body: string } {

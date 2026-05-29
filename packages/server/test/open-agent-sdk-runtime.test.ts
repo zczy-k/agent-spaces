@@ -38,3 +38,38 @@ test('registerConfiguredSkills loads folder skills from agent config', async () 
     clearSkills();
   }
 });
+
+test('registerConfiguredSkills falls back to global skills when agent copy is empty', async () => {
+  clearSkills();
+  const dataDir = mkdtempSync(join(tmpdir(), 'agent-spaces-data-'));
+  const agentDir = mkdtempSync(join(tmpdir(), 'agent-skills-'));
+  const previousDataDir = process.env.AGENT_SPACES_DATA_DIR;
+  process.env.AGENT_SPACES_DATA_DIR = dataDir;
+
+  try {
+    mkdirSync(join(dataDir, 'skills', 'brainstorming'), { recursive: true });
+    writeFileSync(
+      join(dataDir, 'skills', 'brainstorming', 'SKILL.md'),
+      '---\nname: brainstorming\ndescription: Brainstorm globally.\n---\n\nGlobal skill body.',
+      'utf-8',
+    );
+    mkdirSync(join(agentDir, 'skills'), { recursive: true });
+    writeFileSync(join(agentDir, 'skills', 'brainstorming.md'), '', 'utf-8');
+
+    const registered = registerConfiguredSkills(agentDir, ['brainstorming']);
+    const skill = getSkill('brainstorming');
+
+    assert.deepEqual(registered, ['brainstorming']);
+    assert.ok(skill);
+    assert.equal(skill.description, 'Brainstorm globally.');
+    assert.deepEqual(await skill.getPrompt('', {} as never), [
+      { type: 'text', text: 'Global skill body.' },
+    ]);
+  } finally {
+    if (previousDataDir === undefined) delete process.env.AGENT_SPACES_DATA_DIR;
+    else process.env.AGENT_SPACES_DATA_DIR = previousDataDir;
+    rmSync(dataDir, { recursive: true, force: true });
+    rmSync(agentDir, { recursive: true, force: true });
+    clearSkills();
+  }
+});
