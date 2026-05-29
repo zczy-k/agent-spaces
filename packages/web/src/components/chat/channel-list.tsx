@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useChannelStore } from '@/stores/channel';
 import { useAgentStore } from '@/stores/agent';
-import { Bot, Hash, MessageCircle, AlertCircle, Plus, Pencil, FolderOpen, Archive, ArchiveRestore, MoreHorizontal, Trash2, Check, ArrowUpDown } from 'lucide-react';
+import { Bot, Hash, MessageCircle, AlertCircle, Plus, Pencil, FolderOpen, Archive, ArchiveRestore, MoreHorizontal, Trash2, Check, ArrowUpDown, CheckSquare, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -80,6 +80,8 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
   const [sortField, setSortField] = useState<'createdAt' | 'lastReply' | 'type'>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [initialLoading, setInitialLoading] = useState(true);
+  const [multiSelect, setMultiSelect] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const agents = useAgentStore((s) => s.agents);
   const ensureAgents = useAgentStore((s) => s.ensure);
 
@@ -143,43 +145,93 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
     return () => { unsub(); };
   }, [workspaceId, upsertChannel]);
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const exitMultiSelect = () => {
+    setMultiSelect(false);
+    setSelectedIds(new Set());
+  };
+
+  const handleBatchArchive = async () => {
+    await Promise.all([...selectedIds].map((id) => {
+      const ch = channels.find((c) => c.id === id);
+      return ch ? updateChannel(workspaceId, id, { archived: true }) : null;
+    }));
+    exitMultiSelect();
+  };
+
+  const handleBatchDelete = async () => {
+    await Promise.all([...selectedIds].map((id) => deleteChannel(workspaceId, id)));
+    setDeleteTarget(null);
+    exitMultiSelect();
+  };
+
+  const selectedChannels = useMemo(() => [...selectedIds].map((id) => channels.find((c) => c.id === id)).filter(Boolean) as Channel[], [selectedIds, channels]);
+
   const renderActiveChannel = (ch: Channel) => {
     const preview = lastMsgPreview(messages[ch.id]);
     const badge = typeBadgeConfig[ch.type];
     const isRunning = preview?.status === 'streaming' || preview?.status === 'pending';
     const agentMembers = ch.members.filter((m) => m !== 'user');
+    const isSelected = selectedIds.has(ch.id);
+
+    const trigger = (
+      <div
+        key={ch.id}
+        className={cn(
+          'flex items-start gap-2.5 w-full px-3 py-2 text-sm hover:bg-accent transition-colors text-left',
+          activeChannelId === ch.id && 'bg-accent text-accent-foreground',
+          isSelected && multiSelect && 'bg-blue-500/10',
+        )}
+        onClick={() => {
+          if (multiSelect) { toggleSelect(ch.id); }
+          else { setActiveChannel(ch.id); }
+        }}
+      >
+        {multiSelect && (
+          <button
+            type="button"
+            className="shrink-0 mt-0.5"
+            onClick={(e) => { e.stopPropagation(); toggleSelect(ch.id); }}
+          >
+            {isSelected ? <CheckSquare className="size-3.5 text-blue-500" /> : <Square className="size-3.5 text-muted-foreground" />}
+          </button>
+        )}
+        {(() => { const Icon = badge.icon; return <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-1" />; })()}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="truncate font-medium text-[13px]">{ch.name}</span>
+            <Badge variant="secondary" className={cn('text-[10px] px-1 py-0 h-4 rounded', badge.className)}>
+              {t(`channel.${ch.type}`)}
+            </Badge>
+            {isRunning && (
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+              </span>
+            )}
+            {agentMembers.length > 0 && <Bot className="h-3 w-3 text-muted-foreground shrink-0" />}
+          </div>
+          {preview ? (
+            <p className="text-xs text-muted-foreground truncate mt-0.5">{preview.text}</p>
+          ) : (
+            <p className="text-xs text-muted-foreground/50 mt-0.5">{t('emptyState')}</p>
+          )}
+        </div>
+      </div>
+    );
+
+    if (multiSelect) return trigger;
 
     return (
       <ContextMenu key={ch.id}>
-        <ContextMenuTrigger
-          className={cn(
-            'flex items-start gap-2.5 w-full px-3 py-2 text-sm hover:bg-accent transition-colors text-left',
-            activeChannelId === ch.id && 'bg-accent text-accent-foreground',
-          )}
-          onClick={() => setActiveChannel(ch.id)}
-        >
-          {(() => { const Icon = badge.icon; return <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-1" />; })()}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <span className="truncate font-medium text-[13px]">{ch.name}</span>
-              <Badge variant="secondary" className={cn('text-[10px] px-1 py-0 h-4 rounded', badge.className)}>
-                {t(`channel.${ch.type}`)}
-              </Badge>
-              {isRunning && (
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
-                </span>
-              )}
-              {agentMembers.length > 0 && <Bot className="h-3 w-3 text-muted-foreground shrink-0" />}
-            </div>
-            {preview ? (
-              <p className="text-xs text-muted-foreground truncate mt-0.5">{preview.text}</p>
-            ) : (
-              <p className="text-xs text-muted-foreground/50 mt-0.5">{t('emptyState')}</p>
-            )}
-          </div>
-        </ContextMenuTrigger>
+        <ContextMenuTrigger>{trigger}</ContextMenuTrigger>
         <ContextMenuContent>
           <ContextMenuItem onClick={() => handleEdit(ch)}>
             <Pencil className="size-3.5" />
@@ -260,6 +312,19 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
       <div className="flex items-center justify-between px-2 py-1.5 border-b text-xs font-medium text-muted-foreground">
         <span>{t('channel.general')}</span>
         <div className="flex items-center gap-0.5">
+          {multiSelect && selectedIds.size > 0 && (
+            <>
+              <button onClick={handleBatchArchive} className="p-0.5 hover:bg-accent rounded cursor-pointer" title={t('channel.archive')}>
+                <Archive className="size-3.5" />
+              </button>
+              <button onClick={() => setDeleteTarget(selectedChannels[0])} className="p-0.5 hover:bg-accent rounded cursor-pointer text-destructive" title={tc('delete')}>
+                <Trash2 className="size-3.5" />
+              </button>
+            </>
+          )}
+          <button onClick={() => { if (multiSelect) exitMultiSelect(); else setMultiSelect(true); }} className={cn('p-0.5 hover:bg-accent rounded cursor-pointer', multiSelect && 'bg-accent')} title={t('channel.multiSelect')}>
+            <CheckSquare className="size-3.5" />
+          </button>
           <button onClick={() => setDialogOpen(true)} className="p-0.5 hover:bg-accent rounded cursor-pointer">
             <Plus className="size-3.5" />
           </button>
@@ -447,12 +512,14 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>{tc('delete')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t('channel.deleteConfirm', { name: deleteTarget?.name ?? '' })}
+              {multiSelect && selectedIds.size > 1
+                ? t('channel.batchDeleteConfirm', { count: selectedIds.size })
+                : t('channel.deleteConfirm', { name: deleteTarget?.name ?? '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>{tc('delete')}</AlertDialogAction>
+            <AlertDialogAction onClick={multiSelect && selectedIds.size > 1 ? handleBatchDelete : handleDelete}>{tc('delete')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
