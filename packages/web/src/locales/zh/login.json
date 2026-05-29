@@ -1,5 +1,7 @@
 {
+  "title": "登录到你的账户",
   "subtitle": "输入密钥以继续",
+  "secretKey": "密钥",
   "secretPlaceholder": "密钥（如未设置可留空）",
   "verifying": "验证中...",
   "login": "登录",

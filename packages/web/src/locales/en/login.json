@@ -1,5 +1,7 @@
 {
+  "title": "Login to your account",
   "subtitle": "Enter your secret key to continue",
+  "secretKey": "Secret Key",
   "secretPlaceholder": "Secret key (leave empty if not set)",
   "verifying": "Verifying...",
   "login": "Login",
