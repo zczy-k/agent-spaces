@@ -61,19 +61,29 @@ export function ChatInputAgentBar({
                   className={cn(
                     "shrink-0 inline-flex items-center gap-1 h-6 pl-0.5 pr-1.5 rounded-full text-xs transition-all cursor-pointer",
                     isActive
-                      ? "bg-primary/10 text-primary border border-primary/30"
+                      ? "relative overflow-hidden bg-primary/10 text-primary border border-primary/30"
                       : isLastActive
                         ? "text-primary/70 border border-primary/20 bg-primary/5"
                         : "text-muted-foreground border border-transparent hover:bg-accent"
                   )}
                 >
+                  {isActive && (
+                    <>
+                      <div className="absolute w-[300%] h-[60%] opacity-80 bottom-[-11px] right-[-250%] rounded-full animate-star-movement-bottom z-0 pointer-events-none"
+                        style={{ background: "radial-gradient(circle, var(--primary), transparent 20%)", animationDuration: "3s" }}
+                      />
+                      <div className="absolute w-[300%] h-[60%] opacity-80 top-[-10px] left-[-250%] rounded-full animate-star-movement-top z-0 pointer-events-none"
+                        style={{ background: "radial-gradient(circle, var(--primary), transparent 20%)", animationDuration: "3s" }}
+                      />
+                    </>
+                  )}
                   <AgentIcon
                     agentId={agent.id}
                     name={agent.name || agent.role}
                     avatarUrl={agent.avatarUrl}
-                    className="size-5 rounded-full text-[9px]"
+                    className="relative z-10 size-5 rounded-full text-[9px]"
                   />
-                  <span className="max-w-[80px] truncate">{agent.name || agent.role}</span>
+                  <span className="relative z-10 max-w-[80px] truncate">{agent.name || agent.role}</span>
                 </HoverCardTrigger>
                 <HoverCardContent side="top" align="start" className="w-72">
                   <MemberInfoCard agentId={agent.id} compact onConfigure={() => setConfigAgentId(agent.id)} />
