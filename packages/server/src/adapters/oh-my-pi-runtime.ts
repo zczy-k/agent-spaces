@@ -216,6 +216,7 @@ function buildEnv(config: AgentRuntimeConfig, options?: AgentRunOptions, ompHome
     AGENT_SPACES_OMP_API_KEY: apiKey,
     PI_API_KEY: apiKey,
     OMP_API_KEY: apiKey,
+    PI_CODING_AGENT_DIR: agentDir || process.env.PI_CODING_AGENT_DIR,
     OPENAI_API_KEY: config.provider === 'anthropic-messages' ? process.env.OPENAI_API_KEY : apiKey,
     ANTHROPIC_API_KEY: config.provider === 'anthropic-messages' ? apiKey : process.env.ANTHROPIC_API_KEY,
     OPENAI_BASE_URL: config.baseURL || process.env.OPENAI_BASE_URL,
@@ -236,7 +237,7 @@ function prepareOmpConfigHome(
   const homeDir = join(options.configDir, 'omp-home');
   const agentDir = join(homeDir, '.omp', 'agent');
   mkdirSync(agentDir, { recursive: true });
-  copySkillsToOmpAgentDir(options.configDir, agentDir);
+  copySkillsToOmpAgentDir(options.configDir, agentDir, options.skills);
 
   writeFileSync(join(agentDir, 'config.yml'), buildOmpConfigYaml(config), 'utf-8');
   const modelsYaml = buildOmpModelsYaml(config);
@@ -248,34 +249,93 @@ function prepareOmpConfigHome(
   return homeDir;
 }
 
-function copySkillsToOmpAgentDir(sourceAgentDir: string, targetAgentDir: string): void {
+function copySkillsToOmpAgentDir(sourceAgentDir: string, targetAgentDir: string, requestedSkills?: string[]): void {
   const sourceSkillsDir = join(sourceAgentDir, 'skills');
   const targetSkillsDir = join(targetAgentDir, 'skills');
+  const copied = new Set<string>();
   rmSync(targetSkillsDir, { recursive: true, force: true });
   mkdirSync(targetSkillsDir, { recursive: true });
 
-  if (!existsSync(sourceSkillsDir)) return;
-  for (const entry of readdirSync(sourceSkillsDir)) {
-    const source = join(sourceSkillsDir, entry);
-    const sourceStat = statSync(source);
-
-    if (sourceStat.isDirectory()) {
-      const skillName = sanitizeSkillName(entry);
-      if (!skillName) continue;
-      const sourceSkillFile = join(source, 'SKILL.md');
-      if (!existsSync(sourceSkillFile) || statSync(sourceSkillFile).size === 0) continue;
-      cpSync(source, join(targetSkillsDir, skillName), { recursive: true, force: true });
-      continue;
+  if (existsSync(sourceSkillsDir)) {
+    for (const entry of readdirSync(sourceSkillsDir)) {
+      const source = join(sourceSkillsDir, entry);
+      const skillName = copySkillSource(source, entry, targetSkillsDir);
+      if (skillName) copied.add(skillName);
     }
-
-    if (!sourceStat.isFile() || extname(entry).toLowerCase() !== '.md' || sourceStat.size === 0) continue;
-    const skillName = sanitizeSkillName(entry);
-    if (!skillName) continue;
-    const targetSkillDir = join(targetSkillsDir, skillName);
-    mkdirSync(targetSkillDir, { recursive: true });
-    writeFileSync(join(targetSkillDir, 'SKILL.md'), readFileSync(source, 'utf-8'), 'utf-8');
-    copyFileSync(source, join(targetSkillsDir, `${skillName}.md`));
   }
+
+  for (const skill of normalizeSkillNames(requestedSkills)) {
+    if (copied.has(skill)) continue;
+    const fallback = findFallbackSkillSource(sourceAgentDir, skill);
+    if (!fallback) continue;
+    const skillName = copySkillSource(fallback, skill, targetSkillsDir);
+    if (skillName) copied.add(skillName);
+  }
+}
+
+function copySkillSource(source: string, entry: string, targetSkillsDir: string): string | undefined {
+  if (!existsSync(source)) return undefined;
+  const sourceStat = statSync(source);
+
+  if (sourceStat.isDirectory()) {
+    const skillName = sanitizeSkillName(entry);
+    if (!skillName) return undefined;
+    const sourceSkillFile = join(source, 'SKILL.md');
+    if (!existsSync(sourceSkillFile) || statSync(sourceSkillFile).size === 0) return undefined;
+    cpSync(source, join(targetSkillsDir, skillName), { recursive: true, force: true });
+    return skillName;
+  }
+
+  if (!sourceStat.isFile() || extname(entry).toLowerCase() !== '.md' || sourceStat.size === 0) return undefined;
+  const skillName = sanitizeSkillName(entry);
+  if (!skillName) return undefined;
+  const targetSkillDir = join(targetSkillsDir, skillName);
+  mkdirSync(targetSkillDir, { recursive: true });
+  writeFileSync(join(targetSkillDir, 'SKILL.md'), readFileSync(source, 'utf-8'), 'utf-8');
+  copyFileSync(source, join(targetSkillsDir, `${skillName}.md`));
+  return skillName;
+}
+
+function findFallbackSkillSource(sourceAgentDir: string, skill: string): string | undefined {
+  const workspaceAgentspaceDir = join(sourceAgentDir, '..', '..');
+  const candidates = [
+    join(workspaceAgentspaceDir, 'skills', skill),
+    join(workspaceAgentspaceDir, 'skills', `${skill}.md`),
+    join(process.cwd(), 'skills', skill),
+    join(process.cwd(), 'skills', `${skill}.md`),
+    ...builtInSkillCandidates(skill),
+  ];
+
+  return candidates.find(isReadableSkillSource);
+}
+
+function builtInSkillCandidates(skill: string): string[] {
+  const roots = [
+    join(process.cwd(), 'packages', 'agents', 'skills'),
+    join(import.meta.dirname ?? '', '..', '..', '..', 'agents', 'skills'),
+  ];
+  const candidates: string[] = [];
+  for (const root of roots) {
+    candidates.push(join(root, skill), join(root, `${skill}.md`), join(root, 'superpowers', skill));
+    if (!existsSync(root)) continue;
+    for (const group of readdirSync(root)) {
+      const groupDir = join(root, group);
+      if (existsSync(groupDir) && statSync(groupDir).isDirectory()) {
+        candidates.push(join(groupDir, skill), join(groupDir, `${skill}.md`));
+      }
+    }
+  }
+  return candidates;
+}
+
+function isReadableSkillSource(source: string): boolean {
+  if (!existsSync(source)) return false;
+  const sourceStat = statSync(source);
+  if (sourceStat.isDirectory()) {
+    const skillFile = join(source, 'SKILL.md');
+    return existsSync(skillFile) && statSync(skillFile).size > 0;
+  }
+  return sourceStat.isFile() && extname(source).toLowerCase() === '.md' && sourceStat.size > 0;
 }
 
 function withFunctionToolBridge(
