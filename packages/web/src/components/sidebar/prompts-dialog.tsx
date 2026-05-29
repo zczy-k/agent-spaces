@@ -312,41 +312,6 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
 
   const localView = (
     <>
-      <div className="flex items-center gap-2 ml-auto shrink-0 pt-2">
-        <Popover open={importOpen} onOpenChange={setImportOpen}>
-          <PopoverTrigger render={
-            <Button variant="outline" size="sm">
-              <Upload className="size-3.5 mr-1" />
-              {t('import')}
-            </Button>
-          } />
-          <PopoverContent className="w-80" align="end">
-            <div className="space-y-3">
-              <p className="text-sm font-medium">{t('importTitle')}</p>
-              <FileUpload
-                value={uploadFiles}
-                onChange={setUploadFiles}
-                accept={{ 'text/markdown': ['.md', '.txt'], '': ['.md', '.txt'] }}
-                placeholder={t('importPlaceholder')}
-                maxFiles={10}
-              />
-              <Button
-                size="sm"
-                onClick={handleImport}
-                disabled={uploadFiles.length === 0}
-                className="w-full"
-              >
-                {t('importConfirm')}
-              </Button>
-            </div>
-          </PopoverContent>
-        </Popover>
-        <Button variant="outline" size="sm" onClick={handleCreate}>
-          <Plus className="size-3.5 mr-1" />
-          {t('create')}
-        </Button>
-      </div>
-
       <ScrollArea className="flex-1">
         {loading ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
@@ -501,6 +466,43 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
           {activeTab === 'local' ? localView : storeView}
         </div>
       </div>
+
+      {activeTab === 'local' && (
+        <div className="flex items-center gap-2 justify-end pt-2 border-t border-border">
+          <Popover open={importOpen} onOpenChange={setImportOpen}>
+            <PopoverTrigger render={
+              <Button variant="outline" size="sm">
+                <Upload className="size-3.5 mr-1" />
+                {t('import')}
+              </Button>
+            } />
+            <PopoverContent className="w-80" align="end">
+              <div className="space-y-3">
+                <p className="text-sm font-medium">{t('importTitle')}</p>
+                <FileUpload
+                  value={uploadFiles}
+                  onChange={setUploadFiles}
+                  accept={{ 'text/markdown': ['.md', '.txt'], '': ['.md', '.txt'] }}
+                  placeholder={t('importPlaceholder')}
+                  maxFiles={10}
+                />
+                <Button
+                  size="sm"
+                  onClick={handleImport}
+                  disabled={uploadFiles.length === 0}
+                  className="w-full"
+                >
+                  {t('importConfirm')}
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+          <Button variant="outline" size="sm" onClick={handleCreate}>
+            <Plus className="size-3.5 mr-1" />
+            {t('create')}
+          </Button>
+        </div>
+      )}
     </>
   );
 

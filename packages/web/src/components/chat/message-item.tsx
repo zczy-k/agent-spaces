@@ -4,13 +4,15 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { Message } from '@agent-spaces/shared';
 import { Copy, Pencil, Trash2, Check, Clock, Reply, CheckCircle2, XCircle, Maximize2 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogOverlay, DialogPortal } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogOverlay, DialogPortal } from '@/components/ui/dialog';
 import { Markdown } from '@/components/ui/markdown';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { useAgentStore } from '@/stores/agent';
 import { useUserAvatar } from '@/hooks/use-user-avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { MemberHoverCard } from './member-hover-card';
+import { AgentEditor } from '@/components/sidebar/agent-editor';
+import { normalizeAgent } from '@/components/sidebar/agent-shared';
 import { MessageContextUsage, MessageParts } from './message-parts';
 import { TextShimmer } from '@/components/text-shimmer';
 
@@ -33,6 +35,8 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
   const time = new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const [copied, setCopied] = useState(false);
   const [fullscreenOpen, setFullscreenOpen] = useState(false);
+  const [configAgentId, setConfigAgentId] = useState<string | null>(null);
+  const storeAgents = useAgentStore((s) => s.agents);
   const replies = message.replies ?? [];
 
   const isStreaming = message.status === 'streaming' || message.status === 'pending' || message.status === 'waiting_for_user';
@@ -71,7 +75,7 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
           className="size-7 rounded-full"
         />
       ) : (
-        <MemberHoverCard agentId={message.senderId} displayName={senderName} side="right" align="start">
+        <MemberHoverCard agentId={message.senderId} displayName={senderName} side="right" align="start" onConfigure={() => setConfigAgentId(message.senderId)}>
           <AgentIcon
             agentId={message.senderId}
             name={senderName}
@@ -200,6 +204,26 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
           </DialogPortal>
         </Dialog>
       )}
+      {configAgentId && (() => {
+        const agent = storeAgents.find((a) => a.id === configAgentId);
+        if (!agent) return null;
+        return (
+          <Dialog open={Boolean(configAgentId)} onOpenChange={(open) => { if (!open) setConfigAgentId(null); }}>
+            <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">
+              <DialogHeader className="border-b px-5 py-3">
+                <DialogTitle>配置 Agent</DialogTitle>
+                <DialogDescription />
+              </DialogHeader>
+              <AgentEditor
+                agent={normalizeAgent(agent)}
+                onSaved={() => setConfigAgentId(null)}
+                onBack={() => setConfigAgentId(null)}
+                showFooter
+              />
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
     </div>
   );
 }

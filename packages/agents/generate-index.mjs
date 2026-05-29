@@ -61,6 +61,31 @@ function scanSkillStore() {
   console.log(`[skills] ${index.length} skills`);
 }
 
+function scanMcpStore() {
+  const dir = join(agentsDir, 'mcps');
+  if (!existsSync(dir)) return;
+  const files = readdirSync(dir).filter((f) => f.endsWith('.json') && f !== 'index.json');
+  const index = files.map((filename) => {
+    const id = basename(filename, '.json');
+    const raw = readFileSync(join(dir, filename), 'utf-8');
+    const data = JSON.parse(raw);
+    const servers = data.mcpServers || data;
+    const serverName = Object.keys(servers)[0] || id;
+    const config = servers[serverName] || {};
+    const envKeys = config.env ? Object.keys(config.env).filter((k) => !config.env[k]) : [];
+    return {
+      id,
+      name: serverName,
+      description: config.command ? `${config.command} ${(config.args || []).join(' ')}` : '',
+      filename,
+      needsEnv: envKeys.length > 0 ? envKeys : undefined,
+    };
+  });
+  writeFileSync(join(dir, 'index.json'), JSON.stringify(index, null, 2), 'utf-8');
+  console.log(`[mcps] ${index.length} templates`);
+}
+scanMcpStore();
+
 scanPromptStore();
 scanOutputStyleStore();
 scanSkillStore();

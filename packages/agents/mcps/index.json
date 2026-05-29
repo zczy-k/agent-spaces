@@ -1,0 +1,62 @@
+[
+  {
+    "id": "brave-search",
+    "name": "brave-search",
+    "description": "npx -y @modelcontextprotocol/server-brave-search",
+    "filename": "brave-search.json",
+    "needsEnv": [
+      "BRAVE_API_KEY"
+    ]
+  },
+  {
+    "id": "everything",
+    "name": "everything",
+    "description": "npx -y @modelcontextprotocol/server-everything",
+    "filename": "everything.json"
+  },
+  {
+    "id": "fetch",
+    "name": "fetch",
+    "description": "npx -y @modelcontextprotocol/server-fetch",
+    "filename": "fetch.json"
+  },
+  {
+    "id": "filesystem",
+    "name": "filesystem",
+    "description": "npx -y @modelcontextprotocol/server-filesystem /path/to/allowed/dir",
+    "filename": "filesystem.json"
+  },
+  {
+    "id": "git",
+    "name": "git",
+    "description": "npx -y @modelcontextprotocol/server-git",
+    "filename": "git.json"
+  },
+  {
+    "id": "github",
+    "name": "github",
+    "description": "npx -y @modelcontextprotocol/server-github",
+    "filename": "github.json",
+    "needsEnv": [
+      "GITHUB_PERSONAL_ACCESS_TOKEN"
+    ]
+  },
+  {
+    "id": "memory",
+    "name": "memory",
+    "description": "npx -y @modelcontextprotocol/server-memory",
+    "filename": "memory.json"
+  },
+  {
+    "id": "puppeteer",
+    "name": "puppeteer",
+    "description": "npx -y @modelcontextprotocol/server-puppeteer",
+    "filename": "puppeteer.json"
+  },
+  {
+    "id": "sqlite",
+    "name": "sqlite",
+    "description": "npx -y @modelcontextprotocol/server-sqlite --db-path /path/to/db.sqlite",
+    "filename": "sqlite.json"
+  }
+]

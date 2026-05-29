@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
+import { fetchStoreIndex } from '@/lib/agent-store';
 import {
   Dialog,
   DialogContent,
@@ -34,6 +35,8 @@ import {
   Trash2,
   Rocket,
   Save,
+  Store,
+  Download,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import '@/lib/monaco-loader';
@@ -71,18 +74,28 @@ interface AgentCandidate {
   description?: string;
 }
 
+interface StoreMcp {
+  id: string;
+  name: string;
+  description: string;
+  filename: string;
+  needsEnv?: string[];
+}
+
 interface McpsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   standalone?: boolean;
 }
 
+type TabType = 'local' | 'store';
 type FilterMode = 'all' | 'favorites' | 'agent';
 
 export function McpsDialog({ open, onOpenChange, standalone }: McpsDialogProps) {
   const t = useTranslations('mcps');
   const tc = useTranslations('common');
 
+  const [activeTab, setActiveTab] = useState<TabType>('local');
   const [mcps, setMcps] = useState<McpServerInfo[]>([]);
   const [agents, setAgents] = useState<AgentCandidate[]>([]);
   const [loading, setLoading] = useState(false);
@@ -96,6 +109,11 @@ export function McpsDialog({ open, onOpenChange, standalone }: McpsDialogProps) 
   const [bindSelected, setBindSelected] = useState<string[]>([]);
   const [editMcp, setEditMcp] = useState<McpServerInfo | null>(null);
   const [editContent, setEditContent] = useState('');
+
+  // Store state
+  const [storeMcps, setStoreMcps] = useState<StoreMcp[]>([]);
+  const [storeLoading, setStoreLoading] = useState(false);
+  const [importingIds, setImportingIds] = useState<Set<string>>(new Set());
 
   const fetchMcps = useCallback(async () => {
     setLoading(true);
@@ -123,12 +141,22 @@ export function McpsDialog({ open, onOpenChange, standalone }: McpsDialogProps) 
     } catch { /* ignore */ }
   }, []);
 
+  const fetchStoreMcps = useCallback(async () => {
+    setStoreLoading(true);
+    try {
+      const data = await fetchStoreIndex<StoreMcp>('mcps/index.json');
+      setStoreMcps(data);
+    } catch { /* ignore */ }
+    setStoreLoading(false);
+  }, []);
+
   useEffect(() => {
     if (open || standalone) {
       fetchMcps();
       fetchAgents();
+      fetchStoreMcps();
     }
-  }, [open, standalone, fetchMcps, fetchAgents]);
+  }, [open, standalone, fetchMcps, fetchAgents, fetchStoreMcps]);
 
   const handleToggleFavorite = async (mcp: McpServerInfo) => {
     try {
@@ -259,6 +287,38 @@ export function McpsDialog({ open, onOpenChange, standalone }: McpsDialogProps) 
     );
   };
 
+  // Track which store mcps are already imported locally
+  const importedStoreIds = new Set(mcps.map((m) => m.name));
+
+  const handleStoreImport = async (storeItem: StoreMcp) => {
+    if (importedStoreIds.has(storeItem.name) || importingIds.has(storeItem.id)) return;
+    setImportingIds((prev) => new Set(prev).add(storeItem.id));
+    try {
+      const contentRes = await fetch(`/agents-store/mcps/${storeItem.filename}`);
+      if (!contentRes.ok) return;
+      const jsonText = await contentRes.text();
+      const res = await fetch('/api/mcps/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonText }),
+      });
+      if (res.ok) {
+        fetchMcps();
+      }
+    } catch { /* ignore */ }
+    setImportingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(storeItem.id);
+      return next;
+    });
+  };
+
+  const filteredStore = storeMcps.filter((item) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return item.name.toLowerCase().includes(q) || item.description.toLowerCase().includes(q);
+  });
+
   // Filtering
   const filtered = mcps.filter((mcp) => {
     if (searchQuery) {
@@ -292,42 +352,66 @@ export function McpsDialog({ open, onOpenChange, standalone }: McpsDialogProps) 
             }
           </div>
           <div className="flex items-center gap-2">
-            <Popover open={importOpen} onOpenChange={setImportOpen}>
-              <PopoverTrigger render={
-                <Button variant="outline" size="sm">
-                  <Upload className="size-3.5 mr-1" />
-                  {t('import')}
-                </Button>
-              } />
-              <PopoverContent className="w-96" align="end">
-                <div className="space-y-3">
-                  <p className="text-sm font-medium">{t('importTitle')}</p>
-                  <Textarea
-                    value={importText}
-                    onChange={(e) => { setImportText(e.target.value); setImportError(''); }}
-                    placeholder={'{\n  "mcpServers": {\n    "server-name": {\n      "command": "npx",\n      "args": ["-y", "package"],\n      "env": {}\n    }\n  }\n}'}
-                    className="font-mono text-xs min-h-[180px] resize-none"
-                  />
-                  {importError && (
-                    <p className="text-xs text-destructive">{importError}</p>
-                  )}
-                  <Button
-                    size="sm"
-                    onClick={handleImport}
-                    disabled={!importText.trim()}
-                    className="w-full"
-                  >
-                    {t('importConfirm')}
+            {activeTab === 'local' && (
+              <Popover open={importOpen} onOpenChange={setImportOpen}>
+                <PopoverTrigger render={
+                  <Button variant="outline" size="sm">
+                    <Upload className="size-3.5 mr-1" />
+                    {t('import')}
                   </Button>
-                </div>
-              </PopoverContent>
-            </Popover>
+                } />
+                <PopoverContent className="w-96" align="end">
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium">{t('importTitle')}</p>
+                    <Textarea
+                      value={importText}
+                      onChange={(e) => { setImportText(e.target.value); setImportError(''); }}
+                      placeholder={'{\n  "mcpServers": {\n    "server-name": {\n      "command": "npx",\n      "args": ["-y", "package"],\n      "env": {}\n    }\n  }\n}'}
+                      className="font-mono text-xs min-h-[180px] resize-none"
+                    />
+                    {importError && (
+                      <p className="text-xs text-destructive">{importError}</p>
+                    )}
+                    <Button
+                      size="sm"
+                      onClick={handleImport}
+                      disabled={!importText.trim()}
+                      className="w-full"
+                    >
+                      {t('importConfirm')}
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
           </div>
         </div>
       </DialogHeader>
 
-      <div className="flex flex-1 min-h-0 gap-4 pt-2">
-        {/* Desktop: Left sidebar filters */}
+      {/* Tabs */}
+      <div className="flex items-center gap-1 border-b border-border px-1">
+        {([['local', Plug, t('tabLocal')], ['store', Store, t('tabStore')]] as const).map(([key, Icon, label]) => (
+          <button
+            key={key}
+            onClick={() => setActiveTab(key)}
+            className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === key
+                ? 'border-primary text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Icon className="size-3.5" />
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'local' ? localView : storeView}
+    </>
+  );
+
+  const localView = (
+    <div className="flex flex-1 min-h-0 gap-4 pt-2">
         <div className="hidden md:flex w-44 shrink-0 flex-col gap-3">
           <div className="space-y-1">
             <Button
