@@ -7,5 +7,13 @@
   "login": "登录",
   "loginFailed": "登录失败",
   "networkError": "网络错误",
-  "manageServers": "管理服务器"
+  "manageServers": "管理服务器",
+  "heroPrefix": "在 Agent Spaces 里",
+  "keyword": {
+    "plan": "规划",
+    "think": "思考",
+    "build": "构建",
+    "debug": "调试",
+    "ship": "发布"
+  }
 }

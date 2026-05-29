@@ -30,6 +30,8 @@
     "@loading-ui": "https://loading-ui.com/r/{name}.json",
     "@jalco": "https://ui.justinlevine.me/r/{name}.json",
     "@forgeui": "https://forgeui.in/r/{name}.json",
-    "@scrollxui": "https://www.scrollxui.dev/registry/{name}.json"
+    "@scrollxui": "https://www.scrollxui.dev/registry/{name}.json",
+    "@aceternity": "https://ui.aceternity.com/registry/{name}.json",
+    "@react-bits": "https://reactbits.dev/r/{name}.json"
   }
 }

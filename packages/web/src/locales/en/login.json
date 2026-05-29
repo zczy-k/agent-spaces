@@ -7,5 +7,13 @@
   "login": "Login",
   "loginFailed": "Login failed",
   "networkError": "Network error",
-  "manageServers": "Manage Servers"
+  "manageServers": "Manage Servers",
+  "heroPrefix": "In Agent Spaces,",
+  "keyword": {
+    "plan": "Plan",
+    "think": "Think",
+    "build": "Build",
+    "debug": "Debug",
+    "ship": "Ship"
+  }
 }
