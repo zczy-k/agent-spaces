@@ -13,9 +13,14 @@ import {
   THEME_STYLE_STORAGE_KEY as STYLE_STORAGE_KEY,
   THEME_STYLE_CUSTOM_CSS_KEY as STYLE_CUSTOM_CSS_KEY,
   THEME_STYLES,
+  PRIMARY_COLOR_KEY,
+  DEFAULT_PRIMARY_COLORS,
   applyThemeStyle,
   removeThemeStyle,
+  applyPrimaryColor,
+  getDefaultPrimaryColor,
 } from "@/lib/theme-style";
+import { ColorPicker } from "@/components/ui/color-picker";
 import { CustomFontDialog } from "./custom-font-dialog";
 
 const BUILTIN_FONTS = [
@@ -93,6 +98,10 @@ export function AppearanceTab() {
     if (typeof window === "undefined") return "";
     return localStorage.getItem(STYLE_STORAGE_KEY) || "";
   });
+  const [primaryColor, setPrimaryColor] = useState(() => {
+    if (typeof window === "undefined") return getDefaultPrimaryColor();
+    return localStorage.getItem(PRIMARY_COLOR_KEY) || getDefaultPrimaryColor();
+  });
   const [customCss, setCustomCss] = useState(() => {
     if (typeof window === "undefined") return "";
     return localStorage.getItem(STYLE_CUSTOM_CSS_KEY) || "";
@@ -140,6 +149,12 @@ export function AppearanceTab() {
     setCustomCss(value);
     localStorage.setItem(STYLE_CUSTOM_CSS_KEY, value);
     applyThemeStyle(value);
+  }, []);
+
+  const handlePrimaryColorChange = useCallback((color: string) => {
+    setPrimaryColor(color);
+    localStorage.setItem(PRIMARY_COLOR_KEY, color);
+    applyPrimaryColor(color);
   }, []);
 
   const handleFontChange = useCallback((value: string) => {
@@ -208,6 +223,17 @@ export function AppearanceTab() {
             </button>
           ))}
         </div>
+      </div>
+
+      <div>
+        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2.5 block">
+          {t("primaryColor") || "Primary Color"}
+        </label>
+        <ColorPicker
+          colors={DEFAULT_PRIMARY_COLORS}
+          value={primaryColor}
+          onChange={handlePrimaryColorChange}
+        />
       </div>
 
       <div>

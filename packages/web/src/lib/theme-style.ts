@@ -305,3 +305,93 @@ export function applySavedThemeStyle() {
     if (css) applyThemeStyle(css);
   }
 }
+
+// --- Primary Color ---
+
+export const PRIMARY_COLOR_KEY = "theme-primary-color";
+const PRIMARY_STYLE_EL_ID = "theme-primary-override";
+
+const DEFAULT_LIGHT_PRIMARY = "#1456f0";
+const DEFAULT_DARK_PRIMARY = "#3b82f6";
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  const m = hex.replace("#", "").match(/.{2}/g);
+  if (!m) return null;
+  return { r: parseInt(m[0], 16), g: parseInt(m[1], 16), b: parseInt(m[2], 16) };
+}
+
+function foregroundFor(hex: string): string {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return "#ffffff";
+  const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
+  return luminance > 0.55 ? "#000000" : "#ffffff";
+}
+
+function darkerHex(hex: string, amount: number): string {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return hex;
+  const r = Math.max(0, Math.round(rgb.r * (1 - amount)));
+  const g = Math.max(0, Math.round(rgb.g * (1 - amount)));
+  const b = Math.max(0, Math.round(rgb.b * (1 - amount)));
+  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+}
+
+export function applyPrimaryColor(color: string) {
+  const fg = foregroundFor(color);
+  const ring = color;
+  const hoverBg = darkerHex(color, 0.15);
+  const css = `:root {
+  --primary: ${color};
+  --primary-foreground: ${fg};
+  --ring: ${ring};
+  --sidebar-primary: ${color};
+  --sidebar-primary-foreground: ${fg};
+  --sidebar-ring: ${ring};
+  --chart-1: ${color};
+}
+.dark {
+  --primary: ${color};
+  --primary-foreground: ${fg};
+  --ring: ${ring};
+  --sidebar-primary: ${color};
+  --sidebar-primary-foreground: ${fg};
+  --sidebar-ring: ${ring};
+  --chart-1: ${color};
+}
+/* primary button hover */
+button.btn-primary-hover:hover, [data-primary-hover]:hover {
+  background: ${hoverBg} !important;
+}`;
+  let el = document.getElementById(PRIMARY_STYLE_EL_ID) as HTMLStyleElement | null;
+  if (!el) {
+    el = document.createElement("style");
+    el.id = PRIMARY_STYLE_EL_ID;
+    document.head.appendChild(el);
+  }
+  el.textContent = css;
+}
+
+export function removePrimaryColor() {
+  document.getElementById(PRIMARY_STYLE_EL_ID)?.remove();
+}
+
+export const DEFAULT_PRIMARY_COLORS = [
+  "#1456f0",
+  "#6366f1",
+  "#8b5cf6",
+  "#ec4899",
+  "#ef4444",
+  "#f97316",
+  "#eab308",
+  "#22c55e",
+  "#06b6d4",
+];
+
+export function getDefaultPrimaryColor(): string {
+  return DEFAULT_LIGHT_PRIMARY;
+}
+
+export function applySavedPrimaryColor() {
+  const saved = localStorage.getItem(PRIMARY_COLOR_KEY);
+  if (saved) applyPrimaryColor(saved);
+}
