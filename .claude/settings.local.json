@@ -8,7 +8,9 @@
       "mcp__code-review-graph__semantic_search_nodes_tool",
       "mcp__shadcn__get_add_command_for_items",
       "mcp__code-review-graph__find_large_functions_tool",
-      "mcp__codegraph__codegraph_explore"
+      "mcp__codegraph__codegraph_explore",
+      "mcp__codegraph__codegraph_node",
+      "mcp__codegraph__codegraph_callers"
     ]
   },
   "enableAllProjectMcpServers": true,
