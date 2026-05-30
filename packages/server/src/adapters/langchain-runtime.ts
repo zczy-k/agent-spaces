@@ -25,14 +25,16 @@ export class LangChainRuntime implements AgentRuntime {
     const cwd = workingDir || process.cwd();
     const startTime = Date.now();
     const d = (msg: string) => console.log(`[langchain] ${msg}`);
-    const model = buildModelIdentifier(this.config);
+    const modelSettings = resolveLangChainModelSettings(this.config);
+    const model = modelSettings.modelIdentifier;
 
-    d(`starting | cwd=${cwd} provider=${this.config.provider ?? 'auto'} model=${model} baseURL=${this.config.baseURL ?? 'default'} maxTurns=${options?.maxTurns ?? '∞'} tools=${options?.functionTools?.map((runtimeTool) => runtimeTool.name).join(',') || '-'} sandboxDirs=${options?.sandboxDirs?.join(',') ?? '-'}`);
+    d(`starting | cwd=${cwd} provider=${this.config.provider ?? 'auto'} langchainProvider=${modelSettings.provider ?? 'auto'} model=${model} baseURL=${this.config.baseURL ?? 'default'} maxTurns=${options?.maxTurns ?? '∞'} tools=${options?.functionTools?.map((runtimeTool) => runtimeTool.name).join(',') || '-'} sandboxDirs=${options?.sandboxDirs?.join(',') ?? '-'}`);
+    if (modelSettings.providerCorrectionReason) d(`provider adjusted | ${modelSettings.providerCorrectionReason}`);
     d(`prompt: ${prompt.slice(0, 300)}${prompt.length > 300 ? '...' : ''}`);
 
     try {
       const chatModel = await withTemporaryEnv(
-        buildProviderEnv(this.config),
+        buildProviderEnv(this.config, modelSettings.provider),
         () => initChatModel(model, buildModelConfig(this.config)),
       );
       const agent = createAgent({
@@ -111,11 +113,29 @@ function buildLangChainTools(
   )) as NonNullable<CreateAgentParams['tools']>;
 }
 
-function buildModelIdentifier(config: AgentRuntimeConfig): string {
+interface LangChainModelSettings {
+  provider?: string;
+  modelIdentifier: string;
+  providerCorrectionReason?: string;
+}
+
+export function resolveLangChainModelSettings(config: AgentRuntimeConfig): LangChainModelSettings {
   const model = config.model || 'gpt-4o-mini';
-  const provider = normalizeLangChainProvider(config.provider);
-  if (!provider || model.includes(':')) return model;
-  return `${provider}:${model}`;
+  const configuredProvider = normalizeLangChainProvider(config.provider);
+  const inferredProvider = inferLangChainProviderFromBaseURL(config.baseURL);
+  const provider = configuredProvider === 'anthropic' && inferredProvider === 'openai'
+    ? inferredProvider
+    : configuredProvider;
+  const plainModel = provider ? stripLangChainProviderPrefix(model) : model;
+  const providerCorrectionReason = provider !== configuredProvider
+    ? `baseURL=${config.baseURL} is OpenAI-compatible, using ${provider} instead of ${configuredProvider}`
+    : undefined;
+
+  return {
+    provider,
+    modelIdentifier: provider ? `${provider}:${plainModel}` : plainModel,
+    providerCorrectionReason,
+  };
 }
 
 function normalizeLangChainProvider(provider?: AgentRuntimeConfig['provider']): string | undefined {
@@ -142,8 +162,24 @@ function buildModelConfig(config: AgentRuntimeConfig): Record<string, unknown> {
   });
 }
 
-function buildProviderEnv(config: AgentRuntimeConfig): Record<string, string | undefined> {
-  const provider = normalizeLangChainProvider(config.provider);
+function inferLangChainProviderFromBaseURL(baseURL?: string): string | undefined {
+  if (!baseURL) return undefined;
+  try {
+    const hostname = new URL(baseURL).hostname.toLowerCase();
+    if (hostname === 'open.bigmodel.cn' || hostname.endsWith('.bigmodel.cn')) return 'openai';
+  } catch {
+    return undefined;
+  }
+  return undefined;
+}
+
+function stripLangChainProviderPrefix(model: string): string {
+  const match = /^(anthropic|openai|google-genai):(.+)$/i.exec(model);
+  return match?.[2] || model;
+}
+
+function buildProviderEnv(config: AgentRuntimeConfig, resolvedProvider?: string): Record<string, string | undefined> {
+  const provider = resolvedProvider ?? normalizeLangChainProvider(config.provider);
   return {
     OPENAI_API_KEY: provider === 'openai' ? config.apiKey : undefined,
     OPENAI_BASE_URL: provider === 'openai' ? config.baseURL : undefined,
