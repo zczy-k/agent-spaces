@@ -140,7 +140,7 @@ export function SkillsDialog({ open, onOpenChange, standalone, selectable, selec
             {allSelected ? tc('deselectAll') : tc('selectAll')}
           </Button>
         </div>
-        <ScrollArea className="flex-1 min-h-0">
+        <ScrollArea className="max-h-[60vh]">
           <div className="grid grid-cols-1 gap-2 pr-2">
             {filteredSelectable.map((skill) => {
               const checked = externalSelected.has(skill.name);

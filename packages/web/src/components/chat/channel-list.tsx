@@ -354,7 +354,6 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
                 <HoldToConfirm
                   variant="destructive"
                   size="sm"
@@ -364,7 +363,7 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
                     batchDeleteInfo.exit();
                     setBatchDeleteInfo(null);
                   }}
-                >{tc('delete')}</HoldToConfirm>
+                >{t('channel.holdToDelete')}</HoldToConfirm>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>

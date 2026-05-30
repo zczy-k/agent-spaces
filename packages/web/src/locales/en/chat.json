@@ -18,6 +18,7 @@
     "delete": "Delete Channel",
     "deleteConfirm": "Are you sure you want to delete channel \"{name}\"? This action cannot be undone.",
     "batchDeleteConfirm": "Delete {count} {count, plural, one {channel} other {channels}}? This cannot be undone.",
+    "holdToDelete": "Hold to delete",
     "multiSelect": "Multi-select",
     "namePlaceholder": "Channel name",
     "archive": "Archive",
