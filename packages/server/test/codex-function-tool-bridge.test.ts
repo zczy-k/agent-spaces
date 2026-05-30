@@ -22,10 +22,7 @@ test('function tool bridge accepts OMP MCP-prefixed Agent Spaces tool names', as
     await client.connect(transport);
 
     const tools = await client.listTools();
-    assert.deepEqual(tools.tools.map((tool) => tool.name), [
-      'ListDatabaseNodes',
-      'mcp__agent-spaces__ListDatabaseNodes',
-    ]);
+    assert.deepEqual(tools.tools.map((tool) => tool.name), ['ListDatabaseNodes']);
 
     const result = await client.callTool({
       name: 'mcp__agent-spaces__ListDatabaseNodes',

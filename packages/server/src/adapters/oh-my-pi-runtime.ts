@@ -40,7 +40,7 @@ export class OhMyPiRuntime implements AgentRuntime {
     try {
       functionToolBridge = await startCodexFunctionToolBridge(options?.functionTools, d);
       const mcpServers = withFunctionToolBridge(options?.mcpServers, functionToolBridge);
-      const ompHome = prepareOmpConfigHome(this.config, options, mcpServers);
+      const ompHome = prepareOmpConfigHome(this.config, options, mcpServers, d);
       const args = buildOmpArgs(finalPrompt, this.config, options, ompHome);
       d(`resolved tools | mcpServers=${Object.keys(mcpServers ?? {}).join(',') || '-'} functionToolBridge=${functionToolBridge?.url ?? '-'}`);
 
@@ -241,6 +241,10 @@ function buildEnv(config: AgentRuntimeConfig, options?: AgentRunOptions, ompHome
   return removeUndefined({
     ...process.env,
     HOME: ompHome || process.env.HOME,
+    USERPROFILE: ompHome || process.env.USERPROFILE,
+    HOMEDRIVE: ompHome ? undefined : process.env.HOMEDRIVE,
+    HOMEPATH: ompHome ? undefined : process.env.HOMEPATH,
+    OMP_LOG_DIR: agentDir ? join(agentDir, 'logs') : process.env.OMP_LOG_DIR,
     AGENT_SPACES_OMP_API_KEY: apiKey,
     PI_API_KEY: apiKey,
     OMP_API_KEY: apiKey,
@@ -291,6 +295,7 @@ function prepareOmpConfigHome(
   config: AgentRuntimeConfig,
   options?: AgentRunOptions,
   mcpServers?: Record<string, unknown>,
+  log?: (message: string) => void,
 ): string | undefined {
   if (!options?.configDir) return undefined;
 
@@ -303,7 +308,9 @@ function prepareOmpConfigHome(
   const modelsYaml = buildOmpModelsYaml(config);
   if (modelsYaml) writeFileSync(join(agentDir, 'models.yml'), modelsYaml, 'utf-8');
   if (mcpServers && Object.keys(mcpServers).length > 0) {
-    writeFileSync(join(agentDir, 'mcp.json'), JSON.stringify({ mcpServers }, null, 2), 'utf-8');
+    const mcpConfigPath = join(agentDir, 'mcp.json');
+    writeFileSync(mcpConfigPath, JSON.stringify({ mcpServers }, null, 2), 'utf-8');
+    log?.(`wrote MCP config | path=${mcpConfigPath} servers=${Object.keys(mcpServers).join(',')}`);
   }
 
   return homeDir;

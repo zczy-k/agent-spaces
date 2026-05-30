@@ -99,6 +99,10 @@ test('OhMyPiRuntime maps runtime config and options to OMP CLI args, env, and co
       '  cwd: process.cwd(),',
       '  env: {',
       '    HOME: process.env.HOME,',
+      '    USERPROFILE: process.env.USERPROFILE,',
+      '    HOMEDRIVE: process.env.HOMEDRIVE,',
+      '    HOMEPATH: process.env.HOMEPATH,',
+      '    OMP_LOG_DIR: process.env.OMP_LOG_DIR,',
       '    AGENT_SPACES_OMP_API_KEY: process.env.AGENT_SPACES_OMP_API_KEY,',
       '    PI_API_KEY: process.env.PI_API_KEY,',
       '    OMP_API_KEY: process.env.OMP_API_KEY,',
@@ -155,6 +159,10 @@ test('OhMyPiRuntime maps runtime config and options to OMP CLI args, env, and co
       '-p', 'hello',
     ]);
     assert.equal(capture.env.HOME, join(configDir, 'omp-home'));
+    assert.equal(capture.env.USERPROFILE, join(configDir, 'omp-home'));
+    assert.equal(capture.env.HOMEDRIVE, undefined);
+    assert.equal(capture.env.HOMEPATH, undefined);
+    assert.equal(capture.env.OMP_LOG_DIR, join(agentDir, 'logs'));
     assert.equal(capture.env.AGENT_SPACES_OMP_API_KEY, 'secret-key');
     assert.equal(capture.env.PI_API_KEY, 'secret-key');
     assert.equal(capture.env.OMP_API_KEY, 'secret-key');
