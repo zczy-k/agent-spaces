@@ -22,6 +22,7 @@ test('HermesRuntime maps runtime config and options to Hermes CLI args, env, and
       '  cwd: process.cwd(),',
       '  env: {',
       '    HERMES_HOME: process.env.HERMES_HOME,',
+      '    AGENT_SPACES_HERMES_API_KEY: process.env.AGENT_SPACES_HERMES_API_KEY,',
       '    HERMES_API_KEY: process.env.HERMES_API_KEY,',
       '    HERMES_BASE_URL: process.env.HERMES_BASE_URL,',
       '    OPENAI_API_KEY: process.env.OPENAI_API_KEY,',
@@ -68,6 +69,7 @@ test('HermesRuntime maps runtime config and options to Hermes CLI args, env, and
       'GLM-4.7',
     ]);
     assert.equal(capture.env.HERMES_HOME, join(configDir, '.hermes'));
+    assert.equal(capture.env.AGENT_SPACES_HERMES_API_KEY, 'secret-key');
     assert.equal(capture.env.HERMES_API_KEY, 'secret-key');
     assert.equal(capture.env.HERMES_BASE_URL, 'https://example.test/v1');
     assert.equal(capture.env.OPENAI_API_KEY, 'secret-key');
@@ -75,6 +77,94 @@ test('HermesRuntime maps runtime config and options to Hermes CLI args, env, and
     assert.equal(capture.env.ANTHROPIC_API_KEY, 'secret-key');
     assert.equal(capture.env.NO_COLOR, '1');
     assert.equal(existsSync(join(configDir, '.hermes', 'skills', 'plans.md')), true);
+    assert.equal(
+      readFileSync(join(configDir, '.hermes', 'config.yaml'), 'utf-8'),
+      [
+        '# Managed by Agent Spaces for this agent profile.',
+        'model:',
+        '  default: "GLM-4.7"',
+        '  provider: custom',
+        '  base_url: "https://example.test/v1"',
+        '  api_key: ${AGENT_SPACES_HERMES_API_KEY}',
+        '  api_mode: anthropic_messages',
+        '',
+      ].join('\n'),
+    );
+  } finally {
+    restorePathEnv(previousPath);
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('HermesRuntime preserves existing Hermes config.yaml', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'hermes-runtime-'));
+  const binDir = join(root, 'bin');
+  const configDir = join(root, 'agent-config');
+  const previousPath = currentPathEnv();
+  const existingConfig = 'model:\n  provider: openrouter\n';
+
+  try {
+    mkdirSync(binDir, { recursive: true });
+    mkdirSync(join(configDir, '.hermes'), { recursive: true });
+    writeFileSync(join(configDir, '.hermes', 'config.yaml'), existingConfig, 'utf-8');
+    writeFakeHermes(binDir, 'console.log("ok");');
+    setPathEnv(prependPath(binDir, previousPath));
+
+    const runtime = new HermesRuntime({
+      provider: 'anthropic-messages',
+      model: 'GLM-4.7',
+      apiKey: 'secret-key',
+      baseURL: 'https://example.test/v1',
+    });
+    const result = await runtime.execute('hello', root, { configDir });
+
+    assert.equal(result.success, true);
+    assert.equal(readFileSync(join(configDir, '.hermes', 'config.yaml'), 'utf-8'), existingConfig);
+  } finally {
+    restorePathEnv(previousPath);
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('HermesRuntime refreshes Agent Spaces managed Hermes config.yaml', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'hermes-runtime-'));
+  const binDir = join(root, 'bin');
+  const configDir = join(root, 'agent-config');
+  const previousPath = currentPathEnv();
+
+  try {
+    mkdirSync(binDir, { recursive: true });
+    mkdirSync(join(configDir, '.hermes'), { recursive: true });
+    writeFileSync(
+      join(configDir, '.hermes', 'config.yaml'),
+      '# Managed by Agent Spaces for this agent profile.\nmodel:\n  default: old-model\n',
+      'utf-8',
+    );
+    writeFakeHermes(binDir, 'console.log("ok");');
+    setPathEnv(prependPath(binDir, previousPath));
+
+    const runtime = new HermesRuntime({
+      provider: 'openai-chat-completions',
+      model: 'new-model',
+      apiKey: 'secret-key',
+      baseURL: 'https://example.test/v1',
+    });
+    const result = await runtime.execute('hello', root, { configDir });
+
+    assert.equal(result.success, true);
+    assert.equal(
+      readFileSync(join(configDir, '.hermes', 'config.yaml'), 'utf-8'),
+      [
+        '# Managed by Agent Spaces for this agent profile.',
+        'model:',
+        '  default: "new-model"',
+        '  provider: custom',
+        '  base_url: "https://example.test/v1"',
+        '  api_key: ${AGENT_SPACES_HERMES_API_KEY}',
+        '  api_mode: chat_completions',
+        '',
+      ].join('\n'),
+    );
   } finally {
     restorePathEnv(previousPath);
     rmSync(root, { recursive: true, force: true });

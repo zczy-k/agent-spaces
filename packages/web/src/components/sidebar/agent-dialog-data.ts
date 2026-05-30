@@ -235,6 +235,7 @@ export function useAgentDialogData({
         modelProvider: "anthropic-messages",
         modelId: "claude-sonnet-4-6",
         systemPrompt: body,
+        icon: storeAgent.emoji || "",
         enabled: true,
       };
       const createRes = await fetch(presetBasePath, {

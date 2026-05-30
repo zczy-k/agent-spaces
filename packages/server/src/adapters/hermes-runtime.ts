@@ -1,5 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { basename, delimiter, extname, join } from 'node:path';
 import type {
   AgentRunOptions,
@@ -27,7 +27,7 @@ export class HermesRuntime implements AgentRuntime {
     const d = (message: string) => console.log(`[hermes] ${message}`);
     const agentDir = options?.configDir;
     const hermesHome = agentDir ? join(agentDir, '.hermes') : undefined;
-    if (hermesHome) prepareHermesHome(hermesHome, agentDir);
+    if (hermesHome) prepareHermesHome(hermesHome, this.config, agentDir);
 
     const args = buildHermesArgs(appendOutputStyleToPrompt(prompt, options?.outputStyle), this.config, options);
     const cliProvider = getHermesCliProvider(this.config.provider);
@@ -73,6 +73,7 @@ export class HermesRuntime implements AgentRuntime {
       this.child.stdout.on('data', (chunk: string) => {
         stdoutBuffer = consumeLines(stdoutBuffer + chunk, (line) => {
           if (!line) return;
+          d(`stdout | ${line}`);
           output.push(line);
           const parsedSessionId = extractSessionId(line);
           if (parsedSessionId && parsedSessionId !== emittedSessionId) {
@@ -88,6 +89,7 @@ export class HermesRuntime implements AgentRuntime {
         stderrBuffer = consumeLines(stderrBuffer + chunk, (line) => {
           if (!line) return;
           const formatted = `[stderr] ${line}`;
+          d(`stderr | ${line}`);
           output.push(formatted);
           options?.onEvent?.({ type: 'output', line: formatted });
         });
@@ -173,6 +175,7 @@ function buildEnv(config: AgentRuntimeConfig, hermesHome?: string): NodeJS.Proce
   const apiKey = config.apiKey || process.env.HERMES_API_KEY || process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY;
   return {
     ...process.env,
+    AGENT_SPACES_HERMES_API_KEY: apiKey,
     HERMES_HOME: hermesHome || process.env.HERMES_HOME,
     HERMES_API_KEY: apiKey,
     HERMES_BASE_URL: config.baseURL || process.env.HERMES_BASE_URL,
@@ -219,8 +222,9 @@ function getPathEnvValue(): string | undefined {
   return Object.entries(process.env).find(([key]) => key.toLowerCase() === 'path')?.[1];
 }
 
-function prepareHermesHome(hermesHome: string, agentDir?: string): void {
+function prepareHermesHome(hermesHome: string, config: AgentRuntimeConfig, agentDir?: string): void {
   mkdirSync(hermesHome, { recursive: true });
+  writeManagedHermesConfig(hermesHome, config);
   const skillsDir = join(hermesHome, 'skills');
   rmSync(skillsDir, { recursive: true, force: true });
   mkdirSync(skillsDir, { recursive: true });
@@ -234,6 +238,48 @@ function prepareHermesHome(hermesHome: string, agentDir?: string): void {
     if (!statSync(sourceFile).isFile()) continue;
     copyFileSync(sourceFile, join(skillsDir, basename(file)));
   }
+}
+
+function writeManagedHermesConfig(hermesHome: string, config: AgentRuntimeConfig): void {
+  if (!config.baseURL || !config.model || !isAgentSpacesProtocolProvider(config.provider)) return;
+
+  const configPath = join(hermesHome, 'config.yaml');
+  if (existsSync(configPath) && !isManagedHermesConfig(configPath)) return;
+
+  const apiMode = getHermesApiMode(config.provider);
+  const lines = [
+    '# Managed by Agent Spaces for this agent profile.',
+    'model:',
+    `  default: ${yamlString(config.model)}`,
+    '  provider: custom',
+    `  base_url: ${yamlString(config.baseURL)}`,
+    '  api_key: ${AGENT_SPACES_HERMES_API_KEY}',
+  ];
+  if (apiMode) lines.push(`  api_mode: ${apiMode}`);
+  writeFileSync(configPath, `${lines.join('\n')}\n`, 'utf-8');
+}
+
+function isManagedHermesConfig(configPath: string): boolean {
+  return readFileSync(configPath, 'utf-8').startsWith('# Managed by Agent Spaces for this agent profile.');
+}
+
+function getHermesApiMode(provider: AgentRuntimeConfig['provider']): string | undefined {
+  switch (provider) {
+    case 'anthropic-messages':
+      return 'anthropic_messages';
+    case 'openai-chat-completions':
+    case 'openai-chat-completions-to-anthropic-messages':
+      return 'chat_completions';
+    case 'openai-responses':
+    case 'openai-responses-to-anthropic-messages':
+      return 'codex_responses';
+    default:
+      return undefined;
+  }
+}
+
+function yamlString(value: string): string {
+  return JSON.stringify(value);
 }
 
 function consumeLines(buffer: string, onLine: (line: string) => void): string {

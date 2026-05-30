@@ -140,7 +140,7 @@ export function AgentIcon({ agentId, name, avatarUrl, icon, apiBase, className, 
       {src ? (
         <img src={src} alt={displayName} className="size-full object-cover rounded-[inherit]" onError={handleError} />
       ) : showEmoji ? (
-        <span className="select-none" style={{ fontSize: '60%' }}>{resolvedIcon}</span>
+        <span className="select-none text-xl">{resolvedIcon}</span>
       ) : (
         <span className="text-xs font-semibold select-none">{initial}</span>
       )}
