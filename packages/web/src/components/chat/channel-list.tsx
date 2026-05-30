@@ -21,6 +21,7 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { HoldToConfirm } from '@/components/ui/hold-toconfirm';
 
 import type { Channel, Message } from '@agent-spaces/shared';
 
@@ -354,12 +355,16 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
-                <AlertDialogAction onClick={async () => {
-                  if (!batchDeleteInfo) return;
-                  await Promise.all([...batchDeleteInfo.ids].map(id => deleteChannel(workspaceId, id)));
-                  batchDeleteInfo.exit();
-                  setBatchDeleteInfo(null);
-                }}>{tc('delete')}</AlertDialogAction>
+                <HoldToConfirm
+                  variant="destructive"
+                  size="sm"
+                  onConfirm={async () => {
+                    if (!batchDeleteInfo) return;
+                    await Promise.all([...batchDeleteInfo.ids].map(id => deleteChannel(workspaceId, id)));
+                    batchDeleteInfo.exit();
+                    setBatchDeleteInfo(null);
+                  }}
+                >{tc('delete')}</HoldToConfirm>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
