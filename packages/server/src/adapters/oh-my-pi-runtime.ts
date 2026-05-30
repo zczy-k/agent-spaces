@@ -571,7 +571,7 @@ function handleJsonEvent(
     });
   }
 
-  for (const text of collectOutputTexts(event)) {
+  for (const text of collectOutputTexts(event, eventType)) {
     ctx.output.push(text);
     ctx.log(`output | ${truncateForLog(text)}`);
     ctx.options?.onEvent?.({ type: 'output', line: text });
@@ -580,14 +580,20 @@ function handleJsonEvent(
   return { sessionId, usage, costUsd };
 }
 
-function collectOutputTexts(value: unknown): string[] {
+function collectOutputTexts(value: unknown, eventType: string): string[] {
+  if (eventType !== 'turn_end') return [];
+  if (hasToolCallBlock(value)) {
+    return [];
+  }
+
   const texts: string[] = [];
   for (const block of collectContentBlocks(value)) {
     if (!isRecord(block)) continue;
     const type = stringValue(block.type);
     if (type && type !== 'text' && type !== 'output_text') continue;
     const text = stringValue(block.text) ?? stringValue(block.content) ?? stringValue(block.output);
-    if (text) texts.push(text);
+    const visible = normalizeVisibleOutput(text);
+    if (visible) texts.push(visible);
   }
 
   if (texts.length) return texts;
@@ -595,7 +601,8 @@ function collectOutputTexts(value: unknown): string[] {
   const type = stringValue(value.type) ?? stringValue(value.event);
   if (type && /tool|usage|session|reasoning/i.test(type)) return [];
   const text = stringValue(value.text) ?? stringValue(value.output) ?? stringValue(value.content);
-  return text ? [text] : [];
+  const visible = normalizeVisibleOutput(text);
+  return visible ? [visible] : [];
 }
 
 function collectReasoningTexts(value: unknown): string[] {
@@ -619,6 +626,9 @@ function collectReasoningTexts(value: unknown): string[] {
 
 function collectToolUses(value: unknown): Array<{ id: string; name: string; input?: unknown }> {
   const uses: Array<{ id: string; name: string; input?: unknown }> = [];
+  const ompToolExecution = parseOmpToolExecutionStart(value);
+  if (ompToolExecution) uses.push(ompToolExecution);
+
   for (const block of collectContentBlocks(value)) {
     const parsed = parseToolUse(block);
     if (parsed) uses.push(parsed);
@@ -660,6 +670,16 @@ function parseToolUse(value: unknown): { id: string; name: string; input?: unkno
   return { id, name, input };
 }
 
+function parseOmpToolExecutionStart(value: unknown): { id: string; name: string; input?: unknown } | undefined {
+  if (!isRecord(value)) return undefined;
+  if (stringValue(value.type) !== 'tool_execution_start') return undefined;
+
+  const id = stringValue(value.toolCallId) ?? stringValue(value.id) ?? `omp-tool-${Date.now()}`;
+  const name = stringValue(value.toolName) ?? stringValue(value.name) ?? 'unknown_tool';
+  const input = value.args ?? value.input ?? value.intent;
+  return { id, name, input };
+}
+
 function parseToolResult(value: unknown): { toolUseId?: string; result: unknown } | undefined {
   if (!isRecord(value)) return undefined;
   const type = stringValue(value.type) ?? stringValue(value.event) ?? stringValue(value.kind);
@@ -689,6 +709,23 @@ function collectContentBlocks(value: unknown): unknown[] {
   };
   visit(value);
   return blocks.filter((block) => block !== value);
+}
+
+function hasToolCallBlock(value: unknown): boolean {
+  return collectContentBlocks(value).some((block) => {
+    if (!isRecord(block)) return false;
+    const type = stringValue(block.type);
+    return Boolean(type && /^(toolCall|tool_call|tool_use)$/i.test(type));
+  });
+}
+
+function normalizeVisibleOutput(text: string | undefined): string | undefined {
+  if (!text) return undefined;
+  const withoutThinking = text
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/<think>[\s\S]*$/gi, '')
+    .trim();
+  return withoutThinking || undefined;
 }
 
 function readSessionId(value: unknown): string | undefined {
@@ -736,7 +773,7 @@ function readCostUsd(value: unknown): number | undefined {
 
 function formatToolUseLine(toolUse: { name: string; input?: unknown }): string {
   const input = toolUse.input === undefined ? '' : ` ${truncateForLog(stableStringify(toolUse.input), 800)}`;
-  return `[tool] ${toolUse.name}${input}`;
+  return `Tool: ${toolUse.name}${input}`;
 }
 
 function summarizeBlockTypes(blocks: unknown[]): string {

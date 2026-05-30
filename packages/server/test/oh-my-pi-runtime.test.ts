@@ -241,6 +241,7 @@ test('OhMyPiRuntime maps JSON mode events to structured runtime events', async (
       '  { type: "assistant", content: [{ type: "tool_use", id: "tool-1", name: "Read", input: { file: "README.md" } }] },',
       '  { type: "tool_result", tool_use_id: "tool-1", result: { ok: true } },',
       '  { type: "usage", usage: { input_tokens: 3, output_tokens: 5, reasoning_tokens: 2 }, total_cost_usd: 0.01 },',
+      '  { type: "turn_end", message: { content: [{ type: "text", text: "<think>hidden</think>\\nhello json" }] } },',
       '];',
       'for (const event of events) console.log(JSON.stringify(event));',
     ].join('\n'));
@@ -265,9 +266,9 @@ test('OhMyPiRuntime maps JSON mode events to structured runtime events', async (
     assert.deepEqual(events, [
       { type: 'session', sessionId: 'json-session-1' },
       { type: 'reasoning', text: 'thinking', status: 'completed' },
-      { type: 'output', line: 'hello json' },
-      { type: 'tool_use', id: 'tool-1', name: 'Read', input: { file: 'README.md' }, line: '[tool] Read {"file":"README.md"}' },
+      { type: 'tool_use', id: 'tool-1', name: 'Read', input: { file: 'README.md' }, line: 'Tool: Read {"file":"README.md"}' },
       { type: 'tool_result', toolUseId: 'tool-1', result: { ok: true } },
+      { type: 'output', line: 'hello json' },
     ]);
   } finally {
     restorePathEnv(previousPath);
@@ -289,6 +290,7 @@ test('OhMyPiRuntime maps OMP tool execution events to structured runtime events'
       '  { type: "message_update", message: { content: [{ type: "text", text: "thinking" }, { type: "toolCall", id: "call-1", name: "fetch", args: { url: "https://example.test/data.json" } }] } },',
       '  { type: "tool_execution_start", toolCallId: "call-1", toolName: "fetch", args: { url: "https://example.test/data.json" }, intent: "read url" },',
       '  { type: "tool_execution_end", toolCallId: "call-1", toolName: "fetch", result: "ok", isError: false },',
+      '  { type: "turn_end", message: { content: [{ type: "text", text: "<think>hidden</think>\\nfinal answer" }] } },',
       '];',
       'for (const event of events) console.log(JSON.stringify(event));',
     ].join('\n'));
@@ -306,12 +308,50 @@ test('OhMyPiRuntime maps OMP tool execution events to structured runtime events'
         id: 'call-1',
         name: 'fetch',
         input: { url: 'https://example.test/data.json' },
-        line: '[tool] fetch {"url":"https://example.test/data.json"}',
+        line: 'Tool: fetch {"url":"https://example.test/data.json"}',
       },
     ]);
     assert.deepEqual(events.filter((event) => event.type === 'tool_result'), [
       { type: 'tool_result', toolUseId: 'call-1', result: 'ok' },
     ]);
+    assert.deepEqual(result.output, ['final answer']);
+  } finally {
+    restorePathEnv(previousPath);
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('OhMyPiRuntime ignores OMP intermediate message output and keeps only final visible turn output', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'omp-runtime-'));
+  const binDir = join(root, 'bin');
+  const previousPath = currentPathEnv();
+  const events: Array<{ type: string; line?: string; toolUseId?: string; result?: unknown }> = [];
+
+  try {
+    mkdirSync(binDir, { recursive: true });
+    writeFakeOmp(binDir, [
+      'const events = [',
+      '  { type: "tool_execution_start", toolCallId: "call-1", toolName: "fetchWebContent", args: { url: "https://example.test" } },',
+      '  { type: "tool_execution_end", toolCallId: "call-1", toolName: "fetchWebContent", result: { content: [{ type: "text", text: "Error: read ECONNRESET" }] }, isError: true },',
+      '  { type: "message_start", message: { content: [{ type: "text", text: "Error: read ECONNRESET" }] } },',
+      '  { type: "message_end", message: { content: [{ type: "text", text: "Error: read ECONNRESET" }] } },',
+      '  { type: "turn_end", message: { content: [{ type: "text", text: "<think>internal</think>\\n已尝试获取内容，但远程连接被重置。" }] } },',
+      '];',
+      'for (const event of events) console.log(JSON.stringify(event));',
+    ].join('\n'));
+    setPathEnv(prependPath(binDir, previousPath));
+
+    const runtime = new OhMyPiRuntime();
+    const result = await runtime.execute('hello', root, {
+      onEvent: (event) => events.push(event),
+    });
+
+    assert.equal(result.success, true);
+    assert.deepEqual(result.output, ['已尝试获取内容，但远程连接被重置。']);
+    assert.deepEqual(events.filter((event) => event.type === 'output').map((event) => event.line), [
+      '已尝试获取内容，但远程连接被重置。',
+    ]);
+    assert.equal(events.filter((event) => event.type === 'tool_result').length, 1);
   } finally {
     restorePathEnv(previousPath);
     rmSync(root, { recursive: true, force: true });

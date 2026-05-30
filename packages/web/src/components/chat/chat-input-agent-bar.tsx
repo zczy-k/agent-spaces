@@ -12,6 +12,7 @@ import { useAgentStore } from "@/stores/agent";
 import { MemberHoverCard } from "./member-hover-card";
 import type { Channel } from "@agent-spaces/shared";
 import type { MentionedAgent } from "./chat-input-utils";
+import { ShinyBadge } from "@/components/ui/shiny-badge";
 
 interface ChatInputAgentBarProps {
   agents: MentionedAgent[];
@@ -54,36 +55,27 @@ export function ChatInputAgentBar({
             const isLastActive = !isActive && agent.id === lastActiveAgentId;
             return (
               <MemberHoverCard key={agent.id} agentId={agent.id} displayName={agent.name || agent.role} side="top" align="start" onConfigure={() => setConfigAgentId(agent.id)}>
-                <button
-                  type="button"
+                <ShinyBadge
+                  shiny={isActive}
+                  shinySpeed={3}
                   onClick={() => onActivateAgent(agent)}
                   className={cn(
                     "shrink-0 inline-flex items-center gap-1 h-6 pl-0.5 pr-1.5 rounded-full text-xs transition-all cursor-pointer",
                     isActive
-                      ? "relative overflow-hidden bg-primary/10 text-primary border border-primary/30"
+                      ? "bg-primary/10 text-primary border border-primary/30"
                       : isLastActive
                         ? "text-primary/70 border border-primary/20 bg-primary/5"
                         : "text-muted-foreground border border-transparent hover:bg-accent"
                   )}
                 >
-                  {isActive && (
-                    <>
-                      <div className="absolute w-[300%] h-[60%] opacity-80 bottom-[-11px] right-[-250%] rounded-full animate-star-movement-bottom z-0 pointer-events-none"
-                        style={{ background: "radial-gradient(circle, var(--primary), transparent 20%)", animationDuration: "3s" }}
-                      />
-                      <div className="absolute w-[300%] h-[60%] opacity-80 top-[-10px] left-[-250%] rounded-full animate-star-movement-top z-0 pointer-events-none"
-                        style={{ background: "radial-gradient(circle, var(--primary), transparent 10%)", animationDuration: "3s" }}
-                      />
-                    </>
-                  )}
                   <AgentIcon
                     agentId={agent.id}
                     name={agent.name || agent.role}
                     avatarUrl={agent.avatarUrl}
-                    className="relative z-10 size-5 rounded-full text-[9px]"
+                    className="size-5 rounded-full text-[9px]"
                   />
-                  <span className="relative z-10 max-w-[80px] truncate">{agent.name || agent.role}</span>
-                </button>
+                  <span className="max-w-[80px] truncate">{agent.name || agent.role}</span>
+                </ShinyBadge>
               </MemberHoverCard>
             );
           })}

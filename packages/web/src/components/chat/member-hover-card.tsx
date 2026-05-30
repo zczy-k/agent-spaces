@@ -25,7 +25,7 @@ export function MemberHoverCard({
 }: MemberHoverCardProps) {
   return (
     <HoverCard>
-      <HoverCardTrigger render={<div />}>{children}</HoverCardTrigger>
+      <HoverCardTrigger render={<div className="inline-flex items-center" />}>{children}</HoverCardTrigger>
       <HoverCardContent side={side} align={align} className="w-72">
         <MemberInfoCard
           agentId={agentId}
