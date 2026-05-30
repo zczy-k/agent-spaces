@@ -50,6 +50,7 @@ export class OhMyPiRuntime implements AgentRuntime {
       let stderrBuffer = '';
       let sessionId = options?.resumeSessionId;
       let emittedSessionId = sessionId;
+      const reasoningSnapshots: ReasoningSnapshotState = { blocks: [] };
 
       const finish = (result: AgentRunResult): void => {
         if (settled) return;
@@ -92,6 +93,7 @@ export class OhMyPiRuntime implements AgentRuntime {
               log: d,
               emittedToolUseKeys,
               emittedToolResultKeys,
+              reasoningSnapshots,
             });
             if (result.sessionId && result.sessionId !== emittedSessionId) {
               sessionId = result.sessionId;
@@ -534,6 +536,7 @@ function handleJsonEvent(
     log: (message: string) => void;
     emittedToolUseKeys: Set<string>;
     emittedToolResultKeys: Set<string>;
+    reasoningSnapshots: ReasoningSnapshotState;
   },
 ): { sessionId?: string; usage?: AgentRunResult['usage']; costUsd?: number } {
   const record = isRecord(event) ? event : {};
@@ -546,7 +549,12 @@ function handleJsonEvent(
   const usage = readUsage(event);
   const costUsd = readCostUsd(event);
 
-  for (const text of collectReasoningTexts(event)) {
+  const reasoningTexts = collectReasoningTexts(event);
+  const reasoningDeltas = isOmpStreamingMessageEvent(eventType)
+    ? collectReasoningDeltas(reasoningTexts, ctx.reasoningSnapshots)
+    : reasoningTexts;
+
+  for (const text of reasoningDeltas) {
     ctx.log(`reasoning | ${truncateForLog(text)}`);
     ctx.options?.onEvent?.({ type: 'reasoning', text, status: 'completed' });
   }
@@ -629,6 +637,29 @@ function collectReasoningTexts(value: unknown): string[] {
     if (text) texts.push(text);
   }
   return texts;
+}
+
+interface ReasoningSnapshotState {
+  blocks: string[];
+}
+
+function collectReasoningDeltas(texts: string[], state: ReasoningSnapshotState): string[] {
+  const deltas: string[] = [];
+  texts.forEach((text, index) => {
+    const previous = state.blocks[index] ?? '';
+    const delta = reasoningSnapshotDelta(previous, text);
+    state.blocks[index] = text;
+    if (delta) deltas.push(delta);
+  });
+  return deltas;
+}
+
+function reasoningSnapshotDelta(previous: string, current: string): string {
+  if (!current || current === previous) return '';
+  if (!previous) return current;
+  if (current.startsWith(previous)) return current.slice(previous.length);
+  if (previous.startsWith(current)) return '';
+  return current;
 }
 
 function collectToolUses(value: unknown, eventType: string): Array<{ id: string; name: string; input?: unknown }> {

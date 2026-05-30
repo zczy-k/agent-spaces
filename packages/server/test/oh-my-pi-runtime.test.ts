@@ -329,6 +329,47 @@ test('OhMyPiRuntime maps OMP tool execution events to structured runtime events'
   }
 });
 
+test('OhMyPiRuntime keeps complete reasoning when OMP repeats or clears streaming snapshots', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'omp-runtime-'));
+  const binDir = join(root, 'bin');
+  const previousPath = currentPathEnv();
+  const events: Array<{ type: string; text?: string; status?: string; line?: string }> = [];
+
+  try {
+    mkdirSync(binDir, { recursive: true });
+    writeFakeOmp(binDir, [
+      'const events = [',
+      '  { type: "message_update", message: { content: [{ type: "thinking", thinking: "数据库为空，" }] } },',
+      '  { type: "message_update", message: { content: [{ type: "thinking", thinking: "数据库为空，当前没有任何知识库文件或目录。" }] } },',
+      '  { type: "message_update", message: { content: [{ type: "thinking", thinking: "" }] } },',
+      '  { type: "message_update", message: { content: [{ type: "thinking", thinking: "数据库为空，当前没有任何知识库文件或目录。需要用中文回复用户。" }] } },',
+      '  { type: "message_end", message: { content: [{ type: "thinking", thinking: "数据库为空，当前没有任何知识库文件或目录。需要用中文回复用户。" }, { type: "text", text: "当前没有知识库内容。" }] } },',
+      '  { type: "turn_end", message: { content: [{ type: "text", text: "当前没有知识库内容。" }] } },',
+      '];',
+      'for (const event of events) console.log(JSON.stringify(event));',
+    ].join('\n'));
+    setPathEnv(prependPath(binDir, previousPath));
+
+    const runtime = new OhMyPiRuntime();
+    const result = await runtime.execute('hello', root, {
+      onEvent: (event) => events.push(event),
+    });
+
+    assert.equal(result.success, true);
+    assert.equal(result.output.join('\n'), '当前没有知识库内容。');
+    assert.equal(
+      events
+        .filter((event) => event.type === 'reasoning')
+        .map((event) => event.text)
+        .join(''),
+      '数据库为空，当前没有任何知识库文件或目录。需要用中文回复用户。',
+    );
+  } finally {
+    restorePathEnv(previousPath);
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('OhMyPiRuntime ignores OMP intermediate message output and keeps only final visible turn output', async () => {
   const root = mkdtempSync(join(tmpdir(), 'omp-runtime-'));
   const binDir = join(root, 'bin');
