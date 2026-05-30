@@ -142,13 +142,33 @@ export function normalizeOutputLines(output: string[]): string[] {
     .filter((line) => line.trim());
 
   const seenInitLines = new Set<string>();
-  return lines.filter((line) => {
-    if (isIgnorableToolProgressLine(line)) return false;
-    if (!/^Claude Code initialized\b/i.test(line)) return true;
-    if (seenInitLines.has(line)) return false;
-    seenInitLines.add(line);
-    return true;
-  });
+  let inAgentSpacesPromptEcho = false;
+  const normalizedLines: string[] = [];
+
+  for (const line of lines) {
+    const cleaned = stripRuntimeNoticePrefix(line).trim();
+    if (!cleaned) continue;
+
+    if (isAgentSpacesPromptEchoStart(cleaned)) {
+      inAgentSpacesPromptEcho = true;
+      continue;
+    }
+
+    if (inAgentSpacesPromptEcho) {
+      if (/\bUser message:/i.test(cleaned)) inAgentSpacesPromptEcho = false;
+      continue;
+    }
+
+    if (isIgnorablePromptEchoLine(cleaned)) continue;
+    if (isIgnorableToolProgressLine(cleaned)) continue;
+    if (/^Claude Code initialized\b/i.test(cleaned)) {
+      if (seenInitLines.has(cleaned)) continue;
+      seenInitLines.add(cleaned);
+    }
+    normalizedLines.push(cleaned);
+  }
+
+  return normalizedLines;
 }
 
 export function mergeRuntimeOutput(liveOutput: string[], resultOutput: string[]): string[] {
@@ -673,6 +693,35 @@ function isIgnorableToolProgressLine(line: string): boolean {
     || /^(Reading|Searching)(\.{1,3}|…)?$/i.test(trimmed)
     || (isSubagentProgress && /^(Reading|Searching)\s+\S.+$/i.test(trimmed))
     || /^(Read|Search|Grep|Glob|SemanticSearch|WebSearch)\s+running\s+\(\d+s\)$/i.test(trimmed);
+}
+
+function stripRuntimeNoticePrefix(line: string): string {
+  let next = line.trim();
+  while (next.startsWith('[')) {
+    const closeIndex = next.indexOf(']');
+    if (closeIndex < 0) break;
+    const label = next.slice(1, closeIndex);
+    if (!isStrippableRuntimeNoticeLabel(label)) break;
+    next = next.slice(closeIndex + 1).trimStart();
+  }
+  return next;
+}
+
+function isStrippableRuntimeNoticeLabel(label: string): boolean {
+  return /^Tool loop warning:/i.test(label);
+}
+
+function isAgentSpacesPromptEchoStart(line: string): boolean {
+  return /^Agent Spaces channel tools configured for this channel:/i.test(line);
+}
+
+function isIgnorablePromptEchoLine(line: string): boolean {
+  return /^Code directories \(boundDirs\):/i.test(line)
+    || /^For Bash commands that create or modify files under the current working directory,/i.test(line)
+    || /^When asked what MCP servers, skills, runtime tools, or Agent Spaces channel tools you have,/i.test(line)
+    || /^Important distinction: MCP servers configured for this agent are only the names in /i.test(line)
+    || /^Do not infer availability from provider-side function names,/i.test(line)
+    || /^User message:/i.test(line);
 }
 
 function stripSubagentProgressPrefix(line: string): string {
