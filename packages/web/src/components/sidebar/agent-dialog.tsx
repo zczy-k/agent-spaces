@@ -9,9 +9,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bot, FileText, Store } from "lucide-react";
+import { Bot, Download, FileText, Store } from "lucide-react";
 import { StoreTabPanel } from "@/components/common/store-tab-panel";
-import { type AgentPreset } from "./agent-shared";
+import {
+  ROLE_COLORS,
+  newAgentDraft,
+  newEmptyAgent,
+} from "./agent-shared";
 import { AgentList } from "./agent-list";
 import { AgentEditor } from "./agent-editor";
 import { useAgentDialogData, type StoreAgentItem, type TabType } from "./agent-dialog-data";
@@ -48,8 +52,8 @@ export function AgentDialog({
 
   const handleAutoGenerate = () => {
     const draft = data.addRoleOptions[0]
-      ? (() => { const { newAgentDraft } = require("./agent-shared"); return newAgentDraft(data.addRoleOptions[0]); })()
-      : (() => { const { newEmptyAgent } = require("./agent-shared"); return newEmptyAgent(); })();
+      ? newAgentDraft(data.addRoleOptions[0])
+      : newEmptyAgent();
     data.setSelectedAgent(draft);
     data.setAutoGenerate(true);
   };
@@ -75,7 +79,7 @@ export function AgentDialog({
             className="w-full justify-start"
             onClick={() => data.setRoleFilterLocal(data.roleFilterLocal === role ? "" : role)}
           >
-            <span className={`size-2 rounded-full mr-1.5 ${(() => { const { ROLE_COLORS } = require("./agent-shared"); return ROLE_COLORS[role]?.split(" ")[0]; })()}`} />
+            <span className={`size-2 rounded-full mr-1.5 ${ROLE_COLORS[role]?.split(" ")[0]}`} />
             <span className="truncate capitalize">{t(`role.${role}.name`)}</span>
           </Button>
         ))}
@@ -152,7 +156,7 @@ export function AgentDialog({
                   t("dialog.importing")
                 ) : (
                   <>
-                    <span className="iconify size-3.5 mr-1" data-icon="lucide:download" />
+                    <Download className="size-3.5 mr-1" />
                     {t("dialog.importTo")}
                   </>
                 )}
