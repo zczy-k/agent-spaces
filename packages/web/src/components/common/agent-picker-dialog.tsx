@@ -25,6 +25,7 @@ export interface AgentPickerItem {
   id: string;
   name: string;
   avatarUrl?: string;
+  icon?: string;
   description?: string;
 }
 

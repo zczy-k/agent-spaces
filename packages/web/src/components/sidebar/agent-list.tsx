@@ -45,8 +45,10 @@ export function AgentList({
             onClick={() => onSelect(agent)}
           >
             <AgentIcon
+              agentId={agent.id}
               name={agent.name}
               avatarUrl={agent.avatarUrl}
+              icon={agent.icon}
               apiBase={agent.apiBase}
               className="size-8"
             />

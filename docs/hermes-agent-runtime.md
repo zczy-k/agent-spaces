@@ -25,7 +25,7 @@ hermes chat -q "<prompt>" --verbose
 hermes chat -q "<prompt>" --verbose --model "<modelId>" --provider "<provider>" -s "<skill>"
 ```
 
-Hermes 必须由部署环境单独安装，并且 `hermes` 命令必须在 server 进程的 `PATH` 中可用。当前仓库不打包 Hermes CLI。
+Hermes 必须由部署环境单独安装。runtime 默认通过 `hermes` 启动 CLI；也可以用 `HERMES_CLI_PATH` 指定可执行文件绝对路径。当前仓库不打包 Hermes CLI。
 
 ## Runtime 选择
 
@@ -153,6 +153,25 @@ hermes chat --help
 ```
 
 如果 shell 中可用但服务端不可用，检查启动服务端的用户、PATH 和虚拟环境。
+
+Windows 上如果 `where hermes` 返回：
+
+```text
+C:\Users\Administrator\AppData\Local\hermes\hermes-agent\venv\Scripts\hermes.exe
+```
+
+但服务端仍报找不到 CLI，通常是服务进程没有继承交互 shell 的 PATH。当前 runtime 会额外尝试以下解析顺序：
+
+1. `HERMES_CLI_PATH` 环境变量。
+2. server 进程 PATH 中的 `hermes.exe`。
+3. `%LOCALAPPDATA%\hermes\hermes-agent\venv\Scripts\hermes.exe`。
+4. `%USERPROFILE%\AppData\Local\hermes\hermes-agent\venv\Scripts\hermes.exe`。
+
+如果安装位置不在上述路径，给服务端进程设置：
+
+```powershell
+$env:HERMES_CLI_PATH = "C:\Users\Administrator\AppData\Local\hermes\hermes-agent\venv\Scripts\hermes.exe"
+```
 
 ### 模型或 provider 不生效
 

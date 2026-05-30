@@ -1,6 +1,6 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs';
-import { basename, extname, join } from 'node:path';
+import { basename, delimiter, extname, join } from 'node:path';
 import type {
   AgentRunOptions,
   AgentRunResult,
@@ -47,7 +47,7 @@ export class HermesRuntime implements AgentRuntime {
       };
 
       try {
-        this.child = spawn('hermes', args, {
+        this.child = spawn(resolveHermesCommand(), args, {
           cwd,
           env: buildEnv(this.config, hermesHome),
           windowsHide: true,
@@ -165,6 +165,42 @@ function buildEnv(config: AgentRuntimeConfig, hermesHome?: string): NodeJS.Proce
     ANTHROPIC_API_KEY: config.apiKey || process.env.ANTHROPIC_API_KEY,
     NO_COLOR: process.env.NO_COLOR || '1',
   };
+}
+
+function resolveHermesCommand(): string {
+  const configured = process.env.HERMES_CLI_PATH?.trim();
+  if (configured) return configured;
+  if (process.platform !== 'win32') return 'hermes';
+
+  const pathCommand = resolveWindowsPathCommand('hermes.exe');
+  if (pathCommand) return pathCommand;
+
+  const candidates = [
+    process.env.LOCALAPPDATA
+      ? join(process.env.LOCALAPPDATA, 'hermes', 'hermes-agent', 'venv', 'Scripts', 'hermes.exe')
+      : undefined,
+    process.env.USERPROFILE
+      ? join(process.env.USERPROFILE, 'AppData', 'Local', 'hermes', 'hermes-agent', 'venv', 'Scripts', 'hermes.exe')
+      : undefined,
+  ].filter((candidate): candidate is string => Boolean(candidate));
+
+  return candidates.find((candidate) => existsSync(candidate)) ?? 'hermes';
+}
+
+function resolveWindowsPathCommand(command: string): string | undefined {
+  const pathValue = getPathEnvValue();
+  if (!pathValue) return undefined;
+
+  for (const dir of pathValue.split(delimiter)) {
+    if (!dir.trim()) continue;
+    const candidate = join(dir.trim(), command);
+    if (existsSync(candidate)) return candidate;
+  }
+  return undefined;
+}
+
+function getPathEnvValue(): string | undefined {
+  return Object.entries(process.env).find(([key]) => key.toLowerCase() === 'path')?.[1];
 }
 
 function prepareHermesHome(hermesHome: string, agentDir?: string): void {

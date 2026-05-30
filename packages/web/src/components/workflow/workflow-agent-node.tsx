@@ -55,6 +55,7 @@ function WorkflowAgentNodeComponent({ id, data, selected }: NodeProps<AgentNode>
       </button>
       <div className="flex items-center gap-2.5">
         <AgentIcon
+          agentId={data.agentConfigId}
           avatarUrl={data.avatarUrl}
           name={data.label}
           className="size-8 rounded-md"

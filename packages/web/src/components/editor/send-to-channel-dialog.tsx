@@ -127,6 +127,7 @@ export function SendToChannelDialog() {
           id: a.id,
           name: a.name,
           avatarUrl: a.avatarUrl,
+          icon: a.icon,
           description: a.description,
         }))}
         selected={selectedAgent}
