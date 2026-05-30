@@ -66,8 +66,6 @@ test('HermesRuntime maps runtime config and options to Hermes CLI args, env, and
       'plans',
       '--model',
       'GLM-4.7',
-      '--provider',
-      'anthropic-messages',
     ]);
     assert.equal(capture.env.HERMES_HOME, join(configDir, '.hermes'));
     assert.equal(capture.env.HERMES_API_KEY, 'secret-key');
@@ -77,6 +75,48 @@ test('HermesRuntime maps runtime config and options to Hermes CLI args, env, and
     assert.equal(capture.env.ANTHROPIC_API_KEY, 'secret-key');
     assert.equal(capture.env.NO_COLOR, '1');
     assert.equal(existsSync(join(configDir, '.hermes', 'skills', 'plans.md')), true);
+  } finally {
+    restorePathEnv(previousPath);
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('HermesRuntime passes Hermes-native providers through to the Hermes CLI', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'hermes-runtime-'));
+  const binDir = join(root, 'bin');
+  const captureFile = join(root, 'capture.json');
+  const previousPath = currentPathEnv();
+
+  try {
+    mkdirSync(binDir, { recursive: true });
+    writeFakeHermes(binDir, [
+      'const { writeFileSync } = require("node:fs");',
+      `writeFileSync(${JSON.stringify(captureFile)}, JSON.stringify({ argv: process.argv.slice(2) }), "utf-8");`,
+      'console.log("ok");',
+    ].join('\n'));
+    setPathEnv(prependPath(binDir, previousPath));
+
+    const runtime = new HermesRuntime({
+      provider: 'openrouter',
+      model: 'openai/gpt-4o',
+    });
+    const result = await runtime.execute('hello', root);
+
+    const capture = JSON.parse(readFileSync(captureFile, 'utf-8')) as {
+      argv: string[];
+    };
+
+    assert.equal(result.success, true);
+    assert.deepEqual(capture.argv, [
+      'chat',
+      '-q',
+      'hello',
+      '--verbose',
+      '--model',
+      'openai/gpt-4o',
+      '--provider',
+      'openrouter',
+    ]);
   } finally {
     restorePathEnv(previousPath);
     rmSync(root, { recursive: true, force: true });

@@ -30,7 +30,8 @@ export class HermesRuntime implements AgentRuntime {
     if (hermesHome) prepareHermesHome(hermesHome, agentDir);
 
     const args = buildHermesArgs(appendOutputStyleToPrompt(prompt, options?.outputStyle), this.config, options);
-    d(`starting | cwd=${cwd} model=${this.config.model ?? 'profile-default'} provider=${this.config.provider ?? 'profile-default'} hermesHome=${hermesHome ?? 'default'} skills=${options?.skills?.join(',') || '-'}`);
+    const cliProvider = getHermesCliProvider(this.config.provider);
+    d(`starting | cwd=${cwd} model=${this.config.model ?? 'profile-default'} provider=${cliProvider ?? 'profile-default'} requestedProvider=${this.config.provider ?? 'profile-default'} hermesHome=${hermesHome ?? 'default'} skills=${options?.skills?.join(',') || '-'}`);
 
     return new Promise<AgentRunResult>((resolve) => {
       let settled = false;
@@ -149,8 +150,23 @@ function buildHermesArgs(prompt: string, config: AgentRuntimeConfig, options?: A
   const args = ['chat', '-q', prompt, '--verbose'];
   for (const skill of normalizeSkillNames(options?.skills)) args.push('-s', skill);
   if (config.model) args.push('--model', config.model);
-  if (config.provider) args.push('--provider', String(config.provider));
+  const provider = getHermesCliProvider(config.provider);
+  if (provider) args.push('--provider', provider);
   return args;
+}
+
+function getHermesCliProvider(provider: AgentRuntimeConfig['provider']): string | undefined {
+  if (!provider || isAgentSpacesProtocolProvider(provider)) return undefined;
+  return String(provider);
+}
+
+function isAgentSpacesProtocolProvider(provider: AgentRuntimeConfig['provider']): boolean {
+  return provider === 'anthropic-messages'
+    || provider === 'openai-chat-completions'
+    || provider === 'openai-responses'
+    || provider === 'openai-responses-to-anthropic-messages'
+    || provider === 'openai-chat-completions-to-anthropic-messages'
+    || provider === 'gemini-generate-content';
 }
 
 function buildEnv(config: AgentRuntimeConfig, hermesHome?: string): NodeJS.ProcessEnv {
