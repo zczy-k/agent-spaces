@@ -86,6 +86,45 @@ test('HermesRuntime maps runtime config and options to Hermes CLI args, env, and
         '  provider: custom',
         '  base_url: "https://example.test/v1"',
         '  api_key: ${AGENT_SPACES_HERMES_API_KEY}',
+        '  api_mode: chat_completions',
+        '',
+      ].join('\n'),
+    );
+  } finally {
+    restorePathEnv(previousPath);
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('HermesRuntime uses Anthropic Messages api_mode only for Anthropic base URLs', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'hermes-runtime-'));
+  const binDir = join(root, 'bin');
+  const configDir = join(root, 'agent-config');
+  const previousPath = currentPathEnv();
+
+  try {
+    mkdirSync(binDir, { recursive: true });
+    writeFakeHermes(binDir, 'console.log("ok");');
+    setPathEnv(prependPath(binDir, previousPath));
+
+    const runtime = new HermesRuntime({
+      provider: 'anthropic-messages',
+      model: 'claude-test',
+      apiKey: 'secret-key',
+      baseURL: 'https://api.anthropic.com',
+    });
+    const result = await runtime.execute('hello', root, { configDir });
+
+    assert.equal(result.success, true);
+    assert.equal(
+      readFileSync(join(configDir, '.hermes', 'config.yaml'), 'utf-8'),
+      [
+        '# Managed by Agent Spaces for this agent profile.',
+        'model:',
+        '  default: "claude-test"',
+        '  provider: custom',
+        '  base_url: "https://api.anthropic.com"',
+        '  api_key: ${AGENT_SPACES_HERMES_API_KEY}',
         '  api_mode: anthropic_messages',
         '',
       ].join('\n'),

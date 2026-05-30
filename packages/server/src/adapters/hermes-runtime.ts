@@ -24,7 +24,7 @@ export class HermesRuntime implements AgentRuntime {
     const output: string[] = [];
     const cwd = workingDir || process.cwd();
     const startTime = Date.now();
-    const d = (message: string) => console.log(`[hermes] ${message}`);
+    const d = (message: string) => console.log(`[hermes] ${truncateConsoleMessage(message)}`);
     const agentDir = options?.configDir;
     const hermesHome = agentDir ? join(agentDir, '.hermes') : undefined;
     if (hermesHome) prepareHermesHome(hermesHome, this.config, agentDir);
@@ -246,7 +246,7 @@ function writeManagedHermesConfig(hermesHome: string, config: AgentRuntimeConfig
   const configPath = join(hermesHome, 'config.yaml');
   if (existsSync(configPath) && !isManagedHermesConfig(configPath)) return;
 
-  const apiMode = getHermesApiMode(config.provider);
+  const apiMode = getHermesApiMode(config.provider, config.baseURL);
   const lines = [
     '# Managed by Agent Spaces for this agent profile.',
     'model:',
@@ -263,10 +263,10 @@ function isManagedHermesConfig(configPath: string): boolean {
   return readFileSync(configPath, 'utf-8').startsWith('# Managed by Agent Spaces for this agent profile.');
 }
 
-function getHermesApiMode(provider: AgentRuntimeConfig['provider']): string | undefined {
+function getHermesApiMode(provider: AgentRuntimeConfig['provider'], baseURL?: string): string | undefined {
   switch (provider) {
     case 'anthropic-messages':
-      return 'anthropic_messages';
+      return isAnthropicBaseURL(baseURL) ? 'anthropic_messages' : 'chat_completions';
     case 'openai-chat-completions':
     case 'openai-chat-completions-to-anthropic-messages':
       return 'chat_completions';
@@ -278,8 +278,23 @@ function getHermesApiMode(provider: AgentRuntimeConfig['provider']): string | un
   }
 }
 
+function isAnthropicBaseURL(baseURL?: string): boolean {
+  if (!baseURL) return false;
+  try {
+    return new URL(baseURL).hostname.toLowerCase().endsWith('anthropic.com');
+  } catch {
+    return false;
+  }
+}
+
 function yamlString(value: string): string {
   return JSON.stringify(value);
+}
+
+function truncateConsoleMessage(message: string): string {
+  const maxLength = 600;
+  if (message.length <= maxLength) return message;
+  return `${message.slice(0, maxLength)}... [truncated ${message.length - maxLength} chars]`;
 }
 
 function consumeLines(buffer: string, onLine: (line: string) => void): string {
