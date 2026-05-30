@@ -456,13 +456,7 @@ export function getAvailableSkillNames(agentDir: string | undefined, skills?: st
     .filter((skill) => {
       if (!skill) return false;
       const skillsBase = join(agentDir, 'skills');
-      // Check folder structure first, then flat .md
-      const skillFolder = join(skillsBase, skill);
-      if (existsSync(skillFolder) && statSync(skillFolder).isDirectory()) {
-        return readdirSync(skillFolder).some((f) => f.endsWith('.md'));
-      }
-      const skillFile = join(skillsBase, `${skill}.md`);
-      if (existsSync(skillFile) && statSync(skillFile).size > 0) return true;
+      if (hasReadableSkillSource(skillsBase, skill)) return true;
 
       const globalSkillFile = join(getDataDir(), 'skills', skill, 'SKILL.md');
       if (existsSync(globalSkillFile) && statSync(globalSkillFile).size > 0) return true;
@@ -674,14 +668,21 @@ function ensureWorkspaceAgentCopy(preset: AgentConfig, agentspaceDir: string): v
   const missingSkill = (preset.skills ?? []).some((skill) => {
     const skillName = skill.replace(/\.md$/i, '');
     const targetSkillsDir = join(workspaceAgentDir, 'skills');
-    const targetSkillDir = join(targetSkillsDir, skillName);
-    if (existsSync(targetSkillDir) && statSync(targetSkillDir).isDirectory()) {
-      return !existsSync(join(targetSkillDir, 'SKILL.md'));
-    }
-    return !existsSync(join(targetSkillsDir, `${skillName}.md`));
+    return !hasReadableSkillSource(targetSkillsDir, skillName);
   });
   if (!missingRequiredFile && !missingBuiltInDir && !missingSkill) return;
   writeWorkspaceAgentCopy(preset, agentspaceDir);
+}
+
+function hasReadableSkillSource(skillsDir: string, skillName: string): boolean {
+  const skillDir = join(skillsDir, skillName);
+  const skillFile = join(skillDir, 'SKILL.md');
+  if (existsSync(skillDir) && statSync(skillDir).isDirectory()) {
+    return existsSync(skillFile) && statSync(skillFile).size > 0;
+  }
+
+  const legacySkillFile = join(skillsDir, `${skillName}.md`);
+  return existsSync(legacySkillFile) && statSync(legacySkillFile).size > 0;
 }
 
 function countFiles(dir: string): number {
