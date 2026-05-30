@@ -544,7 +544,7 @@ function handleJsonEvent(
     ctx.options?.onEvent?.({ type: 'reasoning', text, status: 'completed' });
   }
 
-  for (const toolUse of collectToolUses(event)) {
+  for (const toolUse of collectToolUses(event, eventType)) {
     const key = `${toolUse.id}:${toolUse.name}`;
     if (ctx.emittedToolUseKeys.has(key)) continue;
     ctx.emittedToolUseKeys.add(key);
@@ -624,19 +624,25 @@ function collectReasoningTexts(value: unknown): string[] {
   return texts;
 }
 
-function collectToolUses(value: unknown): Array<{ id: string; name: string; input?: unknown }> {
+function collectToolUses(value: unknown, eventType: string): Array<{ id: string; name: string; input?: unknown }> {
   const uses: Array<{ id: string; name: string; input?: unknown }> = [];
   const ompToolExecution = parseOmpToolExecutionStart(value);
   if (ompToolExecution) uses.push(ompToolExecution);
 
-  for (const block of collectContentBlocks(value)) {
-    const parsed = parseToolUse(block);
-    if (parsed) uses.push(parsed);
+  if (!isOmpStreamingMessageEvent(eventType)) {
+    for (const block of collectContentBlocks(value)) {
+      const parsed = parseToolUse(block);
+      if (parsed) uses.push(parsed);
+    }
   }
 
   const direct = parseToolUse(value);
   if (direct) uses.push(direct);
   return uniqueBy(uses, (item) => `${item.id}:${item.name}`);
+}
+
+function isOmpStreamingMessageEvent(eventType: string): boolean {
+  return eventType === 'message_start' || eventType === 'message_update' || eventType === 'message_end';
 }
 
 function collectToolResults(value: unknown): Array<{ toolUseId?: string; result: unknown }> {

@@ -286,8 +286,8 @@ test('OhMyPiRuntime maps OMP tool execution events to structured runtime events'
     mkdirSync(binDir, { recursive: true });
     writeFakeOmp(binDir, [
       'const events = [',
-      '  { type: "message_update", message: { content: [{ type: "text", text: "thinking" }, { type: "toolCall", id: "call-1", name: "fetch", args: { url: "https://example.test/data.json" } }] } },',
-      '  { type: "message_update", message: { content: [{ type: "text", text: "thinking" }, { type: "toolCall", id: "call-1", name: "fetch", args: { url: "https://example.test/data.json" } }] } },',
+      '  { type: "message_update", message: { content: [{ type: "text", text: "thinking" }, { type: "toolCall", id: "call-1", name: "fetch", args: {} }] } },',
+      '  { type: "message_update", message: { content: [{ type: "text", text: "thinking" }, { type: "toolCall", id: "call-1", name: "fetch", args: {} }] } },',
       '  { type: "tool_execution_start", toolCallId: "call-1", toolName: "fetch", args: { url: "https://example.test/data.json" }, intent: "read url" },',
       '  { type: "tool_execution_end", toolCallId: "call-1", toolName: "fetch", result: "ok", isError: false },',
       '  { type: "turn_end", message: { content: [{ type: "text", text: "<think>hidden</think>\\nfinal answer" }] } },',

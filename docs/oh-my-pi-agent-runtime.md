@@ -25,7 +25,7 @@ runtimeKind?: 'open-agent-sdk' | 'claude-code' | 'codex' | 'langchain' | 'hermes
 当前 runtime 通过 `omp` CLI 运行，不再进程内嵌 `@oh-my-pi/pi-coding-agent` SDK：
 
 ```bash
-omp --mode text -p "<prompt>"
+omp --mode json -p "<prompt>"
 ```
 
 选择 CLI process boundary 的原因是当前发布的 `@oh-my-pi/pi-coding-agent@15.5.12` 是 Bun-native 包：
@@ -35,14 +35,14 @@ omp --mode text -p "<prompt>"
 - 多处源码直接 `import { YAML } from "bun"` 或 `import { $ } from "bun"`。
 - `engines` 声明为 `bun >= 1.3.14`。
 
-Agent Spaces server 默认运行在 Node 下，不能安全 import 该 SDK。现在 adapter 只启动 `omp` 子进程，把 stdout/stderr 映射回 Agent Spaces runtime event，并通过 `child.kill()` 实现 stop。
+Agent Spaces server 默认运行在 Node 下，不能安全 import 该 SDK。现在 adapter 只启动 `omp` 子进程，把 OMP newline-delimited JSON events 映射回 Agent Spaces runtime event，并通过 `child.kill()` 实现 stop。
 
 ## CLI 调用形态
 
 基础调用：
 
 ```bash
-omp --mode text -p "<final prompt>"
+omp --mode json -p "<final prompt>"
 ```
 
 其中 `<final prompt>` 是 Agent Spaces 组装后的完整 prompt，并已通过 `appendOutputStyleToPrompt()` 追加 output style。
@@ -50,12 +50,30 @@ omp --mode text -p "<final prompt>"
 如果配置了 runtime session resume：
 
 ```bash
-omp --mode text --resume <runtimeSessionId> -p "<final prompt>"
+omp --mode json --resume <runtimeSessionId> -p "<final prompt>"
 ```
 
 如果 Agent Spaces preset 提供模型、provider、thinking、tools、system prompt、skills 等配置，会追加对应 CLI flags。
 
 ## 配置映射
+
+### CLI 可执行查找
+
+默认命令为 `omp`。Windows 下为避免 server 进程没有继承最新 PATH 导致 `spawn('omp')` ENOENT，adapter 会按以下顺序解析可执行文件：
+
+1. `OMP_CLI_PATH`
+2. 当前进程 PATH 中的 `omp.exe`
+3. `%LOCALAPPDATA%/omp/omp.exe`
+4. `%USERPROFILE%/AppData/Local/omp/omp.exe`
+5. 回退到 `omp`
+
+如果手动 shell 中 `where omp` 能找到，但 Agent Spaces server 仍报找不到，可以显式设置：
+
+```powershell
+$env:OMP_CLI_PATH="C:/Users/Administrator/AppData/Local/omp/omp.exe"
+```
+
+再启动 server。
 
 ### 工作目录
 
@@ -205,22 +223,79 @@ Agent Spaces 的 `options.skills` 当前直接映射为：
 
 ## 事件映射
 
-当前使用 `--mode text`，所以没有 SDK event 或 JSON event stream。映射规则是：
+当前使用 `--mode json`，从 OMP newline-delimited JSON events 中恢复结构化事件。stdout 中不能解析为 JSON 的普通文本行仍按 text fallback 处理。
 
-- stdout 按行推送为 `{ type: 'output', line }`。
+### 基础输出和生命周期
+
+- OMP JSON event 会写调试摘要日志：`[oh-my-pi] json event | type=<type> keys=<keys> contentBlocks=<block-types>`。
 - stderr 按行加 `[stderr] ` 前缀后推送为 `{ type: 'output', line }`。
-- stdout/stderr 行都会进入 `AgentRunResult.output`。
 - 退出码 `0` 视为成功。
 - 非 `0` 退出码或进程 signal 视为失败。
-- 如果输出行中匹配 `session id: ...` / `session: ...`，会推送 `{ type: 'session', sessionId }`。
+- JSON 中的 `sessionId` / `session_id` / `conversation_id` / `thread_id` 会推送 `{ type: 'session', sessionId }`。
+- JSON 中的 `usage` / `costUsd` / `total_cost_usd` 会写入 `AgentRunResult.usage` / `AgentRunResult.costUsd`。
 
-当前不会从 text mode 产生结构化 `reasoning`、`tool_use`、`tool_result`、`usage`、`costUsd`。
+### 用户可见输出
 
-如果后续切到 `--mode json`，可以从 OMP newline-delimited JSON events 中恢复更细粒度事件映射。
+为避免 OMP 增量事件污染用户消息，adapter 只从最终 `turn_end` 的可见文本生成 `{ type: 'output', line }` 和 `AgentRunResult.output`。
+
+以下内容不会进入最终用户展示：
+
+- `message_start`
+- `message_update`
+- `message_end`
+- 工具结果回显消息
+- `<think>...</think>` 推理片段
+- 带 `toolCall` block 的中间 `turn_end`
+
+这可以避免类似工具失败文本、prompt echo、thinking 流式片段反复出现在最终消息里。
+
+### Reasoning
+
+以下 content block 会映射为 `{ type: 'reasoning', text, status: 'completed' }`：
+
+- `type: "reasoning"`
+- `type: "thinking"`
+
+### 工具调用
+
+OMP 真实工具生命周期事件主要是：
+
+```text
+tool_execution_start
+tool_execution_end
+```
+
+adapter 映射为：
+
+| OMP JSON event | Agent Spaces runtime event |
+| --- | --- |
+| `tool_execution_start` | `{ type: 'tool_use', id, name, input, line }` |
+| `tool_execution_end` | `{ type: 'tool_result', toolUseId, result }` |
+
+字段映射：
+
+| OMP field | Agent Spaces field |
+| --- | --- |
+| `toolCallId` | `id` / `toolUseId` |
+| `toolName` | `name` |
+| `args` | `input` |
+| `result` | `result` |
+
+`message_start` / `message_update` / `message_end` 中的 `toolCall` block 只用于结构观察，不会触发正式 `tool_use`。原因是这些增量事件中的工具参数可能还是 `{}` 或半成品；完整参数以 `tool_execution_start.args` 为准。
+
+为了兼容 Agent Spaces 现有工具链 UI，`tool_use.line` 使用：
+
+```text
+Tool: <tool-name> <json-input>
+```
+
+该格式会被 `message-parts.ts` 识别为工具 chain，从而在前端展示工具步骤和工具计数。
+
+adapter 会按 `toolCallId + toolName` 去重 `tool_use`，按 `toolUseId + result summary` 去重 `tool_result`，避免 OMP 增量 message update 重复触发工具步骤。
 
 ## Agent Spaces function tools
 
-当前 CLI mode 没有直接把 `AgentRunOptions.functionTools` 转换成 OMP `CustomTool[]`，因为 `CustomTool[]` 是 SDK embed API，不是 CLI text mode API。
+当前 CLI mode 没有直接把 `AgentRunOptions.functionTools` 转换成 OMP `CustomTool[]`，因为 `CustomTool[]` 是 SDK embed API，不是 CLI API。
 
 adapter 会复用 Agent Spaces 的本地 Streamable HTTP MCP bridge：
 
@@ -297,10 +372,22 @@ child.kill()
 已执行：
 
 ```bash
+pnpm exec tsx --test "packages/server/test/oh-my-pi-runtime.test.ts"
 pnpm --filter @agent-spaces/server build
 ```
 
-该命令通过。
+这些命令通过。
+
+当前 `oh-my-pi-runtime.test.ts` 覆盖：
+
+- CLI args 映射，包括 `--mode json`、model、provider、apiKey、thinking、tools、system prompt、skills、session-dir、resume。
+- 隔离 OMP home 下的 `config.yml` / `models.yml` / `mcp.json` 写入。
+- 环境变量映射，包括 API key、baseURL、OMP agent dir。
+- Windows `omp.exe` 查找 fallback。
+- stdout/stderr fallback、session id 解析、失败退出码。
+- OMP JSON mode 的 `session`、`reasoning`、`tool_execution_start`、`tool_execution_end`、`usage/cost` 映射。
+- 只展示最终 `turn_end` 可见输出，忽略中间 message/tool echo。
+- MCP bridge、stop、ENOENT。
 
 此前也执行过：
 
@@ -322,7 +409,7 @@ Type '{ delay: number; }' is not assignable to type 'string | number'.
 
 ### 1. 依赖本机可执行 `omp`
 
-当前实现要求 server 运行环境的 `PATH` 中存在 `omp`。
+当前实现要求 server 运行环境中能找到 `omp`。Windows 下会额外尝试常见 `%LOCALAPPDATA%/omp/omp.exe` 安装路径。
 
 如果不存在，会返回：
 
@@ -330,19 +417,30 @@ Type '{ delay: number; }' is not assignable to type 'string | number'.
 Oh My Pi CLI was not found. Install OMP and ensure the `omp` command is available on PATH.
 ```
 
-### 2. Text mode 事件粒度有限
+### 2. JSON event schema 需要继续按真实 OMP 输出校准
 
-`--mode text` 只能可靠得到 stdout/stderr 文本和退出码。
+当前已经消费 `--mode json` 的常见事件，并覆盖真实观察到的：
 
-当前缺失：
+- `session`
+- `agent_start`
+- `turn_start`
+- `message_start`
+- `message_update`
+- `message_end`
+- `tool_execution_start`
+- `tool_execution_end`
+- `turn_end`
+- `agent_end`
 
-- reasoning streaming event
-- tool lifecycle event
-- structured usage/cost
-- structured session id
-- structured error payload
+但 OMP 后续版本可能调整 JSON event 字段名。排障时重点看 server 日志：
 
-后续可切到 `--mode json`，消费 OMP newline-delimited JSON events。
+```text
+[oh-my-pi] json event | type=<type> keys=<keys> contentBlocks=<block-types>
+[oh-my-pi] tool use | id=<id> name=<name> input=<summary>
+[oh-my-pi] tool result | id=<id> result=<summary>
+```
+
+如果工具步骤没有进入前端，优先确认是否出现 `tool use` 日志，以及传给 UI 的工具行是否为 `Tool: <name> ...`。
 
 ### 3. MCP discovery 仍依赖 OMP 原生加载
 
@@ -438,6 +536,31 @@ omp
 
 如果 `mcp.json` 存在且日志正常，但模型仍说没有工具，需要用相同 `HOME` 环境运行一次 `omp` 原生命令确认 OMP 是否读取该 user-level config。
 
+### 工具调用没有显示或计数为 0
+
+先看 server 日志是否出现：
+
+```text
+[oh-my-pi] tool use | id=... name=... input=...
+[oh-my-pi] tool result | id=... result=...
+```
+
+如果没有，说明 OMP JSON event 没有被 adapter 识别，需要根据 `json event | type=... keys=... contentBlocks=...` 补事件映射。
+
+如果有，但前端工具计数仍为 0，重点检查 `tool_use.line` 是否是现有 UI 可识别的工具行格式：
+
+```text
+Tool: <tool-name> <json-input>
+```
+
+Agent Spaces 的工具 chain 构建依赖该格式被 `message-parts.ts` 的 `isToolLikeLine()` 识别。
+
+### 工具 input 为空
+
+不要从 `message_update` / `message_end` 的 `toolCall` block 读取最终参数；这些增量事件里的 args 可能是 `{}` 或半成品。
+
+adapter 当前以 `tool_execution_start.args` 作为正式 `tool_use.input`。
+
 ### Stop 不生效
 
 当前 stop 调用 `child.kill()`。如果某些长任务没有停止，需要确认 OMP CLI 和其下游 tool process 是否响应进程 signal。
@@ -445,9 +568,9 @@ omp
 ## 后续改进清单
 
 1. 增加真实端到端运行验证，覆盖普通 prompt、stop、失败路径。
-2. 切到 `--mode json`，恢复 structured output、reasoning、tool lifecycle、usage/cost。
+2. 持续校准 `--mode json` 的真实 OMP event schema，特别是新版本工具事件、usage/cost 和 error payload。
 3. 明确 OMP session id 持久化策略，并在上游启用 `oh-my-pi` resume。
 4. 验证 `--session-dir <configDir>/omp-home/.omp/agent/sessions` 与 OMP session lookup 的兼容性。
 5. 确认 `baseURL` 对不同 provider 的正确 env var 映射。
 6. 为 `maxTurns` 增加等价 OMP 配置或 Agent Spaces wall-clock timeout。
-7. 增加 adapter 单元测试或集成测试，至少覆盖 CLI args、env、stdout/stderr mapping、MCP bridge、stop、ENOENT。
+7. 增加真实 E2E UI 验证，确认工具 chain、工具详情弹窗、失败工具结果、最终回答展示都符合预期。
