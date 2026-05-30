@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 import { readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, basename } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const agentsDir = new URL('.', import.meta.url).pathname;
+const agentsDir = fileURLToPath(new URL('.', import.meta.url));
 
 function scanPromptStore() {
   const dir = join(agentsDir, 'prompt');
@@ -84,6 +85,40 @@ function scanMcpStore() {
   writeFileSync(join(dir, 'index.json'), JSON.stringify(index, null, 2), 'utf-8');
   console.log(`[mcps] ${index.length} templates`);
 }
+function scanAgentStore() {
+  const dir = join(agentsDir, 'agents');
+  if (!existsSync(dir)) return;
+  const index = [];
+  for (const groupEntry of readdirSync(dir, { withFileTypes: true })) {
+    if (!groupEntry.isDirectory()) continue;
+    const group = groupEntry.name;
+    const groupDir = join(dir, group);
+    for (const file of readdirSync(groupDir)) {
+      if (!file.endsWith('.md')) continue;
+      const id = basename(file, '.md');
+      const content = readFileSync(join(groupDir, file), 'utf-8');
+      const fm = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+      let name = id.replace(/[-_]/g, ' ');
+      let description = '';
+      let emoji = '';
+      if (fm) {
+        for (const line of fm[1].split(/\r?\n/)) {
+          const m = line.match(/^\s*(\w+)\s*:\s*(.+)/);
+          if (!m) continue;
+          const [, key, val] = m;
+          if (key === 'name') name = val.trim();
+          else if (key === 'description') description = val.trim();
+          else if (key === 'emoji') emoji = val.trim();
+        }
+      }
+      index.push({ id, name, group, path: `${group}/${id}`, description, emoji });
+    }
+  }
+  writeFileSync(join(dir, 'index.json'), JSON.stringify(index, null, 2), 'utf-8');
+  console.log(`[agents] ${index.length} agents`);
+}
+scanAgentStore();
+
 scanMcpStore();
 
 scanPromptStore();

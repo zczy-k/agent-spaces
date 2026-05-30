@@ -33,13 +33,25 @@ export class LangChainRuntime implements AgentRuntime {
     d(`prompt: ${prompt.slice(0, 300)}${prompt.length > 300 ? '...' : ''}`);
 
     try {
+      const unsupportedMcpRequest = getUnsupportedLangChainMcpRequest(prompt, options?.mcpServers);
+      if (unsupportedMcpRequest) {
+        d(`blocked unsupported MCP request | server=${unsupportedMcpRequest}`);
+        return {
+          success: false,
+          summary: 'LangChain MCP tools are unavailable',
+          artifacts: [],
+          error: `LangChain runtime does not currently expose configured MCP servers as callable tools. Requested MCP server: ${unsupportedMcpRequest}. Use a runtime with MCP support, such as Claude Code, Codex, or Oh My Pi.`,
+          output,
+        };
+      }
+
       const chatModel = await withTemporaryEnv(
         buildProviderEnv(this.config, modelSettings.provider),
         () => initChatModel(model, buildModelConfig(this.config)),
       );
       const agent = createAgent({
         model: chatModel,
-        tools: buildLangChainTools(options?.functionTools, output, options),
+        tools: buildLangChainTools(options?.functionTools, output, options, d),
         systemPrompt: options?.systemPrompt,
       });
 
@@ -94,16 +106,25 @@ function buildLangChainTools(
   functionTools: AgentFunctionTool[] | undefined,
   output: string[],
   options: AgentRunOptions | undefined,
+  log: (message: string) => void,
 ): NonNullable<CreateAgentParams['tools']> {
   if (!functionTools?.length) return [];
   return functionTools.map((runtimeTool) => tool(
     async (input: unknown) => {
       const line = `Tool: ${runtimeTool.name} input=${JSON.stringify(input)}`;
+      log(`tool use | name=${runtimeTool.name} input=${summarizeForLog(input, 800)}`);
       output.push(line);
       options?.onEvent?.({ type: 'tool_use', id: runtimeTool.name, name: runtimeTool.name, input, line });
-      const result = await runtimeTool.execute(input);
-      options?.onEvent?.({ type: 'tool_result', toolUseId: runtimeTool.name, result });
-      return result;
+      try {
+        const result = await runtimeTool.execute(input);
+        log(`tool result | name=${runtimeTool.name} output=${summarizeForLog(result, 1000)}`);
+        options?.onEvent?.({ type: 'tool_result', toolUseId: runtimeTool.name, result });
+        return stringifyToolResult(result);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        log(`tool error | name=${runtimeTool.name} error=${truncateForLog(message, 1000)}`);
+        throw err;
+      }
     },
     {
       name: runtimeTool.name,
@@ -176,6 +197,39 @@ function inferLangChainProviderFromBaseURL(baseURL?: string): string | undefined
 function stripLangChainProviderPrefix(model: string): string {
   const match = /^(anthropic|openai|google-genai):(.+)$/i.exec(model);
   return match?.[2] || model;
+}
+
+export function stringifyToolResult(result: unknown): string {
+  if (result === undefined) return 'null';
+  if (typeof result === 'string') return result;
+  try {
+    return JSON.stringify(result, null, 2) ?? String(result);
+  } catch {
+    return String(result);
+  }
+}
+
+function summarizeForLog(value: unknown, maxLength = 300): string {
+  if (typeof value === 'string') return truncateForLog(value, maxLength);
+  return truncateForLog(stringifyToolResult(value), maxLength);
+}
+
+function truncateForLog(value: string, maxLength = 300): string {
+  return value.length > maxLength ? `${value.slice(0, maxLength)}...` : value;
+}
+
+export function getUnsupportedLangChainMcpRequest(
+  prompt: string,
+  mcpServers: Record<string, unknown> | undefined,
+): string | undefined {
+  const requested = extractRequestedMcpServerName(prompt);
+  if (!requested) return undefined;
+  const serverNames = new Set(Object.keys(mcpServers ?? {}).map((name) => name.toLowerCase()));
+  return serverNames.has(requested.toLowerCase()) ? requested : undefined;
+}
+
+function extractRequestedMcpServerName(prompt: string): string | undefined {
+  return prompt.match(/\[\s*use\s+mcp\s*:\s*([A-Za-z0-9._-]+)\s*\]/i)?.[1];
 }
 
 function buildProviderEnv(config: AgentRuntimeConfig, resolvedProvider?: string): Record<string, string | undefined> {

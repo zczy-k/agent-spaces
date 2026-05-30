@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { toast } from "sonner";
 import { getToken } from "@/lib/auth";
 
 interface SpeechRecognitionConfig {
@@ -118,6 +119,9 @@ export function useSpeechRecognition() {
       } catch (err) {
         console.error("[speech] microphone access denied:", err);
         ws.close();
+        toast.error(err instanceof DOMException && err.name === "NotFoundError"
+          ? "未找到麦克风设备"
+          : "无法访问麦克风，请检查权限设置");
         return false;
       }
       streamRef.current = stream;

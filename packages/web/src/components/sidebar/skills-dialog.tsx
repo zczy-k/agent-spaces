@@ -10,17 +10,16 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Store,
   FileText,
   Download,
-  Folder,
   Search,
   Check,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { StoreTabPanel } from '@/components/common/store-tab-panel';
 import type { SkillInfo, SkillsDialogProps, StoreSkillItem } from './skills-dialog/types';
 import { useSkillsData, useSkillActions } from './skills-dialog/use-skills-data';
 import { SkillList } from './skills-dialog/skill-list';
@@ -44,8 +43,6 @@ export function SkillsDialog({ open, onOpenChange, standalone, selectable, selec
   const [bindSelected, setBindSelected] = useState<string[]>([]);
 
   // Store state
-  const [storeGroupFilter, setStoreGroupFilter] = useState('');
-  const [storeSearch, setStoreSearch] = useState('');
 
   const openEditDialog = (skill: SkillInfo) => {
     setEditSkill(skill);
@@ -199,21 +196,7 @@ export function SkillsDialog({ open, onOpenChange, standalone, selectable, selec
   }
 
   // Store groups
-  const storeGroups = Array.from(new Set(storeSkills.map((s) => s.group).filter(Boolean)));
   const localSkillNames = new Set(skills.map((s) => s.name));
-
-  const filteredStoreSkills = storeSkills.filter((s) => {
-    if (storeGroupFilter && s.group !== storeGroupFilter) return false;
-    if (storeSearch) {
-      const q = storeSearch.toLowerCase();
-      if (!s.name.toLowerCase().includes(q) && !s.id.toLowerCase().includes(q) && !s.group.toLowerCase().includes(q)) return false;
-    }
-    return true;
-  });
-
-  const handleStoreImport = async (skill: StoreSkillItem) => {
-    await importFromStore(skill);
-  };
 
   const tabs = (
     <div className="flex items-center gap-1 border-b border-border px-1">
@@ -235,101 +218,54 @@ export function SkillsDialog({ open, onOpenChange, standalone, selectable, selec
   );
 
   const storeView = (
-    <div className="flex flex-1 min-h-0 gap-4 pt-2">
-      {storeGroups.length > 0 && (
-        <ScrollArea className="hidden md:block w-44 shrink-0">
-          <div className="flex flex-col gap-1 pr-2">
-            <Button
-              variant={!storeGroupFilter ? 'secondary' : 'ghost'}
-              size="sm"
-              className="w-full justify-start"
-              onClick={() => setStoreGroupFilter('')}
-            >
-              <FileText className="size-3.5 mr-1.5" />
-              {t('filterAll')}
-            </Button>
-            {storeGroups.map((group) => (
+    <StoreTabPanel<StoreSkillItem>
+      items={storeSkills}
+      loading={storeLoading}
+      getGroup={(s) => s.group}
+      getId={(s) => s.path}
+      allFilterText={t('filterAll')}
+      searchPlaceholder={t('search')}
+      emptyText={t('storeEmpty')}
+      loadingText={tc('loading')}
+      renderItem={(skill) => {
+        const isImported = localSkillNames.has(skill.id);
+        const isImporting = importingPaths.has(skill.path);
+        return (
+          <div className="rounded-xl border border-border bg-background p-4 hover:bg-accent/30 transition-colors">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <Store className="size-3.5 text-muted-foreground shrink-0" />
+                  <span className="font-medium text-sm">{skill.name}</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                    {skill.group}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">{skill.id}</p>
+              </div>
               <Button
-                key={group}
-                variant={storeGroupFilter === group ? 'secondary' : 'ghost'}
+                variant={isImported ? 'ghost' : 'outline'}
                 size="sm"
-                className="w-full justify-start"
-                onClick={() => setStoreGroupFilter(storeGroupFilter === group ? '' : group)}
+                className="shrink-0"
+                disabled={isImported || isImporting}
+                onClick={() => importFromStore(skill)}
               >
-                <Folder className="size-3.5 mr-1.5" />
-                <span className="truncate">{group}</span>
+                {isImported ? (
+                  t('imported')
+                ) : isImporting ? (
+                  t('importing')
+                ) : (
+                  <>
+                    <Download className="size-3.5 mr-1" />
+                    {t('importTo')}
+                  </>
+                )}
               </Button>
-            ))}
+            </div>
           </div>
-        </ScrollArea>
-      )}
-      <div className="flex-1 min-w-0 flex flex-col min-h-0">
-        <div className="relative mb-3">
-          <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={storeSearch}
-            onChange={(e) => setStoreSearch(e.target.value)}
-            placeholder={t('search')}
-            className="pl-8"
-          />
-        </div>
-        <ScrollArea className="flex-1">
-          {storeLoading ? (
-            <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
-              {tc('loading')}
-            </div>
-          ) : filteredStoreSkills.length === 0 ? (
-            <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
-              {t('storeEmpty')}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-3 pr-2">
-              {filteredStoreSkills.map((skill) => {
-                const isImported = localSkillNames.has(skill.id);
-                const isImporting = importingPaths.has(skill.path);
-                return (
-                  <div
-                    key={skill.path}
-                    className="rounded-xl border border-border bg-background p-4 hover:bg-accent/30 transition-colors"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <Store className="size-3.5 text-muted-foreground shrink-0" />
-                          <span className="font-medium text-sm">{skill.name}</span>
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-                            {skill.group}
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">{skill.id}</p>
-                      </div>
-                      <Button
-                        variant={isImported ? 'ghost' : 'outline'}
-                        size="sm"
-                        className="shrink-0"
-                        disabled={isImported || isImporting}
-                        onClick={() => handleStoreImport(skill)}
-                      >
-                        {isImported ? (
-                          t('imported')
-                        ) : isImporting ? (
-                          t('importing')
-                        ) : (
-                          <>
-                            <Download className="size-3.5 mr-1" />
-                            {t('importTo')}
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </ScrollArea>
-      </div>
-    </div>
+        );
+      }}
+    />
   );
 
   const mainBody = (

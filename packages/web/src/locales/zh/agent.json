@@ -46,7 +46,16 @@
     "addEmpty": "空白",
     "syncTemplates": "同步模板",
     "noWorkspace": "未选择工作空间",
-    "loading": "加载 Agent 预设中..."
+    "loading": "加载 Agent 预设中...",
+    "tabLocal": "本地",
+    "tabStore": "商店",
+    "filterAll": "全部",
+    "searchLocal": "搜索 Agent...",
+    "searchStore": "搜索商店 Agent...",
+    "storeEmpty": "商店暂无 Agent 模板",
+    "importTo": "导入",
+    "imported": "已导入",
+    "importing": "导入中..."
   },
   "list": {
     "noDescription": "无描述",

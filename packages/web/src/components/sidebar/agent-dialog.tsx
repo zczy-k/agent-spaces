@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { type AgentConfig } from "@agent-spaces/shared";
 import { useAgentStore } from "@/stores/agent";
@@ -12,6 +12,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,11 +26,16 @@ import {
   ArrowLeft,
   Bot,
   ChevronDown,
+  Download,
+  FileText,
   Plus,
   RefreshCw,
   RotateCcw,
+  Store,
   WandSparkles,
 } from "lucide-react";
+import { fetchStoreIndex } from "@/lib/agent-store";
+import { StoreTabPanel } from "@/components/common/store-tab-panel";
 import {
   type AgentPreset,
   type AgentRole,
@@ -46,6 +53,17 @@ const AGENT_GENERATOR_PRESET_ID = "agent-generator";
 const AGENT_COMMIT_PRESET_ID = "commit-agent";
 const AGENT_TITLE_GENERATOR_PRESET_ID = "title-generator";
 const FIXED_AGENT_IDS = new Set([AGENT_GENERATOR_PRESET_ID, AGENT_COMMIT_PRESET_ID, AGENT_TITLE_GENERATOR_PRESET_ID]);
+
+type TabType = "local" | "store";
+
+interface StoreAgentItem {
+  id: string;
+  name: string;
+  group: string;
+  path: string;
+  description: string;
+  emoji: string;
+}
 
 export function AgentDialog({
   open,
@@ -74,6 +92,17 @@ export function AgentDialog({
   const [saving, setSaving] = useState(false);
   const [syncingTemplates, setSyncingTemplates] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Tab & filter
+  const [activeTab, setActiveTab] = useState<TabType>("local");
+  const [roleFilterLocal, setRoleFilterLocal] = useState<string>("");
+  const [localSearch, setLocalSearch] = useState("");
+
+  // Store state
+  const [storeAgents, setStoreAgents] = useState<StoreAgentItem[]>([]);
+  const [storeLoading, setStoreLoading] = useState(false);
+  const [importingIds, setImportingIds] = useState<Set<string>>(new Set());
+
   const roleFilterSet = roleFilter
     ? new Set(Array.isArray(roleFilter) ? roleFilter : [roleFilter])
     : null;
@@ -83,6 +112,27 @@ export function AgentDialog({
   const addRoleOptions = Array.from(
     new Set(roleFilterSet ? ROLE_OPTIONS.filter((role) => roleFilterSet.has(role)) : ROLE_OPTIONS),
   );
+
+  // Filtered by role + search
+  const filteredAgents = visibleAgents.filter((agent) => {
+    if (roleFilterLocal && agent.role !== roleFilterLocal) {
+      if (!(roleFilterLocal === "system" && FIXED_AGENT_IDS.has(agent.id))) return false;
+    }
+    if (localSearch) {
+      const q = localSearch.toLowerCase();
+      if (!agent.name.toLowerCase().includes(q) && !(agent.description || "").toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+
+  const fetchStoreAgents = useCallback(async () => {
+    setStoreLoading(true);
+    try {
+      const data = await fetchStoreIndex<StoreAgentItem>("agents/index.json");
+      setStoreAgents(data);
+    } catch { /* ignore */ }
+    setStoreLoading(false);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -114,8 +164,10 @@ export function AgentDialog({
       })
       .finally(() => setLoading(false));
 
+    fetchStoreAgents();
+
     return () => controller.abort();
-  }, [open, initialAgentId, presetBasePath, singleAgent, t]);
+  }, [open, initialAgentId, presetBasePath, singleAgent, t, fetchStoreAgents]);
 
   const handleSelectAgent = (agent: AgentPreset) => {
     setSelectedAgent(agent);
@@ -197,6 +249,59 @@ export function AgentDialog({
     }
   };
 
+  // Store import
+  const localAgentNames = new Set(agents.map((a) => a.name));
+  const importFromStore = async (storeAgent: StoreAgentItem) => {
+    if (importingIds.has(storeAgent.id)) return;
+    setImportingIds((prev) => new Set(prev).add(storeAgent.id));
+    try {
+      const base = (() => {
+        const stored = localStorage.getItem('agent-spaces:store-api-base');
+        return stored ? stored.replace(/\/+$/, '') : '/agents-store';
+      })();
+      const res = await fetch(`${base}/agents/${storeAgent.path}.md`);
+      if (!res.ok) throw new Error("fetch failed");
+      const content = await res.text();
+      // Parse frontmatter
+      const fm = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+      const body = content.slice(fm ? fm[0].length : 0).trim();
+      let name = storeAgent.name;
+      let description = storeAgent.description;
+      if (fm) {
+        for (const line of fm[1].split(/\r?\n/)) {
+          const m = line.match(/^\s*(\w+)\s*:\s*(.+)/);
+          if (!m) continue;
+          if (m[1] === "name") name = m[2].trim();
+          else if (m[1] === "description") description = m[2].trim();
+        }
+      }
+      const payload = {
+        name,
+        role: "agent",
+        description,
+        runtimeKind: "claude-code",
+        modelProvider: "anthropic-messages",
+        modelId: "claude-sonnet-4-6",
+        systemPrompt: body,
+        enabled: true,
+      };
+      const createRes = await fetch(presetBasePath, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!createRes.ok) throw new Error(await createRes.text());
+      // Refresh list
+      const listRes = await fetch(presetBasePath);
+      if (listRes.ok) setAgents((await listRes.json()).map(normalizeAgent));
+    } catch { /* ignore */ }
+    setImportingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(storeAgent.id);
+      return next;
+    });
+  };
+
   const addDropdown = (compact?: boolean) => (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -232,6 +337,119 @@ export function AgentDialog({
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+
+  // Role filter sidebar
+  const uniqueRoles = Array.from(new Set(visibleAgents.map((a) => a.role)));
+  const hasSystemAgents = visibleAgents.some((a) => FIXED_AGENT_IDS.has(a.id));
+
+  const roleSidebar = (
+    <ScrollArea className="hidden md:block w-44 shrink-0">
+      <div className="flex flex-col gap-1 pr-2">
+        <Button
+          variant={!roleFilterLocal ? "secondary" : "ghost"}
+          size="sm"
+          className="w-full justify-start"
+          onClick={() => setRoleFilterLocal("")}
+        >
+          <FileText className="size-3.5 mr-1.5" />
+          {t('dialog.filterAll')}
+        </Button>
+        {uniqueRoles.map((role) => (
+          <Button
+            key={role}
+            variant={roleFilterLocal === role ? "secondary" : "ghost"}
+            size="sm"
+            className="w-full justify-start"
+            onClick={() => setRoleFilterLocal(roleFilterLocal === role ? "" : role)}
+          >
+            <span className={cn("size-2 rounded-full mr-1.5", ROLE_COLORS[role]?.split(" ")[0])} />
+            <span className="truncate capitalize">{t(`role.${role}.name`)}</span>
+          </Button>
+        ))}
+        {hasSystemAgents && (
+          <Button
+            variant={roleFilterLocal === "system" ? "secondary" : "ghost"}
+            size="sm"
+            className="w-full justify-start"
+            onClick={() => setRoleFilterLocal(roleFilterLocal === "system" ? "" : "system")}
+          >
+            <Bot className="size-3.5 mr-1.5" />
+            <span className="truncate">System</span>
+          </Button>
+        )}
+      </div>
+    </ScrollArea>
+  );
+
+  const tabs = (
+    <div className="flex items-center gap-1 border-b border-border px-1">
+      {([['local', FileText, t('dialog.tabLocal')], ['store', Store, t('dialog.tabStore')]] as const).map(([key, Icon, label]) => (
+        <button
+          key={key}
+          onClick={() => setActiveTab(key)}
+          className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === key
+              ? 'border-primary text-foreground'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Icon className="size-3.5" />
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+
+  const storeView = (
+    <StoreTabPanel<StoreAgentItem>
+      items={storeAgents}
+      loading={storeLoading}
+      getGroup={(a) => a.group}
+      getId={(a) => a.id}
+      allFilterText={t('dialog.filterAll')}
+      searchPlaceholder={t('dialog.searchStore')}
+      emptyText={t('dialog.storeEmpty')}
+      loadingText={tc('loading')}
+      renderItem={(agent) => {
+        const isImported = localAgentNames.has(agent.name);
+        const isImporting = importingIds.has(agent.id);
+        return (
+          <div className="rounded-xl border border-border bg-background p-4 hover:bg-accent/30 transition-colors">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-base">{agent.emoji || '🤖'}</span>
+                  <span className="font-medium text-sm">{agent.name}</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                    {agent.group}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{agent.description}</p>
+              </div>
+              <Button
+                variant={isImported ? "ghost" : "outline"}
+                size="sm"
+                className="shrink-0"
+                disabled={isImported || isImporting}
+                onClick={() => importFromStore(agent)}
+              >
+                {isImported ? (
+                  t('dialog.imported')
+                ) : isImporting ? (
+                  t('dialog.importing')
+                ) : (
+                  <>
+                    <Download className="size-3.5 mr-1" />
+                    {t('dialog.importTo')}
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        );
+      }}
+    />
   );
 
   const content = (
@@ -353,13 +571,34 @@ export function AgentDialog({
           ))}
         </div>
       ) : !selectedAgent ? (
-        <div className="flex-1 overflow-y-auto">
-          <AgentList
-            agents={visibleAgents}
-            onSelect={handleSelectAgent}
-            onDelete={handleDeleteAgent}
-            onToggleEnabled={handleToggleEnabled}
-          />
+        <div className="flex flex-1 min-h-0 flex-col">
+          {tabs}
+          {activeTab === "local" ? (
+            <div className="flex flex-1 min-h-0 gap-4 pt-2">
+              {(uniqueRoles.length > 1 || hasSystemAgents) && roleSidebar}
+              <div className="flex-1 min-w-0 flex flex-col min-h-0">
+                <div className="relative mb-3">
+                  <Bot className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={localSearch}
+                    onChange={(e) => setLocalSearch(e.target.value)}
+                    placeholder={t('dialog.searchLocal')}
+                    className="pl-8"
+                  />
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                  <AgentList
+                    agents={filteredAgents}
+                    onSelect={handleSelectAgent}
+                    onDelete={handleDeleteAgent}
+                    onToggleEnabled={handleToggleEnabled}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+            storeView
+          )}
         </div>
       ) : (
         <AgentEditor
