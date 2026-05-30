@@ -87,6 +87,30 @@ Agent Preset 字段会映射到 `AgentRuntimeConfig`：
 
 其它 provider 会传 `undefined`，交给 OpenAgent SDK 使用默认 api type。若新增 provider，优先在 `normalizeApiType()` 中做显式映射，避免行为依赖 SDK 默认值。
 
+这些 provider 名称是 Agent Spaces 的跨 runtime 抽象，不等同于所有 runtime 的原生 provider。`open-agent-sdk` 会把 `anthropic-messages` 当作 SDK 的 `apiType` 传入；`hermes` runtime 则不会把它传给 `hermes chat --provider`，因为 Hermes 主模型的 `provider` 需要使用 Hermes 自己的 provider 名称或 `custom` 配置。
+
+当同一个 Agent Preset 切到 `hermes` runtime 时，server 会在该 Agent 的独立 `HERMES_HOME/config.yaml` 中生成 Hermes 原生 custom endpoint 配置，并通过环境变量注入 API key，避免把密钥写入磁盘：
+
+```yaml
+model:
+  default: "GLM-4.7"
+  provider: custom
+  base_url: "https://open.bigmodel.cn/api/paas/v4"
+  api_key: ${AGENT_SPACES_HERMES_API_KEY}
+  api_mode: chat_completions
+```
+
+Hermes 的 `api_mode` 由 `modelProvider` 和 `apiBase` 共同决定：
+
+| Agent Preset `modelProvider` | `apiBase` | Hermes `api_mode` |
+| --- | --- | --- |
+| `anthropic-messages` | `*.anthropic.com` | `anthropic_messages` |
+| `anthropic-messages` | 非 Anthropic 域名，例如 BigModel/Zhipu | `chat_completions` |
+| `openai-chat-completions` / `openai-chat-completions-to-anthropic-messages` | 任意自定义 endpoint | `chat_completions` |
+| `openai-responses` / `openai-responses-to-anthropic-messages` | 任意自定义 endpoint | `codex_responses` |
+
+这个分支是为了避免 OpenAI-compatible endpoint 被误按 Anthropic Messages 协议调用。例如 BigModel 的 `apiBase=https://open.bigmodel.cn/api/paas/v4` 如果使用 `anthropic_messages`，Hermes 会追加 `/v1/messages` 并请求到 `/v4/v1/messages`，导致 404。
+
 ### 权限和目录
 
 | Agent Spaces 选项 | OpenAgent SDK 字段 |
@@ -379,6 +403,8 @@ this.agent?.interrupt()
 
 `normalizeApiType()` 只显式支持 `anthropic-messages` 和 `openai-completions`。其它 provider 当前依赖 SDK 默认行为。
 
+注意：这个限制只描述 `open-agent-sdk` runtime。Hermes runtime 对同一份 Agent Preset 会做额外转换：协议型 provider 不会传给 `hermes chat --provider`，而是写入 Hermes profile 的 `model.provider: custom`、`base_url`、`api_key` 和 `api_mode`。
+
 ### Skills registry 是进程级状态
 
 OpenAgent SDK 的 skill registry 是进程内全局状态。当前实现每次运行前注销上一轮由 Agent Spaces 注册的 skills，再注册本轮 skills。
@@ -477,4 +503,3 @@ pnpm --filter "@agent-spaces/server" build
 3. 绑定 `fetch` MCP。
 4. 发送一个需要抓取 URL 的 prompt。
 5. 确认日志中不再出现 `@modelcontextprotocol/server-fetch` 的 npm 404。
-

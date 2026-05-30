@@ -13,7 +13,7 @@ import { appendOutputStyleToPrompt, summarizeResult } from './agent-runtime-type
  * Runtime backed by the external Hermes CLI.
  *
  * Hermes does not currently expose a structured JS SDK here, so this adapter
- * treats verbose CLI output as the source of truth and streams it as text.
+ * classifies CLI text output before forwarding it to the UI.
  */
 export class HermesRuntime implements AgentRuntime {
   private child: ChildProcessWithoutNullStreams | null = null;
@@ -39,6 +39,7 @@ export class HermesRuntime implements AgentRuntime {
       let stderrBuffer = '';
       let sessionId = options?.resumeSessionId;
       let emittedSessionId = sessionId;
+      const lineParser = createHermesLineParser(output, options);
 
       const finish = (result: AgentRunResult): void => {
         if (settled) return;
@@ -74,24 +75,21 @@ export class HermesRuntime implements AgentRuntime {
         stdoutBuffer = consumeLines(stdoutBuffer + chunk, (line) => {
           if (!line) return;
           d(`stdout | ${line}`);
-          output.push(line);
           const parsedSessionId = extractSessionId(line);
           if (parsedSessionId && parsedSessionId !== emittedSessionId) {
             sessionId = parsedSessionId;
             emittedSessionId = parsedSessionId;
             options?.onEvent?.({ type: 'session', sessionId });
           }
-          options?.onEvent?.({ type: 'output', line });
+          lineParser.handleLine(line, 'stdout');
         });
       });
 
       this.child.stderr.on('data', (chunk: string) => {
         stderrBuffer = consumeLines(stderrBuffer + chunk, (line) => {
           if (!line) return;
-          const formatted = `[stderr] ${line}`;
           d(`stderr | ${line}`);
-          output.push(formatted);
-          options?.onEvent?.({ type: 'output', line: formatted });
+          lineParser.handleLine(line, 'stderr');
         });
       });
 
@@ -111,8 +109,8 @@ export class HermesRuntime implements AgentRuntime {
       });
 
       this.child.on('close', (code, signal) => {
-        stdoutBuffer = flushLine(stdoutBuffer, output, options);
-        stderrBuffer = flushLine(stderrBuffer, output, options, '[stderr] ');
+        stdoutBuffer = flushLine(stdoutBuffer, (line) => lineParser.handleLine(line, 'stdout'));
+        stderrBuffer = flushLine(stderrBuffer, (line) => lineParser.handleLine(line, 'stderr'));
         const elapsed = Date.now() - startTime;
         if (code === 0) {
           const text = lastMeaningfulLine(output);
@@ -266,7 +264,7 @@ function isManagedHermesConfig(configPath: string): boolean {
 function getHermesApiMode(provider: AgentRuntimeConfig['provider'], baseURL?: string): string | undefined {
   switch (provider) {
     case 'anthropic-messages':
-      return isAnthropicBaseURL(baseURL) ? 'anthropic_messages' : 'chat_completions';
+      return isAnthropicCompatibleBaseURL(baseURL) ? 'anthropic_messages' : 'chat_completions';
     case 'openai-chat-completions':
     case 'openai-chat-completions-to-anthropic-messages':
       return 'chat_completions';
@@ -278,10 +276,12 @@ function getHermesApiMode(provider: AgentRuntimeConfig['provider'], baseURL?: st
   }
 }
 
-function isAnthropicBaseURL(baseURL?: string): boolean {
+function isAnthropicCompatibleBaseURL(baseURL?: string): boolean {
   if (!baseURL) return false;
   try {
-    return new URL(baseURL).hostname.toLowerCase().endsWith('anthropic.com');
+    const url = new URL(baseURL);
+    return url.hostname.toLowerCase().endsWith('anthropic.com')
+      || url.pathname.toLowerCase().split('/').includes('anthropic');
   } catch {
     return false;
   }
@@ -304,13 +304,9 @@ function consumeLines(buffer: string, onLine: (line: string) => void): string {
   return remainder;
 }
 
-function flushLine(buffer: string, output: string[], options?: AgentRunOptions, prefix = ''): string {
+function flushLine(buffer: string, onLine: (line: string) => void): string {
   const line = stripAnsi(buffer).trimEnd();
-  if (line) {
-    const formatted = `${prefix}${line}`;
-    output.push(formatted);
-    options?.onEvent?.({ type: 'output', line: formatted });
-  }
+  if (line) onLine(line);
   return '';
 }
 
@@ -327,9 +323,239 @@ function normalizeSkillNames(skills?: string[]): string[] {
 }
 
 function lastMeaningfulLine(output: string[]): string {
-  return [...output].reverse().find((line) => line.trim() && !line.startsWith('[stderr]')) ?? '';
+  return [...output].reverse().find((line) => line.trim() && !isDiagnosticOutputLine(line)) ?? '';
 }
 
 function stripAnsi(value: string): string {
   return value.replace(/\u001b\[[0-9;]*m/g, '');
+}
+
+type HermesLineSource = 'stdout' | 'stderr';
+
+interface HermesLineParser {
+  handleLine(line: string, source: HermesLineSource): void;
+}
+
+function createHermesLineParser(output: string[], options?: AgentRunOptions): HermesLineParser {
+  let inEchoedQuery = false;
+  let inRuntimeConfig = false;
+  let inVerboseArgsBlock = false;
+  let inVerboseResultBlock = false;
+  let inVerboseThinkingBlock = false;
+  let toolUseIndex = 0;
+  let emittedUsage = false;
+
+  const emitOutput = (line: string): void => {
+    output.push(line);
+    options?.onEvent?.({ type: 'output', line });
+  };
+
+  const emitUsage = (usageLine: string): void => {
+    if (emittedUsage) return;
+    emittedUsage = true;
+    emitOutput(usageLine);
+  };
+
+  const emitToolUse = (tool: { name: string; input?: unknown; rawInput?: string }): void => {
+    toolUseIndex += 1;
+    const id = `hermes-tool-${toolUseIndex}`;
+    const line = tool.rawInput ? `Tool: ${tool.name} ${tool.rawInput}` : `Tool: ${tool.name}`;
+    options?.onEvent?.({
+      type: 'tool_use',
+      id,
+      name: tool.name,
+      input: tool.input,
+      line,
+    });
+  };
+
+  return {
+    handleLine(line, source) {
+      const normalized = line.trim();
+      if (!normalized) return;
+
+      const toolUse = parseHermesToolUse(normalized);
+      if (toolUse) {
+        emitToolUse(toolUse);
+        return;
+      }
+
+      const usageLine = parseHermesUsageLine(normalized);
+      if (usageLine) {
+        emitUsage(usageLine);
+        return;
+      }
+
+      const reasoning = parseHermesReasoningLine(normalized);
+      if (reasoning) {
+        options?.onEvent?.({ type: 'reasoning', text: reasoning, status: 'completed' });
+        return;
+      }
+
+      if (source === 'stderr') return;
+
+      if (inVerboseThinkingBlock) {
+        if (!isHermesThinkingContinuationLine(normalized)) inVerboseThinkingBlock = false;
+        else return;
+      }
+
+      if (inVerboseResultBlock) {
+        if (isHermesVerboseBlockBoundaryLine(normalized)) inVerboseResultBlock = false;
+        else {
+          if (normalized.endsWith('}')) inVerboseResultBlock = false;
+          return;
+        }
+      }
+
+      if (inVerboseArgsBlock) {
+        if (normalized === '}') inVerboseArgsBlock = false;
+        return;
+      }
+
+      if (/^\[thinking\]/i.test(normalized)) {
+        inVerboseThinkingBlock = true;
+        return;
+      }
+
+      if (/^Args:\s*\{$/i.test(normalized)) {
+        inVerboseArgsBlock = true;
+        return;
+      }
+
+      if (/^Result:\s*/i.test(normalized)) {
+        if (!normalized.endsWith('}')) inVerboseResultBlock = true;
+        return;
+      }
+
+      if (/^Query:\s*/i.test(normalized)) {
+        inEchoedQuery = true;
+        return;
+      }
+
+      if (inEchoedQuery && isHermesRuntimeBoundaryLine(normalized)) {
+        inEchoedQuery = false;
+      }
+
+      if (/^Agent runtime configuration:\s*$/i.test(normalized)) {
+        inEchoedQuery = false;
+        inRuntimeConfig = true;
+        return;
+      }
+
+      if (inEchoedQuery) return;
+
+      if (inRuntimeConfig) {
+        if (/^-\s+/.test(normalized)) return;
+        inRuntimeConfig = false;
+      }
+
+      if (isHermesNoiseLine(normalized)) return;
+      emitOutput(normalized);
+    },
+  };
+}
+
+function parseHermesToolUse(line: string): { name: string; input?: unknown; rawInput?: string } | null {
+  const match = line.match(/\bTool call:\s*([A-Za-z_][\w.-]*)\s+with args:\s*(.+)$/i);
+  if (!match) return null;
+
+  const name = match[1];
+  const rawInput = match[2].replace(/\.\.\.$/, '').trim();
+  return {
+    name,
+    rawInput,
+    input: parseJsonObject(rawInput) ?? rawInput,
+  };
+}
+
+function parseHermesReasoningLine(line: string): string | undefined {
+  return line.match(/\b(?:Reasoning|Thinking):\s*(.+)$/i)?.[1]?.trim();
+}
+
+function parseHermesUsageLine(line: string): string | undefined {
+  const apiCallMatch = line.match(/\bAPI call #\d+:.*?\bin=([\d,]+)\s+out=([\d,]+)\s+total=([\d,]+)/i);
+  if (apiCallMatch) {
+    const cache = line.match(/\bcache=([\d,]+)\/[\d,]+/i)?.[1];
+    return formatUsageLine({
+      input: apiCallMatch[1],
+      output: apiCallMatch[2],
+      total: apiCallMatch[3],
+      cached: cache,
+    });
+  }
+
+  const tokenUsageMatch = line.match(/\bToken usage:\s*prompt=([\d,]+),\s*completion=([\d,]+),\s*total=([\d,]+)/i);
+  if (tokenUsageMatch) {
+    return formatUsageLine({
+      input: tokenUsageMatch[1],
+      output: tokenUsageMatch[2],
+      total: tokenUsageMatch[3],
+    });
+  }
+
+  return undefined;
+}
+
+function formatUsageLine(usage: { input: string; output: string; total: string; cached?: string }): string {
+  const parts = [
+    `[Usage] total: ${usage.total}`,
+    `input: ${usage.input}`,
+    `output: ${usage.output}`,
+  ];
+  if (usage.cached) parts.push(`cached: ${usage.cached}`);
+  return parts.join(' ');
+}
+
+function parseJsonObject(value: string): unknown | undefined {
+  if (!value.startsWith('{') && !value.startsWith('[')) return undefined;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return undefined;
+  }
+}
+
+function isHermesNoiseLine(line: string): boolean {
+  return /^\u{1f916}\s*AI Agent initialized\b/iu.test(line)
+    || /^\u{1f517}\s*Using custom base URL:/iu.test(line)
+    || /^\u{1f511}\s*Using API key:/iu.test(line)
+    || /^\u{1f511}\s*Using token:/iu.test(line)
+    || isHermesRuntimeBoundaryLine(line)
+    || isHermesVerboseUiLine(line);
+}
+
+function isHermesRuntimeBoundaryLine(line: string): boolean {
+  return /^Initializing agent\b/i.test(line)
+    || /^\u{1f916}\s*AI Agent initialized\b/iu.test(line);
+}
+
+function isHermesVerboseUiLine(line: string): boolean {
+  return /^[\u{2705}\u{1f6e0}\u{fe0f}\u{26a0}\u{1f512}\u{1f4be}\u{1f4ca}\u{1f4ac}\u{1f389}\u{1f4de}]/u.test(line)
+    || /^[\u{2500}\u{256d}\u{2570}\u{2502}]/u.test(line)
+    || /^\[thinking\]/i.test(line)
+    || /^┊\s*/u.test(line)
+    || /^(Tool \d+:|Args:|Result:|Resume this session with:|Session:|Duration:|Messages:)/i.test(line)
+    || /^hermes\s+--resume\b/i.test(line)
+    || /^\{".*"\}?$/.test(line);
+}
+
+function isHermesVerboseBlockBoundaryLine(line: string): boolean {
+  return /^\[thinking\]/i.test(line)
+    || /^[\u{2705}\u{1f389}\u{1f4de}]/u.test(line)
+    || /^[\u{2500}\u{256d}\u{2570}\u{2502}]/u.test(line)
+    || /^(Tool \d+:|Args:|Result:|Resume this session with:|Session:|Duration:|Messages:)/i.test(line)
+    || /^hermes\s+--resume\b/i.test(line);
+}
+
+function isHermesThinkingContinuationLine(line: string): boolean {
+  return !isHermesVerboseBlockBoundaryLine(line)
+    && !/^\[Usage\]/i.test(line)
+    && !/^Tool:\s*/i.test(line);
+}
+
+function isDiagnosticOutputLine(line: string): boolean {
+  return line.startsWith('[stderr]')
+    || /^\[Usage\]/i.test(line)
+    || /^Tool:\s*/i.test(line)
+    || isHermesNoiseLine(line);
 }

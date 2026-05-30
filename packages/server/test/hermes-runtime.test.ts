@@ -135,6 +135,45 @@ test('HermesRuntime uses Anthropic Messages api_mode only for Anthropic base URL
   }
 });
 
+test('HermesRuntime uses Anthropic Messages api_mode for Anthropic-compatible URL paths', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'hermes-runtime-'));
+  const binDir = join(root, 'bin');
+  const configDir = join(root, 'agent-config');
+  const previousPath = currentPathEnv();
+
+  try {
+    mkdirSync(binDir, { recursive: true });
+    writeFakeHermes(binDir, 'console.log("ok");');
+    setPathEnv(prependPath(binDir, previousPath));
+
+    const runtime = new HermesRuntime({
+      provider: 'anthropic-messages',
+      model: 'MiniMax-M2.7',
+      apiKey: 'secret-key',
+      baseURL: 'https://api.minimaxi.com/anthropic',
+    });
+    const result = await runtime.execute('hello', root, { configDir });
+
+    assert.equal(result.success, true);
+    assert.equal(
+      readFileSync(join(configDir, '.hermes', 'config.yaml'), 'utf-8'),
+      [
+        '# Managed by Agent Spaces for this agent profile.',
+        'model:',
+        '  default: "MiniMax-M2.7"',
+        '  provider: custom',
+        '  base_url: "https://api.minimaxi.com/anthropic"',
+        '  api_key: ${AGENT_SPACES_HERMES_API_KEY}',
+        '  api_mode: anthropic_messages',
+        '',
+      ].join('\n'),
+    );
+  } finally {
+    restorePathEnv(previousPath);
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('HermesRuntime preserves existing Hermes config.yaml', async () => {
   const root = mkdtempSync(join(tmpdir(), 'hermes-runtime-'));
   const binDir = join(root, 'bin');
@@ -246,6 +285,107 @@ test('HermesRuntime passes Hermes-native providers through to the Hermes CLI', a
       '--provider',
       'openrouter',
     ]);
+  } finally {
+    restorePathEnv(previousPath);
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('HermesRuntime filters Hermes diagnostics and emits structured tool use and usage events', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'hermes-runtime-'));
+  const binDir = join(root, 'bin');
+  const previousPath = currentPathEnv();
+
+  try {
+    mkdirSync(binDir, { recursive: true });
+    writeFakeHermes(binDir, [
+      'console.log("🤖 AI Agent initialized with model: GLM-4.7");',
+      'console.log("🔗 Using custom base URL: https://open.bigmodel.cn/api/paas/v4");',
+      'console.log("🔑 Using API key: 6331b2f6...1uLs");',
+      'console.log("Query: Workspace prompt:");',
+      'console.log("结果使用中文回复");',
+      'console.log("Agent runtime configuration:");',
+      'console.log("- Current workspace id: c591d2d6-9930-49cc-8e13-ff3b0a13381f");',
+      'console.error("16:42:03 - agent.conversation_loop - INFO [20260530_164140_cf9625] - API call #2: model=GLM-4.7 provider=custom in=16935 out=122 total=17057 latency=5.4s cache=16512/16935 (98%)");',
+      'console.error("16:42:03 - root - DEBUG [20260530_164140_cf9625] - Token usage: prompt=16,935, completion=122, total=17,057");',
+      'console.error("16:42:03 - root - DEBUG [20260530_164140_cf9625] - Tool call: skill_view with args: {\\"name\\": \\"plans\\"}...");',
+      'console.log("这是最终回复");',
+    ].join('\n'));
+    setPathEnv(prependPath(binDir, previousPath));
+
+    const events: Array<{ type: string; [key: string]: unknown }> = [];
+    const runtime = new HermesRuntime();
+    const result = await runtime.execute('hello', root, {
+      onEvent: (event) => events.push(event),
+    });
+
+    const outputEvents = events.filter((event) => event.type === 'output');
+    const toolUseEvents = events.filter((event) => event.type === 'tool_use');
+
+    assert.equal(result.success, true);
+    assert.deepEqual(result.output, [
+      '[Usage] total: 17057 input: 16935 output: 122 cached: 16512',
+      '这是最终回复',
+    ]);
+    assert.deepEqual(
+      outputEvents.map((event) => event.line),
+      [
+        '[Usage] total: 17057 input: 16935 output: 122 cached: 16512',
+        '这是最终回复',
+      ],
+    );
+    assert.equal(toolUseEvents.length, 1);
+    assert.equal(toolUseEvents[0].name, 'skill_view');
+    assert.deepEqual(toolUseEvents[0].input, { name: 'plans' });
+    assert.equal(toolUseEvents[0].line, 'Tool: skill_view {"name": "plans"}');
+  } finally {
+    restorePathEnv(previousPath);
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('HermesRuntime keeps final text after real verbose startup boundaries', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'hermes-runtime-'));
+  const binDir = join(root, 'bin');
+  const previousPath = currentPathEnv();
+
+  try {
+    mkdirSync(binDir, { recursive: true });
+    writeFakeHermes(binDir, [
+      'console.log("Query: 请先使用 plans skill，然后只用一句中文回复");',
+      'console.log("Initializing agent...");',
+      'console.log("🤖 AI Agent initialized with model: MiniMax-M2.7 (Anthropic native)");',
+      'console.log("🔑 Using token: eyJhbGci...bjYw");',
+      'console.log("✅ Enabled toolset \'skills\': skill_manage, skill_view, skills_list");',
+      'console.log("  [thinking] The user wants me to first use the plans skill.");',
+      'console.error("17:15:35 - agent.conversation_loop - INFO [20260530_171525_8ee1ff] - API call #1: model=MiniMax-M2.7 provider=custom in=16249 out=47 total=16296 latency=3.1s cache=128/16249 (1%)");',
+      'console.error("17:15:35 - root - DEBUG [20260530_171525_8ee1ff] - Tool call: skill_view with args: {\\"name\\": \\"plans\\"}...");',
+      'console.log("  📞 Tool 1: skill_view([\'name\'])");',
+      'console.log("     Args: {");',
+      'console.log("       \\"name\\": \\"plans\\"");',
+      'console.log("     }");',
+      'console.log("🎉 Conversation completed after 2 OpenAI-compatible API call(s)");',
+      'console.log("    Hermes 真实调用测试完成。");',
+      'console.log("Resume this session with:");',
+      'console.log("  hermes --resume 20260530_171525_8ee1ff");',
+      'console.log("Session:        20260530_171525_8ee1ff");',
+    ].join('\n'));
+    setPathEnv(prependPath(binDir, previousPath));
+
+    const events: Array<{ type: string; [key: string]: unknown }> = [];
+    const runtime = new HermesRuntime();
+    const result = await runtime.execute('hello', root, {
+      onEvent: (event) => events.push(event),
+    });
+
+    assert.equal(result.success, true);
+    assert.deepEqual(result.output, [
+      '[Usage] total: 16296 input: 16249 output: 47 cached: 128',
+      'Hermes 真实调用测试完成。',
+    ]);
+    assert.equal(result.summary, 'Hermes 真实调用测试完成。');
+    assert.equal(events.filter((event) => event.type === 'tool_use').length, 1);
+    assert.equal(events.some((event) => event.type === 'output' && event.line === 'Hermes 真实调用测试完成。'), true);
   } finally {
     restorePathEnv(previousPath);
     rmSync(root, { recursive: true, force: true });

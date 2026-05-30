@@ -104,14 +104,17 @@ github-pr-workflow.md -> -s github-pr-workflow
 
 ## 输出和事件
 
-Hermes runtime 当前以文本流方式消费 stdout/stderr：
+Hermes runtime 当前以文本流方式消费 stdout/stderr，并在服务端做轻量分类：
 
-- stdout 行会作为普通 `output` runtime event 推送到 UI。
-- stderr 行会加上 `[stderr] ` 前缀后推送。
+- 默认使用 `hermes chat --verbose`，从全量文本输出中匹配提取工具调用、usage 和 reasoning，同时过滤 Hermes 初始化、profile、API key、prompt echo 等噪声，避免它们进入最终 AI message。
+- stdout 中的普通回复文本会作为 `output` runtime event 推送到 UI。
+- stdout/stderr 中匹配 `Tool call: <name> with args: <json>` 的日志会映射为结构化 `tool_use` event，用于前端 chain 和工具调用数量展示。
+- stderr 中匹配 `API call ... in=<n> out=<n> total=<n> cache=<n>/<n>` 或 `Token usage: prompt=<n>, completion=<n>, total=<n>` 的日志会映射为 `[Usage] ...` 输出，用于 token context 展示；同一轮只保留第一条完整 usage。
+- 其它 stderr 诊断日志默认不推送到 UI，避免被提取为 assistant 文本。
 - 输出中的 ANSI 颜色码会被移除。
 - 如果输出行中出现 `Session: <id>` 或 `session id: <id>` 形式，会尝试提取 `sessionId`。
 
-当前不会生成结构化的 `tool_use` / `tool_result` 事件。Hermes 的 `--verbose` 输出会展示工具过程，但 Agent Spaces 只把它作为文本显示。后续如果 Hermes 提供稳定 JSONL 或事件流，可以再映射到通用 `AgentRuntimeEvent`。
+当前还不会生成结构化的 `tool_result` 事件，因为 Hermes 文本日志没有稳定的工具结果边界。后续如果 Hermes 提供稳定 JSONL 或事件流，可以再映射到完整的 `AgentRuntimeEvent`。
 
 ## Stop 行为
 
@@ -135,7 +138,7 @@ Agent Spaces 的内置 function tools 不能直接传给 Hermes CLI。
 
 ### 精确 chain trace
 
-当前依赖 `--verbose` 文本输出，只能展示 Hermes CLI 打印出的过程。UI 不能像 Codex runtime 那样拿到结构化 command、file change、MCP call、usage 等事件。
+当前依赖 Hermes CLI 文本日志的模式匹配，只能提取已知格式的 tool call 和 usage。UI 不能像 Codex runtime 那样拿到结构化 command、file change、MCP call 等完整事件。
 
 ### Session resume
 
@@ -227,12 +230,13 @@ pnpm --filter @agent-spaces/web build
 3. 配置可用的 `modelId`、`modelProvider` 和 API key。
 4. 运行一次普通聊天任务。
 5. 检查服务端日志是否出现 `[hermes] starting` 和 `[hermes] done`。
-6. 检查 UI 是否能看到 Hermes 的 verbose 文本输出。
+6. 检查 UI 最终 AI message 不包含 Hermes 初始化、API key、prompt echo、runtime configuration、stderr debug 日志。
+7. 如果触发 Hermes 工具调用，检查 UI chain 中是否出现工具项，并且工具调用数量随 `Tool call: ...` 日志增加。
 
 ## 后续改进方向
 
 1. 增加 Hermes 原生 `config.yaml` 生成或合并逻辑，覆盖 provider、MCP、tools、approvals 等配置。
 2. 接入 Hermes session resume，明确 `runtimeSessionId` 的来源和恢复语义。
-3. 如果 Hermes 提供结构化输出，映射为 `tool_use`、`tool_result`、`reasoning`、`usage` 等事件。
+3. 如果 Hermes 提供结构化输出，替换当前文本模式匹配，映射为 `tool_use`、`tool_result`、`reasoning`、`usage` 等事件。
 4. 通过 MCP 桥接 Agent Spaces 内置 function tools。
 5. 增加 Hermes runtime 的集成测试，至少覆盖 CLI 缺失、参数构造、skills 同步和 stop 行为。
