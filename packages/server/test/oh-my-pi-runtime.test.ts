@@ -295,9 +295,13 @@ test('OhMyPiRuntime.stop terminates the active OMP process', async () => {
 test('OhMyPiRuntime returns a clear error when the OMP CLI is missing', async () => {
   const root = mkdtempSync(join(tmpdir(), 'omp-runtime-'));
   const previousPath = currentPathEnv();
+  const previousLocalAppData = process.env.LOCALAPPDATA;
+  const previousUserProfile = process.env.USERPROFILE;
 
   try {
     setPathEnv(root);
+    process.env.LOCALAPPDATA = join(root, 'missing-local-app-data');
+    process.env.USERPROFILE = join(root, 'missing-user-profile');
 
     const runtime = new OhMyPiRuntime();
     const result = await runtime.execute('hello', root);
@@ -309,6 +313,41 @@ test('OhMyPiRuntime returns a clear error when the OMP CLI is missing', async ()
     );
   } finally {
     restorePathEnv(previousPath);
+    if (previousLocalAppData === undefined) delete process.env.LOCALAPPDATA;
+    else process.env.LOCALAPPDATA = previousLocalAppData;
+    if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = previousUserProfile;
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('OhMyPiRuntime falls back to the Windows local OMP install when PATH is stale', async (t) => {
+  if (process.platform !== 'win32') {
+    t.skip('Windows-specific executable lookup');
+    return;
+  }
+
+  const root = mkdtempSync(join(tmpdir(), 'omp-runtime-'));
+  const localAppData = join(root, 'local-app-data');
+  const binDir = join(localAppData, 'omp');
+  const previousPath = currentPathEnv();
+  const previousLocalAppData = process.env.LOCALAPPDATA;
+
+  try {
+    mkdirSync(binDir, { recursive: true });
+    writeFakeOmp(binDir, 'console.log("ok from local app data");');
+    setPathEnv(root);
+    process.env.LOCALAPPDATA = localAppData;
+
+    const runtime = new OhMyPiRuntime();
+    const result = await runtime.execute('hello', root);
+
+    assert.equal(result.success, true);
+    assert.deepEqual(result.output, ['ok from local app data']);
+  } finally {
+    restorePathEnv(previousPath);
+    if (previousLocalAppData === undefined) delete process.env.LOCALAPPDATA;
+    else process.env.LOCALAPPDATA = previousLocalAppData;
     rmSync(root, { recursive: true, force: true });
   }
 });
@@ -387,7 +426,7 @@ function writeWindowsExeShim(binDir: string, scriptPath: string): void {
     '',
     'int main(int argc, char **argv) {',
     '  char command[32768] = "";',
-    '  append_quoted(command, sizeof(command), "node");',
+    `  append_quoted(command, sizeof(command), ${JSON.stringify(process.execPath.replace(/\\/g, '\\\\'))});`,
     '  append(command, sizeof(command), " ");',
     `  append_quoted(command, sizeof(command), ${JSON.stringify(scriptPath.replace(/\\/g, '\\\\'))});`,
     '  for (int i = 1; i < argc; i++) {',

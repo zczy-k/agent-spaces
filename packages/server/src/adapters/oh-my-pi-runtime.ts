@@ -1,6 +1,6 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { basename, extname, join } from 'node:path';
+import { basename, delimiter, extname, join } from 'node:path';
 import type {
   AgentRunOptions,
   AgentRunResult,
@@ -55,7 +55,7 @@ export class OhMyPiRuntime implements AgentRuntime {
       };
 
       try {
-        this.child = spawn('omp', args, {
+        this.child = spawn(resolveOmpCommand(), args, {
           cwd,
           env: buildEnv(this.config, options, ompHome),
           windowsHide: true,
@@ -225,6 +225,38 @@ function buildEnv(config: AgentRuntimeConfig, options?: AgentRunOptions, ompHome
     OMP_AGENT_DIR: agentDir || process.env.OMP_AGENT_DIR,
     NO_COLOR: process.env.NO_COLOR || '1',
   });
+}
+
+function resolveOmpCommand(): string {
+  const configured = process.env.OMP_CLI_PATH?.trim();
+  if (configured) return configured;
+  if (process.platform !== 'win32') return 'omp';
+
+  const pathCommand = resolveWindowsPathCommand('omp.exe');
+  if (pathCommand) return pathCommand;
+
+  const candidates = [
+    process.env.LOCALAPPDATA ? join(process.env.LOCALAPPDATA, 'omp', 'omp.exe') : undefined,
+    process.env.USERPROFILE ? join(process.env.USERPROFILE, 'AppData', 'Local', 'omp', 'omp.exe') : undefined,
+  ].filter((candidate): candidate is string => Boolean(candidate));
+
+  return candidates.find((candidate) => existsSync(candidate)) ?? 'omp';
+}
+
+function resolveWindowsPathCommand(command: string): string | undefined {
+  const pathValue = getPathEnvValue();
+  if (!pathValue) return undefined;
+
+  for (const dir of pathValue.split(delimiter)) {
+    if (!dir.trim()) continue;
+    const candidate = join(dir.trim(), command);
+    if (existsSync(candidate)) return candidate;
+  }
+  return undefined;
+}
+
+function getPathEnvValue(): string | undefined {
+  return Object.entries(process.env).find(([key]) => key.toLowerCase() === 'path')?.[1];
 }
 
 function prepareOmpConfigHome(
