@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Layout, Model, TabNode, IJsonModel, Actions, ITabRenderValues, Action } from "flexlayout-react";
 import { RIGHT_TO_LEFT_TAB_MAP, renderTabIcon } from "./tab-config";
 
@@ -197,6 +197,17 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   const agents = useAgentStore((s) => s.agents);
   const createChannel = useChannelStore((s) => s.createChannel);
   const createIssue = useIssueStore((s) => s.createIssue);
+  // 用户首次交互后才允许 tab 联动，避免恢复期间覆盖选中状态
+  const userInteractedRef = useRef(false);
+  useEffect(() => {
+    const mark = () => { userInteractedRef.current = true; };
+    window.addEventListener("pointerdown", mark, { once: true });
+    window.addEventListener("keydown", mark, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", mark);
+      window.removeEventListener("keydown", mark);
+    };
+  }, []);
   const [model, setModel] = useState(() => {
     let m: Model;
     try {
@@ -277,7 +288,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
 
   // 点击 issue 时自动切换到 Issue Detail tab
   useEffect(() => {
-    if (!activeIssueId) return;
+    if (!activeIssueId || !userInteractedRef.current) return;
     if (isMobile) {
       setActivePanel("issue-detail");
     } else {
@@ -290,7 +301,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
 
   // 选中 channel 时自动切换到 Chat tab
   useEffect(() => {
-    if (!activeChannelId) return;
+    if (!activeChannelId || !userInteractedRef.current) return;
     if (isMobile) {
       setActivePanel("chat");
     } else {
@@ -303,6 +314,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
 
   // 打开文件时自动切换到 Code Editor tab，关闭最后一个文件时切换回 Workfolder tab
   useEffect(() => {
+    if (!userInteractedRef.current) return;
     if (activeFilePath) {
       if (isMobile) {
         setActivePanel("code-editor");
@@ -326,7 +338,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
 
   // 在文件树中显示：切换到 workfolder tab
   useEffect(() => {
-    if (!revealPath) return;
+    if (!revealPath || !userInteractedRef.current) return;
     if (isMobile) {
       setActivePanel("workfolder");
     } else {
@@ -340,7 +352,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   // 选中 database node 时自动切换到 Database tab
   const databaseActiveId = useDatabaseStore((s) => s.activeId);
   useEffect(() => {
-    if (!databaseActiveId) return;
+    if (!databaseActiveId || !userInteractedRef.current) return;
     if (isMobile) {
       setActivePanel("database");
     } else {
@@ -533,14 +545,13 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
 
   const onModelChange = useCallback(
     (_model: Model, action: Action) => {
-      // 持久化布局（忽略高频的 SELECT_TAB，避免无意义写入）
-      if (action.type !== Actions.SELECT_TAB) {
-        try {
-          localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(_model.toJson()));
-        } catch { /* quota exceeded — ignore */ }
-      }
+      // 持久化布局（含 SELECT_TAB，保留 tab 选中状态）
+      try {
+        localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(_model.toJson()));
+      } catch { /* quota exceeded — ignore */ }
 
       if (action.type !== Actions.SELECT_TAB) return;
+      if (!userInteractedRef.current) return;
       const node = _model.getNodeById(action.data.tabNode);
       if (!node || !(node instanceof TabNode)) return;
       const comp = node.getComponent();

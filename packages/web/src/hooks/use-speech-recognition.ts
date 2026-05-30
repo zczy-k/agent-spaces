@@ -3,12 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { getToken } from "@/lib/auth";
-
-interface SpeechRecognitionConfig {
-  id: string;
-  provider: string;
-  credentials: Record<string, string>;
-}
+import type { SpeechRecognitionConfig } from "@agent-spaces/shared";
 
 export function useSpeechRecognition() {
   const [isRecording, setIsRecording] = useState(false);
@@ -30,8 +25,9 @@ export function useSpeechRecognition() {
     console.log("[speech] config response status:", res.status);
     if (!res.ok) return null;
     const configs: SpeechRecognitionConfig[] = await res.json();
-    console.log("[speech] configs found:", configs.length, configs.length > 0 ? configs[0] : "");
-    return configs.length > 0 ? configs[0] : null;
+    const enabled = configs.filter(c => c.enabled !== false);
+    console.log("[speech] configs found:", configs.length, "enabled:", enabled.length);
+    return enabled.length > 0 ? enabled[0] : null;
   }, []);
 
   const stop = useCallback(() => {
@@ -62,6 +58,7 @@ export function useSpeechRecognition() {
       const cfg = await loadConfig();
       if (!cfg) {
         console.warn("[speech] no config found, aborting");
+        toast.error("未配置语音识别服务，请在项目设置中配置");
         return false;
       }
       setConfig(cfg);
