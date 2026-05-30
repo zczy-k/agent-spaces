@@ -29,6 +29,10 @@ export class OhMyPiRuntime implements AgentRuntime {
     const d = (message: string) => console.log(`[oh-my-pi] ${message}`);
     const finalPrompt = appendOutputStyleToPrompt(prompt, options?.outputStyle);
     let functionToolBridge: CodexFunctionToolBridge | undefined;
+    let usage: AgentRunResult['usage'];
+    let costUsd: number | undefined;
+    const emittedToolUseKeys = new Set<string>();
+    const emittedToolResultKeys = new Set<string>();
 
     d(`starting | cwd=${cwd} provider=${this.config.provider ?? 'default'} model=${this.config.model ?? 'default'} baseURL=${this.config.baseURL ?? 'default'} maxTurns=${options?.maxTurns ?? '∞'} allowedTools=${options?.tools?.join(',') ?? 'all'} mcpServers=${Object.keys(options?.mcpServers ?? {}).join(',') || '-'} functionTools=${options?.functionTools?.map((tool) => tool.name).join(',') || '-'} skills=${options?.skills?.join(',') || '-'} sandboxDirs=${options?.sandboxDirs?.join(',') ?? '-'}`);
     d(`prompt: ${prompt.slice(0, 300)}${prompt.length > 300 ? '...' : ''}`);
@@ -80,7 +84,27 @@ export class OhMyPiRuntime implements AgentRuntime {
       this.child.stdout.on('data', (chunk: string) => {
         stdoutBuffer = consumeLines(stdoutBuffer + chunk, (line) => {
           if (!line) return;
+          const parsed = parseJsonLine(line);
+          if (parsed) {
+            const result = handleJsonEvent(parsed, {
+              output,
+              options,
+              log: d,
+              emittedToolUseKeys,
+              emittedToolResultKeys,
+            });
+            if (result.sessionId && result.sessionId !== emittedSessionId) {
+              sessionId = result.sessionId;
+              emittedSessionId = result.sessionId;
+              options?.onEvent?.({ type: 'session', sessionId });
+            }
+            if (result.usage) usage = result.usage;
+            if (typeof result.costUsd === 'number') costUsd = result.costUsd;
+            return;
+          }
+
           output.push(line);
+          d(`stdout text | ${truncateForLog(line)}`);
           const parsedSessionId = extractSessionId(line);
           if (parsedSessionId && parsedSessionId !== emittedSessionId) {
             sessionId = parsedSessionId;
@@ -131,6 +155,8 @@ export class OhMyPiRuntime implements AgentRuntime {
             artifacts: [],
             output,
             sessionId,
+            usage,
+            costUsd,
           });
           return;
         }
@@ -146,6 +172,8 @@ export class OhMyPiRuntime implements AgentRuntime {
           error,
           output,
           sessionId,
+          usage,
+          costUsd,
         });
       });
     });
@@ -184,7 +212,7 @@ function buildOmpArgs(
   options?: AgentRunOptions,
   ompHome?: string,
 ): string[] {
-  const args = ['--mode', 'text'];
+  const args = ['--mode', 'json'];
 
   if (options?.resumeSessionId) args.push('--resume', options.resumeSessionId);
   if (config.model) args.push('--model', config.model);
@@ -479,6 +507,283 @@ function consumeLines(buffer: string, onLine: (line: string) => void): string {
   const remainder = lines.pop() ?? '';
   for (const line of lines) onLine(stripAnsi(line).trimEnd());
   return remainder;
+}
+
+function parseJsonLine(line: string): unknown | undefined {
+  const trimmed = stripAnsi(line).trim();
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) return undefined;
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return undefined;
+  }
+}
+
+function handleJsonEvent(
+  event: unknown,
+  ctx: {
+    output: string[];
+    options?: AgentRunOptions;
+    log: (message: string) => void;
+    emittedToolUseKeys: Set<string>;
+    emittedToolResultKeys: Set<string>;
+  },
+): { sessionId?: string; usage?: AgentRunResult['usage']; costUsd?: number } {
+  const record = isRecord(event) ? event : {};
+  const eventType = stringValue(record.type) ?? stringValue(record.event) ?? stringValue(record.kind) ?? 'unknown';
+  const keys = Object.keys(record).slice(0, 12).join(',') || '-';
+  const contentBlocks = collectContentBlocks(event);
+  ctx.log(`json event | type=${eventType} keys=${keys} contentBlocks=${summarizeBlockTypes(contentBlocks)}`);
+
+  const sessionId = readSessionId(event);
+  const usage = readUsage(event);
+  const costUsd = readCostUsd(event);
+
+  for (const text of collectReasoningTexts(event)) {
+    ctx.log(`reasoning | ${truncateForLog(text)}`);
+    ctx.options?.onEvent?.({ type: 'reasoning', text, status: 'completed' });
+  }
+
+  for (const toolUse of collectToolUses(event)) {
+    const key = `${toolUse.id}:${toolUse.name}`;
+    if (ctx.emittedToolUseKeys.has(key)) continue;
+    ctx.emittedToolUseKeys.add(key);
+    const line = formatToolUseLine(toolUse);
+    ctx.log(`tool use | id=${toolUse.id} name=${toolUse.name} input=${summarizeUnknown(toolUse.input)}`);
+    ctx.options?.onEvent?.({
+      type: 'tool_use',
+      id: toolUse.id,
+      name: toolUse.name,
+      input: toolUse.input,
+      line,
+    });
+  }
+
+  for (const toolResult of collectToolResults(event)) {
+    const key = `${toolResult.toolUseId ?? '-'}:${summarizeUnknown(toolResult.result)}`;
+    if (ctx.emittedToolResultKeys.has(key)) continue;
+    ctx.emittedToolResultKeys.add(key);
+    ctx.log(`tool result | id=${toolResult.toolUseId ?? '-'} result=${summarizeUnknown(toolResult.result)}`);
+    ctx.options?.onEvent?.({
+      type: 'tool_result',
+      toolUseId: toolResult.toolUseId,
+      result: toolResult.result,
+    });
+  }
+
+  for (const text of collectOutputTexts(event)) {
+    ctx.output.push(text);
+    ctx.log(`output | ${truncateForLog(text)}`);
+    ctx.options?.onEvent?.({ type: 'output', line: text });
+  }
+
+  return { sessionId, usage, costUsd };
+}
+
+function collectOutputTexts(value: unknown): string[] {
+  const texts: string[] = [];
+  for (const block of collectContentBlocks(value)) {
+    if (!isRecord(block)) continue;
+    const type = stringValue(block.type);
+    if (type && type !== 'text' && type !== 'output_text') continue;
+    const text = stringValue(block.text) ?? stringValue(block.content) ?? stringValue(block.output);
+    if (text) texts.push(text);
+  }
+
+  if (texts.length) return texts;
+  if (!isRecord(value)) return [];
+  const type = stringValue(value.type) ?? stringValue(value.event);
+  if (type && /tool|usage|session|reasoning/i.test(type)) return [];
+  const text = stringValue(value.text) ?? stringValue(value.output) ?? stringValue(value.content);
+  return text ? [text] : [];
+}
+
+function collectReasoningTexts(value: unknown): string[] {
+  const texts: string[] = [];
+  for (const block of collectContentBlocks(value)) {
+    if (!isRecord(block)) continue;
+    const type = stringValue(block.type);
+    if (type !== 'reasoning' && type !== 'thinking') continue;
+    const text = stringValue(block.text) ?? stringValue(block.content) ?? stringValue(block.thinking);
+    if (text) texts.push(text);
+  }
+
+  if (!isRecord(value)) return texts;
+  const type = stringValue(value.type) ?? stringValue(value.event);
+  if (type === 'reasoning' || type === 'thinking') {
+    const text = stringValue(value.text) ?? stringValue(value.content) ?? stringValue(value.thinking);
+    if (text) texts.push(text);
+  }
+  return texts;
+}
+
+function collectToolUses(value: unknown): Array<{ id: string; name: string; input?: unknown }> {
+  const uses: Array<{ id: string; name: string; input?: unknown }> = [];
+  for (const block of collectContentBlocks(value)) {
+    const parsed = parseToolUse(block);
+    if (parsed) uses.push(parsed);
+  }
+
+  const direct = parseToolUse(value);
+  if (direct) uses.push(direct);
+  return uniqueBy(uses, (item) => `${item.id}:${item.name}`);
+}
+
+function collectToolResults(value: unknown): Array<{ toolUseId?: string; result: unknown }> {
+  const results: Array<{ toolUseId?: string; result: unknown }> = [];
+  for (const block of collectContentBlocks(value)) {
+    const parsed = parseToolResult(block);
+    if (parsed) results.push(parsed);
+  }
+
+  const direct = parseToolResult(value);
+  if (direct) results.push(direct);
+  return uniqueBy(results, (item) => `${item.toolUseId ?? '-'}:${summarizeUnknown(item.result)}`);
+}
+
+function parseToolUse(value: unknown): { id: string; name: string; input?: unknown } | undefined {
+  if (!isRecord(value)) return undefined;
+  const type = stringValue(value.type) ?? stringValue(value.event) ?? stringValue(value.kind);
+  if (!type || !/^(tool_use|tool_call|toolCall|tool_start|tool_execution_start|tool)$/i.test(type)) return undefined;
+
+  const id = stringValue(value.id)
+    ?? stringValue(value.tool_use_id)
+    ?? stringValue(value.toolCallId)
+    ?? stringValue(value.call_id)
+    ?? `omp-tool-${Date.now()}`;
+  const name = stringValue(value.name)
+    ?? stringValue(value.tool_name)
+    ?? stringValue(value.toolName)
+    ?? stringValue(value.function_name)
+    ?? 'unknown_tool';
+  const input = value.input ?? value.arguments ?? value.args ?? value.parameters ?? value.intent;
+  return { id, name, input };
+}
+
+function parseToolResult(value: unknown): { toolUseId?: string; result: unknown } | undefined {
+  if (!isRecord(value)) return undefined;
+  const type = stringValue(value.type) ?? stringValue(value.event) ?? stringValue(value.kind);
+  if (!type || !/^(tool_result|tool_output|tool_end|tool_error|tool_execution_end)$/i.test(type)) return undefined;
+
+  const toolUseId = stringValue(value.tool_use_id)
+    ?? stringValue(value.toolUseId)
+    ?? stringValue(value.toolCallId)
+    ?? stringValue(value.parent_tool_use_id)
+    ?? stringValue(value.id)
+    ?? stringValue(value.call_id);
+  const result = value.result ?? value.output ?? value.content ?? value.error ?? value;
+  return { toolUseId, result };
+}
+
+function collectContentBlocks(value: unknown): unknown[] {
+  const blocks: unknown[] = [];
+  const visit = (candidate: unknown): void => {
+    if (Array.isArray(candidate)) {
+      blocks.push(...candidate);
+      return;
+    }
+    if (!isRecord(candidate)) return;
+    visit(candidate.content);
+    visit(candidate.message);
+    visit(candidate.delta);
+  };
+  visit(value);
+  return blocks.filter((block) => block !== value);
+}
+
+function readSessionId(value: unknown): string | undefined {
+  if (!isRecord(value)) return undefined;
+  return stringValue(value.sessionId)
+    ?? stringValue(value.session_id)
+    ?? stringValue(value.conversation_id)
+    ?? stringValue(value.thread_id);
+}
+
+function readUsage(value: unknown): AgentRunResult['usage'] | undefined {
+  if (!isRecord(value)) return undefined;
+  const usage = isRecord(value.usage) ? value.usage : value;
+  const inputTokens = numberValue(usage.inputTokens) ?? numberValue(usage.input_tokens) ?? numberValue(usage.prompt_tokens);
+  const outputTokens = numberValue(usage.outputTokens) ?? numberValue(usage.output_tokens) ?? numberValue(usage.completion_tokens);
+  const totalTokens = numberValue(usage.totalTokens) ?? numberValue(usage.total_tokens);
+  const cachedInputTokens = numberValue(usage.cachedInputTokens)
+    ?? numberValue(usage.cache_read_input_tokens)
+    ?? numberValue(usage.cached_tokens);
+  const reasoningTokens = numberValue(usage.reasoningTokens)
+    ?? numberValue(usage.reasoning_tokens)
+    ?? numberValue(usage.reasoning_output_tokens);
+
+  if (
+    inputTokens === undefined
+    && outputTokens === undefined
+    && totalTokens === undefined
+    && cachedInputTokens === undefined
+    && reasoningTokens === undefined
+  ) return undefined;
+
+  return {
+    inputTokens,
+    outputTokens,
+    totalTokens,
+    cachedInputTokens,
+    reasoningTokens,
+  };
+}
+
+function readCostUsd(value: unknown): number | undefined {
+  if (!isRecord(value)) return undefined;
+  return numberValue(value.costUsd) ?? numberValue(value.cost_usd) ?? numberValue(value.total_cost_usd);
+}
+
+function formatToolUseLine(toolUse: { name: string; input?: unknown }): string {
+  const input = toolUse.input === undefined ? '' : ` ${truncateForLog(stableStringify(toolUse.input), 800)}`;
+  return `[tool] ${toolUse.name}${input}`;
+}
+
+function summarizeBlockTypes(blocks: unknown[]): string {
+  if (!blocks.length) return '-';
+  return blocks
+    .map((block) => isRecord(block) ? stringValue(block.type) ?? typeof block : typeof block)
+    .slice(0, 12)
+    .join(',');
+}
+
+function summarizeUnknown(value: unknown): string {
+  return truncateForLog(stableStringify(value), 240);
+}
+
+function stableStringify(value: unknown): string {
+  if (typeof value === 'string') return value;
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function uniqueBy<T>(items: T[], key: (item: T) => string): T[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const value = key(item);
+    if (seen.has(value)) return false;
+    seen.add(value);
+    return true;
+  });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function stringValue(value: unknown): string | undefined {
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+function numberValue(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function truncateForLog(value: string, maxLength = 300): string {
+  return value.length > maxLength ? `${value.slice(0, maxLength)}...` : value;
 }
 
 function flushLine(buffer: string, output: string[], options?: AgentRunOptions, prefix = ''): string {

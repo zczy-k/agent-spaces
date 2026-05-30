@@ -142,7 +142,7 @@ test('OhMyPiRuntime maps runtime config and options to OMP CLI args, env, and co
     assert.equal(result.success, true);
     assert.equal(capture.cwd, root);
     assert.deepEqual(capture.argv, [
-      '--mode', 'text',
+      '--mode', 'json',
       '--resume', 'session-123',
       '--model', 'gpt-test',
       '--provider', 'openai-chat-completions',
@@ -220,6 +220,98 @@ test('OhMyPiRuntime maps stdout, stderr, buffered lines, session events, and fai
       new Set(events.filter((event) => event.type === 'output').map((event) => event.line)),
       new Set(result.output),
     );
+  } finally {
+    restorePathEnv(previousPath);
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('OhMyPiRuntime maps JSON mode events to structured runtime events', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'omp-runtime-'));
+  const binDir = join(root, 'bin');
+  const previousPath = currentPathEnv();
+  const events: Array<{ type: string; line?: string; sessionId?: string; id?: string; name?: string; input?: unknown; toolUseId?: string; result?: unknown }> = [];
+
+  try {
+    mkdirSync(binDir, { recursive: true });
+    writeFakeOmp(binDir, [
+      'const events = [',
+      '  { type: "session", session_id: "json-session-1" },',
+      '  { type: "assistant", content: [{ type: "reasoning", text: "thinking" }, { type: "text", text: "hello json" }] },',
+      '  { type: "assistant", content: [{ type: "tool_use", id: "tool-1", name: "Read", input: { file: "README.md" } }] },',
+      '  { type: "tool_result", tool_use_id: "tool-1", result: { ok: true } },',
+      '  { type: "usage", usage: { input_tokens: 3, output_tokens: 5, reasoning_tokens: 2 }, total_cost_usd: 0.01 },',
+      '];',
+      'for (const event of events) console.log(JSON.stringify(event));',
+    ].join('\n'));
+    setPathEnv(prependPath(binDir, previousPath));
+
+    const runtime = new OhMyPiRuntime();
+    const result = await runtime.execute('hello', root, {
+      onEvent: (event) => events.push(event),
+    });
+
+    assert.equal(result.success, true);
+    assert.equal(result.sessionId, 'json-session-1');
+    assert.deepEqual(result.output, ['hello json']);
+    assert.deepEqual(result.usage, {
+      inputTokens: 3,
+      outputTokens: 5,
+      totalTokens: undefined,
+      cachedInputTokens: undefined,
+      reasoningTokens: 2,
+    });
+    assert.equal(result.costUsd, 0.01);
+    assert.deepEqual(events, [
+      { type: 'session', sessionId: 'json-session-1' },
+      { type: 'reasoning', text: 'thinking', status: 'completed' },
+      { type: 'output', line: 'hello json' },
+      { type: 'tool_use', id: 'tool-1', name: 'Read', input: { file: 'README.md' }, line: '[tool] Read {"file":"README.md"}' },
+      { type: 'tool_result', toolUseId: 'tool-1', result: { ok: true } },
+    ]);
+  } finally {
+    restorePathEnv(previousPath);
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('OhMyPiRuntime maps OMP tool execution events to structured runtime events', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'omp-runtime-'));
+  const binDir = join(root, 'bin');
+  const previousPath = currentPathEnv();
+  const events: Array<{ type: string; line?: string; id?: string; name?: string; input?: unknown; toolUseId?: string; result?: unknown }> = [];
+
+  try {
+    mkdirSync(binDir, { recursive: true });
+    writeFakeOmp(binDir, [
+      'const events = [',
+      '  { type: "message_update", message: { content: [{ type: "text", text: "thinking" }, { type: "toolCall", id: "call-1", name: "fetch", args: { url: "https://example.test/data.json" } }] } },',
+      '  { type: "message_update", message: { content: [{ type: "text", text: "thinking" }, { type: "toolCall", id: "call-1", name: "fetch", args: { url: "https://example.test/data.json" } }] } },',
+      '  { type: "tool_execution_start", toolCallId: "call-1", toolName: "fetch", args: { url: "https://example.test/data.json" }, intent: "read url" },',
+      '  { type: "tool_execution_end", toolCallId: "call-1", toolName: "fetch", result: "ok", isError: false },',
+      '];',
+      'for (const event of events) console.log(JSON.stringify(event));',
+    ].join('\n'));
+    setPathEnv(prependPath(binDir, previousPath));
+
+    const runtime = new OhMyPiRuntime();
+    const result = await runtime.execute('hello', root, {
+      onEvent: (event) => events.push(event),
+    });
+
+    assert.equal(result.success, true);
+    assert.deepEqual(events.filter((event) => event.type === 'tool_use'), [
+      {
+        type: 'tool_use',
+        id: 'call-1',
+        name: 'fetch',
+        input: { url: 'https://example.test/data.json' },
+        line: '[tool] fetch {"url":"https://example.test/data.json"}',
+      },
+    ]);
+    assert.deepEqual(events.filter((event) => event.type === 'tool_result'), [
+      { type: 'tool_result', toolUseId: 'call-1', result: 'ok' },
+    ]);
   } finally {
     restorePathEnv(previousPath);
     rmSync(root, { recursive: true, force: true });
