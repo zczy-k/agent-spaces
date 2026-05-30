@@ -52,7 +52,6 @@ export function ChatInputAgentBar({
           </button>
           {visibleAgents.map((agent) => {
             const isActive = agent.id === activeAgent?.id;
-            const isLastActive = !isActive && agent.id === lastActiveAgentId;
             return (
               <MemberHoverCard key={agent.id} agentId={agent.id} displayName={agent.name || agent.role} side="top" align="start" onConfigure={() => setConfigAgentId(agent.id)}>
                 <ShinyBadge
@@ -63,9 +62,7 @@ export function ChatInputAgentBar({
                     "shrink-0 inline-flex items-center gap-1 h-6 pl-0.5 pr-1.5 rounded-full text-xs transition-all cursor-pointer",
                     isActive
                       ? "bg-primary/10 text-primary border border-primary/30"
-                      : isLastActive
-                        ? "text-primary/70 border border-primary/20 bg-primary/5"
-                        : "text-muted-foreground border border-transparent hover:bg-accent"
+                      : "text-primary/70 border border-primary/20 bg-primary/5"
                   )}
                 >
                   <AgentIcon

@@ -111,8 +111,7 @@ export interface MemberInfoCardProps {
 }
 
 export function MemberInfoCard({ agentId, displayName, channels = [], compact = false, onConfigure }: MemberInfoCardProps) {
-  const agents = useAgentStore((s) => s.agents);
-  const agent = agents.find((a) => a.id === agentId);
+  const agent = useAgentStore((s) => s.agents.find((a) => a.id === agentId));
   const resolvedName = displayName || agent?.name || agentId;
 
   const badges: { label: string; variant?: string }[] = [];

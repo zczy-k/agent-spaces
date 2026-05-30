@@ -1,8 +1,11 @@
 "use client";
 
+import { lazy, Suspense, type ReactNode } from "react";
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
-import { MemberInfoCard } from "./member-info-card";
-import type { ReactNode } from "react";
+
+const MemberInfoCard = lazy(() =>
+  import("./member-info-card").then((m) => ({ default: m.MemberInfoCard }))
+);
 
 interface MemberHoverCardProps {
   agentId: string;
@@ -27,13 +30,15 @@ export function MemberHoverCard({
     <HoverCard>
       <HoverCardTrigger render={<div className="inline-flex items-center" />}>{children}</HoverCardTrigger>
       <HoverCardContent side={side} align={align} className="w-72">
-        <MemberInfoCard
-          agentId={agentId}
-          displayName={displayName}
-          channels={channels}
-          compact
-          onConfigure={onConfigure}
-        />
+        <Suspense fallback={<div className="h-20" />}>
+          <MemberInfoCard
+            agentId={agentId}
+            displayName={displayName}
+            channels={channels}
+            compact
+            onConfigure={onConfigure}
+          />
+        </Suspense>
       </HoverCardContent>
     </HoverCard>
   );

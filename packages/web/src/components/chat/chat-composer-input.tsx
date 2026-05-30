@@ -9,7 +9,8 @@ import Placeholder from "@tiptap/extension-placeholder";
 import Mention from "@tiptap/extension-mention";
 import type { MentionNodeAttrs } from "@tiptap/extension-mention";
 import type { Editor, JSONContent, Range } from "@tiptap/core";
-import { IconMicrophone, IconPaperclip, IconPlus, IconWand } from "@tabler/icons-react";
+import { IconPaperclip, IconPlus, IconWand } from "@tabler/icons-react";
+import { VoiceInput } from "@/components/ui/voice-input";
 import type { Icon } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -473,16 +474,6 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
     return () => { attachments.forEach((item) => URL.revokeObjectURL(item.preview)); };
   }, [attachments]);
 
-  const toggleVoice = useCallback(() => {
-    if (isVoiceRecording) {
-      stopVoice();
-      return;
-    }
-    startVoice((text, isFinal) => {
-      const currentEditor = editorRef.current;
-      if (currentEditor && isFinal) currentEditor.chain().focus().insertContent(text).run();
-    });
-  }, [isVoiceRecording, startVoice, stopVoice]);
 
   const hasText = useEditorState({
     editor,
@@ -539,18 +530,21 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
   );
 
   const voiceAction = enableVoice ? (
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={toggleVoice}
-      className={cn("h-7 w-7 p-0 rounded-full border border-border hover:bg-accent", {
-        "bg-red-500/10 text-red-500 border-red-500/30 animate-pulse": isVoiceRecording,
+    <VoiceInput
+      isRecording={isVoiceRecording}
+      direction="left"
+      onStart={() => {
+        startVoice((text, isFinal) => {
+          const currentEditor = editorRef.current;
+          if (currentEditor && isFinal) currentEditor.chain().focus().insertContent(text).run();
+        });
+      }}
+      onStop={stopVoice}
+      className={cn("h-7 min-w-7 p-0 rounded-full border border-border hover:bg-accent overflow-visible", {
+        "bg-red-500/10 border-red-500/30": isVoiceRecording,
         "text-muted-foreground": !isVoiceRecording,
       })}
-      title={isVoiceRecording ? t("input.voiceStop") : t("input.voiceStart")}
-    >
-      <IconMicrophone className="size-3" />
-    </Button>
+    />
   ) : null;
 
   return (
