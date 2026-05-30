@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
+  buildLangChainPromptWithSkills,
   normalizeLangChainMcpServers,
   resolveLangChainModelSettings,
   stringifyToolResult,
@@ -76,4 +80,60 @@ test('normalizeLangChainMcpServers preserves HTTP MCP config', () => {
     url: 'https://example.test/mcp',
     headers: { Authorization: 'Bearer token' },
   });
+});
+
+test('buildLangChainPromptWithSkills injects configured skill markdown bodies', () => {
+  const agentDir = mkdtempSync(join(tmpdir(), 'langchain-agent-skills-'));
+  try {
+    mkdirSync(join(agentDir, 'skills', 'brainstorming'), { recursive: true });
+    writeFileSync(
+      join(agentDir, 'skills', 'brainstorming', 'SKILL.md'),
+      [
+        '---',
+        'name: brainstorming',
+        'description: Explore requirements before implementation.',
+        '---',
+        '',
+        'Ask clarifying questions and produce a design.',
+      ].join('\n'),
+      'utf-8',
+    );
+
+    const prompt = buildLangChainPromptWithSkills('Build the feature.', agentDir, ['brainstorming']);
+
+    assert.match(prompt, /Configured skill instructions:/);
+    assert.match(prompt, /## Skill: brainstorming/);
+    assert.match(prompt, /Ask clarifying questions and produce a design\./);
+    assert.doesNotMatch(prompt, /description: Explore requirements/);
+  } finally {
+    rmSync(agentDir, { recursive: true, force: true });
+  }
+});
+
+test('buildLangChainPromptWithSkills falls back to global skills when agent copy is empty', () => {
+  const dataDir = mkdtempSync(join(tmpdir(), 'langchain-data-skills-'));
+  const agentDir = mkdtempSync(join(tmpdir(), 'langchain-agent-skills-'));
+  const previousDataDir = process.env.AGENT_SPACES_DATA_DIR;
+  process.env.AGENT_SPACES_DATA_DIR = dataDir;
+
+  try {
+    mkdirSync(join(dataDir, 'skills', 'brainstorming'), { recursive: true });
+    writeFileSync(
+      join(dataDir, 'skills', 'brainstorming', 'SKILL.md'),
+      '---\nname: brainstorming\ndescription: Brainstorm globally.\n---\n\nGlobal skill body.',
+      'utf-8',
+    );
+    mkdirSync(join(agentDir, 'skills'), { recursive: true });
+    writeFileSync(join(agentDir, 'skills', 'brainstorming.md'), '', 'utf-8');
+
+    const prompt = buildLangChainPromptWithSkills('Build the feature.', agentDir, ['brainstorming']);
+
+    assert.match(prompt, /## Skill: brainstorming/);
+    assert.match(prompt, /Global skill body\./);
+  } finally {
+    if (previousDataDir === undefined) delete process.env.AGENT_SPACES_DATA_DIR;
+    else process.env.AGENT_SPACES_DATA_DIR = previousDataDir;
+    rmSync(dataDir, { recursive: true, force: true });
+    rmSync(agentDir, { recursive: true, force: true });
+  }
 });

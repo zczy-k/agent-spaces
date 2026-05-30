@@ -1,3 +1,5 @@
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { basename, join } from 'node:path';
 import { MultiServerMCPClient } from '@langchain/mcp-adapters';
 import type { Connection } from '@langchain/mcp-adapters';
 import { createAgent, initChatModel, tool } from 'langchain';
@@ -11,6 +13,8 @@ import type {
   AgentRuntimeConfig,
 } from './agent-runtime-types.js';
 import { appendOutputStyleToPrompt, summarizeResult } from './agent-runtime-types.js';
+
+const DEFAULT_DATA_DIR = join(process.env.HOME || '~', '.agent-spaces-data');
 
 /**
  * Runtime backed by LangChain.js.
@@ -31,7 +35,8 @@ export class LangChainRuntime implements AgentRuntime {
     const model = modelSettings.modelIdentifier;
     let mcpClient: MultiServerMCPClient | undefined;
 
-    d(`starting | cwd=${cwd} provider=${this.config.provider ?? 'auto'} langchainProvider=${modelSettings.provider ?? 'auto'} model=${model} baseURL=${this.config.baseURL ?? 'default'} maxTurns=${options?.maxTurns ?? '∞'} tools=${options?.functionTools?.map((runtimeTool) => runtimeTool.name).join(',') || '-'} mcpServers=${Object.keys(options?.mcpServers ?? {}).join(',') || '-'} sandboxDirs=${options?.sandboxDirs?.join(',') ?? '-'}`);
+    const skillPrompts = loadConfiguredSkillPrompts(options?.configDir, options?.skills);
+    d(`starting | cwd=${cwd} provider=${this.config.provider ?? 'auto'} langchainProvider=${modelSettings.provider ?? 'auto'} model=${model} baseURL=${this.config.baseURL ?? 'default'} maxTurns=${options?.maxTurns ?? '∞'} tools=${options?.functionTools?.map((runtimeTool) => runtimeTool.name).join(',') || '-'} mcpServers=${Object.keys(options?.mcpServers ?? {}).join(',') || '-'} skills=${skillPrompts.map((skill) => skill.name).join(',') || '-'} sandboxDirs=${options?.sandboxDirs?.join(',') ?? '-'}`);
     if (modelSettings.providerCorrectionReason) d(`provider adjusted | ${modelSettings.providerCorrectionReason}`);
     d(`prompt: ${prompt.slice(0, 300)}${prompt.length > 300 ? '...' : ''}`);
 
@@ -52,8 +57,13 @@ export class LangChainRuntime implements AgentRuntime {
         systemPrompt: options?.systemPrompt,
       });
 
+      const finalPrompt = appendOutputStyleToPrompt(
+        injectSkillPrompts(prompt, skillPrompts),
+        options?.outputStyle,
+      );
+
       const result = await agent.invoke(
-        { messages: [{ role: 'user', content: appendOutputStyleToPrompt(prompt, options?.outputStyle) }] },
+        { messages: [{ role: 'user', content: finalPrompt }] },
         {
           signal: this.abortController?.signal,
           recursionLimit: options?.maxTurns ? Math.max(2, options.maxTurns * 2 + 1) : undefined,
@@ -101,6 +111,95 @@ export class LangChainRuntime implements AgentRuntime {
   stop(): void {
     this.abortController?.abort();
   }
+}
+
+interface SkillPrompt {
+  name: string;
+  content: string;
+}
+
+export function buildLangChainPromptWithSkills(
+  prompt: string,
+  agentDir: string | undefined,
+  skills: string[] | undefined,
+  outputStyle?: string,
+): string {
+  return appendOutputStyleToPrompt(
+    injectSkillPrompts(prompt, loadConfiguredSkillPrompts(agentDir, skills)),
+    outputStyle,
+  );
+}
+
+function injectSkillPrompts(prompt: string, skills: SkillPrompt[]): string {
+  if (!skills.length) return prompt;
+  return [
+    prompt.trimEnd(),
+    '',
+    'Configured skill instructions:',
+    'The following Markdown skills are enabled for this run. Follow them when they are relevant to the user request.',
+    '',
+    ...skills.flatMap((skill) => [
+      `## Skill: ${skill.name}`,
+      '',
+      skill.content,
+      '',
+    ]),
+  ].join('\n').trimEnd();
+}
+
+function loadConfiguredSkillPrompts(agentDir: string | undefined, skills: string[] | undefined): SkillPrompt[] {
+  if (!Array.isArray(skills)) return [];
+
+  return skills.flatMap((rawSkill) => {
+    const skillName = sanitizeSkillName(rawSkill);
+    if (!skillName) return [];
+
+    const skillFile = resolveSkillFile(agentDir, skillName);
+    if (!skillFile) return [];
+
+    const source = readFileSync(skillFile, 'utf-8');
+    const parsed = parseSkillMarkdown(source);
+    const content = parsed.body || source.trim();
+    if (!content) return [];
+
+    return [{ name: sanitizeSkillName(parsed.meta.name) || skillName, content }];
+  });
+}
+
+function resolveSkillFile(agentDir: string | undefined, skillName: string): string | undefined {
+  const candidates = [
+    ...(agentDir ? [
+      join(agentDir, 'skills', skillName, 'SKILL.md'),
+      join(agentDir, 'skills', `${skillName}.md`),
+    ] : []),
+    join(getDataDir(), 'skills', skillName, 'SKILL.md'),
+    join(getDataDir(), 'skills', `${skillName}.md`),
+  ];
+
+  return candidates.find((file) => existsSync(file) && statSync(file).size > 0);
+}
+
+function getDataDir(): string {
+  return process.env.AGENT_SPACES_DATA_DIR || DEFAULT_DATA_DIR;
+}
+
+function parseSkillMarkdown(source: string): { meta: Record<string, string>; body: string } {
+  const match = source.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
+  if (!match) return { meta: {}, body: source.trim() };
+
+  const meta: Record<string, string> = {};
+  for (const line of match[1].split(/\r?\n/)) {
+    const parsed = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
+    if (!parsed) continue;
+    meta[parsed[1]] = parsed[2].trim().replace(/^['"]|['"]$/g, '');
+  }
+
+  return { meta, body: source.slice(match[0].length).trim() };
+}
+
+function sanitizeSkillName(name: string | undefined): string {
+  const raw = basename(name ?? '').replace(/\.md$/i, '').trim();
+  return raw.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '');
 }
 
 function buildLangChainTools(
