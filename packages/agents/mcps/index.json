@@ -17,7 +17,7 @@
   {
     "id": "fetch",
     "name": "fetch",
-    "description": "npx -y @modelcontextprotocol/server-fetch",
+    "description": "uvx mcp-server-fetch",
     "filename": "fetch.json"
   },
   {

@@ -1,9 +1,9 @@
 {
   "mcpServers": {
     "fetch": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-fetch"],
-      "env": {}
+      "command": "uvx",
+      "args": ["mcp-server-fetch"],
+      "env": { "PYTHONIOENCODING": "utf-8" }
     }
   }
 }

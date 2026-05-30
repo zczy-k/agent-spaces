@@ -37,7 +37,7 @@ export class OpenAgentSdkRuntime implements AgentRuntime {
 
     try {
       functionToolBridge = await startCodexFunctionToolBridge(options?.functionTools, d);
-      const mcpServers = withFunctionToolBridge(options?.mcpServers, functionToolBridge);
+      const mcpServers = withFunctionToolBridge(normalizeOpenAgentMcpServers(options?.mcpServers), functionToolBridge);
       d(`resolved tools | allowedTools=${options?.tools?.join(',') ?? 'all'} mcpServers=${Object.keys(mcpServers ?? {}).join(',') || '-'} functionTools=${options?.functionTools?.map((tool) => tool.name).join(',') || '-'}`);
 
       this.agent = createAgent({
@@ -128,6 +128,38 @@ function withFunctionToolBridge(
     ...(mcpServers ?? {}),
     [bridge.name]: { type: 'http', url: bridge.url },
   };
+}
+
+export function normalizeOpenAgentMcpServers(
+  mcpServers: Record<string, unknown> | undefined,
+): Record<string, unknown> | undefined {
+  if (!mcpServers) return undefined;
+
+  return Object.fromEntries(
+    Object.entries(mcpServers).map(([name, server]) => [name, normalizeOpenAgentMcpServer(server)]),
+  );
+}
+
+function normalizeOpenAgentMcpServer(server: unknown): unknown {
+  if (!isRecord(server)) return server;
+
+  const args = Array.isArray(server.args) ? server.args.map(String) : undefined;
+  const badFetchPackageIndex = args?.indexOf('@modelcontextprotocol/server-fetch') ?? -1;
+  if (String(server.command) !== 'npx' || !args || badFetchPackageIndex < 0) return server;
+
+  return {
+    ...server,
+    command: 'uvx',
+    args: ['mcp-server-fetch', ...args.slice(badFetchPackageIndex + 1)],
+    env: {
+      PYTHONIOENCODING: 'utf-8',
+      ...(isRecord(server.env) ? server.env : {}),
+    },
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
 async function collectQueryResult(

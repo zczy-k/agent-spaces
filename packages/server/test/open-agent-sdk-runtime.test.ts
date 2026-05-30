@@ -4,7 +4,31 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { clearSkills, getSkill } from '@codeany/open-agent-sdk';
-import { registerConfiguredSkills } from '../src/adapters/open-agent-sdk-runtime.js';
+import { normalizeOpenAgentMcpServers, registerConfiguredSkills } from '../src/adapters/open-agent-sdk-runtime.js';
+
+test('normalizeOpenAgentMcpServers maps the retired fetch npm package to uvx', () => {
+  const normalized = normalizeOpenAgentMcpServers({
+    fetch: {
+      command: 'npx',
+      args: ['-y', '@modelcontextprotocol/server-fetch', '--ignore-robots-txt'],
+      env: { CUSTOM_ENV: '1' },
+    },
+    filesystem: {
+      command: 'npx',
+      args: ['-y', '@modelcontextprotocol/server-filesystem', '/tmp'],
+    },
+  }) as Record<string, { command: string; args: string[]; env?: Record<string, string> }>;
+
+  assert.deepEqual(normalized.fetch, {
+    command: 'uvx',
+    args: ['mcp-server-fetch', '--ignore-robots-txt'],
+    env: { PYTHONIOENCODING: 'utf-8', CUSTOM_ENV: '1' },
+  });
+  assert.deepEqual(normalized.filesystem, {
+    command: 'npx',
+    args: ['-y', '@modelcontextprotocol/server-filesystem', '/tmp'],
+  });
+});
 
 test('registerConfiguredSkills loads folder skills from agent config', async () => {
   clearSkills();
