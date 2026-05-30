@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { useLLMStore } from "@/stores/llm";
 import {
@@ -9,6 +9,7 @@ import {
   type LLMProvider,
 } from "@agent-spaces/shared";
 import { AgentIcon } from "@/components/common/agent-icon";
+import { AvatarPicker } from "@/components/sidebar/settings/avatar-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,6 +37,7 @@ import {
   Check,
   X as XIcon,
 } from "lucide-react";
+import EmojiPicker from "emoji-picker-react";
 import { DiffViewer } from "@/components/git/diff-viewer";
 import { ToolsDialog } from "@/components/sidebar/tools-dialog";
 import { McpsDialog } from "@/components/sidebar/mcps-dialog";
@@ -81,6 +83,21 @@ export function AgentDetail({
   const [mcpsDialogOpen, setMcpsDialogOpen] = useState(false);
   const [skillsDialogOpen, setSkillsDialogOpen] = useState(false);
   const [previewPrompt, setPreviewPrompt] = useState("");
+  const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
+  const [avatarSrc, setAvatarSrc] = useState("");
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+  const emojiRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!emojiPickerOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (emojiRef.current && !emojiRef.current.contains(e.target as Node)) {
+        setEmojiPickerOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [emojiPickerOpen]);
 
   const { models: allLlmModels, providers: llmProviders, ensure: ensureLLM } = useLLMStore();
   const llmModels = allLlmModels.filter((m) => !m.embedding);
@@ -150,50 +167,78 @@ export function AgentDetail({
     <div className="flex flex-col gap-5 p-5">
       <Section icon={<MessageSquare className="size-3.5" />} title={t("detail.basic")}>
         <div className="flex items-start gap-4">
-          <div className="flex flex-col items-center gap-1.5">
-            <AgentIcon
-              name={agent.name}
-              avatarUrl={agent.avatarUrl}
-              apiBase={agent.apiBase}
-              className="size-16 rounded-xl border border-input"
-            />
+          <div className="relative flex flex-col items-center gap-1.5">
+            {agent.avatarUrl ? (
+              <div className="relative">
+                <AgentIcon
+                  name={agent.name}
+                  avatarUrl={agent.avatarUrl}
+                  icon={agent.icon}
+                  apiBase={agent.apiBase}
+                  className="size-16 rounded-xl border border-input"
+                />
+                <button
+                  type="button"
+                  className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 cursor-pointer"
+                  onClick={() => onChange("avatarUrl", "")}
+                >
+                  <X className="size-3" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="relative size-16 rounded-xl border border-input bg-muted flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => setEmojiPickerOpen((v) => !v)}
+              >
+                {agent.icon ? (
+                  <span className="text-2xl">{agent.icon}</span>
+                ) : (
+                  <span className="text-lg text-muted-foreground">{agent.name?.charAt(0).toUpperCase() || "?"}</span>
+                )}
+                {emojiPickerOpen && (
+                  <div ref={emojiRef} className="absolute top-full left-0 z-50 mt-1" onClick={(e) => e.stopPropagation()}>
+                    <EmojiPicker
+                      open={emojiPickerOpen}
+                      onEmojiClick={(emoji) => {
+                        onChange("icon", emoji.emoji);
+                        setEmojiPickerOpen(false);
+                      }}
+                      width={280}
+                      height={350}
+                      previewConfig={{ showPreview: false }}
+                      skinTonesDisabled
+                    />
+                  </div>
+                )}
+              </button>
+            )}
             <label className="text-[10px] text-primary cursor-pointer hover:underline">
               {t("detail.uploadAvatar")}
               <input
                 type="file"
                 accept="image/*"
                 className="hidden"
-                onChange={async (e) => {
+                onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
                   const reader = new FileReader();
-                  reader.onload = async () => {
-                    try {
-                      const res = await fetch("/api/upload/avatar", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ dataUrl: reader.result, filename: file.name }),
-                      });
-                      const data = await res.json();
-                      if (data.url) onChange("avatarUrl", data.url);
-                    } catch {
-                      // ignore
-                    }
+                  reader.onload = () => {
+                    setAvatarSrc(reader.result as string);
+                    setAvatarPickerOpen(true);
                   };
                   reader.readAsDataURL(file);
                   e.target.value = "";
                 }}
               />
             </label>
-            {agent.avatarUrl && (
-              <button
-                type="button"
-                className="text-[10px] text-destructive hover:underline cursor-pointer"
-                onClick={() => onChange("avatarUrl", "")}
-              >
-                {t("detail.removeAvatar")}
-              </button>
-            )}
+            <AvatarPicker
+              src={avatarSrc}
+              open={avatarPickerOpen}
+              onOpenChange={setAvatarPickerOpen}
+              onUploaded={(url) => onChange("avatarUrl", url)}
+              skipUserSettings
+            />
           </div>
           <div className="flex flex-1 flex-col gap-2.5">
             <FieldGroup label={t("detail.name")}>

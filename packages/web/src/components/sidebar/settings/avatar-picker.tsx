@@ -22,9 +22,11 @@ interface AvatarPickerProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onUploaded: (url: string) => void
+  /** 为 true 时跳过写入用户设置（agent 头像等场景） */
+  skipUserSettings?: boolean
 }
 
-export function AvatarPicker({ src, open, onOpenChange, onUploaded }: AvatarPickerProps) {
+export function AvatarPicker({ src, open, onOpenChange, onUploaded, skipUserSettings }: AvatarPickerProps) {
   const t = useTranslations("settings")
   const [aspect, setAspect] = useState<number>(1)
 
@@ -38,12 +40,14 @@ export function AvatarPicker({ src, open, onOpenChange, onUploaded }: AvatarPick
       const data = await res.json()
       if (data.url) {
         const url = `${data.url}?t=${Date.now()}`
-        setCachedUserAvatarUrl(url)
-        fetch("/api/user/settings", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ avatarUrl: data.url }),
-        }).catch(() => {})
+        if (!skipUserSettings) {
+          setCachedUserAvatarUrl(url)
+          fetch("/api/user/settings", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ avatarUrl: data.url }),
+          }).catch(() => {})
+        }
         onUploaded(url)
       }
     } catch {

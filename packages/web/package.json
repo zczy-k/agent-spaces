@@ -39,6 +39,7 @@
     "copy-code": "^1.0.0",
     "date-fns": "^4.1.0",
     "diff": "^9.0.0",
+    "emoji-picker-react": "^4.19.1",
     "flexlayout-react": "^0.9.0",
     "framer-motion": "^12.38.0",
     "he-tree-react": "^1.3.1",

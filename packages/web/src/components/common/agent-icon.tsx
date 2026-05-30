@@ -88,12 +88,13 @@ export interface AgentIconProps {
   agentId?: string;
   name?: string;
   avatarUrl?: string;
+  icon?: string;
   apiBase?: string;
   className?: string;
   onClick?: () => void;
 }
 
-export function AgentIcon({ agentId, name, avatarUrl, apiBase, className, onClick }: AgentIconProps) {
+export function AgentIcon({ agentId, name, avatarUrl, icon, apiBase, className, onClick }: AgentIconProps) {
   const agents = useAgentStore((s) => s.agents);
   const [avatarError, setAvatarError] = useState(false);
   const [providerError, setProviderError] = useState(false);
@@ -101,6 +102,7 @@ export function AgentIcon({ agentId, name, avatarUrl, apiBase, className, onClic
   const agent = agentId ? agents.find((a) => a.id === agentId) : undefined;
   const displayName = name || agent?.name || agentId || '?';
   const resolvedAvatarUrl = avatarUrl ?? agent?.avatarUrl;
+  const resolvedIcon = icon ?? agent?.icon;
   const resolvedApiBase = apiBase ?? agent?.apiBase;
 
   const src = (!avatarError && resolveServerAssetUrl(resolvedAvatarUrl))
@@ -121,12 +123,15 @@ export function AgentIcon({ agentId, name, avatarUrl, apiBase, className, onClic
     }
   };
 
+  // 优先级：avatar > icon > provider icon > name initial
+  const showEmoji = !src && resolvedIcon;
+
   return (
     <div
       onClick={onClick}
       className={cn(
         'flex items-center justify-center overflow-hidden rounded-lg bg-muted shrink-0',
-        src && 'bg-transparent',
+        (src || showEmoji) && 'bg-transparent',
         !onClick && 'pointer-events-none',
         onClick && 'cursor-pointer hover:opacity-80 transition-opacity',
         className,
@@ -134,6 +139,8 @@ export function AgentIcon({ agentId, name, avatarUrl, apiBase, className, onClic
     >
       {src ? (
         <img src={src} alt={displayName} className="size-full object-cover rounded-[inherit]" onError={handleError} />
+      ) : showEmoji ? (
+        <span className="select-none" style={{ fontSize: '60%' }}>{resolvedIcon}</span>
       ) : (
         <span className="text-xs font-semibold select-none">{initial}</span>
       )}

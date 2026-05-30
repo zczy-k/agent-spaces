@@ -79,6 +79,8 @@ export interface AgentConfig {
   temperature?: number;
   maxTokens?: number;
   avatarUrl?: string;
+  /** emoji icon，优先级低于 avatarUrl */
+  icon?: string;
   sandboxDirs?: string[];
   maxRetries?: number;
   /** 标识该 agent 由哪个模板创建，用于导入去重 */

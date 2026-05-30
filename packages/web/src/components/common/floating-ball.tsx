@@ -214,6 +214,9 @@ export const FloatingBall = forwardRef<HTMLDivElement, FloatingBallProps>(
           zIndex: 99999,
           touchAction: 'none',
           userSelect: 'none',
+          background: 'var(--primary)',
+          color: 'var(--primary-foreground)',
+          boxShadow: '0 4px 12px color-mix(in srgb, var(--primary) 40%, transparent)',
           transition: dragging.current ? 'none' : 'left 0.3s ease-out, top 0.3s ease-out',
           ...style,
         }}
