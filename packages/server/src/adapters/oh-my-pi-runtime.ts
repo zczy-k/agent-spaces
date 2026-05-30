@@ -352,6 +352,7 @@ function copySkillSource(source: string, entry: string, targetSkillsDir: string)
     const sourceSkillFile = join(source, 'SKILL.md');
     if (!existsSync(sourceSkillFile) || statSync(sourceSkillFile).size === 0) return undefined;
     cpSync(source, join(targetSkillsDir, skillName), { recursive: true, force: true });
+    writeOmpSkillFile(join(targetSkillsDir, skillName, 'SKILL.md'), readFileSync(sourceSkillFile, 'utf-8'), skillName);
     return skillName;
   }
 
@@ -360,9 +361,52 @@ function copySkillSource(source: string, entry: string, targetSkillsDir: string)
   if (!skillName) return undefined;
   const targetSkillDir = join(targetSkillsDir, skillName);
   mkdirSync(targetSkillDir, { recursive: true });
-  writeFileSync(join(targetSkillDir, 'SKILL.md'), readFileSync(source, 'utf-8'), 'utf-8');
-  copyFileSync(source, join(targetSkillsDir, `${skillName}.md`));
+  writeOmpSkillFile(join(targetSkillDir, 'SKILL.md'), readFileSync(source, 'utf-8'), skillName);
   return skillName;
+}
+
+function writeOmpSkillFile(targetFile: string, content: string, skillName: string): void {
+  writeFileSync(targetFile, ensureOmpSkillFrontmatter(content, skillName), 'utf-8');
+}
+
+function ensureOmpSkillFrontmatter(content: string, skillName: string): string {
+  const parsed = parseSkillMarkdown(content);
+  if (parsed.meta.name && parsed.meta.description) return content;
+
+  const body = parsed.body.trim();
+  const meta = {
+    ...parsed.meta,
+    name: parsed.meta.name || skillName,
+    description: parsed.meta.description || summarizeSkillDescription(body, skillName),
+  };
+  const frontmatter = Object.entries(meta)
+    .filter(([, value]) => value.trim())
+    .map(([key, value]) => `${key}: ${yamlScalar(value)}`)
+    .join('\n');
+
+  return `---\n${frontmatter}\n---\n\n${body}\n`;
+}
+
+function parseSkillMarkdown(source: string): { meta: Record<string, string>; body: string } {
+  const match = source.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
+  if (!match) return { meta: {}, body: source.trim() };
+
+  const meta: Record<string, string> = {};
+  for (const line of match[1].split(/\r?\n/)) {
+    const parsed = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
+    if (!parsed) continue;
+    meta[parsed[1]] = parsed[2].trim().replace(/^['"]|['"]$/g, '');
+  }
+
+  return { meta, body: source.slice(match[0].length).trim() };
+}
+
+function summarizeSkillDescription(body: string, skillName: string): string {
+  const firstLine = body
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^#+\s*/, '').trim())
+    .find(Boolean);
+  return firstLine || `Configured skill ${skillName}`;
 }
 
 function findFallbackSkillSource(sourceAgentDir: string, skill: string): string | undefined {

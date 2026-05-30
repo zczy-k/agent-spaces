@@ -167,35 +167,19 @@ export function useSkillActions(skills: SkillInfo[], setSkills: (fn: (prev: Skil
 
   const bindConfirm = async (skill: SkillInfo, bindSelected: string[], agents: { id: string }[]) => {
     for (const agent of agents) {
-      const wasBound = skill.boundAgents.some((a) => a.id === agent.id);
       const shouldBeBound = bindSelected.includes(agent.id);
-
-      if (wasBound && !shouldBeBound) {
-        const res = await fetch(`/api/agents/presets/${agent.id}`);
-        if (!res.ok) continue;
-        const preset = await res.json();
-        const updatedSkills = (preset.skills || []).filter(
-          (s: string) => s.replace(/\.md$/i, '') !== skill.name,
-        );
-        await fetch(`/api/agents/presets/${agent.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...preset, skills: updatedSkills }),
-        });
-      } else if (!wasBound && shouldBeBound) {
-        const res = await fetch(`/api/agents/presets/${agent.id}`);
-        if (!res.ok) continue;
-        const preset = await res.json();
-        const existing = (preset.skills || []).map((s: string) => s.replace(/\.md$/i, ''));
-        if (!existing.includes(skill.name)) {
-          const updatedSkills = [...(preset.skills || []), skill.name];
-          await fetch(`/api/agents/presets/${agent.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...preset, skills: updatedSkills }),
-          });
-        }
-      }
+      const res = await fetch(`/api/agents/presets/${agent.id}`);
+      if (!res.ok) continue;
+      const preset = await res.json();
+      const skillsWithout = (preset.skills || []).filter(
+        (s: string) => s.replace(/\.md$/i, '') !== skill.name,
+      );
+      const updatedSkills = shouldBeBound ? [...skillsWithout, skill.name] : skillsWithout;
+      await fetch(`/api/agents/presets/${agent.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...preset, skills: updatedSkills }),
+      });
     }
     fetchSkills();
   };

@@ -6,7 +6,7 @@ import { delimiter, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { OhMyPiRuntime } from '../src/adapters/oh-my-pi-runtime.js';
 
-test('OhMyPiRuntime copies configured skills into the isolated OMP agent dir', async () => {
+test('OhMyPiRuntime copies configured skills into the isolated OMP agent dir with OMP frontmatter', async () => {
   const root = mkdtempSync(join(tmpdir(), 'omp-runtime-'));
   const binDir = join(root, 'bin');
   const configDir = join(root, 'agent-config');
@@ -28,15 +28,21 @@ test('OhMyPiRuntime copies configured skills into the isolated OMP agent dir', a
     });
 
     assert.equal(result.success, true);
-    assert.equal(
-      readFileSync(join(configDir, 'omp-home', '.omp', 'agent', 'skills', 'brainstorming', 'SKILL.md'), 'utf-8'),
-      'Brainstorm skill body.',
+    const brainstorming = readFileSync(
+      join(configDir, 'omp-home', '.omp', 'agent', 'skills', 'brainstorming', 'SKILL.md'),
+      'utf-8',
     );
-    assert.equal(
-      readFileSync(join(configDir, 'omp-home', '.omp', 'agent', 'skills', 'legacy', 'SKILL.md'), 'utf-8'),
-      'Legacy skill body.',
+    const legacy = readFileSync(
+      join(configDir, 'omp-home', '.omp', 'agent', 'skills', 'legacy', 'SKILL.md'),
+      'utf-8',
     );
-    assert.equal(existsSync(join(configDir, 'omp-home', '.omp', 'agent', 'skills', 'legacy.md')), true);
+
+    assert.match(brainstorming, /^---\nname: "brainstorming"\ndescription: "Brainstorm skill body\."\n---/);
+    assert.match(brainstorming, /Brainstorm skill body\./);
+    assert.match(legacy, /^---\nname: "legacy"\ndescription: "Legacy skill body\."\n---/);
+    assert.match(legacy, /Legacy skill body\./);
+    assert.equal(existsSync(join(configDir, 'omp-home', '.omp', 'agent', 'skills', 'brainstorming.md')), false);
+    assert.equal(existsSync(join(configDir, 'omp-home', '.omp', 'agent', 'skills', 'legacy.md')), false);
   } finally {
     restorePathEnv(previousPath);
     rmSync(root, { recursive: true, force: true });
@@ -75,7 +81,9 @@ test('OhMyPiRuntime falls back from empty agent skill placeholders to built-in s
 
     assert.equal(result.success, true);
     assert.match(copied, /name: brainstorming/);
+    assert.match(copied, /description:/);
     assert.match(copied, /# Brainstorming Ideas Into Designs/);
+    assert.equal(existsSync(join(configDir, 'omp-home', '.omp', 'agent', 'skills', 'brainstorming.md')), false);
     assert.equal(readFileSync(envFile, 'utf-8').trim(), join(configDir, 'omp-home', '.omp', 'agent'));
   } finally {
     restorePathEnv(previousPath);

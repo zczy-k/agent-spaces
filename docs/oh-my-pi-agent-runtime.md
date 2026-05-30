@@ -224,7 +224,44 @@ Agent Spaces 的 `options.skills` 当前直接映射为：
   -> <configDir>/omp-home/.omp/agent/skills/
 ```
 
-目录型技能会保留为 `skills/<name>/SKILL.md`，旧的 flat `<name>.md` 技能会转换为 `skills/<name>/SKILL.md`，并保留一份 flat `.md` 兼容副本。每次运行都会重建 OMP home 内的 `skills/`，避免已解绑技能继续被 OMP discovery 扫到。
+OMP 原生 discovery 使用目录型技能：
+
+```text
+<configDir>/omp-home/.omp/agent/skills/<name>/SKILL.md
+```
+
+discovery 非递归：每个技能必须位于 `skills/` 的直接子目录中。旧的 flat `<name>.md` 技能会转换为目录型 `skills/<name>/SKILL.md`。每次运行都会重建 OMP home 内的 `skills/`，避免已解绑技能继续被 OMP discovery 扫到。
+
+OMP 要求 `SKILL.md` 顶部包含 YAML frontmatter，且 `name` 和 `description` 必填：
+
+```markdown
+---
+name: plans
+description: Planning implementation tasks and breaking work into executable steps.
+---
+```
+
+Agent Spaces 的全局 skill 仍存储在：
+
+```text
+<AGENT_SPACES_DATA_DIR>/skills/<name>/SKILL.md
+```
+
+为了兼容旧的 Agent Spaces skill 内容，OMP adapter 在复制到隔离 OMP home 时会检查 frontmatter。如果缺少 `name` 或 `description`，adapter 只修改隔离目录中的副本：`name` 使用目录名，`description` 使用正文第一个非空标题或文本行。原始全局 skill 文件不会被修改。
+
+OMP 的显式调用入口是：
+
+```text
+/skill:<name>
+```
+
+例如：
+
+```text
+/skill:plans
+```
+
+`skill://<name>/path/to/file.md` 用于技能加载后读取该技能目录内的 sibling reference 文件，不是加载技能的入口。不要使用 `skill://plans` 或 `skill://plans.md` 代替 `/skill:plans`。
 
 ## 事件映射
 
@@ -536,6 +573,60 @@ omp --list-models
 - API key
 
 如果使用自定义 API base，还需要确认 OMP provider 支持对应 env fallback。
+
+### Skills 显示 `Available: none`
+
+如果 agent 日志显示已经配置 skill，例如：
+
+```text
+[oh-my-pi] starting | ... skills=plans ...
+```
+
+但模型读取 skill 时得到：
+
+```text
+Unknown skill: plans
+Available: none
+```
+
+先检查隔离 OMP home 中的目录型技能文件：
+
+```text
+<configDir>/omp-home/.omp/agent/skills/plans/SKILL.md
+```
+
+重点确认：
+
+- 文件存在且非空。
+- `plans` 是 `skills/` 的直接子目录，不要再嵌套一层目录。
+- `SKILL.md` 顶部有 YAML frontmatter。
+- frontmatter 至少包含非空的 `name` 和 `description`。
+- `--skills` 传入的 glob pattern 能匹配该 skill 名称。
+
+正确示例：
+
+```markdown
+---
+name: plans
+description: Planning implementation tasks and breaking work into executable steps.
+---
+```
+
+手动加载时使用：
+
+```text
+/skill:plans
+```
+
+不要把 `skill://plans` 或 `skill://plans.md` 当成加载入口。`skill://` URL 只用于读取已经加载的 skill 目录内引用文件。
+
+如果仍未发现 skill，可以运行：
+
+```bash
+omp -p "/extensions"
+```
+
+检查当前 session 实际加载了哪些 skills，以及它们来自哪个目录。
 
 ### MCP 工具没有出现
 

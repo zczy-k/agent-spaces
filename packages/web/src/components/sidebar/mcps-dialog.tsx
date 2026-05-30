@@ -246,38 +246,22 @@ export function McpsDialog({ open, onOpenChange, standalone, selectable, selecte
     if (!bindDialogMcp) return;
 
     for (const agent of agents) {
-      const wasBound = bindDialogMcp.boundAgents.some((a) => a.id === agent.id);
       const shouldBeBound = bindSelected.includes(agent.id);
-
-      if (wasBound && !shouldBeBound) {
-        // Remove MCP from agent
-        const res = await fetch(`/api/agents/presets/${agent.id}`);
-        if (!res.ok) continue;
-        const preset = await res.json();
-        const mcps = (preset.mcps || {}) as Record<string, unknown>;
-        const servers = { ...((mcps.mcpServers as Record<string, unknown>) || {}) };
+      const res = await fetch(`/api/agents/presets/${agent.id}`);
+      if (!res.ok) continue;
+      const preset = await res.json();
+      const mcps = (preset.mcps || {}) as Record<string, unknown>;
+      const servers = { ...((mcps.mcpServers as Record<string, unknown>) || {}) };
+      if (shouldBeBound) {
+        servers[bindDialogMcp.name] = bindDialogMcp.config;
+      } else {
         delete servers[bindDialogMcp.name];
-        await fetch(`/api/agents/presets/${agent.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...preset, mcps: { ...mcps, mcpServers: servers } }),
-        });
-      } else if (!wasBound && shouldBeBound) {
-        // Add MCP to agent
-        const res = await fetch(`/api/agents/presets/${agent.id}`);
-        if (!res.ok) continue;
-        const preset = await res.json();
-        const mcps = (preset.mcps || {}) as Record<string, unknown>;
-        const servers = { ...((mcps.mcpServers as Record<string, unknown>) || {}) };
-        if (!(bindDialogMcp.name in servers)) {
-          servers[bindDialogMcp.name] = bindDialogMcp.config;
-          await fetch(`/api/agents/presets/${agent.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...preset, mcps: { ...mcps, mcpServers: servers } }),
-          });
-        }
       }
+      await fetch(`/api/agents/presets/${agent.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...preset, mcps: { ...mcps, mcpServers: servers } }),
+      });
     }
 
     setBindDialogMcp(null);
