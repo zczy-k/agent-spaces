@@ -18,6 +18,7 @@ export interface AgentCandidate {
   id: string;
   name: string;
   avatarUrl?: string;
+  apiBase?: string;
   description?: string;
 }
 

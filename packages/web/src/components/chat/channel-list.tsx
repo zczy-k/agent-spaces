@@ -354,6 +354,7 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
+                <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
                 <HoldToConfirm
                   variant="destructive"
                   size="sm"

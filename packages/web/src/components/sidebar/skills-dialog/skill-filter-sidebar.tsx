@@ -63,10 +63,10 @@ export function SkillFilterSidebar({
                 className="w-full justify-start"
                 onClick={() => onFilterChange('agent', agent.id, '')}
               >
-                <AgentIcon agentId={agent.id} name={agent.name} avatarUrl={agent.avatarUrl} className="size-4 mr-1.5 rounded-full" />
+                <AgentIcon agentId={agent.id} name={agent.name} avatarUrl={agent.avatarUrl} apiBase={agent.apiBase} className="size-4 mr-1.5 rounded-full" />
                 <span className="truncate">{agent.name}</span>
               </Button>
-            ))}
+            ))} 
           </div>
         )}
 

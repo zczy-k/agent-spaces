@@ -140,8 +140,8 @@ export function SkillsDialog({ open, onOpenChange, standalone, selectable, selec
             {allSelected ? tc('deselectAll') : tc('selectAll')}
           </Button>
         </div>
-        <ScrollArea className="max-h-[60vh]">
-          <div className="grid grid-cols-1 gap-2 pr-2">
+        <div className="max-h-[50vh] overflow-y-auto pr-1">
+          <div className="grid grid-cols-1 gap-2">
             {filteredSelectable.map((skill) => {
               const checked = externalSelected.has(skill.name);
               return (
@@ -177,7 +177,7 @@ export function SkillsDialog({ open, onOpenChange, standalone, selectable, selec
               );
             })}
           </div>
-        </ScrollArea>
+        </div>
         <div className="flex items-center justify-between border-t pt-3 mt-2">
           <span className="text-xs text-muted-foreground">
             {t('selectedCount', { count: (selectedSkills ?? []).length })}
@@ -191,7 +191,7 @@ export function SkillsDialog({ open, onOpenChange, standalone, selectable, selec
 
     return (
       <Dialog open onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-lg !h-auto max-h-[80vh] flex flex-col overflow-hidden">
+        <DialogContent className="sm:max-w-lg overflow-hidden">
           {selectableBody}
         </DialogContent>
       </Dialog>

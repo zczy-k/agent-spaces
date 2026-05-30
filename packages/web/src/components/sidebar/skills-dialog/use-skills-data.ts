@@ -35,6 +35,7 @@ export function useSkillsData(open: boolean, standalone?: boolean) {
           id: a.id,
           name: a.name,
           avatarUrl: a.avatarUrl,
+          apiBase: a.apiBase,
           description: a.description,
         })));
       }
