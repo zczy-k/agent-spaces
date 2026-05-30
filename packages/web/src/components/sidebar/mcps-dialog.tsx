@@ -51,6 +51,7 @@ interface McpServerConfig {
   args?: string[];
   env?: Record<string, string>;
   url?: string;
+  [key: string]: unknown;
 }
 
 interface BoundAgent {
@@ -88,7 +89,7 @@ interface McpsDialogProps {
   standalone?: boolean;
   selectable?: boolean;
   selectedMcps?: string[];
-  onSelectedMcpsChange?: (names: string[]) => void;
+  onSelectedMcpsChange?: (names: string[], configs: Record<string, McpServerConfig>) => void;
 }
 
 type TabType = 'local' | 'store';
@@ -326,13 +327,22 @@ export function McpsDialog({ open, onOpenChange, standalone, selectable, selecte
   });
 
   const selectedSet = new Set(selectable ? (externalSelected ?? []) : []);
-  const toggleMcp = (name: string) => {
+  const selectMcpNames = (names: string[]) => {
     if (!onSelectedMcpsChange) return;
+    const configs = Object.fromEntries(
+      mcps
+        .filter((mcp) => names.includes(mcp.name))
+        .map((mcp) => [mcp.name, mcp.config]),
+    );
+    onSelectedMcpsChange(names, configs);
+  };
+
+  const toggleMcp = (name: string) => {
     const next = [...(externalSelected ?? [])];
     if (next.includes(name)) {
-      onSelectedMcpsChange(next.filter((n) => n !== name));
+      selectMcpNames(next.filter((n) => n !== name));
     } else {
-      onSelectedMcpsChange([...next, name]);
+      selectMcpNames([...next, name]);
     }
   };
 
@@ -362,10 +372,10 @@ export function McpsDialog({ open, onOpenChange, standalone, selectable, selecte
               const allSelected = filtered.every((m) => selectedSet.has(m.name));
               const current = [...(externalSelected ?? [])];
               if (allSelected) {
-                onSelectedMcpsChange?.(current.filter((n) => !filtered.some((m) => m.name === n)));
+                selectMcpNames(current.filter((n) => !filtered.some((m) => m.name === n)));
               } else {
                 const added = filtered.filter((m) => !current.includes(m.name)).map((m) => m.name);
-                onSelectedMcpsChange?.([...current, ...added]);
+                selectMcpNames([...current, ...added]);
               }
             }}
           >

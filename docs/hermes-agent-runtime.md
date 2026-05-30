@@ -124,11 +124,34 @@ Hermes runtime 当前以文本流方式消费 stdout/stderr，并在服务端做
 
 ## 当前不支持或未完全支持
 
-### MCP 自动注入
+### MCP 配置注入
 
-Agent Spaces 的 `mcpServers` 当前没有自动写入 Hermes `config.yaml`。
+Agent Spaces 的 `mcpServers` 会写入该 Agent 独立的 Hermes profile：
 
-原因是 Hermes 的 MCP/provider/tool 配置形状应优先保持原生格式，避免用不完整转换写坏 profile。当前建议在 `{agentDir}/.hermes/config.yaml` 中维护 Hermes 原生 MCP 配置。
+```text
+{agentDir}/.hermes/config.yaml
+```
+
+如果 `config.yaml` 是 Agent Spaces 生成的托管配置，runtime 会刷新整份托管配置。如果该文件是用户或 Hermes setup 生成的原生配置，runtime 只会合并 Agent Spaces 管理的 `mcp_servers` 条目，并保留其它原生配置。
+
+Hermes 原生配置要求每个 `mcp_servers.<server_name>` 至少包含 `command` 或 `url`。旧版 Agent 可能只保存了 `{ "fetch": {} }` 这种空选择；服务端会在运行前从全局 MCP 库 `{dataDir}/mcps/fetch.json` 回填完整配置。无法回填为可运行配置的 MCP 名称不会进入 prompt 或 runtime。
+
+合并区块使用显式标记，避免覆盖用户手写的其它 MCP server：
+
+```yaml
+mcp_servers:
+  # Agent Spaces managed MCP servers start
+  fetch:
+    command: "uvx"
+    args:
+      - "mcp-server-fetch"
+    env:
+      PYTHONIOENCODING: "utf-8"
+    enabled: true
+  # Agent Spaces managed MCP servers end
+```
+
+Hermes 启动后会按原生 MCP 机制发现工具，工具名通常是 `mcp_<server>_<tool>`。如果日志里只有 `MCP servers configured for this agent: fetch`，但工具列表没有 `mcp_` 前缀，优先检查 `{agentDir}/.hermes/config.yaml` 是否包含该托管区块，以及 Hermes stderr 是否有 MCP 连接失败日志。
 
 ### Agent Spaces 内置 function tools
 
@@ -235,7 +258,7 @@ pnpm --filter @agent-spaces/web build
 
 ## 后续改进方向
 
-1. 增加 Hermes 原生 `config.yaml` 生成或合并逻辑，覆盖 provider、MCP、tools、approvals 等配置。
+1. 扩展 Hermes 原生 `config.yaml` 合并逻辑，覆盖 provider、tools、approvals 等更多配置。
 2. 接入 Hermes session resume，明确 `runtimeSessionId` 的来源和恢复语义。
 3. 如果 Hermes 提供结构化输出，替换当前文本模式匹配，映射为 `tool_use`、`tool_result`、`reasoning`、`usage` 等事件。
 4. 通过 MCP 桥接 Agent Spaces 内置 function tools。

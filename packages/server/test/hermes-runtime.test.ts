@@ -204,6 +204,135 @@ test('HermesRuntime preserves existing Hermes config.yaml', async () => {
   }
 });
 
+test('HermesRuntime merges Agent Spaces MCP servers into existing Hermes config.yaml', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'hermes-runtime-'));
+  const binDir = join(root, 'bin');
+  const configDir = join(root, 'agent-config');
+  const previousPath = currentPathEnv();
+
+  try {
+    mkdirSync(binDir, { recursive: true });
+    mkdirSync(join(configDir, '.hermes'), { recursive: true });
+    writeFileSync(
+      join(configDir, '.hermes', 'config.yaml'),
+      [
+        'model:',
+        '  provider: openrouter',
+        'platform_toolsets:',
+        '  cli: [hermes-cli]',
+        'mcp_servers:',
+        '  github:',
+        '    command: "npx"',
+        '    args: ["-y", "@modelcontextprotocol/server-github"]',
+        '',
+      ].join('\n'),
+      'utf-8',
+    );
+    writeFakeHermes(binDir, 'console.log("ok");');
+    setPathEnv(prependPath(binDir, previousPath));
+
+    const runtime = new HermesRuntime();
+    const result = await runtime.execute('hello', root, {
+      configDir,
+      mcpServers: {
+        fetch: {
+          command: 'uvx',
+          args: ['mcp-server-fetch'],
+          env: { PYTHONIOENCODING: 'utf-8' },
+        },
+      },
+    });
+
+    assert.equal(result.success, true);
+    assert.equal(
+      readFileSync(join(configDir, '.hermes', 'config.yaml'), 'utf-8'),
+      [
+        'model:',
+        '  provider: openrouter',
+        'platform_toolsets:',
+        '  cli: [hermes-cli]',
+        'mcp_servers:',
+        '  # Agent Spaces managed MCP servers start',
+        '  fetch:',
+        '    command: "uvx"',
+        '    args:',
+        '      - "mcp-server-fetch"',
+        '    env:',
+        '      PYTHONIOENCODING: "utf-8"',
+        '    enabled: true',
+        '  # Agent Spaces managed MCP servers end',
+        '  github:',
+        '    command: "npx"',
+        '    args: ["-y", "@modelcontextprotocol/server-github"]',
+        '',
+      ].join('\n'),
+    );
+  } finally {
+    restorePathEnv(previousPath);
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('HermesRuntime refreshes Agent Spaces managed MCP servers in existing Hermes config.yaml', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'hermes-runtime-'));
+  const binDir = join(root, 'bin');
+  const configDir = join(root, 'agent-config');
+  const previousPath = currentPathEnv();
+
+  try {
+    mkdirSync(binDir, { recursive: true });
+    mkdirSync(join(configDir, '.hermes'), { recursive: true });
+    writeFileSync(
+      join(configDir, '.hermes', 'config.yaml'),
+      [
+        'mcp_servers:',
+        '  # Agent Spaces managed MCP servers start',
+        '  fetch:',
+        '    command: "old-uvx"',
+        '  # Agent Spaces managed MCP servers end',
+        '  github:',
+        '    command: "npx"',
+        '',
+      ].join('\n'),
+      'utf-8',
+    );
+    writeFakeHermes(binDir, 'console.log("ok");');
+    setPathEnv(prependPath(binDir, previousPath));
+
+    const runtime = new HermesRuntime();
+    const result = await runtime.execute('hello', root, {
+      configDir,
+      mcpServers: {
+        fetch: {
+          command: 'uvx',
+          args: ['mcp-server-fetch'],
+        },
+      },
+    });
+
+    assert.equal(result.success, true);
+    assert.equal(
+      readFileSync(join(configDir, '.hermes', 'config.yaml'), 'utf-8'),
+      [
+        'mcp_servers:',
+        '  # Agent Spaces managed MCP servers start',
+        '  fetch:',
+        '    command: "uvx"',
+        '    args:',
+        '      - "mcp-server-fetch"',
+        '    enabled: true',
+        '  # Agent Spaces managed MCP servers end',
+        '  github:',
+        '    command: "npx"',
+        '',
+      ].join('\n'),
+    );
+  } finally {
+    restorePathEnv(previousPath);
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('HermesRuntime refreshes Agent Spaces managed Hermes config.yaml', async () => {
   const root = mkdtempSync(join(tmpdir(), 'hermes-runtime-'));
   const binDir = join(root, 'bin');

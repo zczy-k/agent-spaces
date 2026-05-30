@@ -346,11 +346,12 @@ export function AgentDetail({
           onOpenChange={setMcpsDialogOpen}
           selectable
           selectedMcps={Object.keys((agent.mcps as Record<string, Record<string, unknown>>)?.mcpServers ?? {})}
-          onSelectedMcpsChange={(names) => {
+          onSelectedMcpsChange={(names, configs) => {
             const oldServers = (agent.mcps as Record<string, Record<string, unknown>>)?.mcpServers ?? {};
             const newServers: Record<string, unknown> = {};
             for (const name of names) {
-              newServers[name] = (oldServers as Record<string, unknown>)[name] ?? {};
+              const oldConfig = (oldServers as Record<string, unknown>)[name];
+              newServers[name] = isRunnableMcpConfig(oldConfig) ? oldConfig : configs[name] ?? oldConfig ?? {};
             }
             onMcpChange({ ...(agent.mcps as Record<string, unknown>), mcpServers: newServers });
           }}
@@ -577,4 +578,11 @@ export function AgentDetail({
       </Dialog>
     </div>
   );
+}
+
+function isRunnableMcpConfig(config: unknown): config is Record<string, unknown> {
+  if (!config || typeof config !== "object" || Array.isArray(config)) return false;
+  const record = config as Record<string, unknown>;
+  return typeof record.command === "string" && record.command.trim().length > 0
+    || typeof record.url === "string" && record.url.trim().length > 0;
 }

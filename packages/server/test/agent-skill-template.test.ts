@@ -60,6 +60,51 @@ test('getAvailableSkillNames falls back to global skills when agent copy is empt
   }
 });
 
+test('getMcpServers resolves empty agent MCP selections from stored MCP configs', async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), 'agent-spaces-data-'));
+  const previousDataDir = process.env.AGENT_SPACES_DATA_DIR;
+  process.env.AGENT_SPACES_DATA_DIR = dataDir;
+
+  try {
+    mkdirSync(join(dataDir, 'mcps'), { recursive: true });
+    writeFileSync(
+      join(dataDir, 'mcps', 'fetch.json'),
+      JSON.stringify({
+        name: 'fetch',
+        config: {
+          command: 'uvx',
+          args: ['mcp-server-fetch'],
+          env: { PYTHONIOENCODING: 'utf-8' },
+        },
+      }, null, 2),
+      'utf-8',
+    );
+
+    const agentService = await import(`../src/services/agent.ts?case=${Date.now()}-mcp`);
+
+    assert.deepEqual(
+      agentService.getMcpServers({
+        mcpServers: {
+          fetch: {},
+          missing: {},
+        },
+      }),
+      {
+        fetch: {
+          command: 'uvx',
+          args: ['mcp-server-fetch'],
+          env: { PYTHONIOENCODING: 'utf-8' },
+        },
+      },
+    );
+    assert.deepEqual(agentService.getAllowedTools({ mcpServers: { fetch: {}, missing: {} } }), ['fetch']);
+  } finally {
+    if (previousDataDir === undefined) delete process.env.AGENT_SPACES_DATA_DIR;
+    else process.env.AGENT_SPACES_DATA_DIR = previousDataDir;
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
 test('getAgentConfigDir refreshes workspace agent skills when only an empty placeholder exists', async () => {
   const dataDir = mkdtempSync(join(tmpdir(), 'agent-spaces-data-'));
   const workspaceRoot = mkdtempSync(join(tmpdir(), 'agent-space-workspace-'));

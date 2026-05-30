@@ -291,8 +291,31 @@ function writeManagedHermesConfig(
   if (!hasModelConfig && !normalizedMcpServers) return;
 
   const configPath = join(hermesHome, 'config.yaml');
-  if (existsSync(configPath) && !isWritableAgentSpacesHermesConfig(configPath)) return;
+  if (existsSync(configPath)) {
+    const content = readFileSync(configPath, 'utf-8');
+    if (!isWritableAgentSpacesHermesConfigContent(content)) {
+      if (!normalizedMcpServers) return;
+      const nextContent = mergeManagedHermesAgentSpacesConfig(content, normalizedMcpServers);
+      if (nextContent !== content) {
+        writeFileSync(configPath, nextContent, 'utf-8');
+        log?.(`merged Hermes MCP config | path=${configPath} servers=${Object.keys(normalizedMcpServers ?? {}).join(',') || '-'}`);
+      }
+      return;
+    }
+  }
 
+  const content = buildManagedHermesConfig(config, normalizedMcpServers);
+  writeFileSync(configPath, content, 'utf-8');
+  if (normalizedMcpServers) {
+    log?.(`wrote Hermes MCP config | path=${configPath} servers=${Object.keys(normalizedMcpServers).join(',')}`);
+  }
+}
+
+function buildManagedHermesConfig(
+  config: AgentRuntimeConfig,
+  normalizedMcpServers?: Record<string, unknown>,
+): string {
+  const hasModelConfig = Boolean(config.baseURL && config.model && isAgentSpacesProtocolProvider(config.provider));
   const lines = [
     '# Managed by Agent Spaces for this agent profile.',
   ];
@@ -313,10 +336,95 @@ function writeManagedHermesConfig(
     if (lines.length > 1) lines.push('');
     lines.push('mcp_servers:');
     lines.push(...yamlMappingLines(normalizedMcpServers, 2));
-    log?.(`wrote Hermes MCP config | path=${configPath} servers=${Object.keys(normalizedMcpServers).join(',')}`);
   }
 
-  writeFileSync(configPath, `${lines.join('\n')}\n`, 'utf-8');
+  return `${lines.join('\n')}\n`;
+}
+
+const AGENT_SPACES_MCP_START = '  # Agent Spaces managed MCP servers start';
+const AGENT_SPACES_MCP_END = '  # Agent Spaces managed MCP servers end';
+
+function mergeManagedHermesAgentSpacesConfig(
+  content: string,
+  normalizedMcpServers: Record<string, unknown>,
+): string {
+  return mergeManagedHermesMcpServers(content, normalizedMcpServers);
+}
+
+function mergeManagedHermesMcpServers(
+  content: string,
+  normalizedMcpServers?: Record<string, unknown>,
+): string {
+  const lines = content.replace(/\r\n/g, '\n').split('\n');
+  if (lines.at(-1) === '') lines.pop();
+
+  const mcpStart = lines.findIndex((line) => /^mcp_servers\s*:\s*(?:#.*)?$/.test(line));
+  const managedBlock = normalizedMcpServers
+    ? [AGENT_SPACES_MCP_START, ...yamlMappingLines(normalizedMcpServers, 2), AGENT_SPACES_MCP_END]
+    : [];
+
+  if (mcpStart === -1) {
+    if (!managedBlock.length) return content;
+    const nextLines = [...lines];
+    if (nextLines.length && nextLines.at(-1)?.trim()) nextLines.push('');
+    nextLines.push('mcp_servers:', ...managedBlock);
+    return `${nextLines.join('\n')}\n`;
+  }
+
+  const mcpEnd = findNextTopLevelYamlKey(lines, mcpStart + 1);
+  const before = lines.slice(0, mcpStart + 1);
+  const mcpBody = removeManagedHermesMcpEntries(
+    lines.slice(mcpStart + 1, mcpEnd),
+    Object.keys(normalizedMcpServers ?? {}),
+  );
+  const after = lines.slice(mcpEnd);
+  const nextLines = [
+    ...before,
+    ...managedBlock,
+    ...mcpBody,
+    ...after,
+  ];
+  return `${nextLines.join('\n')}\n`;
+}
+
+function findNextTopLevelYamlKey(lines: string[], startIndex: number): number {
+  for (let index = startIndex; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (!line.trim() || line.trimStart().startsWith('#')) continue;
+    if (/^\S[^:]*:\s*/.test(line)) return index;
+  }
+  return lines.length;
+}
+
+function removeManagedHermesMcpEntries(lines: string[], managedServerNames: string[]): string[] {
+  const managedNameKeys = new Set(managedServerNames.flatMap((name) => [yamlKey(name), yamlString(name)]));
+  const result: string[] = [];
+  for (let index = 0; index < lines.length;) {
+    const line = lines[index];
+    if (line === AGENT_SPACES_MCP_START) {
+      index += 1;
+      while (index < lines.length && lines[index] !== AGENT_SPACES_MCP_END) index += 1;
+      if (index < lines.length) index += 1;
+      continue;
+    }
+
+    const entryKey = readIndentedYamlKey(line, 2);
+    if (entryKey && managedNameKeys.has(entryKey)) {
+      index += 1;
+      while (index < lines.length && !readIndentedYamlKey(lines[index], 2)) index += 1;
+      continue;
+    }
+
+    result.push(line);
+    index += 1;
+  }
+  return result;
+}
+
+function readIndentedYamlKey(line: string, indent: number): string | undefined {
+  if (!line.startsWith(' '.repeat(indent)) || line.startsWith(' '.repeat(indent + 1))) return undefined;
+  const match = line.slice(indent).match(/^((?:"(?:\\.|[^"])*")|[A-Za-z0-9_-]+)\s*:/);
+  return match?.[1];
 }
 
 function withFunctionToolBridge(
@@ -433,12 +541,7 @@ function isStringOrStringArray(value: unknown): value is string | string[] {
   return typeof value === 'string' || (Array.isArray(value) && value.every((item) => typeof item === 'string'));
 }
 
-function isManagedHermesConfig(configPath: string): boolean {
-  return readFileSync(configPath, 'utf-8').startsWith('# Managed by Agent Spaces for this agent profile.');
-}
-
-function isWritableAgentSpacesHermesConfig(configPath: string): boolean {
-  const content = readFileSync(configPath, 'utf-8');
+function isWritableAgentSpacesHermesConfigContent(content: string): boolean {
   return content.startsWith('# Managed by Agent Spaces for this agent profile.')
     || content.includes('api_key: ${AGENT_SPACES_HERMES_API_KEY}');
 }

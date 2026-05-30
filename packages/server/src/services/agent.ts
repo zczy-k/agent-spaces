@@ -415,17 +415,21 @@ export function updatePreset(
 }
 
 export function getAllowedTools(mcps?: AgentConfig['mcps']): string[] | undefined {
-  if (!mcps) return undefined;
-  const servers = (mcps as { mcpServers?: unknown }).mcpServers;
-  if (!servers || typeof servers !== 'object' || Array.isArray(servers)) return undefined;
-  return Object.keys(servers);
+  const servers = getMcpServers(mcps);
+  return servers ? Object.keys(servers) : undefined;
 }
 
 export function getMcpServers(mcps?: AgentConfig['mcps']): Record<string, unknown> | undefined {
   if (!mcps) return undefined;
   const servers = (mcps as { mcpServers?: unknown }).mcpServers;
   if (!servers || typeof servers !== 'object' || Array.isArray(servers)) return undefined;
-  return servers as Record<string, unknown>;
+  const resolved = Object.fromEntries(
+    Object.entries(servers).flatMap(([name, server]) => {
+      const config = getRunnableMcpServerConfig(server) ?? readStoredMcpServerConfig(name);
+      return config ? [[name, config]] : [];
+    }),
+  );
+  return Object.keys(resolved).length > 0 ? resolved : undefined;
 }
 
 export function getAgentConfigDir(workspaceId: string, preset: AgentConfig): string | undefined {
@@ -521,6 +525,30 @@ function getWorkspaceAgentDir(agentspaceDir: string, agentId: string): string {
 function normalizeMcpConfig(mcps?: AgentConfig['mcps']): McpConfig {
   if (!mcps) return {};
   return mcps;
+}
+
+function getRunnableMcpServerConfig(server: unknown): Record<string, unknown> | null {
+  if (!server || typeof server !== 'object' || Array.isArray(server)) return null;
+  const record = server as Record<string, unknown>;
+  if (typeof record.command === 'string' && record.command.trim()) return record;
+  if (typeof record.url === 'string' && record.url.trim()) return record;
+  return null;
+}
+
+function readStoredMcpServerConfig(name: string): Record<string, unknown> | null {
+  const filePath = join(getDataDir(), 'mcps', `${sanitizeMcpName(name)}.json`);
+  if (!existsSync(filePath)) return null;
+
+  try {
+    const parsed = JSON.parse(readFileSync(filePath, 'utf-8')) as { config?: unknown };
+    return getRunnableMcpServerConfig(parsed.config);
+  } catch {
+    return null;
+  }
+}
+
+function sanitizeMcpName(name: string): string {
+  return name.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'mcp-server';
 }
 
 function normalizeModelProvider(provider: AgentConfig['modelProvider'] | ''): AgentConfig['modelProvider'] {
