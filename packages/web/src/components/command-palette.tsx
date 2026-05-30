@@ -2,15 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Command,
-  CommandDialog,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandShortcut,
-} from '@/components/ui/command';
+  CommandPalette as CommandPaletteUI,
+  type PaletteGroup,
+  type SearchProviderHint,
+} from '@/components/ui/command-palette';
 import { useCommandPalette } from '@/stores/command-palette';
 import { useKeyboardShortcuts } from '@/stores/keyboard-shortcuts';
 import { matchProvider, searchProviders, type SearchResult } from '@/stores/search-commands';
@@ -22,6 +17,7 @@ export function CommandPalette() {
   const { matchesEvent } = useKeyboardShortcuts();
   const [query, setQuery] = useState('');
 
+  // Ctrl+Shift+P to toggle
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (matchesEvent('commandPalette', e)) {
@@ -33,16 +29,15 @@ export function CommandPalette() {
     return () => document.removeEventListener('keydown', handler);
   }, [toggle, matchesEvent]);
 
-  // Reset search when closing
+  // Reset on close
   useEffect(() => {
-    if (!open) {
-      setQuery('');
-      const input = document.querySelector('[cmdk-input]') as HTMLInputElement | null;
-      if (input) input.value = '';
-    }
+    if (!open) setQuery('');
   }, [open]);
 
+  // Determine search mode
   const match = useMemo(() => matchProvider(query), [query]);
+
+  // Search results
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
 
@@ -53,12 +48,12 @@ export function CommandPalette() {
       setSearchLoading(false);
       return;
     }
-
     const result = m.provider.search(m.keyword);
     if (result instanceof Promise) {
       setSearchLoading(true);
       let stale = false;
-      result.then((r) => { if (!stale) setSearchResults(r); })
+      result
+        .then((r) => { if (!stale) setSearchResults(r); })
         .finally(() => { if (!stale) setSearchLoading(false); });
       return () => { stale = true; };
     } else {
@@ -67,106 +62,62 @@ export function CommandPalette() {
     }
   }, [query]);
 
-  const grouped = useMemo(() => {
+  // Group registered commands
+  const groups: PaletteGroup[] = useMemo(() => {
     const map = new Map<string, typeof commands>();
     for (const cmd of commands) {
       const list = map.get(cmd.group) ?? [];
       list.push(cmd);
       map.set(cmd.group, list);
     }
-    return map;
+    return [...map.entries()].map(([key, items]) => ({
+      key,
+      label: key,
+      items: items.map((cmd) => ({
+        id: cmd.id,
+        label: cmd.label,
+        icon: cmd.icon ? <cmd.icon className="size-3" /> : undefined,
+        shortcut: cmd.shortcut,
+        action: cmd.action,
+      })),
+    }));
   }, [commands]);
 
-  const prefixHints = useMemo(() => {
+  // Search provider hints
+  const searchHints: SearchProviderHint[] = useMemo(() => {
     return searchProviders.map((p) => ({
-      id: `hint:${p.prefix}`,
-      label: p.prefix,
+      prefix: p.prefix,
       description: [...p.aliases].join(', '),
-      icon: p.icon,
+      icon: <p.icon className="size-3" />,
     }));
   }, []);
 
-  const showSearch = !!match;
+  // Map search results
+  const mappedSearchResults = useMemo(() => {
+    return searchResults.slice(0, 10).map((item) => ({
+      id: item.id,
+      label: item.label,
+      description: item.description,
+      icon: item.icon ? <item.icon className="size-3" /> : undefined,
+      action: item.action,
+    }));
+  }, [searchResults]);
 
   return (
-    <CommandDialog open={open} onOpenChange={setOpen} title={t('title')} description={t('description')}>
-      <Command shouldFilter={!match}>
-        <CommandInput
-          placeholder={t('placeholder')}
-          value={query}
-          onValueChange={setQuery}
-        />
-        <CommandList>
-          <CommandEmpty>{t('empty')}</CommandEmpty>
-
-          {showSearch && (
-            <CommandGroup heading={match.provider.label}>
-              {searchLoading ? (
-                <div className="px-2 py-4 text-center text-sm text-muted-foreground">...</div>
-              ) : searchResults.length === 0 ? (
-                <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                  {t('noResults')}
-                </div>
-              ) : (
-                searchResults.slice(0, 10).map((item) => (
-                  <CommandItem
-                    key={item.id}
-                    value={item.label}
-                    onSelect={() => {
-                      setOpen(false);
-                      item.action();
-                    }}
-                  >
-                    {item.icon && <item.icon className="size-4 shrink-0" />}
-                    <span className="truncate min-w-0">{item.label}</span>
-                    {item.description && (
-                      <span className="ml-auto shrink-0 text-xs text-muted-foreground truncate max-w-[200px]">
-                        {item.description}
-                      </span>
-                    )}
-                  </CommandItem>
-                ))
-              )}
-            </CommandGroup>
-          )}
-
-          {!match && (
-            <>
-              <CommandGroup heading="Search">
-                {prefixHints.map((hint) => (
-                  <CommandItem key={hint.id} value={hint.label} className="[&>svg:last-child]:hidden!" onSelect={() => setQuery(hint.label + ' ')}>
-                    {hint.icon && <hint.icon className="size-4 shrink-0" />}
-                    <span className="truncate min-w-0">{hint.label}</span>
-                    {hint.description && (
-                      <span className="ml-auto text-xs text-muted-foreground text-right shrink-0">
-                        {hint.description}
-                      </span>
-                    )}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-              {[...grouped.entries()].map(([group, items]) => (
-                <CommandGroup key={group} heading={group}>
-                  {items.map((cmd) => (
-                    <CommandItem
-                      key={cmd.id}
-                      value={cmd.label}
-                      onSelect={() => {
-                        setOpen(false);
-                        cmd.action();
-                      }}
-                    >
-                      {cmd.icon && <cmd.icon className="size-4 shrink-0" />}
-                      <span className="truncate min-w-0">{cmd.label}</span>
-                      {cmd.shortcut && <CommandShortcut>{cmd.shortcut}</CommandShortcut>}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              ))}
-            </>
-          )}
-        </CommandList>
-      </Command>
-    </CommandDialog>
+    <CommandPaletteUI
+      open={open}
+      onOpenChange={setOpen}
+      groups={groups}
+      query={query}
+      onQueryChange={setQuery}
+      searchResults={mappedSearchResults}
+      searchLoading={searchLoading}
+      searchProviderLabel={match?.provider.label}
+      searchProviderHints={searchHints}
+      showSearch={!!match}
+      placeholder={t('placeholder')}
+      emptyText={t('empty')}
+      noResultsText={t('noResults')}
+    />
   );
 }
