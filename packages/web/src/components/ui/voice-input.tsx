@@ -60,7 +60,7 @@ export function VoiceInput({
   return (
     <div className={cn("flex items-center", className, isLeft && "justify-end")} style={isLeft ? { direction: "rtl" } : undefined}>
       <motion.div
-        className="flex p-1 border items-center justify-center rounded-full cursor-pointer"
+        className="flex p-1 items-center justify-center rounded-full cursor-pointer"
         layout
         transition={{ layout: { duration: 0.4 } }}
         onClick={onClickHandler}
