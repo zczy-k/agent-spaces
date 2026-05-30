@@ -392,6 +392,54 @@ test('HermesRuntime keeps final text after real verbose startup boundaries', asy
   }
 });
 
+test('HermesRuntime emits reasoning events from Hermes thinking output and captured reasoning logs', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'hermes-runtime-'));
+  const binDir = join(root, 'bin');
+  const previousPath = currentPathEnv();
+
+  try {
+    mkdirSync(binDir, { recursive: true });
+    writeFakeHermes(binDir, [
+      'console.log("Query: @test 你好");',
+      'console.log("Initializing agent...");',
+      'console.log("  [thinking] 用户用中文说了 @test 你好。");',
+      'console.log("我应该用中文友好地回应。");',
+      'console.log("╭─ Hermes ───────────────────────────────────────────────────────────────────╮");',
+      'console.error("18:05:02 - root - DEBUG [20260530_180452_f166bc] - API Response received - Model: glm-4.7, Usage: CompletionUsage(completion_tokens=110, prompt_tokens=16700, total_tokens=16810, completion_tokens_details=CompletionTokensDetails(reasoning_tokens=100), prompt_tokens_details=PromptTokensDetails(cached_tokens=16640))");',
+      'console.error("18:05:02 - agent.conversation_loop - INFO [20260530_180452_f166bc] - API call #1: model=GLM-4.7 provider=custom in=16700 out=110 total=16810 latency=4.4s cache=16640/16700 (100%)");',
+      'console.error("18:05:03 - root - DEBUG [20260530_180452_f166bc] - Token usage: prompt=16,700, completion=110, total=16,810");',
+      'console.error("18:05:03 - root - DEBUG [20260530_180452_f166bc] - Captured reasoning (40 chars):");',
+      'console.error("用户的消息很简单，就是你好。");',
+      'console.error("我应该简单友好地回应。");',
+      'console.log("🎉 Conversation completed after 1 OpenAI-compatible API call(s)");',
+      'console.log("你好！有什么可以帮你的吗？");',
+    ].join('\n'));
+    setPathEnv(prependPath(binDir, previousPath));
+
+    const events: Array<{ type: string; [key: string]: unknown }> = [];
+    const runtime = new HermesRuntime();
+    const result = await runtime.execute('hello', root, {
+      onEvent: (event) => events.push(event),
+    });
+
+    const reasoningTexts = events
+      .filter((event) => event.type === 'reasoning')
+      .map((event) => event.text);
+
+    assert.equal(result.success, true);
+    assert.deepEqual(result.output, [
+      '[Usage] total: 16810 input: 16700 output: 110 cached: 16640',
+      '你好！有什么可以帮你的吗？',
+    ]);
+    assert.equal(reasoningTexts.some((text) => String(text).includes('用户用中文说了')), true);
+    assert.equal(reasoningTexts.some((text) => String(text).includes('用户的消息很简单')), true);
+    assert.equal(reasoningTexts.some((text) => String(text).includes('我应该简单友好地回应')), true);
+  } finally {
+    restorePathEnv(previousPath);
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('HermesRuntime returns a clear error when the Hermes CLI is missing', async () => {
   const root = mkdtempSync(join(tmpdir(), 'hermes-runtime-'));
   const previousPath = currentPathEnv();

@@ -8,6 +8,7 @@ import type {
   AgentRuntimeConfig,
 } from './agent-runtime-types.js';
 import { appendOutputStyleToPrompt, summarizeResult } from './agent-runtime-types.js';
+import { startCodexFunctionToolBridge, type CodexFunctionToolBridge } from './codex-function-tool-bridge.js';
 
 /**
  * Runtime backed by the external Hermes CLI.
@@ -27,13 +28,18 @@ export class HermesRuntime implements AgentRuntime {
     const d = (message: string) => console.log(`[hermes] ${truncateConsoleMessage(message)}`);
     const agentDir = options?.configDir;
     const hermesHome = agentDir ? join(agentDir, '.hermes') : undefined;
-    if (hermesHome) prepareHermesHome(hermesHome, this.config, agentDir);
+    let functionToolBridge: CodexFunctionToolBridge | undefined;
 
-    const args = buildHermesArgs(appendOutputStyleToPrompt(prompt, options?.outputStyle), this.config, options);
-    const cliProvider = getHermesCliProvider(this.config.provider);
-    d(`starting | cwd=${cwd} model=${this.config.model ?? 'profile-default'} provider=${cliProvider ?? 'profile-default'} requestedProvider=${this.config.provider ?? 'profile-default'} hermesHome=${hermesHome ?? 'default'} skills=${options?.skills?.join(',') || '-'}`);
+    try {
+      functionToolBridge = await startCodexFunctionToolBridge(options?.functionTools, d);
+      const mcpServers = withFunctionToolBridge(options?.mcpServers, functionToolBridge);
+      if (hermesHome) prepareHermesHome(hermesHome, this.config, agentDir, options?.skills, mcpServers, d);
 
-    return new Promise<AgentRunResult>((resolve) => {
+      const args = buildHermesArgs(appendOutputStyleToPrompt(prompt, options?.outputStyle), this.config, options);
+      const cliProvider = getHermesCliProvider(this.config.provider);
+      d(`starting | cwd=${cwd} model=${this.config.model ?? 'profile-default'} provider=${cliProvider ?? 'profile-default'} requestedProvider=${this.config.provider ?? 'profile-default'} hermesHome=${hermesHome ?? 'default'} mcpServers=${Object.keys(mcpServers ?? {}).join(',') || '-'} functionToolBridge=${functionToolBridge?.url ?? '-'} skills=${options?.skills?.join(',') || '-'}`);
+
+      return await new Promise<AgentRunResult>((resolve) => {
       let settled = false;
       let stdoutBuffer = '';
       let stderrBuffer = '';
@@ -139,6 +145,28 @@ export class HermesRuntime implements AgentRuntime {
         });
       });
     });
+    } catch (err) {
+      const elapsed = Date.now() - startTime;
+      const message = err instanceof Error ? err.message : String(err);
+      d(`failed ${elapsed}ms | ${message}`);
+      if (err instanceof Error && err.stack) console.error(err.stack);
+
+      return {
+        success: false,
+        summary: 'Hermes execution failed',
+        artifacts: [],
+        error: message,
+        output,
+        sessionId: options?.resumeSessionId,
+      };
+    } finally {
+      try {
+        await functionToolBridge?.close();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        d(`function tool bridge close failed | ${message}`);
+      }
+    }
   }
 
   stop(): void {
@@ -220,9 +248,16 @@ function getPathEnvValue(): string | undefined {
   return Object.entries(process.env).find(([key]) => key.toLowerCase() === 'path')?.[1];
 }
 
-function prepareHermesHome(hermesHome: string, config: AgentRuntimeConfig, agentDir?: string): void {
+function prepareHermesHome(
+  hermesHome: string,
+  config: AgentRuntimeConfig,
+  agentDir?: string,
+  requestedSkills?: string[],
+  mcpServers?: Record<string, unknown>,
+  log?: (message: string) => void,
+): void {
   mkdirSync(hermesHome, { recursive: true });
-  writeManagedHermesConfig(hermesHome, config);
+  writeManagedHermesConfig(hermesHome, config, mcpServers, log);
   const skillsDir = join(hermesHome, 'skills');
   rmSync(skillsDir, { recursive: true, force: true });
   mkdirSync(skillsDir, { recursive: true });
@@ -236,25 +271,166 @@ function prepareHermesHome(hermesHome: string, config: AgentRuntimeConfig, agent
     if (!statSync(sourceFile).isFile()) continue;
     copyFileSync(sourceFile, join(skillsDir, basename(file)));
   }
+
+  for (const skill of normalizeSkillNames(requestedSkills)) {
+    const sourceFile = join(sourceSkillsDir, `${skill}.md`);
+    const targetFile = join(skillsDir, `${skill}.md`);
+    if (existsSync(targetFile) || !existsSync(sourceFile) || !statSync(sourceFile).isFile()) continue;
+    copyFileSync(sourceFile, targetFile);
+  }
 }
 
-function writeManagedHermesConfig(hermesHome: string, config: AgentRuntimeConfig): void {
-  if (!config.baseURL || !config.model || !isAgentSpacesProtocolProvider(config.provider)) return;
+function writeManagedHermesConfig(
+  hermesHome: string,
+  config: AgentRuntimeConfig,
+  mcpServers?: Record<string, unknown>,
+  log?: (message: string) => void,
+): void {
+  const normalizedMcpServers = normalizeHermesMcpServers(mcpServers);
+  const hasModelConfig = Boolean(config.baseURL && config.model && isAgentSpacesProtocolProvider(config.provider));
+  if (!hasModelConfig && !normalizedMcpServers) return;
 
   const configPath = join(hermesHome, 'config.yaml');
   if (existsSync(configPath) && !isManagedHermesConfig(configPath)) return;
 
-  const apiMode = getHermesApiMode(config.provider, config.baseURL);
   const lines = [
     '# Managed by Agent Spaces for this agent profile.',
-    'model:',
-    `  default: ${yamlString(config.model)}`,
-    '  provider: custom',
-    `  base_url: ${yamlString(config.baseURL)}`,
-    '  api_key: ${AGENT_SPACES_HERMES_API_KEY}',
   ];
-  if (apiMode) lines.push(`  api_mode: ${apiMode}`);
+
+  if (hasModelConfig) {
+    const apiMode = getHermesApiMode(config.provider, config.baseURL);
+    lines.push(
+      'model:',
+      `  default: ${yamlString(config.model!)}`,
+      '  provider: custom',
+      `  base_url: ${yamlString(config.baseURL!)}`,
+      '  api_key: ${AGENT_SPACES_HERMES_API_KEY}',
+    );
+    if (apiMode) lines.push(`  api_mode: ${apiMode}`);
+  }
+
+  if (normalizedMcpServers) {
+    if (lines.length > 1) lines.push('');
+    lines.push('mcp_servers:');
+    lines.push(...yamlMappingLines(normalizedMcpServers, 2));
+    log?.(`wrote Hermes MCP config | path=${configPath} servers=${Object.keys(normalizedMcpServers).join(',')}`);
+  }
+
   writeFileSync(configPath, `${lines.join('\n')}\n`, 'utf-8');
+}
+
+function withFunctionToolBridge(
+  mcpServers: Record<string, unknown> | undefined,
+  bridge: CodexFunctionToolBridge | undefined,
+): Record<string, unknown> | undefined {
+  if (!bridge) return mcpServers;
+  return {
+    ...(mcpServers ?? {}),
+    [bridge.name]: { url: bridge.url },
+  };
+}
+
+function normalizeHermesMcpServers(servers?: Record<string, unknown>): Record<string, unknown> | undefined {
+  if (!servers || Object.keys(servers).length === 0) return undefined;
+  const normalized = Object.fromEntries(
+    Object.entries(servers).flatMap(([name, server]) => {
+      const normalizedServer = normalizeHermesMcpServer(server);
+      return normalizedServer ? [[name, normalizedServer]] : [];
+    }),
+  );
+  return Object.keys(normalized).length > 0 ? normalized : undefined;
+}
+
+function normalizeHermesMcpServer(server: unknown): Record<string, unknown> | null {
+  if (!server || typeof server !== 'object' || Array.isArray(server)) return null;
+  const record = server as Record<string, unknown>;
+
+  if (typeof record.command === 'string') {
+    return removeUndefined({
+      command: record.command,
+      args: Array.isArray(record.args) ? record.args.map(String) : undefined,
+      env: isRecord(record.env) ? record.env : undefined,
+      ssl_verify: isBooleanOrString(record.ssl_verify) ? record.ssl_verify : undefined,
+      client_cert: isStringOrStringArray(record.client_cert) ? record.client_cert : undefined,
+      client_key: typeof record.client_key === 'string' ? record.client_key : undefined,
+      enabled: typeof record.enabled === 'boolean' ? record.enabled : undefined,
+      timeout: typeof record.timeout === 'number' ? record.timeout : undefined,
+      connect_timeout: typeof record.connect_timeout === 'number' ? record.connect_timeout : undefined,
+      supports_parallel_tool_calls: typeof record.supports_parallel_tool_calls === 'boolean'
+        ? record.supports_parallel_tool_calls
+        : undefined,
+      tools: isRecord(record.tools) ? record.tools : undefined,
+      sampling: isRecord(record.sampling) ? record.sampling : undefined,
+    });
+  }
+
+  if (typeof record.url === 'string') {
+    return removeUndefined({
+      url: record.url,
+      headers: isRecord(record.headers) ? record.headers : undefined,
+      ssl_verify: isBooleanOrString(record.ssl_verify) ? record.ssl_verify : undefined,
+      client_cert: isStringOrStringArray(record.client_cert) ? record.client_cert : undefined,
+      client_key: typeof record.client_key === 'string' ? record.client_key : undefined,
+      enabled: typeof record.enabled === 'boolean' ? record.enabled : undefined,
+      timeout: typeof record.timeout === 'number' ? record.timeout : undefined,
+      connect_timeout: typeof record.connect_timeout === 'number' ? record.connect_timeout : undefined,
+      supports_parallel_tool_calls: typeof record.supports_parallel_tool_calls === 'boolean'
+        ? record.supports_parallel_tool_calls
+        : undefined,
+      tools: isRecord(record.tools) ? record.tools : undefined,
+      auth: typeof record.auth === 'string' ? record.auth : undefined,
+      sampling: isRecord(record.sampling) ? record.sampling : undefined,
+    });
+  }
+
+  return null;
+}
+
+function yamlMappingLines(value: Record<string, unknown>, indent: number): string[] {
+  return Object.entries(value).flatMap(([key, child]) => yamlEntryLines(key, child, indent));
+}
+
+function yamlEntryLines(key: string, value: unknown, indent: number): string[] {
+  const prefix = ' '.repeat(indent);
+  if (Array.isArray(value)) {
+    if (value.length === 0) return [`${prefix}${yamlKey(key)}: []`];
+    return [
+      `${prefix}${yamlKey(key)}:`,
+      ...value.map((item) => `${' '.repeat(indent + 2)}- ${yamlInlineValue(item)}`),
+    ];
+  }
+  if (isRecord(value)) {
+    const entries = yamlMappingLines(value, indent + 2);
+    return entries.length ? [`${prefix}${yamlKey(key)}:`, ...entries] : [`${prefix}${yamlKey(key)}: {}`];
+  }
+  return [`${prefix}${yamlKey(key)}: ${yamlInlineValue(value)}`];
+}
+
+function yamlInlineValue(value: unknown): string {
+  if (typeof value === 'string') return yamlString(value);
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (value === null) return 'null';
+  return yamlString(JSON.stringify(value));
+}
+
+function yamlKey(value: string): string {
+  return /^[A-Za-z0-9_-]+$/.test(value) ? value : yamlString(value);
+}
+
+function removeUndefined(record: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined));
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function isBooleanOrString(value: unknown): value is boolean | string {
+  return typeof value === 'boolean' || typeof value === 'string';
+}
+
+function isStringOrStringArray(value: unknown): value is string | string[] {
+  return typeof value === 'string' || (Array.isArray(value) && value.every((item) => typeof item === 'string'));
 }
 
 function isManagedHermesConfig(configPath: string): boolean {
@@ -343,12 +519,19 @@ function createHermesLineParser(output: string[], options?: AgentRunOptions): He
   let inVerboseArgsBlock = false;
   let inVerboseResultBlock = false;
   let inVerboseThinkingBlock = false;
+  let inCapturedReasoningBlock = false;
   let toolUseIndex = 0;
   let emittedUsage = false;
 
   const emitOutput = (line: string): void => {
     output.push(line);
     options?.onEvent?.({ type: 'output', line });
+  };
+
+  const emitReasoning = (text: string): void => {
+    const normalized = text.trim();
+    if (!normalized) return;
+    options?.onEvent?.({ type: 'reasoning', text: normalized, status: 'completed' });
   };
 
   const emitUsage = (usageLine: string): void => {
@@ -375,6 +558,21 @@ function createHermesLineParser(output: string[], options?: AgentRunOptions): He
       const normalized = line.trim();
       if (!normalized) return;
 
+      if (inCapturedReasoningBlock) {
+        if (source === 'stderr' && !isHermesLogLine(normalized)) {
+          emitReasoning(normalized);
+          return;
+        }
+        if (source === 'stderr') inCapturedReasoningBlock = false;
+      }
+
+      const capturedReasoning = parseCapturedReasoningStart(normalized);
+      if (capturedReasoning !== undefined) {
+        if (capturedReasoning) emitReasoning(capturedReasoning);
+        inCapturedReasoningBlock = true;
+        return;
+      }
+
       const toolUse = parseHermesToolUse(normalized);
       if (toolUse) {
         emitToolUse(toolUse);
@@ -389,15 +587,19 @@ function createHermesLineParser(output: string[], options?: AgentRunOptions): He
 
       const reasoning = parseHermesReasoningLine(normalized);
       if (reasoning) {
-        options?.onEvent?.({ type: 'reasoning', text: reasoning, status: 'completed' });
+        emitReasoning(reasoning);
         return;
       }
 
       if (source === 'stderr') return;
 
       if (inVerboseThinkingBlock) {
-        if (!isHermesThinkingContinuationLine(normalized)) inVerboseThinkingBlock = false;
-        else return;
+        if (!isHermesThinkingContinuationLine(normalized)) {
+          inVerboseThinkingBlock = false;
+        } else {
+          emitReasoning(normalized);
+          return;
+        }
       }
 
       if (inVerboseResultBlock) {
@@ -416,6 +618,7 @@ function createHermesLineParser(output: string[], options?: AgentRunOptions): He
       if (inUserMessageEcho) return;
 
       if (/^\[thinking\]/i.test(normalized)) {
+        emitReasoning(normalized.replace(/^\[thinking\]\s*/i, ''));
         inVerboseThinkingBlock = true;
         return;
       }
@@ -478,6 +681,16 @@ function parseHermesToolUse(line: string): { name: string; input?: unknown; rawI
 
 function parseHermesReasoningLine(line: string): string | undefined {
   return line.match(/\b(?:Reasoning|Thinking):\s*(.+)$/i)?.[1]?.trim();
+}
+
+function parseCapturedReasoningStart(line: string): string | undefined {
+  const match = line.match(/\bCaptured reasoning \(\d+ chars\):\s*(.*)$/i);
+  if (!match) return undefined;
+  return match[1].trim();
+}
+
+function isHermesLogLine(line: string): boolean {
+  return /^\d{2}:\d{2}:\d{2}\s+-\s+/.test(line);
 }
 
 function parseHermesUsageLine(line: string): string | undefined {
