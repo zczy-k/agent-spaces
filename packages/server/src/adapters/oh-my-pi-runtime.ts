@@ -550,11 +550,11 @@ function handleJsonEvent(
   const costUsd = readCostUsd(event);
 
   const reasoningTexts = collectReasoningTexts(event);
-  const reasoningDeltas = isOmpStreamingMessageEvent(eventType)
-    ? collectReasoningDeltas(reasoningTexts, ctx.reasoningSnapshots)
+  const completedReasoningTexts = isOmpStreamingMessageEvent(eventType)
+    ? collectCompletedStreamingReasoning(eventType, reasoningTexts, ctx.reasoningSnapshots)
     : reasoningTexts;
 
-  for (const text of reasoningDeltas) {
+  for (const text of completedReasoningTexts) {
     ctx.log(`reasoning | ${truncateForLog(text)}`);
     ctx.options?.onEvent?.({ type: 'reasoning', text, status: 'completed' });
   }
@@ -643,23 +643,24 @@ interface ReasoningSnapshotState {
   blocks: string[];
 }
 
-function collectReasoningDeltas(texts: string[], state: ReasoningSnapshotState): string[] {
-  const deltas: string[] = [];
-  texts.forEach((text, index) => {
-    const previous = state.blocks[index] ?? '';
-    const delta = reasoningSnapshotDelta(previous, text);
-    state.blocks[index] = text;
-    if (delta) deltas.push(delta);
-  });
-  return deltas;
-}
+function collectCompletedStreamingReasoning(
+  eventType: string,
+  texts: string[],
+  state: ReasoningSnapshotState,
+): string[] {
+  if (eventType === 'message_start') {
+    state.blocks = [];
+  }
 
-function reasoningSnapshotDelta(previous: string, current: string): string {
-  if (!current || current === previous) return '';
-  if (!previous) return current;
-  if (current.startsWith(previous)) return current.slice(previous.length);
-  if (previous.startsWith(current)) return '';
-  return current;
+  texts.forEach((text, index) => {
+    state.blocks[index] = text;
+  });
+
+  if (eventType !== 'message_end') return [];
+
+  const completed = state.blocks.filter(Boolean);
+  state.blocks = [];
+  return completed;
 }
 
 function collectToolUses(value: unknown, eventType: string): Array<{ id: string; name: string; input?: unknown }> {

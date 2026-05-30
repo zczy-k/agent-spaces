@@ -329,7 +329,7 @@ test('OhMyPiRuntime maps OMP tool execution events to structured runtime events'
   }
 });
 
-test('OhMyPiRuntime keeps complete reasoning when OMP repeats or clears streaming snapshots', async () => {
+test('OhMyPiRuntime emits complete OMP streaming reasoning only after message end', async () => {
   const root = mkdtempSync(join(tmpdir(), 'omp-runtime-'));
   const binDir = join(root, 'bin');
   const previousPath = currentPathEnv();
@@ -356,6 +356,9 @@ test('OhMyPiRuntime keeps complete reasoning when OMP repeats or clears streamin
     });
 
     assert.equal(result.success, true);
+    const reasoningEvents = events.filter((event) => event.type === 'reasoning');
+    assert.equal(reasoningEvents.length, 1);
+    assert.equal(reasoningEvents[0]?.status, 'completed');
     assert.equal(result.output.join('\n'), '当前没有知识库内容。');
     assert.equal(
       events

@@ -49,7 +49,7 @@ function ShinyBadge({
       className={cn(shinyBadgeVariants({ variant, shiny }), className)}
       {...props}
     >
-      <span className={shiny ? 'relative z-10 inline-flex items-center' : ''}>{children}</span>
+      <span className={cn('inline-flex items-center', shiny && 'relative z-10')}>{children}</span>
 
       {shiny && (
         <span
