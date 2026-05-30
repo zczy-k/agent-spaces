@@ -24,5 +24,10 @@
   "storeEmpty": "No prompts in store",
   "importTo": "Import",
   "imported": "Imported",
-  "importing": "Importing..."
+  "importing": "Importing...",
+  "filterAll": "All",
+  "filterCustom": "Custom",
+  "filterStore": "From Store",
+  "filterByAgent": "Filter by Agent",
+  "boundTo": "Bound to"
 }

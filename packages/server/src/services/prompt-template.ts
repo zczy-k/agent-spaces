@@ -11,6 +11,7 @@ export interface PromptTemplate {
   storeId?: string;
   createdAt: string;
   updatedAt: string;
+  boundAgents?: Array<{ id: string; name: string; avatarUrl?: string }>;
 }
 
 interface PromptMeta {
@@ -41,7 +42,14 @@ function writeMeta(meta: PromptMeta): void {
 }
 
 export function listPromptTemplates(): PromptTemplate[] {
-  return readMeta().templates;
+  const templates = readMeta().templates;
+  const agents = listTemplates();
+  return templates.map((tmpl) => ({
+    ...tmpl,
+    boundAgents: agents
+      .filter((a: AgentConfig) => a.systemPrompt === tmpl.content)
+      .map((a: AgentConfig) => ({ id: a.id, name: a.name || a.id, avatarUrl: a.avatarUrl })),
+  }));
 }
 
 export function createPromptTemplate(name: string, content: string, storeId?: string): PromptTemplate {

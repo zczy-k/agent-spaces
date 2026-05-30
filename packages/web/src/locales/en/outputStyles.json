@@ -24,5 +24,10 @@
   "apply": "Apply",
   "applyTitle": "Apply \"{name}\" to Agents",
   "applyDescription": "Select agents to apply this output style",
-  "applyConfirm": "Apply to {count} agents"
+  "applyConfirm": "Apply to {count} agents",
+  "filterAll": "All",
+  "filterCustom": "Custom",
+  "filterStore": "From Store",
+  "filterByAgent": "Filter by Agent",
+  "boundTo": "Bound to"
 }

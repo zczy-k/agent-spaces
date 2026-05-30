@@ -15,6 +15,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AgentPickerDialog } from '@/components/common/agent-picker-dialog';
+import { AgentIcon } from '@/components/common/agent-icon';
+import { StoreTabPanel } from '@/components/common/store-tab-panel';
 import { FileUpload, type FileUploadFile } from '@/components/ui/file-upload';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
@@ -49,6 +51,7 @@ interface OutputStyleTemplate {
   storeId?: string;
   createdAt: string;
   updatedAt: string;
+  boundAgents?: Array<{ id: string; name: string; avatarUrl?: string }>;
 }
 
 interface StoreTemplate {
@@ -81,6 +84,8 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
   const [agents, setAgents] = useState<AgentCandidate[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterAgentId, setFilterAgentId] = useState('');
+  const [filterType, setFilterType] = useState<'' | 'custom' | 'store'>('');
 
   // Store state
   const [storeTemplates, setStoreTemplates] = useState<StoreTemplate[]>([]);
@@ -286,9 +291,16 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
   };
 
   const filtered = templates.filter((tmpl) => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return tmpl.name.toLowerCase().includes(q) || tmpl.content.toLowerCase().includes(q);
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      if (!tmpl.name.toLowerCase().includes(q) && !tmpl.content.toLowerCase().includes(q)) return false;
+    }
+    if (filterType === 'custom' && tmpl.storeId) return false;
+    if (filterType === 'store' && !tmpl.storeId) return false;
+    if (filterAgentId) {
+      if (!tmpl.boundAgents?.some((a) => a.id === filterAgentId)) return false;
+    }
+    return true;
   });
 
   const filteredStore = storeTemplates.filter((tmpl) => {
@@ -298,6 +310,13 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
   });
 
   const showMainView = (standalone || open) && !applyTemplate && !editTemplate && !isCreating;
+
+  const agentPickerItems = agents.map((a) => ({
+    id: a.id,
+    name: a.name,
+    avatarUrl: a.avatarUrl,
+    description: a.description,
+  }));
 
   const tabs = (
     <div className="flex items-center gap-1 border-b border-border px-1">
@@ -319,160 +338,203 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
   );
 
   const localView = (
-    <>
-      <div className="flex items-center gap-2 ml-auto shrink-0 pt-2">
-        <Popover open={importOpen} onOpenChange={setImportOpen}>
-          <PopoverTrigger render={
-            <Button variant="outline" size="sm">
-              <Upload className="size-3.5 mr-1" />
-              {t('import')}
+    <div className="flex flex-1 min-h-0 gap-4">
+      {/* Left sidebar */}
+      <ScrollArea className="hidden md:block w-44 shrink-0">
+        <div className="flex flex-col gap-3 pr-2">
+          {/* Type filter */}
+          <div className="space-y-1">
+            <Button variant={!filterType ? 'secondary' : 'ghost'} size="sm" className="w-full justify-start" onClick={() => setFilterType('')}>
+              <FileText className="size-3.5 mr-1.5" />{t('filterAll')}
             </Button>
-          } />
-          <PopoverContent className="w-80" align="end">
-            <div className="space-y-3">
-              <p className="text-sm font-medium">{t('importTitle')}</p>
-              <FileUpload
-                value={uploadFiles}
-                onChange={setUploadFiles}
-                accept={{ 'text/markdown': ['.md', '.txt'], '': ['.md', '.txt'] }}
-                placeholder={t('importPlaceholder')}
-                maxFiles={10}
-              />
-              <Button
-                size="sm"
-                onClick={handleImport}
-                disabled={uploadFiles.length === 0}
-                className="w-full"
-              >
-                {t('importConfirm')}
-              </Button>
+            <Button variant={filterType === 'custom' ? 'secondary' : 'ghost'} size="sm" className="w-full justify-start" onClick={() => setFilterType('custom')}>
+              <Pencil className="size-3.5 mr-1.5" />{t('filterCustom')}
+            </Button>
+            <Button variant={filterType === 'store' ? 'secondary' : 'ghost'} size="sm" className="w-full justify-start" onClick={() => setFilterType('store')}>
+              <Store className="size-3.5 mr-1.5" />{t('filterStore')}
+            </Button>
+          </div>
+          {/* Agent filter */}
+          {agents.length > 0 && (
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground px-2">{t('filterByAgent')}</p>
+              {agents.map((a) => (
+                <Button key={a.id} variant={filterAgentId === a.id ? 'secondary' : 'ghost'} size="sm" className="w-full justify-start" onClick={() => setFilterAgentId(filterAgentId === a.id ? '' : a.id)}>
+                  <AgentIcon agentId={a.id} name={a.name} avatarUrl={a.avatarUrl} className="size-4 mr-1.5 rounded-full" />
+                  <span className="truncate">{a.name}</span>
+                </Button>
+              ))}
             </div>
-          </PopoverContent>
-        </Popover>
-        <Button variant="outline" size="sm" onClick={handleCreate}>
-          <Plus className="size-3.5 mr-1" />
-          {t('create')}
-        </Button>
-      </div>
-
-      <ScrollArea className="flex-1">
-        {loading ? (
-          <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
-            {tc('loading')}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
-            {t('empty')}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pr-2">
-            {filtered.map((tmpl) => (
-              <div
-                key={tmpl.id}
-                className="rounded-xl border border-border bg-background p-4 hover:bg-accent/30 transition-colors cursor-pointer"
-                onClick={() => handleEdit(tmpl)}
-              >
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <Pencil className="size-3.5 text-muted-foreground shrink-0" />
-                      <span className="font-medium text-sm truncate">{tmpl.name}</span>
-                    </div>
-                    <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-6 px-1.5 text-xs"
-                        onClick={() => openApplyDialog(tmpl)}
-                      >
-                        <Rocket className="size-3 mr-0.5" />
-                        {t('apply')}
-                      </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          render={<Button variant="ghost" size="icon" className="size-6" />}
-                        >
-                          <MoreVertical className="size-3" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={() => handleDelete(tmpl)}
-                          >
-                            <Trash2 className="size-3 mr-1.5" />
-                            {t('delete')}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground line-clamp-3">
-                    {tmpl.description || tmpl.content.slice(0, 200)}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+          )}
+        </div>
       </ScrollArea>
-    </>
+      {/* Right content */}
+      <div className="flex-1 min-w-0 flex flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t('search')}
+              className="pl-8"
+            />
+          </div>
+          <Popover open={importOpen} onOpenChange={setImportOpen}>
+            <PopoverTrigger render={
+              <Button variant="outline" size="sm">
+                <Upload className="size-3.5 mr-1" />
+                {t('import')}
+              </Button>
+            } />
+            <PopoverContent className="w-80" align="end">
+              <div className="space-y-3">
+                <p className="text-sm font-medium">{t('importTitle')}</p>
+                <FileUpload
+                  value={uploadFiles}
+                  onChange={setUploadFiles}
+                  accept={{ 'text/markdown': ['.md', '.txt'], '': ['.md', '.txt'] }}
+                  placeholder={t('importPlaceholder')}
+                  maxFiles={10}
+                />
+                <Button
+                  size="sm"
+                  onClick={handleImport}
+                  disabled={uploadFiles.length === 0}
+                  className="w-full"
+                >
+                  {t('importConfirm')}
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+          <Button variant="outline" size="sm" onClick={handleCreate}>
+            <Plus className="size-3.5 mr-1" />
+            {t('create')}
+          </Button>
+        </div>
+        <ScrollArea className="flex-1">
+          {loading ? (
+            <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
+              {tc('loading')}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
+              {t('empty')}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pr-2">
+              {filtered.map((tmpl) => (
+                <div
+                  key={tmpl.id}
+                  className="rounded-xl border border-border bg-background p-4 hover:bg-accent/30 transition-colors cursor-pointer"
+                  onClick={() => handleEdit(tmpl)}
+                >
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <Pencil className="size-3.5 text-muted-foreground shrink-0" />
+                        <span className="font-medium text-sm truncate">{tmpl.name}</span>
+                      </div>
+                      <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-6 px-1.5 text-xs"
+                          onClick={() => openApplyDialog(tmpl)}
+                        >
+                          <Rocket className="size-3 mr-0.5" />
+                          {t('apply')}
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            render={<Button variant="ghost" size="icon" className="size-6" />}
+                          >
+                            <MoreVertical className="size-3" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => handleDelete(tmpl)}
+                            >
+                              <Trash2 className="size-3 mr-1.5" />
+                              {t('delete')}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground line-clamp-3">
+                      {tmpl.description || tmpl.content.slice(0, 200)}
+                    </p>
+                    {tmpl.boundAgents && tmpl.boundAgents.length > 0 && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <span className="text-[10px] text-muted-foreground mr-0.5">{t('boundTo')}:</span>
+                        {tmpl.boundAgents.map((a) => (
+                          <AgentIcon key={a.id} agentId={a.id} name={a.name} avatarUrl={a.avatarUrl} className="size-4 rounded-full" />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </ScrollArea>
+      </div>
+    </div>
   );
 
   const storeView = (
-    <ScrollArea className="flex-1">
-      {storeLoading ? (
-        <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
-          {tc('loading')}
-        </div>
-      ) : filteredStore.length === 0 ? (
-        <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
-          {t('storeEmpty')}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pr-2">
-          {filteredStore.map((tmpl) => {
-            const isImported = importedStoreIds.has(tmpl.id);
-            const isImporting = importingIds.has(tmpl.id);
-            return (
-              <div
-                key={tmpl.id}
-                className="rounded-xl border border-border bg-background p-4 hover:bg-accent/30 transition-colors"
-              >
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <Store className="size-3.5 text-muted-foreground shrink-0" />
-                      <span className="font-medium text-sm truncate">{tmpl.name}</span>
-                    </div>
-                    <Button
-                      variant={isImported ? 'ghost' : 'outline'}
-                      size="sm"
-                      className="h-6 px-1.5 text-xs shrink-0"
-                      disabled={isImported || isImporting}
-                      onClick={() => handleStoreImport(tmpl)}
-                    >
-                      {isImported ? (
-                        <>{t('imported')}</>
-                      ) : isImporting ? (
-                        <>{t('importing')}</>
-                      ) : (
-                        <>
-                          <Download className="size-3 mr-0.5" />
-                          {t('importTo')}
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {tmpl.id}
-                  </p>
+    <StoreTabPanel<StoreTemplate>
+      items={filteredStore}
+      loading={storeLoading}
+      getGroup={() => ''}
+      getId={(tmpl) => tmpl.id}
+      allFilterText={t('filterAll')}
+      searchPlaceholder={t('search')}
+      emptyText={t('storeEmpty')}
+      loadingText={tc('loading')}
+      renderItem={(tmpl) => {
+        const isImported = importedStoreIds.has(tmpl.id);
+        const isImporting = importingIds.has(tmpl.id);
+        return (
+          <div
+            className="rounded-xl border border-border bg-background p-4 hover:bg-accent/30 transition-colors"
+          >
+            <div className="flex flex-col gap-2">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <Store className="size-3.5 text-muted-foreground shrink-0" />
+                  <span className="font-medium text-sm truncate">{tmpl.name}</span>
                 </div>
+                <Button
+                  variant={isImported ? 'ghost' : 'outline'}
+                  size="sm"
+                  className="h-6 px-1.5 text-xs shrink-0"
+                  disabled={isImported || isImporting}
+                  onClick={() => handleStoreImport(tmpl)}
+                >
+                  {isImported ? (
+                    <>{t('imported')}</>
+                  ) : isImporting ? (
+                    <>{t('importing')}</>
+                  ) : (
+                    <>
+                      <Download className="size-3 mr-0.5" />
+                      {t('importTo')}
+                    </>
+                  )}
+                </Button>
               </div>
-            );
-          })}
-        </div>
-      )}
-    </ScrollArea>
+              <p className="text-xs text-muted-foreground">
+                {tmpl.id}
+              </p>
+            </div>
+          </div>
+        );
+      }}
+    />
   );
 
   const mainBody = (
@@ -494,20 +556,8 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
 
       {tabs}
 
-      <div className="flex flex-1 min-h-0 gap-4 pt-2">
-        <div className="flex-1 min-w-0 flex flex-col gap-3">
-          <div className="relative">
-            <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t('search')}
-              className="pl-8"
-            />
-          </div>
-
-          {activeTab === 'local' ? localView : storeView}
-        </div>
+      <div className="flex-1 min-h-0 pt-2">
+        {activeTab === 'local' ? localView : storeView}
       </div>
     </>
   );
@@ -582,7 +632,7 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
         onConfirm={handleApply}
         title={t('applyTitle', { name: applyTemplate?.name || '' })}
         description={t('applyDescription')}
-        agents={agents.map((a) => ({ id: a.id, name: a.name, avatarUrl: a.avatarUrl, description: a.description }))}
+        agents={agentPickerItems}
         selected={applySelected}
         onToggle={(id) => setApplySelected((prev) =>
           prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]

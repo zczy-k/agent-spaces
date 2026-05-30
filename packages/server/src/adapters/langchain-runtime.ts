@@ -1,3 +1,5 @@
+import { MultiServerMCPClient } from '@langchain/mcp-adapters';
+import type { Connection } from '@langchain/mcp-adapters';
 import { createAgent, initChatModel, tool } from 'langchain';
 import type { CreateAgentParams } from 'langchain';
 import { z } from 'zod';
@@ -27,31 +29,26 @@ export class LangChainRuntime implements AgentRuntime {
     const d = (msg: string) => console.log(`[langchain] ${msg}`);
     const modelSettings = resolveLangChainModelSettings(this.config);
     const model = modelSettings.modelIdentifier;
+    let mcpClient: MultiServerMCPClient | undefined;
 
-    d(`starting | cwd=${cwd} provider=${this.config.provider ?? 'auto'} langchainProvider=${modelSettings.provider ?? 'auto'} model=${model} baseURL=${this.config.baseURL ?? 'default'} maxTurns=${options?.maxTurns ?? '∞'} tools=${options?.functionTools?.map((runtimeTool) => runtimeTool.name).join(',') || '-'} sandboxDirs=${options?.sandboxDirs?.join(',') ?? '-'}`);
+    d(`starting | cwd=${cwd} provider=${this.config.provider ?? 'auto'} langchainProvider=${modelSettings.provider ?? 'auto'} model=${model} baseURL=${this.config.baseURL ?? 'default'} maxTurns=${options?.maxTurns ?? '∞'} tools=${options?.functionTools?.map((runtimeTool) => runtimeTool.name).join(',') || '-'} mcpServers=${Object.keys(options?.mcpServers ?? {}).join(',') || '-'} sandboxDirs=${options?.sandboxDirs?.join(',') ?? '-'}`);
     if (modelSettings.providerCorrectionReason) d(`provider adjusted | ${modelSettings.providerCorrectionReason}`);
     d(`prompt: ${prompt.slice(0, 300)}${prompt.length > 300 ? '...' : ''}`);
 
     try {
-      const unsupportedMcpRequest = getUnsupportedLangChainMcpRequest(prompt, options?.mcpServers);
-      if (unsupportedMcpRequest) {
-        d(`blocked unsupported MCP request | server=${unsupportedMcpRequest}`);
-        return {
-          success: false,
-          summary: 'LangChain MCP tools are unavailable',
-          artifacts: [],
-          error: `LangChain runtime does not currently expose configured MCP servers as callable tools. Requested MCP server: ${unsupportedMcpRequest}. Use a runtime with MCP support, such as Claude Code, Codex, or Oh My Pi.`,
-          output,
-        };
-      }
-
       const chatModel = await withTemporaryEnv(
         buildProviderEnv(this.config, modelSettings.provider),
         () => initChatModel(model, buildModelConfig(this.config)),
       );
+      mcpClient = createLangChainMcpClient(options?.mcpServers, output, options, d);
+      const mcpTools = mcpClient ? await mcpClient.getTools() : [];
+      if (mcpClient) d(`resolved MCP tools | servers=${Object.keys(options?.mcpServers ?? {}).join(',') || '-'} tools=${mcpTools.map((mcpTool) => mcpTool.name).join(',') || '-'}`);
       const agent = createAgent({
         model: chatModel,
-        tools: buildLangChainTools(options?.functionTools, output, options, d),
+        tools: [
+          ...buildLangChainTools(options?.functionTools, output, options, d),
+          ...mcpTools,
+        ],
         systemPrompt: options?.systemPrompt,
       });
 
@@ -93,6 +90,10 @@ export class LangChainRuntime implements AgentRuntime {
 
       return { success: false, summary: 'LangChain execution failed', artifacts: [], error: message, output };
     } finally {
+      if (mcpClient) {
+        await mcpClient.close();
+        d('MCP client closed');
+      }
       this.abortController = null;
     }
   }
@@ -209,6 +210,103 @@ export function stringifyToolResult(result: unknown): string {
   }
 }
 
+function createLangChainMcpClient(
+  mcpServers: Record<string, unknown> | undefined,
+  output: string[],
+  options: AgentRunOptions | undefined,
+  log: (message: string) => void,
+): MultiServerMCPClient | undefined {
+  const normalizedMcpServers = normalizeLangChainMcpServers(mcpServers);
+  if (!normalizedMcpServers) return undefined;
+  return new MultiServerMCPClient({
+    throwOnLoadError: true,
+    prefixToolNameWithServerName: true,
+    additionalToolNamePrefix: 'mcp',
+    useStandardContentBlocks: false,
+    outputHandling: 'content',
+    mcpServers: normalizedMcpServers,
+    beforeToolCall: (request) => {
+      const name = formatMcpToolName(request.serverName, request.name);
+      const line = `Tool: ${name} input=${JSON.stringify(request.args ?? {})}`;
+      log(`tool use | name=${name} input=${summarizeForLog(request.args ?? {}, 800)}`);
+      output.push(line);
+      options?.onEvent?.({ type: 'tool_use', id: name, name, input: request.args ?? {}, line });
+    },
+    afterToolCall: (result) => {
+      const name = formatMcpToolName(result.serverName, result.name);
+      const outputText = stringifyToolResult(result.result);
+      log(`tool result | name=${name} output=${truncateForLog(outputText, 1000)}`);
+      options?.onEvent?.({ type: 'tool_result', toolUseId: name, result: outputText });
+      return { result: outputText };
+    },
+    onProgress: (progress, source) => {
+      if (source.type !== 'tool') return;
+      const name = formatMcpToolName(source.server, source.name);
+      const progressText = progress.total
+        ? `${progress.progress}/${progress.total}`
+        : String(progress.progress);
+      log(`tool progress | name=${name} progress=${progressText}${progress.message ? ` message=${truncateForLog(progress.message, 300)}` : ''}`);
+    },
+    onMessage: (message, source) => {
+      log(`mcp message | server=${source.server} level=${message.level ?? '-'} data=${summarizeForLog(message.data, 500)}`);
+    },
+  });
+}
+
+export function normalizeLangChainMcpServers(
+  mcpServers: Record<string, unknown> | undefined,
+): Record<string, Connection> | undefined {
+  if (!mcpServers || Object.keys(mcpServers).length === 0) return undefined;
+  return Object.fromEntries(
+    Object.entries(mcpServers).map(([name, server]) => [name, normalizeLangChainMcpServer(server)]),
+  );
+}
+
+function normalizeLangChainMcpServer(server: unknown): Connection {
+  if (!isRecord(server)) {
+    throw new Error('MCP server config must be an object.');
+  }
+  const normalized = normalizeOpenAgentCompatibleFetchMcpServer(server);
+  if (typeof normalized.url === 'string') {
+    return removeUndefined({
+      ...normalized,
+      transport: normalized.transport === 'sse' || normalized.type === 'sse' ? 'sse' : 'http',
+      url: normalized.url,
+      headers: isStringRecord(normalized.headers) ? normalized.headers : undefined,
+    }) as Connection;
+  }
+  if (typeof normalized.command === 'string') {
+    return removeUndefined({
+      ...normalized,
+      transport: 'stdio',
+      command: normalized.command,
+      args: Array.isArray(normalized.args) ? normalized.args.map(String) : [],
+      env: isStringRecord(normalized.env) ? normalized.env : undefined,
+      cwd: typeof normalized.cwd === 'string' ? normalized.cwd : undefined,
+    }) as Connection;
+  }
+  throw new Error('MCP server config requires either url or command.');
+}
+
+function normalizeOpenAgentCompatibleFetchMcpServer(server: Record<string, unknown>): Record<string, unknown> {
+  const args = Array.isArray(server.args) ? server.args.map(String) : undefined;
+  const badFetchPackageIndex = args?.indexOf('@modelcontextprotocol/server-fetch') ?? -1;
+  if (String(server.command) !== 'npx' || !args || badFetchPackageIndex < 0) return server;
+  return {
+    ...server,
+    command: 'uvx',
+    args: ['mcp-server-fetch', ...args.slice(badFetchPackageIndex + 1)],
+    env: {
+      PYTHONIOENCODING: 'utf-8',
+      ...(isStringRecord(server.env) ? server.env : {}),
+    },
+  };
+}
+
+function formatMcpToolName(serverName: string, toolName: string): string {
+  return `mcp__${serverName}__${toolName}`;
+}
+
 function summarizeForLog(value: unknown, maxLength = 300): string {
   if (typeof value === 'string') return truncateForLog(value, maxLength);
   return truncateForLog(stringifyToolResult(value), maxLength);
@@ -216,20 +314,6 @@ function summarizeForLog(value: unknown, maxLength = 300): string {
 
 function truncateForLog(value: string, maxLength = 300): string {
   return value.length > maxLength ? `${value.slice(0, maxLength)}...` : value;
-}
-
-export function getUnsupportedLangChainMcpRequest(
-  prompt: string,
-  mcpServers: Record<string, unknown> | undefined,
-): string | undefined {
-  const requested = extractRequestedMcpServerName(prompt);
-  if (!requested) return undefined;
-  const serverNames = new Set(Object.keys(mcpServers ?? {}).map((name) => name.toLowerCase()));
-  return serverNames.has(requested.toLowerCase()) ? requested : undefined;
-}
-
-function extractRequestedMcpServerName(prompt: string): string | undefined {
-  return prompt.match(/\[\s*use\s+mcp\s*:\s*([A-Za-z0-9._-]+)\s*\]/i)?.[1];
 }
 
 function buildProviderEnv(config: AgentRuntimeConfig, resolvedProvider?: string): Record<string, string | undefined> {
@@ -317,6 +401,10 @@ function numberFrom(value: unknown): number | undefined {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object');
+}
+
+function isStringRecord(value: unknown): value is Record<string, string> {
+  return isRecord(value) && Object.values(value).every((entry) => typeof entry === 'string');
 }
 
 function removeUndefined<T extends Record<string, unknown>>(value: T): T {

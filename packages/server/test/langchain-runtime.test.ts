@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  getUnsupportedLangChainMcpRequest,
+  normalizeLangChainMcpServers,
   resolveLangChainModelSettings,
   stringifyToolResult,
 } from '../src/adapters/langchain-runtime.js';
@@ -46,20 +46,34 @@ test('stringifyToolResult falls back for circular function tool results', () => 
   assert.equal(stringifyToolResult(circular), '[object Object]');
 });
 
-test('getUnsupportedLangChainMcpRequest detects explicit configured MCP requests', () => {
-  assert.equal(
-    getUnsupportedLangChainMcpRequest('[use mcp: fetch] fetch https://example.test', {
-      fetch: { command: 'uvx', args: ['mcp-server-fetch'] },
-    }),
-    'fetch',
-  );
+test('normalizeLangChainMcpServers maps retired fetch npm package to uvx', () => {
+  const normalized = normalizeLangChainMcpServers({
+    fetch: {
+      command: 'npx',
+      args: ['-y', '@modelcontextprotocol/server-fetch', '--ignore-robots-txt'],
+      env: { CUSTOM_ENV: '1' },
+    },
+  });
+
+  assert.deepEqual(normalized?.fetch, {
+    transport: 'stdio',
+    command: 'uvx',
+    args: ['mcp-server-fetch', '--ignore-robots-txt'],
+    env: { PYTHONIOENCODING: 'utf-8', CUSTOM_ENV: '1' },
+  });
 });
 
-test('getUnsupportedLangChainMcpRequest ignores unconfigured MCP requests', () => {
-  assert.equal(
-    getUnsupportedLangChainMcpRequest('[use mcp: fetch] fetch https://example.test', {
-      filesystem: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem'] },
-    }),
-    undefined,
-  );
+test('normalizeLangChainMcpServers preserves HTTP MCP config', () => {
+  const normalized = normalizeLangChainMcpServers({
+    remote: {
+      url: 'https://example.test/mcp',
+      headers: { Authorization: 'Bearer token' },
+    },
+  });
+
+  assert.deepEqual(normalized?.remote, {
+    transport: 'http',
+    url: 'https://example.test/mcp',
+    headers: { Authorization: 'Bearer token' },
+  });
 });

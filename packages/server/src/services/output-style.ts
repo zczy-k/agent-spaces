@@ -13,6 +13,7 @@ export interface OutputStyleTemplate {
   storeId?: string;
   createdAt: string;
   updatedAt: string;
+  boundAgents?: Array<{ id: string; name: string; avatarUrl?: string }>;
 }
 
 interface OutputStyleMeta {
@@ -43,7 +44,14 @@ function writeMeta(meta: OutputStyleMeta): void {
 }
 
 export function listOutputStyles(): OutputStyleTemplate[] {
-  return readMeta().templates;
+  const templates = readMeta().templates;
+  const agents = listTemplates();
+  return templates.map((tmpl) => ({
+    ...tmpl,
+    boundAgents: agents
+      .filter((a: AgentConfig) => a.outputStyle === tmpl.name || a.outputStyle === tmpl.id)
+      .map((a: AgentConfig) => ({ id: a.id, name: a.name || a.id, avatarUrl: a.avatarUrl })),
+  }));
 }
 
 export function resolveOutputStyleTemplate(ref?: string): OutputStyleTemplate | null {

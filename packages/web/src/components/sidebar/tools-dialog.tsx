@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   BUILT_IN_AGENT_TOOLS,
@@ -25,6 +25,7 @@ import {
   Wrench,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AgentIcon } from '@/components/common/agent-icon';
 
 interface ToolsDialogProps {
   open: boolean;
@@ -63,6 +64,24 @@ export function ToolsDialog({ open, onOpenChange, standalone, selectable, select
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [detailTool, setDetailTool] = useState<{ name: string; label: string; description: string } | null>(null);
   const [internalSelected, setInternalSelected] = useState<Set<BuiltInAgentToolName>>(new Set());
+  const [agentsWithTools, setAgentsWithTools] = useState<Array<{ id: string; name: string; avatarUrl?: string; tools: string[] }>>([]);
+  const [filterAgentId, setFilterAgentId] = useState('');
+
+  useEffect(() => {
+    if (open || standalone) {
+      fetch('/api/agents/presets')
+        .then((res) => res.ok ? res.json() : [])
+        .then((data) => {
+          setAgentsWithTools(data.map((a: any) => ({
+            id: a.id,
+            name: a.name || a.id,
+            avatarUrl: a.avatarUrl,
+            tools: Array.isArray(a.tools) ? a.tools : [],
+          })));
+        })
+        .catch(() => {});
+    }
+  }, [open, standalone]);
 
   const selected = selectable ? new Set<BuiltInAgentToolName>(externalSelected ?? internalSelected) : new Set<BuiltInAgentToolName>();
 
@@ -86,12 +105,19 @@ export function ToolsDialog({ open, onOpenChange, standalone, selectable, select
       const keys = new Set(TOOL_CATEGORIES[activeCategory]?.keys ?? []);
       tools = tools.filter((t) => keys.has(t.name));
     }
+    if (filterAgentId) {
+      const agent = agentsWithTools.find((a) => a.id === filterAgentId);
+      if (agent) {
+        const agentTools = new Set(agent.tools);
+        tools = tools.filter((t) => agentTools.has(t.name));
+      }
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       tools = tools.filter((t) => t.label.toLowerCase().includes(q) || t.description.toLowerCase().includes(q));
     }
     return tools;
-  }, [activeCategory, searchQuery]);
+  }, [activeCategory, filterAgentId, searchQuery, agentsWithTools]);
 
   const mainBody = (
     <>
@@ -124,6 +150,25 @@ export function ToolsDialog({ open, onOpenChange, standalone, selectable, select
               {t(`categories.${key}`)}
             </Button>
           ))}
+
+          {/* Agent filter section */}
+          {agentsWithTools.length > 0 && (
+            <div className="space-y-1 mt-2">
+              <p className="text-xs font-medium text-muted-foreground px-2">{t('filterByAgent')}</p>
+              {agentsWithTools.map((a) => (
+                <Button
+                  key={a.id}
+                  variant={filterAgentId === a.id ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="w-full justify-start"
+                  onClick={() => setFilterAgentId(filterAgentId === a.id ? '' : a.id)}
+                >
+                  <AgentIcon agentId={a.id} name={a.name} avatarUrl={a.avatarUrl} className="size-4 mr-1.5 rounded-full" />
+                  <span className="truncate">{a.name}</span>
+                </Button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Right: Tool cards */}
@@ -211,6 +256,18 @@ export function ToolsDialog({ open, onOpenChange, standalone, selectable, select
                       <div className="flex-1 min-w-0">
                         <span className="block text-xs font-medium">{tool.label}</span>
                         <span className="block text-[11px] text-muted-foreground line-clamp-2">{tool.description}</span>
+                        {(() => {
+                          const boundAgents = agentsWithTools.filter((a) => a.tools.includes(tool.name));
+                          if (boundAgents.length === 0) return null;
+                          return (
+                            <div className="flex items-center gap-1 mt-1">
+                              <span className="text-[10px] text-muted-foreground mr-0.5">{t('boundTo')}:</span>
+                              {boundAgents.map((a) => (
+                                <AgentIcon key={a.id} agentId={a.id} name={a.name} avatarUrl={a.avatarUrl} className="size-3.5 rounded-full" />
+                              ))}
+                            </div>
+                          );
+                        })()}
                       </div>
                       {selectable && (
                         <button

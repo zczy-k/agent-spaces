@@ -42,9 +42,6 @@ export function buildAgentPrompt(
       formatRuntimeToolsLine(runtimeConfig.runtimeKind),
       `- Agent Spaces channel tools configured for this channel: ${runtimeConfig.builtInTools?.length ? runtimeConfig.builtInTools.map((tool) => tool.name).join(', ') : 'none'}`,
     ];
-    if (runtimeConfig.runtimeKind === 'langchain' && runtimeConfig.mcpServers.length) {
-      configLines.push('- LangChain runtime currently does not expose configured MCP servers as callable tools. Do not claim you used MCP tools unless an actual tool call is available and executed.');
-    }
     if (runtimeConfig.boundDirs?.length) {
       configLines.push(`- Code directories (boundDirs): ${runtimeConfig.boundDirs.join(', ')}`);
     }
@@ -266,7 +263,7 @@ function formatRuntimeToolsLine(runtimeKind?: string): string {
     : runtimeKind === 'codex'
       ? 'Bash, file edits, WebSearch, todo list, MCP tools'
       : runtimeKind === 'langchain'
-        ? 'Agent Spaces function tools only; configured MCP servers are not callable through this runtime'
+        ? 'Agent Spaces function tools and configured MCP tools'
         : runtimeKind === 'hermes'
           ? 'Hermes CLI tools and configured skills'
           : runtimeKind === 'oh-my-pi'

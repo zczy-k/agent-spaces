@@ -8,6 +8,8 @@
   "selectTools": "Select Tools",
   "selectAll": "Select All",
   "deselectAll": "Deselect All",
+  "filterByAgent": "Filter by Agent",
+  "boundTo": "Bound to",
   "categories": {
     "channel": "Channel",
     "terminal": "Terminal",

@@ -27,6 +27,7 @@
     "@codeany/open-agent-sdk": "^0.2.1",
     "@langchain/anthropic": "^1.3.29",
     "@langchain/google-genai": "^2.1.30",
+    "@langchain/mcp-adapters": "^1.1.3",
     "@langchain/openai": "^1.4.5",
     "@larksuiteoapi/node-sdk": "^1.62.1",
     "@modelcontextprotocol/sdk": "1.29.0",

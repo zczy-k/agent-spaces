@@ -8,6 +8,8 @@
   "selectTools": "选择工具",
   "selectAll": "全选",
   "deselectAll": "取消全选",
+  "filterByAgent": "按智能体筛选",
+  "boundTo": "已绑定",
   "categories": {
     "channel": "频道管理",
     "terminal": "终端/命令",
