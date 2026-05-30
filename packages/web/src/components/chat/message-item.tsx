@@ -15,6 +15,7 @@ import { AgentEditor } from '@/components/sidebar/agent-editor';
 import { normalizeAgent } from '@/components/sidebar/agent-shared';
 import { MessageContextUsage, MessageParts } from './message-parts';
 import { TextShimmer } from '@/components/text-shimmer';
+import { MovingBorder } from '@/components/ui/border-glide';
 
 interface MessageItemProps {
   message: Message;
@@ -66,7 +67,7 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
   }, [message.content]);
 
   return (
-    <div className={`group flex gap-2 px-3 py-1.5 ${isUser ? 'flex-row-reverse' : ''}`}>
+    <div className={`group flex gap-2 px-3 py-1.5 items-start ${isUser ? 'flex-row-reverse' : ''}`}>
       {isUser ? (
         <AgentIcon
           agentId={undefined}
@@ -105,16 +106,17 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
         )}
         <div className={`relative overflow-hidden rounded-lg ${!isUser && isStreaming ? 'p-[1px]' : ''}`}>
           {!isUser && isStreaming && (
-            <>
-              <div
-                className="absolute w-[300%] h-[50%] opacity-70 bottom-[-11px] right-[-250%] rounded-full animate-star-movement-bottom z-0"
-                style={{ background: 'radial-gradient(circle, hsl(var(--primary) / 0.8), transparent 10%)' }}
+            <div className="absolute inset-0 pointer-events-none">
+              <MovingBorder
+                duration={3000}
+                rx="0.5rem"
+                ry="0.5rem"
+                color="var(--primary)"
+                width="5rem"
+                height="5rem"
+                opacity={0.6}
               />
-              <div
-                className="absolute w-[300%] h-[50%] opacity-70 top-[-10px] left-[-250%] rounded-full animate-star-movement-top z-0"
-                style={{ background: 'radial-gradient(circle, hsl(var(--primary) / 0.8), transparent 10%)' }}
-              />
-            </>
+            </div>
           )}
         <div className={`min-w-0 max-w-full text-sm rounded-lg px-3 py-2 relative z-[1] ${isUser ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
           <MessageParts message={message} isUser={isUser} workspaceId={workspaceId} />

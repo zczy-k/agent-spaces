@@ -47,7 +47,7 @@ export async function startCodexFunctionToolBridge(
     tools: functionTools.map(toMcpTool),
   }));
   mcpServer.setRequestHandler(CallToolRequestSchema, async (request): Promise<CallToolResult> => {
-    const functionTool = toolsByName.get(request.params.name);
+    const functionTool = toolsByName.get(normalizeFunctionToolCallName(request.params.name));
     if (!functionTool) {
       throw new McpError(ErrorCode.InvalidParams, `Tool ${request.params.name} not found`);
     }
@@ -111,6 +111,11 @@ function toMcpTool(functionTool: AgentFunctionTool): Tool {
     inputSchema: normalizeToolInputSchema(functionTool.inputSchema),
     annotations: toMcpToolAnnotations(functionTool),
   };
+}
+
+function normalizeFunctionToolCallName(name: string): string {
+  const prefixedName = `mcp__${AGENT_SPACES_MCP_SERVER_NAME}__`;
+  return name.startsWith(prefixedName) ? name.slice(prefixedName.length) : name;
 }
 
 function normalizeToolInputSchema(schema: Record<string, unknown>): Tool['inputSchema'] {
