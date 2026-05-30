@@ -44,7 +44,7 @@ export async function startCodexFunctionToolBridge(
   });
 
   mcpServer.setRequestHandler(ListToolsRequestSchema, (): ListToolsResult => ({
-    tools: functionTools.map(toMcpTool),
+    tools: functionTools.flatMap(toMcpTools),
   }));
   mcpServer.setRequestHandler(CallToolRequestSchema, async (request): Promise<CallToolResult> => {
     const functionTool = toolsByName.get(normalizeFunctionToolCallName(request.params.name));
@@ -104,18 +104,35 @@ export async function startCodexFunctionToolBridge(
   };
 }
 
-function toMcpTool(functionTool: AgentFunctionTool): Tool {
+function toMcpTools(functionTool: AgentFunctionTool): Tool[] {
+  const tool = toMcpTool(functionTool, functionTool.name);
+  const prefixedTool = toMcpTool(functionTool, toAgentSpacesMcpToolName(functionTool.name));
+  return [tool, prefixedTool];
+}
+
+function toMcpTool(functionTool: AgentFunctionTool, name: string): Tool {
+  const prefixedDescription = name === functionTool.name
+    ? functionTool.description
+    : `${functionTool.description}\n\nAlias for Agent Spaces runtime tool ${functionTool.name}.`;
   return {
-    name: functionTool.name,
-    description: functionTool.description,
+    name,
+    description: prefixedDescription,
     inputSchema: normalizeToolInputSchema(functionTool.inputSchema),
     annotations: toMcpToolAnnotations(functionTool),
   };
 }
 
 function normalizeFunctionToolCallName(name: string): string {
-  const prefixedName = `mcp__${AGENT_SPACES_MCP_SERVER_NAME}__`;
+  const prefixedName = agentSpacesMcpToolNamePrefix();
   return name.startsWith(prefixedName) ? name.slice(prefixedName.length) : name;
+}
+
+function toAgentSpacesMcpToolName(name: string): string {
+  return `${agentSpacesMcpToolNamePrefix()}${name}`;
+}
+
+function agentSpacesMcpToolNamePrefix(): string {
+  return `mcp__${AGENT_SPACES_MCP_SERVER_NAME}__`;
 }
 
 function normalizeToolInputSchema(schema: Record<string, unknown>): Tool['inputSchema'] {
