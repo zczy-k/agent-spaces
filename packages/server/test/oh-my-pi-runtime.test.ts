@@ -329,7 +329,7 @@ test('OhMyPiRuntime maps OMP tool execution events to structured runtime events'
   }
 });
 
-test('OhMyPiRuntime emits complete OMP streaming reasoning only after message end', async () => {
+test('OhMyPiRuntime emits complete OMP streaming reasoning only after turn end', async () => {
   const root = mkdtempSync(join(tmpdir(), 'omp-runtime-'));
   const binDir = join(root, 'bin');
   const previousPath = currentPathEnv();
@@ -367,6 +367,40 @@ test('OhMyPiRuntime emits complete OMP streaming reasoning only after message en
         .join(''),
       '数据库为空，当前没有任何知识库文件或目录。需要用中文回复用户。',
     );
+  } finally {
+    restorePathEnv(previousPath);
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('OhMyPiRuntime deduplicates reasoning repeated by message end and turn end', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'omp-runtime-'));
+  const binDir = join(root, 'bin');
+  const previousPath = currentPathEnv();
+  const events: Array<{ type: string; text?: string; status?: string; line?: string }> = [];
+
+  try {
+    mkdirSync(binDir, { recursive: true });
+    writeFakeOmp(binDir, [
+      'const events = [',
+      '  { type: "message_update", message: { content: [{ type: "thinking", thinking: "partial" }] } },',
+      '  { type: "message_end", message: { content: [{ type: "thinking", thinking: "complete reasoning" }, { type: "text", text: "ignored" }] } },',
+      '  { type: "turn_end", message: { content: [{ type: "thinking", thinking: "complete reasoning" }, { type: "text", text: "final answer" }] } },',
+      '];',
+      'for (const event of events) console.log(JSON.stringify(event));',
+    ].join('\n'));
+    setPathEnv(prependPath(binDir, previousPath));
+
+    const runtime = new OhMyPiRuntime();
+    const result = await runtime.execute('hello', root, {
+      onEvent: (event) => events.push(event),
+    });
+
+    assert.equal(result.success, true);
+    assert.deepEqual(events.filter((event) => event.type === 'reasoning'), [
+      { type: 'reasoning', text: 'complete reasoning', status: 'completed' },
+    ]);
+    assert.deepEqual(result.output, ['final answer']);
   } finally {
     restorePathEnv(previousPath);
     rmSync(root, { recursive: true, force: true });

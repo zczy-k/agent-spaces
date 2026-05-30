@@ -656,7 +656,7 @@ function collectCompletedStreamingReasoning(
     state.blocks[index] = text;
   });
 
-  if (eventType !== 'message_end') return [];
+  if (eventType !== 'turn_end') return [];
 
   const completed = state.blocks.filter(Boolean);
   state.blocks = [];
@@ -681,7 +681,10 @@ function collectToolUses(value: unknown, eventType: string): Array<{ id: string;
 }
 
 function isOmpStreamingMessageEvent(eventType: string): boolean {
-  return eventType === 'message_start' || eventType === 'message_update' || eventType === 'message_end';
+  return eventType === 'message_start'
+    || eventType === 'message_update'
+    || eventType === 'message_end'
+    || eventType === 'turn_end';
 }
 
 function collectToolResults(value: unknown): Array<{ toolUseId?: string; result: unknown }> {
