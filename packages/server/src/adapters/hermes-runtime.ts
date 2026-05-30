@@ -339,6 +339,7 @@ interface HermesLineParser {
 function createHermesLineParser(output: string[], options?: AgentRunOptions): HermesLineParser {
   let inEchoedQuery = false;
   let inRuntimeConfig = false;
+  let inUserMessageEcho = false;
   let inVerboseArgsBlock = false;
   let inVerboseResultBlock = false;
   let inVerboseThinkingBlock = false;
@@ -412,6 +413,8 @@ function createHermesLineParser(output: string[], options?: AgentRunOptions): He
         return;
       }
 
+      if (inUserMessageEcho) return;
+
       if (/^\[thinking\]/i.test(normalized)) {
         inVerboseThinkingBlock = true;
         return;
@@ -445,7 +448,12 @@ function createHermesLineParser(output: string[], options?: AgentRunOptions): He
       if (inEchoedQuery) return;
 
       if (inRuntimeConfig) {
-        if (/^-\s+/.test(normalized)) return;
+        if (/^User message:\s*$/i.test(normalized)) {
+          inRuntimeConfig = false;
+          inUserMessageEcho = true;
+          return;
+        }
+        if (isHermesRuntimeConfigLine(normalized)) return;
         inRuntimeConfig = false;
       }
 
@@ -527,6 +535,16 @@ function isHermesNoiseLine(line: string): boolean {
 function isHermesRuntimeBoundaryLine(line: string): boolean {
   return /^Initializing agent\b/i.test(line)
     || /^\u{1f916}\s*AI Agent initialized\b/iu.test(line);
+}
+
+function isHermesRuntimeConfigLine(line: string): boolean {
+  return /^-\s+/.test(line)
+    || /^(skills|directory,|paths\.|tools you have,|are|built-in runtime tools|internals, previous sessions, or filesystem settings\.)$/i.test(line)
+    || /^For Bash commands that create or modify files under the current working\b/i.test(line)
+    || /^When asked what MCP servers, skills, runtime tools, or Agent Spaces channel\b/i.test(line)
+    || /^Important distinction: MCP servers configured for this agent are only the names\b/i.test(line)
+    || /^in "MCP servers configured for this agent"\./i.test(line)
+    || /^Do not infer availability from provider-side function names, hidden runtime\b/i.test(line);
 }
 
 function isHermesVerboseUiLine(line: string): boolean {

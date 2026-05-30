@@ -16,6 +16,34 @@ test('normalizeOutputLines drops Agent Spaces prompt echo blocks', () => {
   assert.deepEqual(lines, ['结果如下：']);
 });
 
+test('normalizeOutputLines drops prefixed Hermes runtime configuration echo blocks', () => {
+  const lines = normalizeOutputLines([
+    '[hermes] stdout | Agent runtime configuration:',
+    '[hermes] stdout | - Current workspace id: c591d2d6-9930-49cc-8e13-ff3b0a13381f',
+    '[hermes] stdout | - MCP servers configured for this agent: fetch',
+    '[hermes] stdout | - Skills configured for this agent: plans',
+    '[hermes] stdout | - Runtime tools available through Hermes: Hermes CLI tools and configured',
+    '[hermes] stdout | skills',
+    '[hermes] stdout | - Agent Spaces channel tools configured for this channel: none',
+    '[hermes] stdout | - Code directories (boundDirs): C:\\Users\\Administrator\\open-ai-test',
+    '[hermes] stdout | - For Bash commands that create or modify files under the current working',
+    '[hermes] stdout | directory, use relative paths such as `mkdir -p css js` instead of absolute',
+    '[hermes] stdout | paths.',
+    '[hermes] stdout | When asked what MCP servers, skills, runtime tools, or Agent Spaces channel',
+    '[hermes] stdout | tools you have, answer from this configuration only.',
+    '[hermes] stdout | Important distinction: MCP servers configured for this agent are only the names',
+    '[hermes] stdout | in "MCP servers configured for this agent". Agent Spaces channel tools are',
+    '[hermes] stdout | built-in runtime tools and must not be listed as agent-configured MCP servers.',
+    '[hermes] stdout | Do not infer availability from provider-side function names, hidden runtime',
+    '[hermes] stdout | internals, previous sessions, or filesystem settings.',
+    '[hermes] stdout | User message:',
+    '[hermes] stdout | @test 你好',
+    '[hermes] stdout | 你好！',
+  ]);
+
+  assert.deepEqual(lines, ['你好！']);
+});
+
 test('buildAgentMessageParts strips tool loop warning prefix from final text', () => {
   const parts = buildAgentMessageParts({
     sessionId: 'session-1',

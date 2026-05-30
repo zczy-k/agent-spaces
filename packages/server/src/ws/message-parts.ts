@@ -143,19 +143,30 @@ export function normalizeOutputLines(output: string[]): string[] {
 
   const seenInitLines = new Set<string>();
   let inAgentSpacesPromptEcho = false;
+  let skipNextUserMessageEchoLine = false;
   const normalizedLines: string[] = [];
 
   for (const line of lines) {
-    const cleaned = stripRuntimeNoticePrefix(line).trim();
+    const cleaned = stripRuntimeNoticePrefix(stripRuntimeLogPrefix(line)).trim();
     if (!cleaned) continue;
 
-    if (isAgentSpacesPromptEchoStart(cleaned)) {
+    if (skipNextUserMessageEchoLine) {
+      skipNextUserMessageEchoLine = false;
+      continue;
+    }
+
+    if (isAgentSpacesPromptEchoStart(cleaned) || /^Agent runtime configuration:\s*$/i.test(cleaned)) {
       inAgentSpacesPromptEcho = true;
       continue;
     }
 
     if (inAgentSpacesPromptEcho) {
-      if (/\bUser message:/i.test(cleaned)) inAgentSpacesPromptEcho = false;
+      if (/\bUser message:\s*$/i.test(cleaned)) {
+        inAgentSpacesPromptEcho = false;
+        skipNextUserMessageEchoLine = true;
+      } else if (/\bUser message:/i.test(cleaned)) {
+        inAgentSpacesPromptEcho = false;
+      }
       continue;
     }
 
@@ -707,20 +718,35 @@ function stripRuntimeNoticePrefix(line: string): string {
   return next;
 }
 
+function stripRuntimeLogPrefix(line: string): string {
+  return line.replace(/^\[[a-z0-9_-]+\]\s+(?:stdout|stderr)\s*\|\s*/i, '');
+}
+
 function isStrippableRuntimeNoticeLabel(label: string): boolean {
   return /^Tool loop warning:/i.test(label);
 }
 
 function isAgentSpacesPromptEchoStart(line: string): boolean {
-  return /^Agent Spaces channel tools configured for this channel:/i.test(line);
+  return /^-?\s*Agent Spaces channel tools configured for this channel:/i.test(line);
 }
 
 function isIgnorablePromptEchoLine(line: string): boolean {
-  return /^Code directories \(boundDirs\):/i.test(line)
-    || /^For Bash commands that create or modify files under the current working directory,/i.test(line)
+  return /^-?\s*Code directories \(boundDirs\):/i.test(line)
+    || /^-?\s*For Bash commands that create or modify files under the current working\b/i.test(line)
+    || /^(directory,|paths\.)$/i.test(line)
     || /^When asked what MCP servers, skills, runtime tools, or Agent Spaces channel tools you have,/i.test(line)
+    || /^When asked what MCP servers, skills, runtime tools, or Agent Spaces channel\b/i.test(line)
+    || /^tools you have, answer from this configuration only\./i.test(line)
     || /^Important distinction: MCP servers configured for this agent are only the names in /i.test(line)
+    || /^Important distinction: MCP servers configured for this agent are only the names\b/i.test(line)
+    || /^in "MCP servers configured for this agent"\./i.test(line)
+    || /^are$/i.test(line)
+    || /^built-in runtime tools and must not be listed as agent-configured MCP servers\./i.test(line)
     || /^Do not infer availability from provider-side function names,/i.test(line)
+    || /^Do not infer availability from provider-side function names, hidden runtime\b/i.test(line)
+    || /^internals, previous sessions, or filesystem settings\./i.test(line)
+    || /^-\s+(Current workspace id|MCP servers configured for this agent|Skills configured for this agent|Runtime tools available through Hermes):/i.test(line)
+    || /^skills$/i.test(line)
     || /^User message:/i.test(line);
 }
 
