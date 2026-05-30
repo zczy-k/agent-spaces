@@ -95,9 +95,14 @@ spawn `omp` 时会设置：
 
 ```text
 HOME=<configDir>/omp-home
+USERPROFILE=<configDir>/omp-home
 PI_AGENT_DIR=<configDir>/omp-home/.omp/agent
 OMP_AGENT_DIR=<configDir>/omp-home/.omp/agent
+PI_CODING_AGENT_DIR=<configDir>/omp-home/.omp/agent
+OMP_LOG_DIR=<configDir>/omp-home/.omp/agent/logs
 ```
+
+Windows 下还会在隔离运行时清空 `HOMEDRIVE` / `HOMEPATH`，避免 OMP 或依赖库把 `~/.omp/agent` 解析回真实用户目录。实际验证中，`omp config path` 会优先使用 `PI_CODING_AGENT_DIR` 指向的 agent 目录。
 
 同时 session lookup/storage 会传入：
 
@@ -317,6 +322,14 @@ adapter 会复用 Agent Spaces 的本地 Streamable HTTP MCP bridge：
 }
 ```
 
+MCP server 的 `tools/list` 返回裸工具名，例如 `ListDatabaseNodes`。OMP 作为 MCP client 会把 server 名和工具名合成为模型侧可调用名，例如：
+
+```text
+mcp__agent-spaces__ListDatabaseNodes
+```
+
+bridge 的 `tools/call` 兼容裸工具名和 `mcp__agent-spaces__<ToolName>` 两种入参，最终都会映射回同一个 `AgentFunctionTool` 执行。
+
 run 结束、失败或 stop 后，adapter 会关闭该本地 MCP server。
 
 ## MCP、extensions、skills、rules
@@ -333,6 +346,9 @@ OMP CLI 会按自身 discovery 规则加载配置中的 MCP servers、extensions
 
 ```text
 HOME=<configDir>/omp-home
+USERPROFILE=<configDir>/omp-home
+PI_CODING_AGENT_DIR=<configDir>/omp-home/.omp/agent
+OMP_LOG_DIR=<configDir>/omp-home/.omp/agent/logs
 <configDir>/omp-home/.omp/agent/config.yml
 <configDir>/omp-home/.omp/agent/models.yml
 <configDir>/omp-home/.omp/agent/mcp.json
@@ -382,12 +398,17 @@ pnpm --filter @agent-spaces/server build
 
 - CLI args 映射，包括 `--mode json`、model、provider、apiKey、thinking、tools、system prompt、skills、session-dir、resume。
 - 隔离 OMP home 下的 `config.yml` / `models.yml` / `mcp.json` 写入。
-- 环境变量映射，包括 API key、baseURL、OMP agent dir。
+- 环境变量映射，包括 API key、baseURL、OMP agent dir、`USERPROFILE`、`OMP_LOG_DIR` 和 Windows home fallback 隔离。
 - Windows `omp.exe` 查找 fallback。
 - stdout/stderr fallback、session id 解析、失败退出码。
 - OMP JSON mode 的 `session`、`reasoning`、`tool_execution_start`、`tool_execution_end`、`usage/cost` 映射。
 - 只展示最终 `turn_end` 可见输出，忽略中间 message/tool echo。
 - MCP bridge、stop、ENOENT。
+
+另有 `codex-function-tool-bridge.test.ts` 覆盖本地 Streamable HTTP MCP bridge：
+
+- `tools/list` 暴露标准 MCP 裸工具名。
+- `tools/call` 能接受 `mcp__agent-spaces__<ToolName>` 前缀名并执行对应 `AgentFunctionTool`。
 
 此前也执行过：
 
@@ -449,8 +470,11 @@ adapter 已把 `options.mcpServers` 和 Agent Spaces function tool bridge 写入
 排障重点：
 
 - `<configDir>/omp-home/.omp/agent/mcp.json` 是否存在。
+- server 日志是否出现 `wrote MCP config | path=... servers=...`，确认写入的是隔离 agent 目录。
 - server 日志是否出现 `function tool bridge started`。
-- OMP CLI 是否读取 `HOME=<configDir>/omp-home` 下的 user-level `.omp/agent`。
+- server 日志是否出现 `function tool bridge request | method=POST path=/mcp`。如果没有，说明 OMP 没有连接到本地 bridge，问题在 MCP discovery/config path，而不是工具执行。
+- OMP CLI 是否读取 `PI_CODING_AGENT_DIR=<configDir>/omp-home/.omp/agent` 下的 user-level config。
+- `<configDir>/omp-home/.omp/agent/logs/` 下的 OMP 日志是否有 `agent-spaces` MCP 加载错误。
 
 ### 4. `baseURL` 通过 models.yml 写入
 
@@ -530,11 +554,15 @@ omp
 以及服务端日志：
 
 ```text
+[oh-my-pi] wrote MCP config | path=<configDir>/omp-home/.omp/agent/mcp.json servers=...
 [oh-my-pi] function tool bridge started | url=http://127.0.0.1:<port>/mcp ...
 [oh-my-pi] resolved tools | mcpServers=...,agent-spaces functionToolBridge=http://127.0.0.1:<port>/mcp
+[oh-my-pi] function tool bridge request | method=POST path=/mcp
 ```
 
-如果 `mcp.json` 存在且日志正常，但模型仍说没有工具，需要用相同 `HOME` 环境运行一次 `omp` 原生命令确认 OMP 是否读取该 user-level config。
+如果 `mcp.json` 存在且 `function tool bridge started` 正常，但没有 `function tool bridge request`，说明 OMP 没有发现或连接这个 MCP server。优先检查 `PI_CODING_AGENT_DIR`、`USERPROFILE`、`HOME` 是否都指向隔离目录，以及 OMP 日志目录下是否记录了 MCP load failed。
+
+如果出现 `function tool bridge request`，但后续 `tool_execution_start.toolName` 仍是 `bash` / `eval`，说明模型没有把 Agent Spaces MCP 工具作为可调用工具使用，需要继续检查 OMP 传给模型的 tool schema 或 provider 对 tool calling 的支持。
 
 ### 工具调用没有显示或计数为 0
 

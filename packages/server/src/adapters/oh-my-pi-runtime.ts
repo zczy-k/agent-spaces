@@ -543,7 +543,7 @@ function handleJsonEvent(
   const eventType = stringValue(record.type) ?? stringValue(record.event) ?? stringValue(record.kind) ?? 'unknown';
   const keys = Object.keys(record).slice(0, 12).join(',') || '-';
   const contentBlocks = collectContentBlocks(event);
-  ctx.log(`json event | type=${eventType} keys=${keys} contentBlocks=${summarizeBlockTypes(contentBlocks)}`);
+  // ctx.log(`json event | type=${eventType} keys=${keys} contentBlocks=${summarizeBlockTypes(contentBlocks)}`);
 
   const sessionId = readSessionId(event);
   const usage = readUsage(event);

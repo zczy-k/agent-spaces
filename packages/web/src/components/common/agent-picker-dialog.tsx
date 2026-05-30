@@ -156,7 +156,7 @@ export function AgentPickerDialog({
           <Button variant="outline" onClick={onClose}>
             {cancelText || 'Cancel'}
           </Button>
-          <Button onClick={onConfirm} disabled={loading || selected.length === 0}>
+          <Button onClick={onConfirm} disabled={loading}>
             {confirmText || 'Confirm'}
           </Button>
         </div>
