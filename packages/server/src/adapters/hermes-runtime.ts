@@ -291,7 +291,7 @@ function writeManagedHermesConfig(
   if (!hasModelConfig && !normalizedMcpServers) return;
 
   const configPath = join(hermesHome, 'config.yaml');
-  if (existsSync(configPath) && !isManagedHermesConfig(configPath)) return;
+  if (existsSync(configPath) && !isWritableAgentSpacesHermesConfig(configPath)) return;
 
   const lines = [
     '# Managed by Agent Spaces for this agent profile.',
@@ -353,7 +353,7 @@ function normalizeHermesMcpServer(server: unknown): Record<string, unknown> | nu
       ssl_verify: isBooleanOrString(record.ssl_verify) ? record.ssl_verify : undefined,
       client_cert: isStringOrStringArray(record.client_cert) ? record.client_cert : undefined,
       client_key: typeof record.client_key === 'string' ? record.client_key : undefined,
-      enabled: typeof record.enabled === 'boolean' ? record.enabled : undefined,
+      enabled: typeof record.enabled === 'boolean' ? record.enabled : true,
       timeout: typeof record.timeout === 'number' ? record.timeout : undefined,
       connect_timeout: typeof record.connect_timeout === 'number' ? record.connect_timeout : undefined,
       supports_parallel_tool_calls: typeof record.supports_parallel_tool_calls === 'boolean'
@@ -371,7 +371,7 @@ function normalizeHermesMcpServer(server: unknown): Record<string, unknown> | nu
       ssl_verify: isBooleanOrString(record.ssl_verify) ? record.ssl_verify : undefined,
       client_cert: isStringOrStringArray(record.client_cert) ? record.client_cert : undefined,
       client_key: typeof record.client_key === 'string' ? record.client_key : undefined,
-      enabled: typeof record.enabled === 'boolean' ? record.enabled : undefined,
+      enabled: typeof record.enabled === 'boolean' ? record.enabled : true,
       timeout: typeof record.timeout === 'number' ? record.timeout : undefined,
       connect_timeout: typeof record.connect_timeout === 'number' ? record.connect_timeout : undefined,
       supports_parallel_tool_calls: typeof record.supports_parallel_tool_calls === 'boolean'
@@ -435,6 +435,12 @@ function isStringOrStringArray(value: unknown): value is string | string[] {
 
 function isManagedHermesConfig(configPath: string): boolean {
   return readFileSync(configPath, 'utf-8').startsWith('# Managed by Agent Spaces for this agent profile.');
+}
+
+function isWritableAgentSpacesHermesConfig(configPath: string): boolean {
+  const content = readFileSync(configPath, 'utf-8');
+  return content.startsWith('# Managed by Agent Spaces for this agent profile.')
+    || content.includes('api_key: ${AGENT_SPACES_HERMES_API_KEY}');
 }
 
 function getHermesApiMode(provider: AgentRuntimeConfig['provider'], baseURL?: string): string | undefined {
