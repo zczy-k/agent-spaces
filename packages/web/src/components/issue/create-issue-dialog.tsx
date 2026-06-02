@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -79,67 +80,87 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitl
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md lg:max-w-3xl">
         <DialogHeader>
           <DialogTitle>{t('create.title')}</DialogTitle>
           <DialogDescription>{t('create.description')}</DialogDescription>
         </DialogHeader>
-        <div className="space-y-3 pt-2">
-          <Input
-            placeholder={t('create.titlePlaceholder')}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
-          />
-          <Textarea
-            placeholder={t('create.descriptionPlaceholder')}
-            value={desc}
-            onChange={(e) => setDesc(e.target.value)}
-            rows={3}
-            className="max-h-48 resize-none"
-          />
+        {/* 移动端: 垂直布局; 宽屏: 左右布局 */}
+        <div className="flex flex-col lg:flex-row gap-4 pt-2 min-h-0">
+          {/* 左侧: 表单 */}
+          <div className="flex-1 space-y-3">
+            <Input
+              placeholder={t('create.titlePlaceholder')}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
+            />
+            <Textarea
+              placeholder={t('create.descriptionPlaceholder')}
+              value={desc}
+              onChange={(e) => setDesc(e.target.value)}
+              rows={3}
+              className="max-h-48 resize-none"
+            />
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">Workflow Template</label>
-            <select
-              value={selectedWorkflowId}
-              onChange={(e) => {
-                const value = e.target.value;
-                setSelectedWorkflowId(value);
-                if (value) {
-                  const template = workflows.find(w => w.id === value);
-                  if (template) {
-                    const agentIds = template.nodes.filter(n => n.type === 'agent').map(n => n.data.agentConfigId);
-                    setMembers(prev => Array.from(new Set([...prev, ...agentIds])));
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">Workflow Template</label>
+              <select
+                value={selectedWorkflowId}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSelectedWorkflowId(value);
+                  if (value) {
+                    const template = workflows.find(w => w.id === value);
+                    if (template) {
+                      const agentIds = template.nodes.filter(n => n.type === 'agent').map(n => n.data.agentConfigId);
+                      setMembers(prev => Array.from(new Set([...prev, ...agentIds])));
+                    }
                   }
-                }
-              }}
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            >
-              <option value="">None (use default pipeline)</option>
-              {workflows.map(w => (
-                <option key={w.id} value={w.id}>{w.name} ({w.nodes.length} agents)</option>
-              ))}
-            </select>
+                }}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="">None (use default pipeline)</option>
+                {workflows.map(w => (
+                  <option key={w.id} value={w.id}>{w.name} ({w.nodes.length} agents)</option>
+                ))}
+              </select>
+            </div>
+
+            {/* 移动端: MemberPicker 在表单下方 */}
+            <div className="lg:hidden">
+              <MemberPicker
+                key={String(open)}
+                candidates={candidates}
+                selected={members}
+                onToggle={toggleMember}
+                label={t('create.membersLabel')}
+                searchPlaceholder={t('create.searchAgent')}
+                emptyText={t('create.noAgents')}
+              />
+            </div>
           </div>
 
-          <MemberPicker
-            key={String(open)}
-            candidates={candidates}
-            selected={members}
-            onToggle={toggleMember}
-            label={t('create.membersLabel')}
-            searchPlaceholder={t('create.searchAgent')}
-            emptyText={t('create.noAgents')}
-          />
-
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => handleClose(false)}>{tc('cancel')}</Button>
-            <Button onClick={handleSubmit} disabled={!title.trim() && !desc.trim()}>
-              {t('create.submit')}
-            </Button>
+          {/* 宽屏: MemberPicker 在右侧 */}
+          <div className="hidden lg:flex lg:w-64 xl:w-72 flex-col border-l pl-4 min-h-0">
+            <MemberPicker
+              key={String(open)}
+              candidates={candidates}
+              selected={members}
+              onToggle={toggleMember}
+              label={t('create.membersLabel')}
+              searchPlaceholder={t('create.searchAgent')}
+              emptyText={t('create.noAgents')}
+            />
           </div>
         </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => handleClose(false)}>{tc('cancel')}</Button>
+          <Button onClick={handleSubmit} disabled={!title.trim() && !desc.trim()}>
+            {t('create.submit')}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

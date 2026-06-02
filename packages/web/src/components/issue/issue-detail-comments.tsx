@@ -88,46 +88,42 @@ export function IssueDetailComments({
   }, [comments, workspaceId, channelId, sendMessage]);
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col border-t">
-      <div className="shrink-0 px-4 pt-2">
+    <div className="flex flex-col border-t">
+      <div className="px-4 pt-2">
         <h3 className="text-sm font-medium mb-3">{t('detail.comments', { count: comments.length })}</h3>
       </div>
-      <div className="flex-1 min-h-0 relative">
-        {comments.length > 0 ? (
-          <>
-            <div ref={commentsViewportRef} className="h-full overflow-y-auto">
-              {comments.map((comment) => (
-                <div
-                  key={comment.id}
-                  ref={(node) => {
-                    if (node) {
-                      commentRefs.current.set(comment.id, node);
-                    } else {
-                      commentRefs.current.delete(comment.id);
-                    }
-                  }}
-                >
-                  <IssueMessage
-                    comment={comment}
-                    expanded={expandedCommentIds.has(comment.id)}
-                    workspaceId={workspaceId}
-                    replies={messageById.get(comment.metadata?.messageId ?? '')?.replies ?? []}
-                    replying={replyingCommentId === comment.id}
-                    onDelete={onDeleteComment}
-                    onUpdate={onUpdateComment}
-                    onExpandedChange={onExpandedChange}
-                    onReplyStart={setReplyingCommentId}
-                    onReplyCancel={() => setReplyingCommentId(null)}
-                    onReplySubmit={handleReplySubmit}
-                  />
-                </div>
-              ))}
-              <div className="h-20 pointer-events-none" />
+      {comments.length > 0 ? (
+        <div ref={commentsViewportRef} className="relative">
+          {comments.map((comment) => (
+            <div
+              key={comment.id}
+              ref={(node) => {
+                if (node) {
+                  commentRefs.current.set(comment.id, node);
+                } else {
+                  commentRefs.current.delete(comment.id);
+                }
+              }}
+            >
+              <IssueMessage
+                comment={comment}
+                expanded={expandedCommentIds.has(comment.id)}
+                workspaceId={workspaceId}
+                replies={messageById.get(comment.metadata?.messageId ?? '')?.replies ?? []}
+                replying={replyingCommentId === comment.id}
+                onDelete={onDeleteComment}
+                onUpdate={onUpdateComment}
+                onExpandedChange={onExpandedChange}
+                onReplyStart={setReplyingCommentId}
+                onReplyCancel={() => setReplyingCommentId(null)}
+                onReplySubmit={handleReplySubmit}
+              />
             </div>
-            <CommentNavigator comments={comments} onNavigate={scrollToComment} />
-          </>
-        ) : null}
-      </div>
+          ))}
+          <div className="h-20 pointer-events-none" />
+          <CommentNavigator comments={comments} onNavigate={scrollToComment} />
+        </div>
+      ) : null}
     </div>
   );
 }

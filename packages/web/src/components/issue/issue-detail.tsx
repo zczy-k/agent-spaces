@@ -278,9 +278,10 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   return (
     <div className="flex h-full overflow-hidden">
       {/* Main content */}
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden relative">
-        <Card className="flex-1 min-h-0 overflow-hidden border-0 shadow-none rounded-none flex flex-col">
-          <motion.div initial="hidden" animate="visible" variants={containerVariants} className="flex flex-col flex-1 min-h-0">
+      <div className="flex flex-col flex-1 min-w-0 h-full relative">
+        <div className="flex-1 min-h-0 overflow-y-auto">
+        <Card className="border-0 shadow-none rounded-none flex flex-col p-0">
+          <motion.div initial="hidden" animate="visible" variants={containerVariants} className="flex flex-col">
 
             {/* Header Section — project-detail-view CardHeader style */}
             <CardHeader className="shrink-0 p-4 border-b bg-muted/30 space-y-0">
@@ -463,14 +464,14 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
               </motion.div>
             </div>
 
-            {/* Comments — fills remaining space */}
-            <motion.div variants={itemVariants} className="flex-1 min-h-0 flex flex-col">
+            {/* Comments — natural height, page-level scroll */}
+            <motion.div variants={itemVariants} className="flex flex-col">
               {commentsLoading && comments.length === 0 ? (
-                <div className="flex-1 min-h-0 flex flex-col border-t">
-                  <div className="shrink-0 px-4 pt-2">
+                <div className="flex flex-col border-t">
+                  <div className="px-4 pt-2">
                     <Skeleton className="h-4 w-20 mb-3" />
                   </div>
-                  <div className="flex-1 overflow-auto px-4 space-y-4">
+                  <div className="px-4 space-y-4">
                     {Array.from({ length: 3 }, (_, i) => (
                       <div key={i} className="flex gap-3">
                         <Skeleton className="size-6 rounded-full shrink-0 mt-0.5" />
@@ -505,6 +506,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
 
           </motion.div>
         </Card>
+        </div>
 
         {/* Floating composer — UNCHANGED */}
         {!composerOpen ? (
