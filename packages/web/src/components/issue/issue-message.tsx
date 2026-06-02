@@ -135,7 +135,20 @@ export function IssueMessage({
   ].filter((item): item is { key: string; label: string } => Boolean(item.label));
 
   return (
-    <div className="group p-4">
+    <div className="group relative rounded-lg border bg-card p-3 m-2">
+      {!editing && (
+        <div className="absolute right-2 top-2 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setEditing(true); setDraft(comment.content); }}>
+            <Pencil className="h-3 w-3" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleCopy}>
+            {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+          </Button>
+          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => onDelete(comment.id)}>
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </div>
+      )}
       <div className="flex gap-3">
         <AgentIcon
           agentId={isUser ? undefined : comment.senderId}
@@ -234,19 +247,6 @@ export function IssueMessage({
                 {t('message.openMessage')}
               </Button>
             ) : null}
-            {!editing && (
-              <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setEditing(true); setDraft(comment.content); }}>
-                  <Pencil className="h-3 w-3" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleCopy}>
-                  {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
-                </Button>
-                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => onDelete(comment.id)}>
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </div>
-            )}
           </div>
           {replying ? (
             <div className="relative pl-8 pt-3">

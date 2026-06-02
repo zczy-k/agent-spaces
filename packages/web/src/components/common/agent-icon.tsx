@@ -92,9 +92,10 @@ export interface AgentIconProps {
   apiBase?: string;
   className?: string;
   onClick?: () => void;
+  bordered?: boolean;
 }
 
-export function AgentIcon({ agentId, name, avatarUrl, icon, apiBase, className, onClick }: AgentIconProps) {
+export function AgentIcon({ agentId, name, avatarUrl, icon, apiBase, className, onClick, bordered = true }: AgentIconProps) {
   const agents = useAgentStore((s) => s.agents);
   const [avatarError, setAvatarError] = useState(false);
   const [providerError, setProviderError] = useState(false);
@@ -132,6 +133,7 @@ export function AgentIcon({ agentId, name, avatarUrl, icon, apiBase, className, 
       className={cn(
         'flex items-center justify-center overflow-hidden rounded-lg bg-muted shrink-0',
         (src || showEmoji) && 'bg-transparent',
+        bordered && 'border border-border',
         !onClick && 'pointer-events-none',
         onClick && 'cursor-pointer hover:opacity-80 transition-opacity',
         className,
