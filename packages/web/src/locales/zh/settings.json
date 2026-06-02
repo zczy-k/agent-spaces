@@ -85,6 +85,7 @@
   "dataImportDesc": "选择要导入的提供商和技能。已选中项目将导入到 Agent Spaces。",
   "dataProviders": "提供商",
   "dataSkills": "技能",
+  "dataMcps": "MCP 服务器",
   "dataSelectAll": "全选",
   "dataDeselectAll": "取消全选",
   "dataNoData": "未找到可导入的数据",

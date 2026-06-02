@@ -85,6 +85,7 @@
   "dataImportDesc": "Select providers and skills to import. Selected items will be imported into Agent Spaces.",
   "dataProviders": "Providers",
   "dataSkills": "Skills",
+  "dataMcps": "MCP Servers",
   "dataSelectAll": "Select All",
   "dataDeselectAll": "Deselect All",
   "dataNoData": "No importable data found",
