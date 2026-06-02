@@ -5,7 +5,8 @@
 - 将 work_fox 的工作流系统完整迁移到 agent-spaces
 - 前端：Vue → React 转换
 - 后端：合并到 Express 服务
-- 不融合功能，只需共存可运行
+- 产品级统一：WorkFox Workflow 作为 canonical workflow，agent-spaces 现有 agent/command workflow 通过 adapter/migration 纳入统一模型
+- 不保留长期并行的两套 Workflow 产品入口
 - shadcn 通用 UI 组件不需要迁移
 - Electron 部分忽略
 
@@ -75,21 +76,21 @@
 | ws | ws（已安装） |
 | monaco-editor | monaco-editor（已安装） |
 | @tanstack/vue-table | @tanstack/react-table（已安装） |
+| golden-layout | flexlayout-react（已安装，用户确认） |
+| vue-stream-markdown | react-markdown（已安装）+ 自定义流式渲染 |
+| vue3-emoji-picker | emoji-picker-react（已安装） |
+| @unovis/vue | recharts（已安装）优先，必要时再评估 @unovis/react |
 
 #### 需要新增的依赖
 
 | 依赖 | 用途 | 备注 |
 |------|------|------|
-| golden-layout | 分屏布局 | 需评估是否有 react 版本 |
-| @unovis/react | 数据可视化 | 或用已有的 recharts 替代 |
 | dexie | IndexedDB | 通用库，框架无关 |
 | node-cron | Cron 调度 | 后端依赖 |
 | cron-parser | Cron 解析 | 后端依赖 |
 | eventemitter2 | 事件系统 | 通用库 |
-| vue-stream-markdown | 流式 Markdown | 需找 react 替代 |
 | lightgallery | 图片画廊 | 需找 react 替代 |
-| vue3-emoji-picker | Emoji 选择 | 需找 react 替代 |
-| adm-zip | ZIP 解压 | 后端依赖（插件安装） |
+| katex | 数学公式渲染 | 需确认当前 web 是否已安装 |
 
 ### 后端架构对比
 
@@ -119,7 +120,9 @@
 | 路由 → 合并到现有路由 | 用户确认 |
 | shared → 合并到 packages/shared | 用户确认 |
 | 文件组织 → 按功能分散到现有目录 | 用户确认 |
-| work_fox workflow 独立共存，不替换现有 workflow | agent-spaces workflow 简单（agent+command 两节点），work_fox workflow 复杂（10+ 节点类型、执行引擎、触发器等），两套系统定位不同，需独立并存 |
+| WorkFox Workflow 作为 canonical workflow | 用户确认要产品级统一，前期避免“共存/替换/适配”歧义 |
+| agent-spaces 旧 WorkflowTemplate 通过 adapter/migration 纳入统一模型 | 避免现有 agent/command workflow 数据和页面在替换期间失效 |
+| 不保留长期 workfox-* 子系统入口 | 迁移期可临时命名隔离，但最终用户入口/API/存储语义收敛到一套 Workflow |
 
 ### 关键发现：Workflow 系统差异巨大
 
@@ -141,7 +144,9 @@
 
 | 问题 | 状态 | 解决方案 |
 |------|------|---------|
-| golden-layout React 替代方案 | 待定 | 需用户确认 |
-| 路由挂载策略 | 待定 | 需用户确认 |
-| shared 层合并方式 | 待定 | 需用户确认 |
-| 数据存储隔离 | 待定 | 需用户确认 |
+| golden-layout React 替代方案 | 已定 | 使用 flexlayout-react |
+| 路由挂载策略 | 已定 | `/workflows` 作为统一 Workflow 产品入口 |
+| shared 层合并方式 | 已定 | WorkFox 模型为主，legacy WorkflowTemplate 通过 adapter/migration 兼容 |
+| 数据存储策略 | 已定 | 统一 Workflow 存储；保留旧数据读取和迁移路径 |
+| 旧 workflow 数据迁移细节 | 待设计 | Phase 3 定义字段映射、失败处理和回滚策略 |
+| agent/command 节点映射 | 待设计 | Phase 3 决定映射到 `agent_run` / `run_code` 或专用兼容节点 |

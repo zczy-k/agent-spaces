@@ -2,11 +2,25 @@
 
 ## 目标
 
-将 work_fox 项目的工作流系统（前端 Vue → React + 后端）完整迁移到 agent-spaces 项目中，合并后能正常启动和加载。不融合功能，仅确保两套系统共存在同一项目中可运行。
+将 work_fox 的工作流系统产品级迁移到 agent-spaces，形成一套统一的 Workflow 产品能力。WorkFox 的复杂工作流模型作为 canonical workflow，agent-spaces 现有 agent/command workflow 需要通过兼容适配或数据迁移纳入新模型，避免长期存在两套语义相近但行为不同的工作流系统。
+
+### 非目标
+
+- 不迁移 work_fox Electron main/preload 能力。
+- 不迁移 work_fox shadcn-vue 通用 UI 组件。
+- 不保留两套并行 Workflow 产品入口；迁移期允许临时兼容层，但最终用户入口、API 契约、存储语义应收敛到一套系统。
+
+### 产品级统一原则
+
+1. **单一产品入口**：`/workflows` 最终承载统一后的 Workflow 管理、编辑、执行和历史查看。
+2. **单一核心模型**：WorkFox Workflow 是主模型；agent-spaces 的 `agent` / `command` 节点映射为 WorkFox 节点类型或兼容节点。
+3. **兼容先行**：在替换现有 workflow UI/API 前，先定义旧数据读取、迁移、回滚和失败处理。
+4. **边界明确**：插件、Chat、Dashboard、Trigger、WS channel 都围绕统一 Workflow 服务设计，不再按“workfox 子系统”长期隔离。
+5. **验收驱动**：每个阶段必须有构建或运行验收，不能只完成文件搬运。
 
 ## 当前阶段
 
-Phase 2 — 目标架构设计
+Phase 2 — 目标架构设计（已根据产品级统一口径修订）
 
 ## 项目规模统计
 
@@ -23,7 +37,7 @@ Phase 2 — 目标架构设计
 
 | Vue 依赖 | React 对应 | 难度 |
 |----------|-----------|------|
-| Vue 3 + Composition API | React 18 + Hooks | 中 |
+| Vue 3 + Composition API | React 19 + Hooks | 中 |
 | Pinia stores | Zustand stores | 低 |
 | Vue Router | Next.js App Router | 高（路由模式完全不同） |
 | Vue Flow (@vue-flow/core) | @xyflow/react | 中（agent-spaces 已有） |
@@ -31,12 +45,12 @@ Phase 2 — 目标架构设计
 | radix-vue / reka-ui | radix-ui / shadcn/ui（agent-spaces 已有） | 低 |
 | Dexie (IndexedDB) | Dexie（通用，不变） | 低 |
 | vue-sonner | sonner（agent-spaces 已有） | 低 |
-| golden-layout | 需评估（react-dock / 自定义） | 高 |
+| golden-layout | flexlayout-react（agent-spaces 已有，用户确认） | 中 |
 | vue-stream-markdown | react-markdown + 自定义流式 | 中 |
 | vuedraggable | @dnd-kit（agent-spaces 已有） | 低 |
 | @unovis/vue | recharts（agent-spaces 已有）或 @unovis/react | 低 |
-| vue3-emoji-picker | 需评估替代方案 | 中 |
-| vue-virtual-scroller | @tanstack/react-virtual | 低 |
+| vue3-emoji-picker | emoji-picker-react（agent-spaces 已有） | 低 |
+| vue-virtual-scroller | react-virtualized（agent-spaces 已有）或 @tanstack/react-virtual | 低 |
 | lightgallery | 需评估 react 替代方案 | 中 |
 | katex | katex（通用，不变） | 低 |
 | monaco-editor | @monaco-editor/react | 低 |
@@ -62,47 +76,63 @@ Phase 2 — 目标架构设计
 - [x] 记录架构决策
 - **Status:** complete
 
-### Phase 3: Shared 层迁移与统一
-- [ ] 将 workfox/shared 类型定义合并到 packages/shared/src/types/
-  - workflow-types.ts → workfox-workflow.ts（核心 Workflow/Node/Edge/ExecutionLog 类型）
-  - channel-contracts.ts → workfox-channel-contracts.ts（WS 通道契约）
-  - channel-metadata.ts → workfox-channel-metadata.ts（通道元数据）
-  - ws-protocol.ts → workfox-ws-protocol.ts（WS 消息协议）
-  - execution-events.ts → workfox-execution-events.ts（执行事件）
-  - plugin-types.ts → workfox-plugin-types.ts（插件类型）
-  - errors.ts → workfox-errors.ts（错误码）
-  - workflow-composite.ts → workfox-workflow-composite.ts（复合节点）
-  - embedded-workflow.ts → workfox-embedded-workflow.ts（嵌入式工作流）
-  - workflow-local-bridge.ts → workfox-workflow-local-bridge.ts（本地桥接）
-  - plugin-entry.ts + plugin-capability-loader.ts（插件加载）
-  - shortcut-types.ts → workfox-shortcut-types.ts（快捷键类型）
-- [ ] 将 agent-spaces 的 WorkflowTemplate 适配到 workfox Workflow 类型
+### Phase 3: 统一契约与兼容模型
+- [ ] 定义统一 Workflow shared 契约（WorkFox 模型为主）
+  - workflow-types.ts → workflow.ts 或 workflow-core.ts（主 Workflow/Node/Edge/ExecutionLog 类型）
+  - channel-contracts.ts / channel-metadata.ts / ws-protocol.ts → 统一 WS 契约
+  - execution-events.ts → 统一执行事件
+  - plugin-types.ts / plugin-entry.ts / plugin-capability-loader.ts → 统一插件类型
+  - errors.ts → 统一错误码
+  - workflow-composite.ts / embedded-workflow.ts / workflow-local-bridge.ts → 统一复合/嵌入式工作流类型
+  - shortcut-types.ts → 统一快捷键类型
+- [ ] 明确 legacy `WorkflowTemplate` 兼容策略
+  - agent 节点 → WorkFox `agent_run` 或专用兼容节点
+  - command 节点 → WorkFox `run_code` / shell command 兼容节点
+  - viewport / position / edge 信息保持可读
+  - createdAt / updatedAt / description 元数据迁移
+- [ ] 编写类型层 adapter：legacy WorkflowTemplate → unified Workflow
+- [ ] 保留旧数据读取能力，避免现有 workflows 数据在首次启动时失效
 - [ ] 更新 packages/shared/src/types/index.ts 导出
-- [ ] 重新构建 packages/shared
+- [ ] 验收：`pnpm --filter @agent-spaces/shared build` 通过
 - **Status:** pending
 
-### Phase 4: 前端基础设施迁移
+### Phase 4: 后端统一服务与数据迁移
+- [ ] 将 work_fox backend workflow 引擎迁移到 packages/server
+  - execution-manager / interaction-manager / trigger-service / hook-handler → services/workflow/
+  - workflow-store / workflow-version-store / execution-log-store → storage/workflow/
+  - stats-store → services/dashboard/
+- [ ] 改造现有 workflow service，使其使用统一 Workflow 模型
+- [ ] 增加旧 WorkflowTemplate 数据迁移/读取 adapter
+- [ ] 集成统一 HTTP 路由到现有 Express API
+- [ ] 集成统一 WS channels 到现有 WebSocket 系统
+- [ ] 处理认证差异：work_fox sessionToken → agent-spaces Bearer Token
+- [ ] 安装后端新增依赖（node-cron / cron-parser / eventemitter2；adm-zip 已存在则复用）
+- [ ] 验收：`pnpm --filter @agent-spaces/server build` 通过；旧 workflow 列表 API 仍可读取
+- **Status:** pending
+
+### Phase 5: 前端基础设施迁移
 - [ ] 复制 workfox/src/types → packages/web/src/types/workfox/
 - [ ] 转换 Pinia stores → Zustand stores
-  - stores/workflow/ (12 文件) → stores/workfox-workflow/
-  - stores/chat.ts → stores/workfox-chat.ts
+  - stores/workflow/ (12 文件) → stores/workflow/
+  - stores/chat.ts → stores/chat.ts 或现有 chat store 扩展
   - stores/ai-provider.ts / stores/agent-settings.ts / stores/chat-ui.ts
   - stores/dashboard.ts / stores/plugin.ts / stores/tab.ts
   - stores/shortcut.ts / stores/theme.ts / stores/userProfile.ts
 - [ ] 转换 composables → React hooks
-  - workflow/ 下 8 个 composable → hooks/workfox-workflow/
+  - workflow/ 下 8 个 composable → hooks/workflow/
   - useCommandPalette / useNotification / useShortcutActions
 - [ ] 转换 lib 层工具函数
-  - lib/agent/ (7 文件) → lib/workfox-agent/
-  - lib/backend-api/ (12 文件) → lib/workfox-backend-api/
-  - lib/workflow/ (6 文件) → lib/workfox-workflow/
+  - lib/agent/ (7 文件) → lib/agent/ 或现有 agent lib 扩展
+  - lib/backend-api/ (12 文件) → lib/backend-api/ 或 API client 扩展
+  - lib/workflow/ (6 文件) → lib/workflow/
   - lib/ws-bridge.ts / lib/chat-db.ts / lib/dialog.ts
   - lib/plugins/web-client-runtime.ts
-- [ ] 安装新增依赖（dexie/node-cron/cron-parser/eventemitter2/katex 等）
+- [ ] 安装前端新增依赖（dexie / katex / lightgallery 替代库等）
+- [ ] 验收：`pnpm --filter @agent-spaces/web lint` 不出现新增基础设施错误
 - **Status:** pending
 
-### Phase 5: 前端 Workflow 组件迁移（替换现有）
-- [ ] 备份现有 packages/web/src/components/workflow/ (9 文件)
+### Phase 6: 统一 Workflow 编辑器迁移
+- [ ] 替换现有 packages/web/src/components/workflow/ 为统一编辑器实现
 - [ ] 转换核心编辑器组件
   - WorkflowEditor.vue → workflow-editor.tsx（替换现有）
   - WorkflowCanvas.vue → workflow-canvas.tsx（替换现有）
@@ -127,12 +157,14 @@ Phase 2 — 目标架构设计
 - [ ] 转换工作流布局上下文/工具
   - dragDrop.ts / helper-line-utils.ts / nodeSidebarContext.ts
   - workflowCanvasContext.ts / workflowLayoutContext.ts
-- [ ] 更新现有 workflow store 以适配新组件
+- [ ] 更新现有 workflow store 以适配统一 Workflow 模型
+- [ ] 保证旧 agent/command workflow 可在新编辑器中打开或显示迁移提示
+- [ ] 验收：`/workflows` 页面可加载；新建、保存、重新打开工作流可用
 - **Status:** pending
 
-### Phase 6: 前端其他组件迁移
-- [ ] Chat 组件（ChatPanel/ChatInput/ChatMessage/ToolCallCard 等 ~13 个）→ components/chat/workfox-*
-- [ ] Dashboard 组件（StatsCards/ExecutionChart/ExecutionHistoryTable 等 ~9 个）→ components/dashboard/workfox-*
+### Phase 7: 产品周边能力统一
+- [ ] Chat 组件（ChatPanel/ChatInput/ChatMessage/ToolCallCard 等 ~13 个）→ 融入现有 components/chat/
+- [ ] Dashboard 组件（StatsCards/ExecutionChart/ExecutionHistoryTable 等 ~9 个）→ 融入现有 dashboard/workflows 入口
 - [ ] Settings 组件（SettingsDialog/SettingsModels 等 ~6 个）→ 适配到现有设置系统
 - [ ] Gallery 组件（GalleryViewer/MusicPlayer）→ components/gallery/
 - [ ] CommandPalette → 适配到现有 command-palette
@@ -140,38 +172,21 @@ Phase 2 — 目标架构设计
 - [ ] 页面视图 → 适配到 Next.js App Router
 - [ ] Utils 组件（FloatingPanel/WsMessageMonitor）
 - [ ] App.vue 入口逻辑 → 适配到 Next.js layout
+- [ ] 验收：Chat、Dashboard、Settings 中涉及 workflow 的入口指向统一 Workflow 系统
 - **Status:** pending
 
-### Phase 7: 后端迁移
-- [ ] 复制 backend 核心模块到 packages/server
-  - workflow/ (4 文件: execution-manager/interaction-manager/trigger-service/hook-handler) → services/workfox-workflow/
-  - chat/ (5 文件: chat-runtime/chat-event-sender/chat-tool-adapter/chat-workflow-tool-executor/client-node-cache) → services/workfox-chat/
-  - storage/ (11 文件: workflow-store/workflow-version-store/execution-log-store 等) → storage/workfox/
-  - plugins/ (3 文件: plugin-registry/builtin-fetch-api/builtin-fs-api) → services/workfox-plugins/
-  - dashboard/ (1 文件: stats-store) → services/workfox-dashboard/
-  - ws/ (12 文件: router/connection-manager/channels 等) → routes/workfox-ws/
-  - app/ (3 文件: config/logger/create-server) → 合并到现有
-- [ ] 集成 workfox WS channels 到现有 WebSocket 系统
-- [ ] 集成 workfox HTTP 路由到现有 Express
-- [ ] 安装后端新增依赖（node-cron/cron-parser/adm-zip/eventemitter2）
-- **Status:** pending
-
-### Phase 6: 后端迁移
-- [ ] 复制 backend 核心模块到 packages/server
-- [ ] 集成 WS channels（work_fox 的 WSRouter → Express 路由）
-- [ ] 集成 storage 层（work_fox 的 JSON stores）
-- [ ] 集成 workflow 引擎（ExecutionManager / InteractionManager / TriggerService）
-- [ ] 集成 chat 运行时（ChatRuntime / ChatToolAdapter）
-- [ ] 集成 Dashboard 统计
-- [ ] 集成插件系统
-- **Status:** pending
-
-### Phase 7: 集成验证
-- [ ] 确保前端构建通过（pnpm build）
-- [ ] 确保后端启动正常
-- [ ] 验证工作流编辑器页面可加载
-- [ ] 验证 Chat 面板可加载
-- [ ] 验证 Dashboard 页面可加载
+### Phase 8: 端到端集成验证
+- [ ] `pnpm --filter @agent-spaces/shared build`
+- [ ] `pnpm --filter @agent-spaces/server build`
+- [ ] `pnpm --filter @agent-spaces/web build`
+- [ ] `pnpm build`
+- [ ] 后端启动正常
+- [ ] `/workflows` 统一入口可加载
+- [ ] 旧 agent/command workflow 可读取、迁移或明确提示不可自动迁移
+- [ ] 新工作流可新建、保存、重新打开
+- [ ] WS 连接可建立并接收执行事件
+- [ ] 执行历史和 Dashboard 可读取统一执行日志
+- [ ] Chat 工具调用可引用统一 Workflow
 - **Status:** pending
 
 ## 用户已确认的决策
@@ -184,6 +199,7 @@ Phase 2 — 目标架构设计
 6. **前端 workflow 目录** → 替换现有 components/workflow/ ✅
 7. **后端集成** → 合并到现有 Express 路由和 WS 系统 ✅
 8. **迁移策略** → 统一成一套系统（一步到位）✅
+9. **产品策略** → 产品级统一，不保留长期并行的 workfox 子系统入口 ✅
 
 ## 决策记录
 
@@ -193,6 +209,8 @@ Phase 2 — 目标架构设计
 | Vue Flow → @xyflow/react | agent-spaces 已有 @xyflow/react 依赖 |
 | Pinia → Zustand | agent-spaces 全局使用 Zustand |
 | Tiptap Vue → Tiptap React | agent-spaces 已有 Tiptap React 集成 |
+| WorkFox Workflow 作为 canonical workflow | 用户确认走产品级统一，前期消除共存/替换歧义 |
+| 旧 WorkflowTemplate 走 adapter/migration | 避免现有 agent/command workflow 数据在替换期间失效 |
 
 ## 遇到的错误
 
