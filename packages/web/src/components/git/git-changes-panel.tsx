@@ -47,7 +47,7 @@ function FileDiffHoverCard({
   selectedFile: string | null;
   children: React.ReactNode;
   onContextMenu: (e: React.MouseEvent, path: string) => void;
-  onFileClick: (path: string) => void;
+  onFileClick?: (path: string) => void;
 }) {
   const [diff, setDiff] = useState<GitDiffResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -71,7 +71,7 @@ function FileDiffHoverCard({
         delay={300}
         closeDelay={150}
         className="block"
-        onClick={() => onFileClick(path)}
+        onClick={() => onFileClick?.(path)}
         onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onContextMenu(e, path); }}
       >
         <div className={`group w-full text-left px-2 py-1 text-xs font-mono flex items-center gap-1.5 hover:bg-accent cursor-pointer ${selectedFile === path ? "bg-accent" : ""}`}>
@@ -163,7 +163,7 @@ export function GitChangesPanel({
       {/* File list */}
       <div className="flex-1 overflow-auto">
         {files.map((f) => (
-          <FileDiffHoverCard key={f.path} workspaceId={workspaceId} path={f.path} selectedFile={selectedFile} onContextMenu={onContextMenu} onFileClick={onFileClick}>
+          <FileDiffHoverCard key={f.path} workspaceId={workspaceId} path={f.path} selectedFile={selectedFile} onContextMenu={onContextMenu} onFileClick={isVertical ? undefined : onFileClick}>
             <span className={`w-4 text-center font-bold shrink-0 ${statusColors[f.status]}`}>{statusLabels[f.status]}</span>
             {f.conflicted && <AlertTriangle size={12} className="shrink-0 text-red-500" />}
             <span className="truncate flex-1">{f.path}</span>
