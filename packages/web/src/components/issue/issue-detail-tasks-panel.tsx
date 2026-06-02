@@ -13,7 +13,7 @@ interface IssueDetailTasksPanelProps {
   retryTask: (wsId: string, taskId: string) => void;
   cancelTask: (wsId: string, taskId: string) => void;
   reorderTasks: (wsId: string, issueId: string, taskIds: string[]) => void;
-  deleteTask: (wsId: string, taskId: string) => Promise<void>;
+  deleteTask: (wsId: string, taskId: string) => void;
   onEditTask: (task: Task) => void;
 }
 
@@ -29,17 +29,11 @@ export function IssueDetailTasksPanel({
   deleteTask,
   onEditTask,
 }: IssueDetailTasksPanelProps) {
-  const handleDeleteTask = async (wsId: string, taskId: string) => {
-    await deleteTask(wsId, taskId);
-  };
-
   return (
-    <div className="shrink-0 p-4 pb-2 max-h-[180px] overflow-y-auto">
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-medium">
-          {t('detail.tasks', { count: issueTasks.length })}
-        </h3>
-      </div>
+    <div className="space-y-2">
+      <h3 className="font-semibold">
+        {t('detail.tasks', { count: issueTasks.length })}
+      </h3>
       {issueTasks.length === 0 ? (
         <div className="text-sm text-muted-foreground">{t('detail.noTasks')}</div>
       ) : (
@@ -63,7 +57,7 @@ export function IssueDetailTasksPanel({
             reorderTasks(workspaceId, issue.id, reordered);
           }}
         >
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
+          <div className="space-y-1">
             {issueTasks.map((task, idx) => (
               <TaskRow
                 key={task.id}
@@ -73,7 +67,7 @@ export function IssueDetailTasksPanel({
                 onRetry={retryTask}
                 onCancel={cancelTask}
                 onEdit={onEditTask}
-                onDelete={handleDeleteTask}
+                onDelete={deleteTask}
                 tTask={tTask}
               />
             ))}
