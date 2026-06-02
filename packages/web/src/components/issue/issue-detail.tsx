@@ -280,12 +280,8 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     <div className="flex h-full overflow-hidden">
       {/* Main content */}
       <div className="flex flex-col flex-1 min-w-0 h-full relative">
-        <div className="flex-1 min-h-0 overflow-y-auto">
-        <Card className="border-0 shadow-none rounded-none flex flex-col p-0">
-          <motion.div initial="hidden" animate="visible" variants={containerVariants} className="flex flex-col">
-
-            {/* Header Section — project-detail-view CardHeader style */}
-            <CardHeader className="shrink-0 p-4 border-b bg-muted/30 space-y-0">
+        {/* Header Section — fixed at top, outside scroll */}
+        <CardHeader className="shrink-0 p-4 bg-muted/30 space-y-0 rounded-none">
               <motion.div variants={itemVariants} className="flex items-center justify-between">
                 <div className="flex items-center gap-2 min-w-0">
                   <Button
@@ -354,6 +350,10 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                 </div>
               </motion.div>
             </CardHeader>
+
+        <div className="flex-1 min-h-0 overflow-y-auto">
+        <Card className="border-0 shadow-none rounded-none flex flex-col p-0">
+          <motion.div initial="hidden" animate="visible" variants={containerVariants} className="flex flex-col">
 
             {/* Scrollable meta + commands + tasks + attachments */}
             <div className="shrink-0 p-6 pb-2 space-y-5">

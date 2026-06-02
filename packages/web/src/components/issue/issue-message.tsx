@@ -150,7 +150,7 @@ export function IssueMessage({
           </Button>
         </div>
       )}
-      <div className="flex gap-3">
+      <div className="flex gap-3 items-start">
         {!isUser ? (
           <MemberHoverCard agentId={comment.senderId} displayName={senderName} side="right" align="start">
             <AgentIcon
