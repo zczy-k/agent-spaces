@@ -60,9 +60,7 @@ export function ChatInputAgentBar({
                   onClick={() => onActivateAgent(agent)}
                   className={cn(
                     "shrink-0 inline-flex items-center gap-1 h-6 pl-0.5 pr-1.5 rounded-full text-xs transition-all cursor-pointer",
-                    isActive
-                      ? "bg-primary/10 text-primary border border-primary/30"
-                      : "text-primary/70 border border-primary/20 bg-primary/5"
+                    isActive && "bg-primary/10 text-primary border border-primary/30"
                   )}
                 >
                   <AgentIcon
