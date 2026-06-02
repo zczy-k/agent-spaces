@@ -397,3 +397,7 @@ function findConfiguredModelCost(model: string | undefined): { inputPerMillion: 
     outputPerMillion: toMoney(configured.cost.outputPerMillion),
   };
 }
+
+export function closeDb(): void {
+  if (db) { db.close(); db = null; }
+}

@@ -500,3 +500,7 @@ export function listDatabaseEmbeddings(workspaceId: string, databaseId: string):
     embedding: JSON.parse(row.embedding as string) as number[],
   }));
 }
+
+export function closeDb(): void {
+  if (db) { db.close(); db = null; }
+}

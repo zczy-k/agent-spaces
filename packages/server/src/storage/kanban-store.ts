@@ -156,3 +156,7 @@ export function saveTasks(boardId: string, tasks: KanbanTask[]): void {
   }
   database.prepare('UPDATE kanban_boards SET updated_at = ? WHERE id = ?').run(Date.now(), boardId);
 }
+
+export function closeDb(): void {
+  if (db) { db.close(); db = null; }
+}

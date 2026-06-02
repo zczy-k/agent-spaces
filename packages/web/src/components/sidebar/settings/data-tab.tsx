@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { Import, Loader2 } from "lucide-react";
+import { Import, Loader2, Download, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,8 +13,10 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { authHeaders } from "@/lib/auth";
 import { useLLMStore } from "@/stores/llm";
 
+// --- cc-switch import types ---
 interface PreviewProvider {
   sourceId: string;
   name: string;
@@ -39,13 +41,35 @@ interface PreviewMcp {
   env: Record<string, string>;
 }
 
+// --- backup import types ---
+interface ImportCategory {
+  key: string;
+  label: string;
+  group: string;
+  size: number;
+  type: "file" | "directory";
+  details: string;
+}
+
+type ImportResult = "ok" | "skipped" | "error";
+
 function maskKey(key: string): string {
   if (!key || key.length < 12) return key ? "***" : "";
   return key.slice(0, 6) + "..." + key.slice(-4);
 }
 
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+const GROUP_ORDER = ["config", "ai", "content", "customization", "billing"] as const;
+
 export function DataTab() {
   const t = useTranslations("settings");
+
+  // --- cc-switch import state ---
   const [dialogOpen, setDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -56,6 +80,20 @@ export function DataTab() {
   const [selectedProviders, setSelectedProviders] = useState<Set<string>>(new Set());
   const [selectedSkills, setSelectedSkills] = useState<Set<string>>(new Set());
   const [selectedMcps, setSelectedMcps] = useState<Set<string>>(new Set());
+
+  // --- backup export/import state ---
+  const [exporting, setExporting] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [importing2, setImporting2] = useState(false);
+  const [importSessionId, setImportSessionId] = useState("");
+  const [importCategories, setImportCategories] = useState<ImportCategory[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
+  const [importError, setImportError] = useState("");
+  const [importResults, setImportResults] = useState<Record<string, ImportResult> | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ===================== cc-switch import =====================
 
   const loadPreview = useCallback(async () => {
     setLoading(true);
@@ -105,7 +143,6 @@ export function DataTab() {
 
       const result = await res.json();
 
-      // refresh LLM store if providers/models were imported
       if (result.providers?.length || result.models?.length) {
         const [provRes, modelRes] = await Promise.all([
           fetch("/api/providers"),
@@ -144,13 +181,166 @@ export function DataTab() {
 
   const totalSelected = selectedProviders.size + selectedSkills.size + selectedMcps.size;
 
+  // ===================== backup export =====================
+
+  const handleExport = useCallback(async () => {
+    setExporting(true);
+    try {
+      const res = await fetch("/api/data/export", { headers: authHeaders() });
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `agent-spaces-backup-${new Date().toISOString().slice(0, 10)}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(t("dataExportSuccess"));
+    } catch {
+      toast.error(t("dataExportFailed"));
+    } finally {
+      setExporting(false);
+    }
+  }, [t]);
+
+  // ===================== backup import =====================
+
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // reset input so same file can be re-selected
+    e.target.value = "";
+
+    setUploading(true);
+    setImportError("");
+    setImportResults(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/data/import/preview", {
+        method: "POST",
+        headers: authHeaders(),
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.error) {
+        setImportError(data.error);
+        setImportCategories([]);
+        setImportSessionId("");
+      } else {
+        setImportSessionId(data.sessionId);
+        setImportCategories(data.categories);
+        setSelectedCategories(new Set(data.categories.map((c: ImportCategory) => c.key)));
+      }
+      setImportDialogOpen(true);
+    } catch {
+      setImportError("Failed to upload file");
+      setImportCategories([]);
+      setImportDialogOpen(true);
+    } finally {
+      setUploading(false);
+    }
+  }, []);
+
+  const handleImportExecute = useCallback(async () => {
+    setImporting2(true);
+    try {
+      const res = await fetch("/api/data/import/execute", {
+        method: "POST",
+        headers: { ...authHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: importSessionId, categories: [...selectedCategories] }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        toast.error(data.error);
+      } else {
+        setImportResults(data.results);
+        toast.success(t("dataImportComplete"));
+      }
+    } catch {
+      toast.error(t("dataImportFailed"));
+    } finally {
+      setImporting2(false);
+    }
+  }, [importSessionId, selectedCategories, t]);
+
+  const toggleCategory = (key: string) => {
+    setSelectedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) { next.delete(key); } else { next.add(key); }
+      return next;
+    });
+  };
+
+  const toggleGroupAll = (group: string) => {
+    const groupKeys = importCategories.filter(c => c.group === group).map(c => c.key);
+    const allSelected = groupKeys.every(k => selectedCategories.has(k));
+    setSelectedCategories(prev => {
+      const next = new Set(prev);
+      groupKeys.forEach(k => allSelected ? next.delete(k) : next.add(k));
+      return next;
+    });
+  };
+
+  const groupLabel = (group: string): string => {
+    switch (group) {
+      case "config": return t("dataCategoryConfig");
+      case "ai": return t("dataCategoryAI");
+      case "content": return t("dataCategoryContent");
+      case "customization": return t("dataCategoryCustomization");
+      case "billing": return t("dataCategoryBilling");
+      default: return group;
+    }
+  };
+
+  // Group categories for display
+  const groupedCategories = GROUP_ORDER.map(group => ({
+    group,
+    label: groupLabel(group),
+    items: importCategories.filter(c => c.group === group),
+  })).filter(g => g.items.length > 0);
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
+      {/* Backup export / import */}
+      <div>
+        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2.5 block">
+          {t("dataExportTitle")}
+        </label>
+        <p className="text-sm text-muted-foreground mb-3">{t("dataExportDesc")}</p>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
+            {exporting ? (
+              <Loader2 className="size-3.5 mr-1.5 animate-spin" />
+            ) : (
+              <Download className="size-3.5 mr-1.5" />
+            )}
+            {exporting ? t("dataExporting") : t("dataExport")}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+            {uploading ? (
+              <Loader2 className="size-3.5 mr-1.5 animate-spin" />
+            ) : (
+              <Upload className="size-3.5 mr-1.5" />
+            )}
+            {uploading ? t("dataUploading") : t("dataImportBackup")}
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".zip"
+            className="hidden"
+            onChange={handleFileSelect}
+          />
+        </div>
+      </div>
+
+      {/* cc-switch import */}
       <div>
         <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2.5 block">
           {t("dataTitle")}
         </label>
-        <p className="text-sm text-muted-foreground mb-4">{t("dataDescription")}</p>
+        <p className="text-sm text-muted-foreground mb-3">{t("dataDescription")}</p>
         <Button variant="outline" size="sm" onClick={loadPreview} disabled={loading}>
           {loading ? (
             <Loader2 className="size-3.5 mr-1.5 animate-spin" />
@@ -161,6 +351,90 @@ export function DataTab() {
         </Button>
       </div>
 
+      {/* Backup import dialog */}
+      <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[75vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="text-base">{t("dataImportBackupTitle")}</DialogTitle>
+            <DialogDescription className="text-xs">{t("dataImportBackupDialogDesc")}</DialogDescription>
+          </DialogHeader>
+
+          {importError && (
+            <div className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {importError}
+            </div>
+          )}
+
+          {/* Results view */}
+          {importResults ? (
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5 py-2">
+              {importCategories.map(cat => {
+                const result = importResults[cat.key];
+                if (!result) return null;
+                const colors: Record<ImportResult, string> = {
+                  ok: "text-green-600 bg-green-50",
+                  skipped: "text-muted-foreground bg-muted",
+                  error: "text-destructive bg-destructive/10",
+                };
+                return (
+                  <div key={cat.key} className="flex items-center justify-between rounded-md border px-3 py-2">
+                    <span className="text-sm">{cat.label}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded ${colors[result]}`}>
+                      {result === "ok" ? t("dataImportResultOk") : result === "skipped" ? t("dataImportResultSkipped") : t("dataImportResultError")}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-4 py-2">
+              {groupedCategories.length === 0 && !importError && (
+                <p className="text-sm text-muted-foreground text-center py-8">{t("dataNoCategories")}</p>
+              )}
+              {groupedCategories.map(({ group, label, items }) => (
+                <div key={group}>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</h4>
+                    <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => toggleGroupAll(group)}>
+                      {items.every(c => selectedCategories.has(c.key)) ? t("dataDeselectAll") : t("dataSelectAll")}
+                    </Button>
+                  </div>
+                  <div className="space-y-1.5">
+                    {items.map(cat => (
+                      <label key={cat.key} className="flex items-center gap-2.5 rounded-md border px-3 py-2 cursor-pointer hover:bg-muted/50">
+                        <input
+                          type="checkbox"
+                          checked={selectedCategories.has(cat.key)}
+                          onChange={() => toggleCategory(cat.key)}
+                          className="size-4 rounded border-border accent-primary"
+                        />
+                        <span className="text-sm flex-1">{cat.label}</span>
+                        <span className="text-xs text-muted-foreground tabular-nums">
+                          {cat.type === "directory" ? cat.details : formatBytes(cat.size)}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setImportDialogOpen(false)}>
+              {t("dataCancel")}
+            </Button>
+            {!importResults && (
+              <Button size="sm" onClick={handleImportExecute} disabled={importing2 || selectedCategories.size === 0}>
+                {importing2 && <Loader2 className="size-3.5 mr-1.5 animate-spin" />}
+                {t("dataImport")} ({selectedCategories.size})
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* cc-switch import dialog (unchanged) */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-lg max-h-[75vh] flex flex-col">
           <DialogHeader>
@@ -175,7 +449,6 @@ export function DataTab() {
           )}
 
           <div className="flex-1 min-h-0 overflow-y-auto space-y-4 py-2">
-            {/* Providers */}
             {providers.length > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-2">
@@ -219,7 +492,6 @@ export function DataTab() {
               </div>
             )}
 
-            {/* MCP Servers */}
             {mcps.length > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-2">
@@ -252,7 +524,6 @@ export function DataTab() {
               </div>
             )}
 
-            {/* Skills */}
             {skills.length > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-2">
