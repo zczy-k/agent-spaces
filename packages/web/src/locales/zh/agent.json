@@ -27,6 +27,21 @@
     },
     "bot": {
       "name": "Bot Agent"
+    },
+    "planner": {
+      "name": "规划者"
+    },
+    "executor": {
+      "name": "执行者"
+    },
+    "reviewer": {
+      "name": "审核者"
+    },
+    "commit": {
+      "name": "提交者"
+    },
+    "custom": {
+      "name": "自定义"
     }
   },
   "defaultName": "新 Agent",

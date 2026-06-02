@@ -27,6 +27,21 @@
     },
     "bot": {
       "name": "Bot Agent"
+    },
+    "planner": {
+      "name": "Planner"
+    },
+    "executor": {
+      "name": "Executor"
+    },
+    "reviewer": {
+      "name": "Reviewer"
+    },
+    "commit": {
+      "name": "Commit Agent"
+    },
+    "custom": {
+      "name": "Custom"
     }
   },
   "defaultName": "New Agent",
