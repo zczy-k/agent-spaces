@@ -75,6 +75,9 @@
       "tagCreated": "标签已创建",
       "commitIdCopied": "Commit ID 已复制",
       "commitMessageCopied": "提交信息已复制",
+      "resetToCommit": "Reset 到此提交",
+      "confirmReset": "确定要将仓库 reset 到 {hash} 吗？这将丢失此提交之后的所有更改。",
+      "resetDone": "已 Reset",
       "failed": "操作失败"
     }
   },

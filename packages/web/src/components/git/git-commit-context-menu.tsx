@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   ContextMenuContent,
   ContextMenuItem,
@@ -8,6 +9,8 @@ import {
   ContextMenuSubContent,
   ContextMenuSubTrigger,
 } from "@/components/ui/context-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { useGitStore } from "@/stores/git";
 import { useEditorStore } from "@/stores/editor";
 import { useChannelStore } from "@/stores/channel";
@@ -32,10 +35,12 @@ interface Props {
 
 export function GitCommitContextMenu({ workspaceId, entry, onRefreshAll, onOpenPrompt }: Props) {
   const t = useTranslations('git.commits');
+  const tc = useTranslations('common');
   const {
     getCommitDiff, getRemoteUrl, checkout, checkoutDetached,
-    createBranch, deleteBranch, createTag, cherryPick, getMergeBase,
+    createBranch, deleteBranch, createTag, cherryPick, getMergeBase, resetToCommit,
   } = useGitStore();
+  const [resetOpen, setResetOpen] = useState(false);
   const openCommitDiff = useEditorStore((s) => s.openCommitDiff);
   const { activeChannelId, sendMessage } = useChannelStore();
   const agents = useAgentStore((s) => s.agents);
@@ -133,6 +138,7 @@ export function GitCommitContextMenu({ workspaceId, entry, onRefreshAll, onOpenP
       <ContextMenuItem onClick={handleCreateTag}>{t('contextMenu.createTag')}</ContextMenuItem>
       <ContextMenuSeparator />
       <ContextMenuItem onClick={handleCherryPick}>{t('contextMenu.cherryPick')}</ContextMenuItem>
+      <ContextMenuItem onClick={() => setResetOpen(true)}>{t('contextMenu.resetToCommit')}</ContextMenuItem>
       <ContextMenuSeparator />
       <ContextMenuSub>
         <ContextMenuSubTrigger>{t('contextMenu.compareWith')}</ContextMenuSubTrigger>
@@ -150,6 +156,24 @@ export function GitCommitContextMenu({ workspaceId, entry, onRefreshAll, onOpenP
       </ContextMenuItem>
       <ContextMenuSeparator />
       <ContextMenuItem onClick={handleExplainChanges}>{t('contextMenu.explainChanges')}</ContextMenuItem>
+
+      <Dialog open={resetOpen} onOpenChange={setResetOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t('contextMenu.resetToCommit')}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {t('contextMenu.confirmReset', { hash: entry.hash.slice(0, 7) })}
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResetOpen(false)}>{tc('cancel')}</Button>
+            <Button variant="destructive" onClick={async () => {
+              try { await resetToCommit(workspaceId, entry.hash); toast.success(t('contextMenu.resetDone')); setResetOpen(false); onRefreshAll(); }
+              catch (err: unknown) { toast.error(t('contextMenu.failed'), { description: errMsg(err) }); }
+            }}>{t('contextMenu.resetToCommit')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </ContextMenuContent>
   );
 }

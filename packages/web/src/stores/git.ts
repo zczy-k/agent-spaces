@@ -39,6 +39,7 @@ interface GitState {
   getCommitDiff: (workspaceId: string, hash: string) => Promise<GitDiffResult[]>;
   getRemoteUrl: (workspaceId: string) => Promise<string | null>;
   getMergeBase: (workspaceId: string) => Promise<string>;
+  resetToCommit: (workspaceId: string, commitHash: string, mode?: 'soft' | 'mixed' | 'hard') => Promise<void>;
 }
 
 const GIT_NOT_REPO_PATTERN = /not a git repository/i;
@@ -308,5 +309,13 @@ export const useGitStore = create<GitState>((set) => ({
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error);
     const data = await res.json();
     return data.hash;
+  },
+
+  resetToCommit: async (workspaceId, commitHash, mode = 'mixed') => {
+    const res = await fetch(`/api/workspaces/${workspaceId}/git/reset`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ commitHash, mode }),
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error);
   },
 }));

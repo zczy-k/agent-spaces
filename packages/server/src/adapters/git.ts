@@ -550,6 +550,11 @@ export interface GitConfig {
   proxy: string;
 }
 
+export async function gitReset(workspaceId: string, commitHash: string, mode: 'soft' | 'mixed' | 'hard' = 'mixed'): Promise<void> {
+  const git = getGitForWorkspace(workspaceId);
+  await git.reset([`--${mode}`, commitHash]);
+}
+
 export async function gitGetConfig(scope: 'global' | 'local', workspaceId?: string): Promise<GitConfig> {
   const scopeFlag = scope === 'global' ? '--global' : '--local';
   const git = workspaceId ? getGit(getWorkspace(workspaceId)!) : simpleGit();

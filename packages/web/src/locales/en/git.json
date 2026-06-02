@@ -75,6 +75,9 @@
       "tagCreated": "Tag created",
       "commitIdCopied": "Commit ID copied",
       "commitMessageCopied": "Commit message copied",
+      "resetToCommit": "Reset to this Commit",
+      "confirmReset": "Are you sure you want to reset to {hash}? All changes after this commit will be lost.",
+      "resetDone": "Reset complete",
       "failed": "Operation failed"
     }
   },

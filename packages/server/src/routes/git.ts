@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from 'express';
-import { gitStatus, gitDiff, gitLog, gitCommit, gitDiscard, gitDiscardAll, gitBranches, gitCheckout, gitInit, gitGenerateCommitMsg, gitPush, gitPull, gitFetch, gitGetRemotes, gitAddRemote, gitCheckoutDetached, gitCherryPick, gitCreateBranch, gitDeleteBranch, gitCreateTag, gitCommitDiff, gitGetRemoteUrl, gitMergeBase, gitGetConfig, gitSetConfig, gitStage, gitUnstage, gitResolveFile } from '../adapters/git.js';
+import { gitStatus, gitDiff, gitLog, gitCommit, gitDiscard, gitDiscardAll, gitBranches, gitCheckout, gitInit, gitGenerateCommitMsg, gitPush, gitPull, gitFetch, gitGetRemotes, gitAddRemote, gitCheckoutDetached, gitCherryPick, gitCreateBranch, gitDeleteBranch, gitCreateTag, gitCommitDiff, gitGetRemoteUrl, gitMergeBase, gitGetConfig, gitSetConfig, gitStage, gitUnstage, gitResolveFile, gitReset } from '../adapters/git.js';
 import { logGitOperation, getGitOperations } from '../services/git-operation-log.js';
 
 const router = Router({ mergeParams: true });
@@ -193,5 +193,12 @@ router.post('/config', withLog('config.set', (req) => ({ name: (req as any).body
 router.get('/operations', (req: Request<{ id: string }>, res: Response) => {
   res.json(getGitOperations(req.params.id));
 });
+
+router.post('/reset', withLog('reset', (req) => ({ commitHash: (req as any).body?.commitHash, mode: (req as any).body?.mode }), async (req, res) => {
+  const { commitHash, mode } = req.body;
+  if (!commitHash) { res.status(400).json({ error: 'commitHash is required' }); return; }
+  await gitReset(req.params.id, commitHash, mode || 'mixed');
+  res.json({ ok: true });
+}));
 
 export default router;
