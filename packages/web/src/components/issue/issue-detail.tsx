@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils';
 import { IssueDetailTasksPanel } from './issue-detail-tasks-panel';
 import { IssueDetailComments } from './issue-detail-comments';
 import { IssueDetailInfoPanel } from './issue-detail-info-panel';
+import { CommentNavigator } from './comment-navigator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -537,6 +538,11 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
               />
             </div>
           </div>
+        )}
+
+        {/* Fixed comment navigator */}
+        {comments.length > 0 && (
+          <CommentNavigator comments={comments} onNavigate={scrollToComment} />
         )}
       </div>
 

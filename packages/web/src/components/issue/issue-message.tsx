@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { ChatComposerInput } from '@/components/chat/chat-composer-input';
+import { MemberHoverCard } from '@/components/chat/member-hover-card';
 import { useAgentStore } from '@/stores/agent';
 import { useChannelStore } from '@/stores/channel';
 import { useUserAvatar } from '@/hooks/use-user-avatar';
@@ -150,12 +151,21 @@ export function IssueMessage({
         </div>
       )}
       <div className="flex gap-3">
-        <AgentIcon
-          agentId={isUser ? undefined : comment.senderId}
-          name={senderName}
-          avatarUrl={isUser ? userAvatarUrl || undefined : undefined}
-          className="size-7 rounded-full"
-        />
+        {!isUser ? (
+          <MemberHoverCard agentId={comment.senderId} displayName={senderName} side="right" align="start">
+            <AgentIcon
+              agentId={comment.senderId}
+              name={senderName}
+              className="size-7 rounded-full"
+            />
+          </MemberHoverCard>
+        ) : (
+          <AgentIcon
+            name={senderName}
+            avatarUrl={userAvatarUrl || undefined}
+            className="size-7 rounded-full"
+          />
+        )}
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <span className="text-sm font-medium">{senderName}</span>
@@ -290,12 +300,21 @@ function IssueReply({ reply, level }: { reply: MessageReply; level: number }) {
     <div className="relative pl-8 pt-3">
       <div className="absolute left-4 top-0 h-full w-px bg-border" />
       <div className="flex gap-3">
-        <AgentIcon
-          agentId={isUser ? undefined : reply.senderId}
-          name={senderName}
-          avatarUrl={isUser ? userAvatarUrl || undefined : undefined}
-          className="size-7 rounded-full"
-        />
+        {!isUser ? (
+          <MemberHoverCard agentId={reply.senderId} displayName={senderName} side="right" align="start">
+            <AgentIcon
+              agentId={reply.senderId}
+              name={senderName}
+              className="size-7 rounded-full"
+            />
+          </MemberHoverCard>
+        ) : (
+          <AgentIcon
+            name={senderName}
+            avatarUrl={userAvatarUrl || undefined}
+            className="size-7 rounded-full"
+          />
+        )}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-2">
             <span className="text-sm font-medium">{senderName}</span>

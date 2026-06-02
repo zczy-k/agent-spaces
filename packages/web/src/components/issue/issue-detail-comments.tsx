@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { IssueMessage } from '@/components/issue/issue-message';
-import { CommentNavigator } from '@/components/issue/comment-navigator';
 import { useChannelStore } from '@/stores/channel';
 import { getWS } from '@/lib/ws';
 import type { Attachment as MessageAttachment, IssueComment, Issue, Message } from '@agent-spaces/shared';
@@ -121,7 +120,6 @@ export function IssueDetailComments({
             </div>
           ))}
           <div className="h-20 pointer-events-none" />
-          <CommentNavigator comments={comments} onNavigate={scrollToComment} />
         </div>
       ) : null}
     </div>
