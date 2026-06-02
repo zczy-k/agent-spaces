@@ -23,8 +23,9 @@ import { Input } from '@/components/ui/input';
 import { ArrowLeft } from 'lucide-react';
 import { authHeaders } from '@/lib/auth';
 
-type AgentNodeData = Extract<WorkflowNode, { type: 'agent' }>['data'];
-type CommandNodeData = Extract<WorkflowNode, { type: 'command' }>['data'];
+// XYFlow node data shapes for legacy agent/command nodes
+type AgentNodeData = { label: string; agentConfigId: string; role: string; avatarUrl?: string; modelId?: string };
+type CommandNodeData = { label: string; script: string };
 type AgentNode = Node<AgentNodeData, 'agent'>;
 type CommandNode = Node<CommandNodeData, 'command'>;
 type WorkflowNodeRF = AgentNode | CommandNode;
@@ -75,14 +76,14 @@ function WorkflowEditorInner({
 
   const markDirty = useCallback(() => setIsDirty(true), []);
 
-  const handleNodeDoubleClick = useCallback((_: React.MouseEvent, node: WorkflowNodeRF) => {
+  const handleNodeDoubleClick = useCallback((_: React.MouseEvent, node: Record<string, unknown>) => {
     if (node.type === 'command') {
-      setEditCommandNode(node as CommandNode);
+      setEditCommandNode(node as unknown as CommandNode);
       setCommandDialogOpen(true);
     }
   }, []);
 
-  const handleCommandSave = useCallback((data: CommandNodeData) => {
+  const handleCommandSave = useCallback((data: { label: string; script: string }) => {
     if (!editCommandNode) return;
     setNodes((nds) =>
       nds.map((n) => n.id === editCommandNode.id ? ({ ...n, data } as CommandNode) : n)
@@ -132,9 +133,10 @@ function WorkflowEditorInner({
     try {
       const workflowNodes: WorkflowNode[] = nodes.map((n) => ({
         id: n.id,
-        type: n.type,
+        type: n.type as string,
+        label: (n.data as Record<string, unknown>).label as string || n.id,
         position: n.position,
-        data: n.data,
+        data: n.data as Record<string, unknown>,
       } as WorkflowNode));
       const workflowEdges: WorkflowEdge[] = edges.map((e) => ({
         id: e.id,
@@ -167,7 +169,7 @@ function WorkflowEditorInner({
     const agentMap: Record<string, Omit<AgentConfig, 'apiKey'>> = {};
     for (const node of nodes) {
       if (node.type !== 'agent') continue;
-      const agentId = node.data.agentConfigId;
+      const agentId = (node.data as Record<string, unknown>).agentConfigId as string;
       if (agentId && !agentMap[agentId]) {
         const agent = allAgents.find((a) => a.id === agentId);
         if (agent) {

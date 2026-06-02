@@ -1,6 +1,6 @@
 import { exec } from 'child_process';
 import type { ExecException } from 'child_process';
-import type { WorkflowCommandNode } from '@agent-spaces/shared';
+import type { WorkflowNode } from '@agent-spaces/shared';
 import { getWorkspace } from '../storage/workspace-store.js';
 
 export interface CommandResult {
@@ -12,16 +12,17 @@ export interface CommandResult {
 
 export async function executeCommandNode(
   workspaceId: string,
-  node: WorkflowCommandNode,
+  node: WorkflowNode,
 ): Promise<CommandResult> {
   const workspace = getWorkspace(workspaceId);
-  const cwd = node.data.cwd || workspace?.boundDirs?.[0] || process.cwd();
+  const data = node.data as Record<string, unknown>;
+  const cwd = (data.cwd as string) || workspace?.boundDirs?.[0] || process.cwd();
 
   return new Promise<CommandResult>((resolve) => {
-    exec(node.data.script, {
+    exec(data.script as string, {
       cwd,
-      env: { ...process.env, ...node.data.env },
-      shell: node.data.shell || undefined,
+      env: { ...process.env, ...(data.env as Record<string, string> | undefined) },
+      shell: (data.shell as string) || undefined,
       timeout: 300_000,
       maxBuffer: 10 * 1024 * 1024,
     }, (error: ExecException | null, stdout: string, stderr: string) => {

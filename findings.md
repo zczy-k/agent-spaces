@@ -140,6 +140,82 @@
 - 编辑器：全功能（属性面板/版本控制/操作历史/撤销重做/暂存区/触发器/嵌入式子工作流/对齐辅助线/分组管理）
 - Shared 类型：15 文件（完整协议/类型/工具函数）
 
+## Phase 3 类型差异分析
+
+### agent-spaces legacy WorkflowTemplate vs work_fox Workflow
+
+| 维度 | agent-spaces (legacy) | work_fox (canonical) |
+|------|----------------------|---------------------|
+| **主模型** | `WorkflowTemplate` | `Workflow` |
+| **节点类型** | 2 种：`agent` / `command`（union type） | 10+ 种：`string` 类型字段，data 驱动 |
+| **节点数据** | 紧耦合（agent 有 agentConfigId/role/modelId；command 有 script/cwd/env/shell） | 松耦合（`Record<string, unknown>`） |
+| **边** | `{ id, source, target }` | `{ id, source, target, sourceHandle?, targetHandle?, composite? }` |
+| **分组** | 无 | `WorkflowGroup[]`（嵌套、颜色、锁定、禁用） |
+| **触发器** | 无 | `WorkflowTrigger[]`（cron/hook discriminated union） |
+| **文件夹** | 无 | `WorkflowFolder`（树形） |
+| **版本** | 无 | `WorkflowVersion`（快照） |
+| **执行日志** | 无 | `ExecutionLog` + `ExecutionStep[]`（完整执行追踪） |
+| **插件** | 无 | `enabledPlugins[]` + `pluginConfigSchemes` + `PluginMeta/PluginInfo` |
+| **Agent 配置** | 节点内联（agentConfigId） | `WorkflowAgentConfig`（workspaceDir/dataDir/skills/mcps） |
+| **时间戳** | `string` (ISO) | `number` (epoch ms) |
+| **viewport** | `viewport?: { x, y, zoom }` | `layoutSnapshot?: Record<string, unknown>` |
+| **标签/图标** | 无 | `icon?`, `tags?[]`, `description?` |
+| **WS 契约** | 简单事件（workflow.created/updated/deleted） | 完整 channel system（BackendChannelMap 100+ channels） |
+| **执行事件** | 无 | `ExecutionEventMap`（11 种事件，含 node:start/progress/complete/error） |
+| **交互系统** | 无 | `InteractionRequest/Response`（file_select/form/confirm/agent_chat 等） |
+| **操作历史** | 无 | `OperationEntry[]`（含 snapshot） |
+| **暂存区** | 无 | `StagedNode[]` |
+| **错误** | 无统一错误码 | `BackendErrorCode`（16 种错误码） |
+| **复合节点** | 无 | `CompoundNodeDefinition` + composite meta（loop/group 等） |
+
+### Legacy Adapter 映射策略
+
+1. **agent 节点** → `agent_run` 节点类型
+   - `agentConfigId` → data.agentConfigId
+   - `role` → data.role
+   - `modelId` → data.modelId
+   - `taskTitleTemplate` / `taskDescriptionTemplate` → data.taskTitleTemplate / data.taskDescriptionTemplate
+   - `avatarUrl` → node.nodeColor 或忽略
+
+2. **command 节点** → `run_code` 节点类型
+   - `script` → data.code
+   - `cwd` → data.cwd
+   - `env` → data.env
+   - `shell` → data.shell
+   - `failStrategy` → 无直接映射，可忽略或映射为 data.failStrategy
+
+3. **WorkflowTemplate → Workflow**
+   - `id` → `id`
+   - `name` → `name`
+   - `description` → `description`
+   - `nodes` → 遍历适配每个节点
+   - `edges` → 补充 sourceHandle/targetHandle 默认 null
+   - `viewport` → 丢弃（WorkFox 用 layoutSnapshot）
+   - `createdAt: string` → `createdAt: number`（Date.parse）
+   - `updatedAt: string` → `updatedAt: number`（Date.parse）
+   - 新增字段默认值：`folderId: null`, `groups: []`, `triggers: []`
+
+### 统一 shared 文件规划
+
+| 文件 | 内容 | 来源 |
+|------|------|------|
+| `types/workflow.ts` | 重写：主 Workflow/Node/Edge + Legacy adapter + re-export | work_fox workflow-types.ts 为主 |
+| `types/workflow-execution.ts` | 新增：ExecutionLog/Step/Event/Control/Debug | work_fox execution-events.ts |
+| `types/workflow-plugin.ts` | 新增：PluginMeta/PluginInfo/PluginConfig/PluginTool | work_fox plugin-types.ts + plugin-entry.ts + plugin-capability-loader.ts |
+| `types/workflow-channel.ts` | 新增：WS Channel 契约 | work_fox channel-contracts.ts（精简版，去掉非 workflow 相关 channel） |
+| `types/workflow-composite.ts` | 新增：复合节点工具函数 | work_fox workflow-composite.ts + embedded-workflow.ts + workflow-local-bridge.ts |
+| `types/workflow-errors.ts` | 新增：统一错误码 | work_fox errors.ts |
+| `types/workflow-shortcut.ts` | 新增：快捷键类型 | work_fox shortcut-types.ts（精简版） |
+
+### 关键设计决策
+
+1. **Node type 改为 string**：不再用 discriminated union（`agent | command`），改为 `string` 类型 + `data: Record<string, unknown>`，与 work_fox 对齐
+2. **保留 Legacy 命名**：`WorkflowTemplate` 作为 type alias 指向 `Workflow`，保持向后兼容
+3. **时间戳统一为 number**：work_fox 用 epoch ms，统一后 agent-spaces 的 ISO string 通过 adapter 转换
+4. **Plugin 系统可选**：统一类型中 plugin 相关字段全部 optional，agent-spaces 不使用插件时无影响
+5. **WS Channel 精简**：只迁移 workflow 相关的 channel（workflow:* / workflowFolder:* / workflowVersion:* / executionLog:* / executionPreset:* / staging:* / trigger:*），不迁移 chat/aiProvider/shortcut/fs 等 agent-spaces 已有的
+6. **composite 函数保留**：loop/group 等复合节点的工具函数直接搬入 shared（纯函数无副作用）
+
 ## 问题追踪
 
 | 问题 | 状态 | 解决方案 |
@@ -148,5 +224,8 @@
 | 路由挂载策略 | 已定 | `/workflows` 作为统一 Workflow 产品入口 |
 | shared 层合并方式 | 已定 | WorkFox 模型为主，legacy WorkflowTemplate 通过 adapter/migration 兼容 |
 | 数据存储策略 | 已定 | 统一 Workflow 存储；保留旧数据读取和迁移路径 |
-| 旧 workflow 数据迁移细节 | 待设计 | Phase 3 定义字段映射、失败处理和回滚策略 |
-| agent/command 节点映射 | 待设计 | Phase 3 决定映射到 `agent_run` / `run_code` 或专用兼容节点 |
+| 旧 workflow 数据迁移细节 | 已设计 | 字段映射见上表，timestamps 转 epoch ms，viewport 丢弃，新增字段给默认值 |
+| agent/command 节点映射 | 已设计 | agent→agent_run + command→run_code，数据平铺到 Record<string, unknown> |
+| Node type 设计 | 已定 | 改为 string + data: Record<string, unknown>，与 work_fox 对齐 |
+| 时间戳格式 | 已定 | 统一为 number (epoch ms)，legacy ISO string 通过 adapter 转换 |
+| WS Channel 范围 | 已定 | 仅迁移 workflow 相关 channel，不迁移 agent-spaces 已有的 |

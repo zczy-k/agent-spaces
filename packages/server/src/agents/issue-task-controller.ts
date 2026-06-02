@@ -1,5 +1,5 @@
 import type { AgentConfig, Issue, Task, TaskResult, TaskStatus } from '@agent-spaces/shared';
-import type { WorkflowTemplate, WorkflowCommandNode } from '@agent-spaces/shared';
+import type { WorkflowTemplate, WorkflowNode } from '@agent-spaces/shared';
 import type { AgentContext } from './agent-context.js';
 import type { AgentFunctionTool, AgentRunResult, AgentRuntime } from '../adapters/agent-runtime-types.js';
 import { createAgentRuntime } from '../adapters/agent-runtime.js';
@@ -355,7 +355,7 @@ async function runCommandTask(
   workspaceId: string,
   issueId: string,
   taskId: string,
-  commandNode: WorkflowCommandNode,
+  commandNode: WorkflowNode,
   ctx: AgentContext,
 ): Promise<void> {
   const task = taskService.getById(workspaceId, taskId);
@@ -365,7 +365,9 @@ async function runCommandTask(
   if (!runningTask) return;
   broadcastTaskUpdate(ctx, runningTask, 'pending');
 
-  ctx.broadcast('task.output', { taskId, data: `$ ${commandNode.data.script.split('\n')[0]}${commandNode.data.script.includes('\n') ? ' ...' : ''}` });
+  const cmdData = commandNode.data as Record<string, unknown>;
+  const cmdScript = cmdData.script as string;
+  ctx.broadcast('task.output', { taskId, data: `$ ${cmdScript.split('\n')[0]}${cmdScript.includes('\n') ? ' ...' : ''}` });
 
   const result = await executeCommandNode(workspaceId, commandNode);
 
@@ -569,7 +571,7 @@ function ensureWorkflowAgentsForRun(
   template: WorkflowTemplate,
   ctx: AgentContext,
 ): void {
-  const workflowAgentIds = [...new Set(template.nodes.filter((n) => n.type === 'agent').map((node) => node.data.agentConfigId).filter(Boolean))];
+  const workflowAgentIds = [...new Set(template.nodes.filter((n) => n.type === 'agent').map((node) => node.data.agentConfigId as string).filter(Boolean))];
 
   const mergedMembers = [...new Set([...(issue.members ?? []), ...workflowAgentIds])];
   const membersChanged = mergedMembers.length !== (issue.members ?? []).length
@@ -698,11 +700,11 @@ function findWorkflowForIssue(workspaceId: string, issue: Issue): WorkflowTempla
   return getWorkflow(issue.workflowId);
 }
 
-function findCommandNodeForTask(workflow: WorkflowTemplate | null, task: Task): WorkflowCommandNode | null {
+function findCommandNodeForTask(workflow: WorkflowTemplate | null, task: Task): WorkflowNode | null {
   if (!workflow) return null;
   if (task.agentConfigId) return null;
   for (const node of workflow.nodes) {
-    if (node.type === 'command' && (task.title === node.data.label || task.description?.startsWith('Command:'))) {
+    if (node.type === 'command' && (task.title === node.label || task.description?.startsWith('Command:'))) {
       return node;
     }
   }

@@ -19,13 +19,14 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import Dagre from '@dagrejs/dagre';
-import type { WorkflowNode, AgentConfig } from '@agent-spaces/shared';
+import type { AgentConfig } from '@agent-spaces/shared';
 import { WorkflowAgentNode } from './workflow-agent-node';
 import { WorkflowCommandNode } from './workflow-command-node';
 import { X } from 'lucide-react';
 
-type AgentNodeData = Extract<WorkflowNode, { type: 'agent' }>['data'];
-type CommandNodeData = Extract<WorkflowNode, { type: 'command' }>['data'];
+// XYFlow node data shapes for legacy agent/command nodes
+type AgentNodeData = { label: string; agentConfigId: string; role: string; avatarUrl?: string; modelId?: string };
+type CommandNodeData = { label: string; script: string };
 type AgentNode = Node<AgentNodeData, 'agent'>;
 type CommandNode = Node<CommandNodeData, 'command'>;
 type WorkflowNodeRF = AgentNode | CommandNode;

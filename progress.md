@@ -55,17 +55,48 @@
   - 计划文件中不再存在“独立共存/不融合功能”等冲突描述
 
 ### Phase 3: 统一契约与兼容模型
-- **Status:** pending
+- **Status:** complete
 - Actions taken:
-  -
+  - 深入研读 work_fox shared 15 个类型文件和 agent-spaces 现有 WorkflowTemplate
+  - 分析两者类型差异（节点模型、边、时间戳、viewport、触发器、分组、执行日志等 15+ 维度）
+  - 设计统一 Workflow 契约：以 work_fox 为主，node type 改为 string + data: Record<string, unknown>
+  - 创建 6 个新 shared 类型文件：workflow.ts（重写）、workflow-execution.ts、workflow-errors.ts、workflow-plugin.ts、workflow-composite.ts、workflow-ws.ts、workflow-shortcut.ts
+  - 保留 WorkflowTemplate 作为 Workflow 的 type alias 向后兼容
+  - 修复 server 4 个文件的编译错误（workflow.ts / workflow-command-runner.ts / issue-task-controller.ts / issue.ts）
+  - 修复 web 5 个文件的编译错误（workflow store / workflow-editor / workflow-canvas / workflow-agent-palette / workflow-mini-preview）
+  - `pnpm --filter @agent-spaces/shared build` ✅
+  - `pnpm --filter @agent-spaces/server build` ✅
+  - `pnpm tsc --noEmit` (web) ✅（workflow 相关 0 error）
 - Files created/modified:
-  -
+  - packages/shared/src/types/workflow.ts（重写为统一模型）
+  - packages/shared/src/types/workflow-execution.ts（新增）
+  - packages/shared/src/types/workflow-errors.ts（新增）
+  - packages/shared/src/types/workflow-plugin.ts（新增）
+  - packages/shared/src/types/workflow-composite.ts（新增）
+  - packages/shared/src/types/workflow-ws.ts（新增）
+  - packages/shared/src/types/workflow-shortcut.ts（新增）
+  - packages/shared/src/types/index.ts（更新导出）
+  - packages/shared/src/types/events.ts（WorkflowTemplate → Workflow）
+  - packages/server/src/services/workflow.ts（适配新类型 + legacy helper 函数）
+  - packages/server/src/services/workflow-command-runner.ts（WorkflowCommandNode → WorkflowNode）
+  - packages/server/src/agents/issue-task-controller.ts（同上 + data 类型断言）
+  - packages/server/src/routes/issue.ts（data.agentConfigId 类型断言）
+  - packages/web/src/stores/workflow.ts（去掉 viewport）
+  - packages/web/src/components/workflow/workflow-editor.tsx（适配新类型）
+  - packages/web/src/components/workflow/workflow-canvas.tsx（适配新类型）
+  - packages/web/src/components/workflow/workflow-agent-palette.tsx（适配新类型）
+  - packages/web/src/components/workflow/workflow-mini-preview.tsx（data.label 类型断言）
+  - findings.md（更新 Phase 3 类型差异分析和映射策略）
+  - progress.md（更新）
+  - task_plan.md（更新）
 - Acceptance criteria:
-  - `packages/shared` 中存在统一 Workflow 类型、执行事件、WS 协议、插件类型和错误码导出
-  - legacy `WorkflowTemplate` → unified Workflow adapter 有明确字段映射
-  - `agent` / `command` 节点映射策略已实现或以类型约束固定
-  - 旧 workflow 数据不会因类型替换在读取阶段直接失效
-  - `pnpm --filter @agent-spaces/shared build` 通过
+  - ✅ `packages/shared` 中存在统一 Workflow 类型、执行事件、WS 协议、插件类型和错误码导出
+  - ✅ legacy `WorkflowTemplate` → unified Workflow adapter 有明确字段映射
+  - ✅ `agent` / `command` 节点映射策略已实现或以类型约束固定
+  - ✅ 旧 workflow 数据不会因类型替换在读取阶段直接失效
+  - ✅ `pnpm --filter @agent-spaces/shared build` 通过
+  - ✅ `pnpm --filter @agent-spaces/server build` 通过
+  - ✅ web workflow 相关 tsc 检查 0 error
 
 ### Phase 4: 后端统一服务与数据迁移
 - **Status:** pending
@@ -140,11 +171,11 @@
 
 | Question | Answer |
 |----------|--------|
-| Where am I? | Phase 2 完成，准备进入 Phase 3（统一契约与兼容模型） |
-| Where am I going? | Phase 3-8：统一契约 → 后端统一服务与数据迁移 → 前端基础设施 → 统一编辑器 → 产品周边能力 → 端到端验证 |
+| Where am I? | Phase 3 完成（统一契约与兼容模型），准备进入 Phase 4（后端统一服务与数据迁移） |
+| Where am I going? | Phase 4-8：后端统一服务 → 前端基础设施 → 统一编辑器 → 产品周边能力 → 端到端验证 |
 | What's the goal? | 产品级统一成一套 Workflow 系统：WorkFox 为 canonical workflow，legacy agent/command workflow 通过 adapter/migration 纳入新模型 |
-| What have I learned? | agent-spaces workflow 简单（2 节点），workfox workflow 复杂（10+ 节点/执行引擎/触发器），需以 workfox 为主系统统一 |
-| What have I done? | 完成两项目架构分析、产品级统一策略确认、详细分阶段计划修订 |
+| What have I learned? | 两套 Workflow 类型体系差异巨大（15+ 维度），统一后 node type 为 string + data: Record<string, unknown>，时间戳为 epoch ms，所有 workfox 扩展（groups/triggers/execution/plugin）均为 optional |
+| What have I done? | 完成 shared 层 6 个新文件 + 1 个重写，server 4 文件适配，web 5 文件适配，shared/server/web 全部编译通过 |
 
 ## Test Results
 

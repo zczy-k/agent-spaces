@@ -20,7 +20,7 @@
 
 ## 当前阶段
 
-Phase 2 — 目标架构设计（已根据产品级统一口径修订）
+Phase 3 — 统一契约与兼容模型 ✅（已完成）
 
 ## 项目规模统计
 
@@ -77,24 +77,33 @@ Phase 2 — 目标架构设计（已根据产品级统一口径修订）
 - **Status:** complete
 
 ### Phase 3: 统一契约与兼容模型
-- [ ] 定义统一 Workflow shared 契约（WorkFox 模型为主）
-  - workflow-types.ts → workflow.ts 或 workflow-core.ts（主 Workflow/Node/Edge/ExecutionLog 类型）
-  - channel-contracts.ts / channel-metadata.ts / ws-protocol.ts → 统一 WS 契约
-  - execution-events.ts → 统一执行事件
-  - plugin-types.ts / plugin-entry.ts / plugin-capability-loader.ts → 统一插件类型
-  - errors.ts → 统一错误码
-  - workflow-composite.ts / embedded-workflow.ts / workflow-local-bridge.ts → 统一复合/嵌入式工作流类型
-  - shortcut-types.ts → 统一快捷键类型
-- [ ] 明确 legacy `WorkflowTemplate` 兼容策略
-  - agent 节点 → WorkFox `agent_run` 或专用兼容节点
-  - command 节点 → WorkFox `run_code` / shell command 兼容节点
-  - viewport / position / edge 信息保持可读
-  - createdAt / updatedAt / description 元数据迁移
-- [ ] 编写类型层 adapter：legacy WorkflowTemplate → unified Workflow
-- [ ] 保留旧数据读取能力，避免现有 workflows 数据在首次启动时失效
-- [ ] 更新 packages/shared/src/types/index.ts 导出
-- [ ] 验收：`pnpm --filter @agent-spaces/shared build` 通过
-- **Status:** pending
+- [x] 定义统一 Workflow shared 契约（WorkFox 模型为主）
+  - workflow-types.ts → workflow.ts（重写：主 Workflow/Node/Edge 类型，string node type + data: Record<string, unknown>）
+  - execution-events.ts → workflow-execution.ts（11 种执行事件 + 控制请求 + 恢复状态）
+  - errors.ts → workflow-errors.ts（16 种错误码 + createErrorShape 工具函数）
+  - plugin-types.ts + plugin-entry.ts + plugin-capability-loader.ts → workflow-plugin.ts（统一插件类型 + Local Bridge 节点）
+  - workflow-composite.ts + embedded-workflow.ts + workflow-local-bridge.ts → workflow-composite.ts（复合节点工具函数 + 嵌入式工作流工厂）
+  - channel-contracts.ts + ws-protocol.ts + channel-metadata.ts → workflow-ws.ts（精简版 WS 契约，仅 workflow 相关 channel）
+  - shortcut-types.ts → workflow-shortcut.ts（精简版快捷键类型）
+- [x] 明确 legacy `WorkflowTemplate` 兼容策略
+  - WorkflowTemplate = type alias for Workflow（向后兼容）
+  - agent 节点 → data: { label, agentConfigId, role, ... }（data 平铺）
+  - command 节点 → data: { label, script, cwd, env, shell, ... }（data 平铺）
+  - 时间戳 string → number（epoch ms）
+  - viewport 字段丢弃（WorkFox 用 layoutSnapshot）
+  - 新增字段默认值：folderId: null, groups: [], triggers: []
+- [x] 编写类型层 adapter：legacy WorkflowTemplate → unified Workflow
+  - LegacyWorkflowTemplateRaw 类型定义保留在 workflow.ts 中
+  - LegacyAgentData / LegacyCommandData helper 类型
+  - server 端 getAgentData() / getCommandData() helper 函数
+- [x] 保留旧数据读取能力，避免现有 workflows 数据在首次启动时失效
+- [x] 更新 packages/shared/src/types/index.ts 导出（7 个新导出）
+- [x] 修复 server 4 个文件的编译错误
+- [x] 修复 web 5 个文件的编译错误
+- [x] 验收：`pnpm --filter @agent-spaces/shared build` 通过 ✅
+- [x] 验收：`pnpm --filter @agent-spaces/server build` 通过 ✅
+- [x] 验收：web workflow 相关 tsc 检查 0 error ✅
+- **Status:** complete
 
 ### Phase 4: 后端统一服务与数据迁移
 - [ ] 将 work_fox backend workflow 引擎迁移到 packages/server

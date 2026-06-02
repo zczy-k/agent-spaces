@@ -1,4 +1,4 @@
-import type { WorkflowTemplate } from './workflow.js';
+import type { Workflow } from './workflow.js';
 import type { CommandProcessEvent } from './command.js';
 import type { AppNotification } from './notification.js';
 
@@ -131,8 +131,8 @@ export type ServerEventMap = {
   'task.updated': import('./task.js').Task;
   'task.status_changed': TaskStatusChangedPayload;
   'task.output': TaskOutputPayload;
-  'workflow.created': { workflow: WorkflowTemplate };
-  'workflow.updated': { workflow: WorkflowTemplate };
+  'workflow.created': { workflow: Workflow };
+  'workflow.updated': { workflow: Workflow };
   'workflow.deleted': { workflowId: string };
   'command.started': CommandProcessEvent;
   'command.stopped': CommandProcessEvent;

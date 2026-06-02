@@ -13,10 +13,10 @@ import '@xyflow/react/dist/style.css';
 import type { WorkflowTemplate, WorkflowNode } from '@agent-spaces/shared';
 import Dagre from '@dagrejs/dagre';
 
-function MiniNode({ data }: { data: WorkflowNode['data'] }) {
+function MiniNode({ data }: { data: Record<string, unknown> }) {
   return (
     <div className="rounded-md border bg-card px-2 py-1 text-[8px] truncate w-full">
-      {data.label}
+      {String(data.label ?? '')}
     </div>
   );
 }

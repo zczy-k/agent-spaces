@@ -1,49 +1,393 @@
-import type { AgentConfig } from './workspace.js';
+// ============================================================
+// Unified Workflow Types (canonical model from WorkFox)
+// ============================================================
+//
+// Design decisions:
+// 1. Node type is string + data: Record<string, unknown> (loose coupling)
+// 2. Timestamps are number (epoch ms)
+// 3. All workfox extensions (groups, triggers, plugins) are optional
+// 4. Legacy WorkflowTemplate is a type alias for backward compat
+// 5. Legacy agent/command node data preserved via legacy- prefixed helpers
 
-export interface WorkflowAgentNode {
-  id: string;
-  type: 'agent';
-  position: { x: number; y: number };
-  data: {
-    label: string;
-    agentConfigId: string;
-    role: AgentConfig['role'];
-    avatarUrl?: string;
-    modelId?: string;
-    taskTitleTemplate?: string;
-    taskDescriptionTemplate?: string;
-  };
+// ---- JSON helpers ----
+
+export type JsonPrimitive = string | number | boolean | null
+export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue }
+export type JsonObject = Record<string, JsonValue>
+
+// ---- Folder ----
+
+export interface WorkflowFolder {
+  id: string
+  name: string
+  parentId: string | null
+  order: number
+  createdAt: number
 }
 
-export interface WorkflowCommandNode {
-  id: string;
-  type: 'command';
-  position: { x: number; y: number };
-  data: {
-    label: string;
-    script: string;
-    cwd?: string;
-    env?: Record<string, string>;
-    shell?: string;
-    failStrategy?: 'stop';
-  };
+// ---- Node ----
+
+export type NodeRunState = 'normal' | 'disabled' | 'skipped'
+export type NodeBreakpoint = 'start' | 'end'
+
+export interface ConditionItem {
+  id: string
+  variable: string
+  operator: string
+  value: string
 }
 
-export type WorkflowNode = WorkflowAgentNode | WorkflowCommandNode;
+export interface WorkflowNodeCompositeMeta {
+  rootId?: string
+  parentId?: string | null
+  role?: string
+  generated?: boolean
+  hidden?: boolean
+  scopeBoundary?: boolean
+}
 
-export interface WorkflowTemplate {
-  id: string;
-  name: string;
-  description?: string;
-  nodes: WorkflowNode[];
-  edges: WorkflowEdge[];
-  viewport?: { x: number; y: number; zoom: number };
-  createdAt: string;
-  updatedAt: string;
+export interface WorkflowNode {
+  id: string
+  type: string
+  label: string
+  position: { x: number; y: number }
+  data: Record<string, unknown>
+  nodeState?: NodeRunState
+  breakpoint?: NodeBreakpoint
+  nodeColor?: string
+  composite?: WorkflowNodeCompositeMeta
+}
+
+// ---- Edge ----
+
+export interface WorkflowEdgeCompositeMeta {
+  rootId?: string
+  parentId?: string | null
+  generated?: boolean
+  hidden?: boolean
+  locked?: boolean
 }
 
 export interface WorkflowEdge {
-  id: string;
-  source: string;
-  target: string;
+  id: string
+  source: string
+  target: string
+  sourceHandle?: string | null
+  targetHandle?: string | null
+  composite?: WorkflowEdgeCompositeMeta
+}
+
+// ---- Embedded Workflow ----
+
+export interface EmbeddedWorkflow {
+  nodes: WorkflowNode[]
+  edges: WorkflowEdge[]
+}
+
+// ---- Agent Config ----
+
+export interface AgentResourceItem {
+  id: string
+  name: string
+  enabled: boolean
+  description?: string
+  command?: string
+  source?: string
+}
+
+export interface WorkflowAgentConfig {
+  workspaceDir: string
+  dataDir: string
+  skills: AgentResourceItem[]
+  mcps: AgentResourceItem[]
+}
+
+// ---- Groups ----
+
+export interface WorkflowGroup {
+  id: string
+  name: string
+  childNodeIds: string[]
+  childGroupIds: string[]
+  x?: number
+  y?: number
+  width?: number
+  height?: number
+  color?: string
+  locked: boolean
+  disabled: boolean
+  savedNodeStates: Record<string, NodeRunState>
+}
+
+// ---- Triggers ----
+
+export interface WorkflowTriggerBase {
+  id: string
+  enabled: boolean
+}
+
+export type WorkflowTrigger =
+  | (WorkflowTriggerBase & {
+      type: 'cron'
+      cron: string
+      timezone?: string
+    })
+  | (WorkflowTriggerBase & {
+      type: 'hook'
+      hookName: string
+    })
+
+// ---- Main Workflow Model ----
+
+export interface Workflow {
+  id: string
+  name: string
+  folderId: string | null
+  icon?: string
+  description?: string
+  tags?: string[]
+  nodes: WorkflowNode[]
+  edges: WorkflowEdge[]
+  createdAt: number
+  updatedAt: number
+  enabledPlugins?: string[]
+  agentConfig?: WorkflowAgentConfig
+  pluginConfigSchemes?: Record<string, string>
+  layoutSnapshot?: Record<string, unknown>
+  groups?: WorkflowGroup[]
+  triggers?: WorkflowTrigger[]
+}
+
+// ---- Node Property Definition (for editor) ----
+
+export interface OutputField {
+  key: string
+  type: 'string' | 'number' | 'boolean' | 'object' | 'any'
+  value?: string
+  description?: string
+  required?: boolean
+  children?: OutputField[]
+}
+
+export interface ArrayFieldItem {
+  key: string
+  label: string
+  type: 'text' | 'number' | 'select' | 'checkbox'
+  required?: boolean
+  default?: unknown
+  options?: { label: string; value: string }[]
+  placeholder?: string
+}
+
+export interface NodePropertyVisibleWhen {
+  key: string
+  equals?: unknown
+  in?: unknown[]
+}
+
+export interface NodeProperty {
+  key: string
+  label: string
+  type: 'text' | 'textarea' | 'number' | 'select' | 'checkbox' | 'code' | 'conditions' | 'array' | 'output_fields'
+  required?: boolean
+  readonly?: boolean
+  default?: unknown
+  options?: { label: string; value: string }[]
+  tooltip?: string
+  fields?: ArrayFieldItem[]
+  itemTemplate?: Record<string, unknown>
+  visibleWhen?: NodePropertyVisibleWhen
+}
+
+export interface NodeNamedHandleConfig {
+  id: string
+  label?: string
+}
+
+export interface CompoundChildNodeDefinition {
+  role: string
+  type: string
+  label?: string
+  offset?: { x: number; y: number }
+  hidden?: boolean
+  scopeBoundary?: boolean
+  parentRole?: string
+  data?: Record<string, unknown>
+}
+
+export interface CompoundEdgeDefinition {
+  sourceRole: string
+  targetRole: string
+  sourceHandle?: string | null
+  targetHandle?: string | null
+  hidden?: boolean
+  locked?: boolean
+}
+
+export interface CompoundNodeDefinition {
+  rootRole?: string
+  children: CompoundChildNodeDefinition[]
+  edges?: CompoundEdgeDefinition[]
+}
+
+export interface NodeHandleConfig {
+  source?: boolean
+  target?: boolean
+  sourceHandles?: NodeNamedHandleConfig[]
+  dynamicSource?: {
+    dataKey: string
+    extraCount?: number
+  }
+}
+
+export interface NodeTypeDefinition {
+  type: string
+  label: string
+  category: string
+  icon: string
+  description: string
+  properties: NodeProperty[]
+  handles?: NodeHandleConfig
+  allowInputFields?: boolean
+  outputs?: OutputField[]
+  customView?: unknown
+  customViewMinSize?: { width?: number; height?: number }
+  manualCreate?: boolean
+  debuggable?: boolean
+  compound?: CompoundNodeDefinition
+}
+
+// ---- Execution ----
+
+export interface ExecutionLogEntry {
+  level: 'info' | 'warning' | 'error'
+  message: string
+  timestamp: number
+}
+
+export interface ExecutionStep {
+  nodeId: string
+  nodeLabel: string
+  startedAt: number
+  finishedAt?: number
+  status: 'running' | 'completed' | 'error' | 'skipped'
+  input?: unknown
+  output?: unknown
+  error?: string
+  logs?: ExecutionLogEntry[]
+}
+
+export interface ExecutionLog {
+  id: string
+  workflowId: string
+  startedAt: number
+  finishedAt?: number
+  status: 'running' | 'completed' | 'paused' | 'error'
+  steps: ExecutionStep[]
+  snapshot?: {
+    nodes: WorkflowNode[]
+    edges: WorkflowEdge[]
+    groups?: WorkflowGroup[]
+  }
+}
+
+export interface WorkflowVersion {
+  id: string
+  workflowId: string
+  name: string
+  snapshot: {
+    nodes: WorkflowNode[]
+    edges: WorkflowEdge[]
+  }
+  createdAt: number
+}
+
+export type EngineStatus = 'idle' | 'running' | 'paused' | 'completed' | 'error'
+
+export interface OperationEntry {
+  description: string
+  timestamp: number
+  snapshot?: string
+}
+
+export interface StagedNode {
+  id: string
+  sourceNodeId: string
+  type: string
+  label: string
+  data: Record<string, unknown>
+  composite?: WorkflowNodeCompositeMeta
+  stagedAt: number
+}
+
+export interface ExecutionInputPreset {
+  id: string
+  name: string
+  values: Record<string, unknown>
+  createdAt: number
+}
+
+// ============================================================
+// Legacy compatibility
+// ============================================================
+//
+// agent-spaces original WorkflowTemplate used discriminated union
+// node types (agent | command) and ISO string timestamps.
+// We keep type aliases and adapter helpers for backward compat.
+
+/** @deprecated Use Workflow instead. Kept for backward compat. */
+export type WorkflowTemplate = Workflow
+
+// ---- Legacy node data shapes (for adapter use) ----
+
+export interface LegacyAgentNodeData {
+  label: string
+  agentConfigId: string
+  role: string
+  avatarUrl?: string
+  modelId?: string
+  taskTitleTemplate?: string
+  taskDescriptionTemplate?: string
+}
+
+export interface LegacyCommandNodeData {
+  label: string
+  script: string
+  cwd?: string
+  env?: Record<string, string>
+  shell?: string
+  failStrategy?: 'stop'
+}
+
+/**
+ * Convert legacy agent-spaces WorkflowTemplate (with discriminated union nodes)
+ * to unified Workflow. This is a type-level helper — actual conversion happens
+ * in server migration code.
+ *
+ * Legacy shape:
+ *   nodes: WorkflowAgentNode[] | WorkflowCommandNode[]  (type: 'agent' | 'command')
+ *   createdAt/updatedAt: string (ISO)
+ *
+ * Unified shape:
+ *   nodes: WorkflowNode[]  (type: string, data: Record<string, unknown>)
+ *   createdAt/updatedAt: number (epoch ms)
+ */
+export interface LegacyWorkflowTemplateRaw {
+  id: string
+  name: string
+  description?: string
+  nodes: Array<{
+    id: string
+    type: 'agent' | 'command'
+    position: { x: number; y: number }
+    data: LegacyAgentNodeData | LegacyCommandNodeData
+  }>
+  edges: Array<{
+    id: string
+    source: string
+    target: string
+  }>
+  viewport?: { x: number; y: number; zoom: number }
+  createdAt: string
+  updatedAt: string
 }

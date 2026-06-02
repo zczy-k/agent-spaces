@@ -1,15 +1,16 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import type { AgentConfig, WorkflowCommandNode } from '@agent-spaces/shared';
+import type { AgentConfig, WorkflowNode } from '@agent-spaces/shared';
 import type { Node } from '@xyflow/react';
-import type { WorkflowNode } from '@agent-spaces/shared';
 import { AgentDialog } from '@/components/sidebar/agent-dialog';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { Eye, Plus, Terminal, ChevronRight } from 'lucide-react';
 
-type AgentNodeData = Extract<WorkflowNode, { type: 'agent' }>['data'];
-type AgentNode = Node<AgentNodeData, 'agent'>;
+// XYFlow node types for the palette — data matches legacy agent/command shapes
+type AgentNodeData = { label: string; agentConfigId: string; role: string; avatarUrl?: string; modelId?: string };
+type CommandNodeData = { label: string; script: string };
+type PaletteNode = Node<AgentNodeData, 'agent'> | Node<CommandNodeData, 'command'>;
 
 const ROLE_LABELS: Record<string, string> = {
   agent: 'Agent', scheduler: 'Scheduler', task_creator: 'Task Creator', bot: 'Bot',
@@ -28,7 +29,7 @@ function groupByRole(agents: AgentConfig[]): Record<string, AgentConfig[]> {
 
 interface WorkflowAgentPaletteProps {
   agents: AgentConfig[];
-  onNodeAdd?: (node: AgentNode | Node<WorkflowCommandNode['data'], 'command'>) => void;
+  onNodeAdd?: (node: PaletteNode) => void;
 }
 
 export function WorkflowAgentPalette({ agents, onNodeAdd }: WorkflowAgentPaletteProps) {

@@ -8,7 +8,7 @@ interface WorkflowStore {
 
   loadWorkflows: () => Promise<void>;
   createWorkflow: (data: { name: string; description?: string; nodes?: WorkflowNode[]; edges?: WorkflowEdge[] }) => Promise<WorkflowTemplate>;
-  updateWorkflow: (id: string, data: Partial<Pick<WorkflowTemplate, 'name' | 'description' | 'nodes' | 'edges' | 'viewport'>>) => Promise<void>;
+  updateWorkflow: (id: string, data: Partial<Pick<WorkflowTemplate, 'name' | 'description' | 'nodes' | 'edges'>>) => Promise<void>;
   deleteWorkflow: (id: string) => Promise<void>;
   duplicateWorkflow: (id: string) => Promise<void>;
   setCurrentWorkflow: (workflow: WorkflowTemplate | null) => void;

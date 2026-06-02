@@ -354,6 +354,6 @@ function mergeWorkflowMembers(members: unknown, workflowId: unknown): string[] {
   if (!workflow) return base;
   return Array.from(new Set([
     ...base,
-    ...workflow.nodes.filter((n) => n.type === 'agent').map((node) => node.data.agentConfigId).filter(Boolean),
+    ...workflow.nodes.filter((n) => n.type === 'agent').map((node) => node.data.agentConfigId as string).filter(Boolean),
   ]));
 }

@@ -4,10 +4,47 @@
 //       Route handlers wrap in async for Express compatibility.
 
 import { v4 as uuid } from 'uuid';
-import type { WorkflowTemplate, WorkflowNode, WorkflowEdge, WorkflowCommandNode, AgentConfig } from '@agent-spaces/shared';
+import type { WorkflowTemplate, WorkflowNode, WorkflowEdge, AgentConfig } from '@agent-spaces/shared';
 import * as workflowStore from '../storage/workflow-store.js';
 import { getWorkspace } from '../storage/workspace-store.js';
 import { listTemplates } from './agent.js';
+
+// --- Legacy node data helpers ---
+// In the unified model, node.data is Record<string, unknown>.
+// These helpers provide typed access for legacy agent/command nodes.
+
+interface LegacyAgentData {
+  label: string;
+  agentConfigId: string;
+  role: string;
+  avatarUrl?: string;
+  modelId?: string;
+  taskTitleTemplate?: string;
+  taskDescriptionTemplate?: string;
+}
+
+interface LegacyCommandData {
+  label: string;
+  script: string;
+  cwd?: string;
+  env?: Record<string, string>;
+  shell?: string;
+  failStrategy?: 'stop';
+}
+
+function getAgentData(node: WorkflowNode): LegacyAgentData | null {
+  if (node.type !== 'agent') return null;
+  return node.data as unknown as LegacyAgentData;
+}
+
+function getCommandData(node: WorkflowNode): LegacyCommandData | null {
+  if (node.type !== 'command') return null;
+  return node.data as unknown as LegacyCommandData;
+}
+
+function getLabel(node: WorkflowNode): string {
+  return (node.data as Record<string, unknown>).label as string || node.label;
+}
 
 // --- DAG Validation ---
 
@@ -21,8 +58,10 @@ function topologicalSort(nodes: WorkflowNode[], edges: WorkflowEdge[]): string[]
   }
 
   for (const edge of edges) {
-    adj.get(edge.source)!.push(edge.target);
-    inDegree.set(edge.target, (inDegree.get(edge.target) ?? 0) + 1);
+    const source = edge.source;
+    const target = edge.target;
+    adj.get(source)!.push(target);
+    inDegree.set(target, (inDegree.get(target) ?? 0) + 1);
   }
 
   const queue: string[] = [];
@@ -84,7 +123,9 @@ function resolveStaleRoles(nodes: WorkflowNode[]): { nodes: WorkflowNode[]; inva
 
   const resolved = nodes.map(node => {
     if (node.type === 'command') return node;
-    const agent = agentMap.get(node.data.agentConfigId);
+    const agentData = getAgentData(node);
+    if (!agentData) return node;
+    const agent = agentMap.get(agentData.agentConfigId);
     if (!agent) {
       invalidIds.push(node.id);
       return node;
@@ -114,9 +155,9 @@ export function getWorkflow(workflowId: string): WorkflowTemplate | null {
 }
 
 export function createWorkflow(
-  input: { name: string; description?: string; nodes?: WorkflowNode[]; edges?: WorkflowEdge[]; viewport?: WorkflowTemplate['viewport'] }
+  input: { name: string; description?: string; nodes?: WorkflowNode[]; edges?: WorkflowEdge[] }
 ): WorkflowTemplate {
-  const now = new Date().toISOString();
+  const now = Date.now();
   const nodes = input.nodes ?? [];
   const edges = input.edges ?? [];
 
@@ -128,10 +169,10 @@ export function createWorkflow(
   const template: WorkflowTemplate = {
     id: uuid(),
     name: input.name,
+    folderId: null,
     description: input.description,
     nodes: resolvedNodes,
     edges,
-    viewport: input.viewport,
     createdAt: now,
     updatedAt: now,
   };
@@ -145,7 +186,7 @@ export function createWorkflow(
 
 export function updateWorkflow(
   workflowId: string,
-  updates: Partial<Pick<WorkflowTemplate, 'name' | 'description' | 'nodes' | 'edges' | 'viewport'>>
+  updates: Partial<Pick<WorkflowTemplate, 'name' | 'description' | 'nodes' | 'edges'>>
 ): WorkflowTemplate {
   const existing = workflowStore.getWorkflow(workflowId);
   if (!existing) throw new Error('Workflow not found');
@@ -166,7 +207,7 @@ export function updateWorkflow(
     nodes,
     id: existing.id,
     createdAt: existing.createdAt,
-    updatedAt: new Date().toISOString(),
+    updatedAt: Date.now(),
   };
 
   if (updates.nodes || updates.edges) {
@@ -188,7 +229,7 @@ export function duplicateWorkflow(workflowId: string): WorkflowTemplate {
   const existing = workflowStore.getWorkflow(workflowId);
   if (!existing) throw new Error('Workflow not found');
 
-  const now = new Date().toISOString();
+  const now = Date.now();
   const duplicated: WorkflowTemplate = {
     ...existing,
     id: uuid(),
@@ -210,7 +251,7 @@ export interface TaskDraftForWorkflow {
   agentConfigId?: string;
   dependsOnKeys?: string[];
   sandboxDirs?: string[];
-  commandNode?: WorkflowCommandNode;
+  commandNode?: WorkflowNode;
 }
 
 export function mapWorkflowToTaskDrafts(template: WorkflowTemplate): TaskDraftForWorkflow[] {
@@ -223,22 +264,26 @@ export function mapWorkflowToTaskDrafts(template: WorkflowTemplate): TaskDraftFo
   }
 
   return template.nodes.map(node => {
+    const label = getLabel(node);
     if (node.type === 'command') {
       return {
         key: node.id,
-        title: node.data.label,
-        description: `Run command: ${node.data.label}`,
+        title: label,
+        description: `Run command: ${label}`,
         agentConfigId: undefined,
         dependsOnKeys: dependsOn.get(node.id)?.length ? dependsOn.get(node.id) : undefined,
         sandboxDirs: undefined,
         commandNode: node,
       };
     }
+    const agentData = getAgentData(node);
+    const taskTitle = (agentData?.taskTitleTemplate || label) as string;
+    const taskDesc = agentData?.taskDescriptionTemplate || `Task assigned to ${label} (${agentData?.role || 'unknown'})`;
     return {
       key: node.id,
-      title: node.data.taskTitleTemplate || node.data.label,
-      description: node.data.taskDescriptionTemplate || `Task assigned to ${node.data.label} (${node.data.role})`,
-      agentConfigId: node.data.agentConfigId,
+      title: taskTitle,
+      description: taskDesc as string,
+      agentConfigId: agentData?.agentConfigId,
       dependsOnKeys: dependsOn.get(node.id)?.length ? dependsOn.get(node.id) : undefined,
       sandboxDirs: undefined,
     };
@@ -252,10 +297,13 @@ export function validateWorkflowForRun(_workspaceId: string, template: WorkflowT
 
   for (const node of template.nodes) {
     if (node.type === 'command') continue;
-    const agent = agentMap.get(node.data.agentConfigId);
-    if (!agent) return `Agent "${node.data.label}" (${node.data.agentConfigId}) no longer exists`;
+    const agentData = getAgentData(node);
+    if (!agentData) continue;
+    const label = getLabel(node);
+    const agent = agentMap.get(agentData.agentConfigId);
+    if (!agent) return `Agent "${label}" (${agentData.agentConfigId}) no longer exists`;
     if (!agent.enabled) return `Agent "${agent.name}" is disabled`;
-    if (!memberAgentIds.has(node.data.agentConfigId)) return `Agent "${agent.name}" is not in the issue channel members`;
+    if (!memberAgentIds.has(agentData.agentConfigId)) return `Agent "${agent.name}" is not in the issue channel members`;
   }
 
   return null;
