@@ -161,6 +161,24 @@ export function GitCommitsPanel({ workspaceId }: Props) {
     finally { setGenerating(false); }
   }, [workspaceId, generating, committing, setCommitMsg, tChanges]);
 
+  const handleAutoCommit = useCallback(async () => {
+    if (generating || committing) return;
+    setGenerating(true);
+    try {
+      const res = await fetch(`/api/workspaces/${workspaceId}/git/generate-commit-message`, { method: 'POST' });
+      if (!res.ok) { const e = await res.json().catch(() => ({ error: 'Failed' })); throw new Error(e.error); }
+      const data = await res.json();
+      if (!data.message) throw new Error('No message generated');
+      setCommitting(true);
+      selectFile(null);
+      await commit(workspaceId, data.message);
+      setCommitMsg("");
+      toast.success(tChanges('committedSuccessfully'));
+      refresh();
+    } catch (err: unknown) { toast.error(errMsg(err) || tChanges('failedCommitMessage')); }
+    finally { setGenerating(false); setCommitting(false); }
+  }, [workspaceId, generating, committing, commit, refresh, selectFile, setCommitMsg, tChanges]);
+
   // ---- changes file actions ----
   const handleFileClick = useCallback((path: string) => {
     selectFile(path === selectedFile ? null : path);
@@ -280,6 +298,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
         onDiscardAll={handleDiscardAll}
         onBranchCheckout={handleBranchCheckout}
         onCommitDialogOpen={() => setCommitDialogOpen(true)}
+        onAutoCommit={handleAutoCommit}
         onSyncChanges={handleSyncChanges}
         onViewDiff={() => {
           if (diffs.length > 0) openCommitDiff(workspaceId, 'unstaged', tChanges('unstagedChanges'), diffs);

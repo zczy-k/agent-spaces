@@ -23,6 +23,7 @@
     "syncedSuccessfully": "同步成功",
     "syncFailed": "同步失败",
     "failedCommitMessage": "生成提交信息失败",
+    "autoCommit": "AI 自动提交",
     "committedSuccessfully": "提交成功",
     "commitFailed": "提交失败",
     "discardedSuccessfully": "已丢弃更改",

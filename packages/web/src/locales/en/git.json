@@ -23,6 +23,7 @@
     "syncedSuccessfully": "Synced successfully",
     "syncFailed": "Sync failed",
     "failedCommitMessage": "Failed to generate commit message",
+    "autoCommit": "AI auto commit",
     "committedSuccessfully": "Committed successfully",
     "commitFailed": "Commit failed",
     "discardedSuccessfully": "Changes discarded",

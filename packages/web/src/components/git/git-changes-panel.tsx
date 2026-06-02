@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef } from "react";
 import {
   Upload, Loader2, RefreshCw, Trash2, ChevronDown, GitBranch,
-  FileDiff, FileCode, RotateCcw, Plus, Minus, AlertTriangle,
+  FileDiff, FileCode, RotateCcw, Plus, Minus, AlertTriangle, Sparkles,
 } from "lucide-react";
 import { ResizablePanel } from "@/components/ui/resizable";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
@@ -31,6 +31,7 @@ interface Props {
   onDiscardAll: () => void;
   onBranchCheckout: (branch: string) => void;
   onCommitDialogOpen: () => void;
+  onAutoCommit: () => Promise<void>;
   onSyncChanges: () => void;
   onViewDiff: () => void;
   onRefreshClick: () => void;
@@ -106,12 +107,19 @@ function FileDiffHoverCard({
 export function GitChangesPanel({
   workspaceId, branch, branches, files, hasFiles, ahead, selectedFile,
   syncing, clean, onFileClick, onOpenFile, onDiscard, onStageToggle,
-  onDiscardAll, onBranchCheckout, onCommitDialogOpen, onSyncChanges,
-  onViewDiff, onRefreshClick, onContextMenu, isVertical,
+  onDiscardAll, onBranchCheckout, onCommitDialogOpen, onAutoCommit,
+  onSyncChanges, onViewDiff, onRefreshClick, onContextMenu, isVertical,
 }: Props) {
   const tc = useTranslations('common');
   const tChanges = useTranslations('git.changes');
   const [branchOpen, setBranchOpen] = useState(false);
+  const [autoCommitting, setAutoCommitting] = useState(false);
+
+  const handleAutoCommit = useCallback(async () => {
+    if (autoCommitting) return;
+    setAutoCommitting(true);
+    try { await onAutoCommit(); } finally { setAutoCommitting(false); }
+  }, [autoCommitting, onAutoCommit]);
 
   return (
     <ResizablePanel id="changes" defaultSize={isVertical ? "40%" : "25%"} minSize="15%" maxSize="60%" className="flex flex-col bg-muted/20 overflow-hidden">
@@ -183,10 +191,15 @@ export function GitChangesPanel({
 
       {/* Action button */}
       {hasFiles ? (
-        <div className="border-t p-2">
+        <div className="border-t p-2 flex gap-1.5">
           <button onClick={onCommitDialogOpen}
-            className="w-full text-xs px-2 py-1 rounded bg-primary text-primary-foreground active:scale-[0.98] transition-all duration-100 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+            className="flex-1 text-xs px-2 py-1 rounded bg-primary text-primary-foreground active:scale-[0.98] transition-all duration-100 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
             {tChanges('commit')}
+          </button>
+          <button onClick={handleAutoCommit} disabled={autoCommitting}
+            className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-accent active:scale-90 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-100"
+            title={tChanges('autoCommit')}>
+            {autoCommitting ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
           </button>
         </div>
       ) : ahead > 0 ? (
