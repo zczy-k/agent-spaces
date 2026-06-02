@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { DragDropProvider } from '@dnd-kit/react';
 import { TaskRow } from './task-row';
 import type { Task } from '@agent-spaces/shared';
@@ -15,6 +16,7 @@ interface IssueDetailTasksPanelProps {
   reorderTasks: (wsId: string, issueId: string, taskIds: string[]) => void;
   deleteTask: (wsId: string, taskId: string) => void;
   onEditTask: (task: Task) => void;
+  headerAction?: ReactNode;
 }
 
 export function IssueDetailTasksPanel({
@@ -28,12 +30,16 @@ export function IssueDetailTasksPanel({
   reorderTasks,
   deleteTask,
   onEditTask,
+  headerAction,
 }: IssueDetailTasksPanelProps) {
   return (
     <div className="space-y-2">
-      <h3 className="font-semibold">
-        {t('detail.tasks', { count: issueTasks.length })}
-      </h3>
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold">
+          {t('detail.tasks', { count: issueTasks.length })}
+        </h3>
+        {headerAction}
+      </div>
       {issueTasks.length === 0 ? (
         <div className="text-sm text-muted-foreground">{t('detail.noTasks')}</div>
       ) : (

@@ -300,7 +300,41 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                     {t(`status.${issue.status}`)}
                   </Badge>
                 </div>
-                <div className="flex items-center gap-0.5">
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Switch
+                      size="sm"
+                      checked={issue.continuousRun !== false}
+                      onCheckedChange={(checked) => updateIssue(workspaceId, issue.id, { continuousRun: checked })}
+                    />
+                    <span>{t('detail.continuousRun')}</span>
+                  </div>
+                  {canStart && (
+                    <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => startIssue(workspaceId, issue.id)}>
+                      <Play className="h-3 w-3 mr-1" />
+                      {t('detail.start')}
+                    </Button>
+                  )}
+                  <Button size="sm" variant="outline" className="h-6 px-2 text-xs" disabled={!canContinue} onClick={() => continueIssue(workspaceId, issue.id)}>
+                    <StepForward className="h-3 w-3 mr-1" />
+                    {t('detail.continue')}
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-6 px-2 text-xs text-destructive hover:text-destructive" disabled={!canInterrupt} onClick={() => interruptIssue(workspaceId, issue.id)}>
+                    <Ban className="h-3 w-3 mr-1" />
+                    {t('detail.interrupt')}
+                  </Button>
+                  {issue.status === 'error' && (
+                    <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => resumeIssue(workspaceId, issue.id)}>
+                      <RotateCcw className="h-3 w-3 mr-1" />
+                      {t('detail.resumeFailed')}
+                    </Button>
+                  )}
+                  {issue.retryPaused && issue.status === 'error' && (
+                    <span className="text-[11px] text-muted-foreground">
+                      {t('detail.retryPaused', { failed: issue.retryCount, total: issue.maxRetries })}
+                    </span>
+                  )}
+                  <span className="mx-1 h-4 w-px bg-border" />
                   <Button variant="ghost" size="icon" onClick={() => setEditOpen(true)}>
                     <Pencil className="size-4" />
                   </Button>
@@ -374,48 +408,6 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                 )}
               </motion.div>
 
-              {/* Commands Row — preserved */}
-              <motion.div variants={itemVariants} className="flex items-center gap-2 flex-wrap">
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Switch
-                    size="sm"
-                    checked={issue.continuousRun !== false}
-                    onCheckedChange={(checked) => updateIssue(workspaceId, issue.id, { continuousRun: checked })}
-                  />
-                  <span>{t('detail.continuousRun')}</span>
-                </div>
-                {canStart && (
-                  <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => startIssue(workspaceId, issue.id)}>
-                    <Play className="h-3 w-3 mr-1" />
-                    {t('detail.start')}
-                  </Button>
-                )}
-                <Button size="sm" variant="outline" className="h-6 px-2 text-xs" disabled={!canContinue} onClick={() => continueIssue(workspaceId, issue.id)}>
-                  <StepForward className="h-3 w-3 mr-1" />
-                  {t('detail.continue')}
-                </Button>
-                <Button size="sm" variant="outline" className="h-6 px-2 text-xs text-destructive hover:text-destructive" disabled={!canInterrupt} onClick={() => interruptIssue(workspaceId, issue.id)}>
-                  <Ban className="h-3 w-3 mr-1" />
-                  {t('detail.interrupt')}
-                </Button>
-                {issue.status === 'error' && (
-                  <Button size="sm" variant="outline" onClick={() => resumeIssue(workspaceId, issue.id)}>
-                    <RotateCcw className="h-3 w-3 mr-1" />
-                    {t('detail.resumeFailed')}
-                  </Button>
-                )}
-                {issue.retryPaused && issue.status === 'error' && (
-                  <span className="text-[11px] text-muted-foreground">
-                    {t('detail.retryPaused', { failed: issue.retryCount, total: issue.maxRetries })}
-                  </span>
-                )}
-                <div className="ml-auto">
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleOpenTaskDialog}>
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-              </motion.div>
-
               {/* Tasks Section */}
               {tasksLoading ? (
                 <motion.div variants={itemVariants}>
@@ -445,6 +437,11 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                     reorderTasks={reorderTasks}
                     deleteTask={deleteTask}
                     onEditTask={handleEditTask}
+                    headerAction={
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleOpenTaskDialog}>
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    }
                   />
                 </motion.div>
               )}
