@@ -120,42 +120,44 @@ export function GitCommitContextMenu({ workspaceId, entry, onRefreshAll, onOpenP
   };
 
   return (
-    <ContextMenuContent className="min-w-48">
-      <ContextMenuItem onClick={handleOpenChanges}>{t('contextMenu.openChanges')}</ContextMenuItem>
-      <ContextMenuItem onClick={handleOpenOnGitHub}>{t('contextMenu.openOnGitHub')}</ContextMenuItem>
-      <ContextMenuSeparator />
-      <ContextMenuItem onClick={handleCheckoutCommit}>{t('contextMenu.checkout')}</ContextMenuItem>
-      <ContextMenuItem onClick={handleCheckoutDetached}>{t('contextMenu.checkoutDetached')}</ContextMenuItem>
-      <ContextMenuItem onClick={handleCreateBranch}>{t('contextMenu.createBranch')}</ContextMenuItem>
-      <ContextMenuItem onClick={() => {
-        const branchList = useGitStore.getState().branches.filter(b => !b.current);
-        if (!branchList.length) { toast.error(t('contextMenu.failed'), { description: 'No other branches' }); return; }
-        onOpenPrompt(t('contextMenu.deleteBranch'), t('contextMenu.branchToDelete'), branchList.map(b => b.name).join(', '), async (name) => {
-          try { await deleteBranch(workspaceId, name); toast.success(t('contextMenu.branchDeleted')); onRefreshAll(); }
-          catch (err: unknown) { toast.error(t('contextMenu.failed'), { description: errMsg(err) }); }
-        });
-      }}>{t('contextMenu.deleteBranch')}</ContextMenuItem>
-      <ContextMenuItem onClick={handleCreateTag}>{t('contextMenu.createTag')}</ContextMenuItem>
-      <ContextMenuSeparator />
-      <ContextMenuItem onClick={handleCherryPick}>{t('contextMenu.cherryPick')}</ContextMenuItem>
-      <ContextMenuItem onClick={() => setResetOpen(true)}>{t('contextMenu.resetToCommit')}</ContextMenuItem>
-      <ContextMenuSeparator />
-      <ContextMenuSub>
-        <ContextMenuSubTrigger>{t('contextMenu.compareWith')}</ContextMenuSubTrigger>
-        <ContextMenuSubContent>
-          <ContextMenuItem onClick={handleCompareWithRemote}>{t('contextMenu.compareWithRemote')}</ContextMenuItem>
-          <ContextMenuItem onClick={handleCompareWithMergeBase}>{t('contextMenu.compareWithMergeBase')}</ContextMenuItem>
-        </ContextMenuSubContent>
-      </ContextMenuSub>
-      <ContextMenuSeparator />
-      <ContextMenuItem onClick={() => { navigator.clipboard.writeText(entry.hash); toast.success(t('contextMenu.commitIdCopied')); }}>
-        {t('contextMenu.copyCommitId')}
-      </ContextMenuItem>
-      <ContextMenuItem onClick={() => { navigator.clipboard.writeText(entry.message); toast.success(t('contextMenu.commitMessageCopied')); }}>
-        {t('contextMenu.copyCommitMessage')}
-      </ContextMenuItem>
-      <ContextMenuSeparator />
-      <ContextMenuItem onClick={handleExplainChanges}>{t('contextMenu.explainChanges')}</ContextMenuItem>
+    <>
+      <ContextMenuContent className="min-w-48">
+        <ContextMenuItem onClick={handleOpenChanges}>{t('contextMenu.openChanges')}</ContextMenuItem>
+        <ContextMenuItem onClick={handleOpenOnGitHub}>{t('contextMenu.openOnGitHub')}</ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onClick={handleCheckoutCommit}>{t('contextMenu.checkout')}</ContextMenuItem>
+        <ContextMenuItem onClick={handleCheckoutDetached}>{t('contextMenu.checkoutDetached')}</ContextMenuItem>
+        <ContextMenuItem onClick={handleCreateBranch}>{t('contextMenu.createBranch')}</ContextMenuItem>
+        <ContextMenuItem onClick={() => {
+          const branchList = useGitStore.getState().branches.filter(b => !b.current);
+          if (!branchList.length) { toast.error(t('contextMenu.failed'), { description: 'No other branches' }); return; }
+          onOpenPrompt(t('contextMenu.deleteBranch'), t('contextMenu.branchToDelete'), branchList.map(b => b.name).join(', '), async (name) => {
+            try { await deleteBranch(workspaceId, name); toast.success(t('contextMenu.branchDeleted')); onRefreshAll(); }
+            catch (err: unknown) { toast.error(t('contextMenu.failed'), { description: errMsg(err) }); }
+          });
+        }}>{t('contextMenu.deleteBranch')}</ContextMenuItem>
+        <ContextMenuItem onClick={handleCreateTag}>{t('contextMenu.createTag')}</ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onClick={handleCherryPick}>{t('contextMenu.cherryPick')}</ContextMenuItem>
+        <ContextMenuItem onClick={() => setTimeout(() => setResetOpen(true), 0)}>{t('contextMenu.resetToCommit')}</ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuSub>
+          <ContextMenuSubTrigger>{t('contextMenu.compareWith')}</ContextMenuSubTrigger>
+          <ContextMenuSubContent>
+            <ContextMenuItem onClick={handleCompareWithRemote}>{t('contextMenu.compareWithRemote')}</ContextMenuItem>
+            <ContextMenuItem onClick={handleCompareWithMergeBase}>{t('contextMenu.compareWithMergeBase')}</ContextMenuItem>
+          </ContextMenuSubContent>
+        </ContextMenuSub>
+        <ContextMenuSeparator />
+        <ContextMenuItem onClick={() => { navigator.clipboard.writeText(entry.hash); toast.success(t('contextMenu.commitIdCopied')); }}>
+          {t('contextMenu.copyCommitId')}
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => { navigator.clipboard.writeText(entry.message); toast.success(t('contextMenu.commitMessageCopied')); }}>
+          {t('contextMenu.copyCommitMessage')}
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onClick={handleExplainChanges}>{t('contextMenu.explainChanges')}</ContextMenuItem>
+      </ContextMenuContent>
 
       <Dialog open={resetOpen} onOpenChange={setResetOpen}>
         <DialogContent className="sm:max-w-sm">
@@ -174,6 +176,6 @@ export function GitCommitContextMenu({ workspaceId, entry, onRefreshAll, onOpenP
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </ContextMenuContent>
+    </>
   );
 }

@@ -551,7 +551,9 @@ export interface GitConfig {
 }
 
 export async function gitReset(workspaceId: string, commitHash: string, mode: 'soft' | 'mixed' | 'hard' = 'mixed'): Promise<void> {
-  const git = getGitForWorkspace(workspaceId);
+  const ws = getWorkspace(workspaceId);
+  if (!ws) throw new Error('Workspace not found');
+  const git = getGit(ws);
   await git.reset([`--${mode}`, commitHash]);
 }
 
