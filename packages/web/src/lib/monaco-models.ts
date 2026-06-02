@@ -81,8 +81,8 @@ export function getOrCreateModel(
   return model;
 }
 
-export function getModel(workspaceId: string, filePath: string): MonacoEditor.ITextModel | null {
-  const uri = toUri(workspaceId, filePath);
+export function getModel(workspaceId: string, filePath: string, workspaceRoot?: string): MonacoEditor.ITextModel | null {
+  const uri = toUri(workspaceId, filePath, workspaceRoot);
   return MonacoEditor.getModel(uri);
 }
 

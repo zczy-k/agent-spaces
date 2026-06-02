@@ -18,6 +18,7 @@ import { useWorkspaceStore } from "@/stores/workspace";
 import { useCodeFavoritesStore } from "@/stores/code-favorites";
 import { Code, Eye, FileText, AlignLeft, Binary } from "lucide-react";
 import {
+  getModel,
   getModelUri,
   getOrCreateModel,
 } from "@/lib/monaco-models";
@@ -369,12 +370,27 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
 
   // Handle pending jump from search results
   useEffect(() => {
-    if (!pendingJump || !activeFilePath || pendingJump.path !== activeFilePath || !editorRef.current) return;
+    if (!pendingJump || !activeFilePath || pendingJump.path !== activeFilePath) return;
+
+    if (isCodePreviewToggle && showPreview) {
+      setShowPreview(false);
+      return;
+    }
+
+    if (!editorRef.current) return;
 
     const { line, column, endLine, endColumn, path } = pendingJump;
     const editor = editorRef.current;
-    const model = editor.getModel();
+    let model = editor.getModel();
     const expectedModelPath = getModelUri(workspaceId, path, workspaceRoot).path;
+    if (!model || model.uri.path !== expectedModelPath) {
+      const targetModel = getModel(workspaceId, path, workspaceRoot);
+      if (targetModel) {
+        editor.setModel(targetModel);
+        model = targetModel;
+      }
+    }
+
     if (!model || model.uri.path !== expectedModelPath) {
       const retryTimer = window.setTimeout(() => {
         setJumpRetryTick((tick) => tick + 1);
@@ -412,7 +428,7 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
       editor.focus();
     }
     clearPendingJump();
-  }, [pendingJump, activeFilePath, workspaceId, workspaceRoot, editorReadyTick, jumpRetryTick, clearPendingJump, isReadOnly]);
+  }, [pendingJump, activeFilePath, workspaceId, workspaceRoot, editorReadyTick, jumpRetryTick, clearPendingJump, isReadOnly, isCodePreviewToggle, showPreview]);
 
   const modelPath = activeFilePath
     ? getModelUri(workspaceId, activeFilePath, workspaceRoot).toString()
