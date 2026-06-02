@@ -1,6 +1,8 @@
 import type { AgentContext } from '../agents/agent-context.js';
 import * as issueService from './issue.js';
 import * as taskService from './task.js';
+import * as channelService from './channel.js';
+import * as messageService from './message.js';
 import { scheduleRunnableIssueTasks } from '../agents/issue-task-controller.js';
 import { listWorkspaces } from '../storage/workspace-store.js';
 
@@ -9,12 +11,15 @@ const RECOVERY_ERROR = 'Server restarted while task was running';
 export function recoverRunningWorkOnStartup(ctxFactory?: (workspaceId: string) => AgentContext): void {
   for (const workspace of listWorkspaces()) {
     const ctx = ctxFactory?.(workspace.id);
+
+    // 1. Mark running tasks as failed
     const failedTasks = taskService.markRunningTasksFailed(workspace.id, RECOVERY_ERROR);
     for (const task of failedTasks) {
       ctx?.broadcast('task.status_changed', { taskId: task.id, from: 'running', to: task.status });
       ctx?.broadcast('task.updated', task);
     }
 
+    // 2. Mark in_progress issues as error
     const inProgressIssues = issueService.list(workspace.id)
       .filter((issue) => issue.status === 'in_progress');
     for (const issue of inProgressIssues) {
@@ -22,6 +27,27 @@ export function recoverRunningWorkOnStartup(ctxFactory?: (workspaceId: string) =
       if (!updated) continue;
       ctx?.broadcast('issue.status_changed', { issueId: issue.id, from: issue.status, to: 'error' });
       ctx?.broadcast('issue.updated', updated);
+    }
+
+    // 3. Mark streaming/pending/waiting_for_user channel messages as error
+    const channels = channelService.listChannels(workspace.id);
+    for (const channel of channels) {
+      const messages = messageService.listMessages(workspace.id, channel.id);
+      for (const message of messages) {
+        if (message.status !== 'streaming' && message.status !== 'pending' && message.status !== 'waiting_for_user') continue;
+        const updated = messageService.updateMessage(workspace.id, channel.id, message.id, {
+          status: 'error',
+          parts: message.parts?.map((part) => {
+            if ('status' in part && part.status === 'streaming') {
+              return { ...part, status: 'completed' as const };
+            }
+            return part;
+          }),
+        });
+        if (updated) {
+          ctx?.broadcast('channel.message.updated', updated);
+        }
+      }
     }
   }
 }

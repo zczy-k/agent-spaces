@@ -47,7 +47,7 @@ import { handleConnection } from './ws/handler.js';
 import { handleTypeScriptLspConnection } from './ws/typescript-lsp.js';
 import { broadcastToAll } from './ws/connection-manager.js';
 import { startScheduler, stopScheduler } from './agents/scheduler-agent.js';
-// import { recoverRunningWorkOnStartup } from './services/issue-retry.js';
+import { recoverRunningWorkOnStartup } from './services/issue-retry.js';
 import { startPersistedNotificationServices } from './services/notification-hub/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -326,7 +326,7 @@ const HOST = process.env.HOST || '0.0.0.0';
 server.listen(PORT, HOST, () => {
   console.log(`[server] listening on http://${HOST}:${PORT}`);
   console.log(`[server] websocket on ws://${HOST}:${PORT}/ws?workspaceId=...`);
-  // recoverRunningWorkOnStartup();
+  recoverRunningWorkOnStartup();
   startPersistedNotificationServices().catch((err) => {
     console.error('[notification] failed to restore persisted services:', err);
   });

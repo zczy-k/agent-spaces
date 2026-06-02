@@ -41,27 +41,35 @@ const MovingBorder: React.FC<{
     };
   }, [animate]);
 
+  const getTotalLengthSafe = (el: SVGRectElement | null) => {
+    if (!el || !el.isConnected) return 0;
+    try { return el.getTotalLength(); } catch { return 0; }
+  };
+
   const progress = useTransform(time, (val) => {
-    if (!pathRef.current) return 0;
-    return val % pathRef.current.getTotalLength();
+    const len = getTotalLengthSafe(pathRef.current);
+    return len ? val % len : 0;
   });
 
   const x = useTransform(progress, (val) => {
-    if (!pathRef.current) return 0;
-    return pathRef.current.getPointAtLength(val).x;
+    if (!pathRef.current?.isConnected) return 0;
+    try { return pathRef.current.getPointAtLength(val).x; } catch { return 0; }
   });
 
   const y = useTransform(progress, (val) => {
-    if (!pathRef.current) return 0;
-    return pathRef.current.getPointAtLength(val).y;
+    if (!pathRef.current?.isConnected) return 0;
+    try { return pathRef.current.getPointAtLength(val).y; } catch { return 0; }
   });
 
   const angle = useTransform(progress, (val) => {
-    if (!pathRef.current) return 0;
-    const length = pathRef.current.getTotalLength();
-    const p1 = pathRef.current.getPointAtLength(val);
-    const p2 = pathRef.current.getPointAtLength((val + 1) % length);
-    return Math.atan2(p2.y - p1.y, p2.x - p1.x) * (180 / Math.PI);
+    if (!pathRef.current?.isConnected) return 0;
+    try {
+      const length = pathRef.current.getTotalLength();
+      if (!length) return 0;
+      const p1 = pathRef.current.getPointAtLength(val);
+      const p2 = pathRef.current.getPointAtLength((val + 1) % length);
+      return Math.atan2(p2.y - p1.y, p2.x - p1.x) * (180 / Math.PI);
+    } catch { return 0; }
   });
 
   const transform = useMotionTemplate`
