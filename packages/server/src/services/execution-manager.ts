@@ -1,0 +1,1501 @@
+// Workflow Execution Manager — core execution engine
+// Ported from work_fox, adapted for agent-spaces:
+// - Removed: pluginRegistry, clientNodeCache, Electron main process bridge
+// - Changed: agent_run uses agent-spaces Agent runtime directly
+// - Kept: DAG traversal, loops, switches, variables, breakpoints, recovery
+
+import { randomUUID } from 'node:crypto';
+import { AsyncLocalStorage } from 'node:async_hooks';
+import type {
+  Workflow,
+  WorkflowNode,
+  WorkflowEdge,
+  WorkflowGroup,
+  ExecutionLog,
+  ExecutionStep,
+  ExecutionLogEntry,
+  EngineStatus,
+  ConditionItem,
+  OutputField,
+} from '@agent-spaces/shared';
+import type {
+  ExecutionBacklogEvent,
+  ExecutionEventChannel,
+  ExecutionEventMap,
+  ExecutionRecoveryRequest,
+  ExecutionRecoveryResponse,
+  WorkflowDebugNodeRequest,
+  WorkflowDebugNodeResponse,
+  WorkflowExecuteRequest,
+  WorkflowExecuteResponse,
+} from '@agent-spaces/shared';
+import { createErrorShape } from '@agent-spaces/shared';
+import type { InteractionManager } from './interaction-manager.js';
+import * as workflowStore from '../storage/workflow-store.js';
+import { executeCommandNode } from './workflow-command-runner.js';
+
+interface ExecutionManagerDeps {
+  interactionManager: InteractionManager
+  emit: (channel: string, payload: unknown) => void
+}
+
+interface ExecutionSession {
+  id: string
+  workflow: Workflow
+  ownerClientId: string
+  nodes: WorkflowNode[]
+  edges: WorkflowEdge[]
+  groups?: WorkflowGroup[]
+  context: Record<string, any>
+  status: EngineStatus
+  executionOrder: WorkflowNode[]
+  currentIndex: number
+  pauseRequested: boolean
+  pauseReason?: 'manual' | 'breakpoint-start' | 'breakpoint-end'
+  pauseNodeId?: string
+  pauseBreakpoint?: 'start' | 'end'
+  stopRequested: boolean
+  startedAt: number
+  finishedAt?: number
+  steps: ExecutionStep[]
+  activeBranches: Map<string, string>
+  lastErrorMessage?: string
+  persisted: boolean
+  lastUpdatedAt: number
+  eventSequence: number
+  recentEvents: ExecutionBacklogEvent[]
+  loopStack: LoopExecutionFrame[]
+  breakpointBypassKeys: Set<string>
+  eventSink?: (channel: string, payload: unknown) => void
+}
+
+interface LoopExecutionFrame {
+  loopNodeId: string
+  parentData?: Record<string, unknown>
+  bodyAnchorId: string
+  variables: Record<string, unknown>
+  breakRequested?: boolean
+  metadata: {
+    index: number
+    count: number | null
+    item: unknown
+    isFirst: boolean
+    isLast: boolean
+  }
+}
+
+interface LoopIterations {
+  count: number | null
+  items: unknown[]
+  infinite: boolean
+}
+
+interface LoopWorkerState {
+  branch: Map<string, string>
+  data: Record<string, any>
+  frame: LoopExecutionFrame
+  inputs: Record<string, any>
+}
+
+interface FinishedExecutionRecovery {
+  ownerClientId: string
+  workflowId: string
+  recovery: NonNullable<ExecutionRecoveryResponse['execution']>
+  expiresAt: number
+}
+
+const MAX_RECENT_EVENTS = 100;
+const FINISHED_RECOVERY_TTL_MS = 2 * 60_000;
+
+export class ExecutionManager {
+  private sessions = new Map<string, ExecutionSession>();
+  private finishedRecoveries = new Map<string, FinishedExecutionRecovery>();
+  private loopWorkerState = new AsyncLocalStorage<LoopWorkerState>();
+
+  constructor(private deps: ExecutionManagerDeps) {}
+
+  getRunningSessionCount(): number {
+    let count = 0;
+    for (const session of this.sessions.values()) {
+      if (session.status === 'running' || session.status === 'paused') count++;
+    }
+    return count;
+  }
+
+  async execute(
+    request: WorkflowExecuteRequest,
+    ownerClientId: string,
+    eventSink?: (channel: string, payload: unknown) => void,
+  ): Promise<WorkflowExecuteResponse> {
+    const workflow = workflowStore.getWorkflow(request.workflowId);
+    if (!workflow) {
+      throw createErrorShape('NOT_FOUND', `Workflow not found: ${request.workflowId}`);
+    }
+
+    const snapshot = this.resolveExecutionSnapshot(workflow, request);
+    const executionId = randomUUID();
+    const session = this.createSession(
+      executionId, workflow, ownerClientId, request.input || {}, snapshot, undefined, eventSink,
+    );
+
+    this.sessions.set(executionId, session);
+    void this.run(session);
+    return { executionId, status: 'running' };
+  }
+
+  async debugNode(
+    request: WorkflowDebugNodeRequest,
+    ownerClientId: string,
+  ): Promise<WorkflowDebugNodeResponse> {
+    const startedAt = Date.now();
+    const workflow = workflowStore.getWorkflow(request.workflowId);
+    if (!workflow) {
+      throw createErrorShape('NOT_FOUND', `Workflow not found: ${request.workflowId}`);
+    }
+
+    const snapshotNodes = request.snapshot?.nodes ? clone(request.snapshot.nodes) : clone(workflow.nodes);
+    const snapshotEdges = request.snapshot?.edges ? clone(request.snapshot.edges) : clone(workflow.edges);
+    const snapshotGroups = request.snapshot?.groups ? clone(request.snapshot.groups) : clone(workflow.groups || []);
+    const embeddedNode = request.embeddedNode ? clone(request.embeddedNode) : null;
+    const nodes = embeddedNode
+      ? snapshotNodes.some(n => n.id === request.nodeId)
+        ? snapshotNodes.map(n => n.id === request.nodeId ? embeddedNode : n)
+        : [...snapshotNodes, embeddedNode]
+      : snapshotNodes;
+    const targetNode = nodes.find(n => n.id === request.nodeId);
+
+    if (!targetNode) {
+      return { status: 'error', error: `Node not found: ${request.nodeId}`, duration: Date.now() - startedAt };
+    }
+
+    const session = this.createSession(
+      `debug-${randomUUID()}`, workflow, ownerClientId, request.input || {},
+      { nodes, edges: snapshotEdges, groups: snapshotGroups }, request.context,
+    );
+
+    try {
+      session.status = 'running';
+      await this.executeNode(session, targetNode);
+      const step = [...session.steps].reverse().find(s => s.nodeId === targetNode.id);
+
+      if (step?.status === 'error') {
+        return { status: 'error', error: step.error || 'Debug failed', duration: Date.now() - startedAt };
+      }
+      return { status: 'completed', output: step?.output, duration: Date.now() - startedAt };
+    } catch (error) {
+      return {
+        status: 'error',
+        error: error instanceof Error ? error.message : String(error),
+        duration: Date.now() - startedAt,
+      };
+    }
+  }
+
+  pause(executionId: string): WorkflowExecuteResponse {
+    const session = this.getSession(executionId);
+    if (session.status === 'running') session.pauseRequested = true;
+    return { executionId, status: session.status };
+  }
+
+  async resume(executionId: string): Promise<WorkflowExecuteResponse> {
+    const session = this.getSession(executionId);
+    if (session.status !== 'paused') return { executionId, status: session.status };
+
+    const prev = session.pauseReason;
+    session.pauseRequested = false;
+    session.pauseReason = undefined;
+    session.pauseNodeId = undefined;
+    session.pauseBreakpoint = undefined;
+    session.status = 'running';
+
+    const current = session.executionOrder[session.currentIndex];
+    if (prev === 'breakpoint-start' && current?.breakpoint === 'start') {
+      session.breakpointBypassKeys.add(`${current.id}:start`);
+    }
+
+    this.emitEvent(session, 'workflow:resumed', {
+      executionId: session.id, workflowId: session.workflow.id,
+      timestamp: Date.now(), status: 'running',
+      currentNodeId: session.executionOrder[session.currentIndex]?.id,
+    });
+    this.emitLog(session);
+    void this.runSafe(session, session.currentIndex);
+    return { executionId, status: session.status };
+  }
+
+  stop(executionId: string): WorkflowExecuteResponse {
+    const session = this.sessions.get(executionId);
+    if (!session) {
+      const fr = this.finishedRecoveries.get(executionId);
+      return { executionId, status: fr?.recovery.status ?? 'error' };
+    }
+
+    session.stopRequested = true;
+    this.deps.interactionManager.cancelExecution(executionId, 'Execution stopped');
+
+    if (session.status === 'running' || session.status === 'paused') {
+      session.status = 'error';
+      session.lastErrorMessage = 'Execution stopped';
+      session.finishedAt = Date.now();
+      this.emitLog(session);
+      this.emitWorkflowError(session);
+      this.persistAndCleanup(session);
+    }
+    return { executionId, status: session.status };
+  }
+
+  getExecutionRecovery(
+    request: ExecutionRecoveryRequest,
+    ownerClientId: string,
+  ): ExecutionRecoveryResponse {
+    this.pruneFinishedRecoveries();
+
+    const active = this.findSession(ownerClientId, request.workflowId, request.executionId);
+    if (active) {
+      return { found: true, execution: this.createRecoveryState(active, true) };
+    }
+
+    const finished = this.findFinishedRecovery(ownerClientId, request.workflowId, request.executionId);
+    if (finished) {
+      return { found: true, execution: clone(finished.recovery) };
+    }
+    return { found: false };
+  }
+
+  // ---- Private: Session lifecycle ----
+
+  private resolveExecutionSnapshot(
+    workflow: Workflow,
+    request: WorkflowExecuteRequest,
+  ): { nodes: WorkflowNode[]; edges: WorkflowEdge[]; groups?: WorkflowGroup[] } | undefined {
+    const baseNodes = request.snapshot?.nodes ? clone(request.snapshot.nodes) : clone(workflow.nodes);
+    const baseEdges = request.snapshot?.edges ? clone(request.snapshot.edges) : clone(workflow.edges);
+    const baseGroups = request.snapshot?.groups ? clone(request.snapshot.groups) : clone(workflow.groups || []);
+
+    const rootNodes = getNodesForExecutionScope(baseNodes, null);
+    const startNodes = rootNodes.filter(n => n.type === 'start');
+
+    if (request.startNodeId) {
+      const startNode = startNodes.find(n => n.id === request.startNodeId);
+      if (!startNode) {
+        throw createErrorShape('BAD_REQUEST', `Start node not found: ${request.startNodeId}`);
+      }
+      return this.buildReachableSnapshot(baseNodes, baseEdges, baseGroups, startNode.id);
+    }
+
+    if (startNodes.length > 1) {
+      const choices = startNodes.map(n => `${n.label || 'Start'}(${n.id})`).join(', ');
+      throw createErrorShape('BAD_REQUEST', `Multiple start nodes, specify startNodeId: ${choices}`);
+    }
+
+    return request.snapshot ? { nodes: baseNodes, edges: baseEdges, groups: baseGroups } : undefined;
+  }
+
+  private buildReachableSnapshot(
+    nodes: WorkflowNode[], edges: WorkflowEdge[], groups: WorkflowGroup[], firstNodeId: string,
+  ) {
+    const reachableIds = new Set<string>([firstNodeId]);
+    const queue = [firstNodeId];
+    while (queue.length > 0) {
+      const sourceId = queue.shift()!;
+      for (const edge of edges) {
+        if (edge.source !== sourceId || reachableIds.has(edge.target)) continue;
+        reachableIds.add(edge.target);
+        queue.push(edge.target);
+      }
+    }
+    const partialNodes = nodes.filter(n => reachableIds.has(n.id));
+    const first = partialNodes.find(n => n.id === firstNodeId);
+    return {
+      nodes: first ? [first, ...partialNodes.filter(n => n.id !== firstNodeId)] : partialNodes,
+      edges: edges.filter(e => reachableIds.has(e.source) && reachableIds.has(e.target)),
+      groups,
+    };
+  }
+
+  private createSession(
+    executionId: string, workflow: Workflow, ownerClientId: string,
+    input: Record<string, unknown>,
+    snapshot?: { nodes: WorkflowNode[]; edges: WorkflowEdge[]; groups?: WorkflowGroup[] },
+    context?: Record<string, unknown>,
+    eventSink?: (channel: string, payload: unknown) => void,
+  ): ExecutionSession {
+    return {
+      id: executionId, workflow, ownerClientId,
+      nodes: snapshot?.nodes ? clone(snapshot.nodes) : clone(workflow.nodes),
+      edges: snapshot?.edges ? clone(snapshot.edges) : clone(workflow.edges),
+      groups: snapshot?.groups ? clone(snapshot.groups) : clone(workflow.groups || []),
+      context: {
+        ...(context ? clone(context) : {}),
+        __data__: context?.__data__ && typeof context.__data__ === 'object' ? clone(context.__data__) : {},
+        __input__: input,
+      },
+      status: 'idle', executionOrder: [], currentIndex: 0,
+      pauseRequested: false, stopRequested: false,
+      startedAt: Date.now(), steps: [],
+      activeBranches: new Map(), persisted: false,
+      lastUpdatedAt: Date.now(), eventSequence: 0,
+      recentEvents: [], loopStack: [],
+      breakpointBypassKeys: new Set(), eventSink,
+    };
+  }
+
+  // ---- Private: Execution loop ----
+
+  private async run(session: ExecutionSession): Promise<void> {
+    try {
+      session.executionOrder = this.buildExecutionOrder(session.nodes, session.edges);
+      if (session.executionOrder.length === 0) {
+        session.status = 'error';
+        session.lastErrorMessage = 'Empty workflow or no execution order';
+        session.finishedAt = Date.now();
+        this.emitWorkflowError(session);
+        this.persistAndCleanup(session);
+        return;
+      }
+
+      session.status = 'running';
+      session.startedAt = Date.now();
+      this.emitEvent(session, 'workflow:started', {
+        executionId: session.id, workflowId: session.workflow.id,
+        timestamp: session.startedAt, status: 'running',
+        workflowName: session.workflow.name,
+      });
+      this.emitLog(session);
+      this.emitContext(session);
+      await this.runSafe(session, 0);
+    } catch (error) {
+      this.handleExecutionError(session, error);
+    }
+  }
+
+  private async runSafe(session: ExecutionSession, startIndex: number): Promise<void> {
+    try {
+      await this.runFromIndex(session, startIndex);
+    } catch (error) {
+      this.handleExecutionError(session, error);
+    }
+  }
+
+  private handleExecutionError(session: ExecutionSession, error: unknown): void {
+    if (session.status === 'completed' || session.status === 'error') return;
+    session.status = 'error';
+    session.lastErrorMessage = error instanceof Error ? error.message : String(error);
+    session.finishedAt = Date.now();
+    this.emitWorkflowError(session);
+    this.persistAndCleanup(session);
+  }
+
+  private async runFromIndex(session: ExecutionSession, startIndex: number): Promise<void> {
+    for (let i = startIndex; i < session.executionOrder.length; i++) {
+      if (session.stopRequested) {
+        if (session.status === 'error') return;
+        session.status = 'error';
+        session.lastErrorMessage = 'Execution stopped';
+        session.finishedAt = Date.now();
+        this.emitLog(session);
+        this.emitWorkflowError(session);
+        this.persistAndCleanup(session);
+        return;
+      }
+
+      if (session.pauseRequested) {
+        session.currentIndex = i;
+        session.status = 'paused';
+        session.pauseReason = 'manual';
+        session.pauseNodeId = session.executionOrder[i]?.id;
+        this.emitLog(session);
+        this.emitEvent(session, 'workflow:paused', {
+          executionId: session.id, workflowId: session.workflow.id,
+          timestamp: Date.now(), status: 'paused',
+          currentNodeId: session.executionOrder[i]?.id, reason: 'manual',
+        });
+        return;
+      }
+
+      session.currentIndex = i;
+      const node = session.executionOrder[i];
+      const nodeState = node.nodeState || 'normal';
+
+      if (node.type === 'loop_body' && isGeneratedWorkflowNode(node)) continue;
+      if (getCompositeParentId(node)) continue;
+
+      if (this.getActiveBranches(session).size > 0 && !this.isNodeReachable(session, node.id)) {
+        this.recordSkippedStep(session, node, 'Inactive branch');
+        continue;
+      }
+
+      if (nodeState === 'disabled') {
+        this.recordSkippedStep(session, node, 'Node disabled');
+        session.status = 'error';
+        session.lastErrorMessage = 'Node disabled, workflow aborted';
+        session.finishedAt = Date.now();
+        this.emitLog(session);
+        this.emitWorkflowError(session);
+        this.persistAndCleanup(session);
+        return;
+      }
+
+      if (nodeState === 'skipped') {
+        this.recordSkippedStep(session, node, 'Node skipped');
+        continue;
+      }
+
+      if (this.shouldPauseAtBreakpoint(session, node, 'start')) {
+        this.pauseAtBreakpoint(session, i, node, 'start');
+        return;
+      }
+
+      const result = await this.executeNode(session, node);
+      if (result === 'interrupted') { i -= 1; continue; }
+
+      if (session.status === 'error') {
+        session.finishedAt = Date.now();
+        this.emitLog(session);
+        this.emitWorkflowError(session);
+        this.persistAndCleanup(session);
+        return;
+      }
+
+      if (this.shouldPauseAtBreakpoint(session, node, 'end')) {
+        this.pauseAtBreakpoint(session, i + 1, node, 'end');
+        return;
+      }
+    }
+
+    session.status = 'completed';
+    session.finishedAt = Date.now();
+    this.emitLog(session);
+    this.emitContext(session);
+    this.emitEvent(session, 'workflow:completed', {
+      executionId: session.id, workflowId: session.workflow.id,
+      timestamp: Date.now(), status: 'completed',
+      log: this.currentLog(session), context: this.currentContext(session),
+    });
+    this.persistAndCleanup(session);
+  }
+
+  // ---- Private: Node execution ----
+
+  private async executeNode(
+    session: ExecutionSession, node: WorkflowNode,
+  ): Promise<'completed' | 'interrupted'> {
+    if (session.stopRequested || session.status === 'error') return 'interrupted';
+
+    const delay = typeof node.data?._delay === 'number' ? node.data._delay : 0;
+    if (delay > 0) {
+      await sleep(delay);
+      if (session.stopRequested || session.pauseRequested) return 'interrupted';
+    }
+
+    const resolvedData = this.resolveContextVariables(session, { ...node.data });
+    const stepInput = this.getStepInput(node, resolvedData);
+    this.setNodeExecutionInput(session, node.id, node.type === 'end' ? {} : this.buildOutputObject(resolvedData.inputFields) ?? {});
+
+    const step: ExecutionStep = {
+      nodeId: node.id, nodeLabel: node.label, startedAt: Date.now(), status: 'running',
+      ...(stepInput === undefined ? {} : { input: stepInput }),
+    };
+    session.steps.push(step);
+
+    this.emitEvent(session, 'node:start', {
+      executionId: session.id, workflowId: session.workflow.id,
+      timestamp: Date.now(), nodeId: node.id, nodeLabel: node.label, input: stepInput,
+    });
+    this.emitLog(session);
+
+    const stepLogs: ExecutionLogEntry[] = [];
+    const appendLog = (level: ExecutionLogEntry['level'], message: string) => {
+      const entry: ExecutionLogEntry = { level, message, timestamp: Date.now() };
+      stepLogs.push(entry);
+      step.logs = [...stepLogs];
+      this.emitEvent(session, 'node:progress', {
+        executionId: session.id, workflowId: session.workflow.id,
+        timestamp: entry.timestamp, nodeId: node.id, message, data: { level },
+      });
+      this.emitLog(session);
+    };
+
+    try {
+      const result = await this.dispatchNode(session, node, resolvedData, appendLog);
+      if (session.stopRequested) return 'interrupted';
+
+      step.finishedAt = Date.now();
+      step.status = 'completed';
+      step.output = result && Array.isArray(result._logs)
+        ? (() => { step.logs = result._logs; const { _logs, ...rest } = result; return rest; })()
+        : result;
+
+      session.context[node.id] = step.output;
+      this.setNodeExecutionData(session, node.id, result);
+
+      if (node.type === 'switch' && result?.__branch__) {
+        this.getActiveBranches(session).set(node.id, result.__branch__);
+      }
+
+      this.emitContext(session);
+      this.emitEvent(session, 'node:complete', {
+        executionId: session.id, workflowId: session.workflow.id,
+        timestamp: Date.now(), nodeId: node.id, step: { ...step },
+      });
+      this.emitLog(session);
+    } catch (error) {
+      if (session.stopRequested) return 'interrupted';
+      step.finishedAt = Date.now();
+      step.status = 'error';
+      step.error = error instanceof Error ? error.message : String(error);
+      step.logs = stepLogs.length ? [...stepLogs] : undefined;
+      session.status = 'error';
+      session.lastErrorMessage = step.error;
+      this.emitEvent(session, 'node:error', {
+        executionId: session.id, workflowId: session.workflow.id,
+        timestamp: Date.now(), nodeId: node.id, step: { ...step },
+        error: createErrorShape('WORKFLOW_ERROR', step.error),
+      });
+      this.emitLog(session);
+    }
+
+    return 'completed';
+  }
+
+  private async dispatchNode(
+    session: ExecutionSession, node: WorkflowNode,
+    resolvedData: Record<string, any>,
+    appendLog: (level: ExecutionLogEntry['level'], message: string) => void,
+  ): Promise<any> {
+    switch (node.type) {
+      case 'start': {
+        const fieldOutput = this.buildOutputObject(resolvedData.inputFields) ?? {};
+        const runtimeInput = session.context.__input__ ?? {};
+        return { ...fieldOutput, ...runtimeInput };
+      }
+      case 'loop_body':
+      case 'sticky_note':
+        return null;
+      case 'loop_break':
+        return this.executeLoopBreak(session, appendLog);
+      case 'end':
+        return this.buildOutputObject(resolvedData.outputs);
+      case 'gallery_preview':
+        return { items: Array.isArray(resolvedData.items) ? resolvedData.items : [] };
+      case 'table_display':
+        return this.executeTableDisplay(session, node, resolvedData);
+      case 'run_code':
+        return this.executeCode(
+          this.getRuntimeContext(session),
+          String(resolvedData.code || ''),
+          this.buildOutputObject(resolvedData.inputFields) ?? {},
+        );
+      case 'toast':
+        return { message: String(resolvedData.message || ''), type: String(resolvedData.type || 'info') };
+      case 'switch':
+        return this.executeSwitch(session, resolvedData.conditions || []);
+      case 'variable_aggregate':
+        return this.executeVariableAggregate(resolvedData.groups || []);
+      case 'sub_workflow':
+        return this.executeSubWorkflow(session, resolvedData, appendLog);
+      case 'loop':
+        return this.executeLoopNode(session, node, resolvedData, appendLog);
+      case 'agent_run':
+        return this.executeAgentRun(session, node, resolvedData, appendLog);
+      case 'alert':
+        return this.executeAlertDialog(session, node, resolvedData, appendLog);
+      case 'prompt':
+        return this.executePromptDialog(session, node, resolvedData, appendLog);
+      case 'form':
+        return this.executeFormDialog(session, node, resolvedData, appendLog);
+      default:
+        throw new Error(`Unsupported node type: ${node.type}`);
+    }
+  }
+
+  // ---- Private: Node type implementations ----
+
+  private executeLoopBreak(
+    session: ExecutionSession,
+    appendLog: (level: ExecutionLogEntry['level'], message: string) => void,
+  ): Record<string, boolean> {
+    const frame = this.getLoopFrame(session);
+    if (!frame) throw new Error('loop_break can only run inside a loop body');
+    frame.breakRequested = true;
+    appendLog('info', 'Loop break requested');
+    return { break: true };
+  }
+
+  private async executeAgentRun(
+    session: ExecutionSession, node: WorkflowNode,
+    resolvedData: Record<string, any>,
+    appendLog: (level: ExecutionLogEntry['level'], message: string) => void,
+  ): Promise<any> {
+    const prompt = typeof resolvedData.prompt === 'string' ? resolvedData.prompt : '';
+    if (!prompt.trim()) throw new Error('agent_run node missing prompt');
+
+    appendLog('info', 'Executing agent_run node');
+
+    // If agentConfigId is specified, use agent-spaces Agent runtime
+    const agentConfigId = resolvedData.agentConfigId;
+    if (agentConfigId) {
+      return this.executeAgentWithRuntime(session, node, resolvedData, appendLog);
+    }
+
+    // Fallback: use interaction manager (client-side execution)
+    const result = await this.deps.interactionManager.request({
+      clientId: session.ownerClientId,
+      executionId: session.id,
+      workflowId: session.workflow.id,
+      nodeId: node.id,
+      interactionType: 'agent_chat',
+      schema: {
+        prompt,
+        systemPrompt: typeof resolvedData.systemPrompt === 'string' ? resolvedData.systemPrompt : undefined,
+        cwd: typeof resolvedData.cwd === 'string' ? resolvedData.cwd : undefined,
+        workflowId: session.workflow.id,
+        workflowName: session.workflow.name,
+      },
+    });
+    appendLog('info', 'Agent execution completed');
+    return result;
+  }
+
+  private async executeAgentWithRuntime(
+    session: ExecutionSession, _node: WorkflowNode,
+    resolvedData: Record<string, any>,
+    appendLog: (level: ExecutionLogEntry['level'], message: string) => void,
+  ): Promise<any> {
+    const { createAgentRuntime } = await import('../adapters/agent-runtime.js');
+    const { listPresets } = await import('./agent.js');
+
+    const agentConfigId = resolvedData.agentConfigId as string;
+    const presets = listPresets(session.workflow.id);
+    const preset = presets.find(p => p.id === agentConfigId);
+    if (!preset) throw new Error(`Agent preset not found: ${agentConfigId}`);
+
+    appendLog('info', `Using agent: ${preset.name || preset.id}`);
+
+    const runtime = createAgentRuntime({
+      kind: preset.runtimeKind as any,
+      provider: preset.modelProvider as any,
+      model: preset.modelId,
+      apiKey: preset.apiKey,
+      baseURL: preset.apiBase,
+    });
+
+    const prompt = String(resolvedData.prompt || '');
+    const systemPrompt = typeof resolvedData.systemPrompt === 'string' ? resolvedData.systemPrompt : undefined;
+    const fullPrompt = systemPrompt ? `${systemPrompt}\n\n${prompt}` : prompt;
+    const workingDir = preset.workingDir || resolvedData.cwd as string || process.cwd();
+
+    const result = await runtime.execute(fullPrompt, workingDir, {
+      systemPrompt: preset.systemPrompt,
+      outputStyle: preset.outputStyle,
+      onEvent: (event) => {
+        if (event.type === 'output') {
+          appendLog('info', event.line);
+        } else if (event.type === 'tool_use') {
+          appendLog('info', `Tool: ${event.name}`);
+        }
+      },
+    });
+
+    if (!result.success) {
+      throw new Error(result.summary || 'Agent execution failed');
+    }
+
+    appendLog('info', `Agent completed: ${result.summary || 'done'}`);
+    return {
+      output: result.output || result.summary,
+      summary: result.summary,
+      usage: result.usage,
+    };
+  }
+
+  private async executeTableDisplay(
+    session: ExecutionSession, node: WorkflowNode,
+    resolvedData: Record<string, any>,
+  ): Promise<any> {
+    const headers = Array.isArray(resolvedData.headers) ? resolvedData.headers : [];
+    const cells = Array.isArray(resolvedData.cells) ? resolvedData.cells : [];
+    const selectionMode = ['none', 'single', 'multi'].includes(resolvedData.selectionMode)
+      ? resolvedData.selectionMode : 'none';
+
+    if (selectionMode === 'none') {
+      return { selectedRows: cells, selectedCount: cells.length };
+    }
+
+    const result = await this.deps.interactionManager.request({
+      clientId: session.ownerClientId,
+      executionId: session.id,
+      workflowId: session.workflow.id,
+      nodeId: node.id,
+      interactionType: 'table_confirm',
+      schema: { headers, cells, selectionMode },
+    });
+    return { ...(result as Record<string, any>), headers, cells };
+  }
+
+  private async executeAlertDialog(
+    session: ExecutionSession, node: WorkflowNode,
+    resolvedData: Record<string, any>,
+    appendLog: (level: ExecutionLogEntry['level'], message: string) => void,
+  ): Promise<any> {
+    appendLog('info', 'Waiting for alert confirmation');
+    await this.deps.interactionManager.request({
+      clientId: session.ownerClientId,
+      executionId: session.id,
+      workflowId: session.workflow.id,
+      nodeId: node.id,
+      interactionType: 'dialog_alert' as any,
+      schema: { title: String(resolvedData.title || 'Alert'), message: String(resolvedData.message || '') },
+    });
+    appendLog('info', 'Alert confirmed');
+    return { confirmed: true };
+  }
+
+  private async executePromptDialog(
+    session: ExecutionSession, node: WorkflowNode,
+    resolvedData: Record<string, any>,
+    appendLog: (level: ExecutionLogEntry['level'], message: string) => void,
+  ): Promise<any> {
+    appendLog('info', 'Waiting for user input');
+    const result = await this.deps.interactionManager.request({
+      clientId: session.ownerClientId,
+      executionId: session.id,
+      workflowId: session.workflow.id,
+      nodeId: node.id,
+      interactionType: 'dialog_prompt' as any,
+      schema: {
+        title: String(resolvedData.title || 'Input'),
+        message: String(resolvedData.message || ''),
+        placeholder: String(resolvedData.placeholder || ''),
+        defaultValue: String(resolvedData.defaultValue || ''),
+      },
+    });
+    appendLog('info', 'User input received');
+    if (result && typeof result === 'object' && 'value' in result) {
+      return { value: (result as any).value, confirmed: true };
+    }
+    return { value: result as string, confirmed: result !== null };
+  }
+
+  private async executeFormDialog(
+    session: ExecutionSession, node: WorkflowNode,
+    resolvedData: Record<string, any>,
+    appendLog: (level: ExecutionLogEntry['level'], message: string) => void,
+  ): Promise<any> {
+    const items = Array.isArray(resolvedData.items) ? resolvedData.items : [];
+    appendLog('info', `Waiting for form (${items.length} items)`);
+    const result = await this.deps.interactionManager.request({
+      clientId: session.ownerClientId,
+      executionId: session.id,
+      workflowId: session.workflow.id,
+      nodeId: node.id,
+      interactionType: 'dialog_form' as any,
+      schema: { title: String(resolvedData.title || 'Form'), items },
+    });
+    if (result === null || result === undefined) {
+      appendLog('warning', 'Form cancelled');
+      throw new Error('Form cancelled, workflow aborted');
+    }
+    appendLog('info', 'Form completed');
+    return { values: result, confirmed: result !== null };
+  }
+
+  private executeCode(context: Record<string, any>, code: string, params: Record<string, any>): any {
+    const normalized = code
+      .replace(/\basync\s+function\s+main\s*\(\s*\{\s*params\s*\}\s*:\s*Args\s*\)\s*:\s*Promise\s*<\s*Output\s*>/g, 'async function main({ params })')
+      .replace(/\bfunction\s+main\s*\(\s*\{\s*params\s*\}\s*:\s*Args\s*\)\s*:\s*Output/g, 'function main({ params })');
+    const fn = new Function('context', 'params', `${normalized}\nif (typeof main === 'function') return main({ params, context })`);
+    return fn(context, params);
+  }
+
+  private executeSwitch(session: ExecutionSession, conditions: ConditionItem[]): any {
+    for (let i = 0; i < conditions.length; i++) {
+      const cond = conditions[i];
+      const variable = this.resolveStringValue(session, cond.variable);
+      const value = this.resolveStringValue(session, cond.value);
+      if (this.evaluateCondition(variable, value, cond.operator)) {
+        return { __branch__: `case-${i}`, matchedIndex: i };
+      }
+    }
+    return { __branch__: 'default', matchedIndex: -1 };
+  }
+
+  private executeVariableAggregate(groups: any[]): Record<string, any> {
+    if (!Array.isArray(groups)) return {};
+    return groups.reduce<Record<string, any>>((result, group) => {
+      const key = typeof group?.key === 'string' ? group.key.trim() : '';
+      if (!key) return result;
+      const variables = Array.isArray(group.variables) ? group.variables : [];
+      result[key] = this.findFirstNonEmpty(variables);
+      return result;
+    }, {});
+  }
+
+  private findFirstNonEmpty(variables: any[]): any {
+    for (const v of variables) {
+      const value = v?.value;
+      if (value !== null && value !== undefined && value !== '' &&
+          !(Array.isArray(value) && value.length === 0) &&
+          !(typeof value === 'object' && Object.keys(value).length === 0)) return value;
+    }
+    return '';
+  }
+
+  // ---- Private: Loop execution ----
+
+  private async executeLoopNode(
+    session: ExecutionSession, node: WorkflowNode,
+    resolvedData: Record<string, any>,
+    appendLog: (level: ExecutionLogEntry['level'], message: string) => void,
+  ): Promise<any> {
+    const bodyNode = findCompositeChildByRole(session.nodes, node.id, 'loop_body');
+    if (!bodyNode) throw new Error('Loop node missing body');
+
+    const loopType = typeof resolvedData.loopType === 'string' ? resolvedData.loopType : 'count';
+    const iterations = this.resolveLoopIterations(loopType, resolvedData);
+    const concurrency = Math.max(1, Math.floor(Number(resolvedData.concurrency) || 1));
+    const sharedVars = this.initLoopSharedVars(resolvedData.sharedVariables);
+    const items: unknown[] = [];
+
+    appendLog('info', iterations.infinite
+      ? `Starting infinite loop, concurrency ${concurrency}`
+      : `Starting loop, ${iterations.count} iterations, concurrency ${concurrency}`);
+
+    let nextIndex = 0;
+    let stopScheduling = false;
+    const running = new Set<Promise<void>>();
+
+    const hasNext = () => iterations.infinite || nextIndex < (iterations.count ?? 0);
+    const createFrame = (index: number): LoopExecutionFrame => ({
+      loopNodeId: node.id,
+      parentData: session.context.__data__,
+      bodyAnchorId: bodyNode.id,
+      variables: sharedVars,
+      metadata: { index, count: iterations.count, item: iterations.items[index],
+        isFirst: index === 0, isLast: iterations.count !== null && index === iterations.count - 1 },
+    });
+
+    const startNext = () => {
+      if (stopScheduling || !hasNext()) return false;
+      const index = nextIndex++;
+      const frame = createFrame(index);
+      const promise = this.executeLoopIteration(session, bodyNode, frame, iterations, appendLog)
+        .then(result => {
+          items[index] = normalizeLoopResult(result);
+          if (session.status === 'error' || frame.breakRequested) stopScheduling = true;
+        }).finally(() => running.delete(promise));
+      running.add(promise);
+      return true;
+    };
+
+    while (running.size < concurrency && startNext()) { /* fill window */ }
+    while (running.size > 0) {
+      await Promise.race(running);
+      if (session.stopRequested || session.status === 'error') throw new Error('Execution stopped');
+      while (running.size < concurrency && startNext()) { /* backfill */ }
+    }
+
+    appendLog('info', 'Loop completed');
+    const output = this.buildOutputObject(resolvedData.outputs) ?? {};
+    return { ...output, items };
+  }
+
+  private async executeLoopIteration(
+    session: ExecutionSession, bodyNode: WorkflowNode,
+    frame: LoopExecutionFrame, iterations: LoopIterations,
+    appendLog: (level: ExecutionLogEntry['level'], message: string) => void,
+  ): Promise<unknown> {
+    if (session.stopRequested) throw new Error('Execution stopped');
+    if (iterations.infinite && frame.metadata.index > 0) await sleep(0);
+
+    session.loopStack.push(frame);
+    try {
+      this.syncLoopContext(session);
+      appendLog('info', iterations.infinite
+        ? `Loop iteration ${frame.metadata.index + 1}`
+        : `Loop iteration ${frame.metadata.index + 1}/${iterations.count}`);
+      return await this.runWithLoopWorkerState(session, frame, () => this.executeLoopBody(session, bodyNode));
+    } finally {
+      const idx = session.loopStack.lastIndexOf(frame);
+      if (idx >= 0) session.loopStack.splice(idx, 1);
+      this.syncLoopContext(session);
+    }
+  }
+
+  private resolveLoopIterations(loopType: string, data: Record<string, any>): LoopIterations {
+    if (loopType === 'array') {
+      const items = Array.isArray(data.arrayPath) ? data.arrayPath : [];
+      return { count: items.length, items, infinite: false };
+    }
+    if (loopType === 'infinite') return { count: null, items: [], infinite: true };
+    const count = Math.max(0, Math.floor(Number(data.count) || 0));
+    return { count, items: Array.from({ length: count }, () => undefined), infinite: false };
+  }
+
+  private initLoopSharedVars(vars: unknown): Record<string, unknown> {
+    if (!Array.isArray(vars)) return {};
+    const build = (fields: Array<Record<string, any>>): Record<string, unknown> => {
+      const result: Record<string, unknown> = {};
+      for (const field of fields) {
+        if (!field?.key) continue;
+        if (field.type === 'object') {
+          result[field.key] = build(Array.isArray(field.children) ? field.children : []);
+          continue;
+        }
+        result[field.key] = field.value ?? '';
+      }
+      return result;
+    };
+    return build(vars as Array<Record<string, any>>);
+  }
+
+  private async executeLoopBody(session: ExecutionSession, bodyNode: WorkflowNode): Promise<unknown> {
+    const scopeNodes = getNodesForExecutionScope(session.nodes, bodyNode.id);
+    if (scopeNodes.length > 0) return this.executeScopedBody(session, bodyNode, scopeNodes);
+
+    const bodyData = bodyNode.data?.bodyWorkflow;
+    if (bodyData && typeof bodyData === 'object') {
+      return this.executeEmbeddedWorkflow(session, normalizeEmbeddedWorkflow(bodyData, () => randomUUID()));
+    }
+    return this.executeScopedBody(session, bodyNode, scopeNodes);
+  }
+
+  private async executeScopedBody(
+    session: ExecutionSession, bodyNode: WorkflowNode, scopeNodes: WorkflowNode[],
+  ): Promise<unknown> {
+    const scopeIds = new Set(scopeNodes.map(n => n.id));
+    const bodyEdges = session.edges.filter(e => {
+      if (e.sourceHandle === 'loop_next') return false;
+      const srcEntry = e.source === bodyNode.id && scopeIds.has(e.target);
+      return srcEntry || (scopeIds.has(e.source) && scopeIds.has(e.target));
+    });
+
+    const adjacency = new Map<string, WorkflowEdge[]>();
+    for (const edge of bodyEdges) {
+      const arr = adjacency.get(edge.source) || [];
+      arr.push(edge);
+      adjacency.set(edge.source, arr);
+    }
+
+    const visited = new Set<string>();
+    const execFrom = async (nodeId: string): Promise<unknown> => {
+      if (shouldInterrupt(session)) return undefined;
+      let lastResult: unknown;
+      for (const edge of adjacency.get(nodeId) || []) {
+        if (shouldInterrupt(session)) return lastResult;
+        const activeHandle = this.getActiveBranches(session).get(edge.source);
+        if (activeHandle !== undefined && edge.sourceHandle !== activeHandle) continue;
+        const nextNode = scopeNodes.find(n => n.id === edge.target);
+        if (!nextNode || visited.has(nextNode.id)) continue;
+        visited.add(nextNode.id);
+        const result = await this.executeNode(session, nextNode);
+        if (result === 'interrupted' || shouldInterrupt(session)) return lastResult;
+        lastResult = this.getNodeExecutionData(session, nextNode.id);
+        const downstream = await execFrom(nextNode.id);
+        if (downstream !== undefined) lastResult = downstream;
+      }
+      return lastResult;
+    };
+    return execFrom(bodyNode.id);
+  }
+
+  private async executeSubWorkflow(
+    session: ExecutionSession, resolvedData: Record<string, any>,
+    appendLog: (level: ExecutionLogEntry['level'], message: string) => void,
+  ): Promise<unknown> {
+    const workflowId = typeof resolvedData.workflowId === 'string' ? resolvedData.workflowId : '';
+    if (!workflowId) throw new Error('sub_workflow missing workflowId');
+    if (workflowId === session.workflow.id) throw new Error('sub_workflow cannot call itself');
+
+    const target = workflowStore.getWorkflow(workflowId);
+    if (!target) throw new Error(`sub_workflow target not found: ${workflowId}`);
+
+    appendLog('info', `Starting sub_workflow: ${target.name}`);
+    const result = await this.executeEmbeddedWorkflow(session, {
+      nodes: clone(target.nodes), edges: clone(target.edges),
+    }, this.buildOutputObject(resolvedData.inputFields) ?? {});
+    appendLog('info', `Completed sub_workflow: ${target.name}`);
+    return result;
+  }
+
+  private async executeEmbeddedWorkflow(
+    session: ExecutionSession,
+    workflow: { nodes: WorkflowNode[]; edges: WorkflowEdge[] },
+    input?: Record<string, any>,
+  ): Promise<unknown> {
+    const nodeMap = new Map(workflow.nodes.map(n => [n.id, n]));
+    const adjacency = new Map<string, WorkflowEdge[]>();
+    for (const edge of workflow.edges) {
+      const arr = adjacency.get(edge.source) || [];
+      arr.push(edge);
+      adjacency.set(edge.source, arr);
+    }
+
+    const startNode = workflow.nodes.find(n => n.type === 'start');
+    if (!startNode) throw new Error('Embedded workflow missing start node');
+
+    if (input && Object.keys(input).length > 0) {
+      this.setNodeExecutionData(session, startNode.id, input);
+      this.setNodeExecutionInput(session, startNode.id, input);
+    }
+
+    const visited = new Set<string>([startNode.id]);
+    const execFrom = async (nodeId: string): Promise<unknown> => {
+      if (shouldInterrupt(session)) return undefined;
+      let lastResult: unknown;
+      for (const edge of adjacency.get(nodeId) || []) {
+        if (shouldInterrupt(session)) return lastResult;
+        const activeHandle = this.getActiveBranches(session).get(edge.source);
+        if (activeHandle !== undefined && edge.sourceHandle !== activeHandle) continue;
+        const nextNode = nodeMap.get(edge.target);
+        if (!nextNode || visited.has(nextNode.id)) continue;
+        visited.add(nextNode.id);
+        const result = await this.executeNode(session, nextNode);
+        if (result === 'interrupted' || shouldInterrupt(session)) return lastResult;
+        if (nextNode.type !== 'start') lastResult = this.getNodeExecutionData(session, nextNode.id);
+        const downstream = await execFrom(nextNode.id);
+        if (downstream !== undefined) lastResult = downstream;
+      }
+      return lastResult;
+    };
+    return execFrom(startNode.id);
+  }
+
+  // ---- Private: Condition evaluation ----
+
+  private evaluateCondition(variable: any, value: any, operator: string): boolean {
+    switch (operator) {
+      case 'equals': return variable == value;
+      case 'not_equals': return variable != value;
+      case 'greater_than': return Number(variable) > Number(value);
+      case 'less_than': return Number(variable) < Number(value);
+      case 'greater_than_or_equal': return Number(variable) >= Number(value);
+      case 'less_than_or_equal': return Number(variable) <= Number(value);
+      case 'contains': return String(variable).includes(String(value));
+      case 'not_contains': return !String(variable).includes(String(value));
+      case 'starts_with': return String(variable).startsWith(String(value));
+      case 'ends_with': return String(variable).endsWith(String(value));
+      case 'is_empty': return variable === '' || variable === null || variable === undefined;
+      case 'is_not_empty': return variable !== '' && variable !== null && variable !== undefined;
+      case 'is_true': return variable === true || variable === 'true' || variable === 1;
+      case 'is_false': return variable === false || variable === 'false' || variable === 0;
+      default: return false;
+    }
+  }
+
+  // ---- Private: Variable resolution ----
+
+  private resolveContextVariables(session: ExecutionSession, data: Record<string, any>): Record<string, any> {
+    return this.resolveValue(session, data);
+  }
+
+  private resolveValue(session: ExecutionSession, value: any): any {
+    if (typeof value === 'string') return this.resolveStringValue(session, value);
+    if (Array.isArray(value)) return value.map(item => this.resolveValue(session, item));
+    if (value && typeof value === 'object') {
+      const resolved: Record<string, any> = {};
+      for (const [key, nested] of Object.entries(value)) {
+        resolved[key] = this.resolveValue(session, nested);
+      }
+      return resolved;
+    }
+    return value;
+  }
+
+  private resolveStringValue(session: ExecutionSession, value: string): any {
+    // Full match patterns (return raw value, not string)
+    const loopVarMatch = value.match(/^\s*\{\{\s*__loop__\.vars\.([^}]+?)\s*\}\}\s*$/);
+    if (loopVarMatch) return this.getLoopVariableValue(session, loopVarMatch[1]) ?? '';
+
+    const loopMetaMatch = value.match(/^\s*\{\{\s*__loop__\.(index|count|item|isFirst|isLast)\s*\}\}\s*$/);
+    if (loopMetaMatch) return this.getLoopMetaValue(session, loopMetaMatch[1]) ?? '';
+
+    const dataMatch = value.match(/^\s*\{\{\s*__data__\[(["'])([^"']+)\1\]\.([^}]+?)\s*\}\}\s*$/);
+    if (dataMatch) {
+      const data = this.getNodeExecutionData(session, dataMatch[2]);
+      if (data != null) {
+        const result = getNestedValue(data, dataMatch[3]);
+        if (result !== undefined) return result;
+      }
+      return '';
+    }
+
+    const inputMatch = value.match(/^\s*\{\{\s*__inputs__\[(["'])([^"']+)\1\]\.([^}]+?)\s*\}\}\s*$/);
+    if (inputMatch) {
+      const inputData = this.getNodeExecutionInput(session, inputMatch[2]);
+      if (inputData != null) {
+        const result = getNestedValue(inputData, inputMatch[3]);
+        if (result !== undefined) return result;
+      }
+      return '';
+    }
+
+    const ctxMatch = value.match(/^\s*\{\{\s*context\.([^}]+?)\s*\}\}\s*$/);
+    if (ctxMatch) return getNestedValue(session.context, ctxMatch[1]) ?? '';
+
+    // Inline patterns (string replacement)
+    let text = value
+      .replace(/\{\{\s*__loop__\.vars\.([^}]+?)\s*\}\}/g, (_m, p) => String(this.getLoopVariableValue(session, p) ?? ''))
+      .replace(/\{\{\s*__loop__\.(index|count|item|isFirst|isLast)\s*\}\}/g, (_m, k) => String(this.getLoopMetaValue(session, k) ?? ''))
+      .replace(/\{\{\s*__data__\[(["'])([^"']+)\1\]\.([^}]+?)\s*\}\}/g, (_m, _q, nid, fp) => {
+        const d = this.getNodeExecutionData(session, nid);
+        return d == null ? '' : String(getNestedValue(d, fp) ?? '');
+      })
+      .replace(/\{\{\s*__inputs__\[(["'])([^"']+)\1\]\.([^}]+?)\s*\}\}/g, (_m, _q, nid, fp) => {
+        const d = this.getNodeExecutionInput(session, nid);
+        return d == null ? '' : String(getNestedValue(d, fp) ?? '');
+      })
+      .replace(/\{\{\s*context\.([^}]+?)\s*\}\}/g, (_m, p) => String(getNestedValue(session.context, p) ?? ''));
+
+    return text;
+  }
+
+  // ---- Private: Build execution order ----
+
+  private buildExecutionOrder(nodes: WorkflowNode[], edges: WorkflowEdge[]): WorkflowNode[] {
+    const nodeMap = new Map(nodes.map(n => [n.id, n]));
+    const inDegree = new Map(nodes.map(n => [n.id, 0]));
+    for (const edge of edges) {
+      inDegree.set(edge.target, (inDegree.get(edge.target) ?? 0) + 1);
+    }
+    const queue: string[] = [];
+    for (const [id, deg] of inDegree) {
+      if (deg === 0) queue.push(id);
+    }
+    const order: WorkflowNode[] = [];
+    while (queue.length > 0) {
+      const id = queue.shift()!;
+      const node = nodeMap.get(id);
+      if (node) order.push(node);
+      for (const edge of edges) {
+        if (edge.source !== id) continue;
+        const deg = (inDegree.get(edge.target) ?? 1) - 1;
+        inDegree.set(edge.target, deg);
+        if (deg === 0) queue.push(edge.target);
+      }
+    }
+    return order;
+  }
+
+  // ---- Private: Breakpoints ----
+
+  private shouldPauseAtBreakpoint(session: ExecutionSession, node: WorkflowNode, bp: 'start' | 'end'): boolean {
+    if (node.breakpoint !== bp) return false;
+    return !session.breakpointBypassKeys.has(`${node.id}:${bp}`);
+  }
+
+  private pauseAtBreakpoint(session: ExecutionSession, nextIndex: number, node: WorkflowNode, bp: 'start' | 'end'): void {
+    session.currentIndex = nextIndex;
+    session.status = 'paused';
+    session.pauseReason = bp === 'start' ? 'breakpoint-start' : 'breakpoint-end';
+    session.pauseNodeId = node.id;
+    session.pauseBreakpoint = bp;
+    this.emitLog(session);
+    this.emitEvent(session, 'workflow:paused', {
+      executionId: session.id, workflowId: session.workflow.id,
+      timestamp: Date.now(), status: 'paused',
+      currentNodeId: node.id, reason: session.pauseReason,
+    });
+  }
+
+  // ---- Private: Branch reachability ----
+
+  private isNodeReachable(session: ExecutionSession, nodeId: string, visited?: Set<string>): boolean {
+    const seen = visited || new Set<string>();
+    if (seen.has(nodeId)) return false;
+    seen.add(nodeId);
+    const incoming = session.edges.filter(e => e.target === nodeId);
+    if (incoming.length === 0) return true;
+    for (const edge of incoming) {
+      const activeHandle = this.getActiveBranches(session).get(edge.source);
+      if (activeHandle !== undefined && edge.sourceHandle !== activeHandle) continue;
+      if (this.isNodeReachable(session, edge.source, seen)) return true;
+    }
+    return false;
+  }
+
+  // ---- Private: Loop context ----
+
+  private getLoopFrame(session: ExecutionSession): LoopExecutionFrame | null {
+    const workerFrame = this.loopWorkerState.getStore()?.frame;
+    if (workerFrame) return workerFrame;
+    return session.loopStack[session.loopStack.length - 1] || null;
+  }
+
+  private getActiveBranches(session: ExecutionSession): Map<string, string> {
+    return this.loopWorkerState.getStore()?.branch ?? session.activeBranches;
+  }
+
+  private runWithLoopWorkerState<T>(
+    session: ExecutionSession, frame: LoopExecutionFrame, callback: () => Promise<T>,
+  ): Promise<T> {
+    return this.loopWorkerState.run(
+      { branch: new Map(session.activeBranches), data: {}, frame, inputs: {} },
+      callback,
+    );
+  }
+
+  private syncLoopContext(session: ExecutionSession): void {
+    const frame = this.getLoopFrame(session);
+    if (!frame) { delete session.context.__loop__; return; }
+    session.context.__loop__ = {
+      vars: frame.variables, index: frame.metadata.index, count: frame.metadata.count,
+      item: frame.metadata.item, isFirst: frame.metadata.isFirst, isLast: frame.metadata.isLast,
+    };
+  }
+
+  private getRuntimeContext(session: ExecutionSession): Record<string, any> {
+    const frame = this.getLoopFrame(session);
+    const ws = this.loopWorkerState.getStore();
+    if (!frame && !ws) return session.context;
+    return {
+      ...session.context,
+      ...(ws ? { __data__: { ...session.context.__data__, ...ws.data } } : {}),
+      ...(ws ? { __inputs__: { ...session.context.__inputs__, ...ws.inputs } } : {}),
+      ...(frame ? { __loop__: session.context.__loop__ } : {}),
+    };
+  }
+
+  private getLoopVariableValue(session: ExecutionSession, path: string): unknown {
+    const frame = this.getLoopFrame(session);
+    if (!frame) return undefined;
+    return getNestedValue(frame.variables, path);
+  }
+
+  private getLoopMetaValue(session: ExecutionSession, key: string): unknown {
+    const frame = this.getLoopFrame(session);
+    if (!frame) return undefined;
+    return frame.metadata[key as keyof LoopExecutionFrame['metadata']];
+  }
+
+  // ---- Private: Node execution data ----
+
+  private getNodeExecutionData(session: ExecutionSession, nodeId: string): any {
+    const frame = this.getLoopFrame(session);
+    const ws = this.loopWorkerState.getStore();
+    if (!frame) return session.context.__data__?.[nodeId];
+    if (nodeId === frame.bodyAnchorId || nodeId === frame.loopNodeId) {
+      return { $index: frame.metadata.index, $count: frame.metadata.count, $item: frame.metadata.item,
+        $isFirst: frame.metadata.isFirst, $isLast: frame.metadata.isLast, ...frame.variables };
+    }
+    return ws?.data[nodeId] ?? session.context.__data__?.[nodeId] ?? frame.parentData?.[nodeId];
+  }
+
+  private setNodeExecutionData(session: ExecutionSession, nodeId: string, value: unknown): void {
+    const ws = this.loopWorkerState.getStore();
+    if (ws) { ws.data[nodeId] = value; return; }
+    if (!session.context.__data__) session.context.__data__ = {};
+    session.context.__data__[nodeId] = value;
+  }
+
+  private getNodeExecutionInput(session: ExecutionSession, nodeId: string): any {
+    const ws = this.loopWorkerState.getStore();
+    return ws?.inputs[nodeId] ?? session.context.__inputs__?.[nodeId];
+  }
+
+  private setNodeExecutionInput(session: ExecutionSession, nodeId: string, value: unknown): void {
+    const ws = this.loopWorkerState.getStore();
+    if (ws) { ws.inputs[nodeId] = value; return; }
+    if (!session.context.__inputs__) session.context.__inputs__ = {};
+    session.context.__inputs__[nodeId] = value;
+  }
+
+  // ---- Private: Output building ----
+
+  private getStepInput(node: WorkflowNode, data: Record<string, any>): Record<string, any> | undefined {
+    if (node.type === 'start' || node.type === 'end') return undefined;
+    return data;
+  }
+
+  private buildOutputObject(outputs: OutputField[] | undefined): Record<string, any> | null {
+    if (!Array.isArray(outputs) || outputs.length === 0) return null;
+    const result: Record<string, any> = {};
+    for (const field of outputs) {
+      if (!field.key) continue;
+      result[field.key] = field.type === 'object'
+        ? this.buildOutputObject(field.children) ?? {}
+        : field.value ?? '';
+    }
+    return result;
+  }
+
+  private recordSkippedStep(session: ExecutionSession, node: WorkflowNode, reason: string): void {
+    session.steps.push({
+      nodeId: node.id, nodeLabel: node.label,
+      startedAt: Date.now(), finishedAt: Date.now(),
+      status: 'skipped', error: reason,
+    });
+    this.emitLog(session);
+  }
+
+  // ---- Private: Event emission ----
+
+  private currentContext(session: ExecutionSession): Record<string, unknown> {
+    return clone(session.context);
+  }
+
+  private currentLog(session: ExecutionSession): ExecutionLog {
+    return {
+      id: session.id, workflowId: session.workflow.id,
+      startedAt: session.startedAt, finishedAt: session.finishedAt,
+      status: session.status === 'running' ? 'running' : session.status === 'paused' ? 'paused' : session.status === 'completed' ? 'completed' : 'error',
+      steps: clone(session.steps),
+      snapshot: { nodes: clone(session.nodes), edges: clone(session.edges), groups: clone(session.groups || []) },
+    };
+  }
+
+  private emitEvent<C extends ExecutionEventChannel>(session: ExecutionSession, channel: C, payload: ExecutionEventMap[C]): void {
+    session.lastUpdatedAt = Date.now();
+    session.eventSequence += 1;
+    session.recentEvents.push({
+      sequence: session.eventSequence, channel,
+      payload: clone(payload) as ExecutionEventMap[ExecutionEventChannel],
+    });
+    if (session.recentEvents.length > MAX_RECENT_EVENTS) {
+      session.recentEvents.splice(0, session.recentEvents.length - MAX_RECENT_EVENTS);
+    }
+    if (session.eventSink) {
+      session.eventSink(channel as string, payload);
+    } else {
+      this.deps.emit(channel, payload);
+    }
+  }
+
+  private emitLog(session: ExecutionSession): void {
+    this.emitEvent(session, 'execution:log', {
+      executionId: session.id, workflowId: session.workflow.id,
+      timestamp: Date.now(), log: this.currentLog(session),
+    });
+  }
+
+  private emitContext(session: ExecutionSession): void {
+    this.emitEvent(session, 'execution:context', {
+      executionId: session.id, workflowId: session.workflow.id,
+      timestamp: Date.now(), context: this.currentContext(session),
+    });
+  }
+
+  private emitWorkflowError(session: ExecutionSession): void {
+    this.emitEvent(session, 'workflow:error', {
+      executionId: session.id, workflowId: session.workflow.id,
+      timestamp: Date.now(), status: 'error',
+      error: createErrorShape('WORKFLOW_ERROR', session.lastErrorMessage || 'Workflow execution failed'),
+      log: this.currentLog(session),
+    });
+  }
+
+  // ---- Private: Persistence & recovery ----
+
+  private persistAndCleanup(session: ExecutionSession): void {
+    if (!session.persisted) {
+      workflowStore.addExecutionLog(session.workflow.id, this.currentLog(session));
+      session.persisted = true;
+    }
+    this.finishedRecoveries.set(session.id, {
+      ownerClientId: session.ownerClientId,
+      workflowId: session.workflow.id,
+      recovery: this.createRecoveryState(session, false),
+      expiresAt: Date.now() + FINISHED_RECOVERY_TTL_MS,
+    });
+    this.sessions.delete(session.id);
+    this.pruneFinishedRecoveries();
+  }
+
+  private createRecoveryState(session: ExecutionSession, active: boolean): NonNullable<ExecutionRecoveryResponse['execution']> {
+    return {
+      executionId: session.id, workflowId: session.workflow.id, status: session.status,
+      currentNodeId: session.pauseNodeId || session.executionOrder[session.currentIndex]?.id,
+      pauseReason: session.pauseReason, updatedAt: session.lastUpdatedAt, active,
+      log: this.currentLog(session), context: this.currentContext(session),
+      recentEvents: clone(session.recentEvents),
+    };
+  }
+
+  private findSession(ownerClientId: string, workflowId: string, executionId?: string | null): ExecutionSession | undefined {
+    for (const s of this.sessions.values()) {
+      if (s.ownerClientId !== ownerClientId || s.workflow.id !== workflowId) continue;
+      if (executionId && s.id !== executionId) continue;
+      return s;
+    }
+    return undefined;
+  }
+
+  private findFinishedRecovery(ownerClientId: string, workflowId: string, executionId?: string | null): FinishedExecutionRecovery | undefined {
+    for (const r of this.finishedRecoveries.values()) {
+      if (r.ownerClientId !== ownerClientId || r.workflowId !== workflowId) continue;
+      if (executionId && r.recovery.executionId !== executionId) continue;
+      return r;
+    }
+    return undefined;
+  }
+
+  private pruneFinishedRecoveries(): void {
+    const now = Date.now();
+    for (const [id, r] of this.finishedRecoveries) {
+      if (r.expiresAt <= now) this.finishedRecoveries.delete(id);
+    }
+  }
+
+  private getSession(executionId: string): ExecutionSession {
+    const session = this.sessions.get(executionId);
+    if (!session) throw createErrorShape('NOT_FOUND', `Session not found: ${executionId}`);
+    return session;
+  }
+}
+
+// ---- Utility functions ----
+
+function clone<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function getNestedValue(obj: any, path: string): any {
+  const parts = path.split('.');
+  let current = obj;
+  for (const part of parts) {
+    if (current == null) return undefined;
+    current = current[part];
+  }
+  return current;
+}
+
+function shouldInterrupt(session: ExecutionSession): boolean {
+  return session.stopRequested || session.status === 'error';
+}
+
+// Composite node helpers (from workflow-composite.ts shared types)
+function getNodesForExecutionScope(nodes: WorkflowNode[], scopeId: string | null): WorkflowNode[] {
+  // scopeId null = root nodes (no composite.parentId)
+  // scopeId non-null = nodes whose composite.parentId matches
+  if (scopeId === null) {
+    return nodes.filter(n => !n.composite?.parentId);
+  }
+  return nodes.filter(n => n.composite?.parentId === scopeId);
+}
+
+function findCompositeChildByRole(nodes: WorkflowNode[], parentId: string, role: string): WorkflowNode | undefined {
+  return nodes.find(n => n.composite?.parentId === parentId && n.composite?.role === role);
+}
+
+function getCompositeParentId(node: WorkflowNode): string | undefined {
+  return node.composite?.parentId ?? undefined;
+}
+
+function isGeneratedWorkflowNode(node: WorkflowNode): boolean {
+  return !!node.data?._generated;
+}
+
+function normalizeEmbeddedWorkflow(data: any, genId: () => string): { nodes: WorkflowNode[]; edges: WorkflowEdge[] } {
+  // Simplified: just return as-is if already normalized
+  if (data.nodes && data.edges) return data;
+  return { nodes: [], edges: [] };
+}
+
+function normalizeLoopResult(result: unknown): Record<string, any> {
+  if (result && typeof result === 'object' && !Array.isArray(result)) return result as Record<string, any>;
+  return { result };
+}

@@ -49,6 +49,12 @@ import { broadcastToAll } from './ws/connection-manager.js';
 import { startScheduler, stopScheduler } from './agents/scheduler-agent.js';
 import { recoverRunningWorkOnStartup } from './services/issue-retry.js';
 import { startPersistedNotificationServices } from './services/notification-hub/index.js';
+import { InteractionManager } from './services/interaction-manager.js';
+import { ExecutionManager } from './services/execution-manager.js';
+import { WorkflowTriggerService } from './services/workflow-trigger-service.js';
+import { registerExecutionChannels } from './ws/execution-channels.js';
+import { broadcastToWorkspace } from './ws/connection-manager.js';
+import { createWorkflowHookRouter } from './routes/workflow-hook.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.PORT || '3100', 10);
@@ -170,6 +176,29 @@ app.use('/api/workspaces/:id/files', fileRouter);
 app.use('/api/workspaces/:id/channels', channelRouter);
 app.use('/api/workspaces/:id/issues', issueRouter);
 app.use('/api/workflows', workflowRouter);
+
+// Initialize workflow execution infrastructure
+const interactionManager = new InteractionManager();
+const executionManager = new ExecutionManager({
+  interactionManager,
+  emit: (channel, payload) => {
+    // Broadcast execution events to all workspace connections
+    const anyPayload = payload as Record<string, unknown>;
+    if (anyPayload.workflowId && typeof anyPayload.workflowId === 'string') {
+      // Use a global broadcast since we don't have workspaceId in the execution context
+      // The client will filter by executionId
+      broadcastToWorkspace(anyPayload.workflowId, channel, payload);
+    }
+  },
+});
+const triggerService = new WorkflowTriggerService(PORT);
+triggerService.setExecutionManager(executionManager);
+
+// Workflow webhook hook SSE endpoint (after auth middleware)
+app.use('/api/workflows', createWorkflowHookRouter(triggerService, executionManager));
+
+// Register WS execution channels
+registerExecutionChannels(executionManager);
 app.use('/api/workspaces/:id/commands', commandRouter);
 app.use('/api/workspaces/:id/code-favorites', codeFavoritesRouter);
 app.use('/api/workspaces/:id/hooks', hooksRouter);
@@ -327,6 +356,9 @@ server.listen(PORT, HOST, () => {
   console.log(`[server] listening on http://${HOST}:${PORT}`);
   console.log(`[server] websocket on ws://${HOST}:${PORT}/ws?workspaceId=...`);
   recoverRunningWorkOnStartup();
+  triggerService.start().catch((err) => {
+    console.error('[trigger] failed to start:', err);
+  });
   startPersistedNotificationServices().catch((err) => {
     console.error('[notification] failed to restore persisted services:', err);
   });

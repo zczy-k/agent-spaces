@@ -1,10 +1,8 @@
-// packages/server/src/services/workflow-trigger-service.ts
-// Cron + Webhook trigger management for workflows.
-
 import crypto from 'node:crypto';
 import type { default as nodeCronType, ScheduledTask } from 'node-cron';
 import type { Workflow, WorkflowTrigger } from '@agent-spaces/shared';
 import * as store from '../storage/workflow-store.js';
+import type { ExecutionManager } from './execution-manager.js';
 
 interface HookBinding {
   workflowId: string;
@@ -15,6 +13,7 @@ export class WorkflowTriggerService {
   private cronJobs = new Map<string, ScheduledTask>();
   private hookIndex = new Map<string, Set<HookBinding>>();
   private nodeCron: typeof nodeCronType | null = null;
+  private executionManager: ExecutionManager | null = null;
 
   constructor(private port: number = 3100) {
     try {
@@ -22,6 +21,10 @@ export class WorkflowTriggerService {
     } catch {
       // node-cron not available
     }
+  }
+
+  setExecutionManager(em: ExecutionManager): void {
+    this.executionManager = em;
   }
 
   async start(): Promise<void> {
@@ -103,7 +106,11 @@ export class WorkflowTriggerService {
     try {
       const task = this.nodeCron.schedule(trigger.cron, () => {
         console.log(`[TriggerService] Cron fired for workflow ${workflowId}`);
-        // TODO: trigger workflow execution via execution manager
+        if (this.executionManager) {
+          this.executionManager.execute({ workflowId }, '__cron__').catch((err: any) => {
+            console.error(`[TriggerService] Cron execution failed for ${workflowId}: ${err.message}`);
+          });
+        }
       }, { timezone: trigger.timezone });
       this.cronJobs.set(key, task);
     } catch (err: any) {

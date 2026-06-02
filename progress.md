@@ -99,7 +99,7 @@
   - ✅ web workflow 相关 tsc 检查 0 error
 
 ### Phase 4: 后端统一服务与数据迁移
-- **Status:** in_progress（存储层+服务层+路由层完成，执行引擎待迁移）
+- **Status:** complete
 - Actions taken:
   - 安装 node-cron / cron-parser 依赖
   - 重写 workflow-store.ts：per-workflow 目录结构 + legacy flat-file 自动迁移
@@ -107,18 +107,45 @@
   - 改造 workflow service：新增 folders / versions / logs / staging / operation-history / cron-validation
   - 扩展 workflow 路由：15+ 新端点
   - 创建 WorkflowTriggerService（cron 调度 + webhook hook 绑定）
-  - `pnpm --filter @agent-spaces/server build` ✅ / web tsc 0 error ✅
+  - 扩展 connection-manager：clientId 跟踪 + sendToClient + 连接/断连回调
+  - 创建 InteractionManager：客户端交互管理（alert/prompt/form/table_confirm）
+  - 创建 ExecutionManager：核心执行引擎（从 work_fox 移植，~1200 行）
+    - DAG 拓扑排序 + 节点执行循环
+    - 10+ 节点类型：start/end/run_code/toast/switch/variable_aggregate/sub_workflow/loop/agent_run/alert/prompt/form/table_display
+    - 循环执行（并发控制 + AsyncLocalStorage 隔离）
+    - 断点调试（start/end breakpoint + bypass）
+    - 变量解析（__data__/__inputs__/__loop__/context 引用）
+    - 执行恢复（recentEvents backlog + finished recovery TTL）
+    - agent_run 节点直接调用 agent-spaces Agent runtime（非 Electron 交互）
+  - 创建 WS execution channels：6 个执行控制事件（execute/pause/resume/stop/debug-node/get-execution-recovery）
+  - 创建 workflow-hook 路由：SSE webhook 触发
+  - 接线：app.ts 初始化 + trigger service 启动 + WS channel 注册
+  - `pnpm --filter @agent-spaces/shared build` ✅
+  - `pnpm --filter @agent-spaces/server build` ✅
+  - web workflow 相关 tsc 0 新增 error ✅
 - Files created/modified:
-  - packages/server/src/storage/workflow-store.ts（重写）
-  - packages/server/src/services/workflow.ts（重写）
-  - packages/server/src/routes/workflow.ts（扩展）
-  - packages/server/src/services/workflow-trigger-service.ts（新增）
-  - packages/server/package.json（新增依赖）
+  - packages/server/src/ws/connection-manager.ts（扩展：clientId + sendToClient + 回调）
+  - packages/server/src/services/interaction-manager.ts（新增）
+  - packages/server/src/services/execution-manager.ts（新增，~1200 行）
+  - packages/server/src/ws/execution-channels.ts（新增）
+  - packages/server/src/routes/workflow-hook.ts（新增）
+  - packages/server/src/ws/handler.ts（更新：interaction + clientId）
+  - packages/server/src/services/workflow-trigger-service.ts（更新：接入 execution manager）
+  - packages/server/src/app.ts（更新：初始化 execution manager + trigger service + hook route）
+  - packages/server/src/storage/workflow-store.ts（Phase 4-1 重写）
+  - packages/server/src/services/workflow.ts（Phase 4-1 重写）
+  - packages/server/src/routes/workflow.ts（Phase 4-1 扩展）
+  - packages/server/package.json（Phase 4-1 新增依赖）
 - Acceptance criteria:
   - ✅ per-workflow 目录存储 + legacy 自动迁移
   - ✅ folders / versions / execution-logs / staging / operation-history CRUD
+  - ✅ execution-manager 完整执行引擎（DAG/loops/switches/breakpoints/recovery）
+  - ✅ interaction-manager 客户端交互（alert/prompt/form/table_confirm）
+  - ✅ WS execution channels（execute/pause/resume/stop/debug-node/recovery）
+  - ✅ webhook SSE hook route
+  - ✅ trigger service 接入 execution manager（cron → execute）
   - ✅ `pnpm --filter @agent-spaces/server build` 通过
-  - 🔄 execution-manager / interaction-manager / WS channels 待迁移
+  - ✅ web workflow 相关 tsc 0 新增 error
 
 ### Phase 5: 前端基础设施迁移
 - **Status:** pending
@@ -179,11 +206,11 @@
 
 | Question | Answer |
 |----------|--------|
-| Where am I? | Phase 4 进行中（存储层+服务层+路由层完成，执行引擎待迁移） |
-| Where am I going? | 完成 Phase 4 剩余工作（execution-manager / interaction-manager / WS channels），然后 Phase 5-8 |
+| Where am I? | Phase 4 完成（执行引擎+交互管理+WS channels+Hook route 全部就绪），准备 Phase 5 |
+| Where am I going? | Phase 5 前端基础设施迁移（stores/hooks/lib 层），然后 Phase 6-8 |
 | What's the goal? | 产品级统一成一套 Workflow 系统：WorkFox 为 canonical workflow，legacy agent/command workflow 通过 adapter/migration 纳入新模型 |
 | What have I learned? | 两套 Workflow 类型体系差异巨大（15+ 维度），统一后 node type 为 string + data: Record<string, unknown>，时间戳为 epoch ms，所有 workfox 扩展（groups/triggers/execution/plugin）均为 optional |
-| What have I done? | 完成 shared 层 6 个新文件 + 1 个重写，server 4 文件适配，web 5 文件适配，shared/server/web 全部编译通过 |
+| What have I done? | Phase 3（shared 层 6+1 文件）+ Phase 4（storage/service/route 重写 + execution-manager ~1200 行 + interaction-manager + WS channels + hook route + 接线），shared/server/web 全部编译通过 |
 
 ## Test Results
 

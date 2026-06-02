@@ -1,6 +1,7 @@
 import type { WebSocket } from 'ws';
 import type { WSEvent, ClientEventName, Message } from '@agent-spaces/shared';
-import { addConnection, broadcastToWorkspace } from './connection-manager.js';
+import { addConnection, broadcastToWorkspace, getClientId, handleInteractionResponse } from './connection-manager.js';
+import type { InteractionResponse } from '@agent-spaces/shared';
 import { handleTerminalEvent, sendTerminalSessions } from './terminal-handler.js';
 import { appendMessageReply, createMessage } from '../services/message.js';
 import { getChannel } from '../services/channel.js';
@@ -18,7 +19,7 @@ export function registerHandler(event: string, handler: EventHandler) {
 }
 
 export function handleConnection(ws: WebSocket, workspaceId: string) {
-  addConnection(ws, workspaceId);
+  const clientId = addConnection(ws, workspaceId);
 
   const ctx = makeContext(workspaceId);
   ensureScheduler(workspaceId, ctx);
@@ -155,6 +156,12 @@ registerHandler('agent.stop', (_ws, workspaceId, data) => {
     from: 'active',
     to: 'completed',
   });
+});
+
+// Workflow interaction response handler
+registerHandler('workflow:interaction', (ws, _workspaceId, data) => {
+  const clientId = getClientId(ws);
+  if (clientId) handleInteractionResponse(data as InteractionResponse, clientId);
 });
 
 export { broadcastToWorkspace } from './connection-manager.js';

@@ -1,20 +1,77 @@
+import { randomUUID } from 'node:crypto';
 import type { WebSocket } from 'ws';
+import type { InteractionResponse } from '@agent-spaces/shared';
 import { publishWorkspaceEvent } from '../services/notification-hub/index.js';
 
 interface ManagedConnection {
   ws: WebSocket;
   workspaceId: string;
+  clientId: string;
 }
 
-const connections = new Map<WebSocket, ManagedConnection>();
+type ClientConnectedCallback = (clientId: string, ws: WebSocket) => void;
+type ClientDisconnectedCallback = (clientId: string) => void;
+type InteractionResponseHandler = (response: InteractionResponse, clientId: string) => void;
 
-export function addConnection(ws: WebSocket, workspaceId: string) {
-  connections.set(ws, { ws, workspaceId });
-  ws.on('close', () => connections.delete(ws));
+const connections = new Map<WebSocket, ManagedConnection>();
+const clientIdIndex = new Map<string, ManagedConnection>();
+
+const clientConnectedCallbacks: ClientConnectedCallback[] = [];
+const clientDisconnectedCallbacks: ClientDisconnectedCallback[] = [];
+let interactionResponseHandler: InteractionResponseHandler | null = null;
+
+export function addConnection(ws: WebSocket, workspaceId: string): string {
+  const clientId = randomUUID();
+  const conn: ManagedConnection = { ws, workspaceId, clientId };
+  connections.set(ws, conn);
+  clientIdIndex.set(clientId, conn);
+  ws.on('close', () => {
+    connections.delete(ws);
+    clientIdIndex.delete(clientId);
+    for (const cb of clientDisconnectedCallbacks) cb(clientId);
+  });
+  for (const cb of clientConnectedCallbacks) cb(clientId, ws);
+  return clientId;
 }
 
 export function removeConnection(ws: WebSocket) {
+  const conn = connections.get(ws);
+  if (conn) {
+    clientIdIndex.delete(conn.clientId);
+    for (const cb of clientDisconnectedCallbacks) cb(conn.clientId);
+  }
   connections.delete(ws);
+}
+
+export function getClientId(ws: WebSocket): string | undefined {
+  return connections.get(ws)?.clientId;
+}
+
+export function getConnectionByClientId(clientId: string): ManagedConnection | undefined {
+  return clientIdIndex.get(clientId);
+}
+
+export function sendToClient(clientId: string, data: unknown): boolean {
+  const conn = clientIdIndex.get(clientId);
+  if (!conn || conn.ws.readyState !== 1) return false;
+  conn.ws.send(JSON.stringify(data));
+  return true;
+}
+
+export function onClientConnected(cb: ClientConnectedCallback) {
+  clientConnectedCallbacks.push(cb);
+}
+
+export function onClientDisconnected(cb: ClientDisconnectedCallback) {
+  clientDisconnectedCallbacks.push(cb);
+}
+
+export function setInteractionResponseHandler(handler: InteractionResponseHandler) {
+  interactionResponseHandler = handler;
+}
+
+export function handleInteractionResponse(response: InteractionResponse, clientId: string) {
+  interactionResponseHandler?.(response, clientId);
 }
 
 export function getConnectionsByWorkspace(workspaceId: string): WebSocket[] {

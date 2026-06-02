@@ -20,7 +20,9 @@
 
 ## 当前阶段
 
-Phase 4 — 后端统一服务与数据迁移 🔄（进行中）
+Phase 4 — 后端统一服务与数据迁移 ✅（完成）
+
+下一个：Phase 5 — 前端基础设施迁移
 
 ## 项目规模统计
 
@@ -114,11 +116,11 @@ Phase 4 — 后端统一服务与数据迁移 🔄（进行中）
 - [x] 新增 WorkflowTriggerService（cron 调度 + webhook hook 绑定）
 - [x] 验收：`pnpm --filter @agent-spaces/server build` 通过 ✅
 - [x] 验收：web workflow 相关 tsc 检查 0 error ✅
-- [ ] 迁移 execution-manager（核心执行引擎）
-- [ ] 迁移 interaction-manager（客户端交互）
-- [ ] 集成统一 WS channels（执行事件广播）
-- [ ] 迁移 hook-handler（webhook SSE 响应）
-- **Status:** in_progress
+- [x] 迁移 execution-manager（核心执行引擎）
+- [x] 迁移 interaction-manager（客户端交互）
+- [x] 集成统一 WS channels（执行事件广播）
+- [x] 迁移 hook-handler（webhook SSE 响应）
+- **Status:** complete
 
 ### Phase 5: 前端基础设施迁移
 - [ ] 复制 workfox/src/types → packages/web/src/types/workfox/
