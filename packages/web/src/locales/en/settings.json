@@ -75,5 +75,21 @@
   "aspectCircle": "Circle",
   "aspect3x4": "3:4",
   "aspect16x9": "16:9",
-  "primaryColor": "Primary Color"
+  "primaryColor": "Primary Color",
+  "data": "Data",
+  "dataTitle": "Data Management",
+  "dataDescription": "Import configuration data from other tools into Agent Spaces.",
+  "dataImportFromCcSwitch": "Import from cc-switch",
+  "dataLoading": "Loading...",
+  "dataImportTitle": "Import from cc-switch",
+  "dataImportDesc": "Select providers and skills to import. Selected items will be imported into Agent Spaces.",
+  "dataProviders": "Providers",
+  "dataSkills": "Skills",
+  "dataSelectAll": "Select All",
+  "dataDeselectAll": "Deselect All",
+  "dataNoData": "No importable data found",
+  "dataCancel": "Cancel",
+  "dataImport": "Import",
+  "dataImportSuccess": "Successfully imported {count} items",
+  "dataImportFailed": "Import failed"
 }

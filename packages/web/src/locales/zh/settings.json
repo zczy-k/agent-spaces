@@ -75,5 +75,21 @@
   "aspectCircle": "圆形",
   "aspect3x4": "3:4",
   "aspect16x9": "16:9",
-  "primaryColor": "主题色"
+  "primaryColor": "主题色",
+  "data": "数据",
+  "dataTitle": "数据管理",
+  "dataDescription": "从其他工具导入配置数据到 Agent Spaces。",
+  "dataImportFromCcSwitch": "从 cc-switch 导入",
+  "dataLoading": "正在读取...",
+  "dataImportTitle": "从 cc-switch 导入数据",
+  "dataImportDesc": "选择要导入的提供商和技能。已选中项目将导入到 Agent Spaces。",
+  "dataProviders": "提供商",
+  "dataSkills": "技能",
+  "dataSelectAll": "全选",
+  "dataDeselectAll": "取消全选",
+  "dataNoData": "未找到可导入的数据",
+  "dataCancel": "取消",
+  "dataImport": "导入",
+  "dataImportSuccess": "成功导入 {count} 项",
+  "dataImportFailed": "导入失败"
 }
