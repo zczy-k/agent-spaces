@@ -13,5 +13,33 @@
   "pasteCommandDescription": "Edit commands and confirm to send them line by line to the terminal",
   "pasteCommandPlaceholder": "One command per line...",
   "cancel": "Cancel",
-  "confirm": "Confirm"
+  "confirm": "Confirm",
+
+  "logViewer": {
+    "defaultTitle": "Logs",
+    "lines": "lines",
+    "search": "Search",
+    "closeSearch": "Close search",
+    "pauseAutoScroll": "Pause auto-scroll",
+    "resumeAutoScroll": "Resume auto-scroll",
+    "copyAllLogs": "Copy all logs",
+    "copyFilteredLogs": "Copy filtered logs",
+    "copied": "Copied",
+    "downloadLogs": "Download logs",
+    "clearLogs": "Clear logs",
+    "filterLogsPlaceholder": "Filter logs…",
+    "filterPlaceholder": "Filter…",
+    "clearSearch": "Clear search",
+    "noLogEntries": "No log entries",
+    "noMatchingLogEntries": "No matching log entries",
+    "logsWillAppear": "Logs will appear here as events occur",
+    "tryAdjustSearch": "Try adjusting your search query",
+    "resetFilters": "Reset filters",
+    "newLogsBelow": "New logs below",
+    "scrollToLatest": "Scroll to latest",
+    "logOutput": "Log output",
+    "hideLevel": "Hide",
+    "showLevel": "Show",
+    "levelLogs": "logs"
+  }
 }
