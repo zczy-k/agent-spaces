@@ -15,12 +15,12 @@ export type TextShimmerProps = {
   style?: React.CSSProperties;
 };
 
-const MotionP = motion.create("p");
-const MotionSpan = motion.create("span");
-const MotionDiv = motion.create("div");
-const MotionH1 = motion.create("h1");
-const MotionH2 = motion.create("h2");
-const MotionH3 = motion.create("h3");
+const MotionP = motion.create("p") as React.ComponentType<React.HTMLAttributes<HTMLElement> & Record<string, unknown>>;
+const MotionSpan = motion.create("span") as React.ComponentType<React.HTMLAttributes<HTMLElement> & Record<string, unknown>>;
+const MotionDiv = motion.create("div") as React.ComponentType<React.HTMLAttributes<HTMLElement> & Record<string, unknown>>;
+const MotionH1 = motion.create("h1") as React.ComponentType<React.HTMLAttributes<HTMLElement> & Record<string, unknown>>;
+const MotionH2 = motion.create("h2") as React.ComponentType<React.HTMLAttributes<HTMLElement> & Record<string, unknown>>;
+const MotionH3 = motion.create("h3") as React.ComponentType<React.HTMLAttributes<HTMLElement> & Record<string, unknown>>;
 
 const motionMap: Record<string, React.ComponentType<React.HTMLAttributes<HTMLElement> & Record<string, unknown>>> = {
   p: MotionP,

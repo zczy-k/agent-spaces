@@ -4,9 +4,9 @@ import { AnimatePresence, MotionValue, Variants, animate, motion, useMotionValue
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 type AnimationSequence = {
-  initial: Record<string, string | number>
-  animate: Record<string, string | number>
-  exit: Record<string, string | number>
+  initial: Record<string, unknown>
+  animate: Record<string, unknown>
+  exit: Record<string, unknown>
 }
 
 interface RotatingTextProps {
@@ -72,7 +72,7 @@ export default function RotatingText({
       const getStagger = (i: number, total: number) => ({
         delay: getStaggerDelay(i, total),
         ...transition,
-      })
+      } as const)
       return {
         initial,
         animate: { ...animate, transition: getStagger(index, splitBy === 'characters' ? memoTexts[currentIndex].length : 1) },

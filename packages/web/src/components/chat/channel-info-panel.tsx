@@ -88,7 +88,7 @@ export function ChannelInfoPanel({ workspaceId, channel, agents, allChannels, on
                 <p className="text-sm font-medium">#{channel.name}</p>
                 <p className="text-xs text-muted-foreground">{t('channel.type')} {t(`channel.${channel.type}`)}</p>
               </div>
-              <Button variant="ghost" size="icon-sm" onClick={() => setEditOpen(true)}>
+              <Button variant="ghost" size="icon" onClick={() => setEditOpen(true)}>
                 <Pencil className="size-3.5" />
               </Button>
             </div>

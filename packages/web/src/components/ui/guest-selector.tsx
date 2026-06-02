@@ -59,7 +59,7 @@ export const GuestSelector = React.forwardRef<HTMLDivElement, GuestSelectorProps
         transition: {
           delay: i * 0.05,
           duration: 0.3,
-          ease: 'easeOut',
+          ease: 'easeOut' as const,
         },
       }),
       exit: {
@@ -68,7 +68,7 @@ export const GuestSelector = React.forwardRef<HTMLDivElement, GuestSelectorProps
         scale: 0.9,
         transition: {
           duration: 0.2,
-          ease: 'easeIn',
+          ease: 'easeIn' as const,
         },
       },
     };

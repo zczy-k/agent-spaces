@@ -113,7 +113,7 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitl
                   if (value) {
                     const template = workflows.find(w => w.id === value);
                     if (template) {
-                      const agentIds = template.nodes.filter(n => n.type === 'agent').map(n => n.data.agentConfigId);
+                      const agentIds = template.nodes.filter(n => n.type === 'agent').map(n => n.data.agentConfigId as string);
                       setMembers(prev => Array.from(new Set([...prev, ...agentIds])));
                     }
                   }

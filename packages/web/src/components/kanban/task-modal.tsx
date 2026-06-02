@@ -160,8 +160,8 @@ export default function TaskModal({ task, columns, isOpen, onClose, onSave, onDe
           {isConfirmingDelete ? (
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-rose-600 animate-pulse">{t('deleteConfirm')}</span>
-              <Button size="xs" variant="destructive" onClick={() => { onDelete(task.id); onClose(); }}>{t('yes')}</Button>
-              <Button size="xs" variant="outline" onClick={() => setIsConfirmingDelete(false)}>{tc('cancel')}</Button>
+              <Button size="sm" variant="destructive" onClick={() => { onDelete(task.id); onClose(); }}>{t('yes')}</Button>
+              <Button size="sm" variant="outline" onClick={() => setIsConfirmingDelete(false)}>{tc('cancel')}</Button>
             </div>
           ) : (
             <Button size="sm" variant="destructive" onClick={() => setIsConfirmingDelete(true)}>

@@ -172,7 +172,7 @@ export interface OutputField {
 export interface ArrayFieldItem {
   key: string
   label: string
-  type: 'text' | 'number' | 'select' | 'checkbox'
+  type: 'text' | 'number' | 'select' | 'checkbox' | 'output_fields'
   required?: boolean
   default?: unknown
   options?: { label: string; value: string }[]
@@ -253,6 +253,7 @@ export interface NodeTypeDefinition {
   customView?: unknown
   customViewMinSize?: { width?: number; height?: number }
   manualCreate?: boolean
+  singleton?: boolean
   debuggable?: boolean
   compound?: CompoundNodeDefinition
 }

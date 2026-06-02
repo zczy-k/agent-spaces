@@ -60,7 +60,7 @@ export function EditIssueDialog({ issue, open, onOpenChange, agents = [], onSave
     if (!workflowId) return;
     const template = workflows.find((workflow) => workflow.id === workflowId);
     if (!template) return;
-    const agentIds = template.nodes.filter(n => n.type === 'agent').map((node) => node.data.agentConfigId);
+    const agentIds = template.nodes.filter(n => n.type === 'agent').map((node) => node.data.agentConfigId as string);
     setMembers((prev) => Array.from(new Set([...prev, ...agentIds])));
   };
 

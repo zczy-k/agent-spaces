@@ -2,7 +2,7 @@ import * as React from "react";
 import { motion } from "framer-motion";
 import {
   FileText,
-  Figma,
+  Sigma as Figma,
   Calendar,
   Tag,
   Paperclip,
@@ -121,7 +121,7 @@ export function ProjectDetailView({
       y: 0,
       opacity: 1,
       transition: {
-        type: 'spring',
+        type: 'spring' as const,
         stiffness: 100,
       }
     },

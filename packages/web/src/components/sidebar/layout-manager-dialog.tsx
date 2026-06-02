@@ -124,10 +124,10 @@ export function LayoutManagerDialog({ open, onOpenChange, workspaceId }: LayoutM
                         }}
                         autoFocus
                       />
-                      <Button variant="ghost" size="icon-sm" onClick={handleRenameConfirm}>
+                      <Button variant="ghost" size="icon" onClick={handleRenameConfirm}>
                         <Check className="size-3.5" />
                       </Button>
-                      <Button variant="ghost" size="icon-sm" onClick={() => setEditingId(null)}>
+                      <Button variant="ghost" size="icon" onClick={() => setEditingId(null)}>
                         <X className="size-3.5" />
                       </Button>
                     </>
@@ -143,10 +143,10 @@ export function LayoutManagerDialog({ open, onOpenChange, workspaceId }: LayoutM
                       <span className="hidden text-xs text-muted-foreground group-hover:block">
                         {new Date(t.createdAt).toLocaleDateString()}
                       </span>
-                      <Button variant="ghost" size="icon-sm" onClick={() => handleRenameStart(t)}>
+                      <Button variant="ghost" size="icon" onClick={() => handleRenameStart(t)}>
                         <Pencil className="size-3.5" />
                       </Button>
-                      <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(t.id)}>
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(t.id)}>
                         <Trash2 className="size-3.5 text-destructive" />
                       </Button>
                     </>

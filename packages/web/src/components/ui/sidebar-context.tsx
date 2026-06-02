@@ -145,7 +145,7 @@ export {
   SIDEBAR_WIDTH_ICON,
   SIDEBAR_KEYBOARD_SHORTCUT,
   SidebarContext,
-  SidebarContextProps,
   SidebarProvider,
   useSidebar,
 }
+export type { SidebarContextProps }

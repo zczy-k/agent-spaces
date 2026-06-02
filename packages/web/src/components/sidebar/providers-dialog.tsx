@@ -117,7 +117,7 @@ export function ProvidersDialog({
       {!standalone && (
         <div className="flex items-center gap-3 border-b px-5 py-4">
           {draft && (
-            <Button variant="ghost" size="icon-sm" onClick={handleBack}>
+            <Button variant="ghost" size="icon" onClick={handleBack}>
               <ArrowLeft className="size-4" />
             </Button>
           )}
@@ -147,7 +147,7 @@ export function ProvidersDialog({
       )}
       {standalone && draft && (
         <div className="flex items-center gap-3 px-5 py-3 border-b">
-          <Button variant="ghost" size="icon-sm" onClick={handleBack}>
+          <Button variant="ghost" size="icon" onClick={handleBack}>
             <ArrowLeft className="size-4" />
           </Button>
           <div className="flex-1 min-w-0">
@@ -242,7 +242,7 @@ function ProviderList({
               </Badge>
               <Button
                 variant="ghost"
-                size="icon-xs"
+                size="icon"
                 className="opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={e => { e.stopPropagation(); onDelete(provider.id); }}
               >
@@ -268,7 +268,7 @@ function ProviderList({
             )}
             <Button
               variant="ghost"
-              size="xs"
+              size="sm"
               className="mt-1 ml-11 h-6 text-[11px] text-muted-foreground"
               onClick={e => { e.stopPropagation(); onAddModel(provider.name); }}
             >

@@ -181,7 +181,7 @@ export function ModelsDialog({
       {!standalone && (
         <div className="flex items-center gap-3 border-b px-5 py-4">
           {draft && (
-            <Button variant="ghost" size="icon-sm" onClick={handleBack}>
+            <Button variant="ghost" size="icon" onClick={handleBack}>
               <ArrowLeft className="size-4" />
             </Button>
           )}
@@ -211,7 +211,7 @@ export function ModelsDialog({
       )}
       {standalone && draft && (
         <div className="flex items-center gap-3 px-5 py-3 border-b">
-          <Button variant="ghost" size="icon-sm" onClick={handleBack}>
+          <Button variant="ghost" size="icon" onClick={handleBack}>
             <ArrowLeft className="size-4" />
           </Button>
           <div className="flex-1 min-w-0">
@@ -324,7 +324,7 @@ function ModelList({
                 </div>
                 <Button
                   variant="ghost"
-                  size="icon-xs"
+                  size="icon"
                   className="opacity-0 group-hover:opacity-100 transition-opacity"
                   onClick={e => { e.stopPropagation(); onDelete(model.id); }}
                 >

@@ -67,7 +67,7 @@ const containerVariants: Variants = {
     y: 0,
     scale: 1,
     transition: {
-      type: 'spring',
+      type: 'spring' as const,
       damping: 25,
       stiffness: 300,
       staggerChildren: 0.05,
@@ -87,7 +87,7 @@ const messageVariants: Variants = {
     opacity: 1,
     y: 0,
     x: 0,
-    transition: { type: 'spring', stiffness: 500, damping: 30 },
+    transition: { type: 'spring' as const, stiffness: 500, damping: 30 },
   },
 };
 

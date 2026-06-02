@@ -116,7 +116,7 @@ export const IssueDetailHeader = forwardRef<IssueDetailHeaderRef, IssueDetailHea
       <div className="flex items-center gap-2 mb-1">
         <Button
           variant="ghost"
-          size="icon-sm"
+          size="icon"
           className="md:hidden shrink-0"
           onClick={() => useMobilePanelStore.getState().setActivePanel('issue-list')}
         >
@@ -127,18 +127,18 @@ export const IssueDetailHeader = forwardRef<IssueDetailHeaderRef, IssueDetailHea
           {t(`status.${issue.status}`)}
         </Badge>
         <div className="ml-auto flex items-center gap-0.5">
-          <Button variant="ghost" size="icon-sm" onClick={() => setEditOpen(true)}>
+          <Button variant="ghost" size="icon" onClick={() => setEditOpen(true)}>
             <Pencil className="size-4" />
           </Button>
           <Button
             variant="ghost"
-            size="icon-sm"
+            size="icon"
             title={t('detail.openChatChannel') as string}
             onClick={() => { if (issue?.channelId) useChannelStore.getState().ensureAndActivateChannel(workspaceId, issue.channelId); }}
           >
             <MessagesSquare className="size-4" />
           </Button>
-          <Button variant="ghost" size="icon-sm" onClick={() => setInfoOpen(true)}>
+          <Button variant="ghost" size="icon" onClick={() => setInfoOpen(true)}>
             <Info className="size-4" />
           </Button>
         </div>

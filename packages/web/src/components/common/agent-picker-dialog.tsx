@@ -92,7 +92,7 @@ export function AgentPickerDialog({
         </DialogHeader>
         {workflows.length > 0 && (
           <div className="shrink-0 px-6 pb-3">
-            <Select value={workflowId} onValueChange={setWorkflowId}>
+            <Select value={workflowId} onValueChange={(v) => { if (v) setWorkflowId(v); }}>
               <SelectTrigger className="h-8 text-sm">
                 <SelectValue placeholder="按 Workflow 过滤" />
               </SelectTrigger>

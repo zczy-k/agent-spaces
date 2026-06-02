@@ -112,7 +112,7 @@ export function AgentDialogHeader({
   );
 
   const backButton = (onClick: () => void) => (
-    <Button variant="ghost" size="icon-sm" onClick={onClick}>
+    <Button variant="ghost" size="icon" onClick={onClick}>
       <ArrowLeft className="size-4" />
     </Button>
   );

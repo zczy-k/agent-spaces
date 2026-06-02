@@ -7,7 +7,7 @@ interface TaskStore {
 
   loadTasks: (workspaceId: string, issueId?: string) => Promise<void>;
   createTask: (workspaceId: string, issueId: string, title: string, description: string, agentConfigId: string) => Promise<Task>;
-  updateTask: (workspaceId: string, taskId: string, data: { title?: string; description?: string }) => Promise<void>;
+  updateTask: (workspaceId: string, taskId: string, data: { title?: string; description?: string; agentConfigId?: string }) => Promise<void>;
   deleteTask: (workspaceId: string, taskId: string) => Promise<void>;
   retryTask: (workspaceId: string, taskId: string) => Promise<void>;
   cancelTask: (workspaceId: string, taskId: string) => Promise<void>;

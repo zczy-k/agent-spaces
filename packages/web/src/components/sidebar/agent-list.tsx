@@ -64,7 +64,7 @@ export function AgentList({
             </div>
             <Button
               variant="ghost"
-              size="icon-xs"
+              size="icon"
               className="opacity-0 group-hover:opacity-100 transition-opacity"
               onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(agent.id); }}
             >
@@ -73,7 +73,7 @@ export function AgentList({
             {!fixed && (
               <Button
                 variant="ghost"
-                size="icon-xs"
+                size="icon"
                 className="opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={(e) => { e.stopPropagation(); onDelete(agent.id); }}
               >

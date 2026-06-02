@@ -70,7 +70,7 @@ export function AskUserQuestion({
                   className={cn("h-8 text-sm", choices.length > 0 && "max-w-sm")}
                   placeholder={t('askUser.placeholder')}
                 />
-                <Button type="submit" size="icon-sm" disabled={!draft.trim()}>
+                <Button type="submit" size="icon" disabled={!draft.trim()}>
                   <SendIcon className="size-3.5" />
                 </Button>
               </form>

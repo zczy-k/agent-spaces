@@ -104,6 +104,12 @@ export type ClientEventMap = {
   'channel.answer_question': { channelId: string; messageId: string; questionId: string; answer: string };
   'agent.start': { workspaceId: string; role: string; issueId?: string };
   'agent.stop': { agentId: string };
+  'workflow:execute': { workflowId: string; input?: Record<string, unknown>; snapshot?: unknown; startNodeId?: string };
+  'workflow:pause': { executionId: string };
+  'workflow:resume': { executionId: string };
+  'workflow:stop': { executionId: string };
+  'workflow:debug-node': { workflowId: string; nodeId: string; context?: Record<string, unknown> };
+  'workflow:get-execution-recovery': { workflowId: string; executionId?: string | null };
 };
 
 // ---- Server → Client Event Map ----
@@ -143,6 +149,19 @@ export type ServerEventMap = {
   'worktree.deleted': { id: string; workspaceId: string };
   'worktree.pr_created': import('./worktree.js').WorktreeInfo;
   'worktree.merged': import('./worktree.js').WorktreeInfo;
+  'workflow:execute:result': { executionId: string; status?: string };
+  'workflow:execute:error': { error: string };
+  'workflow:pause:result': unknown;
+  'workflow:pause:error': { error: string };
+  'workflow:resume:result': unknown;
+  'workflow:resume:error': { error: string };
+  'workflow:stop:result': unknown;
+  'workflow:stop:error': { error: string };
+  'workflow:debug-node:result': unknown;
+  'workflow:debug-node:error': { error: string };
+  'workflow:get-execution-recovery:result': unknown;
+  'workflow:get-execution-recovery:error': { error: string };
+  'interaction:ui_required': unknown;
 };
 
 export type ClientEventName = keyof ClientEventMap;

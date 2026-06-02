@@ -276,7 +276,7 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
         <div className="flex items-center gap-2 px-4 py-2 border-b">
           <Button
             variant="ghost"
-            size="icon-sm"
+            size="icon"
             className="md:hidden shrink-0"
             onClick={() => useMobilePanelStore.getState().setActivePanel('channel-list')}
           >
@@ -292,7 +292,7 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
           {channel.issueId && (
             <Button
               variant="ghost"
-              size="icon-sm"
+              size="icon"
               onClick={() => useIssueStore.getState().setActiveIssue(channel.issueId!)}
               title={t('viewRelatedIssue')}
             >
@@ -302,7 +302,7 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
           {msgs.length > 0 && (
             <Button
               variant="ghost"
-              size="icon-sm"
+              size="icon"
               onClick={() => setClearConfirmOpen(true)}
             >
               <Trash2 className="size-4" />
@@ -310,7 +310,7 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
           )}
           <Button
             variant="ghost"
-            size="icon-sm"
+            size="icon"
             onClick={() => setInfoOpen(true)}
           >
             <Info className="size-4" />
@@ -493,7 +493,7 @@ function PendingQuestionPanel({
                 className="h-8 text-sm"
                 placeholder={t('pendingQuestion.placeholder')}
               />
-              <Button type="submit" size="icon-sm" disabled={!draft.trim() || submitting}>
+              <Button type="submit" size="icon" disabled={!draft.trim() || submitting}>
                 <SendIcon className="size-3.5" />
               </Button>
             </form>

@@ -15,7 +15,7 @@ interface ProductHighlightCardProps extends React.HTMLAttributes<HTMLDivElement>
 }
 
 export const ProductHighlightCard = React.forwardRef<HTMLDivElement, ProductHighlightCardProps>(
-  ({ className, categoryIcon, category, title, description, imageSrc, imageAlt, ...props }, ref) => {
+  ({ className, categoryIcon, category, title, description, imageSrc, imageAlt }, ref) => {
     
     // --- Animation Logic for 3D Tilt Effect ---
     const mouseX = useMotionValue(0);
@@ -58,9 +58,8 @@ export const ProductHighlightCard = React.forwardRef<HTMLDivElement, ProductHigh
           "relative h-[350px] w-[350px] rounded-2xl bg-card shadow-lg transition-shadow duration-300 hover:shadow-2xl",
           className
         )}
-        {...props}
       >
-        <div style={{ transform: "translateZ(20px)", transformStyle: "preserve-d" }} className="absolute inset-4 rounded-xl bg-card-foreground/5 shadow-inner">
+        <div style={{ transform: "translateZ(20px)", transformStyle: "preserve-3d" }} className="absolute inset-4 rounded-xl bg-card-foreground/5 shadow-inner">
           
           {/* Diagonal line texture */}
           <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:32px_32px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)]"></div>
