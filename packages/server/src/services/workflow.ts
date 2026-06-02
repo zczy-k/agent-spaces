@@ -1,17 +1,15 @@
 // packages/server/src/services/workflow.ts
-// NOTE: All storage functions are synchronous (matching json-store pattern).
-//       Service functions are also synchronous where they only call sync storage.
-//       Route handlers wrap in async for Express compatibility.
 
 import { v4 as uuid } from 'uuid';
-import type { WorkflowTemplate, WorkflowNode, WorkflowEdge, AgentConfig } from '@agent-spaces/shared';
-import * as workflowStore from '../storage/workflow-store.js';
-import { getWorkspace } from '../storage/workspace-store.js';
+import type {
+  Workflow, WorkflowTemplate, WorkflowNode, WorkflowEdge,
+  WorkflowFolder, WorkflowVersion, ExecutionLog, StagedNode, OperationEntry,
+  WorkflowTrigger,
+} from '@agent-spaces/shared';
+import * as store from '../storage/workflow-store.js';
 import { listTemplates } from './agent.js';
 
-// --- Legacy node data helpers ---
-// In the unified model, node.data is Record<string, unknown>.
-// These helpers provide typed access for legacy agent/command nodes.
+// ---- Legacy node data helpers ----
 
 interface LegacyAgentData {
   label: string;
@@ -23,30 +21,16 @@ interface LegacyAgentData {
   taskDescriptionTemplate?: string;
 }
 
-interface LegacyCommandData {
-  label: string;
-  script: string;
-  cwd?: string;
-  env?: Record<string, string>;
-  shell?: string;
-  failStrategy?: 'stop';
-}
-
 function getAgentData(node: WorkflowNode): LegacyAgentData | null {
   if (node.type !== 'agent') return null;
   return node.data as unknown as LegacyAgentData;
-}
-
-function getCommandData(node: WorkflowNode): LegacyCommandData | null {
-  if (node.type !== 'command') return null;
-  return node.data as unknown as LegacyCommandData;
 }
 
 function getLabel(node: WorkflowNode): string {
   return (node.data as Record<string, unknown>).label as string || node.label;
 }
 
-// --- DAG Validation ---
+// ---- DAG Validation ----
 
 function topologicalSort(nodes: WorkflowNode[], edges: WorkflowEdge[]): string[] | null {
   const adj = new Map<string, string[]>();
@@ -97,7 +81,7 @@ function hasSelfLoops(edges: WorkflowEdge[]): boolean {
   return edges.some(e => e.source === e.target);
 }
 
-export function validateDAG(template: Pick<WorkflowTemplate, 'nodes' | 'edges'>): string | null {
+export function validateDAG(template: Pick<Workflow, 'nodes' | 'edges'>): string | null {
   if (template.nodes.length === 0) return 'Workflow must have at least one node';
   if (hasSelfLoops(template.edges)) return 'Self-loops are not allowed';
   if (hasDuplicateEdges(template.edges)) return 'Duplicate edges are not allowed';
@@ -115,7 +99,7 @@ export function validateDAG(template: Pick<WorkflowTemplate, 'nodes' | 'edges'>)
   return null;
 }
 
-// --- Role Staleness Resolution ---
+// ---- Role Staleness Resolution ----
 
 function resolveStaleRoles(nodes: WorkflowNode[]): { nodes: WorkflowNode[]; invalidIds: string[] } {
   const agentMap = new Map(listTemplates().map(a => [a.id, a]));
@@ -144,19 +128,19 @@ function resolveStaleRoles(nodes: WorkflowNode[]): { nodes: WorkflowNode[]; inva
   return { nodes: resolved, invalidIds };
 }
 
-// --- CRUD (synchronous) ---
+// ---- Workflow CRUD ----
 
-export function listWorkflows(): WorkflowTemplate[] {
-  return workflowStore.listWorkflows();
+export function listWorkflows(folderId?: string | null): Workflow[] {
+  return store.listWorkflows(folderId);
 }
 
-export function getWorkflow(workflowId: string): WorkflowTemplate | null {
-  return workflowStore.getWorkflow(workflowId);
+export function getWorkflow(workflowId: string): Workflow | null {
+  return store.getWorkflow(workflowId);
 }
 
 export function createWorkflow(
-  input: { name: string; description?: string; nodes?: WorkflowNode[]; edges?: WorkflowEdge[] }
-): WorkflowTemplate {
+  input: { name: string; description?: string; folderId?: string | null; icon?: string; tags?: string[]; nodes?: WorkflowNode[]; edges?: WorkflowEdge[]; triggers?: WorkflowTrigger[]; groups?: any[] }
+): Workflow {
   const now = Date.now();
   const nodes = input.nodes ?? [];
   const edges = input.edges ?? [];
@@ -166,29 +150,33 @@ export function createWorkflow(
     throw new Error(`Invalid agent references in nodes: ${invalidIds.join(', ')}`);
   }
 
-  const template: WorkflowTemplate = {
+  const workflow: Workflow = {
     id: uuid(),
     name: input.name,
-    folderId: null,
+    folderId: input.folderId ?? null,
+    icon: input.icon,
     description: input.description,
+    tags: input.tags,
     nodes: resolvedNodes,
     edges,
     createdAt: now,
     updatedAt: now,
+    triggers: input.triggers,
+    groups: input.groups,
   };
 
-  const error = validateDAG(template);
+  const error = validateDAG(workflow);
   if (error) throw new Error(error);
 
-  workflowStore.createWorkflow(template);
-  return template;
+  store.createWorkflow(workflow);
+  return workflow;
 }
 
 export function updateWorkflow(
   workflowId: string,
-  updates: Partial<Pick<WorkflowTemplate, 'name' | 'description' | 'nodes' | 'edges'>>
-): WorkflowTemplate {
-  const existing = workflowStore.getWorkflow(workflowId);
+  updates: Partial<Pick<Workflow, 'name' | 'description' | 'folderId' | 'icon' | 'tags' | 'nodes' | 'edges' | 'triggers' | 'groups' | 'enabledPlugins' | 'pluginConfigSchemes' | 'agentConfig' | 'layoutSnapshot'>>
+): Workflow {
+  const existing = store.getWorkflow(workflowId);
   if (!existing) throw new Error('Workflow not found');
 
   let nodes = updates.nodes ?? existing.nodes;
@@ -201,7 +189,7 @@ export function updateWorkflow(
     nodes = resolved.nodes;
   }
 
-  const updated: WorkflowTemplate = {
+  const updated: Workflow = {
     ...existing,
     ...updates,
     nodes,
@@ -215,22 +203,22 @@ export function updateWorkflow(
     if (error) throw new Error(error);
   }
 
-  workflowStore.updateWorkflow(updated);
+  store.updateWorkflow(updated);
   return updated;
 }
 
 export function deleteWorkflow(workflowId: string): void {
-  const existing = workflowStore.getWorkflow(workflowId);
+  const existing = store.getWorkflow(workflowId);
   if (!existing) throw new Error('Workflow not found');
-  workflowStore.deleteWorkflow(workflowId);
+  store.deleteWorkflow(workflowId);
 }
 
-export function duplicateWorkflow(workflowId: string): WorkflowTemplate {
-  const existing = workflowStore.getWorkflow(workflowId);
+export function duplicateWorkflow(workflowId: string): Workflow {
+  const existing = store.getWorkflow(workflowId);
   if (!existing) throw new Error('Workflow not found');
 
   const now = Date.now();
-  const duplicated: WorkflowTemplate = {
+  const duplicated: Workflow = {
     ...existing,
     id: uuid(),
     name: `${existing.name} (Copy)`,
@@ -238,11 +226,118 @@ export function duplicateWorkflow(workflowId: string): WorkflowTemplate {
     updatedAt: now,
   };
 
-  workflowStore.createWorkflow(duplicated);
+  store.createWorkflow(duplicated);
   return duplicated;
 }
 
-// --- Task Mapping ---
+// ---- Folder CRUD ----
+
+export function listFolders(): WorkflowFolder[] {
+  return store.listWorkflowFolders();
+}
+
+export function createFolder(input: { name: string; parentId?: string | null }): WorkflowFolder {
+  const folders = store.listWorkflowFolders();
+  const siblings = folders.filter(f => f.parentId === (input.parentId ?? null));
+  const folder: WorkflowFolder = {
+    id: uuid(),
+    name: input.name,
+    parentId: input.parentId ?? null,
+    order: siblings.length > 0 ? Math.max(...siblings.map(f => f.order)) + 1 : 0,
+    createdAt: Date.now(),
+  };
+  store.createWorkflowFolder(folder);
+  return folder;
+}
+
+export function updateFolder(id: string, updates: Partial<Pick<WorkflowFolder, 'name' | 'parentId' | 'order'>>): void {
+  store.updateWorkflowFolder(id, updates);
+}
+
+export function deleteFolder(id: string): void {
+  store.deleteWorkflowFolder(id);
+}
+
+// ---- Version CRUD ----
+
+export function listVersions(workflowId: string): WorkflowVersion[] {
+  return store.listVersions(workflowId);
+}
+
+export function createVersion(workflowId: string, name?: string): WorkflowVersion {
+  const workflow = store.getWorkflow(workflowId);
+  if (!workflow) throw new Error('Workflow not found');
+
+  const version: WorkflowVersion = {
+    id: uuid(),
+    workflowId,
+    name: name || `v${store.listVersions(workflowId).length + 1}`,
+    snapshot: {
+      nodes: JSON.parse(JSON.stringify(workflow.nodes)),
+      edges: JSON.parse(JSON.stringify(workflow.edges)),
+    },
+    createdAt: Date.now(),
+  };
+
+  store.addVersion(workflowId, version);
+  return version;
+}
+
+export function getVersion(workflowId: string, versionId: string): WorkflowVersion | null {
+  return store.getVersion(workflowId, versionId) as WorkflowVersion | null;
+}
+
+export function deleteVersion(workflowId: string, versionId: string): void {
+  store.deleteVersion(workflowId, versionId);
+}
+
+export function clearVersions(workflowId: string): void {
+  store.clearVersions(workflowId);
+}
+
+// ---- Execution Log CRUD ----
+
+export function listExecutionLogs(workflowId: string): ExecutionLog[] {
+  return store.listExecutionLogs(workflowId);
+}
+
+export function getExecutionLog(workflowId: string, logId: string): ExecutionLog | null {
+  return store.getExecutionLog(workflowId, logId) as ExecutionLog | null;
+}
+
+export function deleteExecutionLog(workflowId: string, logId: string): void {
+  store.deleteExecutionLog(workflowId, logId);
+}
+
+export function clearExecutionLogs(workflowId: string): void {
+  store.clearExecutionLogs(workflowId);
+}
+
+// ---- Staging ----
+
+export function loadStaging(workflowId: string): StagedNode[] {
+  return store.loadStaging(workflowId);
+}
+
+export function saveStaging(workflowId: string, nodes: StagedNode[]): void {
+  store.saveStaging(workflowId, nodes);
+}
+
+export function clearStaging(workflowId: string): void {
+  store.clearStaging(workflowId);
+}
+
+// ---- Operation History ----
+
+export function loadOperationHistory(workflowId: string): OperationEntry[] {
+  return store.loadOperationHistory(workflowId);
+}
+
+export function saveOperationHistory(workflowId: string, entries: OperationEntry[]): void {
+  store.saveOperationHistory(workflowId, entries);
+}
+
+// ---- Task Mapping (legacy Issue automation) ----
 
 export interface TaskDraftForWorkflow {
   key: string;
@@ -254,7 +349,7 @@ export interface TaskDraftForWorkflow {
   commandNode?: WorkflowNode;
 }
 
-export function mapWorkflowToTaskDrafts(template: WorkflowTemplate): TaskDraftForWorkflow[] {
+export function mapWorkflowToTaskDrafts(template: Workflow): TaskDraftForWorkflow[] {
   const dependsOn = new Map<string, string[]>();
   for (const node of template.nodes) {
     dependsOn.set(node.id, []);
@@ -290,9 +385,9 @@ export function mapWorkflowToTaskDrafts(template: WorkflowTemplate): TaskDraftFo
   });
 }
 
-// --- Run-time Validation ---
+// ---- Run-time Validation ----
 
-export function validateWorkflowForRun(_workspaceId: string, template: WorkflowTemplate, memberAgentIds: Set<string>): string | null {
+export function validateWorkflowForRun(_workspaceId: string, template: Workflow, memberAgentIds: Set<string>): string | null {
   const agentMap = new Map(listTemplates().map((a) => [a.id, a]));
 
   for (const node of template.nodes) {
@@ -307,4 +402,30 @@ export function validateWorkflowForRun(_workspaceId: string, template: WorkflowT
   }
 
   return null;
+}
+
+// ---- Cron Validation ----
+
+export function validateCron(cronExpr: string): { valid: boolean; nextRuns: string[]; error?: string } {
+  try {
+    const { validate } = require('node-cron');
+    if (!validate(cronExpr)) {
+      return { valid: false, nextRuns: [], error: 'Invalid cron expression' };
+    }
+  } catch {
+    // If node-cron validate fails to load, continue with cron-parser
+  }
+
+  try {
+    const CronExpressionParser = require('cron-parser');
+    const interval = CronExpressionParser.parse(cronExpr);
+    const nextRuns: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      const iso = interval.next().toISOString();
+      if (iso) nextRuns.push(iso);
+    }
+    return { valid: true, nextRuns };
+  } catch (err: any) {
+    return { valid: false, nextRuns: [], error: err.message };
+  }
 }

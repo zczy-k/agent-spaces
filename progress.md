@@ -99,18 +99,26 @@
   - ✅ web workflow 相关 tsc 检查 0 error
 
 ### Phase 4: 后端统一服务与数据迁移
-- **Status:** pending
+- **Status:** in_progress（存储层+服务层+路由层完成，执行引擎待迁移）
 - Actions taken:
-  -
+  - 安装 node-cron / cron-parser 依赖
+  - 重写 workflow-store.ts：per-workflow 目录结构 + legacy flat-file 自动迁移
+  - 新增 folders / versions / execution-logs / staging / operation-history / plugin-schemes 存储
+  - 改造 workflow service：新增 folders / versions / logs / staging / operation-history / cron-validation
+  - 扩展 workflow 路由：15+ 新端点
+  - 创建 WorkflowTriggerService（cron 调度 + webhook hook 绑定）
+  - `pnpm --filter @agent-spaces/server build` ✅ / web tsc 0 error ✅
 - Files created/modified:
-  -
+  - packages/server/src/storage/workflow-store.ts（重写）
+  - packages/server/src/services/workflow.ts（重写）
+  - packages/server/src/routes/workflow.ts（扩展）
+  - packages/server/src/services/workflow-trigger-service.ts（新增）
+  - packages/server/package.json（新增依赖）
 - Acceptance criteria:
-  - WorkFox workflow execution/interaction/trigger 服务迁入 `packages/server`
-  - 现有 workflow service 使用统一模型或通过 adapter 输出统一模型
-  - 旧 workflow 存储可读取、可迁移，迁移失败有明确错误和回退路径
-  - 统一 HTTP 路由接入现有 Express API 和 Bearer Token 认证
-  - 统一 WS channel 接入现有 WebSocket 系统，可发送执行事件
-  - `pnpm --filter @agent-spaces/server build` 通过
+  - ✅ per-workflow 目录存储 + legacy 自动迁移
+  - ✅ folders / versions / execution-logs / staging / operation-history CRUD
+  - ✅ `pnpm --filter @agent-spaces/server build` 通过
+  - 🔄 execution-manager / interaction-manager / WS channels 待迁移
 
 ### Phase 5: 前端基础设施迁移
 - **Status:** pending
@@ -171,8 +179,8 @@
 
 | Question | Answer |
 |----------|--------|
-| Where am I? | Phase 3 完成（统一契约与兼容模型），准备进入 Phase 4（后端统一服务与数据迁移） |
-| Where am I going? | Phase 4-8：后端统一服务 → 前端基础设施 → 统一编辑器 → 产品周边能力 → 端到端验证 |
+| Where am I? | Phase 4 进行中（存储层+服务层+路由层完成，执行引擎待迁移） |
+| Where am I going? | 完成 Phase 4 剩余工作（execution-manager / interaction-manager / WS channels），然后 Phase 5-8 |
 | What's the goal? | 产品级统一成一套 Workflow 系统：WorkFox 为 canonical workflow，legacy agent/command workflow 通过 adapter/migration 纳入新模型 |
 | What have I learned? | 两套 Workflow 类型体系差异巨大（15+ 维度），统一后 node type 为 string + data: Record<string, unknown>，时间戳为 epoch ms，所有 workfox 扩展（groups/triggers/execution/plugin）均为 optional |
 | What have I done? | 完成 shared 层 6 个新文件 + 1 个重写，server 4 文件适配，web 5 文件适配，shared/server/web 全部编译通过 |

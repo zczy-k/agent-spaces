@@ -1,12 +1,15 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
-import * as workflowService from '../services/workflow.js';
+import * as ws from '../services/workflow.js';
 
 const router = Router();
 
+// ---- Workflow CRUD ----
+
 router.get('/', (_req: Request, res: Response) => {
   try {
-    const workflows = workflowService.listWorkflows();
+    const folderId = _req.query.folderId as string | undefined;
+    const workflows = ws.listWorkflows(folderId === 'null' ? null : folderId);
     res.json(workflows);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -15,7 +18,7 @@ router.get('/', (_req: Request, res: Response) => {
 
 router.get('/:workflowId', (req: Request<{ workflowId: string }>, res: Response) => {
   try {
-    const workflow = workflowService.getWorkflow(req.params.workflowId);
+    const workflow = ws.getWorkflow(req.params.workflowId);
     if (!workflow) {
       res.status(404).json({ error: 'Workflow not found' });
       return;
@@ -28,7 +31,7 @@ router.get('/:workflowId', (req: Request<{ workflowId: string }>, res: Response)
 
 router.post('/', (req: Request, res: Response) => {
   try {
-    const workflow = workflowService.createWorkflow(req.body);
+    const workflow = ws.createWorkflow(req.body);
     res.status(201).json(workflow);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -37,7 +40,7 @@ router.post('/', (req: Request, res: Response) => {
 
 router.put('/:workflowId', (req: Request<{ workflowId: string }>, res: Response) => {
   try {
-    const workflow = workflowService.updateWorkflow(req.params.workflowId, req.body);
+    const workflow = ws.updateWorkflow(req.params.workflowId, req.body);
     res.json(workflow);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -46,7 +49,7 @@ router.put('/:workflowId', (req: Request<{ workflowId: string }>, res: Response)
 
 router.delete('/:workflowId', (req: Request<{ workflowId: string }>, res: Response) => {
   try {
-    workflowService.deleteWorkflow(req.params.workflowId);
+    ws.deleteWorkflow(req.params.workflowId);
     res.status(204).send();
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -55,8 +58,193 @@ router.delete('/:workflowId', (req: Request<{ workflowId: string }>, res: Respon
 
 router.post('/:workflowId/duplicate', (req: Request<{ workflowId: string }>, res: Response) => {
   try {
-    const workflow = workflowService.duplicateWorkflow(req.params.workflowId);
+    const workflow = ws.duplicateWorkflow(req.params.workflowId);
     res.status(201).json(workflow);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// ---- Folders ----
+
+router.get('/folders', (_req: Request, res: Response) => {
+  try {
+    res.json(ws.listFolders());
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/folders', (req: Request, res: Response) => {
+  try {
+    const folder = ws.createFolder(req.body);
+    res.status(201).json(folder);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+router.put('/folders/:folderId', (req: Request<{ folderId: string }>, res: Response) => {
+  try {
+    ws.updateFolder(req.params.folderId, req.body);
+    const folders = ws.listFolders();
+    res.json(folders.find(f => f.id === req.params.folderId));
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+router.delete('/folders/:folderId', (req: Request<{ folderId: string }>, res: Response) => {
+  try {
+    ws.deleteFolder(req.params.folderId);
+    res.status(204).send();
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// ---- Versions ----
+
+router.get('/:workflowId/versions', (req: Request<{ workflowId: string }>, res: Response) => {
+  try {
+    res.json(ws.listVersions(req.params.workflowId));
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/:workflowId/versions', (req: Request<{ workflowId: string }>, res: Response) => {
+  try {
+    const version = ws.createVersion(req.params.workflowId, req.body?.name);
+    res.status(201).json(version);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+router.get('/:workflowId/versions/:versionId', (req: Request<{ workflowId: string; versionId: string }>, res: Response) => {
+  try {
+    const version = ws.getVersion(req.params.workflowId, req.params.versionId);
+    if (!version) { res.status(404).json({ error: 'Version not found' }); return; }
+    res.json(version);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete('/:workflowId/versions/:versionId', (req: Request<{ workflowId: string; versionId: string }>, res: Response) => {
+  try {
+    ws.deleteVersion(req.params.workflowId, req.params.versionId);
+    res.status(204).send();
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+router.delete('/:workflowId/versions', (req: Request<{ workflowId: string }>, res: Response) => {
+  try {
+    ws.clearVersions(req.params.workflowId);
+    res.status(204).send();
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// ---- Execution Logs ----
+
+router.get('/:workflowId/execution-logs', (req: Request<{ workflowId: string }>, res: Response) => {
+  try {
+    res.json(ws.listExecutionLogs(req.params.workflowId));
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/:workflowId/execution-logs/:logId', (req: Request<{ workflowId: string; logId: string }>, res: Response) => {
+  try {
+    const log = ws.getExecutionLog(req.params.workflowId, req.params.logId);
+    if (!log) { res.status(404).json({ error: 'Execution log not found' }); return; }
+    res.json(log);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete('/:workflowId/execution-logs/:logId', (req: Request<{ workflowId: string; logId: string }>, res: Response) => {
+  try {
+    ws.deleteExecutionLog(req.params.workflowId, req.params.logId);
+    res.status(204).send();
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+router.delete('/:workflowId/execution-logs', (req: Request<{ workflowId: string }>, res: Response) => {
+  try {
+    ws.clearExecutionLogs(req.params.workflowId);
+    res.status(204).send();
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// ---- Staging ----
+
+router.get('/:workflowId/staging', (req: Request<{ workflowId: string }>, res: Response) => {
+  try {
+    res.json(ws.loadStaging(req.params.workflowId));
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.put('/:workflowId/staging', (req: Request<{ workflowId: string }>, res: Response) => {
+  try {
+    ws.saveStaging(req.params.workflowId, req.body);
+    res.json({ ok: true });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+router.delete('/:workflowId/staging', (req: Request<{ workflowId: string }>, res: Response) => {
+  try {
+    ws.clearStaging(req.params.workflowId);
+    res.status(204).send();
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// ---- Operation History ----
+
+router.get('/:workflowId/operation-history', (req: Request<{ workflowId: string }>, res: Response) => {
+  try {
+    res.json(ws.loadOperationHistory(req.params.workflowId));
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.put('/:workflowId/operation-history', (req: Request<{ workflowId: string }>, res: Response) => {
+  try {
+    ws.saveOperationHistory(req.params.workflowId, req.body);
+    res.json({ ok: true });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// ---- Trigger Validation ----
+
+router.post('/validate-cron', (req: Request, res: Response) => {
+  try {
+    const { cron } = req.body;
+    if (typeof cron !== 'string') {
+      res.status(400).json({ error: 'cron field is required' });
+      return;
+    }
+    res.json(ws.validateCron(cron));
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }

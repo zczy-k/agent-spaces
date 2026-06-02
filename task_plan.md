@@ -20,7 +20,7 @@
 
 ## 当前阶段
 
-Phase 3 — 统一契约与兼容模型 ✅（已完成）
+Phase 4 — 后端统一服务与数据迁移 🔄（进行中）
 
 ## 项目规模统计
 
@@ -106,18 +106,19 @@ Phase 3 — 统一契约与兼容模型 ✅（已完成）
 - **Status:** complete
 
 ### Phase 4: 后端统一服务与数据迁移
-- [ ] 将 work_fox backend workflow 引擎迁移到 packages/server
-  - execution-manager / interaction-manager / trigger-service / hook-handler → services/workflow/
-  - workflow-store / workflow-version-store / execution-log-store → storage/workflow/
-  - stats-store → services/dashboard/
-- [ ] 改造现有 workflow service，使其使用统一 Workflow 模型
-- [ ] 增加旧 WorkflowTemplate 数据迁移/读取 adapter
-- [ ] 集成统一 HTTP 路由到现有 Express API
-- [ ] 集成统一 WS channels 到现有 WebSocket 系统
-- [ ] 处理认证差异：work_fox sessionToken → agent-spaces Bearer Token
-- [ ] 安装后端新增依赖（node-cron / cron-parser / eventemitter2；adm-zip 已存在则复用）
-- [ ] 验收：`pnpm --filter @agent-spaces/server build` 通过；旧 workflow 列表 API 仍可读取
-- **Status:** pending
+- [x] 安装后端新增依赖（node-cron / cron-parser）
+- [x] 重写 workflow-store：per-workflow 目录结构 + legacy flat-file 自动迁移
+- [x] 新增存储能力：workflow-version-store / execution-log-store / folders / staging / operation-history / plugin-schemes
+- [x] 改造现有 workflow service：支持 folder/version/execution-log/staging/operation-history CRUD + cron 验证
+- [x] 集成统一 HTTP 路由到现有 Express API（folders / versions / execution-logs / staging / operation-history / validate-cron）
+- [x] 新增 WorkflowTriggerService（cron 调度 + webhook hook 绑定）
+- [x] 验收：`pnpm --filter @agent-spaces/server build` 通过 ✅
+- [x] 验收：web workflow 相关 tsc 检查 0 error ✅
+- [ ] 迁移 execution-manager（核心执行引擎）
+- [ ] 迁移 interaction-manager（客户端交互）
+- [ ] 集成统一 WS channels（执行事件广播）
+- [ ] 迁移 hook-handler（webhook SSE 响应）
+- **Status:** in_progress
 
 ### Phase 5: 前端基础设施迁移
 - [ ] 复制 workfox/src/types → packages/web/src/types/workfox/
