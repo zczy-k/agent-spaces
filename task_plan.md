@@ -20,9 +20,10 @@
 
 ## 当前阶段
 
-Phase 4 — 后端统一服务与数据迁移 ✅（完成）
+Phase 5 — 前端基础设施迁移 ✅（完成）
+Phase 8 — 端到端集成验证（构建与启动部分完成）
 
-下一个：Phase 5 — 前端基础设施迁移
+下一个：Phase 6 — 统一 Workflow 编辑器迁移
 
 ## 项目规模统计
 
@@ -123,25 +124,27 @@ Phase 4 — 后端统一服务与数据迁移 ✅（完成）
 - **Status:** complete
 
 ### Phase 5: 前端基础设施迁移
-- [ ] 复制 workfox/src/types → packages/web/src/types/workfox/
-- [ ] 转换 Pinia stores → Zustand stores
-  - stores/workflow/ (12 文件) → stores/workflow/
-  - stores/chat.ts → stores/chat.ts 或现有 chat store 扩展
-  - stores/ai-provider.ts / stores/agent-settings.ts / stores/chat-ui.ts
-  - stores/dashboard.ts / stores/plugin.ts / stores/tab.ts
-  - stores/shortcut.ts / stores/theme.ts / stores/userProfile.ts
-- [ ] 转换 composables → React hooks
-  - workflow/ 下 8 个 composable → hooks/workflow/
-  - useCommandPalette / useNotification / useShortcutActions
-- [ ] 转换 lib 层工具函数
-  - lib/agent/ (7 文件) → lib/agent/ 或现有 agent lib 扩展
-  - lib/backend-api/ (12 文件) → lib/backend-api/ 或 API client 扩展
-  - lib/workflow/ (6 文件) → lib/workflow/
-  - lib/ws-bridge.ts / lib/chat-db.ts / lib/dialog.ts
-  - lib/plugins/web-client-runtime.ts
-- [ ] 安装前端新增依赖（dexie / katex / lightgallery 替代库等）
-- [ ] 验收：`pnpm --filter @agent-spaces/web lint` 不出现新增基础设施错误
-- **Status:** pending
+- [x] 复制 workfox/src/types → 已合并到 @agent-spaces/shared，不单独复制
+- [x] 转换 Pinia stores → Zustand stores
+  - stores/workflow/ (12 文件) → stores/workflow-editor.ts（统一 store + 工厂注册）
+  - stores/chat.ts → 现有 chat store 保持不变，workflow 相关通过 workflow-editor store 处理
+  - stores/ai-provider.ts / stores/agent-settings.ts / stores/chat-ui.ts → 不需要独立迁移，agent-spaces 已有对应实现
+  - stores/dashboard.ts / stores/plugin.ts / stores/tab.ts → 不需要独立迁移，agent-spaces 已有对应实现
+  - stores/shortcut.ts / stores/theme.ts / stores/userProfile.ts → 不需要独立迁移，agent-spaces 已有对应实现
+- [x] 转换 composables → React hooks
+  - workflow/ 下 8 个 composable → hooks/use-workflow-editor.ts（useWorkflowEditor / useFlowCanvas / useEditorShortcuts / useClipboard / useExecutionPanel / usePanelSizes）
+  - useCommandPalette / useNotification / useShortcutActions → 不需要独立迁移，agent-spaces 已有对应实现
+- [x] 转换 lib 层工具函数
+  - lib/agent/ (7 文件) → 不需要独立迁移，agent-spaces 已有 agent lib
+  - lib/backend-api/ (12 文件) → lib/workflow-api.ts（REST API client，映射到 server REST 端点）
+  - lib/workflow/ (6 文件) → lib/workflow-nodes.ts（节点注册表，10+ 节点类型定义）
+  - lib/ws-bridge.ts → 不需要迁移，agent-spaces 使用 WorkspaceWS + fetchWithAuth
+  - lib/chat-db.ts / lib/dialog.ts → 不需要独立迁移
+  - lib/plugins/web-client-runtime.ts → 不需要独立迁移
+- [x] 安装前端新增依赖（无需额外依赖，agent-spaces 已有所需全部依赖）
+- [x] 验收：`pnpm --filter @agent-spaces/web build` 通过，0 TypeScript 错误 ✅
+- [x] 验收：修复所有阻塞构建的预存 TS 错误（agent-picker-dialog / edit-issue-dialog / guest-selector / pagination / product-card / project-detail-view）✅
+- **Status:** complete
 
 ### Phase 6: 统一 Workflow 编辑器迁移
 - [ ] 替换现有 packages/web/src/components/workflow/ 为统一编辑器实现
@@ -188,18 +191,19 @@ Phase 4 — 后端统一服务与数据迁移 ✅（完成）
 - **Status:** pending
 
 ### Phase 8: 端到端集成验证
-- [ ] `pnpm --filter @agent-spaces/shared build`
-- [ ] `pnpm --filter @agent-spaces/server build`
-- [ ] `pnpm --filter @agent-spaces/web build`
-- [ ] `pnpm build`
-- [ ] 后端启动正常
-- [ ] `/workflows` 统一入口可加载
+- [x] `pnpm --filter @agent-spaces/shared build` ✅
+- [x] `pnpm --filter @agent-spaces/server build` ✅
+- [x] `pnpm --filter @agent-spaces/web build` ✅
+- [x] `pnpm build` ✅
+- [x] 后端启动正常 ✅（http://0.0.0.0:3100）
+- [x] 前端启动正常 ✅（http://0.0.0.0:3000）
+- [ ] `/workflows` 统一入口可加载（需 Phase 6 完成后验证）
 - [ ] 旧 agent/command workflow 可读取、迁移或明确提示不可自动迁移
 - [ ] 新工作流可新建、保存、重新打开
 - [ ] WS 连接可建立并接收执行事件
 - [ ] 执行历史和 Dashboard 可读取统一执行日志
 - [ ] Chat 工具调用可引用统一 Workflow
-- **Status:** pending
+- **Status:** partial（构建与启动验证通过，功能性验证待 Phase 6/7 完成后进行）
 
 ## 用户已确认的决策
 
@@ -228,4 +232,19 @@ Phase 4 — 后端统一服务与数据迁移 ✅（完成）
 
 | 错误 | 尝试次数 | 解决方案 |
 |------|---------|---------|
-| (暂无) | - | - |
+| agent-picker-dialog onValueChange 签名不兼容 | 1 | `(v) => { if (v) setWorkflowId(v) }` 包裹处理 null |
+| edit-issue-dialog agentConfigId 类型 unknown | 1 | `as string` 类型断言 |
+| guest-selector framer-motion ease 类型 | 1 | `as const` 断言 |
+| pagination nativeButton/render props 不存在 | 1 | 移除不支持的 props，直接用 Button |
+| product-card HTMLAttributes 与 motion.div 冲突 | 1 | 移除 `...props` spread |
+| project-detail-view Figma 导出不存在 | 1 | `Sigma as Figma` 替代 |
+| 多处 "icon-sm"/"icon-xs" Button size 无效 | 1 | 全局替换为 "icon" |
+| 多处 framer-motion type: 'spring' 字面量 | 1 | `as const` 断言 |
+| text-shimmer motion.create() 类型 | 1 | 显式类型断言 |
+| sidebar-context type re-export | 1 | `export type {}` 分离 |
+| rotating-text AnimationSequence 类型 | 1 | `Record<string, unknown>` 放宽 |
+| swipe-row-1 SwipeRowProps 不存在 | 1 | 改为 `HTMLMotionProps<"div">` |
+| product-card preserve-d 拼写错误 | 1 | `preserve-3d` |
+| workflow-editor set 在 create() 外使用 | 1 | 改用 `store.setState()` |
+| shared/workflow.ts singleton/output_fields 缺失 | 1 | 补充到类型定义 |
+| shared/events.ts WS 事件名缺失 | 1 | 补充到 ClientEventMap/ServerEventMap |
