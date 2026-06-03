@@ -27,6 +27,21 @@
 - WorkFox `ExecutionBar.vue` 点击执行会调用 `store.startExecution(...)`；迁移到 React 后需要把这个路径接到现有 `workflow:execute` WS channel。
 - 后端 `registerExecutionChannels()` 已注册 `workflow:execute`，但当前未给 `executionManager.execute()` 传 `eventSink`，执行过程事件会走全局 emit；从发起连接直接回传更可靠。
 
+## 2026-06-04 补充发现：ExecutionBar 复刻范围
+
+- React 版 `workflow-execution-bar.tsx` 已从简化单行列表改为 WorkFox 风格：控制栏 + 展开后左右分栏。
+- 已复刻控制区：开始节点下拉、开始输入弹层、暂停/继续/停止、验证错误、进度、耗时、状态 badge。
+- 已复刻历史区：执行历史列表、状态图标、选择日志、删除单条日志、清空历史。
+- 已复刻详情区：横向步骤卡片、步骤状态、节点类型、耗时、错误复制、节点信息复制、输入/输出/日志 tabs。
+- 等价替代：WorkFox 使用 `Sheet` + preset API + `JsonEditor` + virtual scroller；agent-spaces 当前没有这些对应依赖/组件，本次用 `Dialog`、格式化 JSON 文本和普通横向滚动替代，不新增依赖。
+
+## 2026-06-04 补充发现：ExecutionBar ResizablePanel 尺寸单位
+
+- `docs/ui/react-resizable-panels-size-units.md` 说明：`ResizablePanel` 的数字 `defaultSize/minSize/maxSize` 在当前版本表示 px，不是百分比。
+- `workflow-execution-bar.tsx` 之前使用 `defaultSize={25}` / `minSize={15}` / `maxSize={40}`，会导致内部分栏尺寸异常。
+- 执行栏根节点使用 `h-full`，放在 workflow canvas 的 `flex-col` 下方时会占满整个可用高度，挤压画布。
+- 修复：内部 panel 改为 `"25%"` / `"15%"` / `"40%"` / `"75%"` / `"40%"` 字符串，并添加稳定 id；执行栏根节点改为展开时 `h-[320px] max-h-[45vh]`，折叠时 `h-auto`。
+
 ## 研究发现
 
 ### work_fox 项目架构

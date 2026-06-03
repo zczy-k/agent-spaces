@@ -5,7 +5,7 @@ import { ReactFlowProvider, applyNodeChanges, applyEdgeChanges, addEdge } from '
 import type { NodeChange, EdgeChange, Connection } from '@xyflow/react';
 import type { ExecutionLog, InteractionRequest, Workflow, WorkflowTemplate } from '@agent-spaces/shared';
 import { useWorkflowStore } from '@/stores/workflow';
-import { workflowApi } from '@/lib/workflow-api';
+import { executionLogApi, workflowApi } from '@/lib/workflow-api';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { authHeaders } from '@/lib/auth';
 import { getWS } from '@/lib/ws';
@@ -68,6 +68,8 @@ function WorkflowEditorInner({
   const [rightTab, setRightTab] = useState('properties');
   const [execStatus, setExecStatus] = useState('idle');
   const [executionLog, setExecutionLog] = useState<ExecutionLog | null>(null);
+  const [executionLogs, setExecutionLogs] = useState<ExecutionLog[]>([]);
+  const [selectedExecutionLogId, setSelectedExecutionLogId] = useState<string | null>(null);
   const [currentExecutionId, setCurrentExecutionId] = useState<string | null>(null);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editingName, setEditingName] = useState('');
@@ -96,6 +98,7 @@ function WorkflowEditorInner({
   const autoSaveTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const debugCleanupRef = useRef<(() => void)[]>([]);
   const executionCleanupRef = useRef<(() => void)[]>([]);
+  const workflowId = workflow?.id ?? null;
 
   // ---- Load workflow ----
   useEffect(() => {
@@ -182,6 +185,26 @@ function WorkflowEditorInner({
       setIsSaving(false);
     }
   }, [workflow, store]);
+
+  const loadExecutionLogs = useCallback(async () => {
+    if (!workflowId) return;
+    try {
+      const logs = await executionLogApi.list(workflowId);
+      setExecutionLogs(logs);
+      setExecutionLog(current => current ?? logs[0] ?? null);
+      setSelectedExecutionLogId(current => current ?? logs[0]?.id ?? null);
+    } catch {
+      setExecutionLogs([]);
+    }
+  }, [workflowId]);
+
+  useEffect(() => {
+    setExecutionLog(null);
+    setExecutionLogs([]);
+    setSelectedExecutionLogId(null);
+    setCurrentExecutionId(null);
+    void loadExecutionLogs();
+  }, [workflowId, loadExecutionLogs]);
 
   // ---- Node operations ----
   const handleNodeAdd = useCallback((type: string, position: { x: number; y: number }) => {
@@ -433,6 +456,17 @@ function WorkflowEditorInner({
     [workflow, selectedNodeId],
   );
 
+  const startNodes = useMemo(
+    () => (workflow?.nodes || []).filter(node => node.type === 'start'),
+    [workflow],
+  );
+
+  const executionValidationError = useMemo(() => {
+    if (!workflow) return '未加载工作流';
+    if (startNodes.length === 0) return '缺少开始节点';
+    return null;
+  }, [workflow, startNodes]);
+
   // ---- Export / Import ----
   const handleExport = useCallback(() => {
     if (!workflow) return;
@@ -465,17 +499,20 @@ function WorkflowEditorInner({
   }, []);
 
   // ---- Execution ----
-  const handleExecute = useCallback(() => {
+  const handleExecute = useCallback((input?: Record<string, unknown>, startNodeId?: string) => {
     if (!workflow) return;
     cleanupExecutionListeners();
     setExecStatus('running');
     setExecutionLog(null);
+    setSelectedExecutionLogId(null);
     setCurrentExecutionId(null);
 
     const ws = getWS('workflows');
     const sendExecuteRequest = () => {
       ws.send('workflow:execute', {
         workflowId: workflow.id,
+        input,
+        startNodeId,
         snapshot: {
           nodes: workflow.nodes,
           edges: workflow.edges,
@@ -486,7 +523,10 @@ function WorkflowEditorInner({
 
     const offResult = ws.on('workflow:execute:result', (data) => {
       const result = data as { executionId?: string; status?: string };
-      if (result.executionId) setCurrentExecutionId(result.executionId);
+      if (result.executionId) {
+        setCurrentExecutionId(result.executionId);
+        setSelectedExecutionLogId(result.executionId);
+      }
       if (result.status) setExecStatus(result.status);
     });
     const offError = ws.on('workflow:execute:error', () => {
@@ -497,6 +537,8 @@ function WorkflowEditorInner({
       if (event.workflowId !== workflow.id || !event.log) return;
       setCurrentExecutionId(event.executionId || event.log.id);
       setExecutionLog(event.log);
+      setSelectedExecutionLogId(event.log.id);
+      setExecutionLogs(prev => [event.log!, ...prev.filter(item => item.id !== event.log!.id)]);
       setExecStatus(event.log.status);
     });
     const offCompleted = ws.on('workflow:completed', (data) => {
@@ -504,14 +546,24 @@ function WorkflowEditorInner({
       if (event.workflowId !== workflow.id) return;
       if (event.executionId) setCurrentExecutionId(event.executionId);
       if (event.log) setExecutionLog(event.log);
+      if (event.log) {
+        setSelectedExecutionLogId(event.log.id);
+        setExecutionLogs(prev => [event.log!, ...prev.filter(item => item.id !== event.log!.id)]);
+      }
       setExecStatus('completed');
+      void loadExecutionLogs();
     });
     const offFailed = ws.on('workflow:error', (data) => {
       const event = data as { workflowId?: string; executionId?: string; log?: ExecutionLog };
       if (event.workflowId !== workflow.id) return;
       if (event.executionId) setCurrentExecutionId(event.executionId);
       if (event.log) setExecutionLog(event.log);
+      if (event.log) {
+        setSelectedExecutionLogId(event.log.id);
+        setExecutionLogs(prev => [event.log!, ...prev.filter(item => item.id !== event.log!.id)]);
+      }
       setExecStatus('error');
+      void loadExecutionLogs();
     });
     executionCleanupRef.current = [offResult, offError, offLog, offCompleted, offFailed];
 
@@ -527,7 +579,7 @@ function WorkflowEditorInner({
     }
 
     if (!execExpanded) toggleExec();
-  }, [workflow, cleanupExecutionListeners, execExpanded, toggleExec]);
+  }, [workflow, cleanupExecutionListeners, execExpanded, toggleExec, loadExecutionLogs]);
 
   const handlePauseExecution = useCallback(() => {
     if (!currentExecutionId) return;
@@ -546,6 +598,31 @@ function WorkflowEditorInner({
     getWS('workflows').send('workflow:stop', { executionId: currentExecutionId });
     setExecStatus('stopped');
   }, [currentExecutionId]);
+
+  const handleSelectExecutionLog = useCallback((selectedLog: ExecutionLog) => {
+    setExecutionLog(selectedLog);
+    setSelectedExecutionLogId(selectedLog.id);
+    setExecStatus(selectedLog.status);
+  }, []);
+
+  const handleDeleteExecutionLog = useCallback(async (logId: string) => {
+    if (!workflow) return;
+    await executionLogApi.delete(workflow.id, logId);
+    setExecutionLogs(prev => prev.filter(item => item.id !== logId));
+    if (selectedExecutionLogId === logId) {
+      const nextLog = executionLogs.find(item => item.id !== logId) ?? null;
+      setExecutionLog(nextLog);
+      setSelectedExecutionLogId(nextLog?.id ?? null);
+    }
+  }, [workflow, selectedExecutionLogId, executionLogs]);
+
+  const handleClearExecutionLogs = useCallback(async () => {
+    if (!workflow) return;
+    await executionLogApi.clear(workflow.id);
+    setExecutionLogs([]);
+    setExecutionLog(null);
+    setSelectedExecutionLogId(null);
+  }, [workflow]);
 
   // ---- Shortcuts ----
   useEditorShortcuts({
@@ -718,12 +795,19 @@ function WorkflowEditorInner({
             <WorkflowExecutionBar
               status={execStatus}
               log={executionLog}
+              logs={executionLogs}
+              selectedLogId={selectedExecutionLogId}
+              startNodes={startNodes}
+              validationError={executionValidationError}
               isExpanded={execExpanded}
               onToggle={toggleExec}
               onExecute={handleExecute}
               onPause={handlePauseExecution}
               onResume={handleResumeExecution}
               onStop={handleStopExecution}
+              onSelectLog={handleSelectExecutionLog}
+              onDeleteLog={handleDeleteExecutionLog}
+              onClearLogs={handleClearExecutionLogs}
               onExitPreview={() => setIsPreview(false)}
             />
           </div>

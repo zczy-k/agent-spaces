@@ -231,6 +231,22 @@ Phase 6 补充 — NodeProperties 功能补齐 ✅（完成，2026-06-03）
 - [x] 验证：`pnpm --filter @agent-spaces/server build` 通过
 - **Status:** complete
 
+### Phase 10: ExecutionBar WorkFox 行为复刻（2026-06-04）
+- [x] 补齐执行栏控制区：执行/开始节点选择/暂停/停止/继续/验证错误/进度/耗时
+- [x] 补齐执行历史列表和当前日志详情面板
+- [x] 补齐步骤状态、输入/输出/日志/错误展示
+- [x] 接入执行历史数据和选中历史预览
+- [x] 补齐开始节点输入 Dialog（等价替代 WorkFox Sheet）
+- [x] 验证：`pnpm --filter @agent-spaces/web build` 通过
+- **Status:** complete
+
+### Phase 11: ExecutionBar 高度与 ResizablePanel 尺寸修正（2026-06-04）
+- [x] 参考 `docs/ui/react-resizable-panels-size-units.md` 修正百分比尺寸写法
+- [x] 修正执行日志面板占满整个画布高度的问题：执行栏根节点从 `h-full` 改为展开时固定高度
+- [x] 为执行栏内部 ResizablePanel 添加稳定 id
+- [x] 验证：`pnpm --filter @agent-spaces/web build` 通过
+- **Status:** complete
+
 ## 用户已确认的决策
 
 1. **golden-layout** → 用 FlexLayout 替代 ✅

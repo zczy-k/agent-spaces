@@ -316,6 +316,31 @@
   - `pnpm --filter @agent-spaces/web build` ✅
   - `pnpm --filter @agent-spaces/server build` ✅
 
+## 2026-06-04 00:31 CST — Phase 10 ExecutionBar WorkFox 行为复刻完成
+
+- 用户指出：`workflow-execution-bar.tsx` 没有复刻 WorkFox `ExecutionBar.vue`，之前只补了请求链路。
+- Rework:
+  - 重写 `packages/web/src/components/workflow/workflow-execution-bar.tsx` 为 WorkFox 风格控制栏 + 展开分栏。
+  - `workflow-editor.tsx` 接入执行历史列表、当前选中日志、开始节点、验证错误、删除/清空历史。
+  - 执行按钮支持多个 start 节点下拉；start 节点存在 `data.inputFields` 时弹出输入 Dialog 后再执行。
+  - 详情区支持横向步骤卡片、输入/输出/日志 tabs、错误和节点信息复制。
+- Equivalent substitutions:
+  - WorkFox `Sheet` → React `Dialog`
+  - WorkFox `JsonEditor` → formatted JSON `<pre>`
+  - WorkFox virtual scroller → regular scroll containers
+- Verification:
+  - `pnpm --filter @agent-spaces/web build` ✅
+
+## 2026-06-04 00:31 CST — Phase 11 ExecutionBar 高度与 ResizablePanel 修正完成
+
+- 用户反馈：日志面板高度占满整个高度，且 `ResizablePanel` 用法错误；参考 `docs/ui/react-resizable-panels-size-units.md`。
+- Fix:
+  - `workflow-execution-bar.tsx` 根节点移除 `h-full`，展开时限制为 `h-[320px] max-h-[45vh]`，折叠时 `h-auto`。
+  - 内部 `ResizablePanel` 尺寸从数字改为百分比字符串：`"25%"`, `"15%"`, `"40%"`, `"75%"`。
+  - 为内部历史/详情 panel 添加稳定 id：`workflow-execution-history`, `workflow-execution-details`。
+- Verification:
+  - `pnpm --filter @agent-spaces/web build` ✅
+
 ## Test Results
 
 | Test | Input | Expected | Actual | Status |
