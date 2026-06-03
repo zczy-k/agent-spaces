@@ -29,6 +29,8 @@ Phase 8 — 端到端集成验证 ✅（完成）
 
 Phase 6 补充 — NodeProperties 功能补齐 ✅（完成，2026-06-03）
 
+Phase 6 补充 — 插件对话框与添加插件到 Workflow ✅（完成，2026-06-04）
+
 ## 项目规模统计
 
 ### work_fox 源文件统计
@@ -218,6 +220,15 @@ Phase 6 补充 — NodeProperties 功能补齐 ✅（完成，2026-06-03）
 - [x] 支持 `visibleWhen`、`default`、`readonly` 等节点属性定义行为
 - [x] 补齐节点输入字段、输出字段、JSON 预设、输出 JSON 导入、节点延迟 `_delay`
 - [x] 补齐测试脚本/局部测试按钮：调用 `workflow:debug-node` 并展示结果
+
+### Phase 6 补充：插件对话框与添加插件到 Workflow（2026-06-04）
+- [x] 对比 WorkFox `PluginsDialog.vue` 与 `NodeSidebar.vue` 插件添加流程
+- [x] 调研 agent-spaces 现有插件 API/store/类型能力
+- [x] 实现 React 插件对话框
+- [x] 在 Workflow 节点侧栏接入插件浏览与添加
+- [x] 验收：`pnpm --filter @agent-spaces/server build`
+- [x] 验收：`pnpm --filter @agent-spaces/web build`
+- **Status:** complete
 - [x] 修正标签编辑显示值与写入值不一致问题（统一使用 `data.label`）
 - [x] 验收：`pnpm --filter @agent-spaces/web build` 通过 ✅
 - **Status:** complete

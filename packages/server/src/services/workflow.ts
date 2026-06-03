@@ -341,6 +341,28 @@ export function saveOperationHistory(workflowId: string, entries: OperationEntry
   store.saveOperationHistory(workflowId, entries);
 }
 
+// ---- Plugin Config Schemes ----
+
+export function listPluginSchemes(workflowId: string, pluginId: string): string[] {
+  return store.listPluginSchemes(workflowId, pluginId);
+}
+
+export function readPluginScheme(workflowId: string, pluginId: string, schemeName: string): Record<string, string> {
+  return store.readPluginScheme(workflowId, pluginId, schemeName);
+}
+
+export function createPluginScheme(workflowId: string, pluginId: string, schemeName: string): void {
+  store.savePluginScheme(workflowId, pluginId, schemeName, {});
+}
+
+export function savePluginScheme(workflowId: string, pluginId: string, schemeName: string, data: Record<string, string>): void {
+  store.savePluginScheme(workflowId, pluginId, schemeName, data);
+}
+
+export function deletePluginScheme(workflowId: string, pluginId: string, schemeName: string): void {
+  store.deletePluginScheme(workflowId, pluginId, schemeName);
+}
+
 // ---- Task Mapping (legacy Issue automation) ----
 
 export interface TaskDraftForWorkflow {

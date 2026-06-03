@@ -15,6 +15,7 @@ import fileRouter from './routes/file.js';
 import channelRouter from './routes/channel.js';
 import issueRouter from './routes/issue.js';
 import workflowRouter from './routes/workflow.js';
+import pluginRouter from './routes/plugin.js';
 import agentRouter from './routes/agent.js';
 import taskRouter from './routes/task.js';
 import gitRouter from './routes/git.js';
@@ -176,6 +177,7 @@ app.use('/api/workspaces/:id/files', fileRouter);
 app.use('/api/workspaces/:id/channels', channelRouter);
 app.use('/api/workspaces/:id/issues', issueRouter);
 app.use('/api/workflows', workflowRouter);
+app.use('/api/plugins', pluginRouter);
 
 // Initialize workflow execution infrastructure
 const interactionManager = new InteractionManager();

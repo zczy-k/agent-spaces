@@ -36,6 +36,39 @@
 - Notes:
   - 构建期间仍打印已有 `ENVIRONMENT_FALLBACK` 和 `--localstorage-file` 警告，但命令退出码为 0。
 
+### Phase 6 补充：插件对话框与添加插件到 Workflow（2026-06-04）
+- **Status:** complete
+- Actions taken:
+  - 对比 WorkFox `PluginsDialog.vue` / `NodeSidebar.vue`，确认缺失路径：插件管理弹窗、workflow.enabledPlugins 更新、插件节点注册、插件配置方案选择
+  - 新增 server 插件服务与 `/api/plugins` 路由，读取 app data 目录下本地插件 manifest，并暴露 enable/disable/config/workflow-nodes API
+  - 新增 workflow plugin scheme REST endpoints，复用既有 workflow-store plugin_configs 存储
+  - 修复 workflow static route 顺序，避免 `/folders`、`/execution-logs/all`、`/validate-cron` 被 `/:workflowId` 误匹配
+  - 新增 `workflow-plugin-api.ts`、`WorkflowPluginsDialog`、`WorkflowPluginConfigDialog`
+  - 改造 `WorkflowNodeSidebar`：加插件入口按钮，按当前 workflow.enabledPlugins 加载/注册插件节点，支持插件分类配置方案选择/新增/删除/设置
+  - 改造 `WorkflowEditor`：接入插件管理弹窗，workflow plugin metadata 变更进入 dirty/save 流程
+  - `pnpm --filter @agent-spaces/server build` ✅
+  - `pnpm --filter @agent-spaces/web build` ✅
+  - HTTP smoke check: `curl -I http://localhost:3000/workflows` returns 200 ✅
+  - HTTP smoke check: `curl http://localhost:3100/api/health` returns ok ✅
+- Files created/modified:
+  - packages/server/src/services/plugin.ts
+  - packages/server/src/routes/plugin.ts
+  - packages/server/src/app.ts
+  - packages/server/src/services/workflow.ts
+  - packages/server/src/routes/workflow.ts
+  - packages/web/src/lib/workflow-plugin-api.ts
+  - packages/web/src/components/workflow/workflow-plugins-dialog.tsx
+  - packages/web/src/components/workflow/workflow-plugin-config-dialog.tsx
+  - packages/web/src/components/workflow/workflow-node-sidebar.tsx
+  - packages/web/src/components/workflow/workflow-editor.tsx
+  - task_plan.md
+  - findings.md
+  - progress.md
+- Notes:
+  - Web build still prints the existing `ENVIRONMENT_FALLBACK` and `--localstorage-file` warnings during static generation, but exits successfully.
+  - Plugin import/install/store mode from WorkFox was not migrated because it depends on Electron/Web CDN runtime infrastructure not present in agent-spaces.
+  - Browser plugin smoke test could not run because `agent.browsers.list()` returned no available browser backends in this session.
+
 ### Phase 1: 需求发现与研究
 - **Status:** complete
 - **Started:** 2026-06-02

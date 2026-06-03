@@ -24,6 +24,7 @@ import { WorkflowGroupOverlay, useGroupManagement } from './workflow-group-node'
 import { WorkflowLoopBodyOverlay, useLoopBodyBounds } from './workflow-loop-body-container';
 import { WorkflowEmbeddedEditor } from './workflow-embedded-editor';
 import { WorkflowInteractionDialog } from './workflow-interaction-dialog';
+import { WorkflowPluginsDialog } from './workflow-plugins-dialog';
 import { ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { ResizablePanelGroup } from '@/components/ui/resizable';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -79,6 +80,7 @@ function WorkflowEditorInner({
   const [listDialogOpen, setListDialogOpen] = useState(false);
   const [listDialogCreate, setListDialogCreate] = useState(false);
   const [triggerDialogOpen, setTriggerDialogOpen] = useState(false);
+  const [pluginsDialogOpen, setPluginsDialogOpen] = useState(false);
   const [embeddedEditorOpen, setEmbeddedEditorOpen] = useState(false);
   const [embeddedSubWorkflowId, setEmbeddedSubWorkflowId] = useState<string | null>(null);
   const [canvasContextMenuPos, setCanvasContextMenuPos] = useState<{ x: number; y: number } | null>(null);
@@ -253,6 +255,11 @@ function WorkflowEditorInner({
         nodes: w.nodes.map(n => n.id === nodeId ? { ...n, data: { ...n.data, ...data } } : n),
       };
     });
+    markDirty();
+  }, [markDirty]);
+
+  const handleWorkflowMetaChange = useCallback((nextWorkflow: Workflow) => {
+    setWorkflow(nextWorkflow);
     markDirty();
   }, [markDirty]);
 
@@ -771,7 +778,11 @@ function WorkflowEditorInner({
       <ResizablePanelGroup orientation="horizontal" className="flex-1 min-h-0">
         {/* Node sidebar */}
         <ResizablePanel id="workflow-node-sidebar" defaultSize="18%" minSize="12%" maxSize="30%">
-          <WorkflowNodeSidebar />
+          <WorkflowNodeSidebar
+            workflow={workflow}
+            onWorkflowChange={handleWorkflowMetaChange}
+            onOpenPluginPicker={() => setPluginsDialogOpen(true)}
+          />
         </ResizablePanel>
 
         <ResizableHandle withHandle />
@@ -923,6 +934,13 @@ function WorkflowEditorInner({
         request={pendingInteraction}
         onResolve={handleResolveInteraction}
         onCancel={handleCancelInteraction}
+      />
+
+      <WorkflowPluginsDialog
+        open={pluginsDialogOpen}
+        onOpenChange={setPluginsDialogOpen}
+        workflow={workflow}
+        onWorkflowChange={handleWorkflowMetaChange}
       />
     </div>
   );

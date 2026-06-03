@@ -42,6 +42,16 @@
 - 执行栏根节点使用 `h-full`，放在 workflow canvas 的 `flex-col` 下方时会占满整个可用高度，挤压画布。
 - 修复：内部 panel 改为 `"25%"` / `"15%"` / `"40%"` / `"75%"` / `"40%"` 字符串，并添加稳定 id；执行栏根节点改为展开时 `h-[320px] max-h-[45vh]`，折叠时 `h-auto`。
 
+## 2026-06-04 补充发现：插件对话框与 Workflow 插件节点
+
+- 用户指出缺少 WorkFox 的 `PluginsDialog.vue` 和 `NodeSidebar.vue` 中“添加插件到 workflow”的能力。
+- agent-spaces 迁移后已有 shared 插件类型、Workflow 的 `enabledPlugins` / `pluginConfigSchemes` 字段、`workflow-nodes.ts` 的 `registerPluginNodeDefinitions()`，但没有 React 插件 UI、插件 REST API 或 workflow plugin scheme REST endpoint。
+- WorkFox 的插件系统包含 Electron/local/web CDN 多 runtime；agent-spaces 当前实现先落地本地 data-dir 插件能力，避免迁入 Electron 相关路径。
+- 新 server 插件服务读取 `${AGENT_SPACES_DATA_DIR || ~/.agent-spaces-data}/plugins/<pluginId>/plugin.json|manifest.json|package.json`，支持 manifest 内 `workflowNodes` 或 `entries.workflow` 指向的 JSON 节点定义。
+- 新 React `WorkflowPluginsDialog` 负责浏览 workflow 插件、添加/移除到当前 workflow；`WorkflowNodeSidebar` 监听 `workflow.enabledPlugins`，加载插件节点并注册到节点定义 registry。
+- 新 `WorkflowPluginConfigDialog` 支持插件默认配置与 workflow-specific scheme 配置；sidebar 插件分类 header 支持选择、创建、删除配置方案。
+- 发现并修复 workflow route 顺序问题：`/folders`、`/execution-logs/all`、`/validate-cron` 需要声明在 `/:workflowId` 前面。
+
 ## 研究发现
 
 ### work_fox 项目架构

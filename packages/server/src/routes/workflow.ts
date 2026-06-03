@@ -16,6 +16,66 @@ router.get('/', (_req: Request, res: Response) => {
   }
 });
 
+// Static routes must be declared before /:workflowId.
+
+router.get('/folders', (_req: Request, res: Response) => {
+  try {
+    res.json(ws.listFolders());
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/folders', (req: Request, res: Response) => {
+  try {
+    const folder = ws.createFolder(req.body);
+    res.status(201).json(folder);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+router.put('/folders/:folderId', (req: Request<{ folderId: string }>, res: Response) => {
+  try {
+    ws.updateFolder(req.params.folderId, req.body);
+    const folders = ws.listFolders();
+    res.json(folders.find(f => f.id === req.params.folderId));
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+router.delete('/folders/:folderId', (req: Request<{ folderId: string }>, res: Response) => {
+  try {
+    ws.deleteFolder(req.params.folderId);
+    res.status(204).send();
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+router.get('/execution-logs/all', (req: Request, res: Response) => {
+  try {
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 50;
+    res.json(ws.listAllExecutionLogs(limit));
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/validate-cron', (req: Request, res: Response) => {
+  try {
+    const { cron } = req.body;
+    if (typeof cron !== 'string') {
+      res.status(400).json({ error: 'cron field is required' });
+      return;
+    }
+    res.json(ws.validateCron(cron));
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 router.get('/:workflowId', (req: Request<{ workflowId: string }>, res: Response) => {
   try {
     const workflow = ws.getWorkflow(req.params.workflowId);
@@ -65,44 +125,6 @@ router.post('/:workflowId/duplicate', (req: Request<{ workflowId: string }>, res
   }
 });
 
-// ---- Folders ----
-
-router.get('/folders', (_req: Request, res: Response) => {
-  try {
-    res.json(ws.listFolders());
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-router.post('/folders', (req: Request, res: Response) => {
-  try {
-    const folder = ws.createFolder(req.body);
-    res.status(201).json(folder);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-router.put('/folders/:folderId', (req: Request<{ folderId: string }>, res: Response) => {
-  try {
-    ws.updateFolder(req.params.folderId, req.body);
-    const folders = ws.listFolders();
-    res.json(folders.find(f => f.id === req.params.folderId));
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-router.delete('/folders/:folderId', (req: Request<{ folderId: string }>, res: Response) => {
-  try {
-    ws.deleteFolder(req.params.folderId);
-    res.status(204).send();
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
 // ---- Versions ----
 
 router.get('/:workflowId/versions', (req: Request<{ workflowId: string }>, res: Response) => {
@@ -147,17 +169,6 @@ router.delete('/:workflowId/versions', (req: Request<{ workflowId: string }>, re
     res.status(204).send();
   } catch (error: any) {
     res.status(400).json({ error: error.message });
-  }
-});
-
-// ---- Global Execution Logs ----
-
-router.get('/execution-logs/all', (req: Request, res: Response) => {
-  try {
-    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 50;
-    res.json(ws.listAllExecutionLogs(limit));
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
   }
 });
 
@@ -246,16 +257,46 @@ router.put('/:workflowId/operation-history', (req: Request<{ workflowId: string 
   }
 });
 
-// ---- Trigger Validation ----
+// ---- Plugin Config Schemes ----
 
-router.post('/validate-cron', (req: Request, res: Response) => {
+router.get('/:workflowId/plugin-schemes/:pluginId', (req: Request<{ workflowId: string; pluginId: string }>, res: Response) => {
   try {
-    const { cron } = req.body;
-    if (typeof cron !== 'string') {
-      res.status(400).json({ error: 'cron field is required' });
-      return;
-    }
-    res.json(ws.validateCron(cron));
+    res.json(ws.listPluginSchemes(req.params.workflowId, req.params.pluginId));
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/:workflowId/plugin-schemes/:pluginId/:schemeName', (req: Request<{ workflowId: string; pluginId: string; schemeName: string }>, res: Response) => {
+  try {
+    ws.createPluginScheme(req.params.workflowId, req.params.pluginId, req.params.schemeName);
+    res.status(201).json({ ok: true });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+router.get('/:workflowId/plugin-schemes/:pluginId/:schemeName', (req: Request<{ workflowId: string; pluginId: string; schemeName: string }>, res: Response) => {
+  try {
+    res.json(ws.readPluginScheme(req.params.workflowId, req.params.pluginId, req.params.schemeName));
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.put('/:workflowId/plugin-schemes/:pluginId/:schemeName', (req: Request<{ workflowId: string; pluginId: string; schemeName: string }>, res: Response) => {
+  try {
+    ws.savePluginScheme(req.params.workflowId, req.params.pluginId, req.params.schemeName, req.body || {});
+    res.json({ ok: true });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+router.delete('/:workflowId/plugin-schemes/:pluginId/:schemeName', (req: Request<{ workflowId: string; pluginId: string; schemeName: string }>, res: Response) => {
+  try {
+    ws.deletePluginScheme(req.params.workflowId, req.params.pluginId, req.params.schemeName);
+    res.status(204).send();
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }
