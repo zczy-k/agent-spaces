@@ -26,13 +26,26 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-  Check, ChevronDown, Copy, FileDown, Import, Pencil, Plus, Timer, Trash2, X,
+  Bug, Check, CheckCircle2, ChevronDown, Copy, FileDown, Import, Loader2, Pencil, Plus, Timer, Trash2, X,
+  XCircle,
 } from 'lucide-react';
 
 interface PropertiesPanelProps {
   node: WorkflowNode | null;
   onUpdateData: (nodeId: string, data: Record<string, unknown>) => void;
+  debugNodeId?: string | null;
+  debugStatus?: 'idle' | 'running' | 'completed' | 'error';
+  debugResult?: DebugResult | null;
+  onDebugNode?: (nodeId: string) => void;
+  onCancelDebug?: () => void;
 }
+
+type DebugResult = {
+  status?: 'completed' | 'error';
+  output?: unknown;
+  error?: string;
+  duration?: number;
+};
 
 type JsonPreset = {
   id: string;
@@ -489,7 +502,15 @@ function PropertyField({
   }
 }
 
-export function WorkflowPropertiesPanel({ node, onUpdateData }: PropertiesPanelProps) {
+export function WorkflowPropertiesPanel({
+  node,
+  onUpdateData,
+  debugNodeId = null,
+  debugStatus = 'idle',
+  debugResult = null,
+  onDebugNode,
+  onCancelDebug,
+}: PropertiesPanelProps) {
   const [importOpen, setImportOpen] = useState(false);
   const [importJson, setImportJson] = useState('');
   const [importError, setImportError] = useState('');
@@ -513,6 +534,9 @@ export function WorkflowPropertiesPanel({ node, onUpdateData }: PropertiesPanelP
   const canEditInputFields = Boolean(definition?.allowInputFields && node?.type !== 'end');
   const canEditOutputFields = Boolean(node && node.type !== 'start');
   const canEditDelay = Boolean(node && node.type !== 'start' && node.type !== 'end');
+  const canDebugSelectedNode = Boolean(node && definition?.debuggable !== false && node.type !== 'start' && node.type !== 'end');
+  const isDebugging = Boolean(node && debugNodeId === node.id && debugStatus === 'running');
+  const hasDebugOutput = Boolean(node && debugNodeId === node.id && debugResult);
 
   const handleDataChange = useCallback((key: string, value: unknown) => {
     if (!node) return;
@@ -586,6 +610,11 @@ export function WorkflowPropertiesPanel({ node, onUpdateData }: PropertiesPanelP
     } catch {
       setImportError('JSON 格式不正确，请检查输入');
     }
+  };
+
+  const applyDebugOutput = () => {
+    if (debugResult?.output === undefined) return;
+    handleDataChange('outputs', toOutputFields(debugResult.output));
   };
 
   if (!node) {
@@ -669,6 +698,27 @@ export function WorkflowPropertiesPanel({ node, onUpdateData }: PropertiesPanelP
         {canEditInputFields && <Badge variant="outline" className="h-5 rounded px-2 text-[10px]">输入</Badge>}
         {canEditOutputFields && <Badge variant="outline" className="h-5 rounded px-2 text-[10px]">输出</Badge>}
         <div className="ml-auto flex items-center gap-1">
+          {canDebugSelectedNode && onDebugNode && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`h-6 w-6 ${isDebugging ? 'text-destructive' : 'text-muted-foreground hover:text-foreground'}`}
+              title={isDebugging ? '停止测试' : '测试脚本'}
+              onClick={() => {
+                if (isDebugging) {
+                  onCancelDebug?.();
+                } else if (node) {
+                  onDebugNode(node.id);
+                }
+              }}
+            >
+              {isDebugging ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Bug className="h-3.5 w-3.5" />
+              )}
+            </Button>
+          )}
           {canEditDelay && (
             <Popover>
               <PopoverTrigger>
@@ -703,6 +753,38 @@ export function WorkflowPropertiesPanel({ node, onUpdateData }: PropertiesPanelP
 
       <ScrollArea className="min-h-0 flex-1">
         <div className="space-y-4 p-3">
+          {hasDebugOutput && debugResult && (
+            <section className="space-y-2 rounded border bg-muted/20 p-2">
+              <div className="flex items-center gap-1.5">
+                {debugResult.status === 'completed' ? (
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
+                ) : (
+                  <XCircle className="h-3.5 w-3.5 shrink-0 text-red-500" />
+                )}
+                <span className="text-xs font-medium">
+                  {debugResult.status === 'completed' ? '测试成功' : '测试失败'}
+                </span>
+                {typeof debugResult.duration === 'number' && (
+                  <span className="ml-auto text-[10px] text-muted-foreground">{debugResult.duration}ms</span>
+                )}
+              </div>
+              {debugResult.error && (
+                <div className="flex items-start gap-2 rounded bg-red-500/10 p-2">
+                  <p className="min-w-0 flex-1 break-all text-[11px] font-mono text-red-500">
+                    {debugResult.error}
+                  </p>
+                  <Copy
+                    className="mt-0.5 h-3.5 w-3.5 shrink-0 cursor-pointer text-red-400 hover:text-red-300"
+                    onClick={() => navigator.clipboard.writeText(debugResult.error ?? '')}
+                  />
+                </div>
+              )}
+              {debugResult.output !== undefined && (
+                <JsonPreview value={debugResult.output} />
+              )}
+            </section>
+          )}
+
           {selectedJsonPreset && (
             <div className="space-y-2 rounded border bg-muted/20 p-2">
               <div className="flex items-center justify-between">
@@ -793,6 +875,17 @@ export function WorkflowPropertiesPanel({ node, onUpdateData }: PropertiesPanelP
                     >
                       <FileDown className="h-3 w-3" />
                       应用预设
+                    </Button>
+                  )}
+                  {debugResult?.output !== undefined && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 gap-1 px-1.5 text-[10px] text-muted-foreground hover:text-foreground"
+                      onClick={applyDebugOutput}
+                    >
+                      <FileDown className="h-3 w-3" />
+                      应用测试输出
                     </Button>
                   )}
                 </div>

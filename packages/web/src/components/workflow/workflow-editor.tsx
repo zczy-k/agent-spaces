@@ -8,6 +8,7 @@ import { useWorkflowStore } from '@/stores/workflow';
 import { workflowApi } from '@/lib/workflow-api';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { authHeaders } from '@/lib/auth';
+import { getWS } from '@/lib/ws';
 import { WorkflowCanvas } from './workflow-canvas';
 import { WorkflowNodeSidebar } from './workflow-node-sidebar';
 import { WorkflowEditorToolbar } from './workflow-editor-toolbar';
@@ -39,6 +40,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
+type DebugResult = {
+  status?: 'completed' | 'error';
+  output?: unknown;
+  error?: string;
+  duration?: number;
+};
+
 // ---- Inner editor (needs ReactFlow context) ----
 
 function WorkflowEditorInner({
@@ -69,6 +77,9 @@ function WorkflowEditorInner({
   const [embeddedEditorOpen, setEmbeddedEditorOpen] = useState(false);
   const [embeddedSubWorkflowId, setEmbeddedSubWorkflowId] = useState<string | null>(null);
   const [canvasContextMenuPos, setCanvasContextMenuPos] = useState<{ x: number; y: number } | null>(null);
+  const [debugNodeId, setDebugNodeId] = useState<string | null>(null);
+  const [debugStatus, setDebugStatus] = useState<'idle' | 'running' | 'completed' | 'error'>('idle');
+  const [debugResult, setDebugResult] = useState<DebugResult | null>(null);
 
   // Group management
   const groupMgr = useGroupManagement();
@@ -79,6 +90,7 @@ function WorkflowEditorInner({
   const { isExpanded: execExpanded, toggle: toggleExec } = useExecutionPanel();
   const clipboard = useClipboard();
   const autoSaveTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const debugCleanupRef = useRef<(() => void)[]>([]);
 
   // ---- Load workflow ----
   useEffect(() => {
@@ -98,6 +110,13 @@ function WorkflowEditorInner({
         setIsLoading(false);
       });
   }, [template]);
+
+  useEffect(() => {
+    return () => {
+      for (const cleanup of debugCleanupRef.current) cleanup();
+      debugCleanupRef.current = [];
+    };
+  }, []);
 
   // ---- Auto-save ----
   useEffect(() => {
@@ -206,6 +225,66 @@ function WorkflowEditorInner({
     });
     markDirty();
   }, [markDirty]);
+
+  const cleanupDebugListeners = useCallback(() => {
+    for (const cleanup of debugCleanupRef.current) cleanup();
+    debugCleanupRef.current = [];
+  }, []);
+
+  const handleCancelDebug = useCallback(() => {
+    cleanupDebugListeners();
+    setDebugStatus('idle');
+    setDebugResult(null);
+    setDebugNodeId(null);
+  }, [cleanupDebugListeners]);
+
+  const handleDebugNode = useCallback((nodeId: string) => {
+    if (!workflow) return;
+    cleanupDebugListeners();
+    setDebugNodeId(nodeId);
+    setDebugStatus('running');
+    setDebugResult(null);
+
+    const ws = getWS('workflows');
+    const sendDebugRequest = () => {
+      ws.send('workflow:debug-node', {
+        workflowId: workflow.id,
+        nodeId,
+        snapshot: {
+          nodes: workflow.nodes,
+          edges: workflow.edges,
+          groups: workflow.groups || [],
+        },
+      });
+    };
+
+    const offResult = ws.on('workflow:debug-node:result', (data) => {
+      const result = data as DebugResult;
+      cleanupDebugListeners();
+      setDebugNodeId(nodeId);
+      setDebugResult(result);
+      setDebugStatus(result.status === 'error' ? 'error' : 'completed');
+    });
+    const offError = ws.on('workflow:debug-node:error', (data) => {
+      const payload = data as { error?: string };
+      cleanupDebugListeners();
+      setDebugNodeId(nodeId);
+      setDebugResult({ status: 'error', error: payload.error || '测试失败' });
+      setDebugStatus('error');
+    });
+    debugCleanupRef.current = [offResult, offError];
+
+    if (ws.connected) {
+      sendDebugRequest();
+    } else {
+      const offConnected = ws.on('connected', () => {
+        offConnected();
+        debugCleanupRef.current = debugCleanupRef.current.filter(cleanup => cleanup !== offConnected);
+        sendDebugRequest();
+      });
+      debugCleanupRef.current.push(offConnected);
+    }
+  }, [workflow, cleanupDebugListeners]);
 
   // ---- Edge operations ----
   const handleConnect = useCallback((connection: Connection) => {
@@ -518,6 +597,11 @@ function WorkflowEditorInner({
               <WorkflowPropertiesPanel
                 node={selectedNode}
                 onUpdateData={handleNodeDataUpdate}
+                debugNodeId={debugNodeId}
+                debugStatus={debugStatus}
+                debugResult={debugResult}
+                onDebugNode={handleDebugNode}
+                onCancelDebug={handleCancelDebug}
               />
             </TabsContent>
             <TabsContent value="versions" className="flex-1 min-h-0 m-0">

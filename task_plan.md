@@ -217,6 +217,7 @@ Phase 6 补充 — NodeProperties 功能补齐 ✅（完成，2026-06-03）
 - [x] 将 `output_fields` 从错误的 `string[]` 编辑改为结构化 `OutputField[]`
 - [x] 支持 `visibleWhen`、`default`、`readonly` 等节点属性定义行为
 - [x] 补齐节点输入字段、输出字段、JSON 预设、输出 JSON 导入、节点延迟 `_delay`
+- [x] 补齐测试脚本/局部测试按钮：调用 `workflow:debug-node` 并展示结果
 - [x] 修正标签编辑显示值与写入值不一致问题（统一使用 `data.label`）
 - [x] 验收：`pnpm --filter @agent-spaces/web build` 通过 ✅
 - **Status:** complete

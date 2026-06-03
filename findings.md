@@ -241,4 +241,4 @@
   - JSON 预设新增/编辑/删除/选择/复制，以及将预设 outputs 应用为输出字段
   - 粘贴 JSON 自动推断 `OutputField[]`
   - 节点 `_delay` 配置
-- 未接入项：Vue 版的单节点调试按钮/调试输出依赖 work_fox store 的 debug runtime；当前 React 编辑器属性面板父级只传 `node/onUpdateData`，本次未扩大接口或引入另一套 store。
+- 2026-06-04 补充：已接入 Vue 版“测试脚本/局部测试”能力。React `WorkflowEditor` 使用 `workflow:debug-node` WS channel 发送当前编辑器未保存的 nodes/edges/groups snapshot，`WorkflowPropertiesPanel` 显示测试按钮、运行中状态、成功/失败结果、JSON 输出和“应用测试输出”。

@@ -20,6 +20,22 @@
 - Notes:
   - 构建期间 Next 仍打印已有 `ENVIRONMENT_FALLBACK` 和 `--localstorage-file` 警告，但命令退出码为 0。
 
+### Phase 6 补充：测试脚本按钮补齐（2026-06-04）
+- **Status:** complete
+- Actions taken:
+  - 对比 WorkFox `NodeProperties.vue` / `CustomNodeWrapper.vue`，确认缺失项是单节点“测试脚本/局部测试”按钮
+  - 在 `WorkflowPropertiesPanel` 增加测试按钮、运行中状态、成功/失败结果、JSON 输出、错误复制和“应用测试输出”
+  - 在 `WorkflowEditor` 接入 `workflow:debug-node` WS channel，发送当前未保存 workflow snapshot
+  - `pnpm --filter @agent-spaces/web build` ✅
+- Files created/modified:
+  - packages/web/src/components/workflow/workflow-properties-panel.tsx
+  - packages/web/src/components/workflow/workflow-editor.tsx
+  - task_plan.md
+  - findings.md
+  - progress.md
+- Notes:
+  - 构建期间仍打印已有 `ENVIRONMENT_FALLBACK` 和 `--localstorage-file` 警告，但命令退出码为 0。
+
 ### Phase 1: 需求发现与研究
 - **Status:** complete
 - **Started:** 2026-06-02
