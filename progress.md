@@ -2,6 +2,24 @@
 
 ## Session: 2026-06-02
 
+### Phase 6 补充：NodeProperties 功能补齐（2026-06-03）
+- **Status:** complete
+- Actions taken:
+  - 读取既有迁移摘要和计划文件，确认用户指出的是 Phase 6 后续缺口
+  - 对比 `packages/web/src/components/workflow/workflow-properties-panel.tsx` 和 `/Users/Zhuanz/Documents/work_fox/src/components/workflow/NodeProperties.vue`
+  - 重写 React 属性面板的字段渲染层，补齐 `checkbox`、`array`、结构化 `output_fields`、`conditions`
+  - 增加 `visibleWhen`、`default`、`readonly` 支持
+  - 增加节点输入字段、输出字段、JSON 预设、输出 JSON 导入、节点 `_delay` 配置
+  - 修复标签输入显示 `node.label` 但写入 `data.label` 的不一致
+  - `pnpm --filter @agent-spaces/web build` ✅
+- Files created/modified:
+  - packages/web/src/components/workflow/workflow-properties-panel.tsx
+  - task_plan.md
+  - findings.md
+  - progress.md
+- Notes:
+  - 构建期间 Next 仍打印已有 `ENVIRONMENT_FALLBACK` 和 `--localstorage-file` 警告，但命令退出码为 0。
+
 ### Phase 1: 需求发现与研究
 - **Status:** complete
 - **Started:** 2026-06-02

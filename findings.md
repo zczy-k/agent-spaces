@@ -229,3 +229,16 @@
 | Node type 设计 | 已定 | 改为 string + data: Record<string, unknown>，与 work_fox 对齐 |
 | 时间戳格式 | 已定 | 统一为 number (epoch ms)，legacy ISO string 通过 adapter 转换 |
 | WS Channel 范围 | 已定 | 仅迁移 workflow 相关 channel，不迁移 agent-spaces 已有的 |
+
+## 2026-06-03 补充发现：NodeProperties 未完全迁移
+
+- React `workflow-properties-panel.tsx` 原实现只覆盖基础 text/textarea/number/select/code/conditions，且 `output_fields` 被错误当作 `string[]` 编辑；shared 实际类型是 `OutputField[]`。
+- WorkFox `NodeProperties.vue` 还包含输入字段、输出字段、JSON 预设、输出 JSON 导入、延迟执行 `_delay`、循环体节点空状态、属性可见性和结构化 array 字段编辑。
+- 本次补齐后 React 面板支持：
+  - `checkbox`、`array`、`output_fields`、`conditions`
+  - `visibleWhen`、`default`、`readonly`
+  - `inputFields` / `outputs` 结构化编辑
+  - JSON 预设新增/编辑/删除/选择/复制，以及将预设 outputs 应用为输出字段
+  - 粘贴 JSON 自动推断 `OutputField[]`
+  - 节点 `_delay` 配置
+- 未接入项：Vue 版的单节点调试按钮/调试输出依赖 work_fox store 的 debug runtime；当前 React 编辑器属性面板父级只传 `node/onUpdateData`，本次未扩大接口或引入另一套 store。

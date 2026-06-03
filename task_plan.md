@@ -27,6 +27,8 @@ Phase 8 — 端到端集成验证 ✅（完成）
 
 迁移全部完成 ✅
 
+Phase 6 补充 — NodeProperties 功能补齐 ✅（完成，2026-06-03）
+
 ## 项目规模统计
 
 ### work_fox 源文件统计
@@ -207,6 +209,16 @@ Phase 8 — 端到端集成验证 ✅（完成）
 - [x] Chat 工具调用可引用统一 Workflow ✅（workflowSearch 注册到 Command Palette）
 - [x] 修复 workflow store 认证：裸 fetch → fetchWithAuth ✅
 - [x] 修复 WorkflowsPage 裸 fetch：全部改为 fetchWithAuth ✅
+- **Status:** complete
+
+### Phase 6 补充：NodeProperties 功能补齐（2026-06-03）
+- [x] 对比 `/Users/Zhuanz/Documents/work_fox/src/components/workflow/NodeProperties.vue` 与 React `workflow-properties-panel.tsx`
+- [x] 补齐 `checkbox` / `array` / `output_fields` / `conditions` 字段编辑
+- [x] 将 `output_fields` 从错误的 `string[]` 编辑改为结构化 `OutputField[]`
+- [x] 支持 `visibleWhen`、`default`、`readonly` 等节点属性定义行为
+- [x] 补齐节点输入字段、输出字段、JSON 预设、输出 JSON 导入、节点延迟 `_delay`
+- [x] 修正标签编辑显示值与写入值不一致问题（统一使用 `data.label`）
+- [x] 验收：`pnpm --filter @agent-spaces/web build` 通过 ✅
 - **Status:** complete
 
 ## 用户已确认的决策
