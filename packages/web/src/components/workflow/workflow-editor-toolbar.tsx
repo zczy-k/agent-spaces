@@ -43,7 +43,7 @@ function ToolBtn({ tooltip, children, ...props }: React.ComponentProps<typeof Bu
   return (
     <TooltipProvider>
       <Tooltip>
-        <TooltipTrigger>
+        <TooltipTrigger render={<div />}>
           <Button {...props}>{children}</Button>
         </TooltipTrigger>
         <TooltipContent>{tooltip}</TooltipContent>

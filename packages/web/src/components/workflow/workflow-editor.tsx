@@ -455,14 +455,14 @@ function WorkflowEditorInner({
 
       <ResizablePanelGroup orientation="horizontal" className="flex-1 min-h-0">
         {/* Node sidebar */}
-        <ResizablePanel defaultSize={18} minSize={12} maxSize={30}>
+        <ResizablePanel id="workflow-node-sidebar" defaultSize="18%" minSize="12%" maxSize="30%">
           <WorkflowNodeSidebar />
         </ResizablePanel>
 
         <ResizableHandle withHandle />
 
         {/* Canvas + Execution bar */}
-        <ResizablePanel defaultSize={52} minSize={30}>
+        <ResizablePanel id="workflow-canvas" defaultSize="52%" minSize="30%">
           <div className="flex flex-col h-full">
             <div className="flex-1 min-h-0">
               <WorkflowCanvas
@@ -493,7 +493,7 @@ function WorkflowEditorInner({
         <ResizableHandle withHandle />
 
         {/* Right panel */}
-        <ResizablePanel defaultSize={30} minSize={15} maxSize={50}>
+        <ResizablePanel id="workflow-right-panel" defaultSize="30%" minSize="15%" maxSize="50%">
           <Tabs value={rightTab} onValueChange={setRightTab} className="flex flex-col h-full">
             <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0 h-8">
               <TabsTrigger value="properties" className="text-xs px-3 py-1.5">属性</TabsTrigger>
