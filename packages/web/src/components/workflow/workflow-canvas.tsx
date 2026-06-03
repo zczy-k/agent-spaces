@@ -1,153 +1,161 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState, useMemo } from 'react';
 import {
   ReactFlow,
   Background,
   Controls,
-  useReactFlow,
-  BaseEdge,
-  EdgeLabelRenderer,
-  getSmoothStepPath,
+  MiniMap,
   BackgroundVariant,
-  type Edge,
+  useReactFlow,
+  applyNodeChanges,
+  applyEdgeChanges,
+  addEdge,
   type Node,
-  type OnNodesChange,
-  type OnEdgesChange,
-  type OnConnect,
-  type EdgeProps,
+  type Edge,
+  type NodeChange,
+  type EdgeChange,
+  type Connection,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import Dagre from '@dagrejs/dagre';
-import type { AgentConfig } from '@agent-spaces/shared';
-import { WorkflowAgentNode } from './workflow-agent-node';
-import { WorkflowCommandNode } from './workflow-command-node';
-import { X } from 'lucide-react';
+import type { Workflow, WorkflowNode, WorkflowEdge } from '@agent-spaces/shared';
+import { getNodeDefinition } from '@/lib/workflow-nodes';
+import { WORKFLOW_NODE_DRAG_MIME } from './workflow-node-sidebar';
+import { WorkflowNode as WorkflowNodeComponent } from './workflow-node';
+import { WorkflowEdge as WorkflowEdgeComponent } from './workflow-edge';
+import { WorkflowHelperLines } from './workflow-helper-lines';
 
-// XYFlow node data shapes for legacy agent/command nodes
-type AgentNodeData = { label: string; agentConfigId: string; role: string; avatarUrl?: string; modelId?: string };
-type CommandNodeData = { label: string; script: string };
-type AgentNode = Node<AgentNodeData, 'agent'>;
-type CommandNode = Node<CommandNodeData, 'command'>;
-type WorkflowNodeRF = AgentNode | CommandNode;
-
-function DeletableEdge({
-  id,
-  sourceX, sourceY, targetX, targetY,
-  sourcePosition, targetPosition,
-  style = {},
-  markerEnd,
-}: EdgeProps) {
-  const { setEdges } = useReactFlow();
-  const [hovered, setHovered] = useState(false);
-  const [edgePath, labelX, labelY] = getSmoothStepPath({
-    sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition,
-  });
-
-  return (
-    <>
-      <g
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-      >
-        {/* Invisible wider path for easier hover */}
-        <path d={edgePath} fill="none" strokeWidth={20} stroke="transparent" />
-        <BaseEdge id={id} path={edgePath} markerEnd={markerEnd}
-          style={{ ...style, strokeWidth: hovered ? 3 : 2, stroke: hovered ? 'hsl(var(--primary))' : style.stroke }}
-        />
-      </g>
-      {hovered && (
-        <EdgeLabelRenderer>
-          <button
-            type="button"
-            className="nodrag nopan absolute flex items-center justify-center size-5 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/80 pointer-events-auto cursor-pointer"
-            style={{ transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)` }}
-            onClick={() => setEdges((eds) => eds.filter((e) => e.id !== id))}
-          >
-            <X className="size-3" />
-          </button>
-        </EdgeLabelRenderer>
-      )}
-    </>
-  );
-}
-
-const nodeTypes = { agent: WorkflowAgentNode, command: WorkflowCommandNode };
-const edgeTypes = { smoothstep: DeletableEdge };
+const nodeTypes = { custom: WorkflowNodeComponent };
+const edgeTypes = { custom: WorkflowEdgeComponent };
 
 interface WorkflowCanvasProps {
-  nodes: WorkflowNodeRF[];
-  edges: Edge[];
-  onNodesChange: OnNodesChange<WorkflowNodeRF>;
-  onEdgesChange: OnEdgesChange;
-  onConnect: OnConnect;
-  onNodeAdd?: (node: WorkflowNodeRF) => void;
-  onNodeDoubleClick?: (_: React.MouseEvent, node: Record<string, unknown>) => void;
+  workflow: Workflow;
+  isPreview: boolean;
+  onNodeAdd: (type: string, position: { x: number; y: number }) => void;
+  onNodeDelete: (id: string) => void;
+  onNodeSelect: (id: string | null, multi?: boolean) => void;
+  onNodesChange: (changes: NodeChange[]) => void;
+  onEdgesChange: (changes: EdgeChange[]) => void;
+  onConnect: (connection: Connection) => void;
 }
 
-export function WorkflowCanvas({ nodes, edges, onNodesChange, onEdgesChange, onConnect, onNodeAdd, onNodeDoubleClick }: WorkflowCanvasProps) {
+export function WorkflowCanvas({
+  workflow, isPreview,
+  onNodeAdd, onNodeDelete, onNodeSelect,
+  onNodesChange, onEdgesChange, onConnect,
+}: WorkflowCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
+  const [helperHorizontal, setHelperHorizontal] = useState<number | undefined>();
+  const [helperVertical, setHelperVertical] = useState<number | undefined>();
 
-  const onDragOver = useCallback((event: React.DragEvent) => {
+  // Convert Workflow nodes/edges to ReactFlow format
+  const rfNodes: Node[] = useMemo(() =>
+    workflow.nodes.map(n => ({
+      id: n.id,
+      type: 'custom',
+      position: n.position,
+      data: {
+        ...n.data,
+        label: n.label,
+        nodeType: n.type,
+      } as Record<string, unknown>,
+    })),
+    [workflow.nodes],
+  );
+
+  const rfEdges: Edge[] = useMemo(() =>
+    workflow.edges.map(e => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      type: 'custom',
+      sourceHandle: e.sourceHandle || undefined,
+      targetHandle: e.targetHandle || undefined,
+      data: {
+        composite: e.composite,
+        sourceHandle: e.sourceHandle,
+      } as Record<string, unknown>,
+    })),
+    [workflow.edges],
+  );
+
+  const handleDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
+    if (isPreview) return;
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+  }, [isPreview]);
+
+  const handleDrop = useCallback((event: React.DragEvent) => {
+    if (isPreview) return;
+    const type = event.dataTransfer.getData(WORKFLOW_NODE_DRAG_MIME);
+    if (!type) return;
+
+    const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+    onNodeAdd(type, position);
+  }, [isPreview, screenToFlowPosition, onNodeAdd]);
+
+  const handleNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
+    const multi = false; // Could check for shift/meta key
+    onNodeSelect(node.id, multi);
+  }, [onNodeSelect]);
+
+  const handlePaneClick = useCallback(() => {
+    onNodeSelect(null);
+  }, [onNodeSelect]);
+
+  // Handle edge insert node events from WorkflowEdge
+  const handleEdgeInsertNode = useCallback((e: Event) => {
+    const detail = (e as CustomEvent).detail;
+    // This will open node select dialog — handled by editor
+    window.dispatchEvent(new CustomEvent('workflow:open-node-select', { detail }));
   }, []);
 
-  const onDrop = useCallback((event: React.DragEvent) => {
-    event.preventDefault();
+  // Handle node delete events from WorkflowNode
+  const handleNodeDelete = useCallback((e: Event) => {
+    const detail = (e as CustomEvent).detail;
+    onNodeDelete(detail.nodeId);
+  }, [onNodeDelete]);
 
-    const commandData = event.dataTransfer.getData('application/x-workflow-command');
-    if (commandData) {
-      const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
-      onNodeAdd?.({
-        id: `node-${Date.now()}`,
-        type: 'command',
-        position,
-        data: { label: 'Command', script: '' },
-      });
-      return;
-    }
-
-    const agentJson = event.dataTransfer.getData('application/json');
-    if (!agentJson) return;
-    const agent: AgentConfig = JSON.parse(agentJson);
-    const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
-    onNodeAdd?.({
-      id: `node-${Date.now()}`,
-      type: 'agent',
-      position,
-      data: { label: agent.name, agentConfigId: agent.id, role: agent.role, avatarUrl: agent.avatarUrl, modelId: agent.modelId },
-    });
-  }, [screenToFlowPosition, onNodeAdd]);
+  // Register custom event listeners
+  React.useEffect(() => {
+    window.addEventListener('workflow:edge-insert-node', handleEdgeInsertNode);
+    window.addEventListener('workflow:delete-node', handleNodeDelete);
+    return () => {
+      window.removeEventListener('workflow:edge-insert-node', handleEdgeInsertNode);
+      window.removeEventListener('workflow:delete-node', handleNodeDelete);
+    };
+  }, [handleEdgeInsertNode, handleNodeDelete]);
 
   return (
     <div ref={reactFlowWrapper} className="flex-1 h-full">
       <ReactFlow
-        nodes={nodes} edges={edges}
-        onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect}
-        onDragOver={onDragOver} onDrop={onDrop} onNodeDoubleClick={onNodeDoubleClick}
-        nodeTypes={nodeTypes} edgeTypes={edgeTypes} fitView snapToGrid snapGrid={[15, 15]}
-        deleteKeyCode={['Backspace', 'Delete']}
-        defaultEdgeOptions={{ type: 'smoothstep', animated: false, style: { strokeWidth: 2 } }}
+        nodes={rfNodes}
+        edges={rfEdges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+        onNodeClick={handleNodeClick}
+        onPaneClick={handlePaneClick}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        fitView
+        snapToGrid
+        snapGrid={[15, 15]}
+        minZoom={0.2}
+        maxZoom={4}
+        deleteKeyCode={isPreview ? null : ['Backspace', 'Delete']}
+        nodesDraggable={!isPreview}
+        nodesConnectable={!isPreview}
+        defaultEdgeOptions={{ type: 'custom' }}
       >
         <Background variant={BackgroundVariant.Dots} gap={15} size={1} />
         <Controls />
+        <MiniMap />
+        <WorkflowHelperLines horizontal={helperHorizontal} vertical={helperVertical} />
       </ReactFlow>
     </div>
   );
-}
-
-// Auto-layout: creates fresh Graph each call
-export function getAutoLayoutedNodes(nodes: WorkflowNodeRF[], edges: Edge[]): WorkflowNodeRF[] {
-  const g = new Dagre.graphlib.Graph();
-  g.setDefaultEdgeLabel(() => ({}));
-  g.setGraph({ rankdir: 'TB', nodesep: 80, ranksep: 100 });
-  for (const node of nodes) g.setNode(node.id, { width: 180, height: 80 });
-  for (const edge of edges) g.setEdge(edge.source, edge.target);
-  Dagre.layout(g);
-  return nodes.map(node => {
-    const dagreNode = g.node(node.id);
-    return { ...node, position: { x: dagreNode.x - 90, y: dagreNode.y - 40 } };
-  });
 }

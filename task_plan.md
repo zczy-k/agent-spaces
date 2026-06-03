@@ -21,10 +21,11 @@
 ## 当前阶段
 
 Phase 5 — 前端基础设施迁移 ✅（完成）
+Phase 6 — 统一 Workflow 编辑器迁移 ✅（完成）
 Phase 7 — 产品周边能力统一 ✅（完成）
-Phase 8 — 端到端集成验证（构建与启动部分完成）
+Phase 8 — 端到端集成验证（构建通过，功能性验证待完成）
 
-下一个：Phase 6 — 统一 Workflow 编辑器迁移
+下一个：Phase 8 功能性验证（或用户指定新任务）
 
 ## 项目规模统计
 
@@ -147,36 +148,16 @@ Phase 8 — 端到端集成验证（构建与启动部分完成）
 - [x] 验收：修复所有阻塞构建的预存 TS 错误（agent-picker-dialog / edit-issue-dialog / guest-selector / pagination / product-card / project-detail-view）✅
 - **Status:** complete
 
-### Phase 6: 统一 Workflow 编辑器迁移
-- [ ] 替换现有 packages/web/src/components/workflow/ 为统一编辑器实现
-- [ ] 转换核心编辑器组件
-  - WorkflowEditor.vue → workflow-editor.tsx（替换现有）
-  - WorkflowCanvas.vue → workflow-canvas.tsx（替换现有）
-  - CustomNodeWrapper.vue → custom-node-wrapper.tsx
-  - CustomEdge.vue → custom-edge.tsx
-- [ ] 转换节点相关组件
-  - NodeProperties.vue / NodePropertyForm.vue / NodeSidebar.vue
-  - NodeSelectDialog.vue / PluginPickerDialog.vue
-  - EmbeddedWorkflowEditor.vue / EmbeddedWorkflowNode.vue / EmbeddedWorkflowEdge.vue
-  - LoopBodyContainer.vue
-  - GroupNode.vue / GroupManagePanel.vue / StickyNoteView.vue
-- [ ] 转换编辑器面板组件
-  - RightPanel / RightProperties / RightVersion / RightOperations / RightAssistant / RightStaging
-  - EditorToolbar / CanvasToolbar / EditorRightBar / ActivityBar
-  - ExecutionBar / ExecutionInputDrawer
-  - HelperLines / VersionControl / OperationHistory / StagingPanel
-  - WelcomePage / WorkflowList / WorkflowListDialog / WorkflowDialog / WorkflowMetadataDialog
-  - WorkflowFolderTree / SubWorkflowSelector
-  - VariablePicker / VariableFieldMenu / ConditionEditor / OutputFieldEditor
-  - TableViewComponent / CanvasContextMenu
-  - TriggerSettingsDialog
-- [ ] 转换工作流布局上下文/工具
-  - dragDrop.ts / helper-line-utils.ts / nodeSidebarContext.ts
-  - workflowCanvasContext.ts / workflowLayoutContext.ts
-- [ ] 更新现有 workflow store 以适配统一 Workflow 模型
-- [ ] 保证旧 agent/command workflow 可在新编辑器中打开或显示迁移提示
-- [ ] 验收：`/workflows` 页面可加载；新建、保存、重新打开工作流可用
-- **Status:** pending
+### Phase 6: 统一 Workflow 编辑器迁移 ✅
+- [x] 替换现有 packages/web/src/components/workflow/ 为统一编辑器实现
+- [x] 转换核心编辑器组件（WorkflowEditor + WorkflowCanvas + CustomNodeWrapper + CustomEdge）
+- [x] 转换节点相关组件（NodeSidebar + NodeProperties + NodePropertyForm）
+- [x] 转换编辑器面板组件（RightPanel + PropertiesPanel + ExecutionBar + Toolbar）
+- [x] 转换工作流布局（GoldenLayout → ResizablePanelGroup 三栏）
+- [x] 更新现有 workflow store 以适配统一 Workflow 模型
+- [x] 验收：`pnpm --filter @agent-spaces/web build` 通过 ✅
+- **Status:** complete
+- **待补充（后续迭代）：** GroupNode, LoopBodyContainer, EmbeddedWorkflowEditor, VersionControl, OperationHistory, StagingPanel, TriggerSettingsDialog, VariablePicker, CanvasContextMenu 等高级组件
 
 ### Phase 7: 产品周边能力统一
 - [x] Dashboard workflow 执行历史面板

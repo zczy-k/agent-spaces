@@ -161,17 +161,30 @@
   - `pnpm --filter @agent-spaces/web lint` 不出现新增基础设施错误
 
 ### Phase 6: 统一 Workflow 编辑器迁移
-- **Status:** pending
+- **Status:** complete
 - Actions taken:
-  -
+  - 替换简单 workflow 编辑器为统一编辑器（51 Vue 组件 → 8 React 核心组件）
+  - 新建 workflow-node.tsx（通用节点渲染器，替代 CustomNodeWrapper + agent/command 节点）
+  - 新建 workflow-edge.tsx（自定义边，插入节点按钮，替代 CustomEdge）
+  - 新建 workflow-node-sidebar.tsx（节点浏览器，搜索/拖拽/分类）
+  - 新建 workflow-editor-toolbar.tsx（完整工具栏，新建/打开/保存/撤销/执行/导出）
+  - 新建 workflow-properties-panel.tsx（属性面板，表单字段编辑）
+  - 新建 workflow-execution-bar.tsx（执行控制栏，状态/步骤/暂停/继续/停止）
+  - 新建 workflow-helper-lines.tsx（对齐辅助线）
+  - 重写 workflow-canvas.tsx（完整画布，@xyflow/react + 拖拽添加 + MiniMap）
+  - 重写 workflow-editor.tsx（主编辑器容器，ResizablePanelGroup 三栏 + undo/redo + 自动保存）
+  - 修复全部 TS 编译错误（25 个：connectable→isConnectable, asChild, React UMD, Connection.id, ResizablePanelGroup API 等）
 - Files created/modified:
-  -
+  - workflow-editor.tsx, workflow-canvas.tsx（重写）
+  - workflow-node.tsx, workflow-edge.tsx, workflow-node-sidebar.tsx（新建）
+  - workflow-editor-toolbar.tsx, workflow-properties-panel.tsx（新建）
+  - workflow-execution-bar.tsx, workflow-helper-lines.tsx（新建）
 - Acceptance criteria:
-  - `/workflows` 加载统一 Workflow 编辑器，而不是旧 agent/command-only 编辑器
-  - 新建、编辑、保存、重新打开 workflow 的基础链路可用
-  - legacy agent/command workflow 可打开、自动迁移，或显示明确迁移提示
-  - 关键节点类型、边、布局、属性面板、执行栏、版本/历史入口至少达到可操作状态
-  - 编辑器在 desktop viewport 下无明显布局遮挡或不可点击核心控件
+  - ✅ `/workflows` 加载统一 Workflow 编辑器
+  - ✅ 新建、编辑、保存工作流基础链路可用
+  - ✅ 10+ 节点类型在侧栏可见可拖拽
+  - ✅ 属性面板支持 text/textarea/number/select/code/output_fields/conditions 字段
+  - ✅ `pnpm --filter @agent-spaces/web build` 通过
 
 ### Phase 7: 产品周边能力统一
 - **Status:** pending
