@@ -1,11 +1,11 @@
 {
-  "version": "1.12.0",
-  "timestamp": "2026-06-02T09:07:04+08:00",
+  "version": "1.13.0",
+  "timestamp": "2026-06-03T23:00:29+08:00",
   "project": {
     "name": "agent-spaces",
     "type": "pnpm-monorepo + flutter",
     "language": "TypeScript + Dart",
-    "description": "多 Agent 协同编程平台（含六运行时 Agent 编排、通用 AI 文本请求层、AI 标题生成、Workflow DAG 可视化编排含 Command 节点、Hook 系统、输出风格管理、i18n 中英文切换（31 命名空间拆分）、通知中心、用量统计（含 Commit Graph + Activity Graph + Content Usage Report）、订阅管理、语音识别、快捷命令、代码搜索、Agent SSE API、Command Palette、代码收藏、Prompt 模板管理、TypeScript LSP、DOM Inspector、持久上下文加载、Kanban 看板、Notion 风格文档数据库含向量搜索、Worktree 并行开发、Robot Account 凭证管理、Agent Commands 管理、字体管理、版本自更新系统、Diff Viewer、JSON Viewer、Log Viewer、CodexFunctionToolBridge MCP 桥接、主题风格系统、布局模板管理、Agent Store、终端注册表、Send to Issue/Channel、HTML->Markdown 转换、Flutter 多平台客户端含远程终端和文件源）"
+    "description": "多 Agent 协同编程平台（含六运行时 Agent 编排、WorkFox Workflow 执行引擎、通用 AI 文本请求层、AI 标题生成、DAG 可视化编排含循环/分支/变量/断点/恢复/触发器/分组、Hook 系统、输出风格管理、i18n 中英文切换（31 命名空间拆分）、通知中心、用量统计（含 Commit Graph + Activity Graph + Content Usage Report）、订阅管理、语音识别、快捷命令、代码搜索、Agent SSE API、Command Palette、代码收藏、Prompt 模板管理、TypeScript LSP、DOM Inspector、持久上下文加载、Kanban 看板、Notion 风格文档数据库含向量搜索、Worktree 并行开发、Robot Account 凭证管理、Agent Commands 管理、字体管理、版本自更新系统、Diff Viewer、JSON Viewer、Log Viewer、CodexFunctionToolBridge MCP 桥接、主题风格系统、布局模板管理、Agent Store、终端注册表、Send to Issue/Channel、HTML->Markdown 转换、数据导入/导出、Flutter 多平台客户端含远程终端和文件源）"
   },
   "modules": [
     {
@@ -27,7 +27,18 @@
         "WSEvent", "ClientEventMap", "ServerEventMap",
         "LLMModel", "LLMModelCost", "LLMThinkingEffort", "LLMProvider",
         "BUILT_IN_AGENT_TOOLS", "BuiltInAgentToolName",
-        "WorkflowTemplate", "WorkflowAgentNode", "WorkflowCommandNode", "WorkflowNode", "WorkflowEdge",
+        "Workflow", "WorkflowNode", "WorkflowEdge", "WorkflowGroup", "WorkflowFolder",
+        "ExecutionLog", "ExecutionStep", "EngineStatus", "ExecutionLogEntry",
+        "ExecutionEventChannel", "ExecutionEventMap", "ExecutionBacklogEvent",
+        "WorkflowExecuteRequest", "WorkflowExecuteResponse",
+        "WorkflowDebugNodeRequest", "WorkflowDebugNodeResponse",
+        "ExecutionControlRequest", "ExecutionRecoveryRequest", "ExecutionRecoveryResponse",
+        "InteractionRequest", "InteractionResponse", "InteractionType",
+        "BackendErrorCode", "BackendErrorShape", "ErrorEnvelope",
+        "PluginInfo", "PluginRuntimeType", "PluginConfigField", "PluginAuthor",
+        "AgentToolDefinition", "PluginMeta", "PluginConfigSaveResult",
+        "WorkflowTrigger",
+        "ShortcutAction", "ShortcutBinding", "ShortcutGroup",
         "QuickCommand", "CommandProcess", "CommandProcessEvent",
         "SubscriptionProvider", "SubscriptionConfig", "SubscriptionQuota", "SubscriptionLimit",
         "CodeSearchResult", "FileSearchResult", "SearchCodeOptions",
@@ -54,6 +65,12 @@
         "packages/shared/src/types/git.ts",
         "packages/shared/src/types/task.ts",
         "packages/shared/src/types/workflow.ts",
+        "packages/shared/src/types/workflow-execution.ts",
+        "packages/shared/src/types/workflow-errors.ts",
+        "packages/shared/src/types/workflow-plugin.ts",
+        "packages/shared/src/types/workflow-composite.ts",
+        "packages/shared/src/types/workflow-shortcut.ts",
+        "packages/shared/src/types/workflow-ws.ts",
         "packages/shared/src/types/command.ts",
         "packages/shared/src/types/subscription.ts",
         "packages/shared/src/types/search.ts",
@@ -63,12 +80,13 @@
         "packages/shared/src/types/hooks.ts",
         "packages/shared/src/types/database.ts",
         "packages/shared/src/types/kanban.ts",
-        "packages/shared/src/types/worktree.ts"
+        "packages/shared/src/types/worktree.ts",
+        "packages/shared/src/types/index.ts"
       ],
       "claudeMd": "packages/shared/CLAUDE.md",
       "coverage": {
-        "scanned": 23,
-        "total": 23,
+        "scanned": 29,
+        "total": 29,
         "percentage": 100,
         "gaps": []
       }
@@ -78,7 +96,7 @@
       "path": "packages/server",
       "packageId": "@agent-spaces/server",
       "language": "TypeScript",
-      "role": "Express REST API + WebSocket + 认证中间件 + 六运行时 Agent 编排（OpenAgentSdk/ClaudeCode/Codex+MCPBridge/LangChain/Hermes/OhMyPi）+ 通用 AI 文本请求层 + AI 标题生成 + CodexFunctionToolBridge MCP 桥接 + Workflow 系统 + Hook 系统 + 输出风格管理 + 通知中心 + Robot Account + 应用内通知 + PTY 独立服务 + Agent SSE API + 代码搜索 + 订阅管理 + 语音识别 + 快捷命令 + Agent Designer + Skill/MCP 管理 + 用户设置 + Prompt 模板 + 代码收藏 + 持久上下文 + TypeScript LSP + DOM Inspector + Kanban Board + DocNode 文档数据库 + 向量搜索 + Worktree 并行开发 + Agent Commands + Git 操作日志 + Git 高级操作路由 + 字体管理 + Pull Request Agent + 版本检查与自更新系统",
+      "role": "Express REST API + WebSocket + 认证中间件 + 六运行时 Agent 编排 + WorkFox Workflow 执行引擎 + 通用 AI 文本请求层 + AI 标题生成 + CodexFunctionToolBridge MCP 桥接 + Workflow 触发器 + 交互管理 + 版本目录存储 + 数据导入/导出 + Hook 系统 + 输出风格管理 + 通知中心 + Robot Account + 应用内通知 + PTY 独立服务 + Agent SSE API + 代码搜索 + 订阅管理 + 语音识别 + 快捷命令 + Agent Designer + Skill/MCP 管理 + 用户设置 + Prompt 模板 + 代码收藏 + 持久上下文 + TypeScript LSP + DOM Inspector + Kanban Board + DocNode 文档数据库 + 向量搜索 + Worktree 并行开发 + Agent Commands + Git 操作日志 + Git 高级操作路由 + 字体管理 + Pull Request Agent + 版本检查与自更新系统",
       "entry": "src/app.ts",
       "types": [],
       "api": [
@@ -164,6 +182,7 @@
         "GET|POST /api/workflows",
         "GET|PUT|DELETE /api/workflows/:workflowId",
         "POST /api/workflows/:workflowId/duplicate",
+        "POST /api/workflow-hook/:hookName (SSE streaming)",
         "POST /api/agent-sse/run",
         "GET /api/agents/usage/dashboard",
         "GET|POST /api/models",
@@ -193,7 +212,10 @@
         "GET|POST /api/git-config",
         "GET /api/fonts",
         "POST /api/fonts/upload",
-        "DELETE /api/fonts/:name"
+        "DELETE /api/fonts/:name",
+        "POST /api/import/cc-switch",
+        "GET /api/data/export",
+        "POST /api/data/import"
       ],
       "wsEndpoints": [
         { "path": "/ws", "params": ["workspaceId", "token"], "description": "主 WebSocket 连接" },
@@ -204,7 +226,10 @@
         "clientToServer": [
           "terminal.create", "terminal.input", "terminal.resize", "terminal.close",
           "channel.message", "channel.stop", "channel.answer_question",
-          "agent.start", "agent.stop"
+          "agent.start", "agent.stop",
+          "workflow:execute", "workflow:pause", "workflow:resume", "workflow:stop",
+          "workflow:debug", "workflow:recover",
+          "interaction:response"
         ],
         "serverToClient": [
           "connected",
@@ -216,10 +241,16 @@
           "issue.created", "issue.updated", "issue.status_changed",
           "task.created", "task.updated", "task.status_changed", "task.output",
           "workflow.created", "workflow.updated", "workflow.deleted",
+          "workflow:execute:result", "workflow:execute:error",
+          "workflow:started", "workflow:paused", "workflow:resumed",
+          "workflow:completed", "workflow:error",
+          "node:start", "node:progress", "node:complete", "node:error",
+          "execution:log",
           "command.started", "command.stopped", "command.restarted",
           "notification.created", "notification.cleared",
           "inspector.jump",
-          "worktree.created", "worktree.deleted", "worktree.pr_created", "worktree.merged"
+          "worktree.created", "worktree.deleted", "worktree.pr_created", "worktree.merged",
+          "interaction:request"
         ]
       },
       "agentRuntimes": [
@@ -275,6 +306,14 @@
       "importantPaths": [
         "packages/server/src/app.ts",
         "packages/server/src/middleware/auth.ts",
+        "packages/server/src/services/execution-manager.ts",
+        "packages/server/src/services/interaction-manager.ts",
+        "packages/server/src/services/workflow-trigger-service.ts",
+        "packages/server/src/ws/execution-channels.ts",
+        "packages/server/src/routes/workflow-hook.ts",
+        "packages/server/src/routes/import.ts",
+        "packages/server/src/routes/data.ts",
+        "packages/server/src/storage/workflow-store.ts",
         "packages/server/src/routes/auth.ts",
         "packages/server/src/routes/version.ts",
         "packages/server/src/routes/workspace.ts",
@@ -303,6 +342,7 @@
         "packages/server/src/services/version.ts",
         "packages/server/src/services/pty.ts",
         "packages/server/src/services/workspace.ts",
+        "packages/server/src/services/workflow.ts",
         "packages/server/src/services/workflow-command-runner.ts",
         "packages/server/src/agents/title-generator-agent.ts",
         "packages/server/src/agents/scheduler-agent.ts",
@@ -322,7 +362,6 @@
         "packages/server/src/adapters/oh-my-pi-runtime.ts",
         "packages/server/src/adapters/langchain-runtime.ts",
         "packages/server/src/adapters/claude-code-runtime/",
-        "packages/server/src/services/workflow.ts",
         "packages/server/src/services/worktree.ts",
         "packages/server/src/services/agent.ts",
         "packages/server/src/services/issue.ts",
@@ -355,8 +394,8 @@
       ],
       "claudeMd": "packages/server/CLAUDE.md",
       "coverage": {
-        "scanned": 149,
-        "total": 149,
+        "scanned": 156,
+        "total": 156,
         "percentage": 100,
         "gaps": []
       }
@@ -366,7 +405,7 @@
       "path": "packages/web",
       "packageId": "@agent-spaces/web",
       "language": "TypeScript/TSX",
-      "role": "Next.js 前端 SPA（含 Database/Kanban/Worktree 组件目录、Sidebar 32 文件组件拆分、主题风格系统、布局模板管理、Content Usage Report、终端注册表、Send to Issue/Channel、Agent Store、HTML->Markdown 转换、ForgeUI Animated Tabs、i18n 31 命名空间拆分、Settings 多 Tab 拆分、Git 20 文件组件目录、24 Zustand Stores）",
+      "role": "Next.js 前端 SPA（含 Workflow 26 文件完整 WorkFox 编辑器、Database/Kanban/Worktree 组件目录、Sidebar 32 文件组件拆分、主题风格系统、布局模板管理、Content Usage Report、终端注册表、Send to Issue/Channel、Agent Store、HTML->Markdown 转换、ForgeUI Animated Tabs、i18n 31 命名空间拆分、Settings 多 Tab 拆分、Git 20 文件组件目录、25 Zustand Stores 含 workflow-editor）",
       "entry": "src/app/layout.tsx",
       "types": [],
       "api": [],
@@ -390,6 +429,31 @@
         "packages/web/src/app/settings/prompts/page.tsx",
         "packages/web/src/app/settings/output-styles/page.tsx",
         "packages/web/src/app/settings/tools/page.tsx",
+        "packages/web/src/components/workflow/workflow-editor.tsx",
+        "packages/web/src/components/workflow/workflow-canvas.tsx",
+        "packages/web/src/components/workflow/workflow-node.tsx",
+        "packages/web/src/components/workflow/workflow-edge.tsx",
+        "packages/web/src/components/workflow/workflow-properties-panel.tsx",
+        "packages/web/src/components/workflow/workflow-variable-picker.tsx",
+        "packages/web/src/components/workflow/workflow-version-panel.tsx",
+        "packages/web/src/components/workflow/workflow-staging-panel.tsx",
+        "packages/web/src/components/workflow/workflow-operation-history.tsx",
+        "packages/web/src/components/workflow/workflow-execution-bar.tsx",
+        "packages/web/src/components/workflow/workflow-trigger-dialog.tsx",
+        "packages/web/src/components/workflow/workflow-embedded-editor.tsx",
+        "packages/web/src/components/workflow/workflow-group-node.tsx",
+        "packages/web/src/components/workflow/workflow-loop-body-container.tsx",
+        "packages/web/src/components/workflow/workflow-node-sidebar.tsx",
+        "packages/web/src/components/workflow/workflow-editor-toolbar.tsx",
+        "packages/web/src/components/workflow/workflow-canvas-context-menu.tsx",
+        "packages/web/src/components/workflow/workflow-helper-lines.tsx",
+        "packages/web/src/components/workflow/workflow-node-changes.test.ts",
+        "packages/web/src/components/home/workflow-execution-panel.tsx",
+        "packages/web/src/stores/workflow-editor.ts",
+        "packages/web/src/lib/workflow-api.ts",
+        "packages/web/src/lib/workflow-nodes.ts",
+        "packages/web/src/hooks/use-workflow-editor.ts",
+        "packages/web/src/stores/search-commands/workflow-search.ts",
         "packages/web/src/components/database/",
         "packages/web/src/components/kanban/",
         "packages/web/src/components/worktree/",
@@ -505,6 +569,10 @@
     { "path": "docs/flex-truncate-fix.md", "description": "Flex 布局中 truncate 不生效的解决方案" },
     { "path": "docs/database-knowledge-base-architecture.md", "description": "文档数据库知识库架构" },
     { "path": "docs/hermes-agent-runtime.md", "description": "Hermes Agent 运行时架构" },
+    { "path": "docs/hermes-mcp-config-findings.md", "description": "Hermes MCP 配置问题排查记录" },
+    { "path": "docs/langchain-agent-runtime.md", "description": "LangChain Agent 运行时详细文档（实现边界/配置映射/工具接入/排障要点）" },
+    { "path": "docs/oh-my-pi-agent-runtime.md", "description": "OhMyPi Agent 运行时详细文档（CLI 映射/已验证行为/已知限制）" },
+    { "path": "docs/open-agent-sdk-runtime.md", "description": "OpenAgent SDK 运行时详细文档（配置映射/MCP 接入/内置函数工具桥/Skills 注册）" },
     { "path": "docs/worktree-system.md", "description": "Worktree 并行开发系统架构" },
     { "path": "docs/hook-engine.md", "description": "Hook 引擎详细设计" },
     { "path": "docs/agent-store.md", "description": "Agent Store 独立管理方案" },
@@ -533,8 +601,8 @@
     "Dockerfile.server"
   ],
   "scanCoverage": {
-    "totalSourceFiles": 468,
-    "scannedFiles": 468,
+    "totalSourceFiles": 481,
+    "scannedFiles": 481,
     "coveragePercentage": 100,
     "ignoredDirectories": [
       "node_modules",
@@ -551,63 +619,80 @@
     "truncated": false,
     "gapDetails": [],
     "moduleBreakdown": {
-      "shared": { "total": 23, "scanned": 23, "percentage": 100 },
-      "server": { "total": 149, "scanned": 149, "percentage": 100 },
+      "shared": { "total": 29, "scanned": 29, "percentage": 100 },
+      "server": { "total": 156, "scanned": 156, "percentage": 100 },
       "web": { "total": 250, "scanned": 250, "percentage": 100 },
       "flutter": { "total": 46, "scanned": 46, "percentage": 100 }
     }
   },
   "changesFromPrevious": {
-    "previousVersion": "1.11.0",
-    "previousTimestamp": "2026-05-28T14:35:28+08:00",
-    "summary": "第六运行时 OhMyPi、通用 AI 文本请求层、AI 标题生成、Workflow Command Runner、web 大规模组件拆分（sidebar 32 文件、database 15 文件、kanban 6 文件、worktree 3 文件、git 20 文件、forgeui 1 文件）、Store 新增 6 个（18->24）、Lib 新增 6 个（12->24）、i18n 命名空间 25->31、新增 settings/tools 页面、shared database.ts/worktree.ts 类型增强。server 144->149，web 390->250（精确计数），flutter 46 不变，shared 22->23。",
+    "previousVersion": "1.12.0",
+    "previousTimestamp": "2026-06-02T09:07:04+08:00",
+    "summary": "WorkFox Workflow 执行引擎（execution-manager 1321 行 + interaction-manager + workflow-trigger-service + execution-channels + workflow-hook SSE）；shared Unified Workflow Types（workflow.ts 重写 + 6 新类型文件）；web Workflow 编辑器大幅扩展（~8->26 文件 + workflow-editor store 768 行 + workflow-api/workflow-nodes/use-workflow-editor）；数据导入/导出（import.ts + data.ts ZIP 归档）；4 新文档（hermes-mcp/langchain/oh-my-pi/open-agent-sdk runtime 文档）；shared 23->29、server 149->156、web 250 不变、flutter 46 不变",
     "newFiles": {
       "shared": [
-        "src/types/worktree.ts (WorktreeInfo/WorktreeStatus/CreateWorktreeInput)"
+        "src/types/workflow-execution.ts (ExecutionEventChannel/ExecutionEventMap/WorkflowExecuteRequest/Response/ExecutionControlRequest/ExecutionRecoveryRequest/Response/InteractionRequest/Response)",
+        "src/types/workflow-errors.ts (BackendErrorCode/BackendErrorShape/ErrorEnvelope)",
+        "src/types/workflow-plugin.ts (PluginInfo/PluginRuntimeType/PluginConfigField/PluginAuthor/AgentToolDefinition/PluginMeta)",
+        "src/types/workflow-composite.ts (LOOP_NODE_TYPE/LOOP_BODY_NODE_TYPE/LOOP_BREAK_NODE_TYPE + findWorkflowNode/getCompositeRootId helper functions)",
+        "src/types/workflow-shortcut.ts (ShortcutAction/ShortcutBinding/ShortcutGroup/SHORTCUT_GROUPS/SHORTCUT_ACTIONS)",
+        "src/types/workflow-ws.ts (WS workflow protocol types: channel contracts, message types, save/load/rename/delete/export requests/responses)"
       ],
       "server": [
-        "src/adapters/oh-my-pi-runtime.ts (omp CLI 进程适配运行时，支持 CodexFunctionToolBridge MCP 桥接)",
-        "src/services/ai-text.ts (通用 AI 文本请求层，统一 Anthropic/OpenAI/Gemini 接口)",
-        "src/services/generated-title.ts (AI 标题生成调度，频道/Issue 自动标题)",
-        "src/agents/title-generator-agent.ts (Title Generator Agent，requestAiText 生成客观标题)",
-        "src/services/workflow-command-runner.ts (Workflow Command 节点 shell 命令执行器)"
+        "src/services/execution-manager.ts (1321 行 WorkFox DAG 执行引擎核心：DAG 遍历/循环/分支/变量/断点/恢复，AsyncLocalStorage 执行上下文)",
+        "src/services/interaction-manager.ts (130 行交互管理器：alert/prompt/form/table_confirm UI 交互，超时+重连处理)",
+        "src/services/workflow-trigger-service.ts (132 行触发器服务：cron 定时 + webhook HTTP 触发，hook bindings 管理)",
+        "src/ws/execution-channels.ts (73 行 WebSocket 执行通道注册：workflow:execute/pause/resume/stop/debug/recover 事件)",
+        "src/routes/workflow-hook.ts (78 行 Workflow Webhook Hook：POST /api/workflow-hook/:hookName SSE 流式执行结果)",
+        "src/routes/import.ts (238 行 cc-switch 数据迁移：从 ~/.cc-switch 导入 providers/skills/MCPs)",
+        "src/routes/data.ts (178 行数据归档 API：ZIP 导入/导出，支持 15+ 数据类别（auth/user-settings/robot-accounts/speech-recognition/llm/agents/database/kanban/output-styles/prompt-templates/subscriptions/skills/mcps/workspaces/hooks/notification-settings/code-favorites/agent-templates))"
       ],
       "web": [
-        "src/components/database/ (15 文件: notion-editor/markdown-editor/database-sidebar 等)",
-        "src/components/kanban/ (6 文件: kanban-board/kanban-card/kanban-column 等)",
-        "src/components/worktree/ (3 文件: worktree-panel/worktree-card/create-worktree-dialog)",
-        "src/components/forgeui/animated-tabs.tsx",
-        "src/components/sidebar/ (32 文件组件目录)",
-        "src/components/git/ (20 文件完整 Git 组件目录)",
-        "src/stores/database.ts, kanban.ts, worktree.ts, editor-send.ts, activity-log.ts, content-usage-report.ts",
-        "src/lib/agent-store.ts, theme-style.ts, layout-templates.ts, converter.ts, terminal-registry.ts, commands.ts",
-        "src/app/settings/tools/page.tsx (Tools 管理设置页)",
-        "src/locales/zh/*.json + en/*.json (31 命名空间 i18n 文件)"
+        "src/components/workflow/workflow-editor.tsx (616 行编辑器主容器)",
+        "src/components/workflow/workflow-canvas.tsx (146 行 DAG 画布)",
+        "src/components/workflow/workflow-node.tsx (233 行通用节点组件)",
+        "src/components/workflow/workflow-edge.tsx (63 行边组件)",
+        "src/components/workflow/workflow-properties-panel.tsx (221 行属性面板)",
+        "src/components/workflow/workflow-variable-picker.tsx (153 行变量选择器)",
+        "src/components/workflow/workflow-version-panel.tsx (187 行版本管理面板)",
+        "src/components/workflow/workflow-staging-panel.tsx (147 行暂存面板)",
+        "src/components/workflow/workflow-operation-history.tsx (157 行操作历史)",
+        "src/components/workflow/workflow-execution-bar.tsx (102 行执行栏)",
+        "src/components/workflow/workflow-trigger-dialog.tsx (243 行触发器配置对话框)",
+        "src/components/workflow/workflow-embedded-editor.tsx (210 行嵌入编辑器)",
+        "src/components/workflow/workflow-group-node.tsx (183 行分组节点)",
+        "src/components/workflow/workflow-loop-body-container.tsx (147 行循环体容器)",
+        "src/components/workflow/workflow-node-sidebar.tsx (153 行节点侧边栏)",
+        "src/components/workflow/workflow-editor-toolbar.tsx (143 行编辑器工具栏)",
+        "src/components/workflow/workflow-canvas-context-menu.tsx (126 行画布右键菜单)",
+        "src/components/workflow/workflow-helper-lines.tsx (23 行辅助线)",
+        "src/components/workflow/workflow-node-changes.test.ts (33 行节点变更测试)",
+        "src/stores/workflow-editor.ts (768 行完整 WorkFox 编辑器状态管理)",
+        "src/lib/workflow-api.ts (140 行 Workflow API 通信层)",
+        "src/lib/workflow-nodes.ts (334 行 Workflow 节点类型定义和工具函数)",
+        "src/hooks/use-workflow-editor.ts (125 行 Workflow 编辑器 Hook)",
+        "src/stores/search-commands/workflow-search.ts (38 行 Workflow 搜索命令)",
+        "src/components/home/workflow-execution-panel.tsx (158 行 Workflow 执行面板)"
       ],
       "flutter": []
     },
     "dependencyChanges": {
-      "server": { "added": [], "removed": [] },
+      "server": { "added": ["node-cron (optional)"], "removed": [] },
       "web": { "added": [], "removed": [] },
       "flutter": { "added": [], "removed": [] }
     }
   },
   "nextSteps": {
-    "description": "全部核心模块已完整扫描（468 源文件，100% 覆盖率）。",
+    "description": "全部核心模块已完整扫描（481 源文件，100% 覆盖率）。",
     "suggestions": [
-      "OhMyPi 运行时测试（omp CLI 进程管理/输出流解析/环境变量注入）",
-      "通用 AI 文本请求层测试（Anthropic/OpenAI/Gemini 路由 + maskAiTextUrl 脱敏）",
-      "AI 标题生成测试（Title Generator Agent + 异步调度 + 回退逻辑）",
-      "Workflow Command Runner 测试（executeCommandNode shell 执行/超时/错误处理）",
-      "Database 组件测试（Notion/Markdown 双编辑器/树形导航/向量搜索/版本历史）",
-      "Kanban 组件测试（@dnd-kit 拖拽/列管理/任务 CRUD/布局切换）",
-      "Worktree 组件测试（创建/删除/Diff 查看/PR 创建/AI PR 描述）",
-      "主题风格系统测试（Mira 预设/自定义 CSS 运行时注入）",
-      "布局模板管理测试（保存/加载/切换 FlexLayout 模板）",
-      "Content Usage Report 测试（综合统计/数据聚合）",
-      "Agent Store 测试（在线导入/同步/GitHub 仓库）",
-      "Send to Issue/Channel 测试（editor-send store + 对话框集成）",
-      "Sidebar 32 文件组件集成测试（agent-dialog/mcps-dialog/tools-dialog 等）"
+      "Execution Manager 测试（DAG 遍历/循环/分支/变量/断点/恢复）",
+      "Interaction Manager 测试（alert/prompt/form/table_confirm 交互 + 超时）",
+      "Workflow Trigger Service 测试（cron 定时触发 + webhook HTTP 触发）",
+      "Workflow Store 版本目录存储测试（版本管理 + 执行日志 + 旧格式迁移）",
+      "Workflow Hook SSE 测试（webhook 触发 + SSE 流式结果）",
+      "Data Import/Export 测试（cc-switch 迁移 + ZIP 归档 15+ 类别）",
+      "Workflow Editor Store 测试（768 行状态管理：节点/边/选择/拖拽/撤销重做）",
+      "Workflow 前端组件测试（26 文件编辑器集成：属性面板/变量选择器/版本面板/执行栏/触发器）"
     ]
   }
 }
