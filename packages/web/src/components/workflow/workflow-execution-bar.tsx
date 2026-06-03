@@ -88,25 +88,31 @@ export function WorkflowExecutionBar({
       </div>
 
       {/* Expanded: step list */}
-      {isExpanded && log && (
+      {isExpanded && (
         <div className="border-t px-3 py-2 max-h-[200px] overflow-y-auto">
-          <div className="space-y-1">
-            {steps.map((step, i) => (
-              <div key={step.nodeId || i} className="flex items-center gap-2 text-xs">
-                <span className={`w-2 h-2 rounded-full shrink-0 ${
-                  step.status === 'completed' ? 'bg-green-500' :
-                  step.status === 'error' ? 'bg-red-500' :
-                  step.status === 'running' ? 'bg-blue-500 animate-pulse' :
-                  'bg-muted-foreground/30'
-                }`} />
-                <span className="truncate">{step.nodeId}</span>
-                <span className="text-[10px] text-muted-foreground ml-auto">{step.status}</span>
-                {step.error && (
-                  <span className="text-[10px] text-destructive truncate max-w-[200px]">{step.error}</span>
-                )}
-              </div>
-            ))}
-          </div>
+          {steps.length > 0 ? (
+            <div className="space-y-1">
+              {steps.map((step, i) => (
+                <div key={step.nodeId || i} className="flex items-center gap-2 text-xs">
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${
+                    step.status === 'completed' ? 'bg-green-500' :
+                    step.status === 'error' ? 'bg-red-500' :
+                    step.status === 'running' ? 'bg-blue-500 animate-pulse' :
+                    'bg-muted-foreground/30'
+                  }`} />
+                  <span className="truncate">{step.nodeId}</span>
+                  <span className="text-[10px] text-muted-foreground ml-auto">{step.status}</span>
+                  {step.error && (
+                    <span className="text-[10px] text-destructive truncate max-w-[200px]">{step.error}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-xs text-muted-foreground text-center py-2">
+              暂无执行记录
+            </div>
+          )}
         </div>
       )}
     </div>

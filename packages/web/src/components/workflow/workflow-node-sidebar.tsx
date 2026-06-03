@@ -59,7 +59,7 @@ export function WorkflowNodeSidebar({ onOpenPluginPicker }: { onOpenPluginPicker
   }, []);
 
   return (
-    <div className="border-r border-border bg-background flex flex-col h-full w-[220px] shrink-0">
+    <div className="border-r border-border bg-background flex flex-col h-full w-full shrink-0">
       <div className="p-2 border-b border-border">
         <div className="relative flex items-center gap-1">
           <div className="relative flex-1">
