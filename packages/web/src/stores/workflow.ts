@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { WorkflowTemplate, WorkflowNode, WorkflowEdge } from '@agent-spaces/shared';
+import { fetchWithAuth } from '@/lib/auth';
 
 interface WorkflowStore {
   workflows: WorkflowTemplate[];
@@ -24,7 +25,7 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
   loadWorkflows: async () => {
     set({ isLoading: true });
     try {
-      const res = await fetch('/api/workflows');
+      const res = await fetchWithAuth('/api/workflows');
       const workflows: WorkflowTemplate[] = await res.json();
       set({ workflows, isLoading: false });
     } catch {
@@ -33,7 +34,7 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
   },
 
   createWorkflow: async (data) => {
-    const res = await fetch('/api/workflows', {
+    const res = await fetchWithAuth('/api/workflows', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -44,7 +45,7 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
   },
 
   updateWorkflow: async (id, data) => {
-    const res = await fetch(`/api/workflows/${id}`, {
+    const res = await fetchWithAuth(`/api/workflows/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -54,12 +55,12 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
   },
 
   deleteWorkflow: async (id) => {
-    await fetch(`/api/workflows/${id}`, { method: 'DELETE' });
+    await fetchWithAuth(`/api/workflows/${id}`, { method: 'DELETE' });
     get().removeWorkflow(id);
   },
 
   duplicateWorkflow: async (id) => {
-    const res = await fetch(`/api/workflows/${id}/duplicate`, {
+    const res = await fetchWithAuth(`/api/workflows/${id}/duplicate`, {
       method: 'POST',
     });
     const workflow: WorkflowTemplate = await res.json();

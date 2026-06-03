@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Plus, Pencil, Copy, Trash2, Upload, FileText } from 'lucide-react';
 import { WorkflowTemplatesDialog } from '@/components/workflows/workflow-templates-dialog';
 import type { WorkflowTemplatePreset } from '@/components/workflows/workflow-templates';
-import { authHeaders } from '@/lib/auth';
+import { fetchWithAuth } from '@/lib/auth';
 import type { AgentConfig } from '@agent-spaces/shared';
 
 export function WorkflowsPage() {
@@ -56,9 +56,9 @@ export function WorkflowsPage() {
         if (agents) {
           for (const [oldId, agentConfig] of Object.entries(agents)) {
             const { id: _oldId, enabled: _en, ...createBody } = agentConfig;
-            const res = await fetch('/api/agents/presets', {
+            const res = await fetchWithAuth('/api/agents/presets', {
               method: 'POST',
-              headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(createBody),
             });
             if (res.ok) {
@@ -76,9 +76,9 @@ export function WorkflowsPage() {
           },
         }));
 
-        await fetch('/api/workflows', {
+        await fetchWithAuth('/api/workflows', {
           method: 'POST',
-          headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: name ?? 'Imported Workflow', description, nodes: remappedNodes, edges }),
         });
         loadWorkflows();
@@ -95,7 +95,7 @@ export function WorkflowsPage() {
       const idMap: Record<string, string> = {};
 
       // 获取已有 agent，按 templateId 去重
-      const existingRes = await fetch('/api/agents/presets', { headers: authHeaders() });
+      const existingRes = await fetchWithAuth('/api/agents/presets');
       const existingAgents: AgentConfig[] = existingRes.ok ? await existingRes.json() : [];
       const byTemplateId = new Map<string, string>();
       for (const agent of existingAgents) {
@@ -112,9 +112,9 @@ export function WorkflowsPage() {
             continue;
           }
           const { id: _oldId, enabled: _en, ...createBody } = agentConfig;
-          const res = await fetch('/api/agents/presets', {
+          const res = await fetchWithAuth('/api/agents/presets', {
             method: 'POST',
-            headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(createBody),
           });
           if (res.ok) {
@@ -132,9 +132,9 @@ export function WorkflowsPage() {
         },
       }));
 
-      await fetch('/api/workflows', {
+      await fetchWithAuth('/api/workflows', {
         method: 'POST',
-        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, description, nodes: remappedNodes, edges }),
       });
       loadWorkflows();

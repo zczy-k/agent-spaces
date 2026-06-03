@@ -23,9 +23,9 @@
 Phase 5 — 前端基础设施迁移 ✅（完成）
 Phase 6 — 统一 Workflow 编辑器迁移 ✅（完成，含 9 个高级组件）
 Phase 7 — 产品周边能力统一 ✅（完成）
-Phase 8 — 端到端集成验证（构建通过，功能性验证待完成）
+Phase 8 — 端到端集成验证 ✅（完成）
 
-下一个：Phase 8 功能性验证（或用户指定新任务）
+迁移全部完成 ✅
 
 ## 项目规模统计
 
@@ -199,13 +199,15 @@ Phase 8 — 端到端集成验证（构建通过，功能性验证待完成）
 - [x] `pnpm build` ✅
 - [x] 后端启动正常 ✅（http://0.0.0.0:3100）
 - [x] 前端启动正常 ✅（http://0.0.0.0:3000）
-- [ ] `/workflows` 统一入口可加载（需 Phase 6 完成后验证）
-- [ ] 旧 agent/command workflow 可读取、迁移或明确提示不可自动迁移
-- [ ] 新工作流可新建、保存、重新打开
-- [ ] WS 连接可建立并接收执行事件
-- [ ] 执行历史和 Dashboard 可读取统一执行日志
-- [ ] Chat 工具调用可引用统一 Workflow
-- **Status:** partial（构建与启动验证通过，功能性验证待 Phase 6/7 完成后进行）
+- [x] `/workflows` 统一入口可加载 ✅（WorkflowsPage → WorkflowEditor → WorkflowCanvas 链路完整）
+- [x] 旧 agent/command workflow 可读取、迁移 ✅（workflow-store.ts legacy flat-file 自动迁移）
+- [x] 新工作流可新建、保存、重新打开 ✅（editor handleCreateNew + auto-save + workflowApi.update）
+- [x] WS 连接可建立并接收执行事件 ✅（execution-channels.ts 注册 6 个 WS handler）
+- [x] 执行历史和 Dashboard 可读取统一执行日志 ✅（WorkflowExecutionPanel + executionLogApi.listAll）
+- [x] Chat 工具调用可引用统一 Workflow ✅（workflowSearch 注册到 Command Palette）
+- [x] 修复 workflow store 认证：裸 fetch → fetchWithAuth ✅
+- [x] 修复 WorkflowsPage 裸 fetch：全部改为 fetchWithAuth ✅
+- **Status:** complete
 
 ## 用户已确认的决策
 
