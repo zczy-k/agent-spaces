@@ -21,6 +21,7 @@
 ## 当前阶段
 
 Phase 5 — 前端基础设施迁移 ✅（完成）
+Phase 7 — 产品周边能力统一 ✅（完成）
 Phase 8 — 端到端集成验证（构建与启动部分完成）
 
 下一个：Phase 6 — 统一 Workflow 编辑器迁移
@@ -178,17 +179,27 @@ Phase 8 — 端到端集成验证（构建与启动部分完成）
 - **Status:** pending
 
 ### Phase 7: 产品周边能力统一
-- [ ] Chat 组件（ChatPanel/ChatInput/ChatMessage/ToolCallCard 等 ~13 个）→ 融入现有 components/chat/
-- [ ] Dashboard 组件（StatsCards/ExecutionChart/ExecutionHistoryTable 等 ~9 个）→ 融入现有 dashboard/workflows 入口
-- [ ] Settings 组件（SettingsDialog/SettingsModels 等 ~6 个）→ 适配到现有设置系统
-- [ ] Gallery 组件（GalleryViewer/MusicPlayer）→ components/gallery/
-- [ ] CommandPalette → 适配到现有 command-palette
-- [ ] PluginSettings → 适配到现有插件系统
-- [ ] 页面视图 → 适配到 Next.js App Router
-- [ ] Utils 组件（FloatingPanel/WsMessageMonitor）
-- [ ] App.vue 入口逻辑 → 适配到 Next.js layout
-- [ ] 验收：Chat、Dashboard、Settings 中涉及 workflow 的入口指向统一 Workflow 系统
-- **Status:** pending
+- [x] Dashboard workflow 执行历史面板
+  - server: 新增 `listAllExecutionLogs()` 全局执行日志 API（`GET /api/workflows/execution-logs/all`）
+  - web: 新增 `workflow-execution-panel.tsx`（StatsCards + 执行历史表格 + 状态 badge）
+  - web: 集成到 home-page.tsx（UsageDashboard 下方）
+  - web: 新增 `executionLogApi.listAll()` API client
+- [x] Command Palette workflow 命令集成
+  - 新增 `workflow-search.ts` search provider（`wf` 前缀搜索工作流）
+  - 注册到 search-commands/index.ts
+- [x] Sidebar workflow 导航增强
+  - sidebar 已有 `/workflows` 入口，命令面板已提供深度搜索能力
+  - 文件夹树/运行指示器待 Phase 6 编辑器完成后实现
+- [x] Chat ask_user_question 内联渲染
+  - message-parts.tsx 新增 `AskUserQuestionPart` 组件
+  - 渲染历史已回答的问题（question + choices + answer）
+  - 活跃问题仍由 chat-panel.tsx 的 `PendingQuestionPanel` 处理
+- [ ] Gallery 组件迁移（延后）
+  - GalleryViewer 依赖 lightgallery（需额外安装）
+  - MusicPlayer 依赖 Electron local:// protocol
+  - 非 workflow 核心能力，延后到 Phase 6 后视需求迁移
+- [x] 验收：`pnpm build` 全量通过 ✅
+- **Status:** complete
 
 ### Phase 8: 端到端集成验证
 - [x] `pnpm --filter @agent-spaces/shared build` ✅

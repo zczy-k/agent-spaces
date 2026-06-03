@@ -150,7 +150,18 @@ router.delete('/:workflowId/versions', (req: Request<{ workflowId: string }>, re
   }
 });
 
-// ---- Execution Logs ----
+// ---- Global Execution Logs ----
+
+router.get('/execution-logs/all', (req: Request, res: Response) => {
+  try {
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 50;
+    res.json(ws.listAllExecutionLogs(limit));
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ---- Per-Workflow Execution Logs ----
 
 router.get('/:workflowId/execution-logs', (req: Request<{ workflowId: string }>, res: Response) => {
   try {

@@ -4,6 +4,7 @@ import { issueSearch } from './issue-search';
 import { fileSearch } from './file-search';
 import { workspaceSearch } from './workspace-search';
 import { serverSearch } from './server-search';
+import { workflowSearch } from './workflow-search';
 
 export type { SearchResult, SearchCommandProvider } from './types';
 
@@ -13,6 +14,7 @@ export const searchProviders: SearchCommandProvider[] = [
   fileSearch,
   workspaceSearch,
   serverSearch,
+  workflowSearch,
 ];
 
 export function matchProvider(input: string): { provider: SearchCommandProvider; keyword: string } | null {

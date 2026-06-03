@@ -301,6 +301,10 @@ export function listExecutionLogs(workflowId: string): ExecutionLog[] {
   return store.listExecutionLogs(workflowId);
 }
 
+export function listAllExecutionLogs(limit?: number) {
+  return store.listAllExecutionLogs(limit);
+}
+
 export function getExecutionLog(workflowId: string, logId: string): ExecutionLog | null {
   return store.getExecutionLog(workflowId, logId) as ExecutionLog | null;
 }

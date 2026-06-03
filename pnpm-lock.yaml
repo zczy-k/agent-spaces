@@ -294,12 +294,18 @@ importers:
       date-fns:
         specifier: ^4.1.0
         version: 4.1.0
+      dexie:
+        specifier: ^4.4.3
+        version: 4.4.3
       diff:
         specifier: ^9.0.0
         version: 9.0.0
       emoji-picker-react:
         specifier: ^4.19.1
         version: 4.19.1(react@19.2.4)
+      eventemitter2:
+        specifier: ^6.4.9
+        version: 6.4.9
       flexlayout-react:
         specifier: ^0.9.0
         version: 0.9.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -6425,6 +6431,9 @@ packages:
 
   devlop@1.1.0:
     resolution: {integrity: sha512-RWmIqhcFf1lRYBvNmr7qTNuyCt/7/ns2jbpp1+PalgE/rDQcBT0fioSMUpJ93irlUhC5hrg4cYqe6U+0ImW0rA==}
+
+  dexie@4.4.3:
+    resolution: {integrity: sha512-N+3IGQ3HPlyO2YAkntGAwitm42BpBGV86MttzUMiRzWLa4NGh0pltVRcUVF4ybL/OnXjCrr9k7SDPIKkFYP2Lg==}
 
   diff@8.0.4:
     resolution: {integrity: sha512-DPi0FmjiSU5EvQV0++GFDOJ9ASQUVFh5kD+OzOnYdi7n3Wpm9hWWGfB/O2blfHcMVTL5WkQXSnRiK9makhrcnw==}
@@ -18242,6 +18251,8 @@ snapshots:
   devlop@1.1.0:
     dependencies:
       dequal: 2.0.3
+
+  dexie@4.4.3: {}
 
   diff@8.0.4: {}
 

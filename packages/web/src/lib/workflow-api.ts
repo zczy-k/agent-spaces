@@ -105,6 +105,9 @@ export const workflowVersionApi = {
 // ---- Execution Logs ----
 
 export const executionLogApi = {
+  listAll(limit = 50): Promise<(ExecutionLog & { workflowName?: string })[]> {
+    return fetchWithAuth(`/api/workflows/execution-logs/all?limit=${limit}`).then(r => r.json());
+  },
   list(workflowId: string): Promise<ExecutionLog[]> {
     return fetchWithAuth(`/api/workflows/${workflowId}/execution-logs`).then(r => r.json());
   },

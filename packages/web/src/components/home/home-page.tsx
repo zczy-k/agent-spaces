@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 
 import { UsageDashboard } from '@/components/home/usage-dashboard'
+import { WorkflowExecutionPanel } from '@/components/home/workflow-execution-panel'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { Workspace } from '@agent-spaces/shared'
 
@@ -17,6 +18,7 @@ export function HomePage({ initialWorkspaces }: { initialWorkspaces: Workspace[]
     <div className='flex h-full w-full flex-col overflow-auto'>
       <main className='w-full flex-1 px-4 py-6 sm:px-6'>
         <UsageDashboard />
+        <WorkflowExecutionPanel />
       </main>
     </div>
   )

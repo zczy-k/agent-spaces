@@ -275,6 +275,35 @@ export function addExecutionLog(workflowId: string, log: any) {
   return log;
 }
 
+export function listAllExecutionLogs(limit = 50) {
+  const dir = workflowsDir();
+  if (!existsSync(dir)) return [];
+  const results: any[] = [];
+  const wDirs = readdirSync(dir, { withFileTypes: true }).filter(d => d.isDirectory());
+  for (const wDir of wDirs) {
+    const wId = wDir.name;
+    const historyDir = executionHistoryDir(wId);
+    if (!existsSync(historyDir)) continue;
+    // Read workflow name for display
+    let workflowName = wId;
+    const wfPath = workflowPath(wId);
+    if (existsSync(wfPath)) {
+      try { workflowName = JSON.parse(readFileSync(wfPath, 'utf-8')).name || wId; } catch { /* ignore */ }
+    }
+    readdirSync(historyDir)
+      .filter(f => f.endsWith('.json'))
+      .forEach(f => {
+        try {
+          const log = JSON.parse(readFileSync(path.join(historyDir, f), 'utf-8'));
+          results.push({ ...log, workflowName });
+        } catch { /* ignore */ }
+      });
+  }
+  return results
+    .sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0))
+    .slice(0, limit);
+}
+
 export function getExecutionLog(workflowId: string, logId: string) {
   return readJsonFile(path.join(executionHistoryDir(workflowId), `${logId}.json`));
 }

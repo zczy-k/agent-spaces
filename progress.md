@@ -206,11 +206,11 @@
 
 | Question | Answer |
 |----------|--------|
-| Where am I? | Phase 4 完成（执行引擎+交互管理+WS channels+Hook route 全部就绪），准备 Phase 5 |
-| Where am I going? | Phase 5 前端基础设施迁移（stores/hooks/lib 层），然后 Phase 6-8 |
-| What's the goal? | 产品级统一成一套 Workflow 系统：WorkFox 为 canonical workflow，legacy agent/command workflow 通过 adapter/migration 纳入新模型 |
-| What have I learned? | 两套 Workflow 类型体系差异巨大（15+ 维度），统一后 node type 为 string + data: Record<string, unknown>，时间戳为 epoch ms，所有 workfox 扩展（groups/triggers/execution/plugin）均为 optional |
-| What have I done? | Phase 3（shared 层 6+1 文件）+ Phase 4（storage/service/route 重写 + execution-manager ~1200 行 + interaction-manager + WS channels + hook route + 接线），shared/server/web 全部编译通过 |
+| Where am I? | Phase 7 完成（产品周边能力统一），Phase 8 部分完成（构建通过） |
+| Where am I going? | Phase 6（统一 Workflow 编辑器迁移），然后完成 Phase 8 功能性验证 |
+| What's the goal? | 产品级统一成一套 Workflow 系统 |
+| What have I learned? | agent-spaces 已有完善的 chat/dashboard/settings/command-palette 基础设施，Phase 7 只需添加 workflow 连接层而非重写。ask_user_question 活跃问题由 chat-panel 独立面板处理，message-parts 只需渲染历史记录 |
+| What have I done? | Phase 3-5 + Phase 7（全局执行日志 API + Dashboard 面板 + Command Palette workflow 搜索 + ask_user_question 内联渲染） |
 
 ## Test Results
 

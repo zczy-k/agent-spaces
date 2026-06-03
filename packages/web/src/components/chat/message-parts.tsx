@@ -1,7 +1,7 @@
 "use client"
 
 import type { Message, MessagePart } from "@agent-spaces/shared"
-import { AlertCircleIcon } from "lucide-react"
+import { AlertCircleIcon, HelpCircleIcon, CheckCircle2Icon } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Markdown } from "@/components/ui/markdown"
@@ -234,7 +234,7 @@ function MessagePartView({
         </Agent>
       )
     case "ask_user_question":
-      return null
+      return <AskUserQuestionPart question={part.question} choices={part.choices} status={part.status} answer={part.answer} />
     default:
       return null
   }
@@ -311,4 +311,49 @@ function dedupeRepeatedTextBlock(text: string) {
 
 function normalizeDisplayText(text: string) {
   return text.trim().replace(/\s+/g, " ")
+}
+
+// ---- Inline ask_user_question rendering (historical) ----
+
+function AskUserQuestionPart({
+  question, choices, status, answer,
+}: {
+  question: string
+  choices?: string[]
+  status?: 'requested' | 'answered'
+  answer?: string
+}) {
+  const isAnswered = status === 'answered' || answer
+  return (
+    <div className="not-prose my-2 rounded-lg border bg-muted/40 px-3 py-2.5 text-sm">
+      <div className="flex items-start gap-2">
+        <HelpCircleIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <p className="text-foreground">{question}</p>
+          {choices && choices.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {choices.map((choice, i) => (
+                <span
+                  key={i}
+                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                    isAnswered && answer === choice
+                      ? 'bg-primary/15 text-primary'
+                      : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {choice}
+                </span>
+              ))}
+            </div>
+          )}
+          {isAnswered && answer && (
+            <div className="flex items-center gap-1.5 pt-1 text-xs text-muted-foreground">
+              <CheckCircle2Icon className="size-3" />
+              <span>Answer: <span className="font-medium text-foreground">{answer}</span></span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
 }
