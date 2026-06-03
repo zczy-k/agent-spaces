@@ -13,6 +13,15 @@ import { WorkflowNodeSidebar } from './workflow-node-sidebar';
 import { WorkflowEditorToolbar } from './workflow-editor-toolbar';
 import { WorkflowPropertiesPanel } from './workflow-properties-panel';
 import { WorkflowExecutionBar } from './workflow-execution-bar';
+import { WorkflowVersionPanel } from './workflow-version-panel';
+import { WorkflowOperationHistory } from './workflow-operation-history';
+import { WorkflowStagingPanel } from './workflow-staging-panel';
+import { WorkflowTriggerDialog } from './workflow-trigger-dialog';
+import { WorkflowVariablePicker } from './workflow-variable-picker';
+import { WorkflowCanvasContextMenu } from './workflow-canvas-context-menu';
+import { WorkflowGroupOverlay, useGroupManagement } from './workflow-group-node';
+import { WorkflowLoopBodyOverlay, useLoopBodyBounds } from './workflow-loop-body-container';
+import { WorkflowEmbeddedEditor } from './workflow-embedded-editor';
 import { ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { ResizablePanelGroup } from '@/components/ui/resizable';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -56,6 +65,16 @@ function WorkflowEditorInner({
   const [redoStack, setRedoStack] = useState<string[]>([]);
   const [listDialogOpen, setListDialogOpen] = useState(false);
   const [listDialogCreate, setListDialogCreate] = useState(false);
+  const [triggerDialogOpen, setTriggerDialogOpen] = useState(false);
+  const [embeddedEditorOpen, setEmbeddedEditorOpen] = useState(false);
+  const [embeddedSubWorkflowId, setEmbeddedSubWorkflowId] = useState<string | null>(null);
+  const [canvasContextMenuPos, setCanvasContextMenuPos] = useState<{ x: number; y: number } | null>(null);
+
+  // Group management
+  const groupMgr = useGroupManagement();
+
+  // Loop body bounds
+  const loopBounds = useLoopBodyBounds(workflow?.nodes || [], workflow?.edges || []);
 
   const { isExpanded: execExpanded, toggle: toggleExec } = useExecutionPanel();
   const clipboard = useClipboard();
@@ -488,14 +507,49 @@ function WorkflowEditorInner({
                 onUpdateData={handleNodeDataUpdate}
               />
             </TabsContent>
-            <TabsContent value="versions" className="flex-1 min-h-0 m-0 p-3">
-              <div className="text-sm text-muted-foreground">版本管理（待实现）</div>
+            <TabsContent value="versions" className="flex-1 min-h-0 m-0">
+              <WorkflowVersionPanel
+                workflowId={workflow.id}
+                nodes={workflow.nodes}
+                edges={workflow.edges}
+                onRestore={(version) => {
+                  pushUndo('restore version');
+                  setWorkflow(w => w ? {
+                    ...w,
+                    nodes: version.snapshot?.nodes || [],
+                    edges: (version.snapshot?.edges || []) as Workflow['edges'],
+                  } : null);
+                  markDirty();
+                }}
+              />
             </TabsContent>
-            <TabsContent value="history" className="flex-1 min-h-0 m-0 p-3">
-              <div className="text-sm text-muted-foreground">操作历史（待实现）</div>
+            <TabsContent value="history" className="flex-1 min-h-0 m-0">
+              <WorkflowOperationHistory
+                workflowId={workflow.id}
+                currentUndoCount={undoStack.length}
+                currentRedoCount={redoStack.length}
+                onUndo={handleUndo}
+                onRedo={handleRedo}
+              />
             </TabsContent>
-            <TabsContent value="staging" className="flex-1 min-h-0 m-0 p-3">
-              <div className="text-sm text-muted-foreground">暂存区（待实现）</div>
+            <TabsContent value="staging" className="flex-1 min-h-0 m-0">
+              <WorkflowStagingPanel
+                workflowId={workflow.id}
+                onAddFromStaging={(staged) => {
+                  if (!workflow) return;
+                  pushUndo('add from staging');
+                  const newNode: Workflow['nodes'][0] = {
+                    id: `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                    type: staged.type,
+                    label: (staged.data?.label as string) || staged.type,
+                    position: { x: 250 + Math.random() * 100, y: 250 + Math.random() * 100 },
+                    data: { ...(staged.data || {}) },
+                  };
+                  setWorkflow(w => w ? { ...w, nodes: [...w.nodes, newNode] } : null);
+                  setSelectedNodeId(newNode.id);
+                  markDirty();
+                }}
+              />
             </TabsContent>
           </Tabs>
         </ResizablePanel>
@@ -509,6 +563,32 @@ function WorkflowEditorInner({
         onSelect={handleListSelect}
         onCreate={handleCreateNew}
         onClose={() => setListDialogOpen(false)}
+      />
+
+      {/* Trigger settings dialog */}
+      <WorkflowTriggerDialog
+        open={triggerDialogOpen}
+        triggers={workflow?.triggers || []}
+        workflowId={workflow?.id || ''}
+        onSave={(triggers) => {
+          setWorkflow(w => w ? { ...w, triggers } : null);
+          markDirty();
+        }}
+        onClose={() => setTriggerDialogOpen(false)}
+      />
+
+      {/* Embedded sub-workflow editor */}
+      <WorkflowEmbeddedEditor
+        open={embeddedEditorOpen}
+        parentWorkflowId={workflow?.id || ''}
+        subWorkflowId={embeddedSubWorkflowId}
+        onClose={() => setEmbeddedEditorOpen(false)}
+        onSave={(subId) => {
+          if (selectedNodeId && workflow) {
+            handleNodeDataUpdate(selectedNodeId, { workflowId: subId });
+          }
+          setEmbeddedEditorOpen(false);
+        }}
       />
     </div>
   );

@@ -186,6 +186,37 @@
   - ✅ 属性面板支持 text/textarea/number/select/code/output_fields/conditions 字段
   - ✅ `pnpm --filter @agent-spaces/web build` 通过
 
+### Phase 6 补充：高级组件实现（2026-06-03）
+- **Status:** complete
+- Actions taken:
+  - 新建 workflow-version-panel.tsx（版本管理面板：列表/创建/恢复/删除版本快照，替换占位符）
+  - 新建 workflow-operation-history.tsx（操作历史面板：undo/redo 控件 + 操作分类展示，替换占位符）
+  - 新建 workflow-staging-panel.tsx（暂存区面板：@dnd-kit 拖拽排序 + 保存/加载/使用暂存节点，替换占位符）
+  - 新建 workflow-trigger-dialog.tsx（触发器设置对话框：Cron 表达式 + 8 种预设 + Webhook Hook 配置）
+  - 新建 workflow-variable-picker.tsx（变量选择器：按节点输出/上下文/循环变量搜索和引用变量路径）
+  - 新建 workflow-canvas-context-menu.tsx（画布右键菜单：按分类添加节点/粘贴/全选/适应/自动布局/导出）
+  - 新建 workflow-group-node.tsx（分组节点：视觉容器叠加层、可折叠、可锁定、5 种颜色主题、双击编辑名称 + useGroupManagement hook）
+  - 新建 workflow-loop-body-container.tsx（循环体容器：自动计算包围盒、循环参数显示、执行状态指示 + useLoopBodyBounds hook）
+  - 新建 workflow-embedded-editor.tsx（嵌入式子工作流编辑器：Dialog 内独立 ReactFlow 画布编辑子流程）
+  - 集成到 workflow-editor.tsx：替换 3 个占位符 tab 为实际面板，添加 trigger/embedded editor/group/loop 接线
+  - 修复类型错误：WorkflowVersion.snapshot.nodes、OperationEntry 无 type 字段、WorkflowGroup 缺 disabled/savedNodeStates、WorkflowTrigger.cron 非 cronExpression、ContextMenuTrigger/TooltipTrigger/PopoverTrigger 不支持 asChild
+- Files created/modified:
+  - workflow-version-panel.tsx, workflow-operation-history.tsx, workflow-staging-panel.tsx（新建，替换占位符）
+  - workflow-trigger-dialog.tsx, workflow-variable-picker.tsx, workflow-canvas-context-menu.tsx（新建）
+  - workflow-group-node.tsx, workflow-loop-body-container.tsx, workflow-embedded-editor.tsx（新建）
+  - workflow-editor.tsx（更新：集成所有 9 个新组件）
+- Acceptance criteria:
+  - ✅ 版本管理面板：创建/恢复/删除版本
+  - ✅ 操作历史面板：undo/redo 控件 + 操作列表
+  - ✅ 暂存区面板：拖拽排序 + 使用暂存节点
+  - ✅ 触发器设置：Cron + Webhook
+  - ✅ 变量选择器：搜索/引用变量
+  - ✅ 右键菜单：分类添加节点
+  - ✅ 分组节点：视觉容器 + 折叠/锁定
+  - ✅ 循环体容器：包围盒 + 状态指示
+  - ✅ 嵌入式编辑器：Dialog 内子工作流编辑
+  - ✅ `pnpm build` 全量通过
+
 ### Phase 7: 产品周边能力统一
 - **Status:** pending
 - Actions taken:

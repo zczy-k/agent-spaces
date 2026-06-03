@@ -21,7 +21,7 @@
 ## 当前阶段
 
 Phase 5 — 前端基础设施迁移 ✅（完成）
-Phase 6 — 统一 Workflow 编辑器迁移 ✅（完成）
+Phase 6 — 统一 Workflow 编辑器迁移 ✅（完成，含 9 个高级组件）
 Phase 7 — 产品周边能力统一 ✅（完成）
 Phase 8 — 端到端集成验证（构建通过，功能性验证待完成）
 
@@ -157,7 +157,17 @@ Phase 8 — 端到端集成验证（构建通过，功能性验证待完成）
 - [x] 更新现有 workflow store 以适配统一 Workflow 模型
 - [x] 验收：`pnpm --filter @agent-spaces/web build` 通过 ✅
 - **Status:** complete
-- **待补充（后续迭代）：** GroupNode, LoopBodyContainer, EmbeddedWorkflowEditor, VersionControl, OperationHistory, StagingPanel, TriggerSettingsDialog, VariablePicker, CanvasContextMenu 等高级组件
+- **待补充高级组件（已完成 2026-06-03）：**
+  - [x] VersionControl（版本管理面板：列表/创建/恢复/删除版本快照）
+  - [x] OperationHistory（操作历史面板：undo/redo 可视化、操作类型分类展示）
+  - [x] StagingPanel（暂存区面板：拖拽排序、保存/加载/使用暂存节点）
+  - [x] TriggerSettingsDialog（触发器设置：Cron 表达式编辑 + 预设 + Webhook Hook 配置）
+  - [x] VariablePicker（变量选择器：按节点输出/上下文/循环变量引用变量路径）
+  - [x] CanvasContextMenu（画布右键菜单：按分类添加节点/粘贴/全选/适应/自动布局/导出）
+  - [x] GroupNode（分组节点渲染：视觉容器、可折叠、可锁定、颜色主题、双击编辑名称）
+  - [x] LoopBodyContainer（循环体容器：自动计算包围盒、循环参数显示、执行状态指示）
+  - [x] EmbeddedWorkflowEditor（嵌入式子工作流编辑器：Dialog 内独立 ReactFlow 画布编辑子流程）
+- **集成验收：** 所有 9 个高级组件已集成到 workflow-editor.tsx，`pnpm build` 全量通过 ✅
 
 ### Phase 7: 产品周边能力统一
 - [x] Dashboard workflow 执行历史面板
