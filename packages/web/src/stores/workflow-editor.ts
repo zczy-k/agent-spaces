@@ -5,6 +5,7 @@ import { create } from 'zustand';
 import type {
   Workflow, WorkflowFolder, WorkflowNode, WorkflowEdge, WorkflowGroup,
   ExecutionLog, WorkflowVersion, OperationEntry, StagedNode, EngineStatus,
+  InteractionRequest,
 } from '@agent-spaces/shared';
 import {
   workflowApi, workflowFolderApi, workflowVersionApi,
@@ -22,13 +23,7 @@ export interface WorkflowChanges {
   groups?: WorkflowGroup[];
 }
 
-interface PendingInteraction {
-  interactionType: string;
-  executionId: string;
-  workflowId: string;
-  nodeId: string;
-  schema: unknown;
-}
+type PendingInteraction = InteractionRequest;
 
 interface EmbeddedSelection {
   hostNodeId: string;
@@ -792,13 +787,25 @@ export function createWorkflowEditorStore(workspaceId: string) {
       const handler = (data: unknown) => {
         set({ pendingInteraction: data as PendingInteraction });
       };
-      ws.on('interaction:ui_required', handler);
-      return () => ws.off('interaction:ui_required', handler);
+      ws.on('workflow:interaction', handler);
+      return () => ws.off('workflow:interaction', handler);
     },
 
     resolveInteraction: (data: unknown) => {
+      const pending = get().pendingInteraction;
+      if (pending) {
+        const ws = getWS(get().workspaceId);
+        ws.send('workflow:interaction', {
+          id: pending.id,
+          channel: 'workflow:interaction',
+          type: 'interaction_response',
+          executionId: pending.executionId,
+          workflowId: pending.workflowId,
+          nodeId: pending.nodeId,
+          data,
+        });
+      }
       set({ pendingInteraction: null });
-      // The execution manager handles the resolution via WS
     },
   }));
 

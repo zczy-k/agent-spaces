@@ -53,10 +53,13 @@ export class WorkspaceWS {
     socket.onmessage = (ev) => {
       if (this.disposed || this.ws !== socket) return;
       try {
-        const msg = JSON.parse(ev.data) as WSEvent;
-        const handlers = this.handlers.get(msg.event);
+        const msg = JSON.parse(ev.data) as WSEvent & { channel?: string };
+        const event = msg.event || msg.channel;
+        const data = msg.event ? msg.data : msg;
+        if (!event) return;
+        const handlers = this.handlers.get(event);
         if (handlers) {
-          for (const h of handlers) h(msg.data);
+          for (const h of handlers) h(data);
         }
       } catch {
         console.error('[WS] parse error');

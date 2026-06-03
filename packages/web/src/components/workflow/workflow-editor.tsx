@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { ReactFlowProvider, applyNodeChanges, applyEdgeChanges, addEdge } from '@xyflow/react';
 import type { NodeChange, EdgeChange, Connection } from '@xyflow/react';
-import type { Workflow, WorkflowTemplate } from '@agent-spaces/shared';
+import type { InteractionRequest, Workflow, WorkflowTemplate } from '@agent-spaces/shared';
 import { useWorkflowStore } from '@/stores/workflow';
 import { workflowApi } from '@/lib/workflow-api';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
@@ -23,6 +23,7 @@ import { WorkflowCanvasContextMenu } from './workflow-canvas-context-menu';
 import { WorkflowGroupOverlay, useGroupManagement } from './workflow-group-node';
 import { WorkflowLoopBodyOverlay, useLoopBodyBounds } from './workflow-loop-body-container';
 import { WorkflowEmbeddedEditor } from './workflow-embedded-editor';
+import { WorkflowInteractionDialog } from './workflow-interaction-dialog';
 import { ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { ResizablePanelGroup } from '@/components/ui/resizable';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -80,6 +81,7 @@ function WorkflowEditorInner({
   const [debugNodeId, setDebugNodeId] = useState<string | null>(null);
   const [debugStatus, setDebugStatus] = useState<'idle' | 'running' | 'completed' | 'error'>('idle');
   const [debugResult, setDebugResult] = useState<DebugResult | null>(null);
+  const [pendingInteraction, setPendingInteraction] = useState<InteractionRequest | null>(null);
 
   // Group management
   const groupMgr = useGroupManagement();
@@ -233,10 +235,34 @@ function WorkflowEditorInner({
 
   const handleCancelDebug = useCallback(() => {
     cleanupDebugListeners();
+    setPendingInteraction(null);
     setDebugStatus('idle');
     setDebugResult(null);
     setDebugNodeId(null);
   }, [cleanupDebugListeners]);
+
+  const sendInteractionResponse = useCallback((request: InteractionRequest, data: unknown, cancelled = false) => {
+    const ws = getWS('workflows');
+    ws.send('workflow:interaction', {
+      id: request.id,
+      channel: 'workflow:interaction',
+      type: 'interaction_response',
+      executionId: request.executionId,
+      workflowId: request.workflowId,
+      nodeId: request.nodeId,
+      data,
+      cancelled,
+    });
+    setPendingInteraction(null);
+  }, []);
+
+  const handleResolveInteraction = useCallback((request: InteractionRequest, data: unknown) => {
+    sendInteractionResponse(request, data, false);
+  }, [sendInteractionResponse]);
+
+  const handleCancelInteraction = useCallback((request: InteractionRequest) => {
+    sendInteractionResponse(request, null, true);
+  }, [sendInteractionResponse]);
 
   const handleDebugNode = useCallback((nodeId: string) => {
     if (!workflow) return;
@@ -268,11 +294,17 @@ function WorkflowEditorInner({
     const offError = ws.on('workflow:debug-node:error', (data) => {
       const payload = data as { error?: string };
       cleanupDebugListeners();
+      setPendingInteraction(null);
       setDebugNodeId(nodeId);
       setDebugResult({ status: 'error', error: payload.error || '测试失败' });
       setDebugStatus('error');
     });
-    debugCleanupRef.current = [offResult, offError];
+    const offInteraction = ws.on('workflow:interaction', (data) => {
+      const request = data as InteractionRequest;
+      if (request.type !== 'interaction_required' || request.nodeId !== nodeId) return;
+      setPendingInteraction(request);
+    });
+    debugCleanupRef.current = [offResult, offError, offInteraction];
 
     if (ws.connected) {
       sendDebugRequest();
@@ -714,6 +746,12 @@ function WorkflowEditorInner({
           }
           setEmbeddedEditorOpen(false);
         }}
+      />
+
+      <WorkflowInteractionDialog
+        request={pendingInteraction}
+        onResolve={handleResolveInteraction}
+        onCancel={handleCancelInteraction}
       />
     </div>
   );

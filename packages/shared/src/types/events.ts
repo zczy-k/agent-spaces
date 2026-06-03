@@ -1,6 +1,7 @@
 import type { Workflow } from './workflow.js';
 import type { CommandProcessEvent } from './command.js';
 import type { AppNotification } from './notification.js';
+import type { InteractionRequest, InteractionResponse } from './workflow-ws.js';
 
 export interface WSEvent<T = unknown> {
   event: string;
@@ -110,6 +111,7 @@ export type ClientEventMap = {
   'workflow:stop': { executionId: string };
   'workflow:debug-node': { workflowId: string; nodeId: string; context?: Record<string, unknown> };
   'workflow:get-execution-recovery': { workflowId: string; executionId?: string | null };
+  'workflow:interaction': InteractionResponse;
 };
 
 // ---- Server → Client Event Map ----
@@ -161,6 +163,7 @@ export type ServerEventMap = {
   'workflow:debug-node:error': { error: string };
   'workflow:get-execution-recovery:result': unknown;
   'workflow:get-execution-recovery:error': { error: string };
+  'workflow:interaction': InteractionRequest;
   'interaction:ui_required': unknown;
 };
 

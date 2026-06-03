@@ -13,6 +13,8 @@ import {
   type NodeChange,
   type EdgeChange,
   type Connection,
+  type OnConnectEnd,
+  type OnConnectStart,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import type { Workflow } from '@agent-spaces/shared';
@@ -294,7 +296,7 @@ export function WorkflowCanvas({
     onConnect(connection);
   }, [getNodeDebugSnapshot, onConnect]);
 
-  const handleConnectStart = useCallback((_: React.MouseEvent | React.TouchEvent, params: unknown) => {
+  const handleConnectStart: OnConnectStart = useCallback((_, params) => {
     if (!DEBUG_WORKFLOW_CANVAS) return;
     const nodeId = typeof params === 'object' && params && 'nodeId' in params
       ? String((params as { nodeId?: string | null }).nodeId || '')
@@ -305,7 +307,7 @@ export function WorkflowCanvas({
     });
   }, [getNodeDebugSnapshot]);
 
-  const handleConnectEnd = useCallback((event: MouseEvent | TouchEvent) => {
+  const handleConnectEnd: OnConnectEnd = useCallback((event) => {
     if (!DEBUG_WORKFLOW_CANVAS) return;
     console.debug('[WorkflowCanvas] onConnectEnd', {
       eventType: event.type,
