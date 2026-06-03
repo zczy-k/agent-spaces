@@ -289,6 +289,13 @@ function WorkflowEditorInner({
   // ---- Edge operations ----
   const handleConnect = useCallback((connection: Connection) => {
     if (!workflow) return;
+    console.debug('[WorkflowEditor] handleConnect', {
+      connection,
+      nodeCount: workflow.nodes.length,
+      edgeCount: workflow.edges.length,
+      sourceNode: workflow.nodes.find(n => n.id === connection.source),
+      targetNode: workflow.nodes.find(n => n.id === connection.target),
+    });
     pushUndo('connect');
     const edge: Workflow['edges'][0] = {
       id: `e-${connection.source}-${connection.target}`,
@@ -303,6 +310,15 @@ function WorkflowEditorInner({
 
   const handleNodesChange = useCallback((changes: NodeChange[]) => {
     if (!workflow) return;
+    console.debug('[WorkflowEditor] handleNodesChange input', {
+      changes,
+      workflowNodes: workflow.nodes.map(n => ({
+        id: n.id,
+        type: n.type,
+        label: n.label,
+        position: n.position,
+      })),
+    });
     // Handle delete via changes
     const hasDelete = changes.some(c => c.type === 'remove');
     if (hasDelete) pushUndo('delete');
@@ -325,6 +341,18 @@ function WorkflowEditorInner({
       };
     });
     const updated = applyNodeChanges(changes, rfNodes);
+    console.debug('[WorkflowEditor] handleNodesChange applied', {
+      changes,
+      updatedNodes: updated.map(n => ({
+        id: n.id,
+        position: n.position,
+        width: n.width,
+        height: n.height,
+        initialWidth: n.initialWidth,
+        initialHeight: n.initialHeight,
+        measured: n.measured,
+      })),
+    });
 
     setWorkflow(w => {
       if (!w) return null;

@@ -721,18 +721,15 @@ export function WorkflowPropertiesPanel({
           )}
           {canEditDelay && (
             <Popover>
-              <PopoverTrigger>
-                <button
-                  className={`relative rounded p-1 transition-colors hover:bg-muted ${data._delay ? 'text-primary' : 'text-muted-foreground'}`}
-                  type="button"
-                >
-                  <Timer className="h-3.5 w-3.5" />
-                  {Number(data._delay) > 0 && (
-                    <span className="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-0.5 text-[9px] font-medium leading-none text-primary-foreground">
-                      {Math.ceil(Number(data._delay) / 1000)}s
-                    </span>
-                  )}
-                </button>
+              <PopoverTrigger
+                className={`relative rounded p-1 transition-colors hover:bg-muted ${data._delay ? 'text-primary' : 'text-muted-foreground'}`}
+              >
+                <Timer className="h-3.5 w-3.5" />
+                {Number(data._delay) > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-0.5 text-[9px] font-medium leading-none text-primary-foreground">
+                    {Math.ceil(Number(data._delay) / 1000)}s
+                  </span>
+                )}
               </PopoverTrigger>
               <PopoverContent align="end" className="w-56 space-y-2 p-3">
                 <p className="text-xs font-medium">延迟执行</p>

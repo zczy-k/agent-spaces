@@ -233,6 +233,110 @@ export function WorkflowCanvas({
     onNodeSelect(null);
   }, [onNodeSelect]);
 
+  const getNodeDebugSnapshot = useCallback((nodeId?: string | null) => {
+    const wrapper = reactFlowWrapper.current;
+    const domNodes = wrapper
+      ? Array.from(wrapper.querySelectorAll<HTMLElement>('.react-flow__node'))
+          .filter(element => !nodeId || element.getAttribute('data-id') === nodeId)
+          .map(element => {
+            const rect = element.getBoundingClientRect();
+            const computedStyle = window.getComputedStyle(element);
+            return {
+              id: element.getAttribute('data-id'),
+              rect: {
+                x: Math.round(rect.x),
+                y: Math.round(rect.y),
+                width: Math.round(rect.width),
+                height: Math.round(rect.height),
+              },
+              visibility: computedStyle.visibility,
+              display: computedStyle.display,
+              opacity: computedStyle.opacity,
+              transform: computedStyle.transform,
+            };
+          })
+      : [];
+    const flowNodes = rfNodes
+      .filter(node => !nodeId || node.id === nodeId)
+      .map(node => ({
+        id: node.id,
+        type: node.type,
+        workflowType: node.data?.nodeType,
+        position: node.position,
+        width: node.width,
+        height: node.height,
+        initialWidth: node.initialWidth,
+        initialHeight: node.initialHeight,
+        measured: node.measured,
+      }));
+
+    return { flowNodes, domNodes };
+  }, [rfNodes]);
+
+  const handleNodesChangeWithDebug = useCallback((changes: NodeChange[]) => {
+    if (DEBUG_WORKFLOW_CANVAS) {
+      console.debug('[WorkflowCanvas] onNodesChange', {
+        changes,
+        snapshot: getNodeDebugSnapshot(),
+      });
+    }
+    onNodesChange(changes);
+  }, [getNodeDebugSnapshot, onNodesChange]);
+
+  const handleConnectWithDebug = useCallback((connection: Connection) => {
+    if (DEBUG_WORKFLOW_CANVAS) {
+      console.debug('[WorkflowCanvas] onConnect', {
+        connection,
+        sourceSnapshot: getNodeDebugSnapshot(connection.source),
+        targetSnapshot: getNodeDebugSnapshot(connection.target),
+      });
+    }
+    onConnect(connection);
+  }, [getNodeDebugSnapshot, onConnect]);
+
+  const handleConnectStart = useCallback((_: React.MouseEvent | React.TouchEvent, params: unknown) => {
+    if (!DEBUG_WORKFLOW_CANVAS) return;
+    const nodeId = typeof params === 'object' && params && 'nodeId' in params
+      ? String((params as { nodeId?: string | null }).nodeId || '')
+      : null;
+    console.debug('[WorkflowCanvas] onConnectStart', {
+      params,
+      snapshot: getNodeDebugSnapshot(nodeId),
+    });
+  }, [getNodeDebugSnapshot]);
+
+  const handleConnectEnd = useCallback((event: MouseEvent | TouchEvent) => {
+    if (!DEBUG_WORKFLOW_CANVAS) return;
+    console.debug('[WorkflowCanvas] onConnectEnd', {
+      eventType: event.type,
+      snapshot: getNodeDebugSnapshot(),
+    });
+  }, [getNodeDebugSnapshot]);
+
+  const handleNodeDragStart = useCallback((_: React.MouseEvent, node: Node) => {
+    if (!DEBUG_WORKFLOW_CANVAS) return;
+    console.debug('[WorkflowCanvas] onNodeDragStart', {
+      node,
+      snapshot: getNodeDebugSnapshot(node.id),
+    });
+  }, [getNodeDebugSnapshot]);
+
+  const handleNodeDragStop = useCallback((_: React.MouseEvent, node: Node) => {
+    if (!DEBUG_WORKFLOW_CANVAS) return;
+    console.debug('[WorkflowCanvas] onNodeDragStop', {
+      node,
+      snapshot: getNodeDebugSnapshot(node.id),
+    });
+  }, [getNodeDebugSnapshot]);
+
+  const handleReactFlowError = useCallback((code: string, message: string) => {
+    console.warn('[WorkflowCanvas] ReactFlow error', {
+      code,
+      message,
+      snapshot: getNodeDebugSnapshot(),
+    });
+  }, [getNodeDebugSnapshot]);
+
   // Handle edge insert node events from WorkflowEdge
   const handleEdgeInsertNode = useCallback((e: Event) => {
     const detail = (e as CustomEvent).detail;
@@ -262,13 +366,18 @@ export function WorkflowCanvas({
         className="h-full w-full"
         nodes={rfNodes}
         edges={rfEdges}
-        onNodesChange={onNodesChange}
+        onNodesChange={handleNodesChangeWithDebug}
         onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
+        onConnect={handleConnectWithDebug}
+        onConnectStart={handleConnectStart}
+        onConnectEnd={handleConnectEnd}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
         onNodeClick={handleNodeClick}
+        onNodeDragStart={handleNodeDragStart}
+        onNodeDragStop={handleNodeDragStop}
         onPaneClick={handlePaneClick}
+        onError={handleReactFlowError}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView
