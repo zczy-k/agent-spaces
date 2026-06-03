@@ -769,6 +769,7 @@ function WorkflowEditorInner({
         onImport={handleImport}
         onNew={() => { setListDialogCreate(true); setListDialogOpen(true); }}
         onOpen={() => { setListDialogCreate(false); setListDialogOpen(true); }}
+        onOpenPluginManager={() => setPluginsDialogOpen(true)}
         onStartEditName={startEditName}
         onFinishEditName={finishEditName}
         onCancelEditName={() => setIsEditingName(false)}

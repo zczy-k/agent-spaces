@@ -243,8 +243,8 @@ export function WorkflowExecutionBar({
   return (
     <div
       className={cn(
-        'border-t border-border bg-background flex flex-col shrink-0 min-h-0',
-        isExpanded ? 'h-[320px] max-h-[45vh]' : 'h-auto',
+        'border-t border-border bg-background flex flex-col shrink-0 overflow-hidden',
+        isExpanded ? 'h-[min(320px,45vh)] min-h-[220px]' : 'h-auto',
       )}
     >
       <div className="flex items-center gap-2 px-3 py-1.5">
@@ -302,12 +302,13 @@ export function WorkflowExecutionBar({
 
       {isExpanded && (
         <div className="border-t border-border flex-1 min-h-0">
-          <ResizablePanelGroup orientation="horizontal" className="h-full">
+          <ResizablePanelGroup orientation="horizontal" className="h-full min-h-0 overflow-hidden">
             <ResizablePanel
               id="workflow-execution-history"
               defaultSize="25%"
               minSize="15%"
               maxSize="40%"
+              className="min-h-0 overflow-hidden"
             >
               <div className="h-full flex flex-col">
                 <div className="flex items-center justify-between px-2 py-1 border-b border-border">
@@ -382,6 +383,7 @@ export function WorkflowExecutionBar({
               id="workflow-execution-details"
               defaultSize="75%"
               minSize="40%"
+              className="min-h-0 overflow-hidden"
             >
               {displayLog ? (
                 <ScrollArea className="h-full">

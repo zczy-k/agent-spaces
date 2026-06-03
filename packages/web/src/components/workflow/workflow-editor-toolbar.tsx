@@ -2,7 +2,7 @@
 
 import {
   Save, ArrowLeft, Play, Square, Pause, FolderOpen, Plus,
-  Download, Upload, Undo2, Redo2,
+  Download, Upload, Undo2, Redo2, PackagePlus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,6 +33,7 @@ interface EditorToolbarProps {
   onImport: () => void;
   onNew: () => void;
   onOpen: () => void;
+  onOpenPluginManager: () => void;
   onStartEditName: () => void;
   onFinishEditName: () => void;
   onCancelEditName: () => void;
@@ -57,7 +58,7 @@ export function WorkflowEditorToolbar({
   isEditingName, editingName, canUndo, canRedo,
   onBack, onSave, onExecute, onPause, onResume, onStop,
   onUndo, onRedo, onAutoLayout, onExport, onImport,
-  onNew, onOpen, onStartEditName, onFinishEditName, onCancelEditName, onEditingNameChange,
+  onNew, onOpen, onOpenPluginManager, onStartEditName, onFinishEditName, onCancelEditName, onEditingNameChange,
 }: EditorToolbarProps) {
   const isRunning = executionStatus === 'running';
   const isPaused = executionStatus === 'paused';
@@ -75,6 +76,9 @@ export function WorkflowEditorToolbar({
       </ToolBtn>
       <ToolBtn tooltip="打开" variant="ghost" size="icon" className="h-7 w-7" onClick={onOpen}>
         <FolderOpen className="h-4 w-4" />
+      </ToolBtn>
+      <ToolBtn tooltip="插件管理" variant="ghost" size="icon" className="h-7 w-7" onClick={onOpenPluginManager} disabled={!workflow}>
+        <PackagePlus className="h-4 w-4" />
       </ToolBtn>
 
       <div className="w-px h-5 bg-border mx-1" />
