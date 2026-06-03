@@ -4,7 +4,7 @@
 
 ## 模块职责
 
-Express 5 后端服务，提供 REST API、WebSocket 实时通信、认证中间件、六运行时 Agent 编排引擎（OpenAgentSdk / ClaudeCode / Codex / LangChain / Hermes / OhMyPi）、通用 AI 文本请求层（支持 Anthropic/OpenAI/Gemini 三种供应商）、AI 标题生成（频道/Issue 自动标题）、Workflow 系统（DAG 校验/CRUD/Task 映射/Command 节点执行/运行时校验）、Hook 系统（Agent 工具调用前后自定义钩子，shell/webhook/script 三种动作）、输出风格管理（OutputStyle 模板 CRUD + 运行时注入）、Anthropic Bridge 协议中转（7 文件子模块）、持久上下文加载（CLAUDE.md/AGENTS.md 自动注入）、通知中心（飞书 Lark + 企微 WeChat + Native 双适配器 + Bot Agent + 16 个内置斜杠命令）、应用内通知（NotificationCenter）、PTY 终端管理、文件系统操作、Git 操作（含 Clone SSE）、SQLite Agent Usage 统计与费用估算、LLM 模型/供应商管理、Agent Preset 管理、内置 Function Call 工具、Commit Agent（自动生成 conventional commit message）、Issue 评论与重试恢复、工具详情持久化、Agent SSE API（HTTP 流式调用）、代码搜索（ripgrep + Node.js 回退）、订阅管理（智谱/MiniMax/AICode 配额查询）、语音识别（腾讯语音 WebSocket 流式）、快捷命令（CRUD + 运行/停止/自动重启）、Agent Designer（AI 自动生成预设）、Skill/MCP 全局管理、Prompt 模板管理（CRUD + 批量应用）、代码收藏（CRUD + 按工作空间持久化）、TypeScript LSP 服务（typescript-language-server + vscode-ws-jsonrpc）、DOM Inspector 源码定位（免认证端点 + WS 广播）、用户设置管理能力。作为整个平台的核心运行时，管理 Workspace 生命周期、Issue/Task 状态机（含 Workflow DAG 依赖调度）、Agent 会话调度和数据持久化。
+Express 5 后端服务，提供 REST API、WebSocket 实时通信、认证中间件、六运行时 Agent 编排引擎（OpenAgentSdk / ClaudeCode / Codex / LangChain / Hermes / OhMyPi）、通用 AI 文本请求层（支持 Anthropic/OpenAI/Gemini 三种供应商）、AI 标题生成（频道/Issue 自动标题）、Workflow 系统（WorkFox DAG 执行引擎 + 校验/CRUD/Task 映射/Command 节点执行/运行时校验/触发器/交互管理/执行通道/Webhook Hook）、Hook 系统（Agent 工具调用前后自定义钩子，shell/webhook/script 三种动作）、输出风格管理（OutputStyle 模板 CRUD + 运行时注入）、Anthropic Bridge 协议中转（7 文件子模块）、持久上下文加载（CLAUDE.md/AGENTS.md 自动注入）、通知中心（飞书 Lark + 企微 WeChat + Native 双适配器 + Bot Agent + 16 个内置斜杠命令）、应用内通知（NotificationCenter）、PTY 终端管理、文件系统操作、Git 操作（含 Clone SSE）、SQLite Agent Usage 统计与费用估算、LLM 模型/供应商管理、Agent Preset 管理、内置 Function Call 工具、Commit Agent（自动生成 conventional commit message）、Issue 评论与重试恢复、工具详情持久化、Agent SSE API（HTTP 流式调用）、代码搜索（ripgrep + Node.js 回退）、订阅管理（智谱/MiniMax/AICode 配额查询）、语音识别（腾讯语音 WebSocket 流式）、快捷命令（CRUD + 运行/停止/自动重启）、Agent Designer（AI 自动生成预设）、Skill/MCP 全局管理、Prompt 模板管理（CRUD + 批量应用）、代码收藏（CRUD + 按工作空间持久化）、TypeScript LSP 服务（typescript-language-server + vscode-ws-jsonrpc）、DOM Inspector 源码定位（免认证端点 + WS 广播）、数据导入导出（ZIP 归档 + cc-switch 迁移）、用户设置管理能力。作为整个平台的核心运行时，管理 Workspace 生命周期、Issue/Task 状态机（含 Workflow DAG 依赖调度）、Agent 会话调度和数据持久化。
 
 ## 入口与启动
 
@@ -102,6 +102,11 @@ Express 5 后端服务，提供 REST API、WebSocket 实时通信、认证中间
 | `/api/workflows` | GET/POST | 列出/创建 Workflow 模板（全局） |
 | `/api/workflows/:workflowId` | GET/PUT/DELETE | 获取/更新/删除 Workflow 模板 |
 | `/api/workflows/:workflowId/duplicate` | POST | 复制 Workflow 模板 |
+| `/api/workflows/:workflowId/trigger` | POST | 触发 Workflow 执行 |
+| `/api/workflow-hook/:triggerId` | GET/SSE | Workflow Webhook Hook（SSE 流式执行结果） |
+| `/api/data/export` | GET | 导出 ZIP 归档（15+ 数据类别） |
+| `/api/data/import` | POST | 导入 ZIP 归档 |
+| `/api/import/cc-switch` | POST | cc-switch 数据迁移 |
 | `/api/agent-sse/run` | POST | Agent SSE 流式调用 |
 | `/api/agents/usage/dashboard` | GET | Agent 用量 Dashboard（`?days=30`） |
 | `/api/models` | GET/POST | 列出/创建 LLM 模型 |
@@ -703,6 +708,9 @@ packages/server/src/
     ai-text.ts                    # 通用 AI 文本请求（Anthropic/OpenAI/Gemini 统一接口）
     generated-title.ts            # AI 标题生成调度（频道/Issue）
     version.ts                    # 版本检查 + 自更新脚本生成
+    execution-manager.ts           # WorkFox DAG 执行引擎（1321行，循环/分支/变量/断点/恢复）
+    interaction-manager.ts         # 交互管理器（alert/prompt/form/table_confirm）
+    workflow-trigger-service.ts    # Workflow 触发器（cron + webhook）
     worktree.ts                   # Worktree 服务（创建/删除/Diff/PR）
     robot-account.ts              # Robot Account 凭证服务
     agent-commands.ts             # Agent Commands 服务
@@ -834,6 +842,7 @@ packages/server/src/
 
 | 时间 | 操作 | 说明 |
 |------|------|------|
+| 2026-06-03T23:00:29+08:00 | 增量更新 | **WorkFox DAG 执行引擎**（新增 services/execution-manager.ts 1321行，支持循环/分支/变量/断点/恢复）；**交互管理器**（新增 services/interaction-manager.ts，alert/prompt/form/table_confirm 交互）；**Workflow 触发器**（新增 services/workflow-trigger-service.ts，cron + webhook 触发）；**执行通道**（新增 ws/execution-channels.ts，WebSocket 执行通道注册）；**Workflow Webhook Hook**（新增 routes/workflow-hook.ts，SSE 流式结果）；**数据导入导出**（新增 routes/data.ts + routes/import.ts，ZIP 归档 15+ 数据类别 + cc-switch 数据迁移）；**notification-hub 扩展**（新增 bot-commands.ts/events.ts/format.ts/helpers.ts 4 文件）；**新增 services/global-wechat-qr.ts/issue-retry.ts/workspace-prompt.ts**；**新增 ws/agent-prompt.ts**；**新增 storage/user-settings-store.ts**；**文件数 149->156** |
 | 2026-06-02T09:07:04+08:00 | 增量更新 | **第六运行时 OhMyPi**（新增 adapters/oh-my-pi-runtime.ts，基于 omp CLI 的进程适配运行时，支持 CodexFunctionToolBridge MCP 桥接）；**通用 AI 文本请求层**（新增 services/ai-text.ts，统一 Anthropic/OpenAI/Gemini 三种供应商的文本生成请求，含 URL 脱敏 maskAiTextUrl）；**AI 标题生成**（新增 services/generated-title.ts + agents/title-generator-agent.ts，频道/Issue 创建时自动异步生成标题，scheduleChannelTitleGeneration/scheduleIssueTitleGeneration）；**Workflow Command Runner**（新增 services/workflow-command-runner.ts，Command 节点的 shell 命令执行器 executeCommandNode）；**Agent 运行时接口增强**（agent-runtime-types.ts 新增 AgentRunOptions/appendOutputStyleToPrompt/summarizeResult）；**文件数 144->149** |
 | 2026-05-28T14:35:28+08:00 | 增量更新 | **版本自更新系统**（新增 services/version.ts + routes/version.ts）；**CodexFunctionToolBridge**（新增 adapters/codex-function-tool-bridge.ts）；**PTY 服务提取**（新增 services/pty.ts）；**Workspace 服务**（新增 services/workspace.ts）；**Git 路由大幅扩展**（routes/git.ts 高级 Git 操作 + withLog 包装器）；**notification-hub 提取**（新增 service.ts + bot-agent.ts）；**文件数 138->144** |
 | 2026-05-25T22:19:18+08:00 | 增量更新 | **第五运行时 Hermes**；**Worktree 系统**；**Robot Account**；**Agent Commands**；**Workflow Command 节点**；**内置工具拆分**；**文档数据库增强**；**Git 操作日志**；**字体管理 API**；**文件数 128->138** |

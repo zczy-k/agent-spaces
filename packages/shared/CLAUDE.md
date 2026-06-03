@@ -27,7 +27,13 @@
 | `types/git.ts` | `GitFileStatus`, `GitStatusResult`, `GitLogEntry`, `GitDiffResult` | Git 操作结果类型 |
 | `types/llm.ts` | `LLMModel`, `LLMProvider`, `LLMModelCost`, `LLMThinkingEffort` | LLM 模型（含成本配置、思考模式）与供应商 |
 | `types/tool.ts` | `BUILT_IN_AGENT_TOOLS`, `BuiltInAgentToolName` | 内置 Agent 工具声明 |
-| `types/workflow.ts` | `WorkflowTemplate`, `WorkflowNode`, `WorkflowEdge` | Workflow DAG 模板（节点绑定 Agent Preset，边定义执行依赖） |
+| `types/workflow.ts` | `WorkflowTemplate`, `WorkflowNode`, `WorkflowEdge`, `WorkflowGroup`, `WorkflowFolder`, `ExecutionLog`, `ExecutionStep`, `EngineStatus` | Workflow DAG 模板（Unified Workflow Types from WorkFox，含分组/文件夹/执行日志/引擎状态） |
+| `types/workflow-execution.ts` | `ExecutionEventChannel`, `WorkflowExecuteRequest`, `InteractionRequest` | Workflow 执行事件类型（执行请求 + 交互请求 + SSE 通道） |
+| `types/workflow-errors.ts` | `BackendErrorCode`, `BackendErrorShape`, `ErrorEnvelope` | Workflow 错误码体系（结构化错误码 + 错误信封） |
+| `types/workflow-plugin.ts` | `PluginInfo`, `PluginRuntimeType`, `PluginConfigField` | Workflow 插件类型（插件元信息 + 运行时类型 + 配置字段） |
+| `types/workflow-composite.ts` | `LOOP`, `findWorkflowNode`, `getCompositeRootId` | Workflow 复合节点工具函数（循环节点常量 + 查找/根ID解析） |
+| `types/workflow-shortcut.ts` | `ShortcutAction`, `ShortcutBinding`, `SHORTCUT_ACTIONS` | Workflow 快捷键类型（动作定义 + 绑定映射） |
+| `types/workflow-ws.ts` | channel contracts, message types | Workflow WebSocket 协议类型（通道契约 + 消息类型） |
 | `types/command.ts` | `QuickCommand`, `CommandProcess`, `CommandProcessEvent` | 快捷命令定义、运行进程状态、进程生命周期事件 |
 | `types/subscription.ts` | `SubscriptionProvider`, `SubscriptionConfig`, `SubscriptionQuota`, `SubscriptionLimit` | 订阅管理（智谱/MiniMax/AICode 供应商 + 配额查询） |
 | `types/search.ts` | `CodeSearchResult`, `FileSearchResult`, `SearchCodeOptions` | 代码搜索结果和查询选项 |
@@ -275,7 +281,13 @@ packages/shared/
       events.ts                 # WebSocket 事件契约
       llm.ts                    # LLMModel + LLMProvider + LLMModelCost + LLMThinkingEffort
       tool.ts                   # BUILT_IN_AGENT_TOOLS + BuiltInAgentToolName
-      workflow.ts               # WorkflowTemplate + WorkflowNode + WorkflowEdge（DAG 模板定义）
+      workflow.ts               # WorkflowTemplate + WorkflowNode + WorkflowEdge + WorkflowGroup + WorkflowFolder + ExecutionLog + ExecutionStep + EngineStatus（Unified Workflow Types from WorkFox）
+      workflow-execution.ts     # ExecutionEventChannel + WorkflowExecuteRequest + InteractionRequest（执行事件类型）
+      workflow-errors.ts        # BackendErrorCode + BackendErrorShape + ErrorEnvelope（错误码体系）
+      workflow-plugin.ts        # PluginInfo + PluginRuntimeType + PluginConfigField（插件类型）
+      workflow-composite.ts     # LOOP + findWorkflowNode + getCompositeRootId（复合节点工具函数）
+      workflow-shortcut.ts      # ShortcutAction + ShortcutBinding + SHORTCUT_ACTIONS（快捷键类型）
+      workflow-ws.ts            # WebSocket 协议类型（channel contracts + message types）
       command.ts                # QuickCommand + CommandProcess + CommandProcessEvent（快捷命令）
       subscription.ts           # SubscriptionProvider + SubscriptionConfig + SubscriptionQuota + SubscriptionLimit（订阅管理）
       search.ts                 # CodeSearchResult + FileSearchResult + SearchCodeOptions（代码搜索）
@@ -292,6 +304,7 @@ packages/shared/
 
 | 时间 | 操作 | 说明 |
 |------|------|------|
+| 2026-06-03T23:00:29+08:00 | 增量更新 | **workflow.ts 大幅重写为 Unified Workflow Types (WorkFox)**（WorkflowTemplate 扩展 WorkflowGroup/WorkflowFolder/ExecutionLog/ExecutionStep/EngineStatus 等类型）；**新增 workflow-execution.ts**（执行事件：ExecutionEventChannel/WorkflowExecuteRequest/InteractionRequest）；**新增 workflow-errors.ts**（错误码：BackendErrorCode/BackendErrorShape/ErrorEnvelope）；**新增 workflow-plugin.ts**（插件：PluginInfo/PluginRuntimeType/PluginConfigField）；**新增 workflow-composite.ts**（复合节点工具：LOOP 常量 + findWorkflowNode/getCompositeRootId）；**新增 workflow-shortcut.ts**（快捷键：ShortcutAction/ShortcutBinding/SHORTCUT_ACTIONS）；**新增 workflow-ws.ts**（WebSocket 协议：channel contracts + message types）；**文件数 23->29** |
 | 2026-06-02T09:07:04+08:00 | 增量更新 | **database.ts 大幅扩展**：新增 `DatabaseMeta`（数据库元信息：id/workspaceId/name/description/embeddingModelId/timestamps）、`DatabaseVectorStats`（向量索引统计）、`DatabaseVectorIndexResult`（索引构建结果）、`DatabaseVectorSearchResult`（向量搜索结果：nodeId/title/path/score/content/updatedAt）、`DatabaseNodeVersion`（节点版本历史：patch 级增量 {start/deleteText/insertText} + oldContent/newContent）；**worktree.ts 新增**（`WorktreeInfo`/`WorktreeStatus`/`CreateWorktreeInput`，Git Worktree 并行开发类型）；**runtimeKind 新增 oh-my-pi**；**WorkflowNode type 新增 command 类型**；**WorkspaceNotificationSettings 新增 botMarkdown/robotAccountId 字段**；**NotificationEventKey 新增 channel_agent_completed**；**AgentConfig 新增 outputStyle/icon 字段**；**文件数 22->23** |
 | 2026-05-22T12:52:36+08:00 | 增量更新 | 新增 database.ts（DocNode + PRESET_COVERS 类型：Notion 风格文档数据库节点，含 id/title/icon/cover/content/parentId/isTrash/createdAt/updatedAt + 7 种预设封面渐变）；新增 kanban.ts（KanbanBoard + KanbanColumn + KanbanTask + KanbanPriority + KanbanLayoutMode 类型：Kanban 看板系统）；types/index.ts 新增导出；**文件数 20->22** |
 | 2026-05-20T14:08:52+08:00 | 增量更新 | 新增 hooks.ts（HookConfig + HookRule 类型：PreToolUse/PostToolUse 钩子，matcher 通配/正则/精确匹配，type: command/webhook/script 三种动作）；types/index.ts 新增导出；**文件数 19->20** |

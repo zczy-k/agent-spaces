@@ -228,10 +228,23 @@ function WorkflowEditorInner({
     const hasDelete = changes.some(c => c.type === 'remove');
     if (hasDelete) pushUndo('delete');
 
-    const rfNodes = workflow.nodes.map(n => ({
-      id: n.id, type: 'custom' as const, position: n.position,
-      data: { ...n.data, label: n.label, nodeType: n.type },
-    }));
+    const rfNodes = workflow.nodes.map(n => {
+      const definition = getNodeDefinition(n.type);
+      const width = definition?.customViewMinSize?.width || 140;
+      const height = definition?.customViewMinSize?.height || 60;
+      return {
+        id: n.id,
+        type: 'custom' as const,
+        position: n.position,
+        width,
+        height,
+        initialWidth: width,
+        initialHeight: height,
+        measured: { width, height },
+        style: { minWidth: width, minHeight: height },
+        data: { ...n.data, label: n.label, nodeType: n.type, width, height },
+      };
+    });
     const updated = applyNodeChanges(changes, rfNodes);
 
     setWorkflow(w => {

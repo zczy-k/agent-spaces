@@ -1,22 +1,10 @@
 'use client';
 
-import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
-import {
-  X, Play, Loader2, CircleCheck, CircleX, ChevronDown, ChevronRight, Flag, FileText,
-} from 'lucide-react';
+import { X, Play } from 'lucide-react';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
-import type { WorkflowNode } from '@agent-spaces/shared';
-import {
-  Popover, PopoverContent, PopoverTrigger,
-} from '@/components/ui/popover';
-import {
-  Collapsible, CollapsibleContent, CollapsibleTrigger,
-} from '@/components/ui/collapsible';
-import {
-  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { LOOP_BODY_NODE_TYPE, LOOP_BODY_SOURCE_HANDLE } from '@agent-spaces/shared';
 
 // ---- Icon resolver ----
@@ -38,27 +26,29 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
 
 const HEADER_HEIGHT = 33;
 const HANDLE_MARGIN = 12;
+const DEBUG_WORKFLOW_NODE = process.env.NODE_ENV !== 'production';
 
-const NODE_COLOR_MAP: Record<string, string> = {
-  emerald: '#10b981', blue: '#3b82f6', violet: '#8b5cf6', rose: '#f43f5e',
-  orange: '#f97316', amber: '#f59e0b', cyan: '#06b6d4', pink: '#ec4899',
-  slate: '#64748b', red: '#ef4444', indigo: '#6366f1',
+type WorkflowNodeData = Record<string, unknown> & {
+  label?: string;
+  nodeType?: string;
 };
 
 export function WorkflowNode({ id, data, type, selected }: NodeProps) {
-  const definition = useMemo(() => getNodeDefinition(type || 'unknown'), [type]);
+  const nodeData = data as WorkflowNodeData;
+  const workflowNodeType = typeof nodeData.nodeType === 'string' ? nodeData.nodeType : type;
+  const definition = useMemo(() => getNodeDefinition(workflowNodeType || 'unknown'), [workflowNodeType]);
   const IconComponent = ICON_MAP[definition?.icon || ''];
 
   const [isHovered, setIsHovered] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editLabel, setEditLabel] = useState('');
-  const [inputExpanded, setInputExpanded] = useState(true);
-  const [outputExpanded, setOutputExpanded] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
+  const nodeRootRef = useRef<HTMLDivElement>(null);
+  const lastNodeDebugSignature = useRef<string | null>(null);
 
   const displayLabel = useMemo(
-    () => (data as Record<string, unknown>)?.label as string || definition?.label || type || '',
-    [data, definition, type],
+    () => nodeData.label || definition?.label || workflowNodeType || '',
+    [nodeData.label, definition, workflowNodeType],
   );
 
   const isBoundaryNode = definition?.type === 'start' || definition?.type === 'end';
@@ -90,10 +80,83 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
     || (showSourceHandle ? 1 : 0);
 
   const nodeMinHeight = useMemo(() => {
-    const base = 60;
+    const base = definition?.customViewMinSize?.height || 60;
     if (isLoopBody || sourceHandleCount <= 1) return base;
     return Math.max(base, HEADER_HEIGHT + sourceHandleCount * 24 + 16);
-  }, [isLoopBody, sourceHandleCount]);
+  }, [definition, isLoopBody, sourceHandleCount]);
+  const nodeMinWidth = definition?.customViewMinSize?.width || 140;
+
+  React.useEffect(() => {
+    if (!DEBUG_WORKFLOW_NODE) return;
+
+    const dataKeys = Object.keys(nodeData || {}).sort();
+    const rootRect = nodeRootRef.current?.getBoundingClientRect();
+    const rootStyle = nodeRootRef.current ? window.getComputedStyle(nodeRootRef.current) : null;
+    const flowNodeElement = nodeRootRef.current?.closest<HTMLElement>('.react-flow__node');
+    const flowNodeRect = flowNodeElement?.getBoundingClientRect();
+    const flowNodeStyle = flowNodeElement ? window.getComputedStyle(flowNodeElement) : null;
+    const debugPayload = {
+      id,
+      reactFlowType: type,
+      workflowNodeType,
+      label: displayLabel,
+      hasDefinition: !!definition,
+      definitionType: definition?.type,
+      showTargetHandle,
+      showSourceHandle,
+      staticSourceHandleCount: staticSourceHandles.length,
+      dynamicSourceHandleCount: dynamicHandles?.length || 0,
+      minWidth: nodeMinWidth,
+      minHeight: nodeMinHeight,
+      dataKeys,
+      rootRect: rootRect
+        ? {
+            x: Math.round(rootRect.x),
+            y: Math.round(rootRect.y),
+            width: Math.round(rootRect.width),
+            height: Math.round(rootRect.height),
+          }
+        : null,
+      rootDisplay: rootStyle?.display,
+      rootVisibility: rootStyle?.visibility,
+      rootOpacity: rootStyle?.opacity,
+      flowNodeRect: flowNodeRect
+        ? {
+            x: Math.round(flowNodeRect.x),
+            y: Math.round(flowNodeRect.y),
+            width: Math.round(flowNodeRect.width),
+            height: Math.round(flowNodeRect.height),
+          }
+        : null,
+      flowNodeTransform: flowNodeStyle?.transform,
+      flowNodeDisplay: flowNodeStyle?.display,
+      flowNodeVisibility: flowNodeStyle?.visibility,
+      flowNodeOpacity: flowNodeStyle?.opacity,
+    };
+    const debugSignature = JSON.stringify(debugPayload);
+
+    if (lastNodeDebugSignature.current === debugSignature) return;
+    lastNodeDebugSignature.current = debugSignature;
+
+    console.debug('[WorkflowNode] input changed', debugPayload);
+
+    if (!definition) {
+      console.warn('[WorkflowNode] definition missing', debugPayload);
+    }
+  }, [
+    id,
+    type,
+    workflowNodeType,
+    displayLabel,
+    definition,
+    showTargetHandle,
+    showSourceHandle,
+    staticSourceHandles.length,
+    dynamicHandles?.length,
+    nodeMinWidth,
+    nodeMinHeight,
+    nodeData,
+  ]);
 
   function getHandleTop(index: number, total: number): string {
     if (isLoopBody) return `${((index + 1) / (total + 1)) * 100}%`;
@@ -131,10 +194,15 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
   return (
     <>
       <div
-        className={`border-2 rounded-lg shadow-sm w-full h-full cursor-pointer transition-colors relative flex flex-col
+        ref={nodeRootRef}
+        className={`border-2 rounded-lg shadow-sm cursor-pointer transition-colors relative flex flex-col
           ${statusColor} ${selected ? 'ring-2 ring-primary' : ''}
           ${isLoopBody ? 'loop-body-node' : ''}`}
-        style={{ backgroundColor: 'hsl(var(--background))' }}
+        style={{
+          backgroundColor: 'hsl(var(--background))',
+          minWidth: nodeMinWidth,
+          minHeight: nodeMinHeight,
+        }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
