@@ -33,11 +33,17 @@ type WorkflowNodeData = Record<string, unknown> & {
   nodeType?: string;
 };
 
+type WorkflowCustomViewProps = {
+  nodeId: string;
+  data: Record<string, unknown>;
+};
+
 export function WorkflowNode({ id, data, type, selected }: NodeProps) {
   const nodeData = data as WorkflowNodeData;
   const workflowNodeType = typeof nodeData.nodeType === 'string' ? nodeData.nodeType : type;
   const definition = useMemo(() => getNodeDefinition(workflowNodeType || 'unknown'), [workflowNodeType]);
   const IconComponent = ICON_MAP[definition?.icon || ''];
+  const CustomView = definition?.customView as React.ComponentType<WorkflowCustomViewProps> | undefined;
 
   const [isHovered, setIsHovered] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -236,7 +242,7 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
         )}
 
         {/* Header */}
-        {!isLoopBody && (
+        {!isLoopBody && !CustomView && (
           <div className="flex items-center gap-2 px-3 py-2 border-b border-border/50">
             {IconComponent && <IconComponent className="w-4 h-4 text-muted-foreground shrink-0" />}
             {isEditing ? (
@@ -260,6 +266,12 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
             )}
           </div>
         )}
+
+        {CustomView ? (
+          <div className="min-h-0 flex-1 p-1">
+            <CustomView nodeId={id} data={nodeData} />
+          </div>
+        ) : null}
 
         {/* Source handles (static) */}
         {showSourceHandle && !dynamicHandles && (

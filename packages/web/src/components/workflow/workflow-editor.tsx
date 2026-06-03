@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { ReactFlowProvider, applyNodeChanges, applyEdgeChanges, addEdge } from '@xyflow/react';
 import type { NodeChange, EdgeChange, Connection } from '@xyflow/react';
-import type { InteractionRequest, Workflow, WorkflowTemplate } from '@agent-spaces/shared';
+import type { ExecutionLog, InteractionRequest, Workflow, WorkflowTemplate } from '@agent-spaces/shared';
 import { useWorkflowStore } from '@/stores/workflow';
 import { workflowApi } from '@/lib/workflow-api';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
@@ -67,6 +67,8 @@ function WorkflowEditorInner({
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [rightTab, setRightTab] = useState('properties');
   const [execStatus, setExecStatus] = useState('idle');
+  const [executionLog, setExecutionLog] = useState<ExecutionLog | null>(null);
+  const [currentExecutionId, setCurrentExecutionId] = useState<string | null>(null);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editingName, setEditingName] = useState('');
   const [isPreview, setIsPreview] = useState(false);
@@ -93,6 +95,7 @@ function WorkflowEditorInner({
   const clipboard = useClipboard();
   const autoSaveTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const debugCleanupRef = useRef<(() => void)[]>([]);
+  const executionCleanupRef = useRef<(() => void)[]>([]);
 
   // ---- Load workflow ----
   useEffect(() => {
@@ -117,6 +120,8 @@ function WorkflowEditorInner({
     return () => {
       for (const cleanup of debugCleanupRef.current) cleanup();
       debugCleanupRef.current = [];
+      for (const cleanup of executionCleanupRef.current) cleanup();
+      executionCleanupRef.current = [];
     };
   }, []);
 
@@ -231,6 +236,11 @@ function WorkflowEditorInner({
   const cleanupDebugListeners = useCallback(() => {
     for (const cleanup of debugCleanupRef.current) cleanup();
     debugCleanupRef.current = [];
+  }, []);
+
+  const cleanupExecutionListeners = useCallback(() => {
+    for (const cleanup of executionCleanupRef.current) cleanup();
+    executionCleanupRef.current = [];
   }, []);
 
   const handleCancelDebug = useCallback(() => {
@@ -457,9 +467,85 @@ function WorkflowEditorInner({
   // ---- Execution ----
   const handleExecute = useCallback(() => {
     if (!workflow) return;
+    cleanupExecutionListeners();
     setExecStatus('running');
-    // Execution via WebSocket — placeholder for now
-  }, [workflow]);
+    setExecutionLog(null);
+    setCurrentExecutionId(null);
+
+    const ws = getWS('workflows');
+    const sendExecuteRequest = () => {
+      ws.send('workflow:execute', {
+        workflowId: workflow.id,
+        snapshot: {
+          nodes: workflow.nodes,
+          edges: workflow.edges,
+          groups: workflow.groups || [],
+        },
+      });
+    };
+
+    const offResult = ws.on('workflow:execute:result', (data) => {
+      const result = data as { executionId?: string; status?: string };
+      if (result.executionId) setCurrentExecutionId(result.executionId);
+      if (result.status) setExecStatus(result.status);
+    });
+    const offError = ws.on('workflow:execute:error', () => {
+      setExecStatus('error');
+    });
+    const offLog = ws.on('execution:log', (data) => {
+      const event = data as { workflowId?: string; executionId?: string; log?: ExecutionLog };
+      if (event.workflowId !== workflow.id || !event.log) return;
+      setCurrentExecutionId(event.executionId || event.log.id);
+      setExecutionLog(event.log);
+      setExecStatus(event.log.status);
+    });
+    const offCompleted = ws.on('workflow:completed', (data) => {
+      const event = data as { workflowId?: string; executionId?: string; log?: ExecutionLog };
+      if (event.workflowId !== workflow.id) return;
+      if (event.executionId) setCurrentExecutionId(event.executionId);
+      if (event.log) setExecutionLog(event.log);
+      setExecStatus('completed');
+    });
+    const offFailed = ws.on('workflow:error', (data) => {
+      const event = data as { workflowId?: string; executionId?: string; log?: ExecutionLog };
+      if (event.workflowId !== workflow.id) return;
+      if (event.executionId) setCurrentExecutionId(event.executionId);
+      if (event.log) setExecutionLog(event.log);
+      setExecStatus('error');
+    });
+    executionCleanupRef.current = [offResult, offError, offLog, offCompleted, offFailed];
+
+    if (ws.connected) {
+      sendExecuteRequest();
+    } else {
+      const offConnected = ws.on('connected', () => {
+        offConnected();
+        executionCleanupRef.current = executionCleanupRef.current.filter(cleanup => cleanup !== offConnected);
+        sendExecuteRequest();
+      });
+      executionCleanupRef.current.push(offConnected);
+    }
+
+    if (!execExpanded) toggleExec();
+  }, [workflow, cleanupExecutionListeners, execExpanded, toggleExec]);
+
+  const handlePauseExecution = useCallback(() => {
+    if (!currentExecutionId) return;
+    getWS('workflows').send('workflow:pause', { executionId: currentExecutionId });
+    setExecStatus('paused');
+  }, [currentExecutionId]);
+
+  const handleResumeExecution = useCallback(() => {
+    if (!currentExecutionId) return;
+    getWS('workflows').send('workflow:resume', { executionId: currentExecutionId });
+    setExecStatus('running');
+  }, [currentExecutionId]);
+
+  const handleStopExecution = useCallback(() => {
+    if (!currentExecutionId) return;
+    getWS('workflows').send('workflow:stop', { executionId: currentExecutionId });
+    setExecStatus('stopped');
+  }, [currentExecutionId]);
 
   // ---- Shortcuts ----
   useEditorShortcuts({
@@ -589,9 +675,9 @@ function WorkflowEditorInner({
         onBack={onBack}
         onSave={saveWorkflow}
         onExecute={handleExecute}
-        onPause={() => setExecStatus('paused')}
-        onResume={() => setExecStatus('running')}
-        onStop={() => setExecStatus('stopped')}
+        onPause={handlePauseExecution}
+        onResume={handleResumeExecution}
+        onStop={handleStopExecution}
         onUndo={handleUndo}
         onRedo={handleRedo}
         onAutoLayout={() => {}}
@@ -623,6 +709,7 @@ function WorkflowEditorInner({
                 onNodeAdd={handleNodeAdd}
                 onNodeDelete={handleNodeDelete}
                 onNodeSelect={handleNodeSelect}
+                onNodeDataUpdate={handleNodeDataUpdate}
                 onNodesChange={handleNodesChange}
                 onEdgesChange={handleEdgesChange}
                 onConnect={handleConnect}
@@ -630,13 +717,13 @@ function WorkflowEditorInner({
             </div>
             <WorkflowExecutionBar
               status={execStatus}
-              log={null}
+              log={executionLog}
               isExpanded={execExpanded}
               onToggle={toggleExec}
               onExecute={handleExecute}
-              onPause={() => setExecStatus('paused')}
-              onResume={() => setExecStatus('running')}
-              onStop={() => setExecStatus('stopped')}
+              onPause={handlePauseExecution}
+              onResume={handleResumeExecution}
+              onStop={handleStopExecution}
               onExitPreview={() => setIsPreview(false)}
             />
           </div>

@@ -2,6 +2,7 @@
 // Adapted from workfox — no Vue dependencies
 
 import type { NodeTypeDefinition, NodeProperty } from '@agent-spaces/shared';
+import { StickyNoteView } from '@/components/workflow/sticky-note-view';
 import {
   LOOP_BREAK_NODE_TYPE,
   LOOP_BODY_NODE_TYPE,
@@ -305,8 +306,10 @@ const displayNodes: NodeTypeDefinition[] = [
     category: '展示',
     icon: 'StickyNote',
     description: '画布注释节点，不影响工作流执行',
+    customView: StickyNoteView,
+    customViewMinSize: { width: 180, height: 120 },
     properties: [
-      { key: 'content', label: '内容', type: 'textarea' },
+      { key: 'content', label: '内容', type: 'textarea', tooltip: '便签文本内容' },
     ],
     handles: { source: false, target: false },
     debuggable: false,

@@ -222,6 +222,15 @@ Phase 6 补充 — NodeProperties 功能补齐 ✅（完成，2026-06-03）
 - [x] 验收：`pnpm --filter @agent-spaces/web build` 通过 ✅
 - **Status:** complete
 
+### Phase 9: ExecutionBar 运行请求修复（2026-06-04）
+- [x] 对比 `/Users/Zhuanz/Documents/work_fox/src/components/workflow/ExecutionBar.vue` 与 React `workflow-execution-bar.tsx`
+- [x] 找到点击运行未发请求的原因：React 父组件 `handleExecute` 是占位实现，只改本地状态
+- [x] 修复执行请求触发路径：发送 `workflow:execute` WS 事件，携带当前画布 snapshot
+- [x] 后端 WS 执行通道回传执行过程事件到发起连接
+- [x] 验证：`pnpm --filter @agent-spaces/web build` 通过
+- [x] 验证：`pnpm --filter @agent-spaces/server build` 通过
+- **Status:** complete
+
 ## 用户已确认的决策
 
 1. **golden-layout** → 用 FlexLayout 替代 ✅

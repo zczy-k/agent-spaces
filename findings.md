@@ -10,6 +10,23 @@
 - shadcn 通用 UI 组件不需要迁移
 - Electron 部分忽略
 
+## 2026-06-04 补充发现：便签 customView 渲染缺口
+
+- 用户指出 `packages/web/src/lib/workflow-nodes.ts` 的 `sticky_note` 未使用 WorkFox 自定义视图渲染便签内容。
+- 参考文件 `/Users/Zhuanz/Documents/work_fox/src/lib/workflow/nodes/display.ts` 中 `sticky_note` 定义包含 `customView: StickyNoteView` 和 `customViewMinSize: { width: 180, height: 120 }`。
+- 当前 agent-spaces shared 类型 `NodeTypeDefinition` 已有 `customView?: unknown` 与 `customViewMinSize` 字段。
+- 当前 `WorkflowNode` 只消费了 `customViewMinSize`，没有渲染 `definition.customView`。
+- WorkFox `StickyNoteView.vue` 的行为是节点内 textarea 编辑 `data.content`，并阻止拖拽/画布平移事件。
+- agent-spaces 当前 editor 已有 `handleNodeDataUpdate`，但 canvas 尚未监听节点内发出的 `workflow:update-node-data` 事件。
+
+## 2026-06-04 补充发现：ExecutionBar 点击执行不发请求
+
+- React `packages/web/src/components/workflow/workflow-execution-bar.tsx` 的执行按钮只调用父组件 `onExecute`。
+- 父组件 `workflow-editor.tsx` 中 `handleExecute` 目前只有 `setExecStatus('running')` 和占位注释，没有调用 `getWS().send()` 或 REST API。
+- `packages/web/src/lib/workflow-api.ts` 的 `workflowApi.execute()` 也只是返回 `{ event, data }` 描述，并不会发送请求。
+- WorkFox `ExecutionBar.vue` 点击执行会调用 `store.startExecution(...)`；迁移到 React 后需要把这个路径接到现有 `workflow:execute` WS channel。
+- 后端 `registerExecutionChannels()` 已注册 `workflow:execute`，但当前未给 `executionManager.execute()` 传 `eventSink`，执行过程事件会走全局 emit；从发起连接直接回传更可靠。
+
 ## 研究发现
 
 ### work_fox 项目架构

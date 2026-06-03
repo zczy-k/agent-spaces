@@ -300,6 +300,22 @@
 | What have I learned? | workflow store 和 workflows-page 之前用裸 fetch 不带认证 token，已修复。legacy 迁移逻辑完整可靠 |
 | What have I done? | Phase 3-8 全部完成。修复认证问题 + 验证所有集成链路 |
 
+## 2026-06-04 00:31 CST — Phase 9 ExecutionBar 运行请求修复开始
+
+- 用户反馈：`packages/web/src/components/workflow/workflow-execution-bar.tsx` 第 63-78 行点击运行后没有发送任何请求。
+- 参考实现：`/Users/Zhuanz/Documents/work_fox/src/components/workflow/ExecutionBar.vue`。
+- 当前动作：追加 Phase 9，开始对比执行栏和执行 API。
+
+## 2026-06-04 00:31 CST — Phase 9 完成
+
+- Root cause: `workflow-editor.tsx` 的 `handleExecute` 只有 `setExecStatus('running')`，没有发送 WS/HTTP 请求；`workflow-execution-bar.tsx` 只是触发该 callback。
+- Frontend fix: `handleExecute` 改为通过 `getWS('workflows').send('workflow:execute', ...)` 发送当前 workflow snapshot，并监听 `workflow:execute:*`、`execution:log`、`workflow:completed`、`workflow:error` 更新执行栏状态和日志。
+- Control fix: 暂停/继续/停止按钮改为发送 `workflow:pause` / `workflow:resume` / `workflow:stop`。
+- Backend fix: `registerExecutionChannels()` 调用 `executionManager.execute()` 时传入 `eventSink`，将执行过程事件回送到发起 WS 连接。
+- Verification:
+  - `pnpm --filter @agent-spaces/web build` ✅
+  - `pnpm --filter @agent-spaces/server build` ✅
+
 ## Test Results
 
 | Test | Input | Expected | Actual | Status |

@@ -34,6 +34,7 @@ interface WorkflowCanvasProps {
   onNodeAdd: (type: string, position: { x: number; y: number }) => void;
   onNodeDelete: (id: string) => void;
   onNodeSelect: (id: string | null, multi?: boolean) => void;
+  onNodeDataUpdate: (id: string, data: Record<string, unknown>) => void;
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
   onConnect: (connection: Connection) => void;
@@ -42,7 +43,7 @@ interface WorkflowCanvasProps {
 export function WorkflowCanvas({
   workflow, isPreview,
   onNodeAdd, onNodeDelete, onNodeSelect,
-  onNodesChange, onEdgesChange, onConnect,
+  onNodeDataUpdate, onNodesChange, onEdgesChange, onConnect,
 }: WorkflowCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const lastCanvasDebugSignature = useRef<string | null>(null);
@@ -352,15 +353,23 @@ export function WorkflowCanvas({
     onNodeDelete(detail.nodeId);
   }, [onNodeDelete]);
 
+  const handleNodeDataUpdate = useCallback((e: Event) => {
+    const detail = (e as CustomEvent).detail;
+    if (!detail?.nodeId || !detail?.data) return;
+    onNodeDataUpdate(detail.nodeId, detail.data);
+  }, [onNodeDataUpdate]);
+
   // Register custom event listeners
   React.useEffect(() => {
     window.addEventListener('workflow:edge-insert-node', handleEdgeInsertNode);
     window.addEventListener('workflow:delete-node', handleNodeDelete);
+    window.addEventListener('workflow:update-node-data', handleNodeDataUpdate);
     return () => {
       window.removeEventListener('workflow:edge-insert-node', handleEdgeInsertNode);
       window.removeEventListener('workflow:delete-node', handleNodeDelete);
+      window.removeEventListener('workflow:update-node-data', handleNodeDataUpdate);
     };
-  }, [handleEdgeInsertNode, handleNodeDelete]);
+  }, [handleEdgeInsertNode, handleNodeDelete, handleNodeDataUpdate]);
 
   return (
     <div ref={reactFlowWrapper} className="flex-1 h-full w-full">

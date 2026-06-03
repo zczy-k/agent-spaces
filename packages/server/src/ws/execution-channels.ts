@@ -10,7 +10,11 @@ export function registerExecutionChannels(executionManager: ExecutionManager): v
     const clientId = getClientId(ws);
     if (!clientId) return;
     try {
-      const result = await executionManager.execute(data as any, clientId);
+      const result = await executionManager.execute(data as any, clientId, (channel, payload) => {
+        if (ws.readyState === 1) {
+          ws.send(JSON.stringify({ event: channel, data: payload }));
+        }
+      });
       ws.send(JSON.stringify({
         event: 'workflow:execute:result',
         data: result,
