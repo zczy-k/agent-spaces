@@ -110,7 +110,7 @@ function WorkflowEditorInner({
   const workflow = state.workflow;
 
   return (
-    <div className="flex flex-col h-full" tabIndex={0}>
+    <div className="flex flex-col h-full bg-muted/30 p-1.5 gap-1.5" tabIndex={0}>
       <WorkflowEditorToolbar
         workflow={workflow}
         isDirty={state.isDirty}
@@ -138,21 +138,23 @@ function WorkflowEditorInner({
         onEditingNameChange={state.setEditingName}
       />
 
-      <ResizablePanelGroup orientation="horizontal" defaultLayout={state.workflowLayout} onLayoutChange={state.onWorkflowLayoutChange} className="flex-1 min-h-0">
+      <ResizablePanelGroup orientation="horizontal" defaultLayout={state.workflowLayout} onLayoutChange={state.onWorkflowLayoutChange} className="flex-1 min-h-0 gap-1.5">
         {/* Node sidebar */}
         <ResizablePanel id="workflow-node-sidebar" defaultSize="18%" minSize="12%" maxSize="30%">
+          <div className="rounded-xl bg-background overflow-hidden h-full">
           <WorkflowNodeSidebar
             workflow={workflow}
             onWorkflowChange={state.handleWorkflowMetaChange}
             onOpenPluginPicker={() => state.setPluginPickerDialogOpen(true)}
           />
+          </div>
         </ResizablePanel>
 
         <ResizableHandle withHandle />
 
         {/* Canvas + Execution bar */}
         <ResizablePanel id="workflow-canvas" defaultSize="52%" minSize="30%">
-          <div className="flex flex-col h-full">
+          <div className="flex flex-col h-full rounded-xl bg-background overflow-hidden">
             <div className="flex-1 min-h-0">
               <WorkflowCanvas
                 workflow={workflow}
@@ -198,6 +200,7 @@ function WorkflowEditorInner({
 
         {/* Right panel */}
         <ResizablePanel id="workflow-right-panel" defaultSize="30%" minSize="15%" maxSize="50%">
+          <div className="rounded-xl bg-background overflow-hidden h-full">
           <Tabs value={state.rightTab} onValueChange={state.setRightTab} className="flex flex-col h-full">
             <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0 h-8">
               <TabsTrigger value="properties" className="text-xs px-3 py-1.5">属性</TabsTrigger>
@@ -261,6 +264,7 @@ function WorkflowEditorInner({
               />
             </TabsContent>
           </Tabs>
+          </div>
         </ResizablePanel>
       </ResizablePanelGroup>
 
