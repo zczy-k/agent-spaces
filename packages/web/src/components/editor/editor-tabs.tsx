@@ -169,7 +169,7 @@ export function EditorTabs({ workspaceId }: EditorTabsProps) {
   };
 
   const handleRevealInFinder = (relPath: string) => {
-    sdk.http.postVoid(`/api/workspaces/${workspaceId}/files/reveal?path=${encodeURIComponent(relPath)}`);
+    sdk.editor.reveal(workspaceId, relPath);
   };
 
   const handleClose = (e: React.MouseEvent, file: { path: string; name: string; modified: boolean }) => {

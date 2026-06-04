@@ -86,8 +86,7 @@ function normalizeRelativePath(path: string): string | null {
 
 async function fileExists(workspaceId: string, path: string): Promise<boolean> {
   try {
-    const data = await sdk.http.get<{ exists: boolean }>(`/api/workspaces/${workspaceId}/files/exists?path=${encodeURIComponent(path)}`);
-    return Boolean(data.exists);
+    return await sdk.editor.exists(workspaceId, path);
   } catch {
     return false;
   }

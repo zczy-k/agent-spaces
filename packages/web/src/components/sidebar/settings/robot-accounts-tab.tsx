@@ -90,7 +90,7 @@ export function RobotAccountsTab() {
     if (wechatQR.status === 'loading') return;
     setWechatQR({ status: 'loading' });
     try {
-      const data = await sdk.http.post<{ error?: string; qrcodeImgContent?: string; sessionId?: string }>('/api/robot-accounts/wechat/qr');
+      const data = await sdk.robotAccounts.wechatQR();
       setWechatQR({ status: 'wait', qrcodeImgContent: data.qrcodeImgContent, sessionId: data.sessionId });
     } catch (err) {
       toast.error(t('createFailed'), { description: err instanceof Error ? err.message : undefined });
@@ -104,7 +104,7 @@ export function RobotAccountsTab() {
     const timer = window.setInterval(() => {
       if (pollingRef.current) return;
       pollingRef.current = true;
-      sdk.http.post<{ status: WechatQRState['status']; error?: string; account?: RobotAccount }>('/api/robot-accounts/wechat/qr/poll', { sessionId: wechatQR.sessionId })
+      sdk.robotAccounts.wechatQRPoll(wechatQR.sessionId!)
         .then((data) => {
           setWechatQR((prev) => ({ ...prev, status: data.status as WechatQRState['status'] }));
           if (data.status === 'confirmed' && data.account) {

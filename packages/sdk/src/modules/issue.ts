@@ -35,7 +35,15 @@ export function createIssueApi(http: HttpClient) {
     listComments: (workspaceId: string, issueId: string): Promise<IssueComment[]> =>
       http.get(`/api/workspaces/${workspaceId}/issues/${issueId}/comments`),
 
-    addComment: (workspaceId: string, issueId: string, content: string): Promise<IssueComment> =>
-      http.post(`/api/workspaces/${workspaceId}/issues/${issueId}/comments`, { content }),
+    addComment: (workspaceId: string, issueId: string, content: string, mentions?: string[]): Promise<IssueComment> =>
+      http.post(`/api/workspaces/${workspaceId}/issues/${issueId}/comments`, { content, mentions }),
+
+    /** Delete a comment */
+    deleteComment: (workspaceId: string, issueId: string, commentId: string): Promise<void> =>
+      http.delete(`/api/workspaces/${workspaceId}/issues/${issueId}/comments/${commentId}`),
+
+    /** Update a comment */
+    updateComment: (workspaceId: string, issueId: string, commentId: string, content: string): Promise<IssueComment> =>
+      http.put(`/api/workspaces/${workspaceId}/issues/${issueId}/comments/${commentId}`, { content }),
   };
 }

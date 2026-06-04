@@ -42,9 +42,7 @@ export function ImportCommandsDialog({ open, onOpenChange, defaultPath, onImport
 
     setLoading(true);
     try {
-      const pkg = await sdk.http.get<{ scripts?: Record<string, string> }>(
-        `/api/folder/read-file?path=${encodeURIComponent(path)}`
-      );
+      const pkg = await sdk.workspace.readFile(path) as { scripts?: Record<string, string> };
       if (pkg.scripts && typeof pkg.scripts === 'object') {
         setScripts(
           Object.entries(pkg.scripts).map(([name, command]) => ({

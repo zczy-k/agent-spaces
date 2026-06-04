@@ -99,7 +99,7 @@ export function DataTab() {
     setLoading(true);
     setError("");
     try {
-      const data = await sdk.http.get<{ error?: string; providers?: PreviewProvider[]; skills?: PreviewSkill[]; mcps?: PreviewMcp[] }>("/api/import/cc-switch/preview");
+      const data = await sdk.data.ccSwitchPreview() as { error?: string; providers?: PreviewProvider[]; skills?: PreviewSkill[]; mcps?: PreviewMcp[] };
       if (data.error && !data.providers?.length && !data.skills?.length && !data.mcps?.length) {
         setError(data.error);
         setProviders([]);
@@ -134,7 +134,7 @@ export function DataTab() {
         mcps: mcps.filter(m => selectedMcps.has(m.name)),
       };
 
-      const result = await sdk.http.post<{ providers?: string[]; models?: unknown[]; skills?: unknown[]; mcps?: unknown[] }>("/api/import/cc-switch/execute", body);
+      const result = await sdk.data.ccSwitchExecute(body);
 
       if (result.providers?.length || result.models?.length) {
         const [providers, models] = await Promise.all([
@@ -210,7 +210,7 @@ export function DataTab() {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const data = await sdk.http.upload<{ error?: string; sessionId?: string; categories?: ImportCategory[] }>("/api/data/import/preview", formData);
+      const data = await sdk.data.importPreview(formData) as { error?: string; sessionId?: string; categories?: ImportCategory[] };
       if (data.error) {
         setImportError(data.error);
         setImportCategories([]);
@@ -233,7 +233,7 @@ export function DataTab() {
   const handleImportExecute = useCallback(async () => {
     setImporting2(true);
     try {
-      const data = await sdk.http.post<{ error?: string; results?: Record<string, ImportResult> }>("/api/data/import/execute", { sessionId: importSessionId, categories: [...selectedCategories] });
+      const data = await sdk.data.importExecute(importSessionId, [...selectedCategories]) as { error?: string; results?: Record<string, ImportResult> };
       if (data.error) {
         toast.error(data.error);
       } else {

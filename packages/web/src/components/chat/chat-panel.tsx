@@ -237,7 +237,7 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
 
   const confirmDelete = useCallback(async () => {
     if (!deletingMsg) return;
-    await sdk.http.delete(`/api/workspaces/${workspaceId}/channels/${deletingMsg.channelId}/messages/${deletingMsg.id}`);
+    await sdk.channel.deleteMessage(workspaceId, deletingMsg.channelId, deletingMsg.id);
     setDeletingMsg(null);
   }, [workspaceId, deletingMsg]);
 

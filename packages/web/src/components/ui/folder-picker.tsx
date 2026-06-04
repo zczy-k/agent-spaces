@@ -63,8 +63,8 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
     }
     setCheckingPermission(true);
     try {
-      const data = await sdk.http.get<PermissionCheckResult>(`/api/folder/check-permissions?path=${encodeURIComponent(path)}`);
-      setPermission(data);
+      const data = await sdk.workspace.checkPermissions(path);
+      setPermission(data as unknown as PermissionCheckResult);
     } catch {
       setPermission(null);
     } finally {
@@ -143,7 +143,7 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
     const newPath = currentPath ? `${currentPath}${separator}${name}` : name;
 
     try {
-      await sdk.http.post('/api/folder/create', { path: newPath });
+      await sdk.workspace.createFolder(newPath);
 
       setCreating(false);
       setNewFolderName("");

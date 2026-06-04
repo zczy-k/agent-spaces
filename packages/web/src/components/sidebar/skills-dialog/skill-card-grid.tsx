@@ -254,7 +254,7 @@ function SkillCard({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem
-                onClick={() => sdk.http.postVoid(`/api/skills/${encodeURIComponent(skill.name)}/reveal`)}
+                onClick={() => sdk.skills.reveal(skill.name)}
               >
                 <FolderOpen className="size-3.5 mr-1.5" />
                 {t('revealFolder')}

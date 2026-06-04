@@ -139,7 +139,7 @@ export function NotificationSettingsTab({
     try {
       const saved = await updateNotifications(notificationSettings);
       if (!saved) throw new Error('Failed to save notification settings');
-      const result = await sdk.http.post<{ workspace?: Workspace }>(`/api/workspaces/${workspaceId}/notifications/start`);
+      const result = await sdk.workspace.startNotifications(workspaceId);
       if (result.workspace) {
         setWorkspace(result.workspace);
         setNotificationDraft(result.workspace.notificationSettings ?? defaultNotificationSettings());
@@ -160,7 +160,7 @@ export function NotificationSettingsTab({
     if (startingNotifications) return;
     setStartingNotifications(true);
     try {
-      const result = await sdk.http.post<{ workspace?: Workspace }>(`/api/workspaces/${workspaceId}/notifications/stop`);
+      const result = await sdk.workspace.stopNotifications(workspaceId);
       if (result.workspace) {
         setWorkspace(result.workspace);
         setNotificationDraft(result.workspace.notificationSettings ?? defaultNotificationSettings());
@@ -181,7 +181,7 @@ export function NotificationSettingsTab({
     if (testingNotifications) return;
     setTestingNotifications(true);
     try {
-      await sdk.http.post(`/api/workspaces/${workspaceId}/notifications/test`);
+      await sdk.workspace.testNotification(workspaceId);
       toast.success(t('notifications.testSuccess'));
     } catch (err) {
       toast.error(t('notifications.testFailed'), {

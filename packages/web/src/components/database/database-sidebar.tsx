@@ -138,10 +138,7 @@ export function DatabaseSidebar({
     for (const file of files) {
       const content = await file.text();
       const title = file.name.replace(/\.md$/i, '');
-      const node = await sdk.http.post<DocNode>(
-        `/api/workspaces/${workspaceId}/database?databaseId=${encodeURIComponent(activeDatabaseId)}`,
-        { title, icon: '📝', content, parentId: null },
-      );
+      const node = await sdk.database.createNode(workspaceId, activeDatabaseId, { title, icon: '📝', content, parentId: null });
       useDatabaseStore.setState(s => ({ nodes: [...s.nodes, node] }));
     }
     onSave();

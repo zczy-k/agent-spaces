@@ -26,7 +26,7 @@ export function FileContextMenu({ filePath, workspaceId, boundDir, onRename, onM
   }
 
   const handleReveal = () => {
-    sdk.http.postVoid(`/api/workspaces/${workspaceId}/files/reveal?path=${encodeURIComponent(filePath)}`)
+    sdk.editor.reveal(workspaceId, filePath)
   }
 
   const handleDownload = () => {
@@ -76,7 +76,7 @@ export function FileContextMenu({ filePath, workspaceId, boundDir, onRename, onM
         }
         const destPath = dir ? `${dir}/${copyName}` : copyName;
         try {
-          await sdk.http.postVoid(`/api/workspaces/${workspaceId}/files/copy`, { srcPath: filePath, destPath });
+          await sdk.editor.copy(workspaceId, filePath, destPath);
           toast.success(t('duplicateSuccess'));
         } catch {
           toast.error(t('duplicateFailed'));

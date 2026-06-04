@@ -43,5 +43,21 @@ export function createSkillsApi(http: HttpClient) {
 
     sync: (items: Array<{ agentId: string; skillName: string }>): Promise<void> =>
       http.postVoid('/api/skills/sync', { items }),
+
+    /** List skill files */
+    listFiles: (name: string): Promise<unknown> =>
+      http.get(`/api/skills/${encodeURIComponent(name)}/files`),
+
+    /** Get a skill file */
+    getFile: (name: string, path: string): Promise<unknown> =>
+      http.get(`/api/skills/${encodeURIComponent(name)}/files/${encodeURIComponent(path)}`),
+
+    /** Save a skill file */
+    saveFile: (name: string, path: string, content: string): Promise<void> =>
+      http.putVoid(`/api/skills/${encodeURIComponent(name)}/files/${encodeURIComponent(path)}`, { content }),
+
+    /** Reveal skill in file manager */
+    reveal: (name: string): Promise<void> =>
+      http.postVoid(`/api/skills/${encodeURIComponent(name)}/reveal`),
   };
 }

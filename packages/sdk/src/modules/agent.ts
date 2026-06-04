@@ -25,5 +25,21 @@ export function createAgentApi(http: HttpClient) {
     /** Agent Designer — AI 生成 Agent 配置 */
     design: (prompt: string): Promise<Partial<AgentConfig>> =>
       http.post('/api/agents/design', { prompt }),
+
+    /** Optimize an existing prompt */
+    optimizePrompt: (prompt: string, currentPrompt?: string): Promise<{ systemPrompt?: string; error?: string }> =>
+      http.post('/api/agents/presets/optimize-prompt', { prompt, currentPrompt }),
+
+    /** Test agent connection */
+    testConnection: (config: Record<string, unknown>): Promise<Record<string, unknown> & { error?: string }> =>
+      http.post('/api/agents/presets/test-connection', config),
+
+    /** Generate agent config from prompt */
+    generateFromPrompt: (prompt: string): Promise<Record<string, unknown> & { error?: string }> =>
+      http.post('/api/agents/presets/generate', { prompt }),
+
+    /** Sync presets to all workspaces */
+    syncWorkspaces: (): Promise<void> =>
+      http.postVoid('/api/agents/presets/sync-workspaces'),
   };
 }

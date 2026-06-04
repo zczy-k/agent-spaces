@@ -226,7 +226,7 @@ export const FileTreeFolder = ({
   }
 
   const handleReveal = () => {
-    sdk.http.postVoid(`/api/workspaces/${workspaceId}/files/reveal?path=${encodeURIComponent(path)}`)
+    if (workspaceId) sdk.editor.reveal(workspaceId, path)
   }
 
   return (
@@ -416,7 +416,7 @@ export const FileTreeFile = ({
   }
 
   const handleReveal = () => {
-    sdk.http.postVoid(`/api/workspaces/${workspaceId}/files/reveal?path=${encodeURIComponent(path)}`)
+    if (workspaceId) sdk.editor.reveal(workspaceId, path)
   }
 
   return (

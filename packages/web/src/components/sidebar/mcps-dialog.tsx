@@ -223,7 +223,7 @@ export function McpsDialog({ open, onOpenChange, standalone, selectable, selecte
 
     for (const agent of agents) {
       const shouldBeBound = bindSelected.includes(agent.id);
-      const preset = await sdk.http.get(`/api/agents/presets/${agent.id}`) as Record<string, any>;
+      const preset = await sdk.agent.getPreset(agent.id) as Record<string, any>;
       if (!preset) continue;
       const mcps = (preset.mcps || {}) as Record<string, unknown>;
       const servers = { ...((mcps.mcpServers as Record<string, unknown>) || {}) };
@@ -232,7 +232,7 @@ export function McpsDialog({ open, onOpenChange, standalone, selectable, selecte
       } else {
         delete servers[bindDialogMcp.name];
       }
-      await sdk.http.put(`/api/agents/presets/${agent.id}`, { ...preset, mcps: { ...mcps, mcpServers: servers } });
+      await sdk.agent.updatePreset(agent.id, { ...preset, mcps: { ...mcps, mcpServers: servers } });
     }
 
     setBindDialogMcp(null);

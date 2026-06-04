@@ -128,7 +128,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     const text = content.trim();
     if (!text) return;
     try {
-      const comment = await sdk.http.post<IssueComment>(`/api/workspaces/${workspaceId}/issues/${issue.id}/comments`, { content: text, mentions });
+      const comment = await sdk.issue.addComment(workspaceId, issue.id, text, mentions);
       setComments((current) => [...current, comment]);
       setTimeout(() => {
         commentsViewportRef.current?.scrollTo({
@@ -149,7 +149,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
 
   const handleDeleteComment = useCallback(async (commentId: string) => {
     if (!issue) return;
-    await sdk.http.delete(`/api/workspaces/${workspaceId}/issues/${issue.id}/comments/${commentId}`);
+    await sdk.issue.deleteComment(workspaceId, issue.id, commentId);
     setComments((current) => current.filter((comment) => comment.id !== commentId));
   }, [issue, workspaceId]);
 
@@ -165,7 +165,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const handleUpdateComment = useCallback(async (wsId: string, commentId: string, content: string) => {
     if (!issue) return;
     try {
-      const updated = await sdk.http.put<IssueComment>(`/api/workspaces/${wsId}/issues/${issue.id}/comments/${commentId}`, { content });
+      const updated = await sdk.issue.updateComment(wsId, issue.id, commentId, content);
       setComments((current) => current.map((comment) => (comment.id === updated.id ? updated : comment)));
     } catch { /* ignore */ }
   }, [issue]);

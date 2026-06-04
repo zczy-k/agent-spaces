@@ -130,7 +130,7 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
   };
 
   const handleReveal = async (channelId: string) => {
-    await sdk.http.postVoid(`/api/workspaces/${workspaceId}/files/reveal?channelId=${channelId}`);
+    await sdk.http.postVoid(`/api/workspaces/${workspaceId}/files/reveal?channelId=${channelId}`); // non-standard reveal with channelId
   };
 
   const renderChannelItem = (ch: Channel, ctx: ItemCtx) => {

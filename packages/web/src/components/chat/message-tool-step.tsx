@@ -125,9 +125,7 @@ export function ToolStep({
     setLoading(true)
     setError(null)
     try {
-      const data = await sdk.http.get<ToolDetailData>(
-        `/api/workspaces/${workspaceId}/channels/${message.channelId}/messages/${message.id}/tool-details/${chain.detailId}`,
-      )
+      const data = await sdk.channel.getToolDetail(workspaceId, message.channelId, message.id, chain.detailId) as ToolDetailData
       setDetail(data)
       return data
     } catch (err) {

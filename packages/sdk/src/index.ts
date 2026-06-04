@@ -58,6 +58,7 @@ export { createAgentStoreApi } from './modules/agent-store';
 export { createFontApi } from './modules/font';
 export { createInspectorApi } from './modules/inspector';
 export { createAvatarApi } from './modules/avatar';
+export { createAgentCommandsApi } from './modules/agent-commands';
 
 // ---- 工厂函数 ----
 
@@ -97,6 +98,7 @@ import { createAgentStoreApi } from './modules/agent-store';
 import { createFontApi } from './modules/font';
 import { createInspectorApi } from './modules/inspector';
 import { createAvatarApi } from './modules/avatar';
+import { createAgentCommandsApi } from './modules/agent-commands';
 
 export interface SDK {
   /** 底层 HTTP 客户端 */
@@ -140,6 +142,7 @@ export interface SDK {
   readonly font: ReturnType<typeof createFontApi>;
   readonly inspector: ReturnType<typeof createInspectorApi>;
   readonly avatar: ReturnType<typeof createAvatarApi>;
+  readonly agentCommands: ReturnType<typeof createAgentCommandsApi>;
 }
 
 /**
@@ -191,5 +194,6 @@ export function createSDK(config: SDKConfig): SDK {
     font: createFontApi(http),
     inspector: createInspectorApi(http),
     avatar: createAvatarApi(http),
+    agentCommands: createAgentCommandsApi(http),
   };
 }

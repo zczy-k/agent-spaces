@@ -129,7 +129,7 @@ export function AgentDetail({
     setOptimizing(true);
     setOptimizationError(null);
     try {
-      const data = await sdk.http.post<{ systemPrompt?: string; error?: string }>('/api/agents/presets/optimize-prompt', { prompt, currentPrompt: agent.systemPrompt });
+      const data = await sdk.agent.optimizePrompt(prompt, agent.systemPrompt);
       if (data.error) throw new Error(data.error);
       setOptimizedPrompt(data.systemPrompt?.trim() || "");
       setPreviewPrompt(agent.systemPrompt);

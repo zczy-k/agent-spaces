@@ -26,17 +26,17 @@ export function GitSettingsForm({ scope, workspaceId }: GitSettingsFormProps) {
   const loadConfig = useCallback(async () => {
     setLoading(true);
     try {
-      const configUrl =
-        scope === "global"
-          ? "/api/git-config"
-          : `/api/workspaces/${workspaceId}/git/config`;
-      const data = await sdk.http.get<{ name?: string; email?: string; proxy?: string }>(configUrl);
+      const data = scope === "global"
+        ? await sdk.http.get<{ name?: string; email?: string; proxy?: string }>("/api/git-config")
+        : workspaceId
+          ? await sdk.git.config(workspaceId)
+          : { name: "", email: "", proxy: "" };
       setName(data.name ?? "");
       setEmail(data.email ?? "");
       setProxy(data.proxy ?? "");
       if (scope === "local" && workspaceId) {
-        const remoteData = await sdk.http.get<{ url: string }>(`/api/workspaces/${workspaceId}/git/remote-url`);
-        setRemoteUrl(remoteData.url ?? "");
+        const url = await sdk.git.remoteUrl(workspaceId);
+        setRemoteUrl(url ?? "");
       }
     } catch {}
     setLoading(false);
@@ -54,7 +54,11 @@ export function GitSettingsForm({ scope, workspaceId }: GitSettingsFormProps) {
           ? "/api/git-config"
           : `/api/workspaces/${workspaceId}/git/config`;
       try {
-        await sdk.http.postVoid(configUrl, { name, email, proxy });
+        if (scope === "global") {
+          await sdk.http.postVoid("/api/git-config", { name, email, proxy });
+        } else if (workspaceId) {
+          await sdk.git.updateConfig(workspaceId, { name, email, proxy });
+        }
       } catch {
         toast.error(t("saveFailed"));
         setSaving(false);

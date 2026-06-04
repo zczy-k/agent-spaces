@@ -23,7 +23,7 @@ export function createDatabaseApi(http: HttpClient) {
     getNode: (workspaceId: string, databaseId: string, nodeId: string): Promise<DocNode> =>
       http.get(`/api/workspaces/${workspaceId}/databases/${databaseId}/nodes/${nodeId}`),
 
-    createNode: (workspaceId: string, databaseId: string, data: { title: string; parentId?: string | null; icon?: string; cover?: string }): Promise<DocNode> =>
+    createNode: (workspaceId: string, databaseId: string, data: { title: string; content?: string; parentId?: string | null; icon?: string; cover?: string }): Promise<DocNode> =>
       http.post(`/api/workspaces/${workspaceId}/databases/${databaseId}/nodes`, data),
 
     updateNode: (workspaceId: string, databaseId: string, nodeId: string, data: Partial<Pick<DocNode, 'title' | 'content' | 'icon' | 'cover' | 'parentId'>>): Promise<DocNode> =>

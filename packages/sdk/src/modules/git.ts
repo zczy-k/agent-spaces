@@ -82,5 +82,21 @@ export function createGitApi(http: HttpClient) {
 
     reset: (workspaceId: string, data: { commitHash: string; mode?: 'soft' | 'mixed' | 'hard' }): Promise<void> =>
       http.postVoid(`${base(workspaceId)}/reset`, data),
+
+    /** Get git operation log */
+    operations: (workspaceId: string): Promise<import('@agent-spaces/shared').GitOperationEntry[]> =>
+      http.get(`${base(workspaceId)}/operations`),
+
+    /** Generate commit message via AI */
+    generateCommitMessage: (workspaceId: string): Promise<{ message?: string }> =>
+      http.post(`${base(workspaceId)}/generate-commit-message`),
+
+    /** Get git config */
+    config: (workspaceId: string): Promise<{ name?: string; email?: string; proxy?: string }> =>
+      http.get(`${base(workspaceId)}/config`),
+
+    /** Update git config */
+    updateConfig: (workspaceId: string, data: { name?: string; email?: string; proxy?: string }): Promise<void> =>
+      http.postVoid(`${base(workspaceId)}/config`, data),
   };
 }

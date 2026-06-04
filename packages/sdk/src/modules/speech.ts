@@ -4,15 +4,15 @@ import type { SpeechRecognitionConfig } from '@agent-spaces/shared';
 export function createSpeechApi(http: HttpClient) {
   return {
     list: (): Promise<SpeechRecognitionConfig[]> =>
-      http.get('/api/speech/configs'),
+      http.get('/api/speech-recognition'),
 
     create: (data: Partial<SpeechRecognitionConfig>): Promise<SpeechRecognitionConfig> =>
-      http.post('/api/speech/configs', data),
+      http.post('/api/speech-recognition', data),
 
     update: (id: string, data: Partial<SpeechRecognitionConfig>): Promise<SpeechRecognitionConfig> =>
-      http.put(`/api/speech/configs/${id}`, data),
+      http.put(`/api/speech-recognition/${id}`, data),
 
     delete_: (id: string): Promise<void> =>
-      http.delete(`/api/speech/configs/${id}`),
+      http.delete(`/api/speech-recognition/${id}`),
   };
 }

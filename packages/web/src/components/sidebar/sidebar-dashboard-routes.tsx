@@ -82,7 +82,7 @@ export function buildDashboardRoutes(config: DashboardRoutesConfig): Route[] {
                 label: tc("open"),
                 icon: <FolderSearch className="size-3.5" />,
                 onClick: () =>
-                  sdk.http.postVoid(`/api/workspaces/${ws.id}/reveal`),
+                  sdk.workspace.reveal(ws.id),
               },
               {
                 label: tc("delete"),

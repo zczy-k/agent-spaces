@@ -26,7 +26,7 @@ export function WorkspacePromptSection({ workspaceId, initialPrompt }: Workspace
     if (savingPrompt) return;
     setSavingPrompt(true);
     try {
-      const data = await sdk.http.put<{ prompt: string }>(`/api/workspaces/${workspaceId}/prompt`, { prompt });
+      const data = await sdk.workspace.updatePrompt(workspaceId, prompt);
       setPrompt(data.prompt);
       setSavedPrompt(data.prompt);
       toast.success(t('prompt.saveSuccess'));

@@ -61,7 +61,7 @@ export function ImportFileDialog({ open, onOpenChange, workspaceId, targetPath, 
     if (!url.trim()) return;
     setLoading(true);
     try {
-      await sdk.http.postVoid(`/api/workspaces/${workspaceId}/files/import-url`, { url: url.trim(), targetDir: targetPath });
+      await sdk.editor.importUrl(workspaceId, url.trim(), targetPath);
       toast.success(t("importSuccess"));
       onImported();
       handleClose(false);
@@ -77,7 +77,7 @@ export function ImportFileDialog({ open, onOpenChange, workspaceId, targetPath, 
     if (!internalPath.trim()) return;
     setLoading(true);
     try {
-      await sdk.http.postVoid(`/api/workspaces/${workspaceId}/files/import-path`, { absPath: internalPath.trim(), targetDir: targetPath });
+      await sdk.editor.importPath(workspaceId, internalPath.trim(), targetPath);
       toast.success(t("importSuccess"));
       onImported();
       handleClose(false);
@@ -105,7 +105,7 @@ export function ImportFileDialog({ open, onOpenChange, workspaceId, targetPath, 
             content: await fileToBase64(f.file),
           })),
         );
-        await sdk.http.postVoid(`/api/workspaces/${workspaceId}/files/upload`, { targetDir: targetPath, files: filesData });
+        await sdk.editor.uploadFiles(workspaceId, targetPath, filesData);
         toast.success(t("importSuccess"));
         onImported();
         handleClose(false);

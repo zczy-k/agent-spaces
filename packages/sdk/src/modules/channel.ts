@@ -30,5 +30,13 @@ export function createChannelApi(http: HttpClient) {
     /** 上传附件 */
     uploadAttachment: (workspaceId: string, formData: FormData): Promise<{ url: string }> =>
       http.upload(`/api/workspaces/${workspaceId}/channels/upload`, formData),
+
+    /** Delete a single message */
+    deleteMessage: (workspaceId: string, channelId: string, messageId: string): Promise<void> =>
+      http.delete(`/api/workspaces/${workspaceId}/channels/${channelId}/messages/${messageId}`),
+
+    /** Get tool call detail data */
+    getToolDetail: (workspaceId: string, channelId: string, messageId: string, toolName: string): Promise<unknown> =>
+      http.get(`/api/workspaces/${workspaceId}/channels/${channelId}/messages/${messageId}/tool-details/${encodeURIComponent(toolName)}`),
   };
 }

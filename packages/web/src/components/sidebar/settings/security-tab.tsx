@@ -18,7 +18,7 @@ export function SecurityTab() {
 
   const handleChangeSecret = async () => {
     try {
-      await sdk.http.post("/api/auth/change-secret", { newSecret });
+      await sdk.auth.changeSecret(newSecret);
       setSecretSaved(true);
       removeToken();
       setTimeout(() => tauriNavigate(router, "/login"), 800);

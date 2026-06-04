@@ -55,7 +55,7 @@ export function CustomFontDialog({ open, onOpenChange, onFontAdded }: CustomFont
     try {
       const file = uploadFiles[0].file;
       const content = await fileToBase64(file);
-      const data = await sdk.http.post<{ url: string; name: string }>("/api/fonts/upload", { name: file.name, content });
+      const data = await sdk.font.uploadByName(file.name, content);
       toast.success(t("fontAdded"));
       onFontAdded(data.url, data.name);
       handleClose(false);

@@ -166,7 +166,7 @@ export function SkillEditDialog({ skill, content: _content, onContentChange, onC
     setLoading(true);
 
     const skillName = skill.name;
-    sdk.http.get(`/api/skills/${encodeURIComponent(skillName)}/files`)
+    sdk.skills.listFiles(skillName)
       .then((data) => {
         const files = data as SkillFile[];
         setFiles(files);
@@ -182,7 +182,7 @@ export function SkillEditDialog({ skill, content: _content, onContentChange, onC
         }
         setSelectedFilePath(defaultFile.path);
         const encodedPath = defaultFile.path.split('/').map(encodeURIComponent).join('/');
-        sdk.http.get(`/api/skills/${encodeURIComponent(skillName)}/files/${encodedPath}`)
+        sdk.skills.getFile(skillName, defaultFile.path)
           .then((fileData) => {
             const fd = fileData as { content: string } | null;
             if (fd) {
@@ -200,8 +200,7 @@ export function SkillEditDialog({ skill, content: _content, onContentChange, onC
     if (loadedRef.current.has(filePath)) return;
     loadedRef.current.add(filePath);
     setLoading(true);
-    const encodedPath = filePath.split('/').map(encodeURIComponent).join('/');
-    sdk.http.get(`/api/skills/${encodeURIComponent(skillName)}/files/${encodedPath}`)
+    sdk.skills.getFile(skillName, filePath)
       .then((data) => {
         const d = data as { content: string } | null;
         if (d) {
@@ -244,9 +243,8 @@ export function SkillEditDialog({ skill, content: _content, onContentChange, onC
     const content = fileContents[selectedFilePath];
     if (content === undefined) return;
 
-    const encodedPath = selectedFilePath.split('/').map(encodeURIComponent).join('/');
     try {
-      await sdk.http.put(`/api/skills/${encodeURIComponent(skill.name)}/files/${encodedPath}`, { content });
+      await sdk.skills.saveFile(skill.name, selectedFilePath, content);
       setDirty((prev) => {
         const next = new Set(prev);
         next.delete(selectedFilePath);

@@ -210,7 +210,7 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
       try {
         let pkg: { scripts?: Record<string, string> };
         try {
-          pkg = await sdk.http.get(`/api/folder/read-file?path=${encodeURIComponent(folder + '/package.json')}`);
+          pkg = await sdk.workspace.readFile(folder + '/package.json') as { scripts?: Record<string, string> };
         } catch { continue; }
         if (!pkg.scripts) continue;
         const existing = folderCommands.filter(c => c.folder === folder);

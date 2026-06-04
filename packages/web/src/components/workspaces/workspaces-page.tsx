@@ -37,7 +37,7 @@ export function WorkspacesPage({ initialWorkspaces }: { initialWorkspaces: Works
   }
 
   const handleReveal = async (ws: Workspace) => {
-    await sdk.http.post(`/api/workspaces/${ws.id}/reveal`)
+    await sdk.workspace.reveal(ws.id)
   }
 
   return (

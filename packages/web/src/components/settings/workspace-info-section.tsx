@@ -36,10 +36,11 @@ export function WorkspaceInfoSection({ workspace, channelCount, issueCount }: Wo
   const [saving, setSaving] = useState(false);
 
   const handleReveal = async (target?: string) => {
-    const url = target
-      ? `/api/workspaces/${workspace.id}/reveal?target=${target}`
-      : `/api/workspaces/${workspace.id}/reveal`;
-    await sdk.http.post(url);
+    if (target) {
+      await sdk.http.postVoid(`/api/workspaces/${workspace.id}/reveal?target=${target}`);
+    } else {
+      await sdk.workspace.reveal(workspace.id);
+    }
   };
 
   const handleToggleAutoProcess = async (checked: boolean) => {

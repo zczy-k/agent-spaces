@@ -37,5 +37,37 @@ export function createEditorApi(http: HttpClient) {
       if (opts.maxResults) params.set('maxResults', String(opts.maxResults));
       return http.get(`/api/workspaces/${workspaceId}/files/search?${params}`);
     },
+
+    /** Check if file exists */
+    exists: (workspaceId: string, path: string): Promise<boolean> =>
+      http.get<{ exists: boolean }>(`/api/workspaces/${workspaceId}/files/exists?path=${encodeURIComponent(path)}`).then(r => r.exists),
+
+    /** Reveal file in OS file manager */
+    reveal: (workspaceId: string, path: string): Promise<void> =>
+      http.postVoid(`/api/workspaces/${workspaceId}/files/reveal?path=${encodeURIComponent(path)}`),
+
+    /** Copy a file */
+    copy: (workspaceId: string, srcPath: string, destPath: string): Promise<void> =>
+      http.postVoid(`/api/workspaces/${workspaceId}/files/copy`, { srcPath, destPath }),
+
+    /** Delete a file */
+    deleteFile: (workspaceId: string, path: string): Promise<void> =>
+      http.delete(`/api/workspaces/${workspaceId}/files?path=${encodeURIComponent(path)}`),
+
+    /** Rename/move a file */
+    rename: (workspaceId: string, oldPath: string, newPath: string): Promise<void> =>
+      http.postVoid(`/api/workspaces/${workspaceId}/files/rename`, { oldPath, newPath }),
+
+    /** Import file from URL */
+    importUrl: (workspaceId: string, url: string, targetDir: string): Promise<void> =>
+      http.postVoid(`/api/workspaces/${workspaceId}/files/import-url`, { url, targetDir }),
+
+    /** Import file from local path */
+    importPath: (workspaceId: string, absPath: string, targetDir: string): Promise<void> =>
+      http.postVoid(`/api/workspaces/${workspaceId}/files/import-path`, { absPath, targetDir }),
+
+    /** Upload files */
+    uploadFiles: (workspaceId: string, targetDir: string, files: Array<{ name: string; content: string }>): Promise<void> =>
+      http.postVoid(`/api/workspaces/${workspaceId}/files/upload`, { targetDir, files }),
   };
 }

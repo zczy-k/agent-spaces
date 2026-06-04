@@ -90,7 +90,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
     setOpLogOpen(true);
     setOpLogLoading(true);
     try {
-      const data = await sdk.http.get<GitOperationEntry[]>(`/api/workspaces/${workspaceId}/git/operations`);
+      const data = await sdk.git.operations(workspaceId);
       setOpLog(data);
     } catch {
       setOpLog([]);
@@ -154,7 +154,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
     if (generating || committing) return;
     setGenerating(true);
     try {
-      const data = await sdk.http.post<{ message?: string }>(`/api/workspaces/${workspaceId}/git/generate-commit-message`);
+      const data = await sdk.git.generateCommitMessage(workspaceId);
       if (data.message) setCommitMsg(data.message);
     } catch (err: unknown) { toast.error(errMsg(err) || tChanges('failedCommitMessage')); }
     finally { setGenerating(false); }
@@ -164,7 +164,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
     if (generating || committing) return;
     setGenerating(true);
     try {
-      const data = await sdk.http.post<{ message?: string }>(`/api/workspaces/${workspaceId}/git/generate-commit-message`);
+      const data = await sdk.git.generateCommitMessage(workspaceId);
       if (!data.message) throw new Error('No message generated');
       setCommitting(true);
       selectFile(null);
@@ -224,7 +224,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
   // ---- gitignore ----
   const _openGitignore = useCallback(async () => {
     try {
-      const data = await sdk.http.get<{ content?: string }>(`/api/workspaces/${workspaceId}/files/content?path=.gitignore`);
+      const data = await sdk.editor.content(workspaceId, ".gitignore");
       setGitignoreContent(data.content ?? "");
     } catch { setGitignoreContent(""); }
     setGitignoreOpen(true);
@@ -233,7 +233,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
   const saveGitignore = useCallback(async () => {
     setGitignoreSaving(true);
     try {
-      await sdk.http.putVoid(`/api/workspaces/${workspaceId}/files/content`, { path: ".gitignore", content: gitignoreContent });
+      await sdk.editor.save(workspaceId, ".gitignore", gitignoreContent);
       setGitignoreOpen(false); refresh();
     } finally { setGitignoreSaving(false); }
   }, [workspaceId, gitignoreContent, refresh]);
@@ -241,12 +241,12 @@ export function GitCommitsPanel({ workspaceId }: Props) {
   const addToGitignore = useCallback(async (pattern: string) => {
     setCtxMenu(null);
     try {
-      const data = await sdk.http.get<{ content?: string }>(`/api/workspaces/${workspaceId}/files/content?path=.gitignore`);
+      const data = await sdk.editor.content(workspaceId, ".gitignore");
       const existing: string = data.content ?? "";
       const lines = existing.split("\n").filter(Boolean);
       if (lines.includes(pattern)) return;
       const next = existing && !existing.endsWith("\n") ? existing + "\n" + pattern + "\n" : existing + pattern + "\n";
-      await sdk.http.putVoid(`/api/workspaces/${workspaceId}/files/content`, { path: ".gitignore", content: next });
+      await sdk.editor.save(workspaceId, ".gitignore", next);
       refresh();
     } catch { /* ignore */ }
   }, [workspaceId, refresh]);

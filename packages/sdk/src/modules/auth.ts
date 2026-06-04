@@ -11,5 +11,9 @@ export function createAuthApi(http: HttpClient) {
     /** 头像上传 */
     uploadAvatar: (formData: FormData): Promise<{ url: string }> =>
       http.upload('/api/avatar', formData),
+
+    /** Change secret key */
+    changeSecret: (newSecret: string): Promise<void> =>
+      http.postVoid('/api/auth/change-secret', { newSecret }),
   };
 }

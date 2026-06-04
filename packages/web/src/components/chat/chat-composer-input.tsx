@@ -180,7 +180,7 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
     }
 
     let cancelled = false;
-    sdk.http.get<AgentCommandItem[]>(`/api/agent-commands/${activeAgent.id}`)
+    (sdk.agentCommands.listForAgent(activeAgent.id) as Promise<AgentCommandItem[]>)
       .then((items) => {
         if (!cancelled) activeCommandsRef.current = items;
       })

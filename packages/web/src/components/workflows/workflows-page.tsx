@@ -74,7 +74,7 @@ export function WorkflowsPage() {
           },
         }));
 
-        await sdk.http.post('/api/workflows', { name: name ?? 'Imported Workflow', description, nodes: remappedNodes, edges });
+        await sdk.workflow.create({ name: name ?? 'Imported Workflow', description, nodes: remappedNodes, edges } as any);
         loadWorkflows();
       } catch {
         // invalid JSON or structure

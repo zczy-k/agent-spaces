@@ -20,7 +20,7 @@ let cachedOptions: ShellOption[] | null = null;
 export async function getShellOptions(): Promise<ShellOption[]> {
   if (cachedOptions) return cachedOptions;
   try {
-    const data = await sdk.http.get<{ platform: string }>('/api/health', { noAuth: true });
+    const data = await sdk.http.get<{ platform: string }>('/api/health', { noAuth: true }); // health check - KEEP sdk.http
     cachedOptions = data.platform === 'win32' ? WIN_SHELLS : MAC_SHELLS;
   } catch {
     cachedOptions = MAC_SHELLS;

@@ -111,7 +111,7 @@ export function useAgentDialogData({
       setLoading(true);
       setError(null);
     });
-    sdk.http.get(presetBasePath)
+    sdk.agent.listPresets()
       .then((data) => {
         const list = data as AgentConfig[];
         const normalized = list.map(normalizeAgent);
@@ -160,7 +160,7 @@ export function useAgentDialogData({
     setSaving(true);
     setError(null);
     try {
-      await sdk.http.delete(`${presetBasePath}/${id}`);
+      await sdk.agent.deletePreset(id);
       setAgents((prev) => prev.filter((a) => a.id !== id));
       useAgentStore.setState((state) => ({
         agents: state.agents.filter((a) => a.id !== id),
@@ -190,7 +190,7 @@ export function useAgentDialogData({
     setSyncingTemplates(true);
     setError(null);
     try {
-      await sdk.http.postVoid(`${presetBasePath}/sync-workspaces`);
+      await sdk.agent.syncWorkspaces();
     } catch {
       setError(t("error.syncFailed"));
     } finally {
@@ -223,17 +223,17 @@ export function useAgentDialogData({
       }
       const payload = {
         name,
-        role: "agent",
+        role: "agent" as const,
         description,
-        runtimeKind: "claude-code",
-        modelProvider: "anthropic-messages",
+        runtimeKind: "claude-code" as const,
+        modelProvider: "anthropic-messages" as const,
         modelId: "claude-sonnet-4-6",
         systemPrompt: body,
         icon: storeAgent.emoji || "",
         enabled: true,
       };
-      await sdk.http.post(presetBasePath, payload);
-      const list = (await sdk.http.get(presetBasePath)) as AgentConfig[];
+      await sdk.agent.createPreset(payload);
+      const list = await sdk.agent.listPresets();
       setAgents(list.map(normalizeAgent));
     } catch { /* ignore */ }
     setImportingIds((prev) => {

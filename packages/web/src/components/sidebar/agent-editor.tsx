@@ -97,8 +97,8 @@ export const AgentEditor = forwardRef<AgentEditorHandle, AgentEditorProps>(
         const isDraft = isDraftAgent(editDraft);
         const createBody = serializeAgent(editDraft);
         const raw = isDraft
-          ? await sdk.http.post<AgentConfig>(presetBasePath, createBody)
-          : await sdk.http.put<AgentConfig>(`${presetBasePath}/${editDraft.id}`, editDraft);
+          ? await sdk.agent.createPreset(createBody as unknown as Partial<AgentConfig>)
+          : await sdk.agent.updatePreset(editDraft.id, editDraft as unknown as Partial<AgentConfig>);
         const saved = normalizeAgent(raw);
         if (presetBasePath === "/api/agents/presets") {
           useAgentStore.setState((state) => ({
@@ -121,7 +121,7 @@ export const AgentEditor = forwardRef<AgentEditorHandle, AgentEditorProps>(
       setTestResult(null);
       setError(null);
       try {
-        const data = await sdk.http.post<ConnectionTestResult & { error?: string }>(`${presetBasePath}/test-connection`, editDraft);
+        const data = await sdk.agent.testConnection(editDraft) as unknown as ConnectionTestResult & { error?: string };
         setTestResult({
           success: Boolean(data.success),
           message: data.message || data.error || t("error.connectionTestFailed"),
@@ -143,7 +143,7 @@ export const AgentEditor = forwardRef<AgentEditorHandle, AgentEditorProps>(
       setGenerating(true);
       setError(null);
       try {
-        const data = await sdk.http.post<Partial<Pick<AgentPreset, "name" | "description" | "systemPrompt">> & { error?: string }>(`${presetBasePath}/generate`, { prompt });
+        const data = await sdk.agent.generateFromPrompt(prompt) as Partial<Pick<AgentPreset, "name" | "description" | "systemPrompt">> & { error?: string };
         if (data.error) throw new Error(data.error);
         const base = editDraft ?? newAgentDraft(roleOptions[0] as BuiltInRole ?? "agent");
         const draft: AgentPreset = {

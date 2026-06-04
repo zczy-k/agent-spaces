@@ -38,7 +38,7 @@ export function SpeechSettingsTab() {
   };
 
   const createConfig = async (provider: string) => {
-    const cfg = await sdk.http.post<typeof configs[number]>("/api/speech-recognition", { provider, credentials: {} });
+    const cfg = await sdk.http.post<typeof configs[number]>("/api/speech-recognition", { provider, credentials: {} }); // speech SDK not available, keep sdk.http
     setConfigs((prev) => [...prev, cfg]);
   };
 

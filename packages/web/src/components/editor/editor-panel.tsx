@@ -246,7 +246,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
   }, [workspaceId]);
 
   const handleDelete = async (path: string) => {
-    await sdk.http.delete(`/api/workspaces/${workspaceId}/files?path=${encodeURIComponent(path)}`);
+    await sdk.editor.deleteFile(workspaceId, path);
     loadTree(workspaceId);
   };
 
@@ -260,7 +260,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
     if (!value.trim() || value.trim() === oldPath.split('/').pop()) { setRenameDialog(p => ({ ...p, open: false })); return; }
     const dir = oldPath.substring(0, oldPath.lastIndexOf('/'));
     const newPath = dir ? `${dir}/${value.trim()}` : value.trim();
-    await sdk.http.postVoid(`/api/workspaces/${workspaceId}/files/rename`, { oldPath, newPath });
+    await sdk.editor.rename(workspaceId, oldPath, newPath);
     loadTree(workspaceId); setRenameDialog(p => ({ ...p, open: false }));
   }, [renameDialog, workspaceId, loadTree]);
 
@@ -286,9 +286,11 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
     }
     const name = srcPath.split('/').pop() || '';
     const newRelPath = destRelPath ? `${destRelPath}/${name}` : name;
-    const endpoint = mode === 'copy' ? '/files/copy' : '/files/rename';
-    const body = mode === 'copy' ? { srcPath, destPath: newRelPath } : { oldPath: srcPath, newPath: newRelPath };
-    await sdk.http.postVoid(`/api/workspaces/${workspaceId}${endpoint}`, body);
+    if (mode === 'copy') {
+      await sdk.editor.copy(workspaceId, srcPath, newRelPath);
+    } else {
+      await sdk.editor.rename(workspaceId, srcPath, newRelPath);
+    }
     loadTree(workspaceId); setMoveDialog(p => ({ ...p, open: false }));
   }, [moveDialog, workspaceId, loadTree, boundDir]);
 
@@ -337,7 +339,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
     if (targetDir === srcPath || targetDir.startsWith(`${srcPath}/`)) return;
 
     try {
-      await sdk.http.postVoid(`/api/workspaces/${workspaceId}/files/rename`, { oldPath: srcPath, newPath });
+      await sdk.editor.rename(workspaceId, srcPath, newPath);
     } catch {
       toast.error('移动失败');
       return;

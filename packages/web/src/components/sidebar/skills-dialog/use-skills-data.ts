@@ -79,7 +79,7 @@ export function useSkillsData(open: boolean, standalone?: boolean) {
 export function useSkillActions(skills: SkillInfo[], setSkills: (fn: (prev: SkillInfo[]) => SkillInfo[]) => void, fetchSkills: () => Promise<void>) {
   const toggleFavorite = async (skill: SkillInfo) => {
     try {
-      const { favorited } = await sdk.http.post(`/api/skills/${encodeURIComponent(skill.name)}/favorite`, {}) as { favorited: boolean };
+      const { favorited } = await sdk.skills.toggleFavorite(skill.name);
       setSkills((prev) =>
         prev.map((s) => s.name === skill.name ? { ...s, favorited } : s),
       );
@@ -134,13 +134,13 @@ export function useSkillActions(skills: SkillInfo[], setSkills: (fn: (prev: Skil
   const bindConfirm = async (skill: SkillInfo, bindSelected: string[], agents: { id: string }[]) => {
     for (const agent of agents) {
       const shouldBeBound = bindSelected.includes(agent.id);
-      const preset = await sdk.http.get(`/api/agents/presets/${agent.id}`) as Record<string, any>;
+      const preset = await sdk.agent.getPreset(agent.id) as Record<string, any>;
       if (!preset) continue;
       const skillsWithout = (preset.skills || []).filter(
         (s: string) => s.replace(/\.md$/i, '') !== skill.name,
       );
       const updatedSkills = shouldBeBound ? [...skillsWithout, skill.name] : skillsWithout;
-      await sdk.http.put(`/api/agents/presets/${agent.id}`, { ...preset, skills: updatedSkills });
+      await sdk.agent.updatePreset(agent.id, { ...preset, skills: updatedSkills });
     }
     fetchSkills();
   };
@@ -163,7 +163,7 @@ export function useSkillActions(skills: SkillInfo[], setSkills: (fn: (prev: Skil
 
   const applyAllToAgent = async (agentId: string, skillNames: string[]) => {
     try {
-      const preset = await sdk.http.get(`/api/agents/presets/${agentId}`) as Record<string, any>;
+      const preset = await sdk.agent.getPreset(agentId) as Record<string, any>;
       if (!preset) return;
       const existing = new Set((preset.skills || []).map((s: string) => s.replace(/\.md$/i, '')));
       const updatedSkills = [...(preset.skills || [])];
@@ -172,7 +172,7 @@ export function useSkillActions(skills: SkillInfo[], setSkills: (fn: (prev: Skil
           updatedSkills.push(name);
         }
       }
-      await sdk.http.put(`/api/agents/presets/${agentId}`, { ...preset, skills: updatedSkills });
+      await sdk.agent.updatePreset(agentId, { ...preset, skills: updatedSkills });
       fetchSkills();
     } catch { /* ignore */ }
   };
