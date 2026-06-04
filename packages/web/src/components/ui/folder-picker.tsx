@@ -6,6 +6,7 @@ import { File, Folder, FolderOpen, ChevronRight, ArrowUp, Home, Loader2, FolderP
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { sdk } from "@/lib/sdk";
 
 interface BrowseEntry {
   name: string;
@@ -62,12 +63,7 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
     }
     setCheckingPermission(true);
     try {
-      const res = await fetch(`/api/folder/check-permissions?path=${encodeURIComponent(path)}`);
-      if (!res.ok) {
-        setPermission(null);
-        return;
-      }
-      const data: PermissionCheckResult = await res.json();
+      const data = await sdk.http.get<PermissionCheckResult>(`/api/folder/check-permissions?path=${encodeURIComponent(path)}`);
       setPermission(data);
     } catch {
       setPermission(null);
@@ -85,9 +81,7 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
         url += '&files=1';
         if (fileFilter) url += `&fileFilter=${encodeURIComponent(fileFilter)}`;
       }
-      const res = await fetch(url);
-      if (!res.ok) throw new Error((await res.json()).error || "Failed to browse");
-      const data: FolderBrowseResult = await res.json();
+      const data = await sdk.http.get<FolderBrowseResult>(url);
       setCurrentPath(data.path);
       setDirectories(data.directories);
       setFiles(data.files ?? []);
@@ -149,12 +143,7 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
     const newPath = currentPath ? `${currentPath}${separator}${name}` : name;
 
     try {
-      const res = await fetch("/api/folder/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: newPath }),
-      });
-      if (!res.ok) throw new Error((await res.json()).error || "Failed to create folder");
+      await sdk.http.post('/api/folder/create', { path: newPath });
 
       setCreating(false);
       setNewFolderName("");

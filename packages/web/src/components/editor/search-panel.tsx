@@ -7,6 +7,7 @@ import { useEditorStore } from "@/stores/editor";
 import { useTranslations } from "next-intl";
 import type { CodeSearchResult } from "@agent-spaces/shared";
 import { cn } from "@/lib/utils";
+import { sdk } from '@/lib/sdk';
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ContextMenu, ContextMenuTrigger } from "@/components/ui/context-menu";
@@ -44,18 +45,15 @@ export function SearchPanel({ workspaceId }: SearchPanelProps) {
 
     setLoading(true);
     try {
-      const params = new URLSearchParams({
-        q,
-        regex: String(isRegex),
-        caseSensitive: String(isCaseSensitive),
+      const filePattern = extFilters.size > 0
+        ? [...extFilters].map(ext => `*${ext}`).join(',')
+        : undefined;
+      const results: CodeSearchResult[] = await sdk.search.code(workspaceId, {
+        query: q,
+        regex: isRegex,
+        caseSensitive: isCaseSensitive,
+        filePattern,
       });
-      if (extFilters.size > 0) {
-        const patterns = [...extFilters].map(ext => `*${ext}`).join(',');
-        params.set('filePattern', patterns);
-      }
-      const res = await fetch(`/api/workspaces/${workspaceId}/search/code?${params}`);
-      const data = await res.json();
-      const results: CodeSearchResult[] = data.results || [];
 
       const grouped: GroupedResults = {};
       for (const r of results) {

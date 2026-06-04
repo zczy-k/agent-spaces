@@ -15,6 +15,7 @@ import {
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { Workspace } from '@agent-spaces/shared'
 import { tauriNavigate } from '@/lib/navigate'
+import { sdk } from '@/lib/sdk'
 
 export function WorkspacesPage({ initialWorkspaces }: { initialWorkspaces: Workspace[] }) {
   const t = useTranslations('workspaces')
@@ -31,12 +32,12 @@ export function WorkspacesPage({ initialWorkspaces }: { initialWorkspaces: Works
 
   const handleDelete = async (ws: Workspace) => {
     if (!confirm(t('deleteConfirm', { name: ws.name }))) return
-    await fetch(`/api/workspaces/${ws.id}`, { method: 'DELETE' })
+    await sdk.workspace.delete(ws.id)
     removeWorkspace(ws.id)
   }
 
   const handleReveal = async (ws: Workspace) => {
-    await fetch(`/api/workspaces/${ws.id}/reveal`, { method: 'POST' })
+    await sdk.http.post(`/api/workspaces/${ws.id}/reveal`)
   }
 
   return (

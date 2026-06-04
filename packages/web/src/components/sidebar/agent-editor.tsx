@@ -4,6 +4,7 @@ import { forwardRef, useState, useImperativeHandle } from "react";
 import { useTranslations } from "next-intl";
 import { type AgentConfig } from "@agent-spaces/shared";
 import { useAgentStore } from "@/stores/agent";
+import { sdk } from "@/lib/sdk";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -95,16 +96,9 @@ export const AgentEditor = forwardRef<AgentEditorHandle, AgentEditorProps>(
       try {
         const isDraft = isDraftAgent(editDraft);
         const createBody = serializeAgent(editDraft);
-        const res = await fetch(
-          isDraft ? presetBasePath : `${presetBasePath}/${editDraft.id}`,
-          {
-            method: isDraft ? "POST" : "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(isDraft ? createBody : editDraft),
-          },
-        );
-        if (!res.ok) throw new Error(await res.text());
-        const raw = (await res.json()) as AgentConfig;
+        const raw = isDraft
+          ? await sdk.http.post<AgentConfig>(presetBasePath, createBody)
+          : await sdk.http.put<AgentConfig>(`${presetBasePath}/${editDraft.id}`, editDraft);
         const saved = normalizeAgent(raw);
         if (presetBasePath === "/api/agents/presets") {
           useAgentStore.setState((state) => ({
@@ -127,16 +121,11 @@ export const AgentEditor = forwardRef<AgentEditorHandle, AgentEditorProps>(
       setTestResult(null);
       setError(null);
       try {
-        const res = await fetch(`${presetBasePath}/test-connection`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(editDraft),
-        });
-        const data = (await res.json()) as ConnectionTestResult & { error?: string };
+        const data = await sdk.http.post<ConnectionTestResult & { error?: string }>(`${presetBasePath}/test-connection`, editDraft);
         setTestResult({
           success: Boolean(data.success),
           message: data.message || data.error || t("error.connectionTestFailed"),
-          debug: data.debug ? { ...data.debug, status: res.status } : { status: res.status },
+          debug: data.debug ? { ...data.debug, status: 200 } : { status: 200 },
         });
       } catch (err) {
         setTestResult({
@@ -154,13 +143,8 @@ export const AgentEditor = forwardRef<AgentEditorHandle, AgentEditorProps>(
       setGenerating(true);
       setError(null);
       try {
-        const res = await fetch(`${presetBasePath}/generate`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt }),
-        });
-        const data = (await res.json()) as Partial<Pick<AgentPreset, "name" | "description" | "systemPrompt">> & { error?: string };
-        if (!res.ok) throw new Error(data.error || "Failed to generate agent");
+        const data = await sdk.http.post<Partial<Pick<AgentPreset, "name" | "description" | "systemPrompt">> & { error?: string }>(`${presetBasePath}/generate`, { prompt });
+        if (data.error) throw new Error(data.error);
         const base = editDraft ?? newAgentDraft(roleOptions[0] as BuiltInRole ?? "agent");
         const draft: AgentPreset = {
           ...base,

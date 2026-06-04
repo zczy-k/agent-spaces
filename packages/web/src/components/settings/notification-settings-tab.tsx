@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Bell, Bot, CheckCircle2, Loader2, Monitor, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import type { AgentConfig, NotificationEventKey, NotificationProvider, RobotAccount, Workspace, WorkspaceNotificationSettings } from '@agent-spaces/shared';
+import { sdk } from '@/lib/sdk';
 import {
   getNotificationPermission,
   isNativeAndroidEnvironment,
@@ -68,9 +69,8 @@ export function NotificationSettingsTab({
   const [robotAccounts, setRobotAccounts] = useState<RobotAccount[]>([]);
 
   useEffect(() => {
-    fetch('/api/robot-accounts')
-      .then((r) => r.json())
-      .then((data) => setRobotAccounts(data))
+    sdk.robotAccounts.list()
+      .then((data) => setRobotAccounts(data as unknown as RobotAccount[]))
       .catch(() => {});
   }, []);
 
@@ -86,16 +86,7 @@ export function NotificationSettingsTab({
     if (!workspace || savingNotifications) return null;
     setSavingNotifications(true);
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notificationSettings: next }),
-      });
-      if (!res.ok) {
-        const error = await res.json().catch(() => null);
-        throw new Error(error?.error || 'Failed to save notification settings');
-      }
-      const updated: Workspace = await res.json();
+      const updated = await sdk.workspace.update(workspaceId, { notificationSettings: next } as any);
       setWorkspace(updated);
       upsertWorkspace(updated);
       setNotificationDraft(updated.notificationSettings ?? defaultNotificationSettings());
@@ -148,14 +139,7 @@ export function NotificationSettingsTab({
     try {
       const saved = await updateNotifications(notificationSettings);
       if (!saved) throw new Error('Failed to save notification settings');
-      const res = await fetch(`/api/workspaces/${workspaceId}/notifications/start`, {
-        method: 'POST',
-      });
-      if (!res.ok) {
-        const error = await res.json().catch(() => null);
-        throw new Error(error?.error || 'Failed to start notification service');
-      }
-      const result: { workspace?: Workspace } = await res.json();
+      const result = await sdk.http.post<{ workspace?: Workspace }>(`/api/workspaces/${workspaceId}/notifications/start`);
       if (result.workspace) {
         setWorkspace(result.workspace);
         setNotificationDraft(result.workspace.notificationSettings ?? defaultNotificationSettings());
@@ -176,14 +160,7 @@ export function NotificationSettingsTab({
     if (startingNotifications) return;
     setStartingNotifications(true);
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/notifications/stop`, {
-        method: 'POST',
-      });
-      if (!res.ok) {
-        const error = await res.json().catch(() => null);
-        throw new Error(error?.error || 'Failed to stop notification service');
-      }
-      const result: { workspace?: Workspace } = await res.json();
+      const result = await sdk.http.post<{ workspace?: Workspace }>(`/api/workspaces/${workspaceId}/notifications/stop`);
       if (result.workspace) {
         setWorkspace(result.workspace);
         setNotificationDraft(result.workspace.notificationSettings ?? defaultNotificationSettings());
@@ -204,13 +181,7 @@ export function NotificationSettingsTab({
     if (testingNotifications) return;
     setTestingNotifications(true);
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/notifications/test`, {
-        method: 'POST',
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) {
-        throw new Error(data?.reason || data?.error || 'Failed to send test notification');
-      }
+      await sdk.http.post(`/api/workspaces/${workspaceId}/notifications/test`);
       toast.success(t('notifications.testSuccess'));
     } catch (err) {
       toast.error(t('notifications.testFailed'), {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { authHeaders } from "@/lib/auth";
+import { sdk } from "@/lib/sdk";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,8 +18,8 @@ export function SpeechSettingsTab() {
 
   const loadConfigs = async () => {
     try {
-      const res = await fetch("/api/speech-recognition", { headers: authHeaders() });
-      if (res.ok) setConfigs(await res.json());
+      const data = await sdk.http.get<typeof configs>("/api/speech-recognition");
+      setConfigs(data);
     } catch {}
     setLoading(false);
   };
@@ -29,32 +29,17 @@ export function SpeechSettingsTab() {
   }, []);
 
   const saveCredentials = async (id: string, credentials: Record<string, string>) => {
-    await fetch(`/api/speech-recognition/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json", ...authHeaders() },
-      body: JSON.stringify({ credentials }),
-    });
+    await sdk.http.putVoid(`/api/speech-recognition/${id}`, { credentials });
   };
 
   const toggleEnabled = async (id: string, enabled: boolean) => {
-    await fetch(`/api/speech-recognition/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json", ...authHeaders() },
-      body: JSON.stringify({ enabled }),
-    });
+    await sdk.http.putVoid(`/api/speech-recognition/${id}`, { enabled });
     setConfigs((prev) => prev.map((c) => (c.id === id ? { ...c, enabled } : c)));
   };
 
   const createConfig = async (provider: string) => {
-    const res = await fetch("/api/speech-recognition", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...authHeaders() },
-      body: JSON.stringify({ provider, credentials: {} }),
-    });
-    if (res.ok) {
-      const cfg = await res.json();
-      setConfigs((prev) => [...prev, cfg]);
-    }
+    const cfg = await sdk.http.post<typeof configs[number]>("/api/speech-recognition", { provider, credentials: {} });
+    setConfigs((prev) => [...prev, cfg]);
   };
 
   if (loading) return <div className="text-xs text-muted-foreground">{tc("loading")}</div>;

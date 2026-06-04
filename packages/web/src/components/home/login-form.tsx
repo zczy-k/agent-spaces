@@ -12,7 +12,8 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field"
-import { fetchWithAuth, setToken } from "@/lib/auth"
+import { setToken } from "@/lib/auth"
+import { sdk } from "@/lib/sdk"
 import { tauriNavigate } from "@/lib/navigate"
 import {
   type ServerConfig,
@@ -41,21 +42,12 @@ export function LoginForm({
     setLoading(true)
     setError("")
     try {
-      const res = await fetchWithAuth("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ secret }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        setError(data.error || t("loginFailed"))
-        return
-      }
+      const data = await sdk.auth.login(secret)
       setToken(data.token)
       tauriNavigate(router, "/")
     } catch (err) {
       console.error("[login] network error", err)
-      setError(t("networkError"))
+      setError(err instanceof Error ? err.message : t("networkError"))
     } finally {
       setLoading(false)
     }

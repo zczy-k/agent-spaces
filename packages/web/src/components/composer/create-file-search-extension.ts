@@ -3,6 +3,7 @@ import { PluginKey } from '@tiptap/pm/state';
 import Suggestion from '@tiptap/suggestion';
 
 import { createSuggestionRenderer } from './create-suggestion-renderer';
+import { sdk } from '@/lib/sdk';
 
 type EditorRange = { from: number; to: number };
 
@@ -15,8 +16,6 @@ type FileSearchItem = {
 const fileSearchPluginKey = new PluginKey('fileSearchSuggestion');
 
 export function createFileSearchExtension(workspaceId: string) {
-  let abortController: AbortController | null = null;
-
   return Extension.create({
     name: 'fileSearch',
 
@@ -27,17 +26,9 @@ export function createFileSearchExtension(workspaceId: string) {
           items: async ({ query }: { query: string }): Promise<FileSearchItem[]> => {
             if (!query.trim()) return [];
 
-            abortController?.abort();
-            abortController = new AbortController();
-
             try {
-              const res = await fetch(
-                `/api/workspaces/${workspaceId}/search/files?q=${encodeURIComponent(query.trim())}`,
-                { signal: abortController.signal }
-              );
-              if (!res.ok) return [];
-              const data = await res.json();
-              return (data.results || [])
+              const results = await sdk.search.files(workspaceId, query.trim());
+              return (results || [])
                 .filter((r: { type: string }) => r.type === 'file')
                 .slice(0, 10)
                 .map((r: { path: string; name: string }) => ({

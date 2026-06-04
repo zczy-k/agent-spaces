@@ -10,6 +10,7 @@ import { WorkspaceDialog } from "@/components/workspace/workspace-dialog";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { isLoginPath } from "@/lib/routes";
 import { ContentUsageReporter } from "@/components/home/content-usage-reporter";
+import { sdk } from "@/lib/sdk";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -53,20 +54,10 @@ function GlobalWorkspaceDialog() {
 
   const handleSubmit = async (data: { name: string; boundDirs: string[] }) => {
     if (editingWorkspace) {
-      const res = await fetch(`/api/workspaces/${editingWorkspace.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      const ws = await res.json();
+      const ws = await sdk.workspace.update(editingWorkspace.id, data);
       upsertWorkspace(ws);
     } else {
-      const res = await fetch("/api/workspaces", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      const ws = await res.json();
+      const ws = await sdk.workspace.create(data);
       upsertWorkspace(ws);
     }
   };

@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { FolderPicker } from '@/components/ui/folder-picker';
 import { Check, Loader2 } from 'lucide-react';
-import { fetchWithAuth } from '@/lib/auth';
+import { sdk } from '@/lib/sdk';
 import { useTranslations } from 'next-intl';
 
 interface ParsedScript {
@@ -42,14 +42,9 @@ export function ImportCommandsDialog({ open, onOpenChange, defaultPath, onImport
 
     setLoading(true);
     try {
-      const res = await fetchWithAuth(
+      const pkg = await sdk.http.get<{ scripts?: Record<string, string> }>(
         `/api/folder/read-file?path=${encodeURIComponent(path)}`
       );
-      if (!res.ok) {
-        setScripts([]);
-        return;
-      }
-      const pkg = await res.json();
       if (pkg.scripts && typeof pkg.scripts === 'object') {
         setScripts(
           Object.entries(pkg.scripts).map(([name, command]) => ({

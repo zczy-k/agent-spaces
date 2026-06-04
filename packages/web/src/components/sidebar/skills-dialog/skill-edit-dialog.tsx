@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { sdk } from '@/lib/sdk';
 import {
   Dialog,
   DialogContent,
@@ -165,27 +166,27 @@ export function SkillEditDialog({ skill, content: _content, onContentChange, onC
     setLoading(true);
 
     const skillName = skill.name;
-    fetch(`/api/skills/${encodeURIComponent(skillName)}/files`)
-      .then((r) => r.ok ? r.json() : [])
-      .then((data: SkillFile[]) => {
-        setFiles(data);
+    sdk.http.get(`/api/skills/${encodeURIComponent(skillName)}/files`)
+      .then((data) => {
+        const files = data as SkillFile[];
+        setFiles(files);
         // Auto-expand root-level dirs
-        const rootDirs = data.filter((f) => f.isDirectory && !f.path.includes('/'));
+        const rootDirs = files.filter((f) => f.isDirectory && !f.path.includes('/'));
         setExpandedPaths(new Set(rootDirs.map((d) => d.path)));
         // Find SKILL.md as default, fallback to first file
-        const defaultFile = data.find((f) => f.path === 'SKILL.md' && !f.isDirectory)
-          || data.find((f) => !f.isDirectory);
+        const defaultFile = files.find((f) => f.path === 'SKILL.md' && !f.isDirectory)
+          || files.find((f) => !f.isDirectory);
         if (!defaultFile) {
           setLoading(false);
           return;
         }
         setSelectedFilePath(defaultFile.path);
         const encodedPath = defaultFile.path.split('/').map(encodeURIComponent).join('/');
-        fetch(`/api/skills/${encodeURIComponent(skillName)}/files/${encodedPath}`)
-          .then((r) => r.ok ? r.json() : null)
+        sdk.http.get(`/api/skills/${encodeURIComponent(skillName)}/files/${encodedPath}`)
           .then((fileData) => {
-            if (fileData) {
-              setFileContents({ [defaultFile.path]: fileData.content });
+            const fd = fileData as { content: string } | null;
+            if (fd) {
+              setFileContents({ [defaultFile.path]: fd.content });
               loadedRef.current.add(defaultFile.path);
             }
           })
@@ -200,11 +201,11 @@ export function SkillEditDialog({ skill, content: _content, onContentChange, onC
     loadedRef.current.add(filePath);
     setLoading(true);
     const encodedPath = filePath.split('/').map(encodeURIComponent).join('/');
-    fetch(`/api/skills/${encodeURIComponent(skillName)}/files/${encodedPath}`)
-      .then((r) => r.ok ? r.json() : null)
+    sdk.http.get(`/api/skills/${encodeURIComponent(skillName)}/files/${encodedPath}`)
       .then((data) => {
-        if (data) {
-          setFileContents((prev) => ({ ...prev, [filePath]: data.content }));
+        const d = data as { content: string } | null;
+        if (d) {
+          setFileContents((prev) => ({ ...prev, [filePath]: d.content }));
         }
       })
       .catch(() => {})
@@ -244,19 +245,15 @@ export function SkillEditDialog({ skill, content: _content, onContentChange, onC
     if (content === undefined) return;
 
     const encodedPath = selectedFilePath.split('/').map(encodeURIComponent).join('/');
-    const res = await fetch(`/api/skills/${encodeURIComponent(skill.name)}/files/${encodedPath}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content }),
-    });
-    if (res.ok) {
+    try {
+      await sdk.http.put(`/api/skills/${encodeURIComponent(skill.name)}/files/${encodedPath}`, { content });
       setDirty((prev) => {
         const next = new Set(prev);
         next.delete(selectedFilePath);
         return next;
       });
       onSave();
-    }
+    } catch { /* ignore */ }
   };
 
   // Flat file list for mobile tabs

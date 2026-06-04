@@ -5,6 +5,7 @@ import { ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from "@/com
 import { useTranslations } from "next-intl"
 import { useTerminalStore } from "@/stores/terminal"
 import { toast } from "sonner"
+import { sdk } from '@/lib/sdk'
 
 interface FileContextMenuProps {
   filePath: string
@@ -25,7 +26,7 @@ export function FileContextMenu({ filePath, workspaceId, boundDir, onRename, onM
   }
 
   const handleReveal = () => {
-    fetch(`/api/workspaces/${workspaceId}/files/reveal?path=${encodeURIComponent(filePath)}`, { method: 'POST' })
+    sdk.http.postVoid(`/api/workspaces/${workspaceId}/files/reveal?path=${encodeURIComponent(filePath)}`)
   }
 
   const handleDownload = () => {
@@ -74,14 +75,10 @@ export function FileContextMenu({ filePath, workspaceId, boundDir, onRename, onM
           copyName = fileName + ' copy';
         }
         const destPath = dir ? `${dir}/${copyName}` : copyName;
-        const res = await fetch(`/api/workspaces/${workspaceId}/files/copy`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ srcPath: filePath, destPath }),
-        });
-        if (res.ok) {
+        try {
+          await sdk.http.postVoid(`/api/workspaces/${workspaceId}/files/copy`, { srcPath: filePath, destPath });
           toast.success(t('duplicateSuccess'));
-        } else {
+        } catch {
           toast.error(t('duplicateFailed'));
         }
       }}>

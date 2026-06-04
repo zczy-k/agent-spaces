@@ -1,4 +1,5 @@
 import type { Attachment as MessageAttachment } from "@agent-spaces/shared";
+import { sdk } from '@/lib/sdk';
 import type { AttachmentData } from "./attachments";
 
 export type LocalAttachment = {
@@ -9,14 +10,7 @@ export type LocalAttachment = {
 export async function uploadAttachment(item: LocalAttachment): Promise<MessageAttachment> {
   const formData = new FormData();
   formData.append("file", item.file);
-  const res = await fetch("/api/upload", {
-    method: "POST",
-    body: formData,
-  });
-  if (!res.ok) {
-    throw new Error(`Upload failed: ${item.file.name}`);
-  }
-  const uploaded = (await res.json()) as { name: string; size: number; type: string; url: string };
+  const uploaded = await sdk.http.upload<{ name: string; size: number; type: string; url: string }>("/api/upload", formData);
   return {
     name: uploaded.name,
     path: uploaded.url,

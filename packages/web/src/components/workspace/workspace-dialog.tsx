@@ -22,6 +22,7 @@ import {
   ProgressLabel,
 } from "@/components/ui/progress";
 import { useTranslations } from 'next-intl';
+import { sdk } from '@/lib/sdk';
 
 interface WorkspaceDialogProps {
   open: boolean;
@@ -84,11 +85,7 @@ function WorkspaceDialogContent({ open, onOpenChange, workspace, onSubmit }: Wor
     setCloneProgress(null);
 
     try {
-      const res = await fetch("/api/workspaces/clone", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: cloneUrl, targetDir: dir }),
-      });
+      const res = await sdk.workspace.cloneSse(cloneUrl, dir);
 
       if (!res.ok) {
         const err = await res.json();

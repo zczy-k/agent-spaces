@@ -38,6 +38,7 @@ import {
   X as XIcon,
 } from "lucide-react";
 import EmojiPicker from "emoji-picker-react";
+import { sdk } from "@/lib/sdk";
 import { DiffViewer } from "@/components/git/diff-viewer";
 import { ToolsDialog } from "@/components/sidebar/tools-dialog";
 import { McpsDialog } from "@/components/sidebar/mcps-dialog";
@@ -128,13 +129,8 @@ export function AgentDetail({
     setOptimizing(true);
     setOptimizationError(null);
     try {
-      const res = await fetch("/api/agents/presets/optimize-prompt", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, currentPrompt: agent.systemPrompt }),
-      });
-      const data = (await res.json()) as { systemPrompt?: string; error?: string };
-      if (!res.ok) throw new Error(data.error || "Failed to optimize prompt");
+      const data = await sdk.http.post<{ systemPrompt?: string; error?: string }>('/api/agents/presets/optimize-prompt', { prompt, currentPrompt: agent.systemPrompt });
+      if (data.error) throw new Error(data.error);
       setOptimizedPrompt(data.systemPrompt?.trim() || "");
       setPreviewPrompt(agent.systemPrompt);
       setOptimizeOpen(false);

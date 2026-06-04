@@ -1,4 +1,5 @@
 import type * as Monaco from 'monaco-editor';
+import { sdk } from '@/lib/sdk';
 
 function normalizePath(path: string): string {
   return path
@@ -85,8 +86,7 @@ function normalizeRelativePath(path: string): string | null {
 
 async function fileExists(workspaceId: string, path: string): Promise<boolean> {
   try {
-    const res = await fetch(`/api/workspaces/${workspaceId}/files/exists?path=${encodeURIComponent(path)}`);
-    const data = await res.json();
+    const data = await sdk.http.get<{ exists: boolean }>(`/api/workspaces/${workspaceId}/files/exists?path=${encodeURIComponent(path)}`);
     return Boolean(data.exists);
   } catch {
     return false;
@@ -133,9 +133,7 @@ export async function resolveImportSpecifierPath(
 
 export async function readWorkspaceFile(workspaceId: string, path: string): Promise<string | null> {
   try {
-    const res = await fetch(`/api/workspaces/${workspaceId}/files/content?path=${encodeURIComponent(path)}`);
-    if (!res.ok) return null;
-    const data = await res.json();
+    const data = await sdk.editor.content(workspaceId, path);
     return typeof data.content === 'string' ? data.content : null;
   } catch {
     return null;

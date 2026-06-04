@@ -13,7 +13,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { authHeaders } from "@/lib/auth";
+import { sdk } from "@/lib/sdk";
 import { useLLMStore } from "@/stores/llm";
 
 // --- cc-switch import types ---
@@ -99,8 +99,7 @@ export function DataTab() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/import/cc-switch/preview");
-      const data = await res.json();
+      const data = await sdk.http.get<{ error?: string; providers?: PreviewProvider[]; skills?: PreviewSkill[]; mcps?: PreviewMcp[] }>("/api/import/cc-switch/preview");
       if (data.error && !data.providers?.length && !data.skills?.length && !data.mcps?.length) {
         setError(data.error);
         setProviders([]);
@@ -135,23 +134,17 @@ export function DataTab() {
         mcps: mcps.filter(m => selectedMcps.has(m.name)),
       };
 
-      const res = await fetch("/api/import/cc-switch/execute", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      const result = await res.json();
+      const result = await sdk.http.post<{ providers?: string[]; models?: unknown[]; skills?: unknown[]; mcps?: unknown[] }>("/api/import/cc-switch/execute", body);
 
       if (result.providers?.length || result.models?.length) {
-        const [provRes, modelRes] = await Promise.all([
-          fetch("/api/providers"),
-          fetch("/api/models"),
+        const [providers, models] = await Promise.all([
+          sdk.llm.listProviders(),
+          sdk.llm.listModels(),
         ]);
         const updates: Record<string, unknown> = {};
-        if (provRes.ok) updates.providers = await provRes.json();
-        if (modelRes.ok) updates.models = await modelRes.json();
-        if (Object.keys(updates).length) useLLMStore.setState(updates);
+        updates.providers = providers;
+        updates.models = models;
+        useLLMStore.setState(updates);
       }
 
       const total = (result.providers?.filter((s: string) => !s.includes("skipped")).length || 0)
@@ -186,7 +179,7 @@ export function DataTab() {
   const handleExport = useCallback(async () => {
     setExporting(true);
     try {
-      const res = await fetch("/api/data/export", { headers: authHeaders() });
+      const res = await sdk.data.exportZip();
       if (!res.ok) throw new Error("Export failed");
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -217,20 +210,15 @@ export function DataTab() {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const res = await fetch("/api/data/import/preview", {
-        method: "POST",
-        headers: authHeaders(),
-        body: formData,
-      });
-      const data = await res.json();
+      const data = await sdk.http.upload<{ error?: string; sessionId?: string; categories?: ImportCategory[] }>("/api/data/import/preview", formData);
       if (data.error) {
         setImportError(data.error);
         setImportCategories([]);
         setImportSessionId("");
       } else {
-        setImportSessionId(data.sessionId);
-        setImportCategories(data.categories);
-        setSelectedCategories(new Set(data.categories.map((c: ImportCategory) => c.key)));
+        setImportSessionId(data.sessionId ?? "");
+        setImportCategories(data.categories ?? []);
+        setSelectedCategories(new Set((data.categories ?? []).map((c: ImportCategory) => c.key)));
       }
       setImportDialogOpen(true);
     } catch {
@@ -245,16 +233,11 @@ export function DataTab() {
   const handleImportExecute = useCallback(async () => {
     setImporting2(true);
     try {
-      const res = await fetch("/api/data/import/execute", {
-        method: "POST",
-        headers: { ...authHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId: importSessionId, categories: [...selectedCategories] }),
-      });
-      const data = await res.json();
+      const data = await sdk.http.post<{ error?: string; results?: Record<string, ImportResult> }>("/api/data/import/execute", { sessionId: importSessionId, categories: [...selectedCategories] });
       if (data.error) {
         toast.error(data.error);
       } else {
-        setImportResults(data.results);
+        setImportResults(data.results ?? null);
         toast.success(t("dataImportComplete"));
       }
     } catch {

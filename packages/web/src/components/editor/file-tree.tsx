@@ -33,6 +33,7 @@ import { useTranslations } from 'next-intl'
 import type { FileNode } from "@agent-spaces/shared"
 import { FileIconImg, FolderIconImg } from "./file-icon"
 import { useTerminalStore } from "@/stores/terminal"
+import { sdk } from '@/lib/sdk'
 
 interface FileTreeContextType {
   expandedPaths: Set<string>
@@ -225,7 +226,7 @@ export const FileTreeFolder = ({
   }
 
   const handleReveal = () => {
-    fetch(`/api/workspaces/${workspaceId}/files/reveal?path=${encodeURIComponent(path)}`, { method: 'POST' })
+    sdk.http.postVoid(`/api/workspaces/${workspaceId}/files/reveal?path=${encodeURIComponent(path)}`)
   }
 
   return (
@@ -415,7 +416,7 @@ export const FileTreeFile = ({
   }
 
   const handleReveal = () => {
-    fetch(`/api/workspaces/${workspaceId}/files/reveal?path=${encodeURIComponent(path)}`, { method: 'POST' })
+    sdk.http.postVoid(`/api/workspaces/${workspaceId}/files/reveal?path=${encodeURIComponent(path)}`)
   }
 
   return (

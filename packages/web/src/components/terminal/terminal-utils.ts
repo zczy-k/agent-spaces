@@ -1,3 +1,5 @@
+import { sdk } from '@/lib/sdk';
+
 interface ShellOption {
   value: string;
   label: string;
@@ -18,8 +20,7 @@ let cachedOptions: ShellOption[] | null = null;
 export async function getShellOptions(): Promise<ShellOption[]> {
   if (cachedOptions) return cachedOptions;
   try {
-    const res = await fetch('/api/health');
-    const data = await res.json();
+    const data = await sdk.http.get<{ platform: string }>('/api/health', { noAuth: true });
     cachedOptions = data.platform === 'win32' ? WIN_SHELLS : MAC_SHELLS;
   } catch {
     cachedOptions = MAC_SHELLS;

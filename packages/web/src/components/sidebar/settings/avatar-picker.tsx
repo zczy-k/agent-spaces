@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { setCachedUserAvatarUrl } from "@/hooks/use-user-avatar"
+import { sdk } from "@/lib/sdk"
 
 const ASPECTS = [
   { label: "aspectCircle", value: 1 },
@@ -32,21 +33,12 @@ export function AvatarPicker({ src, open, onOpenChange, onUploaded, skipUserSett
 
   async function handleCropComplete(dataUrl: string) {
     try {
-      const res = await fetch("/api/upload/avatar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dataUrl }),
-      })
-      const data = await res.json()
+      const data = await sdk.http.post<{ url?: string }>("/api/upload/avatar", { dataUrl })
       if (data.url) {
         const url = `${data.url}?t=${Date.now()}`
         if (!skipUserSettings) {
           setCachedUserAvatarUrl(url)
-          fetch("/api/user/settings", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ avatarUrl: data.url }),
-          }).catch(() => {})
+          sdk.http.putVoid("/api/user/settings", { avatarUrl: data.url }).catch(() => {})
         }
         onUploaded(url)
       }

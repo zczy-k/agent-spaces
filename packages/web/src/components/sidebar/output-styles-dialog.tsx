@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
+import { sdk } from '@/lib/sdk';
 import { fetchStoreIndex } from '@/lib/agent-store';
 import {
   Dialog,
@@ -112,16 +113,14 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
   const fetchTemplates = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/output-styles');
-      if (res.ok) setTemplates(await res.json());
+      setTemplates(await sdk.outputStyles.list());
     } catch { /* ignore */ }
     setLoading(false);
   }, []);
 
   const fetchAgents = useCallback(async () => {
     try {
-      const res = await fetch('/api/output-styles/agents');
-      if (res.ok) setAgents(await res.json());
+      setAgents(await sdk.outputStyles.listAgents());
     } catch { /* ignore */ }
   }, []);
 
@@ -180,11 +179,7 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
       const raw = await item.file.text();
       const parsed = parseFrontmatter(raw);
       const name = parsed.name || item.file.name.replace(/\.(md|txt|markdown)$/i, '');
-      await fetch('/api/output-styles', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, content: parsed.content || raw, description: parsed.description }),
-      });
+      await sdk.outputStyles.create({ name, content: parsed.content || raw, description: parsed.description });
     }
     setUploadFiles([]);
     setImportOpen(false);
@@ -199,15 +194,8 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
       if (!contentRes.ok) return;
       const raw = await contentRes.text();
       const parsed = parseFrontmatter(raw);
-      const res = await fetch('/api/output-styles', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: store.name, content: parsed.content || raw, storeId: store.id, description: parsed.description }),
-      });
-      if (res.ok) {
-        const created = await res.json();
-        setTemplates((prev) => [...prev, created]);
-      }
+      const created = await sdk.outputStyles.create({ name: store.name, content: parsed.content || raw, storeId: store.id, description: parsed.description });
+      setTemplates((prev) => [...prev, created]);
     } catch { /* ignore */ }
     setImportingIds((prev) => {
       const next = new Set(prev);
@@ -244,30 +232,24 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
     if (!editName.trim() || !editContent.trim()) return;
     setSaving(true);
     try {
-      const url = editTemplate ? `/api/output-styles/${editTemplate.id}` : '/api/output-styles';
-      const method = editTemplate ? 'PUT' : 'POST';
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: editName, content: editContent, description: editDescription || undefined }),
-      });
-      if (res.ok) {
-        const saved = await res.json();
-        setTemplates((prev) =>
-          editTemplate
-            ? prev.map((t) => (t.id === saved.id ? saved : t))
-            : [...prev, saved]
-        );
-        closeEdit();
-      }
+      const data = { name: editName, content: editContent, description: editDescription || undefined };
+      const saved = editTemplate
+        ? await sdk.outputStyles.update(editTemplate.id, data)
+        : await sdk.outputStyles.create(data);
+      setTemplates((prev) =>
+        editTemplate
+          ? prev.map((t) => (t.id === saved.id ? saved : t))
+          : [...prev, saved]
+      );
+      closeEdit();
     } catch { /* ignore */ }
     setSaving(false);
   };
 
   const handleDelete = async (tmpl: OutputStyleTemplate) => {
     try {
-      const res = await fetch(`/api/output-styles/${tmpl.id}`, { method: 'DELETE' });
-      if (res.ok) setTemplates((prev) => prev.filter((t) => t.id !== tmpl.id));
+      await sdk.outputStyles.delete_(tmpl.id);
+      setTemplates((prev) => prev.filter((t) => t.id !== tmpl.id));
     } catch { /* ignore */ }
   };
 
@@ -280,11 +262,7 @@ export function OutputStylesDialog({ open, onOpenChange, standalone }: OutputSty
     if (!applyTemplate || applySelected.length === 0) return;
     setApplying(true);
     try {
-      await fetch(`/api/output-styles/${applyTemplate.id}/apply`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ agentIds: applySelected }),
-      });
+      await sdk.outputStyles.apply(applyTemplate.id, applySelected);
       setApplyTemplate(null);
     } catch { /* ignore */ }
     setApplying(false);

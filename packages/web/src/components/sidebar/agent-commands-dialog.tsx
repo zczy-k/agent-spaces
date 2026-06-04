@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
+import { sdk } from '@/lib/sdk';
 import {
   Dialog,
   DialogContent,
@@ -90,13 +91,10 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
 
   const fetchAgents = useCallback(async () => {
     try {
-      const res = await fetch('/api/agent-commands/agents');
-      if (res.ok) {
-        const data: AgentInfo[] = await res.json();
-        setAgents(data);
-        if (data.length > 0 && !filterAgentId) {
-          setEditAgentId(data[0].agentId);
-        }
+      const data = (await sdk.http.get('/api/agent-commands/agents')) as AgentInfo[];
+      setAgents(data);
+      if (data.length > 0 && !filterAgentId) {
+        setEditAgentId(data[0].agentId);
       }
     } catch { /* ignore */ }
   }, [filterAgentId]);
@@ -104,8 +102,7 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
   const fetchAllCommands = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/agent-commands/all');
-      if (res.ok) setAllCommands(await res.json());
+      setAllCommands((await sdk.http.get('/api/agent-commands/all')) as CommandItem[]);
     } catch { /* ignore */ }
     setLoading(false);
   }, []);
@@ -160,11 +157,7 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
     for (const item of uploadFiles) {
       const content = await item.file.text();
       const name = item.file.name.replace(/\.(md|txt|markdown)$/i, '');
-      await fetch(`/api/agent-commands/${targetAgentId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, content }),
-      });
+      await sdk.http.post(`/api/agent-commands/${targetAgentId}`, { name, content });
     }
     setUploadFiles([]);
     setImportOpen(false);
@@ -202,25 +195,13 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
     setSaving(true);
     try {
       if (editCommand) {
-        const res = await fetch(`/api/agent-commands/${editAgentId}/${editCommand.name}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content: editContent, group: editGroup }),
-        });
-        if (res.ok) {
-          closeEditDialog();
-          fetchAllCommands();
-        }
+        await sdk.http.put(`/api/agent-commands/${editAgentId}/${editCommand.name}`, { content: editContent, group: editGroup });
+        closeEditDialog();
+        fetchAllCommands();
       } else {
-        const res = await fetch(`/api/agent-commands/${editAgentId}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: editName, content: editContent, group: editGroup || undefined }),
-        });
-        if (res.ok) {
-          closeEditDialog();
-          fetchAllCommands();
-        }
+        await sdk.http.post(`/api/agent-commands/${editAgentId}`, { name: editName, content: editContent, group: editGroup || undefined });
+        closeEditDialog();
+        fetchAllCommands();
       }
     } catch { /* ignore */ }
     setSaving(false);
@@ -229,8 +210,8 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
   const handleDelete = async (cmd: CommandItem) => {
     try {
       const query = cmd.group ? `?group=${encodeURIComponent(cmd.group)}` : '';
-      const res = await fetch(`/api/agent-commands/${cmd.agentId}/${cmd.name}${query}`, { method: 'DELETE' });
-      if (res.ok) fetchAllCommands();
+      await sdk.http.delete(`/api/agent-commands/${cmd.agentId}/${cmd.name}${query}`);
+      fetchAllCommands();
     } catch { /* ignore */ }
   };
 
@@ -243,11 +224,7 @@ export function AgentCommandsDialog({ open, onOpenChange }: AgentCommandsDialogP
     if (!applyCommand || applySelected.length === 0) return;
     setApplying(true);
     try {
-      await fetch(`/api/agent-commands/${applyCommand.agentId}/${applyCommand.name}/apply`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ group: applyCommand.group, agentIds: applySelected }),
-      });
+      await sdk.http.postVoid(`/api/agent-commands/${applyCommand.agentId}/${applyCommand.name}/apply`, { group: applyCommand.group, agentIds: applySelected });
       setApplyCommand(null);
       fetchAllCommands();
     } catch { /* ignore */ }

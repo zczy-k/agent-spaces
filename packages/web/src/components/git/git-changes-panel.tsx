@@ -12,6 +12,7 @@ import { useTranslations } from "next-intl";
 
 import { Empty, EmptyDescription, EmptyMedia } from "@/components/ui/empty";
 import { statusColors, statusLabels } from "./git-commit-utils";
+import { sdk } from '@/lib/sdk';
 import type { GitFileStatus, GitDiffResult } from "@agent-spaces/shared";
 
 interface Props {
@@ -57,8 +58,7 @@ function FileDiffHoverCard({
     if (isOpen && !fetched.current) {
       fetched.current = true;
       setLoading(true);
-      fetch(`/api/workspaces/${workspaceId}/git/diff?path=${encodeURIComponent(path)}`)
-        .then(r => r.ok ? r.json() : Promise.reject(r.statusText))
+      sdk.git.diff(workspaceId, path)
         .then((data: GitDiffResult[]) => setDiff(data[0] ?? null))
         .catch(() => {})
         .finally(() => setLoading(false));

@@ -11,7 +11,7 @@ import { useCommandStore } from '@/stores/command';
 import { useChannelStore } from '@/stores/channel';
 import { useAgentStore } from '@/stores/agent';
 import { getWS } from '@/lib/ws';
-import { fetchWithAuth } from '@/lib/auth';
+import { sdk } from '@/lib/sdk';
 import { toast } from 'sonner';
 import { TerminalInstance } from './terminal-instance';
 import { CommandDialog } from './command-dialog';
@@ -208,9 +208,10 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
     let updated = 0;
     for (const folder of folders) {
       try {
-        const res = await fetchWithAuth(`/api/folder/read-file?path=${encodeURIComponent(folder + '/package.json')}`);
-        if (!res.ok) continue;
-        const pkg = await res.json();
+        let pkg: { scripts?: Record<string, string> };
+        try {
+          pkg = await sdk.http.get(`/api/folder/read-file?path=${encodeURIComponent(folder + '/package.json')}`);
+        } catch { continue; }
         if (!pkg.scripts) continue;
         const existing = folderCommands.filter(c => c.folder === folder);
         for (const cmd of existing) {

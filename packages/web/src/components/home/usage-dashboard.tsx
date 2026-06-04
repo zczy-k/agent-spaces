@@ -8,6 +8,7 @@ import type { AgentUsageDashboard as AgentUsageDashboardData } from "@agent-spac
 
 import { Card } from "@/components/ui/card"
 import { SubscriptionPanel } from "./subscription-panel"
+import { sdk } from "@/lib/sdk"
 import { formatCurrency, formatDuration, formatTokens, formatNumber, PERIOD_KEYS, type PeriodKey } from "./usage-dashboard-utils"
 import { DashboardSkeleton } from "./usage-dashboard-skeleton"
 import { PeriodSelector, Metric, ActivitySection, CostByModelChart, TokenPieChart, CostPieChart } from "./usage-dashboard-charts"
@@ -40,8 +41,7 @@ export function UsageDashboard() {
   useEffect(() => {
     const controller = new AbortController()
     const days = fetchDays()
-    fetch(`/api/agents/usage/dashboard?days=${days}`, { signal: controller.signal })
-      .then((res) => (res.ok ? res.json() : null))
+    sdk.agent.usageDashboard(days)
       .then((d) => setData(d))
       .catch(() => setData(null))
     return () => controller.abort()

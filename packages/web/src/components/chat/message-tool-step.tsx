@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useEditorStore } from "@/stores/editor"
+import { sdk } from '@/lib/sdk'
 import { cn } from "@/lib/utils"
 import { DiffViewer } from "@/components/git/diff-viewer"
 import {
@@ -124,11 +125,9 @@ export function ToolStep({
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(
+      const data = await sdk.http.get<ToolDetailData>(
         `/api/workspaces/${workspaceId}/channels/${message.channelId}/messages/${message.id}/tool-details/${chain.detailId}`,
       )
-      if (!res.ok) throw new Error(await res.text())
-      const data = await res.json() as ToolDetailData
       setDetail(data)
       return data
     } catch (err) {

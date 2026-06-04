@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Plus, Trash2, Pencil, Bot, CheckCircle2, Loader2, QrCode } from 'lucide-react';
 import { toast } from 'sonner';
+import { sdk } from '@/lib/sdk';
 import type { RobotAccount } from '@agent-spaces/shared';
 
 interface WechatQRState {
@@ -41,9 +42,8 @@ export function RobotAccountsTab() {
   const pollingRef = useRef(false);
 
   const fetchAccounts = () => {
-    fetch('/api/robot-accounts')
-      .then((r) => r.json())
-      .then((data) => { setAccounts(data); setLoading(false); })
+    sdk.robotAccounts.list()
+      .then((data) => { setAccounts(data as unknown as RobotAccount[]); setLoading(false); })
       .catch(() => setLoading(false));
   };
 
@@ -70,12 +70,10 @@ export function RobotAccountsTab() {
     setSaving(true);
     try {
       const body: Record<string, unknown> = { name: formName, type: 'lark', lark: { appId: formLarkAppId, appSecret: formLarkAppSecret } };
-      const res = editing
-        ? await fetch(`/api/robot-accounts/${editing.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-        : await fetch('/api/robot-accounts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      if (!res.ok) {
-        const err = await res.json().catch(() => null);
-        throw new Error(err?.error || 'Failed');
+      if (editing) {
+        await sdk.robotAccounts.update(editing.id, body);
+      } else {
+        await sdk.robotAccounts.create(body);
       }
       toast.success(editing ? t('updateSuccess') : t('createSuccess'));
       setDialogOpen(false);
@@ -92,9 +90,7 @@ export function RobotAccountsTab() {
     if (wechatQR.status === 'loading') return;
     setWechatQR({ status: 'loading' });
     try {
-      const res = await fetch('/api/robot-accounts/wechat/qr', { method: 'POST' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'Failed');
+      const data = await sdk.http.post<{ error?: string; qrcodeImgContent?: string; sessionId?: string }>('/api/robot-accounts/wechat/qr');
       setWechatQR({ status: 'wait', qrcodeImgContent: data.qrcodeImgContent, sessionId: data.sessionId });
     } catch (err) {
       toast.error(t('createFailed'), { description: err instanceof Error ? err.message : undefined });
@@ -108,15 +104,9 @@ export function RobotAccountsTab() {
     const timer = window.setInterval(() => {
       if (pollingRef.current) return;
       pollingRef.current = true;
-      fetch('/api/robot-accounts/wechat/qr/poll', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: wechatQR.sessionId }),
-      })
-        .then(async (r) => {
-          const data = await r.json();
-          if (!r.ok) throw new Error(data?.error || 'Poll failed');
-          setWechatQR((prev) => ({ ...prev, status: data.status }));
+      sdk.http.post<{ status: WechatQRState['status']; error?: string; account?: RobotAccount }>('/api/robot-accounts/wechat/qr/poll', { sessionId: wechatQR.sessionId })
+        .then((data) => {
+          setWechatQR((prev) => ({ ...prev, status: data.status as WechatQRState['status'] }));
           if (data.status === 'confirmed' && data.account) {
             toast.success(t('createSuccess'));
             setWechatDialogOpen(false);
@@ -135,8 +125,7 @@ export function RobotAccountsTab() {
 
   const handleDelete = async (id: string) => {
     try {
-      const res = await fetch(`/api/robot-accounts/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Failed');
+      await sdk.robotAccounts.delete_(id);
       toast.success(t('deleteSuccess'));
       setDeleting(null);
       fetchAccounts();

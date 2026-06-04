@@ -28,6 +28,7 @@ import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { FileIconImg } from "./file-icon";
 import { cn } from "@/lib/utils";
+import { sdk } from '@/lib/sdk';
 
 const restrictToHorizontal: Modifier = ({ transform }) => ({
   ...transform,
@@ -168,7 +169,7 @@ export function EditorTabs({ workspaceId }: EditorTabsProps) {
   };
 
   const handleRevealInFinder = (relPath: string) => {
-    fetch(`/api/workspaces/${workspaceId}/files/reveal?path=${encodeURIComponent(relPath)}`, { method: 'POST' });
+    sdk.http.postVoid(`/api/workspaces/${workspaceId}/files/reveal?path=${encodeURIComponent(relPath)}`);
   };
 
   const handleClose = (e: React.MouseEvent, file: { path: string; name: string; modified: boolean }) => {

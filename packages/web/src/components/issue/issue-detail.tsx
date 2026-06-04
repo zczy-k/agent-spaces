@@ -17,6 +17,7 @@ import { useChannelStore } from '@/stores/channel';
 import { EditIssueDialog } from '@/components/issue/edit-issue-dialog';
 import { ChatComposerInput } from '@/components/chat/chat-composer-input';
 import { normalizeChannelMembersToAgentIds, getMemberDisplayName } from '@/lib/agent-members';
+import { sdk } from '@/lib/sdk';
 import { getWS } from '@/lib/ws';
 import { cn } from '@/lib/utils';
 import { IssueDetailTasksPanel } from './issue-detail-tasks-panel';
@@ -93,9 +94,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   const loadComments = useCallback(async (targetIssueId: string) => {
     setCommentsLoading(true);
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/issues/${targetIssueId}/comments`);
-      if (!res.ok) return;
-      const nextComments: IssueComment[] = await res.json();
+      const nextComments = await sdk.issue.listComments(workspaceId, targetIssueId);
       setComments(nextComments);
     } finally {
       setCommentsLoading(false);
@@ -128,38 +127,29 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     if (!issue) return;
     const text = content.trim();
     if (!text) return;
-    const res = await fetch(`/api/workspaces/${workspaceId}/issues/${issue.id}/comments`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: text, mentions }),
-    });
-    if (!res.ok) return;
-    const comment: IssueComment = await res.json();
-    setComments((current) => [...current, comment]);
-    setTimeout(() => {
-      commentsViewportRef.current?.scrollTo({
-        top: commentsViewportRef.current.scrollHeight,
-        behavior: 'smooth',
-      });
-    }, 50);
+    try {
+      const comment = await sdk.http.post<IssueComment>(`/api/workspaces/${workspaceId}/issues/${issue.id}/comments`, { content: text, mentions });
+      setComments((current) => [...current, comment]);
+      setTimeout(() => {
+        commentsViewportRef.current?.scrollTo({
+          top: commentsViewportRef.current.scrollHeight,
+          behavior: 'smooth',
+        });
+      }, 50);
+    } catch { /* ignore */ }
   }, [issue, workspaceId]);
 
   const handleAddMembers = async (newMembers: string[]) => {
     if (!issue) return;
-    const res = await fetch(`/api/workspaces/${workspaceId}/issues/${issue.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        members: normalizeChannelMembersToAgentIds(enabledAgents, [...members, ...newMembers]),
-      }),
+    const updated = await sdk.issue.update(workspaceId, issue.id, {
+      members: normalizeChannelMembersToAgentIds(enabledAgents, [...members, ...newMembers]),
     });
-    const updated = await res.json();
     useIssueStore.getState().upsertIssue(updated);
   };
 
   const handleDeleteComment = useCallback(async (commentId: string) => {
     if (!issue) return;
-    await fetch(`/api/workspaces/${workspaceId}/issues/${issue.id}/comments/${commentId}`, { method: 'DELETE' });
+    await sdk.http.delete(`/api/workspaces/${workspaceId}/issues/${issue.id}/comments/${commentId}`);
     setComments((current) => current.filter((comment) => comment.id !== commentId));
   }, [issue, workspaceId]);
 
@@ -174,14 +164,10 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
 
   const handleUpdateComment = useCallback(async (wsId: string, commentId: string, content: string) => {
     if (!issue) return;
-    const res = await fetch(`/api/workspaces/${wsId}/issues/${issue.id}/comments/${commentId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content }),
-    });
-    if (!res.ok) return;
-    const updated: IssueComment = await res.json();
-    setComments((current) => current.map((comment) => (comment.id === updated.id ? updated : comment)));
+    try {
+      const updated = await sdk.http.put<IssueComment>(`/api/workspaces/${wsId}/issues/${issue.id}/comments/${commentId}`, { content });
+      setComments((current) => current.map((comment) => (comment.id === updated.id ? updated : comment)));
+    } catch { /* ignore */ }
   }, [issue]);
 
   const scrollToComment = useCallback((index: number) => {

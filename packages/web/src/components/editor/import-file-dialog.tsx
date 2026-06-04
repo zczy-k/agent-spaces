@@ -8,7 +8,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { FolderPicker } from "@/components/ui/folder-picker";
 import { FileUpload, type FileUploadFile } from "@/components/ui/file-upload";
 import { Loader2, Globe, FolderInput, Upload } from "lucide-react";
-import { fetchWithAuth } from "@/lib/auth";
+import { sdk } from '@/lib/sdk';
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import type { Accept } from "react-dropzone";
@@ -61,19 +61,12 @@ export function ImportFileDialog({ open, onOpenChange, workspaceId, targetPath, 
     if (!url.trim()) return;
     setLoading(true);
     try {
-      const res = await fetchWithAuth(`/api/workspaces/${workspaceId}/files/import-url`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: url.trim(), targetDir: targetPath }),
-      });
-      if (res.ok) {
-        toast.success(t("importSuccess"));
-        onImported();
-        handleClose(false);
-      } else {
-        toast.error(t("importFailed"));
-      }
+      await sdk.http.postVoid(`/api/workspaces/${workspaceId}/files/import-url`, { url: url.trim(), targetDir: targetPath });
+      toast.success(t("importSuccess"));
+      onImported();
+      handleClose(false);
     } catch {
+      toast.error(t("importFailed"));
       toast.error(t("importFailed"));
     } finally {
       setLoading(false);
@@ -84,19 +77,12 @@ export function ImportFileDialog({ open, onOpenChange, workspaceId, targetPath, 
     if (!internalPath.trim()) return;
     setLoading(true);
     try {
-      const res = await fetchWithAuth(`/api/workspaces/${workspaceId}/files/import-path`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ absPath: internalPath.trim(), targetDir: targetPath }),
-      });
-      if (res.ok) {
-        toast.success(t("importSuccess"));
-        onImported();
-        handleClose(false);
-      } else {
-        toast.error(t("importFailed"));
-      }
+      await sdk.http.postVoid(`/api/workspaces/${workspaceId}/files/import-path`, { absPath: internalPath.trim(), targetDir: targetPath });
+      toast.success(t("importSuccess"));
+      onImported();
+      handleClose(false);
     } catch {
+      toast.error(t("importFailed"));
       toast.error(t("importFailed"));
     } finally {
       setLoading(false);
@@ -119,18 +105,10 @@ export function ImportFileDialog({ open, onOpenChange, workspaceId, targetPath, 
             content: await fileToBase64(f.file),
           })),
         );
-        const res = await fetchWithAuth(`/api/workspaces/${workspaceId}/files/upload`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ targetDir: targetPath, files: filesData }),
-        });
-        if (res.ok) {
-          toast.success(t("importSuccess"));
-          onImported();
-          handleClose(false);
-        } else {
-          toast.error(t("importFailed"));
-        }
+        await sdk.http.postVoid(`/api/workspaces/${workspaceId}/files/upload`, { targetDir: targetPath, files: filesData });
+        toast.success(t("importSuccess"));
+        onImported();
+        handleClose(false);
       }
     } catch {
       toast.error(t("importFailed"));

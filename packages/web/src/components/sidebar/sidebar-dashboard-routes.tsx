@@ -19,6 +19,7 @@ import {
   Terminal,
 } from "lucide-react";
 import type { Workspace } from "@agent-spaces/shared";
+import { sdk } from "@/lib/sdk";
 import type { Route } from "./nav-main";
 import type { DialogSetterMap } from "./use-sidebar-dialogs";
 
@@ -81,9 +82,7 @@ export function buildDashboardRoutes(config: DashboardRoutesConfig): Route[] {
                 label: tc("open"),
                 icon: <FolderSearch className="size-3.5" />,
                 onClick: () =>
-                  fetch(`/api/workspaces/${ws.id}/reveal`, {
-                    method: "POST",
-                  }),
+                  sdk.http.postVoid(`/api/workspaces/${ws.id}/reveal`),
               },
               {
                 label: tc("delete"),

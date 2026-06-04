@@ -22,6 +22,7 @@ import { FolderPicker } from "@/components/ui/folder-picker";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useMobilePanelStore } from "@/stores/mobile-panel";
+import { sdk } from '@/lib/sdk';
 
 function filterTreeByName(nodes: FileNode[], query: string): FileNode[] {
   if (!query) return nodes;
@@ -185,9 +186,8 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
     fileSearchTimer.current = setTimeout(async () => {
       setGlobalFileLoading(true);
       try {
-        const res = await fetch(`/api/workspaces/${workspaceId}/search/files?q=${encodeURIComponent(fileSearch.trim())}`);
-        const data = await res.json();
-        setGlobalFileResults(data.results || []);
+        const results = await sdk.search.files(workspaceId, fileSearch.trim());
+        setGlobalFileResults(results || []);
       } catch {
         setGlobalFileResults([]);
       } finally {
@@ -222,11 +222,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
     const name = value.trim();
     const relPath = targetDir ? targetDir + '/' + name : name;
     const fullPath = mode === 'folder' ? relPath + '/.gitkeep' : relPath;
-    fetch(`/api/workspaces/${workspaceId}/files/content`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: fullPath, content: '' }),
-    }).then(() => { loadTree(workspaceId); setNameDialog((p) => ({ ...p, open: false })); });
+    sdk.editor.save(workspaceId, fullPath, '').then(() => { loadTree(workspaceId); setNameDialog((p) => ({ ...p, open: false })); });
   }, [nameDialog, workspaceId, loadTree]);
 
   const openNameDialog = useCallback((mode: 'file' | 'folder', targetDir: string) => {
@@ -250,7 +246,7 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
   }, [workspaceId]);
 
   const handleDelete = async (path: string) => {
-    await fetch(`/api/workspaces/${workspaceId}/files?path=${encodeURIComponent(path)}`, { method: 'DELETE' });
+    await sdk.http.delete(`/api/workspaces/${workspaceId}/files?path=${encodeURIComponent(path)}`);
     loadTree(workspaceId);
   };
 
@@ -264,11 +260,8 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
     if (!value.trim() || value.trim() === oldPath.split('/').pop()) { setRenameDialog(p => ({ ...p, open: false })); return; }
     const dir = oldPath.substring(0, oldPath.lastIndexOf('/'));
     const newPath = dir ? `${dir}/${value.trim()}` : value.trim();
-    const res = await fetch(`/api/workspaces/${workspaceId}/files/rename`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ oldPath, newPath }),
-    });
-    if (res.ok) { loadTree(workspaceId); setRenameDialog(p => ({ ...p, open: false })); }
+    await sdk.http.postVoid(`/api/workspaces/${workspaceId}/files/rename`, { oldPath, newPath });
+    loadTree(workspaceId); setRenameDialog(p => ({ ...p, open: false }));
   }, [renameDialog, workspaceId, loadTree]);
 
   const handleMove = useCallback((path: string) => {
@@ -295,11 +288,8 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
     const newRelPath = destRelPath ? `${destRelPath}/${name}` : name;
     const endpoint = mode === 'copy' ? '/files/copy' : '/files/rename';
     const body = mode === 'copy' ? { srcPath, destPath: newRelPath } : { oldPath: srcPath, newPath: newRelPath };
-    const res = await fetch(`/api/workspaces/${workspaceId}${endpoint}`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    if (res.ok) { loadTree(workspaceId); setMoveDialog(p => ({ ...p, open: false })); }
+    await sdk.http.postVoid(`/api/workspaces/${workspaceId}${endpoint}`, body);
+    loadTree(workspaceId); setMoveDialog(p => ({ ...p, open: false }));
   }, [moveDialog, workspaceId, loadTree, boundDir]);
 
   const findTreeNode = useCallback((path: string): FileNode | undefined => {
@@ -346,12 +336,9 @@ export function EditorPanel({ workspaceId }: EditorPanelProps) {
     if (!name || newPath === srcPath || getParentDir(srcPath) === targetDir) return;
     if (targetDir === srcPath || targetDir.startsWith(`${srcPath}/`)) return;
 
-    const res = await fetch(`/api/workspaces/${workspaceId}/files/rename`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ oldPath: srcPath, newPath }),
-    });
-    if (!res.ok) {
+    try {
+      await sdk.http.postVoid(`/api/workspaces/${workspaceId}/files/rename`, { oldPath: srcPath, newPath });
+    } catch {
       toast.error('移动失败');
       return;
     }

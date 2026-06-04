@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { DatabaseTreeNode } from './database-tree-node';
 import { ImportFileDialog } from '@/components/editor/import-file-dialog';
-import { fetchWithAuth } from '@/lib/auth';
+import { sdk } from '@/lib/sdk';
 import type { DocNode } from '@agent-spaces/shared';
 
 interface DatabaseSidebarProps {
@@ -138,16 +138,10 @@ export function DatabaseSidebar({
     for (const file of files) {
       const content = await file.text();
       const title = file.name.replace(/\.md$/i, '');
-      const res = await fetchWithAuth(
+      const node = await sdk.http.post<DocNode>(
         `/api/workspaces/${workspaceId}/database?databaseId=${encodeURIComponent(activeDatabaseId)}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title, icon: '📝', content, parentId: null }),
-        },
+        { title, icon: '📝', content, parentId: null },
       );
-      if (!res.ok) throw new Error('Failed to create node');
-      const node = await res.json() as DocNode;
       useDatabaseStore.setState(s => ({ nodes: [...s.nodes, node] }));
     }
     onSave();

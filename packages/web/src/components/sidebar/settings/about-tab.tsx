@@ -7,6 +7,7 @@ import { RefreshCw, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { sdk } from "@/lib/sdk";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -41,19 +42,15 @@ export function AboutTab() {
 
   const loadVersion = useCallback(async () => {
     try {
-      const res = await fetch("/api/version");
-      if (res.ok) {
-        const data = await res.json();
-        setVersion(data);
-      }
+      const data = await sdk.version.current();
+      setVersion(data as unknown as VersionInfo);
     } catch {}
   }, []);
 
   useEffect(() => {
     // Load basic info
-    fetch("/api/health")
-      .then(r => r.ok ? r.json() : {})
-      .then((d: { platform?: string }) => setPlatform(d.platform ?? ""))
+    sdk.http.get<{ platform?: string }>("/api/health", { noAuth: true })
+      .then((d) => setPlatform(d.platform ?? ""))
       .catch(() => {});
 
     loadVersion();
@@ -62,11 +59,10 @@ export function AboutTab() {
   // Auto-check on mount
   useEffect(() => {
     if (!autoCheck) return;
-    fetch("/api/version/check")
-      .then(r => r.ok ? r.json() : null)
+    sdk.version.check()
       .then(data => {
-        if (data?.updateAvailable) {
-          setVersion(data);
+        if (data.updateAvailable) {
+          setVersion(data as unknown as VersionInfo);
         }
       })
       .catch(() => {});
@@ -75,13 +71,10 @@ export function AboutTab() {
   const handleCheck = useCallback(async () => {
     setChecking(true);
     try {
-      const res = await fetch("/api/version/check");
-      if (res.ok) {
-        const data = await res.json();
-        setVersion(data);
-        if (!data.updateAvailable) {
-          toast.success(t("aboutUpToDate"));
-        }
+      const data = await sdk.version.check();
+      setVersion(data as unknown as VersionInfo);
+      if (!data.updateAvailable) {
+        toast.success(t("aboutUpToDate"));
       }
     } catch {
       toast.error(t("aboutCheckFailed"));
@@ -94,7 +87,7 @@ export function AboutTab() {
     setConfirmOpen(false);
     toast.info(t("aboutUpdating"));
     try {
-      await fetch("/api/version/update", { method: "POST" });
+      await sdk.version.triggerUpdate();
     } catch {
       // Expected: server kills itself, request will fail
     }

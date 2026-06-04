@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { authHeaders } from "@/lib/auth";
+import { sdk } from '@/lib/sdk';
 
 interface GitSettingsFormProps {
   scope: "global" | "local";
@@ -30,22 +30,13 @@ export function GitSettingsForm({ scope, workspaceId }: GitSettingsFormProps) {
         scope === "global"
           ? "/api/git-config"
           : `/api/workspaces/${workspaceId}/git/config`;
-      const res = await fetch(configUrl, { headers: authHeaders() });
-      if (res.ok) {
-        const data = await res.json();
-        setName(data.name ?? "");
-        setEmail(data.email ?? "");
-        setProxy(data.proxy ?? "");
-      }
+      const data = await sdk.http.get<{ name?: string; email?: string; proxy?: string }>(configUrl);
+      setName(data.name ?? "");
+      setEmail(data.email ?? "");
+      setProxy(data.proxy ?? "");
       if (scope === "local" && workspaceId) {
-        const remoteRes = await fetch(
-          `/api/workspaces/${workspaceId}/git/remote-url`,
-          { headers: authHeaders() }
-        );
-        if (remoteRes.ok) {
-          const remoteData = await remoteRes.json();
-          setRemoteUrl(remoteData.url ?? "");
-        }
+        const remoteData = await sdk.http.get<{ url: string }>(`/api/workspaces/${workspaceId}/git/remote-url`);
+        setRemoteUrl(remoteData.url ?? "");
       }
     } catch {}
     setLoading(false);
@@ -62,22 +53,15 @@ export function GitSettingsForm({ scope, workspaceId }: GitSettingsFormProps) {
         scope === "global"
           ? "/api/git-config"
           : `/api/workspaces/${workspaceId}/git/config`;
-      const res = await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
-        body: JSON.stringify({ name, email, proxy }),
-      });
-      if (!res.ok) {
+      try {
+        await sdk.http.postVoid(configUrl, { name, email, proxy });
+      } catch {
         toast.error(t("saveFailed"));
         setSaving(false);
         return;
       }
       if (scope === "local" && workspaceId && remoteUrl) {
-        await fetch(`/api/workspaces/${workspaceId}/git/remotes`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", ...authHeaders() },
-          body: JSON.stringify({ name: "origin", url: remoteUrl }),
-        });
+        await sdk.git.addRemote(workspaceId, "origin", remoteUrl);
       }
       toast.success(t("saved"));
     } catch {

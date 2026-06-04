@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { Settings, SlidersHorizontal, Trash2 } from 'lucide-react';
 import { FloatingChatPanel, type ChatMessage } from '@/components/ui/floating-chat-widget';
 import { AgentDialog } from '@/components/sidebar/agent-dialog';
+import { sdk } from '@/lib/sdk';
 import {
   Popover,
   PopoverContent,
@@ -34,19 +35,17 @@ export function DatabaseAiChat({ workspaceId, onClose, onMinimize }: DatabaseAiC
     setSending(true);
 
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/database/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const data = await sdk.http.post<{ finalMessage?: string; error?: string }>(
+        `/api/workspaces/${workspaceId}/database/chat`,
+        {
           message: content,
           history: messages.map(({ role, content }) => ({ role, content })),
-        }),
-      });
-      const data = await res.json() as { finalMessage?: string; error?: string };
-      const finalMessage = res.ok ? data.finalMessage : data.error;
+        },
+      );
+      const finalMessage = data.finalMessage || '未收到有效回复。';
       setMessages((prev) => [
         ...prev,
-        { id: crypto.randomUUID(), role: 'agent', content: finalMessage || '未收到有效回复。', timestamp: new Date() },
+        { id: crypto.randomUUID(), role: 'agent', content: finalMessage, timestamp: new Date() },
       ]);
     } catch (err) {
       setMessages((prev) => [

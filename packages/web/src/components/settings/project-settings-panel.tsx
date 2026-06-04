@@ -11,6 +11,7 @@ import { AgentDialog } from '@/components/sidebar/agent-dialog';
 import { Loader2 } from 'lucide-react';
 import type { Workspace, WorkspaceNotificationSettings } from '@agent-spaces/shared';
 import { getNotificationPermission, type NotificationPermissionStatus } from '@/lib/native-notification';
+import { sdk } from '@/lib/sdk';
 
 import { WorkspaceInfoSection } from './workspace-info-section';
 import { NotificationSettingsTab, defaultNotificationSettings } from './notification-settings-tab';
@@ -37,13 +38,13 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
 
   useEffect(() => {
     Promise.all([
-      fetch(`/api/workspaces/${workspaceId}`).then((r) => r.json()),
-      fetch(`/api/workspaces/${workspaceId}/prompt`).then((r) => r.json()),
+      sdk.workspace.get(workspaceId),
+      sdk.workspace.getPrompt(workspaceId),
     ])
       .then(([ws, promptData]) => {
         setWorkspace(ws);
         upsertWorkspace(ws);
-        setSavedPrompt(promptData.prompt ?? '');
+        setSavedPrompt((promptData as any).prompt ?? (promptData as any).content ?? '');
         const ns = ws.notificationSettings ?? defaultNotificationSettings();
         setNotificationDraft(ns);
         setLoading(false);
@@ -52,12 +53,7 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
           if (status === 'granted' && ns.provider === 'native' && !ns.native?.permissionGranted) {
             const updated = { ...ns, native: { ...ns.native, permissionGranted: true } };
             setNotificationDraft(updated);
-            fetch(`/api/workspaces/${workspaceId}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ notificationSettings: updated }),
-            })
-              .then((r) => r.json())
+            sdk.workspace.update(workspaceId, { notificationSettings: updated } as any)
               .then((w: Workspace) => {
                 setWorkspace(w);
                 upsertWorkspace(w);

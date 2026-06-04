@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { UserIcon } from "@/components/common/user-icon";
 import { setCachedUserAvatarUrl } from "@/hooks/use-user-avatar";
+import { sdk } from "@/lib/sdk";
 import { AvatarPicker } from "./avatar-picker";
 
 export function AccountTab() {
@@ -14,8 +15,7 @@ export function AccountTab() {
   const [imageSrc, setImageSrc] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/user/settings")
-      .then((r) => r.json())
+    sdk.http.get<{ avatarUrl?: string }>("/api/user/settings")
       .then((data) => {
         if (data.avatarUrl) setUserAvatarUrl(data.avatarUrl);
       })
@@ -33,11 +33,7 @@ export function AccountTab() {
   const handleRemove = () => {
     setUserAvatarUrl(null);
     setCachedUserAvatarUrl(null);
-    fetch("/api/user/settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ avatarUrl: null }),
-    }).catch(() => {});
+    sdk.http.putVoid("/api/user/settings", { avatarUrl: null }).catch(() => {});
   };
 
   return (

@@ -26,6 +26,7 @@ import { useKeyboardShortcuts } from "@/stores/keyboard-shortcuts";
 import type { Workspace } from "@agent-spaces/shared";
 import { isWorkspacePath, workspaceIdFromLocation } from "@/lib/routes";
 import { getWS } from "@/lib/ws";
+import { sdk } from "@/lib/sdk";
 import { useSidebarDialogs } from "./use-sidebar-dialogs";
 import { useSidebarEvents } from "./use-sidebar-events";
 import { useSidebarCommands } from "./use-sidebar-commands";
@@ -83,8 +84,7 @@ export function DashboardSidebar() {
   }, [currentWorkspaceId]);
 
   const refreshWorkspaces = useCallback(() => {
-    fetch("/api/workspaces")
-      .then((r) => r.json())
+    sdk.workspace.list()
       .then(setWorkspaces)
       .catch(() => {});
   }, [setWorkspaces]);
@@ -95,7 +95,7 @@ export function DashboardSidebar() {
 
   const handleDelete = useCallback(
     async (ws: Workspace) => {
-      await fetch(`/api/workspaces/${ws.id}`, { method: "DELETE" });
+      await sdk.workspace.delete(ws.id);
       removeWorkspace(ws.id);
       if (currentWorkspaceId === ws.id) {
         const remaining = workspaces.filter((w) => w.id !== ws.id);

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { type AgentConfig } from "@agent-spaces/shared";
+import { sdk } from "@/lib/sdk";
 import { useAgentStore } from "@/stores/agent";
 import { fetchStoreIndex } from "@/lib/agent-store";
 import {
@@ -106,18 +107,14 @@ export function useAgentDialogData({
 
   useEffect(() => {
     if (!open) return;
-    const controller = new AbortController();
     queueMicrotask(() => {
       setLoading(true);
       setError(null);
     });
-    fetch(presetBasePath, { signal: controller.signal })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(await res.text());
-        return res.json() as Promise<AgentConfig[]>;
-      })
+    sdk.http.get(presetBasePath)
       .then((data) => {
-        const normalized = data.map(normalizeAgent);
+        const list = data as AgentConfig[];
+        const normalized = list.map(normalizeAgent);
         setAgents(normalized);
         if (initialAgentId) {
           const target = normalized.find((a) => a.id === initialAgentId);
@@ -127,11 +124,10 @@ export function useAgentDialogData({
         }
       })
       .catch((err) => {
-        if (err.name !== "AbortError") setError(t("error.loadFailed"));
+        setError(t("error.loadFailed"));
       })
       .finally(() => setLoading(false));
     fetchStoreAgents();
-    return () => controller.abort();
   }, [open, initialAgentId, presetBasePath, singleAgent, t, fetchStoreAgents]);
 
   const handleSelectAgent = (agent: AgentPreset) => {
@@ -164,8 +160,7 @@ export function useAgentDialogData({
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch(`${presetBasePath}/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error(await res.text());
+      await sdk.http.delete(`${presetBasePath}/${id}`);
       setAgents((prev) => prev.filter((a) => a.id !== id));
       useAgentStore.setState((state) => ({
         agents: state.agents.filter((a) => a.id !== id),
@@ -195,8 +190,7 @@ export function useAgentDialogData({
     setSyncingTemplates(true);
     setError(null);
     try {
-      const res = await fetch(`${presetBasePath}/sync-workspaces`, { method: "POST" });
-      if (!res.ok) throw new Error(await res.text());
+      await sdk.http.postVoid(`${presetBasePath}/sync-workspaces`);
     } catch {
       setError(t("error.syncFailed"));
     } finally {
@@ -238,14 +232,9 @@ export function useAgentDialogData({
         icon: storeAgent.emoji || "",
         enabled: true,
       };
-      const createRes = await fetch(presetBasePath, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!createRes.ok) throw new Error(await createRes.text());
-      const listRes = await fetch(presetBasePath);
-      if (listRes.ok) setAgents((await listRes.json()).map(normalizeAgent));
+      await sdk.http.post(presetBasePath, payload);
+      const list = (await sdk.http.get(presetBasePath)) as AgentConfig[];
+      setAgents(list.map(normalizeAgent));
     } catch { /* ignore */ }
     setImportingIds((prev) => {
       const next = new Set(prev);

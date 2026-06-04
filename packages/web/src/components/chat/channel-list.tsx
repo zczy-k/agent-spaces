@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChannelDialog } from './channel-dialog';
 import { normalizeChannelMembersToAgentIds } from '@/lib/agent-members';
+import { sdk } from '@/lib/sdk';
 import { getWS } from '@/lib/ws';
 import { ItemListPanel, type ItemCtx } from '@/components/common/item-list-panel';
 import {
@@ -129,7 +130,7 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
   };
 
   const handleReveal = async (channelId: string) => {
-    await fetch(`/api/workspaces/${workspaceId}/files/reveal?channelId=${channelId}`, { method: 'POST' });
+    await sdk.http.postVoid(`/api/workspaces/${workspaceId}/files/reveal?channelId=${channelId}`);
   };
 
   const renderChannelItem = (ch: Channel, ctx: ItemCtx) => {

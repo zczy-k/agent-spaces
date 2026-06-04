@@ -22,6 +22,8 @@ import { GitGitignoreDialog } from "./git-gitignore-dialog";
 import { GitFileContextMenu } from "./git-file-context-menu";
 import { GitCommitDetailDialog } from "./git-commit-detail-dialog";
 
+import { sdk } from '@/lib/sdk';
+
 import { loadGitLayout, isValidGitLayout } from "./git-panel-layout";
 import { GitChangesPanel } from "./git-changes-panel";
 import { GitCommitsSection } from "./git-commits-section";
@@ -88,9 +90,8 @@ export function GitCommitsPanel({ workspaceId }: Props) {
     setOpLogOpen(true);
     setOpLogLoading(true);
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/git/operations`);
-      if (!res.ok) throw new Error(await res.text());
-      setOpLog(await res.json());
+      const data = await sdk.http.get<GitOperationEntry[]>(`/api/workspaces/${workspaceId}/git/operations`);
+      setOpLog(data);
     } catch {
       setOpLog([]);
     } finally {
@@ -153,9 +154,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
     if (generating || committing) return;
     setGenerating(true);
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/git/generate-commit-message`, { method: 'POST' });
-      if (!res.ok) { const e = await res.json().catch(() => ({ error: 'Failed' })); throw new Error(e.error); }
-      const data = await res.json();
+      const data = await sdk.http.post<{ message?: string }>(`/api/workspaces/${workspaceId}/git/generate-commit-message`);
       if (data.message) setCommitMsg(data.message);
     } catch (err: unknown) { toast.error(errMsg(err) || tChanges('failedCommitMessage')); }
     finally { setGenerating(false); }
@@ -165,9 +164,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
     if (generating || committing) return;
     setGenerating(true);
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/git/generate-commit-message`, { method: 'POST' });
-      if (!res.ok) { const e = await res.json().catch(() => ({ error: 'Failed' })); throw new Error(e.error); }
-      const data = await res.json();
+      const data = await sdk.http.post<{ message?: string }>(`/api/workspaces/${workspaceId}/git/generate-commit-message`);
       if (!data.message) throw new Error('No message generated');
       setCommitting(true);
       selectFile(null);
@@ -227,8 +224,8 @@ export function GitCommitsPanel({ workspaceId }: Props) {
   // ---- gitignore ----
   const _openGitignore = useCallback(async () => {
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/files/content?path=.gitignore`);
-      const data = await res.json(); setGitignoreContent(data.content ?? "");
+      const data = await sdk.http.get<{ content?: string }>(`/api/workspaces/${workspaceId}/files/content?path=.gitignore`);
+      setGitignoreContent(data.content ?? "");
     } catch { setGitignoreContent(""); }
     setGitignoreOpen(true);
   }, [workspaceId]);
@@ -236,10 +233,7 @@ export function GitCommitsPanel({ workspaceId }: Props) {
   const saveGitignore = useCallback(async () => {
     setGitignoreSaving(true);
     try {
-      await fetch(`/api/workspaces/${workspaceId}/files/content`, {
-        method: "PUT", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: ".gitignore", content: gitignoreContent }),
-      });
+      await sdk.http.putVoid(`/api/workspaces/${workspaceId}/files/content`, { path: ".gitignore", content: gitignoreContent });
       setGitignoreOpen(false); refresh();
     } finally { setGitignoreSaving(false); }
   }, [workspaceId, gitignoreContent, refresh]);
@@ -247,16 +241,12 @@ export function GitCommitsPanel({ workspaceId }: Props) {
   const addToGitignore = useCallback(async (pattern: string) => {
     setCtxMenu(null);
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/files/content?path=.gitignore`);
-      const data = await res.json();
+      const data = await sdk.http.get<{ content?: string }>(`/api/workspaces/${workspaceId}/files/content?path=.gitignore`);
       const existing: string = data.content ?? "";
       const lines = existing.split("\n").filter(Boolean);
       if (lines.includes(pattern)) return;
       const next = existing && !existing.endsWith("\n") ? existing + "\n" + pattern + "\n" : existing + pattern + "\n";
-      await fetch(`/api/workspaces/${workspaceId}/files/content`, {
-        method: "PUT", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: ".gitignore", content: next }),
-      });
+      await sdk.http.putVoid(`/api/workspaces/${workspaceId}/files/content`, { path: ".gitignore", content: next });
       refresh();
     } catch { /* ignore */ }
   }, [workspaceId, refresh]);

@@ -22,6 +22,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useLLMStore } from "@/stores/llm";
+import { sdk } from "@/lib/sdk";
 
 const CAP_CLS: Record<string, string> = {
   vision: "bg-blue-500/10 text-blue-600 border-blue-200",
@@ -139,13 +140,9 @@ export function ModelsDialog({
     setError(null);
     try {
       const isNew = !selected;
-      const res = await fetch(isNew ? "/api/models" : `/api/models/${selected!.id}`, {
-        method: isNew ? "POST" : "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(draft),
-      });
-      if (!res.ok) throw new Error();
-      const saved: LLMModel = await res.json();
+      const saved: LLMModel = isNew
+        ? await sdk.llm.createModel(draft)
+        : await sdk.llm.updateModel(selected!.id, draft);
       if (isNew) addModel(saved); else updateModel(saved);
       handleBack();
     } catch {
@@ -159,8 +156,7 @@ export function ModelsDialog({
     if (!confirm(t("confirm.delete"))) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/models/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error();
+      await sdk.llm.deleteModel(id);
       removeModel(id);
       if (selected?.id === id) handleBack();
     } catch {

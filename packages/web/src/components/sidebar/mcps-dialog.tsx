@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
+import { sdk } from '@/lib/sdk';
 import { fetchStoreIndex, getStoreApiBase } from '@/lib/agent-store';
 import {
   Dialog,
@@ -122,26 +123,20 @@ export function McpsDialog({ open, onOpenChange, standalone, selectable, selecte
   const fetchMcps = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/mcps');
-      if (res.ok) {
-        setMcps(await res.json());
-      }
+      setMcps((await sdk.mcps.list()) as unknown as McpServerInfo[]);
     } catch { /* ignore */ }
     setLoading(false);
   }, []);
 
   const fetchAgents = useCallback(async () => {
     try {
-      const res = await fetch('/api/agents/presets');
-      if (res.ok) {
-        const data = await res.json();
-        setAgents(data.map((a: AgentCandidate) => ({
-          id: a.id,
-          name: a.name,
-          avatarUrl: a.avatarUrl,
-          description: a.description,
-        })));
-      }
+      const data = await sdk.agent.listPresets();
+      setAgents(data.map((a: AgentCandidate) => ({
+        id: a.id,
+        name: a.name,
+        avatarUrl: a.avatarUrl,
+        description: a.description,
+      })));
     } catch { /* ignore */ }
   }, []);
 
@@ -164,13 +159,10 @@ export function McpsDialog({ open, onOpenChange, standalone, selectable, selecte
 
   const handleToggleFavorite = async (mcp: McpServerInfo) => {
     try {
-      const res = await fetch(`/api/mcps/${encodeURIComponent(mcp.name)}/favorite`, { method: 'POST' });
-      if (res.ok) {
-        const { favorited } = await res.json();
-        setMcps((prev) =>
-          prev.map((m) => m.name === mcp.name ? { ...m, favorited } : m),
-        );
-      }
+      const { favorited } = await sdk.mcps.toggleFavorite(mcp.name);
+      setMcps((prev) =>
+        prev.map((m) => m.name === mcp.name ? { ...m, favorited } : m),
+      );
     } catch { /* ignore */ }
   };
 
@@ -183,19 +175,10 @@ export function McpsDialog({ open, onOpenChange, standalone, selectable, selecte
       return;
     }
     try {
-      const res = await fetch('/api/mcps/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jsonText: importText }),
-      });
-      if (res.ok) {
-        setImportText('');
-        setImportOpen(false);
-        fetchMcps();
-      } else {
-        const data = await res.json();
-        setImportError(data.error || t('importFailed'));
-      }
+      await sdk.mcps.importJson(importText);
+      setImportText('');
+      setImportOpen(false);
+      fetchMcps();
     } catch {
       setImportError(t('importFailed'));
     }
@@ -220,26 +203,18 @@ export function McpsDialog({ open, onOpenChange, standalone, selectable, selecte
       return;
     }
     try {
-      const res = await fetch(`/api/mcps/${encodeURIComponent(editMcp.name)}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config }),
-      });
-      if (res.ok) {
-        setMcps((prev) =>
-          prev.map((m) => m.name === editMcp.name ? { ...m, config } : m),
-        );
-        setEditMcp(null);
-      }
+      await sdk.mcps.save(editMcp.name, config);
+      setMcps((prev) =>
+        prev.map((m) => m.name === editMcp.name ? { ...m, config } : m),
+      );
+      setEditMcp(null);
     } catch { /* ignore */ }
   };
 
   const handleDeleteMcp = async (mcp: McpServerInfo) => {
     try {
-      const res = await fetch(`/api/mcps/${encodeURIComponent(mcp.name)}`, { method: 'DELETE' });
-      if (res.ok) {
-        setMcps((prev) => prev.filter((m) => m.name !== mcp.name));
-      }
+      await sdk.mcps.delete_(mcp.name);
+      setMcps((prev) => prev.filter((m) => m.name !== mcp.name));
     } catch { /* ignore */ }
   };
 
@@ -248,9 +223,8 @@ export function McpsDialog({ open, onOpenChange, standalone, selectable, selecte
 
     for (const agent of agents) {
       const shouldBeBound = bindSelected.includes(agent.id);
-      const res = await fetch(`/api/agents/presets/${agent.id}`);
-      if (!res.ok) continue;
-      const preset = await res.json();
+      const preset = await sdk.http.get(`/api/agents/presets/${agent.id}`) as Record<string, any>;
+      if (!preset) continue;
       const mcps = (preset.mcps || {}) as Record<string, unknown>;
       const servers = { ...((mcps.mcpServers as Record<string, unknown>) || {}) };
       if (shouldBeBound) {
@@ -258,11 +232,7 @@ export function McpsDialog({ open, onOpenChange, standalone, selectable, selecte
       } else {
         delete servers[bindDialogMcp.name];
       }
-      await fetch(`/api/agents/presets/${agent.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...preset, mcps: { ...mcps, mcpServers: servers } }),
-      });
+      await sdk.http.put(`/api/agents/presets/${agent.id}`, { ...preset, mcps: { ...mcps, mcpServers: servers } });
     }
 
     setBindDialogMcp(null);
@@ -289,14 +259,8 @@ export function McpsDialog({ open, onOpenChange, standalone, selectable, selecte
       const contentRes = await fetch(contentUrl);
       if (!contentRes.ok) return;
       const jsonText = await contentRes.text();
-      const res = await fetch('/api/mcps/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jsonText }),
-      });
-      if (res.ok) {
-        fetchMcps();
-      }
+      await sdk.mcps.importJson(jsonText);
+      fetchMcps();
     } catch { /* ignore */ }
     setImportingIds((prev) => {
       const next = new Set(prev);

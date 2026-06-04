@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
+import { sdk } from '@/lib/sdk';
 import {
   BUILT_IN_AGENT_TOOLS,
   type BuiltInAgentToolName,
@@ -69,8 +70,7 @@ export function ToolsDialog({ open, onOpenChange, standalone, selectable, select
 
   useEffect(() => {
     if (open || standalone) {
-      fetch('/api/agents/presets')
-        .then((res) => res.ok ? res.json() : [])
+      sdk.agent.listPresets()
         .then((data) => {
           setAgentsWithTools(data.map((a: any) => ({
             id: a.id,

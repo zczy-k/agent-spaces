@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { FileUpload, type FileUploadFile } from "@/components/ui/file-upload";
 import { Loader2, Globe, Upload } from "lucide-react";
-import { fetchWithAuth } from "@/lib/auth";
+import { sdk } from "@/lib/sdk";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
@@ -55,19 +55,10 @@ export function CustomFontDialog({ open, onOpenChange, onFontAdded }: CustomFont
     try {
       const file = uploadFiles[0].file;
       const content = await fileToBase64(file);
-      const res = await fetchWithAuth("/api/fonts/upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: file.name, content }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        toast.success(t("fontAdded"));
-        onFontAdded(data.url, data.name);
-        handleClose(false);
-      } else {
-        toast.error(t("fontAddFailed"));
-      }
+      const data = await sdk.http.post<{ url: string; name: string }>("/api/fonts/upload", { name: file.name, content });
+      toast.success(t("fontAdded"));
+      onFontAdded(data.url, data.name);
+      handleClose(false);
     } catch {
       toast.error(t("fontAddFailed"));
     } finally {

@@ -3,12 +3,13 @@
 import "@/lib/api-polyfill";
 import { useEffect, useState, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { isAuthenticated, getToken, removeToken } from "@/lib/auth";
+import { isAuthenticated, removeToken } from "@/lib/auth";
 import { tauriNavigate } from "@/lib/navigate";
 import { isLoginPath } from "@/lib/routes";
 import { getActiveServer } from "@/lib/server";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, RefreshCw, Settings } from "lucide-react";
+import { sdk } from "@/lib/sdk";
 
 type AuthState = "checking" | "error" | "ok";
 
@@ -31,20 +32,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }
 
     setState("checking");
-    const token = getToken();
-    fetch("/api/auth/check", {
-      headers: token !== null ? { Authorization: `Bearer ${token}` } : {},
-    })
-      .then((res) => {
-        if (res.status === 401 || res.status === 403) {
-          removeToken();
-          tauriNavigate(router, "/login", true);
-          return null;
-        }
-        return res.ok ? res.json() : { authenticated: true };
-      })
-      .then((data) => {
-        if (data === null) return;
+    sdk.auth.check()
+      .then((data: any) => {
         if (data.authenticated) {
           setState("ok");
         } else {

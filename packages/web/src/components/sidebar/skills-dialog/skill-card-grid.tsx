@@ -1,6 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
+import { sdk } from '@/lib/sdk';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -253,7 +254,7 @@ function SkillCard({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem
-                onClick={() => fetch(`/api/skills/${encodeURIComponent(skill.name)}/reveal`, { method: 'POST' })}
+                onClick={() => sdk.http.postVoid(`/api/skills/${encodeURIComponent(skill.name)}/reveal`)}
               >
                 <FolderOpen className="size-3.5 mr-1.5" />
                 {t('revealFolder')}

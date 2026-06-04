@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
+import { sdk } from '@/lib/sdk';
 import { fetchStoreIndex } from '@/lib/agent-store';
 import {
   Dialog,
@@ -112,16 +113,14 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
   const fetchTemplates = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/prompt-templates');
-      if (res.ok) setTemplates(await res.json());
+      setTemplates(await sdk.prompts.list());
     } catch { /* ignore */ }
     setLoading(false);
   }, []);
 
   const fetchAgents = useCallback(async () => {
     try {
-      const res = await fetch('/api/prompt-templates/agents');
-      if (res.ok) setAgents(await res.json());
+      setAgents(await sdk.prompts.listAgents());
     } catch { /* ignore */ }
   }, []);
 
@@ -163,11 +162,7 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
     for (const item of uploadFiles) {
       const content = await item.file.text();
       const name = item.file.name.replace(/\.(md|txt|markdown)$/i, '');
-      await fetch('/api/prompt-templates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, content }),
-      });
+      await sdk.prompts.create({ name, content });
     }
     setUploadFiles([]);
     setImportOpen(false);
@@ -181,15 +176,8 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
       const contentRes = await fetch(`/public/prompt/${store.filename}`);
       if (!contentRes.ok) return;
       const content = await contentRes.text();
-      const res = await fetch('/api/prompt-templates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: store.name, content, storeId: store.id }),
-      });
-      if (res.ok) {
-        const created = await res.json();
-        setTemplates((prev) => [...prev, created]);
-      }
+      const created = await sdk.prompts.create({ name: store.name, content, storeId: store.id });
+      setTemplates((prev) => [...prev, created]);
     } catch { /* ignore */ }
     setImportingIds((prev) => {
       const next = new Set(prev);
@@ -224,27 +212,13 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
     setSaving(true);
     try {
       if (editTemplate) {
-        const res = await fetch(`/api/prompt-templates/${editTemplate.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: editName, content: editContent }),
-        });
-        if (res.ok) {
-          const updated = await res.json();
-          setTemplates((prev) => prev.map((t) => t.id === updated.id ? updated : t));
-          closeEditDialog();
-        }
+        const updated = await sdk.prompts.update(editTemplate.id, { name: editName, content: editContent });
+        setTemplates((prev) => prev.map((t) => t.id === updated.id ? updated : t));
+        closeEditDialog();
       } else {
-        const res = await fetch('/api/prompt-templates', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: editName, content: editContent }),
-        });
-        if (res.ok) {
-          const created = await res.json();
-          setTemplates((prev) => [...prev, created]);
-          closeEditDialog();
-        }
+        const created = await sdk.prompts.create({ name: editName, content: editContent });
+        setTemplates((prev) => [...prev, created]);
+        closeEditDialog();
       }
     } catch { /* ignore */ }
     setSaving(false);
@@ -252,8 +226,8 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
 
   const handleDelete = async (tmpl: PromptTemplate) => {
     try {
-      const res = await fetch(`/api/prompt-templates/${tmpl.id}`, { method: 'DELETE' });
-      if (res.ok) setTemplates((prev) => prev.filter((t) => t.id !== tmpl.id));
+      await sdk.prompts.delete_(tmpl.id);
+      setTemplates((prev) => prev.filter((t) => t.id !== tmpl.id));
     } catch { /* ignore */ }
   };
 
@@ -266,11 +240,7 @@ export function PromptsDialog({ open, onOpenChange, standalone }: PromptsDialogP
     if (!applyTemplate || applySelected.length === 0) return;
     setApplying(true);
     try {
-      await fetch(`/api/prompt-templates/${applyTemplate.id}/apply`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ agentIds: applySelected }),
-      });
+      await sdk.prompts.apply(applyTemplate.id, applySelected);
       setApplyTemplate(null);
     } catch { /* ignore */ }
     setApplying(false);

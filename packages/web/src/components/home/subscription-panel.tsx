@@ -8,6 +8,7 @@ import type { SubscriptionConfig, SubscriptionLimit, SubscriptionQuota } from "@
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { SubscriptionDialog } from "./subscription-dialog"
+import { sdk } from "@/lib/sdk"
 
 function formatLimitValue(limit: SubscriptionLimit): string | null {
   if (limit.type === 'TIME_LIMIT') {
@@ -36,8 +37,10 @@ export function SubscriptionPanel() {
   const [editConfig, setEditConfig] = useState<SubscriptionConfig | null>(null)
 
   const loadConfigs = useCallback(async () => {
-    const res = await fetch('/api/subscriptions')
-    if (res.ok) setConfigs(await res.json())
+    try {
+      const data = await sdk.subscription.list()
+      setConfigs(data)
+    } catch { /* ignore */ }
   }, [])
 
   const fetchAllQuotas = useCallback(async (items: SubscriptionConfig[]) => {
@@ -46,15 +49,11 @@ export function SubscriptionPanel() {
     await Promise.allSettled(
       items.map(async item => {
         try {
-          const res = await fetch(`/api/subscriptions/${item.id}/quota`)
-          if (res.ok) {
-            map.set(item.id, { data: await res.json() })
-          } else {
-            const body = await res.json().catch(() => ({}))
-            map.set(item.id, { error: body.error ?? `${res.status} ${res.statusText}` })
-          }
+          const data = await sdk.subscription.quota(item.id)
+          map.set(item.id, { data })
         } catch (err: unknown) {
-          map.set(item.id, { error: err instanceof Error ? err.message : t('subscription.networkError') })
+          const msg = err instanceof Error ? err.message : t('subscription.networkError')
+          map.set(item.id, { error: msg })
         }
       })
     )

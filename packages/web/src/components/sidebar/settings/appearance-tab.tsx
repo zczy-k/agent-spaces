@@ -8,7 +8,7 @@ import { Sun, Moon, Monitor, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { SearchSelect } from "@/components/ui/search-select";
-import { fetchWithAuth } from "@/lib/auth";
+import { sdk } from "@/lib/sdk";
 import {
   THEME_STYLE_STORAGE_KEY as STYLE_STORAGE_KEY,
   THEME_STYLE_CUSTOM_CSS_KEY as STYLE_CUSTOM_CSS_KEY,
@@ -178,9 +178,8 @@ export function AppearanceTab() {
 
   // Fetch server-side fonts and merge
   useEffect(() => {
-    fetchWithAuth("/api/fonts")
-      .then(res => res.ok ? res.json() : [])
-      .then((serverFonts: CustomFont[]) => {
+    sdk.font.list()
+      .then((serverFonts) => {
         if (serverFonts.length === 0) return;
         setCustomFonts(prev => {
           const existing = new Set(prev.map(f => f.name));

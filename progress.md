@@ -468,6 +468,27 @@
 - Verification:
   - `pnpm --filter @agent-spaces/web build` passed.
   - Web build still prints the existing `ENVIRONMENT_FALLBACK` static generation warning, but exits successfully.
+## 2026-06-04 Components SDK 迁移（fetch → sdk）
+
+- **Status:** complete
+- **Scope:** 58 components files / 172 fetch calls → 9 static-only remaining
+- Actions taken:
+  - 创建 5 个并行 Agent 分批迁移所有 components 中的 fetch 调用
+  - Agent 1: sidebar/dialogs (9 files / 60 fetch)
+  - Agent 2: sidebar/agents+settings (16 files / 40 fetch)
+  - Agent 3: editor+composer+terminal (14 files / 23 fetch)
+  - Agent 4: git+chat+issue (9 files / 22 fetch)
+  - Agent 5: settings+home+other (17 files / 32 fetch)
+  - 修复 workflows-page.tsx 类型断言（remappedNodes → WorkflowNode[]）
+  - `fetchWithAuth` 在 components 中完全清零（0 处残留）
+  - 剩余 9 处裸 fetch 全部是静态资源请求（monaco themes、agent store docs、MCP store content、public 静态文件），正确保留
+  - 清理了不再需要的 import：authHeaders、fetchWithAuth、getToken、getActiveServerUrl
+- Verification:
+  - `pnpm --filter @agent-spaces/sdk build` ✅
+  - `pnpm --filter @agent-spaces/web build` ✅
+  - components fetchWithAuth 残留：0
+  - components 裸 fetch 残留：9（全部是静态资源，非 API）
+
 ## 2026-06-04 Workflow 插件节点执行修复
 
 - Status: complete

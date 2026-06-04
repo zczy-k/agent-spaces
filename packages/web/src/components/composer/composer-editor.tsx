@@ -13,6 +13,7 @@ import { USERS } from '@/lib/users';
 import { useAgentStore } from '@/stores/agent';
 import { createSlashExtension } from './create-slash-extension';
 import { createSuggestionRenderer } from './create-suggestion-renderer';
+import { sdk } from '@/lib/sdk';
 
 type Attachment = {
   file: File;
@@ -166,21 +167,16 @@ export function ComposerEditor({
           const formData = new FormData();
           formData.append('file', item.file);
 
-          const res = await fetch('/api/upload', {
-            method: 'POST',
-            body: formData,
-          });
-
-          if (!res.ok) {
+          try {
+            return await sdk.http.upload<{
+              name: string;
+              size: number;
+              type: string;
+              url: string;
+            }>('/api/upload', formData);
+          } catch {
             throw new Error(t('uploadFailed', { name: item.file.name }));
           }
-
-          return (await res.json()) as {
-            name: string;
-            size: number;
-            type: string;
-            url: string;
-          };
         }),
       );
 

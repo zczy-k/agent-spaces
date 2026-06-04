@@ -27,6 +27,7 @@ import { createAgentResourceExtension } from "@/components/composer/create-agent
 import { createFileSearchExtension } from "@/components/composer/create-file-search-extension";
 import { cn } from "@/lib/utils";
 import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
+import { sdk } from '@/lib/sdk';
 import { BUILT_IN_AGENT_TOOLS, type Attachment as MessageAttachment } from "@agent-spaces/shared";
 import {
   Attachment,
@@ -179,9 +180,8 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
     }
 
     let cancelled = false;
-    fetch(`/api/agent-commands/${activeAgent.id}`)
-      .then((res) => res.ok ? res.json() : [])
-      .then((items: AgentCommandItem[]) => {
+    sdk.http.get<AgentCommandItem[]>(`/api/agent-commands/${activeAgent.id}`)
+      .then((items) => {
         if (!cancelled) activeCommandsRef.current = items;
       })
       .catch(() => {

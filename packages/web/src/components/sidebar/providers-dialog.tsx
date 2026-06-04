@@ -22,6 +22,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { useLLMStore } from "@/stores/llm";
+import { sdk } from "@/lib/sdk";
 
 const CAP_CLS: Record<string, string> = {
   vision: "bg-blue-500/10 text-blue-600 border-blue-200",
@@ -74,13 +75,9 @@ export function ProvidersDialog({
     setError(null);
     try {
       const isNew = !selected;
-      const res = await fetch(isNew ? "/api/providers" : `/api/providers/${selected!.id}`, {
-        method: isNew ? "POST" : "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(draft),
-      });
-      if (!res.ok) throw new Error();
-      const saved: LLMProvider = await res.json();
+      const saved: LLMProvider = isNew
+        ? await sdk.llm.createProvider(draft)
+        : await sdk.llm.updateProvider(selected!.id, draft);
       if (isNew) addProvider(saved); else updateProvider(saved);
       handleBack();
     } catch {
@@ -94,8 +91,7 @@ export function ProvidersDialog({
     if (!confirm(t("confirm.delete"))) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/providers/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error();
+      await sdk.llm.deleteProvider(id);
       removeProvider(id);
       if (selected?.id === id) handleBack();
     } catch {

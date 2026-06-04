@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { sdk } from '@/lib/sdk';
 import { fetchStoreIndex } from '@/lib/agent-store';
 import { isBuiltinAgent } from '@agent-spaces/shared';
 import type { AgentCandidate, ImportSkillItem, SkillInfo, SkillSyncItem, StoreSkillItem } from './types';
@@ -18,27 +19,21 @@ export function useSkillsData(open: boolean, standalone?: boolean) {
   const fetchSkills = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/skills');
-      if (res.ok) {
-        setSkills(await res.json());
-      }
+      setSkills((await sdk.skills.list()) as unknown as SkillInfo[]);
     } catch { /* ignore */ }
     setLoading(false);
   }, []);
 
   const fetchAgents = useCallback(async () => {
     try {
-      const res = await fetch('/api/agents/presets');
-      if (res.ok) {
-        const data = await res.json();
-        setAgents(data.filter((a: AgentCandidate) => !isBuiltinAgent(a.id)).map((a: AgentCandidate) => ({
-          id: a.id,
-          name: a.name,
-          avatarUrl: a.avatarUrl,
-          apiBase: a.apiBase,
-          description: a.description,
-        })));
-      }
+      const data = await sdk.agent.listPresets();
+      setAgents(data.filter((a: AgentCandidate) => !isBuiltinAgent(a.id)).map((a: AgentCandidate) => ({
+        id: a.id,
+        name: a.name,
+        avatarUrl: a.avatarUrl,
+        apiBase: a.apiBase,
+        description: a.description,
+      })));
     } catch { /* ignore */ }
   }, []);
 
@@ -66,15 +61,9 @@ export function useSkillsData(open: boolean, standalone?: boolean) {
     if (localSkillNames.has(storeSkill.id) || importingPaths.has(storeSkill.path)) return false;
     setImportingPaths((prev) => new Set(prev).add(storeSkill.path));
     try {
-      const res = await fetch('/api/skills/import-store', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: storeSkill.path, group: storeSkill.group }),
-      });
-      if (res.ok) {
-        await fetchSkills();
-        return true;
-      }
+      await sdk.skills.importStore(storeSkill.path, storeSkill.group);
+      await fetchSkills();
+      return true;
     } catch { /* ignore */ }
     setImportingPaths((prev) => {
       const next = new Set(prev);
@@ -90,38 +79,27 @@ export function useSkillsData(open: boolean, standalone?: boolean) {
 export function useSkillActions(skills: SkillInfo[], setSkills: (fn: (prev: SkillInfo[]) => SkillInfo[]) => void, fetchSkills: () => Promise<void>) {
   const toggleFavorite = async (skill: SkillInfo) => {
     try {
-      const res = await fetch(`/api/skills/${encodeURIComponent(skill.name)}/favorite`, { method: 'POST' });
-      if (res.ok) {
-        const { favorited } = await res.json();
-        setSkills((prev) =>
-          prev.map((s) => s.name === skill.name ? { ...s, favorited } : s),
-        );
-      }
+      const { favorited } = await sdk.http.post(`/api/skills/${encodeURIComponent(skill.name)}/favorite`, {}) as { favorited: boolean };
+      setSkills((prev) =>
+        prev.map((s) => s.name === skill.name ? { ...s, favorited } : s),
+      );
     } catch { /* ignore */ }
   };
 
   const deleteSkill = async (skill: SkillInfo) => {
     try {
-      const res = await fetch(`/api/skills/${encodeURIComponent(skill.name)}`, { method: 'DELETE' });
-      if (res.ok) {
-        setSkills((prev) => prev.filter((s) => s.name !== skill.name));
-      }
+      await sdk.skills.delete_(skill.name);
+      setSkills((prev) => prev.filter((s) => s.name !== skill.name));
     } catch { /* ignore */ }
   };
 
   const saveEdit = async (name: string, content: string) => {
     try {
-      const res = await fetch(`/api/skills/${encodeURIComponent(name)}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content }),
-      });
-      if (res.ok) {
-        setSkills((prev) =>
-          prev.map((s) => s.name === name ? { ...s, content } : s),
-        );
-        return true;
-      }
+      await sdk.skills.save(name, content);
+      setSkills((prev) =>
+        prev.map((s) => s.name === name ? { ...s, content } : s),
+      );
+      return true;
     } catch { /* ignore */ }
     return false;
   };
@@ -133,27 +111,15 @@ export function useSkillActions(skills: SkillInfo[], setSkills: (fn: (prev: Skil
       group: item.group,
     }));
     try {
-      const res = await fetch('/api/skills/import-batch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: batchItems }),
-      });
-      if (res.ok) {
-        fetchSkills();
-      }
+      await sdk.skills.importBatch(batchItems);
+      fetchSkills();
     } catch { /* ignore */ }
   };
 
   const importFromGit = async (url: string): Promise<ImportSkillItem[] | null> => {
     try {
-      const res = await fetch('/api/skills/import-git', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url }),
-      });
-      if (!res.ok) return null;
-      const skills: Array<{ name: string; content: string }> = await res.json();
-      return skills.map((s) => ({
+      const result = (await sdk.skills.importGit(url)) as Array<{ name: string; content: string }>;
+      return result.map((s) => ({
         id: `git-${s.name}-${Math.random().toString(36).slice(2, 8)}`,
         name: s.name,
         group: '',
@@ -168,43 +134,37 @@ export function useSkillActions(skills: SkillInfo[], setSkills: (fn: (prev: Skil
   const bindConfirm = async (skill: SkillInfo, bindSelected: string[], agents: { id: string }[]) => {
     for (const agent of agents) {
       const shouldBeBound = bindSelected.includes(agent.id);
-      const res = await fetch(`/api/agents/presets/${agent.id}`);
-      if (!res.ok) continue;
-      const preset = await res.json();
+      const preset = await sdk.http.get(`/api/agents/presets/${agent.id}`) as Record<string, any>;
+      if (!preset) continue;
       const skillsWithout = (preset.skills || []).filter(
         (s: string) => s.replace(/\.md$/i, '') !== skill.name,
       );
       const updatedSkills = shouldBeBound ? [...skillsWithout, skill.name] : skillsWithout;
-      await fetch(`/api/agents/presets/${agent.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...preset, skills: updatedSkills }),
-      });
+      await sdk.http.put(`/api/agents/presets/${agent.id}`, { ...preset, skills: updatedSkills });
     }
     fetchSkills();
   };
 
   const syncCheck = async (): Promise<SkillSyncItem[]> => {
-    const res = await fetch('/api/skills/sync-check');
-    if (res.ok) return res.json();
+    try {
+      return (await sdk.skills.syncCheck()) as unknown as SkillSyncItem[];
+    } catch { /* ignore */ }
     return [];
   };
 
   const syncConfirm = async (items: SkillSyncItem[]) => {
-    const res = await fetch('/api/skills/sync', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items: items.map((i) => ({ agentId: i.agentId, skillName: i.skillName })) }),
-    });
-    if (res.ok) fetchSkills();
-    return res.ok;
+    try {
+      await sdk.skills.sync(items.map((i) => ({ agentId: i.agentId, skillName: i.skillName })));
+      fetchSkills();
+      return true;
+    } catch { /* ignore */ }
+    return false;
   };
 
   const applyAllToAgent = async (agentId: string, skillNames: string[]) => {
     try {
-      const res = await fetch(`/api/agents/presets/${agentId}`);
-      if (!res.ok) return;
-      const preset = await res.json();
+      const preset = await sdk.http.get(`/api/agents/presets/${agentId}`) as Record<string, any>;
+      if (!preset) return;
       const existing = new Set((preset.skills || []).map((s: string) => s.replace(/\.md$/i, '')));
       const updatedSkills = [...(preset.skills || [])];
       for (const name of skillNames) {
@@ -212,11 +172,7 @@ export function useSkillActions(skills: SkillInfo[], setSkills: (fn: (prev: Skil
           updatedSkills.push(name);
         }
       }
-      await fetch(`/api/agents/presets/${agentId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...preset, skills: updatedSkills }),
-      });
+      await sdk.http.put(`/api/agents/presets/${agentId}`, { ...preset, skills: updatedSkills });
       fetchSkills();
     } catch { /* ignore */ }
   };

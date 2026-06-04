@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { tauriNavigate } from "@/lib/navigate";
-import { getToken, removeToken } from "@/lib/auth";
+import { removeToken } from "@/lib/auth";
+import { sdk } from "@/lib/sdk";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -16,21 +17,11 @@ export function SecurityTab() {
   const [secretSaved, setSecretSaved] = useState(false);
 
   const handleChangeSecret = async () => {
-    const token = getToken();
     try {
-      const res = await fetch("/api/auth/change-secret", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token !== null ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ newSecret, currentToken: token }),
-      });
-      if (res.ok) {
-        setSecretSaved(true);
-        removeToken();
-        setTimeout(() => tauriNavigate(router, "/login"), 800);
-      }
+      await sdk.http.post("/api/auth/change-secret", { newSecret });
+      setSecretSaved(true);
+      removeToken();
+      setTimeout(() => tauriNavigate(router, "/login"), 800);
     } catch {
       /* ignore */
     }

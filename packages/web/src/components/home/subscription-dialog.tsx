@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { sdk } from "@/lib/sdk"
 
 const PROVIDERS: Array<{ value: SubscriptionProvider; label: string; authMode: 'headers' | 'cookie' }> = [
   { value: 'zhipu', label: '智谱 (ZhiPu)', authMode: 'headers' },
@@ -83,8 +84,10 @@ export function SubscriptionDialog({ onChange, editConfig, onEditClear }: Subscr
   const [editing, setEditing] = useState<FormData | null>(null)
 
   const load = useCallback(async () => {
-    const res = await fetch('/api/subscriptions')
-    if (res.ok) setItems(await res.json())
+    try {
+      const data = await sdk.subscription.list()
+      setItems(data)
+    } catch { /* ignore */ }
   }, [])
 
   useEffect(() => {
@@ -117,25 +120,20 @@ export function SubscriptionDialog({ onChange, editConfig, onEditClear }: Subscr
       body.headers = rowsToHeaders(editing.headers)
     }
 
-    const url = editing.id
-      ? `/api/subscriptions/${editing.id}`
-      : '/api/subscriptions'
-    const method = editing.id ? 'PUT' : 'POST'
-
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-    if (res.ok) {
+    try {
+      if (editing.id) {
+        await sdk.subscription.update(editing.id, body)
+      } else {
+        await sdk.subscription.create(body)
+      }
       setEditing(null)
       await load()
       onChange?.()
-    }
+    } catch { /* ignore */ }
   }
 
   const handleDelete = async (id: string) => {
-    await fetch(`/api/subscriptions/${id}`, { method: 'DELETE' })
+    await sdk.subscription.delete_(id)
     await load()
     onChange?.()
   }

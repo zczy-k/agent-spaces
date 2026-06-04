@@ -31,6 +31,7 @@ import { collapseEditorSelection } from "./code-editor-mobile";
 import { useMobileReadonlyOverlay } from "./useMobileReadonlyOverlay";
 import { MobileReadonlyOverlay } from "./code-editor-mobile-overlay";
 import type * as Monaco from 'monaco-editor';
+// Note: /monaco-themes/* fetch calls intentionally kept as raw fetch (static Next.js assets, not API endpoints)
 
 function EditorLoadingFallback() {
   const t = useTranslations('editor');

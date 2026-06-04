@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
+import { sdk } from "@/lib/sdk";
 
 interface WorktreeCardProps {
   worktree: WorktreeInfo;
@@ -41,7 +42,7 @@ export function WorktreeCard({ worktree: wt, workspaceId }: WorktreeCardProps) {
 
   const handleDiff = useCallback(async () => {
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/worktrees/${wt.id}/diff`);
+      const res = await sdk.worktree.diff(workspaceId, wt.id);
       const diffs: GitDiffResult[] = await res.json();
       if (diffs.length === 0) {
         toast.info("No changes");
@@ -68,13 +69,10 @@ export function WorktreeCard({ worktree: wt, workspaceId }: WorktreeCardProps) {
     if (draftLoading || prLoading) return;
     setDraftLoading(true);
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/worktrees/${wt.id}/pr/draft`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: prTitle }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to generate PR draft");
+      const data = await sdk.http.post<{ title?: string; body?: string }>(
+        `/api/workspaces/${workspaceId}/worktrees/${wt.id}/pr/draft`,
+        { title: prTitle },
+      );
       if (data.title) setPrTitle(data.title);
       if (data.body) setPrBody(data.body);
     } catch (err: unknown) {

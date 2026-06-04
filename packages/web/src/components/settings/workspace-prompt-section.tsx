@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Info, Loader2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
+import { sdk } from '@/lib/sdk';
 
 interface WorkspacePromptSectionProps {
   workspaceId: string;
@@ -25,16 +26,7 @@ export function WorkspacePromptSection({ workspaceId, initialPrompt }: Workspace
     if (savingPrompt) return;
     setSavingPrompt(true);
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/prompt`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
-      });
-      if (!res.ok) {
-        const error = await res.json().catch(() => null);
-        throw new Error(error?.error || 'Failed to save workspace prompt');
-      }
-      const data: { prompt: string } = await res.json();
+      const data = await sdk.http.put<{ prompt: string }>(`/api/workspaces/${workspaceId}/prompt`, { prompt });
       setPrompt(data.prompt);
       setSavedPrompt(data.prompt);
       toast.success(t('prompt.saveSuccess'));

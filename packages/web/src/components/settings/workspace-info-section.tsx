@@ -6,6 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { FolderOpen, Hash, ListChecks, Loader2, Database } from 'lucide-react';
 import type { Workspace } from '@agent-spaces/shared';
+import { sdk } from '@/lib/sdk';
 
 function InfoRow({ icon, label, value, onClick }: { icon: React.ReactNode; label: string; value: string; onClick?: () => void }) {
   const clickable = !!onClick;
@@ -38,19 +39,14 @@ export function WorkspaceInfoSection({ workspace, channelCount, issueCount }: Wo
     const url = target
       ? `/api/workspaces/${workspace.id}/reveal?target=${target}`
       : `/api/workspaces/${workspace.id}/reveal`;
-    await fetch(url, { method: 'POST' });
+    await sdk.http.post(url);
   };
 
   const handleToggleAutoProcess = async (checked: boolean) => {
     if (saving) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/workspaces/${workspace.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ autoProcessIssues: checked }),
-      });
-      const updated: Workspace = await res.json();
+      const updated = await sdk.workspace.update(workspace.id, { autoProcessIssues: checked } as any);
       setAutoProcess(updated.autoProcessIssues === true);
     } finally {
       setSaving(false);
@@ -61,12 +57,7 @@ export function WorkspaceInfoSection({ workspace, channelCount, issueCount }: Wo
     if (saving) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/workspaces/${workspace.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hooksEnabled: checked }),
-      });
-      const updated: Workspace = await res.json();
+      const updated = await sdk.workspace.update(workspace.id, { hooksEnabled: checked } as any);
       setHooksEnabled(updated.hooksEnabled !== false);
     } finally {
       setSaving(false);

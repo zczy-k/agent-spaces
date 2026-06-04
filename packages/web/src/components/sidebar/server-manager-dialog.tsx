@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Check, Pencil, Plus, Server, Trash2, Wifi } from "lucide-react";
 import { type ServerConfig } from "@/lib/server";
+import { sdk } from "@/lib/sdk";
 import { useTranslations } from "next-intl";
 
 interface ServerManagerDialogProps {
@@ -104,11 +105,13 @@ export function ServerManagerDialog({ open, onOpenChange, servers, activeId, onU
     try {
       const controller = new AbortController();
       const timer = window.setTimeout(() => controller.abort(), 10000);
-      const res = await fetch(healthUrl, {
+      const res = await sdk.http.raw(healthUrl, {
         method: "GET",
         cache: "no-store",
         mode: "cors",
         signal: controller.signal,
+        noAuth: true,
+        absoluteUrl: true,
       });
       window.clearTimeout(timer);
       const text = await res.text();

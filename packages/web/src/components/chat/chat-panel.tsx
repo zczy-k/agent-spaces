@@ -21,6 +21,7 @@ import { getProviderIconUrl } from '@/components/common/agent-icon';
 import { resolveServerAssetUrl } from '@/lib/server';
 import { AgentEditor } from '@/components/sidebar/agent-editor';
 import { normalizeAgent } from '@/components/sidebar/agent-shared';
+import { sdk } from '@/lib/sdk';
 
 import { useIssueStore } from '@/stores/issue';
 import { useMobilePanelStore } from '@/stores/mobile-panel';
@@ -236,9 +237,7 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
 
   const confirmDelete = useCallback(async () => {
     if (!deletingMsg) return;
-    await fetch(`/api/workspaces/${workspaceId}/channels/${deletingMsg.channelId}/messages/${deletingMsg.id}`, {
-      method: 'DELETE',
-    });
+    await sdk.http.delete(`/api/workspaces/${workspaceId}/channels/${deletingMsg.channelId}/messages/${deletingMsg.id}`);
     setDeletingMsg(null);
   }, [workspaceId, deletingMsg]);
 
