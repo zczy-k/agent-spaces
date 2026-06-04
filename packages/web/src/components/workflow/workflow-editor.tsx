@@ -51,6 +51,11 @@ interface SseEvent {
   data: unknown;
 }
 
+interface ThinkingStreamState {
+  inThinking: boolean;
+  buffer: string;
+}
+
 const WORKFLOW_AGENT_TEMPLATE_ID = 'workflow-editor-agent';
 const WORKFLOW_AGENT_FIXED_SYSTEM_PROMPT = '工作流编辑助手提示词由系统根据当前画布动态生成，不能在模型设置中修改。';
 const WORKFLOW_AGENT_FIXED_VALUES: Partial<AgentPreset> = {
@@ -168,9 +173,48 @@ function WorkflowEditorInner({
     )));
   }, []);
 
+  const appendTimelineTextItem = useCallback((messageId: string, type: 'message' | 'thinking', content: string) => {
+    const trimmed = content.trim();
+    if (!trimmed) return;
+    setAgentMessages((messages) => messages.map((message) => {
+      if (message.id !== messageId) return message;
+      const timeline = [...(message.timeline ?? [])];
+      if (type === 'thinking') {
+        const existingIndex = timeline.findIndex((item) => item.type === 'thinking');
+        if (existingIndex >= 0) {
+          const existing = timeline[existingIndex] as Extract<WorkflowTimelineItem, { type: 'thinking' }>;
+          timeline[existingIndex] = { ...existing, content: `${existing.content}\n${trimmed}` };
+        } else {
+          timeline.unshift({
+            id: `thinking-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            type: 'thinking',
+            content: trimmed,
+          });
+        }
+        return { ...message, timeline };
+      }
+
+      const latest = timeline.at(-1);
+      if (latest?.type === type) {
+        timeline[timeline.length - 1] = { ...latest, content: `${latest.content}\n${trimmed}` };
+      } else {
+        timeline.push({
+          id: `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          type,
+          content: trimmed,
+        });
+      }
+      return { ...message, timeline };
+    }));
+  }, []);
+
   const appendToolCall = useCallback((messageId: string, toolCall: WorkflowToolCall) => {
     appendTimelineItem(messageId, { ...toolCall, type: 'tool' });
   }, [appendTimelineItem]);
+
+  const appendTimelineMessage = useCallback((messageId: string, content: string) => {
+    appendTimelineTextItem(messageId, 'message', content);
+  }, [appendTimelineTextItem]);
 
   const completeLatestToolCall = useCallback((messageId: string, toolName: string, result: unknown) => {
     setAgentMessages((messages) => messages.map((message) => {
@@ -279,20 +323,17 @@ function WorkflowEditorInner({
         return;
       }
 
+      const thinkingState: ThinkingStreamState = { inThinking: false, buffer: '' };
       await readSseStream(response, (event) => {
         if (event.event === 'output') {
           const line = asRecord(event.data).line;
           if (typeof line === 'string') {
-            const parts = splitThinkingOutput(line);
+            const parts = consumeThinkingStream(thinkingState, line);
             for (const part of parts) {
               if (part.type === 'thinking') {
-                appendTimelineItem(assistantId, {
-                  id: `thinking-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-                  type: 'thinking',
-                  content: part.content,
-                });
+                appendTimelineTextItem(assistantId, 'thinking', part.content);
               } else {
-                appendAssistantContent(assistantId, part.content);
+                appendTimelineMessage(assistantId, part.content);
               }
             }
           }
@@ -302,11 +343,7 @@ function WorkflowEditorInner({
           const data = asRecord(event.data);
           const text = data.text;
           if (typeof text === 'string' && text.trim()) {
-            appendTimelineItem(assistantId, {
-              id: `thinking-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-              type: 'thinking',
-              content: text,
-            });
+            appendTimelineTextItem(assistantId, 'thinking', text);
           }
           return;
         }
@@ -353,7 +390,8 @@ function WorkflowEditorInner({
     workspaceId,
     agentMessages,
     appendAssistantContent,
-    appendTimelineItem,
+    appendTimelineTextItem,
+    appendTimelineMessage,
     appendToolCall,
     completeLatestToolCall,
     applyWorkflowPatch,
@@ -731,6 +769,9 @@ function WorkflowAgentTimeline({ timeline }: { timeline?: WorkflowTimelineItem[]
         if (item.type === 'thinking') {
           return <WorkflowAgentThinkingCard key={item.id} item={item} expanded={Boolean(expanded[item.id])} onToggle={() => setExpanded((state) => ({ ...state, [item.id]: !state[item.id] }))} />;
         }
+        if (item.type === 'message') {
+          return <WorkflowAgentMessageCard key={item.id} item={item} />;
+        }
         const open = expanded[item.id];
         const isError = item.status === 'error';
         return (
@@ -760,6 +801,14 @@ function WorkflowAgentTimeline({ timeline }: { timeline?: WorkflowTimelineItem[]
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function WorkflowAgentMessageCard({ item }: { item: Extract<WorkflowTimelineItem, { type: 'message' }> }) {
+  return (
+    <div className="whitespace-pre-wrap break-words rounded-lg border bg-muted/50 px-2.5 py-2 text-xs leading-relaxed shadow-sm">
+      {item.content}
     </div>
   );
 }
@@ -869,28 +918,56 @@ function parseSseEvent(chunk: string): SseEvent | null {
   }
 }
 
-function splitThinkingOutput(text: string): Array<{ type: 'content' | 'thinking'; content: string }> {
+function consumeThinkingStream(state: ThinkingStreamState, text: string): Array<{ type: 'content' | 'thinking'; content: string }> {
   const parts: Array<{ type: 'content' | 'thinking'; content: string }> = [];
-  let rest = text;
+  let rest = state.buffer + text;
+  state.buffer = '';
+
   while (rest.length) {
+    if (state.inThinking) {
+      const closeIndex = rest.search(/<\/think>/i);
+      if (closeIndex === -1) {
+        if (rest.trim()) parts.push({ type: 'thinking', content: rest });
+        break;
+      }
+      const thinking = rest.slice(0, closeIndex);
+      if (thinking.trim()) parts.push({ type: 'thinking', content: thinking });
+      rest = rest.slice(closeIndex).replace(/^<\/think>/i, '');
+      state.inThinking = false;
+      continue;
+    }
+
     const openIndex = rest.search(/<think\s*>/i);
     if (openIndex === -1) {
-      if (rest.trim()) parts.push({ type: 'content', content: rest });
+      const maybePartialOpen = findPartialThinkOpen(rest);
+      if (maybePartialOpen >= 0) {
+        const beforePartial = rest.slice(0, maybePartialOpen);
+        if (beforePartial.trim()) parts.push({ type: 'content', content: beforePartial });
+        state.buffer = rest.slice(maybePartialOpen);
+      } else if (rest.trim()) {
+        parts.push({ type: 'content', content: rest });
+      }
       break;
     }
+
     const before = rest.slice(0, openIndex);
     if (before.trim()) parts.push({ type: 'content', content: before });
-    const afterOpen = rest.slice(openIndex).replace(/^<think\s*>/i, '');
-    const closeIndex = afterOpen.search(/<\/think>/i);
-    if (closeIndex === -1) {
-      if (afterOpen.trim()) parts.push({ type: 'thinking', content: afterOpen.trim() });
-      break;
-    }
-    const thinking = afterOpen.slice(0, closeIndex).trim();
-    if (thinking) parts.push({ type: 'thinking', content: thinking });
-    rest = afterOpen.slice(closeIndex).replace(/^<\/think>/i, '');
+    rest = rest.slice(openIndex).replace(/^<think\s*>/i, '');
+    state.inThinking = true;
   }
+
   return parts;
+}
+
+function findPartialThinkOpen(text: string): number {
+  const lower = text.toLowerCase();
+  const token = '<think>';
+  const maxLength = Math.min(token.length - 1, lower.length);
+  for (let length = maxLength; length > 0; length--) {
+    const suffix = lower.slice(-length);
+    if (token.startsWith(suffix)) return lower.length - length;
+  }
+  return -1;
 }
 
 function hydrateWorkflowAgentChatMessage(message: PersistedWorkflowAgentChatMessage): WorkflowAgentChatMessage {
@@ -913,8 +990,12 @@ function serializeWorkflowAgentChatMessage(message: WorkflowAgentChatMessage): P
 }
 
 function getWorkflowAgentTimeline(message: WorkflowAgentChatMessage): WorkflowTimelineItem[] {
-  if (message.timeline?.length) return message.timeline;
-  return message.toolCalls?.map((toolCall) => ({ ...toolCall, type: 'tool' as const })) ?? [];
+  const timeline = message.timeline?.length
+    ? message.timeline
+    : message.toolCalls?.map((toolCall) => ({ ...toolCall, type: 'tool' as const })) ?? [];
+  const thinking = timeline.find((item) => item.type === 'thinking');
+  if (!thinking) return timeline;
+  return [thinking, ...timeline.filter((item) => item.id !== thinking.id)];
 }
 
 function readWorkflowPatch(result: unknown): { workflow_id: string; nodes: Workflow['nodes']; edges: Workflow['edges']; updatedAt?: number } | null {

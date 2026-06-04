@@ -19,6 +19,8 @@ Add a workflow-agent floating chat entry to `packages/web/src/components/workflo
 | 10. Add per-message hover actions | complete | Added hover-only copy/delete icons below messages and wired deletion in workflow/database chat state. |
 | 11. Remove empty waiting bubble | complete | Empty agent messages no longer render a bubble; the dots indicator remains the waiting UI. |
 | 12. Interleave workflow thinking and tool timeline | complete | Workflow chat now stores ordered timeline items so multiple thinking blocks render between tool cards in event order. |
+| 13. Distinguish timeline messages from thinking | complete | Normal streamed output now renders as ordered message timeline items; only text inside `<think>` or explicit reasoning events renders as thinking. |
+| 14. Pin and accumulate workflow thinking | complete | Merge all thinking chunks into the first timeline item and render it before message/tool items. |
 
 ## Decisions
 

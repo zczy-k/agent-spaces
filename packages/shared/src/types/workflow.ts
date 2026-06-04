@@ -331,6 +331,7 @@ export interface WorkflowAgentToolCall {
 
 export type WorkflowAgentTimelineItem =
   | { id: string; type: 'thinking'; content: string }
+  | { id: string; type: 'message'; content: string }
   | ({ type: 'tool' } & WorkflowAgentToolCall)
 
 export interface WorkflowAgentChatMessage {
