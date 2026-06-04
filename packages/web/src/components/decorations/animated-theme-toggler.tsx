@@ -2,7 +2,7 @@
 
 import { useRef, useId } from "react";
 import { motion } from "motion/react";
-import { useTheme } from "./theme-provider";
+import { useTheme } from "../layout/theme-provider.tsx";
 
 /**
  * Animated Theme Toggler — sun↔moon morph.

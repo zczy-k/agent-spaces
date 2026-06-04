@@ -5,7 +5,7 @@ import "@/lib/monaco-loader";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useTranslations } from "next-intl";
-import { useTheme } from "@/components/theme-provider";
+import { useTheme } from "@/components/layout/theme-provider";
 
 const MonacoEditor = dynamic(
   () => import("@monaco-editor/react").then((mod) => mod.default),

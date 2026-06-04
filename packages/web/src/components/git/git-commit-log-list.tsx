@@ -1,8 +1,8 @@
 "use client";
 
 import type { GitLogEntry } from "@agent-spaces/shared";
-import type { Commit } from "@/components/commit-graph";
-import { CommitGraph } from "@/components/commit-graph";
+import type { Commit } from "@/components/viewers/commit-graph";
+import { CommitGraph } from "@/components/viewers/commit-graph";
 import {
   ContextMenu,
   ContextMenuTrigger,

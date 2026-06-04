@@ -1,4 +1,4 @@
-import type { LogEntry, LogLevel } from "@/components/log-viewer"
+import type { LogEntry, LogLevel } from "@/components/viewers/log-viewer"
 
 /**
  * Generates a realistic set of sample log entries for demos.

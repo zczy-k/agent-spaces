@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Languages } from "lucide-react";
-import { useLocale, type Locale } from "@/components/locale-provider";
+import { useLocale, type Locale } from "@/components/layout/locale-provider";
 
 export function LanguageTab() {
   const t = useTranslations("settings");

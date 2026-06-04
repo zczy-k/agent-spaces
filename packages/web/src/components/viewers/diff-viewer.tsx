@@ -1,7 +1,7 @@
 import * as React from "react"
 import { structuredPatch, parsePatch } from "diff"
 import { cn } from "@/lib/utils"
-import { DiffViewerCopyButton } from "@/components/diff-viewer-client"
+import { DiffViewerCopyButton } from "@/components/viewers/diff-viewer-client"
 
 type DiffLayout = "unified" | "split"
 

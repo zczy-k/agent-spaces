@@ -11,7 +11,7 @@ import { useEditorStore, isCommitDiffPath, getCommitHashFromPath, getMediaType }
 import type { OpenFile } from "@/stores/editor";
 import { EditorTabs } from "./editor-tabs";
 import { EditorMenuBar } from "./code-editor-menu-bar";
-import { useTheme } from "@/components/theme-provider";
+import { useTheme } from "@/components/layout/theme-provider";
 import { useTranslations } from 'next-intl';
 import { CommitDiffViewer } from "@/components/git/commit-diff-viewer";
 import { useWorkspaceStore } from "@/stores/workspace";

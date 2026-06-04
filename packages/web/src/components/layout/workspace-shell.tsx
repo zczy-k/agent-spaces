@@ -98,7 +98,7 @@ const WorktreePanel = dynamic(() => import("@/components/worktree/worktree-panel
   ssr: false,
   loading: panelLoader,
 });
-const ActivityLogPanel = dynamic(() => import("@/components/activity-log-panel").then((mod) => mod.ActivityLogPanel), {
+const ActivityLogPanel = dynamic(() => import("@/components/viewers/activity-log-panel").then((mod) => mod.ActivityLogPanel), {
   ssr: false,
   loading: panelLoader,
 });

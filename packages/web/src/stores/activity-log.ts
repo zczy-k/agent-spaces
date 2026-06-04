@@ -1,5 +1,5 @@
 import { create, type StoreApi, type UseBoundStore } from "zustand"
-import type { LogEntry } from "@/components/log-viewer"
+import type { LogEntry } from "@/components/viewers/log-viewer"
 import { getWS } from "@/lib/ws"
 import { useAgentStore } from "@/stores/agent"
 import { useWorkspaceStore } from "@/stores/workspace"

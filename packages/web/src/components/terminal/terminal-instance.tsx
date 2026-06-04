@@ -5,7 +5,7 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import '@xterm/xterm/css/xterm.css';
-import { useTheme } from '@/components/theme-provider';
+import { useTheme } from '@/components/layout/theme-provider';
 import { getWS } from '@/lib/ws';
 import { useTerminalStore, consumeSessionBuffer } from '@/stores/terminal';
 import {

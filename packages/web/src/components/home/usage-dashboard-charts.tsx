@@ -11,7 +11,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn, textColorClass, textToColor } from "@/lib/utils"
-import { ActivityGraph } from "@/components/activity-graph"
+import { ActivityGraph } from "@/components/viewers/activity-graph"
 import type { AgentUsageDashboard as AgentUsageDashboardData } from "@agent-spaces/shared"
 import { formatCurrency, formatNumber, formatTokens, getModelIconUrl, PERIOD_KEYS, type PeriodKey } from "./usage-dashboard-utils"
 

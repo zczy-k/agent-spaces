@@ -1,6 +1,6 @@
 "use client"
 
-import { LogViewerTerminal } from "@/components/log-viewer"
+import { LogViewerTerminal } from "@/components/viewers/log-viewer"
 import { getActivityLogStore } from "@/stores/activity-log"
 
 interface ActivityLogPanelProps {

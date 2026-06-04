@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { DiffViewer as DiffViewerBase } from "@/components/diff-viewer";
+import { DiffViewer as DiffViewerBase } from "@/components/viewers/diff-viewer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { Check, FileQuestion, Filter, Split } from "lucide-react";

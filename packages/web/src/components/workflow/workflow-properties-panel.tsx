@@ -23,7 +23,7 @@ import {
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
-import { JsonViewer, type JsonValue } from '@/components/json-viewer';
+import { JsonViewer, type JsonValue } from '@/components/viewers/json-viewer';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {

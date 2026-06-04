@@ -5,11 +5,11 @@ import { useState, useEffect } from "react";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { DashboardSidebar } from "@/components/sidebar/app-sidebar";
 import { WorkspaceTabs } from "@/components/layout/workspace-tabs";
-import { DevInspector } from "@/components/dev-inspector";
+import { DevInspector } from "@/components/layout/dev-inspector";
 import { WorkspaceDialog } from "@/components/workspace/workspace-dialog";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { isLoginPath } from "@/lib/routes";
-import { ContentUsageReporter } from "@/components/content-usage-reporter";
+import { ContentUsageReporter } from "@/components/home/content-usage-reporter";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

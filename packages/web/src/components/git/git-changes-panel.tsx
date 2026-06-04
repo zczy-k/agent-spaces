@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { ResizablePanel } from "@/components/ui/resizable";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-import { DiffViewer } from "@/components/diff-viewer";
+import { DiffViewer } from "@/components/viewers/diff-viewer";
 import { useTranslations } from "next-intl";
 
 import { Empty, EmptyDescription, EmptyMedia } from "@/components/ui/empty";

@@ -22,7 +22,7 @@ import {
   AlertCircle, AlertTriangle, Check, CheckCircle, ChevronDown, ChevronUp,
   Circle, Copy, Info, Loader2, MoreHorizontal, Pause, Play, Square, Trash2, XCircle,
 } from 'lucide-react';
-import { JsonViewer } from '@/components/json-viewer';
+import { JsonViewer } from '@/components/viewers/json-viewer';
 import { cn } from '@/lib/utils';
 
 type ExecutionStatus = 'idle' | 'running' | 'paused' | 'completed' | 'error' | 'stopped' | string;

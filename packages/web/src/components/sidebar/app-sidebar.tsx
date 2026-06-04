@@ -19,7 +19,7 @@ import DashboardNavigation from "@/components/sidebar/nav-main";
 import { NotificationsPopover } from "@/components/sidebar/nav-notifications";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ServerSwitcher } from "@/components/sidebar/server-switcher";
-import { AnimatedThemeToggler } from "@/components/animated-theme-toggler";
+import { AnimatedThemeToggler } from "@/components/decorations/animated-theme-toggler";
 import { LayoutTemplateIcon } from "lucide-react";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useKeyboardShortcuts } from "@/stores/keyboard-shortcuts";

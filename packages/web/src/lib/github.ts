@@ -1,4 +1,4 @@
-import type { ActivityEntry } from "@/components/activity-graph"
+import type { ActivityEntry } from "@/components/viewers/activity-graph"
 
 export interface GitHubContributions {
   /** Total contributions in the period. */

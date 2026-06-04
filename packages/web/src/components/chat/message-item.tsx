@@ -14,7 +14,7 @@ import { MemberHoverCard } from './member-hover-card';
 import { AgentEditor } from '@/components/sidebar/agent-editor';
 import { normalizeAgent } from '@/components/sidebar/agent-shared';
 import { MessageContextUsage, MessageParts } from './message-parts';
-import { TextShimmer } from '@/components/text-shimmer';
+import { TextShimmer } from '@/components/decorations/text-shimmer';
 import { MovingBorder } from '@/components/ui/border-glide';
 
 interface MessageItemProps {

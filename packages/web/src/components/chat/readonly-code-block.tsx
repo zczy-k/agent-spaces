@@ -2,9 +2,9 @@
 
 import dynamic from "next/dynamic"
 import "@/lib/monaco-loader"
-import { useTheme } from "@/components/theme-provider"
+import { useTheme } from "@/components/layout/theme-provider"
 import { useTranslations } from "next-intl"
-import { JsonViewer } from "@/components/json-viewer"
+import { JsonViewer } from "@/components/viewers/json-viewer"
 
 function ReadonlyCodeBlockLoading() {
   const t = useTranslations('chat')

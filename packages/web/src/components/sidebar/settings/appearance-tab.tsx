@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { useTheme } from "@/components/theme-provider";
+import { useTheme } from "@/components/layout/theme-provider";
 import { cn } from "@/lib/utils";
 import { Sun, Moon, Monitor, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";

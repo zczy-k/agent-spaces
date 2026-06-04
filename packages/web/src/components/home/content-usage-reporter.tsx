@@ -7,7 +7,7 @@ import {
   captureContentUsageSnapshot,
   useContentUsageReportStore,
 } from '@/stores/content-usage-report';
-import { ContentUsageReportDialog } from '@/components/content-usage-report-dialog';
+import { ContentUsageReportDialog } from '@/components/home/content-usage-report-dialog';
 
 const CONTENT_USAGE_REPORT_INTERVAL_MS = 5 * 60 * 1000;
 
