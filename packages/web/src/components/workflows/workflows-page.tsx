@@ -8,20 +8,19 @@ import { WorkflowMiniPreview } from '@/components/workflow/workflow-mini-preview
 import { WorkflowEditor } from '@/components/workflow/workflow-editor';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Plus, Pencil, Copy, Trash2, Upload, FileText, FolderOpen } from 'lucide-react';
+import { Plus, Pencil, Copy, Trash2, Upload, FileText } from 'lucide-react';
 import { WorkflowTemplatesDialog } from '@/components/workflows/workflow-templates-dialog';
 import { WorkflowListDialog } from '@/components/workflow/workflow-list-dialog';
 import type { WorkflowTemplatePreset } from '@/components/workflows/workflow-templates';
 import { fetchWithAuth } from '@/lib/auth';
+import { workflowApi } from '@/lib/workflow-api';
 import type { AgentConfig } from '@agent-spaces/shared';
 
 export function WorkflowsPage() {
-  const { workflows, loadWorkflows, deleteWorkflow, duplicateWorkflow } = useWorkflowStore();
+  const { workflows, loadWorkflows, deleteWorkflow, duplicateWorkflow, upsertWorkflow } = useWorkflowStore();
   const [editingWorkflow, setEditingWorkflow] = useState<WorkflowTemplate | null>(null);
-  const [creatingNew, setCreatingNew] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [listDialogOpen, setListDialogOpen] = useState(false);
-  const [listDialogCreate, setListDialogCreate] = useState(false);
 
   useEffect(() => {
     loadWorkflows();
@@ -150,18 +149,26 @@ export function WorkflowsPage() {
     setListDialogOpen(false);
   }, []);
 
-  const handleListCreate = useCallback(() => {
-    setCreatingNew(true);
+  const handleListCreate = useCallback(async () => {
+    const created = await workflowApi.create({
+      name: '新工作流',
+      nodes: [
+        { id: `node_${Date.now()}_start`, type: 'start', label: '开始', position: { x: 250, y: 50 }, data: {} },
+        { id: `node_${Date.now()}_end`, type: 'end', label: '结束', position: { x: 250, y: 400 }, data: {} },
+      ],
+      edges: [],
+    });
+    upsertWorkflow(created);
+    setEditingWorkflow(created);
     setListDialogOpen(false);
-  }, []);
+  }, [upsertWorkflow]);
 
-  if (editingWorkflow || creatingNew) {
+  if (editingWorkflow) {
     return (
       <WorkflowEditor
         template={editingWorkflow}
         onBack={() => {
           setEditingWorkflow(null);
-          setCreatingNew(false);
           loadWorkflows();
         }}
       />
@@ -184,11 +191,8 @@ export function WorkflowsPage() {
           <Button variant="outline" onClick={handleImport}>
             <Upload className="h-4 w-4 mr-1" /> 导入
           </Button>
-          <Button onClick={() => { setListDialogCreate(true); setListDialogOpen(true); }}>
+          <Button onClick={() => setListDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-1" /> 新建工作流
-          </Button>
-          <Button variant="outline" onClick={() => { setListDialogCreate(false); setListDialogOpen(true); }}>
-            <FolderOpen className="h-4 w-4 mr-1" /> 打开工作流
           </Button>
         </div>
       </div>
@@ -196,7 +200,7 @@ export function WorkflowsPage() {
       {workflows.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
           <p className="text-sm mb-2">暂无工作流模板</p>
-          <Button variant="outline" onClick={() => setCreatingNew(true)}>
+          <Button variant="outline" onClick={handleListCreate}>
             <Plus className="h-4 w-4 mr-1" /> 创建第一个工作流
           </Button>
         </div>
@@ -259,7 +263,6 @@ export function WorkflowsPage() {
 
       <WorkflowListDialog
         open={listDialogOpen}
-        createMode={listDialogCreate}
         workflows={workflows}
         onSelect={handleListOpen}
         onCreate={handleListCreate}
