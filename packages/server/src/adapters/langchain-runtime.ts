@@ -22,6 +22,7 @@ const DEFAULT_DATA_DIR = join(process.env.HOME || '~', '.agent-spaces-data');
  */
 export class LangChainRuntime implements AgentRuntime {
   private abortController: AbortController | null = null;
+  private static nextRunId = 1;
 
   constructor(private readonly config: AgentRuntimeConfig = {}) {}
 
@@ -30,48 +31,69 @@ export class LangChainRuntime implements AgentRuntime {
     const output: string[] = [];
     const cwd = workingDir || process.cwd();
     const startTime = Date.now();
-    const d = (msg: string) => console.log(`[langchain] ${msg}`);
+    const runId = LangChainRuntime.nextRunId++;
+    const d = (msg: string) => console.log(`[langchain:${runId}] ${msg}`);
     const modelSettings = resolveLangChainModelSettings(this.config);
     const model = modelSettings.modelIdentifier;
     let mcpClient: MultiServerMCPClient | undefined;
 
     const skillPrompts = loadConfiguredSkillPrompts(options?.configDir, options?.skills);
-    d(`starting | cwd=${cwd} provider=${this.config.provider ?? 'auto'} langchainProvider=${modelSettings.provider ?? 'auto'} model=${model} baseURL=${this.config.baseURL ?? 'default'} maxTurns=${options?.maxTurns ?? '∞'} tools=${options?.functionTools?.map((runtimeTool) => runtimeTool.name).join(',') || '-'} mcpServers=${Object.keys(options?.mcpServers ?? {}).join(',') || '-'} skills=${skillPrompts.map((skill) => skill.name).join(',') || '-'} sandboxDirs=${options?.sandboxDirs?.join(',') ?? '-'}`);
+    d(`starting | cwd=${cwd} provider=${this.config.provider ?? 'auto'} langchainProvider=${modelSettings.provider ?? 'auto'} model=${model} baseURL=${this.config.baseURL ?? 'default'} apiKey=${this.config.apiKey ? 'set' : 'unset'} maxTurns=${options?.maxTurns ?? '∞'} tools=${options?.functionTools?.map((runtimeTool) => runtimeTool.name).join(',') || '-'} mcpServers=${Object.keys(options?.mcpServers ?? {}).join(',') || '-'} skills=${skillPrompts.map((skill) => skill.name).join(',') || '-'} sandboxDirs=${options?.sandboxDirs?.join(',') ?? '-'}`);
+    d(`options | ${summarizeOptionsForLog(options)}`);
+    d(`model config | ${summarizeForLog(maskSensitiveConfig(buildModelConfig(this.config)), 1000)}`);
+    d(`provider env | ${summarizeEnvForLog(buildProviderEnv(this.config, modelSettings.provider))}`);
     if (modelSettings.providerCorrectionReason) d(`provider adjusted | ${modelSettings.providerCorrectionReason}`);
-    d(`prompt: ${prompt.slice(0, 300)}${prompt.length > 300 ? '...' : ''}`);
+    d(`prompt | chars=${prompt.length} preview=${truncateForLog(prompt, 1000)}`);
+    if (skillPrompts.length) {
+      d(`skills loaded | ${skillPrompts.map((skill) => `${skill.name}:${skill.content.length}chars`).join(',')}`);
+    } else if (options?.skills?.length) {
+      d(`skills requested but not loaded | requested=${options.skills.join(',')}`);
+    }
 
     try {
+      d('initializing chat model');
       const chatModel = await withTemporaryEnv(
         buildProviderEnv(this.config, modelSettings.provider),
         () => initChatModel(model, buildModelConfig(this.config)),
       );
+      d(`chat model initialized | type=${getObjectTypeName(chatModel)}`);
       mcpClient = createLangChainMcpClient(options?.mcpServers, output, options, d);
+      d(`MCP client ${mcpClient ? 'created' : 'not created'}`);
       const mcpTools = mcpClient ? await mcpClient.getTools() : [];
-      if (mcpClient) d(`resolved MCP tools | servers=${Object.keys(options?.mcpServers ?? {}).join(',') || '-'} tools=${mcpTools.map((mcpTool) => mcpTool.name).join(',') || '-'}`);
+      if (mcpClient) d(`resolved MCP tools | servers=${Object.keys(options?.mcpServers ?? {}).join(',') || '-'} count=${mcpTools.length} tools=${mcpTools.map((mcpTool) => mcpTool.name).join(',') || '-'}`);
+      const runtimeTools = buildLangChainTools(options?.functionTools, output, options, d);
+      d(`creating agent | runtimeTools=${runtimeTools.length} mcpTools=${mcpTools.length} systemPrompt=${options?.systemPrompt ? `${options.systemPrompt.length}chars` : '-'} outputStyle=${options?.outputStyle ?? '-'}`);
       const agent = createAgent({
         model: chatModel,
         tools: [
-          ...buildLangChainTools(options?.functionTools, output, options, d),
+          ...runtimeTools,
           ...mcpTools,
         ],
         systemPrompt: options?.systemPrompt,
       });
+      d(`agent created | type=${getObjectTypeName(agent)}`);
 
       const finalPrompt = appendOutputStyleToPrompt(
         injectSkillPrompts(prompt, skillPrompts),
         options?.outputStyle,
       );
+      d(`final prompt | chars=${finalPrompt.length} skillCount=${skillPrompts.length} outputStyle=${options?.outputStyle ?? '-'} preview=${truncateForLog(finalPrompt, 1200)}`);
 
+      const recursionLimit = options?.maxTurns ? Math.max(2, options.maxTurns * 2 + 1) : undefined;
+      d(`invoking agent | recursionLimit=${recursionLimit ?? '-'} aborted=${this.abortController?.signal.aborted ? 'yes' : 'no'}`);
       const result = await agent.invoke(
         { messages: [{ role: 'user', content: finalPrompt }] },
         {
           signal: this.abortController?.signal,
-          recursionLimit: options?.maxTurns ? Math.max(2, options.maxTurns * 2 + 1) : undefined,
+          recursionLimit,
         },
       );
+      d(`agent result | ${summarizeAgentResultForLog(result)}`);
 
       const text = extractFinalText(result);
       const usage = extractUsage(result);
+      d(`final text | chars=${text.length} preview=${truncateForLog(text, 1200) || '-'}`);
+      d(`usage | ${usage ? summarizeForLog(usage, 500) : '-'}`);
       if (text) {
         output.push(text);
         options?.onEvent?.({ type: 'output', line: text });
@@ -83,7 +105,7 @@ export class LangChainRuntime implements AgentRuntime {
       }
 
       const elapsed = Date.now() - startTime;
-      d(`done ${elapsed}ms | tokens=${usage?.totalTokens ?? 'unknown'}`);
+      d(`done ${elapsed}ms | outputLines=${output.length} tokens=${usage?.totalTokens ?? 'unknown'}`);
 
       return {
         success: true,
@@ -95,16 +117,22 @@ export class LangChainRuntime implements AgentRuntime {
     } catch (err) {
       const elapsed = Date.now() - startTime;
       const message = err instanceof Error ? err.message : String(err);
-      d(`failed ${elapsed}ms | ${message}`);
+      d(`failed ${elapsed}ms | name=${err instanceof Error ? err.name : typeof err} message=${truncateForLog(message, 1000)} outputLines=${output.length}`);
       if (err instanceof Error && err.stack) console.error(err.stack);
 
       return { success: false, summary: 'LangChain execution failed', artifacts: [], error: message, output };
     } finally {
       if (mcpClient) {
-        await mcpClient.close();
-        d('MCP client closed');
+        d('closing MCP client');
+        try {
+          await mcpClient.close();
+          d('MCP client closed');
+        } catch (err) {
+          d(`MCP client close failed | ${err instanceof Error ? err.message : String(err)}`);
+        }
       }
       this.abortController = null;
+      d('runtime reset');
     }
   }
 
@@ -211,18 +239,20 @@ function buildLangChainTools(
   if (!functionTools?.length) return [];
   return functionTools.map((runtimeTool) => tool(
     async (input: unknown) => {
+      const startedAt = Date.now();
       const line = `Tool: ${runtimeTool.name} input=${JSON.stringify(input)}`;
-      log(`tool use | name=${runtimeTool.name} input=${summarizeForLog(input, 800)}`);
+      log(`tool use | source=function name=${runtimeTool.name} descriptionChars=${runtimeTool.description.length} input=${summarizeForLog(input, 800)}`);
       output.push(line);
       options?.onEvent?.({ type: 'tool_use', id: runtimeTool.name, name: runtimeTool.name, input, line });
       try {
         const result = await runtimeTool.execute(input);
-        log(`tool result | name=${runtimeTool.name} output=${summarizeForLog(result, 1000)}`);
+        log(`tool result | source=function name=${runtimeTool.name} elapsedMs=${Date.now() - startedAt} output=${summarizeForLog(result, 1000)}`);
         options?.onEvent?.({ type: 'tool_result', toolUseId: runtimeTool.name, result });
         return stringifyToolResult(result);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        log(`tool error | name=${runtimeTool.name} error=${truncateForLog(message, 1000)}`);
+        log(`tool error | source=function name=${runtimeTool.name} elapsedMs=${Date.now() - startedAt} error=${truncateForLog(message, 1000)}`);
+        if (err instanceof Error && err.stack) console.error(err.stack);
         throw err;
       }
     },
@@ -315,8 +345,13 @@ function createLangChainMcpClient(
   options: AgentRunOptions | undefined,
   log: (message: string) => void,
 ): MultiServerMCPClient | undefined {
+  log(`normalizing MCP servers | requested=${Object.keys(mcpServers ?? {}).join(',') || '-'}`);
   const normalizedMcpServers = normalizeLangChainMcpServers(mcpServers);
-  if (!normalizedMcpServers) return undefined;
+  if (!normalizedMcpServers) {
+    log('normalizing MCP servers | none');
+    return undefined;
+  }
+  log(`normalized MCP servers | ${summarizeMcpServersForLog(normalizedMcpServers)}`);
   return new MultiServerMCPClient({
     throwOnLoadError: true,
     prefixToolNameWithServerName: true,
@@ -327,14 +362,14 @@ function createLangChainMcpClient(
     beforeToolCall: (request) => {
       const name = formatMcpToolName(request.serverName, request.name);
       const line = `Tool: ${name} input=${JSON.stringify(request.args ?? {})}`;
-      log(`tool use | name=${name} input=${summarizeForLog(request.args ?? {}, 800)}`);
+      log(`tool use | source=mcp server=${request.serverName} name=${name} input=${summarizeForLog(request.args ?? {}, 800)}`);
       output.push(line);
       options?.onEvent?.({ type: 'tool_use', id: name, name, input: request.args ?? {}, line });
     },
     afterToolCall: (result) => {
       const name = formatMcpToolName(result.serverName, result.name);
       const outputText = stringifyToolResult(result.result);
-      log(`tool result | name=${name} output=${truncateForLog(outputText, 1000)}`);
+      log(`tool result | source=mcp server=${result.serverName} name=${name} chars=${outputText.length} output=${truncateForLog(outputText, 1000)}`);
       options?.onEvent?.({ type: 'tool_result', toolUseId: name, result: outputText });
       return { result: outputText };
     },
@@ -344,7 +379,7 @@ function createLangChainMcpClient(
       const progressText = progress.total
         ? `${progress.progress}/${progress.total}`
         : String(progress.progress);
-      log(`tool progress | name=${name} progress=${progressText}${progress.message ? ` message=${truncateForLog(progress.message, 300)}` : ''}`);
+      log(`tool progress | source=mcp server=${source.server} name=${name} progress=${progressText}${progress.message ? ` message=${truncateForLog(progress.message, 300)}` : ''}`);
     },
     onMessage: (message, source) => {
       log(`mcp message | server=${source.server} level=${message.level ?? '-'} data=${summarizeForLog(message.data, 500)}`);
@@ -404,6 +439,98 @@ function normalizeOpenAgentCompatibleFetchMcpServer(server: Record<string, unkno
 
 function formatMcpToolName(serverName: string, toolName: string): string {
   return `mcp__${serverName}__${toolName}`;
+}
+
+function summarizeOptionsForLog(options: AgentRunOptions | undefined): string {
+  if (!options) return '-';
+  return summarizeForLog({
+    maxTurns: options.maxTurns,
+    tools: options.tools,
+    functionTools: options.functionTools?.map((runtimeTool) => ({
+      name: runtimeTool.name,
+      descriptionChars: runtimeTool.description.length,
+      annotations: runtimeTool.annotations,
+      inputSchema: runtimeTool.inputSchema,
+    })),
+    mcpServers: Object.keys(options.mcpServers ?? {}),
+    skills: options.skills,
+    configDir: options.configDir,
+    sandboxDirs: options.sandboxDirs,
+    systemPromptChars: options.systemPrompt?.length,
+    userPromptChars: options.userPrompt?.length,
+    outputStyle: options.outputStyle,
+    resumeSessionId: options.resumeSessionId,
+    onEvent: options.onEvent ? 'set' : undefined,
+  }, 2000);
+}
+
+function summarizeAgentResultForLog(result: unknown): string {
+  if (!isRecord(result)) return summarizeForLog(result, 1200);
+  const messages = Array.isArray(result.messages) ? result.messages : [];
+  return summarizeForLog({
+    keys: Object.keys(result),
+    messageCount: messages.length,
+    messages: messages.map((message, index) => summarizeMessageForLog(message, index)),
+  }, 2000);
+}
+
+function summarizeMessageForLog(message: unknown, index: number): Record<string, unknown> {
+  if (!isRecord(message)) return { index, type: typeof message };
+  const content = stringifyMessageContent(message.content);
+  return removeUndefined({
+    index,
+    type: getMessageType(message) ?? message.type,
+    role: message.role,
+    name: message.name,
+    id: message.id,
+    contentChars: content.length,
+    contentPreview: truncateForLog(content, 300),
+    usage: message.usage_metadata,
+    responseMetadataKeys: isRecord(message.response_metadata) ? Object.keys(message.response_metadata) : undefined,
+    additionalKwargsKeys: isRecord(message.additional_kwargs) ? Object.keys(message.additional_kwargs) : undefined,
+    toolCallCount: Array.isArray(message.tool_calls) ? message.tool_calls.length : undefined,
+    invalidToolCallCount: Array.isArray(message.invalid_tool_calls) ? message.invalid_tool_calls.length : undefined,
+  });
+}
+
+function summarizeMcpServersForLog(mcpServers: Record<string, Connection>): string {
+  return summarizeForLog(Object.fromEntries(
+    Object.entries(mcpServers).map(([name, server]) => [name, summarizeMcpServerForLog(server)]),
+  ), 2000);
+}
+
+function summarizeMcpServerForLog(server: Connection): Record<string, unknown> {
+  const record = server as Record<string, unknown>;
+  return removeUndefined({
+    transport: record.transport,
+    url: typeof record.url === 'string' ? record.url : undefined,
+    command: typeof record.command === 'string' ? record.command : undefined,
+    args: Array.isArray(record.args) ? record.args : undefined,
+    cwd: typeof record.cwd === 'string' ? record.cwd : undefined,
+    headers: isStringRecord(record.headers) ? Object.keys(record.headers) : undefined,
+    env: isStringRecord(record.env) ? Object.keys(record.env) : undefined,
+  });
+}
+
+function summarizeEnvForLog(env: Record<string, string | undefined>): string {
+  const configured = Object.entries(env)
+    .filter(([, value]) => Boolean(value))
+    .map(([key]) => key);
+  return configured.length ? configured.join(',') : '-';
+}
+
+function maskSensitiveConfig(config: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(config).map(([key, value]) => {
+    if (/api[_-]?key/i.test(key)) return [key, value ? 'set' : value];
+    if (key === 'configuration' && isRecord(value)) return [key, maskSensitiveConfig(value)];
+    return [key, value];
+  }));
+}
+
+function getObjectTypeName(value: unknown): string {
+  return isRecord(value) && typeof value.constructor === 'function'
+    ? value.constructor.name
+    : typeof value;
 }
 
 function summarizeForLog(value: unknown, maxLength = 300): string {
