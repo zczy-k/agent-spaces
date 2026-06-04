@@ -23,6 +23,7 @@ import {
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
+import { JsonViewer, type JsonValue } from '@/components/json-viewer';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -122,9 +123,11 @@ function isVisible(prop: NodeProperty, data: Record<string, unknown>) {
 
 function JsonPreview({ value }: { value: unknown }) {
   return (
-    <pre className="max-h-60 overflow-auto rounded border bg-muted/30 p-2 text-[11px] font-mono">
-      {JSON.stringify(value ?? null, null, 2)}
-    </pre>
+    <JsonViewer
+      data={value as JsonValue}
+      rootName="output"
+      defaultExpanded={2}
+    />
   );
 }
 
