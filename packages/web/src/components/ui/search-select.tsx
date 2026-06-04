@@ -18,6 +18,7 @@ export interface SearchSelectProps {
   searchPlaceholder?: string;
   allowCustom?: boolean;
   className?: string;
+  disabled?: boolean;
 }
 
 export function SearchSelect({
@@ -28,6 +29,7 @@ export function SearchSelect({
   searchPlaceholder = "Search...",
   allowCustom = true,
   className,
+  disabled = false,
 }: SearchSelectProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -60,12 +62,15 @@ export function SearchSelect({
     <div ref={ref} className={cn("relative", className)}>
       <button
         type="button"
+        disabled={disabled}
         onClick={() => {
+          if (disabled) return;
           setOpen(true);
           setQuery("");
         }}
         className={cn(
           "flex h-8 w-full items-center justify-between gap-2 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none hover:bg-muted/50 focus-visible:border-ring dark:bg-input/30",
+          disabled && "cursor-not-allowed opacity-60 hover:bg-transparent",
         )}
       >
         <span className={cn("truncate", !value && "text-muted-foreground")}>
@@ -74,7 +79,7 @@ export function SearchSelect({
         <ChevronDown className="size-3.5 shrink-0 opacity-50" />
       </button>
 
-      {open && (
+      {open && !disabled && (
         <div className="absolute inset-x-0 top-full z-50 mt-1 rounded-lg border bg-popover p-1 shadow-md">
           <Input
             value={query}

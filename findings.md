@@ -9,3 +9,5 @@
 - `agent-sse` originally required a saved `agentId` preset for model/provider config and did not expose function tools. It can be extended to accept a workflow draft while still reusing the existing runtime factory.
 - Because LangChain tools execute on the server, workflow editing tools should mutate an in-memory workflow draft passed with the request and stream workflow patches back to the editor through `tool_result`.
 - `packages/web/src/lib/workflow-nodes.ts` exports `allNodeDefinitions`, enough to seed node usage/search/create defaults for built-in node types.
+- `AgentEditor` can be reused for workflow-agent model settings by adding optional fixed values and locked fields. `AgentDetail` now supports locking runtime, prompt, tools, mcps, skills, role, and working directory without changing default behavior elsewhere.
+- Workflow agent preset lookup uses fixed `templateId` `workflow-editor-agent`; model settings create/update this backend preset, while runtime prompt and tools remain fixed by the workflow-agent SSE path.

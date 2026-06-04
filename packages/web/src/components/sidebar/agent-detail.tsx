@@ -48,6 +48,7 @@ import {
   type AgentRole,
   type McpDraft,
   type ConnectionTestResult,
+  type AgentDetailLockedFields,
   PROVIDER_OPTIONS,
   RUNTIME_OPTIONS,
   Section,
@@ -63,6 +64,7 @@ export function AgentDetail({
   onChange,
   onMcpChange,
   onTestConnection,
+  lockedFields,
 }: {
   agent: AgentPreset;
   roleOptions: AgentRole[];
@@ -71,6 +73,7 @@ export function AgentDetail({
   onChange: <K extends keyof AgentPreset>(key: K, value: AgentPreset[K]) => void;
   onMcpChange: (value: McpDraft) => void;
   onTestConnection: () => void;
+  lockedFields?: AgentDetailLockedFields;
 }) {
   const t = useTranslations("agent");
   const [dynamicModelOptions, setDynamicModelOptions] = useState<Array<{ value: string; label: string }>>([]);
@@ -244,6 +247,7 @@ export function AgentDetail({
               <select
                 value={agent.role}
                 onChange={(e) => onChange("role", e.target.value as AgentConfig["role"])}
+                disabled={lockedFields?.role}
                 className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring dark:bg-input/30"
               >
                 {uniqueRoleOptions.map((role) => (
@@ -266,12 +270,13 @@ export function AgentDetail({
             placeholder={t("detail.runtimePlaceholder")}
             searchPlaceholder={t("detail.runtimeSearchPlaceholder")}
             allowCustom={false}
+            disabled={lockedFields?.runtimeKind}
           />
         </FieldGroup>
       </Section>
 
       <Section icon={<FolderOpen className="size-3.5" />} title={t("detail.workingDirectory")}>
-        <Input value={agent.workingDir} onChange={(e) => onChange("workingDir", e.target.value)} placeholder={t("detail.workingDirPlaceholder")} />
+        <Input value={agent.workingDir} onChange={(e) => onChange("workingDir", e.target.value)} placeholder={t("detail.workingDirPlaceholder")} disabled={lockedFields?.workingDir} />
       </Section>
 
       <div className="flex flex-col gap-2.5">
@@ -279,7 +284,7 @@ export function AgentDetail({
           icon={<Sparkles className="size-3.5" />}
           title={t("detail.systemPrompt")}
           action={
-            <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setOptimizeOpen(true)}>
+            lockedFields?.systemPrompt ? null : <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setOptimizeOpen(true)}>
               <WandSparkles className="size-3.5" />
               {t("detail.optimizePrompt")}
             </Button>
@@ -290,6 +295,7 @@ export function AgentDetail({
           onChange={(e) => onChange("systemPrompt", e.target.value)}
           placeholder={t("detail.systemPromptPlaceholder")}
           className="min-h-24 text-xs"
+          disabled={lockedFields?.systemPrompt}
         />
       </div>
 
@@ -307,7 +313,7 @@ export function AgentDetail({
           icon={<Wrench className="size-3.5" />}
           title={t("detail.mcpServers")}
           action={
-            <Button variant="ghost" size="icon" className="size-5" onClick={() => setMcpsDialogOpen(true)}>
+            lockedFields?.mcps ? null : <Button variant="ghost" size="icon" className="size-5" onClick={() => setMcpsDialogOpen(true)}>
               <Settings2 className="size-3.5" />
             </Button>
           }
@@ -319,17 +325,19 @@ export function AgentDetail({
               mcpNames.map((name) => (
                 <span key={name} className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium text-foreground">
                   {name}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const servers = { ...((agent.mcps as Record<string, Record<string, unknown>>)?.mcpServers ?? {}) };
-                      delete servers[name];
-                      onMcpChange({ ...(agent.mcps as Record<string, unknown>), mcpServers: servers });
-                    }}
-                    className="hover:text-destructive cursor-pointer"
-                  >
-                    <X className="size-2.5" />
-                  </button>
+                  {!lockedFields?.mcps ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const servers = { ...((agent.mcps as Record<string, Record<string, unknown>>)?.mcpServers ?? {}) };
+                        delete servers[name];
+                        onMcpChange({ ...(agent.mcps as Record<string, unknown>), mcpServers: servers });
+                      }}
+                      className="hover:text-destructive cursor-pointer"
+                    >
+                      <X className="size-2.5" />
+                    </button>
+                  ) : null}
                 </span>
               ))
             ) : (
@@ -359,7 +367,7 @@ export function AgentDetail({
           icon={<Wrench className="size-3.5" />}
           title={t("detail.tools")}
           action={
-            <Button variant="ghost" size="icon" className="size-5" onClick={() => setToolsDialogOpen(true)}>
+            lockedFields?.tools ? null : <Button variant="ghost" size="icon" className="size-5" onClick={() => setToolsDialogOpen(true)}>
               <Settings2 className="size-3.5" />
             </Button>
           }
@@ -371,9 +379,11 @@ export function AgentDetail({
               return (
                 <span key={tool} className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium text-foreground">
                   {builtIn?.label ?? tool}
-                  <button type="button" onClick={() => onChange("tools", agent.tools.filter((t) => t !== tool))} className="hover:text-destructive cursor-pointer">
-                    <X className="size-2.5" />
-                  </button>
+                  {!lockedFields?.tools ? (
+                    <button type="button" onClick={() => onChange("tools", agent.tools.filter((t) => t !== tool))} className="hover:text-destructive cursor-pointer">
+                      <X className="size-2.5" />
+                    </button>
+                  ) : null}
                 </span>
               );
             })
@@ -395,7 +405,7 @@ export function AgentDetail({
           icon={<Cpu className="size-3.5" />}
           title={t("detail.skills")}
           action={
-            <Button variant="ghost" size="icon" className="size-5" onClick={() => setSkillsDialogOpen(true)}>
+            lockedFields?.skills ? null : <Button variant="ghost" size="icon" className="size-5" onClick={() => setSkillsDialogOpen(true)}>
               <Settings2 className="size-3.5" />
             </Button>
           }
@@ -405,9 +415,11 @@ export function AgentDetail({
             agent.skills.map((skill) => (
               <span key={skill.name} className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium text-foreground">
                 {skill.name}
-                <button type="button" onClick={() => onChange("skills", agent.skills.filter((s) => s.name !== skill.name))} className="hover:text-destructive cursor-pointer">
-                  <X className="size-2.5" />
-                </button>
+                {!lockedFields?.skills ? (
+                  <button type="button" onClick={() => onChange("skills", agent.skills.filter((s) => s.name !== skill.name))} className="hover:text-destructive cursor-pointer">
+                    <X className="size-2.5" />
+                  </button>
+                ) : null}
               </span>
             ))
           ) : (

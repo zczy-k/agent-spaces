@@ -18,6 +18,7 @@ import {
 import {
   type AgentPreset,
   type AgentRole,
+  type AgentDetailLockedFields,
   type BuiltInRole,
   type ConnectionTestResult,
   type McpDraft,
@@ -45,6 +46,8 @@ export interface AgentEditorProps {
   /** Auto-open the generate dialog on mount */
   autoOpenGenerate?: boolean;
   presetBasePath?: string;
+  lockedFields?: AgentDetailLockedFields;
+  fixedValues?: Partial<AgentPreset>;
 }
 
 export const AgentEditor = forwardRef<AgentEditorHandle, AgentEditorProps>(
@@ -57,13 +60,15 @@ export const AgentEditor = forwardRef<AgentEditorHandle, AgentEditorProps>(
       showFooter = true,
       autoOpenGenerate = false,
       presetBasePath = "/api/agents/presets",
+      lockedFields,
+      fixedValues,
     },
     ref,
   ) {
     const t = useTranslations("agent");
     const tc = useTranslations("common");
 
-    const [editDraft, setEditDraft] = useState<AgentPreset>({ ...initialAgent });
+    const [editDraft, setEditDraft] = useState<AgentPreset>({ ...initialAgent, ...fixedValues });
     const [saving, setSaving] = useState(false);
     const [testing, setTesting] = useState(false);
     const [testResult, setTestResult] = useState<ConnectionTestResult | null>(null);
@@ -79,7 +84,7 @@ export const AgentEditor = forwardRef<AgentEditorHandle, AgentEditorProps>(
         setEditDraft((draft) => {
           if (!draft) return { ...initialAgent };
           const { modelProvider, modelId, apiBase, apiKey, runtimeKind } = draft;
-          return { ...initialAgent, modelProvider, modelId, apiBase, apiKey, runtimeKind };
+          return { ...initialAgent, modelProvider, modelId, apiBase, apiKey, runtimeKind, ...fixedValues };
         });
         setTestResult(null);
         setResetKey((k) => k + 1);
@@ -94,11 +99,12 @@ export const AgentEditor = forwardRef<AgentEditorHandle, AgentEditorProps>(
       setSaving(true);
       setError(null);
       try {
-        const isDraft = isDraftAgent(editDraft);
-        const createBody = serializeAgent(editDraft);
+        const nextDraft = { ...editDraft, ...fixedValues };
+        const isDraft = isDraftAgent(nextDraft);
+        const createBody = serializeAgent(nextDraft);
         const raw = isDraft
           ? await sdk.agent.createPreset(createBody as unknown as Partial<AgentConfig>)
-          : await sdk.agent.updatePreset(editDraft.id, editDraft as unknown as Partial<AgentConfig>);
+          : await sdk.agent.updatePreset(nextDraft.id, nextDraft as unknown as Partial<AgentConfig>);
         const saved = normalizeAgent(raw);
         if (presetBasePath === "/api/agents/presets") {
           useAgentStore.setState((state) => ({
@@ -151,6 +157,7 @@ export const AgentEditor = forwardRef<AgentEditorHandle, AgentEditorProps>(
           name: data.name?.trim() || base.name,
           description: data.description?.trim() || base.description,
           systemPrompt: data.systemPrompt?.trim() || base.systemPrompt,
+          ...fixedValues,
         };
         setEditDraft(draft);
         setGenerateOpen(false);
@@ -164,6 +171,7 @@ export const AgentEditor = forwardRef<AgentEditorHandle, AgentEditorProps>(
     };
 
     const updateAgentDraft = <K extends keyof AgentPreset>(key: K, value: AgentPreset[K]) => {
+      if (lockedFields?.[key as keyof AgentDetailLockedFields]) return;
       setEditDraft((prev) => {
         if (!prev) return prev;
         if (key === "modelProvider") {
@@ -171,17 +179,18 @@ export const AgentEditor = forwardRef<AgentEditorHandle, AgentEditorProps>(
           return {
             ...prev,
             modelProvider: provider,
-            runtimeKind: isAnthropicBridgeProvider(provider) ? "claude-code" : prev.runtimeKind,
+            runtimeKind: fixedValues?.runtimeKind ?? (isAnthropicBridgeProvider(provider) ? "claude-code" : prev.runtimeKind),
           };
         }
         if (key === "runtimeKind") {
-          return { ...prev, runtimeKind: value as AgentPreset["runtimeKind"] };
+          return { ...prev, runtimeKind: fixedValues?.runtimeKind ?? value as AgentPreset["runtimeKind"] };
         }
         return { ...prev, [key]: value };
       });
     };
 
     const updateMcpConfig = (value: McpDraft) => {
+      if (lockedFields?.mcps) return;
       setEditDraft((prev) => (prev ? { ...prev, mcps: value } : prev));
     };
 
@@ -202,6 +211,7 @@ export const AgentEditor = forwardRef<AgentEditorHandle, AgentEditorProps>(
             onChange={updateAgentDraft}
             onMcpChange={updateMcpConfig}
             onTestConnection={handleTestConnection}
+            lockedFields={lockedFields}
           />
         </div>
 

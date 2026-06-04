@@ -18,9 +18,12 @@ import { WorkflowPluginsDialog } from './workflow-plugins-dialog';
 import { WorkflowPluginPickerDialog } from './workflow-plugin-picker-dialog';
 import { WorkflowNodeSelectDialog } from './workflow-node-select-dialog';
 import { FloatingChatPanel, type ChatMessage } from '@/components/ui/floating-chat-widget';
+import { AgentEditor } from '@/components/sidebar/agent-editor';
+import { normalizeAgent, newAgentDraft, type AgentPreset } from '@/components/sidebar/agent-shared';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ResizablePanel, ResizableHandle, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, AlertCircle, CheckCircle2, ChevronDown, Wrench } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle2, ChevronDown, Settings2, Trash2, Wrench } from 'lucide-react';
 import { useEditorShortcuts, useClipboard, useExecutionPanel } from '@/hooks/use-workflow-editor';
 import { Button } from '@/components/ui/button';
 import { fetchWithAuth } from '@/lib/auth';
@@ -50,6 +53,22 @@ interface SseEvent {
   data: unknown;
 }
 
+const WORKFLOW_AGENT_TEMPLATE_ID = 'workflow-editor-agent';
+const WORKFLOW_AGENT_FIXED_SYSTEM_PROMPT = '工作流编辑助手提示词由系统根据当前画布动态生成，不能在模型设置中修改。';
+const WORKFLOW_AGENT_FIXED_VALUES: Partial<AgentPreset> = {
+  name: '工作流助手',
+  role: 'agent',
+  description: '帮助编辑当前可视化工作流的 LangChain Agent',
+  runtimeKind: 'langchain',
+  workingDir: '',
+  mcps: {},
+  skills: [],
+  tools: [],
+  systemPrompt: WORKFLOW_AGENT_FIXED_SYSTEM_PROMPT,
+  templateId: WORKFLOW_AGENT_TEMPLATE_ID,
+  enabled: true,
+};
+
 function WorkflowEditorInner({
   template, onBack,
 }: {
@@ -64,6 +83,9 @@ function WorkflowEditorInner({
   const [agentInput, setAgentInput] = useState('');
   const [agentSending, setAgentSending] = useState(false);
   const [agentMessages, setAgentMessages] = useState<WorkflowAgentChatMessage[]>([]);
+  const [agentSettingsOpen, setAgentSettingsOpen] = useState(false);
+  const [agentSettingsDraft, setAgentSettingsDraft] = useState<AgentPreset | null>(null);
+  const [agentSettingsLoading, setAgentSettingsLoading] = useState(false);
 
   const canvas = useWorkflowEditorCanvas({
     workflow: state.workflow,
@@ -126,6 +148,16 @@ function WorkflowEditorInner({
     state.markDirty();
   }, [state]);
 
+  const openAgentSettings = useCallback(async () => {
+    setAgentSettingsOpen(true);
+    setAgentSettingsLoading(true);
+    try {
+      setAgentSettingsDraft(await resolveWorkflowAgentSettingsDraft());
+    } finally {
+      setAgentSettingsLoading(false);
+    }
+  }, []);
+
   const sendWorkflowAgentMessage = useCallback(async () => {
     const prompt = agentInput.trim();
     if (!prompt || agentSending || !state.workflow) return;
@@ -152,7 +184,11 @@ function WorkflowEditorInner({
     try {
       const preset = await resolveWorkflowAgentPreset();
       if (!preset) {
-        appendAssistantContent(assistantId, '没有可用的 Agent 预设。请先在 Agent 设置中配置一个启用的模型预设。');
+        appendAssistantContent(assistantId, '请先点击右上角模型设置，保存工作流助手的模型提供商、模型和 API Key。');
+        return;
+      }
+      if (!preset.apiKey || !preset.modelId || !preset.modelProvider) {
+        appendAssistantContent(assistantId, '工作流助手的模型配置不完整。请先在右上角模型设置中补全提供商、模型和 API Key。');
         return;
       }
 
@@ -517,6 +553,30 @@ function WorkflowEditorInner({
         onInputChange={setAgentInput}
         onSend={sendWorkflowAgentMessage}
         inputPlaceholder="描述要修改的工作流..."
+        headerActions={
+          <>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full hover:bg-background/50"
+              onClick={openAgentSettings}
+              title="模型设置"
+            >
+              <Settings2 className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full hover:bg-background/50"
+              onClick={() => setAgentMessages([])}
+              title="清空消息"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </>
+        }
         width={440}
         height={420}
         renderMessageContent={(message) => (
@@ -528,6 +588,39 @@ function WorkflowEditorInner({
           <WorkflowAgentToolCards toolCalls={(message as WorkflowAgentChatMessage).toolCalls} />
         )}
       />
+
+      <Dialog open={agentSettingsOpen} onOpenChange={setAgentSettingsOpen}>
+        <DialogContent className="flex max-h-[86vh] max-w-3xl flex-col overflow-hidden p-0">
+          <DialogHeader className="border-b px-5 py-4">
+            <DialogTitle>工作流助手模型设置</DialogTitle>
+          </DialogHeader>
+          {agentSettingsLoading || !agentSettingsDraft ? (
+            <div className="flex h-64 items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" />
+              加载中...
+            </div>
+          ) : (
+            <AgentEditor
+              agent={agentSettingsDraft}
+              onSaved={(saved) => {
+                setAgentSettingsDraft(saved);
+                setAgentSettingsOpen(false);
+              }}
+              onBack={() => setAgentSettingsOpen(false)}
+              fixedValues={WORKFLOW_AGENT_FIXED_VALUES}
+              lockedFields={{
+                role: true,
+                runtimeKind: true,
+                workingDir: true,
+                systemPrompt: true,
+                mcps: true,
+                tools: true,
+                skills: true,
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -587,9 +680,37 @@ async function resolveWorkflowAgentPreset(): Promise<AgentConfig | null> {
   const response = await fetchWithAuth('/api/agents/presets');
   if (!response.ok) return null;
   const presets = await response.json() as AgentConfig[];
-  return presets.find((preset) => preset.enabled !== false && preset.runtimeKind === 'langchain' && preset.apiKey && preset.modelId)
-    ?? presets.find((preset) => preset.enabled !== false && preset.apiKey && preset.modelId)
-    ?? null;
+  return presets.find(isWorkflowAgentPreset) ?? null;
+}
+
+async function resolveWorkflowAgentSettingsDraft(): Promise<AgentPreset> {
+  const response = await fetchWithAuth('/api/agents/presets');
+  const presets = response.ok ? await response.json() as AgentConfig[] : [];
+  const existing = presets.find(isWorkflowAgentPreset);
+  if (existing) return withWorkflowAgentFixedValues(normalizeAgent(existing));
+  return withWorkflowAgentFixedValues({
+    ...newAgentDraft('agent'),
+    id: `draft-${WORKFLOW_AGENT_TEMPLATE_ID}-${Date.now()}`,
+  });
+}
+
+function isWorkflowAgentPreset(preset: AgentConfig): boolean {
+  return preset.templateId === WORKFLOW_AGENT_TEMPLATE_ID || preset.name === WORKFLOW_AGENT_FIXED_VALUES.name;
+}
+
+function withWorkflowAgentFixedValues(agent: AgentPreset): AgentPreset {
+  return {
+    ...agent,
+    ...WORKFLOW_AGENT_FIXED_VALUES,
+    modelProvider: agent.modelProvider,
+    modelId: agent.modelId,
+    apiBase: agent.apiBase,
+    apiKey: agent.apiKey,
+    avatarUrl: agent.avatarUrl,
+    icon: agent.icon,
+    temperature: agent.temperature,
+    maxTokens: agent.maxTokens,
+  };
 }
 
 async function readSseStream(response: Response, onEvent: (event: SseEvent) => void): Promise<void> {

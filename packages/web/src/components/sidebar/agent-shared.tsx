@@ -39,6 +39,17 @@ export interface ConnectionTestResult {
   };
 }
 
+export type AgentDetailLockedFields = Partial<Record<
+  | "role"
+  | "runtimeKind"
+  | "workingDir"
+  | "systemPrompt"
+  | "mcps"
+  | "tools"
+  | "skills",
+  boolean
+>>;
+
 export type AgentRole = AgentConfig["role"];
 export type BuiltInRole = "agent" | "scheduler" | "task_creator" | "bot";
 
