@@ -14,6 +14,9 @@ Add a workflow-agent floating chat entry to `packages/web/src/components/workflo
 | 5. Add workflow agent model settings and clear controls | complete | Header has model settings and clear actions; settings reuse `AgentEditor` with prompt/tools/runtime locked. |
 | 6. Verify build/typecheck and UI behavior | complete | Targeted lint and server build pass; web full tsc is blocked by existing unrelated errors. |
 | 7. Persist workflow agent chat messages | complete | Added `chat.json` sidecar storage, REST/SDK/web APIs, editor restore/autosave, and backend clear. |
+| 8. Polish workflow floating chat controls | complete | Removed empty assistant placeholder text, added stop button while sending, and jump scroll to bottom when opened. |
+| 9. Fix thinking block rendering with custom chat content | complete | `<think>...</think>` is extracted before custom message renderers run, so custom workflow chat content still shows a collapsible thinking block. |
+| 10. Add per-message hover actions | complete | Added hover-only copy/delete icons below messages and wired deletion in workflow/database chat state. |
 
 ## Decisions
 

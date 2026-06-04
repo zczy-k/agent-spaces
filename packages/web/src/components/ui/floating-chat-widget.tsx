@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Markdown } from '@/components/ui/markdown';
 import { cn } from '@/lib/utils';
 import { AnimatePresence, motion, type Variants } from 'framer-motion';
-import { MessageSquare, Send, X, ChevronDown, ChevronRight, Brain } from 'lucide-react';
-import { useId, useRef, useEffect, useState, useMemo } from 'react';
+import { MessageSquare, Send, X, ChevronDown, ChevronRight, Brain, Square, Copy, Trash2 } from 'lucide-react';
+import { useId, useRef, useEffect, useState } from 'react';
 
 export interface ChatMessage {
   id: string;
@@ -40,6 +40,7 @@ export interface FloatingChatPanelProps {
   input: string;
   onInputChange: (value: string) => void;
   onSend: () => void;
+  onStop?: () => void;
   inputPlaceholder?: string;
 
   /** Whether to render agent messages as Markdown */
@@ -53,6 +54,8 @@ export interface FloatingChatPanelProps {
   renderMessageContent?: (message: ChatMessage) => React.ReactNode;
   /** Optional custom renderer for content below each message bubble */
   renderMessageExtras?: (message: ChatMessage) => React.ReactNode;
+  /** Optional delete handler. When provided, each message shows a delete action on hover. */
+  onDeleteMessage?: (messageId: string) => void;
 
   /** Panel size */
   width?: number;
@@ -150,29 +153,44 @@ export function FloatingChatPanel({
   input,
   onInputChange,
   onSend,
+  onStop,
   inputPlaceholder,
   markdown = true,
   workspaceId,
   headerActions,
   renderMessageContent,
   renderMessageExtras,
+  onDeleteMessage,
   width = 400,
   height = 360,
 }: FloatingChatPanelProps) {
   const widgetId = useId();
   const listRef = useRef<HTMLDivElement>(null);
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (listRef.current) {
-      listRef.current.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
-    }
+    if (!listRef.current) return;
+    listRef.current.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, sending]);
+
+  useEffect(() => {
+    if (!isOpen || !listRef.current) return;
+    listRef.current.scrollTop = listRef.current.scrollHeight;
+  }, [isOpen]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       onSend();
     }
+  };
+
+  const handleCopyMessage = async (message: ChatMessage) => {
+    await navigator.clipboard.writeText(extractThinkingContent(message.content).message || message.content);
+    setCopiedMessageId(message.id);
+    window.setTimeout(() => {
+      setCopiedMessageId((current) => current === message.id ? null : current);
+    }, 1200);
   };
 
   return (
@@ -254,7 +272,7 @@ export function FloatingChatPanel({
                   </Avatar>
                   <div
                     className={cn(
-                      'flex max-w-[85%] flex-col gap-1',
+                      'group/message flex max-w-[85%] flex-col gap-1',
                       msg.role === 'user' ? 'items-end' : ''
                     )}
                   >
@@ -270,13 +288,15 @@ export function FloatingChatPanel({
                       )}
                     >
                       {(() => {
-                        if (renderMessageContent) return renderMessageContent(msg);
                         if (msg.role === 'user') return <p className="whitespace-pre-wrap break-words">{msg.content}</p>;
                         const { thinking, message } = extractThinkingContent(msg.content);
+                        const visibleMessage = { ...msg, content: message };
                         return (
                           <>
                             {thinking !== null && <ThinkingBlock content={thinking} />}
-                            {markdown ? (
+                            {renderMessageContent ? (
+                              renderMessageContent(visibleMessage)
+                            ) : markdown ? (
                               <Markdown content={message} workspaceId={workspaceId} />
                             ) : (
                               <p className="whitespace-pre-wrap break-words">{message}</p>
@@ -286,14 +306,36 @@ export function FloatingChatPanel({
                       })()}
                     </div>
                     {renderMessageExtras?.(msg)}
-                    <span
-                      className={cn(
-                        'text-[10px] font-mono',
-                        msg.role === 'user' ? 'text-primary-foreground/50' : 'text-muted-foreground/60'
-                      )}
-                    >
-                      {formatTime(msg.timestamp)}
-                    </span>
+                    <div className={cn('flex items-center gap-1', msg.role === 'user' ? 'flex-row-reverse' : '')}>
+                      <span
+                        className={cn(
+                          'text-[10px] font-mono',
+                          msg.role === 'user' ? 'text-primary-foreground/50' : 'text-muted-foreground/60'
+                        )}
+                      >
+                        {formatTime(msg.timestamp)}
+                      </span>
+                      <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover/message:opacity-100">
+                        <button
+                          type="button"
+                          className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+                          onClick={() => void handleCopyMessage(msg)}
+                          title={copiedMessageId === msg.id ? '已复制' : '复制消息'}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </button>
+                        {onDeleteMessage ? (
+                          <button
+                            type="button"
+                            className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                            onClick={() => onDeleteMessage(msg.id)}
+                            title="删除消息"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
                   </div>
                 </motion.div>
               ))}
@@ -328,6 +370,10 @@ export function FloatingChatPanel({
                 className="relative flex items-center gap-2"
                 onSubmit={(e) => {
                   e.preventDefault();
+                  if (sending) {
+                    onStop?.();
+                    return;
+                  }
                   onSend();
                 }}
               >
@@ -341,11 +387,23 @@ export function FloatingChatPanel({
                 />
                 <Button
                   type="submit"
-                  size="icon"
-                  className="h-10 w-10 rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 hover:shadow-primary/25 cursor-pointer"
-                  disabled={!input.trim() || sending}
+                  size={sending ? 'sm' : 'icon'}
+                  className={cn(
+                    'h-10 rounded-full text-primary-foreground shadow-lg transition-transform hover:scale-105 cursor-pointer',
+                    sending
+                      ? 'w-auto gap-1.5 bg-destructive px-4 hover:bg-destructive/90'
+                      : 'w-10 bg-primary hover:shadow-primary/25'
+                  )}
+                  disabled={!sending && !input.trim()}
                 >
-                  <Send className="h-4 w-4" />
+                  {sending ? (
+                    <>
+                      <Square className="h-3.5 w-3.5 fill-current" />
+                      <span className="text-xs font-medium">停止</span>
+                    </>
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
                 </Button>
               </form>
             </div>

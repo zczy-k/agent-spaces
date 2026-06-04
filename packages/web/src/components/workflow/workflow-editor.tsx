@@ -81,6 +81,7 @@ function WorkflowEditorInner({
   const [agentMessages, setAgentMessages] = useState<WorkflowAgentChatMessage[]>([]);
   const [loadedAgentChatWorkflowId, setLoadedAgentChatWorkflowId] = useState<string | null>(null);
   const agentChatSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const agentAbortControllerRef = useRef<AbortController | null>(null);
   const [agentSettingsOpen, setAgentSettingsOpen] = useState(false);
   const [agentSettingsDraft, setAgentSettingsDraft] = useState<AgentPreset | null>(null);
   const [agentSettingsLoading, setAgentSettingsLoading] = useState(false);
@@ -227,6 +228,8 @@ function WorkflowEditorInner({
     setAgentSending(true);
 
     try {
+      const abortController = new AbortController();
+      agentAbortControllerRef.current = abortController;
       const preset = await resolveWorkflowAgentPreset();
       if (!preset) {
         appendAssistantContent(assistantId, '请先点击右上角模型设置，保存工作流助手的模型提供商、模型和 API Key。');
@@ -236,10 +239,12 @@ function WorkflowEditorInner({
         appendAssistantContent(assistantId, '工作流助手的模型配置不完整。请先在右上角模型设置中补全提供商、模型和 API Key。');
         return;
       }
+      if (abortController.signal.aborted) return;
 
       const selectedNodes = state.selectedNode ? [state.selectedNode] : [];
       const response = await fetchWithAuth('/api/agent-sse/run', {
         method: 'POST',
+        signal: abortController.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           workspaceId,
@@ -302,8 +307,12 @@ function WorkflowEditorInner({
         }
       });
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
       appendAssistantContent(assistantId, error instanceof Error ? error.message : String(error));
     } finally {
+      if (agentAbortControllerRef.current?.signal.aborted || agentAbortControllerRef.current) {
+        agentAbortControllerRef.current = null;
+      }
       setAgentSending(false);
     }
   }, [
@@ -317,6 +326,12 @@ function WorkflowEditorInner({
     completeLatestToolCall,
     applyWorkflowPatch,
   ]);
+
+  const stopWorkflowAgentMessage = useCallback(() => {
+    agentAbortControllerRef.current?.abort();
+    agentAbortControllerRef.current = null;
+    setAgentSending(false);
+  }, []);
 
   // ---- Shortcuts ----
   useEditorShortcuts({
@@ -597,6 +612,10 @@ function WorkflowEditorInner({
         input={agentInput}
         onInputChange={setAgentInput}
         onSend={sendWorkflowAgentMessage}
+        onStop={stopWorkflowAgentMessage}
+        onDeleteMessage={(messageId) => {
+          setAgentMessages((messages) => messages.filter((message) => message.id !== messageId));
+        }}
         inputPlaceholder="描述要修改的工作流..."
         headerActions={
           <>
@@ -627,7 +646,7 @@ function WorkflowEditorInner({
         renderMessageContent={(message) => (
           message.content.trim()
             ? <span className="whitespace-pre-wrap break-words">{message.content}</span>
-            : <span className="text-muted-foreground">正在处理...</span>
+            : null
         )}
         renderMessageExtras={(message) => (
           <WorkflowAgentToolCards toolCalls={(message as WorkflowAgentChatMessage).toolCalls} />

@@ -77,6 +77,9 @@ export function DatabaseAiChat({ workspaceId, onClose, onMinimize }: DatabaseAiC
         input={input}
         onInputChange={setInput}
         onSend={sendMessage}
+        onDeleteMessage={(messageId) => {
+          setMessages((prev) => prev.filter((message) => message.id !== messageId));
+        }}
         inputPlaceholder="回复 Database Agent…"
         markdown
         workspaceId={workspaceId}
