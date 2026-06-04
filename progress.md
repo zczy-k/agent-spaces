@@ -13,3 +13,5 @@
 - User requested workflow chat UI polish: removed the empty assistant “正在处理...” placeholder, changed the send control to a “停止” button while waiting, wired workflow-agent abort, and made panel open jump to the bottom without scroll animation.
 - Fixed floating chat thinking-block rendering when `renderMessageContent` is provided by extracting `<think>...</think>` before invoking the custom renderer.
 - Added hover-only per-message copy/delete actions to `FloatingChatPanel`; delete is wired for workflow and database chat message state.
+- Removed the blank waiting message bubble from `FloatingChatPanel`; empty agent messages are skipped so only the existing dots indicator appears.
+- Added workflow chat ordered timeline items so multiple thinking blocks and tool cards render in arrival order, including restored old `toolCalls` chats.

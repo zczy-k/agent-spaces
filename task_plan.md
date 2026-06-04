@@ -17,6 +17,8 @@ Add a workflow-agent floating chat entry to `packages/web/src/components/workflo
 | 8. Polish workflow floating chat controls | complete | Removed empty assistant placeholder text, added stop button while sending, and jump scroll to bottom when opened. |
 | 9. Fix thinking block rendering with custom chat content | complete | `<think>...</think>` is extracted before custom message renderers run, so custom workflow chat content still shows a collapsible thinking block. |
 | 10. Add per-message hover actions | complete | Added hover-only copy/delete icons below messages and wired deletion in workflow/database chat state. |
+| 11. Remove empty waiting bubble | complete | Empty agent messages no longer render a bubble; the dots indicator remains the waiting UI. |
+| 12. Interleave workflow thinking and tool timeline | complete | Workflow chat now stores ordered timeline items so multiple thinking blocks render between tool cards in event order. |
 
 ## Decisions
 

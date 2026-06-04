@@ -179,7 +179,7 @@ export function FloatingChatPanel({
   }, [isOpen]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       onSend();
     }
@@ -254,91 +254,99 @@ export function FloatingChatPanel({
                 </div>
               )}
 
-              {messages.map((msg) => (
-                <motion.div
-                  key={msg.id}
-                  variants={messageVariants}
-                  className={cn('flex gap-3', msg.role === 'user' ? 'flex-row-reverse self-end' : '')}
-                >
-                  <Avatar className="h-8 w-8 shrink-0 border border-border/40 shadow-sm">
-                    <AvatarFallback
-                      className={cn(
-                        'text-xs font-semibold',
-                        msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary'
-                      )}
-                    >
-                      {msg.role === 'user' ? 'ME' : agent.name.slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div
-                    className={cn(
-                      'group/message flex max-w-[85%] flex-col gap-1',
-                      msg.role === 'user' ? 'items-end' : ''
-                    )}
+              {messages.map((msg) => {
+                const { thinking, message } = msg.role === 'agent'
+                  ? extractThinkingContent(msg.content)
+                  : { thinking: null, message: msg.content };
+                const hasMessageBody = msg.role === 'user' || thinking !== null || message.trim().length > 0;
+                if (!hasMessageBody && !renderMessageExtras) return null;
+                return (
+                  <motion.div
+                    key={msg.id}
+                    variants={messageVariants}
+                    className={cn('flex gap-3', msg.role === 'user' ? 'flex-row-reverse self-end' : '')}
                   >
-                    <span className="text-xs font-medium text-muted-foreground">
-                      {msg.role === 'user' ? 'You' : agent.name}
-                    </span>
-                    <div
-                      className={cn(
-                        'px-4 py-2.5 text-sm leading-relaxed shadow-sm border border-border/20',
-                        msg.role === 'user'
-                          ? 'rounded-2xl rounded-tr-none bg-primary text-primary-foreground'
-                          : 'rounded-2xl rounded-tl-none bg-muted/50 backdrop-blur-sm'
-                      )}
-                    >
-                      {(() => {
-                        if (msg.role === 'user') return <p className="whitespace-pre-wrap break-words">{msg.content}</p>;
-                        const { thinking, message } = extractThinkingContent(msg.content);
-                        const visibleMessage = { ...msg, content: message };
-                        return (
-                          <>
-                            {thinking !== null && <ThinkingBlock content={thinking} />}
-                            {renderMessageContent ? (
-                              renderMessageContent(visibleMessage)
-                            ) : markdown ? (
-                              <Markdown content={message} workspaceId={workspaceId} />
-                            ) : (
-                              <p className="whitespace-pre-wrap break-words">{message}</p>
-                            )}
-                          </>
-                        );
-                      })()}
-                    </div>
-                    {renderMessageExtras?.(msg)}
-                    <div className={cn('flex items-center gap-1', msg.role === 'user' ? 'flex-row-reverse' : '')}>
-                      <span
+                    <Avatar className="h-8 w-8 shrink-0 border border-border/40 shadow-sm">
+                      <AvatarFallback
                         className={cn(
-                          'text-[10px] font-mono',
-                          msg.role === 'user' ? 'text-primary-foreground/50' : 'text-muted-foreground/60'
+                          'text-xs font-semibold',
+                          msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary'
                         )}
                       >
-                        {formatTime(msg.timestamp)}
+                        {msg.role === 'user' ? 'ME' : agent.name.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div
+                      className={cn(
+                        'group/message flex max-w-[85%] flex-col gap-1',
+                        msg.role === 'user' ? 'items-end' : ''
+                      )}
+                    >
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {msg.role === 'user' ? 'You' : agent.name}
                       </span>
-                      <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover/message:opacity-100">
-                        <button
-                          type="button"
-                          className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
-                          onClick={() => void handleCopyMessage(msg)}
-                          title={copiedMessageId === msg.id ? '已复制' : '复制消息'}
+                      {hasMessageBody ? (
+                        <div
+                          className={cn(
+                            'px-4 py-2.5 text-sm leading-relaxed shadow-sm border border-border/20',
+                            msg.role === 'user'
+                              ? 'rounded-2xl rounded-tr-none bg-primary text-primary-foreground'
+                              : 'rounded-2xl rounded-tl-none bg-muted/50 backdrop-blur-sm'
+                          )}
                         >
-                          <Copy className="h-3 w-3" />
-                        </button>
-                        {onDeleteMessage ? (
+                          {msg.role === 'user' ? (
+                            <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                          ) : (
+                            <>
+                              {thinking !== null && <ThinkingBlock content={thinking} />}
+                              {message.trim().length > 0 ? (
+                                renderMessageContent ? (
+                                  renderMessageContent({ ...msg, content: message })
+                                ) : markdown ? (
+                                  <Markdown content={message} workspaceId={workspaceId} />
+                                ) : (
+                                  <p className="whitespace-pre-wrap break-words">{message}</p>
+                                )
+                              ) : null}
+                            </>
+                          )}
+                        </div>
+                      ) : null}
+                      {renderMessageExtras?.(msg)}
+                      <div className={cn('flex items-center gap-1', msg.role === 'user' ? 'flex-row-reverse' : '')}>
+                        <span
+                          className={cn(
+                            'text-[10px] font-mono',
+                            msg.role === 'user' ? 'text-primary-foreground/50' : 'text-muted-foreground/60'
+                          )}
+                        >
+                          {formatTime(msg.timestamp)}
+                        </span>
+                        <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover/message:opacity-100">
                           <button
                             type="button"
-                            className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                            onClick={() => onDeleteMessage(msg.id)}
-                            title="删除消息"
+                            className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+                            onClick={() => void handleCopyMessage(msg)}
+                            title={copiedMessageId === msg.id ? '已复制' : '复制消息'}
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <Copy className="h-3 w-3" />
                           </button>
-                        ) : null}
+                          {onDeleteMessage ? (
+                            <button
+                              type="button"
+                              className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                              onClick={() => onDeleteMessage(msg.id)}
+                              title="删除消息"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          ) : null}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                );
+              })}
 
               {/* Typing indicator */}
               {sending && (

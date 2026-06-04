@@ -329,12 +329,17 @@ export interface WorkflowAgentToolCall {
   status: 'running' | 'success' | 'error'
 }
 
+export type WorkflowAgentTimelineItem =
+  | { id: string; type: 'thinking'; content: string }
+  | ({ type: 'tool' } & WorkflowAgentToolCall)
+
 export interface WorkflowAgentChatMessage {
   id: string
   role: 'user' | 'agent'
   content: string
   timestamp: string
   toolCalls?: WorkflowAgentToolCall[]
+  timeline?: WorkflowAgentTimelineItem[]
 }
 
 export interface ExecutionInputPreset {

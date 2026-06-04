@@ -2,7 +2,7 @@
 
 import { ReactFlowProvider } from '@xyflow/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { AgentConfig, Workflow, WorkflowAgentChatMessage as PersistedWorkflowAgentChatMessage, WorkflowAgentToolCall, WorkflowTemplate } from '@agent-spaces/shared';
+import type { AgentConfig, Workflow, WorkflowAgentChatMessage as PersistedWorkflowAgentChatMessage, WorkflowAgentTimelineItem, WorkflowAgentToolCall, WorkflowTemplate } from '@agent-spaces/shared';
 import { WorkflowCanvas } from './workflow-canvas';
 import { WorkflowNodeSidebar } from './workflow-node-sidebar';
 import { WorkflowEditorToolbar } from './workflow-editor-toolbar';
@@ -39,9 +39,11 @@ import { useWorkflowEditorExecution } from './use-workflow-editor-execution';
 // ---- Inner editor (needs ReactFlow context) ----
 
 type WorkflowToolCall = WorkflowAgentToolCall;
+type WorkflowTimelineItem = WorkflowAgentTimelineItem;
 
 interface WorkflowAgentChatMessage extends ChatMessage {
   toolCalls?: WorkflowToolCall[];
+  timeline?: WorkflowTimelineItem[];
 }
 
 interface SseEvent {
@@ -158,26 +160,30 @@ function WorkflowEditorInner({
     )));
   }, []);
 
-  const appendToolCall = useCallback((messageId: string, toolCall: WorkflowToolCall) => {
+  const appendTimelineItem = useCallback((messageId: string, item: WorkflowTimelineItem) => {
     setAgentMessages((messages) => messages.map((message) => (
       message.id === messageId
-        ? { ...message, toolCalls: [...(message.toolCalls ?? []), toolCall] }
+        ? { ...message, timeline: [...(message.timeline ?? []), item] }
         : message
     )));
   }, []);
 
+  const appendToolCall = useCallback((messageId: string, toolCall: WorkflowToolCall) => {
+    appendTimelineItem(messageId, { ...toolCall, type: 'tool' });
+  }, [appendTimelineItem]);
+
   const completeLatestToolCall = useCallback((messageId: string, toolName: string, result: unknown) => {
     setAgentMessages((messages) => messages.map((message) => {
-      if (message.id !== messageId || !message.toolCalls?.length) return message;
-      const toolCalls = [...message.toolCalls];
-      const index = findLastIndex(toolCalls, (toolCall) => toolCall.name === toolName && toolCall.status === 'running');
+      if (message.id !== messageId || !message.timeline?.length) return message;
+      const timeline = [...message.timeline];
+      const index = findLastIndex(timeline, (item) => item.type === 'tool' && item.name === toolName && item.status === 'running');
       if (index === -1) return message;
-      toolCalls[index] = {
-        ...toolCalls[index],
+      timeline[index] = {
+        ...timeline[index],
         result,
         status: isSuccessfulToolResult(result) ? 'success' : 'error',
-      };
-      return { ...message, toolCalls };
+      } as WorkflowTimelineItem;
+      return { ...message, timeline };
     }));
   }, []);
 
@@ -220,7 +226,7 @@ function WorkflowEditorInner({
       role: 'agent',
       content: '',
       timestamp: new Date(),
-      toolCalls: [],
+      timeline: [],
     };
 
     setAgentMessages((messages) => [...messages, userMessage, assistantMessage]);
@@ -276,7 +282,32 @@ function WorkflowEditorInner({
       await readSseStream(response, (event) => {
         if (event.event === 'output') {
           const line = asRecord(event.data).line;
-          if (typeof line === 'string') appendAssistantContent(assistantId, line);
+          if (typeof line === 'string') {
+            const parts = splitThinkingOutput(line);
+            for (const part of parts) {
+              if (part.type === 'thinking') {
+                appendTimelineItem(assistantId, {
+                  id: `thinking-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                  type: 'thinking',
+                  content: part.content,
+                });
+              } else {
+                appendAssistantContent(assistantId, part.content);
+              }
+            }
+          }
+          return;
+        }
+        if (event.event === 'reasoning') {
+          const data = asRecord(event.data);
+          const text = data.text;
+          if (typeof text === 'string' && text.trim()) {
+            appendTimelineItem(assistantId, {
+              id: `thinking-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+              type: 'thinking',
+              content: text,
+            });
+          }
           return;
         }
         if (event.event === 'tool_use') {
@@ -322,6 +353,7 @@ function WorkflowEditorInner({
     workspaceId,
     agentMessages,
     appendAssistantContent,
+    appendTimelineItem,
     appendToolCall,
     completeLatestToolCall,
     applyWorkflowPatch,
@@ -649,7 +681,7 @@ function WorkflowEditorInner({
             : null
         )}
         renderMessageExtras={(message) => (
-          <WorkflowAgentToolCards toolCalls={(message as WorkflowAgentChatMessage).toolCalls} />
+          <WorkflowAgentTimeline timeline={getWorkflowAgentTimeline(message as WorkflowAgentChatMessage)} />
         )}
       />
 
@@ -689,23 +721,26 @@ function WorkflowEditorInner({
   );
 }
 
-function WorkflowAgentToolCards({ toolCalls }: { toolCalls?: WorkflowToolCall[] }) {
+function WorkflowAgentTimeline({ timeline }: { timeline?: WorkflowTimelineItem[] }) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  if (!toolCalls?.length) return null;
+  if (!timeline?.length) return null;
 
   return (
     <div className="mt-2 flex w-full flex-col gap-1.5">
-      {toolCalls.map((toolCall) => {
-        const open = expanded[toolCall.id];
-        const isError = toolCall.status === 'error';
+      {timeline.map((item) => {
+        if (item.type === 'thinking') {
+          return <WorkflowAgentThinkingCard key={item.id} item={item} expanded={Boolean(expanded[item.id])} onToggle={() => setExpanded((state) => ({ ...state, [item.id]: !state[item.id] }))} />;
+        }
+        const open = expanded[item.id];
+        const isError = item.status === 'error';
         return (
-          <div key={toolCall.id} className="rounded-lg border bg-background/80 text-xs shadow-sm">
+          <div key={item.id} className="rounded-lg border bg-background/80 text-xs shadow-sm">
             <button
               type="button"
               className="flex w-full items-center gap-2 px-2.5 py-2 text-left"
-              onClick={() => setExpanded((state) => ({ ...state, [toolCall.id]: !state[toolCall.id] }))}
+              onClick={() => setExpanded((state) => ({ ...state, [item.id]: !state[item.id] }))}
             >
-              {toolCall.status === 'running' ? (
+              {item.status === 'running' ? (
                 <Loader2 className="size-3.5 shrink-0 animate-spin text-muted-foreground" />
               ) : isError ? (
                 <AlertCircle className="size-3.5 shrink-0 text-destructive" />
@@ -713,13 +748,13 @@ function WorkflowAgentToolCards({ toolCalls }: { toolCalls?: WorkflowToolCall[] 
                 <CheckCircle2 className="size-3.5 shrink-0 text-emerald-600" />
               )}
               <Wrench className="size-3.5 shrink-0 text-muted-foreground" />
-              <span className="min-w-0 flex-1 truncate font-medium">{toolCall.name}</span>
+              <span className="min-w-0 flex-1 truncate font-medium">{item.name}</span>
               <ChevronDown className={cn('size-3.5 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} />
             </button>
             {open ? (
               <div className="border-t px-2.5 py-2">
-                <ToolJsonBlock label="Input" value={toolCall.input} />
-                {toolCall.result !== undefined ? <ToolJsonBlock label="Result" value={toolCall.result} /> : null}
+                <ToolJsonBlock label="Input" value={item.input} />
+                {item.result !== undefined ? <ToolJsonBlock label="Result" value={item.result} /> : null}
               </div>
             ) : null}
           </div>
@@ -729,12 +764,32 @@ function WorkflowAgentToolCards({ toolCalls }: { toolCalls?: WorkflowToolCall[] 
   );
 }
 
+function WorkflowAgentThinkingCard({ item, expanded, onToggle }: { item: Extract<WorkflowTimelineItem, { type: 'thinking' }>; expanded: boolean; onToggle: () => void }) {
+  return (
+    <div className="rounded-lg border bg-muted/30 text-xs shadow-sm">
+      <button type="button" className="flex w-full items-center gap-2 px-2.5 py-2 text-left" onClick={onToggle}>
+        <ChevronDown className={cn('size-3.5 shrink-0 text-muted-foreground transition-transform', expanded && 'rotate-180')} />
+        <span className="min-w-0 flex-1 truncate font-medium text-muted-foreground">思考过程</span>
+      </button>
+      {expanded ? (
+        <div className="whitespace-pre-wrap break-words border-t px-2.5 py-2 text-muted-foreground">
+          {item.content}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function ToolJsonBlock({ label, value }: { label: string; value: unknown }) {
   return (
-    <div className="mb-2 last:mb-0">
-      <div className="mb-1 text-[10px] font-medium uppercase text-muted-foreground">{label}</div>
-      <JsonViewer data={value as import('@/components/viewers/json-viewer').JsonValue} title={label} defaultExpanded={2} className="max-h-40" rootName={label.toLowerCase()} />
-    </div>
+    <JsonViewer
+      data={value as import('@/components/viewers/json-viewer').JsonValue}
+      title={label}
+      defaultExpanded={2}
+      rootName={label.toLowerCase()}
+      className="mb-2 last:mb-0"
+      style={{ maxHeight: '10rem', overflow: 'auto' }}
+    />
   );
 }
 
@@ -814,10 +869,38 @@ function parseSseEvent(chunk: string): SseEvent | null {
   }
 }
 
+function splitThinkingOutput(text: string): Array<{ type: 'content' | 'thinking'; content: string }> {
+  const parts: Array<{ type: 'content' | 'thinking'; content: string }> = [];
+  let rest = text;
+  while (rest.length) {
+    const openIndex = rest.search(/<think\s*>/i);
+    if (openIndex === -1) {
+      if (rest.trim()) parts.push({ type: 'content', content: rest });
+      break;
+    }
+    const before = rest.slice(0, openIndex);
+    if (before.trim()) parts.push({ type: 'content', content: before });
+    const afterOpen = rest.slice(openIndex).replace(/^<think\s*>/i, '');
+    const closeIndex = afterOpen.search(/<\/think>/i);
+    if (closeIndex === -1) {
+      if (afterOpen.trim()) parts.push({ type: 'thinking', content: afterOpen.trim() });
+      break;
+    }
+    const thinking = afterOpen.slice(0, closeIndex).trim();
+    if (thinking) parts.push({ type: 'thinking', content: thinking });
+    rest = afterOpen.slice(closeIndex).replace(/^<\/think>/i, '');
+  }
+  return parts;
+}
+
 function hydrateWorkflowAgentChatMessage(message: PersistedWorkflowAgentChatMessage): WorkflowAgentChatMessage {
   const timestamp = new Date(message.timestamp);
+  const timeline = message.timeline?.length
+    ? message.timeline
+    : message.toolCalls?.map((toolCall) => ({ ...toolCall, type: 'tool' as const }));
   return {
     ...message,
+    timeline,
     timestamp: Number.isNaN(timestamp.getTime()) ? new Date() : timestamp,
   };
 }
@@ -827,6 +910,11 @@ function serializeWorkflowAgentChatMessage(message: WorkflowAgentChatMessage): P
     ...message,
     timestamp: message.timestamp.toISOString(),
   };
+}
+
+function getWorkflowAgentTimeline(message: WorkflowAgentChatMessage): WorkflowTimelineItem[] {
+  if (message.timeline?.length) return message.timeline;
+  return message.toolCalls?.map((toolCall) => ({ ...toolCall, type: 'tool' as const })) ?? [];
 }
 
 function readWorkflowPatch(result: unknown): { workflow_id: string; nodes: Workflow['nodes']; edges: Workflow['edges']; updatedAt?: number } | null {
