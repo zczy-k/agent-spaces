@@ -1,9 +1,16 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import Dagre from '@dagrejs/dagre';
 import { applyNodeChanges, applyEdgeChanges } from '@xyflow/react';
 import type { NodeChange, EdgeChange, Connection } from '@xyflow/react';
 import type { Workflow } from '@agent-spaces/shared';
+import {
+  getCompositeParentId,
+  isHiddenWorkflowEdge,
+  isHiddenWorkflowNode,
+  isScopeBoundaryWorkflowNode,
+} from '@agent-spaces/shared';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import type { NodeSelectContext } from './workflow-editor-types';
 
@@ -278,6 +285,73 @@ export function useWorkflowEditorCanvas({
     if (hasDelete) markDirty();
   }, [workflow, pushUndo, markDirty]);
 
+  const handleAutoLayout = useCallback((direction: 'LR' | 'TB') => {
+    if (!workflow || workflow.nodes.length === 0) return;
+    pushUndo('auto layout');
+
+    const graph = new Dagre.graphlib.Graph();
+    graph.setDefaultEdgeLabel(() => ({}));
+    graph.setGraph({ rankdir: direction, nodesep: 60, ranksep: 80 });
+
+    const layoutNodes = workflow.nodes.filter(node => !isHiddenWorkflowNode(node) && !getCompositeParentId(node));
+    const layoutNodeIds = new Set(layoutNodes.map(node => node.id));
+    const nodeSizes = new Map<string, { width: number; height: number }>();
+
+    for (const node of layoutNodes) {
+      const definition = getNodeDefinition(node.type);
+      const size = {
+        width: typeof node.data?.width === 'number' ? node.data.width : definition?.customViewMinSize?.width || 220,
+        height: typeof node.data?.height === 'number' ? node.data.height : definition?.customViewMinSize?.height || 120,
+      };
+      nodeSizes.set(node.id, size);
+      graph.setNode(node.id, size);
+    }
+
+    for (const edge of workflow.edges.filter(edge =>
+      !isHiddenWorkflowEdge(edge)
+      && layoutNodeIds.has(edge.source)
+      && layoutNodeIds.has(edge.target)
+    )) {
+      graph.setEdge(edge.source, edge.target);
+    }
+
+    Dagre.layout(graph);
+
+    setWorkflow(current => {
+      if (!current) return null;
+      const nextNodes = current.nodes.map(node => ({ ...node, position: { ...node.position } }));
+      const nodeById = new Map(nextNodes.map(node => [node.id, node]));
+
+      for (const node of layoutNodes) {
+        const nextNode = nodeById.get(node.id);
+        const layoutPosition = graph.node(node.id);
+        const size = nodeSizes.get(node.id);
+        if (!nextNode || !layoutPosition) continue;
+
+        const nextPosition = {
+          x: layoutPosition.x - (size?.width ?? 220) / 2,
+          y: layoutPosition.y - (size?.height ?? 120) / 2,
+        };
+
+        if (isScopeBoundaryWorkflowNode(nextNode)) {
+          const dx = nextPosition.x - nextNode.position.x;
+          const dy = nextPosition.y - nextNode.position.y;
+          for (const child of nextNodes.filter(item => getCompositeParentId(item) === nextNode.id)) {
+            child.position = {
+              x: child.position.x + dx,
+              y: child.position.y + dy,
+            };
+          }
+        }
+
+        nextNode.position = nextPosition;
+      }
+
+      return { ...current, nodes: nextNodes };
+    });
+    markDirty();
+  }, [workflow, pushUndo, setWorkflow, markDirty]);
+
   return {
     // Node select dialog
     nodeSelectOpen,
@@ -295,5 +369,6 @@ export function useWorkflowEditorCanvas({
     handleConnect,
     handleNodesChange,
     handleEdgesChange,
+    handleAutoLayout,
   };
 }

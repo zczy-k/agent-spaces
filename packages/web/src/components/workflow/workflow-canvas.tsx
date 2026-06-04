@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useRef, useState, useMemo } from 'react';
+import { domToJpeg, domToPng } from 'modern-screenshot';
 import {
   ReactFlow,
   Background,
@@ -18,11 +19,21 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import type { Workflow } from '@agent-spaces/shared';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { WORKFLOW_NODE_DRAG_MIME } from './workflow-node-sidebar';
 import { WorkflowNode as WorkflowNodeComponent } from './workflow-node';
 import { WorkflowEdge as WorkflowEdgeComponent } from './workflow-edge';
 import { WorkflowHelperLines } from './workflow-helper-lines';
+import {
+  Download, EyeOff, FileImage, Image, LayoutGrid, Map as MapIcon, RotateCcw, RotateCw,
+} from 'lucide-react';
 
 const nodeTypes = { custom: WorkflowNodeComponent };
 const edgeTypes = { custom: WorkflowEdgeComponent };
@@ -38,6 +49,12 @@ interface WorkflowCanvasProps {
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
   onConnect: (connection: Connection) => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  onExitPreview?: () => void;
+  onAutoLayout?: (direction: 'LR' | 'TB') => void;
   onConnectionDrop?: (context: {
     sourceNodeId: string;
     sourceHandle: string | null;
@@ -45,19 +62,128 @@ interface WorkflowCanvasProps {
   }) => void;
 }
 
+function CanvasToolbarButton({
+  tooltip,
+  children,
+  ...props
+}: React.ComponentProps<typeof Button> & { tooltip: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger render={<Button variant="ghost" size="sm" className="h-7 w-7 p-0" {...props} />}>
+        {children}
+      </TooltipTrigger>
+      <TooltipContent side="top" className="text-xs">{tooltip}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+function CanvasToolbar({
+  workflow,
+  isPreview,
+  canUndo,
+  canRedo,
+  minimapVisible,
+  isExporting,
+  onUndo,
+  onRedo,
+  onExitPreview,
+  onAutoLayout,
+  onToggleMinimap,
+  onExport,
+}: {
+  workflow: Workflow;
+  isPreview: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
+  minimapVisible: boolean;
+  isExporting: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  onExitPreview?: () => void;
+  onAutoLayout?: (direction: 'LR' | 'TB') => void;
+  onToggleMinimap: () => void;
+  onExport: (format: 'png' | 'jpeg') => void;
+}) {
+  const hasNodes = workflow.nodes.length > 0;
+
+  return (
+    <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-lg border border-border bg-background/90 px-2 py-1 shadow-sm backdrop-blur-sm">
+      <TooltipProvider delay={400}>
+        {isPreview && onExitPreview ? (
+          <Tooltip>
+            <TooltipTrigger render={<Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-orange-500 hover:text-orange-600" onClick={onExitPreview} />}>
+              <EyeOff className="h-3.5 w-3.5" />
+              <span className="text-xs">退出预览</span>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs">退出执行记录预览</TooltipContent>
+          </Tooltip>
+        ) : null}
+
+        <CanvasToolbarButton tooltip="撤销 (Ctrl+Z)" disabled={!canUndo} onClick={onUndo}>
+          <RotateCcw className="h-3.5 w-3.5" />
+        </CanvasToolbarButton>
+        <CanvasToolbarButton tooltip="重做 (Ctrl+Shift+Z)" disabled={!canRedo} onClick={onRedo}>
+          <RotateCw className="h-3.5 w-3.5" />
+        </CanvasToolbarButton>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger render={<Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={!hasNodes || !onAutoLayout} />}>
+            <LayoutGrid className="h-3.5 w-3.5" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="center" side="top">
+            <DropdownMenuItem onClick={() => onAutoLayout?.('LR')}>横向布局</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onAutoLayout?.('TB')}>垂直布局</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <CanvasToolbarButton
+          tooltip={minimapVisible ? '隐藏小地图' : '显示小地图'}
+          className={`h-7 w-7 p-0 ${minimapVisible ? 'text-blue-500' : ''}`}
+          onClick={onToggleMinimap}
+        >
+          <MapIcon className="h-3.5 w-3.5" />
+        </CanvasToolbarButton>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger render={<Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={!hasNodes || isExporting} />}>
+            <Download className="h-3.5 w-3.5" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="center" side="top">
+            <DropdownMenuItem onClick={() => onExport('png')}>
+              <FileImage className="mr-2 h-4 w-4" />
+              导出 PNG
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onExport('jpeg')}>
+              <Image className="mr-2 h-4 w-4" />
+              导出 JPEG
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TooltipProvider>
+    </div>
+  );
+}
+
 export function WorkflowCanvas({
   workflow, isPreview,
   onNodeAdd, onNodeDelete, onNodeSelect,
-  onNodeDataUpdate, onNodesChange, onEdgesChange, onConnect, onConnectionDrop,
+  onNodeDataUpdate, onNodesChange, onEdgesChange, onConnect,
+  canUndo = false, canRedo = false, onUndo, onRedo, onExitPreview, onAutoLayout,
+  onConnectionDrop,
 }: WorkflowCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const lastCanvasDebugSignature = useRef<string | null>(null);
   const lastCanvasDomDebugSignature = useRef<string | null>(null);
   const connectSourceRef = useRef<{ nodeId: string; handleId: string | null } | null>(null);
   const connectSucceededRef = useRef(false);
-  const { screenToFlowPosition } = useReactFlow();
+  const { fitView, getViewport, screenToFlowPosition, setViewport } = useReactFlow();
   const [helperHorizontal] = useState<number | undefined>();
   const [helperVertical] = useState<number | undefined>();
+  const [minimapVisible, setMinimapVisible] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return localStorage.getItem('agent-spaces:workflow-minimap-visible') !== 'false';
+  });
+  const [isExporting, setIsExporting] = useState(false);
 
   // Convert Workflow nodes/edges to ReactFlow format
   const rfNodes: Node[] = useMemo(() =>
@@ -380,6 +506,41 @@ export function WorkflowCanvas({
     });
   }, [getNodeDebugSnapshot]);
 
+  const toggleMinimap = useCallback(() => {
+    setMinimapVisible((current) => {
+      const next = !current;
+      try { localStorage.setItem('agent-spaces:workflow-minimap-visible', String(next)); } catch {}
+      return next;
+    });
+  }, []);
+
+  const exportCanvas = useCallback(async (format: 'png' | 'jpeg') => {
+    const flowElement = reactFlowWrapper.current?.querySelector<HTMLElement>('.react-flow');
+    if (!flowElement || isExporting) return;
+
+    setIsExporting(true);
+    const viewport = getViewport();
+    try {
+      fitView({ padding: 0.15, duration: 0 });
+      await new Promise(resolve => window.setTimeout(resolve, 150));
+
+      const name = (workflow.name || 'workflow').replace(/[^\w\u4e00-\u9fa5-]+/g, '-');
+      const dataUrl = format === 'jpeg'
+        ? await domToJpeg(flowElement, { quality: 0.95, backgroundColor: '#ffffff', scale: 2 })
+        : await domToPng(flowElement, { backgroundColor: null, scale: 2 });
+
+      const link = document.createElement('a');
+      link.download = `${name}-${Date.now()}.${format}`;
+      link.href = dataUrl;
+      link.click();
+    } catch (error) {
+      console.error('[WorkflowCanvas] export failed', error);
+    } finally {
+      void setViewport(viewport);
+      setIsExporting(false);
+    }
+  }, [fitView, getViewport, isExporting, setViewport, workflow.name]);
+
   // Handle edge insert node events from WorkflowEdge
   const handleEdgeInsertNode = useCallback((e: Event) => {
     const detail = (e as CustomEvent).detail;
@@ -412,7 +573,7 @@ export function WorkflowCanvas({
   }, [handleEdgeInsertNode, handleNodeDelete, handleNodeDataUpdate]);
 
   return (
-    <div ref={reactFlowWrapper} className="flex-1 h-full w-full">
+    <div ref={reactFlowWrapper} className="relative flex-1 h-full w-full">
       <ReactFlow
         className="h-full w-full"
         nodes={rfNodes}
@@ -443,9 +604,23 @@ export function WorkflowCanvas({
       >
         <Background variant={BackgroundVariant.Dots} gap={15} size={1} />
         <Controls />
-        <MiniMap />
+        {minimapVisible && <MiniMap />}
         <WorkflowHelperLines horizontal={helperHorizontal} vertical={helperVertical} />
       </ReactFlow>
+      <CanvasToolbar
+        workflow={workflow}
+        isPreview={isPreview}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        minimapVisible={minimapVisible}
+        isExporting={isExporting}
+        onUndo={onUndo}
+        onRedo={onRedo}
+        onExitPreview={onExitPreview}
+        onAutoLayout={onAutoLayout}
+        onToggleMinimap={toggleMinimap}
+        onExport={exportCanvas}
+      />
     </div>
   );
 }

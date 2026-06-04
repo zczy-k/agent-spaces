@@ -449,3 +449,22 @@
 - Verification:
   - `pnpm --filter @agent-spaces/web build` passed.
   - Web build still prints the existing `ENVIRONMENT_FALLBACK` static generation warning, but exits successfully.
+
+## 2026-06-04 WorkflowCanvas 底部 toolbar 补齐
+
+- Status: complete
+- Actions taken:
+  - 对比 WorkFox `WorkflowCanvas.vue` 和 `CanvasToolbar.vue`。
+  - 在 React `WorkflowCanvas` 底部补齐浮动 toolbar：退出预览、撤销、重做、横向/垂直自动布局、小地图显示切换、PNG/JPEG 导出。
+  - 将 dagre 自动布局接入 `useWorkflowEditorCanvas`，通过现有 workflow state 更新节点位置并进入 dirty/undo 流程。
+  - 新增 `modern-screenshot` 到 web 包，复刻 WorkFox 画布图片导出能力。
+- Files modified:
+  - packages/web/src/components/workflow/workflow-canvas.tsx
+  - packages/web/src/components/workflow/use-workflow-editor-canvas.ts
+  - packages/web/src/components/workflow/workflow-editor.tsx
+  - packages/web/package.json
+  - pnpm-lock.yaml
+  - progress.md
+- Verification:
+  - `pnpm --filter @agent-spaces/web build` passed.
+  - Web build still prints the existing `ENVIRONMENT_FALLBACK` static generation warning, but exits successfully.

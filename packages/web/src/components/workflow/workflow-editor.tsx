@@ -165,6 +165,12 @@ function WorkflowEditorInner({
                 onEdgesChange={canvas.handleEdgesChange}
                 onConnect={canvas.handleConnect}
                 onConnectionDrop={canvas.handleConnectionDrop}
+                canUndo={state.undoStack.length > 0}
+                canRedo={state.redoStack.length > 0}
+                onUndo={state.handleUndo}
+                onRedo={state.handleRedo}
+                onExitPreview={() => state.setIsPreview(false)}
+                onAutoLayout={canvas.handleAutoLayout}
               />
             </div>
             <WorkflowExecutionBar
