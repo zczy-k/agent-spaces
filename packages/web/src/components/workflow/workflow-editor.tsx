@@ -77,8 +77,6 @@ function WorkflowEditorInner({
   const [isPreview, setIsPreview] = useState(false);
   const [undoStack, setUndoStack] = useState<string[]>([]);
   const [redoStack, setRedoStack] = useState<string[]>([]);
-  const [listDialogOpen, setListDialogOpen] = useState(false);
-  const [listDialogCreate, setListDialogCreate] = useState(false);
   const [triggerDialogOpen, setTriggerDialogOpen] = useState(false);
   const [pluginsDialogOpen, setPluginsDialogOpen] = useState(false);
   const [embeddedEditorOpen, setEmbeddedEditorOpen] = useState(false);
@@ -671,38 +669,6 @@ function WorkflowEditorInner({
     }
   }, [workflow, editingName, markDirty]);
 
-  // ---- List dialog ----
-  const workflows = store.workflows;
-
-  const handleListSelect = useCallback((wf: WorkflowTemplate) => {
-    workflowApi.get(wf.id).then((loaded) => {
-      setWorkflow(loaded);
-      setSelectedNodeId(null);
-      setIsDirty(false);
-      setUndoStack([]);
-      setRedoStack([]);
-    });
-    setListDialogOpen(false);
-  }, []);
-
-  const handleCreateNew = useCallback(async () => {
-    const created = await workflowApi.create({
-      name: '新工作流',
-      nodes: [
-        { id: `node_${Date.now()}_start`, type: 'start', label: '开始', position: { x: 250, y: 50 }, data: {} },
-        { id: `node_${Date.now()}_end`, type: 'end', label: '结束', position: { x: 250, y: 400 }, data: {} },
-      ],
-      edges: [],
-    });
-    setWorkflow(created);
-    setSelectedNodeId(null);
-    setIsDirty(false);
-    setUndoStack([]);
-    setRedoStack([]);
-    store.upsertWorkflow(created);
-    setListDialogOpen(false);
-  }, [store]);
-
   // ---- Render ----
   if (isLoading) {
     return (
@@ -728,19 +694,7 @@ function WorkflowEditorInner({
       <div className="flex flex-col items-center justify-center h-full gap-3">
         <AlertCircle className="h-8 w-8 text-muted-foreground" />
         <span className="text-sm text-muted-foreground">未选择工作流</span>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => { setListDialogCreate(true); setListDialogOpen(true); }}>新建工作流</Button>
-          <Button variant="outline" size="sm" onClick={() => { setListDialogCreate(false); setListDialogOpen(true); }}>打开工作流</Button>
-          <Button variant="outline" size="sm" onClick={onBack}>返回</Button>
-        </div>
-        <WorkflowListDialog
-          open={listDialogOpen}
-          createMode={listDialogCreate}
-          workflows={workflows}
-          onSelect={handleListSelect}
-          onCreate={handleCreateNew}
-          onClose={() => setListDialogOpen(false)}
-        />
+        <Button variant="outline" size="sm" onClick={onBack}>返回</Button>
       </div>
     );
   }
@@ -767,8 +721,6 @@ function WorkflowEditorInner({
         onAutoLayout={() => {}}
         onExport={handleExport}
         onImport={handleImport}
-        onNew={() => { setListDialogCreate(true); setListDialogOpen(true); }}
-        onOpen={() => { setListDialogCreate(false); setListDialogOpen(true); }}
         onOpenPluginManager={() => setPluginsDialogOpen(true)}
         onStartEditName={startEditName}
         onFinishEditName={finishEditName}
@@ -895,16 +847,6 @@ function WorkflowEditorInner({
         </ResizablePanel>
       </ResizablePanelGroup>
 
-      {/* Workflow list dialog */}
-      <WorkflowListDialog
-        open={listDialogOpen}
-        createMode={listDialogCreate}
-        workflows={workflows}
-        onSelect={handleListSelect}
-        onCreate={handleCreateNew}
-        onClose={() => setListDialogOpen(false)}
-      />
-
       {/* Trigger settings dialog */}
       <WorkflowTriggerDialog
         open={triggerDialogOpen}
@@ -944,64 +886,6 @@ function WorkflowEditorInner({
         onWorkflowChange={handleWorkflowMetaChange}
       />
     </div>
-  );
-}
-
-// ---- Workflow List Dialog ----
-
-function WorkflowListDialog({
-  open, createMode, workflows, onSelect, onCreate, onClose,
-}: {
-  open: boolean;
-  createMode: boolean;
-  workflows: WorkflowTemplate[];
-  onSelect: (wf: WorkflowTemplate) => void;
-  onCreate: () => void;
-  onClose: () => void;
-}) {
-  const sorted = useMemo(
-    () => [...workflows].sort((a, b) =>
-      new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()
-    ),
-    [workflows],
-  );
-
-  return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{createMode ? '新建工作流' : '打开工作流'}</DialogTitle>
-        </DialogHeader>
-        {createMode && (
-          <div className="py-2">
-            <Button onClick={onCreate} className="w-full">
-              创建空白工作流
-            </Button>
-          </div>
-        )}
-        {!createMode && (
-          <div className="max-h-[400px] overflow-y-auto space-y-1">
-            {sorted.length === 0 && (
-              <div className="text-sm text-muted-foreground text-center py-8">暂无工作流</div>
-            )}
-            {sorted.map(wf => (
-              <button
-                key={wf.id}
-                className="w-full text-left px-3 py-2 rounded-md hover:bg-accent text-sm transition-colors flex items-center justify-between"
-                onClick={() => onSelect(wf)}
-              >
-                <div className="min-w-0">
-                  <div className="truncate font-medium">{wf.name || '未命名'}</div>
-                  <div className="text-[10px] text-muted-foreground">
-                    {wf.nodes?.length || 0} 个节点
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
   );
 }
 

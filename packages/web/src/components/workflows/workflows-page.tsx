@@ -8,8 +8,9 @@ import { WorkflowMiniPreview } from '@/components/workflow/workflow-mini-preview
 import { WorkflowEditor } from '@/components/workflow/workflow-editor';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Plus, Pencil, Copy, Trash2, Upload, FileText } from 'lucide-react';
+import { Plus, Pencil, Copy, Trash2, Upload, FileText, FolderOpen } from 'lucide-react';
 import { WorkflowTemplatesDialog } from '@/components/workflows/workflow-templates-dialog';
+import { WorkflowListDialog } from '@/components/workflow/workflow-list-dialog';
 import type { WorkflowTemplatePreset } from '@/components/workflows/workflow-templates';
 import { fetchWithAuth } from '@/lib/auth';
 import type { AgentConfig } from '@agent-spaces/shared';
@@ -19,6 +20,8 @@ export function WorkflowsPage() {
   const [editingWorkflow, setEditingWorkflow] = useState<WorkflowTemplate | null>(null);
   const [creatingNew, setCreatingNew] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [listDialogOpen, setListDialogOpen] = useState(false);
+  const [listDialogCreate, setListDialogCreate] = useState(false);
 
   useEffect(() => {
     loadWorkflows();
@@ -142,6 +145,16 @@ export function WorkflowsPage() {
     [loadWorkflows],
   );
 
+  const handleListOpen = useCallback((wf: WorkflowTemplate) => {
+    setEditingWorkflow(wf);
+    setListDialogOpen(false);
+  }, []);
+
+  const handleListCreate = useCallback(() => {
+    setCreatingNew(true);
+    setListDialogOpen(false);
+  }, []);
+
   if (editingWorkflow || creatingNew) {
     return (
       <WorkflowEditor
@@ -171,8 +184,11 @@ export function WorkflowsPage() {
           <Button variant="outline" onClick={handleImport}>
             <Upload className="h-4 w-4 mr-1" /> 导入
           </Button>
-          <Button onClick={() => setCreatingNew(true)}>
+          <Button onClick={() => { setListDialogCreate(true); setListDialogOpen(true); }}>
             <Plus className="h-4 w-4 mr-1" /> 新建工作流
+          </Button>
+          <Button variant="outline" onClick={() => { setListDialogCreate(false); setListDialogOpen(true); }}>
+            <FolderOpen className="h-4 w-4 mr-1" /> 打开工作流
           </Button>
         </div>
       </div>
@@ -239,6 +255,15 @@ export function WorkflowsPage() {
         open={templatesOpen}
         onOpenChange={setTemplatesOpen}
         onImport={handleImportTemplate}
+      />
+
+      <WorkflowListDialog
+        open={listDialogOpen}
+        createMode={listDialogCreate}
+        workflows={workflows}
+        onSelect={handleListOpen}
+        onCreate={handleListCreate}
+        onClose={() => setListDialogOpen(false)}
       />
     </div>
   );
