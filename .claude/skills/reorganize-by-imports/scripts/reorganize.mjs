@@ -9,7 +9,7 @@
  */
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync, unlinkSync } from 'node:fs'
-import { join, relative, dirname, basename, extname, resolve, sep } from 'node:path'
+import { join, relative, dirname, extname, resolve } from 'node:path'
 
 // ─── 配置 ───
 
@@ -38,12 +38,18 @@ function scanFiles(dir, root = dir) {
 
 // ─── 路径解析 ───
 
+function stripJsExt(p) {
+  // .js/.mjs/.cjs -> 对应的 TS 源文件可能同名
+  return p.replace(/\.(js|mjs|cjs)$/, '')
+}
+
 function resolveImportPath(fromFile, importPath) {
   if (!importPath.startsWith('.')) return null // 只处理相对路径
   const dir = dirname(fromFile)
-  let abs = resolve(dir, importPath)
+  const stripped = stripJsExt(importPath)
+  let abs = resolve(dir, stripped)
 
-  // 尝试补全扩展名
+  // 精确匹配（无扩展名时补全）
   if (!existsSync(abs)) {
     for (const ext of EXTENSIONS_TO_TRY) {
       if (existsSync(abs + ext)) return abs + ext
@@ -293,7 +299,6 @@ function cmdMove(dir, fileList, target) {
 
   // 扫描所有文件（包括移动范围外的，因为它们可能引用被移动的文件）
   const allFiles = scanFiles(absDir)
-  const moveSet = new Set(filesToMove)
   const moveMap = new Map() // oldAbs -> newAbs
 
   for (const f of filesToMove) {
