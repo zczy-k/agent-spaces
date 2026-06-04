@@ -1,35 +1,36 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { ReactFlowProvider } from '@xyflow/react';
-import type { WorkflowTemplate } from '@agent-spaces/shared';
 import { useWorkflowStore } from '@/stores/workflow';
 import { WorkflowMiniPreview } from './workflow-mini-preview';
-import { WorkflowEditor } from './workflow-editor';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Plus, Pencil, Copy, Trash2 } from 'lucide-react';
+import { nativeNavigate } from '@/lib/navigate';
+import { workflowApi } from '@/lib/workflow-api';
 
 export function WorkflowList() {
-  const { workflows, loadWorkflows, deleteWorkflow, duplicateWorkflow } = useWorkflowStore();
-  const [editingWorkflow, setEditingWorkflow] = useState<WorkflowTemplate | null>(null);
-  const [creatingNew, setCreatingNew] = useState(false);
+  const router = useRouter();
+  const { workflows, loadWorkflows, deleteWorkflow, duplicateWorkflow, upsertWorkflow } = useWorkflowStore();
 
   useEffect(() => {
     loadWorkflows();
   }, [loadWorkflows]);
 
-  if (editingWorkflow || creatingNew) {
-    return (
-      <WorkflowEditor
-        template={editingWorkflow}
-        onBack={() => {
-          setEditingWorkflow(null);
-          setCreatingNew(false);
-        }}
-      />
-    );
-  }
+  const handleCreate = async () => {
+    const created = await workflowApi.create({
+      name: 'New Workflow',
+      nodes: [
+        { id: `node_${Date.now()}_start`, type: 'start', label: 'Start', position: { x: 250, y: 50 }, data: {} },
+        { id: `node_${Date.now()}_end`, type: 'end', label: 'End', position: { x: 250, y: 400 }, data: {} },
+      ],
+      edges: [],
+    });
+    upsertWorkflow(created);
+    nativeNavigate(router, `/workflows/${created.id}`);
+  };
 
   return (
     <div className="p-6 h-full overflow-y-auto">
@@ -40,7 +41,7 @@ export function WorkflowList() {
             Create reusable agent team workflows for issue automation
           </p>
         </div>
-        <Button onClick={() => setCreatingNew(true)}>
+        <Button onClick={handleCreate}>
           <Plus className="h-4 w-4 mr-1" /> New Workflow
         </Button>
       </div>
@@ -48,7 +49,7 @@ export function WorkflowList() {
       {workflows.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
           <p className="text-sm mb-2">No workflow templates yet</p>
-          <Button variant="outline" onClick={() => setCreatingNew(true)}>
+          <Button variant="outline" onClick={handleCreate}>
             <Plus className="h-4 w-4 mr-1" /> Create your first workflow
           </Button>
         </div>
@@ -75,7 +76,7 @@ export function WorkflowList() {
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7"
-                      onClick={() => setEditingWorkflow(workflow)}
+                      onClick={() => nativeNavigate(router, `/workflows/${workflow.id}`)}
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>

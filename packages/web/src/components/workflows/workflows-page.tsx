@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { ReactFlowProvider } from '@xyflow/react';
 import type { WorkflowTemplate } from '@agent-spaces/shared';
 import { useWorkflowStore } from '@/stores/workflow';
 import { WorkflowMiniPreview } from '@/components/workflow/workflow-mini-preview';
-import { WorkflowEditor } from '@/components/workflow/workflow-editor';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Plus, Pencil, Copy, Trash2, Upload, FileText } from 'lucide-react';
@@ -14,11 +14,12 @@ import { WorkflowListDialog } from '@/components/workflow/workflow-list-dialog';
 import type { WorkflowTemplatePreset } from '@/components/workflows/workflow-templates';
 import { fetchWithAuth } from '@/lib/auth';
 import { workflowApi } from '@/lib/workflow-api';
+import { nativeNavigate } from '@/lib/navigate';
 import type { AgentConfig } from '@agent-spaces/shared';
 
 export function WorkflowsPage() {
+  const router = useRouter();
   const { workflows, loadWorkflows, deleteWorkflow, duplicateWorkflow, upsertWorkflow } = useWorkflowStore();
-  const [editingWorkflow, setEditingWorkflow] = useState<WorkflowTemplate | null>(null);
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [listDialogOpen, setListDialogOpen] = useState(false);
 
@@ -145,9 +146,9 @@ export function WorkflowsPage() {
   );
 
   const handleListOpen = useCallback((wf: WorkflowTemplate) => {
-    setEditingWorkflow(wf);
+    nativeNavigate(router, `/workflows/${wf.id}`);
     setListDialogOpen(false);
-  }, []);
+  }, [router]);
 
   const handleListCreate = useCallback(async () => {
     const created = await workflowApi.create({
@@ -159,21 +160,9 @@ export function WorkflowsPage() {
       edges: [],
     });
     upsertWorkflow(created);
-    setEditingWorkflow(created);
+    nativeNavigate(router, `/workflows/${created.id}`);
     setListDialogOpen(false);
-  }, [upsertWorkflow]);
-
-  if (editingWorkflow) {
-    return (
-      <WorkflowEditor
-        template={editingWorkflow}
-        onBack={() => {
-          setEditingWorkflow(null);
-          loadWorkflows();
-        }}
-      />
-    );
-  }
+  }, [upsertWorkflow, router]);
 
   return (
     <div className="p-6 h-full overflow-y-auto">
@@ -227,7 +216,7 @@ export function WorkflowsPage() {
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7"
-                      onClick={() => setEditingWorkflow(workflow)}
+                      onClick={() => nativeNavigate(router, `/workflows/${workflow.id}`)}
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
