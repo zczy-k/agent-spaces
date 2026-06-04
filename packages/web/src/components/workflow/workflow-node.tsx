@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useCallback, useRef } from 'react';
-import { Handle, Position } from '@xyflow/react';
+import { Handle, NodeResizer, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import { X, Play } from 'lucide-react';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
@@ -31,6 +31,9 @@ const DEBUG_WORKFLOW_NODE = process.env.NODE_ENV !== 'production';
 type WorkflowNodeData = Record<string, unknown> & {
   label?: string;
   nodeType?: string;
+  width?: number;
+  height?: number;
+  isPreview?: boolean;
 };
 
 type WorkflowCustomViewProps = {
@@ -91,6 +94,14 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
     return Math.max(base, HEADER_HEIGHT + sourceHandleCount * 24 + 16);
   }, [definition, isLoopBody, sourceHandleCount]);
   const nodeMinWidth = definition?.customViewMinSize?.width || 140;
+  const nodeWidth = Math.max(
+    nodeMinWidth,
+    typeof nodeData.width === 'number' ? nodeData.width : nodeMinWidth,
+  );
+  const nodeHeight = Math.max(
+    nodeMinHeight,
+    typeof nodeData.height === 'number' ? nodeData.height : nodeMinHeight,
+  );
 
   React.useEffect(() => {
     if (!DEBUG_WORKFLOW_NODE) return;
@@ -114,6 +125,8 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
       dynamicSourceHandleCount: dynamicHandles?.length || 0,
       minWidth: nodeMinWidth,
       minHeight: nodeMinHeight,
+      width: nodeWidth,
+      height: nodeHeight,
       dataKeys,
       rootRect: rootRect
         ? {
@@ -161,12 +174,14 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
     dynamicHandles?.length,
     nodeMinWidth,
     nodeMinHeight,
+    nodeWidth,
+    nodeHeight,
     nodeData,
   ]);
 
   function getHandleTop(index: number, total: number): string {
     if (isLoopBody) return `${((index + 1) / (total + 1)) * 100}%`;
-    return `${HEADER_HEIGHT + HANDLE_MARGIN + ((nodeMinHeight - HEADER_HEIGHT - HANDLE_MARGIN * 2) / (total + 1)) * (index + 1)}px`;
+    return `${HEADER_HEIGHT + HANDLE_MARGIN + ((nodeHeight - HEADER_HEIGHT - HANDLE_MARGIN * 2) / (total + 1)) * (index + 1)}px`;
   }
 
   const startEdit = useCallback(() => {
@@ -197,16 +212,34 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
     window.dispatchEvent(new CustomEvent('workflow:delete-node', { detail: { nodeId: id } }));
   }, [id]);
 
+  const handleResizeEnd = useCallback((_: unknown, params: { width: number; height: number }) => {
+    const width = Math.max(nodeMinWidth, Math.round(params.width));
+    const height = Math.max(nodeMinHeight, Math.round(params.height));
+    window.dispatchEvent(new CustomEvent('workflow:update-node-data', {
+      detail: { nodeId: id, data: { width, height } },
+    }));
+  }, [id, nodeMinHeight, nodeMinWidth]);
+
   return (
     <>
+      <NodeResizer
+        isVisible={selected && !nodeData.isPreview}
+        minWidth={nodeMinWidth}
+        minHeight={nodeMinHeight}
+        onResizeEnd={handleResizeEnd}
+        handleClassName="workflow-node-resize-handle"
+        lineClassName="workflow-node-resize-line"
+      />
       <div
         ref={nodeRootRef}
         className={`border-2 rounded-lg shadow-sm cursor-pointer transition-colors relative flex flex-col bg-background
-          ${statusColor} ${selected ? 'ring-2 ring-primary' : ''}
+          ${statusColor} ${selected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background shadow-md' : ''}
           ${isLoopBody ? 'loop-body-node' : ''}`}
         style={{
           minWidth: nodeMinWidth,
           minHeight: nodeMinHeight,
+          width: '100%',
+          height: '100%',
         }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -221,7 +254,7 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
         )}
 
         {/* Hover test button */}
-        {!isBoundaryNode && isHovered && (
+        {!isBoundaryNode && !nodeData.isPreview && isHovered && (
           <button
             className="absolute -top-2 -left-2 w-5 h-5 rounded-full bg-green-500 text-white flex items-center justify-center hover:bg-green-600 z-10"
             onClick={(e) => { e.stopPropagation(); }}
@@ -231,7 +264,7 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
         )}
 
         {/* Hover delete button */}
-        {!isBoundaryNode && isHovered && (
+        {!isBoundaryNode && !nodeData.isPreview && isHovered && (
           <button
             className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:bg-destructive/80 z-10"
             onClick={handleDelete}
@@ -267,7 +300,7 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
         )}
 
         {CustomView ? (
-          <div className="min-h-0 flex-1 p-1">
+          <div className="absolute inset-0 overflow-hidden rounded-lg">
             <CustomView nodeId={id} data={nodeData} />
           </div>
         ) : null}
@@ -329,6 +362,8 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
       <style>{`
         .handle-dot { transition: scale 0.2s ease, box-shadow 0.2s ease; }
         .handle-dot:hover { scale: 1.6; box-shadow: 0 0 6px currentColor; }
+        .workflow-node-resize-line { border-color: var(--primary); }
+        .workflow-node-resize-handle { width: 8px; height: 8px; border: 1px solid var(--primary); background: var(--background); }
         .source-handle-label { position: absolute; right: 10px; display: flex; align-items: center; pointer-events: none; transform: translateY(-50%); }
         .loop-body-node { border-color: rgba(114, 181, 197, 0.5); box-shadow: 0 10px 30px rgba(98, 156, 173, 0.14); background: linear-gradient(180deg, rgba(233, 247, 250, 0.95), rgba(246, 250, 251, 0.98)); }
       `}</style>

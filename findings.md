@@ -52,6 +52,14 @@
 - 新 `WorkflowPluginConfigDialog` 支持插件默认配置与 workflow-specific scheme 配置；sidebar 插件分类 header 支持选择、创建、删除配置方案。
 - 发现并修复 workflow route 顺序问题：`/folders`、`/execution-logs/all`、`/validate-cron` 需要声明在 `/:workflowId` 前面。
 
+## 2026-06-04 补充发现：WorkflowNode 选中与 resize 缺口
+
+- 用户指出 `packages/web/src/components/workflow/workflow-node.tsx` 缺少迁移前 `CustomNodeWrapper.vue` 的选中样式和节点调节大小功能。
+- WorkFox Vue wrapper 使用 `NodeResizer`，仅在节点选中且非预览时显示，并以 `customViewMinSize` 作为最小宽高。
+- agent-spaces React 已将尺寸约定存在 `node.data.width` / `node.data.height`，`handleAutoLayout()` 也读取这两个字段。
+- 缺口在于 `workflow-canvas.tsx` 和 `use-workflow-editor-canvas.ts` 映射 React Flow 节点时总是用 `customViewMinSize` 覆盖尺寸，导致已保存尺寸无法渲染，也无法通过 React Flow dimensions change 持久化。
+- 修复策略：React 节点使用 `@xyflow/react` 的 `NodeResizer`，选中时显示；resize 结束后通过既有 `workflow:update-node-data` 事件写回 `width`/`height`；canvas 和 hook 映射都读取 persisted size 并在 dimensions change 时保留。
+
 ## 研究发现
 
 ### work_fox 项目架构

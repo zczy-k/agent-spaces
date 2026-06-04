@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useCallback, useMemo, useState } from 'react';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { CONDITION_OPERATORS, NO_VALUE_OPERATORS } from '@/lib/workflow-nodes';
@@ -30,6 +31,12 @@ import {
   Bug, Check, CheckCircle2, ChevronDown, Copy, FileDown, Import, Loader2, Pencil, Plus, Timer, Trash2, X,
   XCircle,
 } from 'lucide-react';
+import '@/lib/monaco-loader';
+
+const MonacoEditor = dynamic(
+  () => import('@monaco-editor/react').then((mod) => mod.default),
+  { ssr: false, loading: () => <div className="flex items-center justify-center h-[160px] text-muted-foreground text-xs">Loading...</div> },
+);
 
 interface PropertiesPanelProps {
   node: WorkflowNode | null;
@@ -476,12 +483,31 @@ function PropertyField({
 
     case 'code':
       return (
-        <Textarea
-          value={String(value ?? '')}
-          onChange={(e) => onChange(e.target.value)}
-          disabled={disabled}
-          className="min-h-[160px] text-xs font-mono"
-        />
+        <div className="border rounded-md overflow-hidden">
+          <MonacoEditor
+            height="160px"
+            language={(prop as Record<string, unknown>).language as string || 'javascript'}
+            theme="vs-dark"
+            value={String(value ?? '')}
+            onChange={(v) => onChange(v ?? '')}
+            options={{
+              readOnly: disabled,
+              minimap: { enabled: false },
+              fontSize: 12,
+              lineNumbers: 'on',
+              scrollBeyondLastLine: false,
+              wordWrap: 'on',
+              folding: false,
+              glyphMargin: false,
+              overviewRulerBorder: false,
+              hideCursorInOverviewRuler: true,
+              overviewRulerLanes: 0,
+              renderLineHighlight: 'none',
+              scrollbar: { verticalScrollbarSize: 6, horizontalScrollbarSize: 6 },
+              padding: { top: 4, bottom: 4 },
+            }}
+          />
+        </div>
       );
 
     case 'output_fields':

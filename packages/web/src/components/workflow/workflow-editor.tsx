@@ -159,6 +159,7 @@ function WorkflowEditorInner({
               <WorkflowCanvas
                 workflow={workflow}
                 isPreview={state.isPreview}
+                selectedNodeId={state.selectedNodeId}
                 onNodeAdd={canvas.handleNodeAdd}
                 onNodeDelete={canvas.handleNodeDelete}
                 onNodeSelect={canvas.handleNodeSelect}

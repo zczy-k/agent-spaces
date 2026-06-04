@@ -237,8 +237,10 @@ export function useWorkflowEditorCanvas({
 
     const rfNodes = workflow.nodes.map(n => {
       const definition = getNodeDefinition(n.type);
-      const width = definition?.customViewMinSize?.width || 140;
-      const height = definition?.customViewMinSize?.height || 60;
+      const minWidth = definition?.customViewMinSize?.width || 140;
+      const minHeight = definition?.customViewMinSize?.height || 60;
+      const width = Math.max(minWidth, typeof n.data?.width === 'number' ? n.data.width : minWidth);
+      const height = Math.max(minHeight, typeof n.data?.height === 'number' ? n.data.height : minHeight);
       return {
         id: n.id,
         type: 'custom' as const,
@@ -248,11 +250,12 @@ export function useWorkflowEditorCanvas({
         initialWidth: width,
         initialHeight: height,
         measured: { width, height },
-        style: { minWidth: width, minHeight: height },
+        style: { minWidth, minHeight, width, height },
         data: { ...n.data, label: n.label, nodeType: n.type, width, height },
       };
     });
     const updated = applyNodeChanges(changes, rfNodes);
+    const hasDimensionChange = changes.some(c => c.type === 'dimensions');
 
     setWorkflow(w => {
       if (!w) return null;
@@ -261,11 +264,17 @@ export function useWorkflowEditorCanvas({
         nodes: updated.map(n => {
           const existing = w.nodes.find(wn => wn.id === n.id);
           if (!existing) return w.nodes.find(wn => wn.id === n.id)!;
-          return { ...existing, position: n.position };
+          const width = typeof n.width === 'number' ? Math.round(n.width) : existing.data.width;
+          const height = typeof n.height === 'number' ? Math.round(n.height) : existing.data.height;
+          return {
+            ...existing,
+            position: n.position,
+            data: hasDimensionChange ? { ...existing.data, width, height } : existing.data,
+          };
         }).filter(Boolean),
       };
     });
-    if (hasDelete) markDirty();
+    if (hasDelete || hasDimensionChange) markDirty();
   }, [workflow, pushUndo, markDirty]);
 
   const handleEdgesChange = useCallback((changes: EdgeChange[]) => {

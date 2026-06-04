@@ -42,6 +42,7 @@ const DEBUG_WORKFLOW_CANVAS = process.env.NODE_ENV !== 'production';
 interface WorkflowCanvasProps {
   workflow: Workflow;
   isPreview: boolean;
+  selectedNodeId?: string | null;
   onNodeAdd: (type: string, position: { x: number; y: number }) => void;
   onNodeDelete: (id: string) => void;
   onNodeSelect: (id: string | null, multi?: boolean) => void;
@@ -165,7 +166,7 @@ function CanvasToolbar({
 }
 
 export function WorkflowCanvas({
-  workflow, isPreview,
+  workflow, isPreview, selectedNodeId,
   onNodeAdd, onNodeDelete, onNodeSelect,
   onNodeDataUpdate, onNodesChange, onEdgesChange, onConnect,
   canUndo = false, canRedo = false, onUndo, onRedo, onExitPreview, onAutoLayout,
@@ -191,26 +192,30 @@ export function WorkflowCanvas({
       const definition = getNodeDefinition(n.type);
       const minWidth = definition?.customViewMinSize?.width || 140;
       const minHeight = definition?.customViewMinSize?.height || 60;
+      const width = Math.max(minWidth, typeof n.data?.width === 'number' ? n.data.width : minWidth);
+      const height = Math.max(minHeight, typeof n.data?.height === 'number' ? n.data.height : minHeight);
       return {
         id: n.id,
         type: 'custom',
         position: n.position,
-        width: minWidth,
-        height: minHeight,
-        initialWidth: minWidth,
-        initialHeight: minHeight,
-        measured: { width: minWidth, height: minHeight },
-        style: { minWidth, minHeight },
+        selected: n.id === selectedNodeId,
+        width,
+        height,
+        initialWidth: width,
+        initialHeight: height,
+        measured: { width, height },
+        style: { minWidth, minHeight, width, height },
         data: {
           ...n.data,
           label: n.label,
           nodeType: n.type,
-          width: minWidth,
-          height: minHeight,
+          isPreview,
+          width,
+          height,
         } as Record<string, unknown>,
       };
     }),
-    [workflow.nodes],
+    [workflow.nodes, selectedNodeId, isPreview],
   );
 
   React.useEffect(() => {

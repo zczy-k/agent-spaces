@@ -1,4 +1,41 @@
-# Task Plan: 创建 @agent-spaces/sdk 包
+# Task Plan: Workflow Node Wrapper 补齐
+
+## Current Goal
+
+补齐 `packages/web/src/components/workflow/workflow-node.tsx` 在 Vue 迁移后缺失的节点选中样式和调节大小功能，参考 `/Users/Zhuanz/Documents/work_fox/src/components/workflow/CustomNodeWrapper.vue`。
+
+## Current Phases
+
+### Phase D — 修复 React Flow controlled selection [in_progress]
+- [ ] 将 editor 的 `selectedNodeId` 传入 `WorkflowCanvas`
+- [ ] 在 React Flow node mapping 中设置 `selected`
+- [ ] 验证点击节点后 `WorkflowNode` 的 `selected` prop 可驱动选中样式和 `NodeResizer`
+
+### Phase A — 对比现状与旧实现 [complete]
+- [x] 读取 React `workflow-node.tsx`
+- [x] 读取 Vue `CustomNodeWrapper.vue`
+- [x] 确认 @xyflow/react 节点尺寸更新方式与现有 store/editor 数据流
+
+### Phase B — 实现选中样式与 resize [complete]
+- [x] 在 React 节点补齐选中状态样式
+- [x] 接入节点 resize 控件
+- [x] 将尺寸变更写回节点数据/尺寸字段，兼容既有 custom view min size
+
+### Phase C — 验证 [complete]
+- [x] 运行相关 TypeScript/build 检查
+- [x] 记录结果与遗留风险
+
+## Current Errors Encountered
+
+| Error | Attempt | Resolution |
+|-------|---------|------------|
+| 点击节点不出现选中样式和 resize 框 | 1 | 发现 `selectedNodeId` 只存在 editor state，未传给 controlled React Flow nodes，导致 `NodeProps.selected` 一直为 false；正在补齐映射。 |
+| `pnpm --filter @agent-spaces/web build` TypeScript 阶段失败 | 1 | 失败来自既有 `workflow-operation-history.tsx` 的 `TooltipTrigger asChild` 类型错误，不在本次修改文件内；另跑过滤后的 `tsc --noEmit`，本次改动文件无报错。 |
+| Browser visual smoke test unavailable | 1 | 本会话的 in-app browser backend 不可用，已记录为验证限制。 |
+
+---
+
+# Historical Task Plan: 创建 @agent-spaces/sdk 包
 
 ## 目标
 

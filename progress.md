@@ -1,5 +1,30 @@
 # Progress Log: WorkFox 迁移
 
+## Session: 2026-06-04
+
+### Phase 6 补充：WorkflowNode 选中样式与调节大小
+- **Status:** complete
+- Actions taken:
+  - 对比 React `packages/web/src/components/workflow/workflow-node.tsx` 与 WorkFox `/Users/Zhuanz/Documents/work_fox/src/components/workflow/CustomNodeWrapper.vue`
+  - 确认 Vue 版使用 `NodeResizer`，选中时显示，并以 `customViewMinSize` 作为最小尺寸
+  - 在 React `WorkflowNode` 接入 `@xyflow/react` 的 `NodeResizer`，选中时显示 resize 线和控制点
+  - 通过 canvas data 传入 `isPreview`，预览模式下隐藏 resize/test/delete 控制，贴近 Vue 版行为
+  - 增强选中样式为 primary ring + offset + shadow
+  - resize 结束后通过既有 `workflow:update-node-data` 事件写回 `data.width` / `data.height`
+  - 修复 `workflow-canvas.tsx` 和 `use-workflow-editor-canvas.ts` 的 React Flow 节点映射，优先使用已保存尺寸，避免每次渲染回退到最小尺寸
+  - 动态 handle 纵向位置改为基于实际节点高度计算，resize 后连接点布局跟随变化
+- Files created/modified:
+  - packages/web/src/components/workflow/workflow-node.tsx
+  - packages/web/src/components/workflow/workflow-canvas.tsx
+  - packages/web/src/components/workflow/use-workflow-editor-canvas.ts
+  - task_plan.md
+  - findings.md
+  - progress.md
+- Verification:
+  - `pnpm --filter @agent-spaces/web build` ❌ failed in TypeScript on existing `workflow-operation-history.tsx` `TooltipTrigger asChild` errors.
+  - `pnpm --filter @agent-spaces/web exec tsc --noEmit --pretty false 2>&1 | rg "workflow-node\\.tsx|workflow-canvas\\.tsx|use-workflow-editor-canvas\\.ts|error TS"` showed only the existing `workflow-operation-history.tsx` errors and no errors in the modified files.
+  - Browser visual smoke test not run because the in-app browser backend was unavailable in this session.
+
 ## Session: 2026-06-02
 
 ### Phase 6 补充：NodeProperties 功能补齐（2026-06-03）

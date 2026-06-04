@@ -84,7 +84,7 @@ export function WorkflowOperationHistory({
         <div className="flex items-center gap-2">
           <TooltipProvider>
             <Tooltip>
-              <TooltipTrigger>
+              <TooltipTrigger asChild>
                 <Button
                   variant="outline" size="icon" className="h-7 w-7"
                   disabled={currentUndoCount === 0}
@@ -99,7 +99,7 @@ export function WorkflowOperationHistory({
 
           <TooltipProvider>
             <Tooltip>
-              <TooltipTrigger>
+              <TooltipTrigger asChild>
                 <Button
                   variant="outline" size="icon" className="h-7 w-7"
                   disabled={currentRedoCount === 0}
