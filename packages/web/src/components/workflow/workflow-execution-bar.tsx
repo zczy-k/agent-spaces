@@ -22,6 +22,7 @@ import {
   AlertCircle, AlertTriangle, Check, CheckCircle, ChevronDown, ChevronUp,
   Circle, Copy, Info, Loader2, MoreHorizontal, Pause, Play, Square, Trash2, XCircle,
 } from 'lucide-react';
+import { JsonViewer } from '@/components/json-viewer';
 import { cn } from '@/lib/utils';
 
 type ExecutionStatus = 'idle' | 'running' | 'paused' | 'completed' | 'error' | 'stopped' | string;
@@ -109,9 +110,11 @@ function JsonBlock({ value, empty }: { value: unknown; empty: string }) {
   }
   return (
     <ScrollArea className="h-full">
-      <pre className="p-2 text-[10px] leading-relaxed font-mono whitespace-pre-wrap break-words">
-        {stringifyValue(value)}
-      </pre>
+      <JsonViewer
+        data={value as Parameters<typeof JsonViewer>[0]['data']}
+        className="border-0 shadow-none rounded-none"
+        defaultExpanded={2}
+      />
     </ScrollArea>
   );
 }

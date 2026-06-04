@@ -158,7 +158,7 @@ export function WorkflowPluginsDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="flex h-[600px] max-h-[85vh] flex-col gap-0 p-0 sm:max-w-[80vw]">
+        <DialogContent className="flex h-[85vh] max-h-[85vh] flex-col gap-0 p-0 sm:max-w-[80vw]">
           <DialogHeader className="flex-row items-center gap-2 border-b px-4 py-2 pr-10">
             <DialogTitle className="text-sm font-semibold">插件管理</DialogTitle>
             <div className="flex items-center gap-1 rounded-md bg-muted p-0.5">
