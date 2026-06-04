@@ -49,6 +49,10 @@ export interface FloatingChatPanelProps {
 
   /** Extra header actions (settings, etc.) */
   headerActions?: React.ReactNode;
+  /** Optional custom renderer for message body */
+  renderMessageContent?: (message: ChatMessage) => React.ReactNode;
+  /** Optional custom renderer for content below each message bubble */
+  renderMessageExtras?: (message: ChatMessage) => React.ReactNode;
 
   /** Panel size */
   width?: number;
@@ -120,6 +124,8 @@ export function FloatingChatPanel({
   markdown = true,
   workspaceId,
   headerActions,
+  renderMessageContent,
+  renderMessageExtras,
   width = 400,
   height = 360,
 }: FloatingChatPanelProps) {
@@ -234,11 +240,12 @@ export function FloatingChatPanel({
                       )}
                     >
                       {msg.role === 'agent' && markdown ? (
-                        <Markdown content={msg.content} workspaceId={workspaceId} />
+                        renderMessageContent ? renderMessageContent(msg) : <Markdown content={msg.content} workspaceId={workspaceId} />
                       ) : (
-                        <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                        renderMessageContent ? renderMessageContent(msg) : <p className="whitespace-pre-wrap break-words">{msg.content}</p>
                       )}
                     </div>
+                    {renderMessageExtras?.(msg)}
                     <span
                       className={cn(
                         'text-[10px] font-mono',

@@ -1,7 +1,8 @@
 'use client';
 
 import { ReactFlowProvider } from '@xyflow/react';
-import type { WorkflowTemplate } from '@agent-spaces/shared';
+import { useCallback, useState } from 'react';
+import type { AgentConfig, Workflow, WorkflowTemplate } from '@agent-spaces/shared';
 import { WorkflowCanvas } from './workflow-canvas';
 import { WorkflowNodeSidebar } from './workflow-node-sidebar';
 import { WorkflowEditorToolbar } from './workflow-editor-toolbar';
@@ -16,16 +17,38 @@ import { WorkflowInteractionDialog } from './workflow-interaction-dialog';
 import { WorkflowPluginsDialog } from './workflow-plugins-dialog';
 import { WorkflowPluginPickerDialog } from './workflow-plugin-picker-dialog';
 import { WorkflowNodeSelectDialog } from './workflow-node-select-dialog';
+import { FloatingChatPanel, type ChatMessage } from '@/components/ui/floating-chat-widget';
 import { ResizablePanel, ResizableHandle, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle2, ChevronDown, Wrench } from 'lucide-react';
 import { useEditorShortcuts, useClipboard, useExecutionPanel } from '@/hooks/use-workflow-editor';
 import { Button } from '@/components/ui/button';
+import { fetchWithAuth } from '@/lib/auth';
+import { allNodeDefinitions } from '@/lib/workflow-nodes';
+import { cn } from '@/lib/utils';
+import { useWorkspaceStore } from '@/stores/workspace';
 import { useWorkflowEditorState } from './use-workflow-editor-state';
 import { useWorkflowEditorCanvas } from './use-workflow-editor-canvas';
 import { useWorkflowEditorExecution } from './use-workflow-editor-execution';
 
 // ---- Inner editor (needs ReactFlow context) ----
+
+interface WorkflowToolCall {
+  id: string;
+  name: string;
+  input?: unknown;
+  result?: unknown;
+  status: 'running' | 'success' | 'error';
+}
+
+interface WorkflowAgentChatMessage extends ChatMessage {
+  toolCalls?: WorkflowToolCall[];
+}
+
+interface SseEvent {
+  event: string;
+  data: unknown;
+}
 
 function WorkflowEditorInner({
   template, onBack,
@@ -35,6 +58,12 @@ function WorkflowEditorInner({
 }) {
   // ---- State ----
   const state = useWorkflowEditorState(template);
+  const workspaces = useWorkspaceStore((store) => store.workspaces);
+  const workspaceId = workspaces[0]?.id;
+  const [agentOpen, setAgentOpen] = useState(false);
+  const [agentInput, setAgentInput] = useState('');
+  const [agentSending, setAgentSending] = useState(false);
+  const [agentMessages, setAgentMessages] = useState<WorkflowAgentChatMessage[]>([]);
 
   const canvas = useWorkflowEditorCanvas({
     workflow: state.workflow,
@@ -52,6 +81,161 @@ function WorkflowEditorInner({
 
   const { isExpanded: execExpanded, toggle: toggleExec } = useExecutionPanel();
   const clipboard = useClipboard();
+
+  const appendAssistantContent = useCallback((messageId: string, content: string) => {
+    setAgentMessages((messages) => messages.map((message) => (
+      message.id === messageId
+        ? { ...message, content: message.content ? `${message.content}\n${content}` : content }
+        : message
+    )));
+  }, []);
+
+  const appendToolCall = useCallback((messageId: string, toolCall: WorkflowToolCall) => {
+    setAgentMessages((messages) => messages.map((message) => (
+      message.id === messageId
+        ? { ...message, toolCalls: [...(message.toolCalls ?? []), toolCall] }
+        : message
+    )));
+  }, []);
+
+  const completeLatestToolCall = useCallback((messageId: string, toolName: string, result: unknown) => {
+    setAgentMessages((messages) => messages.map((message) => {
+      if (message.id !== messageId || !message.toolCalls?.length) return message;
+      const toolCalls = [...message.toolCalls];
+      const index = findLastIndex(toolCalls, (toolCall) => toolCall.name === toolName && toolCall.status === 'running');
+      if (index === -1) return message;
+      toolCalls[index] = {
+        ...toolCalls[index],
+        result,
+        status: isSuccessfulToolResult(result) ? 'success' : 'error',
+      };
+      return { ...message, toolCalls };
+    }));
+  }, []);
+
+  const applyWorkflowPatch = useCallback((result: unknown) => {
+    const patch = readWorkflowPatch(result);
+    if (!patch || patch.workflow_id !== state.workflow?.id) return;
+    state.pushUndo('workflow agent edit');
+    state.setWorkflow((workflow) => workflow ? {
+      ...workflow,
+      nodes: patch.nodes,
+      edges: patch.edges,
+      updatedAt: patch.updatedAt ?? Date.now(),
+    } : workflow);
+    state.markDirty();
+  }, [state]);
+
+  const sendWorkflowAgentMessage = useCallback(async () => {
+    const prompt = agentInput.trim();
+    if (!prompt || agentSending || !state.workflow) return;
+
+    const userMessage: WorkflowAgentChatMessage = {
+      id: `workflow-agent-user-${Date.now()}`,
+      role: 'user',
+      content: prompt,
+      timestamp: new Date(),
+    };
+    const assistantId = `workflow-agent-assistant-${Date.now()}`;
+    const assistantMessage: WorkflowAgentChatMessage = {
+      id: assistantId,
+      role: 'agent',
+      content: '',
+      timestamp: new Date(),
+      toolCalls: [],
+    };
+
+    setAgentMessages((messages) => [...messages, userMessage, assistantMessage]);
+    setAgentInput('');
+    setAgentSending(true);
+
+    try {
+      const preset = await resolveWorkflowAgentPreset();
+      if (!preset) {
+        appendAssistantContent(assistantId, '没有可用的 Agent 预设。请先在 Agent 设置中配置一个启用的模型预设。');
+        return;
+      }
+
+      const selectedNodes = state.selectedNode ? [state.selectedNode] : [];
+      const response = await fetchWithAuth('/api/agent-sse/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workspaceId,
+          agentId: preset.id,
+          prompt,
+          maxTurns: 40,
+          messages: agentMessages
+            .filter((message) => message.content.trim())
+            .map((message) => ({
+              senderId: message.role === 'user' ? 'user' : preset.id,
+              senderRole: message.role === 'agent' ? preset.role : undefined,
+              content: message.content,
+              status: 'completed',
+            })),
+          workflowAgent: {
+            workflow: state.workflow,
+            nodeDefinitions: allNodeDefinitions,
+            selectedNodes,
+          },
+        }),
+      });
+
+      if (!response.ok || !response.body) {
+        const text = await response.text().catch(() => '');
+        appendAssistantContent(assistantId, text || `请求失败：${response.status}`);
+        return;
+      }
+
+      await readSseStream(response, (event) => {
+        if (event.event === 'output') {
+          const line = asRecord(event.data).line;
+          if (typeof line === 'string') appendAssistantContent(assistantId, line);
+          return;
+        }
+        if (event.event === 'tool_use') {
+          const data = asRecord(event.data);
+          appendToolCall(assistantId, {
+            id: `${String(data.name ?? 'tool')}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            name: String(data.name ?? 'tool'),
+            input: data.input,
+            status: 'running',
+          });
+          return;
+        }
+        if (event.event === 'tool_result') {
+          const data = asRecord(event.data);
+          const toolName = String(data.toolUseId ?? 'tool');
+          completeLatestToolCall(assistantId, toolName, data.result);
+          applyWorkflowPatch(data.result);
+          return;
+        }
+        if (event.event === 'done') {
+          const data = asRecord(event.data);
+          if (data.error) appendAssistantContent(assistantId, String(data.error));
+          return;
+        }
+        if (event.event === 'error') {
+          const data = asRecord(event.data);
+          appendAssistantContent(assistantId, String(data.error ?? 'Agent 运行失败'));
+        }
+      });
+    } catch (error) {
+      appendAssistantContent(assistantId, error instanceof Error ? error.message : String(error));
+    } finally {
+      setAgentSending(false);
+    }
+  }, [
+    agentInput,
+    agentSending,
+    state,
+    workspaceId,
+    agentMessages,
+    appendAssistantContent,
+    appendToolCall,
+    completeLatestToolCall,
+    applyWorkflowPatch,
+  ]);
 
   // ---- Shortcuts ----
   useEditorShortcuts({
@@ -321,8 +505,167 @@ function WorkflowEditorInner({
         onOpenChange={canvas.handleNodeSelectOpenChange}
         onSelect={canvas.handleNodeSelectFromDialog}
       />
+
+      <FloatingChatPanel
+        isOpen={agentOpen}
+        onClose={() => setAgentOpen(false)}
+        onToggle={() => setAgentOpen((open) => !open)}
+        agent={{ name: '工作流助手', role: 'LangChain', status: agentSending ? 'busy' : 'online' }}
+        messages={agentMessages}
+        sending={agentSending}
+        input={agentInput}
+        onInputChange={setAgentInput}
+        onSend={sendWorkflowAgentMessage}
+        inputPlaceholder="描述要修改的工作流..."
+        width={440}
+        height={420}
+        renderMessageContent={(message) => (
+          message.content.trim()
+            ? <span className="whitespace-pre-wrap break-words">{message.content}</span>
+            : <span className="text-muted-foreground">正在处理...</span>
+        )}
+        renderMessageExtras={(message) => (
+          <WorkflowAgentToolCards toolCalls={(message as WorkflowAgentChatMessage).toolCalls} />
+        )}
+      />
     </div>
   );
+}
+
+function WorkflowAgentToolCards({ toolCalls }: { toolCalls?: WorkflowToolCall[] }) {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  if (!toolCalls?.length) return null;
+
+  return (
+    <div className="mt-2 flex w-full flex-col gap-1.5">
+      {toolCalls.map((toolCall) => {
+        const open = expanded[toolCall.id];
+        const isError = toolCall.status === 'error';
+        return (
+          <div key={toolCall.id} className="rounded-lg border bg-background/80 text-xs shadow-sm">
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 px-2.5 py-2 text-left"
+              onClick={() => setExpanded((state) => ({ ...state, [toolCall.id]: !state[toolCall.id] }))}
+            >
+              {toolCall.status === 'running' ? (
+                <Loader2 className="size-3.5 shrink-0 animate-spin text-muted-foreground" />
+              ) : isError ? (
+                <AlertCircle className="size-3.5 shrink-0 text-destructive" />
+              ) : (
+                <CheckCircle2 className="size-3.5 shrink-0 text-emerald-600" />
+              )}
+              <Wrench className="size-3.5 shrink-0 text-muted-foreground" />
+              <span className="min-w-0 flex-1 truncate font-medium">{toolCall.name}</span>
+              <ChevronDown className={cn('size-3.5 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} />
+            </button>
+            {open ? (
+              <div className="border-t px-2.5 py-2">
+                <ToolJsonBlock label="Input" value={toolCall.input} />
+                {toolCall.result !== undefined ? <ToolJsonBlock label="Result" value={toolCall.result} /> : null}
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ToolJsonBlock({ label, value }: { label: string; value: unknown }) {
+  return (
+    <div className="mb-2 last:mb-0">
+      <div className="mb-1 text-[10px] font-medium uppercase text-muted-foreground">{label}</div>
+      <pre className="max-h-40 overflow-auto rounded-md bg-muted/60 p-2 text-[11px] leading-relaxed">
+        {formatJson(value)}
+      </pre>
+    </div>
+  );
+}
+
+async function resolveWorkflowAgentPreset(): Promise<AgentConfig | null> {
+  const response = await fetchWithAuth('/api/agents/presets');
+  if (!response.ok) return null;
+  const presets = await response.json() as AgentConfig[];
+  return presets.find((preset) => preset.enabled !== false && preset.runtimeKind === 'langchain' && preset.apiKey && preset.modelId)
+    ?? presets.find((preset) => preset.enabled !== false && preset.apiKey && preset.modelId)
+    ?? null;
+}
+
+async function readSseStream(response: Response, onEvent: (event: SseEvent) => void): Promise<void> {
+  const reader = response.body?.getReader();
+  if (!reader) return;
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const chunks = buffer.split(/\n\n/);
+    buffer = chunks.pop() ?? '';
+    for (const chunk of chunks) {
+      const event = parseSseEvent(chunk);
+      if (event) onEvent(event);
+    }
+  }
+
+  if (buffer.trim()) {
+    const event = parseSseEvent(buffer);
+    if (event) onEvent(event);
+  }
+}
+
+function parseSseEvent(chunk: string): SseEvent | null {
+  let event = 'message';
+  const dataLines: string[] = [];
+  for (const line of chunk.split(/\r?\n/)) {
+    if (line.startsWith('event:')) event = line.slice('event:'.length).trim();
+    if (line.startsWith('data:')) dataLines.push(line.slice('data:'.length).trim());
+  }
+  if (!dataLines.length) return null;
+  try {
+    return { event, data: JSON.parse(dataLines.join('\n')) };
+  } catch {
+    return { event, data: dataLines.join('\n') };
+  }
+}
+
+function readWorkflowPatch(result: unknown): { workflow_id: string; nodes: Workflow['nodes']; edges: Workflow['edges']; updatedAt?: number } | null {
+  const record = asRecord(result);
+  const patch = asRecord(record.workflow_patch);
+  if (typeof patch.workflow_id !== 'string' || !Array.isArray(patch.nodes) || !Array.isArray(patch.edges)) return null;
+  return {
+    workflow_id: patch.workflow_id,
+    nodes: patch.nodes as Workflow['nodes'],
+    edges: patch.edges as Workflow['edges'],
+    updatedAt: typeof patch.updatedAt === 'number' ? patch.updatedAt : undefined,
+  };
+}
+
+function isSuccessfulToolResult(result: unknown): boolean {
+  const record = asRecord(result);
+  return record.success !== false;
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function findLastIndex<T>(items: T[], predicate: (item: T) => boolean): number {
+  for (let index = items.length - 1; index >= 0; index--) {
+    if (predicate(items[index])) return index;
+  }
+  return -1;
+}
+
+function formatJson(value: unknown): string {
+  if (value === undefined) return '';
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
 }
 
 // ---- Main export (with ReactFlowProvider) ----

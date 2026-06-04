@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from 'express';
-import type { AgentConfig, Message } from '@agent-spaces/shared';
+import type { AgentConfig, Message, NodeTypeDefinition, Workflow, WorkflowNode } from '@agent-spaces/shared';
 import { createAgentRuntime } from '../adapters/agent-runtime.js';
 import type { AgentRuntimeEvent } from '../adapters/agent-runtime-types.js';
 import { verifyToken } from '../middleware/auth.js';
@@ -8,6 +8,7 @@ import * as workspaceService from '../services/workspace.js';
 import { getThinkingRuntimeConfig } from '../services/llm-model-config.js';
 import { buildAgentPrompt } from '../ws/agent-prompt.js';
 import { wrapOnEventWithHooks } from '../services/hook-engine.js';
+import { buildWorkflowEditorSystemPrompt, createWorkflowEditorFunctionTools } from '../services/builtin-tools/workflow-editor-tools.js';
 
 const router = Router();
 
@@ -28,6 +29,11 @@ interface AgentSseRequestBody {
   systemPrompt?: string;
   outputStyle?: string;
   maxTurns?: number;
+  workflowAgent?: {
+    workflow?: Workflow;
+    nodeDefinitions?: NodeTypeDefinition[];
+    selectedNodes?: WorkflowNode[];
+  };
 }
 
 router.post('/run', async (req: Request, res: Response) => {
@@ -74,6 +80,17 @@ router.post('/run', async (req: Request, res: Response) => {
   const requestedSkills = normalizeSkills(body.skills ?? body.skill) ?? preset.skills;
   const configDir = agentService.getAgentConfigDir(workspaceId, { ...preset, skills: requestedSkills });
   const skills = agentService.getAvailableSkillNames(configDir, requestedSkills);
+  const workflowAgent = normalizeWorkflowAgent(body.workflowAgent);
+  const functionTools = workflowAgent
+    ? createWorkflowEditorFunctionTools({
+        workflow: workflowAgent.workflow,
+        nodeDefinitions: workflowAgent.nodeDefinitions,
+      })
+    : [];
+  const runtimeKind = workflowAgent ? 'langchain' : preset.runtimeKind;
+  const systemPrompt = workflowAgent
+    ? buildWorkflowEditorSystemPrompt(workflowAgent.workflow, workflowAgent.selectedNodes)
+    : body.systemPrompt ?? preset.systemPrompt;
   const output: string[] = [];
   const workingDir = agentService.resolveWorkingDir(workspaceId, preset);
   let completed = false;
@@ -82,7 +99,7 @@ router.post('/run', async (req: Request, res: Response) => {
   writeSse(res, 'session', { session, workspaceId });
 
   const runtime = createAgentRuntime({
-    kind: preset.runtimeKind,
+    kind: runtimeKind,
     provider: preset.modelProvider,
     model: preset.modelId,
     apiKey: preset.apiKey,
@@ -102,17 +119,17 @@ router.post('/run', async (req: Request, res: Response) => {
     const result = await runtime.execute(
       buildAgentPrompt(
         workspaceId,
-        body.systemPrompt ?? preset.systemPrompt,
+        systemPrompt,
         userPrompt,
         normalizeMessages(body.messages),
         {
-          runtimeKind: preset.runtimeKind,
+          runtimeKind,
           mcpServers: Object.keys(mcpServers ?? {}),
           skills,
           boundDirs: workspace.boundDirs,
           workingDir,
-          excludeNativeClaudeMd: preset.runtimeKind === 'claude-code',
-          builtInTools: [],
+          excludeNativeClaudeMd: runtimeKind === 'claude-code',
+          builtInTools: functionTools.map((tool) => ({ name: tool.name, description: tool.description })),
         },
       ),
       workingDir,
@@ -120,6 +137,7 @@ router.post('/run', async (req: Request, res: Response) => {
         maxTurns: normalizeMaxTurns(body.maxTurns),
         mcpServers,
         skills,
+        functionTools,
         configDir,
         sandboxDirs: preset.sandboxDirs,
         userPrompt,
@@ -134,7 +152,7 @@ router.post('/run', async (req: Request, res: Response) => {
     completed = true;
     const displayOutput = output.length ? output : result.output;
     agentService.complete(workspaceId, session.id, result.success ? undefined : result.error, {
-      runtime: preset.runtimeKind,
+      runtime: runtimeKind,
       model: preset.modelId,
       summary: result.summary,
       output: displayOutput,
@@ -159,7 +177,7 @@ router.post('/run', async (req: Request, res: Response) => {
     completed = true;
     const error = err instanceof Error ? err.message : String(err);
     agentService.complete(workspaceId, session.id, error, {
-      runtime: preset.runtimeKind,
+      runtime: runtimeKind,
       model: preset.modelId,
       summary: error,
       output: output.length ? output : [error],
@@ -238,6 +256,58 @@ function normalizeSkills(input: AgentSseRequestBody['skills'] | AgentSseRequestB
 
 function normalizeMaxTurns(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.floor(value) : 100;
+}
+
+function normalizeWorkflowAgent(input: AgentSseRequestBody['workflowAgent']): {
+  workflow: Workflow;
+  nodeDefinitions: NodeTypeDefinition[];
+  selectedNodes?: WorkflowNode[];
+} | null {
+  if (!input || typeof input !== 'object') return null;
+  if (!isWorkflow(input.workflow)) return null;
+  const nodeDefinitions = Array.isArray(input.nodeDefinitions)
+    ? input.nodeDefinitions.filter(isNodeDefinition)
+    : [];
+  if (!nodeDefinitions.length) return null;
+  const selectedNodes = Array.isArray(input.selectedNodes)
+    ? input.selectedNodes.filter(isWorkflowNode)
+    : undefined;
+  return { workflow: input.workflow, nodeDefinitions, selectedNodes };
+}
+
+function isWorkflow(value: unknown): value is Workflow {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  return typeof record.id === 'string'
+    && typeof record.name === 'string'
+    && Array.isArray(record.nodes)
+    && Array.isArray(record.edges)
+    && record.nodes.every(isWorkflowNode);
+}
+
+function isWorkflowNode(value: unknown): value is WorkflowNode {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  const position = record.position as Record<string, unknown> | undefined;
+  return typeof record.id === 'string'
+    && typeof record.type === 'string'
+    && typeof record.label === 'string'
+    && Boolean(position)
+    && typeof position?.x === 'number'
+    && typeof position?.y === 'number'
+    && typeof record.data === 'object'
+    && record.data !== null
+    && !Array.isArray(record.data);
+}
+
+function isNodeDefinition(value: unknown): value is NodeTypeDefinition {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  return typeof record.type === 'string'
+    && typeof record.label === 'string'
+    && typeof record.category === 'string'
+    && typeof record.description === 'string'
+    && Array.isArray(record.properties);
 }
 
 function serializeRuntimeEvent(event: AgentRuntimeEvent): unknown {
