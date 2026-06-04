@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { fetchWithAuth } from '@/lib/auth';
+import { sdk } from '@/lib/sdk';
 import { getWS } from '@/lib/ws';
 import type { KanbanBoard, KanbanColumn, KanbanTask } from '@agent-spaces/shared';
 
@@ -24,11 +24,8 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
   load: async (workspaceId: string) => {
     set({ loading: true });
     try {
-      const res = await fetchWithAuth(`/api/workspaces/${workspaceId}/kanban`);
-      if (res.ok) {
-        const board = await res.json();
-        set({ board, loading: false });
-      }
+      const board = await sdk.kanban.get(workspaceId);
+      set({ board, loading: false });
     } catch { /* ignore */ }
     set({ loading: false });
   },
@@ -37,11 +34,7 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
     const { board } = get();
     if (!board) return;
     try {
-      await fetchWithAuth(`/api/workspaces/${workspaceId}/kanban`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ columns: board.columns, tasks: board.tasks, layoutMode: board.layoutMode, title: board.title }),
-      });
+      await sdk.kanban.save(workspaceId, { columns: board.columns, tasks: board.tasks, layoutMode: board.layoutMode, title: board.title });
     } catch { /* ignore */ }
   },
 

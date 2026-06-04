@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { fetchWithAuth } from '@/lib/auth';
+import { sdk } from '@/lib/sdk';
 import type { DatabaseMeta, DatabaseNodeVersion, DatabaseVectorIndexResult, DatabaseVectorStats, DocNode } from '@agent-spaces/shared';
 
 interface DatabaseState {
@@ -62,16 +62,20 @@ const PRESET_COVERS = [
   'linear-gradient(to right, #475569, #1e293b)',
 ];
 
-async function api<T = unknown>(workspaceId: string, path: string, init?: RequestInit): Promise<T> {
-  const res = await fetchWithAuth(`/api/workspaces/${workspaceId}/database${path}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...init,
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => null) as { error?: string } | null;
-    throw new Error(body?.error || `Database API error: ${res.status}`);
+async function api<T = unknown>(workspaceId: string, path: string, opts?: { method?: string; body?: unknown }): Promise<T> {
+  const url = `/api/workspaces/${workspaceId}/database${path}`;
+  const method = opts?.method ?? 'GET';
+  if (method === 'GET') {
+    return sdk.http.get<T>(url);
   }
-  return res.json();
+  if (method === 'DELETE') {
+    return sdk.http.deleteOf<T>(url);
+  }
+  if (method === 'POST') {
+    return sdk.http.post<T>(url, opts?.body);
+  }
+  // PUT
+  return sdk.http.put<T>(url, opts?.body);
 }
 
 function withDatabase(path: string, databaseId: string | null): string {
@@ -95,7 +99,7 @@ function scheduleContentSave(workspaceId: string, databaseId: string | null, nod
     contentSaveTimers.delete(key);
     void api(workspaceId, withDatabase(`/${nodeId}`, databaseId), {
       method: 'PUT',
-      body: JSON.stringify({ content: pending?.content ?? content }),
+      body: { content: pending?.content ?? content },
     });
   }, 3_000);
   contentSaveTimers.set(key, { timer, content });
@@ -180,7 +184,7 @@ export const useDatabaseStore = create<DatabaseState & DatabaseActions>((set, ge
   createDatabase: async (workspaceId, input) => {
     const database = await api<DatabaseMeta>(workspaceId, '/databases', {
       method: 'POST',
-      body: JSON.stringify(input),
+      body: input,
     });
     set((s) => ({ databases: [...s.databases, database], activeDatabaseId: database.id }));
     await get().loadNodes(workspaceId, database.id);
@@ -190,7 +194,7 @@ export const useDatabaseStore = create<DatabaseState & DatabaseActions>((set, ge
   updateDatabase: async (workspaceId, databaseId, input) => {
     const database = await api<DatabaseMeta>(workspaceId, `/databases/${databaseId}`, {
       method: 'PUT',
-      body: JSON.stringify(input),
+      body: input,
     });
     set((s) => ({ databases: s.databases.map((item) => item.id === database.id ? database : item) }));
     return database;
@@ -217,7 +221,7 @@ export const useDatabaseStore = create<DatabaseState & DatabaseActions>((set, ge
   bindEmbeddingModel: async (workspaceId, databaseId, embeddingModelId) => {
     const vectorStats = await api<DatabaseVectorStats>(workspaceId, `/databases/${databaseId}/vector`, {
       method: 'PUT',
-      body: JSON.stringify({ embeddingModelId }),
+      body: { embeddingModelId },
     });
     set((s) => ({
       vectorStats,
@@ -255,7 +259,7 @@ export const useDatabaseStore = create<DatabaseState & DatabaseActions>((set, ge
     const cover = PRESET_COVERS[Math.floor(Math.random() * PRESET_COVERS.length)];
     const node = await api<DocNode>(workspaceId, withDatabase('', databaseId), {
       method: 'POST',
-      body: JSON.stringify({
+      body: {
         title: isFolder ? '未命名文件夹' : '未命名页面',
         icon: isFolder ? '📂' : '📝',
         cover,
@@ -263,7 +267,7 @@ export const useDatabaseStore = create<DatabaseState & DatabaseActions>((set, ge
           ? '<h1>📂 未命名文件夹</h1><p>这是一个新建的目录夹。</p>'
           : '<h1>新创建的文档</h1><p>点击在此处开始编写...</p>',
         parentId,
-      }),
+      },
     });
     set((s) => {
       const tabs = [...s.openTabs, node.id];
@@ -289,19 +293,19 @@ export const useDatabaseStore = create<DatabaseState & DatabaseActions>((set, ge
   renameNode: async (workspaceId, nodeId, title) => {
     const databaseId = get().activeDatabaseId;
     set((s) => ({ nodes: s.nodes.map(n => n.id === nodeId ? { ...n, title, updatedAt: Date.now() } : n) }));
-    await api(workspaceId, withDatabase(`/${nodeId}`, databaseId), { method: 'PUT', body: JSON.stringify({ title }) });
+    await api(workspaceId, withDatabase(`/${nodeId}`, databaseId), { method: 'PUT', body: { title } });
   },
 
   updateIcon: async (workspaceId, nodeId, icon) => {
     const databaseId = get().activeDatabaseId;
     set((s) => ({ nodes: s.nodes.map(n => n.id === nodeId ? { ...n, icon, updatedAt: Date.now() } : n) }));
-    await api(workspaceId, withDatabase(`/${nodeId}`, databaseId), { method: 'PUT', body: JSON.stringify({ icon }) });
+    await api(workspaceId, withDatabase(`/${nodeId}`, databaseId), { method: 'PUT', body: { icon } });
   },
 
   updateCover: async (workspaceId, nodeId, cover) => {
     const databaseId = get().activeDatabaseId;
     set((s) => ({ nodes: s.nodes.map(n => n.id === nodeId ? { ...n, cover, updatedAt: Date.now() } : n) }));
-    await api(workspaceId, withDatabase(`/${nodeId}`, databaseId), { method: 'PUT', body: JSON.stringify({ cover }) });
+    await api(workspaceId, withDatabase(`/${nodeId}`, databaseId), { method: 'PUT', body: { cover } });
   },
 
   trashNode: async (workspaceId, nodeId) => {
@@ -355,7 +359,7 @@ export const useDatabaseStore = create<DatabaseState & DatabaseActions>((set, ge
   moveNode: async (workspaceId, nodeId, parentId) => {
     const databaseId = get().activeDatabaseId;
     set((s) => ({ nodes: s.nodes.map(n => n.id === nodeId ? { ...n, parentId, updatedAt: Date.now() } : n) }));
-    await api(workspaceId, withDatabase(`/${nodeId}/move`, databaseId), { method: 'PUT', body: JSON.stringify({ parentId }) });
+    await api(workspaceId, withDatabase(`/${nodeId}/move`, databaseId), { method: 'PUT', body: { parentId } });
     if (parentId) set((s) => ({ openFolders: { ...s.openFolders, [parentId]: true } }));
   },
 

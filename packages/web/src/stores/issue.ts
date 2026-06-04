@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import type { Issue, IssueStatus } from '@agent-spaces/shared';
 import { useChannelStore } from './channel';
 import { useTaskStore } from './task';
+import { sdk } from '@/lib/sdk';
+import { ApiError } from '@agent-spaces/sdk';
 
 interface UpdateIssueInput {
   title?: string;
@@ -60,8 +62,7 @@ export const useIssueStore = create<IssueStore>((set, get) => ({
   loadIssues: async (workspaceId) => {
     set({ loading: true });
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/issues`);
-      const issues: Issue[] = await res.json();
+      const issues = await sdk.issue.list(workspaceId);
       const activeIssueId = getStoredActiveId(workspaceId, issues);
       set({ workspaceId, issues, activeIssueId, loading: false });
     } catch {
@@ -70,12 +71,7 @@ export const useIssueStore = create<IssueStore>((set, get) => ({
   },
 
   createIssue: async (workspaceId, title, description, members, workflowId) => {
-    const res = await fetch(`/api/workspaces/${workspaceId}/issues`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, description, members, workflowId }),
-    });
-    const issue: Issue = await res.json();
+    const issue = await sdk.issue.create(workspaceId, { title, description, members, workflowId });
     get().upsertIssue(issue);
     get().setActiveIssue(issue.id);
   },
@@ -89,66 +85,50 @@ export const useIssueStore = create<IssueStore>((set, get) => ({
   },
 
   updateIssue: async (workspaceId, issueId, input) => {
-    const res = await fetch(`/api/workspaces/${workspaceId}/issues/${issueId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    });
-    const updated: Issue = await res.json();
+    const updated = await sdk.issue.update(workspaceId, issueId, input as Parameters<typeof sdk.issue.update>[2]);
     get().upsertIssue(updated);
   },
 
   updateIssueStatus: async (workspaceId, issueId, status) => {
-    await fetch(`/api/workspaces/${workspaceId}/issues/${issueId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    });
+    await sdk.issue.update(workspaceId, issueId, { status } as Record<string, unknown>).catch(() => {});
   },
 
   startIssue: async (workspaceId, issueId) => {
-    const res = await fetch(`/api/workspaces/${workspaceId}/issues/${issueId}/start`, {
-      method: 'POST',
-    });
-    if (!res.ok) {
-      const data = await res.json();
-      const { toast } = await import('sonner');
-      toast.error(data.error || data.message || 'Failed to start issue');
-      return;
+    try {
+      const issue = await sdk.issue.start(workspaceId, issueId);
+      get().upsertIssue(issue);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        const { toast } = await import('sonner');
+        toast.error(err.body || 'Failed to start issue');
+      }
     }
-    const issue: Issue = await res.json();
-    get().upsertIssue(issue);
   },
 
   resumeIssue: async (workspaceId, issueId) => {
-    const res = await fetch(`/api/workspaces/${workspaceId}/issues/${issueId}/resume`, {
-      method: 'POST',
-    });
-    const issue: Issue = await res.json();
-    get().upsertIssue(issue);
+    try {
+      const issue = await sdk.issue.resume(workspaceId, issueId);
+      get().upsertIssue(issue);
+    } catch { /* ignore */ }
   },
 
   continueIssue: async (workspaceId, issueId) => {
-    const res = await fetch(`/api/workspaces/${workspaceId}/issues/${issueId}/continue`, {
-      method: 'POST',
-    });
-    if (!res.ok) return;
-    const issue: Issue = await res.json();
-    get().upsertIssue(issue);
+    try {
+      const issue = await sdk.issue.continue(workspaceId, issueId);
+      get().upsertIssue(issue);
+    } catch { /* ignore */ }
   },
 
   interruptIssue: async (workspaceId, issueId) => {
-    const res = await fetch(`/api/workspaces/${workspaceId}/issues/${issueId}/interrupt`, {
-      method: 'POST',
-    });
-    if (!res.ok) return;
-    const issue: Issue = await res.json();
-    get().upsertIssue(issue);
+    try {
+      const issue = await sdk.issue.interrupt(workspaceId, issueId);
+      get().upsertIssue(issue);
+    } catch { /* ignore */ }
   },
 
   deleteIssue: async (workspaceId, issueId) => {
     const issue = get().issues.find((i) => i.id === issueId);
-    await fetch(`/api/workspaces/${workspaceId}/issues/${issueId}`, { method: 'DELETE' });
+    await sdk.issue.delete_(workspaceId, issueId).catch(() => {});
     get().removeIssue(issueId);
 
     // 同步清理关联的 channel 和 tasks

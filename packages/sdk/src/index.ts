@@ -1,0 +1,195 @@
+/**
+ * @agent-spaces/sdk — Agent Spaces 前端 API 统一 SDK
+ *
+ * 用法：
+ *   import { createSDK } from '@agent-spaces/sdk';
+ *   const sdk = createSDK({
+ *     baseUrl: 'http://localhost:3100',
+ *     getToken: () => localStorage.getItem('token'),
+ *     onUnauthorized: () => { window.location.href = '/login'; },
+ *     debug: import.meta.env.DEV,
+ *   });
+ *
+ *   // 调用
+ *   const workspaces = await sdk.workspace.list();
+ *   const status = await sdk.git.status(wsId);
+ *
+ *   // 调试开关（运行时切换）
+ *   sdk.setDebug(true);
+ *   sdk.setDebug(false);
+ */
+
+// ---- 核心导出 ----
+export { HttpClient } from './client';
+export { ApiError } from './types';
+export type { SDKConfig, RequestOptions } from './types';
+
+// ---- 模块导出 ----
+export { createWorkspaceApi } from './modules/workspace';
+export { createAgentApi } from './modules/agent';
+export { createChannelApi } from './modules/channel';
+export { createIssueApi } from './modules/issue';
+export { createTaskApi } from './modules/task';
+export { createGitApi } from './modules/git';
+export { createEditorApi } from './modules/editor';
+export { createLlmApi } from './modules/llm';
+export { createWorkflowApi } from './modules/workflow';
+export { createWorkflowPluginApi } from './modules/workflow-plugin';
+export { createKanbanApi } from './modules/kanban';
+export { createDatabaseApi } from './modules/database';
+export { createWorktreeApi } from './modules/worktree';
+export { createHooksApi } from './modules/hooks';
+export { createCommandApi } from './modules/command';
+export { createSubscriptionApi } from './modules/subscription';
+export { createNotificationApi } from './modules/notification';
+export { createSpeechApi } from './modules/speech';
+export { createCodeFavoritesApi } from './modules/code-favorites';
+export { createPromptsApi, type PromptTemplate } from './modules/prompts';
+export { createSkillsApi, type SkillInfo, type SkillSyncItem } from './modules/skills';
+export { createMcpsApi, type McpServerInfo } from './modules/mcps';
+export { createOutputStylesApi, type OutputStyleTemplate } from './modules/output-styles';
+export { createToolsApi } from './modules/tools';
+export { createRobotAccountsApi, type RobotAccount } from './modules/robot-accounts';
+export { createAuthApi } from './modules/auth';
+export { createDataApi } from './modules/data';
+export { createVersionApi } from './modules/version';
+export { createSearchApi } from './modules/search';
+export { createAgentStoreApi } from './modules/agent-store';
+export { createFontApi } from './modules/font';
+export { createInspectorApi } from './modules/inspector';
+export { createAvatarApi } from './modules/avatar';
+
+// ---- 工厂函数 ----
+
+import { HttpClient } from './client';
+import type { SDKConfig } from './types';
+
+import { createWorkspaceApi } from './modules/workspace';
+import { createAgentApi } from './modules/agent';
+import { createChannelApi } from './modules/channel';
+import { createIssueApi } from './modules/issue';
+import { createTaskApi } from './modules/task';
+import { createGitApi } from './modules/git';
+import { createEditorApi } from './modules/editor';
+import { createLlmApi } from './modules/llm';
+import { createWorkflowApi } from './modules/workflow';
+import { createWorkflowPluginApi } from './modules/workflow-plugin';
+import { createKanbanApi } from './modules/kanban';
+import { createDatabaseApi } from './modules/database';
+import { createWorktreeApi } from './modules/worktree';
+import { createHooksApi } from './modules/hooks';
+import { createCommandApi } from './modules/command';
+import { createSubscriptionApi } from './modules/subscription';
+import { createNotificationApi } from './modules/notification';
+import { createSpeechApi } from './modules/speech';
+import { createCodeFavoritesApi } from './modules/code-favorites';
+import { createPromptsApi } from './modules/prompts';
+import { createSkillsApi } from './modules/skills';
+import { createMcpsApi } from './modules/mcps';
+import { createOutputStylesApi } from './modules/output-styles';
+import { createToolsApi } from './modules/tools';
+import { createRobotAccountsApi } from './modules/robot-accounts';
+import { createAuthApi } from './modules/auth';
+import { createDataApi } from './modules/data';
+import { createVersionApi } from './modules/version';
+import { createSearchApi } from './modules/search';
+import { createAgentStoreApi } from './modules/agent-store';
+import { createFontApi } from './modules/font';
+import { createInspectorApi } from './modules/inspector';
+import { createAvatarApi } from './modules/avatar';
+
+export interface SDK {
+  /** 底层 HTTP 客户端 */
+  readonly http: HttpClient;
+  /** 切换调试日志 */
+  setDebug(enabled: boolean): void;
+  /** 更新配置（切换服务器等） */
+  updateConfig(patch: Partial<SDKConfig>): void;
+
+  // ---- API 模块 ----
+  readonly workspace: ReturnType<typeof createWorkspaceApi>;
+  readonly agent: ReturnType<typeof createAgentApi>;
+  readonly channel: ReturnType<typeof createChannelApi>;
+  readonly issue: ReturnType<typeof createIssueApi>;
+  readonly task: ReturnType<typeof createTaskApi>;
+  readonly git: ReturnType<typeof createGitApi>;
+  readonly editor: ReturnType<typeof createEditorApi>;
+  readonly llm: ReturnType<typeof createLlmApi>;
+  readonly workflow: ReturnType<typeof createWorkflowApi>;
+  readonly workflowPlugin: ReturnType<typeof createWorkflowPluginApi>;
+  readonly kanban: ReturnType<typeof createKanbanApi>;
+  readonly database: ReturnType<typeof createDatabaseApi>;
+  readonly worktree: ReturnType<typeof createWorktreeApi>;
+  readonly hooks: ReturnType<typeof createHooksApi>;
+  readonly command: ReturnType<typeof createCommandApi>;
+  readonly subscription: ReturnType<typeof createSubscriptionApi>;
+  readonly notification: ReturnType<typeof createNotificationApi>;
+  readonly speech: ReturnType<typeof createSpeechApi>;
+  readonly codeFavorites: ReturnType<typeof createCodeFavoritesApi>;
+  readonly prompts: ReturnType<typeof createPromptsApi>;
+  readonly skills: ReturnType<typeof createSkillsApi>;
+  readonly mcps: ReturnType<typeof createMcpsApi>;
+  readonly outputStyles: ReturnType<typeof createOutputStylesApi>;
+  readonly tools: ReturnType<typeof createToolsApi>;
+  readonly robotAccounts: ReturnType<typeof createRobotAccountsApi>;
+  readonly auth: ReturnType<typeof createAuthApi>;
+  readonly data: ReturnType<typeof createDataApi>;
+  readonly version: ReturnType<typeof createVersionApi>;
+  readonly search: ReturnType<typeof createSearchApi>;
+  readonly agentStore: ReturnType<typeof createAgentStoreApi>;
+  readonly font: ReturnType<typeof createFontApi>;
+  readonly inspector: ReturnType<typeof createInspectorApi>;
+  readonly avatar: ReturnType<typeof createAvatarApi>;
+}
+
+/**
+ * 创建 SDK 实例 — 统一入口
+ *
+ * @param config.baseUrl - 服务器基础 URL
+ * @param config.getToken - Token 获取函数（延迟求值）
+ * @param config.onUnauthorized - 401/403 回调
+ * @param config.debug - 是否启用调试日志
+ */
+export function createSDK(config: SDKConfig): SDK {
+  const http = new HttpClient(config);
+
+  return {
+    http,
+    setDebug: (enabled: boolean) => http.setDebug(enabled),
+    updateConfig: (patch: Partial<SDKConfig>) => http.updateConfig(patch),
+
+    workspace: createWorkspaceApi(http),
+    agent: createAgentApi(http),
+    channel: createChannelApi(http),
+    issue: createIssueApi(http),
+    task: createTaskApi(http),
+    git: createGitApi(http),
+    editor: createEditorApi(http),
+    llm: createLlmApi(http),
+    workflow: createWorkflowApi(http),
+    workflowPlugin: createWorkflowPluginApi(http),
+    kanban: createKanbanApi(http),
+    database: createDatabaseApi(http),
+    worktree: createWorktreeApi(http),
+    hooks: createHooksApi(http),
+    command: createCommandApi(http),
+    subscription: createSubscriptionApi(http),
+    notification: createNotificationApi(http),
+    speech: createSpeechApi(http),
+    codeFavorites: createCodeFavoritesApi(http),
+    prompts: createPromptsApi(http),
+    skills: createSkillsApi(http),
+    mcps: createMcpsApi(http),
+    outputStyles: createOutputStylesApi(http),
+    tools: createToolsApi(http),
+    robotAccounts: createRobotAccountsApi(http),
+    auth: createAuthApi(http),
+    data: createDataApi(http),
+    version: createVersionApi(http),
+    search: createSearchApi(http),
+    agentStore: createAgentStoreApi(http),
+    font: createFontApi(http),
+    inspector: createInspectorApi(http),
+    avatar: createAvatarApi(http),
+  };
+}

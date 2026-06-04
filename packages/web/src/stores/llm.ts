@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { LLMModel, LLMProvider } from '@agent-spaces/shared';
+import { sdk } from '@/lib/sdk';
 
 interface LLMStore {
   models: LLMModel[];
@@ -22,8 +23,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     if (get().loaded) return;
     try {
       const [models, providers] = await Promise.all([
-        fetch('/api/models').then(r => r.json()),
-        fetch('/api/providers').then(r => r.json()),
+        sdk.llm.listModels(),
+        sdk.llm.listProviders(),
       ]);
       set({ models, providers, loaded: true });
     } catch { /* ignore */ }

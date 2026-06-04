@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { HookConfig } from '@agent-spaces/shared';
-import { fetchWithAuth } from '@/lib/auth';
+import { sdk } from '@/lib/sdk';
 
 interface HookStore {
   hooks: HookConfig[];
@@ -25,8 +25,7 @@ export const useHookStore = create<HookStore>((set) => ({
   fetchHooks: async (workspaceId) => {
     set({ loading: true });
     try {
-      const res = await fetchWithAuth(`/api/workspaces/${workspaceId}/hooks`);
-      const hooks: HookConfig[] = await res.json();
+      const hooks: HookConfig[] = await sdk.hooks.list(workspaceId);
       set({ hooks, loading: false });
     } catch {
       set({ loading: false });
@@ -39,29 +38,19 @@ export const useHookStore = create<HookStore>((set) => ({
       enabled: true,
       hooks: { PreToolUse: [], PostToolUse: [] },
     };
-    await fetchWithAuth(`/api/workspaces/${workspaceId}/hooks`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(config),
-    });
+    await sdk.hooks.create(workspaceId, config);
     set((s) => ({ hooks: [...s.hooks, config], selectedName: name }));
   },
 
   updateHook: async (workspaceId, name, config) => {
-    await fetchWithAuth(`/api/workspaces/${workspaceId}/hooks/${name}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(config),
-    });
+    await sdk.hooks.update(workspaceId, name, config);
     set((s) => ({
       hooks: s.hooks.map((h) => (h.name === name ? config : h)),
     }));
   },
 
   deleteHook: async (workspaceId, name) => {
-    await fetchWithAuth(`/api/workspaces/${workspaceId}/hooks/${name}`, {
-      method: 'DELETE',
-    });
+    await sdk.hooks.delete_(workspaceId, name);
     set((s) => ({
       hooks: s.hooks.filter((h) => h.name !== name),
       selectedName: s.selectedName === name ? null : s.selectedName,
@@ -69,21 +58,12 @@ export const useHookStore = create<HookStore>((set) => ({
   },
 
   uploadHook: async (workspaceId, content) => {
-    const res = await fetchWithAuth(`/api/workspaces/${workspaceId}/hooks/upload`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content }),
-    });
-    const config: HookConfig = await res.json();
+    const config: HookConfig = await sdk.hooks.upload(workspaceId, content);
     set((s) => ({ hooks: [...s.hooks, config], selectedName: config.name }));
   },
 
   applyToWorkspace: async (workspaceId, name, targetWorkspaceId) => {
-    await fetchWithAuth(`/api/workspaces/${workspaceId}/hooks/${name}/apply`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ targetWorkspaceId }),
-    });
+    await sdk.hooks.applyToWorkspace(workspaceId, name, targetWorkspaceId);
   },
 
   setSelectedName: (name) => set({ selectedName: name }),

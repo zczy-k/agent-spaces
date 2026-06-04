@@ -1,7 +1,7 @@
 'use client';
 
 import type { NodeTypeDefinition, PluginConfigField, PluginMeta } from '@agent-spaces/shared';
-import { fetchWithAuth } from './auth';
+import { sdk } from './sdk';
 
 export type WorkflowPlugin = PluginMeta & {
   config?: PluginConfigField[];
@@ -13,60 +13,46 @@ export type StoreWorkflowPlugin = Omit<WorkflowPlugin, 'enabled'> & {
 };
 
 export const pluginApi = {
-  list(): Promise<WorkflowPlugin[]> {
-    return fetchWithAuth('/api/plugins').then(r => r.json());
+  list(): Promise<PluginMeta[]> {
+    return sdk.workflowPlugin.listAll();
   },
-  listWorkflowPlugins(): Promise<WorkflowPlugin[]> {
-    return fetchWithAuth('/api/plugins/workflow').then(r => r.json());
+  listWorkflowPlugins(): Promise<PluginMeta[]> {
+    return sdk.workflowPlugin.listWorkflow();
   },
-  enable(pluginId: string): Promise<WorkflowPlugin> {
-    return fetchWithAuth(`/api/plugins/${encodeURIComponent(pluginId)}/enable`, { method: 'POST' }).then(r => r.json());
+  enable(pluginId: string): Promise<PluginMeta> {
+    return sdk.workflowPlugin.enable(pluginId);
   },
-  disable(pluginId: string): Promise<WorkflowPlugin> {
-    return fetchWithAuth(`/api/plugins/${encodeURIComponent(pluginId)}/disable`, { method: 'POST' }).then(r => r.json());
+  disable(pluginId: string): Promise<PluginMeta> {
+    return sdk.workflowPlugin.disable(pluginId);
   },
-  installFromStore(pluginId: string): Promise<WorkflowPlugin> {
-    return fetchWithAuth(`/api/plugins/store/${encodeURIComponent(pluginId)}/install`, { method: 'POST' }).then(r => r.json());
+  installFromStore(pluginId: string): Promise<PluginMeta> {
+    return sdk.workflowPlugin.installFromStore(pluginId);
   },
   getWorkflowNodes(pluginId: string): Promise<NodeTypeDefinition[]> {
-    return fetchWithAuth(`/api/plugins/${encodeURIComponent(pluginId)}/workflow-nodes`)
-      .then(r => r.json())
-      .then(data => Array.isArray(data?.nodes) ? data.nodes : []);
+    return sdk.workflowPlugin.getWorkflowNodes(pluginId);
   },
   getConfig(pluginId: string): Promise<Record<string, string>> {
-    return fetchWithAuth(`/api/plugins/${encodeURIComponent(pluginId)}/config`).then(r => r.json());
+    return sdk.workflowPlugin.getConfig(pluginId);
   },
   saveConfig(pluginId: string, data: Record<string, string>): Promise<{ success: boolean; error?: string }> {
-    return fetchWithAuth(`/api/plugins/${encodeURIComponent(pluginId)}/config`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    }).then(r => r.json());
+    return sdk.workflowPlugin.saveConfig(pluginId, data);
   },
 };
 
 export const workflowPluginSchemeApi = {
   list(workflowId: string, pluginId: string): Promise<string[]> {
-    return fetchWithAuth(`/api/workflows/${encodeURIComponent(workflowId)}/plugin-schemes/${encodeURIComponent(pluginId)}`).then(r => r.json());
+    return sdk.workflowPlugin.listSchemes(workflowId, pluginId);
   },
   create(workflowId: string, pluginId: string, schemeName: string): Promise<void> {
-    return fetchWithAuth(`/api/workflows/${encodeURIComponent(workflowId)}/plugin-schemes/${encodeURIComponent(pluginId)}/${encodeURIComponent(schemeName)}`, {
-      method: 'POST',
-    }).then(() => {});
+    return sdk.workflowPlugin.createScheme(workflowId, pluginId, schemeName);
   },
   read(workflowId: string, pluginId: string, schemeName: string): Promise<Record<string, string>> {
-    return fetchWithAuth(`/api/workflows/${encodeURIComponent(workflowId)}/plugin-schemes/${encodeURIComponent(pluginId)}/${encodeURIComponent(schemeName)}`).then(r => r.json());
+    return sdk.workflowPlugin.readScheme(workflowId, pluginId, schemeName);
   },
   save(workflowId: string, pluginId: string, schemeName: string, data: Record<string, string>): Promise<void> {
-    return fetchWithAuth(`/api/workflows/${encodeURIComponent(workflowId)}/plugin-schemes/${encodeURIComponent(pluginId)}/${encodeURIComponent(schemeName)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    }).then(() => {});
+    return sdk.workflowPlugin.saveScheme(workflowId, pluginId, schemeName, data);
   },
   delete(workflowId: string, pluginId: string, schemeName: string): Promise<void> {
-    return fetchWithAuth(`/api/workflows/${encodeURIComponent(workflowId)}/plugin-schemes/${encodeURIComponent(pluginId)}/${encodeURIComponent(schemeName)}`, {
-      method: 'DELETE',
-    }).then(() => {});
+    return sdk.workflowPlugin.deleteScheme(workflowId, pluginId, schemeName);
   },
 };

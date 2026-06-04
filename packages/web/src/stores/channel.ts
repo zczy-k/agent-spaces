@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Channel, Message } from '@agent-spaces/shared';
 import { getWS } from '@/lib/ws';
+import { sdk } from '@/lib/sdk';
 
 interface ChannelStore {
   workspaceId: string | null;
@@ -82,19 +83,13 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
   loadChannels: async (workspaceId) => {
     const { workspaceId: currentWid } = get();
     if (currentWid === workspaceId && get().channels.length > 0) return;
-    const res = await fetch(`/api/workspaces/${workspaceId}/channels`);
-    const channels: Channel[] = (await res.json()).map(normalizeChannel);
+    const channels = (await sdk.channel.list(workspaceId)).map(normalizeChannel);
     const activeChannelId = getStoredActiveId(workspaceId, channels);
     set({ workspaceId, channels, activeChannelId });
   },
 
   createChannel: async (workspaceId, name, type = 'general', members, titlePrompt) => {
-    const res = await fetch(`/api/workspaces/${workspaceId}/channels`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, type, members, titlePrompt }),
-    });
-    const channel: Channel = normalizeChannel(await res.json());
+    const channel = normalizeChannel(await sdk.channel.create(workspaceId, { name, type, members, titlePrompt }));
     set((s) => {
       const exists = s.channels.some((c) => c.id === channel.id);
       return {
@@ -105,13 +100,7 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
   },
 
   updateChannel: async (workspaceId, channelId, data) => {
-    const res = await fetch(`/api/workspaces/${workspaceId}/channels/${channelId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error('Failed to update channel');
-    const updated: Channel = normalizeChannel(await res.json());
+    const updated = normalizeChannel(await sdk.channel.update(workspaceId, channelId, data));
     set((s) => ({ channels: s.channels.map((c) => (c.id === channelId ? updated : c)) }));
     return updated;
   },
@@ -125,20 +114,20 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
   },
 
   loadMessages: async (workspaceId, channelId) => {
-    const res = await fetch(`/api/workspaces/${workspaceId}/channels/${channelId}/messages`);
-    if (!res.ok) {
+    try {
+      const data = await sdk.channel.getMessages(workspaceId, channelId);
+      set((s) => ({ messages: { ...s.messages, [channelId]: data } }));
+    } catch {
       set((s) => ({ messages: { ...s.messages, [channelId]: [] } }));
-      return;
     }
-    const data: unknown = await res.json();
-    const msgs: Message[] = Array.isArray(data) ? data : [];
-    set((s) => ({ messages: { ...s.messages, [channelId]: msgs } }));
   },
 
   loadChannelState: async (workspaceId, channelId) => {
-    const res = await fetch(`/api/workspaces/${workspaceId}/channels/${channelId}/state`);
-    if (!res.ok) return null;
-    return await res.json() as ChannelState;
+    try {
+      return (await sdk.channel.getState(workspaceId, channelId)) as unknown as ChannelState;
+    } catch {
+      return null;
+    }
   },
 
   sendMessage: (workspaceId, channelId, content, mentions = [], attachments = [], replyToMessageId, contextLength) => {
@@ -191,14 +180,14 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
   },
 
   clearMessages: async (workspaceId, channelId) => {
-    await fetch(`/api/workspaces/${workspaceId}/channels/${channelId}/messages`, { method: 'DELETE' });
+    await sdk.channel.clearMessages(workspaceId, channelId).catch(() => {});
     set((s) => ({
       messages: { ...s.messages, [channelId]: [] },
     }));
   },
 
   deleteChannel: async (workspaceId, channelId) => {
-    await fetch(`/api/workspaces/${workspaceId}/channels/${channelId}`, { method: 'DELETE' });
+    await sdk.channel.delete_(workspaceId, channelId).catch(() => {});
     get().removeChannelLocal(channelId);
   },
 
@@ -240,32 +229,23 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
     set((s) => ({
       channels: s.channels.map((c) => (c.id === channelId ? { ...c, draft } : c)),
     }));
-    await fetch(`/api/workspaces/${workspaceId}/channels/${channelId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ draft }),
-    });
+    await sdk.channel.update(workspaceId, channelId, { draft }).catch(() => {});
   },
 
   clearDraft: async (workspaceId, channelId) => {
     set((s) => ({
       channels: s.channels.map((c) => (c.id === channelId ? { ...c, draft: undefined } : c)),
     }));
-    await fetch(`/api/workspaces/${workspaceId}/channels/${channelId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ draft: null }),
-    });
+    await sdk.channel.update(workspaceId, channelId, { draft: null as unknown as undefined }).catch(() => {});
   },
 
   ensureAndActivateChannel: async (workspaceId, channelId) => {
     const { channels } = get();
     if (!channels.some((c) => c.id === channelId)) {
-      const res = await fetch(`/api/workspaces/${workspaceId}/channels`);
-      if (res.ok) {
-        const all: Channel[] = (await res.json()).map(normalizeChannel);
+      try {
+        const all = (await sdk.channel.list(workspaceId)).map(normalizeChannel);
         set({ channels: all });
-      }
+      } catch { /* ignore */ }
     }
     get().setActiveChannel(channelId);
   },

@@ -1,0 +1,41 @@
+import type { HttpClient } from '../client';
+import type { Issue, IssueComment, CreateIssueInput } from '@agent-spaces/shared';
+
+export function createIssueApi(http: HttpClient) {
+  return {
+    list: (workspaceId: string): Promise<Issue[]> =>
+      http.get(`/api/workspaces/${workspaceId}/issues`),
+
+    create: (workspaceId: string, data: CreateIssueInput): Promise<Issue> =>
+      http.post(`/api/workspaces/${workspaceId}/issues`, data),
+
+    get: (workspaceId: string, issueId: string): Promise<Issue> =>
+      http.get(`/api/workspaces/${workspaceId}/issues/${issueId}`),
+
+    update: (workspaceId: string, issueId: string, data: Partial<Issue & { continuousRun?: boolean }>): Promise<Issue> =>
+      http.put(`/api/workspaces/${workspaceId}/issues/${issueId}`, data),
+
+    delete_: (workspaceId: string, issueId: string): Promise<void> =>
+      http.delete(`/api/workspaces/${workspaceId}/issues/${issueId}`),
+
+    start: (workspaceId: string, issueId: string): Promise<Issue> =>
+      http.post(`/api/workspaces/${workspaceId}/issues/${issueId}/start`),
+
+    resume: (workspaceId: string, issueId: string): Promise<Issue> =>
+      http.post(`/api/workspaces/${workspaceId}/issues/${issueId}/resume`),
+
+    continue: (workspaceId: string, issueId: string): Promise<Issue> =>
+      http.post(`/api/workspaces/${workspaceId}/issues/${issueId}/continue`),
+
+    interrupt: (workspaceId: string, issueId: string): Promise<Issue> =>
+      http.post(`/api/workspaces/${workspaceId}/issues/${issueId}/interrupt`),
+
+    // ---- Comments ----
+
+    listComments: (workspaceId: string, issueId: string): Promise<IssueComment[]> =>
+      http.get(`/api/workspaces/${workspaceId}/issues/${issueId}/comments`),
+
+    addComment: (workspaceId: string, issueId: string, content: string): Promise<IssueComment> =>
+      http.post(`/api/workspaces/${workspaceId}/issues/${issueId}/comments`, { content }),
+  };
+}

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { AppNotification } from '@agent-spaces/shared';
-import { fetchWithAuth } from '@/lib/auth';
+import { sdk } from '@/lib/sdk';
 
 interface NotificationState {
   notifications: AppNotification[];
@@ -20,8 +20,7 @@ export const useNotificationStore = create<NotificationState>((set, _get) => ({
 
   load: async (workspaceId: string) => {
     try {
-      const res = await fetchWithAuth(`/api/workspaces/${workspaceId}/notifications`);
-      const notifications: AppNotification[] = await res.json();
+      const notifications: AppNotification[] = await sdk.http.get(`/api/workspaces/${workspaceId}/notifications`);
       set({ notifications, loaded: true });
     } catch {
       set({ loaded: true });
@@ -35,22 +34,19 @@ export const useNotificationStore = create<NotificationState>((set, _get) => ({
   },
 
   clearAll: async (workspaceId: string) => {
-    await fetchWithAuth(`/api/workspaces/${workspaceId}/notifications`, { method: 'DELETE' });
+    await sdk.http.delete(`/api/workspaces/${workspaceId}/notifications`);
     set({ notifications: [] });
   },
 
   remove: async (workspaceId: string, notificationId: string) => {
-    await fetchWithAuth(`/api/workspaces/${workspaceId}/notifications/${notificationId}`, { method: 'DELETE' }).catch(() => {});
+    await sdk.http.delete(`/api/workspaces/${workspaceId}/notifications/${notificationId}`).catch(() => {});
     set((state) => ({
       notifications: state.notifications.filter((n) => n.id !== notificationId),
     }));
   },
 
   markRead: async (workspaceId: string, notificationId: string) => {
-    await fetchWithAuth(
-      `/api/workspaces/${workspaceId}/notifications/${notificationId}/read`,
-      { method: 'PUT' },
-    );
+    await sdk.http.putVoid(`/api/workspaces/${workspaceId}/notifications/${notificationId}/read`, {});
     set((state) => ({
       notifications: state.notifications.map((n) =>
         n.id === notificationId ? { ...n, read: true } : n,
@@ -59,10 +55,7 @@ export const useNotificationStore = create<NotificationState>((set, _get) => ({
   },
 
   markAllRead: async (workspaceId: string) => {
-    await fetchWithAuth(
-      `/api/workspaces/${workspaceId}/notifications/read-all`,
-      { method: 'PUT' },
-    );
+    await sdk.http.putVoid(`/api/workspaces/${workspaceId}/notifications/read-all`, {});
     set((state) => ({
       notifications: state.notifications.map((n) => ({ ...n, read: true })),
     }));

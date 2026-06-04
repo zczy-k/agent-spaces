@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import type { WorkflowVersion } from '@agent-spaces/shared';
+import type { WorkflowVersion, WorkflowNode, WorkflowEdge } from '@agent-spaces/shared';
 import { workflowVersionApi } from '@/lib/workflow-api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,8 +17,8 @@ import { Save, Trash2, RotateCcw, Plus, GitBranch, Loader2 } from 'lucide-react'
 
 interface VersionPanelProps {
   workflowId: string;
-  nodes: unknown[];
-  edges: unknown[];
+  nodes: WorkflowNode[];
+  edges: WorkflowEdge[];
   onRestore: (version: WorkflowVersion) => void;
 }
 
@@ -45,7 +45,7 @@ export function WorkflowVersionPanel({ workflowId, nodes, edges, onRestore }: Ve
     if (!versionName.trim()) return;
     setCreating(true);
     try {
-      const v = await workflowVersionApi.add(workflowId, versionName.trim(), nodes as WorkflowVersion['snapshot']['nodes'], edges);
+      const v = await workflowVersionApi.add(workflowId, versionName.trim(), nodes, edges);
       setVersions(prev => [v, ...prev]);
       setDialogOpen(false);
       setVersionName('');

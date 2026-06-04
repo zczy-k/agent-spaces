@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { WorkflowTemplate, WorkflowNode, WorkflowEdge } from '@agent-spaces/shared';
-import { fetchWithAuth } from '@/lib/auth';
+import { sdk } from '@/lib/sdk';
 
 interface WorkflowStore {
   workflows: WorkflowTemplate[];
@@ -25,8 +25,7 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
   loadWorkflows: async () => {
     set({ isLoading: true });
     try {
-      const res = await fetchWithAuth('/api/workflows');
-      const workflows: WorkflowTemplate[] = await res.json();
+      const workflows: WorkflowTemplate[] = await sdk.workflow.list();
       set({ workflows, isLoading: false });
     } catch {
       set({ isLoading: false });
@@ -34,36 +33,23 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
   },
 
   createWorkflow: async (data) => {
-    const res = await fetchWithAuth('/api/workflows', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    const workflow: WorkflowTemplate = await res.json();
+    const workflow: WorkflowTemplate = await sdk.workflow.create(data);
     set(state => ({ workflows: [...state.workflows, workflow] }));
     return workflow;
   },
 
   updateWorkflow: async (id, data) => {
-    const res = await fetchWithAuth(`/api/workflows/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    const workflow: WorkflowTemplate = await res.json();
+    const workflow: WorkflowTemplate = await sdk.workflow.update(id, data);
     get().upsertWorkflow(workflow);
   },
 
   deleteWorkflow: async (id) => {
-    await fetchWithAuth(`/api/workflows/${id}`, { method: 'DELETE' });
+    await sdk.workflow.delete_(id);
     get().removeWorkflow(id);
   },
 
   duplicateWorkflow: async (id) => {
-    const res = await fetchWithAuth(`/api/workflows/${id}/duplicate`, {
-      method: 'POST',
-    });
-    const workflow: WorkflowTemplate = await res.json();
+    const workflow: WorkflowTemplate = await sdk.workflow.duplicate(id);
     set(state => ({ workflows: [...state.workflows, workflow] }));
   },
 

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Task } from '@agent-spaces/shared';
+import { sdk } from '@/lib/sdk';
 
 interface TaskStore {
   tasks: Task[];
@@ -33,9 +34,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   loadTasks: async (workspaceId, issueId) => {
     set({ loading: true });
     try {
-      const params = issueId ? `?issueId=${issueId}` : '';
-      const res = await fetch(`/api/workspaces/${workspaceId}/tasks${params}`);
-      const tasks: Task[] = await res.json();
+      const tasks = await sdk.task.list(workspaceId, issueId);
       set({ tasks: uniqueTasksById(tasks), loading: false });
     } catch {
       set({ loading: false });
@@ -43,53 +42,33 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   },
 
   createTask: async (workspaceId, issueId, title, description, agentConfigId) => {
-    const res = await fetch(`/api/workspaces/${workspaceId}/tasks`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ issueId, title, description, agentConfigId }),
-    });
-    const task: Task = await res.json();
+    const task = await sdk.task.create(workspaceId, { issueId, title, description, agentConfigId });
     get().upsertTask(task);
     return task;
   },
 
   updateTask: async (workspaceId, taskId, data) => {
-    const res = await fetch(`/api/workspaces/${workspaceId}/tasks/${taskId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    const task: Task = await res.json();
+    const task = await sdk.task.update(workspaceId, taskId, data);
     get().upsertTask(task);
   },
 
   deleteTask: async (workspaceId, taskId) => {
-    await fetch(`/api/workspaces/${workspaceId}/tasks/${taskId}`, { method: 'DELETE' });
+    await sdk.task.delete_(workspaceId, taskId);
     set((s) => ({ tasks: s.tasks.filter((t) => t.id !== taskId) }));
   },
 
   retryTask: async (workspaceId, taskId) => {
-    const res = await fetch(`/api/workspaces/${workspaceId}/tasks/${taskId}/retry`, {
-      method: 'POST',
-    });
-    const task: Task = await res.json();
+    const task = await sdk.task.retry(workspaceId, taskId);
     get().upsertTask(task);
   },
 
   cancelTask: async (workspaceId, taskId) => {
-    const res = await fetch(`/api/workspaces/${workspaceId}/tasks/${taskId}/cancel`, {
-      method: 'POST',
-    });
-    const task: Task = await res.json();
+    const task = await sdk.task.cancel(workspaceId, taskId);
     get().upsertTask(task);
   },
 
   reorderTasks: async (workspaceId, issueId, taskIds) => {
-    await fetch(`/api/workspaces/${workspaceId}/tasks/reorder`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ issueId, taskIds }),
-    });
+    await sdk.task.reorder(workspaceId, { issueId, taskIds });
   },
 
   upsertTask: (task) => {

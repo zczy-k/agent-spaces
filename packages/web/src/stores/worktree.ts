@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { WorktreeInfo, CreateWorktreeInput, Workspace } from '@agent-spaces/shared';
-import { fetchWithAuth } from '@/lib/auth';
+import { sdk } from '@/lib/sdk';
 import { useWorkspaceStore } from './workspace';
 
 interface WorktreeStore {
@@ -53,47 +53,29 @@ export const useWorktreeStore = create<WorktreeStore>((set) => ({
   load: async (workspaceId) => {
     set({ loading: true });
     try {
-      const res = await fetchWithAuth(`/api/workspaces/${workspaceId}/worktrees`);
-      if (res.ok) {
-        const worktrees: WorktreeInfo[] = await res.json();
-        set({ worktrees });
-        syncWorktreeWorkspaces(workspaceId, worktrees);
-      }
+      const worktrees: WorktreeInfo[] = await sdk.worktree.list(workspaceId);
+      set({ worktrees });
+      syncWorktreeWorkspaces(workspaceId, worktrees);
     } finally {
       set({ loading: false });
     }
   },
 
   create: async (workspaceId, data) => {
-    const res = await fetchWithAuth(`/api/workspaces/${workspaceId}/worktrees`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error((await res.json()).error);
-    const info: WorktreeInfo = await res.json();
+    const info: WorktreeInfo = await sdk.worktree.create(workspaceId, data);
     set((s) => ({ worktrees: [...s.worktrees, info] }));
     useWorkspaceStore.getState().upsertWorkspace(worktreeToWorkspace(info));
     return info;
   },
 
   remove: async (workspaceId, worktreeId) => {
-    const res = await fetchWithAuth(`/api/workspaces/${workspaceId}/worktrees/${worktreeId}`, {
-      method: 'DELETE',
-    });
-    if (!res.ok) throw new Error((await res.json()).error);
+    await sdk.worktree.remove(workspaceId, worktreeId);
     set((s) => ({ worktrees: s.worktrees.filter((wt) => wt.id !== worktreeId) }));
     useWorkspaceStore.getState().removeWorkspace(worktreeId);
   },
 
   createPR: async (workspaceId, worktreeId, opts) => {
-    const res = await fetchWithAuth(`/api/workspaces/${workspaceId}/worktrees/${worktreeId}/pr`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(opts || {}),
-    });
-    if (!res.ok) throw new Error((await res.json()).error);
-    const { prUrl } = await res.json();
+    const prUrl = await sdk.worktree.createPR(workspaceId, worktreeId, opts);
     set((s) => ({
       worktrees: s.worktrees.map((wt) =>
         wt.id === worktreeId ? { ...wt, prUrl } : wt
@@ -103,10 +85,7 @@ export const useWorktreeStore = create<WorktreeStore>((set) => ({
   },
 
   merge: async (workspaceId, worktreeId) => {
-    const res = await fetchWithAuth(`/api/workspaces/${workspaceId}/worktrees/${worktreeId}/merge`, {
-      method: 'POST',
-    });
-    if (!res.ok) throw new Error((await res.json()).error);
+    await sdk.worktree.merge(workspaceId, worktreeId);
     set((s) => ({
       worktrees: s.worktrees.filter((wt) => wt.id !== worktreeId),
     }));

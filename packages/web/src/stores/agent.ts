@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { AgentConfig } from '@agent-spaces/shared';
+import { sdk } from '@/lib/sdk';
 
 interface AgentStore {
   agents: AgentConfig[];
@@ -29,9 +30,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
 
     set({ loading: true });
     try {
-      const res = await fetch('/api/agents/presets');
-      if (!res.ok) return;
-      const data: AgentConfig[] = await res.json();
+      const data: AgentConfig[] = await sdk.agent.listPresets();
       set({ agents: uniqueAgentsById(data), loaded: true });
     } catch { /* ignore */ }
     finally {
@@ -52,19 +51,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     }));
 
     try {
-      const res = await fetch(`/api/agents/presets/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...agent, enabled: nextEnabled }),
-      });
-      if (!res.ok) {
-        // 回滚
-        set((state) => ({
-          agents: state.agents.map((a) =>
-            a.id === id ? { ...a, enabled: agent.enabled } : a,
-          ),
-        }));
-      }
+      await sdk.agent.updatePreset(id, { ...agent, enabled: nextEnabled });
     } catch {
       // 回滚
       set((state) => ({

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { GitStatusResult, GitDiffResult, GitLogEntry, GitBranch } from '@agent-spaces/shared';
+import { sdk } from '@/lib/sdk';
 
 interface GitState {
   status: GitStatusResult | null;
@@ -61,9 +62,7 @@ export const useGitStore = create<GitState>((set) => ({
 
   loadStatus: async (workspaceId) => {
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/git/status`);
-      if (!res.ok) throw new Error(await res.text());
-      const data: GitStatusResult = await res.json();
+      const data = await sdk.git.status(workspaceId);
       set({ status: data, notGitRepo: false });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
@@ -74,12 +73,7 @@ export const useGitStore = create<GitState>((set) => ({
   loadDiffs: async (workspaceId, filePath) => {
     set({ loading: true });
     try {
-      const url = filePath
-        ? `/api/workspaces/${workspaceId}/git/diff?path=${encodeURIComponent(filePath)}`
-        : `/api/workspaces/${workspaceId}/git/diff`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(await res.text());
-      const data: GitDiffResult[] = await res.json();
+      const data = await sdk.git.diff(workspaceId, filePath);
       set({ diffs: data, loading: false, notGitRepo: false });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
@@ -89,9 +83,7 @@ export const useGitStore = create<GitState>((set) => ({
 
   loadLog: async (workspaceId) => {
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/git/log`);
-      if (!res.ok) throw new Error(await res.text());
-      const data: GitLogEntry[] = await res.json();
+      const data = await sdk.git.log(workspaceId);
       set({ log: data, notGitRepo: false });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
@@ -101,9 +93,7 @@ export const useGitStore = create<GitState>((set) => ({
 
   loadBranches: async (workspaceId) => {
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/git/branches`);
-      if (!res.ok) throw new Error(await res.text());
-      const data: GitBranch[] = await res.json();
+      const data = await sdk.git.branches(workspaceId);
       set({ branches: data, notGitRepo: false });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
@@ -113,8 +103,7 @@ export const useGitStore = create<GitState>((set) => ({
 
   initRepo: async (workspaceId) => {
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/git/init`, { method: 'POST' });
-      if (!res.ok) throw new Error(await res.text());
+      await sdk.git.init(workspaceId);
       set({ error: null, notGitRepo: false });
     } catch (err: unknown) {
       set({ error: err instanceof Error ? err.message : String(err) });
@@ -123,12 +112,7 @@ export const useGitStore = create<GitState>((set) => ({
 
   commit: async (workspaceId, message) => {
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/git/commit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message }),
-      });
-      if (!res.ok) throw new Error(await res.text());
+      await sdk.git.commit(workspaceId, message);
     } catch (err: unknown) {
       set({ error: err instanceof Error ? err.message : String(err) });
     }
@@ -136,12 +120,7 @@ export const useGitStore = create<GitState>((set) => ({
 
   discard: async (workspaceId, filePath) => {
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/git/discard`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: filePath }),
-      });
-      if (!res.ok) throw new Error(await res.text());
+      await sdk.git.discard(workspaceId, filePath);
     } catch (err: unknown) {
       set({ error: err instanceof Error ? err.message : String(err) });
     }
@@ -149,10 +128,7 @@ export const useGitStore = create<GitState>((set) => ({
 
   discardAll: async (workspaceId) => {
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/git/discard-all`, {
-        method: 'POST',
-      });
-      if (!res.ok) throw new Error(await res.text());
+      await sdk.git.discardAll(workspaceId);
     } catch (err: unknown) {
       set({ error: err instanceof Error ? err.message : String(err) });
     }
@@ -160,12 +136,7 @@ export const useGitStore = create<GitState>((set) => ({
 
   stage: async (workspaceId, filePath) => {
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/git/stage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: filePath }),
-      });
-      if (!res.ok) throw new Error(await res.text());
+      await sdk.git.stage(workspaceId, filePath);
     } catch (err: unknown) {
       set({ error: err instanceof Error ? err.message : String(err) });
     }
@@ -173,149 +144,80 @@ export const useGitStore = create<GitState>((set) => ({
 
   unstage: async (workspaceId, filePath) => {
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/git/unstage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: filePath }),
-      });
-      if (!res.ok) throw new Error(await res.text());
+      await sdk.git.unstage(workspaceId, filePath);
     } catch (err: unknown) {
       set({ error: err instanceof Error ? err.message : String(err) });
     }
   },
 
   resolveFile: async (workspaceId, filePath, content, stage = true) => {
-    const res = await fetch(`/api/workspaces/${workspaceId}/git/resolve-file`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: filePath, content, stage }),
-    });
-    if (!res.ok) throw new Error(await res.text());
+    await sdk.git.resolveFile(workspaceId, { path: filePath, content, stage });
   },
 
   checkout: async (workspaceId, branch) => {
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/git/checkout`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ branch }),
-      });
-      if (!res.ok) throw new Error(await res.text());
+      await sdk.git.checkout(workspaceId, branch);
     } catch (err: unknown) {
       set({ error: err instanceof Error ? err.message : String(err) });
     }
   },
 
   push: async (workspaceId) => {
-    const res = await fetch(`/api/workspaces/${workspaceId}/git/push`, { method: 'POST' });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: 'Push failed' }));
-      throw new Error(err.error);
-    }
+    await sdk.git.push(workspaceId);
   },
 
   pull: async (workspaceId) => {
-    const res = await fetch(`/api/workspaces/${workspaceId}/git/pull`, { method: 'POST' });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: 'Pull failed' }));
-      throw new Error(err.error);
-    }
+    await sdk.git.pull(workspaceId);
   },
 
   fetchRemote: async (workspaceId) => {
-    const res = await fetch(`/api/workspaces/${workspaceId}/git/fetch`, { method: 'POST' });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: 'Fetch failed' }));
-      throw new Error(err.error);
-    }
+    await sdk.git.fetch(workspaceId);
   },
 
   getRemotes: async (workspaceId) => {
-    const res = await fetch(`/api/workspaces/${workspaceId}/git/remotes`);
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    return sdk.git.remotes(workspaceId);
   },
 
   addRemote: async (workspaceId, name, url) => {
-    const res = await fetch(`/api/workspaces/${workspaceId}/git/remotes`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, url }),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: 'Failed to add remote' }));
-      throw new Error(err.error);
-    }
+    await sdk.git.addRemote(workspaceId, name, url);
   },
 
   selectFile: (path) => set({ selectedFile: path }),
   setCommitMsg: (msg) => set({ commitMsg: msg }),
 
   checkoutDetached: async (workspaceId, commitHash) => {
-    const res = await fetch(`/api/workspaces/${workspaceId}/git/checkout-detached`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ commitHash }),
-    });
-    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error);
+    await sdk.git.checkoutDetached(workspaceId, commitHash);
   },
 
   cherryPick: async (workspaceId, commitHash) => {
-    const res = await fetch(`/api/workspaces/${workspaceId}/git/cherry-pick`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ commitHash }),
-    });
-    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error);
+    await sdk.git.cherryPick(workspaceId, commitHash);
   },
 
   createBranch: async (workspaceId, name, startPoint) => {
-    const res = await fetch(`/api/workspaces/${workspaceId}/git/create-branch`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, startPoint }),
-    });
-    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error);
+    await sdk.git.createBranch(workspaceId, name, startPoint);
   },
 
   deleteBranch: async (workspaceId, name, force) => {
-    const res = await fetch(`/api/workspaces/${workspaceId}/git/delete-branch`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, force }),
-    });
-    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error);
+    await sdk.git.deleteBranch(workspaceId, name, force);
   },
 
   createTag: async (workspaceId, name, commitHash) => {
-    const res = await fetch(`/api/workspaces/${workspaceId}/git/create-tag`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, commitHash }),
-    });
-    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error);
+    await sdk.git.createTag(workspaceId, name, commitHash);
   },
 
   getCommitDiff: async (workspaceId, hash) => {
-    const res = await fetch(`/api/workspaces/${workspaceId}/git/commit-diff?hash=${encodeURIComponent(hash)}`);
-    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error);
-    return res.json();
+    return sdk.git.commitDiff(workspaceId, hash);
   },
 
   getRemoteUrl: async (workspaceId) => {
-    const res = await fetch(`/api/workspaces/${workspaceId}/git/remote-url`);
-    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error);
-    const data = await res.json();
-    return data.url;
+    return sdk.git.remoteUrl(workspaceId);
   },
 
   getMergeBase: async (workspaceId) => {
-    const res = await fetch(`/api/workspaces/${workspaceId}/git/merge-base`);
-    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error);
-    const data = await res.json();
-    return data.hash;
+    return sdk.git.mergeBase(workspaceId);
   },
 
   resetToCommit: async (workspaceId, commitHash, mode = 'mixed') => {
-    const res = await fetch(`/api/workspaces/${workspaceId}/git/reset`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ commitHash, mode }),
-    });
-    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error);
+    await sdk.git.reset(workspaceId, { commitHash, mode });
   },
 }));

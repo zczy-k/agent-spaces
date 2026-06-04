@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { FileNode, GitDiffResult } from '@agent-spaces/shared';
+import { sdk } from '@/lib/sdk';
 
 export type MediaType = 'image' | 'video' | 'audio' | 'svg' | 'markdown' | 'mermaid';
 
@@ -117,8 +118,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   loadTree: async (workspaceId) => {
     set({ treeLoading: true });
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/files/tree?depth=1`);
-      const tree = await res.json();
+      const tree = await sdk.editor.tree(workspaceId, { depth: 1 });
       set({ tree, treeLoading: false });
     } catch {
       set({ treeLoading: false });
@@ -141,8 +141,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({ loadingDirs: newLoading });
 
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/files/tree?path=${encodeURIComponent(dirPath)}&depth=1`);
-      const children = await res.json();
+      const children = await sdk.editor.tree(workspaceId, { path: dirPath, depth: 1 });
       const mergeChildren = (nodes: FileNode[]): FileNode[] =>
         nodes.map(node => {
           if (node.path === dirPath) return { ...node, children };
@@ -180,10 +179,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       return;
     }
 
-    const res = await fetch(
-      `/api/workspaces/${workspaceId}/files/content?path=${encodeURIComponent(path)}`
-    );
-    const data = await res.json();
+    const data = await sdk.editor.content(workspaceId, path);
 
     set((s) => ({
       openFiles: [...s.openFiles, { path, name, content: data.content, modified: false, mediaType: mediaType || undefined }],
@@ -197,11 +193,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (!file) return;
     const content = get().modifiedFileContents[path] ?? file.content;
 
-    await fetch(`/api/workspaces/${workspaceId}/files/content`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path, content }),
-    });
+    await sdk.editor.save(workspaceId, path, content);
 
     set((s) => ({
       openFiles: s.openFiles.map((f) =>
@@ -237,8 +229,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const file = get().openFiles.find(f => f.path === path);
     if (!file || file.modified) return;
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/files/content?path=${encodeURIComponent(path)}`);
-      const data = await res.json();
+      const data = await sdk.editor.content(workspaceId, path);
       if (data.content !== file.content) {
         set(s => ({
           openFiles: s.openFiles.map(f =>
@@ -302,8 +293,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   loadEditorState: async (workspaceId) => {
     get().resetEditorState();
     try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/files/editor-state`);
-      const state = await res.json();
+      const state = await sdk.editor.editorState(workspaceId);
       const { openFilePaths = [], activeFilePath = null, pinnedPaths = [] } = state;
       if (openFilePaths.length === 0) {
         set({ openFiles: [], activeFilePath: null, modifiedFileContents: {} });
@@ -319,10 +309,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           if (mediaType && mediaType !== 'svg' && mediaType !== 'markdown') {
             openFiles.push({ path, name, content: '', modified: false, mediaType, pinned: pinnedSet.has(path) || undefined });
           } else {
-            const fileRes = await fetch(
-              `/api/workspaces/${workspaceId}/files/content?path=${encodeURIComponent(path)}`
-            );
-            const data = await fileRes.json();
+            const data = await sdk.editor.content(workspaceId, path);
             openFiles.push({ path, name, content: data.content, modified: false, mediaType: mediaType || undefined, pinned: pinnedSet.has(path) || undefined });
           }
         } catch {
@@ -346,14 +333,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const realActive = activeFilePath && !isCommitDiffPath(activeFilePath) ? activeFilePath : null;
     const pinnedPaths = realFiles.filter(f => f.pinned).map(f => f.path);
     try {
-      await fetch(`/api/workspaces/${workspaceId}/files/editor-state`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          openFilePaths: realFiles.map(f => f.path),
-          activeFilePath: realActive,
-          pinnedPaths,
-        }),
+      await sdk.editor.saveEditorState(workspaceId, {
+        openFilePaths: realFiles.map(f => f.path),
+        activeFilePath: realActive,
+        pinnedPaths,
       });
     } catch {
       // silent fail

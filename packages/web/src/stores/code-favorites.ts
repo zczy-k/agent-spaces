@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { fetchWithAuth } from '@/lib/auth';
+import { sdk } from '@/lib/sdk';
 
 export type { CodeFavorite } from '@agent-spaces/shared';
 
@@ -36,13 +36,8 @@ export const useCodeFavoritesStore = create<CodeFavoritesState>((set, get) => ({
     const { loadedWorkspaceId } = get();
     if (loadedWorkspaceId === workspaceId) return;
     try {
-      const res = await fetchWithAuth(`/api/workspaces/${workspaceId}/code-favorites`);
-      if (res.ok) {
-        const favorites = await res.json();
-        set({ favorites, loadedWorkspaceId: workspaceId });
-      } else {
-        set({ favorites: [], loadedWorkspaceId: workspaceId });
-      }
+      const favorites = await sdk.codeFavorites.list(workspaceId);
+      set({ favorites, loadedWorkspaceId: workspaceId });
     } catch {
       set({ favorites: [], loadedWorkspaceId: workspaceId });
     }
@@ -52,15 +47,8 @@ export const useCodeFavoritesStore = create<CodeFavoritesState>((set, get) => ({
     const { loadedWorkspaceId } = get();
     if (!loadedWorkspaceId) return;
     try {
-      const res = await fetchWithAuth(`/api/workspaces/${loadedWorkspaceId}/code-favorites`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(fav),
-      });
-      if (res.ok) {
-        const entry = await res.json();
-        set((s) => ({ favorites: [entry, ...s.favorites] }));
-      }
+      const entry = await sdk.codeFavorites.create(loadedWorkspaceId, fav);
+      set((s) => ({ favorites: [entry, ...s.favorites] }));
     } catch { /* ignore */ }
   },
 
@@ -68,23 +56,15 @@ export const useCodeFavoritesStore = create<CodeFavoritesState>((set, get) => ({
     const { loadedWorkspaceId } = get();
     if (!loadedWorkspaceId) return;
     try {
-      const res = await fetchWithAuth(`/api/workspaces/${loadedWorkspaceId}/code-favorites/${encodeURIComponent(id)}`, {
-        method: 'DELETE',
-      });
-      if (res.ok) {
-        set((s) => ({ favorites: s.favorites.filter((f) => f.id !== id) }));
-      }
+      await sdk.codeFavorites.delete_(loadedWorkspaceId, id);
+      set((s) => ({ favorites: s.favorites.filter((f) => f.id !== id) }));
     } catch { /* ignore */ }
   },
 
   clearFavorites: async (workspaceId) => {
     try {
-      const res = await fetchWithAuth(`/api/workspaces/${workspaceId}/code-favorites`, {
-        method: 'DELETE',
-      });
-      if (res.ok) {
-        set({ favorites: [], loadedWorkspaceId: workspaceId });
-      }
+      await sdk.http.delete(`/api/workspaces/${workspaceId}/code-favorites`);
+      set({ favorites: [], loadedWorkspaceId: workspaceId });
     } catch { /* ignore */ }
   },
 
