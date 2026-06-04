@@ -163,7 +163,7 @@ export function WorkflowPluginsDialog({
             <DialogTitle className="text-sm font-semibold">插件管理</DialogTitle>
             <div className="flex items-center gap-1 rounded-md bg-muted p-0.5">
               <Button
-                variant={activeTab === 'local' ? 'secondary' : 'ghost'}
+                variant={activeTab === 'local' ? 'default' : 'ghost'}
                 size="sm"
                 className="h-6 px-2 text-xs"
                 onClick={() => switchTab('local')}
@@ -172,7 +172,7 @@ export function WorkflowPluginsDialog({
                 本地
               </Button>
               <Button
-                variant={activeTab === 'store' ? 'secondary' : 'ghost'}
+                variant={activeTab === 'store' ? 'default' : 'ghost'}
                 size="sm"
                 className="h-6 px-2 text-xs"
                 onClick={() => switchTab('store')}

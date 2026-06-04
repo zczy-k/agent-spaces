@@ -427,3 +427,8 @@
   - task_plan.md
   - findings.md
   - progress.md
+- Verification:
+  - `pnpm --filter @agent-spaces/server build` passed.
+  - `pnpm --filter @agent-spaces/web build` passed.
+  - Web build still prints the existing `ENVIRONMENT_FALLBACK` static generation warning, but exits successfully.
+- Status: complete

@@ -86,10 +86,8 @@ export function WorkflowVersionPanel({ workflowId, nodes, edges, onRestore }: Ve
           <div className="flex gap-1">
             <TooltipProvider>
               <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setDialogOpen(true)}>
-                    <Plus className="h-3 w-3" />
-                  </Button>
+                <TooltipTrigger render={<Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setDialogOpen(true)} />}>
+                  <Plus className="h-3 w-3" />
                 </TooltipTrigger>
                 <TooltipContent side="left">保存当前版本</TooltipContent>
               </Tooltip>
@@ -97,10 +95,8 @@ export function WorkflowVersionPanel({ workflowId, nodes, edges, onRestore }: Ve
             {versions.length > 0 && (
               <TooltipProvider>
                 <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={handleClear}>
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+                  <TooltipTrigger render={<Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={handleClear} />}>
+                    <Trash2 className="h-3 w-3" />
                   </TooltipTrigger>
                   <TooltipContent side="left">清空所有版本</TooltipContent>
                 </Tooltip>
