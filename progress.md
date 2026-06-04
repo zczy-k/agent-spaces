@@ -385,3 +385,19 @@
 | Timestamp | Error | Attempt | Resolution |
 |-----------|-------|---------|------------|
 | (暂无错误) | - | - | - |
+## 2026-06-04 Phase 12 Workflow 拉线松手节点选择补齐
+
+- Status: in_progress
+- Actions taken:
+  - 读取现有规划文件，确认这是 Workflow 迁移后的补齐任务。
+  - 对比 WorkFox `NodeSelectDialog.vue`、`useConnectionDrop.ts`、`useEdgeInsert.ts`。
+  - 新增 `packages/web/src/components/workflow/workflow-node-select-dialog.tsx`。
+  - 改造 `workflow-canvas.tsx`：记录连接源、连接是否成功、未连接落点，并把空白松手回调给编辑器。
+  - 改造 `workflow-editor.tsx`：打开节点选择对话框，选择后新增节点并自动补边；同时接入边上插入节点事件。
+- Files modified:
+  - packages/web/src/components/workflow/workflow-node-select-dialog.tsx
+  - packages/web/src/components/workflow/workflow-canvas.tsx
+  - packages/web/src/components/workflow/workflow-editor.tsx
+  - task_plan.md
+  - findings.md
+  - progress.md

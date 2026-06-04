@@ -38,16 +38,23 @@ interface WorkflowCanvasProps {
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
   onConnect: (connection: Connection) => void;
+  onConnectionDrop?: (context: {
+    sourceNodeId: string;
+    sourceHandle: string | null;
+    position: { x: number; y: number } | null;
+  }) => void;
 }
 
 export function WorkflowCanvas({
   workflow, isPreview,
   onNodeAdd, onNodeDelete, onNodeSelect,
-  onNodeDataUpdate, onNodesChange, onEdgesChange, onConnect,
+  onNodeDataUpdate, onNodesChange, onEdgesChange, onConnect, onConnectionDrop,
 }: WorkflowCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const lastCanvasDebugSignature = useRef<string | null>(null);
   const lastCanvasDomDebugSignature = useRef<string | null>(null);
+  const connectSourceRef = useRef<{ nodeId: string; handleId: string | null } | null>(null);
+  const connectSucceededRef = useRef(false);
   const { screenToFlowPosition } = useReactFlow();
   const [helperHorizontal] = useState<number | undefined>();
   const [helperVertical] = useState<number | undefined>();
@@ -287,6 +294,7 @@ export function WorkflowCanvas({
   }, [getNodeDebugSnapshot, onNodesChange]);
 
   const handleConnectWithDebug = useCallback((connection: Connection) => {
+    connectSucceededRef.current = true;
     if (DEBUG_WORKFLOW_CANVAS) {
       console.debug('[WorkflowCanvas] onConnect', {
         connection,
@@ -298,6 +306,17 @@ export function WorkflowCanvas({
   }, [getNodeDebugSnapshot, onConnect]);
 
   const handleConnectStart: OnConnectStart = useCallback((_, params) => {
+    if (!isPreview) {
+      const nodeId = typeof params === 'object' && params && 'nodeId' in params
+        ? String((params as { nodeId?: string | null }).nodeId || '')
+        : '';
+      const handleId = typeof params === 'object' && params && 'handleId' in params
+        ? ((params as { handleId?: string | null }).handleId ?? null)
+        : null;
+      connectSourceRef.current = nodeId ? { nodeId, handleId } : null;
+      connectSucceededRef.current = false;
+    }
+
     if (!DEBUG_WORKFLOW_CANVAS) return;
     const nodeId = typeof params === 'object' && params && 'nodeId' in params
       ? String((params as { nodeId?: string | null }).nodeId || '')
@@ -306,15 +325,36 @@ export function WorkflowCanvas({
       params,
       snapshot: getNodeDebugSnapshot(nodeId),
     });
-  }, [getNodeDebugSnapshot]);
+  }, [getNodeDebugSnapshot, isPreview]);
 
   const handleConnectEnd: OnConnectEnd = useCallback((event) => {
+    const connectSource = connectSourceRef.current;
+    if (!isPreview && connectSource && !connectSucceededRef.current) {
+      let clientPosition: { x: number; y: number } | null = null;
+      if ('clientX' in event && 'clientY' in event) {
+        clientPosition = { x: event.clientX, y: event.clientY };
+      } else if ('changedTouches' in event && event.changedTouches.length > 0) {
+        const touch = event.changedTouches[0];
+        clientPosition = { x: touch.clientX, y: touch.clientY };
+      }
+
+      const position = clientPosition ? screenToFlowPosition(clientPosition) : null;
+      onConnectionDrop?.({
+        sourceNodeId: connectSource.nodeId,
+        sourceHandle: connectSource.handleId,
+        position,
+      });
+    }
+
+    connectSourceRef.current = null;
+    connectSucceededRef.current = false;
+
     if (!DEBUG_WORKFLOW_CANVAS) return;
     console.debug('[WorkflowCanvas] onConnectEnd', {
       eventType: event.type,
       snapshot: getNodeDebugSnapshot(),
     });
-  }, [getNodeDebugSnapshot]);
+  }, [getNodeDebugSnapshot, isPreview, onConnectionDrop, screenToFlowPosition]);
 
   const handleNodeDragStart = useCallback((_: React.MouseEvent, node: Node) => {
     if (!DEBUG_WORKFLOW_CANVAS) return;

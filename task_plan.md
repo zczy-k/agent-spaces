@@ -301,3 +301,11 @@ Phase 6 补充 — 插件对话框与添加插件到 Workflow ✅（完成，202
 | workflow-editor set 在 create() 外使用 | 1 | 改用 `store.setState()` |
 | shared/workflow.ts singleton/output_fields 缺失 | 1 | 补充到类型定义 |
 | shared/events.ts WS 事件名缺失 | 1 | 补充到 ClientEventMap/ServerEventMap |
+### Phase 12: Workflow 拉线松手节点选择补齐（2026-06-04）
+- [x] 对比 WorkFox `NodeSelectDialog.vue`、`useConnectionDrop.ts`、`useEdgeInsert.ts`
+- [x] 新增 React `WorkflowNodeSelectDialog`
+- [x] 在 `WorkflowCanvas` 记录连接源和未成功连接的落点
+- [x] 在 `WorkflowEditor` 打开节点选择对话框并自动新增节点、补边
+- [x] 复用同一对话框补齐边上插入节点入口
+- [ ] 验证 `pnpm --filter @agent-spaces/web build`
+- **Status:** in_progress

@@ -284,3 +284,10 @@
   - 粘贴 JSON 自动推断 `OutputField[]`
   - 节点 `_delay` 配置
 - 2026-06-04 补充：已接入 Vue 版“测试脚本/局部测试”能力。React `WorkflowEditor` 使用 `workflow:debug-node` WS channel 发送当前编辑器未保存的 nodes/edges/groups snapshot，`WorkflowPropertiesPanel` 显示测试按钮、运行中状态、成功/失败结果、JSON 输出和“应用测试输出”。
+## 2026-06-04 补充发现：拉线松手节点选择缺口
+
+- WorkFox 的 `NodeSelectDialog.vue` 只负责搜索、分类和选择节点，真正的连接落点逻辑在 `useConnectionDrop.ts`。
+- 旧逻辑在 `connect-start` 记录源节点和源 handle；如果 `connect-end` 时没有成功形成连接，则记录鼠标落点并打开节点选择对话框。
+- 选择节点后，旧逻辑会在落点新增节点，并自动添加 `source -> newNode` 边。
+- `useEdgeInsert.ts` 使用同一个选择对话框支持边上插入节点：删除原边，新增 `source -> newNode -> target` 两条边。
+- React 版 `workflow-canvas.tsx` 已有 `onConnectStart/onConnectEnd`，但之前只输出调试日志；`workflow-edge.tsx` 也会发出 `workflow:open-node-select`，但编辑器之前没有消费这个事件。

@@ -25,6 +25,7 @@ import { WorkflowLoopBodyOverlay, useLoopBodyBounds } from './workflow-loop-body
 import { WorkflowEmbeddedEditor } from './workflow-embedded-editor';
 import { WorkflowInteractionDialog } from './workflow-interaction-dialog';
 import { WorkflowPluginsDialog } from './workflow-plugins-dialog';
+import { WorkflowNodeSelectDialog } from './workflow-node-select-dialog';
 import { ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { ResizablePanelGroup } from '@/components/ui/resizable';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -48,6 +49,21 @@ type DebugResult = {
   error?: string;
   duration?: number;
 };
+
+type NodeSelectContext =
+  | {
+    mode: 'connection-drop';
+    sourceNodeId: string;
+    sourceHandle: string | null;
+    position: { x: number; y: number } | null;
+  }
+  | {
+    mode: 'edge-insert';
+    edgeId: string | null;
+    sourceNodeId: string;
+    targetNodeId: string;
+    sourceHandle: string | null;
+  };
 
 // ---- Inner editor (needs ReactFlow context) ----
 
@@ -86,6 +102,8 @@ function WorkflowEditorInner({
   const [debugStatus, setDebugStatus] = useState<'idle' | 'running' | 'completed' | 'error'>('idle');
   const [debugResult, setDebugResult] = useState<DebugResult | null>(null);
   const [pendingInteraction, setPendingInteraction] = useState<InteractionRequest | null>(null);
+  const [nodeSelectOpen, setNodeSelectOpen] = useState(false);
+  const [nodeSelectContext, setNodeSelectContext] = useState<NodeSelectContext | null>(null);
 
   // Group management
   const groupMgr = useGroupManagement();
@@ -227,6 +245,142 @@ function WorkflowEditorInner({
     setSelectedNodeId(id);
     markDirty();
   }, [workflow, pushUndo, markDirty]);
+
+  const handleConnectionDrop = useCallback((context: {
+    sourceNodeId: string;
+    sourceHandle: string | null;
+    position: { x: number; y: number } | null;
+  }) => {
+    setNodeSelectContext({ mode: 'connection-drop', ...context });
+    setNodeSelectOpen(true);
+  }, []);
+
+  useEffect(() => {
+    const handleOpenNodeSelect = (event: Event) => {
+      const detail = (event as CustomEvent).detail as {
+        edgeId?: string | null;
+        source?: string | null;
+        target?: string | null;
+        sourceHandle?: string | null;
+      } | undefined;
+      if (!detail?.source || !detail.target) return;
+      setNodeSelectContext({
+        mode: 'edge-insert',
+        edgeId: detail.edgeId ?? null,
+        sourceNodeId: detail.source,
+        targetNodeId: detail.target,
+        sourceHandle: detail.sourceHandle ?? null,
+      });
+      setNodeSelectOpen(true);
+    };
+
+    window.addEventListener('workflow:open-node-select', handleOpenNodeSelect);
+    return () => window.removeEventListener('workflow:open-node-select', handleOpenNodeSelect);
+  }, []);
+
+  const handleNodeSelectOpenChange = useCallback((open: boolean) => {
+    setNodeSelectOpen(open);
+    if (!open) setNodeSelectContext(null);
+  }, []);
+
+  const handleNodeSelectFromDialog = useCallback((type: string) => {
+    if (!workflow || !nodeSelectContext) return;
+    const def = getNodeDefinition(type);
+    if (def?.manualCreate === false) return;
+    if (def?.singleton && workflow.nodes.some(node => node.type === type)) return;
+
+    const id = `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const data: Record<string, unknown> = {};
+    if (def?.properties) {
+      for (const prop of def.properties) {
+        if (prop.default !== undefined) data[prop.key] = prop.default;
+      }
+    }
+
+    if (nodeSelectContext.mode === 'connection-drop') {
+      const sourceNode = workflow.nodes.find(node => node.id === nodeSelectContext.sourceNodeId);
+      if (!sourceNode) return;
+      const position = nodeSelectContext.position ?? {
+        x: sourceNode.position.x + 250,
+        y: sourceNode.position.y,
+      };
+      const newNode: Workflow['nodes'][0] = {
+        id,
+        type,
+        label: def?.label || type,
+        position,
+        data: {
+          ...data,
+          sourceNodeId: nodeSelectContext.sourceNodeId,
+          sourceHandle: nodeSelectContext.sourceHandle,
+        },
+      };
+      const newEdge: Workflow['edges'][0] = {
+        id: `e-${nodeSelectContext.sourceNodeId}-${id}`,
+        source: nodeSelectContext.sourceNodeId,
+        target: id,
+        sourceHandle: nodeSelectContext.sourceHandle || undefined,
+        targetHandle: undefined,
+      };
+
+      pushUndo('add connected node');
+      setWorkflow(current => current ? {
+        ...current,
+        nodes: [...current.nodes, newNode],
+        edges: [...current.edges, newEdge],
+      } : null);
+      setSelectedNodeId(id);
+      markDirty();
+      return;
+    }
+
+    const sourceNode = workflow.nodes.find(node => node.id === nodeSelectContext.sourceNodeId);
+    const targetNode = workflow.nodes.find(node => node.id === nodeSelectContext.targetNodeId);
+    if (!sourceNode || !targetNode) return;
+
+    const position = {
+      x: (sourceNode.position.x + targetNode.position.x) / 2,
+      y: (sourceNode.position.y + targetNode.position.y) / 2,
+    };
+    const newNode: Workflow['nodes'][0] = {
+      id,
+      type,
+      label: def?.label || type,
+      position,
+      data: {
+        ...data,
+        sourceNodeId: nodeSelectContext.sourceNodeId,
+        sourceHandle: nodeSelectContext.sourceHandle,
+      },
+    };
+    const firstEdge: Workflow['edges'][0] = {
+      id: `e-${nodeSelectContext.sourceNodeId}-${id}`,
+      source: nodeSelectContext.sourceNodeId,
+      target: id,
+      sourceHandle: nodeSelectContext.sourceHandle || undefined,
+      targetHandle: undefined,
+    };
+    const secondEdge: Workflow['edges'][0] = {
+      id: `e-${id}-${nodeSelectContext.targetNodeId}`,
+      source: id,
+      target: nodeSelectContext.targetNodeId,
+      sourceHandle: undefined,
+      targetHandle: undefined,
+    };
+
+    pushUndo('insert node');
+    setWorkflow(current => current ? {
+      ...current,
+      nodes: [...current.nodes, newNode],
+      edges: [
+        ...current.edges.filter(edge => edge.id !== nodeSelectContext.edgeId),
+        firstEdge,
+        secondEdge,
+      ],
+    } : null);
+    setSelectedNodeId(id);
+    markDirty();
+  }, [workflow, nodeSelectContext, pushUndo, markDirty]);
 
   const handleNodeDelete = useCallback((nodeId: string) => {
     if (!workflow) return;
@@ -754,6 +908,7 @@ function WorkflowEditorInner({
                 onNodesChange={handleNodesChange}
                 onEdgesChange={handleEdgesChange}
                 onConnect={handleConnect}
+                onConnectionDrop={handleConnectionDrop}
               />
             </div>
             <WorkflowExecutionBar
@@ -884,6 +1039,13 @@ function WorkflowEditorInner({
         onOpenChange={setPluginsDialogOpen}
         workflow={workflow}
         onWorkflowChange={handleWorkflowMetaChange}
+      />
+
+      <WorkflowNodeSelectDialog
+        open={nodeSelectOpen}
+        workflow={workflow}
+        onOpenChange={handleNodeSelectOpenChange}
+        onSelect={handleNodeSelectFromDialog}
       />
     </div>
   );
