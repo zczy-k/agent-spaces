@@ -201,11 +201,10 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
     <>
       <div
         ref={nodeRootRef}
-        className={`border-2 rounded-lg shadow-sm cursor-pointer transition-colors relative flex flex-col
+        className={`border-2 rounded-lg shadow-sm cursor-pointer transition-colors relative flex flex-col bg-background
           ${statusColor} ${selected ? 'ring-2 ring-primary' : ''}
           ${isLoopBody ? 'loop-body-node' : ''}`}
         style={{
-          backgroundColor: 'hsl(var(--background))',
           minWidth: nodeMinWidth,
           minHeight: nodeMinHeight,
         }}
