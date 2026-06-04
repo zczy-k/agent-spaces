@@ -22,6 +22,8 @@ type PluginManifest = Partial<Omit<PluginMeta, 'enabled' | 'tags' | 'hasView'>> 
   entries?: { workflow?: string };
 };
 
+type WorkflowNodeHandler = (ctx: any, args: Record<string, any>) => Promise<any>;
+
 type PluginState = {
   enabled: Record<string, boolean>;
   config: Record<string, Record<string, string>>;
@@ -130,6 +132,27 @@ function loadCommonJsWorkflowNodes(workflowPath: string): NodeTypeDefinition[] {
   return Array.isArray(payload?.nodes) ? payload.nodes : [];
 }
 
+function loadCommonJsWorkflowModule(workflowPath: string): { nodes: NodeTypeDefinition[]; handlers: Map<string, WorkflowNodeHandler> } {
+  const source = readFileSync(workflowPath, 'utf-8');
+  const module = { exports: {} as { nodes?: Array<NodeTypeDefinition & { handler?: WorkflowNodeHandler }> } };
+  const localRequire = createRequire(workflowPath);
+  const script = new vm.Script(`(function(require, module, exports, __filename, __dirname) {\n${source}\n})`, { filename: workflowPath });
+  const runner = script.runInNewContext({ console, Buffer, URL, URLSearchParams, setTimeout, clearTimeout });
+  runner(localRequire, module, module.exports, workflowPath, path.dirname(workflowPath));
+
+  const payload = module.exports;
+  const rawNodes = Array.isArray(payload) ? payload : Array.isArray(payload?.nodes) ? payload.nodes : [];
+  const handlers = new Map<string, WorkflowNodeHandler>();
+  const nodes = rawNodes.map((node) => {
+    const { handler, ...serializable } = node;
+    if (typeof handler === 'function' && typeof serializable.type === 'string') {
+      handlers.set(serializable.type, handler);
+    }
+    return serializable as NodeTypeDefinition;
+  });
+  return { nodes, handlers };
+}
+
 export function listPlugins(): PluginMeta[] {
   const root = pluginsDir();
   ensureDir(root);
@@ -202,20 +225,74 @@ export function savePluginConfig(pluginId: string, data: Record<string, string>)
   return { success: true };
 }
 
+function getWorkflowEntryPath(pluginId: string): string | null {
+  const manifest = getManifest(pluginId);
+  if (!manifest) return null;
+  const dir = resolvePluginDir(pluginId);
+  if (!dir) return null;
+  const workflowEntry = manifest.entries?.workflow || 'workflow.json';
+  const workflowPath = path.join(dir, workflowEntry);
+  return existsSync(workflowPath) ? workflowPath : null;
+}
+
 export function getWorkflowNodes(pluginId: string): NodeTypeDefinition[] {
   const manifest = getManifest(pluginId);
   if (!manifest) throw new Error('Plugin not found');
   if (Array.isArray(manifest.workflowNodes)) return manifest.workflowNodes;
 
-  const workflowEntry = manifest.entries?.workflow || 'workflow.json';
-  const dir = resolvePluginDir(pluginId);
-  if (!dir) throw new Error('Plugin not found');
-  const workflowPath = path.join(dir, workflowEntry);
-  if (!existsSync(workflowPath)) return [];
+  const workflowPath = getWorkflowEntryPath(pluginId);
+  if (!workflowPath) return [];
   if (workflowPath.endsWith('.js') || workflowPath.endsWith('.cjs')) {
     return loadCommonJsWorkflowNodes(workflowPath);
   }
   const payload = readJsonFile<{ nodes?: NodeTypeDefinition[] } | NodeTypeDefinition[]>(workflowPath);
   if (Array.isArray(payload)) return payload;
   return Array.isArray(payload?.nodes) ? payload.nodes : [];
+}
+
+function getExecutablePluginByNodeType(nodeType: string): { plugin: PluginMeta; handler: WorkflowNodeHandler } | null {
+  for (const plugin of listWorkflowPlugins()) {
+    if (!plugin.enabled) continue;
+    const workflowPath = getWorkflowEntryPath(plugin.id);
+    if (!workflowPath || (!workflowPath.endsWith('.js') && !workflowPath.endsWith('.cjs'))) continue;
+
+    try {
+      const { handlers } = loadCommonJsWorkflowModule(workflowPath);
+      const handler = handlers.get(nodeType);
+      if (handler) return { plugin, handler };
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+export function canExecuteWorkflowNode(nodeType: string): boolean {
+  return Boolean(getExecutablePluginByNodeType(nodeType));
+}
+
+export async function executeWorkflowNode(
+  nodeType: string,
+  args: Record<string, any>,
+  hooks: {
+    logger: {
+      info(message: string): void;
+      warning(message: string): void;
+      error(message: string): void;
+    };
+  },
+): Promise<any> {
+  const executable = getExecutablePluginByNodeType(nodeType);
+  if (!executable) throw new Error(`Plugin node is not enabled or has no executable handler: ${nodeType}`);
+
+  return executable.handler(
+    {
+      api: {},
+      nodeId: '',
+      nodeLabel: nodeType,
+      upstream: {},
+      logger: hooks.logger,
+    },
+    args,
+  );
 }

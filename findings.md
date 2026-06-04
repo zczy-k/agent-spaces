@@ -299,3 +299,10 @@
 - WorkFox 插件模板位于 `G:/programming/nodejs/work_fox/resources/plugins`，包含 16 个插件目录；其中多个插件带有 `node_modules`，作为模板资源复制时应排除依赖目录。
 - WorkFox 插件清单主要使用 `info.json`，部分 Web 插件使用 `web-plugin.json`；agent-spaces 后端原实现只读取 `plugin.json` / `manifest.json` / `package.json`。
 - 插件 `workflow.js` 多为 CommonJS，并可能在顶层 `require` 插件运行依赖；agent-spaces 只需要读取节点定义元数据时，应使用沙箱加载并 stub 外部依赖，避免缺少 `node_modules` 导致节点列表加载失败。
+## 2026-06-04 补充发现：Workflow 插件节点执行链路缺口
+
+- `workflow:debug-node` 对 `fish_audio_tts` 返回 `Unsupported node type` 的根因不在前端节点注册，而在服务端 `ExecutionManager.dispatchNode()` 默认分支没有调用插件 workflow handler。
+- 当前迁移版 `packages/server/src/services/plugin.ts` 之前只加载/返回插件节点定义，用于前端侧栏和属性面板；CommonJS `workflow.js` 中的 `handler` 没有进入服务端执行路径。
+- Fish Audio 插件的 `workflow.js` 可在 Node 端执行，依赖本地 `shared.js` 和 Node 内置模块，不需要 Electron main-process bridge。
+- 插件节点默认参数包含 `{{ __config__["workfox.fish-audio"]["apiKey"] }}` 等配置模板；执行器原变量解析不支持 `__config__`，即使接上 handler 也会把模板字符串当作真实参数。
+- Windows 环境中 `process.env.HOME` 为空，旧 `json-store.ts` 默认 data-dir 会落到 `~/.agent-spaces-data`，导致插件服务扫描不到实际的 `C:/Users/Administrator/.agent-spaces-data/plugins`。

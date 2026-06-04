@@ -32,6 +32,7 @@ import type {
 import { createErrorShape } from '@agent-spaces/shared';
 import type { InteractionManager } from './interaction-manager.js';
 import * as workflowStore from '../storage/workflow-store.js';
+import * as pluginService from './plugin.js';
 import { executeCommandNode } from './workflow-command-runner.js';
 
 interface ExecutionManagerDeps {
@@ -137,6 +138,7 @@ export class ExecutionManager {
     const session = this.createSession(
       executionId, workflow, ownerClientId, request.input || {}, snapshot, undefined, eventSink,
     );
+    session.context.__config__ = this.loadPluginConfigs(session);
 
     this.sessions.set(executionId, session);
     void this.run(session);
@@ -174,6 +176,7 @@ export class ExecutionManager {
     );
 
     try {
+      session.context.__config__ = this.loadPluginConfigs(session);
       session.status = 'running';
       await this.executeNode(session, targetNode);
       const step = [...session.steps].reverse().find(s => s.nodeId === targetNode.id);
@@ -605,6 +608,15 @@ export class ExecutionManager {
       case 'form':
         return this.executeFormDialog(session, node, resolvedData, appendLog);
       default:
+        if (pluginService.canExecuteWorkflowNode(node.type)) {
+          return pluginService.executeWorkflowNode(node.type, resolvedData, {
+            logger: {
+              info: (message) => appendLog('info', message),
+              warning: (message) => appendLog('warning', message),
+              error: (message) => appendLog('error', message),
+            },
+          });
+        }
         throw new Error(`Unsupported node type: ${node.type}`);
     }
   }
@@ -1083,6 +1095,46 @@ export class ExecutionManager {
     }
   }
 
+  private loadPluginConfigs(session: ExecutionSession): Record<string, Record<string, string>> {
+    const pluginIds = this.getReferencedPluginIds(session);
+    const schemes = session.workflow.pluginConfigSchemes || {};
+    const config: Record<string, Record<string, string>> = {};
+
+    for (const pluginId of pluginIds) {
+      try {
+        const schemeName = schemes[pluginId];
+        config[pluginId] = schemeName
+          ? workflowStore.readPluginScheme(session.workflow.id, pluginId, schemeName)
+          : pluginService.getPluginConfig(pluginId);
+      } catch {
+        config[pluginId] = pluginService.getPluginConfig(pluginId);
+      }
+    }
+
+    return config;
+  }
+
+  private getReferencedPluginIds(session: ExecutionSession): string[] {
+    const pluginIds = new Set(session.workflow.enabledPlugins || []);
+    const collect = (value: any) => {
+      if (typeof value === 'string') {
+        const matches = value.matchAll(/__config__\[(["'])([^"']+)\1\]/g);
+        for (const match of matches) pluginIds.add(match[2]);
+        return;
+      }
+      if (Array.isArray(value)) {
+        value.forEach(collect);
+        return;
+      }
+      if (value && typeof value === 'object') {
+        Object.values(value).forEach(collect);
+      }
+    };
+
+    session.nodes.forEach(node => collect(node.data));
+    return [...pluginIds];
+  }
+
   // ---- Private: Variable resolution ----
 
   private resolveContextVariables(session: ExecutionSession, data: Record<string, any>): Record<string, any> {
@@ -1130,6 +1182,20 @@ export class ExecutionManager {
       return '';
     }
 
+    const configMatch = value.match(/^\s*\{\{\s*__config__\[(["'])([^"']+)\1\]\[(["'])([^"']+)\3\](?:\.(\w+(?:\.\w+)*))?\s*\}\}\s*$/);
+    if (configMatch) {
+      const pluginConfig = session.context.__config__?.[configMatch[2]];
+      if (pluginConfig != null) {
+        let raw: any = pluginConfig[configMatch[4]];
+        if (configMatch[5] && typeof raw === 'string') {
+          try { raw = JSON.parse(raw); } catch { /* keep raw string */ }
+        }
+        const result = configMatch[5] ? getNestedValue(raw, configMatch[5]) : raw;
+        if (result !== undefined) return result;
+      }
+      return '';
+    }
+
     const ctxMatch = value.match(/^\s*\{\{\s*context\.([^}]+?)\s*\}\}\s*$/);
     if (ctxMatch) return getNestedValue(session.context, ctxMatch[1]) ?? '';
 
@@ -1145,6 +1211,18 @@ export class ExecutionManager {
         const d = this.getNodeExecutionInput(session, nid);
         return d == null ? '' : String(getNestedValue(d, fp) ?? '');
       })
+      .replace(
+        /\{\{\s*__config__\[(["'])([^"']+)\1\]\[(["'])([^"']+)\3\](?:\.(\w+(?:\.\w+)*))?\s*\}\}/g,
+        (_m, _pq, pluginId, _kq, key, dotPath) => {
+          const pluginConfig = session.context.__config__?.[pluginId];
+          if (pluginConfig == null) return '';
+          let raw: any = pluginConfig[key];
+          if (dotPath && typeof raw === 'string') {
+            try { raw = JSON.parse(raw); } catch { /* keep raw string */ }
+          }
+          return String((dotPath ? getNestedValue(raw, dotPath) : raw) ?? '');
+        },
+      )
       .replace(/\{\{\s*context\.([^}]+?)\s*\}\}/g, (_m, p) => String(getNestedValue(session.context, p) ?? ''));
 
     return text;

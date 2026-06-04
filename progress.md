@@ -468,3 +468,27 @@
 - Verification:
   - `pnpm --filter @agent-spaces/web build` passed.
   - Web build still prints the existing `ENVIRONMENT_FALLBACK` static generation warning, but exits successfully.
+## 2026-06-04 Workflow 插件节点执行修复
+
+- Status: complete
+- Trigger:
+  - 用户执行 `workflow:debug-node` 调试 Fish Audio TTS 节点，返回 `Unsupported node type: fish_audio_tts`。
+- Actions taken:
+  - 阅读现有计划文件，恢复 WorkFox Workflow 迁移上下文。
+  - 定位服务端 `packages/server/src/services/execution-manager.ts` 默认分支直接抛出 unsupported，未调用插件 handler。
+  - 对比 WorkFox `backend/workflow/execution-manager.ts` 和 `backend/plugins/plugin-registry.ts`，确认原实现会调用 `pluginRegistry.executeWorkflowNode()`。
+  - 扩展 `packages/server/src/services/plugin.ts`：加载 CommonJS `workflow.js` 时保留 handler，新增 `canExecuteWorkflowNode()` 与 `executeWorkflowNode()`。
+  - 扩展 `ExecutionManager`：执行/调试会话加载插件配置，默认分支尝试执行可用插件节点。
+  - 补齐 `__config__` 模板变量解析，支持插件配置占位符转成实际值。
+  - 修复 `packages/server/src/storage/json-store.ts` 的 Windows 默认 data-dir，避免 `HOME` 为空时插件目录解析错误。
+- Files modified:
+  - packages/server/src/services/plugin.ts
+  - packages/server/src/services/execution-manager.ts
+  - packages/server/src/storage/json-store.ts
+  - task_plan.md
+  - findings.md
+  - progress.md
+- Verification:
+  - `pnpm --filter @agent-spaces/server build` passed.
+  - 构建产物插件服务返回 `workfox.fish-audio` enabled，`canExecuteWorkflowNode('fish_audio_tts') === true`，`canExecuteWorkflowNode('fish_audio_stt') === true`。
+  - 空 API Key 本地调用 `executeWorkflowNode('fish_audio_tts', ...)` 进入 Fish Audio handler，并返回“缺少 apiKey”，确认不再走 unsupported 分支且未发起外部 TTS 请求。

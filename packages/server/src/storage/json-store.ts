@@ -1,7 +1,8 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync } from 'node:fs';
 import { join, dirname } from 'node:path';
+import { homedir } from 'node:os';
 
-const DEFAULT_DATA_DIR = join(process.env.HOME || '~', '.agent-spaces-data');
+const DEFAULT_DATA_DIR = join(process.env.HOME || process.env.USERPROFILE || homedir(), '.agent-spaces-data');
 
 export function getDataDir(): string {
   return process.env.AGENT_SPACES_DATA_DIR || DEFAULT_DATA_DIR;

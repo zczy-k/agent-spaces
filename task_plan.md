@@ -316,3 +316,12 @@ Phase 6 补充 — 插件对话框与添加插件到 Workflow ✅（完成，202
 - [x] 在 Workflow 插件对话框增加“插件商店”视图/入口，并接入模板插件展示或安装流程
 - [x] 验证 `pnpm --filter @agent-spaces/web build`
 - **Status:** complete
+### Phase 14: Workflow 插件节点执行修复（2026-06-04）
+- [x] 定位 `workflow:debug-node` 返回 `Unsupported node type: fish_audio_tts` 的原因：服务端执行器只加载了插件节点元数据，未接入插件 workflow handler 执行。
+- [x] 为服务端插件服务补齐 CommonJS workflow handler 加载与 `canExecuteWorkflowNode` / `executeWorkflowNode` API。
+- [x] 在 `ExecutionManager` 的执行和单节点调试会话中注入插件配置上下文 `__config__`。
+- [x] 在变量解析中补齐 `{{ __config__["plugin.id"]["key"] }}` 全量匹配与行内替换。
+- [x] 修复 Windows 默认 data-dir：`HOME` 未设置时使用 `USERPROFILE` / `os.homedir()`，避免插件目录解析到错误的 `~/.agent-spaces-data`。
+- [x] 验证 `pnpm --filter @agent-spaces/server build` 通过。
+- [x] 验证构建产物可识别 `fish_audio_tts` / `fish_audio_stt` 为可执行插件节点。
+- **Status:** complete
