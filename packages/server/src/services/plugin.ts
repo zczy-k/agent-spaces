@@ -1,7 +1,12 @@
 import type { NodeTypeDefinition, PluginConfigField, PluginMeta } from '@agent-spaces/shared';
 import { ensureDir, getDataDir, readJsonFile, writeJsonFile } from '../storage/json-store.js';
-import { existsSync, readdirSync } from 'node:fs';
+import { cpSync, existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
+import { createRequire } from 'node:module';
+import { builtinModules } from 'node:module';
+import vm from 'node:vm';
+
+const require = createRequire(import.meta.url);
 
 type PluginManifest = Partial<Omit<PluginMeta, 'enabled' | 'tags' | 'hasView'>> & {
   id?: string;
@@ -23,6 +28,15 @@ type PluginState = {
 };
 
 const STATE_FILE = () => path.join(pluginsDir(), 'state.json');
+
+function templatesPluginsDir(): string {
+  const candidates = [
+    path.resolve(process.cwd(), 'packages/templates/plugins'),
+    path.resolve(process.cwd(), '../templates/plugins'),
+    path.resolve(process.cwd(), 'templates/plugins'),
+  ];
+  return candidates.find(candidate => existsSync(candidate)) || candidates[0];
+}
 
 function pluginsDir(): string {
   return path.join(getDataDir(), 'plugins');
@@ -56,7 +70,7 @@ function writeState(state: PluginState): void {
 }
 
 function readManifestFromDir(dir: string): PluginManifest | null {
-  const candidates = ['plugin.json', 'manifest.json', 'package.json'];
+  const candidates = ['plugin.json', 'manifest.json', 'info.json', 'web-plugin.json', 'package.json'];
   for (const filename of candidates) {
     const manifest = readJsonFile<PluginManifest>(path.join(dir, filename));
     if (manifest?.id || manifest?.name) return manifest;
@@ -87,6 +101,35 @@ function getManifest(pluginId: string): PluginManifest | null {
   return dir ? readManifestFromDir(dir) : null;
 }
 
+function createRequireStub(): object {
+  const target = () => createRequireStub();
+  return new Proxy(target, {
+    get: (_target, prop) => {
+      if (prop === 'then') return undefined;
+      if (prop === Symbol.toPrimitive) return () => '';
+      return createRequireStub();
+    },
+    apply: () => createRequireStub(),
+    construct: () => createRequireStub(),
+  });
+}
+
+function loadCommonJsWorkflowNodes(workflowPath: string): NodeTypeDefinition[] {
+  const source = readFileSync(workflowPath, 'utf-8');
+  const module = { exports: {} as { nodes?: NodeTypeDefinition[] } | NodeTypeDefinition[] };
+  const localRequire = (request: string) => {
+    const normalized = request.replace(/^node:/, '');
+    if (builtinModules.includes(normalized)) return require(request);
+    return createRequireStub();
+  };
+  const script = new vm.Script(`(function(require, module, exports, __filename, __dirname) {\n${source}\n})`, { filename: workflowPath });
+  const runner = script.runInNewContext({ console, Buffer, URL, URLSearchParams, setTimeout, clearTimeout });
+  runner(localRequire, module, module.exports, workflowPath, path.dirname(workflowPath));
+  const payload = module.exports;
+  if (Array.isArray(payload)) return payload;
+  return Array.isArray(payload?.nodes) ? payload.nodes : [];
+}
+
 export function listPlugins(): PluginMeta[] {
   const root = pluginsDir();
   ensureDir(root);
@@ -111,6 +154,35 @@ export function setPluginEnabled(pluginId: string, enabled: boolean): PluginMeta
   const plugin = listPlugins().find(item => item.id === pluginId);
   if (!plugin) throw new Error('Plugin not found');
   return plugin;
+}
+
+function findTemplatePluginDir(pluginId: string): string | null {
+  const root = templatesPluginsDir();
+  if (!existsSync(root)) return null;
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const dir = path.join(root, entry.name);
+    const manifest = readManifestFromDir(dir);
+    if ((manifest?.id || entry.name) === pluginId) return dir;
+  }
+  return null;
+}
+
+export function installTemplatePlugin(pluginId: string): PluginMeta {
+  const sourceDir = findTemplatePluginDir(pluginId);
+  if (!sourceDir) throw new Error('Template plugin not found');
+
+  const manifest = readManifestFromDir(sourceDir);
+  const id = String(manifest?.id || path.basename(sourceDir));
+  const targetDir = path.join(pluginsDir(), path.basename(sourceDir));
+  ensureDir(pluginsDir());
+  if (!existsSync(targetDir)) {
+    cpSync(sourceDir, targetDir, {
+      recursive: true,
+      filter: (src) => !src.split(path.sep).includes('node_modules'),
+    });
+  }
+  return setPluginEnabled(id, true);
 }
 
 export function getPluginConfig(pluginId: string): Record<string, string> {
@@ -140,6 +212,9 @@ export function getWorkflowNodes(pluginId: string): NodeTypeDefinition[] {
   if (!dir) throw new Error('Plugin not found');
   const workflowPath = path.join(dir, workflowEntry);
   if (!existsSync(workflowPath)) return [];
+  if (workflowPath.endsWith('.js') || workflowPath.endsWith('.cjs')) {
+    return loadCommonJsWorkflowNodes(workflowPath);
+  }
   const payload = readJsonFile<{ nodes?: NodeTypeDefinition[] } | NodeTypeDefinition[]>(workflowPath);
   if (Array.isArray(payload)) return payload;
   return Array.isArray(payload?.nodes) ? payload.nodes : [];

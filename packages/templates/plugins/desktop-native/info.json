@@ -1,0 +1,15 @@
+{
+  "id": "workfox.desktop-native",
+  "name": "桌面原生",
+  "version": "1.0.0",
+  "description": "提供剪贴板读写、系统通知等桌面原生能力",
+  "author": { "name": "workfox" },
+  "tags": ["剪贴板", "通知", "桌面"],
+  "type": "client",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "main": "main.js",
+    "workflow": "workflow.js"
+  }
+}

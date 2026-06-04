@@ -20,6 +20,14 @@ router.get('/workflow', (_req: Request, res: Response) => {
   }
 });
 
+router.post('/store/:pluginId/install', (req: Request<{ pluginId: string }>, res: Response) => {
+  try {
+    res.json(pluginService.installTemplatePlugin(req.params.pluginId));
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 router.post('/:pluginId/enable', (req: Request<{ pluginId: string }>, res: Response) => {
   try {
     res.json(pluginService.setPluginEnabled(req.params.pluginId, true));

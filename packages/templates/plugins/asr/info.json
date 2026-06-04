@@ -1,0 +1,35 @@
+{
+  "id": "workfox.asr",
+  "name": "语音识别ASR",
+  "version": "1.0.0",
+  "description": "阿里云百炼语音识别(ASR)，支持 FunASR/Paraformer 录音文件转写与千问 Qwen-ASR 实时/文件语音识别",
+  "author": { "name": "workfox" },
+  "tags": ["AI", "语音识别", "ASR", "阿里云", "Paraformer", "千问"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "server": "main.js",
+    "workflow": "workflow.js",
+    "tools": "tools.js"
+  },
+  "config": [
+    {
+      "key": "apiKey",
+      "label": "API Key",
+      "desc": "阿里云百炼 DashScope API Key（北京地域）",
+      "type": "string",
+      "value": "",
+      "placeholder": "sk-xxx",
+      "required": true
+    },
+    {
+      "key": "baseUrl",
+      "label": "API 地址",
+      "desc": "DashScope API 基础地址（中国内地）",
+      "type": "string",
+      "value": "https://dashscope.aliyuncs.com",
+      "placeholder": "https://dashscope.aliyuncs.com"
+    }
+  ]
+}

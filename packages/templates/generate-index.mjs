@@ -117,9 +117,55 @@ function scanAgentStore() {
   writeFileSync(join(dir, 'index.json'), JSON.stringify(index, null, 2), 'utf-8');
   console.log(`[agents] ${index.length} agents`);
 }
+
+function scanPluginStore() {
+  const dir = join(agentsDir, 'plugins');
+  if (!existsSync(dir)) return;
+  const remoteIndexPath = join(dir, 'plugins.json');
+  const remoteItems = existsSync(remoteIndexPath)
+    ? JSON.parse(readFileSync(remoteIndexPath, 'utf-8'))
+    : [];
+  const remoteByDir = new Map(
+    (Array.isArray(remoteItems) ? remoteItems : [])
+      .filter(item => item && typeof item === 'object')
+      .map(item => {
+        const manifestPath = typeof item.manifestUrl === 'string' ? item.manifestUrl.split('/')[0] : '';
+        const downloadPath = typeof item.downloadUrl === 'string' ? item.downloadUrl.replace(/\.zip$/i, '') : '';
+        return [manifestPath || downloadPath || item.id, item];
+      }),
+  );
+  const index = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const pluginDir = join(dir, entry.name);
+    const manifestFile = ['plugin.json', 'manifest.json', 'info.json', 'web-plugin.json', 'package.json']
+      .find(filename => existsSync(join(pluginDir, filename)));
+    const localManifest = manifestFile ? JSON.parse(readFileSync(join(pluginDir, manifestFile), 'utf-8')) : {};
+    const remoteManifest = remoteByDir.get(entry.name) || {};
+    const data = { ...remoteManifest, ...localManifest };
+    const id = data.id || entry.name;
+    index.push({
+      id,
+      name: data.name || id,
+      version: data.version || '0.0.0',
+      description: data.description || '',
+      author: data.author || { name: 'Unknown' },
+      tags: Array.isArray(data.tags) ? data.tags : [],
+      type: data.type,
+      hasView: Boolean(data.hasView),
+      hasWorkflow: Boolean(data.hasWorkflow || data.workflowNodes || data.entries?.workflow),
+      path: entry.name,
+      iconUrl: data.iconUrl || data.iconPath,
+    });
+  }
+  writeFileSync(join(dir, 'index.json'), JSON.stringify(index, null, 2), 'utf-8');
+  console.log(`[plugins] ${index.length} plugins`);
+}
+
 scanAgentStore();
 
 scanMcpStore();
+scanPluginStore();
 
 scanPromptStore();
 scanOutputStyleStore();

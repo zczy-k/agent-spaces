@@ -1,0 +1,319 @@
+[
+  {
+    "id": "workfox.aliyun-ai",
+    "name": "阿里云百炼AI",
+    "version": "1.0.0",
+    "description": "阿里云百炼AI图片与视频生成，支持千问文生图/图像编辑、万相文生图/图生视频/文生视频/视频编辑/参考生视频/首尾帧生视频/图生动作、可灵生图、图像扩图、声动人像",
+    "author": {
+      "name": "workfox"
+    },
+    "tags": [
+      "AI",
+      "图片生成",
+      "图片编辑",
+      "视频生成",
+      "视频编辑",
+      "阿里云",
+      "百炼",
+      "千问",
+      "万相",
+      "可灵",
+      "扩图",
+      "声动人像"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "aliyun-ai"
+  },
+  {
+    "id": "workfox.aliyun-oss",
+    "name": "阿里云OSS",
+    "version": "1.0.0",
+    "description": "阿里云OSS文件存储，支持上传、下载、删除、列举、签名URL等操作",
+    "author": {
+      "name": "workfox"
+    },
+    "tags": [
+      "云存储",
+      "OSS",
+      "阿里云"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "aliyun_oss"
+  },
+  {
+    "id": "workfox.asr",
+    "name": "语音识别ASR",
+    "version": "1.0.0",
+    "description": "阿里云百炼语音识别(ASR)，支持 FunASR/Paraformer 录音文件转写与千问 Qwen-ASR 实时/文件语音识别",
+    "author": {
+      "name": "workfox"
+    },
+    "tags": [
+      "AI",
+      "语音识别",
+      "ASR",
+      "阿里云",
+      "Paraformer",
+      "千问"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "asr"
+  },
+  {
+    "id": "workfox.desktop-native",
+    "name": "桌面原生",
+    "version": "1.0.0",
+    "description": "提供剪贴板读写、系统通知等桌面原生能力",
+    "author": {
+      "name": "workfox"
+    },
+    "tags": [
+      "剪贴板",
+      "通知",
+      "桌面"
+    ],
+    "type": "client",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "desktop-native"
+  },
+  {
+    "id": "workfox.epub-parser",
+    "name": "EPUB解析器",
+    "version": "1.0.0",
+    "description": "解析EPUB电子书文件，提取书籍信息、目录、章节内容",
+    "author": {
+      "name": "workfox"
+    },
+    "tags": [
+      "文件处理",
+      "电子书",
+      "EPUB"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "epub-parser"
+  },
+  {
+    "id": "workfox.fetch",
+    "name": "网络请求",
+    "version": "1.0.0",
+    "description": "提供网页内容捕获、网络文件下载等操作节点",
+    "author": {
+      "name": "workfox"
+    },
+    "tags": [
+      "网络",
+      "请求",
+      "抓取",
+      "下载"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "fetch"
+  },
+  {
+    "id": "workfox.ffmpeg",
+    "name": "FFmpeg音视频处理",
+    "version": "1.0.0",
+    "description": "基于FFmpeg的音视频处理，支持格式转换、音视频合并、音视频分离",
+    "author": {
+      "name": "workfox"
+    },
+    "tags": [
+      "FFmpeg",
+      "音视频",
+      "格式转换"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "ffmpeg"
+  },
+  {
+    "id": "workfox.file-system",
+    "name": "文件系统",
+    "version": "1.0.0",
+    "description": "提供文件读写、编辑、枚举、删除及目录管理等操作节点",
+    "author": {
+      "name": "workfox"
+    },
+    "tags": [
+      "文件",
+      "目录",
+      "文件系统"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "file-system"
+  },
+  {
+    "id": "workfox.fish-audio",
+    "name": "FishAudio 语音合成",
+    "version": "1.0.0",
+    "description": "FishAudio 语音合成与语音识别，支持 TTS 文字转语音、STT 语音转文字",
+    "author": {
+      "name": "workfox"
+    },
+    "tags": [
+      "AI",
+      "语音合成",
+      "TTS",
+      "语音识别",
+      "STT",
+      "FishAudio"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "fish-audio"
+  },
+  {
+    "id": "workfox.jimeng",
+    "name": "即梦AI生图",
+    "version": "1.0.0",
+    "description": "即梦AI图片/视频生成，支持文生图、图生图、文生视频",
+    "author": {
+      "name": "workfox"
+    },
+    "tags": [
+      "AI",
+      "图片生成",
+      "视频生成",
+      "即梦"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "jimeng"
+  },
+  {
+    "id": "workfox.mail",
+    "name": "邮件发送",
+    "version": "1.0.0",
+    "description": "通过 SMTP 发送邮件，支持 HTML/纯文本、附件、抄送/密送",
+    "author": {
+      "name": "workfox"
+    },
+    "tags": [
+      "邮件",
+      "SMTP",
+      "通知"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "mail"
+  },
+  {
+    "id": "workfox.minimax",
+    "name": "MiniMax AI",
+    "version": "1.0.0",
+    "description": "MiniMax AI 多模态生成，支持文本合成(M2.x大模型)、角色对话(M2-her)、语音合成(TTS)、音乐生成、视频生成(文生/图生/首尾帧/主体参考)、歌词生成",
+    "author": {
+      "name": "workfox"
+    },
+    "tags": [
+      "AI",
+      "文本合成",
+      "角色对话",
+      "语音合成",
+      "音乐生成",
+      "视频生成",
+      "MiniMax",
+      "海螺AI"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "minimax"
+  },
+  {
+    "id": "workfox.openai",
+    "name": "OpenAI",
+    "version": "2.0.0",
+    "description": "OpenAI 集成插件，支持文生图、图片编辑、Chat Completions、Embeddings、Audio TTS/STT",
+    "author": {
+      "name": "workfox"
+    },
+    "tags": [
+      "AI",
+      "图片生成",
+      "OpenAI",
+      "GPT",
+      "Chat",
+      "Embeddings",
+      "TTS",
+      "STT"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "openai"
+  },
+  {
+    "id": "workfox.tencent-cos",
+    "name": "腾讯云COS",
+    "version": "1.0.0",
+    "description": "腾讯云COS对象存储，支持上传、下载、删除、列举、签名URL等操作",
+    "author": {
+      "name": "workfox"
+    },
+    "tags": [
+      "云存储",
+      "COS",
+      "腾讯云"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "tencent_cos"
+  },
+  {
+    "id": "workfox.test-plugin",
+    "name": "Test Plugin",
+    "version": "1.0.0",
+    "description": "workfox Web client 插件示例，通过 CDN 加载 runtime 与 view",
+    "author": {
+      "name": "workfox"
+    },
+    "tags": [
+      "测试",
+      "开发",
+      "Web"
+    ],
+    "type": "client",
+    "hasView": true,
+    "hasWorkflow": false,
+    "path": "test-plugin",
+    "iconUrl": "https://raw.githubusercontent.com/hunmer/work-fox/refs/heads/master/plugins/test-plugin/icon.png"
+  },
+  {
+    "id": "workfox.window-manager",
+    "name": "窗口管理",
+    "version": "1.0.0",
+    "description": "提供独立浏览器窗口的创建、导航、关闭、截图等操作节点",
+    "author": {
+      "name": "workfox"
+    },
+    "tags": [
+      "窗口",
+      "浏览器",
+      "管理"
+    ],
+    "type": "client",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "window-manager",
+    "iconUrl": "window-manager/icon.png"
+  }
+]

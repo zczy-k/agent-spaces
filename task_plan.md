@@ -309,3 +309,10 @@ Phase 6 补充 — 插件对话框与添加插件到 Workflow ✅（完成，202
 - [x] 复用同一对话框补齐边上插入节点入口
 - [ ] 验证 `pnpm --filter @agent-spaces/web build`
 - **Status:** in_progress
+
+### Phase 13: Workflow 插件商店补齐（2026-06-04）
+- [ ] 阅读 `docs/agent-store.md`、React `workflow-plugins-dialog.tsx`、旧 WorkFox `PluginsDialog.vue`
+- [ ] 复制 `G:/programming/nodejs/work_fox/resources/plugins` 到 `packages/templates/plugins`
+- [ ] 在 Workflow 插件对话框增加“插件商店”视图/入口，并接入模板插件展示或安装流程
+- [ ] 验证 `pnpm --filter @agent-spaces/web build`
+- **Status:** in_progress

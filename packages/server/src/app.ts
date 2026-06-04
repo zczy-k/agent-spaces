@@ -95,8 +95,8 @@ app.use('/api', authMiddleware);
 const publicDir = resolveRuntimeDir('public');
 app.use('/public', express.static(publicDir));
 
-// Serve agents store from packages/agents/
-const agentsDir = resolveRuntimeDir('../agents');
+// Serve template store resources from packages/templates/
+const agentsDir = resolveRuntimeDir('../templates');
 app.use('/agents-store', express.static(agentsDir));
 
 app.get('/api/health', (_req, res) => {

@@ -401,3 +401,29 @@
   - task_plan.md
   - findings.md
   - progress.md
+
+## 2026-06-04 Phase 13 Workflow 插件商店补齐
+
+- Status: in_progress
+- Actions taken:
+  - 读取 `docs/agent-store.md`、React `workflow-plugins-dialog.tsx`、WorkFox `PluginsDialog.vue`、插件 API/服务端实现。
+  - 将 `G:/programming/nodejs/work_fox/resources/plugins` 复制到 `packages/templates/plugins`，排除 `node_modules` 和 zip 包，保留源码、清单、`package.json/package-lock.json`。
+  - 扩展 `packages/templates/generate-index.mjs`，新增 `plugins/index.json` 自动生成。
+  - 执行 `pnpm --filter @agent-spaces/agents generate-index`，生成 16 个插件索引。
+  - 后端插件服务新增 `info.json` / `web-plugin.json` 识别、模板插件安装接口、CommonJS `workflow.js` 沙箱元数据加载。
+  - 前端 `WorkflowPluginsDialog` 新增“本地 / 插件商店”模式，支持商店插件搜索、标签过滤、安装并添加到当前 Workflow。
+  - 将资源商店默认路径和服务端静态挂载从旧 `packages/agents` 修正为当前 `packages/templates`。
+- Files modified:
+  - packages/templates/plugins/**
+  - packages/templates/generate-index.mjs
+  - packages/server/src/services/plugin.ts
+  - packages/server/src/routes/plugin.ts
+  - packages/server/src/app.ts
+  - packages/web/src/lib/workflow-plugin-api.ts
+  - packages/web/src/lib/agent-store.ts
+  - packages/web/src/components/sidebar/settings/agent-store-tab.tsx
+  - packages/web/src/components/workflow/workflow-plugins-dialog.tsx
+  - docs/agent-store.md
+  - task_plan.md
+  - findings.md
+  - progress.md

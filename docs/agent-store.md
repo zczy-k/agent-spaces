@@ -1,11 +1,11 @@
 # Agent Store
 
-`packages/agents` 是 Agent Spaces 的**资源商店**，存放输出风格、Prompt 模板、技能、工作流模板等可复用资源。前端通过统一的 `fetchStoreIndex` 工具函数加载，支持本地和远程两种数据源。
+`packages/templates` 是 Agent Spaces 的**资源商店**，存放输出风格、Prompt 模板、技能、工作流模板、插件等可复用资源。前端通过统一的 `fetchStoreIndex` 工具函数加载，支持本地和远程两种数据源。
 
 ## 目录结构
 
 ```
-packages/agents/
+packages/templates/
   package.json              # @agent-spaces/agents，含 generate-index 和 serve 脚本
   generate-index.mjs        # 扫描各子目录，生成 index.json 索引文件
   output-styles/            # 输出风格模板（.md）
@@ -25,6 +25,11 @@ packages/agents/
   workflows/                # 工作流模板（.json）
     index.json
     code-writing.json
+  plugins/                  # Workflow 插件模板（按插件目录组织）
+    index.json
+    fetch/
+    openai/
+    ...
 ```
 
 ## 前端加载链路
@@ -39,7 +44,7 @@ fetchStoreIndex(path)  ← lib/agent-store.ts
 返回 JSON 数据（索引或具体资源文件）
 ```
 
-前端涉及四个消费方：
+前端涉及五个消费方：
 
 | 组件 | 加载的索引 | 用途 |
 |------|-----------|------|
@@ -47,13 +52,14 @@ fetchStoreIndex(path)  ← lib/agent-store.ts
 | `prompts-dialog.tsx` | `prompt/index.json` | Prompt 模板商店列表 |
 | `use-skills-data.ts` | `skills/index.json` | 技能商店列表 |
 | `workflow-templates-dialog.tsx` | `workflows/index.json` → 具体 `.json` | 工作流模板导入 |
+| `workflow-plugins-dialog.tsx` | `plugins/index.json` | Workflow 插件商店安装 |
 
 ## 后端静态服务
 
-`packages/server/src/app.ts` 将 `packages/agents` 目录挂载为 `/agents-store` 静态路径：
+`packages/server/src/app.ts` 将 `packages/templates` 目录挂载为 `/agents-store` 静态路径：
 
 ```ts
-const agentsDir = resolveRuntimeDir('../agents');
+const agentsDir = resolveRuntimeDir('../templates');
 app.use('/agents-store', express.static(agentsDir));
 ```
 
@@ -68,7 +74,7 @@ pnpm --filter @agent-spaces/agents serve
 
 ### 1. 输出风格
 
-在 `packages/agents/output-styles/` 下新建 `.md` 文件：
+在 `packages/templates/output-styles/` 下新建 `.md` 文件：
 
 ```markdown
 # 风格名称
@@ -78,7 +84,7 @@ pnpm --filter @agent-spaces/agents serve
 
 ### 2. Prompt 模板
 
-在 `packages/agents/prompt/` 下新建 `.md` 文件：
+在 `packages/templates/prompt/` 下新建 `.md` 文件：
 
 ```markdown
 # 模板名称
@@ -88,7 +94,7 @@ pnpm --filter @agent-spaces/agents serve
 
 ### 3. 技能
 
-在 `packages/agents/skills/{group}/{skill-name}/` 下新建 `SKILL.md`：
+在 `packages/templates/skills/{group}/{skill-name}/` 下新建 `SKILL.md`：
 
 ```markdown
 ---
@@ -100,7 +106,7 @@ name: 技能显示名称
 
 ### 4. 工作流模板
 
-在 `packages/agents/workflows/` 下新建 `.json` 文件：
+在 `packages/templates/workflows/` 下新建 `.json` 文件：
 
 ```json
 {
@@ -117,7 +123,24 @@ name: 技能显示名称
 }
 ```
 
-### 5. 重新生成索引
+### 5. 插件
+
+在 `packages/templates/plugins/{plugin-dir}/` 下放置插件目录，推荐包含 `info.json` 或 `plugin.json`：
+
+```json
+{
+  "id": "my.workflow.plugin",
+  "name": "我的 Workflow 插件",
+  "version": "1.0.0",
+  "description": "插件描述",
+  "hasWorkflow": true,
+  "entries": {
+    "workflow": "workflow.js"
+  }
+}
+```
+
+### 6. 重新生成索引
 
 ```bash
 pnpm --filter @agent-spaces/agents generate-index

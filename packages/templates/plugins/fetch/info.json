@@ -1,0 +1,31 @@
+{
+  "id": "workfox.fetch",
+  "name": "网络请求",
+  "version": "1.0.0",
+  "description": "提供网页内容捕获、网络文件下载等操作节点",
+  "author": { "name": "workfox" },
+  "tags": ["网络", "请求", "抓取", "下载"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "server": "main.js",
+    "workflow": "workflow.js"
+  },
+  "config": [
+    {
+      "key": "defaultTimeout",
+      "label": "默认超时(ms)",
+      "desc": "请求的默认超时时间",
+      "type": "number",
+      "value": "30000"
+    },
+    {
+      "key": "userAgent",
+      "label": "User-Agent",
+      "desc": "默认请求头 User-Agent",
+      "type": "string",
+      "value": "WorkFox/1.0"
+    }
+  ]
+}

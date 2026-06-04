@@ -1,14 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { ReactFlowProvider, applyNodeChanges, applyEdgeChanges, addEdge } from '@xyflow/react';
-import type { NodeChange, EdgeChange, Connection } from '@xyflow/react';
-import type { ExecutionLog, InteractionRequest, Workflow, WorkflowTemplate } from '@agent-spaces/shared';
-import { useWorkflowStore } from '@/stores/workflow';
-import { executionLogApi, workflowApi } from '@/lib/workflow-api';
-import { getNodeDefinition } from '@/lib/workflow-nodes';
-import { authHeaders } from '@/lib/auth';
-import { getWS } from '@/lib/ws';
+import { ReactFlowProvider } from '@xyflow/react';
+import type { WorkflowTemplate } from '@agent-spaces/shared';
 import { WorkflowCanvas } from './workflow-canvas';
 import { WorkflowNodeSidebar } from './workflow-node-sidebar';
 import { WorkflowEditorToolbar } from './workflow-editor-toolbar';
@@ -18,52 +11,18 @@ import { WorkflowVersionPanel } from './workflow-version-panel';
 import { WorkflowOperationHistory } from './workflow-operation-history';
 import { WorkflowStagingPanel } from './workflow-staging-panel';
 import { WorkflowTriggerDialog } from './workflow-trigger-dialog';
-import { WorkflowVariablePicker } from './workflow-variable-picker';
-import { WorkflowCanvasContextMenu } from './workflow-canvas-context-menu';
-import { WorkflowGroupOverlay, useGroupManagement } from './workflow-group-node';
-import { WorkflowLoopBodyOverlay, useLoopBodyBounds } from './workflow-loop-body-container';
 import { WorkflowEmbeddedEditor } from './workflow-embedded-editor';
 import { WorkflowInteractionDialog } from './workflow-interaction-dialog';
 import { WorkflowPluginsDialog } from './workflow-plugins-dialog';
 import { WorkflowNodeSelectDialog } from './workflow-node-select-dialog';
-import { ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
-import { ResizablePanelGroup } from '@/components/ui/resizable';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ResizablePanel, ResizableHandle, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, AlertCircle } from 'lucide-react';
-import {
-  useEditorShortcuts, useClipboard, useExecutionPanel,
-} from '@/hooks/use-workflow-editor';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from '@/components/ui/dialog';
+import { useEditorShortcuts, useClipboard, useExecutionPanel } from '@/hooks/use-workflow-editor';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-
-type DebugResult = {
-  status?: 'completed' | 'error';
-  output?: unknown;
-  error?: string;
-  duration?: number;
-};
-
-type NodeSelectContext =
-  | {
-    mode: 'connection-drop';
-    sourceNodeId: string;
-    sourceHandle: string | null;
-    position: { x: number; y: number } | null;
-  }
-  | {
-    mode: 'edge-insert';
-    edgeId: string | null;
-    sourceNodeId: string;
-    targetNodeId: string;
-    sourceHandle: string | null;
-  };
+import { useWorkflowEditorState } from './use-workflow-editor-state';
+import { useWorkflowEditorCanvas } from './use-workflow-editor-canvas';
+import { useWorkflowEditorExecution } from './use-workflow-editor-execution';
 
 // ---- Inner editor (needs ReactFlow context) ----
 
@@ -73,758 +32,52 @@ function WorkflowEditorInner({
   template: WorkflowTemplate | null;
   onBack: () => void;
 }) {
-  const store = useWorkflowStore();
-
   // ---- State ----
-  const [workflow, setWorkflow] = useState<Workflow | null>(null);
-  const [isDirty, setIsDirty] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(!!template);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [rightTab, setRightTab] = useState('properties');
-  const [execStatus, setExecStatus] = useState('idle');
-  const [executionLog, setExecutionLog] = useState<ExecutionLog | null>(null);
-  const [executionLogs, setExecutionLogs] = useState<ExecutionLog[]>([]);
-  const [selectedExecutionLogId, setSelectedExecutionLogId] = useState<string | null>(null);
-  const [currentExecutionId, setCurrentExecutionId] = useState<string | null>(null);
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [editingName, setEditingName] = useState('');
-  const [isPreview, setIsPreview] = useState(false);
-  const [undoStack, setUndoStack] = useState<string[]>([]);
-  const [redoStack, setRedoStack] = useState<string[]>([]);
-  const [triggerDialogOpen, setTriggerDialogOpen] = useState(false);
-  const [pluginsDialogOpen, setPluginsDialogOpen] = useState(false);
-  const [embeddedEditorOpen, setEmbeddedEditorOpen] = useState(false);
-  const [embeddedSubWorkflowId, setEmbeddedSubWorkflowId] = useState<string | null>(null);
-  const [canvasContextMenuPos, setCanvasContextMenuPos] = useState<{ x: number; y: number } | null>(null);
-  const [debugNodeId, setDebugNodeId] = useState<string | null>(null);
-  const [debugStatus, setDebugStatus] = useState<'idle' | 'running' | 'completed' | 'error'>('idle');
-  const [debugResult, setDebugResult] = useState<DebugResult | null>(null);
-  const [pendingInteraction, setPendingInteraction] = useState<InteractionRequest | null>(null);
-  const [nodeSelectOpen, setNodeSelectOpen] = useState(false);
-  const [nodeSelectContext, setNodeSelectContext] = useState<NodeSelectContext | null>(null);
+  const state = useWorkflowEditorState(template);
 
-  // Group management
-  const groupMgr = useGroupManagement();
+  const canvas = useWorkflowEditorCanvas({
+    workflow: state.workflow,
+    setWorkflow: state.setWorkflow,
+    markDirty: state.markDirty,
+    pushUndo: state.pushUndo,
+    selectedNodeId: state.selectedNodeId,
+    setSelectedNodeId: state.setSelectedNodeId,
+  });
 
-  // Loop body bounds
-  const loopBounds = useLoopBodyBounds(workflow?.nodes || [], workflow?.edges || []);
+  const execution = useWorkflowEditorExecution({
+    workflow: state.workflow,
+    workflowId: state.workflowId,
+  });
 
   const { isExpanded: execExpanded, toggle: toggleExec } = useExecutionPanel();
   const clipboard = useClipboard();
-  const autoSaveTimer = useRef<ReturnType<typeof setInterval> | null>(null);
-  const debugCleanupRef = useRef<(() => void)[]>([]);
-  const executionCleanupRef = useRef<(() => void)[]>([]);
-  const workflowId = workflow?.id ?? null;
-
-  // ---- Load workflow ----
-  useEffect(() => {
-    if (!template) {
-      setIsLoading(false);
-      return;
-    }
-    setIsLoading(true);
-    setLoadError(null);
-    workflowApi.get(template.id)
-      .then((wf) => {
-        setWorkflow(wf);
-        setIsLoading(false);
-      })
-      .catch((err) => {
-        setLoadError(err instanceof Error ? err.message : '加载失败');
-        setIsLoading(false);
-      });
-  }, [template]);
-
-  useEffect(() => {
-    return () => {
-      for (const cleanup of debugCleanupRef.current) cleanup();
-      debugCleanupRef.current = [];
-      for (const cleanup of executionCleanupRef.current) cleanup();
-      executionCleanupRef.current = [];
-    };
-  }, []);
-
-  // ---- Auto-save ----
-  useEffect(() => {
-    autoSaveTimer.current = setInterval(() => {
-      if (isDirty && workflow) saveWorkflow();
-    }, 10_000);
-    return () => { if (autoSaveTimer.current) clearInterval(autoSaveTimer.current); };
-  }, [isDirty, workflow]);
-
-  // ---- Dirty tracking ----
-  const markDirty = useCallback(() => setIsDirty(true), []);
-
-  // ---- Undo / Redo ----
-  const pushUndo = useCallback((description?: string) => {
-    if (!workflow) return;
-    const snapshot = JSON.stringify({ nodes: workflow.nodes, edges: workflow.edges });
-    setUndoStack(prev => [...prev, snapshot]);
-    setRedoStack([]);
-  }, [workflow]);
-
-  const handleUndo = useCallback(() => {
-    if (undoStack.length === 0 || !workflow) return;
-    const currentSnapshot = JSON.stringify({ nodes: workflow.nodes, edges: workflow.edges });
-    const prevSnapshot = undoStack[undoStack.length - 1];
-    const prev = JSON.parse(prevSnapshot);
-    setUndoStack(s => s.slice(0, -1));
-    setRedoStack(s => [...s, currentSnapshot]);
-    setWorkflow(w => w ? { ...w, nodes: prev.nodes, edges: prev.edges } : null);
-    markDirty();
-  }, [undoStack, workflow, markDirty]);
-
-  const handleRedo = useCallback(() => {
-    if (redoStack.length === 0 || !workflow) return;
-    const currentSnapshot = JSON.stringify({ nodes: workflow.nodes, edges: workflow.edges });
-    const nextSnapshot = redoStack[redoStack.length - 1];
-    const next = JSON.parse(nextSnapshot);
-    setUndoStack(s => [...s, currentSnapshot]);
-    setRedoStack(s => s.slice(0, -1));
-    setWorkflow(w => w ? { ...w, nodes: next.nodes, edges: next.edges } : null);
-    markDirty();
-  }, [redoStack, workflow, markDirty]);
-
-  // ---- Save ----
-  const saveWorkflow = useCallback(async () => {
-    if (!workflow) return;
-    setIsSaving(true);
-    try {
-      const saved = await workflowApi.update(workflow.id, {
-        ...workflow,
-        updatedAt: Date.now(),
-      });
-      setWorkflow(saved);
-      setIsDirty(false);
-      store.upsertWorkflow(saved);
-    } finally {
-      setIsSaving(false);
-    }
-  }, [workflow, store]);
-
-  const loadExecutionLogs = useCallback(async () => {
-    if (!workflowId) return;
-    try {
-      const logs = await executionLogApi.list(workflowId);
-      setExecutionLogs(logs);
-      setExecutionLog(current => current ?? logs[0] ?? null);
-      setSelectedExecutionLogId(current => current ?? logs[0]?.id ?? null);
-    } catch {
-      setExecutionLogs([]);
-    }
-  }, [workflowId]);
-
-  useEffect(() => {
-    setExecutionLog(null);
-    setExecutionLogs([]);
-    setSelectedExecutionLogId(null);
-    setCurrentExecutionId(null);
-    void loadExecutionLogs();
-  }, [workflowId, loadExecutionLogs]);
-
-  // ---- Node operations ----
-  const handleNodeAdd = useCallback((type: string, position: { x: number; y: number }) => {
-    if (!workflow) return;
-    pushUndo('add node');
-    const id = `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    const def = getNodeDefinition(type);
-    const data: Record<string, unknown> = {};
-    if (def?.properties) {
-      for (const prop of def.properties) {
-        if (prop.default !== undefined) data[prop.key] = prop.default;
-      }
-    }
-    const newNode: Workflow['nodes'][0] = {
-      id, type,
-      label: def?.label || type,
-      position, data,
-    };
-    setWorkflow(w => w ? { ...w, nodes: [...w.nodes, newNode] } : null);
-    setSelectedNodeId(id);
-    markDirty();
-  }, [workflow, pushUndo, markDirty]);
-
-  const handleConnectionDrop = useCallback((context: {
-    sourceNodeId: string;
-    sourceHandle: string | null;
-    position: { x: number; y: number } | null;
-  }) => {
-    setNodeSelectContext({ mode: 'connection-drop', ...context });
-    setNodeSelectOpen(true);
-  }, []);
-
-  useEffect(() => {
-    const handleOpenNodeSelect = (event: Event) => {
-      const detail = (event as CustomEvent).detail as {
-        edgeId?: string | null;
-        source?: string | null;
-        target?: string | null;
-        sourceHandle?: string | null;
-      } | undefined;
-      if (!detail?.source || !detail.target) return;
-      setNodeSelectContext({
-        mode: 'edge-insert',
-        edgeId: detail.edgeId ?? null,
-        sourceNodeId: detail.source,
-        targetNodeId: detail.target,
-        sourceHandle: detail.sourceHandle ?? null,
-      });
-      setNodeSelectOpen(true);
-    };
-
-    window.addEventListener('workflow:open-node-select', handleOpenNodeSelect);
-    return () => window.removeEventListener('workflow:open-node-select', handleOpenNodeSelect);
-  }, []);
-
-  const handleNodeSelectOpenChange = useCallback((open: boolean) => {
-    setNodeSelectOpen(open);
-    if (!open) setNodeSelectContext(null);
-  }, []);
-
-  const handleNodeSelectFromDialog = useCallback((type: string) => {
-    if (!workflow || !nodeSelectContext) return;
-    const def = getNodeDefinition(type);
-    if (def?.manualCreate === false) return;
-    if (def?.singleton && workflow.nodes.some(node => node.type === type)) return;
-
-    const id = `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    const data: Record<string, unknown> = {};
-    if (def?.properties) {
-      for (const prop of def.properties) {
-        if (prop.default !== undefined) data[prop.key] = prop.default;
-      }
-    }
-
-    if (nodeSelectContext.mode === 'connection-drop') {
-      const sourceNode = workflow.nodes.find(node => node.id === nodeSelectContext.sourceNodeId);
-      if (!sourceNode) return;
-      const position = nodeSelectContext.position ?? {
-        x: sourceNode.position.x + 250,
-        y: sourceNode.position.y,
-      };
-      const newNode: Workflow['nodes'][0] = {
-        id,
-        type,
-        label: def?.label || type,
-        position,
-        data: {
-          ...data,
-          sourceNodeId: nodeSelectContext.sourceNodeId,
-          sourceHandle: nodeSelectContext.sourceHandle,
-        },
-      };
-      const newEdge: Workflow['edges'][0] = {
-        id: `e-${nodeSelectContext.sourceNodeId}-${id}`,
-        source: nodeSelectContext.sourceNodeId,
-        target: id,
-        sourceHandle: nodeSelectContext.sourceHandle || undefined,
-        targetHandle: undefined,
-      };
-
-      pushUndo('add connected node');
-      setWorkflow(current => current ? {
-        ...current,
-        nodes: [...current.nodes, newNode],
-        edges: [...current.edges, newEdge],
-      } : null);
-      setSelectedNodeId(id);
-      markDirty();
-      return;
-    }
-
-    const sourceNode = workflow.nodes.find(node => node.id === nodeSelectContext.sourceNodeId);
-    const targetNode = workflow.nodes.find(node => node.id === nodeSelectContext.targetNodeId);
-    if (!sourceNode || !targetNode) return;
-
-    const position = {
-      x: (sourceNode.position.x + targetNode.position.x) / 2,
-      y: (sourceNode.position.y + targetNode.position.y) / 2,
-    };
-    const newNode: Workflow['nodes'][0] = {
-      id,
-      type,
-      label: def?.label || type,
-      position,
-      data: {
-        ...data,
-        sourceNodeId: nodeSelectContext.sourceNodeId,
-        sourceHandle: nodeSelectContext.sourceHandle,
-      },
-    };
-    const firstEdge: Workflow['edges'][0] = {
-      id: `e-${nodeSelectContext.sourceNodeId}-${id}`,
-      source: nodeSelectContext.sourceNodeId,
-      target: id,
-      sourceHandle: nodeSelectContext.sourceHandle || undefined,
-      targetHandle: undefined,
-    };
-    const secondEdge: Workflow['edges'][0] = {
-      id: `e-${id}-${nodeSelectContext.targetNodeId}`,
-      source: id,
-      target: nodeSelectContext.targetNodeId,
-      sourceHandle: undefined,
-      targetHandle: undefined,
-    };
-
-    pushUndo('insert node');
-    setWorkflow(current => current ? {
-      ...current,
-      nodes: [...current.nodes, newNode],
-      edges: [
-        ...current.edges.filter(edge => edge.id !== nodeSelectContext.edgeId),
-        firstEdge,
-        secondEdge,
-      ],
-    } : null);
-    setSelectedNodeId(id);
-    markDirty();
-  }, [workflow, nodeSelectContext, pushUndo, markDirty]);
-
-  const handleNodeDelete = useCallback((nodeId: string) => {
-    if (!workflow) return;
-    pushUndo('delete node');
-    setWorkflow(w => w ? {
-      ...w,
-      nodes: w.nodes.filter(n => n.id !== nodeId),
-      edges: w.edges.filter(e => e.source !== nodeId && e.target !== nodeId),
-    } : null);
-    if (selectedNodeId === nodeId) setSelectedNodeId(null);
-    markDirty();
-  }, [workflow, pushUndo, markDirty, selectedNodeId]);
-
-  const handleNodeSelect = useCallback((id: string | null, multi?: boolean) => {
-    setSelectedNodeId(id);
-    if (id) setRightTab('properties');
-  }, []);
-
-  const handleNodeDataUpdate = useCallback((nodeId: string, data: Record<string, unknown>) => {
-    setWorkflow(w => {
-      if (!w) return null;
-      return {
-        ...w,
-        nodes: w.nodes.map(n => n.id === nodeId ? { ...n, data: { ...n.data, ...data } } : n),
-      };
-    });
-    markDirty();
-  }, [markDirty]);
-
-  const handleWorkflowMetaChange = useCallback((nextWorkflow: Workflow) => {
-    setWorkflow(nextWorkflow);
-    markDirty();
-  }, [markDirty]);
-
-  const cleanupDebugListeners = useCallback(() => {
-    for (const cleanup of debugCleanupRef.current) cleanup();
-    debugCleanupRef.current = [];
-  }, []);
-
-  const cleanupExecutionListeners = useCallback(() => {
-    for (const cleanup of executionCleanupRef.current) cleanup();
-    executionCleanupRef.current = [];
-  }, []);
-
-  const handleCancelDebug = useCallback(() => {
-    cleanupDebugListeners();
-    setPendingInteraction(null);
-    setDebugStatus('idle');
-    setDebugResult(null);
-    setDebugNodeId(null);
-  }, [cleanupDebugListeners]);
-
-  const sendInteractionResponse = useCallback((request: InteractionRequest, data: unknown, cancelled = false) => {
-    const ws = getWS('workflows');
-    ws.send('workflow:interaction', {
-      id: request.id,
-      channel: 'workflow:interaction',
-      type: 'interaction_response',
-      executionId: request.executionId,
-      workflowId: request.workflowId,
-      nodeId: request.nodeId,
-      data,
-      cancelled,
-    });
-    setPendingInteraction(null);
-  }, []);
-
-  const handleResolveInteraction = useCallback((request: InteractionRequest, data: unknown) => {
-    sendInteractionResponse(request, data, false);
-  }, [sendInteractionResponse]);
-
-  const handleCancelInteraction = useCallback((request: InteractionRequest) => {
-    sendInteractionResponse(request, null, true);
-  }, [sendInteractionResponse]);
-
-  const handleDebugNode = useCallback((nodeId: string) => {
-    if (!workflow) return;
-    cleanupDebugListeners();
-    setDebugNodeId(nodeId);
-    setDebugStatus('running');
-    setDebugResult(null);
-
-    const ws = getWS('workflows');
-    const sendDebugRequest = () => {
-      ws.send('workflow:debug-node', {
-        workflowId: workflow.id,
-        nodeId,
-        snapshot: {
-          nodes: workflow.nodes,
-          edges: workflow.edges,
-          groups: workflow.groups || [],
-        },
-      });
-    };
-
-    const offResult = ws.on('workflow:debug-node:result', (data) => {
-      const result = data as DebugResult;
-      cleanupDebugListeners();
-      setDebugNodeId(nodeId);
-      setDebugResult(result);
-      setDebugStatus(result.status === 'error' ? 'error' : 'completed');
-    });
-    const offError = ws.on('workflow:debug-node:error', (data) => {
-      const payload = data as { error?: string };
-      cleanupDebugListeners();
-      setPendingInteraction(null);
-      setDebugNodeId(nodeId);
-      setDebugResult({ status: 'error', error: payload.error || '测试失败' });
-      setDebugStatus('error');
-    });
-    const offInteraction = ws.on('workflow:interaction', (data) => {
-      const request = data as InteractionRequest;
-      if (request.type !== 'interaction_required' || request.nodeId !== nodeId) return;
-      setPendingInteraction(request);
-    });
-    debugCleanupRef.current = [offResult, offError, offInteraction];
-
-    if (ws.connected) {
-      sendDebugRequest();
-    } else {
-      const offConnected = ws.on('connected', () => {
-        offConnected();
-        debugCleanupRef.current = debugCleanupRef.current.filter(cleanup => cleanup !== offConnected);
-        sendDebugRequest();
-      });
-      debugCleanupRef.current.push(offConnected);
-    }
-  }, [workflow, cleanupDebugListeners]);
-
-  // ---- Edge operations ----
-  const handleConnect = useCallback((connection: Connection) => {
-    if (!workflow) return;
-    console.debug('[WorkflowEditor] handleConnect', {
-      connection,
-      nodeCount: workflow.nodes.length,
-      edgeCount: workflow.edges.length,
-      sourceNode: workflow.nodes.find(n => n.id === connection.source),
-      targetNode: workflow.nodes.find(n => n.id === connection.target),
-    });
-    pushUndo('connect');
-    const edge: Workflow['edges'][0] = {
-      id: `e-${connection.source}-${connection.target}`,
-      source: connection.source,
-      target: connection.target,
-      sourceHandle: connection.sourceHandle || undefined,
-      targetHandle: connection.targetHandle || undefined,
-    };
-    setWorkflow(w => w ? { ...w, edges: [...w.edges, edge] } : null);
-    markDirty();
-  }, [workflow, pushUndo, markDirty]);
-
-  const handleNodesChange = useCallback((changes: NodeChange[]) => {
-    if (!workflow) return;
-    console.debug('[WorkflowEditor] handleNodesChange input', {
-      changes,
-      workflowNodes: workflow.nodes.map(n => ({
-        id: n.id,
-        type: n.type,
-        label: n.label,
-        position: n.position,
-      })),
-    });
-    // Handle delete via changes
-    const hasDelete = changes.some(c => c.type === 'remove');
-    if (hasDelete) pushUndo('delete');
-
-    const rfNodes = workflow.nodes.map(n => {
-      const definition = getNodeDefinition(n.type);
-      const width = definition?.customViewMinSize?.width || 140;
-      const height = definition?.customViewMinSize?.height || 60;
-      return {
-        id: n.id,
-        type: 'custom' as const,
-        position: n.position,
-        width,
-        height,
-        initialWidth: width,
-        initialHeight: height,
-        measured: { width, height },
-        style: { minWidth: width, minHeight: height },
-        data: { ...n.data, label: n.label, nodeType: n.type, width, height },
-      };
-    });
-    const updated = applyNodeChanges(changes, rfNodes);
-    console.debug('[WorkflowEditor] handleNodesChange applied', {
-      changes,
-      updatedNodes: updated.map(n => ({
-        id: n.id,
-        position: n.position,
-        width: n.width,
-        height: n.height,
-        initialWidth: n.initialWidth,
-        initialHeight: n.initialHeight,
-        measured: n.measured,
-      })),
-    });
-
-    setWorkflow(w => {
-      if (!w) return null;
-      return {
-        ...w,
-        nodes: updated.map(n => {
-          const existing = w.nodes.find(wn => wn.id === n.id);
-          if (!existing) return w.nodes.find(wn => wn.id === n.id)!;
-          return { ...existing, position: n.position };
-        }).filter(Boolean),
-      };
-    });
-    if (hasDelete) markDirty();
-  }, [workflow, pushUndo, markDirty]);
-
-  const handleEdgesChange = useCallback((changes: EdgeChange[]) => {
-    if (!workflow) return;
-    const hasDelete = changes.some(c => c.type === 'remove');
-    if (hasDelete) pushUndo('delete edge');
-
-    const rfEdges = workflow.edges.map(e => ({
-      id: e.id, source: e.source, target: e.target, type: 'custom' as const,
-      sourceHandle: e.sourceHandle || undefined, targetHandle: e.targetHandle || undefined,
-      data: { composite: e.composite, sourceHandle: e.sourceHandle },
-    }));
-    const updated = applyEdgeChanges(changes, rfEdges);
-    const remainingIds = new Set(updated.map(e => e.id));
-
-    setWorkflow(w => w ? { ...w, edges: w.edges.filter(e => remainingIds.has(e.id)) } : null);
-    if (hasDelete) markDirty();
-  }, [workflow, pushUndo, markDirty]);
-
-  // ---- Selected node ----
-  const selectedNode = useMemo(
-    () => workflow?.nodes.find(n => n.id === selectedNodeId) ?? null,
-    [workflow, selectedNodeId],
-  );
-
-  const startNodes = useMemo(
-    () => (workflow?.nodes || []).filter(node => node.type === 'start'),
-    [workflow],
-  );
-
-  const executionValidationError = useMemo(() => {
-    if (!workflow) return '未加载工作流';
-    if (startNodes.length === 0) return '缺少开始节点';
-    return null;
-  }, [workflow, startNodes]);
-
-  // ---- Export / Import ----
-  const handleExport = useCallback(() => {
-    if (!workflow) return;
-    const blob = new Blob([JSON.stringify(workflow, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${(workflow.name || 'workflow').replace(/\s+/g, '-').toLowerCase()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }, [workflow]);
-
-  const handleImport = useCallback(() => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-      try {
-        const text = await file.text();
-        const data = JSON.parse(text) as Workflow;
-        if (data.nodes && data.edges) {
-          setWorkflow(data);
-          setIsDirty(true);
-        }
-      } catch {}
-    };
-    input.click();
-  }, []);
-
-  // ---- Execution ----
-  const handleExecute = useCallback((input?: Record<string, unknown>, startNodeId?: string) => {
-    if (!workflow) return;
-    cleanupExecutionListeners();
-    setExecStatus('running');
-    setExecutionLog(null);
-    setSelectedExecutionLogId(null);
-    setCurrentExecutionId(null);
-
-    const ws = getWS('workflows');
-    const sendExecuteRequest = () => {
-      ws.send('workflow:execute', {
-        workflowId: workflow.id,
-        input,
-        startNodeId,
-        snapshot: {
-          nodes: workflow.nodes,
-          edges: workflow.edges,
-          groups: workflow.groups || [],
-        },
-      });
-    };
-
-    const offResult = ws.on('workflow:execute:result', (data) => {
-      const result = data as { executionId?: string; status?: string };
-      if (result.executionId) {
-        setCurrentExecutionId(result.executionId);
-        setSelectedExecutionLogId(result.executionId);
-      }
-      if (result.status) setExecStatus(result.status);
-    });
-    const offError = ws.on('workflow:execute:error', () => {
-      setExecStatus('error');
-    });
-    const offLog = ws.on('execution:log', (data) => {
-      const event = data as { workflowId?: string; executionId?: string; log?: ExecutionLog };
-      if (event.workflowId !== workflow.id || !event.log) return;
-      setCurrentExecutionId(event.executionId || event.log.id);
-      setExecutionLog(event.log);
-      setSelectedExecutionLogId(event.log.id);
-      setExecutionLogs(prev => [event.log!, ...prev.filter(item => item.id !== event.log!.id)]);
-      setExecStatus(event.log.status);
-    });
-    const offCompleted = ws.on('workflow:completed', (data) => {
-      const event = data as { workflowId?: string; executionId?: string; log?: ExecutionLog };
-      if (event.workflowId !== workflow.id) return;
-      if (event.executionId) setCurrentExecutionId(event.executionId);
-      if (event.log) setExecutionLog(event.log);
-      if (event.log) {
-        setSelectedExecutionLogId(event.log.id);
-        setExecutionLogs(prev => [event.log!, ...prev.filter(item => item.id !== event.log!.id)]);
-      }
-      setExecStatus('completed');
-      void loadExecutionLogs();
-    });
-    const offFailed = ws.on('workflow:error', (data) => {
-      const event = data as { workflowId?: string; executionId?: string; log?: ExecutionLog };
-      if (event.workflowId !== workflow.id) return;
-      if (event.executionId) setCurrentExecutionId(event.executionId);
-      if (event.log) setExecutionLog(event.log);
-      if (event.log) {
-        setSelectedExecutionLogId(event.log.id);
-        setExecutionLogs(prev => [event.log!, ...prev.filter(item => item.id !== event.log!.id)]);
-      }
-      setExecStatus('error');
-      void loadExecutionLogs();
-    });
-    executionCleanupRef.current = [offResult, offError, offLog, offCompleted, offFailed];
-
-    if (ws.connected) {
-      sendExecuteRequest();
-    } else {
-      const offConnected = ws.on('connected', () => {
-        offConnected();
-        executionCleanupRef.current = executionCleanupRef.current.filter(cleanup => cleanup !== offConnected);
-        sendExecuteRequest();
-      });
-      executionCleanupRef.current.push(offConnected);
-    }
-
-    if (!execExpanded) toggleExec();
-  }, [workflow, cleanupExecutionListeners, execExpanded, toggleExec, loadExecutionLogs]);
-
-  const handlePauseExecution = useCallback(() => {
-    if (!currentExecutionId) return;
-    getWS('workflows').send('workflow:pause', { executionId: currentExecutionId });
-    setExecStatus('paused');
-  }, [currentExecutionId]);
-
-  const handleResumeExecution = useCallback(() => {
-    if (!currentExecutionId) return;
-    getWS('workflows').send('workflow:resume', { executionId: currentExecutionId });
-    setExecStatus('running');
-  }, [currentExecutionId]);
-
-  const handleStopExecution = useCallback(() => {
-    if (!currentExecutionId) return;
-    getWS('workflows').send('workflow:stop', { executionId: currentExecutionId });
-    setExecStatus('stopped');
-  }, [currentExecutionId]);
-
-  const handleSelectExecutionLog = useCallback((selectedLog: ExecutionLog) => {
-    setExecutionLog(selectedLog);
-    setSelectedExecutionLogId(selectedLog.id);
-    setExecStatus(selectedLog.status);
-  }, []);
-
-  const handleDeleteExecutionLog = useCallback(async (logId: string) => {
-    if (!workflow) return;
-    await executionLogApi.delete(workflow.id, logId);
-    setExecutionLogs(prev => prev.filter(item => item.id !== logId));
-    if (selectedExecutionLogId === logId) {
-      const nextLog = executionLogs.find(item => item.id !== logId) ?? null;
-      setExecutionLog(nextLog);
-      setSelectedExecutionLogId(nextLog?.id ?? null);
-    }
-  }, [workflow, selectedExecutionLogId, executionLogs]);
-
-  const handleClearExecutionLogs = useCallback(async () => {
-    if (!workflow) return;
-    await executionLogApi.clear(workflow.id);
-    setExecutionLogs([]);
-    setExecutionLog(null);
-    setSelectedExecutionLogId(null);
-  }, [workflow]);
 
   // ---- Shortcuts ----
   useEditorShortcuts({
-    onSave: saveWorkflow,
-    onUndo: handleUndo,
-    onRedo: handleRedo,
-    onDelete: selectedNodeId ? () => handleNodeDelete(selectedNodeId) : undefined,
-    onCopy: selectedNodeId && workflow ? () => {
-      const node = workflow.nodes.find(n => n.id === selectedNodeId);
+    onSave: state.saveWorkflow,
+    onUndo: state.handleUndo,
+    onRedo: state.handleRedo,
+    onDelete: state.selectedNodeId ? () => canvas.handleNodeDelete(state.selectedNodeId!) : undefined,
+    onCopy: state.selectedNodeId && state.workflow ? () => {
+      const node = state.workflow!.nodes.find(n => n.id === state.selectedNodeId);
       if (node) clipboard.copy([node], []);
     } : undefined,
     onPaste: () => {
       const pasted = clipboard.paste();
-      if (pasted && workflow) {
-        pushUndo('paste');
-        setWorkflow(w => w ? {
+      if (pasted && state.workflow) {
+        state.pushUndo('paste');
+        state.setWorkflow(w => w ? {
           ...w,
           nodes: [...w.nodes, ...pasted.nodes],
           edges: [...w.edges, ...pasted.edges],
         } : null);
-        markDirty();
+        state.markDirty();
       }
     },
   });
 
-  // ---- Name editing ----
-  const startEditName = useCallback(() => {
-    if (workflow) {
-      setEditingName(workflow.name || '');
-      setIsEditingName(true);
-    }
-  }, [workflow]);
-
-  const finishEditName = useCallback(() => {
-    setIsEditingName(false);
-    if (workflow && editingName !== workflow.name) {
-      setWorkflow(w => w ? { ...w, name: editingName } : null);
-      markDirty();
-    }
-  }, [workflow, editingName, markDirty]);
-
   // ---- Render ----
-  if (isLoading) {
+  if (state.isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-3">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -833,17 +86,17 @@ function WorkflowEditorInner({
     );
   }
 
-  if (loadError) {
+  if (state.loadError) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-3">
         <AlertCircle className="h-8 w-8 text-destructive" />
-        <span className="text-sm text-destructive">{loadError}</span>
+        <span className="text-sm text-destructive">{state.loadError}</span>
         <Button variant="outline" size="sm" onClick={onBack}>返回</Button>
       </div>
     );
   }
 
-  if (!workflow) {
+  if (!state.workflow) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-3">
         <AlertCircle className="h-8 w-8 text-muted-foreground" />
@@ -853,42 +106,44 @@ function WorkflowEditorInner({
     );
   }
 
+  const workflow = state.workflow;
+
   return (
     <div className="flex flex-col h-full" tabIndex={0}>
       <WorkflowEditorToolbar
         workflow={workflow}
-        isDirty={isDirty}
-        isPreview={isPreview}
-        executionStatus={execStatus}
-        isEditingName={isEditingName}
-        editingName={editingName}
-        canUndo={undoStack.length > 0}
-        canRedo={redoStack.length > 0}
+        isDirty={state.isDirty}
+        isPreview={state.isPreview}
+        executionStatus={execution.execStatus}
+        isEditingName={state.isEditingName}
+        editingName={state.editingName}
+        canUndo={state.undoStack.length > 0}
+        canRedo={state.redoStack.length > 0}
         onBack={onBack}
-        onSave={saveWorkflow}
-        onExecute={handleExecute}
-        onPause={handlePauseExecution}
-        onResume={handleResumeExecution}
-        onStop={handleStopExecution}
-        onUndo={handleUndo}
-        onRedo={handleRedo}
+        onSave={state.saveWorkflow}
+        onExecute={execution.handleExecute}
+        onPause={execution.handlePauseExecution}
+        onResume={execution.handleResumeExecution}
+        onStop={execution.handleStopExecution}
+        onUndo={state.handleUndo}
+        onRedo={state.handleRedo}
         onAutoLayout={() => {}}
-        onExport={handleExport}
-        onImport={handleImport}
-        onOpenPluginManager={() => setPluginsDialogOpen(true)}
-        onStartEditName={startEditName}
-        onFinishEditName={finishEditName}
-        onCancelEditName={() => setIsEditingName(false)}
-        onEditingNameChange={setEditingName}
+        onExport={state.handleExport}
+        onImport={state.handleImport}
+        onOpenPluginManager={() => state.setPluginsDialogOpen(true)}
+        onStartEditName={state.startEditName}
+        onFinishEditName={state.finishEditName}
+        onCancelEditName={() => state.setIsEditingName(false)}
+        onEditingNameChange={state.setEditingName}
       />
 
-      <ResizablePanelGroup orientation="horizontal" className="flex-1 min-h-0">
+      <ResizablePanelGroup orientation="horizontal" defaultLayout={state.workflowLayout} onLayoutChange={state.onWorkflowLayoutChange} className="flex-1 min-h-0">
         {/* Node sidebar */}
         <ResizablePanel id="workflow-node-sidebar" defaultSize="18%" minSize="12%" maxSize="30%">
           <WorkflowNodeSidebar
             workflow={workflow}
-            onWorkflowChange={handleWorkflowMetaChange}
-            onOpenPluginPicker={() => setPluginsDialogOpen(true)}
+            onWorkflowChange={state.handleWorkflowMetaChange}
+            onOpenPluginPicker={() => state.setPluginsDialogOpen(true)}
           />
         </ResizablePanel>
 
@@ -900,34 +155,34 @@ function WorkflowEditorInner({
             <div className="flex-1 min-h-0">
               <WorkflowCanvas
                 workflow={workflow}
-                isPreview={isPreview}
-                onNodeAdd={handleNodeAdd}
-                onNodeDelete={handleNodeDelete}
-                onNodeSelect={handleNodeSelect}
-                onNodeDataUpdate={handleNodeDataUpdate}
-                onNodesChange={handleNodesChange}
-                onEdgesChange={handleEdgesChange}
-                onConnect={handleConnect}
-                onConnectionDrop={handleConnectionDrop}
+                isPreview={state.isPreview}
+                onNodeAdd={canvas.handleNodeAdd}
+                onNodeDelete={canvas.handleNodeDelete}
+                onNodeSelect={canvas.handleNodeSelect}
+                onNodeDataUpdate={canvas.handleNodeDataUpdate}
+                onNodesChange={canvas.handleNodesChange}
+                onEdgesChange={canvas.handleEdgesChange}
+                onConnect={canvas.handleConnect}
+                onConnectionDrop={canvas.handleConnectionDrop}
               />
             </div>
             <WorkflowExecutionBar
-              status={execStatus}
-              log={executionLog}
-              logs={executionLogs}
-              selectedLogId={selectedExecutionLogId}
-              startNodes={startNodes}
-              validationError={executionValidationError}
+              status={execution.execStatus}
+              log={execution.executionLog}
+              logs={execution.executionLogs}
+              selectedLogId={execution.selectedExecutionLogId}
+              startNodes={execution.startNodes}
+              validationError={execution.executionValidationError}
               isExpanded={execExpanded}
               onToggle={toggleExec}
-              onExecute={handleExecute}
-              onPause={handlePauseExecution}
-              onResume={handleResumeExecution}
-              onStop={handleStopExecution}
-              onSelectLog={handleSelectExecutionLog}
-              onDeleteLog={handleDeleteExecutionLog}
-              onClearLogs={handleClearExecutionLogs}
-              onExitPreview={() => setIsPreview(false)}
+              onExecute={execution.handleExecute}
+              onPause={execution.handlePauseExecution}
+              onResume={execution.handleResumeExecution}
+              onStop={execution.handleStopExecution}
+              onSelectLog={execution.handleSelectExecutionLog}
+              onDeleteLog={execution.handleDeleteExecutionLog}
+              onClearLogs={execution.handleClearExecutionLogs}
+              onExitPreview={() => state.setIsPreview(false)}
             />
           </div>
         </ResizablePanel>
@@ -936,7 +191,7 @@ function WorkflowEditorInner({
 
         {/* Right panel */}
         <ResizablePanel id="workflow-right-panel" defaultSize="30%" minSize="15%" maxSize="50%">
-          <Tabs value={rightTab} onValueChange={setRightTab} className="flex flex-col h-full">
+          <Tabs value={state.rightTab} onValueChange={state.setRightTab} className="flex flex-col h-full">
             <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0 h-8">
               <TabsTrigger value="properties" className="text-xs px-3 py-1.5">属性</TabsTrigger>
               <TabsTrigger value="versions" className="text-xs px-3 py-1.5">版本</TabsTrigger>
@@ -945,13 +200,13 @@ function WorkflowEditorInner({
             </TabsList>
             <TabsContent value="properties" className="flex-1 min-h-0 m-0">
               <WorkflowPropertiesPanel
-                node={selectedNode}
-                onUpdateData={handleNodeDataUpdate}
-                debugNodeId={debugNodeId}
-                debugStatus={debugStatus}
-                debugResult={debugResult}
-                onDebugNode={handleDebugNode}
-                onCancelDebug={handleCancelDebug}
+                node={state.selectedNode}
+                onUpdateData={canvas.handleNodeDataUpdate}
+                debugNodeId={execution.debugNodeId}
+                debugStatus={execution.debugStatus}
+                debugResult={execution.debugResult}
+                onDebugNode={execution.handleDebugNode}
+                onCancelDebug={execution.handleCancelDebug}
               />
             </TabsContent>
             <TabsContent value="versions" className="flex-1 min-h-0 m-0">
@@ -960,23 +215,23 @@ function WorkflowEditorInner({
                 nodes={workflow.nodes}
                 edges={workflow.edges}
                 onRestore={(version) => {
-                  pushUndo('restore version');
-                  setWorkflow(w => w ? {
+                  state.pushUndo('restore version');
+                  state.setWorkflow(w => w ? {
                     ...w,
                     nodes: version.snapshot?.nodes || [],
-                    edges: (version.snapshot?.edges || []) as Workflow['edges'],
+                    edges: (version.snapshot?.edges || []) as typeof workflow.edges,
                   } : null);
-                  markDirty();
+                  state.markDirty();
                 }}
               />
             </TabsContent>
             <TabsContent value="history" className="flex-1 min-h-0 m-0">
               <WorkflowOperationHistory
                 workflowId={workflow.id}
-                currentUndoCount={undoStack.length}
-                currentRedoCount={redoStack.length}
-                onUndo={handleUndo}
-                onRedo={handleRedo}
+                currentUndoCount={state.undoStack.length}
+                currentRedoCount={state.redoStack.length}
+                onUndo={state.handleUndo}
+                onRedo={state.handleRedo}
               />
             </TabsContent>
             <TabsContent value="staging" className="flex-1 min-h-0 m-0">
@@ -984,17 +239,17 @@ function WorkflowEditorInner({
                 workflowId={workflow.id}
                 onAddFromStaging={(staged) => {
                   if (!workflow) return;
-                  pushUndo('add from staging');
-                  const newNode: Workflow['nodes'][0] = {
+                  state.pushUndo('add from staging');
+                  const newNode: typeof workflow.nodes[0] = {
                     id: `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
                     type: staged.type,
                     label: (staged.data?.label as string) || staged.type,
                     position: { x: 250 + Math.random() * 100, y: 250 + Math.random() * 100 },
                     data: { ...(staged.data || {}) },
                   };
-                  setWorkflow(w => w ? { ...w, nodes: [...w.nodes, newNode] } : null);
-                  setSelectedNodeId(newNode.id);
-                  markDirty();
+                  state.setWorkflow(w => w ? { ...w, nodes: [...w.nodes, newNode] } : null);
+                  state.setSelectedNodeId(newNode.id);
+                  state.markDirty();
                 }}
               />
             </TabsContent>
@@ -1004,48 +259,48 @@ function WorkflowEditorInner({
 
       {/* Trigger settings dialog */}
       <WorkflowTriggerDialog
-        open={triggerDialogOpen}
+        open={state.triggerDialogOpen}
         triggers={workflow?.triggers || []}
         workflowId={workflow?.id || ''}
         onSave={(triggers) => {
-          setWorkflow(w => w ? { ...w, triggers } : null);
-          markDirty();
+          state.setWorkflow(w => w ? { ...w, triggers } : null);
+          state.markDirty();
         }}
-        onClose={() => setTriggerDialogOpen(false)}
+        onClose={() => state.setTriggerDialogOpen(false)}
       />
 
       {/* Embedded sub-workflow editor */}
       <WorkflowEmbeddedEditor
-        open={embeddedEditorOpen}
+        open={state.embeddedEditorOpen}
         parentWorkflowId={workflow?.id || ''}
-        subWorkflowId={embeddedSubWorkflowId}
-        onClose={() => setEmbeddedEditorOpen(false)}
+        subWorkflowId={state.embeddedSubWorkflowId}
+        onClose={() => state.setEmbeddedEditorOpen(false)}
         onSave={(subId) => {
-          if (selectedNodeId && workflow) {
-            handleNodeDataUpdate(selectedNodeId, { workflowId: subId });
+          if (state.selectedNodeId && workflow) {
+            canvas.handleNodeDataUpdate(state.selectedNodeId, { workflowId: subId });
           }
-          setEmbeddedEditorOpen(false);
+          state.setEmbeddedEditorOpen(false);
         }}
       />
 
       <WorkflowInteractionDialog
-        request={pendingInteraction}
-        onResolve={handleResolveInteraction}
-        onCancel={handleCancelInteraction}
+        request={execution.pendingInteraction}
+        onResolve={execution.handleResolveInteraction}
+        onCancel={execution.handleCancelInteraction}
       />
 
       <WorkflowPluginsDialog
-        open={pluginsDialogOpen}
-        onOpenChange={setPluginsDialogOpen}
+        open={state.pluginsDialogOpen}
+        onOpenChange={state.setPluginsDialogOpen}
         workflow={workflow}
-        onWorkflowChange={handleWorkflowMetaChange}
+        onWorkflowChange={state.handleWorkflowMetaChange}
       />
 
       <WorkflowNodeSelectDialog
-        open={nodeSelectOpen}
+        open={canvas.nodeSelectOpen}
         workflow={workflow}
-        onOpenChange={handleNodeSelectOpenChange}
-        onSelect={handleNodeSelectFromDialog}
+        onOpenChange={canvas.handleNodeSelectOpenChange}
+        onSelect={canvas.handleNodeSelectFromDialog}
       />
     </div>
   );

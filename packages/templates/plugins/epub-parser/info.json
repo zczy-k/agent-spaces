@@ -1,0 +1,17 @@
+{
+  "id": "workfox.epub-parser",
+  "name": "EPUB解析器",
+  "version": "1.0.0",
+  "description": "解析EPUB电子书文件，提取书籍信息、目录、章节内容",
+  "author": { "name": "workfox" },
+  "tags": ["文件处理", "电子书", "EPUB"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "server": "main.js",
+    "workflow": "workflow.js",
+    "tools": "tools.js"
+  },
+  "config": []
+}

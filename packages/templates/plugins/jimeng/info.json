@@ -1,0 +1,34 @@
+{
+  "id": "workfox.jimeng",
+  "name": "即梦AI生图",
+  "version": "1.0.0",
+  "description": "即梦AI图片/视频生成，支持文生图、图生图、文生视频",
+  "author": { "name": "workfox" },
+  "tags": ["AI", "图片生成", "视频生成", "即梦"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "server": "main.js",
+    "workflow": "workflow.js"
+  },
+  "config": [
+    {
+      "key": "sessionId",
+      "label": "Session Token",
+      "desc": "即梦 Session ID（国际站加前缀 us-/hk-/jp-/sg-）",
+      "type": "string",
+      "value": "",
+      "placeholder": "输入你的即梦 Session ID",
+      "required": true
+    },
+    {
+      "key": "baseUrl",
+      "label": "API 地址",
+      "desc": "即梦 API 服务地址",
+      "type": "string",
+      "value": "http://localhost:5100",
+      "placeholder": "http://localhost:5100"
+    }
+  ]
+}

@@ -291,3 +291,11 @@
 - 选择节点后，旧逻辑会在落点新增节点，并自动添加 `source -> newNode` 边。
 - `useEdgeInsert.ts` 使用同一个选择对话框支持边上插入节点：删除原边，新增 `source -> newNode -> target` 两条边。
 - React 版 `workflow-canvas.tsx` 已有 `onConnectStart/onConnectEnd`，但之前只输出调试日志；`workflow-edge.tsx` 也会发出 `workflow:open-node-select`，但编辑器之前没有消费这个事件。
+
+## 2026-06-04 补充发现：Workflow 插件商店
+
+- 当前仓库实际资源商店目录是 `packages/templates`，但 `docs/agent-store.md`、`agent-store.ts` 默认 URL 和 server 静态挂载仍指向旧的 `packages/agents`。
+- WorkFox `PluginsDialog.vue` 的核心差异是“本地 / 在线”双模式；React `workflow-plugins-dialog.tsx` 之前只有本地插件管理。
+- WorkFox 插件模板位于 `G:/programming/nodejs/work_fox/resources/plugins`，包含 16 个插件目录；其中多个插件带有 `node_modules`，作为模板资源复制时应排除依赖目录。
+- WorkFox 插件清单主要使用 `info.json`，部分 Web 插件使用 `web-plugin.json`；agent-spaces 后端原实现只读取 `plugin.json` / `manifest.json` / `package.json`。
+- 插件 `workflow.js` 多为 CommonJS，并可能在顶层 `require` 插件运行依赖；agent-spaces 只需要读取节点定义元数据时，应使用沙箱加载并 stub 外部依赖，避免缺少 `node_modules` 导致节点列表加载失败。

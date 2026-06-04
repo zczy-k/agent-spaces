@@ -7,6 +7,11 @@ export type WorkflowPlugin = PluginMeta & {
   config?: PluginConfigField[];
 };
 
+export type StoreWorkflowPlugin = Omit<WorkflowPlugin, 'enabled'> & {
+  path: string;
+  iconUrl?: string;
+};
+
 export const pluginApi = {
   list(): Promise<WorkflowPlugin[]> {
     return fetchWithAuth('/api/plugins').then(r => r.json());
@@ -19,6 +24,9 @@ export const pluginApi = {
   },
   disable(pluginId: string): Promise<WorkflowPlugin> {
     return fetchWithAuth(`/api/plugins/${encodeURIComponent(pluginId)}/disable`, { method: 'POST' }).then(r => r.json());
+  },
+  installFromStore(pluginId: string): Promise<WorkflowPlugin> {
+    return fetchWithAuth(`/api/plugins/store/${encodeURIComponent(pluginId)}/install`, { method: 'POST' }).then(r => r.json());
   },
   getWorkflowNodes(pluginId: string): Promise<NodeTypeDefinition[]> {
     return fetchWithAuth(`/api/plugins/${encodeURIComponent(pluginId)}/workflow-nodes`)

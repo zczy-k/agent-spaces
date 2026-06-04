@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Globe } from "lucide-react";
 
 const PRESETS = [
-  { label: "GitHub (Proxy)", url: "https://gh-proxy.org/https://github.com/hunmer/agent-spaces/raw/refs/heads/main/packages/agents/" },
-  { label: "GitHub (Direct)", url: "https://github.com/hunmer/agent-spaces/raw/refs/heads/main/packages/agents/" },
+  { label: "GitHub (Proxy)", url: "https://gh-proxy.org/https://github.com/hunmer/agent-spaces/raw/refs/heads/main/packages/templates/" },
+  { label: "GitHub (Direct)", url: "https://github.com/hunmer/agent-spaces/raw/refs/heads/main/packages/templates/" },
   { label: "Local (8080)", url: "http://localhost:3101/" },
 ];
 
