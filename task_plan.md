@@ -13,6 +13,7 @@ Add a workflow-agent floating chat entry to `packages/web/src/components/workflo
 | 4. Implement workflow floating agent | complete | Workflow editor hosts the floating agent, streams SSE events, renders custom tool cards, and applies workflow patches. |
 | 5. Add workflow agent model settings and clear controls | complete | Header has model settings and clear actions; settings reuse `AgentEditor` with prompt/tools/runtime locked. |
 | 6. Verify build/typecheck and UI behavior | complete | Targeted lint and server build pass; web full tsc is blocked by existing unrelated errors. |
+| 7. Persist workflow agent chat messages | complete | Added `chat.json` sidecar storage, REST/SDK/web APIs, editor restore/autosave, and backend clear. |
 
 ## Decisions
 

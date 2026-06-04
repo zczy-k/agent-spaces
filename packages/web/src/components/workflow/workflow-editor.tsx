@@ -1,8 +1,8 @@
 'use client';
 
 import { ReactFlowProvider } from '@xyflow/react';
-import { useCallback, useState } from 'react';
-import type { AgentConfig, Workflow, WorkflowTemplate } from '@agent-spaces/shared';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { AgentConfig, Workflow, WorkflowAgentChatMessage as PersistedWorkflowAgentChatMessage, WorkflowAgentToolCall, WorkflowTemplate } from '@agent-spaces/shared';
 import { WorkflowCanvas } from './workflow-canvas';
 import { WorkflowNodeSidebar } from './workflow-node-sidebar';
 import { WorkflowEditorToolbar } from './workflow-editor-toolbar';
@@ -18,6 +18,7 @@ import { WorkflowPluginsDialog } from './workflow-plugins-dialog';
 import { WorkflowPluginPickerDialog } from './workflow-plugin-picker-dialog';
 import { WorkflowNodeSelectDialog } from './workflow-node-select-dialog';
 import { FloatingChatPanel, type ChatMessage } from '@/components/ui/floating-chat-widget';
+import { JsonViewer } from '@/components/viewers/json-viewer';
 import { AgentEditor } from '@/components/sidebar/agent-editor';
 import { normalizeAgent, newAgentDraft, type AgentPreset } from '@/components/sidebar/agent-shared';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -29,6 +30,7 @@ import { Button } from '@/components/ui/button';
 import { fetchWithAuth } from '@/lib/auth';
 import { allNodeDefinitions } from '@/lib/workflow-nodes';
 import { cn } from '@/lib/utils';
+import { workflowChatApi } from '@/lib/workflow-api';
 import { useWorkspaceStore } from '@/stores/workspace';
 import { useWorkflowEditorState } from './use-workflow-editor-state';
 import { useWorkflowEditorCanvas } from './use-workflow-editor-canvas';
@@ -36,13 +38,7 @@ import { useWorkflowEditorExecution } from './use-workflow-editor-execution';
 
 // ---- Inner editor (needs ReactFlow context) ----
 
-interface WorkflowToolCall {
-  id: string;
-  name: string;
-  input?: unknown;
-  result?: unknown;
-  status: 'running' | 'success' | 'error';
-}
+type WorkflowToolCall = WorkflowAgentToolCall;
 
 interface WorkflowAgentChatMessage extends ChatMessage {
   toolCalls?: WorkflowToolCall[];
@@ -83,6 +79,8 @@ function WorkflowEditorInner({
   const [agentInput, setAgentInput] = useState('');
   const [agentSending, setAgentSending] = useState(false);
   const [agentMessages, setAgentMessages] = useState<WorkflowAgentChatMessage[]>([]);
+  const [loadedAgentChatWorkflowId, setLoadedAgentChatWorkflowId] = useState<string | null>(null);
+  const agentChatSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [agentSettingsOpen, setAgentSettingsOpen] = useState(false);
   const [agentSettingsDraft, setAgentSettingsDraft] = useState<AgentPreset | null>(null);
   const [agentSettingsLoading, setAgentSettingsLoading] = useState(false);
@@ -103,6 +101,53 @@ function WorkflowEditorInner({
 
   const { isExpanded: execExpanded, toggle: toggleExec } = useExecutionPanel();
   const clipboard = useClipboard();
+
+  useEffect(() => {
+    const workflowId = state.workflow?.id;
+    if (!workflowId) {
+      setAgentMessages([]);
+      setLoadedAgentChatWorkflowId(null);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadedAgentChatWorkflowId(null);
+    workflowChatApi.load(workflowId)
+      .then((messages) => {
+        if (cancelled) return;
+        setAgentMessages(messages.map(hydrateWorkflowAgentChatMessage));
+        setLoadedAgentChatWorkflowId(workflowId);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setAgentMessages([]);
+        setLoadedAgentChatWorkflowId(workflowId);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [state.workflow?.id]);
+
+  useEffect(() => {
+    const workflowId = state.workflow?.id;
+    if (!workflowId || loadedAgentChatWorkflowId !== workflowId) return;
+
+    if (agentChatSaveTimerRef.current) clearTimeout(agentChatSaveTimerRef.current);
+    agentChatSaveTimerRef.current = setTimeout(() => {
+      workflowChatApi.save(workflowId, agentMessages.map(serializeWorkflowAgentChatMessage)).catch(() => {});
+    }, 250);
+
+    return () => {
+      if (agentChatSaveTimerRef.current) clearTimeout(agentChatSaveTimerRef.current);
+    };
+  }, [agentMessages, loadedAgentChatWorkflowId, state.workflow?.id]);
+
+  const clearWorkflowAgentMessages = useCallback(async () => {
+    const workflowId = state.workflow?.id;
+    setAgentMessages([]);
+    if (workflowId) await workflowChatApi.clear(workflowId).catch(() => {});
+  }, [state.workflow?.id]);
 
   const appendAssistantContent = useCallback((messageId: string, content: string) => {
     setAgentMessages((messages) => messages.map((message) => (
@@ -570,7 +615,7 @@ function WorkflowEditorInner({
               variant="ghost"
               size="icon"
               className="h-8 w-8 rounded-full hover:bg-background/50"
-              onClick={() => setAgentMessages([])}
+              onClick={clearWorkflowAgentMessages}
               title="清空消息"
             >
               <Trash2 className="h-4 w-4" />
@@ -669,9 +714,7 @@ function ToolJsonBlock({ label, value }: { label: string; value: unknown }) {
   return (
     <div className="mb-2 last:mb-0">
       <div className="mb-1 text-[10px] font-medium uppercase text-muted-foreground">{label}</div>
-      <pre className="max-h-40 overflow-auto rounded-md bg-muted/60 p-2 text-[11px] leading-relaxed">
-        {formatJson(value)}
-      </pre>
+      <JsonViewer data={value as import('@/components/viewers/json-viewer').JsonValue} title={label} defaultExpanded={2} className="max-h-40" rootName={label.toLowerCase()} />
     </div>
   );
 }
@@ -752,6 +795,21 @@ function parseSseEvent(chunk: string): SseEvent | null {
   }
 }
 
+function hydrateWorkflowAgentChatMessage(message: PersistedWorkflowAgentChatMessage): WorkflowAgentChatMessage {
+  const timestamp = new Date(message.timestamp);
+  return {
+    ...message,
+    timestamp: Number.isNaN(timestamp.getTime()) ? new Date() : timestamp,
+  };
+}
+
+function serializeWorkflowAgentChatMessage(message: WorkflowAgentChatMessage): PersistedWorkflowAgentChatMessage {
+  return {
+    ...message,
+    timestamp: message.timestamp.toISOString(),
+  };
+}
+
 function readWorkflowPatch(result: unknown): { workflow_id: string; nodes: Workflow['nodes']; edges: Workflow['edges']; updatedAt?: number } | null {
   const record = asRecord(result);
   const patch = asRecord(record.workflow_patch);
@@ -778,15 +836,6 @@ function findLastIndex<T>(items: T[], predicate: (item: T) => boolean): number {
     if (predicate(items[index])) return index;
   }
   return -1;
-}
-
-function formatJson(value: unknown): string {
-  if (value === undefined) return '';
-  try {
-    return JSON.stringify(value, null, 2);
-  } catch {
-    return String(value);
-  }
 }
 
 // ---- Main export (with ReactFlowProvider) ----

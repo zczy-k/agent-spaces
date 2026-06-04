@@ -11,3 +11,5 @@
 - `packages/web/src/lib/workflow-nodes.ts` exports `allNodeDefinitions`, enough to seed node usage/search/create defaults for built-in node types.
 - `AgentEditor` can be reused for workflow-agent model settings by adding optional fixed values and locked fields. `AgentDetail` now supports locking runtime, prompt, tools, mcps, skills, role, and working directory without changing default behavior elsewhere.
 - Workflow agent preset lookup uses fixed `templateId` `workflow-editor-agent`; model settings create/update this backend preset, while runtime prompt and tools remain fixed by the workflow-agent SSE path.
+- Workflow sidecar data already lives under `.agent-spaces-data/workflows/{workflow_id}` via `packages/server/src/storage/workflow-store.ts`; `chat.json` can be added beside `staging.json` and `operation_history.json`.
+- The web workflow API delegates through `packages/sdk/src/modules/workflow.ts`, so chat persistence needs server storage/service/routes, SDK methods, and a thin `workflowChatApi` wrapper.

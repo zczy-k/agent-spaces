@@ -1,7 +1,7 @@
 // Workflow REST API client — delegates to @agent-spaces/sdk
 
 import type {
-  Workflow, WorkflowFolder, WorkflowVersion, ExecutionLog, OperationEntry, StagedNode, WorkflowNode, WorkflowEdge,
+  Workflow, WorkflowFolder, WorkflowVersion, ExecutionLog, OperationEntry, StagedNode, WorkflowNode, WorkflowEdge, WorkflowAgentChatMessage,
 } from '@agent-spaces/shared';
 import { sdk } from './sdk';
 
@@ -124,5 +124,19 @@ export const stagingApi = {
   },
   clear(workflowId: string): Promise<void> {
     return sdk.workflow.clearStaging(workflowId);
+  },
+};
+
+// ---- Workflow Agent Chat ----
+
+export const workflowChatApi = {
+  load(workflowId: string): Promise<WorkflowAgentChatMessage[]> {
+    return sdk.workflow.loadChat(workflowId);
+  },
+  save(workflowId: string, messages: WorkflowAgentChatMessage[]): Promise<void> {
+    return sdk.workflow.saveChat(workflowId, messages);
+  },
+  clear(workflowId: string): Promise<void> {
+    return sdk.workflow.clearChat(workflowId);
   },
 };

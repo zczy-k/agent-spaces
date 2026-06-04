@@ -4,7 +4,7 @@ import { v4 as uuid } from 'uuid';
 import type {
   Workflow, WorkflowTemplate, WorkflowNode, WorkflowEdge,
   WorkflowFolder, WorkflowVersion, ExecutionLog, StagedNode, OperationEntry,
-  WorkflowTrigger,
+  WorkflowTrigger, WorkflowAgentChatMessage,
 } from '@agent-spaces/shared';
 import * as store from '../storage/workflow-store.js';
 import { listTemplates } from './agent.js';
@@ -339,6 +339,24 @@ export function loadOperationHistory(workflowId: string): OperationEntry[] {
 
 export function saveOperationHistory(workflowId: string, entries: OperationEntry[]): void {
   store.saveOperationHistory(workflowId, entries);
+}
+
+export function clearOperationHistory(workflowId: string): void {
+  store.clearOperationHistory(workflowId);
+}
+
+// ---- Workflow Agent Chat ----
+
+export function loadChat(workflowId: string): WorkflowAgentChatMessage[] {
+  return store.loadChat(workflowId) as WorkflowAgentChatMessage[];
+}
+
+export function saveChat(workflowId: string, messages: WorkflowAgentChatMessage[]): void {
+  store.saveChat(workflowId, messages);
+}
+
+export function clearChat(workflowId: string): void {
+  store.clearChat(workflowId);
 }
 
 // ---- Plugin Config Schemes ----

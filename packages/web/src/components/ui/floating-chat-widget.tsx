@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Markdown } from '@/components/ui/markdown';
 import { cn } from '@/lib/utils';
 import { AnimatePresence, motion, type Variants } from 'framer-motion';
-import { MessageSquare, Send, X } from 'lucide-react';
-import { useId, useRef, useEffect } from 'react';
+import { MessageSquare, Send, X, ChevronDown, ChevronRight, Brain } from 'lucide-react';
+import { useId, useRef, useEffect, useState, useMemo } from 'react';
 
 export interface ChatMessage {
   id: string;
@@ -97,6 +97,36 @@ const messageVariants: Variants = {
 
 function formatTime(date: Date) {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+function extractThinkingContent(content: string): { thinking: string | null; message: string } {
+  const match = content.match(/^<think\s*>([\s\S]*?)<\/think>\s*([\s\S]*)$/);
+  if (match) {
+    return { thinking: match[1].trim(), message: match[2].trim() };
+  }
+  return { thinking: null, message: content };
+}
+
+function ThinkingBlock({ content }: { content: string }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div className="mb-2">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-1 text-xs text-muted-foreground/70 hover:text-muted-foreground transition-colors"
+      >
+        <Brain className="h-3 w-3" />
+        {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+        <span>思考过程</span>
+      </button>
+      {expanded && (
+        <div className="mt-1 text-xs text-muted-foreground/70 border-l-2 border-muted-foreground/20 pl-3 whitespace-pre-wrap break-words">
+          {content}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function StatusDot({ status }: { status?: string }) {
@@ -239,11 +269,21 @@ export function FloatingChatPanel({
                           : 'rounded-2xl rounded-tl-none bg-muted/50 backdrop-blur-sm'
                       )}
                     >
-                      {msg.role === 'agent' && markdown ? (
-                        renderMessageContent ? renderMessageContent(msg) : <Markdown content={msg.content} workspaceId={workspaceId} />
-                      ) : (
-                        renderMessageContent ? renderMessageContent(msg) : <p className="whitespace-pre-wrap break-words">{msg.content}</p>
-                      )}
+                      {(() => {
+                        if (renderMessageContent) return renderMessageContent(msg);
+                        if (msg.role === 'user') return <p className="whitespace-pre-wrap break-words">{msg.content}</p>;
+                        const { thinking, message } = extractThinkingContent(msg.content);
+                        return (
+                          <>
+                            {thinking !== null && <ThinkingBlock content={thinking} />}
+                            {markdown ? (
+                              <Markdown content={message} workspaceId={workspaceId} />
+                            ) : (
+                              <p className="whitespace-pre-wrap break-words">{message}</p>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                     {renderMessageExtras?.(msg)}
                     <span

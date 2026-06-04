@@ -257,6 +257,43 @@ router.put('/:workflowId/operation-history', (req: Request<{ workflowId: string 
   }
 });
 
+router.delete('/:workflowId/operation-history', (req: Request<{ workflowId: string }>, res: Response) => {
+  try {
+    ws.clearOperationHistory(req.params.workflowId);
+    res.status(204).send();
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// ---- Workflow Agent Chat ----
+
+router.get('/:workflowId/chat', (req: Request<{ workflowId: string }>, res: Response) => {
+  try {
+    res.json(ws.loadChat(req.params.workflowId));
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.put('/:workflowId/chat', (req: Request<{ workflowId: string }>, res: Response) => {
+  try {
+    ws.saveChat(req.params.workflowId, Array.isArray(req.body?.messages) ? req.body.messages : []);
+    res.json({ ok: true });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+router.delete('/:workflowId/chat', (req: Request<{ workflowId: string }>, res: Response) => {
+  try {
+    ws.clearChat(req.params.workflowId);
+    res.status(204).send();
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 // ---- Plugin Config Schemes ----
 
 router.get('/:workflowId/plugin-schemes/:pluginId', (req: Request<{ workflowId: string; pluginId: string }>, res: Response) => {

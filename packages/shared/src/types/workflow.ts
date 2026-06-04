@@ -321,6 +321,22 @@ export interface StagedNode {
   stagedAt: number
 }
 
+export interface WorkflowAgentToolCall {
+  id: string
+  name: string
+  input?: unknown
+  result?: unknown
+  status: 'running' | 'success' | 'error'
+}
+
+export interface WorkflowAgentChatMessage {
+  id: string
+  role: 'user' | 'agent'
+  content: string
+  timestamp: string
+  toolCalls?: WorkflowAgentToolCall[]
+}
+
 export interface ExecutionInputPreset {
   id: string
   name: string

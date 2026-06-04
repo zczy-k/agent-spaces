@@ -54,6 +54,10 @@ function operationHistoryPath(workflowId: string) {
   return path.join(workflowDir(workflowId), 'operation_history.json');
 }
 
+function chatPath(workflowId: string) {
+  return path.join(workflowDir(workflowId), 'chat.json');
+}
+
 // ---- Legacy migration ----
 
 function legacyWorkflowPath(workflowId: string) {
@@ -348,6 +352,22 @@ export function saveOperationHistory(workflowId: string, entries: any[]) {
 
 export function clearOperationHistory(workflowId: string) {
   const file = operationHistoryPath(workflowId);
+  if (existsSync(file)) unlinkSync(file);
+}
+
+// ---- Workflow Agent Chat ----
+
+export function loadChat(workflowId: string): any[] {
+  return readJsonFile<any[]>(chatPath(workflowId)) ?? [];
+}
+
+export function saveChat(workflowId: string, messages: any[]) {
+  ensureDir(workflowDir(workflowId));
+  writeJsonFile(chatPath(workflowId), messages);
+}
+
+export function clearChat(workflowId: string) {
+  const file = chatPath(workflowId);
   if (existsSync(file)) unlinkSync(file);
 }
 

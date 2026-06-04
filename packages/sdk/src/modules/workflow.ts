@@ -1,5 +1,5 @@
 import type { HttpClient } from '../client';
-import type { WorkflowTemplate, WorkflowNode, WorkflowFolder, WorkflowVersion, ExecutionLog, OperationEntry, StagedNode, WorkflowEdge } from '@agent-spaces/shared';
+import type { WorkflowTemplate, WorkflowNode, WorkflowFolder, WorkflowVersion, ExecutionLog, OperationEntry, StagedNode, WorkflowEdge, WorkflowAgentChatMessage } from '@agent-spaces/shared';
 
 // Re-export from shared for convenience
 export type { OperationEntry, StagedNode };
@@ -92,5 +92,15 @@ export function createWorkflowApi(http: HttpClient) {
 
     clearStaging: (workflowId: string): Promise<void> =>
       http.delete(`/api/workflows/${workflowId}/staging`),
+
+    // ---- Workflow Agent Chat ----
+    loadChat: (workflowId: string): Promise<WorkflowAgentChatMessage[]> =>
+      http.get(`/api/workflows/${workflowId}/chat`),
+
+    saveChat: (workflowId: string, messages: WorkflowAgentChatMessage[]): Promise<void> =>
+      http.putVoid(`/api/workflows/${workflowId}/chat`, { messages }),
+
+    clearChat: (workflowId: string): Promise<void> =>
+      http.delete(`/api/workflows/${workflowId}/chat`),
   };
 }
