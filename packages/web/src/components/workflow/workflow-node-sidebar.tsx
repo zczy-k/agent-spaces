@@ -134,7 +134,7 @@ export function WorkflowNodeSidebar({
       return grouped;
     }
     return getNodeDefinitionsByCategory();
-  }, [searchQuery]);
+  }, [searchQuery, workflowPlugins]);
 
   const pluginById = useMemo(() => new Map(workflowPlugins.map(plugin => [plugin.id, plugin])), [workflowPlugins]);
 
