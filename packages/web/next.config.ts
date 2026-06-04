@@ -12,7 +12,7 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 const nextConfig: NextConfig = {
   output: isStaticExport ? "export" : undefined,
   experimental: {
-    middlewareClientMaxBodySize: "50mb",
+    proxyClientMaxBodySize: "50mb",
   },
   allowedDevOrigins: [
     "127.0.0.1",
