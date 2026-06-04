@@ -31,6 +31,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
   const [redoStack, setRedoStack] = useState<string[]>([]);
   const [triggerDialogOpen, setTriggerDialogOpen] = useState(false);
   const [pluginsDialogOpen, setPluginsDialogOpen] = useState(false);
+  const [pluginPickerDialogOpen, setPluginPickerDialogOpen] = useState(false);
   const [embeddedEditorOpen, setEmbeddedEditorOpen] = useState(false);
   const [embeddedSubWorkflowId, setEmbeddedSubWorkflowId] = useState<string | null>(null);
 
@@ -180,6 +181,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
     undoStack, redoStack,
     triggerDialogOpen, setTriggerDialogOpen,
     pluginsDialogOpen, setPluginsDialogOpen,
+    pluginPickerDialogOpen, setPluginPickerDialogOpen,
     embeddedEditorOpen, setEmbeddedEditorOpen,
     embeddedSubWorkflowId, setEmbeddedSubWorkflowId,
     workflowLayout, onWorkflowLayoutChange,

@@ -14,6 +14,7 @@ import { WorkflowTriggerDialog } from './workflow-trigger-dialog';
 import { WorkflowEmbeddedEditor } from './workflow-embedded-editor';
 import { WorkflowInteractionDialog } from './workflow-interaction-dialog';
 import { WorkflowPluginsDialog } from './workflow-plugins-dialog';
+import { WorkflowPluginPickerDialog } from './workflow-plugin-picker-dialog';
 import { WorkflowNodeSelectDialog } from './workflow-node-select-dialog';
 import { ResizablePanel, ResizableHandle, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -143,7 +144,7 @@ function WorkflowEditorInner({
           <WorkflowNodeSidebar
             workflow={workflow}
             onWorkflowChange={state.handleWorkflowMetaChange}
-            onOpenPluginPicker={() => state.setPluginsDialogOpen(true)}
+            onOpenPluginPicker={() => state.setPluginPickerDialogOpen(true)}
           />
         </ResizablePanel>
 
@@ -292,6 +293,13 @@ function WorkflowEditorInner({
       <WorkflowPluginsDialog
         open={state.pluginsDialogOpen}
         onOpenChange={state.setPluginsDialogOpen}
+        workflow={workflow}
+        onWorkflowChange={state.handleWorkflowMetaChange}
+      />
+
+      <WorkflowPluginPickerDialog
+        open={state.pluginPickerDialogOpen}
+        onOpenChange={state.setPluginPickerDialogOpen}
         workflow={workflow}
         onWorkflowChange={state.handleWorkflowMetaChange}
       />

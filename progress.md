@@ -432,3 +432,20 @@
   - `pnpm --filter @agent-spaces/web build` passed.
   - Web build still prints the existing `ENVIRONMENT_FALLBACK` static generation warning, but exits successfully.
 - Status: complete
+
+## 2026-06-04 Workflow 侧栏插件选择对话框修正
+
+- Status: complete
+- Actions taken:
+  - 对比 `workflow-node-sidebar.tsx` 侧栏加号入口和 WorkFox `PluginPickerDialog.vue`。
+  - 新增 React `WorkflowPluginPickerDialog`，用于按插件启用/禁用当前 Workflow 的 `enabledPlugins`。
+  - 侧栏加号改为打开选择插件对话框；工具栏插件按钮继续打开插件管理/商店对话框。
+  - 插件选择对话框补齐搜索、标签过滤、类型过滤、节点数量、启用状态和 hover 详情。
+- Files modified:
+  - packages/web/src/components/workflow/workflow-plugin-picker-dialog.tsx
+  - packages/web/src/components/workflow/use-workflow-editor-state.ts
+  - packages/web/src/components/workflow/workflow-editor.tsx
+  - progress.md
+- Verification:
+  - `pnpm --filter @agent-spaces/web build` passed.
+  - Web build still prints the existing `ENVIRONMENT_FALLBACK` static generation warning, but exits successfully.
