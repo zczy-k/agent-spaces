@@ -556,10 +556,10 @@ function WorkflowEditorInner({
           <div className="rounded-xl bg-background overflow-hidden h-full">
           <Tabs value={state.rightTab} onValueChange={state.setRightTab} className="flex flex-col h-full">
             <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0 h-8">
-              <TabsTrigger value="properties" className="text-xs px-3 py-1.5">属性</TabsTrigger>
-              <TabsTrigger value="versions" className="text-xs px-3 py-1.5">版本</TabsTrigger>
-              <TabsTrigger value="history" className="text-xs px-3 py-1.5">历史</TabsTrigger>
-              <TabsTrigger value="staging" className="text-xs px-3 py-1.5">暂存</TabsTrigger>
+              <TabsTrigger value="properties" className="text-xs px-3 py-1.5 data-active:!bg-primary data-active:!text-primary-foreground">属性</TabsTrigger>
+              <TabsTrigger value="versions" className="text-xs px-3 py-1.5 data-active:!bg-primary data-active:!text-primary-foreground">版本</TabsTrigger>
+              <TabsTrigger value="history" className="text-xs px-3 py-1.5 data-active:!bg-primary data-active:!text-primary-foreground">历史</TabsTrigger>
+              <TabsTrigger value="staging" className="text-xs px-3 py-1.5 data-active:!bg-primary data-active:!text-primary-foreground">暂存</TabsTrigger>
             </TabsList>
             <TabsContent value="properties" className="flex-1 min-h-0 m-0">
               <WorkflowPropertiesPanel

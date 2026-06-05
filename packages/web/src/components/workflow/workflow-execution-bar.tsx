@@ -169,7 +169,7 @@ export function WorkflowExecutionBar({
         isExpanded ? 'h-[min(320px,45vh)] min-h-[220px]' : 'h-auto',
       )}
     >
-      <div className="flex items-center gap-2 px-3 py-1.5">
+      <div className="flex items-center gap-2 px-3 py-1.5 min-w-0 overflow-hidden">
         {canResume ? (
           <Button variant="ghost" size="sm" className="h-6 text-xs gap-1 px-2" onClick={onResume}>
             <Play className="h-3 w-3" /> 继续
@@ -217,7 +217,7 @@ export function WorkflowExecutionBar({
           {errorSteps > 0 && <span className="text-destructive">{errorSteps} 错误</span>}
         </div>
 
-        <Button variant="ghost" size="icon" className="h-5 w-5" onClick={onToggle}>
+        <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0" onClick={onToggle}>
           {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
         </Button>
       </div>

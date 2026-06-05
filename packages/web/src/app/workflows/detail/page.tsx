@@ -1,23 +1,22 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import type { ExecutionLog, OutputField, WorkflowNode } from '@agent-spaces/shared';
-import type { WorkflowTemplate } from '@agent-spaces/shared';
-import { workflowApi, executionLogApi } from '@/lib/workflow-api';
+import type { ExecutionLog, JsonValue, OutputField, WorkflowNode, WorkflowTemplate } from '@agent-spaces/shared';
+import { executionLogApi } from '@/lib/workflow-api';
 import { useWorkflowStore } from '@/stores/workflow';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import {
   ResizableHandle, ResizablePanel, ResizablePanelGroup,
 } from '@/components/ui/resizable';
-import { ExecutionInputForm } from '@/components/workflow/workflow-execution-input-dialog';
 import { nativeNavigate } from '@/lib/navigate';
+import { getWS } from '@/lib/ws';
 import {
-  ArrowLeft, CheckCircle, Circle, Loader2, Pencil, Play, Trash2, XCircle,
+  ArrowLeft, CheckCircle, Circle, Loader2, Pencil, Play, Square, Trash2, XCircle,
 } from 'lucide-react';
-import type { JsonValue } from '@agent-spaces/shared';
 import { cn } from '@/lib/utils';
 import { JsonViewer } from '@/components/viewers/json-viewer';
 
@@ -48,17 +47,27 @@ function logIcon(status: string) {
   return <Circle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />;
 }
 
+function stepIcon(status: string) {
+  if (status === 'completed') return <CheckCircle className="h-3 w-3 text-green-500 shrink-0" />;
+  if (status === 'error') return <XCircle className="h-3 w-3 text-red-500 shrink-0" />;
+  if (status === 'running') return <Loader2 className="h-3 w-3 text-blue-500 animate-spin shrink-0" />;
+  return <Circle className="h-3 w-3 text-muted-foreground shrink-0" />;
+}
+
 export default function WorkflowDetailPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const workflowId = searchParams.get('workflow_id') || '';
   const paramsStr = searchParams.get('params');
 
-  const { workflows, loadWorkflows, upsertWorkflow } = useWorkflowStore();
+  const { workflows, loadWorkflows } = useWorkflowStore();
   const [logs, setLogs] = useState<ExecutionLog[]>([]);
   const [selectedLog, setSelectedLog] = useState<ExecutionLog | null>(null);
   const [logsLoading, setLogsLoading] = useState(false);
   const [initialValues, setInitialValues] = useState<Record<string, string>>({});
+  const [executing, setExecuting] = useState(false);
+  const [currentExecutionId, setCurrentExecutionId] = useState<string | null>(null);
+  const cleanupRef = useRef<(() => void)[]>([]);
 
   useEffect(() => {
     if (workflows.length === 0) loadWorkflows();
@@ -72,7 +81,6 @@ export default function WorkflowDetailPage() {
       .finally(() => setLogsLoading(false));
   }, [workflowId]);
 
-  // Parse params from URL to pre-fill input form
   useEffect(() => {
     if (!paramsStr) return;
     try {
@@ -86,6 +94,14 @@ export default function WorkflowDetailPage() {
       }
     } catch { /* ignore */ }
   }, [paramsStr]);
+
+  // Cleanup WS listeners on unmount
+  useEffect(() => {
+    return () => {
+      for (const cleanup of cleanupRef.current) cleanup();
+      cleanupRef.current = [];
+    };
+  }, []);
 
   const workflow = useMemo(
     () => workflows.find(w => w.id === workflowId),
@@ -104,18 +120,89 @@ export default function WorkflowDetailPage() {
     return Array.isArray(fields) ? fields as OutputField[] : [];
   }, [firstStartNode]);
 
-  const handleExecute = (values: Record<string, unknown>) => {
+  const refreshLogs = useCallback(async () => {
     if (!workflowId) return;
-    // TODO: trigger execution via WebSocket or API
-    console.log('Execute workflow:', workflowId, values);
-  };
+    try {
+      const updated = await executionLogApi.list(workflowId);
+      setLogs(updated);
+    } catch { /* ignore */ }
+  }, [workflowId]);
 
-  const handleDeleteLog = async (logId: string) => {
-    if (!workflowId) return;
-    await executionLogApi.delete(workflowId, logId);
-    setLogs(prev => prev.filter(l => l.id !== logId));
-    if (selectedLog?.id === logId) setSelectedLog(null);
-  };
+  const handleExecute = useCallback((values: Record<string, unknown>) => {
+    if (!workflowId || !workflow) return;
+
+    // Cleanup previous listeners
+    for (const cleanup of cleanupRef.current) cleanup();
+    cleanupRef.current = [];
+
+    setExecuting(true);
+    setSelectedLog(null);
+
+    const ws = getWS('workflows');
+    const sendRequest = () => {
+      ws.send('workflow:execute', {
+        workflowId,
+        input: values,
+        snapshot: {
+          nodes: workflow.nodes,
+          edges: workflow.edges,
+          groups: workflow.groups || [],
+        },
+      });
+    };
+
+    const upsertLog = (log: ExecutionLog) => {
+      setSelectedLog(log);
+      setLogs(prev => [log, ...prev.filter(item => item.id !== log.id)]);
+    };
+
+    const offLog = ws.on('execution:log', (data) => {
+      const event = data as { workflowId?: string; executionId?: string; log?: ExecutionLog };
+      if (event.workflowId !== workflowId || !event.log) return;
+      if (event.executionId || event.log.id) setCurrentExecutionId(event.executionId || event.log.id);
+      upsertLog(event.log);
+    });
+    const offResult = ws.on('workflow:execute:result', (data) => {
+      const result = data as { executionId?: string };
+      if (result.executionId) setCurrentExecutionId(result.executionId);
+    });
+    const offCompleted = ws.on('workflow:completed', (data) => {
+      const event = data as { workflowId?: string; log?: ExecutionLog };
+      if (event.workflowId !== workflowId) return;
+      if (event.log) upsertLog(event.log);
+      setExecuting(false);
+      setCurrentExecutionId(null);
+      void refreshLogs();
+    });
+    const offFailed = ws.on('workflow:error', (data) => {
+      const event = data as { workflowId?: string; log?: ExecutionLog };
+      if (event.workflowId !== workflowId) return;
+      if (event.log) upsertLog(event.log);
+      setExecuting(false);
+      setCurrentExecutionId(null);
+      void refreshLogs();
+    });
+
+    cleanupRef.current = [offLog, offResult, offCompleted, offFailed];
+
+    if (ws.connected) {
+      sendRequest();
+    } else {
+      const offConnected = ws.on('connected', () => {
+        offConnected();
+        cleanupRef.current = cleanupRef.current.filter(c => c !== offConnected);
+        sendRequest();
+      });
+      cleanupRef.current.push(offConnected);
+    }
+  }, [workflowId, workflow, refreshLogs]);
+
+  const handleStop = useCallback(() => {
+    if (!currentExecutionId) return;
+    getWS('workflows').send('workflow:stop', { executionId: currentExecutionId });
+    setExecuting(false);
+    setCurrentExecutionId(null);
+  }, [currentExecutionId]);
 
   const handleClearLogs = async () => {
     if (!workflowId) return;
@@ -140,12 +227,10 @@ export default function WorkflowDetailPage() {
     );
   }
 
-  const steps = selectedLog?.steps || [];
-
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col p-4 gap-3">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border shrink-0">
+      <div className="flex items-center gap-3 shrink-0">
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => nativeNavigate(router, '/workflows')}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
@@ -173,60 +258,74 @@ export default function WorkflowDetailPage() {
       {/* Main content */}
       <div className="flex-1 min-h-0">
         <ResizablePanelGroup orientation="horizontal" className="h-full">
-          {/* Left: workflow info + input form */}
+          {/* Left: workflow info card + input form card */}
           <ResizablePanel id="workflow-detail-left" defaultSize="40%" minSize="25%" maxSize="55%">
-            <div className="h-full flex flex-col">
-              {/* Workflow info */}
-              <div className="px-4 py-3 border-b border-border shrink-0">
-                <h2 className="text-xs font-medium mb-2">工作流信息</h2>
-                <div className="space-y-1.5 text-xs">
-                  <div className="flex gap-2">
-                    <span className="text-muted-foreground w-14 shrink-0">ID</span>
-                    <span className="font-mono text-[10px] truncate">{workflow.id}</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="text-muted-foreground w-14 shrink-0">节点</span>
-                    <span>{workflow.nodes.length} 个</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="text-muted-foreground w-14 shrink-0">边</span>
-                    <span>{workflow.edges.length} 条</span>
-                  </div>
-                  {workflow.tags && workflow.tags.length > 0 && (
+            <div className="h-full flex flex-col gap-3 pr-1">
+              {/* Workflow info card */}
+              <Card className="rounded-lg shrink-0">
+                <CardHeader className="p-3 pb-2">
+                  <CardTitle className="text-xs">工作流信息</CardTitle>
+                </CardHeader>
+                <CardContent className="p-3 pt-0">
+                  <div className="space-y-1.5 text-xs">
                     <div className="flex gap-2">
-                      <span className="text-muted-foreground w-14 shrink-0">标签</span>
-                      <div className="flex gap-1 flex-wrap">
-                        {workflow.tags.map(tag => (
-                          <Badge key={tag} variant="secondary" className="text-[10px] h-4 px-1.5">{tag}</Badge>
-                        ))}
+                      <span className="text-muted-foreground w-14 shrink-0">ID</span>
+                      <span className="font-mono text-[10px] truncate">{workflow.id}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <span className="text-muted-foreground w-14 shrink-0">节点</span>
+                      <span>{workflow.nodes.length} 个</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <span className="text-muted-foreground w-14 shrink-0">边</span>
+                      <span>{workflow.edges.length} 条</span>
+                    </div>
+                    {workflow.tags && workflow.tags.length > 0 && (
+                      <div className="flex gap-2">
+                        <span className="text-muted-foreground w-14 shrink-0">标签</span>
+                        <div className="flex gap-1 flex-wrap">
+                          {workflow.tags.map(tag => (
+                            <Badge key={tag} variant="secondary" className="text-[10px] h-4 px-1.5">{tag}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Input form card */}
+              <Card className="rounded-lg flex-1 min-h-0 flex flex-col">
+                <CardHeader className="p-3 pb-2 shrink-0">
+                  <CardTitle className="text-xs">执行参数</CardTitle>
+                </CardHeader>
+                <CardContent className="p-3 pt-0 flex-1 min-h-0 flex flex-col">
+                  {inputFields.length > 0 ? (
+                    <InitialValuesExecutionInputForm
+                      fields={inputFields}
+                      initialValues={initialValues}
+                      onSubmit={handleExecute}
+                      onStop={handleStop}
+                      executing={executing}
+                    />
+                  ) : (
+                    <div className="flex-1 flex items-center justify-center">
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground mb-3">无输入参数，直接执行</p>
+                        <Button size="sm" className="h-7 text-xs gap-1" disabled={executing} onClick={() => handleExecute({})}>
+                          {executing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+                          {executing ? '执行中...' : '执行'}
+                        </Button>
+                        {executing && (
+                          <Button variant="destructive" size="sm" className="h-7 text-xs gap-1" onClick={handleStop}>
+                            <Square className="h-3 w-3" /> 停止
+                          </Button>
+                        )}
                       </div>
                     </div>
                   )}
-                </div>
-              </div>
-
-              {/* Input form */}
-              <div className="flex-1 min-h-0 flex flex-col">
-                <div className="px-4 py-2 border-b border-border shrink-0">
-                  <h2 className="text-xs font-medium">执行参数</h2>
-                </div>
-                {inputFields.length > 0 ? (
-                  <InitialValuesExecutionInputForm
-                    fields={inputFields}
-                    initialValues={initialValues}
-                    onSubmit={handleExecute}
-                  />
-                ) : (
-                  <div className="flex-1 flex items-center justify-center">
-                    <div className="text-center">
-                      <p className="text-xs text-muted-foreground mb-3">无输入参数，直接执行</p>
-                      <Button size="sm" className="h-7 text-xs gap-1" onClick={() => handleExecute({})}>
-                        <Play className="h-3 w-3" /> 执行
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
+                </CardContent>
+              </Card>
             </div>
           </ResizablePanel>
 
@@ -234,17 +333,18 @@ export default function WorkflowDetailPage() {
 
           {/* Right: execution records */}
           <ResizablePanel id="workflow-detail-right" defaultSize="60%" minSize="40%">
-            <div className="h-full flex flex-col">
-              <div className="flex items-center justify-between px-4 py-2 border-b border-border shrink-0">
-                <h2 className="text-xs font-medium">执行记录</h2>
-                {logs.length > 0 && (
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleClearLogs}>
-                    <Trash2 className="h-3 w-3 text-muted-foreground" />
-                  </Button>
-                )}
-              </div>
-
-              <div className="flex-1 min-h-0">
+            <Card className="rounded-lg h-full flex flex-col">
+              <CardHeader className="p-3 pb-2 shrink-0">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xs">执行记录</CardTitle>
+                  {logs.length > 0 && (
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleClearLogs}>
+                      <Trash2 className="h-3 w-3 text-muted-foreground" />
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="p-0 pt-0 flex-1 min-h-0">
                 <ResizablePanelGroup orientation="horizontal" className="h-full">
                   {/* Log list */}
                   <ResizablePanel id="workflow-detail-logs" defaultSize="30%" minSize="20%" maxSize="45%">
@@ -303,15 +403,12 @@ export default function WorkflowDetailPage() {
                             </span>
                           </div>
 
-                          {steps.map((step, index) => {
+                          {(selectedLog.steps || []).map((step, index) => {
                             const nodeType = selectedLog.snapshot?.nodes?.find(n => n.id === step.nodeId)?.type || '';
                             return (
-                              <div key={`${step.nodeId}-${index}`} className="border border-border rounded-md overflow-hidden">
+                              <Card key={`${step.nodeId}-${index}`} className="rounded-lg overflow-hidden">
                                 <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-muted/30">
-                                  {step.status === 'completed' ? <CheckCircle className="h-3 w-3 text-green-500 shrink-0" /> :
-                                    step.status === 'error' ? <XCircle className="h-3 w-3 text-red-500 shrink-0" /> :
-                                    step.status === 'running' ? <Loader2 className="h-3 w-3 text-blue-500 animate-spin shrink-0" /> :
-                                    <Circle className="h-3 w-3 text-muted-foreground shrink-0" />}
+                                  {stepIcon(step.status)}
                                   <span className="text-xs font-medium truncate flex-1">{step.nodeLabel || step.nodeId}</span>
                                   <span className="text-[10px] text-muted-foreground font-mono">{nodeType}</span>
                                   <span className="text-[10px] text-muted-foreground">
@@ -341,11 +438,11 @@ export default function WorkflowDetailPage() {
                                     )}
                                   </div>
                                 </div>
-                              </div>
+                              </Card>
                             );
                           })}
 
-                          {steps.length === 0 && (
+                          {(!selectedLog.steps || selectedLog.steps.length === 0) && (
                             <div className="text-center text-xs text-muted-foreground py-4">暂无执行步骤</div>
                           )}
                         </div>
@@ -357,8 +454,8 @@ export default function WorkflowDetailPage() {
                     )}
                   </ResizablePanel>
                 </ResizablePanelGroup>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
@@ -366,13 +463,14 @@ export default function WorkflowDetailPage() {
   );
 }
 
-/** ExecutionInputForm with initial values from URL params */
 function InitialValuesExecutionInputForm({
-  fields, initialValues, onSubmit,
+  fields, initialValues, onSubmit, onStop, executing,
 }: {
   fields: OutputField[];
   initialValues: Record<string, string>;
   onSubmit: (values: Record<string, unknown>) => void;
+  onStop: () => void;
+  executing: boolean;
 }) {
   const [values, setValues] = useState<Record<string, string>>(() => {
     const map: Record<string, string> = {};
@@ -407,8 +505,8 @@ function InitialValuesExecutionInputForm({
 
   return (
     <>
-      <ScrollArea className="min-h-0 flex-1 pr-2">
-        <div className="space-y-3 py-1 px-4">
+      <ScrollArea className="min-h-0 flex-1">
+        <div className="space-y-3">
           {fields.map(field => (
             <label key={field.key} className="block space-y-1.5">
               <span className="text-xs font-medium">
@@ -425,15 +523,21 @@ function InitialValuesExecutionInputForm({
                 placeholder={field.type === 'boolean' ? 'true / false' : field.key}
                 value={values[field.key] ?? ''}
                 onChange={e => setField(field.key, e.target.value)}
+                disabled={executing}
               />
             </label>
           ))}
         </div>
       </ScrollArea>
-      <div className="px-4 py-2 border-t border-border shrink-0">
-        <Button size="sm" className="h-7 text-xs gap-1 w-full" onClick={submit}>
+      <div className="pt-2 shrink-0 flex gap-2">
+        <Button size="sm" className="h-7 text-xs gap-1 flex-1" disabled={executing} onClick={submit}>
           <Play className="h-3 w-3" /> 执行
         </Button>
+        {executing && (
+          <Button variant="destructive" size="sm" className="h-7 text-xs gap-1" onClick={onStop}>
+            <Square className="h-3 w-3" /> 停止
+          </Button>
+        )}
       </div>
     </>
   );
