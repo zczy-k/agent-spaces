@@ -78,6 +78,10 @@ export function getAgentWorkingDir(agentId: string): string | null {
   return agent.workingDir || store.chatWorkspaceDir(agentId);
 }
 
+export function getAgentConfigDir(agentId: string): string | null {
+  return store.findAgent(agentId) ? store.agentDir(agentId) : null;
+}
+
 export function getAgentWorkspace(agentId: string) {
   const workingDir = getAgentWorkingDir(agentId);
   if (!workingDir || !existsSync(workingDir)) return null;

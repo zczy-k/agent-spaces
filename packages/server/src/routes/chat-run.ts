@@ -1,7 +1,15 @@
 import { Router, type Response } from 'express';
+import type { BuiltInAgentToolName } from '@agent-spaces/shared';
 import * as chatService from '../services/chat.js';
+import * as agentService from '../services/agent.js';
 import { LangChainRuntime } from '../adapters/langchain-runtime.js';
 import type { AgentRuntimeConfig, AgentRuntimeEvent } from '../adapters/agent-runtime-types.js';
+import {
+  createCommandFunctionTools,
+  createDatabaseFunctionTools,
+  createKanbanFunctionTools,
+  createWorkflowExecutionFunctionTools,
+} from '../services/builtin-tools/index.js';
 
 const router = Router();
 
@@ -66,8 +74,22 @@ router.post('/agents/:id/run', async (req, res) => {
       : trimmedContent;
 
     const workingDir = chatService.getAgentWorkingDir(id) || process.cwd();
+    const configDir = chatService.getAgentConfigDir(id) || undefined;
+    const tools = normalizeToolNames(agent.tools);
+    const functionTools = [
+      ...createCommandFunctionTools(id, tools),
+      ...createDatabaseFunctionTools(id, tools),
+      ...createKanbanFunctionTools(id, tools),
+      ...createWorkflowExecutionFunctionTools(tools),
+    ];
     const result = await runtime.execute(prompt, workingDir, {
+      maxTurns: 100,
+      functionTools,
+      mcpServers: agentService.getMcpServers(agent.mcps as Parameters<typeof agentService.getMcpServers>[0]),
+      skills: normalizeSkillNames(agent.skills),
+      configDir,
       systemPrompt: agent.systemPrompt,
+      outputStyle: agent.outputStyle,
       onEvent: (event: AgentRuntimeEvent) => {
         writeRuntimeEvent(res, event);
       },
@@ -150,6 +172,23 @@ function requiresBaseURL(provider?: string): boolean {
     || provider === 'openai-responses'
     || provider === 'anthropic-messages'
     || provider === 'gemini-generate-content';
+}
+
+function normalizeSkillNames(skills: unknown): string[] {
+  if (!Array.isArray(skills)) return [];
+  return skills
+    .map((skill) => typeof skill === 'string'
+      ? skill
+      : skill && typeof skill === 'object' && 'name' in skill && typeof skill.name === 'string'
+        ? skill.name
+        : '')
+    .map((skill) => skill.trim())
+    .filter(Boolean);
+}
+
+function normalizeToolNames(tools: unknown): BuiltInAgentToolName[] | undefined {
+  if (!Array.isArray(tools)) return undefined;
+  return tools.filter((tool): tool is BuiltInAgentToolName => typeof tool === 'string');
 }
 
 export default router;
