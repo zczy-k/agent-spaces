@@ -107,6 +107,8 @@ interface FinishedExecutionRecovery {
 
 const MAX_RECENT_EVENTS = 100;
 const FINISHED_RECOVERY_TTL_MS = 2 * 60_000;
+const DELAY_NODE_MIN_MS = 100;
+const DELAY_NODE_MAX_MS = 30_000;
 
 export class ExecutionManager {
   private sessions = new Map<string, ExecutionSession>();
@@ -591,6 +593,8 @@ export class ExecutionManager {
         );
       case 'toast':
         return { message: String(resolvedData.message || ''), type: String(resolvedData.type || 'info') };
+      case 'delay':
+        return this.executeDelayNode(resolvedData, appendLog);
       case 'switch':
         return this.executeSwitch(session, resolvedData.conditions || []);
       case 'variable_aggregate':
@@ -622,6 +626,21 @@ export class ExecutionManager {
   }
 
   // ---- Private: Node type implementations ----
+
+  private async executeDelayNode(
+    resolvedData: Record<string, any>,
+    appendLog: (level: ExecutionLogEntry['level'], message: string) => void,
+  ): Promise<Record<string, unknown>> {
+    const rawMilliseconds = Number(resolvedData.milliseconds);
+    const milliseconds = Number.isFinite(rawMilliseconds)
+      ? Math.min(Math.max(rawMilliseconds, DELAY_NODE_MIN_MS), DELAY_NODE_MAX_MS)
+      : 1000;
+    const reason = typeof resolvedData.reason === 'string' ? resolvedData.reason.trim() : '';
+
+    appendLog('info', reason ? `Delay ${milliseconds}ms: ${reason}` : `Delay ${milliseconds}ms`);
+    await sleep(milliseconds);
+    return { milliseconds, reason };
+  }
 
   private executeLoopBreak(
     session: ExecutionSession,

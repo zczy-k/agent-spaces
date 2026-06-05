@@ -1,9 +1,10 @@
 // Workflow node type definitions and registry
 // Adapted from workfox — no Vue dependencies
 
-import type { NodeTypeDefinition, NodeProperty } from '@agent-spaces/shared';
+import type { NodeTypeDefinition } from '@agent-spaces/shared';
 import { StickyNoteView } from '@/components/workflow/sticky-note-view';
 import {
+  LOCAL_BRIDGE_WORKFLOW_NODES,
   LOOP_BREAK_NODE_TYPE,
   LOOP_BODY_NODE_TYPE,
   LOOP_BODY_ROLE,
@@ -323,6 +324,7 @@ export const allNodeDefinitions: NodeTypeDefinition[] = [
   ...aiNodes,
   ...interactionNodes,
   ...displayNodes,
+  ...LOCAL_BRIDGE_WORKFLOW_NODES,
 ];
 
 // ---- Registry helpers ----
