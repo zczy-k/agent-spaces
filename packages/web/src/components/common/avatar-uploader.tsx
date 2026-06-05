@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { AgentIcon } from "@/components/common/agent-icon";
 import { AvatarPicker } from "@/components/sidebar/settings/avatar-picker";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { X } from "lucide-react";
 import EmojiPicker from "emoji-picker-react";
 
@@ -30,18 +31,6 @@ export function AvatarUploader({
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
   const [avatarSrc, setAvatarSrc] = useState("");
-  const emojiRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!emojiPickerOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (emojiRef.current && !emojiRef.current.contains(e.target as Node)) {
-        setEmojiPickerOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [emojiPickerOpen]);
 
   return (
     <div className={`relative flex flex-col items-center gap-1.5 ${className ?? ""}`}>
@@ -63,32 +52,34 @@ export function AvatarUploader({
           </button>
         </div>
       ) : (
-        <button
-          type="button"
-          className="relative size-16 rounded-xl border border-input bg-muted flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
-          onClick={() => setEmojiPickerOpen((v) => !v)}
-        >
-          {icon ? (
-            <span className="text-2xl">{icon}</span>
-          ) : (
-            <span className="text-lg text-muted-foreground">{name?.charAt(0).toUpperCase() || "?"}</span>
-          )}
-          {emojiPickerOpen && (
-            <div ref={emojiRef} className="absolute top-full left-0 z-50 mt-1" onClick={(e) => e.stopPropagation()}>
-              <EmojiPicker
-                open={emojiPickerOpen}
-                onEmojiClick={(emoji) => {
-                  onIconChange(emoji.emoji);
-                  setEmojiPickerOpen(false);
-                }}
-                width={280}
-                height={350}
-                previewConfig={{ showPreview: false }}
-                skinTonesDisabled
+        <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
+          <PopoverTrigger
+            render={
+              <button
+                type="button"
+                className="relative size-16 rounded-xl border border-input bg-muted flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
               />
-            </div>
-          )}
-        </button>
+            }
+          >
+            {icon ? (
+              <span className="text-2xl">{icon}</span>
+            ) : (
+              <span className="text-lg text-muted-foreground">{name?.charAt(0).toUpperCase() || "?"}</span>
+            )}
+          </PopoverTrigger>
+          <PopoverContent side="bottom" align="start" className="w-auto p-0">
+            <EmojiPicker
+              onEmojiClick={(emoji) => {
+                onIconChange(emoji.emoji);
+                setEmojiPickerOpen(false);
+              }}
+              width={280}
+              height={350}
+              previewConfig={{ showPreview: false }}
+              skinTonesDisabled
+            />
+          </PopoverContent>
+        </Popover>
       )}
       <label className="text-[10px] text-primary cursor-pointer hover:underline">
         {t("detail.uploadAvatar")}

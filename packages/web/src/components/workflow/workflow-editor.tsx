@@ -482,8 +482,9 @@ function WorkflowEditorInner({
         onOpenPluginManager={() => state.setPluginsDialogOpen(true)}
         onWorkflowInfoChange={(updates) => {
           if (workflow) {
-            state.setWorkflow(w => w ? { ...w, ...updates } : null);
-            state.markDirty();
+            const updated = { ...workflow, ...updates };
+            state.setWorkflow(updated);
+            state.saveWorkflow(updated);
           }
         }}
       />

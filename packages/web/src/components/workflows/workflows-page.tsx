@@ -6,7 +6,8 @@ import type { WorkflowTemplate, WorkflowNode } from '@agent-spaces/shared';
 import { useWorkflowStore } from '@/stores/workflow';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Plus, Pencil, Copy, Trash2, Upload, FileText } from 'lucide-react';
+import { Plus, Pencil, Copy, Trash2, Upload, FileText, MoreVertical } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { WorkflowTemplatesDialog } from '@/components/workflows/workflow-templates-dialog';
 import { WorkflowListDialog } from '@/components/workflow/workflow-list-dialog';
 import type { WorkflowTemplatePreset } from '@/components/workflows/workflow-templates';
@@ -175,7 +176,27 @@ export function WorkflowsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {workflows.map((workflow) => (
-            <Card key={workflow.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => nativeNavigate(router, `/workflows/${workflow.id}`)}>
+            <Card key={workflow.id} className="group overflow-hidden hover:shadow-md transition-shadow cursor-pointer relative" onClick={() => nativeNavigate(router, `/workflows/${workflow.id}`)}>
+              <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-7 w-7">
+                      <MoreVertical className="h-3.5 w-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => nativeNavigate(router, `/workflows/${workflow.id}`)}>
+                      <Pencil className="h-3.5 w-3.5 mr-2" /> 编辑
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleDuplicate(workflow)}>
+                      <Copy className="h-3.5 w-3.5 mr-2" /> 复制
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDelete(workflow)}>
+                      <Trash2 className="h-3.5 w-3.5 mr-2" /> 删除
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
               <CardHeader className="pb-2">
                 <div className="flex items-center gap-2">
                   {workflow.icon ? (
@@ -192,48 +213,20 @@ export function WorkflowsPage() {
                 )}
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">
-                      {workflow.nodes.length} 个节点
-                    </span>
-                    {workflow.tags && workflow.tags.length > 0 && (
-                      <div className="flex gap-1">
-                        {workflow.tags.slice(0, 2).map(tag => (
-                          <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{tag}</span>
-                        ))}
-                        {workflow.tags.length > 2 && (
-                          <span className="text-[10px] text-muted-foreground">+{workflow.tags.length - 2}</span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => nativeNavigate(router, `/workflows/${workflow.id}`)}
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => handleDuplicate(workflow)}
-                    >
-                      <Copy className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-destructive hover:text-destructive"
-                      onClick={() => handleDelete(workflow)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    {workflow.nodes.length} 个节点
+                  </span>
+                  {workflow.tags && workflow.tags.length > 0 && (
+                    <div className="flex gap-1">
+                      {workflow.tags.slice(0, 2).map(tag => (
+                        <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{tag}</span>
+                      ))}
+                      {workflow.tags.length > 2 && (
+                        <span className="text-[10px] text-muted-foreground">+{workflow.tags.length - 2}</span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
