@@ -1,35 +1,7 @@
 "use client";
 import { create } from 'zustand';
 import { sdk } from '@/lib/sdk';
-
-// Types — import from the SDK if available, otherwise define inline
-interface ChatAgent {
-  id: string;
-  name: string;
-  avatar?: string;
-  description?: string;
-  systemPrompt?: string;
-  provider: string;
-  model: string;
-  apiKey: string;
-  baseURL?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface ChatMessage {
-  id: string;
-  agentId: string;
-  role: 'user' | 'agent';
-  content: string;
-  timestamp: string;
-  thinking?: string;
-  usage?: {
-    inputTokens?: number;
-    outputTokens?: number;
-    totalTokens?: number;
-  };
-}
+import type { ChatAgent, ChatMessage } from '@agent-spaces/sdk';
 
 interface ChatStore {
   agents: ChatAgent[];
@@ -106,7 +78,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     } catch { /* ignore */ }
   },
 
-  sendMessage: (agentId, content) => {
+  sendMessage: (agentId, _content) => {
     set((s) => ({ sending: { ...s.sending, [agentId]: true } }));
   },
 

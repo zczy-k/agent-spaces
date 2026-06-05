@@ -7,16 +7,7 @@ import { cn } from "@/lib/utils";
 import { Send, Square } from "lucide-react";
 import { useRef, useEffect } from "react";
 import { ChatMessageBubble } from "./chat-message-bubble";
-
-interface ChatMessage {
-  id: string;
-  agentId: string;
-  role: 'user' | 'agent';
-  content: string;
-  timestamp: string;
-  thinking?: string;
-  usage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number };
-}
+import type { ChatMessage } from "@agent-spaces/sdk";
 
 interface InlineChatPanelProps {
   agentName: string;

@@ -7,14 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { MessageSquare, Plus } from "lucide-react";
 import { useState } from "react";
-
-interface ChatAgent {
-  id: string;
-  name: string;
-  avatar?: string;
-  description?: string;
-  [key: string]: unknown;
-}
+import type { ChatAgent } from "@agent-spaces/sdk";
 
 interface ChatAgentListProps {
   agents: ChatAgent[];

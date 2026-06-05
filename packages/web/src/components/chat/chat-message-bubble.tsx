@@ -5,16 +5,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { Copy } from "lucide-react";
 import { useState } from "react";
-
-interface ChatMessage {
-  id: string;
-  agentId: string;
-  role: 'user' | 'agent';
-  content: string;
-  timestamp: string;
-  thinking?: string;
-  usage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number };
-}
+import type { ChatMessage } from "@agent-spaces/sdk";
 
 function extractThinkingContent(content: string): { thinking: string | null; message: string } {
   const match = content.match(/^<think\s*>([\s\S]*?)<\/think>\s*([\s\S]*)$/);

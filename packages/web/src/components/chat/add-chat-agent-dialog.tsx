@@ -10,26 +10,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
+import type { ChatAgent } from "@agent-spaces/sdk";
 
 const PROVIDERS = [
   { value: "openai-chat-completions", label: "OpenAI" },
   { value: "anthropic-messages", label: "Anthropic" },
   { value: "gemini-generate-content", label: "Gemini" },
 ];
-
-interface ChatAgent {
-  id: string;
-  name: string;
-  avatar?: string;
-  description?: string;
-  systemPrompt?: string;
-  provider: string;
-  model: string;
-  apiKey: string;
-  baseURL?: string;
-  createdAt: string;
-  updatedAt: string;
-}
 
 interface AddChatAgentDialogProps {
   open: boolean;
