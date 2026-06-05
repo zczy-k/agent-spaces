@@ -1,6 +1,5 @@
 'use client';
 
-import { useCallback } from 'react';
 import { BaseEdge, EdgeLabelRenderer, getBezierPath } from '@xyflow/react';
 import type { EdgeProps } from '@xyflow/react';
 import { LOOP_BODY_SOURCE_HANDLE } from '@agent-spaces/shared';
@@ -15,6 +14,7 @@ export function WorkflowEdge({
   const isGenerated = !!(data as Record<string, unknown>)?.composite && ((data as Record<string, unknown>).composite as Record<string, unknown>)?.generated;
   const edgeSourceHandle = (data as Record<string, unknown>)?.sourceHandle as string | undefined ?? null;
   const isLoopBodyEdge = edgeSourceHandle === LOOP_BODY_SOURCE_HANDLE;
+  const isRunning = (data as Record<string, unknown>)?.isRunning === true;
 
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX, sourceY, targetX, targetY,
@@ -33,6 +33,11 @@ export function WorkflowEdge({
           transition: 'stroke-dasharray 0.3s ease',
         }}
       />
+      {isRunning && (
+        <circle r="5" fill="var(--primary)" style={{ pointerEvents: 'none' }}>
+          <animateMotion dur="1.4s" repeatCount="indefinite" path={edgePath} />
+        </circle>
+      )}
       {!isLocked && (
         <EdgeLabelRenderer>
           <div

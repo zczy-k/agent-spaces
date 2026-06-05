@@ -18,7 +18,7 @@ import {
   type OnConnectStart,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import type { Workflow } from '@agent-spaces/shared';
+import type { ExecutionLog, Workflow } from '@agent-spaces/shared';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -42,6 +42,7 @@ const DEBUG_WORKFLOW_CANVAS = process.env.NODE_ENV !== 'production';
 interface WorkflowCanvasProps {
   workflow: Workflow;
   isPreview: boolean;
+  executionLog?: ExecutionLog | null;
   selectedNodeId?: string | null;
   onNodeAdd: (type: string, position: { x: number; y: number }) => void;
   onNodeDelete: (id: string) => void;
@@ -166,7 +167,7 @@ function CanvasToolbar({
 }
 
 export function WorkflowCanvas({
-  workflow, isPreview, selectedNodeId,
+  workflow, isPreview, executionLog, selectedNodeId,
   onNodeAdd, onNodeDelete, onNodeSelect,
   onNodeDataUpdate, onNodesChange, onEdgesChange, onConnect,
   canUndo = false, canRedo = false, onUndo, onRedo, onExitPreview, onAutoLayout,
@@ -334,6 +335,23 @@ export function WorkflowCanvas({
     return () => window.cancelAnimationFrame(frame);
   }, [workflow.id, workflow.name, workflow.nodes, workflow.edges.length, rfNodes]);
 
+  const runningEdgeIds = useMemo(() => {
+    if (!executionLog || executionLog.status !== 'running') return new Set<string>();
+
+    const completedNodeIds = new Set<string>();
+    const runningNodeIds = new Set<string>();
+    for (const step of executionLog.steps) {
+      if (step.status === 'completed') completedNodeIds.add(step.nodeId);
+      if (step.status === 'running') runningNodeIds.add(step.nodeId);
+    }
+
+    return new Set(
+      workflow.edges
+        .filter(edge => completedNodeIds.has(edge.source) && runningNodeIds.has(edge.target))
+        .map(edge => edge.id),
+    );
+  }, [executionLog, workflow.edges]);
+
   const rfEdges: Edge[] = useMemo(() =>
     workflow.edges.map(e => ({
       id: e.id,
@@ -345,9 +363,10 @@ export function WorkflowCanvas({
       data: {
         composite: e.composite,
         sourceHandle: e.sourceHandle,
+        isRunning: runningEdgeIds.has(e.id),
       } as Record<string, unknown>,
     })),
-    [workflow.edges],
+    [workflow.edges, runningEdgeIds],
   );
 
   const handleDragOver = useCallback((event: React.DragEvent) => {
