@@ -20,7 +20,7 @@ export function WorkflowCard({ workflow, onDuplicate, onDelete }: WorkflowCardPr
   return (
     <Card
       className="group overflow-hidden hover:shadow-md transition-shadow cursor-pointer relative"
-      onClick={() => nativeNavigate(router, `/workflows/${workflow.id}`)}
+      onClick={() => nativeNavigate(router, `/workflows/detail?workflow_id=${workflow.id}`)}
     >
       <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
         <DropdownMenu>
