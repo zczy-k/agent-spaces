@@ -1,12 +1,12 @@
 "use client";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { ChatAgent } from "@agent-spaces/sdk";
+import { AgentIcon } from "@/components/common/agent-icon";
 
 interface ChatAgentListProps {
   agents: ChatAgent[];
@@ -89,12 +89,7 @@ export function ChatAgentList({ agents, activeId, sending, onSelect, onDelete, o
                     type="button"
                   >
                     <div className="relative flex flex-shrink-0 items-end">
-                      <Avatar className="size-8">
-                        {agent.avatar && <AvatarImage alt={agent.name} src={agent.avatar} />}
-                        <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                          {agent.name.slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
+                      <AgentIcon agentId={agent.id} name={agent.name} avatarUrl={agent.avatar} className="size-8" />
                       <span className="-bottom-0 absolute right-0 flex items-center">
                         <span
                           aria-label={sending[agent.id] ? "running" : "idle"}
