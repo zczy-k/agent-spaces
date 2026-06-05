@@ -215,7 +215,13 @@ export function WorkflowNodeSidebar({
                 open={openCategories[category] !== false}
                 onOpenChange={() => toggleCategory(category)}
               >
-                <CollapsibleTrigger className="flex items-center w-full px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground rounded hover:bg-muted/50">
+                <CollapsibleTrigger
+                  className="flex items-center w-full px-2 py-1 text-xs font-medium rounded hover:brightness-95"
+                  style={{
+                    backgroundColor: stringToHsl(category, 40, 92),
+                    color: stringToHsl(category, 50, 30),
+                  }}
+                >
                   <span className="truncate">{category}</span>
                   <span className="ml-auto flex items-center gap-1">
                     {categoryPluginMap[category] && pluginById.get(categoryPluginMap[category])?.config?.length ? (
