@@ -12,6 +12,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Braces, ChevronRight, GripVertical, Plus, Trash2, X } from 'lucide-react';
 import { CONDITION_OPERATORS, NO_VALUE_OPERATORS } from '@/lib/workflow-nodes';
 import { JsonViewer, type JsonValue } from '@/components/viewers/json-viewer';
@@ -94,11 +95,10 @@ export function OutputFieldsEditor({
             >
               <ChevronRight className="h-3 w-3" />
             </Button>
-            <input
-              type="checkbox"
-              checked={Boolean(field.required)}
-              onChange={(e) => updateField(index, { required: e.target.checked || undefined })}
-              className="h-3.5 w-3.5 shrink-0 rounded border-input accent-primary"
+            <Checkbox
+              checked={Boolean(field.required) || false}
+              onCheckedChange={(checked) => updateField(index, { required: checked === true || undefined })}
+              className="h-3.5 w-3.5"
               title="必填"
             />
             <Input
@@ -111,7 +111,7 @@ export function OutputFieldsEditor({
               value={field.type ?? 'string'}
               onValueChange={(type) => updateField(index, { type: type as OutputField['type'] })}
             >
-              <SelectTrigger className="h-6 w-20 shrink-0 px-2 text-[11px]">
+              <SelectTrigger className="h-6 w-20 shrink-0 px-2 py-0 text-[11px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

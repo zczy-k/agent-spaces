@@ -416,7 +416,6 @@ export function WorkflowPropertiesPanel({
                 onChange={(e) => handleDataChange('label', e.target.value)}
                 className="h-7 text-xs"
               />
-              <div className="text-[10px] text-muted-foreground font-mono">{node.id}</div>
             </div>
 
             {visibleProperties.map(prop => (
