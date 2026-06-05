@@ -61,6 +61,7 @@ export default function ChatPage() {
       <ChatAgentList
         agents={agents}
         activeId={activeAgentId}
+        sending={sending}
         onSelect={selectAgent}
         onDelete={deleteAgent}
         onAdd={() => setDialogOpen(true)}

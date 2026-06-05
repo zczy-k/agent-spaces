@@ -11,13 +11,14 @@ import type { ChatAgent } from "@agent-spaces/sdk";
 interface ChatAgentListProps {
   agents: ChatAgent[];
   activeId: string | null;
+  sending: Record<string, boolean>;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
   onAdd: () => void;
   className?: string;
 }
 
-export function ChatAgentList({ agents, activeId, onSelect, onDelete, onAdd, className }: ChatAgentListProps) {
+export function ChatAgentList({ agents, activeId, sending, onSelect, onDelete, onAdd, className }: ChatAgentListProps) {
   const [search, setSearch] = useState("");
 
   const filtered = agents.filter((a) =>
@@ -96,8 +97,11 @@ export function ChatAgentList({ agents, activeId, onSelect, onDelete, onAdd, cla
                       </Avatar>
                       <span className="-bottom-0 absolute right-0 flex items-center">
                         <span
-                          aria-label="agent"
-                          className="inline-block size-2.5 rounded-full border-2 border-background bg-blue-500"
+                          aria-label={sending[agent.id] ? "running" : "idle"}
+                          className={cn(
+                            "inline-block size-2.5 rounded-full border-2 border-background",
+                            sending[agent.id] ? "bg-blue-500 animate-pulse" : "bg-green-500"
+                          )}
                         />
                       </span>
                     </div>

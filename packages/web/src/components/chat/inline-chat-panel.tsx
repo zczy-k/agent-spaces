@@ -3,8 +3,9 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { cn } from "@/lib/utils";
-import { Eraser, PanelRightOpen, Send, Square } from "lucide-react";
+import { Eraser, MessageSquare, PanelRightOpen, Send, Square } from "lucide-react";
 import { useRef, useEffect } from "react";
 import { ChatMessageBubble } from "./chat-message-bubble";
 import type { ChatMessage } from "@agent-spaces/sdk";
@@ -108,14 +109,20 @@ export function InlineChatPanel({
 
       {/* Messages */}
       <div ref={listRef} className="flex-1 overflow-y-auto p-4">
-        <div className="flex flex-col gap-3">
+        <div className="flex min-h-full flex-col gap-3">
           {messages.length === 0 && !sending && (
-            <p className="py-12 text-center text-xs text-muted-foreground">
-              Start a conversation
-            </p>
+            <Empty className="border-0">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <MessageSquare />
+                </EmptyMedia>
+                <EmptyTitle>Start a conversation</EmptyTitle>
+                <EmptyDescription>Send a message to begin chatting with this agent</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
           )}
           {messages.map((msg) => (
-            <ChatMessageBubble key={msg.id} message={msg} agentName={agentName} />
+            <ChatMessageBubble key={msg.id} message={msg} agentId={agentId} agentName={agentName} />
           ))}
           {error && (
             <div className="flex gap-3">
