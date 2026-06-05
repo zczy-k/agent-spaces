@@ -15,7 +15,7 @@ export function createAgent(data: Omit<ChatAgent, 'id' | 'createdAt' | 'updatedA
   const agent: ChatAgent = {
     ...normalizeAgentData(data),
     id,
-    workingDir: store.agentDir(id),
+    workingDir: store.chatWorkspaceDir(id),
     createdAt: now,
     updatedAt: now,
   };
@@ -31,7 +31,7 @@ export function updateAgent(id: string, data: Partial<Omit<ChatAgent, 'id' | 'cr
     ...normalizeAgentData({ ...existing, ...data }),
     id,
     createdAt: existing.createdAt,
-    workingDir: store.agentDir(id),
+    workingDir: store.chatWorkspaceDir(id),
     updatedAt: new Date().toISOString(),
   };
   store.saveAgent(updated, data.skills as Array<string | { name: string; content?: string }> | undefined);
@@ -75,7 +75,7 @@ export function getRecentMessages(agentId: string, limit?: number): ChatMessage[
 export function getAgentWorkingDir(agentId: string): string | null {
   const agent = store.findAgent(agentId);
   if (!agent) return null;
-  return agent.workingDir || store.agentDir(agentId);
+  return agent.workingDir || store.chatWorkspaceDir(agentId);
 }
 
 export function getAgentWorkspace(agentId: string) {

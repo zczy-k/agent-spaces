@@ -50,8 +50,12 @@ function chatDir(): string {
   return path.join(getDataDir(), 'chat');
 }
 
+function chatTemplatesDir(): string {
+  return path.join(getDataDir(), 'chat-templates');
+}
+
 export function agentDir(agentId: string): string {
-  return path.join(chatDir(), agentId);
+  return path.join(chatTemplatesDir(), agentId);
 }
 
 function agentFile(agentId: string): string {
@@ -66,19 +70,31 @@ function skillsDir(agentId: string): string {
   return path.join(agentDir(agentId), 'skills');
 }
 
-export function messageHistoryDir(agentId: string): string {
-  return path.join(agentDir(agentId), 'message_history');
+export function chatSessionDir(chatId: string): string {
+  return path.join(chatDir(), chatId);
 }
 
-function messageFile(agentId: string, messageId: string): string {
-  return path.join(messageHistoryDir(agentId), `${messageId}.json`);
+export function chatWorkspaceDir(chatId: string): string {
+  return path.join(chatSessionDir(chatId), 'workspaces');
+}
+
+function chatWorkspaceSkillsDir(chatId: string): string {
+  return path.join(chatWorkspaceDir(chatId), 'skills');
+}
+
+export function messageHistoryDir(agentId: string): string {
+  return chatSessionDir(agentId);
+}
+
+function messagesFile(chatId: string): string {
+  return path.join(chatSessionDir(chatId), 'messages.json');
 }
 
 // --- Agent functions ---
 
 export function listAgents(): ChatAgent[] {
-  ensureDir(chatDir());
-  return readdirSync(chatDir(), { withFileTypes: true })
+  ensureDir(chatTemplatesDir());
+  return readdirSync(chatTemplatesDir(), { withFileTypes: true })
     .filter(entry => entry.isDirectory())
     .flatMap(entry => {
       const agent = readJsonFile<ChatAgent>(agentFile(entry.name));
@@ -91,6 +107,8 @@ export function saveAgent(agent: ChatAgent, skillInputs?: Array<string | { name:
   const dir = agentDir(agent.id);
   ensureDir(dir);
   ensureDir(skillsDir(agent.id));
+  ensureDir(chatWorkspaceDir(agent.id));
+  ensureDir(chatWorkspaceSkillsDir(agent.id));
   writeJsonFile(agentFile(agent.id), agent);
   writeJsonFile(mcpFile(agent.id), agent.mcps ?? {});
   writeSkills(agent.id, skillInputs, agent.skills ?? []);
@@ -102,28 +120,15 @@ export function findAgent(id: string): ChatAgent | undefined {
 
 export function deleteAgent(id: string): void {
   rmSync(agentDir(id), { recursive: true, force: true });
+  rmSync(chatSessionDir(id), { recursive: true, force: true });
 }
 
 // --- Message functions ---
 
 export function listMessages(agentId: string, limit?: number, before?: string): ChatMessage[] {
-  const dir = messageHistoryDir(agentId);
-  ensureDir(dir);
-
-  let files: string[];
-  try {
-    files = readdirSync(dir).filter(f => f.endsWith('.json'));
-  } catch {
-    return [];
-  }
-
-  let messages: ChatMessage[] = [];
-  for (const file of files) {
-    const msg = readJsonFile<ChatMessage>(path.join(dir, file));
-    if (msg && msg.agentId === agentId) {
-      messages.push(msg);
-    }
-  }
+  ensureDir(chatSessionDir(agentId));
+  let messages = readJsonFile<ChatMessage[]>(messagesFile(agentId)) ?? [];
+  messages = messages.filter(msg => msg.agentId === agentId);
 
   // Sort descending by timestamp
   messages.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
@@ -149,15 +154,13 @@ export function listMessages(agentId: string, limit?: number, before?: string): 
 }
 
 export function saveMessage(msg: ChatMessage): void {
-  writeJsonFile(messageFile(msg.agentId, msg.id), msg);
+  const messages = readJsonFile<ChatMessage[]>(messagesFile(msg.agentId)) ?? [];
+  messages.push(msg);
+  writeJsonFile(messagesFile(msg.agentId), messages);
 }
 
 export function deleteMessagesByAgent(agentId: string): void {
-  const dir = messageHistoryDir(agentId);
-  if (!existsSync(dir)) return;
-  for (const file of readdirSync(dir).filter(f => f.endsWith('.json'))) {
-    deleteFile(path.join(dir, file));
-  }
+  deleteFile(messagesFile(agentId));
 }
 
 export function getRecentMessages(agentId: string, limit: number = 50): ChatMessage[] {
@@ -175,7 +178,9 @@ function writeSkills(
     ensureDir(dir);
     for (const skill of skillInputs) {
       if (typeof skill === 'string' || !skill.name.trim()) continue;
-      writeJsonSkillFile(path.join(dir, sanitizeMarkdownFilename(skill.name)), skill.content ?? '');
+      const filename = sanitizeMarkdownFilename(skill.name);
+      writeJsonSkillFile(path.join(dir, filename), skill.content ?? '');
+      writeJsonSkillFile(path.join(chatWorkspaceSkillsDir(agentId), filename), skill.content ?? '');
     }
     return;
   }
@@ -184,6 +189,8 @@ function writeSkills(
     const filename = sanitizeMarkdownFilename(name);
     const filePath = path.join(dir, filename);
     if (!existsSync(filePath)) writeJsonSkillFile(filePath, '');
+    const workspaceSkillPath = path.join(chatWorkspaceSkillsDir(agentId), filename);
+    if (!existsSync(workspaceSkillPath)) writeJsonSkillFile(workspaceSkillPath, '');
   }
 }
 
