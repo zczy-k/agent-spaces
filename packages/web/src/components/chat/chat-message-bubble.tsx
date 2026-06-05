@@ -23,10 +23,11 @@ interface ChatMessageBubbleProps {
   message: ChatMessage;
   agentId?: string;
   agentName: string;
+  agentAvatar?: string;
   className?: string;
 }
 
-export function ChatMessageBubble({ message, agentId, agentName, className }: ChatMessageBubbleProps) {
+export function ChatMessageBubble({ message, agentId, agentName, agentAvatar, className }: ChatMessageBubbleProps) {
   const [copied, setCopied] = useState(false);
   const { thinking, message: text } =
     message.role === "agent" ? extractThinkingContent(message.content) : { thinking: null, message: message.content };
@@ -44,12 +45,9 @@ export function ChatMessageBubble({ message, agentId, agentName, className }: Ch
       {isUser ? (
         <UserIcon size="sm" className="size-7" />
       ) : (
-        <AgentIcon agentId={agentId} name={agentName} className="size-7 rounded-full" bordered={false} />
+        <AgentIcon agentId={agentId} name={agentName} avatarUrl={agentAvatar} className="size-7 rounded-full" bordered={false} />
       )}
       <div className={cn("flex max-w-[80%] flex-col gap-1", isUser && "items-end")}>
-        <span className="text-xs font-medium text-muted-foreground">
-          {isUser ? "You" : agentName}
-        </span>
         <div
           className={cn(
             "px-3 py-2 text-sm leading-relaxed",

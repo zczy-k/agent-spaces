@@ -5,6 +5,7 @@ loadDotenv();
 import express from 'express';
 import cors from 'cors';
 import { createServer } from 'node:http';
+import { randomUUID } from 'node:crypto';
 import { WebSocketServer } from 'ws';
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { writeFile, mkdir } from 'node:fs/promises';
@@ -109,7 +110,7 @@ app.use('/api/auth', authRouter);
 
 // Avatar upload
 app.post('/api/upload/avatar', async (req, res) => {
-  const { dataUrl, filename } = req.body as { dataUrl?: string; filename?: string };
+  const { dataUrl } = req.body as { dataUrl?: string };
   if (!dataUrl || !dataUrl.startsWith('data:')) {
     res.status(400).json({ error: 'Invalid dataUrl' });
     return;
@@ -120,7 +121,18 @@ app.post('/api/upload/avatar', async (req, res) => {
     return;
   }
   const [, mime, base64] = match;
-  const name = 'user.jpg';
+  const extByMime: Record<string, string> = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+    'image/gif': 'gif',
+  };
+  const ext = extByMime[mime.toLowerCase()];
+  if (!ext) {
+    res.status(400).json({ error: 'Unsupported avatar image type' });
+    return;
+  }
+  const name = `${randomUUID()}.${ext}`;
   const avatarsDir = join(publicDir, 'avatars');
   if (!existsSync(avatarsDir)) mkdirSync(avatarsDir, { recursive: true });
   await writeFile(join(avatarsDir, name), Buffer.from(base64, 'base64'));

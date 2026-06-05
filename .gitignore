@@ -18,4 +18,4 @@ packages/tauri/web/
 packages/tauri/src-tauri/target/
 packages/flutter/assets/web/
 agent_spaces-server.latest.tar
-packages/server/public/avatars/user.jpg
+packages/server/public/avatars/

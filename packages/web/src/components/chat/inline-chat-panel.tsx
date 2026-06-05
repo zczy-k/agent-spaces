@@ -122,7 +122,7 @@ export function InlineChatPanel({
             </Empty>
           )}
           {messages.map((msg) => (
-            <ChatMessageBubble key={msg.id} message={msg} agentId={agentId} agentName={agentName} />
+            <ChatMessageBubble key={msg.id} message={msg} agentId={agentId} agentName={agentName} agentAvatar={agentAvatar} />
           ))}
           {error && (
             <div className="flex gap-3">
