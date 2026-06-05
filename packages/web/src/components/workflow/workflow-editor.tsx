@@ -466,8 +466,6 @@ function WorkflowEditorInner({
         isDirty={state.isDirty}
         isPreview={state.isPreview}
         executionStatus={execution.execStatus}
-        isEditingName={state.isEditingName}
-        editingName={state.editingName}
         canUndo={state.undoStack.length > 0}
         canRedo={state.redoStack.length > 0}
         onBack={onBack}
@@ -482,10 +480,12 @@ function WorkflowEditorInner({
         onExport={state.handleExport}
         onImport={state.handleImport}
         onOpenPluginManager={() => state.setPluginsDialogOpen(true)}
-        onStartEditName={state.startEditName}
-        onFinishEditName={state.finishEditName}
-        onCancelEditName={() => state.setIsEditingName(false)}
-        onEditingNameChange={state.setEditingName}
+        onWorkflowInfoChange={(updates) => {
+          if (workflow) {
+            state.setWorkflow(w => w ? { ...w, ...updates } : null);
+            state.markDirty();
+          }
+        }}
       />
 
       <ResizablePanelGroup orientation="horizontal" defaultLayout={state.workflowLayout} onLayoutChange={state.onWorkflowLayoutChange} className="flex-1 min-h-0 gap-1.5">

@@ -175,19 +175,40 @@ export function WorkflowsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {workflows.map((workflow) => (
-            <Card key={workflow.id} className="overflow-hidden hover:shadow-md transition-shadow">
+            <Card key={workflow.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => nativeNavigate(router, `/workflows/${workflow.id}`)}>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm">{workflow.name}</CardTitle>
+                <div className="flex items-center gap-2">
+                  {workflow.icon ? (
+                    <span className="text-xl leading-none">{workflow.icon}</span>
+                  ) : (
+                    <span className="w-6 h-6 rounded bg-primary/10 text-xs font-bold flex items-center justify-center text-primary shrink-0">
+                      {(workflow.name || '未').charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                  <CardTitle className="text-sm truncate">{workflow.name}</CardTitle>
+                </div>
                 {workflow.description && (
-                  <CardDescription className="text-xs">{workflow.description}</CardDescription>
+                  <CardDescription className="text-xs line-clamp-2">{workflow.description}</CardDescription>
                 )}
               </CardHeader>
               <CardContent className="pt-0">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">
-                    {workflow.nodes.length} 个节点
-                  </span>
-                  <div className="flex gap-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      {workflow.nodes.length} 个节点
+                    </span>
+                    {workflow.tags && workflow.tags.length > 0 && (
+                      <div className="flex gap-1">
+                        {workflow.tags.slice(0, 2).map(tag => (
+                          <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{tag}</span>
+                        ))}
+                        {workflow.tags.length > 2 && (
+                          <span className="text-[10px] text-muted-foreground">+{workflow.tags.length - 2}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                     <Button
                       variant="ghost"
                       size="icon"

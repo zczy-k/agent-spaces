@@ -1,14 +1,15 @@
 'use client';
 
+import { useState } from 'react';
 import {
   Save, ArrowLeft, Play, Square, Pause,
   Download, Upload, Undo2, Redo2, PackagePlus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { WorkflowInfoDialog } from './workflow-info-dialog';
 import type { Workflow } from '@agent-spaces/shared';
 
 interface EditorToolbarProps {
@@ -16,8 +17,6 @@ interface EditorToolbarProps {
   isDirty: boolean;
   isPreview: boolean;
   executionStatus: string;
-  isEditingName: boolean;
-  editingName: string;
   canUndo: boolean;
   canRedo: boolean;
   onBack: () => void;
@@ -32,10 +31,7 @@ interface EditorToolbarProps {
   onExport: () => void;
   onImport: () => void;
   onOpenPluginManager: () => void;
-  onStartEditName: () => void;
-  onFinishEditName: () => void;
-  onCancelEditName: () => void;
-  onEditingNameChange: (name: string) => void;
+  onWorkflowInfoChange: (updates: Partial<Workflow>) => void;
 }
 
 function ToolBtn({ tooltip, children, ...props }: React.ComponentProps<typeof Button> & { tooltip: string }) {
@@ -53,13 +49,14 @@ function ToolBtn({ tooltip, children, ...props }: React.ComponentProps<typeof Bu
 
 export function WorkflowEditorToolbar({
   workflow, isDirty, isPreview, executionStatus,
-  isEditingName, editingName, canUndo, canRedo,
+  canUndo, canRedo,
   onBack, onSave, onExecute, onPause, onResume, onStop,
   onUndo, onRedo, onAutoLayout, onExport, onImport,
-  onOpenPluginManager, onStartEditName, onFinishEditName, onCancelEditName, onEditingNameChange,
+  onOpenPluginManager, onWorkflowInfoChange,
 }: EditorToolbarProps) {
   const isRunning = executionStatus === 'running';
   const isPaused = executionStatus === 'paused';
+  const [infoOpen, setInfoOpen] = useState(false);
 
   return (
     <div className="flex items-center gap-1 px-3 py-1.5 bg-background rounded-xl shrink-0">
@@ -76,28 +73,28 @@ export function WorkflowEditorToolbar({
       <div className="w-px h-5 bg-border mx-1" />
 
       {workflow && (
-        isEditingName ? (
-          <Input
-            value={editingName}
-            onChange={(e) => onEditingNameChange(e.target.value)}
-            onBlur={onFinishEditName}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') onFinishEditName();
-              if (e.key === 'Escape') onCancelEditName();
-            }}
-            className="h-7 text-sm font-medium w-48 border-0 shadow-none focus-visible:ring-1 px-1"
-            autoFocus
-          />
-        ) : (
-          <button
-            className="h-7 px-2 text-sm font-medium hover:bg-muted/50 rounded cursor-pointer flex items-center gap-1"
-            onDoubleClick={onStartEditName}
-          >
-            {workflow.name || '未命名'}
-            {isDirty && <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />}
-          </button>
-        )
+        <button
+          className="h-7 px-2 text-sm font-medium hover:bg-muted/50 rounded cursor-pointer flex items-center gap-1.5"
+          onClick={() => setInfoOpen(true)}
+        >
+          {workflow.icon ? (
+            <span className="text-base leading-none">{workflow.icon}</span>
+          ) : (
+            <span className="w-4 h-4 rounded bg-primary/10 text-[10px] font-bold flex items-center justify-center text-primary">
+              {(workflow.name || '未').charAt(0).toUpperCase()}
+            </span>
+          )}
+          {workflow.name || '未命名'}
+          {isDirty && <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />}
+        </button>
       )}
+
+      <WorkflowInfoDialog
+        open={infoOpen}
+        onOpenChange={setInfoOpen}
+        workflow={workflow}
+        onSave={onWorkflowInfoChange}
+      />
 
       <div className="flex-1" />
 
