@@ -25,9 +25,12 @@ export default function ChatPage() {
     sendMessage,
     stopAgent,
     deleteAgent,
+    clearMessages,
+    updateAgent,
   } = useChatStore();
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editAgent, setEditAgent] = useState<ChatAgent | undefined>(undefined);
   const [input, setInput] = useState("");
 
   const activeAgent = agents.find((a) => a.id === activeAgentId);
@@ -52,7 +55,7 @@ export default function ChatPage() {
   }, [createAgent]);
 
   return (
-    <div className="flex h-full gap-4 bg-muted/30 p-4">
+    <div className="flex h-full gap-4 bg-muted/30 p-2">
       <ChatAgentList
         agents={agents}
         activeId={activeAgentId}
@@ -65,6 +68,7 @@ export default function ChatPage() {
       <div className="flex-1 rounded-xl border border-border/40 bg-background shadow-sm">
         {activeAgent ? (
           <InlineChatPanel
+            agentId={activeAgent.id}
             agentName={activeAgent.name}
             agentAvatar={activeAgent.avatar}
             messages={activeMessages}
@@ -76,6 +80,11 @@ export default function ChatPage() {
             onInputChange={setInput}
             onSend={handleSend}
             onStop={() => activeAgentId && stopAgent(activeAgentId)}
+            onClearMessages={clearMessages}
+            onEditAgent={(id) => {
+              const agent = agents.find((a) => a.id === id);
+              if (agent) setEditAgent(agent);
+            }}
           />
         ) : (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
@@ -89,6 +98,16 @@ export default function ChatPage() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onSubmit={handleAddAgent}
+      />
+
+      <AddChatAgentDialog
+        open={!!editAgent}
+        onOpenChange={(open) => { if (!open) setEditAgent(undefined); }}
+        onSubmit={async (data) => {
+          if (editAgent) await updateAgent(editAgent.id, data);
+          setEditAgent(undefined);
+        }}
+        initialData={editAgent}
       />
     </div>
   );

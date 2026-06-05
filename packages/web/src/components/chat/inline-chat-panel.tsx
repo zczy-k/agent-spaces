@@ -4,12 +4,13 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Send, Square } from "lucide-react";
+import { Eraser, Send, Square } from "lucide-react";
 import { useRef, useEffect } from "react";
 import { ChatMessageBubble } from "./chat-message-bubble";
 import type { ChatMessage } from "@agent-spaces/sdk";
 
 interface InlineChatPanelProps {
+  agentId: string;
   agentName: string;
   agentAvatar?: string;
   messages: ChatMessage[];
@@ -21,9 +22,12 @@ interface InlineChatPanelProps {
   onInputChange: (value: string) => void;
   onSend: () => void;
   onStop: () => void;
+  onClearMessages: (agentId: string) => void;
+  onEditAgent: (agentId: string) => void;
 }
 
 export function InlineChatPanel({
+  agentId,
   agentName,
   agentAvatar,
   messages,
@@ -35,6 +39,8 @@ export function InlineChatPanel({
   onInputChange,
   onSend,
   onStop,
+  onClearMessages,
+  onEditAgent,
 }: InlineChatPanelProps) {
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -54,18 +60,34 @@ export function InlineChatPanel({
     <div className="flex h-full flex-col">
       {/* Header */}
       <div className="flex items-center gap-3 border-b px-4 py-3">
-        <Avatar className="size-9 border-2 border-background">
-          {agentAvatar && <AvatarImage src={agentAvatar} alt={agentName} />}
-          <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-            {agentName.slice(0, 2).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
-        <div>
-          <h3 className="text-sm font-semibold">{agentName}</h3>
-          <span className="text-xs text-muted-foreground">
-            {sending ? "typing..." : "online"}
-          </span>
-        </div>
+        <button
+          className="flex items-center gap-3 text-left hover:opacity-80 transition-opacity"
+          onClick={() => onEditAgent(agentId)}
+          type="button"
+        >
+          <Avatar className="size-9 border-2 border-background">
+            {agentAvatar && <AvatarImage src={agentAvatar} alt={agentName} />}
+            <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+              {agentName.slice(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <h3 className="text-sm font-semibold">{agentName}</h3>
+            <span className="text-xs text-muted-foreground">
+              {sending ? "typing..." : "online"}
+            </span>
+          </div>
+        </button>
+        <Button
+          aria-label="Clear messages"
+          className="ml-auto size-8 text-muted-foreground hover:text-destructive"
+          onClick={() => onClearMessages(agentId)}
+          size="icon"
+          variant="ghost"
+          type="button"
+        >
+          <Eraser className="size-4" />
+        </Button>
       </div>
 
       {/* Messages */}

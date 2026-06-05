@@ -24,6 +24,7 @@ interface ChatStore {
   loadMessages: (agentId: string) => Promise<void>;
   sendMessage: (agentId: string, content: string) => void;
   stopAgent: (agentId: string) => void;
+  clearMessages: (agentId: string) => void;
 
   // WS event handlers
   onMessageSaved: (msg: ChatMessage) => void;
@@ -147,6 +148,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       errors: { ...s.errors, [agentId]: '' },
       streamingContent: { ...s.streamingContent, [agentId]: '' },
       streamingThinking: { ...s.streamingThinking, [agentId]: '' },
+    }));
+  },
+
+  clearMessages: async (agentId) => {
+    await sdk.chat.clearMessages(agentId);
+    set((s) => ({
+      messages: { ...s.messages, [agentId]: [] },
     }));
   },
 
