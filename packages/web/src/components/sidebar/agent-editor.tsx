@@ -34,6 +34,7 @@ import { AgentDetail } from "./agent-detail";
 export interface AgentEditorHandle {
   reset: () => void;
   openGenerate: () => void;
+  getDraft: () => AgentPreset | null;
 }
 
 export interface AgentEditorProps {
@@ -91,6 +92,9 @@ export const AgentEditor = forwardRef<AgentEditorHandle, AgentEditorProps>(
       },
       openGenerate() {
         setGenerateOpen(true);
+      },
+      getDraft() {
+        return editDraft;
       },
     }));
 

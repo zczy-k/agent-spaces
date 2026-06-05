@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { useRef, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,15 +8,39 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import type { ChatAgent } from "@agent-spaces/sdk";
+import { AgentEditor, type AgentEditorHandle } from "@/components/sidebar/agent-editor";
+import { type AgentPreset, newEmptyAgent } from "@/components/sidebar/agent-shared";
 
-const PROVIDERS = [
-  { value: "openai-chat-completions", label: "OpenAI" },
-  { value: "anthropic-messages", label: "Anthropic" },
-  { value: "gemini-generate-content", label: "Gemini" },
-];
+function chatAgentToPreset(agent: ChatAgent): AgentPreset {
+  return {
+    ...newEmptyAgent(),
+    id: agent.id ?? `draft-chat-${Date.now()}`,
+    name: agent.name,
+    description: agent.description ?? "",
+    systemPrompt: agent.systemPrompt ?? "",
+    modelProvider: (agent.provider || "") as AgentPreset["modelProvider"],
+    modelId: agent.model,
+    apiKey: agent.apiKey,
+    apiBase: agent.baseURL ?? "",
+    avatarUrl: agent.avatar ?? "",
+    enabled: true,
+  };
+}
+
+function presetToChatAgentData(preset: AgentPreset): Omit<ChatAgent, "id" | "createdAt" | "updatedAt"> {
+  return {
+    name: preset.name,
+    description: preset.description || undefined,
+    systemPrompt: preset.systemPrompt || undefined,
+    provider: preset.modelProvider || "openai-chat-completions",
+    model: preset.modelId,
+    apiKey: preset.apiKey,
+    baseURL: preset.apiBase || undefined,
+    avatar: preset.avatarUrl || undefined,
+  };
+}
 
 interface AddChatAgentDialogProps {
   open: boolean;
@@ -26,68 +50,35 @@ interface AddChatAgentDialogProps {
 }
 
 export function AddChatAgentDialog({ open, onOpenChange, onSubmit, initialData }: AddChatAgentDialogProps) {
+  const editorRef = useRef<AgentEditorHandle>(null);
   const isEdit = !!initialData;
-  const [name, setName] = useState(initialData?.name ?? "");
-  const [description, setDescription] = useState(initialData?.description ?? "");
-  const [systemPrompt, setSystemPrompt] = useState(initialData?.systemPrompt ?? "");
-  const [provider, setProvider] = useState(initialData?.provider ?? "openai-chat-completions");
-  const [model, setModel] = useState(initialData?.model ?? "gpt-4o-mini");
-  const [apiKey, setApiKey] = useState(initialData?.apiKey ?? "");
-  const [baseURL, setBaseURL] = useState(initialData?.baseURL ?? "");
+  const preset = initialData ? chatAgentToPreset(initialData) : newEmptyAgent();
 
-  const handleSubmit = () => {
-    if (!name.trim() || !apiKey.trim()) return;
-    onSubmit({
-      name: name.trim(),
-      description: description.trim() || undefined,
-      systemPrompt: systemPrompt.trim() || undefined,
-      provider,
-      model: model.trim(),
-      apiKey: apiKey.trim(),
-      baseURL: baseURL.trim() || undefined,
-    });
+  const handleSubmit = useCallback(() => {
+    const draft = editorRef.current?.getDraft();
+    if (!draft || !draft.name.trim() || !draft.apiKey.trim()) return;
+    onSubmit(presetToChatAgentData(draft));
     onOpenChange(false);
-    if (!isEdit) {
-      setName(""); setDescription(""); setSystemPrompt("");
-      setModel("gpt-4o-mini"); setApiKey(""); setBaseURL("");
-    }
-  };
+  }, [onSubmit, onOpenChange]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-h-[85vh] max-w-2xl">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit Agent" : "Add Chat Agent"}</DialogTitle>
         </DialogHeader>
-        <div className="flex flex-col gap-3 py-2">
-          <Input placeholder="Name *" value={name} onChange={(e) => setName(e.target.value)} />
-          <Input placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} />
-          <textarea
-            className="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-            placeholder="System Prompt"
-            value={systemPrompt}
-            onChange={(e) => setSystemPrompt(e.target.value)}
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <AgentEditor
+            ref={editorRef}
+            agent={preset}
+            onSaved={() => {}}
+            onBack={() => onOpenChange(false)}
+            showFooter={false}
           />
-          <div className="flex gap-2">
-            <select
-              className="h-9 flex-1 rounded-md border border-input bg-background px-3 text-sm"
-              value={provider}
-              onChange={(e) => setProvider(e.target.value)}
-            >
-              {PROVIDERS.map((p) => (
-                <option key={p.value} value={p.value}>{p.label}</option>
-              ))}
-            </select>
-            <Input className="flex-1" placeholder="Model" value={model} onChange={(e) => setModel(e.target.value)} />
-          </div>
-          <Input type="password" placeholder="API Key *" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
-          <Input placeholder="Base URL (optional)" value={baseURL} onChange={(e) => setBaseURL(e.target.value)} />
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={!name.trim() || !apiKey.trim()}>
-            {isEdit ? "Save" : "Add"}
-          </Button>
+          <Button onClick={handleSubmit}>Save</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
