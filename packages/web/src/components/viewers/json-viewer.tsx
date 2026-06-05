@@ -225,7 +225,7 @@ function JsonNode({
   const hoverBg = theme ? `${theme.fg}10` : undefined
 
   const rowClass = cn(
-    "group flex items-center gap-0 py-px",
+    "group flex items-center gap-0 py-px min-w-0",
     !theme && "hover:bg-muted/40",
     !theme && nodeMatches && "bg-amber-100/40 dark:bg-amber-900/20"
   )
@@ -261,7 +261,7 @@ function JsonNode({
   function renderValue() {
     if (typeof value === "string") {
       return (
-        <TokenSpan token="string">
+        <TokenSpan token="string" className="break-all">
           &quot;
           <HighlightMatch text={value} query={searchQuery} />
           &quot;
@@ -318,7 +318,7 @@ function JsonNode({
         }
       >
         <span className="w-4 shrink-0" />
-        <span className="font-mono text-xs">
+        <span className="min-w-0 flex-1 font-mono text-xs">
           {renderKey()}
           <TokenSpan token="punctuation">: </TokenSpan>
           {renderValue()}
@@ -390,7 +390,7 @@ function JsonNode({
             )}
           />
         </button>
-        <span className="font-mono text-xs">
+        <span className="min-w-0 flex-1 font-mono text-xs">
           {renderKey()}
           <TokenSpan token="punctuation">: </TokenSpan>
           <TokenSpan token="punctuation">{openBracket}</TokenSpan>
@@ -695,7 +695,7 @@ function JsonViewer({
 
         {/* Tree */}
         <div
-          className="overflow-auto py-1"
+          className="w-full min-w-0 overflow-auto py-1"
           style={
             resolved
               ? {
@@ -718,7 +718,7 @@ function JsonViewer({
               isLast
             />
           ) : (
-            <div className="px-4 py-2 font-mono text-xs">
+            <div className="px-4 py-2 font-mono text-xs break-all">
               <TokenSpan token="key">{rootName}</TokenSpan>
               <TokenSpan token="punctuation">: </TokenSpan>
               {typeof data === "string" ? (

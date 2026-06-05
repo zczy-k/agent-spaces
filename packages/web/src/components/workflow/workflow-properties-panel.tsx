@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Braces, Check, ChevronDown, ChevronRight, Copy, FileDown, Import, Info, Loader2, Pencil, Plus, Timer, Trash2,
-  Bug, CheckCircle2, XCircle,
+  Bug, CheckCircle2, X, XCircle,
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTriggerAsChild } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -366,8 +366,12 @@ export function WorkflowPropertiesPanel({
                   {debugResult.status === 'completed' ? '测试成功' : '测试失败'}
                 </span>
                 {typeof debugResult.duration === 'number' && (
-                  <span className="ml-auto text-[10px] text-muted-foreground">{debugResult.duration}ms</span>
+                  <span className="text-[10px] text-muted-foreground">{debugResult.duration}ms</span>
                 )}
+                <X
+                  className="ml-auto h-3.5 w-3.5 shrink-0 cursor-pointer text-muted-foreground hover:text-foreground"
+                  onClick={() => onCancelDebug?.()}
+                />
               </div>
               {debugResult.error && (
                 <div className="flex items-start gap-2 rounded bg-red-500/10 p-2">
