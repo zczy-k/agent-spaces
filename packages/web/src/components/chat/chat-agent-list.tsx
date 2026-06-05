@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { useState } from "react";
 import type { ChatAgent } from "@agent-spaces/sdk";
 import { AgentIcon } from "@/components/common/agent-icon";
@@ -13,12 +13,12 @@ interface ChatAgentListProps {
   activeId: string | null;
   sending: Record<string, boolean>;
   onSelect: (id: string) => void;
-  onDelete: (id: string) => void;
+  onRemove: (id: string) => void;
   onAdd: () => void;
   className?: string;
 }
 
-export function ChatAgentList({ agents, activeId, sending, onSelect, onDelete, onAdd, className }: ChatAgentListProps) {
+export function ChatAgentList({ agents, activeId, sending, onSelect, onRemove, onAdd, className }: ChatAgentListProps) {
   const [search, setSearch] = useState("");
 
   const filtered = agents.filter((a) =>
@@ -109,14 +109,14 @@ export function ChatAgentList({ agents, activeId, sending, onSelect, onDelete, o
                       ) : null}
                     </div>
                     <Button
-                      aria-label={`Delete chat with ${agent.name}`}
+                      aria-label={`Remove ${agent.name} from chat`}
                       className="ml-auto size-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={(e) => { e.stopPropagation(); onDelete(agent.id); }}
+                      onClick={(e) => { e.stopPropagation(); onRemove(agent.id); }}
                       size="icon"
                       variant="ghost"
                       type="button"
                     >
-                      <Trash2 aria-hidden="true" className="size-4 text-muted-foreground" focusable="false" />
+                      <X aria-hidden="true" className="size-4 text-muted-foreground" focusable="false" />
                     </Button>
                   </button>
                 </li>

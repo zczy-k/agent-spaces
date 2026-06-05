@@ -26,7 +26,6 @@ export default function ChatPage() {
     selectAgent,
     sendMessage,
     stopAgent,
-    deleteAgent,
     clearMessages,
     updateAgent,
   } = useChatStore();
@@ -34,7 +33,9 @@ export default function ChatPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const [editAgent, setEditAgent] = useState<ChatAgent | undefined>(undefined);
+  const [chatListIds, setChatListIds] = useState<Set<string>>(new Set());
 
+  const chatListAgents = agents.filter((a) => chatListIds.has(a.id));
   const activeAgent = agents.find((a) => a.id === activeAgentId);
   const activeMessages = activeAgentId ? (messages[activeAgentId] ?? []) : [];
   const isSending = activeAgentId ? (sending[activeAgentId] ?? false) : false;
@@ -46,10 +47,41 @@ export default function ChatPage() {
     loadAgents();
   }, [loadAgents]);
 
+  // Sync chatListIds from store agents on first load
+  useEffect(() => {
+    if (agents.length > 0 && chatListIds.size === 0) {
+      setChatListIds(new Set(agents.map((a) => a.id)));
+    }
+  }, [agents, chatListIds.size]);
+
+  // When a new agent is added to the store, auto-add to chat list
+  useEffect(() => {
+    const newIds = agents.filter((a) => !chatListIds.has(a.id));
+    if (newIds.length > 0 && chatListIds.size > 0) {
+      setChatListIds((prev) => {
+        const next = new Set(prev);
+        newIds.forEach((a) => next.add(a.id));
+        return next;
+      });
+    }
+  }, [agents, chatListIds]);
+
   const handleSend = useCallback((content: string) => {
     if (!activeAgentId || isSending) return;
     sendMessage(activeAgentId, content.trim());
   }, [activeAgentId, isSending, sendMessage]);
+
+  const handleRemoveFromChat = useCallback((id: string) => {
+    setChatListIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+    if (activeAgentId === id) {
+      const remaining = chatListAgents.filter((a) => a.id !== id);
+      selectAgent(remaining[0]?.id ?? null);
+    }
+  }, [activeAgentId, selectAgent, chatListAgents]);
 
   const handleAddAgent = useCallback(async (preset: AgentPreset) => {
     await createAgent({
@@ -62,16 +94,17 @@ export default function ChatPage() {
       baseURL: preset.apiBase || undefined,
       avatar: preset.avatarUrl || undefined,
     });
+    // New agent auto-added to chatListIds via the useEffect above
   }, [createAgent]);
 
   return (
     <div className="flex h-full gap-4 bg-muted/30 p-2">
       <ChatAgentList
-        agents={agents}
+        agents={chatListAgents}
         activeId={activeAgentId}
         sending={sending}
         onSelect={selectAgent}
-        onDelete={deleteAgent}
+        onRemove={handleRemoveFromChat}
         onAdd={() => setDialogOpen(true)}
         className="w-[280px] shrink-0 rounded-xl border border-border/40 bg-background shadow-sm"
       />

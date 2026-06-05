@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { type AgentConfig } from "@agent-spaces/shared";
 import {
   Dialog,
   DialogContent,
@@ -13,16 +12,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { AgentIcon } from "@/components/common/agent-icon";
 import { StoreTabPanel } from "@/components/common/store-tab-panel";
 import { Bot, FileText, Store, Plus, Check } from "lucide-react";
-import { sdk } from "@/lib/sdk";
 import { fetchStoreIndex } from "@/lib/agent-store";
-import { normalizeAgent, ROLE_COLORS, type AgentPreset } from "@/components/sidebar/agent-shared";
+import type { AgentPreset } from "@/components/sidebar/agent-shared";
 import type { ChatAgent } from "@agent-spaces/sdk";
 
-const BUILT_IN_IDS = new Set(["agent-generator", "commit-agent", "title-generator"]);
 type TabType = "local" | "store";
 
 interface StoreChatAgentItem {
@@ -51,10 +47,7 @@ export function AddChatAgentPickerDialog({
   const tc = useTranslations("common");
 
   // ── Local tab ──
-  const [agents, setAgents] = useState<AgentPreset[]>([]);
-  const [loading, setLoading] = useState(false);
   const [localSearch, setLocalSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState("");
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
 
   // ── Store tab ──
@@ -65,23 +58,12 @@ export function AddChatAgentPickerDialog({
   // ── Tab ──
   const [activeTab, setActiveTab] = useState<TabType>("local");
 
-  // Fetch local presets on open
+  // Track added agents from chat store
   useEffect(() => {
     if (!open) return;
     setLocalSearch("");
-    setRoleFilter("");
     setActiveTab("local");
-    setLoading(true);
-    sdk.agent
-      .listPresets()
-      .then((data: AgentConfig[]) => {
-        const presets = data.map(normalizeAgent);
-        setAgents(presets);
-        const chatNames = new Set(chatAgents.map((a) => a.name));
-        setAddedIds(new Set(presets.filter((a) => chatNames.has(a.name)).map((a) => a.id)));
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    setAddedIds(new Set(chatAgents.map((a) => a.id)));
   }, [open, chatAgents]);
 
   // Fetch store agents on open
@@ -95,25 +77,42 @@ export function AddChatAgentPickerDialog({
   }, [open]);
 
   // ── Local filtering ──
-  const visibleAgents = agents.filter((a) => !BUILT_IN_IDS.has(a.id) && a.enabled);
-  const uniqueRoles = Array.from(new Set(visibleAgents.map((a) => a.role)));
-
   const filteredAgents = useMemo(() => {
-    return visibleAgents.filter((agent) => {
-      if (roleFilter && agent.role !== roleFilter) return false;
-      if (localSearch) {
-        const q = localSearch.toLowerCase();
-        if (!agent.name.toLowerCase().includes(q) && !agent.description.toLowerCase().includes(q)) return false;
-      }
-      return true;
-    });
-  }, [visibleAgents, roleFilter, localSearch]);
+    if (!localSearch) return chatAgents;
+    const q = localSearch.toLowerCase();
+    return chatAgents.filter(
+      (a) =>
+        a.name.toLowerCase().includes(q) ||
+        (a.description || "").toLowerCase().includes(q),
+    );
+  }, [chatAgents, localSearch]);
 
   // ── Handlers ──
   const handleAdd = useCallback(
-    (preset: AgentPreset) => {
-      onAdd(preset);
-      setAddedIds((prev) => new Set(prev).add(preset.id));
+    (agent: ChatAgent) => {
+      onAdd({
+        id: agent.id,
+        name: agent.name,
+        role: "agent",
+        description: agent.description || "",
+        avatarUrl: agent.avatar || "",
+        icon: "",
+        runtimeKind: "langchain",
+        modelProvider: (agent.provider || "") as AgentPreset["modelProvider"],
+        modelId: agent.model || "",
+        apiBase: agent.baseURL || "",
+        apiKey: agent.apiKey || "",
+        workingDir: "",
+        mcps: {},
+        skills: [],
+        tools: [],
+        systemPrompt: agent.systemPrompt || "",
+        outputStyle: "",
+        temperature: 0.3,
+        maxTokens: 4096,
+        enabled: true,
+      });
+      setAddedIds((prev) => new Set(prev).add(agent.id));
     },
     [onAdd],
   );
@@ -142,7 +141,7 @@ export function AddChatAgentPickerDialog({
             else if (m[1] === "description") description = m[2].trim();
           }
         }
-        handleAdd({
+        onAdd({
           id: `store-${storeAgent.id}`,
           name,
           role: "agent",
@@ -171,36 +170,7 @@ export function AddChatAgentPickerDialog({
         return next;
       });
     },
-    [importingIds, handleAdd],
-  );
-
-  // ── Sidebar ──
-  const roleSidebar = (
-    <ScrollArea className="hidden md:block w-44 shrink-0">
-      <div className="flex flex-col gap-1 pr-2">
-        <Button
-          variant={!roleFilter ? "secondary" : "ghost"}
-          size="sm"
-          className="w-full justify-start"
-          onClick={() => setRoleFilter("")}
-        >
-          <FileText className="size-3.5 mr-1.5" />
-          {t("dialog.filterAll")}
-        </Button>
-        {uniqueRoles.map((role) => (
-          <Button
-            key={role}
-            variant={roleFilter === role ? "secondary" : "ghost"}
-            size="sm"
-            className="w-full justify-start"
-            onClick={() => setRoleFilter(roleFilter === role ? "" : role)}
-          >
-            <span className={`size-2 rounded-full mr-1.5 ${ROLE_COLORS[role]?.split(" ")[0]}`} />
-            <span className="truncate capitalize">{t(`role.${role}.name`)}</span>
-          </Button>
-        ))}
-      </div>
-    </ScrollArea>
+    [importingIds, onAdd],
   );
 
   // ── Tabs ──
@@ -228,100 +198,77 @@ export function AddChatAgentPickerDialog({
     </div>
   );
 
-  // ── Local list ──
+  // ── Local list (data from chat store via chatAgents prop) ──
   const localView = (
-    <div className="flex flex-1 min-h-0 gap-4 pt-2">
-      {uniqueRoles.length > 1 && roleSidebar}
-      <div className="flex-1 min-w-0 flex flex-col min-h-0">
-        <div className="relative mb-3">
-          <Bot className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={localSearch}
-            onChange={(e) => setLocalSearch(e.target.value)}
-            placeholder={t("dialog.searchLocal")}
-            className="pl-8"
-          />
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          {loading ? (
-            <div className="flex-1 flex flex-col p-2 space-y-1">
-              {Array.from({ length: 5 }, (_, i) => (
-                <div key={i} className="flex items-center gap-3 rounded-lg px-3 py-2.5">
-                  <div className="size-8 rounded-full bg-muted animate-pulse" />
-                  <div className="flex-1 min-w-0 space-y-1.5">
+    <div className="flex flex-1 min-h-0 flex-col pt-2">
+      <div className="relative mb-3 px-2">
+        <Bot className="size-3.5 absolute left-4.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={localSearch}
+          onChange={(e) => setLocalSearch(e.target.value)}
+          placeholder={t("dialog.searchLocal")}
+          className="pl-8"
+        />
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        {filteredAgents.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <Bot className="size-10 mb-2 opacity-30" />
+            <p className="text-sm">No agents available</p>
+          </div>
+        ) : (
+          <div className="flex flex-col p-2">
+            {filteredAgents.map((agent) => {
+              const added = addedIds.has(agent.id);
+              return (
+                <div
+                  key={agent.id}
+                  className="group flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-muted/50 cursor-pointer transition-colors"
+                >
+                  <AgentIcon
+                    agentId={agent.id}
+                    name={agent.name}
+                    avatarUrl={agent.avatar}
+                    className="size-8"
+                  />
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <div className="h-4 w-20 rounded bg-muted animate-pulse" />
-                      <div className="h-4 w-10 rounded-full bg-muted animate-pulse" />
+                      <span className="text-sm font-medium">{agent.name}</span>
+                      <span className="text-[10px] text-muted-foreground font-mono">
+                        {agent.model}
+                      </span>
                     </div>
-                    <div className="h-3 w-32 rounded bg-muted animate-pulse" />
+                    <p className="text-xs text-muted-foreground truncate">
+                      {agent.description || "No description"}
+                    </p>
                   </div>
+                  {added ? (
+                    <div className="flex items-center gap-1 text-green-500 text-xs">
+                      <Check className="size-4" />
+                      <span>Added</span>
+                    </div>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleAdd(agent)}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Plus className="size-4 mr-1" />
+                      Add
+                    </Button>
+                  )}
                 </div>
-              ))}
-            </div>
-          ) : filteredAgents.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <Bot className="size-10 mb-2 opacity-30" />
-              <p className="text-sm">No agents available</p>
-            </div>
-          ) : (
-            <div className="flex flex-col p-2">
-              {filteredAgents.map((preset) => {
-                const added = addedIds.has(preset.id);
-                return (
-                  <div
-                    key={preset.id}
-                    className="group flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-muted/50 cursor-pointer transition-colors"
-                  >
-                    <AgentIcon
-                      agentId={preset.id}
-                      name={preset.name}
-                      avatarUrl={preset.avatarUrl}
-                      icon={preset.icon}
-                      apiBase={preset.apiBase}
-                      className="size-8"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{preset.name}</span>
-                        <Badge variant="outline" className="text-[10px] h-4 px-1.5">
-                          {preset.role}
-                        </Badge>
-                        <span className="text-[10px] text-muted-foreground font-mono">
-                          {preset.modelId.split("-").slice(0, 2).join("-")}
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {preset.description || "No description"}
-                      </p>
-                    </div>
-                    {added ? (
-                      <div className="flex items-center gap-1 text-green-500 text-xs">
-                        <Check className="size-4" />
-                        <span>Added</span>
-                      </div>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleAdd(preset)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Plus className="size-4 mr-1" />
-                        Add
-                      </Button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
 
   // ── Store list ──
-  const localAgentNames = new Set(agents.map((a) => a.name));
+  const chatAgentNames = new Set(chatAgents.map((a) => a.name));
   const storeView = (
     <StoreTabPanel<StoreChatAgentItem>
       items={storeAgents}
@@ -333,7 +280,7 @@ export function AddChatAgentPickerDialog({
       emptyText={t("dialog.storeEmpty")}
       loadingText={tc("loading")}
       renderItem={(agent) => {
-        const isAdded = localAgentNames.has(agent.name) || importingIds.has(agent.id);
+        const isAdded = chatAgentNames.has(agent.name) || importingIds.has(agent.id);
         const isImporting = importingIds.has(agent.id);
         return (
           <div className="rounded-xl border border-border bg-background p-4 hover:bg-accent/30 transition-colors">
@@ -342,9 +289,9 @@ export function AddChatAgentPickerDialog({
                 <div className="flex items-center gap-1.5">
                   <span className="text-base">{agent.emoji || "🤖"}</span>
                   <span className="font-medium text-sm">{agent.name}</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                  <Badge variant="outline" className="text-[10px] h-4 px-1.5">
                     {agent.group}
-                  </span>
+                  </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{agent.description}</p>
               </div>
