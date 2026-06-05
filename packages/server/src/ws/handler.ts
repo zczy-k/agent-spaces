@@ -3,6 +3,7 @@ import type { WSEvent, ClientEventName, Message } from '@agent-spaces/shared';
 import { addConnection, broadcastToWorkspace, getClientId, handleInteractionResponse } from './connection-manager.js';
 import type { InteractionResponse } from '@agent-spaces/shared';
 import { handleTerminalEvent, sendTerminalSessions } from './terminal-handler.js';
+import { registerChatHandlers } from './chat-handler.js';
 import { appendMessageReply, createMessage } from '../services/message.js';
 import { getChannel } from '../services/channel.js';
 import { scheduleChannelTitleGeneration } from '../services/generated-title.js';
@@ -163,6 +164,9 @@ registerHandler('workflow:interaction', (ws, _workspaceId, data) => {
   const clientId = getClientId(ws);
   if (clientId) handleInteractionResponse(data as InteractionResponse, clientId);
 });
+
+// Register chat handlers
+registerChatHandlers();
 
 export { broadcastToWorkspace } from './connection-manager.js';
 export { stopChannelRuns, hasActiveChannelRuns, markInactiveChannelRunsStopped } from './agent-runner.js';
