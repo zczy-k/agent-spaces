@@ -20,25 +20,51 @@ function chatAgentToPreset(agent: ChatAgent): AgentPreset {
     name: agent.name,
     description: agent.description ?? "",
     systemPrompt: agent.systemPrompt ?? "",
-    modelProvider: (agent.provider || "") as AgentPreset["modelProvider"],
-    modelId: agent.model,
+    modelProvider: (agent.modelProvider || agent.provider || "") as AgentPreset["modelProvider"],
+    modelId: agent.modelId || agent.model,
     apiKey: agent.apiKey,
-    apiBase: agent.baseURL ?? "",
-    avatarUrl: agent.avatar ?? "",
-    enabled: true,
+    apiBase: agent.apiBase ?? agent.baseURL ?? "",
+    avatarUrl: agent.avatarUrl ?? agent.avatar ?? "",
+    icon: agent.icon ?? "",
+    runtimeKind: "langchain",
+    workingDir: agent.workingDir ?? "",
+    mcps: agent.mcps ?? {},
+    skills: (agent.skills ?? []).map((skill) => (
+      typeof skill === "string" ? { name: skill } : { name: skill.name, content: skill.content }
+    )),
+    tools: agent.tools ?? newEmptyAgent().tools,
+    outputStyle: agent.outputStyle ?? "",
+    temperature: agent.temperature ?? 0.3,
+    maxTokens: agent.maxTokens ?? 4096,
+    enabled: agent.enabled ?? true,
   };
 }
 
 function presetToChatAgentData(preset: AgentPreset): Omit<ChatAgent, "id" | "createdAt" | "updatedAt"> {
   return {
     name: preset.name,
+    role: "agent",
+    runtimeKind: "langchain",
     description: preset.description || undefined,
     systemPrompt: preset.systemPrompt || undefined,
+    modelProvider: preset.modelProvider || "openai-chat-completions",
+    modelId: preset.modelId,
     provider: preset.modelProvider || "openai-chat-completions",
     model: preset.modelId,
     apiKey: preset.apiKey,
+    apiBase: preset.apiBase || undefined,
     baseURL: preset.apiBase || undefined,
+    avatarUrl: preset.avatarUrl || undefined,
     avatar: preset.avatarUrl || undefined,
+    icon: preset.icon || undefined,
+    workingDir: preset.workingDir,
+    mcps: preset.mcps,
+    skills: preset.skills,
+    tools: preset.tools,
+    outputStyle: preset.outputStyle || undefined,
+    temperature: preset.temperature,
+    maxTokens: preset.maxTokens,
+    enabled: preset.enabled,
   };
 }
 

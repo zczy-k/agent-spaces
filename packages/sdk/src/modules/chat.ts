@@ -1,13 +1,30 @@
+import type { BuiltInAgentToolName, FileNode } from '@agent-spaces/shared';
+
 export interface ChatAgent {
   id: string;
   name: string;
+  role?: 'agent';
+  runtimeKind?: 'langchain';
   avatar?: string;
+  avatarUrl?: string;
+  icon?: string;
   description?: string;
   systemPrompt?: string;
+  modelProvider?: string;
+  modelId?: string;
   provider: string;
   model: string;
   apiKey: string;
   baseURL?: string;
+  apiBase?: string;
+  workingDir?: string;
+  mcps?: Record<string, unknown>;
+  skills?: Array<string | { name: string; content?: string }>;
+  tools?: BuiltInAgentToolName[];
+  outputStyle?: string;
+  temperature?: number;
+  maxTokens?: number;
+  enabled?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -50,5 +67,12 @@ export function createChatApi(http: { get: Function; post: Function; put: Functi
 
     clearMessages: (agentId: string): Promise<void> =>
       http.delete(`/api/chat/agents/${agentId}/messages`),
+
+    workspaceTree: (agentId: string, opts?: { path?: string; depth?: number }): Promise<FileNode[]> => {
+      const qs = new URLSearchParams();
+      if (opts?.path) qs.set('path', opts.path);
+      if (opts?.depth != null) qs.set('depth', String(opts.depth));
+      return http.get(`/api/chat/agents/${agentId}/workspace/tree${qs.size ? `?${qs}` : ''}`);
+    },
   };
 }

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import * as svc from '../services/chat.js';
+import * as fileService from '../services/file.js';
 
 const router = Router();
 
@@ -14,42 +15,16 @@ router.get('/agents', (_req, res) => {
 
 // POST /api/chat/agents — create agent (requires name, provider, model, apiKey)
 router.post('/agents', (req, res) => {
-  const {
-    name,
-    avatar,
-    description,
-    systemPrompt,
-    provider,
-    model,
-    apiKey,
-    baseURL,
-    apiBase,
-  } = req.body as {
-    name?: string;
-    avatar?: string;
-    description?: string;
-    systemPrompt?: string;
-    provider?: string;
-    model?: string;
-    apiKey?: string;
-    baseURL?: string;
-    apiBase?: string;
-  };
+  const body = req.body as Record<string, unknown>;
+  const name = typeof body.name === 'string' ? body.name.trim() : '';
+  const provider = stringValue(body.provider) || stringValue(body.modelProvider);
+  const model = stringValue(body.model) || stringValue(body.modelId);
   if (!name || !provider || !model) {
     res.status(400).json({ error: 'name, provider, and model are required' });
     return;
   }
   try {
-    const agent = svc.createAgent({
-      name,
-      avatar,
-      description,
-      systemPrompt,
-      provider,
-      model,
-      apiKey: apiKey ?? '',
-      baseURL: baseURL || apiBase || undefined,
-    });
+    const agent = svc.createAgent(body as Parameters<typeof svc.createAgent>[0]);
     res.status(201).json(agent);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -142,5 +117,30 @@ router.delete('/agents/:id/messages', (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// GET /api/chat/agents/:id/workspace/tree - read chat agent working directory
+router.get('/agents/:id/workspace/tree', async (req, res) => {
+  const { id } = req.params;
+  if (!id) {
+    res.status(400).json({ error: 'id is required' });
+    return;
+  }
+  try {
+    const workspace = svc.getAgentWorkspace(id);
+    if (!workspace) {
+      res.status(404).json({ error: 'Agent workspace not found' });
+      return;
+    }
+    const relPath = typeof req.query.path === 'string' ? req.query.path : '';
+    const depth = req.query.depth ? Number(req.query.depth) : Infinity;
+    res.json(await fileService.readTree(workspace, relPath, depth));
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+function stringValue(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
 
 export default router;

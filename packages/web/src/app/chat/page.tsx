@@ -108,13 +108,28 @@ export default function ChatPage() {
   const handleAddAgent = useCallback(async (preset: AgentPreset) => {
     await createAgent({
       name: preset.name,
+      role: "agent",
+      runtimeKind: "langchain",
       description: preset.description || undefined,
       systemPrompt: preset.systemPrompt || undefined,
+      modelProvider: preset.modelProvider || "openai-chat-completions",
+      modelId: preset.modelId || "gpt-4o-mini",
       provider: preset.modelProvider || "openai-chat-completions",
       model: preset.modelId || "gpt-4o-mini",
       apiKey: preset.apiKey || "",
+      apiBase: preset.apiBase || undefined,
       baseURL: preset.apiBase || undefined,
+      avatarUrl: preset.avatarUrl || undefined,
       avatar: preset.avatarUrl || undefined,
+      icon: preset.icon || undefined,
+      workingDir: preset.workingDir,
+      mcps: preset.mcps,
+      skills: preset.skills,
+      tools: preset.tools,
+      outputStyle: preset.outputStyle || undefined,
+      temperature: preset.temperature,
+      maxTokens: preset.maxTokens,
+      enabled: preset.enabled,
     });
     // New agent auto-added to chatListIds via the useEffect above
   }, [createAgent]);

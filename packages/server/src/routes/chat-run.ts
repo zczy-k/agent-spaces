@@ -65,7 +65,8 @@ router.post('/agents/:id/run', async (req, res) => {
       ? `${historyPrompt}\n\nUser: ${trimmedContent}\nAssistant:`
       : trimmedContent;
 
-    const result = await runtime.execute(prompt, process.cwd(), {
+    const workingDir = chatService.getAgentWorkingDir(id) || process.cwd();
+    const result = await runtime.execute(prompt, workingDir, {
       systemPrompt: agent.systemPrompt,
       onEvent: (event: AgentRuntimeEvent) => {
         writeRuntimeEvent(res, event);
