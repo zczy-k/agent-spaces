@@ -5,6 +5,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { builtinModules } from 'node:module';
 import vm from 'node:vm';
+import { createBuiltinPluginApi } from './plugin-runtime-api.js';
 
 const require = createRequire(import.meta.url);
 
@@ -27,6 +28,12 @@ type WorkflowNodeHandler = (ctx: any, args: Record<string, any>) => Promise<any>
 type PluginState = {
   enabled: Record<string, boolean>;
   config: Record<string, Record<string, string>>;
+};
+
+type ExecutablePlugin = {
+  plugin: PluginMeta;
+  handler: WorkflowNodeHandler;
+  api: Record<string, any>;
 };
 
 const STATE_FILE = () => path.join(pluginsDir(), 'state.json');
@@ -125,7 +132,7 @@ function loadCommonJsWorkflowNodes(workflowPath: string): NodeTypeDefinition[] {
     return createRequireStub();
   };
   const script = new vm.Script(`(function(require, module, exports, __filename, __dirname) {\n${source}\n})`, { filename: workflowPath });
-  const runner = script.runInNewContext({ console, Buffer, URL, URLSearchParams, setTimeout, clearTimeout });
+  const runner = script.runInNewContext({ console, Buffer, URL, URLSearchParams, fetch, setTimeout, clearTimeout });
   runner(localRequire, module, module.exports, workflowPath, path.dirname(workflowPath));
   const payload = module.exports;
   if (Array.isArray(payload)) return payload;
@@ -137,7 +144,7 @@ function loadCommonJsWorkflowModule(workflowPath: string): { nodes: NodeTypeDefi
   const module = { exports: {} as { nodes?: Array<NodeTypeDefinition & { handler?: WorkflowNodeHandler }> } };
   const localRequire = createRequire(workflowPath);
   const script = new vm.Script(`(function(require, module, exports, __filename, __dirname) {\n${source}\n})`, { filename: workflowPath });
-  const runner = script.runInNewContext({ console, Buffer, URL, URLSearchParams, setTimeout, clearTimeout });
+  const runner = script.runInNewContext({ console, Buffer, URL, URLSearchParams, fetch, setTimeout, clearTimeout });
   runner(localRequire, module, module.exports, workflowPath, path.dirname(workflowPath));
 
   const payload = module.exports;
@@ -250,7 +257,7 @@ export function getWorkflowNodes(pluginId: string): NodeTypeDefinition[] {
   return Array.isArray(payload?.nodes) ? payload.nodes : [];
 }
 
-function getExecutablePluginByNodeType(nodeType: string): { plugin: PluginMeta; handler: WorkflowNodeHandler } | null {
+function getExecutablePluginByNodeType(nodeType: string): ExecutablePlugin | null {
   for (const plugin of listWorkflowPlugins()) {
     if (!plugin.enabled) continue;
     const workflowPath = getWorkflowEntryPath(plugin.id);
@@ -259,7 +266,7 @@ function getExecutablePluginByNodeType(nodeType: string): { plugin: PluginMeta; 
     try {
       const { handlers } = loadCommonJsWorkflowModule(workflowPath);
       const handler = handlers.get(nodeType);
-      if (handler) return { plugin, handler };
+      if (handler) return { plugin, handler, api: createBuiltinPluginApi() };
     } catch {
       continue;
     }
@@ -287,7 +294,7 @@ export async function executeWorkflowNode(
 
   return executable.handler(
     {
-      api: {},
+      api: executable.api,
       nodeId: '',
       nodeLabel: nodeType,
       upstream: {},
