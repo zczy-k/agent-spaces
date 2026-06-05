@@ -17,3 +17,4 @@
 - Added workflow chat ordered timeline items so multiple thinking blocks and tool cards render in arrival order, including restored old `toolCalls` chats.
 - Corrected workflow timeline output classification: normal streamed output is stored/rendered as ordered message items, while only `<think>` content or explicit `reasoning` events become thinking cards.
 - Pinned workflow thinking to the top of the timeline and changed thinking updates to accumulate into one thinking card instead of replacing/showing only the latest chunk.
+- Started workflow property field migration: compared React `workflow-properties-fields.tsx` / `workflow-variable-picker.tsx` against old Vue `NodeProperties.vue`, `NodePropertyForm.vue`, `OutputFieldEditor.vue`, and `VariablePicker.vue`.

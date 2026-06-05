@@ -21,6 +21,8 @@ Add a workflow-agent floating chat entry to `packages/web/src/components/workflo
 | 12. Interleave workflow thinking and tool timeline | complete | Workflow chat now stores ordered timeline items so multiple thinking blocks render between tool cards in event order. |
 | 13. Distinguish timeline messages from thinking | complete | Normal streamed output now renders as ordered message timeline items; only text inside `<think>` or explicit reasoning events renders as thinking. |
 | 14. Pin and accumulate workflow thinking | complete | Merge all thinking chunks into the first timeline item and render it before message/tool items. |
+| 15. Migrate workflow property field editors from Vue | in_progress | Restore output field details, variable insertion, property collapsibles, and array item variable mode in React. |
+| 16. Verify workflow field migration | pending | Run targeted type/lint checks for touched workflow components. |
 
 ## Decisions
 

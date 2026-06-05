@@ -56,19 +56,11 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
       });
   }, [template]);
 
-  // ---- Auto-save ----
-  useEffect(() => {
-    autoSaveTimer.current = setInterval(() => {
-      if (isDirty && workflow) saveWorkflow();
-    }, 10_000);
-    return () => { if (autoSaveTimer.current) clearInterval(autoSaveTimer.current); };
-  }, [isDirty, workflow]);
-
   // ---- Dirty tracking ----
   const markDirty = useCallback(() => setIsDirty(true), []);
 
   // ---- Undo / Redo ----
-  const pushUndo = useCallback((description?: string) => {
+  const pushUndo = useCallback((_description?: string) => {
     if (!workflow) return;
     const snapshot = JSON.stringify({ nodes: workflow.nodes, edges: workflow.edges });
     setUndoStack(prev => [...prev, snapshot]);
@@ -98,12 +90,13 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
   }, [redoStack, workflow, markDirty]);
 
   // ---- Save ----
-  const saveWorkflow = useCallback(async () => {
-    if (!workflow) return;
+  const saveWorkflow = useCallback(async (workflowToSave?: Workflow) => {
+    const nextWorkflow = workflowToSave ?? workflow;
+    if (!nextWorkflow) return;
     setIsSaving(true);
     try {
-      const saved = await workflowApi.update(workflow.id, {
-        ...workflow,
+      const saved = await workflowApi.update(nextWorkflow.id, {
+        ...nextWorkflow,
         updatedAt: Date.now(),
       });
       setWorkflow(saved);
@@ -113,6 +106,14 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
       setIsSaving(false);
     }
   }, [workflow, store]);
+
+  // ---- Auto-save ----
+  useEffect(() => {
+    autoSaveTimer.current = setInterval(() => {
+      if (isDirty && workflow) saveWorkflow();
+    }, 10_000);
+    return () => { if (autoSaveTimer.current) clearInterval(autoSaveTimer.current); };
+  }, [isDirty, workflow, saveWorkflow]);
 
   // ---- Name editing ----
   const startEditName = useCallback(() => {

@@ -13,3 +13,6 @@
 - Workflow agent preset lookup uses fixed `templateId` `workflow-editor-agent`; model settings create/update this backend preset, while runtime prompt and tools remain fixed by the workflow-agent SSE path.
 - Workflow sidecar data already lives under `.agent-spaces-data/workflows/{workflow_id}` via `packages/server/src/storage/workflow-store.ts`; `chat.json` can be added beside `staging.json` and `operation_history.json`.
 - The web workflow API delegates through `packages/sdk/src/modules/workflow.ts`, so chat persistence needs server storage/service/routes, SDK methods, and a thin `workflowChatApi` wrapper.
+- Old `OutputFieldEditor.vue` supports required checkbox, per-field expand/collapse, default value, description, object children, delete, and variable insertion in default value via `VariablePicker`.
+- Old `NodePropertyForm.vue` wraps each property in a collapsible header with tooltip, and uses a braces button to toggle variable mode for top-level properties and each array item field.
+- Old `VariablePicker.vue` builds variable paths from workflow input, directly connected node input/output fields, loop body variables, loop shared variables, and enabled plugin config. React `WorkflowVariablePicker` currently only lists static definition outputs.

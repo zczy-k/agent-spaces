@@ -2,10 +2,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
-import type {
-  NodeProperty,
-  WorkflowNode,
-} from '@agent-spaces/shared';
+import type { WorkflowEdge, WorkflowNode } from '@agent-spaces/shared';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -19,9 +16,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-  Check, ChevronDown, Copy, FileDown, Import, Loader2, Pencil, Plus, Timer, Trash2,
+  Braces, Check, ChevronDown, ChevronRight, Copy, FileDown, Import, Info, Loader2, Pencil, Plus, Timer, Trash2,
   Bug, CheckCircle2, XCircle,
 } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTriggerAsChild } from '@/components/ui/collapsible';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   isPlainObject,
   toOutputFields,
@@ -38,9 +37,13 @@ import {
   OutputFieldsEditor,
   PropertyField,
 } from './workflow-properties-fields';
+import type { WorkflowVariableContext } from './workflow-variable-picker';
 
 interface PropertiesPanelProps {
   node: WorkflowNode | null;
+  nodes?: WorkflowNode[];
+  edges?: WorkflowEdge[];
+  enabledPlugins?: string[];
   onUpdateData: (nodeId: string, data: Record<string, unknown>) => void;
   debugNodeId?: string | null;
   debugStatus?: 'idle' | 'running' | 'completed' | 'error';
@@ -51,6 +54,9 @@ interface PropertiesPanelProps {
 
 export function WorkflowPropertiesPanel({
   node,
+  nodes = [],
+  edges = [],
+  enabledPlugins = [],
   onUpdateData,
   debugNodeId = null,
   debugStatus = 'idle',
@@ -66,9 +72,12 @@ export function WorkflowPropertiesPanel({
   const [presetName, setPresetName] = useState('');
   const [presetJson, setPresetJson] = useState('');
   const [presetError, setPresetError] = useState('');
+  const [collapsedKeys, setCollapsedKeys] = useState<Set<string>>(() => new Set());
+  const [variableModeEnabled, setVariableModeEnabled] = useState<Set<string>>(() => new Set());
+  const [variableModeDisabled, setVariableModeDisabled] = useState<Set<string>>(() => new Set());
 
   const definition = useMemo(() => node ? getNodeDefinition(node.type) : null, [node]);
-  const data = node?.data ?? {};
+  const data = useMemo(() => node?.data ?? {}, [node?.data]);
   const visibleProperties = useMemo(
     () => (definition?.properties ?? []).filter(prop => isVisible(prop, data)),
     [definition, data],
@@ -84,11 +93,59 @@ export function WorkflowPropertiesPanel({
   const canDebugSelectedNode = Boolean(node && definition?.debuggable !== false && node.type !== 'start' && node.type !== 'end');
   const isDebugging = Boolean(node && debugNodeId === node.id && debugStatus === 'running');
   const hasDebugOutput = Boolean(node && debugNodeId === node.id && debugResult);
+  const variableContext = useMemo<WorkflowVariableContext | undefined>(() => {
+    if (!node) return undefined;
+    return {
+      nodes,
+      edges,
+      currentNodeId: node.id,
+      enabledPlugins,
+    };
+  }, [edges, enabledPlugins, node, nodes]);
 
+  const isVariableRef = (value: unknown): boolean => typeof value === 'string' && value.includes('{{');
+  const isVariableModeActive = (key: string, value: unknown): boolean => {
+    if (variableModeDisabled.has(key)) return false;
+    return isVariableRef(value) || variableModeEnabled.has(key);
+  };
+  const toggleVariableMode = (key: string, value: unknown) => {
+    if (isVariableModeActive(key, value)) {
+      setVariableModeEnabled((current) => {
+        const next = new Set(current);
+        next.delete(key);
+        return next;
+      });
+      setVariableModeDisabled((current) => new Set(current).add(key));
+    } else {
+      setVariableModeDisabled((current) => {
+        const next = new Set(current);
+        next.delete(key);
+        return next;
+      });
+      setVariableModeEnabled((current) => new Set(current).add(key));
+    }
+  };
+  const clearVariableModeDisabledOverride = useCallback((key: string) => {
+    if (!variableModeDisabled.has(key)) return;
+    setVariableModeDisabled((current) => {
+      const next = new Set(current);
+      next.delete(key);
+      return next;
+    });
+  }, [variableModeDisabled]);
   const handleDataChange = useCallback((key: string, value: unknown) => {
     if (!node) return;
+    clearVariableModeDisabledOverride(key);
     onUpdateData(node.id, { [key]: value });
-  }, [node, onUpdateData]);
+  }, [clearVariableModeDisabledOverride, node, onUpdateData]);
+  const toVariableInputValue = (value: unknown): string | number => {
+    if (typeof value === 'string' || typeof value === 'number') return value;
+    if (typeof value === 'boolean') return String(value);
+    return '';
+  };
+  const insertVariable = (key: string, variablePath: string) => {
+    handleDataChange(key, variablePath);
+  };
 
   const updateJsonPresets = useCallback((presets: JsonPreset[]) => {
     handleDataChange(JSON_PRESETS_KEY, presets);
@@ -363,20 +420,68 @@ export function WorkflowPropertiesPanel({
             </div>
 
             {visibleProperties.map(prop => (
-              <div key={prop.key} className="space-y-1.5">
-                <div className="flex items-center gap-1">
-                  <Label className="text-xs">{prop.label}</Label>
-                  {prop.required && <span className="text-[10px] text-destructive">*</span>}
+              <Collapsible
+                key={prop.key}
+                open={!collapsedKeys.has(prop.key)}
+                onOpenChange={(open) => {
+                  setCollapsedKeys((current) => {
+                    const next = new Set(current);
+                    if (open) next.delete(prop.key);
+                    else next.add(prop.key);
+                    return next;
+                  });
+                }}
+                className="space-y-1"
+              >
+                <div className="flex items-center gap-1 text-xs font-medium">
+                  <CollapsibleTriggerAsChild>
+                    <button
+                      type="button"
+                      className="flex flex-1 items-center gap-1 rounded px-0.5 text-left transition-colors hover:bg-accent/50"
+                    >
+                      <ChevronRight
+                        className={`h-3 w-3 shrink-0 text-muted-foreground transition-transform ${!collapsedKeys.has(prop.key) ? 'rotate-90' : ''}`}
+                      />
+                      <span className="flex min-w-0 items-center gap-1">
+                        <span className="truncate">{prop.label}</span>
+                        {prop.required && <span className="text-destructive">*</span>}
+                        {prop.tooltip && (
+                          <TooltipProvider delay={300}>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <Info className="h-3 w-3 cursor-help text-muted-foreground" />
+                              </TooltipTrigger>
+                              <TooltipContent side="right" className="max-w-[240px]">
+                                <p>{prop.tooltip}</p>
+                                <p className="mt-0.5 text-[10px] opacity-60">类型: {prop.type}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </span>
+                    </button>
+                  </CollapsibleTriggerAsChild>
+                  <button
+                    type="button"
+                    className={`rounded p-0.5 transition-colors hover:bg-accent ${isVariableModeActive(prop.key, getPropertyValue(prop, data)) ? 'text-primary' : 'text-muted-foreground'}`}
+                    title="切换变量模式"
+                    onClick={() => toggleVariableMode(prop.key, getPropertyValue(prop, data))}
+                  >
+                    <Braces className="h-3.5 w-3.5" />
+                  </button>
                 </div>
-                <PropertyField
-                  prop={prop}
-                  value={getPropertyValue(prop, data)}
-                  onChange={(value) => handleDataChange(prop.key, value)}
-                />
-                {prop.tooltip && (
-                  <p className="text-[10px] text-muted-foreground">{prop.tooltip}</p>
-                )}
-              </div>
+                <CollapsibleContent>
+                  <PropertyField
+                    prop={prop}
+                    value={getPropertyValue(prop, data)}
+                    onChange={(value) => handleDataChange(prop.key, value)}
+                    variableContext={variableContext}
+                    variableMode={isVariableModeActive(prop.key, getPropertyValue(prop, data))}
+                    variableValue={toVariableInputValue(getPropertyValue(prop, data))}
+                    onInsertVariable={(path) => insertVariable(prop.key, path)}
+                  />
+                </CollapsibleContent>
+              </Collapsible>
             ))}
           </section>
 
@@ -388,6 +493,7 @@ export function WorkflowPropertiesPanel({
               <OutputFieldsEditor
                 value={getOutputFields(data.inputFields)}
                 onChange={(value) => handleDataChange('inputFields', value)}
+                variableContext={variableContext}
               />
             </section>
           )}
@@ -437,6 +543,7 @@ export function WorkflowPropertiesPanel({
               <OutputFieldsEditor
                 value={getOutputFields(data.outputs)}
                 onChange={(value) => handleDataChange('outputs', value)}
+                variableContext={variableContext}
               />
             </section>
           )}

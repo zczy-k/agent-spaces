@@ -564,6 +564,9 @@ function WorkflowEditorInner({
             <TabsContent value="properties" className="flex-1 min-h-0 m-0">
               <WorkflowPropertiesPanel
                 node={state.selectedNode}
+                nodes={workflow.nodes}
+                edges={workflow.edges}
+                enabledPlugins={workflow.enabledPlugins}
                 onUpdateData={canvas.handleNodeDataUpdate}
                 debugNodeId={execution.debugNodeId}
                 debugStatus={execution.debugStatus}
