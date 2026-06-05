@@ -59,6 +59,7 @@ export { createFontApi } from './modules/font';
 export { createInspectorApi } from './modules/inspector';
 export { createAvatarApi } from './modules/avatar';
 export { createAgentCommandsApi } from './modules/agent-commands';
+export { createChatApi } from './modules/chat';
 
 // ---- 工厂函数 ----
 
@@ -99,6 +100,7 @@ import { createFontApi } from './modules/font';
 import { createInspectorApi } from './modules/inspector';
 import { createAvatarApi } from './modules/avatar';
 import { createAgentCommandsApi } from './modules/agent-commands';
+import { createChatApi } from './modules/chat';
 
 export interface SDK {
   /** 底层 HTTP 客户端 */
@@ -143,6 +145,7 @@ export interface SDK {
   readonly inspector: ReturnType<typeof createInspectorApi>;
   readonly avatar: ReturnType<typeof createAvatarApi>;
   readonly agentCommands: ReturnType<typeof createAgentCommandsApi>;
+  readonly chat: ReturnType<typeof createChatApi>;
 }
 
 /**
@@ -195,5 +198,6 @@ export function createSDK(config: SDKConfig): SDK {
     inspector: createInspectorApi(http),
     avatar: createAvatarApi(http),
     agentCommands: createAgentCommandsApi(http),
+    chat: createChatApi(http),
   };
 }
