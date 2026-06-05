@@ -199,15 +199,9 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
 
   // Execution status is injected by WorkflowCanvas from the current execution log.
   const nodeStatus = nodeData.isRunning ? 'running' : 'idle';
-  const statusColor = useMemo(() => {
-    switch (nodeStatus) {
-      case 'running': return 'border-blue-500 shadow-blue-500/30 shadow-md';
-      case 'completed': return 'border-green-500';
-      case 'error': return 'border-red-500';
-      case 'skipped': return 'border-yellow-500';
-      default: return 'border-border';
-    }
-  }, [nodeStatus]);
+  const statusColor = nodeStatus === 'running'
+    ? 'border-blue-500 shadow-blue-500/30 shadow-md'
+    : 'border-border';
 
   // Node delete via custom event
   const handleDelete = useCallback(() => {
