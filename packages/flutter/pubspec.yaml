@@ -123,6 +123,9 @@ flutter:
     - assets/web/settings/tools/__next.settings/
     - assets/web/settings/tools/__next.settings/tools/
     - assets/web/workflows/
+    - assets/web/workflows/_/
+    - assets/web/workflows/_/__next.workflows/
+    - assets/web/workflows/_/__next.workflows/$d$id/
     - assets/web/workflows/__next.workflows/
     - assets/web/workspace/
     - assets/web/workspace/_/
