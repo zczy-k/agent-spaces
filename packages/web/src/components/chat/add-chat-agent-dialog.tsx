@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import type { ChatAgent } from "@agent-spaces/sdk";
 import { AgentEditor, type AgentEditorHandle } from "@/components/sidebar/agent-editor";
 import { type AgentPreset, newEmptyAgent } from "@/components/sidebar/agent-shared";
+import { useTranslations } from "next-intl";
 
 function chatAgentToPreset(agent: ChatAgent): AgentPreset {
   return {
@@ -79,6 +80,7 @@ export function AddChatAgentDialog({ open, onOpenChange, onSubmit, initialData }
   const editorRef = useRef<AgentEditorHandle>(null);
   const isEdit = !!initialData;
   const preset = initialData ? chatAgentToPreset(initialData) : newEmptyAgent();
+  const t = useTranslations('chat.addAgent');
 
   const handleSubmit = useCallback(() => {
     const draft = editorRef.current?.getDraft();
@@ -91,7 +93,7 @@ export function AddChatAgentDialog({ open, onOpenChange, onSubmit, initialData }
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[85vh] min-w-[60vw] flex-col">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit Agent" : "Add Chat Agent"}</DialogTitle>
+          <DialogTitle>{isEdit ? t('editTitle') : t('addTitle')}</DialogTitle>
         </DialogHeader>
         <div className="min-h-0 flex-1 overflow-y-auto">
           <AgentEditor
@@ -105,8 +107,8 @@ export function AddChatAgentDialog({ open, onOpenChange, onSubmit, initialData }
           />
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSubmit}>Save</Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>{t('cancel')}</Button>
+          <Button onClick={handleSubmit}>{t('save')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -137,5 +137,126 @@
   },
   "readonlyCodeBlock": {
     "loading": "加载代码中..."
-  }
+  },
+  "contextPanel": {
+    "promptInfo": "提示词信息",
+    "inputInfo": "输入信息",
+    "fullContext": "完整上下文",
+    "outputInfo": "输出信息",
+    "emptyPrompt": "此 agent 未配置独立 system prompt。",
+    "emptyUserPrompt": "旧消息未记录用户输入。",
+    "emptyFullPrompt": "旧消息未记录完整 prompt。",
+    "emptyOutput": "暂无输出信息。",
+    "effectiveContext": "有效上下文",
+    "totalUsageWithCache": "总用量（含缓存）",
+    "newInput": "新输入",
+    "output": "输出",
+    "reasoning": "推理",
+    "cachedInput": "缓存输入",
+    "effectiveContextHelper": "输入 + 输出 + 推理，不含缓存命中",
+    "chars": "字",
+    "tokens": "tokens"
+  },
+  "contextUsage": {
+    "viewDetails": "查看详情 →",
+    "contextStructure": "Agent 上下文结构",
+    "contextDescription": "此条消息包含 {count} 次 agent 运行。选择 tab 查看提示词、输入、输出和 token 消耗。"
+  },
+  "member": {
+    "info": "成员信息",
+    "removing": "移除中...",
+    "removeFromChannel": "从频道移除"
+  },
+  "addMember": {
+    "title": "管理成员",
+    "description": "选择或取消选择频道成员",
+    "searchPlaceholder": "搜索成员...",
+    "emptyText": "无可用成员",
+    "cancel": "取消",
+    "confirm": "确认"
+  },
+  "memberInfoCard": {
+    "collapse": "收起",
+    "expandAll": "展开全部",
+    "description": "描述",
+    "prompt": "提示词",
+    "skills": "技能",
+    "tools": "工具",
+    "mcp": "MCP",
+    "channels": "所在频道",
+    "user": "用户",
+    "member": "成员"
+  },
+  "inlineChat": {
+    "typing": "输入中...",
+    "online": "在线",
+    "startConversation": "开始对话",
+    "startConversationDesc": "发送消息开始与该 Agent 对话",
+    "requestFailed": "请求失败",
+    "thinking": "思考中",
+    "clearMessages": "清空消息",
+    "togglePanel": "切换右侧面板",
+    "messagePlaceholder": "发送消息给 {name}..."
+  },
+  "messageBubble": {
+    "thinking": "思考中...",
+    "previousVersion": "上一版本",
+    "nextVersion": "下一版本",
+    "copied": "已复制",
+    "copy": "复制",
+    "delete": "删除",
+    "regenerate": "重新生成"
+  },
+  "addAgent": {
+    "editTitle": "编辑 Agent",
+    "addTitle": "添加聊天 Agent",
+    "cancel": "取消",
+    "save": "保存"
+  },
+  "rightPanel": {
+    "noAgent": "未选择 Agent",
+    "loading": "加载中...",
+    "emptyWorkspace": "工作区为空",
+    "id": "ID",
+    "name": "名称",
+    "model": "模型",
+    "workingDir": "工作目录"
+  },
+  "agentList": {
+    "title": "Agents",
+    "chatAgents": "聊天 Agents",
+    "searchPlaceholder": "搜索 agents…",
+    "noAgents": "暂无 Agent",
+    "noMatches": "未找到匹配",
+    "noAgentsDesc": "点击 + 添加 Agent 到聊天",
+    "noMatchesDesc": "尝试其他搜索词",
+    "edit": "编辑",
+    "removeFromList": "从列表中移除",
+    "addAgent": "添加 Agent",
+    "searchAgents": "搜索 agents",
+    "chatWith": "与 {name} 对话",
+    "removeFromChat": "从聊天中移除"
+  },
+  "navigator": {
+    "you": "你"
+  },
+  "messageItem": {
+    "reply": "回复",
+    "copy": "复制",
+    "edit": "编辑",
+    "fullscreen": "全屏查看",
+    "delete": "删除",
+    "configureAgent": "配置 Agent",
+    "repliesCount": "有 {count} 条回复消息"
+  },
+  "agentPicker": {
+    "smartCreate": "智能创建",
+    "smartCreateTitle": "智能创建 Agent",
+    "smartCreateDesc": "描述你想要的 Agent，AI 将自动生成配置",
+    "smartCreatePlaceholder": "例如：一个擅长 React 性能优化的前端专家",
+    "cancel": "取消",
+    "generating": "生成中…",
+    "generate": "生成"
+  },
+  "user": "用户"
 }

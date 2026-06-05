@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import type { Message } from '@agent-spaces/shared';
 import { findAgentById } from '@/stores/agent';
 
@@ -19,6 +20,7 @@ function getPreviewText(msg: Message, maxLen: number): string {
 
 export function MessageNavigator({ messages, reverse }: MessageNavigatorProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const t = useTranslations('chat.navigator');
   const [hovered, setHovered] = useState(false);
   const [popoverY, setPopoverY] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -92,7 +94,7 @@ export function MessageNavigator({ messages, reverse }: MessageNavigatorProps) {
           style={{ top: popoverY, transform: 'translateY(-50%)' }}
         >
           <div className="flex items-center gap-1.5 mb-1">
-            <span className="font-medium text-xs">{resolved[activeIndex].senderId === 'user' ? 'You' : (findAgentById(resolved[activeIndex].senderId)?.name ?? resolved[activeIndex].senderId)}</span>
+            <span className="font-medium text-xs">{resolved[activeIndex].senderId === 'user' ? t('you') : (findAgentById(resolved[activeIndex].senderId)?.name ?? resolved[activeIndex].senderId)}</span>
             <span className="text-[10px] text-muted-foreground">
               {new Date(resolved[activeIndex].createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>

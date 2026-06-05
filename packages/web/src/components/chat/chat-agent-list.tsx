@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { cn } from "@/lib/utils";
 import { Bot, Pencil, Plus, Trash2, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { ChatAgent } from "@agent-spaces/sdk";
 import { AgentIcon } from "@/components/common/agent-icon";
@@ -28,6 +29,7 @@ interface ChatAgentListProps {
 
 export function ChatAgentList({ agents, activeId, sending, onSelect, onRemove, onEdit, onAdd, className }: ChatAgentListProps) {
   const [search, setSearch] = useState("");
+  const t = useTranslations('chat.agentList');
 
   const filtered = agents.filter((a) =>
     a.name.toLowerCase().includes(search.toLowerCase())
@@ -43,7 +45,7 @@ export function ChatAgentList({ agents, activeId, sending, onSelect, onRemove, o
       role="complementary"
     >
       <header className="flex items-center justify-between border-b px-4 py-2">
-        <h2 className="select-none font-semibold text-lg">Agents</h2>
+        <h2 className="select-none font-semibold text-lg">{t('title')}</h2>
         <nav aria-label="Agent Actions">
           <Button
             aria-label="Add agent"
@@ -64,7 +66,7 @@ export function ChatAgentList({ agents, activeId, sending, onSelect, onRemove, o
           className="h-10 w-full text-sm"
           inputMode="search"
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search agents…"
+          placeholder={t('searchPlaceholder')}
           spellCheck={false}
           type="search"
           value={search}
@@ -77,7 +79,7 @@ export function ChatAgentList({ agents, activeId, sending, onSelect, onRemove, o
             className="flex items-center px-4 font-semibold text-muted-foreground text-xs"
             id="agent-list-label"
           >
-            Chat Agents
+            {t('chatAgents')}
           </h3>
           <ul className="flex flex-col gap-0.5">
             {filtered.length === 0 ? (
@@ -88,10 +90,10 @@ export function ChatAgentList({ agents, activeId, sending, onSelect, onRemove, o
                       <Bot />
                     </EmptyMedia>
                     <EmptyTitle>
-                      {agents.length === 0 ? "No agents yet" : "No matches found"}
+                      {agents.length === 0 ? t('noAgents') : t('noMatches')}
                     </EmptyTitle>
                     <EmptyDescription>
-                      {agents.length === 0 ? "Click + to add an agent to this chat." : "Try a different search term."}
+                      {agents.length === 0 ? t('noAgentsDesc') : t('noMatchesDesc')}
                     </EmptyDescription>
                   </EmptyHeader>
                 </Empty>
@@ -145,11 +147,11 @@ export function ChatAgentList({ agents, activeId, sending, onSelect, onRemove, o
                     <ContextMenuContent>
                       <ContextMenuItem onClick={() => onEdit(agent.id)}>
                         <Pencil className="mr-2 size-4" />
-                        编辑
+                        {t('edit')}
                       </ContextMenuItem>
                       <ContextMenuItem onClick={() => onRemove(agent.id)} className="text-destructive focus:text-destructive">
                         <Trash2 className="mr-2 size-4" />
-                        从列表中移除
+                        {t('removeFromList')}
                       </ContextMenuItem>
                     </ContextMenuContent>
                   </ContextMenu>

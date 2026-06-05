@@ -5,6 +5,7 @@ import { MessageSquare, Bot, Wrench, Plug, FileText, Sparkles, ChevronDown, Sett
 import { useAgentStore } from '@/stores/agent';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { useUserAvatar } from '@/hooks/use-user-avatar';
+import { useTranslations } from 'next-intl';
 import type { AgentConfig } from '@agent-spaces/shared';
 
 const RUNTIME_LABELS: Record<string, string> = {
@@ -38,6 +39,7 @@ function CollapsibleTagList({ items }: { items: string[] }) {
   const [expanded, setExpanded] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [overflows, setOverflows] = useState(false);
+  const t = useTranslations('chat.memberInfoCard');
 
   const checkOverflow = useCallback(() => {
     const el = containerRef.current;
@@ -63,7 +65,7 @@ function CollapsibleTagList({ items }: { items: string[] }) {
           className="mt-1 flex items-center gap-0.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
         >
           <ChevronDown className={`size-3 transition-transform ${expanded ? 'rotate-180' : ''}`} />
-          {expanded ? '收起' : '展开全部'}
+          {expanded ? t('collapse') : t('expandAll')}
         </button>
       )}
     </div>
@@ -71,30 +73,31 @@ function CollapsibleTagList({ items }: { items: string[] }) {
 }
 
 function AgentDetails({ agent }: { agent: AgentConfig }) {
+  const t = useTranslations('chat.memberInfoCard');
   return (
     <div className="space-y-2">
       {agent.description && (
-        <InfoRow icon={Bot} label="描述">
+        <InfoRow icon={Bot} label={t('description')}>
           <span className="text-foreground">{agent.description}</span>
         </InfoRow>
       )}
       {agent.systemPrompt && (
-        <InfoRow icon={FileText} label="提示词">
+        <InfoRow icon={FileText} label={t('prompt')}>
           <p className="line-clamp-3 text-muted-foreground whitespace-pre-wrap">{agent.systemPrompt}</p>
         </InfoRow>
       )}
       {agent.skills && agent.skills.length > 0 && (
-        <InfoRow icon={Sparkles} label="技能">
+        <InfoRow icon={Sparkles} label={t('skills')}>
           <CollapsibleTagList items={agent.skills} />
         </InfoRow>
       )}
       {agent.tools && agent.tools.length > 0 && (
-        <InfoRow icon={Wrench} label="工具">
+        <InfoRow icon={Wrench} label={t('tools')}>
           <CollapsibleTagList items={agent.tools} />
         </InfoRow>
       )}
       {agent.mcps && Object.keys(agent.mcps).length > 0 && (
-        <InfoRow icon={Plug} label="MCP">
+        <InfoRow icon={Plug} label={t('mcp')}>
           <CollapsibleTagList items={Object.keys(agent.mcps)} />
         </InfoRow>
       )}
@@ -112,6 +115,7 @@ export interface MemberInfoCardProps {
 
 export function MemberInfoCard({ agentId, displayName, channels = [], compact = false, onConfigure }: MemberInfoCardProps) {
   const agent = useAgentStore((s) => s.agents.find((a) => a.id === agentId));
+  const t = useTranslations('chat.memberInfoCard');
   const resolvedName = displayName || agent?.name || agentId;
 
   const badges: { label: string; variant?: string }[] = [];
@@ -155,7 +159,7 @@ export function MemberInfoCard({ agentId, displayName, channels = [], compact = 
       {agent && <AgentDetails agent={agent} />}
       {!compact && channels.length > 0 && (
         <div className="space-y-1 pt-1">
-          <p className="text-xs font-medium text-muted-foreground">所在频道</p>
+          <p className="text-xs font-medium text-muted-foreground">{t('channels')}</p>
           <div className="flex flex-wrap gap-1.5">
             {channels.map((ch) => (
               <span key={ch} className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs">
@@ -171,12 +175,13 @@ export function MemberInfoCard({ agentId, displayName, channels = [], compact = 
 
 export function UserInfoCard({ compact = false }: { compact?: boolean }) {
   const _userAvatar = useUserAvatar();
+  const t = useTranslations('chat.memberInfoCard');
   return (
     <div className="flex items-center gap-3">
       <AgentIcon name="User" avatarUrl={_userAvatar || undefined} className={compact ? 'size-8 rounded-full' : 'size-10 rounded-full'} />
       <div className="flex-1 min-w-0">
-        <p className={`font-medium truncate ${compact ? 'text-xs' : 'text-sm'}`}>用户</p>
-        <span className="text-xs text-muted-foreground">成员</span>
+        <p className={`font-medium truncate ${compact ? 'text-xs' : 'text-sm'}`}>{t('user')}</p>
+        <span className="text-xs text-muted-foreground">{t('member')}</span>
       </div>
     </div>
   );

@@ -137,5 +137,126 @@
   },
   "readonlyCodeBlock": {
     "loading": "Loading code..."
-  }
+  },
+  "contextPanel": {
+    "promptInfo": "Prompt Info",
+    "inputInfo": "Input Info",
+    "fullContext": "Full Context",
+    "outputInfo": "Output Info",
+    "emptyPrompt": "This agent has no independent system prompt configured.",
+    "emptyUserPrompt": "Older messages did not record user input.",
+    "emptyFullPrompt": "Older messages did not record the full prompt.",
+    "emptyOutput": "No output yet.",
+    "effectiveContext": "Effective Context",
+    "totalUsageWithCache": "Total Usage (incl. cache)",
+    "newInput": "New Input",
+    "output": "Output",
+    "reasoning": "Reasoning",
+    "cachedInput": "Cached Input",
+    "effectiveContextHelper": "Input + Output + Reasoning, excluding cache hits",
+    "chars": "chars",
+    "tokens": "tokens"
+  },
+  "contextUsage": {
+    "viewDetails": "View Details →",
+    "contextStructure": "Agent Context Structure",
+    "contextDescription": "This message contains {count, plural, one {# agent run} other {# agent runs}}. Select a tab to view prompts, inputs, outputs, and token usage."
+  },
+  "member": {
+    "info": "Member Info",
+    "removing": "Removing...",
+    "removeFromChannel": "Remove from Channel"
+  },
+  "addMember": {
+    "title": "Manage Members",
+    "description": "Select or deselect channel members",
+    "searchPlaceholder": "Search members...",
+    "emptyText": "No members available",
+    "cancel": "Cancel",
+    "confirm": "Confirm"
+  },
+  "memberInfoCard": {
+    "collapse": "Collapse",
+    "expandAll": "Expand All",
+    "description": "Description",
+    "prompt": "Prompt",
+    "skills": "Skills",
+    "tools": "Tools",
+    "mcp": "MCP",
+    "channels": "Channels",
+    "user": "User",
+    "member": "Member"
+  },
+  "inlineChat": {
+    "typing": "typing...",
+    "online": "online",
+    "startConversation": "Start a conversation",
+    "startConversationDesc": "Send a message to begin chatting with this agent",
+    "requestFailed": "Request failed",
+    "thinking": "Thinking",
+    "clearMessages": "Clear messages",
+    "togglePanel": "Toggle right panel",
+    "messagePlaceholder": "Message {name}..."
+  },
+  "messageBubble": {
+    "thinking": "Thinking...",
+    "previousVersion": "Previous version",
+    "nextVersion": "Next version",
+    "copied": "Copied",
+    "copy": "Copy",
+    "delete": "Delete",
+    "regenerate": "Regenerate"
+  },
+  "addAgent": {
+    "editTitle": "Edit Agent",
+    "addTitle": "Add Chat Agent",
+    "cancel": "Cancel",
+    "save": "Save"
+  },
+  "rightPanel": {
+    "noAgent": "No agent selected",
+    "loading": "Loading...",
+    "emptyWorkspace": "Empty workspace",
+    "id": "ID",
+    "name": "Name",
+    "model": "Model",
+    "workingDir": "Working Dir"
+  },
+  "agentList": {
+    "title": "Agents",
+    "chatAgents": "Chat Agents",
+    "searchPlaceholder": "Search agents…",
+    "noAgents": "No agents yet",
+    "noMatches": "No matches found",
+    "noAgentsDesc": "Click + to add an agent to this chat.",
+    "noMatchesDesc": "Try a different search term.",
+    "edit": "Edit",
+    "removeFromList": "Remove from list",
+    "addAgent": "Add agent",
+    "searchAgents": "Search agents",
+    "chatWith": "Chat with {name}",
+    "removeFromChat": "Remove from chat"
+  },
+  "navigator": {
+    "you": "You"
+  },
+  "messageItem": {
+    "reply": "Reply",
+    "copy": "Copy",
+    "edit": "Edit",
+    "fullscreen": "Fullscreen",
+    "delete": "Delete",
+    "configureAgent": "Configure Agent",
+    "repliesCount": "{count, plural, one {# reply} other {# replies}}"
+  },
+  "agentPicker": {
+    "smartCreate": "Smart Create",
+    "smartCreateTitle": "Smart Create Agent",
+    "smartCreateDesc": "Describe the agent you want, AI will auto-generate the config",
+    "smartCreatePlaceholder": "e.g., A frontend expert specializing in React performance optimization",
+    "cancel": "Cancel",
+    "generating": "Generating…",
+    "generate": "Generate"
+  },
+  "user": "User"
 }

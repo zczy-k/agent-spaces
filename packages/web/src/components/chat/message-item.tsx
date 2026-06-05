@@ -27,6 +27,7 @@ interface MessageItemProps {
 
 export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }: MessageItemProps) {
   const tc = useTranslations('common');
+  const tm = useTranslations('chat.messageItem');
   const isUser = message.senderId === 'user';
   const agents = useAgentStore((s) => s.agents);
   const agent = !isUser ? agents.find((a) => a.id === message.senderId) : undefined;
@@ -153,14 +154,14 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
           <button
             onClick={() => onReply?.(message)}
             className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-            title="回复"
+            title={tm('reply')}
           >
             <Reply className="h-3.5 w-3.5" />
           </button>
           <button
             onClick={handleCopy}
             className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-            title="复制"
+            title={tc('copy')}
           >
             {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
           </button>
@@ -168,7 +169,7 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
             <button
               onClick={() => onEdit?.(message)}
               className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-              title="编辑"
+              title={tc('edit')}
             >
               <Pencil className="h-3.5 w-3.5" />
             </button>
@@ -177,7 +178,7 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
             <button
               onClick={() => setFullscreenOpen(true)}
               className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-              title="全屏查看"
+              title={tm('fullscreen')}
             >
               <Maximize2 className="h-3.5 w-3.5" />
             </button>
@@ -185,7 +186,7 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
           <button
             onClick={() => onDelete?.(message)}
             className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
-            title="删除"
+            title={tc('delete')}
           >
             <Trash2 className="h-3.5 w-3.5" />
           </button>
@@ -213,7 +214,7 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
           <Dialog open={Boolean(configAgentId)} onOpenChange={(open) => { if (!open) setConfigAgentId(null); }}>
             <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">
               <DialogHeader className="border-b px-5 py-3">
-                <DialogTitle>配置 Agent</DialogTitle>
+                <DialogTitle>{tm('configureAgent')}</DialogTitle>
                 <DialogDescription />
               </DialogHeader>
               <AgentEditor
@@ -241,6 +242,7 @@ function MessageRepliesPopover({
   replies: NonNullable<Message['replies']>;
   currentUserLabel: string;
 }) {
+  const tm = useTranslations('chat.messageItem');
   if (replies.length === 0) {
     return <span className="min-w-0" />;
   }
@@ -255,7 +257,7 @@ function MessageRepliesPopover({
           />
         }
       >
-        有 {replies.length} 条回复消息
+        {tm('repliesCount', { count: replies.length })}
       </PopoverTrigger>
       <PopoverContent align="start" sideOffset={4} className="w-96 max-w-[calc(100vw-2rem)] p-2">
         <div className="max-h-96 space-y-2 overflow-y-auto pr-1">

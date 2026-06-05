@@ -2,7 +2,8 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Copy, RefreshCw, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, RefreshCw, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { ChatMessage } from "@agent-spaces/sdk";
 import { Markdown } from "@/components/ui/markdown";
@@ -25,10 +26,25 @@ interface ChatMessageBubbleProps {
   className?: string;
   onDelete?: () => void;
   onRegenerate?: () => void;
+  versionIndex?: number;
+  versionCount?: number;
+  onVersionChange?: (index: number) => void;
 }
 
-export function ChatMessageBubble({ message, agentId, agentName, agentAvatar, className, onDelete, onRegenerate }: ChatMessageBubbleProps) {
+export function ChatMessageBubble({
+  message,
+  agentId: _agentId,
+  agentName: _agentName,
+  agentAvatar: _agentAvatar,
+  className,
+  onDelete,
+  onRegenerate,
+  versionIndex = 0,
+  versionCount = 1,
+  onVersionChange,
+}: ChatMessageBubbleProps) {
   const [copied, setCopied] = useState(false);
+  const t = useTranslations('chat.messageBubble');
   const { thinking, message: text } =
     message.role === "agent" ? extractThinkingContent(message.content) : { thinking: null, message: message.content };
 
@@ -39,6 +55,8 @@ export function ChatMessageBubble({ message, agentId, agentName, agentAvatar, cl
   };
 
   const isUser = message.role === "user";
+  const hasVersions = !isUser && versionCount > 1 && onVersionChange;
+  const versionNumber = Math.min(versionIndex + 1, versionCount);
 
   return (
     <div className={cn("flex gap-3 group/msg", isUser && "flex-row-reverse", className)}>
@@ -53,7 +71,7 @@ export function ChatMessageBubble({ message, agentId, agentName, agentAvatar, cl
         >
           {thinking && (
             <details className="mb-1">
-              <summary className="cursor-pointer text-xs text-muted-foreground">Thinking...</summary>
+              <summary className="cursor-pointer text-xs text-muted-foreground">{t('thinking')}</summary>
               <pre className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">{thinking}</pre>
             </details>
           )}
@@ -61,27 +79,58 @@ export function ChatMessageBubble({ message, agentId, agentName, agentAvatar, cl
         </div>
         <div className={cn("flex items-center gap-1", isUser && "flex-row-reverse")}>
           <span className="text-[10px] text-muted-foreground/60">{formatTime(message.timestamp)}</span>
+          {hasVersions && (
+            <div className="flex items-center gap-0.5 rounded border border-border/70 bg-background px-0.5">
+              <button
+                type="button"
+                onClick={() => onVersionChange(Math.max(0, versionIndex - 1))}
+                disabled={versionIndex <= 0}
+                className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                title={t('previousVersion')}
+                aria-label={t('previousVersion')}
+              >
+                <ChevronLeft className="size-3" />
+              </button>
+              <span className="min-w-8 text-center text-[10px] tabular-nums text-muted-foreground">
+                {versionNumber} / {versionCount}
+              </span>
+              <button
+                type="button"
+                onClick={() => onVersionChange(Math.min(versionCount - 1, versionIndex + 1))}
+                disabled={versionIndex >= versionCount - 1}
+                className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                title={t('nextVersion')}
+                aria-label={t('nextVersion')}
+              >
+                <ChevronRight className="size-3" />
+              </button>
+            </div>
+          )}
           {!isUser && onRegenerate && (
             <button
+              type="button"
               onClick={onRegenerate}
-              className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover/msg:opacity-100"
-              title="Regenerate"
+              className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              title={t('regenerate')}
+              aria-label={t('regenerate')}
             >
               <RefreshCw className="size-3" />
             </button>
           )}
           <button
+            type="button"
             onClick={handleCopy}
             className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover/msg:opacity-100"
-            title={copied ? "Copied" : "Copy"}
+            title={copied ? t('copied') : t('copy')}
           >
             <Copy className="size-3" />
           </button>
           {onDelete && (
             <button
+              type="button"
               onClick={onDelete}
               className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover/msg:opacity-100"
-              title="Delete"
+              title={t('delete')}
             >
               <Trash2 className="size-3" />
             </button>

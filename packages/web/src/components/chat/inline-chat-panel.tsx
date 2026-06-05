@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { AgentIcon } from "@/components/common/agent-icon";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Eraser, MessageSquare, PanelRightOpen } from "lucide-react";
-import { useRef, useEffect } from "react";
+import { useTranslations } from "next-intl";
+import { useRef, useEffect, useMemo, useState } from "react";
 import type { Attachment as MessageAttachment } from "@agent-spaces/shared";
 import { ChatComposerInput, type ChatComposerInputHandle } from "./chat-composer-input";
 import { ChatMessageBubble } from "./chat-message-bubble";
@@ -50,6 +51,9 @@ export function InlineChatPanel({
 }: InlineChatPanelProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<ChatComposerInputHandle>(null);
+  const [selectedVersions, setSelectedVersions] = useState<Record<string, number>>({});
+  const messageItems = useMemo(() => groupMessageVersions(messages), [messages]);
+  const t = useTranslations('chat.inlineChat');
 
   useEffect(() => {
     if (!listRef.current) return;
@@ -69,13 +73,13 @@ export function InlineChatPanel({
           <div>
             <h3 className="text-base font-semibold text-primary decoration-primary/30 hover:decoration-primary transition-colors">{agentName}</h3>
             <span className="text-xs text-muted-foreground">
-              {sending ? "typing..." : "online"}
+              {sending ? t('typing') : t('online')}
             </span>
           </div>
         </button>
         <div className="ml-auto flex items-center gap-1">
           <Button
-            aria-label="Clear messages"
+            aria-label={t('clearMessages')}
             className="size-8 text-muted-foreground hover:text-destructive"
             onClick={() => onClearMessages(agentId)}
             size="icon"
@@ -86,7 +90,7 @@ export function InlineChatPanel({
           </Button>
                 {onToggleRightPanel && (
             <Button
-              aria-label="Toggle right panel"
+              aria-label={t('togglePanel')}
               className="size-8 text-muted-foreground"
               onClick={onToggleRightPanel}
               size="icon"
@@ -108,19 +112,52 @@ export function InlineChatPanel({
                 <EmptyMedia variant="icon">
                   <MessageSquare />
                 </EmptyMedia>
-                <EmptyTitle>Start a conversation</EmptyTitle>
-                <EmptyDescription>Send a message to begin chatting with this agent</EmptyDescription>
+                <EmptyTitle>{t('startConversation')}</EmptyTitle>
+                <EmptyDescription>{t('startConversationDesc')}</EmptyDescription>
               </EmptyHeader>
             </Empty>
           )}
-          {messages.map((msg) => (
-            <ChatMessageBubble key={msg.id} message={msg} agentId={agentId} agentName={agentName} agentAvatar={agentAvatar} onRegenerate={onRegenerate ? () => onRegenerate(msg.id) : undefined} onDelete={onDelete ? () => onDelete(msg.id) : undefined} />
-          ))}
+          {messageItems.map((item) => {
+            if (item.type === "single") {
+              return (
+                <ChatMessageBubble
+                  key={item.message.id}
+                  message={item.message}
+                  agentId={agentId}
+                  agentName={agentName}
+                  agentAvatar={agentAvatar}
+                  onDelete={onDelete ? () => onDelete(item.message.id) : undefined}
+                />
+              );
+            }
+
+            const selectedIndex = selectedVersions[item.key] ?? item.messages.length - 1;
+            const clampedIndex = Math.min(selectedIndex, item.messages.length - 1);
+            const selectedMessage = item.messages[clampedIndex];
+
+            return (
+              <ChatMessageBubble
+                key={item.key}
+                message={selectedMessage}
+                agentId={agentId}
+                agentName={agentName}
+                agentAvatar={agentAvatar}
+                onRegenerate={onRegenerate ? () => {
+                  setSelectedVersions((prev) => ({ ...prev, [item.key]: item.messages.length }));
+                  onRegenerate(selectedMessage.id);
+                } : undefined}
+                onDelete={onDelete ? () => onDelete(selectedMessage.id) : undefined}
+                versionIndex={clampedIndex}
+                versionCount={item.messages.length}
+                onVersionChange={(index) => setSelectedVersions((prev) => ({ ...prev, [item.key]: index }))}
+              />
+            );
+          })}
           {error && (
             <div className="flex gap-3">
               <AgentIcon agentId={agentId} name={agentName} avatarUrl={agentAvatar} className="size-7" bordered />
               <div className="max-w-[78%] rounded-2xl rounded-tl-none border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                <div className="font-medium">Request failed</div>
+                <div className="font-medium">{t('requestFailed')}</div>
                 <div className="mt-1 whitespace-pre-wrap break-words text-xs">{error}</div>
               </div>
             </div>
@@ -131,7 +168,7 @@ export function InlineChatPanel({
               <div className="max-w-[78%] rounded-2xl rounded-tl-none bg-muted/50 px-4 py-3 text-sm">
                 {streamingThinking && (
                   <details className="mb-2 rounded-md border border-border/40 bg-background/40 px-3 py-2 text-xs text-muted-foreground">
-                    <summary className="cursor-pointer select-none font-medium">Thinking</summary>
+                    <summary className="cursor-pointer select-none font-medium">{t('thinking')}</summary>
                     <div className="mt-2 whitespace-pre-wrap break-words">{streamingThinking}</div>
                   </details>
                 )}
@@ -162,7 +199,7 @@ export function InlineChatPanel({
           ref={composerRef}
           workspaceId={workspaceId || ""}
           agents={[]}
-          placeholder={`Message ${agentName}...`}
+          placeholder={t('messagePlaceholder', { name: agentName })}
           onSubmit={onSend}
           isProcessing={sending}
           onStop={onStop}
@@ -177,4 +214,45 @@ export function InlineChatPanel({
       </div>
     </div>
   );
+}
+
+type MessageRenderItem =
+  | { type: "single"; message: ChatMessage }
+  | { type: "versions"; key: string; messages: ChatMessage[] };
+
+function groupMessageVersions(messages: ChatMessage[]): MessageRenderItem[] {
+  const items: MessageRenderItem[] = [];
+
+  for (let index = 0; index < messages.length; index += 1) {
+    const message = messages[index];
+    if (!message) continue;
+
+    if (message.role === "user") {
+      items.push({ type: "single", message });
+
+      const replies: ChatMessage[] = [];
+      let replyIndex = index + 1;
+      while (replyIndex < messages.length && messages[replyIndex]?.role === "agent") {
+        replies.push(messages[replyIndex]);
+        replyIndex += 1;
+      }
+
+      if (replies.length > 0) {
+        items.push({ type: "versions", key: message.id, messages: replies });
+        index = replyIndex - 1;
+      }
+      continue;
+    }
+
+    const orphanReplies: ChatMessage[] = [message];
+    let replyIndex = index + 1;
+    while (replyIndex < messages.length && messages[replyIndex]?.role === "agent") {
+      orphanReplies.push(messages[replyIndex]);
+      replyIndex += 1;
+    }
+    items.push({ type: "versions", key: message.id, messages: orphanReplies });
+    index = replyIndex - 1;
+  }
+
+  return items;
 }

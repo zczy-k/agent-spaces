@@ -9,6 +9,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { UserMinus } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useChannelStore } from '@/stores/channel';
 import { MemberInfoCard } from './member-info-card';
 
@@ -25,6 +26,7 @@ interface MemberInfoDialogProps {
 export function MemberInfoDialog({ open, onOpenChange, memberName, displayName, channelId, workspaceId, channels = [] }: MemberInfoDialogProps) {
   const [removing, setRemoving] = useState(false);
   const { channels: allChannels, updateChannel } = useChannelStore();
+  const t = useTranslations('chat.member');
 
   const channel = allChannels.find((c) => c.id === channelId);
   const isMember = channel?.members.includes(memberName);
@@ -51,7 +53,7 @@ export function MemberInfoDialog({ open, onOpenChange, memberName, displayName, 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>成员信息</DialogTitle>
+          <DialogTitle>{t('info')}</DialogTitle>
           <DialogDescription />
         </DialogHeader>
         <MemberInfoCard agentId={memberName} displayName={displayName} channels={channels} />
@@ -62,7 +64,7 @@ export function MemberInfoDialog({ open, onOpenChange, memberName, displayName, 
             className="flex items-center justify-center gap-2 w-full mt-2 px-3 py-2 rounded-md text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50 transition-colors cursor-pointer"
           >
             <UserMinus className="size-4" />
-            {removing ? '移除中...' : '从频道移除'}
+            {removing ? t('removing') : t('removeFromChannel')}
           </button>
         )}
       </DialogContent>

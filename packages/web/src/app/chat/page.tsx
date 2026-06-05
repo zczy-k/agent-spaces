@@ -31,6 +31,7 @@ export default function ChatPage() {
     deleteAgent,
     selectAgent,
     sendMessage,
+    regenerateMessage,
     stopAgent,
     clearMessages,
     updateAgent,
@@ -92,6 +93,11 @@ export default function ChatPage() {
     if (!activeAgentId || isSending) return;
     sendMessage(activeAgentId, content.trim());
   }, [activeAgentId, isSending, sendMessage]);
+
+  const handleRegenerate = useCallback((messageId: string) => {
+    if (!activeAgentId || isSending) return;
+    regenerateMessage(activeAgentId, messageId);
+  }, [activeAgentId, isSending, regenerateMessage]);
 
   const handleRemoveFromChat = useCallback((id: string) => {
     setChatListIds((prev) => {
@@ -164,6 +170,7 @@ export default function ChatPage() {
             onSend={handleSend}
             onStop={() => activeAgentId && stopAgent(activeAgentId)}
             onClearMessages={clearMessages}
+            onRegenerate={handleRegenerate}
             onEditAgent={(id) => {
               const agent = agents.find((a) => a.id === id);
               if (agent) setEditAgent(agent);

@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { UserPlus } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { MemberPicker } from '@/components/common/member-picker';
 
 import type { MemberCandidate } from '@/components/common/member-picker';
@@ -29,6 +30,7 @@ interface AddMemberDialogProps {
 
 export function AddMemberDialog({ open, onOpenChange, candidates, defaultSelected, onAdd, filter }: AddMemberDialogProps) {
   const [selected, setSelected] = useState<string[]>([]);
+  const t = useTranslations('chat.addMember');
   const [dialogKey, setDialogKey] = useState(0);
 
   // Track whether we've initialized for this open cycle
@@ -65,8 +67,8 @@ export function AddMemberDialog({ open, onOpenChange, candidates, defaultSelecte
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="w-[80vw] max-w-[80vw] flex flex-col" style={{ height: '80vh' }}>
         <DialogHeader>
-          <DialogTitle>管理成员</DialogTitle>
-          <DialogDescription>选择或取消选择频道成员</DialogDescription>
+          <DialogTitle>{t('title')}</DialogTitle>
+          <DialogDescription>{t('description')}</DialogDescription>
         </DialogHeader>
         <MemberPicker
           key={dialogKey}
@@ -74,13 +76,13 @@ export function AddMemberDialog({ open, onOpenChange, candidates, defaultSelecte
           filter={filter}
           selected={selected}
           onToggle={toggle}
-          searchPlaceholder="搜索成员..."
-          emptyText="无可用成员"
+          searchPlaceholder={t('searchPlaceholder')}
+          emptyText={t('emptyText')}
         />
         <DialogFooter>
-          <Button variant="outline" onClick={() => handleClose(false)}>取消</Button>
+          <Button variant="outline" onClick={() => handleClose(false)}>{t('cancel')}</Button>
           <Button onClick={handleConfirm} disabled={selected.length === 0}>
-            <UserPlus className="size-3.5 mr-1" />确认 ({selected.length})
+            <UserPlus className="size-3.5 mr-1" />{t('confirm')} ({selected.length})
           </Button>
         </DialogFooter>
       </DialogContent>

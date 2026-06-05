@@ -15,8 +15,11 @@ const router = Router();
 
 router.post('/agents/:id/run', async (req, res) => {
   const { id } = req.params;
-  const { content } = req.body as { content?: string };
-  const trimmedContent = content?.trim();
+  const { content, regenerateFromMessageId } = req.body as { content?: string; regenerateFromMessageId?: string };
+  const regenerateContext = regenerateFromMessageId
+    ? resolveRegenerateContext(id, regenerateFromMessageId)
+    : null;
+  const trimmedContent = (regenerateContext?.content ?? content)?.trim();
 
   if (!trimmedContent) {
     res.status(400).json({ error: 'content is required' });
@@ -40,12 +43,14 @@ router.post('/agents/:id/run', async (req, res) => {
     return;
   }
 
-  const userMsg = chatService.saveMessage({
-    agentId: id,
-    role: 'user',
-    content: trimmedContent,
-  });
-  writeSse(res, 'message_saved', userMsg);
+  if (!regenerateContext) {
+    const userMsg = chatService.saveMessage({
+      agentId: id,
+      role: 'user',
+      content: trimmedContent,
+    });
+    writeSse(res, 'message_saved', userMsg);
+  }
 
   const config: AgentRuntimeConfig = {
     kind: 'langchain',
@@ -63,9 +68,8 @@ router.post('/agents/:id/run', async (req, res) => {
   });
 
   try {
-    const recent = chatService.getRecentMessages(id, 20);
-    const historyPrompt = recent
-      .slice(0, -1)
+    const historyMessages = regenerateContext?.historyMessages ?? chatService.getRecentMessages(id, 20).slice(0, -1);
+    const historyPrompt = historyMessages
       .filter(shouldIncludeHistoryMessage)
       .map((message) => `${message.role === 'user' ? 'User' : 'Assistant'}: ${message.content}`)
       .join('\n\n');
@@ -161,6 +165,27 @@ function writeRuntimeEvent(res: Response, event: AgentRuntimeEvent): void {
 
 function shouldIncludeHistoryMessage(message: { role: 'user' | 'agent'; content: string }): boolean {
   return !(message.role === 'agent' && message.content.trim() === 'LangChain execution failed');
+}
+
+function resolveRegenerateContext(
+  agentId: string,
+  messageId: string,
+): { content: string; historyMessages: Array<{ role: 'user' | 'agent'; content: string }> } | null {
+  const messages = chatService.listMessages(agentId);
+  const targetIndex = messages.findIndex((message) => message.id === messageId && message.role === 'agent');
+  if (targetIndex === -1) return null;
+
+  for (let index = targetIndex - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message?.role === 'user') {
+      return {
+        content: message.content,
+        historyMessages: messages.slice(0, index),
+      };
+    }
+  }
+
+  return null;
 }
 
 function resolveChatAgentBaseURL(agent: { baseURL?: string; apiBase?: string }): string | undefined {

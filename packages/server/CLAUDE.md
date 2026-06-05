@@ -12,7 +12,7 @@ Express 5 后端服务，提供 REST API、WebSocket 实时通信、认证中间
 - **启动命令**：`pnpm dev`（tsx watch 热重载）或 `pnpm start`（编译后运行）
 - **默认端口**：`3100`（可通过 `PORT` 环境变量修改）
 - **数据目录**：`~/.agent-spaces-data`（可通过 `AGENT_SPACES_DATA_DIR` 修改）
-- **启动流程**：Express 初始化 -> auth 中间件注册 -> 路由注册（含 workflow/command/search/subscription/speech-recognition/skill/mcp/notification/code-favorites/prompt-template/hooks/output-style/version/database/kanban/worktree/robot-account/agent-commands/plugin） -> Inspector track 端点（免认证） -> HTTP Server 创建 -> WebSocket Server 创建（含 /ws + /ws/speech + /ws/lsp/typescript） -> 启动 Issue 重试恢复 -> 启动持久化通知服务
+- **启动流程**：Express 初始化 -> auth 中间件注册 -> 路由注册（含 workflow/command/search/subscription/speech-recognition/skill/mcp/notification/code-favorites/prompt-template/hooks/output-style/version/database/kanban/worktree/robot-account/agent-commands/plugin/chat） -> Inspector track 端点（免认证） -> HTTP Server 创建 -> WebSocket Server 创建（含 /ws + /ws/speech + /ws/lsp/typescript） -> 启动 Issue 重试恢复 -> 启动持久化通知服务
 
 ## 对外接口
 
@@ -146,6 +146,14 @@ Express 5 后端服务，提供 REST API、WebSocket 实时通信、认证中间
 | `/api/plugins/:pluginId/config` | GET | 获取插件配置 |
 | `/api/plugins/:pluginId/config` | PUT | 保存插件配置 |
 | `/api/plugins/:pluginId/workflow-nodes` | GET | 获取插件 Workflow 节点定义 |
+| `/api/chat/agents` | GET | 列出 Chat Agents |
+| `/api/chat/agents` | POST | 创建 Chat Agent（name, provider, model, apiKey 必填） |
+| `/api/chat/agents/:id` | PUT | 更新 Chat Agent |
+| `/api/chat/agents/:id` | DELETE | 删除 Chat Agent + 消息 |
+| `/api/chat/agents/:id/messages` | GET | 列出消息（?limit=50&before=msgId 游标分页） |
+| `/api/chat/agents/:id/messages` | DELETE | 清空消息 |
+| `/api/chat/agents/:id/workspace/tree` | GET | 获取 Agent 工作目录文件树 |
+| `/api/chat/agents/:id/run` | POST | SSE 流式执行 Chat Agent（LangChain 运行时） |
 
 ### WebSocket 端点
 
@@ -177,6 +185,21 @@ Express 5 后端服务，提供 REST API、WebSocket 实时通信、认证中间
 - `command.started` / `command.stopped` / `command.restarted`
 - `notification.created` / `notification.cleared`
 - `inspector.jump` -- DOM Inspector 源码定位广播
+
+**Chat 事件**：
+
+客户端 -> 服务端：
+- `chat.message` -- 发送消息（{ agentId, content }）
+- `chat.stop` -- 停止执行（{ agentId }）
+
+服务端 -> 客户端：
+- `chat.message.saved` -- 用户消息已保存
+- `chat.agent.output` -- Agent 流式输出
+- `chat.agent.thinking` -- Agent 思考过程
+- `chat.agent.tool_use` -- Agent 工具调用
+- `chat.agent.tool_result` -- 工具调用结果
+- `chat.agent.completed` -- Agent 执行完成
+- `chat.agent.error` -- Agent 执行错误
 
 ### 通用 AI 文本请求层
 
@@ -270,6 +293,42 @@ if (pluginService.canExecuteWorkflowNode(node.type)) {
 - `getReferencedPluginIds()` — 从 Workflow 中提取引用的插件 ID
 - 支持全局配置 + Workflow 级别的配置方案（workflowStore.readPluginScheme）
 - 配置通过 `session.context.__config__` 注入执行环境
+
+### Chat 独立页面系统
+
+独立的 AI 对话系统，支持多 Agent 管理、LangChain SSE 流式执行、per-workspace JSON 持久化。
+
+| 文件 | 职责 |
+|------|------|
+| `routes/chat.ts` | Chat Agent REST API（CRUD + 消息列表 + 工作目录文件树，146 行） |
+| `routes/chat-run.ts` | Chat Agent SSE 流式执行（LangChain 运行时 + 事件转发 + regenerate 支持，220 行） |
+| `services/chat.ts` | Chat 服务层（Agent CRUD + 消息管理 + 技能写入 + 工作目录解析，149 行） |
+| `storage/chat-store.ts` | Chat 持久化（per-agent 目录存储，JSON 文件，含 Agent/MCP/Skills/消息，225 行） |
+| `ws/chat-handler.ts` | Chat WebSocket handler（从 handler.ts 提取，消息发送 + 流式执行 + 停止，98 行） |
+
+**数据模型**（定义在 `storage/chat-store.ts`）：
+- **ChatAgent**：id, name, role, runtimeKind, avatar, description, systemPrompt, provider, model, apiKey, baseURL, workingDir, mcps, skills, tools, outputStyle, temperature, maxTokens, enabled
+- **ChatMessage**：id, agentId, role (user/agent), content, timestamp, thinking, usage
+
+**存储结构**：
+```
+~/.agent-spaces-data/
+  chat-templates/{agentId}/     # Agent 配置目录
+    agent.json                  # Agent 配置
+    mcp.json                    # MCP 配置
+    skills/*.md                 # 技能文件
+  chat/{agentId}/               # 会话目录
+    messages.json               # 消息历史
+    workspaces/                 # 工作目录
+      skills/*.md               # 运行时技能
+```
+
+**SSE 执行流程**（`routes/chat-run.ts`）：
+1. POST `/api/chat/agents/:id/run` 接收 content 或 regenerateFromMessageId
+2. 保存用户消息 -> 构建 LangChain 配置 -> SSE 流式响应
+3. SSE 事件：message_saved -> output/thinking/tool_use/tool_result -> completed/error
+4. 支持 regenerate（从指定消息重新生成）
+5. 支持 4 种 Function Call 工具：Command/Database/Kanban/WorkflowExecution
 
 ### Agent 运行时架构
 
@@ -534,6 +593,8 @@ Issue 自动化入口重构:
 - **Command 工具**：Agent 命令执行工具
 - **Database 工具**：文档数据库 CRUD 工具
 - **Kanban 工具**：看板任务管理工具
+- **Workflow Execution 工具**：execute_workflow（同步/异步执行 Workflow，轮询等待结果）、list_workflows（列出 Workflow 模板）、get_workflow（获取 Workflow 详情）
+- **Workflow Editor 工具**：get_current_workflow（获取当前 Workflow）、list_node_types（列出节点类型）、search_node_usage（查看节点定义）、create_node/update_node/delete_node（节点 CRUD）、create_edge/delete_edge（连线 CRUD）、auto_layout（自动布局）、create_workflow_version（创建版本）
 
 详见 `docs/function-call-tools.md`。
 
@@ -648,6 +709,18 @@ Issue 自动化入口重构:
   subscriptions.json                # 订阅配置列表
   speech-recognition.json           # 语音识别配置列表
   user-settings.json                # 用户设置（avatarUrl）
+  chat-templates/                   # Chat Agent 配置模板
+    {agentId}/
+      agent.json                    # Chat Agent 配置
+      mcp.json                      # MCP 配置
+      skills/                       # 技能文件
+        *.md
+  chat/                             # Chat 会话数据
+    {agentId}/
+      messages.json                 # 消息历史
+      workspaces/                   # Agent 工作目录
+        skills/                     # 运行时技能
+          *.md
 ```
 
 ### .agentspace 目录（项目目录内）
@@ -710,6 +783,8 @@ packages/server/src/
     robot-account.ts              # Robot Account 凭证管理路由
     agent-commands.ts             # Agent Commands CRUD + apply 路由
     plugin.ts                     # Plugin 插件管理路由（list/workflow/store/enable/disable/config/workflow-nodes）
+    chat.ts                       # Chat Agent REST API（CRUD + 消息 + 工作目录）
+    chat-run.ts                   # Chat Agent SSE 流式执行（LangChain + 事件转发）
   services/
     workspace.ts                  # Workspace 服务（含 .agentspace 初始化）
     workspace-prompt.ts           # 工作空间 Prompt 读写服务（Markdown）
@@ -731,6 +806,8 @@ packages/server/src/
       command-tools.ts            # Command 工具实现
       database-tools.ts           # Database 工具实现
       kanban-tools.ts             # Kanban 工具实现
+      workflow-exec-tools.ts      # Workflow 执行工具（execute_workflow/list_workflows/get_workflow）
+      workflow-editor-tools.ts    # Workflow 编辑工具（节点/连线 CRUD + 自动布局 + 版本管理）
     tool-detail.ts                # 工具调用详情持久化（懒加载）
     llm-model-config.ts           # LLM 模型配置读取（思考模式）
     pty.ts                        # PTY 终端会话管理
@@ -756,6 +833,7 @@ packages/server/src/
     robot-account.ts              # Robot Account 凭证服务
     agent-commands.ts             # Agent Commands 服务
     plugin.ts                     # Plugin 插件管理服务（安装/启用/禁用/配置/沙箱加载/节点注册）
+    chat.ts                       # Chat 服务层（Agent CRUD + 消息管理）
     database-vector.ts            # 文档向量搜索（Embedding 索引 + 相似度查询）
     kanban.ts                     # Kanban 看板服务
     git-operation-log.ts          # Git 操作日志（内存 Map）
@@ -801,6 +879,7 @@ packages/server/src/
     kanban-store.ts               # Kanban 看板 SQLite 持久化
     worktree-store.ts             # Worktree 持久化
     robot-account-store.ts        # Robot Account 持久化
+    chat-store.ts                 # Chat 持久化（per-agent 目录 JSON 存储）
     usage.ts                      # Token usage 输出文本解析
   adapters/
     git.ts                        # simple-git 封装（status, diff, log, clone, commit, push, pull）
@@ -840,6 +919,7 @@ packages/server/src/
     connection-manager.ts         # WebSocket 连接管理 + 广播
     html-utils.ts                 # HTML 文本清理工具
     typescript-lsp.ts             # TypeScript LSP WebSocket handler
+    chat-handler.ts               # Chat WebSocket handler（消息发送 + 流式执行 + 停止）
   hooks/
     agent-hooks.ts                # Agent Hook 链（executor 完成 -> reviewer）
   types/
@@ -884,6 +964,7 @@ packages/server/src/
 
 | 时间 | 操作 | 说明 |
 |------|------|------|
+| 2026-06-05T19:44:59+08:00 | 增量更新 | **Chat 独立页面系统**（新增 routes/chat.ts Chat Agent REST API + routes/chat-run.ts LangChain SSE 流式执行 + services/chat.ts Chat 服务层 + storage/chat-store.ts per-agent 目录 JSON 持久化 + ws/chat-handler.ts WebSocket handler）；**Workflow 内置工具扩展**（新增 services/builtin-tools/workflow-exec-tools.ts Workflow 执行工具 + workflow-editor-tools.ts Workflow 编辑工具，Agent 可调用 Workflow 执行和编辑操作）；**文件数 158->165** |
 | 2026-06-04T23:38:49+08:00 | 增量更新 | **Plugin 插件系统**（新增 services/plugin.ts 299行，插件全生命周期管理 + CJS 沙箱加载 + 自定义 Workflow 节点注册与执行；新增 routes/plugin.ts，8 个 REST API 端点）；**execution-manager 扩展**（集成 Plugin 节点执行，canExecuteWorkflowNode/executeWorkflowNode，1393行）；**文件数 156->158** |
 | 2026-06-03T23:00:29+08:00 | 增量更新 | **WorkFox DAG 执行引擎**（新增 services/execution-manager.ts 1321行，支持循环/分支/变量/断点/恢复）；**交互管理器**（新增 services/interaction-manager.ts，alert/prompt/form/table_confirm 交互）；**Workflow 触发器**（新增 services/workflow-trigger-service.ts，cron + webhook 触发）；**执行通道**（新增 ws/execution-channels.ts，WebSocket 执行通道注册）；**Workflow Webhook Hook**（新增 routes/workflow-hook.ts，SSE 流式结果）；**数据导入导出**（新增 routes/data.ts + routes/import.ts，ZIP 归档 15+ 数据类别 + cc-switch 数据迁移）；**notification-hub 扩展**（新增 bot-commands.ts/events.ts/format.ts/helpers.ts 4 文件）；**新增 services/global-wechat-qr.ts/issue-retry.ts/workspace-prompt.ts**；**新增 ws/agent-prompt.ts**；**新增 storage/user-settings-store.ts**；**文件数 149->156** |
 | 2026-06-02T09:07:04+08:00 | 增量更新 | **第六运行时 OhMyPi**（新增 adapters/oh-my-pi-runtime.ts，基于 omp CLI 的进程适配运行时，支持 CodexFunctionToolBridge MCP 桥接）；**通用 AI 文本请求层**（新增 services/ai-text.ts，统一 Anthropic/OpenAI/Gemini 三种供应商的文本生成请求，含 URL 脱敏 maskAiTextUrl）；**AI 标题生成**（新增 services/generated-title.ts + agents/title-generator-agent.ts，频道/Issue 创建时自动异步生成标题，scheduleChannelTitleGeneration/scheduleIssueTitleGeneration）；**Workflow Command Runner**（新增 services/workflow-command-runner.ts，Command 节点的 shell 命令执行器 executeCommandNode）；**Agent 运行时接口增强**（agent-runtime-types.ts 新增 AgentRunOptions/appendOutputStyleToPrompt/summarizeResult）；**文件数 144->149** |

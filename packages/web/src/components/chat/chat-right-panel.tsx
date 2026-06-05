@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { FolderTreeIcon, InfoIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FileNode } from "@agent-spaces/shared";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileTree, FileTreeNodes } from "@/components/editor/file-tree";
@@ -14,6 +15,7 @@ interface ChatRightPanelProps {
 
 export function ChatRightPanel({ agentId }: ChatRightPanelProps) {
   const [tab, setTab] = useState("info");
+  const t = useTranslations('chat.rightPanel');
   const [tree, setTree] = useState<FileNode[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -47,11 +49,11 @@ export function ChatRightPanel({ agentId }: ChatRightPanelProps) {
   }, [agentId, tab]);
 
   const infoRows = useMemo(() => ([
-    ["ID", agent?.id ?? ""],
-    ["Name", agent?.name ?? ""],
-    ["Model", agent?.model ?? ""],
-    ["Working Dir", boundDir],
-  ]), [agent, boundDir]);
+    [t('id'), agent?.id ?? ""],
+    [t('name'), agent?.name ?? ""],
+    [t('model'), agent?.model ?? ""],
+    [t('workingDir'), boundDir],
+  ]), [agent, boundDir, t]);
 
   return (
     <div className="flex h-full w-[320px] shrink-0 flex-col rounded-xl border border-border/40 bg-background shadow-sm">
@@ -77,7 +79,7 @@ export function ChatRightPanel({ agentId }: ChatRightPanelProps) {
             </div>
           ) : (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              未选择 Agent
+              {t('noAgent')}
             </div>
           )}
         </TabsContent>
@@ -85,17 +87,17 @@ export function ChatRightPanel({ agentId }: ChatRightPanelProps) {
         <TabsContent value="workspace" className="min-h-0 flex-1 overflow-hidden">
           {!agentId ? (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              未选择 Agent
+              {t('noAgent')}
             </div>
           ) : loading ? (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              加载中...
+              {t('loading')}
             </div>
           ) : error ? (
             <div className="p-3 text-xs text-destructive">{error}</div>
           ) : tree.length === 0 ? (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              工作区为空
+              {t('emptyWorkspace')}
             </div>
           ) : (
             <FileTree

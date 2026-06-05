@@ -2,6 +2,7 @@
 
 import type { Message } from "@agent-spaces/shared"
 import { BotIcon } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { useEffect, useMemo, useState } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -22,6 +23,7 @@ import {
 import { AgentContextPanel, aggregateTokenUsage, toContextUsage } from "./message-context-panel"
 
 export function MessageContextUsage({ message }: { message: Message }) {
+  const t = useTranslations('chat.contextUsage')
   const contextParts = useMemo(() => message.parts?.filter((item) => item.type === "context") ?? [], [message.parts])
   const part = contextParts[contextParts.length - 1]
   const [popoverOpen, setPopoverOpen] = useState(false)
@@ -82,7 +84,7 @@ export function MessageContextUsage({ message }: { message: Message }) {
                 setDetailsOpen(true)
               }}
             >
-              查看详情 →
+              {t('viewDetails')}
             </button>
           </div>
         </ContextContent>
@@ -90,9 +92,9 @@ export function MessageContextUsage({ message }: { message: Message }) {
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
         <DialogContent className="!flex !w-[min(920px,calc(100vw-2rem))] !max-w-[min(920px,calc(100vw-2rem))] !flex-col gap-0 overflow-hidden p-0">
           <DialogHeader className="border-b px-5 py-4">
-            <DialogTitle className="text-base">Agent 上下文结构</DialogTitle>
+            <DialogTitle className="text-base">{t('contextStructure')}</DialogTitle>
             <DialogDescription className="text-xs">
-              此条消息包含 {contextParts.length} 次 agent 运行。选择 tab 查看提示词、输入、输出和 token 消耗。
+              {t('contextDescription', { count: contextParts.length })}
             </DialogDescription>
           </DialogHeader>
           {contextParts.length ? (

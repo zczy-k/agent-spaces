@@ -96,7 +96,7 @@ export function ChatInputAgentBar({
           <Dialog open={Boolean(configAgentId)} onOpenChange={(open) => { if (!open) setConfigAgentId(null); }}>
             <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">
               <DialogHeader className="border-b px-5 py-3">
-                <DialogTitle>配置 Agent</DialogTitle>
+                <DialogTitle>{t('messageItem.configureAgent')}</DialogTitle>
                 <DialogDescription />
               </DialogHeader>
               <AgentEditor

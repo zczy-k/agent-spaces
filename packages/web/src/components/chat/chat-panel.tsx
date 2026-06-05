@@ -46,6 +46,7 @@ function ChannelMemberAvatars({ members }: { members: string[] }) {
   const visible = members.filter((m) => m !== 'user').slice(0, MAX_VISIBLE);
   const [configAgentId, setConfigAgentId] = useState<string | null>(null);
   const agents = useAgentStore((s) => s.agents);
+  const t = useTranslations('chat');
 
   return (
     <>
@@ -67,7 +68,7 @@ function ChannelMemberAvatars({ members }: { members: string[] }) {
           <Dialog open={Boolean(configAgentId)} onOpenChange={(open) => { if (!open) setConfigAgentId(null); }}>
             <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">
               <DialogHeader className="border-b px-5 py-3">
-                <DialogTitle>配置 Agent</DialogTitle>
+                <DialogTitle>{t('messageItem.configureAgent')}</DialogTitle>
                 <DialogDescription />
               </DialogHeader>
               <AgentEditor

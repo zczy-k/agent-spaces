@@ -431,7 +431,7 @@ export function ChatAgentPickerDialog({
               )}
               <Button variant="outline" size="sm" onClick={() => setSmartCreateOpen(true)}>
                 <WandSparkles className="size-3.5" />
-                智能创建
+                {t('agentPicker.smartCreate')}
               </Button>
             </div>
           </div>
@@ -448,19 +448,19 @@ export function ChatAgentPickerDialog({
       <Dialog open={smartCreateOpen} onOpenChange={setSmartCreateOpen}>
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
-            <DialogTitle>智能创建 Agent</DialogTitle>
-            <DialogDescription>描述你想要的 Agent，AI 将自动生成配置</DialogDescription>
+            <DialogTitle>{t('agentPicker.smartCreateTitle')}</DialogTitle>
+            <DialogDescription>{t('agentPicker.smartCreateDesc')}</DialogDescription>
           </DialogHeader>
           <Input
             value={smartCreatePrompt}
             onChange={(e) => setSmartCreatePrompt(e.target.value)}
-            placeholder="例如：一个擅长 React 性能优化的前端专家"
+            placeholder={t('agentPicker.smartCreatePlaceholder')}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSmartCreate(); } }}
           />
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setSmartCreateOpen(false)}>取消</Button>
+            <Button variant="outline" onClick={() => setSmartCreateOpen(false)}>{t('agentPicker.cancel')}</Button>
             <Button onClick={handleSmartCreate} disabled={smartCreating || !smartCreatePrompt.trim()}>
-              {smartCreating ? "生成中…" : "生成"}
+              {smartCreating ? t('agentPicker.generating') : t('agentPicker.generate')}
             </Button>
           </div>
         </DialogContent>

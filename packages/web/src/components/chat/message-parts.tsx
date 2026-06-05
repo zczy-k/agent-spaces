@@ -101,7 +101,7 @@ function MessagePartView({
     case "text":
       return <Markdown content={part.text} workspaceId={workspaceId} />
     case "user_message":
-      return <UserReplyPart text={part.text} senderName={part.senderName || "用户"} />
+      return <UserReplyPart text={part.text} senderName={part.senderName || t('user')} />
     case "reasoning":
       return (
         <ChainOfThought defaultOpen={part.status === "streaming"} className="max-w-none">

@@ -1,6 +1,7 @@
 "use client"
 
 import type { MessagePart } from "@agent-spaces/shared"
+import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 
@@ -41,6 +42,7 @@ export function aggregateTokenUsage(parts: ContextPart[]) {
 }
 
 export function AgentContextPanel({ part }: { part: ContextPart }) {
+  const t = useTranslations('chat.contextPanel')
   const agent = part.agentContext
   const usage = toContextUsage(part)
   const effectiveTokens = usage.inputTokens + usage.outputTokens + usage.reasoningTokens
@@ -48,10 +50,10 @@ export function AgentContextPanel({ part }: { part: ContextPart }) {
   const outputValue = formatOutputItems(agent?.outputItems) ?? agent?.output
   const outputStats = getOutputItemsStats(agent?.outputItems) ?? getTextStats(agent?.output)
   const textBlocks = [
-    { key: "systemPrompt", title: "提示词信息", value: agent?.systemPrompt, empty: "此 agent 未配置独立 system prompt。" },
-    { key: "userPrompt", title: "输入信息", value: agent?.userPrompt, empty: "旧消息未记录用户输入。" },
-    { key: "fullPrompt", title: "完整上下文", value: agent?.fullPrompt, empty: "旧消息未记录完整 prompt。" },
-    { key: "output", title: "输出信息", value: outputValue, empty: "暂无输出信息。", stats: outputStats },
+    { key: "systemPrompt", title: t('promptInfo'), value: agent?.systemPrompt, empty: t('emptyPrompt') },
+    { key: "userPrompt", title: t('inputInfo'), value: agent?.userPrompt, empty: t('emptyUserPrompt') },
+    { key: "fullPrompt", title: t('fullContext'), value: agent?.fullPrompt, empty: t('emptyFullPrompt') },
+    { key: "output", title: t('outputInfo'), value: outputValue, empty: t('emptyOutput'), stats: outputStats },
   ].map((block) => ({ ...block, stats: block.stats ?? getTextStats(block.value) }))
   const totalBlockTokens = textBlocks.reduce((sum, block) => sum + block.stats.tokens, 0)
 
@@ -64,12 +66,12 @@ export function AgentContextPanel({ part }: { part: ContextPart }) {
         {agent?.sessionId ? <span className="font-mono text-[11px] text-muted-foreground">{agent.sessionId}</span> : null}
       </div>
       <div className="grid gap-2 sm:grid-cols-3 xl:grid-cols-6">
-        <TokenMetric label="有效上下文" value={effectiveTokens} helper="输入 + 输出 + 推理，不含缓存命中" emphasize />
-        <TokenMetric label="总用量（含缓存）" value={usage.totalTokens} helper="provider usage total" />
-        <TokenMetric label="新输入" value={usage.inputTokens} />
-        <TokenMetric label="输出" value={usage.outputTokens} />
-        <TokenMetric label="推理" value={usage.reasoningTokens} />
-        <TokenMetric label="缓存输入" value={usage.cachedInputTokens} helper={`${formatPercent(cacheShare)} of total`} />
+        <TokenMetric label={t('effectiveContext')} value={effectiveTokens} helper={t('effectiveContextHelper')} emphasize />
+        <TokenMetric label={t('totalUsageWithCache')} value={usage.totalTokens} helper="provider usage total" />
+        <TokenMetric label={t('newInput')} value={usage.inputTokens} />
+        <TokenMetric label={t('output')} value={usage.outputTokens} />
+        <TokenMetric label={t('reasoning')} value={usage.reasoningTokens} />
+        <TokenMetric label={t('cachedInput')} value={usage.cachedInputTokens} helper={`${formatPercent(cacheShare)} of total`} />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <ContextTextBlock key={textBlocks[0].key} title={textBlocks[0].title} value={textBlocks[0].value} empty={textBlocks[0].empty} stats={textBlocks[0].stats} totalTokens={totalBlockTokens} />
@@ -106,6 +108,7 @@ function ContextTextBlock({
   stats: TextStats
   totalTokens: number
 }) {
+  const t = useTranslations('chat.contextPanel')
   const percent = totalTokens > 0 ? stats.tokens / totalTokens : 0
 
   return (
@@ -114,8 +117,8 @@ function ContextTextBlock({
         <h4 className="text-xs font-medium text-muted-foreground">{title}</h4>
         <div className="flex flex-wrap items-center justify-end gap-1.5 font-mono text-[10px] text-muted-foreground">
           <span>{formatPercent(percent)}</span>
-          <span>{formatTokenCount(stats.characters)} 字</span>
-          <span>{formatTokenCount(stats.tokens)} tokens</span>
+          <span>{formatTokenCount(stats.characters)} {t('chars')}</span>
+          <span>{formatTokenCount(stats.tokens)} {t('tokens')}</span>
         </div>
       </div>
       <pre className={cn(

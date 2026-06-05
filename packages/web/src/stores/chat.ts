@@ -23,6 +23,7 @@ interface ChatStore {
   selectAgent: (id: string) => void;
   loadMessages: (agentId: string) => Promise<void>;
   sendMessage: (agentId: string, content: string) => void;
+  regenerateMessage: (agentId: string, messageId: string) => void;
   stopAgent: (agentId: string) => void;
   clearMessages: (agentId: string) => void;
 
@@ -100,44 +101,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   sendMessage: async (agentId, content) => {
     if (get().sending[agentId]) return;
 
-    const controller = new AbortController();
-    activeChatRequests.set(agentId, controller);
-    set((s) => ({
-      sending: { ...s.sending, [agentId]: true },
-      errors: { ...s.errors, [agentId]: '' },
-      streamingContent: { ...s.streamingContent, [agentId]: '' },
-      streamingThinking: { ...s.streamingThinking, [agentId]: '' },
-    }));
+    await runChatAgent(agentId, { content }, get, set);
+  },
 
-    try {
-      const response = await sdk.http.raw(`/api/chat/agents/${agentId}/run`, {
-        method: 'POST',
-        signal: controller.signal,
-        headers: {
-          Accept: 'text/event-stream',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ content }),
-      });
+  regenerateMessage: async (agentId, messageId) => {
+    if (get().sending[agentId]) return;
 
-      if (!response.ok || !response.body) {
-        get().onAgentError(agentId, await response.text().catch(() => response.statusText));
-        return;
-      }
-
-      await readChatRunStream(agentId, response.body, get, set);
-    } catch (err) {
-      if (!(err instanceof DOMException && err.name === 'AbortError')) {
-        get().onAgentError(agentId, err instanceof Error ? err.message : String(err));
-      }
-    } finally {
-      if (activeChatRequests.get(agentId) === controller) {
-        activeChatRequests.delete(agentId);
-      }
-      set((s) => ({
-        sending: { ...s.sending, [agentId]: false },
-      }));
-    }
+    await runChatAgent(agentId, { regenerateFromMessageId: messageId }, get, set);
   },
 
   stopAgent: (agentId) => {
@@ -189,6 +159,52 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     }));
   },
 }));
+
+async function runChatAgent(
+  agentId: string,
+  body: { content?: string; regenerateFromMessageId?: string },
+  get: () => ChatStore,
+  set: ChatSet,
+): Promise<void> {
+  const controller = new AbortController();
+  activeChatRequests.set(agentId, controller);
+  set((s) => ({
+    sending: { ...s.sending, [agentId]: true },
+    errors: { ...s.errors, [agentId]: '' },
+    streamingContent: { ...s.streamingContent, [agentId]: '' },
+    streamingThinking: { ...s.streamingThinking, [agentId]: '' },
+  }));
+
+  try {
+    const response = await sdk.http.raw(`/api/chat/agents/${agentId}/run`, {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        Accept: 'text/event-stream',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok || !response.body) {
+      get().onAgentError(agentId, await response.text().catch(() => response.statusText));
+      return;
+    }
+
+    await readChatRunStream(agentId, response.body, get, set);
+  } catch (err) {
+    if (!(err instanceof DOMException && err.name === 'AbortError')) {
+      get().onAgentError(agentId, err instanceof Error ? err.message : String(err));
+    }
+  } finally {
+    if (activeChatRequests.get(agentId) === controller) {
+      activeChatRequests.delete(agentId);
+    }
+    set((s) => ({
+      sending: { ...s.sending, [agentId]: false },
+    }));
+  }
+}
 
 async function readChatRunStream(
   agentId: string,
