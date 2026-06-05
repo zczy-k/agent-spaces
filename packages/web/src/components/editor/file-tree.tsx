@@ -3,26 +3,6 @@
 import { ChevronRightIcon, FileIcon, FolderIcon, FolderOpenIcon, Trash2, ExternalLink, Upload, Copy, FolderPlus, FilePlus, AlertTriangle, Pencil, MoveRight, Terminal } from "lucide-react"
 import { Fragment, createContext, type CSSProperties, type DragEvent, type HTMLAttributes, type ReactNode, useContext, useState, useCallback, useEffect, useRef } from "react"
 import { useHeTree, type Stat } from "he-tree-react"
-/**
- * @title React AI File Tree
- * @credit {"name": "Vercel", "url": "https://ai-sdk.dev/elements", "license": {"name": "Apache License 2.0", "url": "https://www.apache.org/licenses/LICENSE-2.0"}}
- * @description React AI file tree component for displaying hierarchical file and folder structures
- * @opening When your AI generates code or explores a project, you need to show the file structure. This component renders a tree view with collapsible folders, file icons, and selection support. Perfect for showing code generation results, repository structures, or letting users navigate project files. Folders expand/collapse on click, files can be selected, and the whole thing uses proper accessibility attributes for keyboard navigation.
- * @related [
- *   {"href":"/ai/code-block","title":"React AI Code Block","description":"Syntax highlighted code"},
- *   {"href":"/ai/artifact","title":"React AI Artifact","description":"Generated content container"},
- *   {"href":"/ai/terminal","title":"React AI Terminal","description":"Command output display"},
- *   {"href":"/ai/tool","title":"React AI Tool","description":"Tool execution display"},
- *   {"href":"/ai/message","title":"React AI Message","description":"Chat message bubbles"},
- *   {"href":"/ai/context","title":"React AI Context","description":"File context display"}
- * ]
- * @questions [
- *   {"id":"filetree-expand","title":"How do I control which folders are expanded?","answer":"Pass expanded as a Set of paths for controlled mode, or defaultExpanded for uncontrolled. The onExpandedChange callback fires when folders toggle."},
- *   {"id":"filetree-select","title":"How do I handle file selection?","answer":"Pass selectedPath and onSelect props. When a file or folder is clicked, onSelect fires with the path. The selected item gets highlighted styling."},
- *   {"id":"filetree-icons","title":"Can I customize file icons?","answer":"FileTreeFile takes an icon prop. Pass any React node—use lucide-react icons for different file types like TypeScript, JSON, images, etc."},
- *   {"id":"filetree-actions","title":"Can I add actions to files?","answer":"Use FileTreeActions inside FileTreeFile to add buttons that don't trigger selection when clicked. Good for delete, rename, or other file operations."}
- * ]
- */
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem } from "@/components/ui/context-menu"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
