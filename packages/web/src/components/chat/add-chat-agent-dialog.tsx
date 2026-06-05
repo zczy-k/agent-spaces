@@ -63,7 +63,7 @@ export function AddChatAgentDialog({ open, onOpenChange, onSubmit, initialData }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] max-w-2xl">
+      <DialogContent className="max-h-[85vh] min-w-[60vw]">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit Agent" : "Add Chat Agent"}</DialogTitle>
         </DialogHeader>
@@ -74,6 +74,8 @@ export function AddChatAgentDialog({ open, onOpenChange, onSubmit, initialData }
             onSaved={() => {}}
             onBack={() => onOpenChange(false)}
             showFooter={false}
+            lockedFields={{ runtimeKind: true, workingDir: true }}
+            fixedValues={{ runtimeKind: "langchain" }}
           />
         </div>
         <DialogFooter>

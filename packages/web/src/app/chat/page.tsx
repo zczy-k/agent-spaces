@@ -44,15 +44,16 @@ export default function ChatPage() {
   }, [createAgent]);
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full gap-4 bg-muted/30 p-4">
       <ChatAgentList
         agents={agents}
         activeId={activeAgentId}
         onSelect={selectAgent}
         onAdd={() => setDialogOpen(true)}
+        className="w-[280px] shrink-0 rounded-xl border border-border/40 bg-background shadow-sm"
       />
 
-      <div className="flex-1">
+      <div className="flex-1 rounded-xl border border-border/40 bg-background shadow-sm">
         {activeAgent ? (
           <InlineChatPanel
             agentName={activeAgent.name}

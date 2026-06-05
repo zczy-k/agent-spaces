@@ -27,7 +27,7 @@ export function ChatAgentList({ agents, activeId, onSelect, onAdd, className }: 
   return (
     <aside
       className={cn(
-        "flex w-[280px] flex-col border-r bg-background",
+        "flex flex-col",
         className
       )}
     >
