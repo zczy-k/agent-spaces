@@ -42,6 +42,7 @@ import robotAccountRouter from './routes/robot-account.js';
 import versionRouter from './routes/version.js';
 import importRouter from './routes/import.js';
 import dataRouter from './routes/data.js';
+import chatRouter from './routes/chat.js';
 import { getUserSettings, setUserAvatarUrl, removeUserAvatarUrl } from './storage/user-settings-store.js';
 import { authMiddleware, verifyToken } from './middleware/auth.js';
 import { handleConnection } from './ws/handler.js';
@@ -242,6 +243,7 @@ app.use('/api/robot-accounts', robotAccountRouter);
 app.use('/api/import', importRouter);
 app.use('/api/data', dataRouter);
 app.use('/api', versionRouter);
+app.use('/api/chat', chatRouter);
 
 // Serve static web frontend in production (after API routes, before catch-all)
 const webDir = resolveRuntimeDir('web');
