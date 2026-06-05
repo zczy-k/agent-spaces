@@ -6,7 +6,7 @@ import { operationHistoryApi } from '@/lib/workflow-api';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, RotateCcw, History, Loader2, Undo2, Redo2 } from 'lucide-react';
+import { Trash2, History, Loader2, Undo2, Redo2 } from 'lucide-react';
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui/tooltip';
@@ -84,7 +84,7 @@ export function WorkflowOperationHistory({
         <div className="flex items-center gap-2">
           <TooltipProvider>
             <Tooltip>
-              <TooltipTrigger asChild>
+              <TooltipTrigger>
                 <Button
                   variant="outline" size="icon" className="h-7 w-7"
                   disabled={currentUndoCount === 0}
@@ -99,7 +99,7 @@ export function WorkflowOperationHistory({
 
           <TooltipProvider>
             <Tooltip>
-              <TooltipTrigger asChild>
+              <TooltipTrigger>
                 <Button
                   variant="outline" size="icon" className="h-7 w-7"
                   disabled={currentRedoCount === 0}

@@ -4,6 +4,7 @@ import type {
   Workflow, WorkflowFolder, WorkflowVersion, ExecutionLog, OperationEntry, StagedNode, WorkflowNode, WorkflowEdge, WorkflowAgentChatMessage,
 } from '@agent-spaces/shared';
 import { sdk } from './sdk';
+import { fetchWithAuth } from './auth';
 
 // ---- Workflow CRUD ----
 
@@ -131,12 +132,16 @@ export const stagingApi = {
 
 export const workflowChatApi = {
   load(workflowId: string): Promise<WorkflowAgentChatMessage[]> {
-    return sdk.workflow.loadChat(workflowId);
+    return fetchWithAuth(`/api/workflows/${workflowId}/chat`).then(r => r.json());
   },
   save(workflowId: string, messages: WorkflowAgentChatMessage[]): Promise<void> {
-    return sdk.workflow.saveChat(workflowId, messages);
+    return fetchWithAuth(`/api/workflows/${workflowId}/chat`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages }),
+    }).then(() => {});
   },
   clear(workflowId: string): Promise<void> {
-    return sdk.workflow.clearChat(workflowId);
+    return fetchWithAuth(`/api/workflows/${workflowId}/chat`, { method: 'DELETE' }).then(() => {});
   },
 };

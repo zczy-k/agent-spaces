@@ -486,7 +486,7 @@ function PropertyField({
         <div className="border rounded-md overflow-hidden">
           <MonacoEditor
             height="160px"
-            language={(prop as Record<string, unknown>).language as string || 'javascript'}
+            language={(prop as unknown as Record<string, unknown>).language as string || 'javascript'}
             theme="vs-dark"
             value={String(value ?? '')}
             onChange={(v) => onChange(v ?? '')}
