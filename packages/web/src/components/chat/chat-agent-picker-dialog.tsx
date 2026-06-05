@@ -14,7 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { AgentIcon } from "@/components/common/agent-icon";
 import { StoreTabPanel } from "@/components/common/store-tab-panel";
-import { Bot, FileText, Store, Plus, Check } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Bot, FileText, Store, Plus, Check, WandSparkles, Trash2 } from "lucide-react";
 import { fetchStoreIndex } from "@/lib/agent-store";
 import type { AgentPreset } from "@/components/sidebar/agent-shared";
 import type { ChatAgent } from "@agent-spaces/sdk";
@@ -30,19 +31,25 @@ interface StoreChatAgentItem {
   emoji: string;
 }
 
-interface AddChatAgentPickerDialogProps {
+interface ChatAgentPickerDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   chatAgents: ChatAgent[];
   onAdd: (preset: AgentPreset) => void;
+  onRemoveAgent?: (id: string) => void;
+  onCreate?: () => void;
+  onSmartCreate?: () => void;
 }
 
-export function AddChatAgentPickerDialog({
+export function ChatAgentPickerDialog({
   open,
   onOpenChange,
   chatAgents,
   onAdd,
-}: AddChatAgentPickerDialogProps) {
+  onRemoveAgent,
+  onCreate,
+  onSmartCreate,
+}: ChatAgentPickerDialogProps) {
   const t = useTranslations("agent");
   const tc = useTranslations("common");
 
@@ -223,7 +230,7 @@ export function AddChatAgentPickerDialog({
               return (
                 <div
                   key={agent.id}
-                  className="group flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-muted/50 cursor-pointer transition-colors"
+                  className="group flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-muted/50 transition-colors"
                 >
                   <AgentIcon
                     agentId={agent.id}
@@ -242,22 +249,41 @@ export function AddChatAgentPickerDialog({
                       {agent.description || "No description"}
                     </p>
                   </div>
-                  {added ? (
-                    <div className="flex items-center gap-1 text-green-500 text-xs">
-                      <Check className="size-4" />
-                      <span>Added</span>
-                    </div>
-                  ) : (
-                    <Button
+                  <div className="flex items-center gap-2">
+                    <Switch
                       size="sm"
-                      variant="ghost"
-                      onClick={() => handleAdd(agent)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Plus className="size-4 mr-1" />
-                      Add
-                    </Button>
-                  )}
+                      checked={added}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          handleAdd(agent);
+                        } else {
+                          setAddedIds((prev) => {
+                            const next = new Set(prev);
+                            next.delete(agent.id);
+                            return next;
+                          });
+                          onRemoveAgent?.(agent.id);
+                        }
+                      }}
+                    />
+                    {onRemoveAgent && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="size-7 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                        onClick={() => {
+                          setAddedIds((prev) => {
+                            const next = new Set(prev);
+                            next.delete(agent.id);
+                            return next;
+                          });
+                          onRemoveAgent(agent.id);
+                        }}
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -325,7 +351,7 @@ export function AddChatAgentPickerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[80vw] max-h-[85vh] flex flex-col p-0 gap-0">
+      <DialogContent className="sm:max-w-[80vw] h-[70vh] flex flex-col p-0 gap-0">
         {/* Header */}
         <div className="flex items-center gap-3 border-b px-5 pr-12 py-4">
           <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
@@ -337,6 +363,20 @@ export function AddChatAgentPickerDialog({
               Select an agent to add to your chat
             </DialogDescription>
           </DialogHeader>
+          <div className="flex items-center gap-2">
+            {onCreate && (
+              <Button variant="outline" size="sm" onClick={onCreate}>
+                <Plus className="size-3.5" />
+                {t("dialog.add")}
+              </Button>
+            )}
+            {onSmartCreate && (
+              <Button variant="outline" size="sm" onClick={onSmartCreate}>
+                <WandSparkles className="size-3.5" />
+                智能创建
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Body */}

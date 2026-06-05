@@ -6,8 +6,6 @@ import { Copy, RefreshCw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { ChatMessage } from "@agent-spaces/sdk";
 import { Markdown } from "@/components/ui/markdown";
-import { AgentIcon } from "@/components/common/agent-icon";
-import { UserIcon } from "@/components/common/user-icon";
 
 function extractThinkingContent(content: string): { thinking: string | null; message: string } {
   const match = content.match(/^<think\s*>([\s\S]*?)<\/think>\s*([\s\S]*)$/);
@@ -44,11 +42,6 @@ export function ChatMessageBubble({ message, agentId, agentName, agentAvatar, cl
 
   return (
     <div className={cn("flex gap-3 group/msg", isUser && "flex-row-reverse", className)}>
-      {isUser ? (
-        <UserIcon size="sm" className="size-7" />
-      ) : (
-        <AgentIcon agentId={agentId} name={agentName} avatarUrl={agentAvatar} className="size-7 rounded-full" bordered={false} />
-      )}
       <div className={cn("flex max-w-[80%] flex-col gap-1", isUser && "items-end")}>
         <div
           className={cn(

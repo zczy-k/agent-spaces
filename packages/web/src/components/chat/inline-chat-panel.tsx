@@ -1,8 +1,8 @@
 // packages/web/src/components/chat/inline-chat-panel.tsx
 "use client";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { AgentIcon } from "@/components/common/agent-icon";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Eraser, MessageSquare, PanelRightOpen } from "lucide-react";
 import { useRef, useEffect } from "react";
@@ -26,6 +26,8 @@ interface InlineChatPanelProps {
   onClearMessages: (agentId: string) => void;
   onEditAgent: (agentId: string) => void;
   onToggleRightPanel?: () => void;
+  onRegenerate?: (messageId: string) => void;
+  onDelete?: (messageId: string) => void;
 }
 
 export function InlineChatPanel({
@@ -43,6 +45,8 @@ export function InlineChatPanel({
   onClearMessages,
   onEditAgent,
   onToggleRightPanel,
+  onRegenerate,
+  onDelete,
 }: InlineChatPanelProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<ChatComposerInputHandle>(null);
@@ -61,12 +65,7 @@ export function InlineChatPanel({
           onClick={() => onEditAgent(agentId)}
           type="button"
         >
-          <Avatar className="size-9 border-2 border-background">
-            {agentAvatar && <AvatarImage src={agentAvatar} alt={agentName} />}
-            <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-              {agentName.slice(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
+          <AgentIcon agentId={agentId} name={agentName} avatarUrl={agentAvatar} className="size-9" bordered />
           <div>
             <h3 className="text-base font-semibold text-primary decoration-primary/30 hover:decoration-primary transition-colors">{agentName}</h3>
             <span className="text-xs text-muted-foreground">
@@ -115,15 +114,11 @@ export function InlineChatPanel({
             </Empty>
           )}
           {messages.map((msg) => (
-            <ChatMessageBubble key={msg.id} message={msg} agentId={agentId} agentName={agentName} agentAvatar={agentAvatar} />
+            <ChatMessageBubble key={msg.id} message={msg} agentId={agentId} agentName={agentName} agentAvatar={agentAvatar} onRegenerate={onRegenerate ? () => onRegenerate(msg.id) : undefined} onDelete={onDelete ? () => onDelete(msg.id) : undefined} />
           ))}
           {error && (
             <div className="flex gap-3">
-              <Avatar className="size-7 border border-border/40">
-                <AvatarFallback className="bg-destructive/10 text-destructive text-xs">
-                  {agentName.slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
+              <AgentIcon agentId={agentId} name={agentName} avatarUrl={agentAvatar} className="size-7" bordered />
               <div className="max-w-[78%] rounded-2xl rounded-tl-none border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
                 <div className="font-medium">Request failed</div>
                 <div className="mt-1 whitespace-pre-wrap break-words text-xs">{error}</div>
@@ -132,11 +127,7 @@ export function InlineChatPanel({
           )}
           {sending && (streamingContent || streamingThinking) && (
             <div className="flex gap-3">
-              <Avatar className="size-7 border border-border/40">
-                <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                  {agentName.slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
+              <AgentIcon agentId={agentId} name={agentName} avatarUrl={agentAvatar} className="size-7" bordered />
               <div className="max-w-[78%] rounded-2xl rounded-tl-none bg-muted/50 px-4 py-3 text-sm">
                 {streamingThinking && (
                   <details className="mb-2 rounded-md border border-border/40 bg-background/40 px-3 py-2 text-xs text-muted-foreground">
@@ -154,11 +145,7 @@ export function InlineChatPanel({
           )}
           {sending && !streamingContent && !streamingThinking && (
             <div className="flex gap-3">
-              <Avatar className="size-7 border border-border/40">
-                <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                  {agentName.slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
+              <AgentIcon agentId={agentId} name={agentName} avatarUrl={agentAvatar} className="size-7" bordered />
               <div className="flex items-center gap-1 rounded-2xl rounded-tl-none bg-muted/50 px-4 py-3">
                 <span className="size-1.5 animate-bounce rounded-full bg-foreground/40 [animation-delay:-0.3s]" />
                 <span className="size-1.5 animate-bounce rounded-full bg-foreground/40 [animation-delay:-0.15s]" />

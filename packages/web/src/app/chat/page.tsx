@@ -1,18 +1,24 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useChatStore } from "@/stores/chat";
+import { sdk } from "@/lib/sdk";
 import { ChatAgentList } from "@/components/chat/chat-agent-list";
 import { InlineChatPanel } from "@/components/chat/inline-chat-panel";
 import { ChatRightPanel } from "@/components/chat/chat-right-panel";
 import { AddChatAgentDialog } from "@/components/chat/add-chat-agent-dialog";
-import { AddChatAgentPickerDialog } from "@/components/chat/add-chat-agent-picker-dialog";
+import { ChatAgentPickerDialog } from "@/components/chat/chat-agent-picker-dialog";
 import { MessageSquare } from "lucide-react";
 import type { ChatAgent } from "@agent-spaces/sdk";
 import type { AgentPreset } from "@/components/sidebar/agent-shared";
 
 
 export default function ChatPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
   const {
     agents,
     activeAgentId,
@@ -23,6 +29,7 @@ export default function ChatPage() {
     streamingThinking,
     loadAgents,
     createAgent,
+    deleteAgent,
     selectAgent,
     sendMessage,
     stopAgent,
@@ -33,6 +40,7 @@ export default function ChatPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const [editAgent, setEditAgent] = useState<ChatAgent | undefined>(undefined);
+  const [createOpen, setCreateOpen] = useState(false);
   const [chatListIds, setChatListIds] = useState<Set<string>>(new Set());
 
   const chatListAgents = agents.filter((a) => chatListIds.has(a.id));
@@ -42,6 +50,21 @@ export default function ChatPage() {
   const activeError = activeAgentId ? (errors[activeAgentId] ?? "") : "";
   const activeStreamingContent = activeAgentId ? (streamingContent[activeAgentId] ?? "") : "";
   const activeStreamingThinking = activeAgentId ? (streamingThinking[activeAgentId] ?? "") : "";
+
+  // URL -> store: on mount and when agents load, restore selection from URL
+  useEffect(() => {
+    const id = searchParams.get("agent");
+    if (id && id !== activeAgentId && agents.some((a) => a.id === id)) {
+      selectAgent(id);
+    }
+  }, [searchParams, agents]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Store -> URL: push active agent to URL bar
+  useEffect(() => {
+    if (activeAgentId && searchParams.get("agent") !== activeAgentId) {
+      router.replace(`${pathname}?agent=${activeAgentId}`);
+    }
+  }, [activeAgentId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     loadAgents();
@@ -66,7 +89,7 @@ export default function ChatPage() {
     }
   }, [agents, chatListIds]);
 
-  const handleSend = useCallback((content: string) => {
+  const handleSend = useCallback((content: string, _mentions: string[], _attachments: unknown[], _contextLength: number) => {
     if (!activeAgentId || isSending) return;
     sendMessage(activeAgentId, content.trim());
   }, [activeAgentId, isSending, sendMessage]);
@@ -89,8 +112,8 @@ export default function ChatPage() {
       description: preset.description || undefined,
       systemPrompt: preset.systemPrompt || undefined,
       provider: preset.modelProvider || "openai-chat-completions",
-      model: preset.modelId,
-      apiKey: preset.apiKey,
+      model: preset.modelId || "gpt-4o-mini",
+      apiKey: preset.apiKey || "",
       baseURL: preset.apiBase || undefined,
       avatar: preset.avatarUrl || undefined,
     });
@@ -105,6 +128,10 @@ export default function ChatPage() {
         sending={sending}
         onSelect={selectAgent}
         onRemove={handleRemoveFromChat}
+        onEdit={(id) => {
+          const agent = agents.find((a) => a.id === id);
+          if (agent) setEditAgent(agent);
+        }}
         onAdd={() => setDialogOpen(true)}
         className="w-[280px] shrink-0 rounded-xl border border-border/40 bg-background shadow-sm"
       />
@@ -139,11 +166,36 @@ export default function ChatPage() {
 
       {rightPanelOpen && <ChatRightPanel agentId={activeAgentId ?? undefined} />}
 
-      <AddChatAgentPickerDialog
+      <ChatAgentPickerDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         chatAgents={agents}
         onAdd={handleAddAgent}
+        onRemoveAgent={async (id) => {
+          setChatListIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
+          if (activeAgentId === id) {
+            const next = agents.find((a) => a.id !== id);
+            if (next) selectAgent(next.id);
+          }
+          await deleteAgent(id);
+        }}
+        onCreate={() => { setDialogOpen(false); setCreateOpen(true); }}
+        onSmartCreate={async () => {
+          const prompt = window.prompt("描述你想要的 Agent，AI 将自动生成配置：");
+          if (!prompt?.trim()) return;
+          try {
+            const data = await sdk.agent.generateFromPrompt(prompt.trim()) as Partial<Pick<AgentPreset, "name" | "description" | "systemPrompt">> & { error?: string };
+            if (data.error) throw new Error(data.error);
+            await createAgent({
+              name: data.name?.trim() || "New Agent",
+              description: data.description?.trim() || undefined,
+              systemPrompt: data.systemPrompt?.trim() || undefined,
+              provider: "openai-chat-completions",
+              model: "gpt-4o-mini",
+              apiKey: "",
+            });
+          } catch { /* ignore */ }
+        }}
       />
 
       <AddChatAgentDialog
@@ -154,6 +206,15 @@ export default function ChatPage() {
           setEditAgent(undefined);
         }}
         initialData={editAgent}
+      />
+
+      <AddChatAgentDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onSubmit={async (data) => {
+          await createAgent(data);
+          setCreateOpen(false);
+        }}
       />
     </div>
   );
