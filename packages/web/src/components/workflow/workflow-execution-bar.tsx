@@ -4,7 +4,6 @@ import { useMemo, useState } from 'react';
 import type { ExecutionLog, ExecutionStep, OutputField, WorkflowNode } from '@agent-spaces/shared';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   ResizableHandle, ResizablePanel, ResizablePanelGroup,
@@ -12,9 +11,6 @@ import {
 import {
   Tabs, TabsContent, TabsList, TabsTrigger,
 } from '@/components/ui/tabs';
-import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -24,6 +20,7 @@ import {
 } from 'lucide-react';
 import { JsonViewer } from '@/components/viewers/json-viewer';
 import { cn } from '@/lib/utils';
+import { ExecutionInputDialog } from './workflow-execution-input-dialog';
 
 type ExecutionStatus = 'idle' | 'running' | 'paused' | 'completed' | 'error' | 'stopped' | string;
 
@@ -77,20 +74,6 @@ function stringifyValue(value: unknown): string {
   }
 }
 
-function parseInputValue(field: OutputField, raw: string): unknown {
-  if (field.type === 'number') return raw === '' ? 0 : Number(raw);
-  if (field.type === 'boolean') return raw === 'true';
-  if (field.type === 'object' || field.type === 'any') {
-    if (!raw.trim()) return field.type === 'object' ? {} : '';
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return raw;
-    }
-  }
-  return raw;
-}
-
 function stepIcon(status: ExecutionStep['status']) {
   if (status === 'completed') return <CheckCircle className="h-3 w-3 text-green-500 shrink-0" />;
   if (status === 'error') return <XCircle className="h-3 w-3 text-red-500 shrink-0" />;
@@ -116,70 +99,6 @@ function JsonBlock({ value, empty }: { value: unknown; empty: string }) {
         defaultExpanded={2}
       />
     </ScrollArea>
-  );
-}
-
-function ExecutionInputDialog({
-  open, fields, startNodeLabel, onOpenChange, onSubmit,
-}: {
-  open: boolean;
-  fields: OutputField[];
-  startNodeLabel: string;
-  onOpenChange: (open: boolean) => void;
-  onSubmit: (values: Record<string, unknown>) => void;
-}) {
-  const [values, setValues] = useState<Record<string, string>>({});
-
-  const setField = (key: string, value: string) => {
-    setValues(prev => ({ ...prev, [key]: value }));
-  };
-
-  const submit = () => {
-    const parsed: Record<string, unknown> = {};
-    for (const field of fields) {
-      if (!field.key) continue;
-      parsed[field.key] = parseInputValue(field, values[field.key] ?? field.value ?? '');
-    }
-    onSubmit(parsed);
-    onOpenChange(false);
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md max-h-[85vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="text-sm">工作流输入 · {startNodeLabel}</DialogTitle>
-        </DialogHeader>
-        <ScrollArea className="min-h-0 flex-1 pr-2">
-          <div className="space-y-3 py-1">
-            {fields.map(field => (
-              <label key={field.key} className="block space-y-1.5">
-                <span className="text-xs font-medium">
-                  {field.required && <span className="text-destructive mr-0.5">*</span>}
-                  {field.key}
-                  <span className="text-muted-foreground font-normal ml-1">({field.type})</span>
-                </span>
-                {field.description && (
-                  <span className="block text-[10px] text-muted-foreground">{field.description}</span>
-                )}
-                <Input
-                  className="h-8 text-xs"
-                  type={field.type === 'number' ? 'number' : 'text'}
-                  placeholder={field.type === 'boolean' ? 'true / false' : field.key}
-                  value={values[field.key] ?? field.value ?? ''}
-                  onChange={event => setField(field.key, event.target.value)}
-                />
-              </label>
-            ))}
-          </div>
-        </ScrollArea>
-        <DialogFooter>
-          <Button size="sm" onClick={submit}>
-            <Play className="h-3 w-3 mr-1" /> 开始执行
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }
 
