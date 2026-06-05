@@ -138,5 +138,14 @@
     "url": "url:",
     "model": "model:",
     "body": "body:"
+  },
+  "agentPicker": {
+    "smartCreate": "Smart Create",
+    "smartCreateTitle": "Smart Create Agent",
+    "smartCreateDesc": "Describe the agent you want, AI will auto-generate the config",
+    "smartCreatePlaceholder": "e.g., A frontend expert specializing in React performance optimization",
+    "cancel": "Cancel",
+    "generating": "Generating…",
+    "generate": "Generate"
   }
 }

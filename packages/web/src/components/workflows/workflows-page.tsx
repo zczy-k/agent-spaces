@@ -2,10 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { ReactFlowProvider } from '@xyflow/react';
 import type { WorkflowTemplate, WorkflowNode } from '@agent-spaces/shared';
 import { useWorkflowStore } from '@/stores/workflow';
-import { WorkflowMiniPreview } from '@/components/workflow/workflow-mini-preview';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Plus, Pencil, Copy, Trash2, Upload, FileText } from 'lucide-react';
@@ -178,9 +176,6 @@ export function WorkflowsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {workflows.map((workflow) => (
             <Card key={workflow.id} className="overflow-hidden hover:shadow-md transition-shadow">
-              <ReactFlowProvider>
-                <WorkflowMiniPreview template={workflow} />
-              </ReactFlowProvider>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm">{workflow.name}</CardTitle>
                 {workflow.description && (

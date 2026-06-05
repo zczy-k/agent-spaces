@@ -138,5 +138,14 @@
     "url": "URL：",
     "model": "模型：",
     "body": "请求体："
+  },
+  "agentPicker": {
+    "smartCreate": "智能创建",
+    "smartCreateTitle": "智能创建 Agent",
+    "smartCreateDesc": "描述你想要的 Agent，AI 将自动生成配置",
+    "smartCreatePlaceholder": "例如：一个擅长 React 性能优化的前端专家",
+    "cancel": "取消",
+    "generating": "生成中…",
+    "generate": "生成"
   }
 }
