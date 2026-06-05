@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useChatStore } from "@/stores/chat";
-import { sdk } from "@/lib/sdk";
 import { ChatAgentList } from "@/components/chat/chat-agent-list";
 import { InlineChatPanel } from "@/components/chat/inline-chat-panel";
 import { ChatRightPanel } from "@/components/chat/chat-right-panel";
@@ -179,23 +178,8 @@ export default function ChatPage() {
           }
           await deleteAgent(id);
         }}
+        onEditAgent={(agent) => { setDialogOpen(false); setEditAgent(agent); }}
         onCreate={() => { setDialogOpen(false); setCreateOpen(true); }}
-        onSmartCreate={async () => {
-          const prompt = window.prompt("描述你想要的 Agent，AI 将自动生成配置：");
-          if (!prompt?.trim()) return;
-          try {
-            const data = await sdk.agent.generateFromPrompt(prompt.trim()) as Partial<Pick<AgentPreset, "name" | "description" | "systemPrompt">> & { error?: string };
-            if (data.error) throw new Error(data.error);
-            await createAgent({
-              name: data.name?.trim() || "New Agent",
-              description: data.description?.trim() || undefined,
-              systemPrompt: data.systemPrompt?.trim() || undefined,
-              provider: "openai-chat-completions",
-              model: "gpt-4o-mini",
-              apiKey: "",
-            });
-          } catch { /* ignore */ }
-        }}
       />
 
       <AddChatAgentDialog

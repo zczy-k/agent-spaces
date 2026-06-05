@@ -15,8 +15,9 @@ import { Badge } from "@/components/ui/badge";
 import { AgentIcon } from "@/components/common/agent-icon";
 import { StoreTabPanel } from "@/components/common/store-tab-panel";
 import { Switch } from "@/components/ui/switch";
-import { Bot, FileText, Store, Plus, Check, WandSparkles, Trash2 } from "lucide-react";
+import { Bot, FileText, Store, Plus, Check, WandSparkles, Trash2, Pencil } from "lucide-react";
 import { fetchStoreIndex } from "@/lib/agent-store";
+import { sdk } from "@/lib/sdk";
 import type { AgentPreset } from "@/components/sidebar/agent-shared";
 import type { ChatAgent } from "@agent-spaces/sdk";
 
@@ -37,8 +38,8 @@ interface ChatAgentPickerDialogProps {
   chatAgents: ChatAgent[];
   onAdd: (preset: AgentPreset) => void;
   onRemoveAgent?: (id: string) => void;
+  onEditAgent?: (agent: ChatAgent) => void;
   onCreate?: () => void;
-  onSmartCreate?: () => void;
 }
 
 export function ChatAgentPickerDialog({
@@ -47,8 +48,8 @@ export function ChatAgentPickerDialog({
   chatAgents,
   onAdd,
   onRemoveAgent,
+  onEditAgent,
   onCreate,
-  onSmartCreate,
 }: ChatAgentPickerDialogProps) {
   const t = useTranslations("agent");
   const tc = useTranslations("common");
@@ -61,6 +62,11 @@ export function ChatAgentPickerDialog({
   const [storeAgents, setStoreAgents] = useState<StoreChatAgentItem[]>([]);
   const [storeLoading, setStoreLoading] = useState(false);
   const [importingIds, setImportingIds] = useState<Set<string>>(new Set());
+
+  // ── Smart create ──
+  const [smartCreateOpen, setSmartCreateOpen] = useState(false);
+  const [smartCreatePrompt, setSmartCreatePrompt] = useState("");
+  const [smartCreating, setSmartCreating] = useState(false);
 
   // ── Tab ──
   const [activeTab, setActiveTab] = useState<TabType>("local");
@@ -180,6 +186,41 @@ export function ChatAgentPickerDialog({
     [importingIds, onAdd],
   );
 
+  const handleSmartCreate = useCallback(async () => {
+    const prompt = smartCreatePrompt.trim();
+    if (!prompt) return;
+    setSmartCreating(true);
+    try {
+      const data = await sdk.agent.generateFromPrompt(prompt) as Partial<Pick<AgentPreset, "name" | "description" | "systemPrompt">> & { error?: string };
+      if (data.error) throw new Error(data.error);
+      onAdd({
+        id: `smart-${Date.now()}`,
+        name: data.name?.trim() || "New Agent",
+        role: "agent",
+        description: data.description?.trim() || "",
+        avatarUrl: "",
+        icon: "",
+        runtimeKind: "langchain",
+        modelProvider: "",
+        modelId: "",
+        apiBase: "",
+        apiKey: "",
+        workingDir: "",
+        mcps: {},
+        skills: [],
+        tools: [],
+        systemPrompt: data.systemPrompt?.trim() || "",
+        outputStyle: "",
+        temperature: 0.3,
+        maxTokens: 4096,
+        enabled: true,
+      });
+      setSmartCreateOpen(false);
+      setSmartCreatePrompt("");
+    } catch { /* ignore */ }
+    setSmartCreating(false);
+  }, [smartCreatePrompt, onAdd]);
+
   // ── Tabs ──
   const tabs = (
     <div className="flex items-center gap-1 border-b border-border px-1">
@@ -238,7 +279,10 @@ export function ChatAgentPickerDialog({
                     avatarUrl={agent.avatar}
                     className="size-8"
                   />
-                  <div className="flex-1 min-w-0">
+                  <div
+                    className="flex-1 min-w-0 cursor-pointer"
+                    onClick={() => onEditAgent?.(agent)}
+                  >
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">{agent.name}</span>
                       <span className="text-[10px] text-muted-foreground font-mono">
@@ -249,7 +293,17 @@ export function ChatAgentPickerDialog({
                       {agent.description || "No description"}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
+                    {onEditAgent && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="size-7 opacity-0 group-hover:opacity-100 text-muted-foreground transition-opacity"
+                        onClick={() => onEditAgent(agent)}
+                      >
+                        <Pencil className="size-3.5" />
+                      </Button>
+                    )}
                     <Switch
                       size="sm"
                       checked={added}
@@ -350,41 +404,63 @@ export function ChatAgentPickerDialog({
   );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[80vw] h-[70vh] flex flex-col p-0 gap-0">
-        {/* Header */}
-        <div className="flex items-center gap-3 border-b px-5 pr-12 py-4">
-          <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
-            <Bot className="size-4 text-primary" />
-          </div>
-          <DialogHeader className="flex-1 space-y-0">
-            <DialogTitle className="text-base">Add Agent to Chat</DialogTitle>
-            <DialogDescription className="text-xs">
-              Select an agent to add to your chat
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex items-center gap-2">
-            {onCreate && (
-              <Button variant="outline" size="sm" onClick={onCreate}>
-                <Plus className="size-3.5" />
-                {t("dialog.add")}
-              </Button>
-            )}
-            {onSmartCreate && (
-              <Button variant="outline" size="sm" onClick={onSmartCreate}>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[80vw] h-[70vh] flex flex-col p-0 gap-0">
+          {/* Header */}
+          <div className="flex items-center gap-3 border-b px-5 pr-12 py-4">
+            <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
+              <Bot className="size-4 text-primary" />
+            </div>
+            <DialogHeader className="flex-1 space-y-0">
+              <DialogTitle className="text-base">Add Agent to Chat</DialogTitle>
+              <DialogDescription className="text-xs">
+                Select an agent to add to your chat
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex items-center gap-2">
+              {onCreate && (
+                <Button variant="outline" size="sm" onClick={onCreate}>
+                  <Plus className="size-3.5" />
+                  {t("dialog.add")}
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={() => setSmartCreateOpen(true)}>
                 <WandSparkles className="size-3.5" />
                 智能创建
               </Button>
-            )}
+            </div>
           </div>
-        </div>
 
-        {/* Body */}
-        <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
-          {tabs}
-          {activeTab === "local" ? localView : storeView}
-        </div>
-      </DialogContent>
-    </Dialog>
+          {/* Body */}
+          <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
+            {tabs}
+            {activeTab === "local" ? localView : storeView}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Smart Create Dialog */}
+      <Dialog open={smartCreateOpen} onOpenChange={setSmartCreateOpen}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle>智能创建 Agent</DialogTitle>
+            <DialogDescription>描述你想要的 Agent，AI 将自动生成配置</DialogDescription>
+          </DialogHeader>
+          <Input
+            value={smartCreatePrompt}
+            onChange={(e) => setSmartCreatePrompt(e.target.value)}
+            placeholder="例如：一个擅长 React 性能优化的前端专家"
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSmartCreate(); } }}
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setSmartCreateOpen(false)}>取消</Button>
+            <Button onClick={handleSmartCreate} disabled={smartCreating || !smartCreatePrompt.trim()}>
+              {smartCreating ? "生成中…" : "生成"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

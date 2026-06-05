@@ -59,6 +59,7 @@ import { WorkflowTriggerService } from './services/workflow-trigger-service.js';
 import { registerExecutionChannels } from './ws/execution-channels.js';
 import { broadcastToWorkspace } from './ws/connection-manager.js';
 import { createWorkflowHookRouter } from './routes/workflow-hook.js';
+import { setWorkflowExecutionManager } from './services/builtin-tools/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.PORT || '3100', 10);
@@ -209,6 +210,7 @@ const executionManager = new ExecutionManager({
 });
 const triggerService = new WorkflowTriggerService(PORT);
 triggerService.setExecutionManager(executionManager);
+setWorkflowExecutionManager(executionManager);
 
 // Workflow webhook hook SSE endpoint (after auth middleware)
 app.use('/api/workflows', createWorkflowHookRouter(triggerService, executionManager));

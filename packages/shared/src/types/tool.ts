@@ -114,6 +114,36 @@ export const BUILT_IN_AGENT_TOOLS = [
     label: 'Delete Kanban Board',
     description: 'Delete the workspace Kanban board with its columns and tasks.',
   },
+  {
+    name: 'list_workflows',
+    label: 'List Workflows',
+    description: 'List saved workflows and their start node input fields.',
+  },
+  {
+    name: 'search_workflow',
+    label: 'Search Workflow',
+    description: 'Search saved workflows by name or description.',
+  },
+  {
+    name: 'execute_workflow_sync',
+    label: 'Execute Workflow Sync',
+    description: 'Start a workflow and wait for completion, pause, error, or timeout.',
+  },
+  {
+    name: 'execute_workflow_async',
+    label: 'Execute Workflow Async',
+    description: 'Start a workflow and return its execution ID immediately.',
+  },
+  {
+    name: 'get_workflow_result',
+    label: 'Get Workflow Result',
+    description: 'Read a workflow execution result by execution ID.',
+  },
+  {
+    name: 'get_workflow_latest_result',
+    label: 'Get Latest Workflow Result',
+    description: 'Read the latest execution result for a workflow.',
+  },
 ] as const;
 
 export type BuiltInAgentToolName = typeof BUILT_IN_AGENT_TOOLS[number]['name'];
