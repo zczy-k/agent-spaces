@@ -287,7 +287,7 @@ export function WorkflowPluginsDialog({
                         size="sm"
                         variant={installed ? 'outline' : 'default'}
                         className="ml-auto h-7 text-xs"
-                        disabled={installed || Boolean(installingId)}
+                        disabled={installed || installing}
                         onClick={() => installPlugin(plugin)}
                       >
                         {installed ? (

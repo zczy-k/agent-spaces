@@ -233,16 +233,16 @@ export function WorkflowVariablePicker({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger>
+      <DropdownMenuTrigger asChild>
         {children || (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+          <span
+            role="button"
+            tabIndex={0}
+            className="inline-flex items-center justify-center h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground rounded-md hover:bg-accent"
             title="插入变量"
           >
             <Braces className="h-3.5 w-3.5" />
-          </Button>
+          </span>
         )}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">

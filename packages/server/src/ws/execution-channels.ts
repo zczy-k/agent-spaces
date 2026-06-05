@@ -67,6 +67,7 @@ export function registerExecutionChannels(executionManager: ExecutionManager): v
       const result = await executionManager.debugNode(data as any, clientId);
       ws.send(JSON.stringify({ event: 'workflow:debug-node:result', data: result }));
     } catch (err: any) {
+      console.error(err)
       ws.send(JSON.stringify({ event: 'workflow:debug-node:error', data: { error: err.message } }));
     }
   });
