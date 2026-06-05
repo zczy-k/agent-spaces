@@ -187,6 +187,19 @@ export function WorkflowCanvas({
   });
   const [isExporting, setIsExporting] = useState(false);
 
+  const executionNodeIds = useMemo(() => {
+    const running = new Set<string>();
+    const completed = new Set<string>();
+    if (!executionLog || executionLog.status !== 'running') return { running, completed };
+
+    for (const step of executionLog.steps) {
+      if (step.status === 'running') running.add(step.nodeId);
+      if (step.status === 'completed') completed.add(step.nodeId);
+    }
+
+    return { running, completed };
+  }, [executionLog]);
+
   // Convert Workflow nodes/edges to ReactFlow format
   const rfNodes: Node[] = useMemo(() =>
     workflow.nodes.map(n => {
@@ -213,10 +226,11 @@ export function WorkflowCanvas({
           isPreview,
           width,
           height,
+          isRunning: executionNodeIds.running.has(n.id),
         } as Record<string, unknown>,
       };
     }),
-    [workflow.nodes, selectedNodeId, isPreview],
+    [workflow.nodes, selectedNodeId, isPreview, executionNodeIds],
   );
 
   React.useEffect(() => {
@@ -338,19 +352,12 @@ export function WorkflowCanvas({
   const runningEdgeIds = useMemo(() => {
     if (!executionLog || executionLog.status !== 'running') return new Set<string>();
 
-    const completedNodeIds = new Set<string>();
-    const runningNodeIds = new Set<string>();
-    for (const step of executionLog.steps) {
-      if (step.status === 'completed') completedNodeIds.add(step.nodeId);
-      if (step.status === 'running') runningNodeIds.add(step.nodeId);
-    }
-
     return new Set(
       workflow.edges
-        .filter(edge => completedNodeIds.has(edge.source) && runningNodeIds.has(edge.target))
+        .filter(edge => executionNodeIds.completed.has(edge.source) && executionNodeIds.running.has(edge.target))
         .map(edge => edge.id),
     );
-  }, [executionLog, workflow.edges]);
+  }, [executionLog, executionNodeIds, workflow.edges]);
 
   const rfEdges: Edge[] = useMemo(() =>
     workflow.edges.map(e => ({

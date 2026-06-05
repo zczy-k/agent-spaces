@@ -6,6 +6,7 @@ import type { NodeProps } from '@xyflow/react';
 import { X, Play } from 'lucide-react';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { LOOP_BODY_NODE_TYPE, LOOP_BODY_SOURCE_HANDLE } from '@agent-spaces/shared';
+import { BorderGlide } from '@/components/ui/border-glide';
 
 // ---- Icon resolver ----
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -34,6 +35,7 @@ type WorkflowNodeData = Record<string, unknown> & {
   width?: number;
   height?: number;
   isPreview?: boolean;
+  isRunning?: boolean;
 };
 
 type WorkflowCustomViewProps = {
@@ -195,11 +197,11 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
     // Node label update handled by store through selection
   }, []);
 
-  // Simulated execution status (placeholder — real data from store)
-  const nodeStatus = 'idle' as string;
+  // Execution status is injected by WorkflowCanvas from the current execution log.
+  const nodeStatus = nodeData.isRunning ? 'running' : 'idle';
   const statusColor = useMemo(() => {
     switch (nodeStatus) {
-      case 'running': return 'border-blue-500 shadow-blue-500/30 shadow-md animate-pulse';
+      case 'running': return 'border-blue-500 shadow-blue-500/30 shadow-md';
       case 'completed': return 'border-green-500';
       case 'error': return 'border-red-500';
       case 'skipped': return 'border-yellow-500';
@@ -244,6 +246,21 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
+        {nodeData.isRunning && (
+          <BorderGlide
+            className="absolute inset-0 z-20 rounded-lg pointer-events-none"
+            duration={2200}
+            color="#3b82f6"
+            width="1.75rem"
+            height="1.75rem"
+            opacity={0.75}
+            rx="0.5rem"
+            ry="0.5rem"
+          >
+            <div className="h-full w-full" />
+          </BorderGlide>
+        )}
+
         {/* Target handle */}
         {showTargetHandle && (
           <Handle
