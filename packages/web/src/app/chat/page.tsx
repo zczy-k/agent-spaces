@@ -6,10 +6,11 @@ import { ChatAgentList } from "@/components/chat/chat-agent-list";
 import { InlineChatPanel } from "@/components/chat/inline-chat-panel";
 import { ChatRightPanel } from "@/components/chat/chat-right-panel";
 import { AddChatAgentDialog } from "@/components/chat/add-chat-agent-dialog";
+import { AddChatAgentPickerDialog } from "@/components/chat/add-chat-agent-picker-dialog";
 import { MessageSquare } from "lucide-react";
 import type { ChatAgent } from "@agent-spaces/sdk";
+import type { AgentPreset } from "@/components/sidebar/agent-shared";
 
-type NewChatAgent = Omit<ChatAgent, "id" | "createdAt" | "updatedAt">;
 
 export default function ChatPage() {
   const {
@@ -33,7 +34,6 @@ export default function ChatPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const [editAgent, setEditAgent] = useState<ChatAgent | undefined>(undefined);
-  const [input, setInput] = useState("");
 
   const activeAgent = agents.find((a) => a.id === activeAgentId);
   const activeMessages = activeAgentId ? (messages[activeAgentId] ?? []) : [];
@@ -46,14 +46,22 @@ export default function ChatPage() {
     loadAgents();
   }, [loadAgents]);
 
-  const handleSend = useCallback(() => {
-    if (!activeAgentId || !input.trim() || isSending) return;
-    sendMessage(activeAgentId, input.trim());
-    setInput("");
-  }, [activeAgentId, input, isSending, sendMessage]);
+  const handleSend = useCallback((content: string) => {
+    if (!activeAgentId || isSending) return;
+    sendMessage(activeAgentId, content.trim());
+  }, [activeAgentId, isSending, sendMessage]);
 
-  const handleAddAgent = useCallback(async (data: NewChatAgent) => {
-    await createAgent(data);
+  const handleAddAgent = useCallback(async (preset: AgentPreset) => {
+    await createAgent({
+      name: preset.name,
+      description: preset.description || undefined,
+      systemPrompt: preset.systemPrompt || undefined,
+      provider: preset.modelProvider || "openai-chat-completions",
+      model: preset.modelId,
+      apiKey: preset.apiKey,
+      baseURL: preset.apiBase || undefined,
+      avatar: preset.avatarUrl || undefined,
+    });
   }, [createAgent]);
 
   return (
@@ -79,8 +87,6 @@ export default function ChatPage() {
             error={activeError}
             streamingContent={activeStreamingContent}
             streamingThinking={activeStreamingThinking}
-            input={input}
-            onInputChange={setInput}
             onSend={handleSend}
             onStop={() => activeAgentId && stopAgent(activeAgentId)}
             onClearMessages={clearMessages}
@@ -100,10 +106,11 @@ export default function ChatPage() {
 
       {rightPanelOpen && <ChatRightPanel agentId={activeAgentId ?? undefined} />}
 
-      <AddChatAgentDialog
+      <AddChatAgentPickerDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        onSubmit={handleAddAgent}
+        chatAgents={agents}
+        onAdd={handleAddAgent}
       />
 
       <AddChatAgentDialog

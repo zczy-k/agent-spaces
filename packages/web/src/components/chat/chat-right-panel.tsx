@@ -14,7 +14,7 @@ export function ChatRightPanel({ agentId }: ChatRightPanelProps) {
   return (
     <div className="flex h-full w-[320px] shrink-0 flex-col rounded-xl border border-border/40 bg-background shadow-sm">
       <Tabs value={tab} onValueChange={setTab} className="flex flex-1 flex-col">
-        <TabsList className="mx-2 mt-2 w-auto self-center">
+        <TabsList className="mt-2 w-full">
           <TabsTrigger value="info">
             <InfoIcon className="size-4" />
           </TabsTrigger>

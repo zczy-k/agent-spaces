@@ -2,7 +2,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Copy } from "lucide-react";
+import { Copy, RefreshCw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { ChatMessage } from "@agent-spaces/sdk";
 import { Markdown } from "@/components/ui/markdown";
@@ -25,9 +25,11 @@ interface ChatMessageBubbleProps {
   agentName: string;
   agentAvatar?: string;
   className?: string;
+  onDelete?: () => void;
+  onRegenerate?: () => void;
 }
 
-export function ChatMessageBubble({ message, agentId, agentName, agentAvatar, className }: ChatMessageBubbleProps) {
+export function ChatMessageBubble({ message, agentId, agentName, agentAvatar, className, onDelete, onRegenerate }: ChatMessageBubbleProps) {
   const [copied, setCopied] = useState(false);
   const { thinking, message: text } =
     message.role === "agent" ? extractThinkingContent(message.content) : { thinking: null, message: message.content };
@@ -66,6 +68,15 @@ export function ChatMessageBubble({ message, agentId, agentName, agentAvatar, cl
         </div>
         <div className={cn("flex items-center gap-1", isUser && "flex-row-reverse")}>
           <span className="text-[10px] text-muted-foreground/60">{formatTime(message.timestamp)}</span>
+          {!isUser && onRegenerate && (
+            <button
+              onClick={onRegenerate}
+              className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover/msg:opacity-100"
+              title="Regenerate"
+            >
+              <RefreshCw className="size-3" />
+            </button>
+          )}
           <button
             onClick={handleCopy}
             className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover/msg:opacity-100"
@@ -73,6 +84,15 @@ export function ChatMessageBubble({ message, agentId, agentName, agentAvatar, cl
           >
             <Copy className="size-3" />
           </button>
+          {onDelete && (
+            <button
+              onClick={onDelete}
+              className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover/msg:opacity-100"
+              title="Delete"
+            >
+              <Trash2 className="size-3" />
+            </button>
+          )}
         </div>
       </div>
     </div>

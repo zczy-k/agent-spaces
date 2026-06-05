@@ -4,9 +4,10 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { cn } from "@/lib/utils";
-import { Eraser, MessageSquare, PanelRightOpen, Send, Square } from "lucide-react";
+import { Eraser, MessageSquare, PanelRightOpen } from "lucide-react";
 import { useRef, useEffect } from "react";
+import type { Attachment as MessageAttachment } from "@agent-spaces/shared";
+import { ChatComposerInput, type ChatComposerInputHandle } from "./chat-composer-input";
 import { ChatMessageBubble } from "./chat-message-bubble";
 import type { ChatMessage } from "@agent-spaces/sdk";
 
@@ -19,9 +20,8 @@ interface InlineChatPanelProps {
   error?: string;
   streamingContent?: string;
   streamingThinking?: string;
-  input: string;
-  onInputChange: (value: string) => void;
-  onSend: () => void;
+  workspaceId?: string;
+  onSend: (content: string, mentions: string[], attachments: MessageAttachment[], contextLength: number) => void;
   onStop: () => void;
   onClearMessages: (agentId: string) => void;
   onEditAgent: (agentId: string) => void;
@@ -37,8 +37,7 @@ export function InlineChatPanel({
   error = "",
   streamingContent = "",
   streamingThinking = "",
-  input,
-  onInputChange,
+  workspaceId,
   onSend,
   onStop,
   onClearMessages,
@@ -46,18 +45,12 @@ export function InlineChatPanel({
   onToggleRightPanel,
 }: InlineChatPanelProps) {
   const listRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<ChatComposerInputHandle>(null);
 
   useEffect(() => {
     if (!listRef.current) return;
     listRef.current.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, sending, error, streamingContent, streamingThinking]);
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-      e.preventDefault();
-      onSend();
-    }
-  };
 
   return (
     <div className="flex h-full flex-col">
@@ -178,43 +171,22 @@ export function InlineChatPanel({
 
       {/* Input */}
       <div className="border-t p-3">
-        <form
-          className="flex items-center gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (sending) { onStop(); return; }
-            onSend();
-          }}
-        >
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => onInputChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={`Message ${agentName}...`}
-            className="h-10 flex-1 rounded-full border border-border/40 bg-background/50 px-4 text-sm outline-none transition-all placeholder:text-muted-foreground focus:border-primary/50 focus:ring-2 focus:ring-primary/10"
-          />
-          <Button
-            type="submit"
-            size={sending ? "sm" : "icon"}
-            className={cn(
-              "h-10 cursor-pointer rounded-full shadow-lg transition-transform hover:scale-105",
-              sending
-                ? "w-auto gap-1.5 bg-destructive px-4 text-destructive-foreground hover:bg-destructive/90"
-                : "w-10 bg-primary text-primary-foreground"
-            )}
-            disabled={!sending && !input.trim()}
-          >
-            {sending ? (
-              <>
-                <Square className="size-3.5 fill-current" />
-                <span className="text-xs font-medium">Stop</span>
-              </>
-            ) : (
-              <Send className="size-4" />
-            )}
-          </Button>
-        </form>
+        <ChatComposerInput
+          ref={composerRef}
+          workspaceId={workspaceId || ""}
+          agents={[]}
+          placeholder={`Message ${agentName}...`}
+          onSubmit={onSend}
+          isProcessing={sending}
+          onStop={onStop}
+          disableMentionSuggestions
+          enableAttachments={false}
+          enableVoice={false}
+          enableAutoMode={false}
+          enableContextControl={false}
+          enableSlashCommands={false}
+          enableAgentResources={false}
+        />
       </div>
     </div>
   );

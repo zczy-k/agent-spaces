@@ -164,6 +164,35 @@ function scanPluginStore() {
 
 scanAgentStore();
 
+function scanChatStore() {
+  const dir = join(agentsDir, 'chat');
+  if (!existsSync(dir)) return;
+  const index = [];
+  for (const file of readdirSync(dir)) {
+    if (!file.endsWith('.md')) continue;
+    const id = basename(file, '.md');
+    const content = readFileSync(join(dir, file), 'utf-8');
+    const fm = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+    let name = id.replace(/[-_]/g, ' ');
+    let description = '';
+    let emoji = '';
+    if (fm) {
+      for (const line of fm[1].split(/\r?\n/)) {
+        const m = line.match(/^\s*(\w+)\s*:\s*(.+)/);
+        if (!m) continue;
+        const [, key, val] = m;
+        if (key === 'name') name = val.trim();
+        else if (key === 'description') description = val.trim();
+        else if (key === 'emoji') emoji = val.trim();
+      }
+    }
+    index.push({ id, name, group: 'chat', path: id, description, emoji });
+  }
+  writeFileSync(join(dir, 'index.json'), JSON.stringify(index, null, 2), 'utf-8');
+  console.log(`[chat] ${index.length} agents`);
+}
+scanChatStore();
+
 scanMcpStore();
 scanPluginStore();
 
