@@ -4,7 +4,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Eraser, Send, Square } from "lucide-react";
+import { Eraser, PanelRightOpen, Send, Square } from "lucide-react";
 import { useRef, useEffect } from "react";
 import { ChatMessageBubble } from "./chat-message-bubble";
 import type { ChatMessage } from "@agent-spaces/sdk";
@@ -24,6 +24,7 @@ interface InlineChatPanelProps {
   onStop: () => void;
   onClearMessages: (agentId: string) => void;
   onEditAgent: (agentId: string) => void;
+  onToggleRightPanel?: () => void;
 }
 
 export function InlineChatPanel({
@@ -41,6 +42,7 @@ export function InlineChatPanel({
   onStop,
   onClearMessages,
   onEditAgent,
+  onToggleRightPanel,
 }: InlineChatPanelProps) {
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -78,16 +80,30 @@ export function InlineChatPanel({
             </span>
           </div>
         </button>
-        <Button
-          aria-label="Clear messages"
-          className="ml-auto size-8 text-muted-foreground hover:text-destructive"
-          onClick={() => onClearMessages(agentId)}
-          size="icon"
-          variant="ghost"
-          type="button"
-        >
-          <Eraser className="size-4" />
-        </Button>
+        <div className="ml-auto flex items-center gap-1">
+          <Button
+            aria-label="Clear messages"
+            className="size-8 text-muted-foreground hover:text-destructive"
+            onClick={() => onClearMessages(agentId)}
+            size="icon"
+            variant="ghost"
+            type="button"
+          >
+            <Eraser className="size-4" />
+          </Button>
+                {onToggleRightPanel && (
+            <Button
+              aria-label="Toggle right panel"
+              className="size-8 text-muted-foreground"
+              onClick={onToggleRightPanel}
+              size="icon"
+              variant="ghost"
+              type="button"
+            >
+              <PanelRightOpen className="size-4" />
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Messages */}

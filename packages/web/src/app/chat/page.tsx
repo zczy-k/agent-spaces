@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useChatStore } from "@/stores/chat";
 import { ChatAgentList } from "@/components/chat/chat-agent-list";
 import { InlineChatPanel } from "@/components/chat/inline-chat-panel";
+import { ChatRightPanel } from "@/components/chat/chat-right-panel";
 import { AddChatAgentDialog } from "@/components/chat/add-chat-agent-dialog";
 import { MessageSquare } from "lucide-react";
 import type { ChatAgent } from "@agent-spaces/sdk";
@@ -30,6 +31,7 @@ export default function ChatPage() {
   } = useChatStore();
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const [editAgent, setEditAgent] = useState<ChatAgent | undefined>(undefined);
   const [input, setInput] = useState("");
 
@@ -85,6 +87,7 @@ export default function ChatPage() {
               const agent = agents.find((a) => a.id === id);
               if (agent) setEditAgent(agent);
             }}
+            onToggleRightPanel={() => setRightPanelOpen((v) => !v)}
           />
         ) : (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
@@ -93,6 +96,8 @@ export default function ChatPage() {
           </div>
         )}
       </div>
+
+      {rightPanelOpen && <ChatRightPanel agentId={activeAgentId ?? undefined} />}
 
       <AddChatAgentDialog
         open={dialogOpen}
