@@ -164,7 +164,10 @@ function injectSkillPrompts(prompt: string, skills: SkillPrompt[]): string {
     prompt.trimEnd(),
     '',
     'Configured skill instructions:',
-    'The following Markdown skills are enabled for this run. Follow them when they are relevant to the user request.',
+    `Enabled skill names: ${skills.map((skill) => skill.name).join(', ')}`,
+    'These are configured skills for this run, even if a skill body looks like a design note, plan, or reference document.',
+    'If the user asks what skills are available, answer from the enabled skill names above. Do not say that no skills are available when this list is non-empty.',
+    'Follow the skill contents below when they are relevant to the user request.',
     '',
     ...skills.flatMap((skill) => [
       `## Skill: ${skill.name}`,
