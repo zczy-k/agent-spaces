@@ -1,6 +1,6 @@
 import { getDataDir, ensureDir, readJsonFile, writeJsonFile, deleteFile } from './json-store.js';
 import path from 'node:path';
-import { existsSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import type { BuiltInAgentToolName } from '@agent-spaces/shared';
 
 export interface ChatAgent {
@@ -179,18 +179,20 @@ function writeSkills(
     for (const skill of skillInputs) {
       if (typeof skill === 'string' || !skill.name.trim()) continue;
       const filename = sanitizeMarkdownFilename(skill.name);
-      writeJsonSkillFile(path.join(dir, filename), skill.content ?? '');
-      writeJsonSkillFile(path.join(chatWorkspaceSkillsDir(agentId), filename), skill.content ?? '');
+      const content = skill.content ?? readSkillContent(skill.name) ?? '';
+      writeJsonSkillFile(path.join(dir, filename), content);
+      writeJsonSkillFile(path.join(chatWorkspaceSkillsDir(agentId), filename), content);
     }
     return;
   }
 
   for (const name of skillNames.map(skill => typeof skill === 'string' ? skill : skill.name)) {
     const filename = sanitizeMarkdownFilename(name);
+    const content = readSkillContent(name) ?? '';
     const filePath = path.join(dir, filename);
-    if (!existsSync(filePath)) writeJsonSkillFile(filePath, '');
+    if (content || !existsSync(filePath)) writeJsonSkillFile(filePath, content);
     const workspaceSkillPath = path.join(chatWorkspaceSkillsDir(agentId), filename);
-    if (!existsSync(workspaceSkillPath)) writeJsonSkillFile(workspaceSkillPath, '');
+    if (content || !existsSync(workspaceSkillPath)) writeJsonSkillFile(workspaceSkillPath, content);
   }
 }
 
@@ -202,4 +204,21 @@ function writeJsonSkillFile(filePath: string, content: string): void {
 function sanitizeMarkdownFilename(name: string): string {
   const base = name.trim().replace(/[/\\:*?"<>|]+/g, '-');
   return base.toLowerCase().endsWith('.md') ? base : `${base}.md`;
+}
+
+function readSkillContent(name: string): string | undefined {
+  const skillName = name.trim().replace(/\.md$/i, '');
+  if (!skillName) return undefined;
+
+  const candidates = [
+    path.join(getDataDir(), 'skills', skillName, 'SKILL.md'),
+    path.join(getDataDir(), 'skills', `${skillName}.md`),
+    path.join(process.cwd(), 'skills', skillName, 'SKILL.md'),
+    path.join(process.cwd(), 'skills', `${skillName}.md`),
+  ];
+  const source = candidates.find(file => existsSync(file));
+  if (!source) return undefined;
+
+  const content = readFileSync(source, 'utf-8');
+  return content.trim() ? content : undefined;
 }
