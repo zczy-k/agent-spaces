@@ -111,7 +111,7 @@ export function OutputFieldsEditor({
               value={field.type ?? 'string'}
               onValueChange={(type) => updateField(index, { type: type as OutputField['type'] })}
             >
-              <SelectTrigger className="h-6 w-20 shrink-0 px-2 py-0 text-[11px]">
+              <SelectTrigger size="sm" className="h-6 w-20 shrink-0 px-2 py-0 text-[11px] [&_svg]:size-3">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
