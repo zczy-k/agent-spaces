@@ -8,8 +8,9 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { Input } from "@/components/ui/input";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { cn } from "@/lib/utils";
-import { Pencil, Plus, Trash2, X } from "lucide-react";
+import { Bot, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import type { ChatAgent } from "@agent-spaces/sdk";
 import { AgentIcon } from "@/components/common/agent-icon";
@@ -80,8 +81,20 @@ export function ChatAgentList({ agents, activeId, sending, onSelect, onRemove, o
           </h3>
           <ul className="flex flex-col gap-0.5">
             {filtered.length === 0 ? (
-              <li className="px-4 py-2 text-muted-foreground text-sm">
-                {agents.length === 0 ? "No agents yet. Click + to add one." : "No matches found."}
+              <li className="px-4 py-6">
+                <Empty className="border-0 p-0">
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <Bot />
+                    </EmptyMedia>
+                    <EmptyTitle>
+                      {agents.length === 0 ? "No agents yet" : "No matches found"}
+                    </EmptyTitle>
+                    <EmptyDescription>
+                      {agents.length === 0 ? "Click + to add an agent to this chat." : "Try a different search term."}
+                    </EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
               </li>
             ) : (
               filtered.map((agent) => (

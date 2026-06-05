@@ -193,6 +193,13 @@ export default function ChatPage() {
           }
           await deleteAgent(id);
         }}
+        onRemoveFromChat={(id) => {
+          setChatListIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
+          if (activeAgentId === id) {
+            const next = agents.find((a) => a.id !== id);
+            if (next) selectAgent(next.id);
+          }
+        }}
         onEditAgent={(agent) => { setDialogOpen(false); setEditAgent(agent); }}
         onCreate={() => { setDialogOpen(false); setCreateOpen(true); }}
       />

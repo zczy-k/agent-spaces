@@ -38,6 +38,7 @@ interface ChatAgentPickerDialogProps {
   chatAgents: ChatAgent[];
   onAdd: (preset: AgentPreset) => void;
   onRemoveAgent?: (id: string) => void;
+  onRemoveFromChat?: (id: string) => void;
   onEditAgent?: (agent: ChatAgent) => void;
   onCreate?: () => void;
 }
@@ -48,6 +49,7 @@ export function ChatAgentPickerDialog({
   chatAgents,
   onAdd,
   onRemoveAgent,
+  onRemoveFromChat,
   onEditAgent,
   onCreate,
 }: ChatAgentPickerDialogProps) {
@@ -318,7 +320,7 @@ export function ChatAgentPickerDialog({
                             next.delete(agent.id);
                             return next;
                           });
-                          onRemoveAgent?.(agent.id);
+                          onRemoveFromChat?.(agent.id);
                         }
                       }}
                     />
