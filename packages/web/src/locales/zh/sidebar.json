@@ -15,7 +15,8 @@
     "workflows": "工作流",
     "hooks": "Hooks",
     "tools": "工具管理",
-    "commands": "Commands"
+    "commands": "Commands",
+    "manage": "管理"
   },
   "notifications": {
     "openAriaLabel": "打开通知",

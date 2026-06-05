@@ -1,15 +1,17 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import type { WorkflowTemplate, WorkflowNode } from '@agent-spaces/shared';
 import { useWorkflowStore } from '@/stores/workflow';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Plus, Pencil, Copy, Trash2, Upload, FileText, MoreVertical } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Plus, Upload, FileText, Search, Filter } from 'lucide-react';
 import { WorkflowTemplatesDialog } from '@/components/workflows/workflow-templates-dialog';
 import { WorkflowListDialog } from '@/components/workflow/workflow-list-dialog';
+import { WorkflowCard } from '@/components/workflows/workflow-card';
 import type { WorkflowTemplatePreset } from '@/components/workflows/workflow-templates';
 import { sdk } from '@/lib/sdk';
 import { workflowApi } from '@/lib/workflow-api';
@@ -21,6 +23,22 @@ export function WorkflowsPage() {
   const { workflows, loadWorkflows, deleteWorkflow, duplicateWorkflow, upsertWorkflow } = useWorkflowStore();
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [listDialogOpen, setListDialogOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+
+  const allTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    workflows.forEach(wf => wf.tags?.forEach(t => tagSet.add(t)));
+    return Array.from(tagSet).sort();
+  }, [workflows]);
+
+  const filteredWorkflows = useMemo(() => {
+    return workflows.filter(wf => {
+      const matchesSearch = !search || wf.name.toLowerCase().includes(search.toLowerCase()) || wf.description?.toLowerCase().includes(search.toLowerCase());
+      const matchesTags = selectedTags.length === 0 || selectedTags.some(tag => wf.tags?.includes(tag));
+      return matchesSearch && matchesTags;
+    });
+  }, [workflows, search, selectedTags]);
 
   useEffect(() => {
     loadWorkflows();
@@ -166,6 +184,68 @@ export function WorkflowsPage() {
         </div>
       </div>
 
+      <div className="hidden md:flex items-center gap-2 mb-4">
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder="搜索工作流..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-8 h-8 text-sm"
+          />
+        </div>
+        {allTags.length > 0 && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 gap-1.5">
+                <Filter className="h-3.5 w-3.5" />
+                标签
+                {selectedTags.length > 0 && (
+                  <Badge variant="secondary" className="h-4 px-1 text-[10px]">{selectedTags.length}</Badge>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-48 p-2">
+              <div className="flex flex-col gap-1">
+                {allTags.map(tag => {
+                  const selected = selectedTags.includes(tag);
+                  return (
+                    <button
+                      key={tag}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted text-left cursor-pointer"
+                      onClick={() => setSelectedTags(prev => selected ? prev.filter(t => t !== tag) : [...prev, tag])}
+                    >
+                      <span className={`h-3.5 w-3.5 rounded border flex items-center justify-center shrink-0 ${selected ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/30'}`}>
+                        {selected && <span className="text-[10px]">✓</span>}
+                      </span>
+                      {tag}
+                    </button>
+                  );
+                })}
+              </div>
+              {selectedTags.length > 0 && (
+                <button
+                  className="text-xs text-muted-foreground hover:text-foreground mt-1 pt-1 border-t cursor-pointer w-full text-left px-2 py-1"
+                  onClick={() => setSelectedTags([])}
+                >
+                  清除筛选
+                </button>
+              )}
+            </PopoverContent>
+          </Popover>
+        )}
+        {selectedTags.length > 0 && (
+          <div className="flex gap-1 flex-wrap">
+            {selectedTags.map(tag => (
+              <Badge key={tag} variant="secondary" className="gap-1 text-xs cursor-pointer" onClick={() => setSelectedTags(prev => prev.filter(t => t !== tag))}>
+                {tag}
+                <span className="text-[10px]">✕</span>
+              </Badge>
+            ))}
+          </div>
+        )}
+      </div>
+
       {workflows.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
           <p className="text-sm mb-2">暂无工作流模板</p>
@@ -175,61 +255,13 @@ export function WorkflowsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {workflows.map((workflow) => (
-            <Card key={workflow.id} className="group overflow-hidden hover:shadow-md transition-shadow cursor-pointer relative" onClick={() => nativeNavigate(router, `/workflows/${workflow.id}`)}>
-              <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-7 w-7">
-                      <MoreVertical className="h-3.5 w-3.5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => nativeNavigate(router, `/workflows/${workflow.id}`)}>
-                      <Pencil className="h-3.5 w-3.5 mr-2" /> 编辑
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleDuplicate(workflow)}>
-                      <Copy className="h-3.5 w-3.5 mr-2" /> 复制
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDelete(workflow)}>
-                      <Trash2 className="h-3.5 w-3.5 mr-2" /> 删除
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  {workflow.icon ? (
-                    <span className="text-xl leading-none">{workflow.icon}</span>
-                  ) : (
-                    <span className="w-6 h-6 rounded bg-primary/10 text-xs font-bold flex items-center justify-center text-primary shrink-0">
-                      {(workflow.name || '未').charAt(0).toUpperCase()}
-                    </span>
-                  )}
-                  <CardTitle className="text-sm truncate">{workflow.name}</CardTitle>
-                </div>
-                {workflow.description && (
-                  <CardDescription className="text-xs line-clamp-2">{workflow.description}</CardDescription>
-                )}
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">
-                    {workflow.nodes.length} 个节点
-                  </span>
-                  {workflow.tags && workflow.tags.length > 0 && (
-                    <div className="flex gap-1">
-                      {workflow.tags.slice(0, 2).map(tag => (
-                        <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{tag}</span>
-                      ))}
-                      {workflow.tags.length > 2 && (
-                        <span className="text-[10px] text-muted-foreground">+{workflow.tags.length - 2}</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+          {filteredWorkflows.map((workflow) => (
+            <WorkflowCard
+              key={workflow.id}
+              workflow={workflow}
+              onDuplicate={handleDuplicate}
+              onDelete={handleDelete}
+            />
           ))}
         </div>
       )}

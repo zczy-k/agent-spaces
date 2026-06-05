@@ -107,29 +107,6 @@ export function WorkflowEditorToolbar({
 
       <div className="w-px h-5 bg-border mx-1" />
 
-      {workflow && !isPreview && (
-        <>
-          {isRunning && !isPaused ? (
-            <Button variant="ghost" size="sm" className="h-7 gap-1" onClick={onPause}>
-              <Pause className="h-3.5 w-3.5" /> 暂停
-            </Button>
-          ) : isPaused ? (
-            <>
-              <Button variant="ghost" size="sm" className="h-7 gap-1" onClick={onResume}>
-                <Play className="h-3.5 w-3.5" /> 继续
-              </Button>
-              <Button variant="ghost" size="sm" className="h-7 gap-1 text-destructive" onClick={onStop}>
-                <Square className="h-3.5 w-3.5" /> 停止
-              </Button>
-            </>
-          ) : (
-            <Button variant="ghost" size="sm" className="h-7 gap-1" onClick={onExecute}>
-              <Play className="h-3.5 w-3.5" /> 执行
-            </Button>
-          )}
-        </>
-      )}
-
       {isPreview && (
         <Button variant="ghost" size="sm" className="h-7 gap-1 text-blue-500" onClick={onBack}>
           退出预览

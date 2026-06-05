@@ -17,6 +17,7 @@ import {
   Zap,
   Wrench,
   Terminal,
+  LayoutGrid,
 } from "lucide-react";
 import type { Workspace } from "@agent-spaces/shared";
 import { sdk } from "@/lib/sdk";
@@ -101,11 +102,10 @@ export function buildDashboardRoutes(config: DashboardRoutesConfig): Route[] {
       link: "/workflows",
     },
     {
-      id: "settings",
-      title: ts("nav.general"),
-      icon: <Settings className="size-4" />,
+      id: "settings-manage",
+      title: isMobile ? ts("nav.general") : ts("nav.manage"),
+      icon: <LayoutGrid className="size-4" />,
       link: isMobile ? "/settings" : "#",
-      ...(isMobile ? {} : { onClick: () => setterMap.settings?.(true) }),
       subs: isMobile
         ? [
             { title: ts("nav.agents"), link: "/settings/agents", icon: <Bot className="size-4" /> },
@@ -129,6 +129,13 @@ export function buildDashboardRoutes(config: DashboardRoutesConfig): Route[] {
             { title: ts("nav.hooks"), link: "#", icon: <Zap className="size-4" />, onClick: () => setterMap.hooks?.(true) },
             { title: ts("nav.commands"), link: "#", icon: <Terminal className="size-4" />, onClick: () => setterMap.commands?.(true) },
           ],
+    },
+    {
+      id: "settings",
+      title: ts("nav.general"),
+      icon: <Settings className="size-4" />,
+      link: isMobile ? "/settings" : "#",
+      ...(isMobile ? {} : { onClick: () => setterMap.settings?.(true) }),
     },
   ];
 }

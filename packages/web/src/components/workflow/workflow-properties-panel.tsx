@@ -158,7 +158,7 @@ function OutputFieldsEditor({
   return (
     <div className="space-y-1.5">
       {fields.map((field, index) => (
-        <div key={`${field.key}-${index}`} className="rounded border bg-background p-1.5">
+        <div key={index} className="rounded border bg-background p-1.5">
           <div className="flex items-center gap-1">
             <Input
               value={field.key ?? ''}
