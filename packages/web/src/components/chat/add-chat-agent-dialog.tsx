@@ -63,7 +63,7 @@ export function AddChatAgentDialog({ open, onOpenChange, onSubmit, initialData }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] min-w-[60vw]">
+      <DialogContent className="flex max-h-[85vh] min-w-[60vw] flex-col">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit Agent" : "Add Chat Agent"}</DialogTitle>
         </DialogHeader>
