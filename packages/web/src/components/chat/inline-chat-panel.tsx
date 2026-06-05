@@ -14,6 +14,9 @@ interface InlineChatPanelProps {
   agentAvatar?: string;
   messages: ChatMessage[];
   sending: boolean;
+  error?: string;
+  streamingContent?: string;
+  streamingThinking?: string;
   input: string;
   onInputChange: (value: string) => void;
   onSend: () => void;
@@ -25,6 +28,9 @@ export function InlineChatPanel({
   agentAvatar,
   messages,
   sending,
+  error = "",
+  streamingContent = "",
+  streamingThinking = "",
   input,
   onInputChange,
   onSend,
@@ -35,7 +41,7 @@ export function InlineChatPanel({
   useEffect(() => {
     if (!listRef.current) return;
     listRef.current.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, sending]);
+  }, [messages, sending, error, streamingContent, streamingThinking]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
@@ -73,7 +79,42 @@ export function InlineChatPanel({
           {messages.map((msg) => (
             <ChatMessageBubble key={msg.id} message={msg} agentName={agentName} />
           ))}
-          {sending && (
+          {error && (
+            <div className="flex gap-3">
+              <Avatar className="size-7 border border-border/40">
+                <AvatarFallback className="bg-destructive/10 text-destructive text-xs">
+                  {agentName.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="max-w-[78%] rounded-2xl rounded-tl-none border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                <div className="font-medium">Request failed</div>
+                <div className="mt-1 whitespace-pre-wrap break-words text-xs">{error}</div>
+              </div>
+            </div>
+          )}
+          {sending && (streamingContent || streamingThinking) && (
+            <div className="flex gap-3">
+              <Avatar className="size-7 border border-border/40">
+                <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                  {agentName.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="max-w-[78%] rounded-2xl rounded-tl-none bg-muted/50 px-4 py-3 text-sm">
+                {streamingThinking && (
+                  <details className="mb-2 rounded-md border border-border/40 bg-background/40 px-3 py-2 text-xs text-muted-foreground">
+                    <summary className="cursor-pointer select-none font-medium">Thinking</summary>
+                    <div className="mt-2 whitespace-pre-wrap break-words">{streamingThinking}</div>
+                  </details>
+                )}
+                {streamingContent && (
+                  <div className="whitespace-pre-wrap break-words leading-relaxed">
+                    {streamingContent}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          {sending && !streamingContent && !streamingThinking && (
             <div className="flex gap-3">
               <Avatar className="size-7 border border-border/40">
                 <AvatarFallback className="bg-primary/10 text-primary text-xs">

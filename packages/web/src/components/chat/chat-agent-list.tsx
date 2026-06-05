@@ -3,9 +3,8 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { MessageSquare, Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { ChatAgent } from "@agent-spaces/sdk";
 
@@ -13,11 +12,12 @@ interface ChatAgentListProps {
   agents: ChatAgent[];
   activeId: string | null;
   onSelect: (id: string) => void;
+  onDelete: (id: string) => void;
   onAdd: () => void;
   className?: string;
 }
 
-export function ChatAgentList({ agents, activeId, onSelect, onAdd, className }: ChatAgentListProps) {
+export function ChatAgentList({ agents, activeId, onSelect, onDelete, onAdd, className }: ChatAgentListProps) {
   const [search, setSearch] = useState("");
 
   const filtered = agents.filter((a) =>
@@ -26,61 +26,106 @@ export function ChatAgentList({ agents, activeId, onSelect, onAdd, className }: 
 
   return (
     <aside
+      aria-label="Chat Agent List"
       className={cn(
-        "flex flex-col",
+        "flex h-full max-w-sm w-full flex-col gap-4 overflow-hidden rounded-xl border bg-background",
         className
       )}
+      role="complementary"
     >
-      <header className="flex items-center justify-between border-b px-4 py-3">
-        <h2 className="font-semibold text-sm">Chat Agents</h2>
-        <Button size="icon" variant="ghost" onClick={onAdd} title="Add agent">
-          <Plus className="size-4" />
-        </Button>
+      <header className="flex items-center justify-between border-b px-4 py-2">
+        <h2 className="select-none font-semibold text-lg">Agents</h2>
+        <nav aria-label="Agent Actions">
+          <Button
+            aria-label="Add agent"
+            size="icon"
+            type="button"
+            variant="ghost"
+            onClick={onAdd}
+          >
+            <Plus aria-hidden="true" className="size-5" focusable="false" />
+          </Button>
+        </nav>
       </header>
 
-      <div className="px-3 py-2">
+      <div className="flex flex-col gap-3 px-4">
         <Input
-          placeholder="Search agents..."
-          value={search}
+          aria-label="Search agents"
+          autoComplete="off"
+          className="h-10 w-full text-sm"
+          inputMode="search"
           onChange={(e) => setSearch(e.target.value)}
-          className="h-8 text-xs"
+          placeholder="Search agents…"
+          spellCheck={false}
+          type="search"
+          value={search}
         />
       </div>
 
-      <ScrollArea className="flex-1">
-        <div className="flex flex-col gap-0.5 p-2">
-          {filtered.length === 0 ? (
-            <p className="px-2 py-4 text-center text-muted-foreground text-xs">
-              {agents.length === 0 ? "No agents yet. Click + to add one." : "No matches found."}
-            </p>
-          ) : (
-            filtered.map((agent) => (
-              <button
-                key={agent.id}
-                onClick={() => onSelect(agent.id)}
-                className={cn(
-                  "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-accent",
-                  activeId === agent.id && "bg-accent"
-                )}
-              >
-                <Avatar className="size-8 shrink-0">
-                  {agent.avatar && <AvatarImage src={agent.avatar} alt={agent.name} />}
-                  <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                    {agent.name.slice(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{agent.name}</p>
-                  {agent.description && (
-                    <p className="truncate text-muted-foreground text-xs">{agent.description}</p>
-                  )}
-                </div>
-                <MessageSquare className="size-4 shrink-0 text-muted-foreground" />
-              </button>
-            ))
-          )}
-        </div>
-      </ScrollArea>
+      <div className="flex flex-1 flex-col gap-1 overflow-y-auto">
+        <section aria-labelledby="agent-list-label">
+          <h3
+            className="flex items-center px-4 font-semibold text-muted-foreground text-xs"
+            id="agent-list-label"
+          >
+            Chat Agents
+          </h3>
+          <ul className="flex flex-col gap-0.5">
+            {filtered.length === 0 ? (
+              <li className="px-4 py-2 text-muted-foreground text-sm">
+                {agents.length === 0 ? "No agents yet. Click + to add one." : "No matches found."}
+              </li>
+            ) : (
+              filtered.map((agent) => (
+                <li className="px-0" key={agent.id}>
+                  <button
+                    aria-label={`Chat with ${agent.name}`}
+                    className={cn(
+                      "group flex w-full items-center gap-4 px-4 py-2 text-left hover:bg-accent focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                      activeId === agent.id && "bg-accent"
+                    )}
+                    onClick={() => onSelect(agent.id)}
+                    type="button"
+                  >
+                    <div className="relative flex flex-shrink-0 items-end">
+                      <Avatar className="size-8">
+                        {agent.avatar && <AvatarImage alt={agent.name} src={agent.avatar} />}
+                        <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                          {agent.name.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="-bottom-0 absolute right-0 flex items-center">
+                        <span
+                          aria-label="agent"
+                          className="inline-block size-2.5 rounded-full border-2 border-background bg-blue-500"
+                        />
+                      </span>
+                    </div>
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <span className="truncate font-medium">{agent.name}</span>
+                      {agent.description ? (
+                        <span className="truncate text-muted-foreground text-xs">
+                          {agent.description}
+                        </span>
+                      ) : null}
+                    </div>
+                    <Button
+                      aria-label={`Delete chat with ${agent.name}`}
+                      className="ml-auto size-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => { e.stopPropagation(); onDelete(agent.id); }}
+                      size="icon"
+                      variant="ghost"
+                      type="button"
+                    >
+                      <Trash2 aria-hidden="true" className="size-4 text-muted-foreground" focusable="false" />
+                    </Button>
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
+        </section>
+      </div>
     </aside>
   );
 }

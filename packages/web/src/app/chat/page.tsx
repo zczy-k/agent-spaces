@@ -6,6 +6,9 @@ import { ChatAgentList } from "@/components/chat/chat-agent-list";
 import { InlineChatPanel } from "@/components/chat/inline-chat-panel";
 import { AddChatAgentDialog } from "@/components/chat/add-chat-agent-dialog";
 import { MessageSquare } from "lucide-react";
+import type { ChatAgent } from "@agent-spaces/sdk";
+
+type NewChatAgent = Omit<ChatAgent, "id" | "createdAt" | "updatedAt">;
 
 export default function ChatPage() {
   const {
@@ -13,11 +16,15 @@ export default function ChatPage() {
     activeAgentId,
     messages,
     sending,
+    errors,
+    streamingContent,
+    streamingThinking,
     loadAgents,
     createAgent,
     selectAgent,
     sendMessage,
     stopAgent,
+    deleteAgent,
   } = useChatStore();
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -26,6 +33,9 @@ export default function ChatPage() {
   const activeAgent = agents.find((a) => a.id === activeAgentId);
   const activeMessages = activeAgentId ? (messages[activeAgentId] ?? []) : [];
   const isSending = activeAgentId ? (sending[activeAgentId] ?? false) : false;
+  const activeError = activeAgentId ? (errors[activeAgentId] ?? "") : "";
+  const activeStreamingContent = activeAgentId ? (streamingContent[activeAgentId] ?? "") : "";
+  const activeStreamingThinking = activeAgentId ? (streamingThinking[activeAgentId] ?? "") : "";
 
   useEffect(() => {
     loadAgents();
@@ -35,11 +45,9 @@ export default function ChatPage() {
     if (!activeAgentId || !input.trim() || isSending) return;
     sendMessage(activeAgentId, input.trim());
     setInput("");
-    // TODO: Wire up WS chat.message event for real-time execution
-    // For now, the message is saved to store and sending state is set
   }, [activeAgentId, input, isSending, sendMessage]);
 
-  const handleAddAgent = useCallback(async (data: any) => {
+  const handleAddAgent = useCallback(async (data: NewChatAgent) => {
     await createAgent(data);
   }, [createAgent]);
 
@@ -49,6 +57,7 @@ export default function ChatPage() {
         agents={agents}
         activeId={activeAgentId}
         onSelect={selectAgent}
+        onDelete={deleteAgent}
         onAdd={() => setDialogOpen(true)}
         className="w-[280px] shrink-0 rounded-xl border border-border/40 bg-background shadow-sm"
       />
@@ -60,6 +69,9 @@ export default function ChatPage() {
             agentAvatar={activeAgent.avatar}
             messages={activeMessages}
             sending={isSending}
+            error={activeError}
+            streamingContent={activeStreamingContent}
+            streamingThinking={activeStreamingThinking}
             input={input}
             onInputChange={setInput}
             onSend={handleSend}
