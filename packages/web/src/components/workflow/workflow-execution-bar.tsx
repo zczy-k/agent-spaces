@@ -223,7 +223,7 @@ export function WorkflowExecutionBar({
       </div>
 
       {isExpanded && (
-        <div className="border-t border-border flex-1 min-h-0">
+        <div className="border-t border-border flex-1 min-h-0 overflow-hidden">
           <ResizablePanelGroup orientation="horizontal" className="h-full min-h-0 overflow-hidden">
             <ResizablePanel
               id="workflow-execution-history"
@@ -305,7 +305,7 @@ export function WorkflowExecutionBar({
               id="workflow-execution-details"
               defaultSize="75%"
               minSize="40%"
-              className="min-h-0 overflow-hidden"
+              className="min-h-0 overflow-hidden w-0 flex-1"
             >
               {displayLog ? (
                 <ScrollArea className="h-full">
