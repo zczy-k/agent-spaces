@@ -72,7 +72,7 @@ export function InlineChatPanel({
             </AvatarFallback>
           </Avatar>
           <div>
-            <h3 className="text-sm font-semibold">{agentName}</h3>
+            <h3 className="text-base font-semibold text-primary decoration-primary/30 hover:decoration-primary transition-colors">{agentName}</h3>
             <span className="text-xs text-muted-foreground">
               {sending ? "typing..." : "online"}
             </span>

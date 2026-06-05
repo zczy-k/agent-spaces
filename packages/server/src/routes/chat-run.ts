@@ -20,8 +20,17 @@ router.post('/agents/:id/run', async (req, res) => {
     res.status(404).json({ error: 'Agent not found' });
     return;
   }
+  const baseURL = resolveChatAgentBaseURL(agent);
 
   prepareSse(res);
+
+  if (!baseURL && requiresBaseURL(agent.provider)) {
+    writeSse(res, 'error', {
+      error: `${agent.provider} requires an API Base URL. Edit this chat agent and save the provider API address again.`,
+    });
+    res.end();
+    return;
+  }
 
   const userMsg = chatService.saveMessage({
     agentId: id,
@@ -35,7 +44,7 @@ router.post('/agents/:id/run', async (req, res) => {
     provider: agent.provider,
     model: agent.model,
     apiKey: agent.apiKey,
-    baseURL: agent.baseURL,
+    baseURL,
   };
 
   const runtime = new LangChainRuntime(config);
@@ -129,6 +138,17 @@ function writeRuntimeEvent(res: Response, event: AgentRuntimeEvent): void {
 
 function shouldIncludeHistoryMessage(message: { role: 'user' | 'agent'; content: string }): boolean {
   return !(message.role === 'agent' && message.content.trim() === 'LangChain execution failed');
+}
+
+function resolveChatAgentBaseURL(agent: { baseURL?: string; apiBase?: string }): string | undefined {
+  return agent.baseURL?.trim() || agent.apiBase?.trim() || undefined;
+}
+
+function requiresBaseURL(provider?: string): boolean {
+  return provider === 'openai-chat-completions'
+    || provider === 'openai-responses'
+    || provider === 'anthropic-messages'
+    || provider === 'gemini-generate-content';
 }
 
 export default router;
