@@ -155,7 +155,7 @@ function scanPluginStore() {
       hasView: Boolean(data.hasView),
       hasWorkflow: Boolean(data.hasWorkflow || data.workflowNodes || data.entries?.workflow),
       path: entry.name,
-      iconUrl: data.iconUrl || data.iconPath,
+      iconUrl: data.iconUrl || data.iconPath || (data.icon ? `${entry.name}/${data.icon}` : undefined),
     });
   }
   writeFileSync(join(dir, 'index.json'), JSON.stringify(index, null, 2), 'utf-8');

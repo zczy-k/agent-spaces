@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import type { StoreWorkflowPlugin, WorkflowPlugin } from '@/lib/workflow-plugin-api';
 import { Download, RefreshCw, Settings, Trash2 } from 'lucide-react';
 import { PluginIcon } from './workflow-plugin-icon';
+import { resolveStoreUrl } from '@/lib/agent-store';
 
 export function LocalPluginCard({
   plugin,
@@ -64,7 +65,7 @@ export function StorePluginCard({
   onInstallAction: () => void;
 }) {
   const iconSrc = plugin.iconUrl
-    ? { type: 'url' as const, url: plugin.iconUrl }
+    ? { type: 'url' as const, url: resolveStoreUrl(plugin.iconUrl) }
     : { type: 'builtin' as const, variant: 'store' as const };
 
   return (
