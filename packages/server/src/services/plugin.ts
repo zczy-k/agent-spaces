@@ -1,9 +1,10 @@
 import type { NodeTypeDefinition, PluginConfigField, PluginMeta } from '@agent-spaces/shared';
 import { ensureDir, getDataDir, readJsonFile, writeJsonFile } from '../storage/json-store.js';
-import { cpSync, existsSync, readFileSync, readdirSync } from 'node:fs';
+import { cpSync, existsSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { builtinModules } from 'node:module';
+import { spawnSync } from 'node:child_process';
 import vm from 'node:vm';
 import { createBuiltinPluginApi } from './plugin-runtime-api.js';
 
@@ -85,6 +86,37 @@ function readManifestFromDir(dir: string): PluginManifest | null {
     if (manifest?.id || manifest?.name) return manifest;
   }
   return null;
+}
+
+function hasPackageDependencies(dir: string): boolean {
+  const pkg = readJsonFile<{ dependencies?: Record<string, string> }>(path.join(dir, 'package.json'));
+  return Boolean(pkg?.dependencies && Object.keys(pkg.dependencies).length > 0);
+}
+
+function installPluginDependencies(dir: string): void {
+  if (!hasPackageDependencies(dir)) return;
+  if (existsSync(path.join(dir, 'node_modules'))) return;
+
+  const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+  const result = spawnSync(npmCommand, ['install', '--omit=dev'], {
+    cwd: dir,
+    encoding: 'utf-8',
+    stdio: 'pipe',
+  });
+
+  if (result.error || result.status !== 0) {
+    const detail = (result.error?.message || result.stderr || result.stdout || '').trim();
+    console.error('[plugin] failed to install dependencies', {
+      dir,
+      command: `${npmCommand} install --omit=dev`,
+      status: result.status,
+      signal: result.signal,
+      error: result.error?.message,
+      stderr: result.stderr?.trim(),
+      stdout: result.stdout?.trim(),
+    });
+    throw new Error(`Failed to install plugin dependencies in ${dir}${detail ? `: ${detail}` : ''}`);
+  }
 }
 
 function normalizePlugin(dirName: string, manifest: PluginManifest, state: PluginState): PluginMeta {
@@ -177,6 +209,20 @@ export function listWorkflowPlugins(): PluginMeta[] {
   return listPlugins().filter(plugin => plugin.hasWorkflow);
 }
 
+export function uninstallPlugin(pluginId: string): void {
+  const dir = resolvePluginDir(pluginId);
+  if (!dir) throw new Error('Plugin not found');
+
+  // remove plugin directory from disk
+  rmSync(dir, { recursive: true, force: true });
+
+  // clean state.json
+  const state = readState();
+  delete state.enabled[pluginId];
+  delete state.config[pluginId];
+  writeState(state);
+}
+
 export function setPluginEnabled(pluginId: string, enabled: boolean): PluginMeta {
   const state = readState();
   state.enabled[pluginId] = enabled;
@@ -212,6 +258,7 @@ export function installTemplatePlugin(pluginId: string): PluginMeta {
       filter: (src) => !src.split(path.sep).includes('node_modules'),
     });
   }
+  installPluginDependencies(targetDir);
   return setPluginEnabled(id, true);
 }
 
@@ -267,7 +314,12 @@ function getExecutablePluginByNodeType(nodeType: string): ExecutablePlugin | nul
       const { handlers } = loadCommonJsWorkflowModule(workflowPath);
       const handler = handlers.get(nodeType);
       if (handler) return { plugin, handler, api: createBuiltinPluginApi() };
-    } catch {
+    } catch (error) {
+      const nodes = loadCommonJsWorkflowNodes(workflowPath);
+      if (nodes.some(node => node.type === nodeType)) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error(`Plugin node "${nodeType}" from "${plugin.id}" failed to load: ${message}`);
+      }
       continue;
     }
   }

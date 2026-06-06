@@ -120,7 +120,7 @@ export function WorkflowPluginsDialog({
   }
 
   async function uninstallPlugin(plugin: WorkflowPlugin) {
-    await pluginApi.disable(plugin.id);
+    await pluginApi.uninstall(plugin.id);
     setPlugins(items => items.filter(item => item.id !== plugin.id));
     updateWorkflowPlugins(plugin.id, false);
     toast.success(`已卸载 ${plugin.name}`);

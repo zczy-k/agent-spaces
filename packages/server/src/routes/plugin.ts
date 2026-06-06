@@ -24,6 +24,11 @@ router.post('/store/:pluginId/install', (req: Request<{ pluginId: string }>, res
   try {
     res.json(pluginService.installTemplatePlugin(req.params.pluginId));
   } catch (error: any) {
+    console.error('[plugin] failed to install store plugin', {
+      pluginId: req.params.pluginId,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(400).json({ error: error.message });
   }
 });
@@ -39,6 +44,15 @@ router.post('/:pluginId/enable', (req: Request<{ pluginId: string }>, res: Respo
 router.post('/:pluginId/disable', (req: Request<{ pluginId: string }>, res: Response) => {
   try {
     res.json(pluginService.setPluginEnabled(req.params.pluginId, false));
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+router.delete('/:pluginId', (req: Request<{ pluginId: string }>, res: Response) => {
+  try {
+    pluginService.uninstallPlugin(req.params.pluginId);
+    res.json({ success: true });
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }

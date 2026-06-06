@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  Collapsible, CollapsibleContent, CollapsibleTrigger,
+  Collapsible, CollapsibleContent,
 } from '@/components/ui/collapsible';
 import {
   HoverCard, HoverCardContent, HoverCardTrigger,
@@ -22,7 +22,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { WorkflowPluginConfigDialog } from './workflow-plugin-config-dialog';
-import { Search, ChevronDown, Plus, Settings, Trash2 } from 'lucide-react';
+import { Search, ChevronDown, ChevronRight, Plus, Settings, Trash2 } from 'lucide-react';
 
 export const WORKFLOW_NODE_DRAG_MIME = 'application/vueflow';
 
@@ -215,14 +215,21 @@ export function WorkflowNodeSidebar({
                 open={openCategories[category] !== false}
                 onOpenChange={() => toggleCategory(category)}
               >
-                <CollapsibleTrigger
+                <div
                   className="flex items-center w-full px-2 py-1 text-xs font-medium rounded hover:brightness-95"
                   style={{
                     backgroundColor: stringToHsl(category, 40, 92),
                     color: stringToHsl(category, 50, 30),
                   }}
                 >
-                  <span className="truncate">{category}</span>
+                  <span className="cursor-pointer shrink-0" onClick={() => toggleCategory(category)}>
+                    {openCategories[category] !== false ? (
+                      <ChevronDown className="h-3 w-3 opacity-60" />
+                    ) : (
+                      <ChevronRight className="h-3 w-3 opacity-60" />
+                    )}
+                  </span>
+                  <span className="truncate ml-1">{category}</span>
                   <span className="ml-auto flex items-center gap-1">
                     {categoryPluginMap[category] && pluginById.get(categoryPluginMap[category])?.config?.length ? (
                       <>
@@ -276,7 +283,7 @@ export function WorkflowNodeSidebar({
                     ) : null}
                     <span className="text-[10px]">{nodes.length}</span>
                   </span>
-                </CollapsibleTrigger>
+                </div>
                 <CollapsibleContent>
                   <div className="space-y-0.5 mt-0.5">
                     {nodes.map((node) => (

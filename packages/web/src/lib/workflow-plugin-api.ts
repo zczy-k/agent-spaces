@@ -25,6 +25,9 @@ export const pluginApi = {
   disable(pluginId: string): Promise<PluginMeta> {
     return sdk.workflowPlugin.disable(pluginId);
   },
+  uninstall(pluginId: string): Promise<{ success: boolean }> {
+    return sdk.workflowPlugin.uninstall(pluginId);
+  },
   installFromStore(pluginId: string): Promise<PluginMeta> {
     return sdk.workflowPlugin.installFromStore(pluginId);
   },

@@ -15,6 +15,9 @@ export function createWorkflowPluginApi(http: HttpClient) {
     disable: (pluginId: string): Promise<PluginMeta> =>
       http.post(`/api/plugins/${encodeURIComponent(pluginId)}/disable`),
 
+    uninstall: (pluginId: string): Promise<{ success: boolean }> =>
+      http.deleteOf<{ success: boolean }>(`/api/plugins/${encodeURIComponent(pluginId)}`),
+
     installFromStore: (pluginId: string): Promise<PluginMeta> =>
       http.post(`/api/plugins/store/${encodeURIComponent(pluginId)}/install`),
 
