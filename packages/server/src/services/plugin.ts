@@ -172,6 +172,17 @@ function installPluginDependencies(dir: string): void {
   }
 }
 
+const ICON_FILENAMES = ['icon.svg', 'icon.png', 'icon.jpg', 'icon.jpeg', 'icon.webp'];
+
+function detectIconFile(dirName: string): string | null {
+  const dir = resolvePluginDir(dirName);
+  if (!dir) return null;
+  for (const name of ICON_FILENAMES) {
+    if (existsSync(path.join(dir, name))) return name;
+  }
+  return null;
+}
+
 function normalizePlugin(dirName: string, manifest: PluginManifest, state: PluginState): PluginMeta {
   const id = String(manifest.id || dirName);
   return {
@@ -186,7 +197,7 @@ function normalizePlugin(dirName: string, manifest: PluginManifest, state: Plugi
     type: manifest.type,
     enabled: state.enabled[id] ?? Boolean(manifest.enabled),
     config: Array.isArray(manifest.config) ? manifest.config : [],
-    iconPath: manifest.iconPath || (manifest as any).icon || '',
+    iconPath: manifest.iconPath || (manifest as any).icon || detectIconFile(dirName) || '',
   };
 }
 
@@ -627,6 +638,9 @@ async function tryInstallStoreCommonFiles(pluginId: string, sourceUrl: string): 
     'actions.js',
     'shared.js',
   ]);
+
+  const iconRel = manifest.iconPath || (manifest as any)?.icon;
+  if (typeof iconRel === 'string' && iconRel) files.add(iconRel);
 
   const entries = manifest.entries || {};
   for (const entry of [entries.server, entries.workflow, entries.tools]) {
