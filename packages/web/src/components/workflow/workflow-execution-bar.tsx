@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import type { ExecutionLog, ExecutionStep, OutputField, WorkflowNode } from '@agent-spaces/shared';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -47,14 +48,6 @@ interface ExecutionBarProps {
   onUpdateNodeData?: (nodeId: string, data: Record<string, unknown>) => void;
 }
 
-const STATUS_BADGE: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-  idle: { label: '就绪', variant: 'secondary' },
-  running: { label: '运行中', variant: 'default' },
-  paused: { label: '已暂停', variant: 'outline' },
-  completed: { label: '已完成', variant: 'default' },
-  error: { label: '错误', variant: 'destructive' },
-  stopped: { label: '已停止', variant: 'secondary' },
-};
 
 function formatTime(ts: number): string {
   return new Date(ts).toLocaleTimeString('zh-CN', {
@@ -111,6 +104,7 @@ export function WorkflowExecutionBar({
   onExecute, onPause, onResume, onStop, onSelectLog, onDeleteLog, onClearLogs, onExitPreview,
   onUpdateNodeData,
 }: ExecutionBarProps) {
+  const t = useTranslations('workflows');
   const [inputDialogOpen, setInputDialogOpen] = useState(false);
   const [selectedStartNodeId, setSelectedStartNodeId] = useState<string | null>(null);
   const [stepTabs, setStepTabs] = useState<Record<string, string>>({});
@@ -124,7 +118,13 @@ export function WorkflowExecutionBar({
     key: number;
   }>({ open: false, nodeId: '', nodeLabel: '', defaultName: '', defaultJson: '', key: 0 });
 
-  const badge = STATUS_BADGE[status] || STATUS_BADGE.idle;
+  const badge = {
+    label: t(`execution.status.${status}`) || t('execution.status.idle'),
+    variant: (status === 'running' || status === 'completed') ? 'default' as const
+      : status === 'error' ? 'destructive' as const
+      : status === 'paused' ? 'outline' as const
+      : 'secondary' as const,
+  };
   const isRunning = status === 'running';
   const isPaused = status === 'paused';
   const canStart = !isRunning && !isPaused && !validationError;
@@ -185,19 +185,19 @@ export function WorkflowExecutionBar({
       <div className="flex items-center gap-2 px-3 py-1.5 min-w-0 overflow-hidden">
         {canResume ? (
           <Button variant="ghost" size="sm" className="h-6 text-xs gap-1 px-2" onClick={onResume}>
-            <Play className="h-3 w-3" /> 继续
+            <Play className="h-3 w-3" /> {t('execution.resume')}
           </Button>
         ) : startNodes.length > 1 ? (
           <DropdownMenu>
             <DropdownMenuTrigger
               render={<Button variant="ghost" size="sm" className="h-6 text-xs gap-1 px-2" disabled={!canStart} />}
             >
-              <Play className="h-3 w-3" /> 执行 <ChevronDown className="h-3 w-3" />
+              <Play className="h-3 w-3" /> {t('execution.execute')} <ChevronDown className="h-3 w-3" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-56">
               {startNodes.map(node => (
                 <DropdownMenuItem key={node.id} className="text-xs" onClick={() => executeFromStartNode(node)}>
-                  {node.label || '开始'}
+                  {node.label || t('execution.start')}
                   <span className="ml-auto text-[10px] text-muted-foreground">{node.id.slice(0, 8)}</span>
                 </DropdownMenuItem>
               ))}
@@ -205,7 +205,7 @@ export function WorkflowExecutionBar({
           </DropdownMenu>
         ) : (
           <Button variant="ghost" size="sm" className="h-6 text-xs gap-1 px-2" disabled={!canStart} onClick={() => executeFromStartNode()}>
-            <Play className="h-3 w-3" /> 执行
+            <Play className="h-3 w-3" /> {t('execution.execute')}
           </Button>
         )}
 
@@ -217,17 +217,17 @@ export function WorkflowExecutionBar({
         )}
 
         <Button variant="ghost" size="sm" className="h-6 text-xs gap-1 px-2" disabled={!canPause} onClick={onPause}>
-          <Pause className="h-3 w-3" /> 暂停
+          <Pause className="h-3 w-3" /> {t('execution.pause')}
         </Button>
         <Button variant="ghost" size="sm" className="h-6 text-xs gap-1 px-2" disabled={!canStop} onClick={onStop}>
-          <Square className="h-3 w-3" /> 停止
+          <Square className="h-3 w-3" /> {t('execution.stop')}
         </Button>
 
         <div className="ml-auto flex items-center gap-3 text-[10px] text-muted-foreground min-w-0">
-          {progressText && <span>进度: {progressText}</span>}
-          {elapsedText && <span>耗时: {elapsedText}</span>}
+          {progressText && <span>{t('execution.progress')}: {progressText}</span>}
+          {elapsedText && <span>{t('execution.elapsed')}: {elapsedText}</span>}
           <Badge variant={badge.variant} className="text-[10px] h-5">{badge.label}</Badge>
-          {errorSteps > 0 && <span className="text-destructive">{errorSteps} 错误</span>}
+          {errorSteps > 0 && <span className="text-destructive">{t('execution.errors', { count: errorSteps })}</span>}
         </div>
 
         <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0" onClick={onToggle}>
@@ -247,7 +247,7 @@ export function WorkflowExecutionBar({
             >
               <div className="h-full flex flex-col">
                 <div className="flex items-center justify-between px-2 py-1 border-b border-border">
-                  <span className="text-[10px] text-muted-foreground font-medium">执行历史</span>
+                  <span className="text-[10px] text-muted-foreground font-medium">{t('execution.history')}</span>
                   {logs.length > 0 && (
                     <Button variant="ghost" size="icon" className="h-5 w-5" onClick={onClearLogs}>
                       <Trash2 className="h-3 w-3 text-muted-foreground" />
@@ -277,7 +277,7 @@ export function WorkflowExecutionBar({
                         <span className="flex-1 min-w-0">
                           <span className="block truncate">{formatTime(item.startedAt)}</span>
                           <span className="block text-muted-foreground">
-                            {item.steps.length} 节点 · {formatDuration(item.startedAt, item.finishedAt)}
+                            {t('execution.nodes', { count: item.steps.length })} · {formatDuration(item.startedAt, item.finishedAt)}
                           </span>
                         </span>
                         <DropdownMenu>
@@ -297,7 +297,7 @@ export function WorkflowExecutionBar({
                                 copyText(`log-${item.id}`, JSON.stringify(item, null, 2));
                               }}
                             >
-                              {copiedKey === `log-${item.id}` ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />} 复制日志
+                              {copiedKey === `log-${item.id}` ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />} {t('execution.copyLog')}
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-xs"
@@ -312,7 +312,7 @@ export function WorkflowExecutionBar({
                                 } catch { /* ignore */ }
                               }}
                             >
-                              {copiedKey === `path-${item.id}` ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />} 复制日志文件位置
+                              {copiedKey === `path-${item.id}` ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />} {t('execution.copyLogPath')}
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               variant="destructive"
@@ -322,14 +322,14 @@ export function WorkflowExecutionBar({
                                 onDeleteLog(item.id);
                               }}
                             >
-                              <Trash2 className="h-3 w-3" /> 删除日志
+                              <Trash2 className="h-3 w-3" /> {t('execution.deleteLog')}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
                     ))}
                     {logs.length === 0 && (
-                      <div className="text-center text-[10px] text-muted-foreground py-4">暂无执行记录</div>
+                      <div className="text-center text-[10px] text-muted-foreground py-4">{t('execution.noLogs')}</div>
                     )}
                   </div>
                 </ScrollArea>
@@ -352,13 +352,13 @@ export function WorkflowExecutionBar({
                       const activeTab = stepTabs[key] || 'input';
                       const nodeInfo = [
                         `# ${step.nodeLabel || step.nodeId}`,
-                        `节点类型: ${nodeTypeById.get(step.nodeId) || ''}`,
+                        `${t('execution.nodeType')}: ${nodeTypeById.get(step.nodeId) || ''}`,
                         '',
-                        '## 输入',
-                        stringifyValue(step.input) || '无',
+                        `## ${t('execution.input')}`,
+                        stringifyValue(step.input) || t('execution.none'),
                         '',
-                        '## 输出',
-                        stringifyValue(step.output) || '无',
+                        `## ${t('execution.output')}`,
+                        stringifyValue(step.output) || t('execution.none'),
                       ].join('\n');
 
                       return (
@@ -381,7 +381,7 @@ export function WorkflowExecutionBar({
                               <DropdownMenuContent align="end" className="w-36">
                                 <DropdownMenuItem className="text-xs" onClick={() => copyText(`info-${key}`, nodeInfo)}>
                                   {copiedKey === `info-${key}` ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                                  复制
+                                  {t('execution.copy')}
                                 </DropdownMenuItem>
                                 {onUpdateNodeData && (
                                   <DropdownMenuItem
@@ -399,7 +399,7 @@ export function WorkflowExecutionBar({
                                         open: true,
                                         nodeId: step.nodeId,
                                         nodeLabel: step.nodeLabel || step.nodeId,
-                                        defaultName: `${step.nodeLabel || step.nodeId} 执行结果`,
+                                        defaultName: t('execution.executionResult', { label: step.nodeLabel || step.nodeId }),
                                         defaultJson: JSON.stringify({
                                           data: snapshotNode.data ?? {},
                                           inputs: inputData,
@@ -410,7 +410,7 @@ export function WorkflowExecutionBar({
                                     }}
                                   >
                                     <Braces className="h-3 w-3" />
-                                    保存到预设
+                                    {t('execution.savePreset')}
                                   </DropdownMenuItem>
                                 )}
                               </DropdownMenuContent>
@@ -424,7 +424,7 @@ export function WorkflowExecutionBar({
                                 type="button"
                                 className="shrink-0 p-0.5 rounded hover:bg-red-500/20"
                                 onClick={() => copyText(`error-${key}`, step.error || '')}
-                                title="复制错误信息"
+                                title={t('execution.copyError')}
                               >
                                 {copiedKey === `error-${key}` ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                               </button>
@@ -437,15 +437,15 @@ export function WorkflowExecutionBar({
                             className="flex-1 flex flex-col min-h-0 gap-0"
                           >
                             <TabsList className="w-full h-7 rounded-none border-b border-border bg-transparent px-1">
-                              <TabsTrigger value="input" className="text-[10px] h-5 px-2 flex-1">输入</TabsTrigger>
-                              <TabsTrigger value="output" className="text-[10px] h-5 px-2 flex-1">输出</TabsTrigger>
-                              <TabsTrigger value="logs" className="text-[10px] h-5 px-2 flex-1">日志</TabsTrigger>
+                              <TabsTrigger value="input" className="text-[10px] h-5 px-2 flex-1">{t('execution.input')}</TabsTrigger>
+                              <TabsTrigger value="output" className="text-[10px] h-5 px-2 flex-1">{t('execution.output')}</TabsTrigger>
+                              <TabsTrigger value="logs" className="text-[10px] h-5 px-2 flex-1">{t('execution.logs')}</TabsTrigger>
                             </TabsList>
                             <TabsContent value="input" className="flex-1 min-h-0 mt-0">
-                              <JsonBlock value={step.input} empty="无输入" />
+                              <JsonBlock value={step.input} empty={t('execution.noInput')} />
                             </TabsContent>
                             <TabsContent value="output" className="flex-1 min-h-0 mt-0">
-                              <JsonBlock value={step.output} empty="无输出" />
+                              <JsonBlock value={step.output} empty={t('execution.noOutput')} />
                             </TabsContent>
                             <TabsContent value="logs" className="flex-1 min-h-0 mt-0">
                               {step.logs?.length ? (
@@ -468,7 +468,7 @@ export function WorkflowExecutionBar({
                                   </div>
                                 </ScrollArea>
                               ) : (
-                                <div className="p-2 text-[10px] text-muted-foreground">无日志</div>
+                                <div className="p-2 text-[10px] text-muted-foreground">{t('execution.noLogsContent')}</div>
                               )}
                             </TabsContent>
                           </Tabs>
@@ -477,14 +477,14 @@ export function WorkflowExecutionBar({
                     })}
                     {steps.length === 0 && (
                       <div className="flex-1 flex items-center justify-center text-[10px] text-muted-foreground">
-                        暂无执行步骤
+                        {t('execution.noSteps')}
                       </div>
                     )}
                   </div>
                 </ScrollArea>
               ) : (
                 <div className="h-full flex items-center justify-center text-[10px] text-muted-foreground">
-                  选择一条执行记录查看详情
+                  {t('execution.selectLog')}
                 </div>
               )}
             </ResizablePanel>
@@ -495,7 +495,7 @@ export function WorkflowExecutionBar({
       <ExecutionInputDialog
         open={inputDialogOpen}
         fields={inputFields}
-        startNodeLabel={activeStartNode?.label || '开始'}
+        startNodeLabel={activeStartNode?.label || t('execution.start')}
         workflowId={workflowId}
         onOpenChange={setInputDialogOpen}
         onSubmit={submitInput}

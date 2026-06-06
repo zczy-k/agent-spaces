@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { ReactFlowProvider } from '@xyflow/react';
 import type { WorkflowTemplate } from '@agent-spaces/shared';
 import { WorkflowCanvas } from './workflow-canvas';
@@ -43,6 +44,7 @@ function WorkflowEditorInner({
   template: WorkflowTemplate | null;
   onBack: () => void;
 }) {
+  const t = useTranslations('workflows');
   // ---- State ----
   const state = useWorkflowEditorState(template);
   const workspaces = useWorkspaceStore((store) => store.workspaces);
@@ -119,7 +121,7 @@ function WorkflowEditorInner({
     return (
       <div className="flex flex-col items-center justify-center h-full gap-3">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        <span className="text-sm text-muted-foreground">加载工作流中...</span>
+        <span className="text-sm text-muted-foreground">{t('editor.loading')}</span>
       </div>
     );
   }
@@ -129,7 +131,7 @@ function WorkflowEditorInner({
       <div className="flex flex-col items-center justify-center h-full gap-3">
         <AlertCircle className="h-8 w-8 text-destructive" />
         <span className="text-sm text-destructive">{state.loadError}</span>
-        <Button variant="outline" size="sm" onClick={onBack}>返回</Button>
+        <Button variant="outline" size="sm" onClick={onBack}>{t('editor.back')}</Button>
       </div>
     );
   }
@@ -138,8 +140,8 @@ function WorkflowEditorInner({
     return (
       <div className="flex flex-col items-center justify-center h-full gap-3">
         <AlertCircle className="h-8 w-8 text-muted-foreground" />
-        <span className="text-sm text-muted-foreground">未选择工作流</span>
-        <Button variant="outline" size="sm" onClick={onBack}>返回</Button>
+        <span className="text-sm text-muted-foreground">{t('editor.noWorkflow')}</span>
+        <Button variant="outline" size="sm" onClick={onBack}>{t('editor.back')}</Button>
       </div>
     );
   }
@@ -249,10 +251,10 @@ function WorkflowEditorInner({
           <Tabs value={state.rightTab} onValueChange={state.setRightTab} className="flex flex-col h-full">
             <ExpandableTabs
               tabs={[
-                { title: '属性', icon: Settings2, value: 'properties' },
-                { title: '版本', icon: Layers, value: 'versions' },
-                { title: '历史', icon: History, value: 'history' },
-                { title: '暂存', icon: Package, value: 'staging' },
+                { title: t('editor.properties'), icon: Settings2, value: 'properties' },
+                { title: t('editor.versions'), icon: Layers, value: 'versions' },
+                { title: t('editor.history'), icon: History, value: 'history' },
+                { title: t('editor.staging'), icon: Package, value: 'staging' },
               ]}
               value={state.rightTab}
               onValueChange={state.setRightTab}
@@ -378,7 +380,7 @@ function WorkflowEditorInner({
         isOpen={chat.agentOpen}
         onClose={() => chat.setAgentOpen(false)}
         onToggle={() => chat.setAgentOpen((open) => !open)}
-        agent={{ name: '工作流助手', role: 'LangChain', status: chat.agentSending ? 'busy' : 'online' }}
+        agent={{ name: t('editor.agentName'), role: 'LangChain', status: chat.agentSending ? 'busy' : 'online' }}
         messages={chat.agentMessages}
         sending={chat.agentSending}
         input={chat.agentInput}
@@ -386,7 +388,7 @@ function WorkflowEditorInner({
         onSend={chat.sendWorkflowAgentMessage}
         onStop={chat.stopWorkflowAgentMessage}
         onDeleteMessage={chat.deleteAgentMessage}
-        inputPlaceholder="描述要修改的工作流..."
+        inputPlaceholder={t('editor.inputPlaceholder')}
         headerActions={
           <>
             <Button
@@ -395,7 +397,7 @@ function WorkflowEditorInner({
               size="icon"
               className="h-8 w-8 rounded-full hover:bg-background/50"
               onClick={chat.openAgentSettings}
-              title="模型设置"
+              title={t('editor.modelSettings')}
             >
               <Settings2 className="h-4 w-4" />
             </Button>
@@ -405,7 +407,7 @@ function WorkflowEditorInner({
               size="icon"
               className="h-8 w-8 rounded-full hover:bg-background/50"
               onClick={chat.clearWorkflowAgentMessages}
-              title="清空消息"
+              title={t('editor.clearMessages')}
             >
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -426,12 +428,12 @@ function WorkflowEditorInner({
       <Dialog open={chat.agentSettingsOpen} onOpenChange={chat.setAgentSettingsOpen}>
         <DialogContent className="flex max-h-[86vh] min-w-[60vw] flex-col overflow-hidden p-0">
           <DialogHeader className="border-b px-5 py-4">
-            <DialogTitle>工作流助手模型设置</DialogTitle>
+            <DialogTitle>{t('editor.agentSettingsTitle')}</DialogTitle>
           </DialogHeader>
           {chat.agentSettingsLoading || !chat.agentSettingsDraft ? (
             <div className="flex h-64 items-center justify-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
-              加载中...
+              {t('editor.loadingShort')}
             </div>
           ) : (
             <AgentEditor
