@@ -76,6 +76,9 @@ function WorkflowEditorInner({
   const { isExpanded: execExpanded, toggle: toggleExec } = useExecutionPanel();
   const clipboard = useClipboard();
   const isWorkflowRunning = execution.execStatus === 'running';
+  const selectedNodeIds = state.selectedNodeIds.length > 0
+    ? state.selectedNodeIds
+    : state.selectedNodeId ? [state.selectedNodeId] : [];
 
   useEffect(() => {
     if (!isWorkflowRunning || !canvas.nodeSelectOpen) return;
@@ -88,9 +91,11 @@ function WorkflowEditorInner({
     onUndo: isWorkflowRunning ? undefined : state.handleUndo,
     onRedo: isWorkflowRunning ? undefined : state.handleRedo,
     onDelete: !isWorkflowRunning && state.selectedNodeId ? () => canvas.handleNodeDelete(state.selectedNodeId!) : undefined,
-    onCopy: state.selectedNodeId && state.workflow ? () => {
-      const node = state.workflow!.nodes.find(n => n.id === state.selectedNodeId);
-      if (node) clipboard.copy([node], []);
+    onCopy: selectedNodeIds.length > 0 && state.workflow ? () => {
+      const selectedIds = new Set(selectedNodeIds);
+      const nodes = state.workflow!.nodes.filter(node => selectedIds.has(node.id));
+      const edges = state.workflow!.edges.filter(edge => selectedIds.has(edge.source) && selectedIds.has(edge.target));
+      if (nodes.length > 0) clipboard.copy(nodes, edges);
     } : undefined,
     onPaste: isWorkflowRunning ? undefined : () => {
       const pasted = clipboard.paste();
@@ -101,6 +106,9 @@ function WorkflowEditorInner({
           nodes: [...w.nodes, ...pasted.nodes],
           edges: [...w.edges, ...pasted.edges],
         } : null);
+        const pastedNodeIds = pasted.nodes.map(node => node.id);
+        state.setSelectedNodeIds(pastedNodeIds);
+        state.setSelectedNodeId(pastedNodeIds.length === 1 ? pastedNodeIds[0] : null);
         state.markDirty();
       }
     },
