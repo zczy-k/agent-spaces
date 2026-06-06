@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useSyncExternalStore } from 'react';
 import { Handle, NodeResizer, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import { X, Play } from 'lucide-react';
-import { getNodeDefinition } from '@/lib/workflow-nodes';
+import { getNodeDefinition, getPluginNodesVersion, subscribePluginNodesVersion } from '@/lib/workflow-nodes';
 import { LOOP_BODY_NODE_TYPE, LOOP_BODY_SOURCE_HANDLE } from '@agent-spaces/shared';
 import { BorderGlide } from '@/components/ui/border-glide';
 import { WorkflowNodeDefinitionIcon } from './workflow-node-icon';
@@ -36,7 +36,12 @@ type PluginNodeDefinitionMeta = {
 export function WorkflowNode({ id, data, type, selected }: NodeProps) {
   const nodeData = data as WorkflowNodeData;
   const workflowNodeType = typeof nodeData.nodeType === 'string' ? nodeData.nodeType : type;
-  const definition = useMemo(() => getNodeDefinition(workflowNodeType || 'unknown'), [workflowNodeType]);
+  useSyncExternalStore(
+    subscribePluginNodesVersion,
+    getPluginNodesVersion,
+    getPluginNodesVersion,
+  );
+  const definition = getNodeDefinition(workflowNodeType || 'unknown');
   const pluginMeta = definition as (typeof definition & PluginNodeDefinitionMeta);
   const iconDefinition = definition ? { ...definition, ...pluginMeta } : null;
   const CustomView = definition?.customView as React.ComponentType<WorkflowCustomViewProps> | undefined;

@@ -329,17 +329,29 @@ export const allNodeDefinitions: NodeTypeDefinition[] = [
 
 let _pluginNodeDefinitions: NodeTypeDefinition[] = [];
 let _pluginNodesVersion = 0;
+const _pluginNodesListeners = new Set<() => void>();
 
 export function getPluginNodesVersion() { return _pluginNodesVersion; }
+
+export function subscribePluginNodesVersion(listener: () => void): () => void {
+  _pluginNodesListeners.add(listener);
+  return () => _pluginNodesListeners.delete(listener);
+}
+
+function notifyPluginNodesChanged(): void {
+  for (const listener of _pluginNodesListeners) listener();
+}
 
 export function registerPluginNodeDefinitions(nodes: NodeTypeDefinition[]): void {
   _pluginNodeDefinitions = nodes;
   _pluginNodesVersion++;
+  notifyPluginNodesChanged();
 }
 
 export function clearPluginNodeDefinitions(): void {
   _pluginNodeDefinitions = [];
   _pluginNodesVersion++;
+  notifyPluginNodesChanged();
 }
 
 export function getNodeDefinitionsByCategory(): Record<string, NodeTypeDefinition[]> {
