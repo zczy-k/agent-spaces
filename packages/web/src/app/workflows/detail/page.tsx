@@ -15,9 +15,11 @@ import {
 import { nativeNavigate } from '@/lib/navigate';
 import { getWS } from '@/lib/ws';
 import {
-  ArrowLeft, CheckCircle, Circle, Loader2, Pencil, Play, Square, Trash2, XCircle,
+  ArrowLeft, CheckCircle, Circle, Loader2, Pencil, Play, Share2, Square, Trash2, XCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { JsonViewer } from '@/components/viewers/json-viewer';
 import { ExecutionInputForm } from '@/components/workflow/workflow-execution-input-dialog';
 
@@ -66,6 +68,8 @@ export default function WorkflowDetailPage() {
   const [selectedLog, setSelectedLog] = useState<ExecutionLog | null>(null);
   const [logsLoading, setLogsLoading] = useState(false);
   const [initialValues, setInitialValues] = useState<Record<string, string>>({});
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
   const [executing, setExecuting] = useState(false);
   const [currentExecutionId, setCurrentExecutionId] = useState<string | null>(null);
   const cleanupRef = useRef<(() => void)[]>([]);
@@ -81,6 +85,12 @@ export default function WorkflowDetailPage() {
       .then(setLogs)
       .finally(() => setLogsLoading(false));
   }, [workflowId]);
+
+  useEffect(() => {
+    if (shareOpen && workflowId) {
+      setShareUrl(`${window.location.origin}/workflows/share?workflow_id=${workflowId}`);
+    }
+  }, [shareOpen, workflowId]);
 
   useEffect(() => {
     if (!paramsStr) return;
@@ -251,6 +261,9 @@ export default function WorkflowDetailPage() {
             <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{workflow.description}</p>
           )}
         </div>
+        <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setShareOpen(true)}>
+          <Share2 className="h-3 w-3" /> 分享
+        </Button>
         <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => nativeNavigate(router, `/workflows/${workflow.id}`)}>
           <Pencil className="h-3 w-3" /> 编辑
         </Button>
@@ -471,6 +484,23 @@ export default function WorkflowDetailPage() {
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
+
+      <Dialog open={shareOpen} onOpenChange={setShareOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-sm">分享工作流</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">通过以下链接分享此工作流：</p>
+            <div className="flex items-center gap-2">
+              <Input readOnly className="h-8 text-xs font-mono flex-1" value={shareUrl} />
+              <Button size="sm" className="h-8 text-xs shrink-0" onClick={() => navigator.clipboard.writeText(shareUrl)}>
+                复制
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
