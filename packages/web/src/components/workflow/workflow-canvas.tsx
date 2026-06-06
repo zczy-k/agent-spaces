@@ -186,6 +186,7 @@ export function WorkflowCanvas({
     return localStorage.getItem('agent-spaces:workflow-minimap-visible') !== 'false';
   });
   const [isExporting, setIsExporting] = useState(false);
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
 
   const executionNodeIds = useMemo(() => {
     const running = new Set<string>();
@@ -367,13 +368,15 @@ export function WorkflowCanvas({
       type: 'custom',
       sourceHandle: e.sourceHandle || undefined,
       targetHandle: e.targetHandle || undefined,
+      selected: e.id === selectedEdgeId,
       data: {
         composite: e.composite,
         sourceHandle: e.sourceHandle,
         isRunning: runningEdgeIds.has(e.id),
+        canDeleteEdge: !isPreview,
       } as Record<string, unknown>,
     })),
-    [workflow.edges, runningEdgeIds],
+    [workflow.edges, runningEdgeIds, selectedEdgeId, isPreview],
   );
 
   const handleDragOver = useCallback((event: React.DragEvent) => {
@@ -393,12 +396,30 @@ export function WorkflowCanvas({
 
   const handleNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     const multi = false; // Could check for shift/meta key
+    setSelectedEdgeId(null);
     onNodeSelect(node.id, multi);
   }, [onNodeSelect]);
 
   const handlePaneClick = useCallback(() => {
+    setSelectedEdgeId(null);
     onNodeSelect(null);
   }, [onNodeSelect]);
+
+  const removeEdge = useCallback((edgeId: string) => {
+    const edge = workflow.edges.find(item => item.id === edgeId);
+    if (!edge || edge.composite?.locked || isPreview) return;
+    setSelectedEdgeId(null);
+    onEdgesChange([{ id: edgeId, type: 'remove' }]);
+  }, [isPreview, onEdgesChange, workflow.edges]);
+
+  const selectEdge = useCallback((edgeId: string | null) => {
+    setSelectedEdgeId(edgeId);
+    if (edgeId) onNodeSelect(null);
+  }, [onNodeSelect]);
+
+  const handleEdgeClick = useCallback((_: React.MouseEvent, edge: Edge) => {
+    selectEdge(edge.id);
+  }, [selectEdge]);
 
   const getNodeDebugSnapshot = useCallback((nodeId?: string | null) => {
     const wrapper = reactFlowWrapper.current;
@@ -579,6 +600,17 @@ export function WorkflowCanvas({
     window.dispatchEvent(new CustomEvent('workflow:open-node-select', { detail }));
   }, []);
 
+  const handleEdgeSelect = useCallback((e: Event) => {
+    const detail = (e as CustomEvent).detail as { edgeId?: string | null } | undefined;
+    selectEdge(detail?.edgeId ?? null);
+  }, [selectEdge]);
+
+  const handleEdgeDelete = useCallback((e: Event) => {
+    const detail = (e as CustomEvent).detail as { edgeId?: string | null } | undefined;
+    if (!detail?.edgeId) return;
+    removeEdge(detail.edgeId);
+  }, [removeEdge]);
+
   // Handle node delete events from WorkflowNode
   const handleNodeDelete = useCallback((e: Event) => {
     const detail = (e as CustomEvent).detail;
@@ -594,14 +626,43 @@ export function WorkflowCanvas({
   // Register custom event listeners
   React.useEffect(() => {
     window.addEventListener('workflow:edge-insert-node', handleEdgeInsertNode);
+    window.addEventListener('workflow:select-edge', handleEdgeSelect);
+    window.addEventListener('workflow:delete-edge', handleEdgeDelete);
     window.addEventListener('workflow:delete-node', handleNodeDelete);
     window.addEventListener('workflow:update-node-data', handleNodeDataUpdate);
     return () => {
       window.removeEventListener('workflow:edge-insert-node', handleEdgeInsertNode);
+      window.removeEventListener('workflow:select-edge', handleEdgeSelect);
+      window.removeEventListener('workflow:delete-edge', handleEdgeDelete);
       window.removeEventListener('workflow:delete-node', handleNodeDelete);
       window.removeEventListener('workflow:update-node-data', handleNodeDataUpdate);
     };
-  }, [handleEdgeInsertNode, handleNodeDelete, handleNodeDataUpdate]);
+  }, [handleEdgeDelete, handleEdgeInsertNode, handleEdgeSelect, handleNodeDelete, handleNodeDataUpdate]);
+
+  React.useEffect(() => {
+    if (isPreview || !selectedEdgeId) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Delete' && event.key !== 'Backspace') return;
+
+      const target = event.target;
+      if (
+        target instanceof HTMLInputElement
+        || target instanceof HTMLTextAreaElement
+        || target instanceof HTMLSelectElement
+        || (target instanceof HTMLElement && target.isContentEditable)
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      removeEdge(selectedEdgeId);
+    };
+
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [isPreview, removeEdge, selectedEdgeId]);
 
   return (
     <div ref={reactFlowWrapper} className="relative flex-1 h-full w-full">
@@ -619,6 +680,7 @@ export function WorkflowCanvas({
         onNodeClick={handleNodeClick}
         onNodeDragStart={handleNodeDragStart}
         onNodeDragStop={handleNodeDragStop}
+        onEdgeClick={handleEdgeClick}
         onPaneClick={handlePaneClick}
         onError={handleReactFlowError}
         nodeTypes={nodeTypes}
@@ -628,7 +690,7 @@ export function WorkflowCanvas({
         snapGrid={[15, 15]}
         minZoom={0.2}
         maxZoom={4}
-        deleteKeyCode={isPreview ? null : ['Backspace', 'Delete']}
+        deleteKeyCode={isPreview || selectedEdgeId ? null : ['Backspace', 'Delete']}
         nodesDraggable={!isPreview}
         nodesConnectable={!isPreview}
         defaultEdgeOptions={{ type: 'custom' }}
