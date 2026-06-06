@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { useOnClickOutside } from "usehooks-ts";
+
 import { cn } from "@/lib/utils";
 import { LucideIcon } from "lucide-react";
 
@@ -27,8 +27,7 @@ interface ExpandableTabsProps {
   className?: string;
   activeColor?: string;
   value?: string;
-  onValueChange?: (value: string | null) => void;
-  allowDeselect?: boolean;
+  onValueChange?: (value: string) => void;
 }
 
 const buttonVariants = {
@@ -58,20 +57,23 @@ export function ExpandableTabs({
   activeColor = "text-primary",
   value,
   onValueChange,
-  allowDeselect = false,
 }: ExpandableTabsProps) {
   const [internalSelected, setInternalSelected] = React.useState<string | null>(null);
   const outsideClickRef = React.useRef<HTMLDivElement>(null);
 
   const selected = value !== undefined ? value : internalSelected;
 
-  useOnClickOutside(outsideClickRef, () => {
-    if (!allowDeselect) return;
-    if (value === undefined) {
-      setInternalSelected(null);
-    }
-    onValueChange?.(null);
-  });
+  React.useEffect(() => {
+    const el = outsideClickRef.current;
+    if (!el) return;
+    const handler = (e: MouseEvent) => {
+      if (!el.contains(e.target as Node)) {
+        if (value === undefined) setInternalSelected(null);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [value]);
 
   const handleSelect = (tabValue: string) => {
     if (value === undefined) {
@@ -106,7 +108,7 @@ export function ExpandableTabs({
             initial={false}
             animate="animate"
             custom={isSelected}
-            onClick={() => handleSelect(tab.value!)}
+            onClick={() => handleSelect(tab.value)}
             transition={transition}
             className={cn(
               "relative flex items-center rounded-lg px-2 py-1.5 text-xs font-medium transition-colors duration-300",
@@ -124,7 +126,7 @@ export function ExpandableTabs({
                   animate="animate"
                   exit="exit"
                   transition={transition}
-                  className="overflow-hidden"
+                  className="overflow-hidden whitespace-nowrap"
                 >
                   {tab.title}
                 </motion.span>
