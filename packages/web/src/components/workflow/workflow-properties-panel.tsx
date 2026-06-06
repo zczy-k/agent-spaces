@@ -49,7 +49,7 @@ interface PropertiesPanelProps {
   debugNodeId?: string | null;
   debugStatus?: 'idle' | 'running' | 'completed' | 'error';
   debugResult?: DebugResult | null;
-  onDebugNode?: (nodeId: string, inputs?: Record<string, unknown>) => void;
+  onDebugNode?: (nodeId: string, inputs?: Record<string, unknown>, properties?: Record<string, unknown>) => void;
   onCancelDebug?: () => void;
 }
 
@@ -318,12 +318,7 @@ export function WorkflowPropertiesPanel({
                 if (isDebugging) {
                   onCancelDebug?.();
                 } else if (node) {
-                  const fields = getOutputFields(data.inputFields);
-                  if (fields.length > 0) {
-                    setNodeTestDialogOpen(true);
-                  } else {
-                    onDebugNode(node.id);
-                  }
+                  setNodeTestDialogOpen(true);
                 }
               }}
             >
@@ -614,10 +609,12 @@ export function WorkflowPropertiesPanel({
       {node && (
         <ExecutionNodeDialog
           open={nodeTestDialogOpen}
-          fields={getOutputFields(data.inputFields)}
+          inputFields={getOutputFields(data.inputFields)}
+          properties={visibleProperties}
+          propertyValues={data as Record<string, unknown>}
           nodeLabel={node.label || '节点'}
           onOpenChange={setNodeTestDialogOpen}
-          onSubmit={inputs => onDebugNode?.(node.id, inputs)}
+          onSubmit={({ inputs, properties }) => onDebugNode?.(node.id, inputs, properties)}
         />
       )}
     </div>

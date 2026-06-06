@@ -648,7 +648,7 @@ function JsonViewer({
         {...props}
       >
         {/* Toolbar */}
-        <div className="flex items-center justify-between border-b border-border/40 px-3 py-2 sm:px-4">
+        <div className="group flex items-center justify-between border-b border-border/40 px-3 py-2 sm:px-4">
           <div className="flex items-center gap-2">
             {title && (
               <h3 className="text-sm font-semibold text-foreground">
@@ -661,7 +661,7 @@ function JsonViewer({
               </span>
             )}
           </div>
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
             <button
               type="button"
               onClick={toggleSearch}

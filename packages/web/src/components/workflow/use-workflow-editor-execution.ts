@@ -102,7 +102,7 @@ export function useWorkflowEditorExecution({
     setDebugNodeId(null);
   }, [cleanupDebugListeners]);
 
-  const handleDebugNode = useCallback((nodeId: string, inputs?: Record<string, unknown>) => {
+  const handleDebugNode = useCallback((nodeId: string, inputs?: Record<string, unknown>, properties?: Record<string, unknown>) => {
     if (!workflow) return;
     cleanupDebugListeners();
     setDebugNodeId(nodeId);
@@ -115,6 +115,7 @@ export function useWorkflowEditorExecution({
         workflowId: workflow.id,
         nodeId,
         inputs,
+        properties,
         snapshot: {
           nodes: workflow.nodes,
           edges: workflow.edges,
