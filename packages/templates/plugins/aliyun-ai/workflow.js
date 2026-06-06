@@ -807,7 +807,7 @@ module.exports = {
             audio_url: args.audioUrl,
           },
         }
-        return executeAsyncTask(ctx, args.apiKey, ASYNC_ENDPOINTS.videoSynthesis, body, (result) => {
+        return executeAsyncTask(ctx, args.apiKey, ASYNC_ENDPOINTS.image2video, body, (result) => {
           const videoUrl = result.output?.video_url
           ctx.logger.info(`[声动人像] 完成`)
           return { success: true, message: '视频生成完成', data: { videoUrl, requestId: result.request_id } }
