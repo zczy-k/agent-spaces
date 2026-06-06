@@ -31,8 +31,15 @@ import {
   UnfoldHorizontal,
   FoldHorizontal,
   X,
+  Clipboard,
+  ClipboardCopy,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import {
   jsonThemes,
   type JsonColorTheme,
@@ -214,6 +221,7 @@ function JsonNode({
   }, [isExpandable, onToggle, path])
 
   const [pathCopied, setPathCopied] = React.useState(false)
+  const [valueCopied, setValueCopied] = React.useState(false)
 
   const handleCopyPath = React.useCallback(() => {
     navigator.clipboard.writeText(path).then(() => {
@@ -221,6 +229,14 @@ function JsonNode({
       setTimeout(() => setPathCopied(false), 1500)
     })
   }, [path])
+
+  const handleCopyValue = React.useCallback(() => {
+    const text = typeof value === "string" ? value : JSON.stringify(value, null, 2)
+    navigator.clipboard.writeText(text).then(() => {
+      setValueCopied(true)
+      setTimeout(() => setValueCopied(false), 1500)
+    })
+  }, [value])
 
   const hoverBg = theme ? `${theme.fg}10` : undefined
 
@@ -240,6 +256,48 @@ function JsonNode({
     theme
       ? "opacity-0 group-hover:opacity-60 hover:!opacity-100"
       : "text-muted-foreground/0 group-hover:text-muted-foreground hover:!text-foreground focus-visible:text-muted-foreground"
+  )
+
+  const copyMenu = (
+    <Popover>
+      <PopoverTrigger
+        className={copyIconClass}
+        style={theme ? { color: theme.fg } : undefined}
+        aria-label={`Copy menu: ${path}`}
+      >
+        <CopyPlus className="size-3" />
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        side="bottom"
+        className="w-36 p-1"
+      >
+        <button
+          type="button"
+          className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs hover:bg-muted"
+          onClick={() => { handleCopyPath() }}
+        >
+          {pathCopied ? (
+            <Check className="size-3 text-emerald-500" />
+          ) : (
+            <Clipboard className="size-3" />
+          )}
+          复制路径
+        </button>
+        <button
+          type="button"
+          className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs hover:bg-muted"
+          onClick={() => { handleCopyValue() }}
+        >
+          {valueCopied ? (
+            <Check className="size-3 text-emerald-500" />
+          ) : (
+            <ClipboardCopy className="size-3" />
+          )}
+          复制值
+        </button>
+      </PopoverContent>
+    </Popover>
   )
 
   function renderKey() {
@@ -324,19 +382,7 @@ function JsonNode({
           {renderValue()}
           <TokenSpan token="punctuation">{comma}</TokenSpan>
         </span>
-        <button
-          type="button"
-          onClick={handleCopyPath}
-          aria-label={`Copy path: ${path}`}
-          className={copyIconClass}
-          style={theme ? { color: theme.fg } : undefined}
-        >
-          {pathCopied ? (
-            <CopyPlus className="size-3 text-emerald-500" />
-          ) : (
-            <CopyPlus className="size-3" />
-          )}
-        </button>
+        {copyMenu}
       </div>
     )
   }
@@ -409,19 +455,7 @@ function JsonNode({
             </>
           )}
         </span>
-        <button
-          type="button"
-          onClick={handleCopyPath}
-          aria-label={`Copy path: ${path}`}
-          className={copyIconClass}
-          style={theme ? { color: theme.fg } : undefined}
-        >
-          {pathCopied ? (
-            <CopyPlus className="size-3 text-emerald-500" />
-          ) : (
-            <CopyPlus className="size-3" />
-          )}
-        </button>
+        {copyMenu}
       </div>
 
       {isExpanded && (
