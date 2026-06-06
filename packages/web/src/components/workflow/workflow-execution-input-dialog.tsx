@@ -130,6 +130,7 @@ type WorkflowFileInput = {
 
 type UploadedWorkflowFile = {
   name: string;
+  path: string;
   size: number;
   type: string;
   url: string;
@@ -156,7 +157,7 @@ async function resolveWorkflowFileInput(file?: File): Promise<WorkflowFileInput 
   const uploaded = await sdk.http.upload<UploadedWorkflowFile>('/api/upload', formData);
 
   return {
-    path: uploaded.httpPath ?? uploaded.url,
+    path: uploaded.path,
     relativePath,
     name: uploaded.name || file.name,
     size: uploaded.size || file.size,

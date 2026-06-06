@@ -122,24 +122,35 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
   const uploadsDir = join(publicDir, 'uploads');
   if (!existsSync(uploadsDir)) await mkdir(uploadsDir, { recursive: true });
 
-  const ext = extname(file.originalname);
-  const safeBaseName = basename(file.originalname, ext).replace(/[^a-zA-Z0-9._-]/g, '_') || 'file';
+  const originalName = normalizeUploadFileName(file.originalname);
+  const ext = extname(originalName);
+  const safeBaseName = basename(originalName, ext).replace(/[<>:"/\\|?*\x00-\x1F]/g, '_') || 'file';
   const name = `${safeBaseName}-${randomUUID()}${ext}`;
-  await writeFile(join(uploadsDir, name), file.buffer);
+  const path = join(uploadsDir, name);
+  await writeFile(path, file.buffer);
 
   const url = `/static/uploads/${name}`;
   const protocol = req.headers['x-forwarded-proto']?.toString().split(',')[0] || req.protocol;
   const host = req.get('host');
   const httpPath = host ? `${protocol}://${host}${url}` : url;
   res.json({
-    name: file.originalname,
+    name: originalName,
     storedName: name,
+    path,
     size: file.size,
     type: file.mimetype,
     url,
     httpPath,
   });
 });
+
+function normalizeUploadFileName(name: string): string {
+  if (!/[\u0080-\u009f]/.test(name)) return name;
+
+  const decoded = Buffer.from(name, 'latin1').toString('utf8');
+  if (!decoded || decoded.includes('\uFFFD') || /[\u0000-\u001f]/.test(decoded)) return name;
+  return decoded;
+}
 
 // Avatar upload
 app.post('/api/upload/avatar', async (req, res) => {
