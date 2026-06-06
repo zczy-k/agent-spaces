@@ -2,13 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import type { ExecutionLog, ExecutionStep, OutputField, Workflow, WorkflowNode } from '@agent-spaces/shared';
+import type { ExecutionLog, OutputField, Workflow, WorkflowNode } from '@agent-spaces/shared';
 import { workflowApi } from '@/lib/workflow-api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { FilledCheck, EmptyCircle } from '@/components/ui/checklist-cell';
 import { ExecutionInputForm } from '@/components/workflow/workflow-execution-input-dialog';
 import { getWS } from '@/lib/ws';
-import { CheckCircle, Circle, Loader2, Play, Square, XCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { ChevronRight, Loader2, Play, Square, XCircle } from 'lucide-react';
 
 /** 递归提取 step output 中的 .mp4/.mp3 URL（去重） */
 function extractMediaUrls(data: unknown): { type: 'video' | 'audio'; url: string }[] {
@@ -69,13 +71,6 @@ function LazyVideo({ src }: { src: string }) {
       </div>
     </div>
   );
-}
-
-function stepIcon(status: ExecutionStep['status']) {
-  if (status === 'completed') return <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />;
-  if (status === 'error') return <XCircle className="h-4 w-4 text-red-500 shrink-0" />;
-  if (status === 'running') return <Loader2 className="h-4 w-4 text-blue-500 animate-spin shrink-0" />;
-  return <Circle className="h-4 w-4 text-muted-foreground shrink-0" />;
 }
 
 export default function WorkflowSharePage() {
@@ -313,35 +308,82 @@ export default function WorkflowSharePage() {
             <CardContent className="p-3 pt-0 flex-1 min-h-0 overflow-auto">
               {hasSteps ? (
                 <div className="space-y-4">
-                  {/* Progress bar */}
+                  {/* Progress bar — same animation as ChecklistCell */}
                   <div className="flex items-center gap-3">
                     <div className="h-2 flex-1 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
-                      <div
-                        className="h-full rounded-full bg-green-500 transition-all duration-500"
-                        style={{ width: `${pct}%` }}
+                      <motion.div
+                        className="h-full rounded-full bg-zinc-900 dark:bg-zinc-100"
+                        animate={{ width: `${pct}%` }}
+                        transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
                       />
                     </div>
-                    <span className="text-[11px] text-zinc-400 whitespace-nowrap">
-                      {completedCount}/{totalCount} 已完成
-                    </span>
+                    <div className="flex items-center whitespace-nowrap text-[11px] text-zinc-400 overflow-hidden">
+                      <div className="relative h-4 overflow-hidden" style={{ minWidth: '7px' }}>
+                        <AnimatePresence mode="popLayout" initial={false}>
+                          <motion.span
+                            key={completedCount}
+                            initial={{ y: '100%', opacity: 0 }}
+                            animate={{ y: '0%', opacity: 1 }}
+                            exit={{ y: '-100%', opacity: 0 }}
+                            transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                            className="absolute inset-0 flex items-center justify-end"
+                          >
+                            {completedCount}
+                          </motion.span>
+                        </AnimatePresence>
+                      </div>
+                      <span className="mx-0.5">/</span>
+                      <span>{totalCount} Completed</span>
+                    </div>
                   </div>
 
-                  {/* Step list */}
-                  <div className="space-y-px">
-                    {executionLog!.steps.map(step => (
-                      <div
-                        key={step.nodeId}
-                        className="flex items-center gap-2.5 px-0.5 py-2.5"
-                      >
-                        {stepIcon(step.status)}
-                        <span className="text-sm text-zinc-800 dark:text-zinc-200">
-                          {step.nodeLabel || step.nodeId}
-                        </span>
-                        {step.error && (
-                          <span className="text-[10px] text-red-500 ml-auto truncate max-w-48">{step.error}</span>
-                        )}
-                      </div>
-                    ))}
+                  {/* Step list — same slide + spring animations as ChecklistCell */}
+                  <div className="relative overflow-hidden">
+                    <AnimatePresence initial={false}>
+                      {executionLog!.steps.map((step) => (
+                        <motion.div
+                          key={step.nodeId}
+                          initial={{ y: 44, opacity: 0 }}
+                          animate={{ y: 0, opacity: 1 }}
+                          exit={{ y: -44, opacity: 0 }}
+                          transition={{ duration: 0.48, ease: [0.4, 0, 0.2, 1] }}
+                          className="flex items-center gap-2.5 px-0.5 py-2.5"
+                        >
+                          <AnimatePresence mode="wait">
+                            {step.status === 'completed' ? (
+                              <motion.div
+                                key="check"
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                exit={{ scale: 0 }}
+                                transition={{ type: 'spring', stiffness: 320, damping: 18, mass: 0.8 }}
+                              >
+                                <FilledCheck />
+                              </motion.div>
+                            ) : step.status === 'running' ? (
+                              <motion.div key="running" initial={{ scale: 1 }} animate={{ scale: 1 }}>
+                                <Loader2 className="h-[18px] w-[18px] text-blue-500 animate-spin shrink-0" />
+                              </motion.div>
+                            ) : step.status === 'error' ? (
+                              <motion.div key="error" initial={{ scale: 1 }} animate={{ scale: 1 }}>
+                                <XCircle className="h-[18px] w-[18px] text-red-500 shrink-0" />
+                              </motion.div>
+                            ) : (
+                              <motion.div key="circle" initial={{ scale: 1 }} animate={{ scale: 1 }}>
+                                <EmptyCircle />
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                          <span className="text-sm text-zinc-800 dark:text-zinc-200">
+                            {step.nodeLabel || step.nodeId}
+                          </span>
+                          {step.error && (
+                            <span className="text-[10px] text-red-500 ml-auto truncate max-w-48">{step.error}</span>
+                          )}
+                          <ChevronRight className="ml-auto h-3.5 w-3.5 shrink-0 text-zinc-200 dark:text-zinc-700" />
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
                   </div>
 
                   {/* Media players */}

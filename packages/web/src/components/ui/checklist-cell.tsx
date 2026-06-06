@@ -265,5 +265,5 @@ const ChecklistCell = React.forwardRef<HTMLDivElement, ChecklistCellProps>(
 
 ChecklistCell.displayName = 'ChecklistCell';
 
-export { ChecklistCell, DEFAULT_TASKS };
+export { ChecklistCell, DEFAULT_TASKS, FilledCheck, EmptyCircle };
 export default ChecklistCell;
