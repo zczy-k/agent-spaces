@@ -31,8 +31,6 @@ interface DatabaseSidebarProps {
 
 export function DatabaseSidebar({
   workspaceId,
-  onOpenSearch,
-  onOpenTrash,
   onOpenCreateDatabase,
   onOpenEditDatabase,
   onOpenVectorDialog,

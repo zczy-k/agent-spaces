@@ -6,7 +6,6 @@ import { Bot } from 'lucide-react';
 import { FloatingBall } from '@/components/common/floating-ball';
 import { DatabaseMainPanel } from './database-main-panel';
 import { DatabaseAiChat } from './database-ai-chat';
-import QuickSearchModal from './quick-search-modal';
 import TrashBinModal from './trash-bin-modal';
 
 interface Props {
@@ -16,7 +15,6 @@ interface Props {
 export default function DatabasePanel({ workspaceId }: Props) {
   const { loading, loadedWorkspaceId, load, nodes, restoreNode, deleteNode, setActiveId } = useDatabaseStore();
   const [aiChatOpen, setAiChatOpen] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isTrashOpen, setIsTrashOpen] = useState(false);
 
   useEffect(() => { load(workspaceId); }, [load, workspaceId]);
@@ -30,9 +28,9 @@ export default function DatabasePanel({ workspaceId }: Props) {
       <DatabaseMainPanel
         workspaceId={workspaceId}
         onSave={() => {}}
-        onOpenSearch={() => setIsSearchOpen(true)}
         onOpenTrash={() => setIsTrashOpen(true)}
         trashCount={nodes.filter(n => n.isTrash).length}
+        onSelectNode={(id) => setActiveId(id)}
       />
 
       <FloatingBall
@@ -51,12 +49,6 @@ export default function DatabasePanel({ workspaceId }: Props) {
         />
       )}
 
-      <QuickSearchModal
-        isOpen={isSearchOpen}
-        onClose={() => setIsSearchOpen(false)}
-        nodes={nodes}
-        onSelectNode={(id) => { setActiveId(id); setIsSearchOpen(false); }}
-      />
       <TrashBinModal
         isOpen={isTrashOpen}
         onClose={() => setIsTrashOpen(false)}

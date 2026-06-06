@@ -17,6 +17,7 @@ import NotionEditor from './notion-editor';
 import MarkdownEditor from './markdown-editor';
 import { TableOfContents, extractTocFromHtml, extractTocFromMarkdown } from './table-of-contents';
 import { VersionHistoryDialog } from './version-history-dialog';
+import QuickSearchContent from './quick-search-modal';
 import ExpandableDock from '@/components/ui/expandable-dock';
 import type { PanelImperativeHandle } from 'react-resizable-panels';
 
@@ -25,9 +26,9 @@ interface DatabaseMainPanelProps {
   sidebarPanelRef?: React.RefObject<PanelImperativeHandle | null>;
   showSaveSuccess?: boolean;
   onSave: () => void;
-  onOpenSearch?: () => void;
   onOpenTrash?: () => void;
   trashCount?: number;
+  onSelectNode?: (id: string) => void;
 }
 
 export function DatabaseMainPanel({
@@ -35,9 +36,9 @@ export function DatabaseMainPanel({
   sidebarPanelRef,
   showSaveSuccess,
   onSave,
-  onOpenSearch,
   onOpenTrash,
   trashCount = 0,
+  onSelectNode,
 }: DatabaseMainPanelProps) {
   const {
     nodes, activeId, openTabs, editorMode, theme, isFullWidth,
@@ -329,10 +330,9 @@ export function DatabaseMainPanel({
       <ExpandableDock
         headerContent={
           <div className="flex items-center gap-3 w-full" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-            <button onClick={onOpenSearch}
-              className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors cursor-pointer">
+            <div className="flex items-center gap-1.5 text-sm text-gray-400">
               <Search className="w-4 h-4" /><span>{t('globalSearch')}</span>
-            </button>
+            </div>
             <div className="w-px h-4 bg-gray-700" />
             <button onClick={onOpenTrash}
               className="relative flex items-center gap-1.5 text-sm text-gray-400 hover:text-rose-400 transition-colors cursor-pointer">
@@ -345,7 +345,9 @@ export function DatabaseMainPanel({
             </button>
           </div>
         }
-      />
+      >
+        <QuickSearchContent nodes={nodes} onSelectNode={(id) => { onSelectNode?.(id); }} />
+      </ExpandableDock>
     </div>
   );
 }
