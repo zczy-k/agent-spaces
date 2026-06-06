@@ -1,0 +1,36 @@
+{
+  "page": {
+    "title": "工作流",
+    "subtitle": "管理 Workflow 模板",
+    "templates": "模版",
+    "import": "导入",
+    "create": "新建工作流",
+    "searchPlaceholder": "搜索工作流...",
+    "tags": "标签",
+    "clearFilter": "清除筛选",
+    "empty": "暂无工作流模板",
+    "createFirst": "创建第一个工作流"
+  },
+  "card": {
+    "edit": "编辑",
+    "duplicate": "复制",
+    "delete": "删除",
+    "nodes": "{count} 个节点",
+    "defaultInitial": "未"
+  },
+  "templatesDialog": {
+    "title": "工作流模板",
+    "description": "选择一个模板快速创建工作流",
+    "all": "全部",
+    "searchPlaceholder": "搜索工作流模板...",
+    "loading": "加载中...",
+    "empty": "暂无模板",
+    "agentCount": "{count} 个 Agent",
+    "import": "导入"
+  },
+  "defaultWorkflow": {
+    "name": "新工作流",
+    "startLabel": "开始",
+    "endLabel": "结束"
+  }
+}

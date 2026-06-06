@@ -7,6 +7,7 @@ import { Pencil, Copy, Trash2, MoreVertical } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { nativeNavigate } from '@/lib/navigate';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 
 interface WorkflowCardProps {
   workflow: WorkflowTemplate;
@@ -16,6 +17,7 @@ interface WorkflowCardProps {
 
 export function WorkflowCard({ workflow, onDuplicate, onDelete }: WorkflowCardProps) {
   const router = useRouter();
+  const t = useTranslations('workflows');
 
   return (
     <Card
@@ -31,13 +33,13 @@ export function WorkflowCard({ workflow, onDuplicate, onDelete }: WorkflowCardPr
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => nativeNavigate(router, `/workflows/${workflow.id}`)}>
-              <Pencil className="h-3.5 w-3.5 mr-2" /> 编辑
+              <Pencil className="h-3.5 w-3.5 mr-2" /> {t('card.edit')}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onDuplicate(workflow)}>
-              <Copy className="h-3.5 w-3.5 mr-2" /> 复制
+              <Copy className="h-3.5 w-3.5 mr-2" /> {t('card.duplicate')}
             </DropdownMenuItem>
             <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => onDelete(workflow)}>
-              <Trash2 className="h-3.5 w-3.5 mr-2" /> 删除
+              <Trash2 className="h-3.5 w-3.5 mr-2" /> {t('card.delete')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -48,7 +50,7 @@ export function WorkflowCard({ workflow, onDuplicate, onDelete }: WorkflowCardPr
             <span className="text-xl leading-none">{workflow.icon}</span>
           ) : (
             <span className="w-6 h-6 rounded bg-primary/10 text-xs font-bold flex items-center justify-center text-primary shrink-0">
-              {(workflow.name || '未').charAt(0).toUpperCase()}
+              {(workflow.name || t('card.defaultInitial')).charAt(0).toUpperCase()}
             </span>
           )}
           <CardTitle className="text-sm truncate">{workflow.name}</CardTitle>
@@ -61,7 +63,7 @@ export function WorkflowCard({ workflow, onDuplicate, onDelete }: WorkflowCardPr
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">
-              {workflow.nodes.length} 个节点
+              {t('card.nodes', { count: workflow.nodes.length })}
             </span>
             {workflow.tags && workflow.tags.length > 0 && (
               <div className="flex gap-1">

@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Download, Folder, Search, FileText } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { fetchStoreIndex } from '@/lib/agent-store';
 import type { WorkflowTemplatePreset } from './workflow-templates';
 
@@ -32,6 +33,7 @@ interface WorkflowIndexItem {
 }
 
 export function WorkflowTemplatesDialog({ open, onOpenChange, onImport }: WorkflowTemplatesDialogProps) {
+  const t = useTranslations('workflows');
   const [importing, setImporting] = useState<string | null>(null);
   const [templates, setTemplates] = useState<WorkflowIndexItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -68,13 +70,13 @@ export function WorkflowTemplatesDialog({ open, onOpenChange, onImport }: Workfl
     }
   };
 
-  const categories = Array.from(new Set(templates.map((t) => t.category).filter(Boolean)));
+  const categories = Array.from(new Set(templates.map((tpl) => tpl.category).filter(Boolean)));
 
-  const filtered = templates.filter((t) => {
-    if (categoryFilter && t.category !== categoryFilter) return false;
+  const filtered = templates.filter((tpl) => {
+    if (categoryFilter && tpl.category !== categoryFilter) return false;
     if (search) {
       const q = search.toLowerCase();
-      if (!t.name.toLowerCase().includes(q) && !t.description.toLowerCase().includes(q)) return false;
+      if (!tpl.name.toLowerCase().includes(q) && !tpl.description.toLowerCase().includes(q)) return false;
     }
     return true;
   });
@@ -83,8 +85,8 @@ export function WorkflowTemplatesDialog({ open, onOpenChange, onImport }: Workfl
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="!w-[80vw] !max-w-[80vw] !h-[80vh] flex flex-col overflow-hidden">
         <DialogHeader>
-          <DialogTitle>工作流模板</DialogTitle>
-          <DialogDescription>选择一个模板快速创建工作流</DialogDescription>
+          <DialogTitle>{t('templatesDialog.title')}</DialogTitle>
+          <DialogDescription>{t('templatesDialog.description')}</DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-1 min-h-0 gap-4 pt-2">
@@ -98,7 +100,7 @@ export function WorkflowTemplatesDialog({ open, onOpenChange, onImport }: Workfl
                   onClick={() => setCategoryFilter('')}
                 >
                   <FileText className="size-3.5 mr-1.5" />
-                  全部
+                  {t('templatesDialog.all')}
                 </Button>
                 {categories.map((cat) => (
                   <Button
@@ -122,15 +124,15 @@ export function WorkflowTemplatesDialog({ open, onOpenChange, onImport }: Workfl
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="搜索工作流模板..."
+                placeholder={t('templatesDialog.searchPlaceholder')}
                 className="pl-8"
               />
             </div>
             <ScrollArea className="flex-1">
               {loading ? (
-                <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">加载中...</div>
+                <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">{t('templatesDialog.loading')}</div>
               ) : filtered.length === 0 ? (
-                <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">暂无模板</div>
+                <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">{t('templatesDialog.empty')}</div>
               ) : (
                 <div className="grid grid-cols-1 gap-3 pr-2">
                   {filtered.map((item) => (
@@ -148,7 +150,7 @@ export function WorkflowTemplatesDialog({ open, onOpenChange, onImport }: Workfl
                               </span>
                             )}
                             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
-                              {item.agentCount} 个 Agent
+                              {t('templatesDialog.agentCount', { count: item.agentCount })}
                             </span>
                           </div>
                           <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
@@ -165,7 +167,7 @@ export function WorkflowTemplatesDialog({ open, onOpenChange, onImport }: Workfl
                           ) : (
                             <>
                               <Download className="size-3.5 mr-1" />
-                              导入
+                              {t('templatesDialog.import')}
                             </>
                           )}
                         </Button>

@@ -1,0 +1,36 @@
+{
+  "page": {
+    "title": "Workflows",
+    "subtitle": "Manage Workflow templates",
+    "templates": "Templates",
+    "import": "Import",
+    "create": "New Workflow",
+    "searchPlaceholder": "Search workflows...",
+    "tags": "Tags",
+    "clearFilter": "Clear filter",
+    "empty": "No workflow templates",
+    "createFirst": "Create your first workflow"
+  },
+  "card": {
+    "edit": "Edit",
+    "duplicate": "Duplicate",
+    "delete": "Delete",
+    "nodes": "{count} nodes",
+    "defaultInitial": "N"
+  },
+  "templatesDialog": {
+    "title": "Workflow Templates",
+    "description": "Select a template to quickly create a workflow",
+    "all": "All",
+    "searchPlaceholder": "Search workflow templates...",
+    "loading": "Loading...",
+    "empty": "No templates",
+    "agentCount": "{count} Agents",
+    "import": "Import"
+  },
+  "defaultWorkflow": {
+    "name": "New Workflow",
+    "startLabel": "Start",
+    "endLabel": "End"
+  }
+}

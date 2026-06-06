@@ -29,6 +29,7 @@ import tools from './tools.json';
 import workspace from './workspace.json';
 import workspaces from './workspaces.json';
 import worktree from './worktree.json';
+import workflows from './workflows.json';
 
 const messages = {
   agent,
@@ -62,6 +63,7 @@ const messages = {
   workspace,
   workspaces,
   worktree,
+  workflows,
 };
 
 export default messages;

@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Plus, Upload, FileText, Search, Filter } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { WorkflowTemplatesDialog } from '@/components/workflows/workflow-templates-dialog';
 import { WorkflowListDialog } from '@/components/workflow/workflow-list-dialog';
 import { WorkflowCard } from '@/components/workflows/workflow-card';
@@ -19,6 +20,7 @@ import { nativeNavigate } from '@/lib/navigate';
 import type { AgentConfig } from '@agent-spaces/shared';
 
 export function WorkflowsPage() {
+  const t = useTranslations('workflows');
   const router = useRouter();
   const { workflows, loadWorkflows, deleteWorkflow, duplicateWorkflow, upsertWorkflow } = useWorkflowStore();
   const [templatesOpen, setTemplatesOpen] = useState(false);
@@ -150,36 +152,36 @@ export function WorkflowsPage() {
 
   const handleListCreate = useCallback(async () => {
     const created = await workflowApi.create({
-      name: '新工作流',
+      name: t('defaultWorkflow.name'),
       nodes: [
-        { id: `node_${Date.now()}_start`, type: 'start', label: '开始', position: { x: 250, y: 50 }, data: {} },
-        { id: `node_${Date.now()}_end`, type: 'end', label: '结束', position: { x: 250, y: 400 }, data: {} },
+        { id: `node_${Date.now()}_start`, type: 'start', label: t('defaultWorkflow.startLabel'), position: { x: 250, y: 50 }, data: {} },
+        { id: `node_${Date.now()}_end`, type: 'end', label: t('defaultWorkflow.endLabel'), position: { x: 250, y: 400 }, data: {} },
       ],
       edges: [],
     });
     upsertWorkflow(created);
     nativeNavigate(router, `/workflows/${created.id}`);
     setListDialogOpen(false);
-  }, [upsertWorkflow, router]);
+  }, [upsertWorkflow, router, t]);
 
   return (
     <div className="p-6 h-full overflow-y-auto">
       <div className="hidden md:flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-lg font-semibold">工作流</h2>
+          <h2 className="text-lg font-semibold">{t('page.title')}</h2>
           <p className="text-sm text-muted-foreground">
-            管理 Workflow 模板
+            {t('page.subtitle')}
           </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setTemplatesOpen(true)}>
-            <FileText className="h-4 w-4 mr-1" /> 模版
+            <FileText className="h-4 w-4 mr-1" /> {t('page.templates')}
           </Button>
           <Button variant="outline" onClick={handleImport}>
-            <Upload className="h-4 w-4 mr-1" /> 导入
+            <Upload className="h-4 w-4 mr-1" /> {t('page.import')}
           </Button>
           <Button onClick={() => setListDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-1" /> 新建工作流
+            <Plus className="h-4 w-4 mr-1" /> {t('page.create')}
           </Button>
         </div>
       </div>
@@ -188,7 +190,7 @@ export function WorkflowsPage() {
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
-            placeholder="搜索工作流..."
+            placeholder={t('page.searchPlaceholder')}
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="pl-8 h-8 text-sm"
@@ -199,7 +201,7 @@ export function WorkflowsPage() {
             <PopoverTrigger>
               <Button variant="outline" size="sm" className="h-8 gap-1.5">
                 <Filter className="h-3.5 w-3.5" />
-                标签
+                {t('page.tags')}
                 {selectedTags.length > 0 && (
                   <Badge variant="secondary" className="h-4 px-1 text-[10px]">{selectedTags.length}</Badge>
                 )}
@@ -213,7 +215,7 @@ export function WorkflowsPage() {
                     <button
                       key={tag}
                       className="flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted text-left cursor-pointer"
-                      onClick={() => setSelectedTags(prev => selected ? prev.filter(t => t !== tag) : [...prev, tag])}
+                      onClick={() => setSelectedTags(prev => selected ? prev.filter(x => x !== tag) : [...prev, tag])}
                     >
                       <span className={`h-3.5 w-3.5 rounded border flex items-center justify-center shrink-0 ${selected ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/30'}`}>
                         {selected && <span className="text-[10px]">✓</span>}
@@ -228,7 +230,7 @@ export function WorkflowsPage() {
                   className="text-xs text-muted-foreground hover:text-foreground mt-1 pt-1 border-t cursor-pointer w-full text-left px-2 py-1"
                   onClick={() => setSelectedTags([])}
                 >
-                  清除筛选
+                  {t('page.clearFilter')}
                 </button>
               )}
             </PopoverContent>
@@ -237,7 +239,7 @@ export function WorkflowsPage() {
         {selectedTags.length > 0 && (
           <div className="flex gap-1 flex-wrap">
             {selectedTags.map(tag => (
-              <Badge key={tag} variant="secondary" className="gap-1 text-xs cursor-pointer" onClick={() => setSelectedTags(prev => prev.filter(t => t !== tag))}>
+              <Badge key={tag} variant="secondary" className="gap-1 text-xs cursor-pointer" onClick={() => setSelectedTags(prev => prev.filter(x => x !== tag))}>
                 {tag}
                 <span className="text-[10px]">✕</span>
               </Badge>
@@ -248,9 +250,9 @@ export function WorkflowsPage() {
 
       {workflows.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-          <p className="text-sm mb-2">暂无工作流模板</p>
+          <p className="text-sm mb-2">{t('page.empty')}</p>
           <Button variant="outline" onClick={handleListCreate}>
-            <Plus className="h-4 w-4 mr-1" /> 创建第一个工作流
+            <Plus className="h-4 w-4 mr-1" /> {t('page.createFirst')}
           </Button>
         </div>
       ) : (
