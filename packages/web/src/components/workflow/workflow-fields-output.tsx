@@ -1,16 +1,32 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import type { OutputField } from '@agent-spaces/shared';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ChevronRight, Plus, Trash2 } from 'lucide-react';
+import { ChevronRight, GripVertical, Plus, Trash2 } from 'lucide-react';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { JsonViewer, type JsonValue } from '@/components/viewers/json-viewer';
+import { cn } from '@/lib/utils';
 import {
   FIELD_TYPES,
   getOutputFields,
@@ -19,6 +35,49 @@ import {
   stringifyOutputFieldValue,
 } from './workflow-properties-utils';
 import { WorkflowVariablePicker, type WorkflowVariableContext } from './workflow-variable-picker';
+
+const outputFieldDragIds = new WeakMap<OutputField, string>();
+let outputFieldDragIdCounter = 0;
+
+function getOutputFieldDragId(field: OutputField) {
+  const existing = outputFieldDragIds.get(field);
+  if (existing) return existing;
+  const next = `output-field-${outputFieldDragIdCounter++}`;
+  outputFieldDragIds.set(field, next);
+  return next;
+}
+
+function patchOutputField(field: OutputField, patch: Partial<OutputField>) {
+  const id = getOutputFieldDragId(field);
+  const next = { ...field, ...patch };
+  outputFieldDragIds.set(next, id);
+  return next;
+}
+
+function SortableOutputField({
+  id,
+  children,
+}: {
+  id: string;
+  children: (sortable: ReturnType<typeof useSortable>) => ReactNode;
+}) {
+  const sortable = useSortable({ id });
+  const { setNodeRef, transform, transition, isDragging } = sortable;
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn('space-y-0.5', isDragging && 'relative z-10 opacity-70')}
+    >
+      {children(sortable)}
+    </div>
+  );
+}
 
 export function JsonPreview({ value }: { value: unknown }) {
   return (
@@ -43,11 +102,13 @@ export function OutputFieldsEditor({
 }) {
   const fields = getOutputFields(value);
   const [expandedFields, setExpandedFields] = useState<Set<number>>(() => new Set());
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const indent = depth * 16;
+  const fieldIds = fields.map(getOutputFieldDragId);
 
   const updateField = (index: number, patch: Partial<OutputField>) => {
     const next = [...fields];
-    next[index] = { ...next[index], ...patch };
+    next[index] = patchOutputField(next[index], patch);
     if (patch.type && patch.type !== 'object') {
       next[index].children = undefined;
     }
@@ -70,6 +131,15 @@ export function OutputFieldsEditor({
     });
   };
 
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = fieldIds.indexOf(String(active.id));
+    const newIndex = fieldIds.indexOf(String(over.id));
+    if (oldIndex === -1 || newIndex === -1) return;
+    onChange(arrayMove(fields, oldIndex, newIndex));
+  };
+
   const insertVariable = (index: number, variablePath: string) => {
     updateField(index, { value: `${stringifyOutputFieldValue(fields[index]?.value)}${variablePath}` });
   };
@@ -82,98 +152,116 @@ export function OutputFieldsEditor({
           <span>类型</span>
         </div>
       )}
-      {fields.map((field, index) => (
-        <div key={index} className="space-y-0.5">
-          <div className="group/field flex items-center gap-1" style={{ paddingLeft: `${indent}px` }}>
-            <Button
-              variant="ghost"
-              size="icon"
-              className={`h-5 w-5 shrink-0 ${expandedFields.has(index) ? '' : '-rotate-90'}`}
-              onClick={() => toggleExpand(index)}
-            >
-              <ChevronRight className="h-3 w-3" />
-            </Button>
-            <Checkbox
-              checked={Boolean(field.required) || false}
-              onCheckedChange={(checked) => updateField(index, { required: checked === true || undefined })}
-              className="h-3.5 w-3.5"
-              title="必填"
-            />
-            <Input
-              value={field.key ?? ''}
-              onChange={(e) => updateField(index, { key: e.target.value })}
-              placeholder="字段名"
-              className="h-6 min-w-0 flex-1 text-[11px]"
-            />
-            <Select
-              value={field.type ?? 'string'}
-              onValueChange={(type) => updateField(index, { type: type as OutputField['type'] })}
-            >
-              <SelectTrigger size="sm" className="h-6 w-20 shrink-0 px-2 py-0 text-[11px] [&_svg]:size-3">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {FIELD_TYPES.map(type => (
-                  <SelectItem key={type} value={type} className="text-[11px]">{type}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-5 w-5 shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover/field:opacity-100"
-              onClick={() => onChange(fields.filter((_, i) => i !== index))}
-            >
-              <Trash2 className="h-2.5 w-2.5" />
-            </Button>
-          </div>
-          {expandedFields.has(index) && field.type !== 'object' && (
-            <div className="space-y-0.5" style={{ paddingLeft: `${indent + 20}px` }}>
-              {isFileOutputFieldType(field.type) ? (
-                <Input
-                  value={field.fileNameFilter ?? ''}
-                  onChange={(e) => updateField(index, { fileNameFilter: e.target.value || undefined })}
-                  placeholder="File name filter, e.g. *.pdf, .png"
-                  className="h-6 text-[11px]"
-                />
-              ) : (
-                <InputGroup className="h-6 min-h-0 rounded-md">
-                <InputGroupInput
-                  value={stringifyOutputFieldValue(field.value)}
-                  onChange={(e) => updateField(index, { value: parseArrayOutputFieldValue(field.type, e.target.value) })}
-                  placeholder="默认值"
-                  className="h-6 text-[11px]"
-                />
-                {variableContext?.currentNodeId && (
-                  <InputGroupAddon align="inline-end" className="py-0 pr-0.5">
-                    <WorkflowVariablePicker
-                      {...variableContext}
-                      onSelect={(path) => insertVariable(index, path)}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={fieldIds} strategy={verticalListSortingStrategy}>
+          {fields.map((field, index) => (
+            <SortableOutputField key={fieldIds[index]} id={fieldIds[index]}>
+              {({ attributes, listeners }) => (
+                <>
+                  <div className="group/field flex items-center gap-1" style={{ paddingLeft: `${indent}px` }}>
+                    <button
+                      type="button"
+                      {...attributes}
+                      {...listeners}
+                      className="flex h-5 w-3 shrink-0 cursor-grab touch-none items-center justify-center rounded-sm text-muted-foreground/60 hover:bg-accent hover:text-foreground active:cursor-grabbing"
+                      aria-label="拖拽排序字段"
+                      title="拖拽排序"
+                    >
+                      <GripVertical className="h-3 w-3" />
+                    </button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={`h-5 w-5 shrink-0 ${expandedFields.has(index) ? '' : '-rotate-90'}`}
+                      onClick={() => toggleExpand(index)}
+                    >
+                      <ChevronRight className="h-3 w-3" />
+                    </Button>
+                    <Checkbox
+                      checked={Boolean(field.required) || false}
+                      onCheckedChange={(checked) => updateField(index, { required: checked === true || undefined })}
+                      className="h-3.5 w-3.5"
+                      title="必填"
                     />
-                  </InputGroupAddon>
-                )}
-                </InputGroup>
+                    <Input
+                      value={field.key ?? ''}
+                      onChange={(e) => updateField(index, { key: e.target.value })}
+                      placeholder="字段名"
+                      className="h-6 min-w-0 flex-1 text-[11px]"
+                    />
+                    <Select
+                      value={field.type ?? 'string'}
+                      onValueChange={(type) => updateField(index, { type: type as OutputField['type'] })}
+                    >
+                      <SelectTrigger size="sm" className="h-6 w-20 shrink-0 px-2 py-0 text-[11px] [&_svg]:size-3">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {FIELD_TYPES.map(type => (
+                          <SelectItem key={type} value={type} className="text-[11px]">{type}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5 shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover/field:opacity-100"
+                      onClick={() => onChange(fields.filter((_, i) => i !== index))}
+                    >
+                      <Trash2 className="h-2.5 w-2.5" />
+                    </Button>
+                  </div>
+                  {expandedFields.has(index) && field.type !== 'object' && (
+                    <div className="space-y-0.5" style={{ paddingLeft: `${indent + 20}px` }}>
+                      {isFileOutputFieldType(field.type) ? (
+                        <Input
+                          value={field.fileNameFilter ?? ''}
+                          onChange={(e) => updateField(index, { fileNameFilter: e.target.value || undefined })}
+                          placeholder="文件名过滤，如 *.pdf、.png"
+                          className="h-6 text-[11px]"
+                        />
+                      ) : (
+                        <InputGroup className="h-6 min-h-0 rounded-md">
+                          <InputGroupInput
+                            value={stringifyOutputFieldValue(field.value)}
+                            onChange={(e) => updateField(index, { value: parseArrayOutputFieldValue(field.type, e.target.value) })}
+                            placeholder="默认值"
+                            className="h-6 text-[11px]"
+                          />
+                          {variableContext?.currentNodeId && (
+                            <InputGroupAddon align="inline-end" className="py-0 pr-0.5">
+                              <WorkflowVariablePicker
+                                {...variableContext}
+                                onSelect={(path) => insertVariable(index, path)}
+                              />
+                            </InputGroupAddon>
+                          )}
+                        </InputGroup>
+                      )}
+                      <Input
+                        value={field.description ?? ''}
+                        onChange={(e) => updateField(index, { description: e.target.value || undefined })}
+                        placeholder="描述（可选）"
+                        className="h-6 text-[11px]"
+                      />
+                    </div>
+                  )}
+                  {field.type === 'object' && depth < 3 && (
+                    <div>
+                      <OutputFieldsEditor
+                        value={getOutputFields(field.children)}
+                        onChange={(children) => updateField(index, { children })}
+                        variableContext={variableContext}
+                        depth={depth + 1}
+                      />
+                    </div>
+                  )}
+                </>
               )}
-              <Input
-                value={field.description ?? ''}
-                onChange={(e) => updateField(index, { description: e.target.value || undefined })}
-                placeholder="描述（可选）"
-                className="h-6 text-[11px]"
-              />
-            </div>
-          )}
-          {field.type === 'object' && depth < 3 && (
-            <div>
-              <OutputFieldsEditor
-                value={getOutputFields(field.children)}
-                onChange={(children) => updateField(index, { children })}
-                variableContext={variableContext}
-                depth={depth + 1}
-              />
-            </div>
-          )}
-        </div>
-      ))}
+            </SortableOutputField>
+          ))}
+        </SortableContext>
+      </DndContext>
       <Button
         variant="ghost"
         size="sm"
