@@ -47,7 +47,7 @@ export function NodeHeader({
         )}
       </div>
       <Popover>
-        <PopoverTrigger nativeButton={false}>
+        <PopoverTrigger render={<div />}>
           <Badge
             variant={selectedJsonPreset ? 'default' : 'outline'}
             className="h-6 cursor-pointer gap-1 px-2 text-[10px]"

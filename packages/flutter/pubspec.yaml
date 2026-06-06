@@ -129,9 +129,6 @@ flutter:
     - assets/web/workflows/_/__next.workflows/
     - assets/web/workflows/_/__next.workflows/$d$id/
     - assets/web/workflows/__next.workflows/
-    - assets/web/workflows/detail/
-    - assets/web/workflows/detail/__next.workflows/
-    - assets/web/workflows/detail/__next.workflows/detail/
     - assets/web/workflows/share/
     - assets/web/workflows/share/__next.workflows/
     - assets/web/workflows/share/__next.workflows/share/

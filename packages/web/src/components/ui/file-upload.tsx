@@ -73,7 +73,7 @@ export function FileUpload({
     [value, onChange],
   );
 
-  const { getRootProps, getInputProps, isDragActive, open: openFilePicker } = useDropzone({
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: dropzoneAccept,
     maxFiles: maxFiles || undefined,
@@ -86,20 +86,13 @@ export function FileUpload({
       )
       : undefined,
     disabled,
-    noClick: true,
   });
 
   return (
     <div className={cn("space-y-3", className)}>
       {/* Drop zone */}
       <div
-        {...getRootProps({
-          onClick: (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            openFilePicker();
-          },
-        })}
+        {...getRootProps()}
         className={cn(
           "relative flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-8 transition-colors cursor-pointer",
           isDragActive
