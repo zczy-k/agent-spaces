@@ -241,7 +241,11 @@ export function WorkflowPropertiesPanel({
     <div className="flex h-full flex-col bg-background">
       <div className="flex shrink-0 items-center gap-2 border-b p-3">
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-medium">{definition?.label || node.type}</div>
+          <Input
+            value={String(data.label ?? node.label ?? '')}
+            onChange={(e) => handleDataChange('label', e.target.value)}
+            className="h-auto border-0 bg-transparent p-0 text-sm font-medium shadow-none outline-none ring-0 focus-visible:ring-0"
+          />
           {definition?.description && (
             <div className="truncate text-[10px] text-muted-foreground">{definition.description}</div>
           )}
@@ -353,7 +357,7 @@ export function WorkflowPropertiesPanel({
       </div>
 
       <ScrollArea className="min-h-0 flex-1">
-        <div className="space-y-4 p-3">
+        <div className="space-y-4 p-3 pt-0">
           {hasDebugOutput && debugResult && (
             <section className="space-y-2 rounded border bg-muted/20 p-2">
               <div className="flex items-center gap-1.5">
@@ -413,15 +417,6 @@ export function WorkflowPropertiesPanel({
           )}
 
           <section className="space-y-3">
-            <div className="space-y-1">
-              <Label className="text-xs">标签</Label>
-              <Input
-                value={String(data.label ?? node.label ?? '')}
-                onChange={(e) => handleDataChange('label', e.target.value)}
-                className="h-7 text-xs"
-              />
-            </div>
-
             {visibleProperties.map(prop => (
               <Collapsible
                 key={prop.key}
@@ -489,7 +484,7 @@ export function WorkflowPropertiesPanel({
           </section>
 
           {canEditInputFields && (
-            <section id="input-fields-section" className="space-y-2 border-t pt-3">
+            <section id="input-fields-section" className="space-y-2 ">
               <div className="text-xs font-medium text-muted-foreground">
                 {node.type === 'sub_workflow' ? '开始节点输入' : '输入字段'}
               </div>

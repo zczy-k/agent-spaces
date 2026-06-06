@@ -4,6 +4,7 @@ loadDotenv();
 
 import express from 'express';
 import cors from 'cors';
+import multer from 'multer';
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { WebSocketServer } from 'ws';
@@ -72,6 +73,7 @@ const resolveRuntimeDir = (name: string) => {
 
 const app = express();
 const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 500 * 1024 * 1024 } });
 app.use(cors({ origin: CORS_ORIGIN }));
 app.use(express.json({ limit: '50mb' }));
 app.use('/api/agent-sse', agentSseRouter);
@@ -98,6 +100,7 @@ app.use('/api', authMiddleware);
 // Serve static files from public/
 const publicDir = resolveRuntimeDir('public');
 app.use('/public', express.static(publicDir));
+app.use('/static', express.static(publicDir));
 
 // Serve template store resources from packages/templates/
 const agentsDir = resolveRuntimeDir('../templates');
@@ -108,6 +111,35 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.use('/api/auth', authRouter);
+
+app.post('/api/upload', upload.single('file'), async (req, res) => {
+  const file = req.file;
+  if (!file) {
+    res.status(400).json({ error: 'file is required' });
+    return;
+  }
+
+  const uploadsDir = join(publicDir, 'uploads');
+  if (!existsSync(uploadsDir)) await mkdir(uploadsDir, { recursive: true });
+
+  const ext = extname(file.originalname);
+  const safeBaseName = basename(file.originalname, ext).replace(/[^a-zA-Z0-9._-]/g, '_') || 'file';
+  const name = `${safeBaseName}-${randomUUID()}${ext}`;
+  await writeFile(join(uploadsDir, name), file.buffer);
+
+  const url = `/static/uploads/${name}`;
+  const protocol = req.headers['x-forwarded-proto']?.toString().split(',')[0] || req.protocol;
+  const host = req.get('host');
+  const httpPath = host ? `${protocol}://${host}${url}` : url;
+  res.json({
+    name: file.originalname,
+    storedName: name,
+    size: file.size,
+    type: file.mimetype,
+    url,
+    httpPath,
+  });
+});
 
 // Avatar upload
 app.post('/api/upload/avatar', async (req, res) => {

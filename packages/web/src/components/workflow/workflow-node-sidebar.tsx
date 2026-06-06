@@ -228,7 +228,8 @@ export function WorkflowNodeSidebar({
                       <>
                         <Popover>
                           <PopoverTrigger
-                            className="inline-flex h-5 max-w-[92px] items-center gap-0.5 rounded px-1.5 text-[10px] hover:bg-muted"
+                            render={<span />}
+                            className="inline-flex h-5 max-w-[92px] items-center gap-0.5 rounded px-1.5 text-[10px] hover:bg-muted cursor-pointer"
                             onClick={(event) => event.stopPropagation()}
                           >
                             <span className="truncate">{selectedScheme(categoryPluginMap[category]) || '默认配置'}</span>

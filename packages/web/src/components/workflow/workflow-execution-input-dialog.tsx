@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { FileUpload, type FileUploadFile } from '@/components/ui/file-upload';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { sdk } from '@/lib/sdk';
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -30,29 +31,36 @@ export function parseInputValue(field: OutputField, raw: string): unknown {
 
 export interface ExecutionInputFormProps {
   fields: OutputField[];
-  onSubmit: (values: Record<string, unknown>) => void;
+  onSubmit: (values: Record<string, unknown>) => void | Promise<void>;
   submitLabel?: React.ReactNode;
 }
 
 export function ExecutionInputForm({ fields, onSubmit, submitLabel }: ExecutionInputFormProps) {
   const [values, setValues] = useState<Record<string, InputFormValue>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const setField = (key: string, value: InputFormValue) => {
     setValues(prev => ({ ...prev, [key]: value }));
   };
 
-  const submit = () => {
+  const submit = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     const parsed: Record<string, unknown> = {};
-    for (const field of fields) {
-      if (!field.key) continue;
-      if (field.type === 'file') {
-        const files = values[field.key];
-        parsed[field.key] = Array.isArray(files) ? files[0]?.file ?? null : null;
-        continue;
+    try {
+      for (const field of fields) {
+        if (!field.key) continue;
+        if (field.type === 'file') {
+          const files = values[field.key];
+          parsed[field.key] = Array.isArray(files) ? await resolveWorkflowFileInput(files[0]?.file) : null;
+          continue;
+        }
+        parsed[field.key] = parseInputValue(field, getStringValue(values[field.key], field.value));
       }
-      parsed[field.key] = parseInputValue(field, getStringValue(values[field.key], field.value));
+      await onSubmit(parsed);
+    } finally {
+      setIsSubmitting(false);
     }
-    onSubmit(parsed);
   };
 
   return (
@@ -93,7 +101,7 @@ export function ExecutionInputForm({ fields, onSubmit, submitLabel }: ExecutionI
       </ScrollArea>
       {submitLabel && (
         <DialogFooter>
-          <Button size="sm" onClick={submit}>
+          <Button size="sm" onClick={submit} disabled={isSubmitting}>
             {submitLabel}
           </Button>
         </DialogFooter>
@@ -110,6 +118,75 @@ function getFileValue(value: InputFormValue | undefined): FileUploadFile[] {
   return Array.isArray(value) ? value : [];
 }
 
+type WorkflowFileInput = {
+  path: string;
+  relativePath: string;
+  name: string;
+  size: number;
+  type: string;
+  url?: string;
+  httpPath?: string;
+};
+
+type UploadedWorkflowFile = {
+  name: string;
+  size: number;
+  type: string;
+  url: string;
+  httpPath?: string;
+};
+
+async function resolveWorkflowFileInput(file?: File): Promise<WorkflowFileInput | null> {
+  if (!file) return null;
+
+  const relativePath = getFileRelativePath(file);
+  const localPath = getElectronFilePath(file);
+  if (isElectronEnvironment() && localPath) {
+    return {
+      path: localPath,
+      relativePath,
+      name: file.name,
+      size: file.size,
+      type: file.type,
+    };
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+  const uploaded = await sdk.http.upload<UploadedWorkflowFile>('/api/upload', formData);
+
+  return {
+    path: uploaded.httpPath ?? uploaded.url,
+    relativePath,
+    name: uploaded.name || file.name,
+    size: uploaded.size || file.size,
+    type: uploaded.type || file.type,
+    url: uploaded.url,
+    httpPath: uploaded.httpPath,
+  };
+}
+
+function getFileRelativePath(file: File): string {
+  const relativePath = (file as File & { webkitRelativePath?: string }).webkitRelativePath;
+  return relativePath || file.name;
+}
+
+function getElectronFilePath(file: File): string | null {
+  const path = (file as File & { path?: string }).path;
+  return typeof path === 'string' && path.trim() ? path : null;
+}
+
+function isElectronEnvironment(): boolean {
+  if (typeof window === 'undefined') return false;
+  const maybeWindow = window as Window & {
+    electron?: unknown;
+    electronAPI?: unknown;
+    require?: unknown;
+  };
+  const userAgent = navigator.userAgent.toLowerCase();
+  return Boolean(maybeWindow.electron || maybeWindow.electronAPI || userAgent.includes('electron'));
+}
+
 export function ExecutionInputDialog({
   open, fields, startNodeLabel, onOpenChange, onSubmit,
 }: {
@@ -117,7 +194,7 @@ export function ExecutionInputDialog({
   fields: OutputField[];
   startNodeLabel: string;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (values: Record<string, unknown>) => void;
+  onSubmit: (values: Record<string, unknown>) => void | Promise<void>;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -127,7 +204,7 @@ export function ExecutionInputDialog({
         </DialogHeader>
         <ExecutionInputForm
           fields={fields}
-          onSubmit={values => { onSubmit(values); onOpenChange(false); }}
+          onSubmit={async values => { await onSubmit(values); onOpenChange(false); }}
           submitLabel={<><Play className="h-3 w-3 mr-1" /> 开始执行</>}
         />
       </DialogContent>
