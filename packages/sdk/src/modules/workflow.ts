@@ -67,6 +67,9 @@ export function createWorkflowApi(http: HttpClient) {
     getExecutionLog: (workflowId: string, logId: string): Promise<ExecutionLog> =>
       http.get(`/api/workflows/${workflowId}/execution-logs/${logId}`),
 
+    getExecutionLogPath: (workflowId: string, logId: string): Promise<{ path: string }> =>
+      http.get(`/api/workflows/${workflowId}/execution-logs/${logId}/path`),
+
     deleteExecutionLog: (workflowId: string, logId: string): Promise<void> =>
       http.delete(`/api/workflows/${workflowId}/execution-logs/${logId}`),
 

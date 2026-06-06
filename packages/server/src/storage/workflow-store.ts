@@ -312,6 +312,10 @@ export function getExecutionLog(workflowId: string, logId: string) {
   return readJsonFile(path.join(executionHistoryDir(workflowId), `${logId}.json`));
 }
 
+export function getExecutionLogPath(workflowId: string, logId: string) {
+  return path.join(executionHistoryDir(workflowId), `${logId}.json`);
+}
+
 export function deleteExecutionLog(workflowId: string, logId: string) {
   const file = path.join(executionHistoryDir(workflowId), `${logId}.json`);
   if (existsSync(file)) unlinkSync(file);

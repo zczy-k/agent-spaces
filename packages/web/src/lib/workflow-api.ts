@@ -98,6 +98,9 @@ export const executionLogApi = {
   clear(workflowId: string): Promise<void> {
     return sdk.workflow.clearExecutionLogs(workflowId);
   },
+  getLogPath(workflowId: string, logId: string): Promise<{ path: string }> {
+    return sdk.workflow.getExecutionLogPath(workflowId, logId);
+  },
 };
 
 // ---- Operation History ----

@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { JsonViewer } from '@/components/viewers/json-viewer';
 import { cn } from '@/lib/utils';
+import { executionLogApi } from '@/lib/workflow-api';
 import { ExecutionInputDialog } from './workflow-execution-input-dialog';
 import { SavePresetDialog } from './workflow-save-preset-dialog';
 
@@ -33,6 +34,7 @@ interface ExecutionBarProps {
   startNodes: WorkflowNode[];
   validationError?: string | null;
   isExpanded: boolean;
+  workflowId: string | null;
   onToggle: () => void;
   onExecute: (input?: Record<string, unknown>, startNodeId?: string) => void;
   onPause: () => void;
@@ -105,7 +107,7 @@ function JsonBlock({ value, empty }: { value: unknown; empty: string }) {
 }
 
 export function WorkflowExecutionBar({
-  status, log, logs, selectedLogId, startNodes, validationError, isExpanded, onToggle,
+  status, log, logs, selectedLogId, startNodes, validationError, isExpanded, workflowId, onToggle,
   onExecute, onPause, onResume, onStop, onSelectLog, onDeleteLog, onClearLogs, onExitPreview,
   onUpdateNodeData,
 }: ExecutionBarProps) {
@@ -288,6 +290,30 @@ export function WorkflowExecutionBar({
                             </span>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="min-w-32">
+                            <DropdownMenuItem
+                              className="text-xs"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                copyText(`log-${item.id}`, JSON.stringify(item, null, 2));
+                              }}
+                            >
+                              {copiedKey === `log-${item.id}` ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />} 复制日志
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-xs"
+                              onClick={async (event) => {
+                                event.stopPropagation();
+                                if (!workflowId) return;
+                                try {
+                                  const { path } = await executionLogApi.getLogPath(workflowId, item.id);
+                                  await navigator.clipboard.writeText(path);
+                                  setCopiedKey(`path-${item.id}`);
+                                  setTimeout(() => setCopiedKey(null), 1500);
+                                } catch { /* ignore */ }
+                              }}
+                            >
+                              {copiedKey === `path-${item.id}` ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />} 复制日志文件位置
+                            </DropdownMenuItem>
                             <DropdownMenuItem
                               variant="destructive"
                               className="text-xs"
