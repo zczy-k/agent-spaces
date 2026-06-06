@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { WorkflowPluginConfigDialog } from './workflow-plugin-config-dialog';
 import { Search, ChevronDown, ChevronRight, Plus, Settings, Trash2 } from 'lucide-react';
+import { WorkflowNodeDefinitionIcon } from './workflow-node-icon';
 
 export const WORKFLOW_NODE_DRAG_MIME = 'application/vueflow';
 
@@ -31,16 +32,6 @@ function stringToHsl(str: string, s: number, l: number): string {
   for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
   const h = hash % 360;
   return `hsl(${h}, ${s}%, ${l}%)`;
-}
-
-// Simple icon renderer
-function NodeIcon({ name, className }: { name?: string; className?: string }) {
-  const ICONS: Record<string, string> = {
-    LogIn: '▶', LogOut: '⏹', Terminal: '⌨', Bell: '🔔', GitBranch: '⎇',
-    Combine: '⊞', RotateCw: '↻', Container: '☐', Bot: '🤖', MessageSquare: '💬',
-    TextCursorInput: '📝', ClipboardList: '📋', StickyNote: '📌', Circle: '○',
-  };
-  return <span className={className}>{ICONS[name || 'Circle'] || '○'}</span>;
 }
 
 export function WorkflowNodeSidebar({
@@ -299,7 +290,7 @@ export function WorkflowNodeSidebar({
                             className="flex items-center gap-2 px-2 py-1.5 text-xs rounded cursor-grab hover:bg-muted/50 active:cursor-grabbing"
                             onDragStart={(e) => onDragStart(e, node.type)}
                           >
-                            <NodeIcon name={node.icon} className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                            <WorkflowNodeDefinitionIcon definition={node} className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                             <div className="min-w-0">
                               <div className="truncate">{node.label}</div>
                               {node.description && (
@@ -311,7 +302,7 @@ export function WorkflowNodeSidebar({
                         <HoverCardContent className="w-72 p-3" side="right">
                           <div className="space-y-2">
                             <div className="flex items-center gap-2">
-                              <NodeIcon name={node.icon} className="w-4 h-4 text-muted-foreground shrink-0" />
+                              <WorkflowNodeDefinitionIcon definition={node} className="h-4 w-4 shrink-0 text-muted-foreground" />
                               <span className="text-sm font-semibold">{node.label}</span>
                               <span className="text-[10px] text-muted-foreground font-mono ml-auto">{node.type}</span>
                             </div>

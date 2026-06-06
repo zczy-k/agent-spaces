@@ -8,11 +8,17 @@ import { Check, ChevronDown, Pencil, Plus, Trash2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { JsonPreset } from './workflow-properties-utils';
 import { SELECTED_JSON_PRESET_KEY } from './workflow-properties-utils';
+import { WorkflowNodeDefinitionIcon } from './workflow-node-icon';
+
+type PluginNodeDefinitionMeta = {
+  pluginId?: string;
+  pluginIconPath?: string;
+};
 
 interface NodeHeaderProps {
   node: WorkflowNode;
   data: Record<string, unknown>;
-  definition: { description?: string } | null | undefined;
+  definition: ({ description?: string; icon?: string } & PluginNodeDefinitionMeta) | null | undefined;
   jsonPresets: JsonPreset[];
   selectedJsonPresetId: string;
   selectedJsonPreset: JsonPreset | null;
@@ -36,6 +42,7 @@ export function NodeHeader({
 }: NodeHeaderProps) {
   return (
     <div className="flex shrink-0 items-center gap-2 border-b p-3">
+      <WorkflowNodeDefinitionIcon definition={definition} className="h-4 w-4 shrink-0 text-muted-foreground" />
       <div className="min-w-0 flex-1">
         <Input
           value={String(data.label ?? node.label ?? '')}

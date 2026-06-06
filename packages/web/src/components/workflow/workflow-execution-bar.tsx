@@ -22,10 +22,16 @@ import {
 import { JsonViewer } from '@/components/viewers/json-viewer';
 import { cn } from '@/lib/utils';
 import { executionLogApi } from '@/lib/workflow-api';
+import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { ExecutionInputDialog } from './workflow-execution-input-dialog';
 import { SavePresetDialog } from './workflow-save-preset-dialog';
+import { WorkflowNodeDefinitionIcon } from './workflow-node-icon';
 
 type ExecutionStatus = 'idle' | 'running' | 'paused' | 'completed' | 'error' | 'stopped' | string;
+type PluginNodeDefinitionMeta = {
+  pluginId?: string;
+  pluginIconPath?: string;
+};
 
 interface ExecutionBarProps {
   status: ExecutionStatus;
@@ -152,6 +158,9 @@ export function WorkflowExecutionBar({
   const elapsedText = displayLog ? formatDuration(displayLog.startedAt, displayLog.finishedAt) : '';
   const nodeTypeById = useMemo(() => {
     return new Map((displayLog?.snapshot?.nodes || []).map(node => [node.id, node.type]));
+  }, [displayLog]);
+  const nodeDefinitionById = useMemo(() => {
+    return new Map((displayLog?.snapshot?.nodes || []).map(node => [node.id, getNodeDefinition(node.type)]));
   }, [displayLog]);
 
   const executeFromStartNode = (node?: WorkflowNode | null) => {
@@ -350,9 +359,13 @@ export function WorkflowExecutionBar({
                     {steps.map((step, index) => {
                       const key = `${step.nodeId}-${step.startedAt}-${index}`;
                       const activeTab = stepTabs[key] || 'input';
+                      const nodeType = nodeTypeById.get(step.nodeId) || '';
+                      const definition = nodeDefinitionById.get(step.nodeId);
+                      const pluginMeta = definition as (typeof definition & PluginNodeDefinitionMeta);
+                      const iconDefinition = definition ? { ...definition, ...pluginMeta } : null;
                       const nodeInfo = [
                         `# ${step.nodeLabel || step.nodeId}`,
-                        `${t('execution.nodeType')}: ${nodeTypeById.get(step.nodeId) || ''}`,
+                        `${t('execution.nodeType')}: ${nodeType}`,
                         '',
                         `## ${t('execution.input')}`,
                         stringifyValue(step.input) || t('execution.none'),
@@ -365,9 +378,10 @@ export function WorkflowExecutionBar({
                         <div key={key} className="w-[280px] h-full min-h-[260px] shrink-0 border border-border rounded-md flex flex-col overflow-hidden bg-background">
                           <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-border">
                             {stepIcon(step.status)}
+                            <WorkflowNodeDefinitionIcon definition={iconDefinition} className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                             <span className="text-xs font-medium truncate flex-1">{step.nodeLabel || step.nodeId}</span>
                             <span className="text-[10px] text-muted-foreground/70 shrink-0 font-mono">
-                              {nodeTypeById.get(step.nodeId) || ''}
+                              {nodeType}
                             </span>
                             <span className="text-[10px] text-muted-foreground shrink-0">
                               {step.finishedAt ? formatDuration(step.startedAt, step.finishedAt) : '...'}

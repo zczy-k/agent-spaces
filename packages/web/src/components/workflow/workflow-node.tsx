@@ -7,25 +7,7 @@ import { X, Play } from 'lucide-react';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { LOOP_BODY_NODE_TYPE, LOOP_BODY_SOURCE_HANDLE } from '@agent-spaces/shared';
 import { BorderGlide } from '@/components/ui/border-glide';
-import { resolveServerAssetUrl } from '@/lib/server';
-import { PluginIcon } from './workflow-plugin-icon';
-
-// ---- Icon resolver ----
-const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
-  LogIn: ({ className }) => <span className={className}>▶</span>,
-  LogOut: ({ className }) => <span className={className}>⏹</span>,
-  Terminal: ({ className }) => <span className={className}>⌨</span>,
-  Bell: ({ className }) => <span className={className}>🔔</span>,
-  GitBranch: ({ className }) => <span className={className}>⎇</span>,
-  Combine: ({ className }) => <span className={className}>⊞</span>,
-  RotateCw: ({ className }) => <span className={className}>↻</span>,
-  Container: ({ className }) => <span className={className}>☐</span>,
-  Bot: ({ className }) => <span className={className}>🤖</span>,
-  MessageSquare: ({ className }) => <span className={className}>💬</span>,
-  TextCursorInput: ({ className }) => <span className={className}>📝</span>,
-  ClipboardList: ({ className }) => <span className={className}>📋</span>,
-  StickyNote: ({ className }) => <span className={className}>📌</span>,
-};
+import { WorkflowNodeDefinitionIcon } from './workflow-node-icon';
 
 const HEADER_HEIGHT = 33;
 const HANDLE_MARGIN = 12;
@@ -56,13 +38,7 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
   const workflowNodeType = typeof nodeData.nodeType === 'string' ? nodeData.nodeType : type;
   const definition = useMemo(() => getNodeDefinition(workflowNodeType || 'unknown'), [workflowNodeType]);
   const pluginMeta = definition as (typeof definition & PluginNodeDefinitionMeta);
-  const IconComponent = ICON_MAP[definition?.icon || ''];
-  const pluginIconSource = pluginMeta?.pluginId && pluginMeta.pluginIconPath
-    ? {
-      type: 'url' as const,
-      url: resolveServerAssetUrl(`/api/plugins/${encodeURIComponent(pluginMeta.pluginId)}/icon`),
-    }
-    : null;
+  const iconDefinition = definition ? { ...definition, ...pluginMeta } : null;
   const CustomView = definition?.customView as React.ComponentType<WorkflowCustomViewProps> | undefined;
 
   const [isHovered, setIsHovered] = useState(false);
@@ -314,11 +290,7 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
         {/* Header */}
         {!isLoopBody && !CustomView && (
           <div className="flex items-center gap-2 px-3 py-2 border-b border-border/50">
-            {pluginIconSource ? (
-              <PluginIcon source={pluginIconSource} className="h-4 w-4 shrink-0 object-contain" />
-            ) : IconComponent ? (
-              <IconComponent className="w-4 h-4 text-muted-foreground shrink-0" />
-            ) : null}
+            <WorkflowNodeDefinitionIcon definition={iconDefinition} className="h-4 w-4 shrink-0 text-muted-foreground" />
             {isEditing ? (
               <input
                 ref={inputRef}
