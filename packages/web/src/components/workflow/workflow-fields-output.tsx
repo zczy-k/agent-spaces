@@ -36,22 +36,10 @@ import {
 } from './workflow-properties-utils';
 import { WorkflowVariablePicker, type WorkflowVariableContext } from './workflow-variable-picker';
 
-const outputFieldDragIds = new WeakMap<OutputField, string>();
 let outputFieldDragIdCounter = 0;
 
-function getOutputFieldDragId(field: OutputField) {
-  const existing = outputFieldDragIds.get(field);
-  if (existing) return existing;
-  const next = `output-field-${outputFieldDragIdCounter++}`;
-  outputFieldDragIds.set(field, next);
-  return next;
-}
-
 function patchOutputField(field: OutputField, patch: Partial<OutputField>) {
-  const id = getOutputFieldDragId(field);
-  const next = { ...field, ...patch };
-  outputFieldDragIds.set(next, id);
-  return next;
+  return { ...field, ...patch };
 }
 
 function SortableOutputField({
@@ -102,9 +90,10 @@ export function OutputFieldsEditor({
 }) {
   const fields = getOutputFields(value);
   const [expandedFields, setExpandedFields] = useState<Set<number>>(() => new Set());
+  const [editorId] = useState(() => `output-fields-${outputFieldDragIdCounter++}`);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const indent = depth * 16;
-  const fieldIds = fields.map(getOutputFieldDragId);
+  const fieldIds = fields.map((_, index) => `${editorId}-${index}`);
 
   const updateField = (index: number, patch: Partial<OutputField>) => {
     const next = [...fields];
