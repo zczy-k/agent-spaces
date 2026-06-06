@@ -23,8 +23,9 @@ import { AgentEditor } from '@/components/sidebar/agent-editor';
 import { normalizeAgent, newAgentDraft, type AgentPreset } from '@/components/sidebar/agent-shared';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ResizablePanel, ResizableHandle, ResizablePanelGroup } from '@/components/ui/resizable';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, AlertCircle, CheckCircle2, ChevronDown, Settings2, Trash2, Wrench } from 'lucide-react';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { ExpandableTabs } from '@/components/ui/expandable-tabs';
+import { Loader2, AlertCircle, CheckCircle2, ChevronDown, Settings2, Trash2, Wrench, History, Layers, Package } from 'lucide-react';
 import { useEditorShortcuts, useClipboard, useExecutionPanel } from '@/hooks/use-workflow-editor';
 import { Button } from '@/components/ui/button';
 import { fetchWithAuth } from '@/lib/auth';
@@ -555,12 +556,17 @@ function WorkflowEditorInner({
         <ResizablePanel id="workflow-right-panel" defaultSize="30%" minSize="15%" maxSize="50%">
           <div className="rounded-xl bg-background overflow-hidden h-full">
           <Tabs value={state.rightTab} onValueChange={state.setRightTab} className="flex flex-col h-full">
-            <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0 h-8">
-              <TabsTrigger value="properties" className="text-xs px-3 py-1.5 data-active:!bg-primary data-active:!text-primary-foreground">属性</TabsTrigger>
-              <TabsTrigger value="versions" className="text-xs px-3 py-1.5 data-active:!bg-primary data-active:!text-primary-foreground">版本</TabsTrigger>
-              <TabsTrigger value="history" className="text-xs px-3 py-1.5 data-active:!bg-primary data-active:!text-primary-foreground">历史</TabsTrigger>
-              <TabsTrigger value="staging" className="text-xs px-3 py-1.5 data-active:!bg-primary data-active:!text-primary-foreground">暂存</TabsTrigger>
-            </TabsList>
+            <ExpandableTabs
+              tabs={[
+                { title: '属性', icon: Settings2, value: 'properties' },
+                { title: '版本', icon: Layers, value: 'versions' },
+                { title: '历史', icon: History, value: 'history' },
+                { title: '暂存', icon: Package, value: 'staging' },
+              ]}
+              value={state.rightTab}
+              onValueChange={state.setRightTab}
+              className="border-b border-x-0 border-t-0 rounded-none w-full"
+            />
             <TabsContent value="properties" className="flex-1 min-h-0 m-0">
               <WorkflowPropertiesPanel
                 node={state.selectedNode}

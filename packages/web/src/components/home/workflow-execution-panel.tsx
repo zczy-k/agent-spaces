@@ -122,7 +122,7 @@ export function WorkflowExecutionPanel() {
   }
 
   return (
-    <Card className="gap-0 overflow-hidden rounded-lg py-0">
+    <Card className="gap-0 overflow-hidden rounded-lg py-0 mt-2">
       <div className="flex items-center justify-between border-b px-4 py-3">
         <div className="flex items-center gap-2">
           <GitBranch className="h-4 w-4 text-muted-foreground" />
