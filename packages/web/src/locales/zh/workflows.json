@@ -32,5 +32,14 @@
     "name": "新工作流",
     "startLabel": "开始",
     "endLabel": "结束"
+  },
+  "properties": {
+    "emptyNode": "选择节点查看属性",
+    "loopBodyHint": "循环体节点无需单独配置属性",
+    "testSuccess": "测试成功",
+    "testFailed": "测试失败",
+    "currentJsonPreset": "当前 JSON 预设",
+    "copy": "复制",
+    "node": "节点"
   }
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import type { WorkflowEdge, WorkflowNode } from '@agent-spaces/shared';
 import { Button } from '@/components/ui/button';
@@ -50,6 +51,7 @@ export function WorkflowPropertiesPanel({
   onDebugNode,
   onCancelDebug,
 }: PropertiesPanelProps) {
+  const t = useTranslations('workflows');
   const [importOpen, setImportOpen] = useState(false);
   const [presetOpen, setPresetOpen] = useState(false);
   const [editingPreset, setEditingPreset] = useState<JsonPreset | null>(null);
@@ -141,14 +143,14 @@ export function WorkflowPropertiesPanel({
   if (!node) {
     return (
       <div className="flex h-full items-center justify-center p-4 text-sm text-muted-foreground">
-        选择节点查看属性
+        {t('properties.emptyNode')}
       </div>
     );
   }
   if (node.type === 'loop_body') {
     return (
       <div className="flex h-full items-center justify-center p-4 text-center text-xs text-muted-foreground">
-        循环体节点无需单独配置属性
+        {t('properties.loopBodyHint')}
       </div>
     );
   }
@@ -194,7 +196,7 @@ export function WorkflowPropertiesPanel({
                   <XCircle className="h-3.5 w-3.5 shrink-0 text-red-500" />
                 )}
                 <span className="text-xs font-medium">
-                  {debugResult.status === 'completed' ? '测试成功' : '测试失败'}
+                  {debugResult.status === 'completed' ? t('properties.testSuccess') : t('properties.testFailed')}
                 </span>
                 {typeof debugResult.duration === 'number' && (
                   <span className="text-[10px] text-muted-foreground">{debugResult.duration}ms</span>
@@ -224,7 +226,7 @@ export function WorkflowPropertiesPanel({
           {selectedJsonPreset && (
             <div className="space-y-2 rounded border bg-muted/20 p-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium">当前 JSON 预设</span>
+                <span className="text-xs font-medium">{t('properties.currentJsonPreset')}</span>
                 <Button
                   variant="outline"
                   size="sm"
@@ -232,7 +234,7 @@ export function WorkflowPropertiesPanel({
                   onClick={() => navigator.clipboard.writeText(JSON.stringify(selectedJsonPreset, null, 2))}
                 >
                   <Copy className="h-3 w-3" />
-                  复制
+                  {t('properties.copy')}
                 </Button>
               </div>
               <JsonPreview value={{
@@ -292,7 +294,7 @@ export function WorkflowPropertiesPanel({
           inputFields={getOutputFields(data.inputFields)}
           properties={visibleProperties}
           propertyValues={data as Record<string, unknown>}
-          nodeLabel={node.label || '节点'}
+          nodeLabel={node.label || t('properties.node')}
           onOpenChange={setNodeTestDialogOpen}
           onSubmit={({ inputs, properties }) => onDebugNode?.(node.id, inputs, properties)}
         />

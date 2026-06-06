@@ -32,5 +32,14 @@
     "name": "New Workflow",
     "startLabel": "Start",
     "endLabel": "End"
+  },
+  "properties": {
+    "emptyNode": "Select a node to view properties",
+    "loopBodyHint": "Loop body nodes do not need separate configuration",
+    "testSuccess": "Test passed",
+    "testFailed": "Test failed",
+    "currentJsonPreset": "Current JSON Preset",
+    "copy": "Copy",
+    "node": "Node"
   }
 }
