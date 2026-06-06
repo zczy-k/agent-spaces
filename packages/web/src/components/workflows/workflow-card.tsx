@@ -58,20 +58,30 @@ export function WorkflowCard({ workflow, onDuplicate, onDelete }: WorkflowCardPr
         )}
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">
-            {workflow.nodes.length} 个节点
-          </span>
-          {workflow.tags && workflow.tags.length > 0 && (
-            <div className="flex gap-1">
-              {workflow.tags.slice(0, 2).map(tag => (
-                <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{tag}</span>
-              ))}
-              {workflow.tags.length > 2 && (
-                <span className="text-[10px] text-muted-foreground">+{workflow.tags.length - 2}</span>
-              )}
-            </div>
-          )}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">
+              {workflow.nodes.length} 个节点
+            </span>
+            {workflow.tags && workflow.tags.length > 0 && (
+              <div className="flex gap-1">
+                {workflow.tags.slice(0, 2).map(tag => (
+                  <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{tag}</span>
+                ))}
+                {workflow.tags.length > 2 && (
+                  <span className="text-[10px] text-muted-foreground">+{workflow.tags.length - 2}</span>
+                )}
+              </div>
+            )}
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={(e) => { e.stopPropagation(); nativeNavigate(router, `/workflows/${workflow.id}`); }}
+          >
+            <Pencil className="h-3 w-3" />
+          </Button>
         </div>
       </CardContent>
     </Card>

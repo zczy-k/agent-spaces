@@ -18,6 +18,7 @@ type FormatFileProps =
   | "img" | "png" | "jpg" | "jpeg" | "video";
 import { getWS } from '@/lib/ws';
 import { Loader2, Play, Square, Download } from 'lucide-react';
+import { BackButton } from '@/components/common/back-button';
 
 interface FileOutput {
   name: string;
@@ -172,6 +173,7 @@ export default function WorkflowSharePage() {
   return (
     <div className="h-full flex flex-col p-4 gap-3">
       <div className="flex items-center gap-3 shrink-0">
+        <BackButton />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             {workflow.icon ? <span className="text-xl leading-none">{workflow.icon}</span> : (

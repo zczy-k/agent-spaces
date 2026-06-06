@@ -5,7 +5,6 @@ import { useState, useEffect } from "react";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { DashboardSidebar } from "@/components/sidebar/app-sidebar";
 import { WorkspaceTabs } from "@/components/layout/workspace-tabs";
-import { DevInspector } from "@/components/layout/dev-inspector";
 import { WorkspaceDialog } from "@/components/workspace/workspace-dialog";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { isLoginPath, isWorkflowSharePath } from "@/lib/routes";
@@ -36,7 +35,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <DevInspector />
       <SidebarProvider className="h-[var(--app-content-height)] min-h-0 bg-[#f2f3f5] dark:bg-[#0f1117]">
         <DashboardSidebar />
         <SidebarInset className="!bg-transparent">

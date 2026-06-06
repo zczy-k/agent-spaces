@@ -4,6 +4,7 @@ import { LocaleProvider } from "@/components/layout/locale-provider";
 import { AuthGuard } from "@/components/layout/auth-guard";
 import { AppShell } from "@/components/layout/app-shell";
 import { ConsolePanel } from "@/components/common/console-panel";
+import { DevInspector } from "@/components/layout/dev-inspector";
 import { ViewportInsets } from "@/components/layout/viewport-insets";
 import { CommandPalette } from "@/components/layout/command-palette";
 import { ThemeStyleInit } from "@/components/layout/theme-style-init";
@@ -47,6 +48,7 @@ export default function RootLayout({
           <LocaleProvider>
             <ViewportInsets />
             <AuthGuard>
+              <DevInspector />
               <AppShell>{children}</AppShell>
               <CommandPalette />
               <Toaster richColors position="bottom-right" />
