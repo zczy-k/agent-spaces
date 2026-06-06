@@ -13,7 +13,7 @@ export function PluginIcon({ source, className }: { source: PluginIconSource; cl
       <img
         src={source.url}
         alt=""
-        className={className ?? 'h-4 w-4 object-contain'}
+        className={className ?? 'h-8 w-8 object-contain'}
         onError={(e) => {
           const img = e.currentTarget;
           img.style.display = 'none';

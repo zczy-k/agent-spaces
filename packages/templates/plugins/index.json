@@ -25,7 +25,7 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "aliyun-ai",
-    "iconUrl": "aliyun-ai/icon.svg"
+    "iconUrl": "plugins/aliyun-ai/icon.svg"
   },
   {
     "id": "workflow.aliyun-oss",
@@ -44,7 +44,7 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "aliyun_oss",
-    "iconUrl": "aliyun_oss/icon.png"
+    "iconUrl": "plugins/aliyun_oss/icon.png"
   },
   {
     "id": "workflow.asr",
@@ -178,7 +178,7 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "fish-audio",
-    "iconUrl": "fish-audio/icon.png"
+    "iconUrl": "plugins/fish-audio/icon.png"
   },
   {
     "id": "workflow.jimeng",
@@ -198,7 +198,7 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "jimeng",
-    "iconUrl": "jimeng/icon.png"
+    "iconUrl": "plugins/jimeng/icon.png"
   },
   {
     "id": "workflow.mail",
@@ -240,7 +240,7 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "minimax",
-    "iconUrl": "minimax/icon.svg"
+    "iconUrl": "plugins/minimax/icon.svg"
   },
   {
     "id": "workflow.openai",
@@ -264,7 +264,7 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "openai",
-    "iconUrl": "openai/icon.svg"
+    "iconUrl": "plugins/openai/icon.svg"
   },
   {
     "id": "workflow.tencent-cos",
