@@ -6,21 +6,30 @@ import React, {
   useRef,
   useEffect,
   useCallback,
+  useImperativeHandle,
+  forwardRef,
 } from 'react';
 import { motion } from 'motion/react';
 import { cn } from '@/lib/utils';
+
+export interface ExpandableDockHandle {
+  expand: () => void;
+  collapse: () => void;
+}
 
 interface ExpandableDockProps {
   headerContent: ReactNode;
   children: ReactNode;
   className?: string;
+  defaultExpanded?: boolean;
 }
 
-const ExpandableDock = ({
+const ExpandableDock = forwardRef<ExpandableDockHandle, ExpandableDockProps>(({
   headerContent,
   children,
   className,
-}: ExpandableDockProps) => {
+  defaultExpanded = false,
+}, ref) => {
   const [animationStage, setAnimationStage] = useState<
     | 'collapsed'
     | 'widthExpanding'
@@ -29,7 +38,7 @@ const ExpandableDock = ({
     | 'contentFadingOut'
     | 'heightCollapsing'
     | 'widthCollapsing'
-  >('collapsed');
+  >(defaultExpanded ? 'fullyExpanded' : 'collapsed');
 
   const containerRef = useRef<HTMLDivElement>(null);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -57,6 +66,8 @@ const ExpandableDock = ({
       setTimeout(() => setAnimationStage('collapsed'), 1050),
     );
   }, [clearTimers]);
+
+  useImperativeHandle(ref, () => ({ expand: handleExpand, collapse: handleCollapse }), [handleExpand, handleCollapse]);
 
   // 热加载后重置到 collapsed
   useEffect(() => {
@@ -133,6 +144,8 @@ const ExpandableDock = ({
       </motion.div>
     </div>
   );
-};
+});
+
+ExpandableDock.displayName = 'ExpandableDock';
 
 export default ExpandableDock;

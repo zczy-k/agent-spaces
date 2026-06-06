@@ -206,18 +206,18 @@ export function AgentDetail({
                 hideUploadLabel
               />
             </div>
-            <div className="flex flex-1 flex-col gap-1 pb-1">
+            <div className="flex flex-1 items-center gap-3 pb-1">
               <Input
                 value={agent.name}
                 onChange={(e) => onChange("name", e.target.value)}
-                className="h-7 text-sm font-medium border-0 px-0 shadow-none focus-visible:ring-0"
+                className="h-7 flex-1 text-sm font-medium border-0 px-0 shadow-none focus-visible:ring-0"
                 placeholder={t("detail.name")}
               />
               <select
                 value={agent.role}
                 onChange={(e) => onChange("role", e.target.value as AgentConfig["role"])}
                 disabled={lockedFields?.role}
-                className="h-6 w-full rounded-md border border-input bg-transparent px-2 text-xs outline-none focus-visible:border-ring dark:bg-input/30"
+                className="h-6 w-auto shrink-0 rounded-md border border-input bg-transparent px-2 text-xs outline-none focus-visible:border-ring dark:bg-input/30"
               >
                 {uniqueRoleOptions.map((role) => (
                   <option key={role} value={role}>

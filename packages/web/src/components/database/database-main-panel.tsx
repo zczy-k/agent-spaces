@@ -1,24 +1,24 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import {
   Plus, X, ChevronRight, Sidebar, Layers, BookOpen,
   Minimize2, Maximize2, Check, MoreHorizontal,
   CheckCircle, Sparkles, FileCheck, List, History,
-  Search, Trash,
+  Search, Trash, Trash2, RotateCcw, Info,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { htmlToMarkdown, markdownToHtml } from '@/lib/converter';
 import { useDatabaseStore } from '@/stores/database';
-import { PRESET_COVERS, type DatabaseNodeVersion } from '@agent-spaces/shared';
+import { PRESET_COVERS, type DatabaseNodeVersion, type DocNode } from '@agent-spaces/shared';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import NotionEditor from './notion-editor';
 import MarkdownEditor from './markdown-editor';
 import { TableOfContents, extractTocFromHtml, extractTocFromMarkdown } from './table-of-contents';
 import { VersionHistoryDialog } from './version-history-dialog';
 import QuickSearchContent from './quick-search-modal';
-import ExpandableDock from '@/components/ui/expandable-dock';
+import ExpandableDock, { type ExpandableDockHandle } from '@/components/ui/expandable-dock';
 import { ImagesBadge } from '@/components/ui/images-badge';
 import { FileCard } from '@/components/file-card-collections';
 import type { PanelImperativeHandle } from 'react-resizable-panels';
@@ -28,9 +28,10 @@ interface DatabaseMainPanelProps {
   sidebarPanelRef?: React.RefObject<PanelImperativeHandle | null>;
   showSaveSuccess?: boolean;
   onSave: () => void;
-  onOpenTrash?: () => void;
   trashCount?: number;
   onSelectNode?: (id: string) => void;
+  onRestoreNode?: (id: string) => void;
+  onDeleteNode?: (id: string) => void;
 }
 
 export function DatabaseMainPanel({
@@ -38,9 +39,10 @@ export function DatabaseMainPanel({
   sidebarPanelRef,
   showSaveSuccess,
   onSave,
-  onOpenTrash,
   trashCount = 0,
   onSelectNode,
+  onRestoreNode,
+  onDeleteNode,
 }: DatabaseMainPanelProps) {
   const {
     nodes, activeId, openTabs, editorMode, theme, isFullWidth,
@@ -55,6 +57,8 @@ export function DatabaseMainPanel({
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
+  const [dockTab, setDockTab] = useState<'search' | 'trash'>('search');
+  const dockRef = useRef<ExpandableDockHandle>(null);
 
   const activeNode = nodes.find(n => n.id === activeId);
   const wordCount = activeNode ? (activeNode.content.replace(/<[^>]*>/g, '').trim().length || 0) : 0;
@@ -344,14 +348,18 @@ export function DatabaseMainPanel({
       />
 
       <ExpandableDock
+        ref={dockRef}
         headerContent={
           <div className="flex items-center gap-3 w-full">
-            <div className="flex-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+            <button onClick={(e) => { e.stopPropagation(); setDockTab('search'); }}
+              className={cn("flex items-center gap-1.5 text-sm transition-colors cursor-pointer",
+                dockTab === 'search' ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
               <Search className="w-4 h-4" /><span>{t('globalSearch')}</span>
-            </div>
+            </button>
             <div className="w-px h-4 bg-border" />
-            <button onClick={(e) => { e.stopPropagation(); onOpenTrash(); }}
-              className="relative ml-auto flex items-center gap-1.5 text-sm text-muted-foreground hover:text-rose-400 transition-colors cursor-pointer">
+            <button onClick={(e) => { e.stopPropagation(); setDockTab('trash'); dockRef.current?.expand(); }}
+              className={cn("relative flex items-center gap-1.5 text-sm transition-colors cursor-pointer",
+                dockTab === 'trash' ? "text-rose-400" : "text-muted-foreground hover:text-rose-400")}>
               <Trash className="w-4 h-4" />
               {trashCount > 0 && (
                 <span className="ml-0.5 bg-rose-600 text-white text-[8px] min-w-3.5 h-3.5 rounded-full flex items-center justify-center font-semibold px-1">
@@ -362,8 +370,86 @@ export function DatabaseMainPanel({
           </div>
         }
       >
-        <QuickSearchContent nodes={nodes} onSelectNode={(id) => { onSelectNode?.(id); }} />
+        {dockTab === 'search' ? (
+          <QuickSearchContent nodes={nodes} onSelectNode={(id) => { onSelectNode?.(id); }} />
+        ) : (
+          <TrashBinContent
+            nodes={nodes}
+            onRestore={onRestoreNode ?? (() => {})}
+            onDeletePermanent={onDeleteNode ?? (() => {})}
+          />
+        )}
       </ExpandableDock>
+    </div>
+  );
+}
+
+function TrashBinContent({
+  nodes,
+  onRestore,
+  onDeletePermanent,
+}: {
+  nodes: DocNode[];
+  onRestore: (id: string) => void;
+  onDeletePermanent: (id: string) => void;
+}) {
+  const t = useTranslations('database');
+  const [filter, setFilter] = useState('');
+  const trashed = nodes.filter(n => n.isTrash);
+  const filtered = filter
+    ? trashed.filter(n => (n.title || '').toLowerCase().includes(filter.toLowerCase()))
+    : trashed;
+
+  if (trashed.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 text-center">
+        <span className="text-3xl mb-1.5">🍃</span>
+        <p className="text-sm text-muted-foreground">{t('trashEmpty')}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="px-2 pb-3 shrink-0 border-b border-border">
+        <div className="flex items-center gap-2 rounded-md bg-muted/50 border border-border focus-within:border-primary/50 transition-colors px-3 py-2">
+          <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+          <input type="text" placeholder={t('searchTrash')} value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="flex-1 bg-transparent text-foreground placeholder:text-muted-foreground/60 text-sm focus:outline-none" />
+        </div>
+      </div>
+      {filtered.length > 0 && (
+        <div className="flex items-center gap-1.5 text-[10px] text-amber-500 bg-amber-950/20 py-1.5 px-3 rounded-lg mx-2 mt-2 border border-amber-900/30">
+          <Info className="w-3.5 h-3.5 shrink-0" /><span>{t('permanentDeleteWarning')}</span>
+        </div>
+      )}
+      <div className="flex-1 overflow-y-auto p-2">
+        {filtered.length === 0 ? (
+          <div className="py-8 text-center text-xs text-muted-foreground italic">{t('noMatchTrash')}</div>
+        ) : (
+          <div className="space-y-1">
+            {filtered.map((node) => (
+              <div key={node.id} className="group hover:bg-muted/40 p-2.5 rounded-xl border border-transparent hover:border-border flex items-center justify-between gap-3 transition-all">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="text-lg bg-muted border border-border p-1 rounded-md shrink-0">{node.icon || '📝'}</span>
+                  <span className="text-xs font-medium text-foreground truncate">{node.title || t('untitled')}</span>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button onClick={() => onRestore(node.id)}
+                    className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-emerald-400 cursor-pointer" title={t('restore')}>
+                    <RotateCcw className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => { if (confirm(t('confirmPermanentDelete', { title: node.title || t('untitled') }))) onDeletePermanent(node.id); }}
+                    className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-red-400 cursor-pointer" title={t('permanentDelete')}>
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
