@@ -15,8 +15,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { pluginApi, type WorkflowPlugin } from '@/lib/workflow-plugin-api';
 import {
-  Layers, Loader2, Puzzle, Search, Tag, User, Wrench,
+  Layers, Loader2, Search, Tag, User, Wrench,
 } from 'lucide-react';
+import { resolveServerAssetUrl } from '@/lib/server';
+import { PluginIcon } from './workflow-plugin-icon';
 
 type PickerPlugin = WorkflowPlugin & {
   nodeCount: number;
@@ -158,6 +160,9 @@ export function WorkflowPluginPickerDialog({
             )}
             {!loading && filtered.map((plugin) => {
               const enabled = enabledSet.has(plugin.id);
+              const iconSource = plugin.iconPath
+                ? { type: 'url' as const, url: resolveServerAssetUrl(`/api/plugins/${encodeURIComponent(plugin.id)}/icon`) }
+                : { type: 'builtin' as const, variant: 'local' as const };
               return (
                 <HoverCard key={plugin.id} openDelay={400} closeDelay={150}>
                   <HoverCardTrigger>
@@ -172,7 +177,7 @@ export function WorkflowPluginPickerDialog({
                         enabled ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'
                       }`}
                       >
-                        <Puzzle className="h-5 w-5" />
+                        <PluginIcon source={iconSource} className="h-5 w-5" />
                       </div>
                       <span className="w-full truncate text-center text-xs font-medium leading-tight">
                         {plugin.name}

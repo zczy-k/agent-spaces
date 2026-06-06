@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Search } from 'lucide-react';
+import { WorkflowNodeDefinitionIcon } from './workflow-node-icon';
 
 type WorkflowNodeSelectDialogProps = {
   open: boolean;
@@ -24,26 +25,6 @@ function canCreateNode(workflow: Workflow, definition: NodeTypeDefinition): bool
 
 function getCreatableNodes(workflow: Workflow, nodes: NodeTypeDefinition[]): NodeTypeDefinition[] {
   return nodes.filter(node => node.manualCreate !== false && canCreateNode(workflow, node));
-}
-
-function NodeIcon({ name, className }: { name?: string; className?: string }) {
-  const icons: Record<string, string> = {
-    LogIn: '>',
-    LogOut: '<',
-    Terminal: '$',
-    Bell: '!',
-    GitBranch: '?',
-    Combine: '+',
-    RotateCw: '*',
-    Container: '[]',
-    Bot: 'AI',
-    MessageSquare: '"',
-    TextCursorInput: 'T',
-    ClipboardList: '#',
-    StickyNote: 'N',
-    Circle: 'o',
-  };
-  return <span className={className}>{icons[name || 'Circle'] || 'o'}</span>;
 }
 
 export function WorkflowNodeSelectDialog({
@@ -144,7 +125,7 @@ export function WorkflowNodeSelectDialog({
                       onClick={() => handleSelect(node.type)}
                     >
                       <span className="flex h-9 w-9 items-center justify-center rounded-md bg-muted text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
-                        <NodeIcon name={node.icon} className="text-xs font-medium" />
+                        <WorkflowNodeDefinitionIcon definition={node} className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-primary" />
                       </span>
                       <span className="line-clamp-2 w-full text-[11px] leading-tight">{node.label}</span>
                     </Button>
