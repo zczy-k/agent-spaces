@@ -139,7 +139,7 @@ const ExpandableDock = forwardRef<ExpandableDockHandle, ExpandableDockProps>(({
             isExpanded && 'border-t border-border',
           )}
         >
-          {headerContent}
+          <div className="flex-1 min-w-0">{headerContent}</div>
         </div>
       </motion.div>
     </div>

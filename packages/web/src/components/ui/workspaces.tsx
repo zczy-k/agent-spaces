@@ -122,8 +122,8 @@ function WorkspaceTrigger({
 
 	if (renderTrigger) {
 		return (
-			<PopoverTrigger>
-				<button className={className} {...props}>
+			<PopoverTrigger className="flex-1 min-w-0" {...props}>
+				<button className={cn('w-full', className)}>
 					{renderTrigger(selectedWorkspace, open)}
 				</button>
 			</PopoverTrigger>

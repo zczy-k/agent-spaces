@@ -350,15 +350,16 @@ export function DatabaseMainPanel({
       <ExpandableDock
         ref={dockRef}
         headerContent={
-          <div className="flex items-center gap-3 w-full">
+          <div className="flex items-center w-full">
             <button onClick={(e) => { e.stopPropagation(); setDockTab('search'); }}
               className={cn("flex items-center gap-1.5 text-sm transition-colors cursor-pointer",
                 dockTab === 'search' ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
               <Search className="w-4 h-4" /><span>{t('globalSearch')}</span>
             </button>
-            <div className="w-px h-4 bg-border" />
+            <div className="flex-1" />
+            <div className="w-px h-4 bg-border mx-3" />
             <button onClick={(e) => { e.stopPropagation(); setDockTab('trash'); dockRef.current?.expand(); }}
-              className={cn("relative flex items-center gap-1.5 text-sm transition-colors cursor-pointer",
+              className={cn("flex items-center gap-1.5 text-sm transition-colors cursor-pointer",
                 dockTab === 'trash' ? "text-rose-400" : "text-muted-foreground hover:text-rose-400")}>
               <Trash className="w-4 h-4" />
               {trashCount > 0 && (

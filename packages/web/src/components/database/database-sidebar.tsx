@@ -2,20 +2,14 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  Plus, X, ChevronDown, Edit2, Trash2,
+  Plus, X, Edit2, Trash2,
   Database, Brain, Check, SlidersHorizontal, Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
 import { useDatabaseStore } from '@/stores/database';
 import { NestedTree } from '@/components/editor/file-tree';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Workspaces, WorkspaceTrigger, WorkspaceContent } from '@/components/ui/workspaces';
 import { DatabaseTreeNode } from './database-tree-node';
 import { ImportFileDialog } from '@/components/editor/import-file-dialog';
 import { sdk } from '@/lib/sdk';
@@ -150,41 +144,52 @@ export function DatabaseSidebar({
             <span className="text-xs font-bold text-foreground tracking-tight">{t('knowledgeBase')}</span>
             <span className="text-[10px] text-muted-foreground font-medium font-mono leading-none mt-0.5">Database</span>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger className="min-w-0 flex-1 flex items-center justify-between gap-2 rounded-lg px-1.5 py-1 text-left hover:bg-accent outline-none" title={activeDatabase?.name ?? 'Database'}>
-              <div className="min-w-0 flex flex-col">
-                <span className="text-xs font-bold text-foreground tracking-tight truncate">{activeDatabase?.name ?? 'Database'}</span>
-                <span className="text-[10px] text-muted-foreground font-medium font-mono leading-none mt-0.5">Database</span>
-              </div>
-              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56">
-              {databases.map((database) => (
-                <DropdownMenuItem key={database.id} onClick={() => { if (database.id !== activeDatabaseId) void setActiveDatabaseId(workspaceId, database.id); }} className="cursor-pointer">
-                  <Database className="w-4 h-4" />
-                  <span className="truncate flex-1">{database.name}</span>
-                  {database.id === activeDatabaseId && <Check className="w-4 h-4" />}
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={onOpenCreateDatabase} className="cursor-pointer">
+          <Workspaces
+            workspaces={databases as any}
+            selectedWorkspaceId={activeDatabaseId ?? undefined}
+            onWorkspaceChange={(db) => { if (db.id !== activeDatabaseId) void setActiveDatabaseId(workspaceId, db.id); }}
+            getWorkspaceId={(db) => db.id}
+            getWorkspaceName={(db) => db.name}
+          >
+            <WorkspaceTrigger
+              className="min-w-0 flex-1 flex items-center justify-between gap-2 rounded-lg px-1.5 py-1 text-left hover:bg-accent outline-none border border-dashed border-border w-full"
+              renderTrigger={(workspace) => (
+                <div className="min-w-0 flex flex-col">
+                  <span className="text-xs font-bold text-foreground tracking-tight truncate">{workspace.name}</span>
+                  <span className="text-[10px] text-muted-foreground font-medium font-mono leading-none mt-0.5">Database</span>
+                </div>
+              )}
+            />
+            <WorkspaceContent
+              align="start"
+              className="w-56"
+              title={t('knowledgeBase')}
+              renderWorkspace={(workspace, isSelected) => (
+                <>
+                  <Database className="w-4 h-4 shrink-0" />
+                  <span className="truncate flex-1 text-sm">{workspace.name}</span>
+                  {isSelected && <Check className="w-4 h-4 shrink-0" />}
+                </>
+              )}
+            >
+              <button onClick={onOpenCreateDatabase} className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer">
                 <Plus className="w-4 h-4" />
                 <span>{t('createDatabase')}</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={onOpenEditDatabase} disabled={!activeDatabase} className="cursor-pointer">
+              </button>
+              <button onClick={onOpenEditDatabase} disabled={!activeDatabase} className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer disabled:opacity-50 disabled:pointer-events-none">
                 <Edit2 className="w-4 h-4" />
                 <span>{t('editDatabase')}</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={onOpenVectorDialog} disabled={!activeDatabase} className="cursor-pointer">
+              </button>
+              <button onClick={onOpenVectorDialog} disabled={!activeDatabase} className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer disabled:opacity-50 disabled:pointer-events-none">
                 <Brain className="w-4 h-4" />
                 <span>{t('vectorSettings')}</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleDeleteDatabase} disabled={!activeDatabase || databases.length <= 1} variant="destructive" className="cursor-pointer">
+              </button>
+              <button onClick={handleDeleteDatabase} disabled={!activeDatabase || databases.length <= 1} className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground text-destructive cursor-pointer disabled:opacity-50 disabled:pointer-events-none">
                 <Trash2 className="w-4 h-4" />
                 <span>{t('deleteDatabase')}</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </button>
+            </WorkspaceContent>
+          </Workspaces>
         </div>
       </div>
 
