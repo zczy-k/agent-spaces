@@ -38,6 +38,7 @@ import {
   PropertyField,
 } from './workflow-properties-fields';
 import type { WorkflowVariableContext } from './workflow-variable-picker';
+import { ExecutionNodeDialog } from './workflow-execution-node-dialog';
 
 interface PropertiesPanelProps {
   node: WorkflowNode | null;
@@ -48,7 +49,7 @@ interface PropertiesPanelProps {
   debugNodeId?: string | null;
   debugStatus?: 'idle' | 'running' | 'completed' | 'error';
   debugResult?: DebugResult | null;
-  onDebugNode?: (nodeId: string) => void;
+  onDebugNode?: (nodeId: string, inputs?: Record<string, unknown>) => void;
   onCancelDebug?: () => void;
 }
 
@@ -75,6 +76,7 @@ export function WorkflowPropertiesPanel({
   const [collapsedKeys, setCollapsedKeys] = useState<Set<string>>(() => new Set());
   const [variableModeEnabled, setVariableModeEnabled] = useState<Set<string>>(() => new Set());
   const [variableModeDisabled, setVariableModeDisabled] = useState<Set<string>>(() => new Set());
+  const [nodeTestDialogOpen, setNodeTestDialogOpen] = useState(false);
 
   const definition = useMemo(() => node ? getNodeDefinition(node.type) : null, [node]);
   const data = useMemo(() => node?.data ?? {}, [node?.data]);
@@ -316,7 +318,12 @@ export function WorkflowPropertiesPanel({
                 if (isDebugging) {
                   onCancelDebug?.();
                 } else if (node) {
-                  onDebugNode(node.id);
+                  const fields = getOutputFields(data.inputFields);
+                  if (fields.length > 0) {
+                    setNodeTestDialogOpen(true);
+                  } else {
+                    onDebugNode(node.id);
+                  }
                 }
               }}
             >
@@ -603,6 +610,16 @@ export function WorkflowPropertiesPanel({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {node && (
+        <ExecutionNodeDialog
+          open={nodeTestDialogOpen}
+          fields={getOutputFields(data.inputFields)}
+          nodeLabel={node.label || '节点'}
+          onOpenChange={setNodeTestDialogOpen}
+          onSubmit={inputs => onDebugNode?.(node.id, inputs)}
+        />
+      )}
     </div>
   );
 }
