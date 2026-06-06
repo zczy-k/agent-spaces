@@ -30,6 +30,17 @@ export function useFlowCanvas() {
 
 // ---- useEditorShortcuts ----
 
+function isEditableKeyboardTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+
+  return (
+    target instanceof HTMLInputElement
+    || target instanceof HTMLTextAreaElement
+    || target instanceof HTMLSelectElement
+    || target.isContentEditable
+  );
+}
+
 export function useEditorShortcuts({
   onSave,
   onUndo,
@@ -47,31 +58,32 @@ export function useEditorShortcuts({
 }) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+      const isEditableTarget = isEditableKeyboardTarget(e.target);
+      const key = e.key.toLowerCase();
+
+      if ((e.metaKey || e.ctrlKey) && key === 's') {
         e.preventDefault();
         onSave?.();
       }
-      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+      if (!isEditableTarget && (e.metaKey || e.ctrlKey) && key === 'z' && !e.shiftKey) {
         e.preventDefault();
         onUndo?.();
       }
-      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && e.shiftKey) {
+      if (!isEditableTarget && (e.metaKey || e.ctrlKey) && key === 'z' && e.shiftKey) {
         e.preventDefault();
         onRedo?.();
       }
-      if ((e.metaKey || e.ctrlKey) && e.key === 'y') {
+      if (!isEditableTarget && (e.metaKey || e.ctrlKey) && key === 'y') {
         e.preventDefault();
         onRedo?.();
       }
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
-          onDelete?.();
-        }
+      if (!isEditableTarget && (e.key === 'Delete' || e.key === 'Backspace')) {
+        onDelete?.();
       }
-      if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
+      if (!isEditableTarget && (e.metaKey || e.ctrlKey) && key === 'c') {
         onCopy?.();
       }
-      if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
+      if (!isEditableTarget && (e.metaKey || e.ctrlKey) && key === 'v') {
         onPaste?.();
       }
     };
