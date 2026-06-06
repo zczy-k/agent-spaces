@@ -14,6 +14,7 @@ import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Save, Trash2, RotateCcw, Plus, GitBranch, Loader2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface VersionPanelProps {
   workflowId: string;
@@ -23,6 +24,7 @@ interface VersionPanelProps {
 }
 
 export function WorkflowVersionPanel({ workflowId, nodes, edges, onRestore }: VersionPanelProps) {
+  const t = useTranslations('workflows');
   const [versions, setVersions] = useState<WorkflowVersion[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -82,14 +84,14 @@ export function WorkflowVersionPanel({ workflowId, nodes, edges, onRestore }: Ve
       <div className="p-3 space-y-3">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium">{versions.length} 个版本</span>
+          <span className="text-xs font-medium">{t('version.count', { count: versions.length })}</span>
           <div className="flex gap-1">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger render={<Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setDialogOpen(true)} />}>
                   <Plus className="h-3 w-3" />
                 </TooltipTrigger>
-                <TooltipContent side="left">保存当前版本</TooltipContent>
+                <TooltipContent side="left">{t('version.saveCurrent')}</TooltipContent>
               </Tooltip>
             </TooltipProvider>
             {versions.length > 0 && (
@@ -98,7 +100,7 @@ export function WorkflowVersionPanel({ workflowId, nodes, edges, onRestore }: Ve
                   <TooltipTrigger render={<Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={handleClear} />}>
                     <Trash2 className="h-3 w-3" />
                   </TooltipTrigger>
-                  <TooltipContent side="left">清空所有版本</TooltipContent>
+                  <TooltipContent side="left">{t('version.clearAll')}</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             )}
@@ -108,7 +110,7 @@ export function WorkflowVersionPanel({ workflowId, nodes, edges, onRestore }: Ve
         {/* Version list */}
         {versions.length === 0 ? (
           <div className="text-xs text-muted-foreground text-center py-6">
-            暂无版本记录
+            {t('version.empty')}
           </div>
         ) : (
           <div className="space-y-1">
@@ -121,7 +123,7 @@ export function WorkflowVersionPanel({ workflowId, nodes, edges, onRestore }: Ve
                 <div className="flex-1 min-w-0">
                   <div className="text-xs truncate">{v.name}</div>
                   <div className="text-[10px] text-muted-foreground">
-                    {v.snapshot?.nodes?.length || 0} 节点 · {formatTime(v.createdAt)}
+                    {t('version.nodes', { count: v.snapshot?.nodes?.length || 0 })} · {formatTime(v.createdAt, t)}
                   </div>
                 </div>
                 <div className="hidden group-hover:flex gap-0.5">
@@ -148,21 +150,21 @@ export function WorkflowVersionPanel({ workflowId, nodes, edges, onRestore }: Ve
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-sm">保存版本</DialogTitle>
+            <DialogTitle className="text-sm">{t('version.saveTitle')}</DialogTitle>
           </DialogHeader>
           <Input
             value={versionName}
             onChange={(e) => setVersionName(e.target.value)}
-            placeholder="版本名称"
+            placeholder={t('version.namePlaceholder')}
             className="h-8 text-sm"
             onKeyDown={(e) => { if (e.key === 'Enter') handleCreate(); }}
             autoFocus
           />
           <DialogFooter>
-            <Button variant="ghost" size="sm" onClick={() => setDialogOpen(false)}>取消</Button>
+            <Button variant="ghost" size="sm" onClick={() => setDialogOpen(false)}>{t('version.cancel')}</Button>
             <Button size="sm" onClick={handleCreate} disabled={creating || !versionName.trim()}>
               {creating ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Save className="h-3 w-3 mr-1" />}
-              保存
+              {t('version.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -172,12 +174,12 @@ export function WorkflowVersionPanel({ workflowId, nodes, edges, onRestore }: Ve
       <Dialog open={!!confirmDeleteId} onOpenChange={() => setConfirmDeleteId(null)}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-sm">确认删除</DialogTitle>
+            <DialogTitle className="text-sm">{t('version.deleteTitle')}</DialogTitle>
           </DialogHeader>
-          <p className="text-xs text-muted-foreground">确定要删除这个版本吗？此操作不可撤销。</p>
+          <p className="text-xs text-muted-foreground">{t('version.deleteConfirm')}</p>
           <DialogFooter>
-            <Button variant="ghost" size="sm" onClick={() => setConfirmDeleteId(null)}>取消</Button>
-            <Button variant="destructive" size="sm" onClick={() => confirmDeleteId && handleDelete(confirmDeleteId)}>删除</Button>
+            <Button variant="ghost" size="sm" onClick={() => setConfirmDeleteId(null)}>{t('version.cancel')}</Button>
+            <Button variant="destructive" size="sm" onClick={() => confirmDeleteId && handleDelete(confirmDeleteId)}>{t('version.delete')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -185,14 +187,14 @@ export function WorkflowVersionPanel({ workflowId, nodes, edges, onRestore }: Ve
   );
 }
 
-function formatTime(ts: number | string | undefined): string {
+function formatTime(ts: number | string | undefined, t: (key: string, params?: Record<string, unknown>) => string): string {
   if (!ts) return '';
   const d = new Date(typeof ts === 'string' ? ts : ts);
   if (isNaN(d.getTime())) return '';
   const now = new Date();
   const diffMs = now.getTime() - d.getTime();
-  if (diffMs < 60000) return '刚刚';
-  if (diffMs < 3600000) return `${Math.floor(diffMs / 60000)} 分钟前`;
-  if (diffMs < 86400000) return `${Math.floor(diffMs / 3600000)} 小时前`;
-  return d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  if (diffMs < 60000) return t('version.justNow');
+  if (diffMs < 3600000) return t('version.minutesAgo', { count: Math.floor(diffMs / 60000) });
+  if (diffMs < 86400000) return t('version.hoursAgo', { count: Math.floor(diffMs / 3600000) });
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }

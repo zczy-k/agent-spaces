@@ -79,9 +79,7 @@ export function DatabaseSidebarPanel({ workspaceId }: Props) {
     <>
       <DatabaseSidebar
         workspaceId={workspaceId}
-        onOpenSearch={() => setIsSearchOpen(true)}
-        onOpenTrash={() => setIsTrashOpen(true)}
-        onOpenCreateDatabase={openCreateDatabaseDialog}
+onOpenCreateDatabase={openCreateDatabaseDialog}
         onOpenEditDatabase={openEditDatabaseDialog}
         onOpenVectorDialog={() => setVectorDialogOpen(true)}
         onSave={triggerSave}

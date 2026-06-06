@@ -18,6 +18,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { useTranslations } from 'next-intl';
 
 interface StagingPanelProps {
   workflowId: string;
@@ -31,6 +32,7 @@ function SortableStagedItem({
   onDelete: () => void;
   onUse: () => void;
 }) {
+  const t = useTranslations('workflows');
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: node.id });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -50,7 +52,7 @@ function SortableStagedItem({
       </button>
       <div className="flex-1 min-w-0">
         <div className="text-xs truncate">{label}</div>
-        <div className="text-[9px] text-muted-foreground">{def?.category || '未分类'}</div>
+        <div className="text-[9px] text-muted-foreground">{def?.category || t('staging.uncategorized')}</div>
       </div>
       <div className="hidden group-hover:flex gap-0.5">
         <Button variant="ghost" size="icon" className="h-5 w-5" onClick={onUse}>
@@ -65,6 +67,7 @@ function SortableStagedItem({
 }
 
 export function WorkflowStagingPanel({ workflowId, onAddFromStaging }: StagingPanelProps) {
+  const t = useTranslations('workflows');
   const [nodes, setNodes] = useState<StagedNode[]>([]);
   const [loading, setLoading] = useState(true);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -124,7 +127,7 @@ export function WorkflowStagingPanel({ workflowId, onAddFromStaging }: StagingPa
       <div className="p-3 space-y-3">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium">{nodes.length} 个暂存节点</span>
+          <span className="text-xs font-medium">{t('staging.count', { count: nodes.length })}</span>
           {nodes.length > 0 && (
             <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={handleClear}>
               <Trash2 className="h-3 w-3" />
@@ -136,8 +139,8 @@ export function WorkflowStagingPanel({ workflowId, onAddFromStaging }: StagingPa
         {nodes.length === 0 ? (
           <div className="text-xs text-muted-foreground text-center py-6">
             <Inbox className="h-6 w-6 mx-auto mb-2 opacity-50" />
-            <p>暂存区为空</p>
-            <p className="text-[10px] mt-1">将节点拖入此区域保存备用</p>
+            <p>{t('staging.empty')}</p>
+            <p className="text-[10px] mt-1">{t('staging.emptyHint')}</p>
           </div>
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>

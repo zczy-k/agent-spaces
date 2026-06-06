@@ -85,7 +85,6 @@
     "back": "返回",
     "noWorkflow": "未选择工作流",
     "properties": "属性",
-    "versions": "版本",
     "history": "历史",
     "staging": "暂存",
     "agentName": "工作流助手",
@@ -94,5 +93,48 @@
     "clearMessages": "清空消息",
     "agentSettingsTitle": "工作流助手模型设置",
     "loadingShort": "加载中..."
+  },
+  "version": {
+    "count": "{count} 个版本",
+    "saveCurrent": "保存当前版本",
+    "clearAll": "清空所有版本",
+    "empty": "暂无版本记录",
+    "nodes": "{count} 节点",
+    "saveTitle": "保存版本",
+    "namePlaceholder": "版本名称",
+    "cancel": "取消",
+    "save": "保存",
+    "deleteTitle": "确认删除",
+    "deleteConfirm": "确定要删除这个版本吗？此操作不可撤销。",
+    "delete": "删除",
+    "justNow": "刚刚",
+    "minutesAgo": "{count} 分钟前",
+    "hoursAgo": "{count} 小时前"
+  },
+  "operationHistory": {
+    "undo": "撤销 ({count})",
+    "redo": "重做 ({count})",
+    "undoable": "{count} 可撤销",
+    "redoable": "{count} 可重做",
+    "recordCount": "{count} 条记录",
+    "empty": "暂无操作记录",
+    "addNode": "添加节点",
+    "deleteNode": "删除节点",
+    "delete": "删除",
+    "connect": "连接",
+    "deleteEdge": "删除连线",
+    "paste": "粘贴",
+    "move": "移动节点",
+    "updateData": "更新属性",
+    "addGroup": "添加分组",
+    "deleteGroup": "删除分组",
+    "updateTrigger": "更新触发器",
+    "import": "导入"
+  },
+  "staging": {
+    "count": "{count} 个暂存节点",
+    "empty": "暂存区为空",
+    "emptyHint": "将节点拖入此区域保存备用",
+    "uncategorized": "未分类"
   }
 }

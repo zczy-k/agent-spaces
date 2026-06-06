@@ -5,6 +5,7 @@ import {
   Plus, X, ChevronRight, Sidebar, Layers, BookOpen,
   Minimize2, Maximize2, Check, MoreHorizontal,
   CheckCircle, Sparkles, FileCheck, List, History,
+  Search, Trash,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
@@ -16,6 +17,7 @@ import NotionEditor from './notion-editor';
 import MarkdownEditor from './markdown-editor';
 import { TableOfContents, extractTocFromHtml, extractTocFromMarkdown } from './table-of-contents';
 import { VersionHistoryDialog } from './version-history-dialog';
+import ExpandableDock from '@/components/ui/expandable-dock';
 import type { PanelImperativeHandle } from 'react-resizable-panels';
 
 interface DatabaseMainPanelProps {
@@ -23,6 +25,9 @@ interface DatabaseMainPanelProps {
   sidebarPanelRef?: React.RefObject<PanelImperativeHandle | null>;
   showSaveSuccess?: boolean;
   onSave: () => void;
+  onOpenSearch?: () => void;
+  onOpenTrash?: () => void;
+  trashCount?: number;
 }
 
 export function DatabaseMainPanel({
@@ -30,6 +35,9 @@ export function DatabaseMainPanel({
   sidebarPanelRef,
   showSaveSuccess,
   onSave,
+  onOpenSearch,
+  onOpenTrash,
+  trashCount = 0,
 }: DatabaseMainPanelProps) {
   const {
     nodes, activeId, openTabs, editorMode, theme, isFullWidth,
@@ -316,6 +324,27 @@ export function DatabaseMainPanel({
         error={historyError}
         workspaceId={workspaceId}
         activeNodeTitle={activeNode?.title}
+      />
+
+      <ExpandableDock
+        headerContent={
+          <div className="flex items-center gap-3 w-full" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+            <button onClick={onOpenSearch}
+              className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors cursor-pointer">
+              <Search className="w-4 h-4" /><span>{t('globalSearch')}</span>
+            </button>
+            <div className="w-px h-4 bg-gray-700" />
+            <button onClick={onOpenTrash}
+              className="relative flex items-center gap-1.5 text-sm text-gray-400 hover:text-rose-400 transition-colors cursor-pointer">
+              <Trash className="w-4 h-4" />
+              {trashCount > 0 && (
+                <span className="ml-0.5 bg-rose-600 text-white text-[8px] min-w-3.5 h-3.5 rounded-full flex items-center justify-center font-semibold px-1">
+                  {trashCount}
+                </span>
+              )}
+            </button>
+          </div>
+        }
       />
     </div>
   );

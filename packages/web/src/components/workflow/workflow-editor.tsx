@@ -24,7 +24,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ResizablePanel, ResizableHandle, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ExpandableTabs } from '@/components/ui/expandable-tabs';
-import { Loader2, AlertCircle, Settings2, Trash2, History, Layers, Package } from 'lucide-react';
+import { Loader2, AlertCircle, Settings2, Trash2, History, Package } from 'lucide-react';
 import { useEditorShortcuts, useClipboard, useExecutionPanel } from '@/hooks/use-workflow-editor';
 import { Button } from '@/components/ui/button';
 import { useWorkspaceStore } from '@/stores/workspace';
@@ -252,7 +252,6 @@ function WorkflowEditorInner({
             <ExpandableTabs
               tabs={[
                 { title: t('editor.properties'), icon: Settings2, value: 'properties' },
-                { title: t('editor.versions'), icon: Layers, value: 'versions' },
                 { title: t('editor.history'), icon: History, value: 'history' },
                 { title: t('editor.staging'), icon: Package, value: 'staging' },
               ]}
@@ -274,30 +273,35 @@ function WorkflowEditorInner({
                 onCancelDebug={execution.handleCancelDebug}
               />
             </TabsContent>
-            <TabsContent value="versions" className="flex-1 min-h-0 m-0">
-              <WorkflowVersionPanel
-                workflowId={workflow.id}
-                nodes={workflow.nodes}
-                edges={workflow.edges}
-                onRestore={(version) => {
-                  state.pushUndo('restore version');
-                  state.setWorkflow(w => w ? {
-                    ...w,
-                    nodes: version.snapshot?.nodes || [],
-                    edges: (version.snapshot?.edges || []) as typeof workflow.edges,
-                  } : null);
-                  state.markDirty();
-                }}
-              />
-            </TabsContent>
             <TabsContent value="history" className="flex-1 min-h-0 m-0">
-              <WorkflowOperationHistory
-                workflowId={workflow.id}
-                currentUndoCount={state.undoStack.length}
-                currentRedoCount={state.redoStack.length}
-                onUndo={state.handleUndo}
-                onRedo={state.handleRedo}
-              />
+              <ResizablePanelGroup orientation="vertical" className="h-full">
+                <ResizablePanel id="history-versions" defaultSize="50%" minSize="20%">
+                  <WorkflowVersionPanel
+                    workflowId={workflow.id}
+                    nodes={workflow.nodes}
+                    edges={workflow.edges}
+                    onRestore={(version) => {
+                      state.pushUndo('restore version');
+                      state.setWorkflow(w => w ? {
+                        ...w,
+                        nodes: version.snapshot?.nodes || [],
+                        edges: (version.snapshot?.edges || []) as typeof workflow.edges,
+                      } : null);
+                      state.markDirty();
+                    }}
+                  />
+                </ResizablePanel>
+                <ResizableHandle withHandle />
+                <ResizablePanel id="history-operations" defaultSize="50%" minSize="20%">
+                  <WorkflowOperationHistory
+                    workflowId={workflow.id}
+                    currentUndoCount={state.undoStack.length}
+                    currentRedoCount={state.redoStack.length}
+                    onUndo={state.handleUndo}
+                    onRedo={state.handleRedo}
+                  />
+                </ResizablePanel>
+              </ResizablePanelGroup>
             </TabsContent>
             <TabsContent value="staging" className="flex-1 min-h-0 m-0">
               <WorkflowStagingPanel

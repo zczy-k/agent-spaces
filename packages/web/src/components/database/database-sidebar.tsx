@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  Plus, Trash, X, Search, ChevronDown, Edit2, Trash2,
+  Plus, X, ChevronDown, Edit2, Trash2,
   Database, Brain, Check, SlidersHorizontal, Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -23,8 +23,6 @@ import type { DocNode } from '@agent-spaces/shared';
 
 interface DatabaseSidebarProps {
   workspaceId: string;
-  onOpenSearch: () => void;
-  onOpenTrash: () => void;
   onOpenCreateDatabase: () => void;
   onOpenEditDatabase: () => void;
   onOpenVectorDialog: () => void;
@@ -286,23 +284,6 @@ export function DatabaseSidebar({
             </div>
           </div>
         )}
-      </div>
-
-      {/* Sidebar bottom */}
-      <div className="px-2 py-1.5 border-t border-border bg-sidebar flex items-center gap-1.5 shrink-0">
-        <button onClick={onOpenSearch}
-          className="flex-1 flex items-center justify-between bg-background hover:bg-muted border border-border text-muted-foreground hover:text-foreground transition-all h-7 px-2.5 rounded-md text-[11px] cursor-pointer">
-          <div className="flex items-center gap-1.5"><Search className="w-3 h-3" /><span>{t('globalSearch')}</span></div>
-        </button>
-        <button onClick={onOpenTrash}
-          className="relative w-7 h-7 shrink-0 flex items-center justify-center rounded-md bg-background hover:bg-muted text-muted-foreground hover:text-rose-400 border border-border transition-all cursor-pointer group" title={t('trashBin')}>
-          <Trash className="w-3 h-3 text-rose-500" />
-          {nodes.filter(n => n.isTrash).length > 0 && (
-            <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[8px] w-3.5 h-3.5 rounded-full flex items-center justify-center font-semibold border border-sidebar">
-              {nodes.filter(n => n.isTrash).length}
-            </span>
-          )}
-        </button>
       </div>
 
       <ImportFileDialog

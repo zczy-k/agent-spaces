@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import type { OperationEntry } from '@agent-spaces/shared';
 import { operationHistoryApi } from '@/lib/workflow-api';
 import { Button } from '@/components/ui/button';
@@ -19,19 +20,19 @@ interface OperationHistoryProps {
   onRedo: () => void;
 }
 
-const OPERATION_LABELS: Record<string, string> = {
-  'add node': '添加节点',
-  'delete node': '删除节点',
-  'delete': '删除',
-  'connect': '连接',
-  'delete edge': '删除连线',
-  'paste': '粘贴',
-  'move': '移动节点',
-  'update data': '更新属性',
-  'add group': '添加分组',
-  'delete group': '删除分组',
-  'update trigger': '更新触发器',
-  'import': '导入',
+const OPERATION_LABEL_KEYS: Record<string, string> = {
+  'add node': 'operationHistory.addNode',
+  'delete node': 'operationHistory.deleteNode',
+  'delete': 'operationHistory.delete',
+  'connect': 'operationHistory.connect',
+  'delete edge': 'operationHistory.deleteEdge',
+  'paste': 'operationHistory.paste',
+  'move': 'operationHistory.move',
+  'update data': 'operationHistory.updateData',
+  'add group': 'operationHistory.addGroup',
+  'delete group': 'operationHistory.deleteGroup',
+  'update trigger': 'operationHistory.updateTrigger',
+  'import': 'operationHistory.import',
 };
 
 const OPERATION_COLORS: Record<string, string> = {
@@ -49,6 +50,7 @@ export function WorkflowOperationHistory({
   workflowId, currentUndoCount, currentRedoCount, onUndo, onRedo,
 }: OperationHistoryProps) {
   const [entries, setEntries] = useState<OperationEntry[]>([]);
+  const t = useTranslations('workflows');
   const [loading, setLoading] = useState(true);
 
   const loadHistory = useCallback(async () => {
@@ -93,7 +95,7 @@ export function WorkflowOperationHistory({
                   <Undo2 className="h-3 w-3" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>撤销 ({currentUndoCount})</TooltipContent>
+              <TooltipContent>{t('operationHistory.undo', { count: currentUndoCount })}</TooltipContent>
             </Tooltip>
           </TooltipProvider>
 
@@ -108,18 +110,18 @@ export function WorkflowOperationHistory({
                   <Redo2 className="h-3 w-3" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>重做 ({currentRedoCount})</TooltipContent>
+              <TooltipContent>{t('operationHistory.redo', { count: currentRedoCount })}</TooltipContent>
             </Tooltip>
           </TooltipProvider>
 
           <span className="flex-1 text-[10px] text-muted-foreground text-right">
-            {currentUndoCount} 可撤销 / {currentRedoCount} 可重做
+            {t('operationHistory.undoable', { count: currentUndoCount })} / {t('operationHistory.redoable', { count: currentRedoCount })}
           </span>
         </div>
 
         {/* Header */}
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium">{entries.length} 条记录</span>
+          <span className="text-xs font-medium">{t('operationHistory.recordCount', { count: entries.length })}</span>
           {entries.length > 0 && (
             <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={handleClear}>
               <Trash2 className="h-3 w-3" />
@@ -131,7 +133,7 @@ export function WorkflowOperationHistory({
         {entries.length === 0 ? (
           <div className="text-xs text-muted-foreground text-center py-6">
             <History className="h-6 w-6 mx-auto mb-2 opacity-50" />
-            暂无操作记录
+            {t('operationHistory.empty')}
           </div>
         ) : (
           <div className="space-y-0.5">
@@ -139,7 +141,8 @@ export function WorkflowOperationHistory({
               // Parse operation type from description (format: "type: detail" or just description)
               const desc = entry.description || '';
               const opType = desc.split(':')[0]?.trim() || '';
-              const label = OPERATION_LABELS[opType] || opType || desc;
+              const labelKey = OPERATION_LABEL_KEYS[opType];
+              const label = labelKey ? t(labelKey) : opType || desc;
               const colorClass = OPERATION_COLORS[opType] || 'bg-slate-500/10 text-slate-600';
               return (
                 <div
@@ -168,5 +171,5 @@ export function WorkflowOperationHistory({
 function formatTime(ts: number | undefined): string {
   if (!ts) return '';
   const d = new Date(ts);
-  return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
