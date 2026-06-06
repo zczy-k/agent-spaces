@@ -45,6 +45,9 @@ export function OutputFieldsEditor({
     if (patch.type && patch.type !== 'object') {
       next[index].children = undefined;
     }
+    if (patch.type && patch.type !== 'file') {
+      next[index].fileNameFilter = undefined;
+    }
     if (patch.type === 'object' && !next[index].children) {
       next[index].children = [];
       next[index].value = undefined;
@@ -120,7 +123,15 @@ export function OutputFieldsEditor({
           </div>
           {expandedFields.has(index) && field.type !== 'object' && (
             <div className="space-y-0.5" style={{ paddingLeft: `${indent + 20}px` }}>
-              <InputGroup className="h-6 min-h-0 rounded-md">
+              {field.type === 'file' ? (
+                <Input
+                  value={field.fileNameFilter ?? ''}
+                  onChange={(e) => updateField(index, { fileNameFilter: e.target.value || undefined })}
+                  placeholder="File name filter, e.g. *.pdf, .png"
+                  className="h-6 text-[11px]"
+                />
+              ) : (
+                <InputGroup className="h-6 min-h-0 rounded-md">
                 <InputGroupInput
                   value={field.value ?? ''}
                   onChange={(e) => updateField(index, { value: e.target.value })}
@@ -135,7 +146,8 @@ export function OutputFieldsEditor({
                     />
                   </InputGroupAddon>
                 )}
-              </InputGroup>
+                </InputGroup>
+              )}
               <Input
                 value={field.description ?? ''}
                 onChange={(e) => updateField(index, { description: e.target.value || undefined })}

@@ -18,7 +18,7 @@ export type JsonPreset = {
 export const JSON_PRESETS_KEY = '__jsonPresets';
 export const SELECTED_JSON_PRESET_KEY = '__selectedJsonPresetId';
 
-export const FIELD_TYPES: OutputField['type'][] = ['string', 'number', 'boolean', 'object', 'any'];
+export const FIELD_TYPES: OutputField['type'][] = ['string', 'number', 'boolean', 'object', 'file', 'any'];
 
 export function isPlainObject(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
@@ -51,6 +51,7 @@ export function getOutputFields(value: unknown): OutputField[] {
     key: typeof item.key === 'string' ? item.key : '',
     type: FIELD_TYPES.includes(item.type as OutputField['type']) ? item.type as OutputField['type'] : 'any',
     value: typeof item.value === 'string' ? item.value : undefined,
+    fileNameFilter: typeof item.fileNameFilter === 'string' ? item.fileNameFilter : undefined,
     description: typeof item.description === 'string' ? item.description : undefined,
     required: typeof item.required === 'boolean' ? item.required : undefined,
     children: getOutputFields(item.children),

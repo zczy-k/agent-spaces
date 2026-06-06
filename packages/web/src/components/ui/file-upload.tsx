@@ -15,6 +15,7 @@ interface FileUploadProps {
   value?: FileUploadFile[];
   onChange?: (files: FileUploadFile[]) => void;
   accept?: Accept;
+  fileNameFilter?: string;
   maxFiles?: number;
   maxSize?: number;
   disabled?: boolean;
@@ -28,6 +29,7 @@ export function FileUpload({
   value = [],
   onChange,
   accept,
+  fileNameFilter,
   maxFiles = 0,
   maxSize,
   disabled = false,
@@ -35,6 +37,7 @@ export function FileUpload({
   placeholder,
 }: FileUploadProps) {
   const [dragError, setDragError] = useState<string | null>(null);
+  const dropzoneAccept = accept ?? getAcceptFromFileNameFilter(fileNameFilter);
 
   const onDrop = useCallback(
     (accepted: File[], rejected: FileRejection[]) => {
@@ -72,9 +75,16 @@ export function FileUpload({
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept,
+    accept: dropzoneAccept,
     maxFiles: maxFiles || undefined,
     maxSize,
+    validator: fileNameFilter
+      ? (file) => (
+        matchesFileNameFilter(file.name, fileNameFilter)
+          ? null
+          : { code: "file-name-filter", message: `File name does not match filter: ${fileNameFilter}` }
+      )
+      : undefined,
     disabled,
     noClick: false,
   });
@@ -149,4 +159,76 @@ function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function matchesFileNameFilter(fileName: string, filter: string): boolean {
+  const name = fileName.toLowerCase();
+  const patterns = filter.split(",").map(pattern => pattern.trim().toLowerCase()).filter(Boolean);
+  if (patterns.length === 0) return true;
+
+  return patterns.some((pattern) => {
+    if (pattern.startsWith(".")) return name.endsWith(pattern);
+    if (pattern.includes("*") || pattern.includes("?")) {
+      return globToRegExp(pattern).test(name);
+    }
+    return name.includes(pattern);
+  });
+}
+
+function globToRegExp(pattern: string): RegExp {
+  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`^${escaped.replace(/\*/g, ".*").replace(/\?/g, ".")}$`);
+}
+
+const EXTENSION_MIME_TYPES: Record<string, string> = {
+  ".aac": "audio/aac",
+  ".avif": "image/avif",
+  ".csv": "text/csv",
+  ".doc": "application/msword",
+  ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ".gif": "image/gif",
+  ".jpeg": "image/jpeg",
+  ".jpg": "image/jpeg",
+  ".json": "application/json",
+  ".m4a": "audio/mp4",
+  ".md": "text/markdown",
+  ".mp3": "audio/mpeg",
+  ".mp4": "video/mp4",
+  ".ogg": "audio/ogg",
+  ".pdf": "application/pdf",
+  ".png": "image/png",
+  ".txt": "text/plain",
+  ".wav": "audio/wav",
+  ".webm": "video/webm",
+  ".webp": "image/webp",
+  ".xls": "application/vnd.ms-excel",
+  ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ".zip": "application/zip",
+};
+
+function getAcceptFromFileNameFilter(filter?: string): Accept | undefined {
+  const extensions = extractFileNameFilterExtensions(filter);
+  if (extensions.length === 0) return undefined;
+
+  return extensions.reduce<Accept>((acc, extension) => {
+    const mimeType = EXTENSION_MIME_TYPES[extension] ?? "application/octet-stream";
+    acc[mimeType] = [...(acc[mimeType] ?? []), extension];
+    return acc;
+  }, {});
+}
+
+function extractFileNameFilterExtensions(filter?: string): string[] {
+  if (!filter?.trim()) return [];
+
+  const extensions = filter
+    .split(",")
+    .map(pattern => pattern.trim().toLowerCase())
+    .map((pattern) => {
+      const match = pattern.match(/(\.[a-z0-9][a-z0-9_-]*)$/i);
+      if (!match) return null;
+      return pattern.slice(0, -match[1].length).includes("?") ? null : match[1];
+    })
+    .filter((extension): extension is string => Boolean(extension));
+
+  return Array.from(new Set(extensions));
 }

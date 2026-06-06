@@ -162,8 +162,9 @@ export interface Workflow {
 
 export interface OutputField {
   key: string
-  type: 'string' | 'number' | 'boolean' | 'object' | 'any'
+  type: 'string' | 'number' | 'boolean' | 'object' | 'file' | 'any'
   value?: string
+  fileNameFilter?: string
   description?: string
   required?: boolean
   children?: OutputField[]

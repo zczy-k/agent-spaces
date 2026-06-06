@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { OutputField } from '@agent-spaces/shared';
 import { Button } from '@/components/ui/button';
+import { FileUpload, type FileUploadFile } from '@/components/ui/file-upload';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -10,7 +11,10 @@ import {
 } from '@/components/ui/dialog';
 import { Play } from 'lucide-react';
 
+type InputFormValue = string | FileUploadFile[];
+
 export function parseInputValue(field: OutputField, raw: string): unknown {
+  if (field.type === 'file') return null;
   if (field.type === 'number') return raw === '' ? 0 : Number(raw);
   if (field.type === 'boolean') return raw === 'true';
   if (field.type === 'object' || field.type === 'any') {
@@ -31,9 +35,9 @@ export interface ExecutionInputFormProps {
 }
 
 export function ExecutionInputForm({ fields, onSubmit, submitLabel }: ExecutionInputFormProps) {
-  const [values, setValues] = useState<Record<string, string>>({});
+  const [values, setValues] = useState<Record<string, InputFormValue>>({});
 
-  const setField = (key: string, value: string) => {
+  const setField = (key: string, value: InputFormValue) => {
     setValues(prev => ({ ...prev, [key]: value }));
   };
 
@@ -41,7 +45,12 @@ export function ExecutionInputForm({ fields, onSubmit, submitLabel }: ExecutionI
     const parsed: Record<string, unknown> = {};
     for (const field of fields) {
       if (!field.key) continue;
-      parsed[field.key] = parseInputValue(field, values[field.key] ?? field.value ?? '');
+      if (field.type === 'file') {
+        const files = values[field.key];
+        parsed[field.key] = Array.isArray(files) ? files[0]?.file ?? null : null;
+        continue;
+      }
+      parsed[field.key] = parseInputValue(field, getStringValue(values[field.key], field.value));
     }
     onSubmit(parsed);
   };
@@ -60,13 +69,24 @@ export function ExecutionInputForm({ fields, onSubmit, submitLabel }: ExecutionI
               {field.description && (
                 <span className="block text-[10px] text-muted-foreground">{field.description}</span>
               )}
-              <Input
-                className="h-8 text-xs"
-                type={field.type === 'number' ? 'number' : 'text'}
-                placeholder={field.type === 'boolean' ? 'true / false' : field.key}
-                value={values[field.key] ?? field.value ?? ''}
-                onChange={event => setField(field.key, event.target.value)}
-              />
+              {field.type === 'file' ? (
+                <FileUpload
+                  className="text-xs"
+                  maxFiles={1}
+                  value={getFileValue(values[field.key])}
+                  onChange={files => setField(field.key, files)}
+                  placeholder={field.key}
+                  fileNameFilter={field.fileNameFilter}
+                />
+              ) : (
+                <Input
+                  className="h-8 text-xs"
+                  type={field.type === 'number' ? 'number' : 'text'}
+                  placeholder={field.type === 'boolean' ? 'true / false' : field.key}
+                  value={getStringValue(values[field.key], field.value)}
+                  onChange={event => setField(field.key, event.target.value)}
+                />
+              )}
             </label>
           ))}
         </div>
@@ -80,6 +100,14 @@ export function ExecutionInputForm({ fields, onSubmit, submitLabel }: ExecutionI
       )}
     </>
   );
+}
+
+function getStringValue(value: InputFormValue | undefined, fallback?: string): string {
+  return typeof value === 'string' ? value : fallback ?? '';
+}
+
+function getFileValue(value: InputFormValue | undefined): FileUploadFile[] {
+  return Array.isArray(value) ? value : [];
 }
 
 export function ExecutionInputDialog({
