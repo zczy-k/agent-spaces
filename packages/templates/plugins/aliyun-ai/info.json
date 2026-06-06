@@ -11,7 +11,7 @@
   "entries": {
     "server": "main.js",
     "workflow": "workflow.js",
-    "tools": ["tools-image.js", "tools-video.js"]
+    "tools": ["tools-image.js", "tools-video.js", "tools-upload.js"]
   },
   "config": [
     {

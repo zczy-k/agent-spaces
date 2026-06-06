@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Workflow } from '@agent-spaces/shared';
 import { toast } from 'sonner';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -14,8 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { fetchStoreIndex } from '@/lib/agent-store';
 import { pluginApi, type StoreWorkflowPlugin, type WorkflowPlugin } from '@/lib/workflow-plugin-api';
 import {
-  Check, Download, PackagePlus, RefreshCw, Search, Settings, Store,
+  PackagePlus, RefreshCw, Search, Store,
 } from 'lucide-react';
+import { LocalPluginCard, StorePluginCard } from './workflow-plugin-card';
 import { WorkflowPluginConfigDialog } from './workflow-plugin-config-dialog';
 
 type PluginTab = 'local' | 'store';
@@ -117,6 +117,13 @@ export function WorkflowPluginsDialog({
       setPlugins(items => items.map(item => item.id === plugin.id ? { ...item, enabled: true } : item));
     }
     updateWorkflowPlugins(plugin.id, nextEnabled);
+  }
+
+  async function uninstallPlugin(plugin: WorkflowPlugin) {
+    await pluginApi.disable(plugin.id);
+    setPlugins(items => items.filter(item => item.id !== plugin.id));
+    updateWorkflowPlugins(plugin.id, false);
+    toast.success(`已卸载 ${plugin.name}`);
   }
 
   async function installPlugin(plugin: StoreWorkflowPlugin) {
@@ -230,87 +237,27 @@ export function WorkflowPluginsDialog({
 
           <ScrollArea className="flex-1">
             <div className="grid gap-3 p-4 md:grid-cols-2 lg:grid-cols-3">
-              {activeTab === 'local' && filteredLocal.map((plugin) => {
-                const inWorkflow = enabledPluginIds.has(plugin.id);
-                return (
-                  <div key={plugin.id} className="flex min-h-[156px] flex-col rounded-md border bg-background p-3">
-                    <div className="flex items-start gap-2">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-muted">
-                        <PackagePlus className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-medium">{plugin.name}</div>
-                        <div className="text-[11px] text-muted-foreground">v{plugin.version}</div>
-                      </div>
-                      <Badge variant={inWorkflow ? 'default' : 'secondary'}>{inWorkflow ? '已添加' : '未添加'}</Badge>
-                    </div>
-                    <p className="mt-2 line-clamp-3 min-h-[48px] text-xs text-muted-foreground">{plugin.description || '无描述'}</p>
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {(plugin.tags || []).slice(0, 4).map(item => <Badge key={item} variant="outline" className="text-[10px]">{item}</Badge>)}
-                    </div>
-                    <div className="mt-auto flex items-center gap-2 pt-3">
-                      {plugin.config?.length ? (
-                        <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => setConfigPlugin(plugin)}>
-                          <Settings className="h-3.5 w-3.5" />
-                        </Button>
-                      ) : null}
-                      <Button size="sm" variant={inWorkflow ? 'outline' : 'default'} className="ml-auto h-7 text-xs" disabled={!workflow} onClick={() => togglePlugin(plugin)}>
-                        {inWorkflow ? '移除' : '添加到 Workflow'}
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
+              {activeTab === 'local' && filteredLocal.map((plugin) => (
+                <LocalPluginCard
+                  key={plugin.id}
+                  plugin={plugin}
+                  inWorkflow={enabledPluginIds.has(plugin.id)}
+                  disabled={!workflow}
+                  onToggleAction={() => togglePlugin(plugin)}
+                  onConfigAction={() => setConfigPlugin(plugin)}
+                  onUninstallAction={() => uninstallPlugin(plugin)}
+                />
+              ))}
 
-              {activeTab === 'store' && filteredStore.map((plugin) => {
-                const installed = installedPluginIds.has(plugin.id);
-                const installing = installingId === plugin.id;
-                return (
-                  <div key={plugin.id} className="flex min-h-[156px] flex-col rounded-md border bg-background p-3">
-                    <div className="flex items-start gap-2">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-muted">
-                        <Store className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-medium">{plugin.name}</div>
-                        <div className="text-[11px] text-muted-foreground">v{plugin.version}</div>
-                      </div>
-                      <Badge variant={installed ? 'default' : 'outline'}>{installed ? '已安装' : '未安装'}</Badge>
-                    </div>
-                    <p className="mt-2 line-clamp-3 min-h-[48px] text-xs text-muted-foreground">{plugin.description || '无描述'}</p>
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {(plugin.tags || []).slice(0, 4).map(item => <Badge key={item} variant="outline" className="text-[10px]">{item}</Badge>)}
-                    </div>
-                    <div className="mt-auto flex items-center gap-2 pt-3">
-                      {plugin.type ? <Badge variant="secondary" className="text-[10px]">{plugin.type}</Badge> : null}
-                      <Button
-                        size="sm"
-                        variant={installed ? 'outline' : 'default'}
-                        className="ml-auto h-7 text-xs"
-                        disabled={installed || installing}
-                        onClick={() => installPlugin(plugin)}
-                      >
-                        {installed ? (
-                          <>
-                            <Check className="h-3.5 w-3.5" />
-                            已安装
-                          </>
-                        ) : installing ? (
-                          <>
-                            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                            安装中
-                          </>
-                        ) : (
-                          <>
-                            <Download className="h-3.5 w-3.5" />
-                            安装并添加
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
+              {activeTab === 'store' && filteredStore.map((plugin) => (
+                <StorePluginCard
+                  key={plugin.id}
+                  plugin={plugin}
+                  installed={installedPluginIds.has(plugin.id)}
+                  installing={installingId === plugin.id}
+                  onInstallAction={() => installPlugin(plugin)}
+                />
+              ))}
 
               {!currentLoading && filtered.length === 0 && (
                 <div className="col-span-full flex flex-col items-center justify-center py-20 text-muted-foreground">
