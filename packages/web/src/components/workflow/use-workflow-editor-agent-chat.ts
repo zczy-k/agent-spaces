@@ -108,8 +108,8 @@ export function useWorkflowEditorAgentChat({
   }, []);
 
   const appendTimelineTextItem = useCallback((messageId: string, type: 'message' | 'thinking', content: string) => {
-    const trimmed = content.trim();
-    if (!trimmed) return;
+    const text = type === 'thinking' ? content : content.trim();
+    if (!text) return;
     setAgentMessages((messages) => messages.map((message) => {
       if (message.id !== messageId) return message;
       const timeline = [...(message.timeline ?? [])];
@@ -117,12 +117,12 @@ export function useWorkflowEditorAgentChat({
         const existingIndex = timeline.findIndex((item) => item.type === 'thinking');
         if (existingIndex >= 0) {
           const existing = timeline[existingIndex] as Extract<WorkflowTimelineItem, { type: 'thinking' }>;
-          timeline[existingIndex] = { ...existing, content: `${existing.content}\n${trimmed}` };
+          timeline[existingIndex] = { ...existing, content: `${existing.content}${text}` };
         } else {
           timeline.unshift({
             id: `thinking-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
             type: 'thinking',
-            content: trimmed,
+            content: text,
           });
         }
         return { ...message, timeline };
@@ -130,12 +130,12 @@ export function useWorkflowEditorAgentChat({
 
       const latest = timeline.at(-1);
       if (latest?.type === type) {
-        timeline[timeline.length - 1] = { ...latest, content: `${latest.content}\n${trimmed}` };
+        timeline[timeline.length - 1] = { ...latest, content: `${latest.content}\n${text}` };
       } else {
         timeline.push({
           id: `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
           type,
-          content: trimmed,
+          content: text,
         });
       }
       return { ...message, timeline };

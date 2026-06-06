@@ -5,6 +5,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   buildLangChainPromptWithSkills,
+  createThrottledRuntimeEventSink,
+  extractReasoningFromToken,
+  extractTextFromToken,
+  isAiStreamToken,
   normalizeLangChainMcpServers,
   resolveLangChainModelSettings,
   stringifyToolResult,
@@ -48,6 +52,55 @@ test('stringifyToolResult falls back for circular function tool results', () => 
   circular.self = circular;
 
   assert.equal(stringifyToolResult(circular), '[object Object]');
+});
+
+test('LangChain stream content blocks expose AI text and reasoning', () => {
+  const token = {
+    contentBlocks: [
+      { type: 'reasoning', reasoning: 'thinking about the answer' },
+      { type: 'text', text: 'hello' },
+      { type: 'text', text: ' world' },
+    ],
+  };
+
+  assert.equal(extractReasoningFromToken(token), 'thinking about the answer');
+  assert.equal(extractTextFromToken(token), 'hello world');
+});
+
+test('LangChain stream text extraction falls back to message content', () => {
+  assert.equal(extractTextFromToken({ content: 'plain text' }), 'plain text');
+  assert.equal(extractTextFromToken({
+    content: [
+      { type: 'text', text: 'first' },
+      { type: 'text', text: ' second' },
+    ],
+  }), 'first\n second');
+});
+
+test('LangChain stream token filter skips tool results', () => {
+  assert.equal(isAiStreamToken({ type: 'ai', contentBlocks: [{ type: 'text', text: 'hello' }] }), true);
+  assert.equal(isAiStreamToken({ role: 'assistant', contentBlocks: [{ type: 'reasoning', reasoning: 'thinking' }] }), true);
+  assert.equal(isAiStreamToken({ type: 'tool', contentBlocks: [{ type: 'reasoning', reasoning: 'tool output' }] }), false);
+  assert.equal(isAiStreamToken({ tool_call_id: 'call-1', contentBlocks: [{ type: 'text', text: 'tool output' }] }), false);
+});
+
+test('LangChain stream event sink throttles text chunks and flushes before tool events', async () => {
+  const events: unknown[] = [];
+  const sink = createThrottledRuntimeEventSink((event) => events.push(event));
+
+  sink.emit({ type: 'output', line: 'hel' });
+  sink.emit({ type: 'output', line: 'lo' });
+  assert.deepEqual(events, []);
+
+  sink.emit({ type: 'tool_use', id: 'tool', name: 'tool', line: 'Tool: tool' });
+  assert.deepEqual(events, [
+    { type: 'output', line: 'hello' },
+    { type: 'tool_use', id: 'tool', name: 'tool', line: 'Tool: tool' },
+  ]);
+
+  sink.emit({ type: 'output', line: '!' });
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  assert.deepEqual(events.at(-1), { type: 'output', line: '!' });
 });
 
 test('normalizeLangChainMcpServers maps retired fetch npm package to uvx', () => {

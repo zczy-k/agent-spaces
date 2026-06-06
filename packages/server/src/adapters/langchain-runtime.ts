@@ -11,10 +11,13 @@ import type {
   AgentRunResult,
   AgentRuntime,
   AgentRuntimeConfig,
+  AgentRuntimeEvent,
 } from './agent-runtime-types.js';
 import { appendOutputStyleToPrompt, summarizeResult } from './agent-runtime-types.js';
 
 const DEFAULT_DATA_DIR = join(process.env.HOME || '~', '.agent-spaces-data');
+const MAX_DEBUG_LOG_CHARS = 500;
+const STREAM_EVENT_THROTTLE_MS = 80;
 
 /**
  * Runtime backed by LangChain.js.
@@ -35,19 +38,21 @@ export class LangChainRuntime implements AgentRuntime {
     const d = (msg: string) => console.log(`[langchain:${runId}] ${msg}`);
     const modelSettings = resolveLangChainModelSettings(this.config);
     const model = modelSettings.modelIdentifier;
+    const eventSink = createThrottledRuntimeEventSink(options?.onEvent);
+    const runtimeOptions = options ? { ...options, onEvent: eventSink.emit } : undefined;
     let mcpClient: MultiServerMCPClient | undefined;
 
-    const skillPrompts = loadConfiguredSkillPrompts(options?.configDir, options?.skills);
-    d(`starting | cwd=${cwd} provider=${this.config.provider ?? 'auto'} langchainProvider=${modelSettings.provider ?? 'auto'} model=${model} baseURL=${this.config.baseURL ?? 'default'} apiKey=${this.config.apiKey ? 'set' : 'unset'} maxTurns=${options?.maxTurns ?? '∞'} tools=${options?.functionTools?.map((runtimeTool) => runtimeTool.name).join(',') || '-'} mcpServers=${Object.keys(options?.mcpServers ?? {}).join(',') || '-'} skills=${skillPrompts.map((skill) => skill.name).join(',') || '-'} sandboxDirs=${options?.sandboxDirs?.join(',') ?? '-'}`);
-    d(`options | ${summarizeOptionsForLog(options)}`);
+    const skillPrompts = loadConfiguredSkillPrompts(runtimeOptions?.configDir, runtimeOptions?.skills);
+    d(`starting | cwd=${cwd} provider=${this.config.provider ?? 'auto'} langchainProvider=${modelSettings.provider ?? 'auto'} model=${model} baseURL=${this.config.baseURL ?? 'default'} apiKey=${this.config.apiKey ? 'set' : 'unset'} maxTurns=${runtimeOptions?.maxTurns ?? '∞'} tools=${runtimeOptions?.functionTools?.map((runtimeTool) => runtimeTool.name).join(',') || '-'} mcpServers=${Object.keys(runtimeOptions?.mcpServers ?? {}).join(',') || '-'} skills=${skillPrompts.map((skill) => skill.name).join(',') || '-'} sandboxDirs=${runtimeOptions?.sandboxDirs?.join(',') ?? '-'}`);
+    d(`options | ${summarizeOptionsForLog(runtimeOptions)}`);
     d(`model config | ${summarizeForLog(maskSensitiveConfig(buildModelConfig(this.config)), 1000)}`);
     d(`provider env | ${summarizeEnvForLog(buildProviderEnv(this.config, modelSettings.provider))}`);
     if (modelSettings.providerCorrectionReason) d(`provider adjusted | ${modelSettings.providerCorrectionReason}`);
     d(`prompt | chars=${prompt.length} preview=${truncateForLog(prompt, 1000)}`);
     if (skillPrompts.length) {
       d(`skills loaded | ${skillPrompts.map((skill) => `${skill.name}:${skill.content.length}chars`).join(',')}`);
-    } else if (options?.skills?.length) {
-      d(`skills requested but not loaded | requested=${options.skills.join(',')}`);
+    } else if (runtimeOptions?.skills?.length) {
+      d(`skills requested but not loaded | requested=${runtimeOptions.skills.join(',')}`);
     }
 
     try {
@@ -57,51 +62,78 @@ export class LangChainRuntime implements AgentRuntime {
         () => initChatModel(model, buildModelConfig(this.config)),
       );
       d(`chat model initialized | type=${getObjectTypeName(chatModel)}`);
-      mcpClient = createLangChainMcpClient(options?.mcpServers, output, options, d);
+      mcpClient = createLangChainMcpClient(runtimeOptions?.mcpServers, output, runtimeOptions, d);
       d(`MCP client ${mcpClient ? 'created' : 'not created'}`);
       const mcpTools = mcpClient ? await mcpClient.getTools() : [];
-      if (mcpClient) d(`resolved MCP tools | servers=${Object.keys(options?.mcpServers ?? {}).join(',') || '-'} count=${mcpTools.length} tools=${mcpTools.map((mcpTool) => mcpTool.name).join(',') || '-'}`);
-      const runtimeTools = buildLangChainTools(options?.functionTools, output, options, d);
-      d(`creating agent | runtimeTools=${runtimeTools.length} mcpTools=${mcpTools.length} systemPrompt=${options?.systemPrompt ? `${options.systemPrompt.length}chars` : '-'} outputStyle=${options?.outputStyle ?? '-'}`);
+      if (mcpClient) d(`resolved MCP tools | servers=${Object.keys(runtimeOptions?.mcpServers ?? {}).join(',') || '-'} count=${mcpTools.length} tools=${mcpTools.map((mcpTool) => mcpTool.name).join(',') || '-'}`);
+      const runtimeTools = buildLangChainTools(runtimeOptions?.functionTools, output, runtimeOptions, d);
+      d(`creating agent | runtimeTools=${runtimeTools.length} mcpTools=${mcpTools.length} systemPrompt=${runtimeOptions?.systemPrompt ? `${runtimeOptions.systemPrompt.length}chars` : '-'} outputStyle=${runtimeOptions?.outputStyle ?? '-'}`);
       const agent = createAgent({
         model: chatModel,
         tools: [
           ...runtimeTools,
           ...mcpTools,
         ],
-        systemPrompt: options?.systemPrompt,
+        systemPrompt: runtimeOptions?.systemPrompt,
       });
       d(`agent created | type=${getObjectTypeName(agent)}`);
 
       const finalPrompt = appendOutputStyleToPrompt(
         injectSkillPrompts(prompt, skillPrompts),
-        options?.outputStyle,
+        runtimeOptions?.outputStyle,
       );
-      d(`final prompt | chars=${finalPrompt.length} skillCount=${skillPrompts.length} outputStyle=${options?.outputStyle ?? '-'} preview=${truncateForLog(finalPrompt, 1200)}`);
+      d(`final prompt | chars=${finalPrompt.length} skillCount=${skillPrompts.length} outputStyle=${runtimeOptions?.outputStyle ?? '-'} preview=${truncateForLog(finalPrompt, 1200)}`);
 
-      const recursionLimit = options?.maxTurns ? Math.max(2, options.maxTurns * 2 + 1) : undefined;
-      d(`invoking agent | recursionLimit=${recursionLimit ?? '-'} aborted=${this.abortController?.signal.aborted ? 'yes' : 'no'}`);
-      const result = await agent.invoke(
+      const recursionLimit = runtimeOptions?.maxTurns ? Math.max(2, runtimeOptions.maxTurns * 2 + 1) : undefined;
+      d(`streaming agent | recursionLimit=${recursionLimit ?? '-'} aborted=${this.abortController?.signal.aborted ? 'yes' : 'no'}`);
+      const stream = await agent.stream(
         { messages: [{ role: 'user', content: finalPrompt }] },
         {
           signal: this.abortController?.signal,
           recursionLimit,
+          streamMode: 'messages',
         },
       );
-      d(`agent result | ${summarizeAgentResultForLog(result)}`);
 
-      const text = extractFinalText(result);
-      const usage = extractUsage(result);
+      const textParts: string[] = [];
+      let usage: AgentRunResult['usage'];
+      for await (const chunk of stream) {
+        const token = Array.isArray(chunk) ? chunk[0] : chunk;
+        if (!isRecord(token)) {
+          // d(`stream token skipped | type=${typeof token}`);
+          continue;
+        }
+
+        const tokenUsage = extractUsageFromMessage(token);
+        if (tokenUsage) usage = tokenUsage;
+        if (!isAiStreamToken(token)) {
+          // d(`stream token skipped | ${summarizeStreamTokenForLog(token, '', '', tokenUsage)}`);
+          continue;
+        }
+
+        const text = extractTextFromToken(token);
+        const reasoning = extractReasoningFromToken(token);
+        // d(`stream token | ${summarizeStreamTokenForLog(token, text, reasoning, tokenUsage)}`);
+        if (reasoning) {
+          runtimeOptions?.onEvent?.({ type: 'reasoning', text: reasoning, status: 'streaming' });
+        }
+        if (text) {
+          textParts.push(text);
+          runtimeOptions?.onEvent?.({ type: 'output', line: text });
+        }
+      }
+      eventSink.flush();
+
+      const text = textParts.join('');
       d(`final text | chars=${text.length} preview=${truncateForLog(text, 1200) || '-'}`);
       d(`usage | ${usage ? summarizeForLog(usage, 500) : '-'}`);
       if (text) {
         output.push(text);
-        options?.onEvent?.({ type: 'output', line: text });
       }
       if (usage?.totalTokens || usage?.inputTokens || usage?.outputTokens) {
         const usageLine = `[Usage] tokens=${usage.totalTokens ?? '-'} input=${usage.inputTokens ?? '-'} output=${usage.outputTokens ?? '-'}`;
         output.push(usageLine);
-        options?.onEvent?.({ type: 'output', line: usageLine });
+        runtimeOptions?.onEvent?.({ type: 'output', line: usageLine });
       }
 
       const elapsed = Date.now() - startTime;
@@ -122,6 +154,7 @@ export class LangChainRuntime implements AgentRuntime {
 
       return { success: false, summary: 'LangChain execution failed', artifacts: [], error: message, output };
     } finally {
+      eventSink.flush();
       if (mcpClient) {
         d('closing MCP client');
         try {
@@ -467,33 +500,73 @@ function summarizeOptionsForLog(options: AgentRunOptions | undefined): string {
   }, 2000);
 }
 
-function summarizeAgentResultForLog(result: unknown): string {
-  if (!isRecord(result)) return summarizeForLog(result, 1200);
-  const messages = Array.isArray(result.messages) ? result.messages : [];
-  return summarizeForLog({
-    keys: Object.keys(result),
-    messageCount: messages.length,
-    messages: messages.map((message, index) => summarizeMessageForLog(message, index)),
-  }, 2000);
+export function createThrottledRuntimeEventSink(onEvent: AgentRunOptions['onEvent']): {
+  emit: (event: AgentRuntimeEvent) => void;
+  flush: () => void;
+} {
+  const pending: AgentRuntimeEvent[] = [];
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  const flush = () => {
+    if (timer) {
+      clearTimeout(timer);
+      timer = undefined;
+    }
+    if (!onEvent || pending.length === 0) return;
+    const events = pending.splice(0, pending.length);
+    for (const event of events) onEvent(event);
+  };
+
+  const schedule = () => {
+    if (!onEvent || timer) return;
+    timer = setTimeout(flush, STREAM_EVENT_THROTTLE_MS);
+  };
+
+  const emit = (event: AgentRuntimeEvent) => {
+    if (!onEvent) return;
+    if (event.type !== 'output' && event.type !== 'reasoning') {
+      flush();
+      onEvent(event);
+      return;
+    }
+
+    const previous = pending.at(-1);
+    if (event.type === 'output' && previous?.type === 'output') {
+      previous.line += event.line;
+    } else if (event.type === 'reasoning' && previous?.type === 'reasoning') {
+      previous.text += event.text;
+      previous.status = event.status ?? previous.status;
+    } else {
+      pending.push({ ...event });
+    }
+    schedule();
+  };
+
+  return { emit, flush };
 }
 
-function summarizeMessageForLog(message: unknown, index: number): Record<string, unknown> {
-  if (!isRecord(message)) return { index, type: typeof message };
-  const content = stringifyMessageContent(message.content);
-  return removeUndefined({
-    index,
-    type: getMessageType(message) ?? message.type,
-    role: message.role,
-    name: message.name,
-    id: message.id,
-    contentChars: content.length,
-    contentPreview: truncateForLog(content, 300),
-    usage: message.usage_metadata,
-    responseMetadataKeys: isRecord(message.response_metadata) ? Object.keys(message.response_metadata) : undefined,
-    additionalKwargsKeys: isRecord(message.additional_kwargs) ? Object.keys(message.additional_kwargs) : undefined,
-    toolCallCount: Array.isArray(message.tool_calls) ? message.tool_calls.length : undefined,
-    invalidToolCallCount: Array.isArray(message.invalid_tool_calls) ? message.invalid_tool_calls.length : undefined,
-  });
+function summarizeStreamTokenForLog(
+  token: Record<string, unknown>,
+  text: string,
+  reasoning: string,
+  usage: AgentRunResult['usage'] | undefined,
+): string {
+  const contentBlocks = Array.isArray(token.contentBlocks) ? token.contentBlocks : [];
+  return summarizeForLog(removeUndefined({
+    type: getMessageType(token) ?? token.type,
+    role: token.role,
+    id: token.id,
+    contentBlockTypes: contentBlocks
+      .map((block) => isRecord(block) ? block.type : typeof block)
+      .filter(Boolean),
+    textChars: text.length,
+    textPreview: text ? truncateForLog(text, 160) : undefined,
+    reasoningChars: reasoning.length,
+    reasoningPreview: reasoning ? truncateForLog(reasoning, 160) : undefined,
+    usage,
+    toolCallCount: Array.isArray(token.tool_calls) ? token.tool_calls.length : undefined,
+    invalidToolCallCount: Array.isArray(token.invalid_tool_calls) ? token.invalid_tool_calls.length : undefined,
+  }), 500);
 }
 
 function summarizeMcpServersForLog(mcpServers: Record<string, Connection>): string {
@@ -542,7 +615,8 @@ function summarizeForLog(value: unknown, maxLength = 300): string {
 }
 
 function truncateForLog(value: string, maxLength = 300): string {
-  return value.length > maxLength ? `${value.slice(0, maxLength)}...` : value;
+  const limit = Math.max(0, Math.min(maxLength, MAX_DEBUG_LOG_CHARS));
+  return value.length > limit ? `${value.slice(0, limit)}...` : value;
 }
 
 function buildProviderEnv(config: AgentRuntimeConfig, resolvedProvider?: string): Record<string, string | undefined> {
@@ -577,11 +651,51 @@ async function withTemporaryEnv<T>(env: Record<string, string | undefined>, fn: 
   }
 }
 
-function extractFinalText(result: unknown): string {
-  const messages = isRecord(result) && Array.isArray(result.messages) ? result.messages : [];
-  const last = [...messages].reverse().find((message) => isRecord(message) && getMessageType(message) === 'ai')
-    ?? messages.at(-1);
-  return stringifyMessageContent(isRecord(last) ? last.content : undefined);
+export function extractTextFromToken(token: Record<string, unknown>): string {
+  const blocks = Array.isArray(token.contentBlocks) ? token.contentBlocks : [];
+  const text = blocks
+    .map((block) => extractContentBlockText(block))
+    .filter(Boolean)
+    .join('');
+  if (text) return text;
+  return stringifyMessageContent(token.content);
+}
+
+export function extractReasoningFromToken(token: Record<string, unknown>): string {
+  const blocks = Array.isArray(token.contentBlocks) ? token.contentBlocks : [];
+  return blocks
+    .map((block) => extractContentBlockReasoning(block))
+    .filter(Boolean)
+    .join('');
+}
+
+function extractContentBlockText(block: unknown): string {
+  if (!isRecord(block) || block.type !== 'text') return '';
+  if (typeof block.text === 'string') return block.text;
+  if (typeof block.content === 'string') return block.content;
+  return '';
+}
+
+function extractContentBlockReasoning(block: unknown): string {
+  if (!isRecord(block) || block.type !== 'reasoning') return '';
+  if (typeof block.reasoning === 'string') return block.reasoning;
+  if (typeof block.text === 'string') return block.text;
+  if (typeof block.content === 'string') return block.content;
+  return '';
+}
+
+export function isAiStreamToken(token: Record<string, unknown>): boolean {
+  const type = String(getMessageType(token) ?? token.type ?? '').toLowerCase();
+  if (type) return type === 'ai' || type === 'assistant' || type === 'aimessagechunk';
+
+  const role = String(token.role ?? '').toLowerCase();
+  if (role) return role === 'ai' || role === 'assistant';
+
+  if (typeof token.tool_call_id === 'string' || typeof token.toolCallId === 'string') return false;
+  if (!Array.isArray(token.contentBlocks)) return false;
+  return token.contentBlocks.some((block) => (
+    isRecord(block) && (block.type === 'text' || block.type === 'reasoning')
+  ));
 }
 
 function getMessageType(message: Record<string, unknown>): string | undefined {
@@ -604,24 +718,19 @@ function stringifyMessageContent(content: unknown): string {
     .join('\n');
 }
 
-function extractUsage(result: unknown): AgentRunResult['usage'] {
-  const messages = isRecord(result) && Array.isArray(result.messages) ? result.messages : [];
-  for (const message of [...messages].reverse()) {
-    if (!isRecord(message)) continue;
-    const usage = isRecord(message.usage_metadata)
-      ? message.usage_metadata
-      : isRecord(message.response_metadata) && isRecord(message.response_metadata.tokenUsage)
-        ? message.response_metadata.tokenUsage
-        : undefined;
-    if (!usage) continue;
-    const inputTokens = numberFrom(usage.input_tokens ?? usage.promptTokens ?? usage.prompt_tokens);
-    const outputTokens = numberFrom(usage.output_tokens ?? usage.completionTokens ?? usage.completion_tokens);
-    const totalTokens = numberFrom(usage.total_tokens ?? usage.totalTokens) ?? (
-      inputTokens !== undefined || outputTokens !== undefined ? (inputTokens ?? 0) + (outputTokens ?? 0) : undefined
-    );
-    return removeUndefined({ inputTokens, outputTokens, totalTokens });
-  }
-  return undefined;
+function extractUsageFromMessage(message: Record<string, unknown>): AgentRunResult['usage'] {
+  const usage = isRecord(message.usage_metadata)
+    ? message.usage_metadata
+    : isRecord(message.response_metadata) && isRecord(message.response_metadata.tokenUsage)
+      ? message.response_metadata.tokenUsage
+      : undefined;
+  if (!usage) return undefined;
+  const inputTokens = numberFrom(usage.input_tokens ?? usage.promptTokens ?? usage.prompt_tokens);
+  const outputTokens = numberFrom(usage.output_tokens ?? usage.completionTokens ?? usage.completion_tokens);
+  const totalTokens = numberFrom(usage.total_tokens ?? usage.totalTokens) ?? (
+    inputTokens !== undefined || outputTokens !== undefined ? (inputTokens ?? 0) + (outputTokens ?? 0) : undefined
+  );
+  return removeUndefined({ inputTokens, outputTokens, totalTokens });
 }
 
 function numberFrom(value: unknown): number | undefined {
