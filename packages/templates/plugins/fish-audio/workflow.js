@@ -20,9 +20,9 @@ module.exports = {
       icon: 'AudioWaveform',
       description: '使用 FishAudio 将文字转换为自然语音（TTS）',
       properties: [
-        { key: 'apiKey', label: 'API Key', type: 'text', required: true, tooltip: 'FishAudio API Key（默认从插件配置读取）', default: '{{ __config__["workfox.fish-audio"]["apiKey"] }}' },
+        { key: 'apiKey', label: 'API Key', type: 'text', required: true, tooltip: 'FishAudio API Key（默认从插件配置读取）', default: '{{ __config__["workflow.fish-audio"]["apiKey"] }}' },
         { key: 'text', label: '文字内容', type: 'textarea', required: true, tooltip: '要转换为语音的文字' },
-        { key: 'referenceId', label: '音色模型 ID', type: 'text', tooltip: '音色模型 ID（默认从插件配置读取）', default: '{{ __config__["workfox.fish-audio"]["referenceId"] }}' },
+        { key: 'referenceId', label: '音色模型 ID', type: 'text', tooltip: '音色模型 ID（默认从插件配置读取）', default: '{{ __config__["workflow.fish-audio"]["referenceId"] }}' },
         { key: 'model', label: 'TTS 模型', type: 'select', default: 's2-pro', options: [
           { label: 'S2-Pro（推荐）', value: 's2-pro' },
           { label: 'S1', value: 's1' },
@@ -48,8 +48,8 @@ module.exports = {
           { label: 'Balanced（较低延迟）', value: 'balanced' },
           { label: 'Low（最低延迟）', value: 'low' },
         ] },
-        { key: 'baseUrl', label: 'API 地址', type: 'text', default: '{{ __config__["workfox.fish-audio"]["baseUrl"] }}', tooltip: 'FishAudio API 基础地址' },
-        { key: 'proxy', label: 'HTTP 代理', type: 'text', tooltip: 'HTTP 代理地址，默认从插件配置读取', default: '{{ __config__["workfox.fish-audio"]["httpProxy"] }}', placeholder: 'http://127.0.0.1:7890' },
+        { key: 'baseUrl', label: 'API 地址', type: 'text', default: '{{ __config__["workflow.fish-audio"]["baseUrl"] }}', tooltip: 'FishAudio API 基础地址' },
+        { key: 'proxy', label: 'HTTP 代理', type: 'text', tooltip: 'HTTP 代理地址，默认从插件配置读取', default: '{{ __config__["workflow.fish-audio"]["httpProxy"] }}', placeholder: 'http://127.0.0.1:7890' },
       ],
       outputs: [
         { key: 'success', type: 'boolean' },
@@ -117,7 +117,7 @@ module.exports = {
       icon: 'Mic',
       description: '使用 FishAudio 将音频文件转录为文字（STT）',
       properties: [
-        { key: 'apiKey', label: 'API Key', type: 'text', required: true, tooltip: 'FishAudio API Key（默认从插件配置读取）', default: '{{ __config__["workfox.fish-audio"]["apiKey"] }}' },
+        { key: 'apiKey', label: 'API Key', type: 'text', required: true, tooltip: 'FishAudio API Key（默认从插件配置读取）', default: '{{ __config__["workflow.fish-audio"]["apiKey"] }}' },
         { key: 'filePath', label: '音频文件路径', type: 'text', required: true, tooltip: '本地音频文件路径（支持 WAV/MP3/FLAC）' },
         { key: 'language', label: '语言', type: 'select', default: 'auto', options: [
           { label: '自动检测', value: 'auto' },
@@ -129,8 +129,8 @@ module.exports = {
           { label: '德文', value: 'de' },
           { label: '西班牙文', value: 'es' },
         ] },
-        { key: 'baseUrl', label: 'API 地址', type: 'text', default: '{{ __config__["workfox.fish-audio"]["baseUrl"] }}', tooltip: 'FishAudio API 基础地址' },
-        { key: 'proxy', label: 'HTTP 代理', type: 'text', tooltip: 'HTTP 代理地址，默认从插件配置读取', default: '{{ __config__["workfox.fish-audio"]["httpProxy"] }}', placeholder: 'http://127.0.0.1:7890' },
+        { key: 'baseUrl', label: 'API 地址', type: 'text', default: '{{ __config__["workflow.fish-audio"]["baseUrl"] }}', tooltip: 'FishAudio API 基础地址' },
+        { key: 'proxy', label: 'HTTP 代理', type: 'text', tooltip: 'HTTP 代理地址，默认从插件配置读取', default: '{{ __config__["workflow.fish-audio"]["httpProxy"] }}', placeholder: 'http://127.0.0.1:7890' },
       ],
       outputs: [
         { key: 'success', type: 'boolean' },

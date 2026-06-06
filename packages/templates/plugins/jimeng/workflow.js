@@ -7,7 +7,7 @@ module.exports = {
       icon: 'Image',
       description: '通过文字描述使用即梦AI生成图片',
       properties: [
-        { key: 'sessionId', label: 'Session Token', type: 'text', required: true, tooltip: '即梦sessionid（国际站加前缀 us-/hk-/jp-/sg-）', default: '{{ __config__["workfox.jimeng"]["sessionId"] }}' },
+        { key: 'sessionId', label: 'Session Token', type: 'text', required: true, tooltip: '即梦sessionid（国际站加前缀 us-/hk-/jp-/sg-）', default: '{{ __config__["workflow.jimeng"]["sessionId"] }}' },
         { key: 'prompt', label: '图片描述', type: 'textarea', required: true, tooltip: '描述你想生成的图片内容' },
         { key: 'model', label: '模型', type: 'select', default: 'jimeng-4.5', options: [
           { label: 'jimeng-4.5 (默认)', value: 'jimeng-4.5' },
@@ -34,7 +34,7 @@ module.exports = {
           { label: '4K', value: '4k' },
         ] },
         { key: 'negativePrompt', label: '反向提示词', type: 'textarea', tooltip: '排除不想出现的内容' },
-        { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workfox.jimeng"]["baseUrl"] }}', tooltip: '即梦API服务地址' },
+        { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workflow.jimeng"]["baseUrl"] }}', tooltip: '即梦API服务地址' },
       ],
       outputs: [
         { key: 'success', type: 'boolean' },
@@ -73,7 +73,7 @@ module.exports = {
       icon: 'Wand2',
       description: '基于输入图片和文字描述生成新图片（风格迁移、图片融合等）',
       properties: [
-        { key: 'sessionId', label: 'Session Token', type: 'text', required: true, tooltip: '即梦sessionid（国际站加前缀 us-/hk-/jp-/sg-）', default: '{{ __config__["workfox.jimeng"]["sessionId"] }}' },
+        { key: 'sessionId', label: 'Session Token', type: 'text', required: true, tooltip: '即梦sessionid（国际站加前缀 us-/hk-/jp-/sg-）', default: '{{ __config__["workflow.jimeng"]["sessionId"] }}' },
         { key: 'prompt', label: '图片描述', type: 'textarea', required: true, tooltip: '描述生成方向' },
         { key: 'images', label: '图片URL', type: 'textarea', required: true, tooltip: '输入图片URL数组，如 ["https://..."]' },
         { key: 'model', label: '模型', type: 'select', default: 'jimeng-4.5', options: [
@@ -96,7 +96,7 @@ module.exports = {
           { label: '4K', value: '4k' },
         ] },
         { key: 'sampleStrength', label: '采样强度', type: 'number', default: 0.7, tooltip: '0.0-1.0' },
-        { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workfox.jimeng"]["baseUrl"] }}', tooltip: '即梦API服务地址' },
+        { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workflow.jimeng"]["baseUrl"] }}', tooltip: '即梦API服务地址' },
       ],
       outputs: [
         { key: 'success', type: 'boolean' },
@@ -139,7 +139,7 @@ module.exports = {
       icon: 'Video',
       description: '通过文字描述或图片生成视频（文生视频/图生视频/首尾帧）',
       properties: [
-        { key: 'sessionId', label: 'Session Token', type: 'text', required: true, tooltip: '即梦sessionid（国际站加前缀 us-/hk-/jp-/sg-）', default: '{{ __config__["workfox.jimeng"]["sessionId"] }}' },
+        { key: 'sessionId', label: 'Session Token', type: 'text', required: true, tooltip: '即梦sessionid（国际站加前缀 us-/hk-/jp-/sg-）', default: '{{ __config__["workflow.jimeng"]["sessionId"] }}' },
         { key: 'prompt', label: '视频描述', type: 'textarea', required: true, tooltip: '描述视频内容' },
         { key: 'model', label: '模型', type: 'select', default: 'jimeng-video-3.5-pro', options: [
           { label: 'jimeng-video-3.5-pro (默认)', value: 'jimeng-video-3.5-pro' },
@@ -159,7 +159,7 @@ module.exports = {
         ] },
         { key: 'duration', label: '时长(秒)', type: 'number', default: 5, tooltip: '5或10秒' },
         { key: 'filePaths', label: '图片URL', type: 'textarea', tooltip: '图片URL数组，1张=图生视频，2张=首尾帧' },
-        { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workfox.jimeng"]["baseUrl"] }}', tooltip: '即梦API服务地址' },
+        { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workflow.jimeng"]["baseUrl"] }}', tooltip: '即梦API服务地址' },
       ],
       outputs: [
         { key: 'videos', type: 'object', children: [

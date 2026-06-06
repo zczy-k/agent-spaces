@@ -177,7 +177,7 @@ async function executeAsyncTask(ctx, apiKey, endpoint, body, extractResult) {
 }
 
 // Common property definitions
-const API_KEY_PROP = { key: 'apiKey', label: 'API Key', type: 'text', required: true, tooltip: '阿里云百炼 DashScope API Key', default: '{{ __config__["workfox.aliyun-ai"]["apiKey"] }}' }
+const API_KEY_PROP = { key: 'apiKey', label: 'API Key', type: 'text', required: true, tooltip: '阿里云百炼 DashScope API Key', default: '{{ __config__["workflow.aliyun-ai"]["apiKey"] }}' }
 const PROMPT_PROP = (label, tip) => ({ key: 'prompt', label, type: 'textarea', required: true, tooltip: tip })
 const NEGATIVE_PROMPT_PROP = { key: 'negativePrompt', label: '反向提示词', type: 'textarea', tooltip: '排除不想出现的内容' }
 const SEED_PROP = { key: 'seed', label: '随机种子', type: 'number', tooltip: '固定种子可复现结果，0~2147483647' }

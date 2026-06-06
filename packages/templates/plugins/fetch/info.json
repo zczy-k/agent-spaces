@@ -1,9 +1,9 @@
 {
-  "id": "workfox.fetch",
+  "id": "workflow.fetch",
   "name": "网络请求",
   "version": "1.0.0",
   "description": "提供网页内容捕获、网络文件下载等操作节点",
-  "author": { "name": "workfox" },
+  "author": { "name": "workflow" },
   "tags": ["网络", "请求", "抓取", "下载"],
   "type": "server",
   "hasWorkflow": true,
@@ -25,7 +25,7 @@
       "label": "User-Agent",
       "desc": "默认请求头 User-Agent",
       "type": "string",
-      "value": "WorkFox/1.0"
+      "value": "workflow/1.0"
     }
   ]
 }

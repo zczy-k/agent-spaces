@@ -130,7 +130,7 @@ async function postForBuffer(url, options) {
   const headers = {
     'Content-Type': 'application/json',
     'Content-Length': Buffer.byteLength(body),
-    'User-Agent': 'WorkFox/1.0',
+    'User-Agent': 'workflow/1.0',
     ...options.headers,
   }
   const req = await createProxiedRequest(url, 'POST', headers, options.timeout || 120000, options.proxy || null)
@@ -173,7 +173,7 @@ async function postForBuffer(url, options) {
  * POST multipart/form-data（用于 STT 音频上传）
  */
 async function postFormData(url, options) {
-  const boundary = '----WorkFoxBoundary' + Date.now()
+  const boundary = '----workflowBoundary' + Date.now()
   const parts = []
 
   if (options.file) {
@@ -205,7 +205,7 @@ async function postFormData(url, options) {
   const headers = {
     'Content-Type': `multipart/form-data; boundary=${boundary}`,
     'Content-Length': totalLength,
-    'User-Agent': 'WorkFox/1.0',
+    'User-Agent': 'workflow/1.0',
     ...options.headers,
   }
   const req = await createProxiedRequest(url, 'POST', headers, options.timeout || 120000, options.proxy || null)
@@ -249,7 +249,7 @@ async function postFormData(url, options) {
 // ---------- 文件工具 ----------
 
 function saveToTempFile(buffer, ext) {
-  const tmpDir = path.join(os.tmpdir(), 'workfox-fish-audio')
+  const tmpDir = path.join(os.tmpdir(), 'workflow-fish-audio')
   if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true })
   const filePath = path.join(tmpDir, `tts_${Date.now()}.${ext}`)
   fs.writeFileSync(filePath, buffer)

@@ -1,5 +1,3 @@
-// Workflow node type definitions and registry
-// Adapted from workfox — no Vue dependencies
 
 import type { NodeTypeDefinition } from '@agent-spaces/shared';
 import { StickyNoteView } from '@/components/workflow/sticky-note-view';

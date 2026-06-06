@@ -13,6 +13,7 @@
     "models": "Models",
     "providers": "Providers",
     "workflows": "Workflows",
+    "chat": "Chat",
     "hooks": "Hooks",
     "tools": "Tools",
     "commands": "Commands",

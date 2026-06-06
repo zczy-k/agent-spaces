@@ -1,5 +1,3 @@
-// React hooks for workflow editor
-// Converted from workfox composables
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getWorkflowEditorStore } from '@/stores/workflow-editor';

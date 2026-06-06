@@ -1,5 +1,3 @@
-// Unified Workflow Editor Store (Zustand)
-// Converted from workfox Pinia store to Zustand
 
 import { create } from 'zustand';
 import type {

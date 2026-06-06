@@ -1,9 +1,9 @@
 {
-  "id": "workfox.test-plugin",
+  "id": "workflow.test-plugin",
   "name": "Test Plugin",
   "version": "1.0.0",
-  "description": "workfox Web client 插件示例，通过 CDN 加载 runtime 与 view",
-  "author": { "name": "workfox" },
+  "description": "workflow Web client 插件示例，通过 CDN 加载 runtime 与 view",
+  "author": { "name": "workflow" },
   "tags": ["测试", "开发", "Web"],
   "type": "client",
   "hasView": true,

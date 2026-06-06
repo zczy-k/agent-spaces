@@ -137,7 +137,7 @@ module.exports = {
       icon: 'MessageSquare',
       description: 'MiniMax 文本合成：支持多轮对话、工具调用(Function Calling)、图片理解、思维链推理',
       properties: [
-        { key: 'apiKey', label: 'API Key', type: 'text', required: true, default: '{{ __config__["workfox.minimax"]["apiKey"] }}' },
+        { key: 'apiKey', label: 'API Key', type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
         { key: 'model', label: '模型', type: 'select', default: 'MiniMax-M2.7', options: CHAT_MODELS },
         { key: 'systemPrompt', label: '系统提示词', type: 'textarea', tooltip: '系统角色的行为指令，定义 AI 的角色和约束' },
         { key: 'messages', label: '消息列表', type: 'array', required: true, tooltip: '对话消息列表', fields: [
@@ -152,7 +152,7 @@ module.exports = {
         { key: 'temperature', label: '温度', type: 'number', default: 0.7, tooltip: '0-1，控制随机性，越高越随机，建议取值 0.7-1.0' },
         { key: 'topP', label: 'Top P', type: 'number', default: 0.95, tooltip: '0-1，核采样参数' },
         { key: 'maxCompletionTokens', label: '最大输出 Token', type: 'number', tooltip: '最大生成 token 数' },
-        { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workfox.minimax"]["baseUrl"] }}' },
+        { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
       ],
       outputs: [
         { key: 'success', type: 'boolean' },
@@ -226,7 +226,7 @@ module.exports = {
       icon: 'User',
       description: 'MiniMax 角色对话（M2-her）：支持角色扮演、多轮对话，可定义角色人设和世界观',
       properties: [
-        { key: 'apiKey', label: 'API Key', type: 'text', required: true, default: '{{ __config__["workfox.minimax"]["apiKey"] }}' },
+        { key: 'apiKey', label: 'API Key', type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
         { key: 'systemPrompt', label: '角色人设', type: 'textarea', tooltip: '角色的系统设定，定义 AI 的性格、背景、说话风格' },
         { key: 'userSystem', label: '用户设定', type: 'textarea', tooltip: '用户角色的系统设定（user_system role）' },
         { key: 'group', label: '群组设定', type: 'textarea', tooltip: '世界观/场景设定（group role）' },
@@ -248,7 +248,7 @@ module.exports = {
         { key: 'temperature', label: '温度', type: 'number', default: 1.0, tooltip: '0-1，控制随机性，默认 1.0' },
         { key: 'topP', label: 'Top P', type: 'number', default: 0.95, tooltip: '0-1，核采样参数' },
         { key: 'maxCompletionTokens', label: '最大输出 Token', type: 'number', tooltip: '最大 2048' },
-        { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workfox.minimax"]["baseUrl"] }}' },
+        { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
       ],
       outputs: [
         { key: 'success', type: 'boolean' },
@@ -320,7 +320,7 @@ module.exports = {
       icon: 'AudioLines',
       description: 'MiniMax 文字转语音（同步 TTS），支持多种音色、情绪、语速控制',
       properties: [
-        { key: 'apiKey', label: 'API Key', type: 'text', required: true, tooltip: 'MiniMax API Key', default: '{{ __config__["workfox.minimax"]["apiKey"] }}' },
+        { key: 'apiKey', label: 'API Key', type: 'text', required: true, tooltip: 'MiniMax API Key', default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
         { key: 'text', label: '文本内容', type: 'textarea', required: true, tooltip: '待合成语音的文本（<10000字符）' },
         { key: 'model', label: '模型', type: 'select', default: 'speech-2.8-hd', options: TTS_MODELS },
         { key: 'voiceId', label: '音色ID', type: 'text', default: 'Chinese (Mandarin)_Lyrical_Voice', tooltip: '系统音色ID，如 male-qn-qingse、English_Graceful_Lady' },
@@ -338,7 +338,7 @@ module.exports = {
           { label: 'URL (推荐)', value: 'url' },
           { label: 'HEX', value: 'hex' },
         ] },
-        { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workfox.minimax"]["baseUrl"] }}' },
+        { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
       ],
       outputs: [
         { key: 'success', type: 'boolean' },
@@ -412,7 +412,7 @@ module.exports = {
       icon: 'Music',
       description: 'MiniMax 音乐生成：通过描述和歌词生成歌曲，支持翻唱模式',
       properties: [
-        { key: 'apiKey', label: 'API Key', type: 'text', required: true, default: '{{ __config__["workfox.minimax"]["apiKey"] }}' },
+        { key: 'apiKey', label: 'API Key', type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
         { key: 'prompt', label: '音乐描述', type: 'textarea', required: true, tooltip: '描述风格、情绪、场景，如"流行音乐, 难过, 适合在下雨的晚上"' },
         { key: 'lyrics', label: '歌词', type: 'textarea', tooltip: '用 \\n 分隔每行，支持结构标签如 [Verse] [Chorus] 等' },
         { key: 'model', label: '模型', type: 'select', default: 'music-2.6', options: MUSIC_MODELS },
@@ -427,7 +427,7 @@ module.exports = {
         { key: 'audioFormat', label: '音频格式', type: 'select', default: 'mp3', options: [
           { label: 'mp3 (默认)', value: 'mp3' }, { label: 'wav', value: 'wav' }, { label: 'pcm', value: 'pcm' },
         ] },
-        { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workfox.minimax"]["baseUrl"] }}' },
+        { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
       ],
       outputs: [
         { key: 'success', type: 'boolean' },
@@ -492,7 +492,7 @@ module.exports = {
       icon: 'FileText',
       description: 'MiniMax 歌词生成：支持完整歌曲创作和歌词编辑/续写',
       properties: [
-        { key: 'apiKey', label: 'API Key', type: 'text', required: true, default: '{{ __config__["workfox.minimax"]["apiKey"] }}' },
+        { key: 'apiKey', label: 'API Key', type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
         { key: 'prompt', label: '描述', type: 'textarea', required: true, tooltip: '歌曲主题/风格描述，如"一首关于夏日海边的轻快情歌"' },
         { key: 'mode', label: '模式', type: 'select', default: 'write_full_song', options: [
           { label: '写完整歌曲', value: 'write_full_song' },
@@ -500,7 +500,7 @@ module.exports = {
         ] },
         { key: 'lyrics', label: '现有歌词', type: 'textarea', tooltip: '编辑模式下传入现有歌词用于续写/修改' },
         { key: 'title', label: '歌曲标题', type: 'text', tooltip: '指定标题后输出保持该标题不变' },
-        { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workfox.minimax"]["baseUrl"] }}' },
+        { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
       ],
       outputs: [
         { key: 'success', type: 'boolean' },
@@ -552,7 +552,7 @@ module.exports = {
       icon: 'Video',
       description: 'MiniMax 文生视频：通过文字描述生成视频，支持运镜控制指令',
       properties: [
-        { key: 'apiKey', label: 'API Key', type: 'text', required: true, default: '{{ __config__["workfox.minimax"]["apiKey"] }}' },
+        { key: 'apiKey', label: 'API Key', type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
         { key: 'prompt', label: '视频描述', type: 'textarea', required: true, tooltip: '视频文字描述（最大2000字符），支持 [左移] [推进] [固定] 等运镜指令' },
         { key: 'model', label: '模型', type: 'select', default: 'MiniMax-Hailuo-2.3', options: T2V_MODELS },
         { key: 'duration', label: '时长(秒)', type: 'select', default: 6, options: VIDEO_DURATIONS },
@@ -560,7 +560,7 @@ module.exports = {
         { key: 'promptOptimizer', label: '自动优化提示词', type: 'select', default: 'true', options: [
           { label: '是 (默认)', value: 'true' }, { label: '否', value: 'false' },
         ] },
-        { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workfox.minimax"]["baseUrl"] }}' },
+        { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
       ],
       outputs: [
         { key: 'success', type: 'boolean' },
@@ -607,7 +607,7 @@ module.exports = {
       icon: 'Clapperboard',
       description: 'MiniMax 图生视频：基于图片和文字描述生成视频',
       properties: [
-        { key: 'apiKey', label: 'API Key', type: 'text', required: true, default: '{{ __config__["workfox.minimax"]["apiKey"] }}' },
+        { key: 'apiKey', label: 'API Key', type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
         { key: 'firstFrameImage', label: '首帧图片', type: 'textarea', required: true, tooltip: '首帧图片 URL 或 Base64 Data URL（JPG/PNG/WebP，<20MB）' },
         { key: 'prompt', label: '视频描述', type: 'textarea', tooltip: '视频文字描述（最大2000字符），支持运镜指令' },
         { key: 'model', label: '模型', type: 'select', default: 'MiniMax-Hailuo-2.3', options: I2V_MODELS },
@@ -616,7 +616,7 @@ module.exports = {
         { key: 'promptOptimizer', label: '自动优化提示词', type: 'select', default: 'true', options: [
           { label: '是 (默认)', value: 'true' }, { label: '否', value: 'false' },
         ] },
-        { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workfox.minimax"]["baseUrl"] }}' },
+        { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
       ],
       outputs: [
         { key: 'success', type: 'boolean' },
@@ -664,7 +664,7 @@ module.exports = {
       icon: 'Film',
       description: 'MiniMax 首尾帧生成视频：基于起始帧和结束帧图片生成过渡视频',
       properties: [
-        { key: 'apiKey', label: 'API Key', type: 'text', required: true, default: '{{ __config__["workfox.minimax"]["apiKey"] }}' },
+        { key: 'apiKey', label: 'API Key', type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
         { key: 'firstFrameImage', label: '首帧图片', type: 'textarea', required: true, tooltip: '起始帧图片 URL 或 Base64 Data URL' },
         { key: 'lastFrameImage', label: '尾帧图片', type: 'textarea', required: true, tooltip: '结束帧图片 URL 或 Base64 Data URL' },
         { key: 'prompt', label: '视频描述', type: 'textarea', tooltip: '视频文字描述，支持运镜指令' },
@@ -672,7 +672,7 @@ module.exports = {
         { key: 'resolution', label: '分辨率', type: 'select', default: '768P', options: [
           { label: '768P (默认)', value: '768P' }, { label: '1080P', value: '1080P' },
         ] },
-        { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workfox.minimax"]["baseUrl"] }}' },
+        { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
       ],
       outputs: [
         { key: 'success', type: 'boolean' },
@@ -720,10 +720,10 @@ module.exports = {
       icon: 'UserRound',
       description: 'MiniMax 主体参考视频：基于人物主体图片生成视频（保持人物一致性）',
       properties: [
-        { key: 'apiKey', label: 'API Key', type: 'text', required: true, default: '{{ __config__["workfox.minimax"]["apiKey"] }}' },
+        { key: 'apiKey', label: 'API Key', type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
         { key: 'subjectImage', label: '人物图片', type: 'textarea', required: true, tooltip: '人物面部参考图片 URL（JPG/PNG/WebP，<20MB）' },
         { key: 'prompt', label: '视频描述', type: 'textarea', tooltip: '视频文字描述' },
-        { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workfox.minimax"]["baseUrl"] }}' },
+        { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
       ],
       outputs: [
         { key: 'success', type: 'boolean' },
@@ -773,9 +773,9 @@ module.exports = {
       icon: 'Search',
       description: '查询 MiniMax 视频生成任务状态（Preparing/Queueing/Processing/Success/Fail）',
       properties: [
-        { key: 'apiKey', label: 'API Key', type: 'text', required: true, default: '{{ __config__["workfox.minimax"]["apiKey"] }}' },
+        { key: 'apiKey', label: 'API Key', type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
         { key: 'taskId', label: '任务ID', type: 'text', required: true, tooltip: '视频生成任务返回的 taskId' },
-        { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workfox.minimax"]["baseUrl"] }}' },
+        { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
       ],
       outputs: [
         { key: 'success', type: 'boolean' },
@@ -825,9 +825,9 @@ module.exports = {
       icon: 'Download',
       description: '通过 fileId 获取 MiniMax 视频下载链接（有效期1小时）',
       properties: [
-        { key: 'apiKey', label: 'API Key', type: 'text', required: true, default: '{{ __config__["workfox.minimax"]["apiKey"] }}' },
+        { key: 'apiKey', label: 'API Key', type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
         { key: 'fileId', label: '文件ID', type: 'text', required: true, tooltip: '视频任务查询返回的 fileId' },
-        { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workfox.minimax"]["baseUrl"] }}' },
+        { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
       ],
       outputs: [
         { key: 'success', type: 'boolean' },

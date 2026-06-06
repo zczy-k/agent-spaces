@@ -1,9 +1,9 @@
 {
-  "id": "workfox.minimax",
+  "id": "workflow.minimax",
   "name": "MiniMax AI",
   "version": "1.0.0",
   "description": "MiniMax AI 多模态生成，支持文本合成(M2.x大模型)、角色对话(M2-her)、语音合成(TTS)、音乐生成、视频生成(文生/图生/首尾帧/主体参考)、歌词生成",
-  "author": { "name": "workfox" },
+  "author": { "name": "workflow" },
   "tags": ["AI", "文本合成", "角色对话", "语音合成", "音乐生成", "视频生成", "MiniMax", "海螺AI"],
   "type": "server",
   "hasWorkflow": true,

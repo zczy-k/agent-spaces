@@ -5,7 +5,7 @@
     "name": "agent-spaces",
     "type": "pnpm-monorepo + flutter",
     "language": "TypeScript + Dart",
-    "description": "多 Agent 协同编程平台（含六运行时 Agent 编排、WorkFox Workflow 执行引擎、通用 AI 文本请求层、AI 标题生成、DAG 可视化编排含循环/分支/变量/断点/恢复/触发器/分组/插件系统、Plugin 插件系统含自定义节点/配置/Store安装/CJS沙箱加载、Hook 系统、输出风格管理、Chat 独立页面（LangChain 运行时驱动）、Workflow 内置工具（执行+编辑）、i18n 中英文切换（31 命名空间拆分）、通知中心、用量统计（含 Commit Graph + Activity Graph + Content Usage Report）、订阅管理、语音识别、快捷命令、代码搜索、Agent SSE API、Command Palette、代码收藏、Prompt 模板管理、TypeScript LSP、DOM Inspector、持久上下文加载、Kanban 看板、Notion 风格文档数据库含向量搜索、Worktree 并行开发、Robot Account 凭证管理、Agent Commands 管理、字体管理、版本自更新系统、Diff Viewer、JSON Viewer、Log Viewer、CodexFunctionToolBridge MCP 桥接、主题风格系统、布局模板管理、Agent Store、终端注册表、Send to Issue/Channel、HTML->Markdown 转换、数据导入/导出、前端 SDK 统一 API 调用层 38 模块、Agent 模板库 100+ 预设、Flutter 多平台客户端含远程终端和文件源）"
+    "description": "多 Agent 协同编程平台（含六运行时 Agent Workflow 执行引擎、通用 AI 文本请求层、AI 标题生成、DAG 可视化编排含循环/分支/变量/断点/恢复/触发器/分组/插件系统、Plugin 插件系统含自定义节点/配置/Store安装/CJS沙箱加载、Hook 系统、输出风格管理、Chat 独立页面（LangChain 运行时驱动）、Workflow 内置工具（执行+编辑）、i18n 中英文切换（31 命名空间拆分）、通知中心、用量统计（含 Commit Graph + Activity Graph + Content Usage Report）、订阅管理、语音识别、快捷命令、代码搜索、Agent SSE API、Command Palette、代码收藏、Prompt 模板管理、TypeScript LSP、DOM Inspector、持久上下文加载、Kanban 看板、Notion 风格文档数据库含向量搜索、Worktree 并行开发、Robot Account 凭证管理、Agent Commands 管理、字体管理、版本自更新系统、Diff Viewer、JSON Viewer、Log Viewer、CodexFunctionToolBridge MCP 桥接、主题风格系统、布局模板管理、Agent Store、终端注册表、Send to Issue/Channel、HTML->Markdown 转换、数据导入/导出、前端 SDK 统一 API 调用层 38 模块、Agent 模板库 100+ 预设、Flutter 多平台客户端含远程终端和文件源）"
   },
   "modules": [
     {
@@ -35,7 +35,7 @@
       "path": "packages/server",
       "packageId": "@agent-spaces/server",
       "language": "TypeScript",
-      "role": "Express REST API + WebSocket + 认证中间件 + 六运行时 Agent 编排 + Chat 系统（Agent CRUD + LangChain 运行时 + SSE 流式） + Workflow 内置工具（执行+编辑） + WorkFox Workflow 执行引擎 + Plugin 插件系统 + 通用 AI 文本请求层 + Hook 系统 + 通知中心 + Worktree + Kanban + DocNode + Agent SSE API",
+      "role": "Express REST API + WebSocket + 认证中间件 + 六运行时 Agent 编排 + Chat 系统（Agent CRUD + LangChain 运行时 + SSE 流式） + Workflow 内置工具（执行+编辑） + Workflow 执行引擎 + Plugin 插件系统 + 通用 AI 文本请求层 + Hook 系统 + 通知中心 + Worktree + Kanban + DocNode + Agent SSE API",
       "entry": "src/app.ts",
       "sourceFiles": 165,
       "newFiles": [

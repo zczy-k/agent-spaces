@@ -1,11 +1,11 @@
 [
   {
-    "id": "workfox.test-plugin",
+    "id": "workflow.test-plugin",
     "name": "Test Plugin",
     "version": "1.0.0",
-    "description": "workfox 插件系统测试插件，监听并输出所有事件到控制台",
+    "description": "workflow 插件系统测试插件，监听并输出所有事件到控制台",
     "author": {
-      "name": "workfox"
+      "name": "workflow"
     },
     "tags": [
       "测试",
@@ -19,11 +19,11 @@
     "iconUrl": "test-plugin/icon.png"
   },
   {
-    "id": "workfox.window-manager",
+    "id": "workflow.window-manager",
     "name": "窗口管理",
     "version": "1.0.0",
     "description": "提供独立浏览器窗口的创建、导航、关闭、截图等操作节点",
-    "author": { "name": "workfox" },
+    "author": { "name": "workflow" },
     "tags": ["窗口", "浏览器", "管理"],
     "type": "client",
     "runtimeTargets": ["electron"],

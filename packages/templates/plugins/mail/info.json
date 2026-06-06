@@ -1,9 +1,9 @@
 {
-  "id": "workfox.mail",
+  "id": "workflow.mail",
   "name": "邮件发送",
   "version": "1.0.0",
   "description": "通过 SMTP 发送邮件，支持 HTML/纯文本、附件、抄送/密送",
-  "author": { "name": "workfox" },
+  "author": { "name": "workflow" },
   "tags": ["邮件", "SMTP", "通知"],
   "type": "server",
   "hasWorkflow": true,

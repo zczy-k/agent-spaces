@@ -61,7 +61,7 @@ module.exports = {
           { label: 'Opus', value: 'libopus' },
         ] },
         { key: 'outputPath', label: '输出文件路径', type: 'text', tooltip: '留空则自动生成（同目录，换扩展名）' },
-        { key: 'ffmpegPath', label: 'FFmpeg路径', type: 'text', default: '{{ __config__["workfox.ffmpeg"]["ffmpegPath"] }}', tooltip: '留空使用系统PATH' },
+        { key: 'ffmpegPath', label: 'FFmpeg路径', type: 'text', default: '{{ __config__["workflow.ffmpeg"]["ffmpegPath"] }}', tooltip: '留空使用系统PATH' },
       ],
       outputs: [
         { key: 'success', type: 'boolean' },
@@ -118,7 +118,7 @@ module.exports = {
           { label: 'Opus', value: 'libopus' },
         ] },
         { key: 'shortest', label: '以最短流为准', type: 'boolean', default: true, tooltip: '音视频长度不同时，以较短者为准截断' },
-        { key: 'ffmpegPath', label: 'FFmpeg路径', type: 'text', default: '{{ __config__["workfox.ffmpeg"]["ffmpegPath"] }}', tooltip: '留空使用系统PATH' },
+        { key: 'ffmpegPath', label: 'FFmpeg路径', type: 'text', default: '{{ __config__["workflow.ffmpeg"]["ffmpegPath"] }}', tooltip: '留空使用系统PATH' },
       ],
       outputs: [
         { key: 'success', type: 'boolean' },
@@ -183,7 +183,7 @@ module.exports = {
         ] },
         { key: 'audioOutputPath', label: '音频输出路径', type: 'text', tooltip: '留空自动生成' },
         { key: 'videoOutputPath', label: '视频输出路径', type: 'text', tooltip: '留空自动生成' },
-        { key: 'ffmpegPath', label: 'FFmpeg路径', type: 'text', default: '{{ __config__["workfox.ffmpeg"]["ffmpegPath"] }}', tooltip: '留空使用系统PATH' },
+        { key: 'ffmpegPath', label: 'FFmpeg路径', type: 'text', default: '{{ __config__["workflow.ffmpeg"]["ffmpegPath"] }}', tooltip: '留空使用系统PATH' },
       ],
       outputs: [
         { key: 'success', type: 'boolean' },

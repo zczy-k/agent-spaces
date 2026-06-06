@@ -1,9 +1,9 @@
 {
-  "id": "workfox.aliyun-ai",
+  "id": "workflow.aliyun-ai",
   "name": "阿里云百炼AI",
   "version": "1.0.0",
   "description": "阿里云百炼AI图片与视频生成，支持千问文生图/图像编辑、万相文生图/图生视频/文生视频/视频编辑/参考生视频/首尾帧生视频/图生动作、可灵生图、图像扩图、声动人像",
-  "author": { "name": "workfox" },
+  "author": { "name": "workflow" },
   "tags": ["AI", "图片生成", "图片编辑", "视频生成", "视频编辑", "阿里云", "百炼", "千问", "万相", "可灵", "扩图", "声动人像"],
   "type": "server",
   "hasWorkflow": true,

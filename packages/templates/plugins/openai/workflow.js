@@ -8,8 +8,8 @@ function pick(obj, keys) {
   return result
 }
 
-const CONFIG_APIKEY = '{{ __config__["workfox.openai"]["apiKey"] }}'
-const CONFIG_BASEURL = '{{ __config__["workfox.openai"]["baseUrl"] }}'
+const CONFIG_APIKEY = '{{ __config__["workflow.openai"]["apiKey"] }}'
+const CONFIG_BASEURL = '{{ __config__["workflow.openai"]["baseUrl"] }}'
 
 module.exports = {
   nodes: [

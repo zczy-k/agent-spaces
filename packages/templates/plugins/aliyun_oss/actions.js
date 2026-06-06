@@ -1,6 +1,6 @@
 const { createClient, normalizeResult } = require('./shared')
 
-const CONFIG_PREFIX = '{{ __config__["workfox.aliyun-oss"]'
+const CONFIG_PREFIX = '{{ __config__["workflow.aliyun-oss"]'
 
 function configProperties() {
   return [

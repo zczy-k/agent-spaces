@@ -1,6 +1,6 @@
 const { createClient, getBucketParams, getPublicUrl } = require('./shared')
 
-const CONFIG_PREFIX = '{{ __config__["workfox.tencent-cos"]'
+const CONFIG_PREFIX = '{{ __config__["workflow.tencent-cos"]'
 
 function configProperties() {
   return [

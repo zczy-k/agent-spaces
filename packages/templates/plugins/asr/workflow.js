@@ -177,8 +177,8 @@ function extractTexts(transcription) {
 
 function configProperties() {
   return [
-    { key: 'apiKey', label: 'API Key', type: 'text', required: true, tooltip: '阿里云百炼 DashScope API Key', default: '{{ __config__["workfox.asr"]["apiKey"] }}' },
-    { key: 'baseUrl', label: 'API 地址', type: 'text', default: '{{ __config__["workfox.asr"]["baseUrl"] }}', tooltip: 'DashScope API 基础地址' },
+    { key: 'apiKey', label: 'API Key', type: 'text', required: true, tooltip: '阿里云百炼 DashScope API Key', default: '{{ __config__["workflow.asr"]["apiKey"] }}' },
+    { key: 'baseUrl', label: 'API 地址', type: 'text', default: '{{ __config__["workflow.asr"]["baseUrl"] }}', tooltip: 'DashScope API 基础地址' },
   ]
 }
 

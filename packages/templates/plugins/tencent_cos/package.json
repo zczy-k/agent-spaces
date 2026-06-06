@@ -1,7 +1,7 @@
 {
   "name": "tencent-cos-plugin",
   "version": "1.0.0",
-  "description": "Tencent Cloud COS plugin for WorkFox",
+  "description": "Tencent Cloud COS plugin for workflow",
   "main": "main.js",
   "type": "commonjs",
   "dependencies": {

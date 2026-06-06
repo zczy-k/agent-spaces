@@ -1,9 +1,9 @@
 {
-  "id": "workfox.file-system",
+  "id": "workflow.file-system",
   "name": "文件系统",
   "version": "1.0.0",
   "description": "提供文件读写、编辑、枚举、删除及目录管理等操作节点",
-  "author": { "name": "workfox" },
+  "author": { "name": "workflow" },
   "tags": ["文件", "目录", "文件系统"],
   "type": "server",
   "hasWorkflow": true,

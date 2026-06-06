@@ -1,11 +1,8 @@
-// ============================================================
-// Unified Workflow Types (canonical model from WorkFox)
-// ============================================================
 //
 // Design decisions:
 // 1. Node type is string + data: Record<string, unknown> (loose coupling)
 // 2. Timestamps are number (epoch ms)
-// 3. All workfox extensions (groups, triggers, plugins) are optional
+// 3. All workflow extensions (groups, triggers, plugins) are optional
 // 4. Legacy WorkflowTemplate is a type alias for backward compat
 // 5. Legacy agent/command node data preserved via legacy- prefixed helpers
 

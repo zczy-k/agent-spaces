@@ -1,9 +1,3 @@
-// ============================================================
-// Workflow Execution Events & Control
-// ============================================================
-// Unified execution event system from WorkFox.
-// Used by both server (execution engine) and client (real-time UI).
-
 import type {
   EngineStatus,
   ExecutionLog,
