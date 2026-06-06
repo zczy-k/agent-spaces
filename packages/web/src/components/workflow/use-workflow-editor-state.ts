@@ -23,6 +23,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
   const [isLoading, setIsLoading] = useState(!!template);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
   const [rightTab, setRightTab] = useState('properties');
   const [isEditingName, setIsEditingName] = useState(false);
   const [editingName, setEditingName] = useState('');
@@ -175,6 +176,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
     workflow, setWorkflow,
     isDirty, isSaving, isLoading, loadError,
     selectedNodeId, setSelectedNodeId,
+    selectedNodeIds, setSelectedNodeIds,
     rightTab, setRightTab,
     isEditingName, setIsEditingName,
     editingName, setEditingName,

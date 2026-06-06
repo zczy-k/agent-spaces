@@ -21,11 +21,17 @@ interface UseWorkflowEditorCanvasParams {
   pushUndo: (description?: string) => void;
   selectedNodeId: string | null;
   setSelectedNodeId: React.Dispatch<React.SetStateAction<string | null>>;
+  selectedNodeIds: string[];
+  setSelectedNodeIds: React.Dispatch<React.SetStateAction<string[]>>;
+}
+
+function areStringArraysEqual(a: string[], b: string[]) {
+  return a.length === b.length && a.every((item, index) => item === b[index]);
 }
 
 export function useWorkflowEditorCanvas({
   workflow, setWorkflow, markDirty, pushUndo,
-  selectedNodeId, setSelectedNodeId,
+  selectedNodeId, setSelectedNodeId, selectedNodeIds, setSelectedNodeIds,
 }: UseWorkflowEditorCanvasParams) {
   const [nodeSelectOpen, setNodeSelectOpen] = useState(false);
   const [nodeSelectContext, setNodeSelectContext] = useState<NodeSelectContext | null>(null);
@@ -50,8 +56,9 @@ export function useWorkflowEditorCanvas({
     };
     setWorkflow(w => w ? { ...w, nodes: [...w.nodes, newNode] } : null);
     setSelectedNodeId(id);
+    setSelectedNodeIds([id]);
     markDirty();
-  }, [workflow, pushUndo, markDirty, setSelectedNodeId]);
+  }, [workflow, pushUndo, markDirty, setSelectedNodeId, setSelectedNodeIds]);
 
   const handleConnectionDrop = useCallback((context: {
     sourceNodeId: string;
@@ -138,6 +145,7 @@ export function useWorkflowEditorCanvas({
         edges: [...current.edges, newEdge],
       } : null);
       setSelectedNodeId(id);
+      setSelectedNodeIds([id]);
       markDirty();
       return;
     }
@@ -187,8 +195,9 @@ export function useWorkflowEditorCanvas({
       ],
     } : null);
     setSelectedNodeId(id);
+    setSelectedNodeIds([id]);
     markDirty();
-  }, [workflow, nodeSelectContext, pushUndo, markDirty, setSelectedNodeId]);
+  }, [workflow, nodeSelectContext, pushUndo, markDirty, setSelectedNodeId, setSelectedNodeIds]);
 
   const handleNodeDelete = useCallback((nodeId: string) => {
     if (!workflow) return;
@@ -199,12 +208,36 @@ export function useWorkflowEditorCanvas({
       edges: w.edges.filter(e => e.source !== nodeId && e.target !== nodeId),
     } : null);
     if (selectedNodeId === nodeId) setSelectedNodeId(null);
+    setSelectedNodeIds(ids => ids.filter(id => id !== nodeId));
     markDirty();
-  }, [workflow, pushUndo, markDirty, selectedNodeId, setSelectedNodeId]);
+  }, [workflow, pushUndo, markDirty, selectedNodeId, setSelectedNodeId, setSelectedNodeIds]);
 
-  const handleNodeSelect = useCallback((id: string | null) => {
-    setSelectedNodeId(id);
-  }, [setSelectedNodeId]);
+  const handleNodeSelect = useCallback((id: string | null, multi = false) => {
+    if (!id) {
+      if (!selectedNodeId && selectedNodeIds.length === 0) return;
+      setSelectedNodeId(null);
+      setSelectedNodeIds([]);
+      return;
+    }
+
+    if (!multi) {
+      if (selectedNodeId === id && areStringArraysEqual(selectedNodeIds, [id])) return;
+      setSelectedNodeId(id);
+      setSelectedNodeIds([id]);
+      return;
+    }
+
+    const selected = selectedNodeIds.includes(id);
+    const next = selected ? selectedNodeIds.filter(item => item !== id) : [...selectedNodeIds, id];
+    setSelectedNodeIds(next);
+    setSelectedNodeId(selected ? next[next.length - 1] ?? null : id);
+  }, [selectedNodeId, selectedNodeIds, setSelectedNodeId, setSelectedNodeIds]);
+
+  const handleNodesSelect = useCallback((ids: string[]) => {
+    if (areStringArraysEqual(selectedNodeIds, ids)) return;
+    setSelectedNodeIds(ids);
+    setSelectedNodeId(ids[ids.length - 1] ?? null);
+  }, [selectedNodeIds, setSelectedNodeId, setSelectedNodeIds]);
 
   const handleNodeDataUpdate = useCallback((nodeId: string, data: Record<string, unknown>) => {
     setWorkflow(w => {
@@ -377,6 +410,7 @@ export function useWorkflowEditorCanvas({
     handleNodeAdd,
     handleNodeDelete,
     handleNodeSelect,
+    handleNodesSelect,
     handleNodeDataUpdate,
     handleConnectionDrop,
 

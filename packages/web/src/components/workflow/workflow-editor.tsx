@@ -55,6 +55,8 @@ function WorkflowEditorInner({
     pushUndo: state.pushUndo,
     selectedNodeId: state.selectedNodeId,
     setSelectedNodeId: state.setSelectedNodeId,
+    selectedNodeIds: state.selectedNodeIds,
+    setSelectedNodeIds: state.setSelectedNodeIds,
   });
 
   const execution = useWorkflowEditorExecution({
@@ -190,9 +192,11 @@ function WorkflowEditorInner({
                 isRunning={isWorkflowRunning}
                 executionLog={execution.executionLog}
                 selectedNodeId={state.selectedNodeId}
+                selectedNodeIds={state.selectedNodeIds}
                 onNodeAdd={canvas.handleNodeAdd}
                 onNodeDelete={canvas.handleNodeDelete}
                 onNodeSelect={canvas.handleNodeSelect}
+                onNodesSelect={canvas.handleNodesSelect}
                 onNodeDataUpdate={canvas.handleNodeDataUpdate}
                 onNodesChange={canvas.handleNodesChange}
                 onEdgesChange={canvas.handleEdgesChange}

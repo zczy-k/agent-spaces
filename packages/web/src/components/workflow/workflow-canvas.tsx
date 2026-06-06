@@ -45,9 +45,11 @@ interface WorkflowCanvasProps {
   isRunning?: boolean;
   executionLog?: ExecutionLog | null;
   selectedNodeId?: string | null;
+  selectedNodeIds?: string[];
   onNodeAdd: (type: string, position: { x: number; y: number }) => void;
   onNodeDelete: (id: string) => void;
   onNodeSelect: (id: string | null, multi?: boolean) => void;
+  onNodesSelect?: (ids: string[]) => void;
   onNodeDataUpdate: (id: string, data: Record<string, unknown>) => void;
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
@@ -169,7 +171,7 @@ function CanvasToolbar({
 
 export function WorkflowCanvas({
   workflow, isPreview, isRunning = false, executionLog, selectedNodeId,
-  onNodeAdd, onNodeDelete, onNodeSelect,
+  selectedNodeIds = [], onNodeAdd, onNodeDelete, onNodeSelect, onNodesSelect,
   onNodeDataUpdate, onNodesChange, onEdgesChange, onConnect,
   canUndo = false, canRedo = false, onUndo, onRedo, onExitPreview, onAutoLayout,
   onConnectionDrop,
@@ -189,6 +191,10 @@ export function WorkflowCanvas({
   const [isExporting, setIsExporting] = useState(false);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const isCanvasLocked = isPreview || isRunning;
+  const selectedNodeIdSet = useMemo(
+    () => new Set(selectedNodeIds.length > 0 ? selectedNodeIds : selectedNodeId ? [selectedNodeId] : []),
+    [selectedNodeId, selectedNodeIds],
+  );
 
   const executionNodeIds = useMemo(() => {
     const running = new Set<string>();
@@ -215,7 +221,7 @@ export function WorkflowCanvas({
         id: n.id,
         type: 'custom',
         position: n.position,
-        selected: n.id === selectedNodeId,
+        selected: selectedNodeIdSet.has(n.id),
         width,
         height,
         initialWidth: width,
@@ -234,7 +240,7 @@ export function WorkflowCanvas({
         } as Record<string, unknown>,
       };
     }),
-    [workflow.nodes, selectedNodeId, isPreview, isCanvasLocked, executionNodeIds],
+    [workflow.nodes, selectedNodeIdSet, isPreview, isCanvasLocked, executionNodeIds],
   );
 
   React.useEffect(() => {
@@ -398,8 +404,8 @@ export function WorkflowCanvas({
     onNodeAdd(type, position);
   }, [isCanvasLocked, screenToFlowPosition, onNodeAdd]);
 
-  const handleNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
-    const multi = false; // Could check for shift/meta key
+  const handleNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
+    const multi = event.shiftKey || event.metaKey || event.ctrlKey;
     setSelectedEdgeId(null);
     onNodeSelect(node.id, multi);
   }, [onNodeSelect]);
@@ -424,6 +430,12 @@ export function WorkflowCanvas({
   const handleEdgeClick = useCallback((_: React.MouseEvent, edge: Edge) => {
     selectEdge(edge.id);
   }, [selectEdge]);
+
+  const handleSelectionChange = useCallback(({ nodes }: { nodes: Node[] }) => {
+    const ids = nodes.map(node => node.id);
+    if (ids.length > 0) setSelectedEdgeId(null);
+    onNodesSelect?.(ids);
+  }, [onNodesSelect]);
 
   const getNodeDebugSnapshot = useCallback((nodeId?: string | null) => {
     const wrapper = reactFlowWrapper.current;
@@ -695,6 +707,7 @@ export function WorkflowCanvas({
         onNodeDragStart={handleNodeDragStart}
         onNodeDragStop={handleNodeDragStop}
         onEdgeClick={handleEdgeClick}
+        onSelectionChange={handleSelectionChange}
         onPaneClick={handlePaneClick}
         onError={handleReactFlowError}
         nodeTypes={nodeTypes}
