@@ -7,6 +7,8 @@ import { X, Play } from 'lucide-react';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { LOOP_BODY_NODE_TYPE, LOOP_BODY_SOURCE_HANDLE } from '@agent-spaces/shared';
 import { BorderGlide } from '@/components/ui/border-glide';
+import { resolveServerAssetUrl } from '@/lib/server';
+import { PluginIcon } from './workflow-plugin-icon';
 
 // ---- Icon resolver ----
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -44,11 +46,23 @@ type WorkflowCustomViewProps = {
   data: Record<string, unknown>;
 };
 
+type PluginNodeDefinitionMeta = {
+  pluginId?: string;
+  pluginIconPath?: string;
+};
+
 export function WorkflowNode({ id, data, type, selected }: NodeProps) {
   const nodeData = data as WorkflowNodeData;
   const workflowNodeType = typeof nodeData.nodeType === 'string' ? nodeData.nodeType : type;
   const definition = useMemo(() => getNodeDefinition(workflowNodeType || 'unknown'), [workflowNodeType]);
+  const pluginMeta = definition as (typeof definition & PluginNodeDefinitionMeta);
   const IconComponent = ICON_MAP[definition?.icon || ''];
+  const pluginIconSource = pluginMeta?.pluginId && pluginMeta.pluginIconPath
+    ? {
+      type: 'url' as const,
+      url: resolveServerAssetUrl(`/api/plugins/${encodeURIComponent(pluginMeta.pluginId)}/icon`),
+    }
+    : null;
   const CustomView = definition?.customView as React.ComponentType<WorkflowCustomViewProps> | undefined;
 
   const [isHovered, setIsHovered] = useState(false);
@@ -300,7 +314,11 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
         {/* Header */}
         {!isLoopBody && !CustomView && (
           <div className="flex items-center gap-2 px-3 py-2 border-b border-border/50">
-            {IconComponent && <IconComponent className="w-4 h-4 text-muted-foreground shrink-0" />}
+            {pluginIconSource ? (
+              <PluginIcon source={pluginIconSource} className="h-4 w-4 shrink-0 object-contain" />
+            ) : IconComponent ? (
+              <IconComponent className="w-4 h-4 text-muted-foreground shrink-0" />
+            ) : null}
             {isEditing ? (
               <input
                 ref={inputRef}

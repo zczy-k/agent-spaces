@@ -17,7 +17,6 @@ export function PluginIcon({ source, className }: { source: PluginIconSource; cl
 
   if (source.type === 'url' && !failed) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
       <img
         src={url}
         alt=""

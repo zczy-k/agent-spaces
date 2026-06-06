@@ -87,7 +87,11 @@ export function WorkflowNodeSidebar({
       for (const plugin of activePlugins) {
         try {
           const nodes = await pluginApi.getWorkflowNodes(plugin.id);
-          allNodes.push(...nodes);
+          allNodes.push(...nodes.map(node => ({
+            ...node,
+            pluginId: plugin.id,
+            pluginIconPath: plugin.iconPath,
+          })));
           for (const node of nodes) {
             if (node.category) catMap[node.category] = plugin.id;
           }
