@@ -7,7 +7,6 @@ import type { DatabaseMeta } from '@agent-spaces/shared';
 import { DatabaseSidebar } from './database-sidebar';
 import { DatabaseDialog } from './database-dialog';
 import { DatabaseVectorDialog } from './database-vector-dialog';
-import QuickSearchModal from './quick-search-modal';
 import TrashBinModal from './trash-bin-modal';
 
 interface Props {
@@ -20,12 +19,11 @@ export function DatabaseSidebarPanel({ workspaceId }: Props) {
     vectorStats, vectorLoading, vectorIndexing, loading, loaded,
     load, loadVectorStats, bindEmbeddingModel, indexVectors,
     restoreNode, deleteNode,
-    setActiveId, createDatabase, updateDatabase,
+    createDatabase, updateDatabase,
   } = useDatabaseStore();
 
   const { models, providers, ensure: ensureLLM } = useLLMStore();
 
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isTrashOpen, setIsTrashOpen] = useState(false);
   const [databaseDialogOpen, setDatabaseDialogOpen] = useState(false);
   const [vectorDialogOpen, setVectorDialogOpen] = useState(false);
@@ -84,8 +82,6 @@ onOpenCreateDatabase={openCreateDatabaseDialog}
         onOpenVectorDialog={() => setVectorDialogOpen(true)}
         onSave={triggerSave}
       />
-      <QuickSearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} nodes={nodes}
-        onSelectNode={(id) => { setActiveId(id); setIsSearchOpen(false); }} />
       <TrashBinModal isOpen={isTrashOpen} onClose={() => setIsTrashOpen(false)} nodes={nodes}
         onRestore={(id) => { restoreNode(workspaceId, id); }}
         onDeletePermanent={(id) => { deleteNode(workspaceId, id); }} />

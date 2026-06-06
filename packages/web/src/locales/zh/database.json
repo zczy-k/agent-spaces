@@ -56,5 +56,8 @@
   "minutesAgo": "分钟前",
   "hoursAgo": "小时前",
   "daysAgo": "天前",
-  "restore": "恢复"
+  "restore": "恢复",
+  "searchPlaceholder": "搜索文档...",
+  "matchResults": "匹配结果",
+  "noResults": "没有找到相关文档"
 }

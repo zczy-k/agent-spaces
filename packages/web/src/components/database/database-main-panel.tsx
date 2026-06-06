@@ -330,12 +330,12 @@ export function DatabaseMainPanel({
       <ExpandableDock
         headerContent={
           <div className="flex items-center gap-3 w-full" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-            <div className="flex items-center gap-1.5 text-sm text-gray-400">
+            <div className="flex-1 flex items-center gap-1.5 text-sm text-muted-foreground">
               <Search className="w-4 h-4" /><span>{t('globalSearch')}</span>
             </div>
-            <div className="w-px h-4 bg-gray-700" />
+            <div className="w-px h-4 bg-border" />
             <button onClick={onOpenTrash}
-              className="relative flex items-center gap-1.5 text-sm text-gray-400 hover:text-rose-400 transition-colors cursor-pointer">
+              className="relative ml-auto flex items-center gap-1.5 text-sm text-muted-foreground hover:text-rose-400 transition-colors cursor-pointer">
               <Trash className="w-4 h-4" />
               {trashCount > 0 && (
                 <span className="ml-0.5 bg-rose-600 text-white text-[8px] min-w-3.5 h-3.5 rounded-full flex items-center justify-center font-semibold px-1">

@@ -56,5 +56,8 @@
   "minutesAgo": "min ago",
   "hoursAgo": "hr ago",
   "daysAgo": "days ago",
-  "restore": "Restore"
+  "restore": "Restore",
+  "searchPlaceholder": "Search documents...",
+  "matchResults": "Results",
+  "noResults": "No matching documents found"
 }
