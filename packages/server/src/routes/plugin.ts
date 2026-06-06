@@ -20,9 +20,9 @@ router.get('/workflow', (_req: Request, res: Response) => {
   }
 });
 
-router.post('/store/:pluginId/install', (req: Request<{ pluginId: string }>, res: Response) => {
+router.post('/store/:pluginId/install', async (req: Request<{ pluginId: string }, unknown, { sourceUrl?: string }>, res: Response) => {
   try {
-    res.json(pluginService.installTemplatePlugin(req.params.pluginId));
+    res.json(await pluginService.installTemplatePlugin(req.params.pluginId, req.body?.sourceUrl));
   } catch (error: any) {
     console.error('[plugin] failed to install store plugin', {
       pluginId: req.params.pluginId,

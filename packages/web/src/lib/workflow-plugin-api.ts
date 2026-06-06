@@ -28,8 +28,8 @@ export const pluginApi = {
   uninstall(pluginId: string): Promise<{ success: boolean }> {
     return sdk.workflowPlugin.uninstall(pluginId);
   },
-  installFromStore(pluginId: string): Promise<PluginMeta> {
-    return sdk.workflowPlugin.installFromStore(pluginId);
+  installFromStore(pluginId: string, sourceUrl?: string): Promise<PluginMeta> {
+    return sdk.workflowPlugin.installFromStore(pluginId, sourceUrl);
   },
   getWorkflowNodes(pluginId: string): Promise<NodeTypeDefinition[]> {
     return sdk.workflowPlugin.getWorkflowNodes(pluginId);

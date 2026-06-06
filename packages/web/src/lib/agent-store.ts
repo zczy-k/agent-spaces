@@ -13,9 +13,16 @@ export function setStoreApiBase(url: string) {
   else localStorage.removeItem(STORAGE_KEY);
 }
 
-export async function fetchStoreIndex<T>(path: string): Promise<T[]> {
+export function resolveStoreUrl(path: string): string {
   const base = getStoreApiBase();
-  const url = base ? `${base.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}` : `/agents-store/${path}`;
+  const cleanPath = path.replace(/^\/+/, '');
+  if (base) return `${base.replace(/\/+$/, '')}/${cleanPath}`;
+  if (typeof window === 'undefined') return `/agents-store/${cleanPath}`;
+  return new URL(`/agents-store/${cleanPath}`, window.location.origin).toString();
+}
+
+export async function fetchStoreIndex<T>(path: string): Promise<T[]> {
+  const url = resolveStoreUrl(path);
   const res = await fetch(url);
   if (!res.ok) throw new Error(`fetch ${url} failed: ${res.status}`);
   return res.json();

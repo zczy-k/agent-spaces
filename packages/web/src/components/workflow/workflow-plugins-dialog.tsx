@@ -10,7 +10,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { fetchStoreIndex } from '@/lib/agent-store';
+import { fetchStoreIndex, resolveStoreUrl } from '@/lib/agent-store';
 import { pluginApi, type StoreWorkflowPlugin, type WorkflowPlugin } from '@/lib/workflow-plugin-api';
 import {
   PackagePlus, RefreshCw, Search, Store,
@@ -130,7 +130,7 @@ export function WorkflowPluginsDialog({
     if (installingId) return;
     setInstallingId(plugin.id);
     try {
-      const installed = await pluginApi.installFromStore(plugin.id);
+      const installed = await pluginApi.installFromStore(plugin.id, resolveStoreUrl(`plugins/${plugin.path}`));
       setPlugins(items => items.some(item => item.id === installed.id) ? items : [...items, installed]);
       updateWorkflowPlugins(installed.id, true);
       toast.success(`已安装 ${installed.name}`);

@@ -1,11 +1,12 @@
 import type { NodeTypeDefinition, PluginConfigField, PluginMeta } from '@agent-spaces/shared';
 import { ensureDir, getDataDir, readJsonFile, writeJsonFile } from '../storage/json-store.js';
-import { cpSync, existsSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { builtinModules } from 'node:module';
 import { spawnSync } from 'node:child_process';
 import vm from 'node:vm';
+import AdmZip from 'adm-zip';
 import { createBuiltinPluginApi } from './plugin-runtime-api.js';
 
 const require = createRequire(import.meta.url);
@@ -25,6 +26,7 @@ type PluginManifest = Partial<Omit<PluginMeta, 'enabled' | 'tags' | 'hasView'>> 
 };
 
 type WorkflowNodeHandler = (ctx: any, args: Record<string, any>) => Promise<any>;
+type StoreFile = { path: string; downloadUrl: string };
 
 type PluginState = {
   enabled: Record<string, boolean>;
@@ -431,7 +433,220 @@ function findTemplatePluginDir(pluginId: string): string | null {
   return null;
 }
 
-export function installTemplatePlugin(pluginId: string): PluginMeta {
+function sanitizeStorePluginPath(sourceUrl: string): string {
+  const pathname = new URL(sourceUrl).pathname.replace(/\/+$/, '');
+  return path.basename(decodeURIComponent(pathname)).replace(/[<>:"/\\|?*\x00-\x1F]/g, '_') || 'plugin';
+}
+
+function inferStoreZipUrl(sourceUrl: string): string {
+  return sourceUrl.endsWith('.zip') ? sourceUrl : `${sourceUrl.replace(/\/+$/, '')}.zip`;
+}
+
+function unwrapGithubProxyUrl(sourceUrl: string): string {
+  const match = sourceUrl.match(/https:\/\/(?:raw\.githubusercontent\.com|github\.com)\/.+/i);
+  return match?.[0] || sourceUrl;
+}
+
+function getGithubStoreParts(sourceUrl: string): { owner: string; repo: string; ref: string; dirPath: string } | null {
+  const unwrapped = unwrapGithubProxyUrl(sourceUrl);
+  const rawMatch = unwrapped.match(/^https:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/([^/]+)\/(.+)$/i);
+  if (rawMatch) {
+    return {
+      owner: rawMatch[1],
+      repo: rawMatch[2],
+      ref: rawMatch[3],
+      dirPath: rawMatch[4].replace(/\/+$/, ''),
+    };
+  }
+
+  const githubMatch = unwrapped.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)\/raw\/refs\/heads\/([^/]+)\/(.+)$/i);
+  if (githubMatch) {
+    return {
+      owner: githubMatch[1],
+      repo: githubMatch[2],
+      ref: githubMatch[3],
+      dirPath: githubMatch[4].replace(/\/+$/, ''),
+    };
+  }
+
+  return null;
+}
+
+async function fetchBuffer(url: string): Promise<Buffer> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`fetch ${url} failed: ${res.status}`);
+  return Buffer.from(await res.arrayBuffer());
+}
+
+async function fetchJson<T>(url: string): Promise<T> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`fetch ${url} failed: ${res.status}`);
+  return res.json() as Promise<T>;
+}
+
+async function tryInstallStoreZip(pluginId: string, sourceUrl: string): Promise<PluginMeta | null> {
+  try {
+    const zip = new AdmZip(await fetchBuffer(inferStoreZipUrl(sourceUrl)));
+    const targetDir = path.join(pluginsDir(), sanitizeStorePluginPath(sourceUrl));
+    ensureDir(pluginsDir());
+    if (existsSync(targetDir)) rmSync(targetDir, { recursive: true, force: true });
+    ensureDir(targetDir);
+    zip.extractAllTo(targetDir, true);
+
+    const entries = readdirSync(targetDir, { withFileTypes: true });
+    if (!readManifestFromDir(targetDir) && entries.length === 1 && entries[0].isDirectory()) {
+      const nestedDir = path.join(targetDir, entries[0].name);
+      const manifest = readManifestFromDir(nestedDir);
+      if (manifest) {
+        rmSync(targetDir, { recursive: true, force: true });
+        cpSync(nestedDir, targetDir, { recursive: true });
+      }
+    }
+
+    const manifest = readManifestFromDir(targetDir);
+    if (!manifest) throw new Error('Store plugin manifest not found');
+    if ((manifest.id || pluginId) !== pluginId) throw new Error(`Store plugin id mismatch: ${manifest.id || ''}`);
+    installPluginDependencies(targetDir);
+    return setPluginEnabled(pluginId, true);
+  } catch (error) {
+    console.warn('[plugin] store zip install skipped', {
+      pluginId,
+      sourceUrl,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
+}
+
+function githubRawUrl(file: StoreFile): string {
+  return file.downloadUrl;
+}
+
+async function listGithubStoreFiles(sourceUrl: string): Promise<StoreFile[] | null> {
+  const parts = getGithubStoreParts(sourceUrl);
+  if (!parts) return null;
+  const githubParts = parts;
+
+  const apiUrl = `https://api.github.com/repos/${githubParts.owner}/${githubParts.repo}/contents/${encodeURIComponent(githubParts.dirPath).replace(/%2F/g, '/')}?ref=${encodeURIComponent(githubParts.ref)}`;
+  const items = await fetchJson<Array<{ type: string; path: string; download_url?: string; url?: string }>>(apiUrl);
+  const files: StoreFile[] = [];
+
+  async function visit(entries: typeof items): Promise<void> {
+    for (const item of entries) {
+      if (item.type === 'file' && item.download_url) {
+        files.push({ path: item.path.slice(githubParts.dirPath.length).replace(/^\/+/, ''), downloadUrl: item.download_url });
+      } else if (item.type === 'dir' && item.url) {
+        await visit(await fetchJson<typeof items>(`${item.url}&ref=${encodeURIComponent(githubParts.ref)}`));
+      }
+    }
+  }
+
+  await visit(items);
+  return files;
+}
+
+async function tryInstallGithubStoreDir(pluginId: string, sourceUrl: string): Promise<PluginMeta | null> {
+  const files = await listGithubStoreFiles(sourceUrl);
+  if (!files?.length) return null;
+
+  const targetDir = path.join(pluginsDir(), sanitizeStorePluginPath(sourceUrl));
+  ensureDir(pluginsDir());
+  if (existsSync(targetDir)) rmSync(targetDir, { recursive: true, force: true });
+
+  for (const file of files) {
+    if (file.path.split('/').includes('node_modules')) continue;
+    const targetPath = path.join(targetDir, file.path);
+    mkdirSync(path.dirname(targetPath), { recursive: true });
+    writeFileSync(targetPath, await fetchBuffer(githubRawUrl(file)));
+  }
+
+  const manifest = readManifestFromDir(targetDir);
+  if (!manifest) throw new Error('Store plugin manifest not found');
+  if ((manifest.id || pluginId) !== pluginId) throw new Error(`Store plugin id mismatch: ${manifest.id || ''}`);
+  installPluginDependencies(targetDir);
+  return setPluginEnabled(pluginId, true);
+}
+
+async function tryInstallStoreCommonFiles(pluginId: string, sourceUrl: string): Promise<PluginMeta | null> {
+  const base = sourceUrl.replace(/\/+$/, '');
+  const targetDir = path.join(pluginsDir(), sanitizeStorePluginPath(sourceUrl));
+  const manifestNames = ['plugin.json', 'manifest.json', 'info.json', 'web-plugin.json', 'package.json'];
+  let manifestName = '';
+  let manifest: PluginManifest | null = null;
+
+  for (const name of manifestNames) {
+    try {
+      manifest = await fetchJson<PluginManifest>(`${base}/${name}`);
+      if (manifest?.id || manifest?.name) {
+        manifestName = name;
+        break;
+      }
+    } catch {
+      continue;
+    }
+  }
+  if (!manifest || !manifestName) return null;
+
+  if ((manifest.id || pluginId) !== pluginId) throw new Error(`Store plugin id mismatch: ${manifest.id || ''}`);
+
+  const files = new Set([
+    manifestName,
+    'package.json',
+    'package-lock.json',
+    'main.js',
+    'workflow.js',
+    'tools.js',
+    'actions.js',
+    'shared.js',
+  ]);
+
+  const entries = manifest.entries || {};
+  for (const entry of [entries.server, entries.workflow, entries.tools]) {
+    for (const file of Array.isArray(entry) ? entry : [entry]) {
+      if (file) files.add(file);
+    }
+  }
+
+  ensureDir(pluginsDir());
+  if (existsSync(targetDir)) rmSync(targetDir, { recursive: true, force: true });
+  ensureDir(targetDir);
+
+  for (const file of files) {
+    try {
+      const buffer = await fetchBuffer(`${base}/${file}`);
+      const targetPath = path.join(targetDir, file);
+      mkdirSync(path.dirname(targetPath), { recursive: true });
+      writeFileSync(targetPath, buffer);
+    } catch {
+      continue;
+    }
+  }
+
+  installPluginDependencies(targetDir);
+  return setPluginEnabled(pluginId, true);
+}
+
+async function installStorePlugin(pluginId: string, sourceUrl: string): Promise<PluginMeta | null> {
+  const fromGithub = await tryInstallGithubStoreDir(pluginId, sourceUrl).catch((error) => {
+    console.warn('[plugin] github store install skipped', {
+      pluginId,
+      sourceUrl,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  });
+  if (fromGithub) return fromGithub;
+  const fromZip = await tryInstallStoreZip(pluginId, sourceUrl);
+  if (fromZip) return fromZip;
+  return tryInstallStoreCommonFiles(pluginId, sourceUrl);
+}
+
+export async function installTemplatePlugin(pluginId: string, sourceUrl?: string): Promise<PluginMeta> {
+  if (sourceUrl) {
+    const plugin = await installStorePlugin(pluginId, sourceUrl);
+    if (plugin) return plugin;
+  }
+
   const sourceDir = findTemplatePluginDir(pluginId);
   if (!sourceDir) throw new Error('Template plugin not found');
 
