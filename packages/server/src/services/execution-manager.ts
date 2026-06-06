@@ -432,6 +432,11 @@ export class ExecutionManager {
         continue;
       }
 
+      if (!this.areIncomingNodesCompleted(session, node.id, session.edges)) {
+        this.recordSkippedStep(session, node, 'Waiting for upstream nodes');
+        continue;
+      }
+
       if (nodeState === 'disabled') {
         this.recordSkippedStep(session, node, 'Node disabled');
         session.status = 'error';
@@ -1012,7 +1017,7 @@ export class ExecutionManager {
       adjacency.set(edge.source, arr);
     }
 
-    const visited = new Set<string>();
+    const visited = new Set<string>([bodyNode.id]);
     const execFrom = async (nodeId: string): Promise<unknown> => {
       if (shouldInterrupt(session)) return undefined;
       let lastResult: unknown;
@@ -1022,6 +1027,7 @@ export class ExecutionManager {
         if (activeHandle !== undefined && edge.sourceHandle !== activeHandle) continue;
         const nextNode = scopeNodes.find(n => n.id === edge.target);
         if (!nextNode || visited.has(nextNode.id)) continue;
+        if (!this.areIncomingNodesCompleted(session, nextNode.id, bodyEdges, visited)) continue;
         visited.add(nextNode.id);
         const result = await this.executeNode(session, nextNode);
         if (result === 'interrupted' || shouldInterrupt(session)) return lastResult;
@@ -1084,6 +1090,7 @@ export class ExecutionManager {
         if (activeHandle !== undefined && edge.sourceHandle !== activeHandle) continue;
         const nextNode = nodeMap.get(edge.target);
         if (!nextNode || visited.has(nextNode.id)) continue;
+        if (!this.areIncomingNodesCompleted(session, nextNode.id, workflow.edges, visited)) continue;
         visited.add(nextNode.id);
         const result = await this.executeNode(session, nextNode);
         if (result === 'interrupted' || shouldInterrupt(session)) return lastResult;
@@ -1301,18 +1308,53 @@ export class ExecutionManager {
 
   // ---- Private: Branch reachability ----
 
-  private isNodeReachable(session: ExecutionSession, nodeId: string, visited?: Set<string>): boolean {
+  private isNodeReachable(
+    session: ExecutionSession,
+    nodeId: string,
+    visited?: Set<string>,
+    edges: WorkflowEdge[] = session.edges,
+  ): boolean {
     const seen = visited || new Set<string>();
     if (seen.has(nodeId)) return false;
     seen.add(nodeId);
-    const incoming = session.edges.filter(e => e.target === nodeId);
+    const incoming = edges.filter(e => e.target === nodeId);
     if (incoming.length === 0) return true;
     for (const edge of incoming) {
       const activeHandle = this.getActiveBranches(session).get(edge.source);
       if (activeHandle !== undefined && edge.sourceHandle !== activeHandle) continue;
-      if (this.isNodeReachable(session, edge.source, seen)) return true;
+      if (this.isNodeReachable(session, edge.source, seen, edges)) return true;
     }
     return false;
+  }
+
+  private areIncomingNodesCompleted(
+    session: ExecutionSession,
+    nodeId: string,
+    edges: WorkflowEdge[],
+    completedNodeIds?: Set<string>,
+  ): boolean {
+    const incoming = edges.filter(edge => (
+      edge.target === nodeId
+      && this.isActiveEdge(session, edge)
+      && (this.getActiveBranches(session).size === 0 || this.isNodeReachable(session, edge.source, undefined, edges))
+    ));
+    if (incoming.length === 0) return true;
+    return incoming.every(edge => this.isNodeCompleted(session, edge.source, completedNodeIds));
+  }
+
+  private isActiveEdge(session: ExecutionSession, edge: WorkflowEdge): boolean {
+    const activeHandle = this.getActiveBranches(session).get(edge.source);
+    return activeHandle === undefined || edge.sourceHandle === activeHandle;
+  }
+
+  private isNodeCompleted(
+    session: ExecutionSession,
+    nodeId: string,
+    completedNodeIds?: Set<string>,
+  ): boolean {
+    if (completedNodeIds?.has(nodeId)) return true;
+    const step = [...session.steps].reverse().find(s => s.nodeId === nodeId);
+    return step?.status === 'completed';
   }
 
   // ---- Private: Loop context ----

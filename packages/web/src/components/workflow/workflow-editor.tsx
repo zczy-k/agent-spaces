@@ -537,6 +537,7 @@ function WorkflowEditorInner({
               startNodes={execution.startNodes}
               validationError={execution.executionValidationError}
               isExpanded={execExpanded}
+              workflowId={state.workflowId}
               onToggle={toggleExec}
               onExecute={execution.handleExecute}
               onPause={execution.handlePauseExecution}
