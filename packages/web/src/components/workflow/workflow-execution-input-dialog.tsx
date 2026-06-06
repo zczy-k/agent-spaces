@@ -39,10 +39,22 @@ export interface ExecutionInputFormProps {
   fields: OutputField[];
   onSubmit: (values: Record<string, unknown>) => void | Promise<void>;
   submitLabel?: React.ReactNode;
+  initialValues?: Record<string, string>;
+  disabled?: boolean;
+  footer?: (submit: () => void) => React.ReactNode;
 }
 
-export function ExecutionInputForm({ fields, onSubmit, submitLabel }: ExecutionInputFormProps) {
-  const [values, setValues] = useState<Record<string, InputFormValue>>({});
+export function ExecutionInputForm({ fields, onSubmit, submitLabel, initialValues, disabled, footer }: ExecutionInputFormProps) {
+  const [values, setValues] = useState<Record<string, InputFormValue>>(() => {
+    if (!initialValues) return {};
+    const map: Record<string, InputFormValue> = {};
+    for (const field of fields) {
+      if (!field.key) continue;
+      const init = initialValues[field.key];
+      if (init !== undefined) map[field.key] = init;
+    }
+    return map;
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const setField = (key: string, value: InputFormValue) => {
@@ -50,7 +62,7 @@ export function ExecutionInputForm({ fields, onSubmit, submitLabel }: ExecutionI
   };
 
   const submit = async () => {
-    if (isSubmitting) return;
+    if (isSubmitting || disabled) return;
     setIsSubmitting(true);
     const parsed: Record<string, unknown> = {};
     try {
@@ -95,6 +107,7 @@ export function ExecutionInputForm({ fields, onSubmit, submitLabel }: ExecutionI
                   onChange={files => setField(field.key, files)}
                   placeholder={field.key}
                   fileNameFilter={field.fileNameFilter}
+                  disabled={disabled}
                 />
               ) : (
                 <Input
@@ -103,19 +116,20 @@ export function ExecutionInputForm({ fields, onSubmit, submitLabel }: ExecutionI
                   placeholder={field.type === 'boolean' ? 'true / false' : field.key}
                   value={getStringValue(values[field.key], field.value)}
                   onChange={event => setField(field.key, event.target.value)}
+                  disabled={disabled}
                 />
               )}
             </label>
           ))}
         </div>
       </ScrollArea>
-      {submitLabel && (
+      {footer ? footer(submit) : submitLabel ? (
         <DialogFooter>
-          <Button size="sm" onClick={submit} disabled={isSubmitting}>
+          <Button size="sm" onClick={submit} disabled={isSubmitting || disabled}>
             {submitLabel}
           </Button>
         </DialogFooter>
-      )}
+      ) : null}
     </>
   );
 }

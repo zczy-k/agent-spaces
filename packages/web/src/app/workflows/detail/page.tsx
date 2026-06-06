@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import type { ExecutionLog, JsonValue, OutputField, WorkflowNode, WorkflowTemplate } from '@agent-spaces/shared';
+import type { ExecutionLog, JsonValue, OutputField, WorkflowNode } from '@agent-spaces/shared';
 import { executionLogApi } from '@/lib/workflow-api';
 import { useWorkflowStore } from '@/stores/workflow';
 import { Button } from '@/components/ui/button';
@@ -19,10 +19,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { JsonViewer } from '@/components/viewers/json-viewer';
-import {
-  isArrayOutputFieldType,
-  stringifyOutputFieldValue,
-} from '@/components/workflow/workflow-properties-utils';
+import { ExecutionInputForm } from '@/components/workflow/workflow-execution-input-dialog';
 
 const STATUS_BADGE: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
   idle: { label: '就绪', variant: 'secondary' },
@@ -305,12 +302,23 @@ export default function WorkflowDetailPage() {
                 </CardHeader>
                 <CardContent className="p-3 pt-0 flex-1 min-h-0 flex flex-col">
                   {inputFields.length > 0 ? (
-                    <InitialValuesExecutionInputForm
+                    <ExecutionInputForm
                       fields={inputFields}
                       initialValues={initialValues}
                       onSubmit={handleExecute}
-                      onStop={handleStop}
-                      executing={executing}
+                      disabled={executing}
+                      footer={submit => (
+                        <div className="pt-2 shrink-0 flex gap-2">
+                          <Button size="sm" className="h-7 text-xs gap-1 flex-1" disabled={executing} onClick={submit}>
+                            <Play className="h-3 w-3" /> 执行
+                          </Button>
+                          {executing && (
+                            <Button variant="destructive" size="sm" className="h-7 text-xs gap-1" onClick={handleStop}>
+                              <Square className="h-3 w-3" /> 停止
+                            </Button>
+                          )}
+                        </div>
+                      )}
                     />
                   ) : (
                     <div className="flex-1 flex items-center justify-center">
@@ -467,85 +475,3 @@ export default function WorkflowDetailPage() {
   );
 }
 
-function InitialValuesExecutionInputForm({
-  fields, initialValues, onSubmit, onStop, executing,
-}: {
-  fields: OutputField[];
-  initialValues: Record<string, string>;
-  onSubmit: (values: Record<string, unknown>) => void;
-  onStop: () => void;
-  executing: boolean;
-}) {
-  const [values, setValues] = useState<Record<string, string>>(() => {
-    const map: Record<string, string> = {};
-    for (const field of fields) {
-      if (!field.key) continue;
-      map[field.key] = initialValues[field.key] ?? stringifyOutputFieldValue(field.value);
-    }
-    return map;
-  });
-
-  const setField = (key: string, value: string) => {
-    setValues(prev => ({ ...prev, [key]: value }));
-  };
-
-  const submit = () => {
-    const parsed: Record<string, unknown> = {};
-    for (const field of fields) {
-      if (!field.key) continue;
-      const raw = values[field.key] ?? stringifyOutputFieldValue(field.value);
-      if (field.type === 'number') parsed[field.key] = raw === '' ? 0 : Number(raw);
-      else if (field.type === 'boolean') parsed[field.key] = raw === 'true';
-      else if (field.type === 'object' || field.type === 'any' || isArrayOutputFieldType(field.type)) {
-        if (!raw.trim()) parsed[field.key] = field.type === 'object' ? {} : isArrayOutputFieldType(field.type) ? [] : '';
-        else {
-          try {
-            const value = JSON.parse(raw);
-            parsed[field.key] = isArrayOutputFieldType(field.type) && !Array.isArray(value) ? raw : value;
-          }
-          catch { parsed[field.key] = raw; }
-        }
-      } else parsed[field.key] = raw;
-    }
-    onSubmit(parsed);
-  };
-
-  return (
-    <>
-      <ScrollArea className="min-h-0 flex-1">
-        <div className="space-y-3">
-          {fields.map(field => (
-            <label key={field.key} className="block space-y-1.5">
-              <span className="text-xs font-medium">
-                {field.required && <span className="text-destructive mr-0.5">*</span>}
-                {field.key}
-                <span className="text-muted-foreground font-normal ml-1">({field.type})</span>
-              </span>
-              {field.description && (
-                <span className="block text-[10px] text-muted-foreground">{field.description}</span>
-              )}
-              <input
-                className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                type={field.type === 'number' ? 'number' : 'text'}
-                placeholder={field.type === 'boolean' ? 'true / false' : field.key}
-                value={values[field.key] ?? ''}
-                onChange={e => setField(field.key, e.target.value)}
-                disabled={executing}
-              />
-            </label>
-          ))}
-        </div>
-      </ScrollArea>
-      <div className="pt-2 shrink-0 flex gap-2">
-        <Button size="sm" className="h-7 text-xs gap-1 flex-1" disabled={executing} onClick={submit}>
-          <Play className="h-3 w-3" /> 执行
-        </Button>
-        {executing && (
-          <Button variant="destructive" size="sm" className="h-7 text-xs gap-1" onClick={onStop}>
-            <Square className="h-3 w-3" /> 停止
-          </Button>
-        )}
-      </div>
-    </>
-  );
-}
