@@ -1,5 +1,6 @@
 {
   "id": "workflow.tencent-cos",
+  "icon": "icon.svg",
   "name": "腾讯云COS",
   "version": "1.0.0",
   "description": "腾讯云COS对象存储，支持上传、下载、删除、列举、签名URL等操作",

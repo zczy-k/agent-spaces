@@ -1,5 +1,6 @@
 {
   "id": "workflow.mail",
+  "icon": "icon.png",
   "name": "邮件发送",
   "version": "1.0.0",
   "description": "通过 SMTP 发送邮件，支持 HTML/纯文本、附件、抄送/密送",

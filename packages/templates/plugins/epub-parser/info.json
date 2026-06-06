@@ -1,6 +1,7 @@
 {
   "id": "workflow.epub-parser",
   "name": "EPUB解析器",
+  "icon": "icon.png",
   "version": "1.0.0",
   "description": "解析EPUB电子书文件，提取书籍信息、目录、章节内容",
   "author": { "name": "workflow" },

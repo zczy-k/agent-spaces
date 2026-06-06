@@ -1,5 +1,6 @@
 {
   "id": "workflow.desktop-native",
+  "icon": "icon.png",
   "name": "桌面原生",
   "version": "1.0.0",
   "description": "提供剪贴板读写、系统通知等桌面原生能力",

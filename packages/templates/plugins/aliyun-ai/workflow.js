@@ -202,6 +202,79 @@ const VIDEO_OUTPUTS = [
   ] },
 ]
 
+// ── ASR Helpers ──────────────────────────────────────────────
+
+function parseArray(value) {
+  if (!value) return []
+  if (Array.isArray(value)) return value
+  try {
+    return JSON.parse(value)
+  } catch {
+    return [value]
+  }
+}
+
+function extractAsrTexts(transcription) {
+  const texts = []
+  const transcripts = transcription.transcripts || []
+  for (const transcript of transcripts) {
+    if (transcript.text) {
+      texts.push(transcript.text)
+    } else if (transcript.sentences) {
+      const sentenceTexts = transcript.sentences.map(s => s.text).filter(Boolean)
+      texts.push(...sentenceTexts)
+    }
+  }
+  return texts
+}
+
+async function fetchAsrTranscriptionContent(ctx, pollResult) {
+  const output = pollResult.output || {}
+  const items = output.results || (output.result ? [output.result] : [])
+
+  const texts = []
+  const details = []
+
+  for (const item of items) {
+    if (item.subtask_status === 'FAILED') {
+      details.push({
+        fileUrl: item.file_url || '',
+        status: 'FAILED',
+        error: `${item.code || ''} - ${item.message || ''}`,
+      })
+      continue
+    }
+
+    const transcriptionUrl = item.transcription_url
+    if (!transcriptionUrl) continue
+
+    const transcription = await ctx.api.getJson(transcriptionUrl, { timeout: 30000 })
+    const transcriptTexts = extractAsrTexts(transcription)
+    texts.push(...transcriptTexts)
+    details.push({
+      fileUrl: transcription.file_url || item.file_url || '',
+      status: 'SUCCEEDED',
+      text: transcriptTexts.join('\n'),
+      properties: transcription.properties || null,
+      sentences: transcription.transcripts || null,
+    })
+  }
+
+  const fullText = texts.join('\n')
+  ctx.logger.info(`[ASR] 识别完成，共提取 ${texts.length} 段文本`)
+
+  return {
+    success: true,
+    message: `识别完成，共 ${details.length} 个文件，${texts.length} 段文本`,
+    data: {
+      text: fullText,
+      details,
+      taskId: output.task_id,
+      usage: pollResult.usage || null,
+    },
+  }
+}
+
 // ── Node definitions ───────────────────────────────────────
 
 module.exports = {
@@ -812,6 +885,224 @@ module.exports = {
           ctx.logger.info(`[声动人像] 完成`)
           return { success: true, message: '视频生成完成', data: { videoUrl, requestId: result.request_id } }
         })
+      },
+    },
+
+    // ─── 14. 录音文件异步转写 (ASYNC) ──────────────────────
+    {
+      type: 'asr_file_recognition',
+      label: '录音文件转写',
+      category: '语音识别',
+      icon: 'FileAudio',
+      description: '提交音频/视频文件URL进行异步语音识别，支持 FunASR/Paraformer/Qwen 等多种模型，自动轮询获取转写结果',
+      properties: [
+        { key: 'apiKey', label: 'API Key', type: 'text', required: true, tooltip: '阿里云百炼 DashScope API Key', default: '{{ __config__["workflow.aliyun-ai"]["apiKey"] }}' },
+        { key: 'baseUrl', label: 'API 地址', type: 'text', default: '{{ __config__["workflow.aliyun-ai"]["baseUrl"] || "https://dashscope.aliyuncs.com" }}', tooltip: 'DashScope API 基础地址' },
+        { key: 'model', label: '识别模型', type: 'select', default: 'paraformer-v2', options: [
+          { label: 'paraformer-v2 (推荐多语种)', value: 'paraformer-v2' },
+          { label: 'paraformer-8k-v2 (8kHz电话)', value: 'paraformer-8k-v2' },
+          { label: 'paraformer-v1 (中英文)', value: 'paraformer-v1' },
+          { label: 'paraformer-8k-v1 (8kHz)', value: 'paraformer-8k-v1' },
+          { label: 'paraformer-mtl-v1 (多语种)', value: 'paraformer-mtl-v1' },
+          { label: 'fun-asr (中英文)', value: 'fun-asr' },
+          { label: 'qwen3-asr-flash-filetrans (千问长音频)', value: 'qwen3-asr-flash-filetrans' },
+        ], tooltip: '不同模型支持的语种和采样率不同' },
+        { key: 'fileUrls', label: '音频文件URL', type: 'textarea', required: true, tooltip: 'FunASR/Paraformer: URL数组，如 ["https://...mp3"]，最多100个' },
+        { key: 'fileUrl', label: '音频文件URL(Qwen)', type: 'text', tooltip: '仅 Qwen-Filetrans: 单个音频文件URL' },
+        { key: 'languageHints', label: '语言提示', type: 'text', tooltip: 'Paraformer-v2 语言代码数组，如 ["zh","en"]' },
+        { key: 'language', label: '语言(Qwen)', type: 'select', default: '', options: [
+          { label: '自动检测', value: '' },
+          { label: 'zh 中文', value: 'zh' },
+          { label: 'en 英文', value: 'en' },
+          { label: 'ja 日语', value: 'ja' },
+          { label: 'ko 韩语', value: 'ko' },
+          { label: 'yue 粤语', value: 'yue' },
+          { label: 'de 德语', value: 'de' },
+          { label: 'fr 法语', value: 'fr' },
+          { label: 'ru 俄语', value: 'ru' },
+        ], tooltip: 'Qwen-Filetrans 指定语种' },
+        { key: 'diarizationEnabled', label: '说话人分离', type: 'boolean', default: false, tooltip: '开启后识别结果中会区分不同说话人' },
+        { key: 'speakerCount', label: '说话人数量', type: 'number', tooltip: '说话人数量参考值(2-100)，需先开启说话人分离' },
+        { key: 'channelId', label: '音轨索引', type: 'text', tooltip: '指定音轨，如 [0] 或 [0,1]' },
+        { key: 'enableItn', label: '逆文本标准化', type: 'boolean', default: false, tooltip: 'Qwen-Filetrans: 是否启用 ITN' },
+      ],
+      outputs: [
+        { key: 'success', type: 'boolean' },
+        { key: 'message', type: 'string' },
+        { key: 'data', type: 'object', children: [
+          { key: 'text', type: 'string' },
+          { key: 'details', type: 'object', children: [] },
+          { key: 'taskId', type: 'string' },
+        ] },
+      ],
+      handler: async (ctx, args) => {
+        const baseUrl = (args.baseUrl || 'https://dashscope.aliyuncs.com').replace(/\/$/, '')
+        const apiKey = args.apiKey
+        const model = args.model || 'paraformer-v2'
+        const isQwenFiletrans = model.startsWith('qwen')
+
+        const headers = {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+          'X-DashScope-Async': 'enable',
+        }
+
+        const body = { model }
+
+        if (isQwenFiletrans) {
+          const fileUrl = args.fileUrl
+          if (!fileUrl) throw new Error('Qwen-Filetrans 模型需要提供 fileUrl（单个音频文件URL）')
+          body.input = { file_url: fileUrl }
+          body.parameters = {}
+          if (args.channelId) body.parameters.channel_id = parseArray(args.channelId)
+          if (args.language) body.parameters.language = args.language
+          if (args.enableItn !== undefined) body.parameters.enable_itn = args.enableItn
+        } else {
+          const fileUrls = parseArray(args.fileUrls)
+          if (fileUrls.length === 0) throw new Error('需要提供 fileUrls（音频文件URL数组）')
+          body.input = { file_urls: fileUrls }
+          body.parameters = {}
+          if (args.channelId) body.parameters.channel_id = parseArray(args.channelId)
+          if (args.vocabularyId) body.parameters.vocabulary_id = args.vocabularyId
+          if (args.specialWordFilter) body.parameters.special_word_filter = args.specialWordFilter
+          if (args.diarizationEnabled !== undefined) body.parameters.diarization_enabled = args.diarizationEnabled
+          if (args.speakerCount) body.parameters.speaker_count = args.speakerCount
+          if (args.languageHints) body.parameters.language_hints = parseArray(args.languageHints)
+          if (args.disfluencyRemovalEnabled !== undefined) body.parameters.disfluency_removal_enabled = args.disfluencyRemovalEnabled
+          if (args.timestampAlignmentEnabled !== undefined) body.parameters.timestamp_alignment_enabled = args.timestampAlignmentEnabled
+        }
+
+        ctx.logger.info(`[ASR] 提交语音识别任务: 模型=${model}`)
+
+        const submitEndpoint = `${baseUrl}/api/v1/services/audio/asr/transcription`
+        const createResult = await ctx.api.postJson(submitEndpoint, { headers, body, timeout: 600000 })
+
+        if (createResult.code || createResult.message) {
+          throw new Error(`创建任务失败: ${createResult.code} - ${createResult.message}`)
+        }
+
+        const taskId = createResult.output?.task_id
+        if (!taskId) throw new Error('创建任务成功但未获取到 task_id')
+
+        ctx.logger.info(`[ASR] 任务已提交: task_id=${taskId}，开始轮询...`)
+
+        // Poll
+        const pollHeaders = {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        }
+        const taskQueryBase = `${baseUrl}/api/v1/tasks`
+        const maxAttempts = 120
+        for (let i = 0; i < maxAttempts; i++) {
+          await new Promise(resolve => setTimeout(resolve, 5000))
+          const pollResult = await ctx.api.getJson(`${taskQueryBase}/${taskId}`, { headers: pollHeaders, timeout: 30000 })
+          const status = pollResult.output?.task_status
+          ctx.logger.info(`[ASR] 任务 ${taskId} 状态: ${status}`)
+
+          if (status === 'SUCCEEDED') {
+            return fetchAsrTranscriptionContent(ctx, pollResult)
+          }
+          if (status === 'FAILED') {
+            throw new Error(`任务失败: ${pollResult.output?.code || ''} - ${pollResult.output?.message || '未知错误'}`)
+          }
+          if (status === 'UNKNOWN' || status === 'CANCELED') {
+            throw new Error(`任务异常: ${status}`)
+          }
+        }
+        throw new Error('轮询超时（已等待 10 分钟）')
+      },
+    },
+
+    // ─── 15. 千问实时语音识别 (SYNC) ──────────────────────
+    {
+      type: 'asr_qwen_flash',
+      label: '千问实时语音识别',
+      category: '语音识别',
+      icon: 'AudioLines',
+      description: '千问 Qwen-ASR 实时语音识别（同步模式），适用于短音频快速转写，支持语种检测和情感分析',
+      properties: [
+        { key: 'apiKey', label: 'API Key', type: 'text', required: true, tooltip: '阿里云百炼 DashScope API Key', default: '{{ __config__["workflow.aliyun-ai"]["apiKey"] }}' },
+        { key: 'baseUrl', label: 'API 地址', type: 'text', default: '{{ __config__["workflow.aliyun-ai"]["baseUrl"] || "https://dashscope.aliyuncs.com" }}', tooltip: 'DashScope API 基础地址' },
+        { key: 'audio', label: '音频内容', type: 'textarea', required: true, tooltip: '公网可访问的音频URL，或 Base64 Data URI（data:audio/wav;base64,...）' },
+        { key: 'language', label: '语言', type: 'select', default: '', options: [
+          { label: '自动检测', value: '' },
+          { label: 'zh 中文', value: 'zh' },
+          { label: 'en 英文', value: 'en' },
+          { label: 'ja 日语', value: 'ja' },
+          { label: 'ko 韩语', value: 'ko' },
+          { label: 'de 德语', value: 'de' },
+          { label: 'fr 法语', value: 'fr' },
+          { label: 'ru 俄语', value: 'ru' },
+        ], tooltip: '指定语种可提升准确率，不指定则自动检测' },
+        { key: 'enableItn', label: '逆文本标准化', type: 'boolean', default: false, tooltip: '仅支持中文和英文' },
+      ],
+      outputs: [
+        { key: 'success', type: 'boolean' },
+        { key: 'message', type: 'string' },
+        { key: 'data', type: 'object', children: [
+          { key: 'text', type: 'string' },
+          { key: 'language', type: 'string' },
+          { key: 'emotion', type: 'string' },
+          { key: 'duration', type: 'number' },
+        ] },
+      ],
+      handler: async (ctx, args) => {
+        const baseUrl = (args.baseUrl || 'https://dashscope.aliyuncs.com').replace(/\/$/, '')
+        const apiKey = args.apiKey
+        if (!args.audio) throw new Error('需要提供 audio（音频URL或Base64编码）')
+
+        const headers = {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        }
+
+        const body = {
+          model: 'qwen3-asr-flash',
+          messages: [
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'input_audio',
+                  input_audio: { data: args.audio },
+                },
+              ],
+            },
+          ],
+          stream: false,
+          asr_options: {
+            ...(args.language && { language: args.language }),
+            ...(args.enableItn !== undefined && { enable_itn: args.enableItn }),
+          },
+        }
+
+        ctx.logger.info(`[ASR] 千问实时语音识别: 音频=${args.audio.substring(0, 100)}...`)
+
+        const syncEndpoint = `${baseUrl}/compatible-mode/v1/chat/completions`
+        const result = await ctx.api.postJson(syncEndpoint, { headers, body, timeout: 120000 })
+
+        if (result.error) {
+          throw new Error(`识别失败: ${result.error.message || JSON.stringify(result.error)}`)
+        }
+
+        const text = result.choices?.[0]?.message?.content || ''
+        const annotations = result.choices?.[0]?.message?.annotations || []
+        const audioInfo = annotations.find(a => a.type === 'audio_info') || {}
+        const usage = result.usage || {}
+
+        ctx.logger.info(`[ASR] 识别完成: 语种=${audioInfo.language || '未知'}, 情感=${audioInfo.emotion || '未知'}, 时长=${usage.seconds || 0}s`)
+
+        return {
+          success: true,
+          message: text ? '识别完成' : '识别完成但无内容',
+          data: {
+            text,
+            language: audioInfo.language || '',
+            emotion: audioInfo.emotion || '',
+            duration: usage.seconds || 0,
+            usage,
+          },
+        }
       },
     },
   ],

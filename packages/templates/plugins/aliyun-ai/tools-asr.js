@@ -1,38 +1,95 @@
 // ============================================================
-// 语音识别 ASR 插件 - AI Agent 工具定义
+// 阿里云百炼 AI 插件 - 语音识别 ASR 工具定义
 // 涵盖：录音文件异步转写（FunASR/Paraformer/Qwen-Filetrans）、
 //       千问 Qwen-ASR 实时语音识别（OpenAI 兼容模式）
 // ============================================================
 
+const { getHeaders, executeAsyncTask } = require('./shared')
+
 const TASK_SUBMIT_ENDPOINT = '/api/v1/services/audio/asr/transcription'
-const TASK_QUERY_ENDPOINT = '/api/v1/tasks'
-const QWEN_SYNC_ENDPOINT = '/compatible-mode/v1/chat/completions'
+const TASK_QUERY_BASE = 'https://dashscope.aliyuncs.com/api/v1/tasks'
+const QWEN_SYNC_ENDPOINT = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions'
 
 // ── Helpers ────────────────────────────────────────────────
-
-function getBaseUrl(args) {
-  return args.baseUrl || 'https://dashscope.aliyuncs.com'
-}
-
-function getHeaders(args) {
-  const apiKey = args.apiKey
-  if (!apiKey) throw new Error('缺少 apiKey（阿里云百炼 DashScope API Key）')
-  return {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${apiKey}`,
-  }
-}
 
 function getAsyncHeaders(args) {
   return { ...getHeaders(args), 'X-DashScope-Async': 'enable' }
 }
 
-/**
- * 异步任务轮询：提交 → 轮询 → 获取结果
- * 支持 FunASR / Paraformer / Qwen-ASR-Filetrans 模型
- */
+function parseArray(value) {
+  if (!value) return []
+  if (Array.isArray(value)) return value
+  try {
+    return JSON.parse(value)
+  } catch {
+    return [value]
+  }
+}
+
+function buildAsyncRequestBody(args) {
+  const model = args.model || 'paraformer-v2'
+  const isQwenFiletrans = model.startsWith('qwen')
+
+  const body = { model }
+
+  if (isQwenFiletrans) {
+    body.input = { file_url: args.fileUrl }
+    body.parameters = {}
+    if (args.channelId) body.parameters.channel_id = parseArray(args.channelId)
+    if (args.language) body.parameters.language = args.language
+    if (args.enableItn !== undefined) body.parameters.enable_itn = args.enableItn
+    if (args.enableWords !== undefined) body.parameters.enable_words = args.enableWords
+  } else {
+    const fileUrls = parseArray(args.fileUrls)
+    body.input = { file_urls: fileUrls }
+    body.parameters = {}
+    if (args.channelId) body.parameters.channel_id = parseArray(args.channelId)
+    if (args.vocabularyId) body.parameters.vocabulary_id = args.vocabularyId
+    if (args.specialWordFilter) body.parameters.special_word_filter = args.specialWordFilter
+    if (args.diarizationEnabled !== undefined) body.parameters.diarization_enabled = args.diarizationEnabled
+    if (args.speakerCount) body.parameters.speaker_count = args.speakerCount
+    if (args.languageHints) body.parameters.language_hints = parseArray(args.languageHints)
+    if (args.disfluencyRemovalEnabled !== undefined) body.parameters.disfluency_removal_enabled = args.disfluencyRemovalEnabled
+    if (args.timestampAlignmentEnabled !== undefined) body.parameters.timestamp_alignment_enabled = args.timestampAlignmentEnabled
+  }
+
+  return body
+}
+
+function extractTranscriptionResults(pollResult) {
+  const output = pollResult.output || {}
+  const results = output.results || output.result ? [output.result] : []
+
+  if (results.length === 0) {
+    return { success: false, message: '任务成功但无识别结果' }
+  }
+
+  const transcriptions = []
+  for (const item of results) {
+    const transcriptionUrl = item.transcription_url
+    if (transcriptionUrl) {
+      transcriptions.push({
+        fileUrl: item.file_url || '',
+        transcriptionUrl,
+        subtaskStatus: item.subtask_status || 'SUCCEEDED',
+      })
+    }
+  }
+
+  return {
+    success: true,
+    message: `识别完成，共 ${transcriptions.length} 个文件`,
+    data: {
+      taskId: output.task_id,
+      taskMetrics: output.task_metrics || null,
+      transcriptions,
+      usage: pollResult.usage || null,
+    },
+  }
+}
+
 async function executeAsyncTranscription(api, args, body) {
-  const baseUrl = getBaseUrl(args)
+  const baseUrl = args.baseUrl ? args.baseUrl.replace(/\/$/, '') : 'https://dashscope.aliyuncs.com'
   const submitHeaders = getAsyncHeaders(args)
 
   const createResult = await api.postJson(`${baseUrl}${TASK_SUBMIT_ENDPOINT}`, {
@@ -57,7 +114,7 @@ async function executeAsyncTranscription(api, args, body) {
   const maxAttempts = 120
   for (let i = 0; i < maxAttempts; i++) {
     await new Promise(resolve => setTimeout(resolve, 5000))
-    const pollResult = await api.getJson(`${baseUrl}${TASK_QUERY_ENDPOINT}/${taskId}`, {
+    const pollResult = await api.getJson(`${TASK_QUERY_BASE}/${taskId}`, {
       headers: pollHeaders,
       timeout: 30000,
     })
@@ -77,90 +134,6 @@ async function executeAsyncTranscription(api, args, body) {
     }
   }
   return { success: false, message: '轮询超时（已等待 10 分钟）' }
-}
-
-/**
- * 从异步任务结果中提取转写文本
- * FunASR/Paraformer 和 Qwen-Filetrans 的结果结构不同
- */
-function extractTranscriptionResults(pollResult) {
-  const output = pollResult.output || {}
-  const results = output.results || output.result ? [output.result] : []
-
-  if (results.length === 0) {
-    return { success: false, message: '任务成功但无识别结果' }
-  }
-
-  const transcriptions = []
-  for (const item of results) {
-    // FunASR / Paraformer: item.transcription_url -> JSON 文件
-    // Qwen-Filetrans: item.transcription_url 或 result.transcription_url
-    const transcriptionUrl = item.transcription_url
-    if (transcriptionUrl) {
-      transcriptions.push({
-        fileUrl: item.file_url || '',
-        transcriptionUrl,
-        subtaskStatus: item.subtask_status || 'SUCCEEDED',
-      })
-    }
-  }
-
-  return {
-    success: true,
-    message: `识别完成，共 ${transcriptions.length} 个文件`,
-    data: {
-      taskId: output.task_id,
-      taskMetrics: output.task_metrics || null,
-      transcriptions,
-      usage: pollResult.usage || null,
-    },
-  }
-}
-
-/**
- * 构建 FunASR/Paraformer/Qwen-Filetrans 异步转写请求体
- */
-function buildAsyncRequestBody(args) {
-  const model = args.model || 'paraformer-v2'
-
-  // Qwen-Filetrans 使用 file_url（单文件），其他使用 file_urls（数组）
-  const isQwenFiletrans = model.startsWith('qwen')
-
-  const body = { model }
-
-  if (isQwenFiletrans) {
-    body.input = { file_url: args.fileUrl }
-    body.parameters = {}
-    if (args.channelId) body.parameters.channel_id = parseArray(args.channelId)
-    if (args.language) body.parameters.language = args.language
-    if (args.enableItn !== undefined) body.parameters.enable_itn = args.enableItn
-    if (args.enableWords !== undefined) body.parameters.enable_words = args.enableWords
-  } else {
-    const fileUrls = parseArray(args.fileUrls)
-    body.input = { file_urls: fileUrls }
-    body.parameters = {}
-    if (args.channelId) body.parameters.channel_id = parseArray(args.channelId)
-    if (args.vocabularyId) body.parameters.vocabulary_id = args.vocabularyId
-    if (args.specialWordFilter) body.parameters.special_word_filter = args.specialWordFilter
-    if (args.diarizationEnabled !== undefined) body.parameters.diarization_enabled = args.diarizationEnabled
-    if (args.speakerCount) body.parameters.speaker_count = args.speakerCount
-    if (args.languageHints) body.parameters.language_hints = parseArray(args.languageHints)
-    // Paraformer-specific
-    if (args.disfluencyRemovalEnabled !== undefined) body.parameters.disfluency_removal_enabled = args.disfluencyRemovalEnabled
-    if (args.timestampAlignmentEnabled !== undefined) body.parameters.timestamp_alignment_enabled = args.timestampAlignmentEnabled
-  }
-
-  return body
-}
-
-function parseArray(value) {
-  if (!value) return []
-  if (Array.isArray(value)) return value
-  try {
-    return JSON.parse(value)
-  } catch {
-    return [value]
-  }
 }
 
 // ── Tool definitions ───────────────────────────────────────
@@ -234,7 +207,7 @@ module.exports = {
       }
 
       case 'asr_qwen_flash': {
-        const baseUrl = getBaseUrl(args)
+        const baseUrl = args.baseUrl ? args.baseUrl.replace(/\/$/, '') : 'https://dashscope.aliyuncs.com'
         const headers = getHeaders(args)
 
         const body = {

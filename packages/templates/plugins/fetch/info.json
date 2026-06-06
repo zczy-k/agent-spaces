@@ -1,6 +1,7 @@
 {
   "id": "workflow.fetch",
   "name": "网络请求",
+  "icon": "icon.png",
   "version": "1.0.0",
   "description": "提供网页内容捕获、网络文件下载等操作节点",
   "author": { "name": "workflow" },

@@ -2,6 +2,7 @@
   "id": "workflow.ffmpeg",
   "name": "FFmpeg音视频处理",
   "version": "1.0.0",
+  "icon": "icon.svg",
   "description": "基于FFmpeg的音视频处理，支持格式转换、音视频合并、音视频分离",
   "author": { "name": "workflow" },
   "tags": ["FFmpeg", "音视频", "格式转换"],
