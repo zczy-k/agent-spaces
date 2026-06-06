@@ -10,7 +10,8 @@
   "hasView": false,
   "entries": {
     "server": "main.js",
-    "workflow": "workflow.js"
+    "workflow": "workflow.js",
+    "tools": ["tools-image.js", "tools-video.js"]
   },
   "config": [
     {

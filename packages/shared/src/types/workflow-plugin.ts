@@ -42,7 +42,7 @@ export interface PluginInfo {
     server?: string
     client?: string
     workflow?: string
-    tools?: string
+    tools?: string | string[]
     api?: string
     view?: string
   }
@@ -88,7 +88,7 @@ export interface PluginConfigSaveResult {
 
 export type PluginEntryKind = 'main' | 'server' | 'client' | 'workflow' | 'tools' | 'api' | 'view'
 
-const DEFAULT_PLUGIN_ENTRY_FILES: Record<PluginEntryKind, string> = {
+const DEFAULT_PLUGIN_ENTRY_FILES: Record<PluginEntryKind, string | string[]> = {
   main: 'main.js',
   server: 'main.js',
   client: 'main.js',
@@ -101,7 +101,21 @@ const DEFAULT_PLUGIN_ENTRY_FILES: Record<PluginEntryKind, string> = {
 export function resolvePluginEntryFile(info: PluginInfo, kind: PluginEntryKind): string {
   const entry = info.entries?.[kind]
   if (typeof entry === 'string' && entry.trim()) return entry.trim()
-  return DEFAULT_PLUGIN_ENTRY_FILES[kind]
+  if (Array.isArray(entry)) return entry.map(file => file.trim()).find(Boolean) ?? ''
+
+  const fallback = DEFAULT_PLUGIN_ENTRY_FILES[kind]
+  if (Array.isArray(fallback)) return fallback[0] ?? ''
+  return fallback
+}
+
+export function resolvePluginEntryFiles(info: PluginInfo, kind: PluginEntryKind): string[] {
+  const entry = info.entries?.[kind]
+  if (Array.isArray(entry)) return entry.map(file => file.trim()).filter(Boolean)
+  if (typeof entry === 'string' && entry.trim()) return [entry.trim()]
+
+  const fallback = DEFAULT_PLUGIN_ENTRY_FILES[kind]
+  if (Array.isArray(fallback)) return fallback
+  return [fallback]
 }
 
 // ---- Local Bridge Nodes ----
