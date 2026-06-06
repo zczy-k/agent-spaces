@@ -546,6 +546,7 @@ function WorkflowEditorInner({
               onDeleteLog={execution.handleDeleteExecutionLog}
               onClearLogs={execution.handleClearExecutionLogs}
               onExitPreview={() => state.setIsPreview(false)}
+              onUpdateNodeData={canvas.handleNodeDataUpdate}
             />
           </div>
         </ResizablePanel>

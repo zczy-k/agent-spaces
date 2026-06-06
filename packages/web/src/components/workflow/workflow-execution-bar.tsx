@@ -15,12 +15,13 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  AlertCircle, AlertTriangle, Check, CheckCircle, ChevronDown, ChevronUp,
+  AlertCircle, AlertTriangle, Braces, Check, CheckCircle, ChevronDown, ChevronUp,
   Circle, Copy, Info, Loader2, MoreHorizontal, Pause, Play, Square, Trash2, XCircle,
 } from 'lucide-react';
 import { JsonViewer } from '@/components/viewers/json-viewer';
 import { cn } from '@/lib/utils';
 import { ExecutionInputDialog } from './workflow-execution-input-dialog';
+import { SavePresetDialog } from './workflow-save-preset-dialog';
 
 type ExecutionStatus = 'idle' | 'running' | 'paused' | 'completed' | 'error' | 'stopped' | string;
 
@@ -41,6 +42,7 @@ interface ExecutionBarProps {
   onDeleteLog: (logId: string) => void;
   onClearLogs: () => void;
   onExitPreview: () => void;
+  onUpdateNodeData?: (nodeId: string, data: Record<string, unknown>) => void;
 }
 
 const STATUS_BADGE: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
@@ -105,11 +107,19 @@ function JsonBlock({ value, empty }: { value: unknown; empty: string }) {
 export function WorkflowExecutionBar({
   status, log, logs, selectedLogId, startNodes, validationError, isExpanded, onToggle,
   onExecute, onPause, onResume, onStop, onSelectLog, onDeleteLog, onClearLogs, onExitPreview,
+  onUpdateNodeData,
 }: ExecutionBarProps) {
   const [inputDialogOpen, setInputDialogOpen] = useState(false);
   const [selectedStartNodeId, setSelectedStartNodeId] = useState<string | null>(null);
   const [stepTabs, setStepTabs] = useState<Record<string, string>>({});
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [presetDialogState, setPresetDialogState] = useState<{
+    open: boolean;
+    nodeId: string;
+    nodeLabel: string;
+    defaultName: string;
+    defaultJson: string;
+  }>({ open: false, nodeId: '', nodeLabel: '', defaultName: '', defaultJson: '' });
 
   const badge = STATUS_BADGE[status] || STATUS_BADGE.idle;
   const isRunning = status === 'running';
@@ -335,14 +345,48 @@ export function WorkflowExecutionBar({
                             <span className="text-[10px] text-muted-foreground shrink-0">
                               {step.finishedAt ? formatDuration(step.startedAt, step.finishedAt) : '...'}
                             </span>
-                            <button
-                              type="button"
-                              className="shrink-0 p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
-                              onClick={() => copyText(`info-${key}`, nodeInfo)}
-                              title="复制节点信息"
-                            >
-                              {copiedKey === `info-${key}` ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                            </button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger
+                                className="shrink-0 p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                              >
+                                <MoreHorizontal className="h-3 w-3" />
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-36">
+                                <DropdownMenuItem className="text-xs" onClick={() => copyText(`info-${key}`, nodeInfo)}>
+                                  {copiedKey === `info-${key}` ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                                  复制
+                                </DropdownMenuItem>
+                                {onUpdateNodeData && (
+                                  <DropdownMenuItem
+                                    className="text-xs"
+                                    onClick={() => {
+                                      const snapshotNode = displayLog?.snapshot?.nodes?.find(n => n.id === step.nodeId);
+                                      if (!snapshotNode) return;
+                                      const inputData = (typeof step.input === 'object' && step.input && !Array.isArray(step.input))
+                                        ? step.input as Record<string, unknown>
+                                        : {};
+                                      const outputData = (typeof step.output === 'object' && step.output && !Array.isArray(step.output))
+                                        ? step.output as Record<string, unknown>
+                                        : {};
+                                      setPresetDialogState({
+                                        open: true,
+                                        nodeId: step.nodeId,
+                                        nodeLabel: step.nodeLabel || step.nodeId,
+                                        defaultName: `${step.nodeLabel || step.nodeId} 执行结果`,
+                                        defaultJson: JSON.stringify({
+                                          data: snapshotNode.data ?? {},
+                                          inputs: inputData,
+                                          outputs: outputData,
+                                        }, null, 2),
+                                      });
+                                    }}
+                                  >
+                                    <Braces className="h-3 w-3" />
+                                    保存到预设
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
 
                           {step.error && (
@@ -426,6 +470,18 @@ export function WorkflowExecutionBar({
         startNodeLabel={activeStartNode?.label || '开始'}
         onOpenChange={setInputDialogOpen}
         onSubmit={submitInput}
+      />
+
+      <SavePresetDialog
+        open={presetDialogState.open}
+        onOpenChange={(open) => setPresetDialogState(prev => ({ ...prev, open }))}
+        defaultName={presetDialogState.defaultName}
+        defaultJson={presetDialogState.defaultJson}
+        getNodeData={() => {
+          const snapshotNode = displayLog?.snapshot?.nodes?.find(n => n.id === presetDialogState.nodeId);
+          return (snapshotNode?.data ?? {}) as Record<string, unknown>;
+        }}
+        onUpdateData={(key, value) => onUpdateNodeData?.(presetDialogState.nodeId, { [key]: value })}
       />
     </div>
   );
