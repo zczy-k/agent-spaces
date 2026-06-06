@@ -53,7 +53,7 @@ export function Toolbar({
                 onCancelDebug();
               } else {
                 if (selectedJsonPreset) {
-                  onDebug(node.id, selectedJsonPreset.inputs, selectedJsonPreset.data);
+                  onDebug(node.id, undefined, selectedJsonPreset.inputs ?? selectedJsonPreset.data);
                 } else {
                   onOpenTestDialog();
                 }

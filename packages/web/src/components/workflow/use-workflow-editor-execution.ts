@@ -109,13 +109,17 @@ export function useWorkflowEditorExecution({
     setDebugStatus('running');
     setDebugResult(null);
 
+    const targetNode = workflow.nodes.find(item => item.id === nodeId);
+    const embeddedNode = targetNode && properties
+      ? { ...targetNode, data: { ...targetNode.data, ...properties } }
+      : undefined;
     const ws = getWS('workflows');
     const sendDebugRequest = () => {
       ws.send('workflow:debug-node', {
         workflowId: workflow.id,
         nodeId,
-        inputs,
-        properties,
+        input: inputs,
+        embeddedNode,
         snapshot: {
           nodes: workflow.nodes,
           edges: workflow.edges,
