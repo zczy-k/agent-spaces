@@ -162,12 +162,25 @@ exports.deactivate = (context) => {
 - `context.plugin`
 - `context.logger`
 - `context.config`
+- `context.registerActions(actions)`
+
+`context.registerActions(actions)` 是 server 插件复用 workflow node 与 Agent tool 注册的推荐入口。插件只维护一份动作定义，由 loader 统一转换成 workflow nodes、tools schema 和执行 handler。
+
+```javascript
+// main.js
+const actions = require('./actions')
+
+exports.activate = (context) => {
+  context.registerActions(actions)
+  context.logger.info('plugin activated')
+}
+```
 
 Electron client 插件上下文会更强；Web CDN client runtime 当前提供的是较轻量上下文。
 
 ## `workflow.js`
 
-用于定义工作流节点。`server` 插件最常见。
+用于定义工作流节点。新插件如果已经在 `main.js` 里使用 `context.registerActions(actions)`，这里可以保留为空兼容入口；只有需要手写 workflow-only 节点时才直接维护 `nodes`。
 
 ```javascript
 module.exports = {
@@ -204,7 +217,7 @@ module.exports = {
 
 ## `tools.js`
 
-给 Agent 暴露工具定义。
+给 Agent 暴露工具定义。新插件如果已经在 `main.js` 里使用 `context.registerActions(actions)`，这里可以保留为空兼容入口；只有需要手写 tool-only 能力时才直接维护 `tools` 和 `handler`。
 
 ```javascript
 module.exports = {
@@ -333,7 +346,17 @@ module.exports = { nodes: [] }
 module.exports = { tools: [] }
 ```
 
-如两侧参数不完全一致，可在动作定义里单独提供 `toolProperties`；如某个 workflow node 不应暴露给 Agent，设置 `tool: false`。
+动作字段约定：
+- `name`：同时作为 workflow node `type` 和默认 tool `name`
+- `label/category/icon/description`：用于 workflow 节点面板
+- `properties`：workflow 节点属性，也会作为默认 tool 入参来源
+- `toolProperties`：当 tool 入参与 workflow 属性不一致时使用
+- `configProperties`：通用配置字段，会追加到 workflow 属性和 tool 入参
+- `outputs`：workflow 输出字段
+- `run(ctx, args)`：统一执行函数，workflow 和 tool 都会调用它
+- `tool: false`：仅注册 workflow node，不暴露为 Agent tool
+
+如两侧参数不完全一致，可在动作定义里单独提供 `toolProperties`；如某个字段在 workflow 中必填、但 tool 中不必填，可设置 `toolRequired: false`。
 
 ## `api.js`
 
