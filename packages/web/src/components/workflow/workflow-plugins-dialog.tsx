@@ -127,7 +127,7 @@ export function WorkflowPluginsDialog({
   }
 
   async function installPlugin(plugin: StoreWorkflowPlugin) {
-    if (installingId || installedPluginIds.has(plugin.id)) return;
+    if (installingId) return;
     setInstallingId(plugin.id);
     try {
       const installed = await pluginApi.installFromStore(plugin.id);

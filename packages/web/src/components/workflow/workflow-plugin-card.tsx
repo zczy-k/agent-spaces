@@ -3,7 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { StoreWorkflowPlugin, WorkflowPlugin } from '@/lib/workflow-plugin-api';
-import { Check, Download, PackagePlus, RefreshCw, Settings, Store, Trash2 } from 'lucide-react';
+import { Download, PackagePlus, RefreshCw, Settings, Store, Trash2 } from 'lucide-react';
 
 export function LocalPluginCard({
   plugin,
@@ -73,13 +73,13 @@ export function StorePluginCard({
         size="sm"
         variant={installed ? 'outline' : 'default'}
         className="ml-auto h-7 text-xs"
-        disabled={installed || installing}
+        disabled={installing}
         onClick={onInstallAction}
       >
         {installed ? (
           <>
-            <Check className="h-3.5 w-3.5" />
-            已安装
+            <Download className="h-3.5 w-3.5" />
+            重新安装
           </>
         ) : installing ? (
           <>
