@@ -11,7 +11,13 @@ import {
 } from '@/components/ui/select';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { JsonViewer, type JsonValue } from '@/components/viewers/json-viewer';
-import { FIELD_TYPES, getOutputFields } from './workflow-properties-utils';
+import {
+  FIELD_TYPES,
+  getOutputFields,
+  isFileOutputFieldType,
+  parseArrayOutputFieldValue,
+  stringifyOutputFieldValue,
+} from './workflow-properties-utils';
 import { WorkflowVariablePicker, type WorkflowVariableContext } from './workflow-variable-picker';
 
 export function JsonPreview({ value }: { value: unknown }) {
@@ -45,7 +51,7 @@ export function OutputFieldsEditor({
     if (patch.type && patch.type !== 'object') {
       next[index].children = undefined;
     }
-    if (patch.type && patch.type !== 'file') {
+    if (patch.type && !isFileOutputFieldType(patch.type)) {
       next[index].fileNameFilter = undefined;
     }
     if (patch.type === 'object' && !next[index].children) {
@@ -65,7 +71,7 @@ export function OutputFieldsEditor({
   };
 
   const insertVariable = (index: number, variablePath: string) => {
-    updateField(index, { value: `${fields[index]?.value ?? ''}${variablePath}` });
+    updateField(index, { value: `${stringifyOutputFieldValue(fields[index]?.value)}${variablePath}` });
   };
 
   return (
@@ -123,7 +129,7 @@ export function OutputFieldsEditor({
           </div>
           {expandedFields.has(index) && field.type !== 'object' && (
             <div className="space-y-0.5" style={{ paddingLeft: `${indent + 20}px` }}>
-              {field.type === 'file' ? (
+              {isFileOutputFieldType(field.type) ? (
                 <Input
                   value={field.fileNameFilter ?? ''}
                   onChange={(e) => updateField(index, { fileNameFilter: e.target.value || undefined })}
@@ -133,8 +139,8 @@ export function OutputFieldsEditor({
               ) : (
                 <InputGroup className="h-6 min-h-0 rounded-md">
                 <InputGroupInput
-                  value={field.value ?? ''}
-                  onChange={(e) => updateField(index, { value: e.target.value })}
+                  value={stringifyOutputFieldValue(field.value)}
+                  onChange={(e) => updateField(index, { value: parseArrayOutputFieldValue(field.type, e.target.value) })}
                   placeholder="默认值"
                   className="h-6 text-[11px]"
                 />

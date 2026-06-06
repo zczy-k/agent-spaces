@@ -11,17 +11,23 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { Play } from 'lucide-react';
+import {
+  isArrayOutputFieldType,
+  isFileOutputFieldType,
+  stringifyOutputFieldValue,
+} from './workflow-properties-utils';
 
 type InputFormValue = string | FileUploadFile[];
 
 export function parseInputValue(field: OutputField, raw: string): unknown {
-  if (field.type === 'file') return null;
+  if (field.type === 'file' || field.type === 'file[]') return field.type === 'file[]' ? [] : null;
   if (field.type === 'number') return raw === '' ? 0 : Number(raw);
   if (field.type === 'boolean') return raw === 'true';
-  if (field.type === 'object' || field.type === 'any') {
-    if (!raw.trim()) return field.type === 'object' ? {} : '';
+  if (field.type === 'object' || field.type === 'any' || isArrayOutputFieldType(field.type)) {
+    if (!raw.trim()) return field.type === 'object' ? {} : isArrayOutputFieldType(field.type) ? [] : '';
     try {
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      return isArrayOutputFieldType(field.type) && !Array.isArray(parsed) ? raw : parsed;
     } catch {
       return raw;
     }
@@ -50,9 +56,13 @@ export function ExecutionInputForm({ fields, onSubmit, submitLabel }: ExecutionI
     try {
       for (const field of fields) {
         if (!field.key) continue;
-        if (field.type === 'file') {
+        if (isFileOutputFieldType(field.type)) {
           const files = values[field.key];
-          parsed[field.key] = Array.isArray(files) ? await resolveWorkflowFileInput(files[0]?.file) : null;
+          parsed[field.key] = Array.isArray(files)
+            ? field.type === 'file[]'
+              ? await Promise.all(files.map(file => resolveWorkflowFileInput(file.file)))
+              : await resolveWorkflowFileInput(files[0]?.file)
+            : field.type === 'file[]' ? [] : null;
           continue;
         }
         parsed[field.key] = parseInputValue(field, getStringValue(values[field.key], field.value));
@@ -77,10 +87,10 @@ export function ExecutionInputForm({ fields, onSubmit, submitLabel }: ExecutionI
               {field.description && (
                 <span className="block text-[10px] text-muted-foreground">{field.description}</span>
               )}
-              {field.type === 'file' ? (
+              {isFileOutputFieldType(field.type) ? (
                 <FileUpload
                   className="text-xs"
-                  maxFiles={1}
+                  maxFiles={field.type === 'file[]' ? undefined : 1}
                   value={getFileValue(values[field.key])}
                   onChange={files => setField(field.key, files)}
                   placeholder={field.key}
@@ -110,8 +120,8 @@ export function ExecutionInputForm({ fields, onSubmit, submitLabel }: ExecutionI
   );
 }
 
-function getStringValue(value: InputFormValue | undefined, fallback?: string): string {
-  return typeof value === 'string' ? value : fallback ?? '';
+function getStringValue(value: InputFormValue | undefined, fallback?: unknown): string {
+  return typeof value === 'string' ? value : stringifyOutputFieldValue(fallback);
 }
 
 function getFileValue(value: InputFormValue | undefined): FileUploadFile[] {

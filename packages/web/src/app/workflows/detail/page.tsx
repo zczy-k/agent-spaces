@@ -19,6 +19,10 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { JsonViewer } from '@/components/viewers/json-viewer';
+import {
+  isArrayOutputFieldType,
+  stringifyOutputFieldValue,
+} from '@/components/workflow/workflow-properties-utils';
 
 const STATUS_BADGE: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
   idle: { label: '就绪', variant: 'secondary' },
@@ -476,7 +480,7 @@ function InitialValuesExecutionInputForm({
     const map: Record<string, string> = {};
     for (const field of fields) {
       if (!field.key) continue;
-      map[field.key] = initialValues[field.key] ?? field.value ?? '';
+      map[field.key] = initialValues[field.key] ?? stringifyOutputFieldValue(field.value);
     }
     return map;
   });
@@ -489,13 +493,16 @@ function InitialValuesExecutionInputForm({
     const parsed: Record<string, unknown> = {};
     for (const field of fields) {
       if (!field.key) continue;
-      const raw = values[field.key] ?? field.value ?? '';
+      const raw = values[field.key] ?? stringifyOutputFieldValue(field.value);
       if (field.type === 'number') parsed[field.key] = raw === '' ? 0 : Number(raw);
       else if (field.type === 'boolean') parsed[field.key] = raw === 'true';
-      else if (field.type === 'object' || field.type === 'any') {
-        if (!raw.trim()) parsed[field.key] = field.type === 'object' ? {} : '';
+      else if (field.type === 'object' || field.type === 'any' || isArrayOutputFieldType(field.type)) {
+        if (!raw.trim()) parsed[field.key] = field.type === 'object' ? {} : isArrayOutputFieldType(field.type) ? [] : '';
         else {
-          try { parsed[field.key] = JSON.parse(raw); }
+          try {
+            const value = JSON.parse(raw);
+            parsed[field.key] = isArrayOutputFieldType(field.type) && !Array.isArray(value) ? raw : value;
+          }
           catch { parsed[field.key] = raw; }
         }
       } else parsed[field.key] = raw;

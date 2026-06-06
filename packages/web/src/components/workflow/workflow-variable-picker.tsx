@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { OutputField, PluginConfigField, WorkflowEdge, WorkflowNode } from '@agent-spaces/shared';
 import { getCompositeParentId, isGeneratedWorkflowNode } from '@agent-spaces/shared';
-import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -89,6 +88,16 @@ function buildFieldPath(field: VariableField, parentPath?: string): string {
   return parentPath ? `${parentPath}.${field.key}` : field.key;
 }
 
+const FILE_CHILDREN: VariableField[] = [
+  { key: 'path', type: 'string' },
+  { key: 'relativePath', type: 'string' },
+  { key: 'name', type: 'string' },
+  { key: 'size', type: 'number' },
+  { key: 'type', type: 'string' },
+  { key: 'url', type: 'string' },
+  { key: 'httpPath', type: 'string' },
+];
+
 function VariableFieldMenu({
   fields,
   nodeId,
@@ -119,6 +128,29 @@ function VariableFieldMenu({
                   parentPath={path}
                   onSelect={onSelect}
                 />
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          );
+        }
+
+        if (field.type === 'file') {
+          return (
+            <DropdownMenuSub key={key}>
+              <DropdownMenuSubTrigger className="text-xs">
+                <span className="mr-1.5 font-mono text-[10px] text-muted-foreground">file</span>
+                <span className="truncate">{field.key}</span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="min-w-[180px]">
+                {FILE_CHILDREN.map((child) => (
+                  <DropdownMenuItem
+                    key={child.key}
+                    className="text-xs"
+                    onClick={() => onSelect(nodeId, `${path}.${child.key}`)}
+                  >
+                    <span className="mr-1.5 font-mono text-[10px] text-muted-foreground">{child.type}</span>
+                    <span className="truncate">{child.key}</span>
+                  </DropdownMenuItem>
+                ))}
               </DropdownMenuSubContent>
             </DropdownMenuSub>
           );
