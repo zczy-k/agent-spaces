@@ -2,22 +2,27 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import type { ExecutionLog, OutputField, Workflow, WorkflowNode } from '@agent-spaces/shared';
+import type { ExecutionLog, ExecutionStep, OutputField, Workflow, WorkflowNode } from '@agent-spaces/shared';
 import { workflowApi } from '@/lib/workflow-api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChecklistCell } from '@/components/ui/checklist-cell';
 import { ExecutionInputForm } from '@/components/workflow/workflow-execution-input-dialog';
 import { getWS } from '@/lib/ws';
-import { Loader2, Play, Square } from 'lucide-react';
+import { CheckCircle, Circle, Loader2, Play, Square, XCircle } from 'lucide-react';
 
-/** 递归提取 step output 中的 .mp4/.mp3 URL */
+/** 递归提取 step output 中的 .mp4/.mp3 URL（去重） */
 function extractMediaUrls(data: unknown): { type: 'video' | 'audio'; url: string }[] {
   const results: { type: 'video' | 'audio'; url: string }[] = [];
+  const seen = new Set<string>();
   function walk(obj: unknown) {
     if (typeof obj === 'string') {
-      if (/\.mp4(\?|$)/i.test(obj)) results.push({ type: 'video', url: obj });
-      else if (/\.mp3(\?|$)/i.test(obj)) results.push({ type: 'audio', url: obj });
+      if (/\.mp4(\?|$)/i.test(obj) && !seen.has(obj)) {
+        seen.add(obj);
+        results.push({ type: 'video', url: obj });
+      } else if (/\.mp3(\?|$)/i.test(obj) && !seen.has(obj)) {
+        seen.add(obj);
+        results.push({ type: 'audio', url: obj });
+      }
     } else if (Array.isArray(obj)) {
       obj.forEach(walk);
     } else if (obj && typeof obj === 'object') {
@@ -26,6 +31,51 @@ function extractMediaUrls(data: unknown): { type: 'video' | 'audio'; url: string
   }
   walk(data);
   return results;
+}
+
+/** 只从 end 节点 output 提取媒体 URL */
+function extractEndMediaUrls(log: ExecutionLog): { type: 'video' | 'audio'; url: string }[] {
+  const endIds = new Set(
+    (log.snapshot?.nodes || []).filter(n => n.type === 'end').map(n => n.id),
+  );
+  const results: { type: 'video' | 'audio'; url: string }[] = [];
+  const seen = new Set<string>();
+  for (const step of log.steps) {
+    if (!endIds.has(step.nodeId)) continue;
+    for (const m of extractMediaUrls(step.output)) {
+      if (!seen.has(m.url)) { seen.add(m.url); results.push(m); }
+    }
+  }
+  return results;
+}
+
+/** 懒加载视频：点击后才加载 src */
+function LazyVideo({ src }: { src: string }) {
+  const [active, setActive] = useState(false);
+  if (active) {
+    return <video controls autoPlay className="w-full rounded-lg max-h-64" src={src} />;
+  }
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      className="w-full rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center cursor-pointer h-40 select-none"
+      onClick={() => setActive(true)}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setActive(true); }}
+    >
+      <div className="flex flex-col items-center gap-2 text-zinc-400">
+        <Play className="h-8 w-8" />
+        <span className="text-xs">点击播放</span>
+      </div>
+    </div>
+  );
+}
+
+function stepIcon(status: ExecutionStep['status']) {
+  if (status === 'completed') return <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />;
+  if (status === 'error') return <XCircle className="h-4 w-4 text-red-500 shrink-0" />;
+  if (status === 'running') return <Loader2 className="h-4 w-4 text-blue-500 animate-spin shrink-0" />;
+  return <Circle className="h-4 w-4 text-muted-foreground shrink-0" />;
 }
 
 export default function WorkflowSharePage() {
@@ -42,7 +92,6 @@ export default function WorkflowSharePage() {
   const [mediaUrls, setMediaUrls] = useState<{ type: 'video' | 'audio'; url: string }[]>([]);
   const cleanupRef = useRef<(() => void)[]>([]);
 
-  // Load workflow
   useEffect(() => {
     if (!workflowId) { setLoading(false); return; }
     workflowApi.get(workflowId)
@@ -51,7 +100,6 @@ export default function WorkflowSharePage() {
       .finally(() => setLoading(false));
   }, [workflowId]);
 
-  // Parse initial params
   useEffect(() => {
     if (!paramsStr) return;
     try {
@@ -66,7 +114,6 @@ export default function WorkflowSharePage() {
     } catch { /* ignore */ }
   }, [paramsStr]);
 
-  // Cleanup WS on unmount
   useEffect(() => {
     return () => {
       for (const cleanup of cleanupRef.current) cleanup();
@@ -84,15 +131,12 @@ export default function WorkflowSharePage() {
     return Array.isArray(fields) ? fields as OutputField[] : [];
   }, [firstStartNode]);
 
-  // ChecklistCell dynamic data from execution log
-  const checklistTasks = useMemo(
-    () => executionLog?.steps.map(s => s.nodeLabel || s.nodeId) ?? [],
-    [executionLog],
-  );
   const completedCount = useMemo(
     () => executionLog?.steps.filter(s => s.status === 'completed').length ?? 0,
     [executionLog],
   );
+  const totalCount = executionLog?.steps.length ?? 0;
+  const pct = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
 
   const handleExecute = useCallback((values: Record<string, unknown>) => {
     if (!workflowId || !workflow) return;
@@ -129,10 +173,7 @@ export default function WorkflowSharePage() {
       if (event.workflowId !== workflowId) return;
       if (event.log) {
         setExecutionLog(event.log);
-        // Extract media URLs from all step outputs
-        const urls: { type: 'video' | 'audio'; url: string }[] = [];
-        for (const step of event.log.steps) urls.push(...extractMediaUrls(step.output));
-        setMediaUrls(urls);
+        setMediaUrls(extractEndMediaUrls(event.log));
       }
       setExecuting(false);
       setCurrentExecutionId(null);
@@ -190,6 +231,8 @@ export default function WorkflowSharePage() {
       </div>
     );
   }
+
+  const hasSteps = totalCount > 0;
 
   return (
     <div className="h-full flex flex-col p-4 gap-3">
@@ -261,28 +304,54 @@ export default function WorkflowSharePage() {
           </Card>
         </div>
 
-        {/* Right: ChecklistCell + media */}
+        {/* Right: step list + media */}
         <div className="flex-1 min-w-0 flex flex-col">
           <Card className="rounded-lg flex-1 min-h-0 flex flex-col">
             <CardHeader className="p-3 pb-2 shrink-0">
               <CardTitle className="text-xs">执行结果</CardTitle>
             </CardHeader>
             <CardContent className="p-3 pt-0 flex-1 min-h-0 overflow-auto">
-              {checklistTasks.length > 0 ? (
+              {hasSteps ? (
                 <div className="space-y-4">
-                  <ChecklistCell
-                    tasks={checklistTasks}
-                    initialCompleted={0}
-                    finalCompleted={completedCount}
-                    stepInterval={800}
-                  />
+                  {/* Progress bar */}
+                  <div className="flex items-center gap-3">
+                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                      <div
+                        className="h-full rounded-full bg-green-500 transition-all duration-500"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <span className="text-[11px] text-zinc-400 whitespace-nowrap">
+                      {completedCount}/{totalCount} 已完成
+                    </span>
+                  </div>
+
+                  {/* Step list */}
+                  <div className="space-y-px">
+                    {executionLog!.steps.map(step => (
+                      <div
+                        key={step.nodeId}
+                        className="flex items-center gap-2.5 px-0.5 py-2.5"
+                      >
+                        {stepIcon(step.status)}
+                        <span className="text-sm text-zinc-800 dark:text-zinc-200">
+                          {step.nodeLabel || step.nodeId}
+                        </span>
+                        {step.error && (
+                          <span className="text-[10px] text-red-500 ml-auto truncate max-w-48">{step.error}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Media players */}
                   {mediaUrls.length > 0 && (
                     <div className="space-y-3 pt-2">
                       {mediaUrls.map((media, i) => (
                         media.type === 'video' ? (
-                          <video key={i} controls className="w-full rounded-lg max-h-64" src={media.url} />
+                          <LazyVideo key={i} src={media.url} />
                         ) : (
-                          <audio key={i} controls className="w-full" src={media.url} />
+                          <audio key={i} controlsList="nodownload" className="w-full" src={media.url} />
                         )
                       ))}
                     </div>
