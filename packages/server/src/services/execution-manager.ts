@@ -190,7 +190,9 @@ export class ExecutionManager {
     } catch (error) {
       return {
         status: 'error',
-        error: error instanceof Error ? error.message : String(error),
+        error: typeof error === 'string' ? error
+          : error instanceof Error ? error.message
+          : JSON.stringify(error),
         duration: Date.now() - startedAt,
       };
     }
@@ -548,7 +550,9 @@ export class ExecutionManager {
       if (session.stopRequested) return 'interrupted';
       step.finishedAt = Date.now();
       step.status = 'error';
-      step.error = error instanceof Error ? error.message : String(error);
+      step.error = typeof error === 'string' ? error
+        : error instanceof Error ? error.message
+        : JSON.stringify(error);
       step.logs = stepLogs.length ? [...stepLogs] : undefined;
       session.status = 'error';
       session.lastErrorMessage = step.error;
