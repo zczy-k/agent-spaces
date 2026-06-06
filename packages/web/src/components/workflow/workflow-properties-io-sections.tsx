@@ -2,11 +2,12 @@
 
 import type { WorkflowNode } from '@agent-spaces/shared';
 import { Button } from '@/components/ui/button';
-import { Import, FileDown } from 'lucide-react';
+import { Import, FileDown, RotateCcw } from 'lucide-react';
 import { getOutputFields, toOutputFields } from './workflow-properties-utils';
 import type { DebugResult, JsonPreset } from './workflow-properties-utils';
 import { OutputFieldsEditor } from './workflow-properties-fields';
 import type { WorkflowVariableContext } from './workflow-variable-picker';
+import { getNodeDefinition } from '@/lib/workflow-nodes';
 
 interface IOFieldsSectionsProps {
   node: WorkflowNode;
@@ -84,6 +85,18 @@ export function IOFieldsSections({
                   应用测试输出
                 </Button>
               )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 gap-1 px-1.5 text-[10px] text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  const defaults = getNodeDefinition(node.type)?.outputs;
+                  if (defaults) onDataChange('outputs', defaults);
+                }}
+              >
+                <RotateCcw className="h-3 w-3" />
+                重置
+              </Button>
             </div>
           </div>
           <OutputFieldsEditor

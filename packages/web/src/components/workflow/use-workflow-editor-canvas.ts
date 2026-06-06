@@ -42,6 +42,7 @@ export function useWorkflowEditorCanvas({
         if (prop.default !== undefined) data[prop.key] = prop.default;
       }
     }
+    if (def?.outputs?.length) data.outputs = def.outputs;
     const newNode: Workflow['nodes'][0] = {
       id, type,
       label: def?.label || type,
