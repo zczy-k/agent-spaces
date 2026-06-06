@@ -258,8 +258,10 @@ function JsonNode({
       : "text-muted-foreground/0 group-hover:text-muted-foreground hover:!text-foreground focus-visible:text-muted-foreground"
   )
 
+  const [menuOpen, setMenuOpen] = React.useState(false)
+
   const copyMenu = (
-    <Popover>
+    <Popover open={menuOpen} onOpenChange={setMenuOpen}>
       <PopoverTrigger
         className={copyIconClass}
         style={theme ? { color: theme.fg } : undefined}
@@ -275,7 +277,7 @@ function JsonNode({
         <button
           type="button"
           className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs hover:bg-muted"
-          onClick={() => { handleCopyPath() }}
+          onClick={() => { handleCopyPath(); setMenuOpen(false) }}
         >
           {pathCopied ? (
             <Check className="size-3 text-emerald-500" />
@@ -287,7 +289,7 @@ function JsonNode({
         <button
           type="button"
           className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs hover:bg-muted"
-          onClick={() => { handleCopyValue() }}
+          onClick={() => { handleCopyValue(); setMenuOpen(false) }}
         >
           {valueCopied ? (
             <Check className="size-3 text-emerald-500" />
