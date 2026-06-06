@@ -212,15 +212,36 @@ function isElectronEnvironment(): boolean {
   return Boolean(maybeWindow.electron || maybeWindow.electronAPI || userAgent.includes('electron'));
 }
 
+function getStorageKey(workflowId: string, startNodeLabel: string) {
+  return `agent-spaces:workflow-input:${workflowId}:${startNodeLabel}`;
+}
+
+function loadSavedValues(workflowId: string, startNodeLabel: string): Record<string, string> | undefined {
+  try {
+    const raw = localStorage.getItem(getStorageKey(workflowId, startNodeLabel));
+    return raw ? JSON.parse(raw) : undefined;
+  } catch { return undefined; }
+}
+
+function saveValues(workflowId: string, startNodeLabel: string, values: Record<string, unknown>) {
+  const stringified: Record<string, string> = {};
+  for (const [k, v] of Object.entries(values)) {
+    if (v != null) stringified[k] = typeof v === 'string' ? v : JSON.stringify(v);
+  }
+  localStorage.setItem(getStorageKey(workflowId, startNodeLabel), JSON.stringify(stringified));
+}
+
 export function ExecutionInputDialog({
-  open, fields, startNodeLabel, onOpenChange, onSubmit,
+  open, fields, startNodeLabel, onOpenChange, onSubmit, workflowId,
 }: {
   open: boolean;
   fields: OutputField[];
   startNodeLabel: string;
+  workflowId?: string | null;
   onOpenChange: (open: boolean) => void;
   onSubmit: (values: Record<string, unknown>) => void | Promise<void>;
 }) {
+  const savedValues = workflowId ? loadSavedValues(workflowId, startNodeLabel) : undefined;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md max-h-[85vh] flex flex-col">
@@ -229,7 +250,12 @@ export function ExecutionInputDialog({
         </DialogHeader>
         <ExecutionInputForm
           fields={fields}
-          onSubmit={async values => { await onSubmit(values); onOpenChange(false); }}
+          initialValues={savedValues}
+          onSubmit={async values => {
+            if (workflowId) saveValues(workflowId, startNodeLabel, values);
+            await onSubmit(values);
+            onOpenChange(false);
+          }}
           submitLabel={<><Play className="h-3 w-3 mr-1" /> 开始执行</>}
         />
       </DialogContent>

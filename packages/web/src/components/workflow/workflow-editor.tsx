@@ -1,8 +1,7 @@
 'use client';
 
 import { ReactFlowProvider } from '@xyflow/react';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type { AgentConfig, Workflow, WorkflowAgentChatMessage as PersistedWorkflowAgentChatMessage, WorkflowAgentTimelineItem, WorkflowAgentToolCall, WorkflowTemplate } from '@agent-spaces/shared';
+import type { WorkflowTemplate } from '@agent-spaces/shared';
 import { WorkflowCanvas } from './workflow-canvas';
 import { WorkflowNodeSidebar } from './workflow-node-sidebar';
 import { WorkflowEditorToolbar } from './workflow-editor-toolbar';
@@ -17,61 +16,25 @@ import { WorkflowInteractionDialog } from './workflow-interaction-dialog';
 import { WorkflowPluginsDialog } from './workflow-plugins-dialog';
 import { WorkflowPluginPickerDialog } from './workflow-plugin-picker-dialog';
 import { WorkflowNodeSelectDialog } from './workflow-node-select-dialog';
-import { FloatingChatPanel, type ChatMessage } from '@/components/ui/floating-chat-widget';
-import { JsonViewer } from '@/components/viewers/json-viewer';
+import { FloatingChatPanel } from '@/components/ui/floating-chat-widget';
 import { AgentEditor } from '@/components/sidebar/agent-editor';
-import { normalizeAgent, newAgentDraft, type AgentPreset } from '@/components/sidebar/agent-shared';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ResizablePanel, ResizableHandle, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ExpandableTabs } from '@/components/ui/expandable-tabs';
-import { Loader2, AlertCircle, CheckCircle2, ChevronDown, Settings2, Trash2, Wrench, History, Layers, Package } from 'lucide-react';
+import { Loader2, AlertCircle, Settings2, Trash2, History, Layers, Package } from 'lucide-react';
 import { useEditorShortcuts, useClipboard, useExecutionPanel } from '@/hooks/use-workflow-editor';
 import { Button } from '@/components/ui/button';
-import { fetchWithAuth } from '@/lib/auth';
-import { allNodeDefinitions } from '@/lib/workflow-nodes';
-import { cn } from '@/lib/utils';
-import { workflowChatApi } from '@/lib/workflow-api';
 import { useWorkspaceStore } from '@/stores/workspace';
 import { useWorkflowEditorState } from './use-workflow-editor-state';
 import { useWorkflowEditorCanvas } from './use-workflow-editor-canvas';
 import { useWorkflowEditorExecution } from './use-workflow-editor-execution';
+import { useWorkflowEditorAgentChat } from './use-workflow-editor-agent-chat';
+import { WorkflowAgentTimeline } from './workflow-editor-agent-chat-ui';
+import { WORKFLOW_AGENT_FIXED_VALUES, getWorkflowAgentTimeline } from './workflow-editor-agent-utils';
+import type { WorkflowAgentChatMessage } from './workflow-editor-agent-utils';
 
 // ---- Inner editor (needs ReactFlow context) ----
-
-type WorkflowToolCall = WorkflowAgentToolCall;
-type WorkflowTimelineItem = WorkflowAgentTimelineItem;
-
-interface WorkflowAgentChatMessage extends ChatMessage {
-  toolCalls?: WorkflowToolCall[];
-  timeline?: WorkflowTimelineItem[];
-}
-
-interface SseEvent {
-  event: string;
-  data: unknown;
-}
-
-interface ThinkingStreamState {
-  inThinking: boolean;
-  buffer: string;
-}
-
-const WORKFLOW_AGENT_TEMPLATE_ID = 'workflow-editor-agent';
-const WORKFLOW_AGENT_FIXED_SYSTEM_PROMPT = '工作流编辑助手提示词由系统根据当前画布动态生成，不能在模型设置中修改。';
-const WORKFLOW_AGENT_FIXED_VALUES: Partial<AgentPreset> = {
-  name: '工作流助手',
-  role: 'agent',
-  description: '帮助编辑当前可视化工作流的 LangChain Agent',
-  runtimeKind: 'langchain',
-  workingDir: '',
-  mcps: {},
-  skills: [],
-  tools: [],
-  systemPrompt: WORKFLOW_AGENT_FIXED_SYSTEM_PROMPT,
-  templateId: WORKFLOW_AGENT_TEMPLATE_ID,
-  enabled: true,
-};
 
 function WorkflowEditorInner({
   template, onBack,
@@ -83,16 +46,6 @@ function WorkflowEditorInner({
   const state = useWorkflowEditorState(template);
   const workspaces = useWorkspaceStore((store) => store.workspaces);
   const workspaceId = workspaces[0]?.id;
-  const [agentOpen, setAgentOpen] = useState(false);
-  const [agentInput, setAgentInput] = useState('');
-  const [agentSending, setAgentSending] = useState(false);
-  const [agentMessages, setAgentMessages] = useState<WorkflowAgentChatMessage[]>([]);
-  const [loadedAgentChatWorkflowId, setLoadedAgentChatWorkflowId] = useState<string | null>(null);
-  const agentChatSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const agentAbortControllerRef = useRef<AbortController | null>(null);
-  const [agentSettingsOpen, setAgentSettingsOpen] = useState(false);
-  const [agentSettingsDraft, setAgentSettingsDraft] = useState<AgentPreset | null>(null);
-  const [agentSettingsLoading, setAgentSettingsLoading] = useState(false);
 
   const canvas = useWorkflowEditorCanvas({
     workflow: state.workflow,
@@ -108,301 +61,17 @@ function WorkflowEditorInner({
     workflowId: state.workflowId,
   });
 
+  const chat = useWorkflowEditorAgentChat({
+    workflow: state.workflow,
+    setWorkflow: state.setWorkflow,
+    markDirty: state.markDirty,
+    pushUndo: state.pushUndo,
+    selectedNode: state.selectedNode,
+    workspaceId,
+  });
+
   const { isExpanded: execExpanded, toggle: toggleExec } = useExecutionPanel();
   const clipboard = useClipboard();
-
-  useEffect(() => {
-    const workflowId = state.workflow?.id;
-    if (!workflowId) {
-      setAgentMessages([]);
-      setLoadedAgentChatWorkflowId(null);
-      return;
-    }
-
-    let cancelled = false;
-    setLoadedAgentChatWorkflowId(null);
-    workflowChatApi.load(workflowId)
-      .then((messages) => {
-        if (cancelled) return;
-        setAgentMessages(messages.map(hydrateWorkflowAgentChatMessage));
-        setLoadedAgentChatWorkflowId(workflowId);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setAgentMessages([]);
-        setLoadedAgentChatWorkflowId(workflowId);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [state.workflow?.id]);
-
-  useEffect(() => {
-    const workflowId = state.workflow?.id;
-    if (!workflowId || loadedAgentChatWorkflowId !== workflowId) return;
-
-    if (agentChatSaveTimerRef.current) clearTimeout(agentChatSaveTimerRef.current);
-    agentChatSaveTimerRef.current = setTimeout(() => {
-      workflowChatApi.save(workflowId, agentMessages.map(serializeWorkflowAgentChatMessage)).catch(() => {});
-    }, 250);
-
-    return () => {
-      if (agentChatSaveTimerRef.current) clearTimeout(agentChatSaveTimerRef.current);
-    };
-  }, [agentMessages, loadedAgentChatWorkflowId, state.workflow?.id]);
-
-  const clearWorkflowAgentMessages = useCallback(async () => {
-    const workflowId = state.workflow?.id;
-    setAgentMessages([]);
-    if (workflowId) await workflowChatApi.clear(workflowId).catch(() => {});
-  }, [state.workflow?.id]);
-
-  const appendAssistantContent = useCallback((messageId: string, content: string) => {
-    setAgentMessages((messages) => messages.map((message) => (
-      message.id === messageId
-        ? { ...message, content: message.content ? `${message.content}\n${content}` : content }
-        : message
-    )));
-  }, []);
-
-  const appendTimelineItem = useCallback((messageId: string, item: WorkflowTimelineItem) => {
-    setAgentMessages((messages) => messages.map((message) => (
-      message.id === messageId
-        ? { ...message, timeline: [...(message.timeline ?? []), item] }
-        : message
-    )));
-  }, []);
-
-  const appendTimelineTextItem = useCallback((messageId: string, type: 'message' | 'thinking', content: string) => {
-    const trimmed = content.trim();
-    if (!trimmed) return;
-    setAgentMessages((messages) => messages.map((message) => {
-      if (message.id !== messageId) return message;
-      const timeline = [...(message.timeline ?? [])];
-      if (type === 'thinking') {
-        const existingIndex = timeline.findIndex((item) => item.type === 'thinking');
-        if (existingIndex >= 0) {
-          const existing = timeline[existingIndex] as Extract<WorkflowTimelineItem, { type: 'thinking' }>;
-          timeline[existingIndex] = { ...existing, content: `${existing.content}\n${trimmed}` };
-        } else {
-          timeline.unshift({
-            id: `thinking-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-            type: 'thinking',
-            content: trimmed,
-          });
-        }
-        return { ...message, timeline };
-      }
-
-      const latest = timeline.at(-1);
-      if (latest?.type === type) {
-        timeline[timeline.length - 1] = { ...latest, content: `${latest.content}\n${trimmed}` };
-      } else {
-        timeline.push({
-          id: `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-          type,
-          content: trimmed,
-        });
-      }
-      return { ...message, timeline };
-    }));
-  }, []);
-
-  const appendToolCall = useCallback((messageId: string, toolCall: WorkflowToolCall) => {
-    appendTimelineItem(messageId, { ...toolCall, type: 'tool' });
-  }, [appendTimelineItem]);
-
-  const appendTimelineMessage = useCallback((messageId: string, content: string) => {
-    appendTimelineTextItem(messageId, 'message', content);
-  }, [appendTimelineTextItem]);
-
-  const completeLatestToolCall = useCallback((messageId: string, toolName: string, result: unknown) => {
-    setAgentMessages((messages) => messages.map((message) => {
-      if (message.id !== messageId || !message.timeline?.length) return message;
-      const timeline = [...message.timeline];
-      const index = findLastIndex(timeline, (item) => item.type === 'tool' && item.name === toolName && item.status === 'running');
-      if (index === -1) return message;
-      timeline[index] = {
-        ...timeline[index],
-        result,
-        status: isSuccessfulToolResult(result) ? 'success' : 'error',
-      } as WorkflowTimelineItem;
-      return { ...message, timeline };
-    }));
-  }, []);
-
-  const applyWorkflowPatch = useCallback((result: unknown) => {
-    const patch = readWorkflowPatch(result);
-    if (!patch || patch.workflow_id !== state.workflow?.id) return;
-    state.pushUndo('workflow agent edit');
-    state.setWorkflow((workflow) => workflow ? {
-      ...workflow,
-      nodes: patch.nodes,
-      edges: patch.edges,
-      updatedAt: patch.updatedAt ?? Date.now(),
-    } : workflow);
-    state.markDirty();
-  }, [state]);
-
-  const openAgentSettings = useCallback(async () => {
-    setAgentSettingsOpen(true);
-    setAgentSettingsLoading(true);
-    try {
-      setAgentSettingsDraft(await resolveWorkflowAgentSettingsDraft());
-    } finally {
-      setAgentSettingsLoading(false);
-    }
-  }, []);
-
-  const sendWorkflowAgentMessage = useCallback(async () => {
-    const prompt = agentInput.trim();
-    if (!prompt || agentSending || !state.workflow) return;
-
-    const userMessage: WorkflowAgentChatMessage = {
-      id: `workflow-agent-user-${Date.now()}`,
-      role: 'user',
-      content: prompt,
-      timestamp: new Date(),
-    };
-    const assistantId = `workflow-agent-assistant-${Date.now()}`;
-    const assistantMessage: WorkflowAgentChatMessage = {
-      id: assistantId,
-      role: 'agent',
-      content: '',
-      timestamp: new Date(),
-      timeline: [],
-    };
-
-    setAgentMessages((messages) => [...messages, userMessage, assistantMessage]);
-    setAgentInput('');
-    setAgentSending(true);
-
-    try {
-      const abortController = new AbortController();
-      agentAbortControllerRef.current = abortController;
-      const preset = await resolveWorkflowAgentPreset();
-      if (!preset) {
-        appendAssistantContent(assistantId, '请先点击右上角模型设置，保存工作流助手的模型提供商、模型和 API Key。');
-        return;
-      }
-      if (!preset.apiKey || !preset.modelId || !preset.modelProvider) {
-        appendAssistantContent(assistantId, '工作流助手的模型配置不完整。请先在右上角模型设置中补全提供商、模型和 API Key。');
-        return;
-      }
-      if (abortController.signal.aborted) return;
-
-      const selectedNodes = state.selectedNode ? [state.selectedNode] : [];
-      const response = await fetchWithAuth('/api/agent-sse/run', {
-        method: 'POST',
-        signal: abortController.signal,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          workspaceId,
-          agentId: preset.id,
-          prompt,
-          maxTurns: 40,
-          messages: agentMessages
-            .filter((message) => message.content.trim())
-            .map((message) => ({
-              senderId: message.role === 'user' ? 'user' : preset.id,
-              senderRole: message.role === 'agent' ? preset.role : undefined,
-              content: message.content,
-              status: 'completed',
-            })),
-          workflowAgent: {
-            workflow: state.workflow,
-            nodeDefinitions: allNodeDefinitions,
-            selectedNodes,
-          },
-        }),
-      });
-
-      if (!response.ok || !response.body) {
-        const text = await response.text().catch(() => '');
-        appendAssistantContent(assistantId, text || `请求失败：${response.status}`);
-        return;
-      }
-
-      const thinkingState: ThinkingStreamState = { inThinking: false, buffer: '' };
-      await readSseStream(response, (event) => {
-        if (event.event === 'output') {
-          const line = asRecord(event.data).line;
-          if (typeof line === 'string') {
-            const parts = consumeThinkingStream(thinkingState, line);
-            for (const part of parts) {
-              if (part.type === 'thinking') {
-                appendTimelineTextItem(assistantId, 'thinking', part.content);
-              } else {
-                appendTimelineMessage(assistantId, part.content);
-              }
-            }
-          }
-          return;
-        }
-        if (event.event === 'reasoning') {
-          const data = asRecord(event.data);
-          const text = data.text;
-          if (typeof text === 'string' && text.trim()) {
-            appendTimelineTextItem(assistantId, 'thinking', text);
-          }
-          return;
-        }
-        if (event.event === 'tool_use') {
-          const data = asRecord(event.data);
-          appendToolCall(assistantId, {
-            id: `${String(data.name ?? 'tool')}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-            name: String(data.name ?? 'tool'),
-            input: data.input,
-            status: 'running',
-          });
-          return;
-        }
-        if (event.event === 'tool_result') {
-          const data = asRecord(event.data);
-          const toolName = String(data.toolUseId ?? 'tool');
-          completeLatestToolCall(assistantId, toolName, data.result);
-          applyWorkflowPatch(data.result);
-          return;
-        }
-        if (event.event === 'done') {
-          const data = asRecord(event.data);
-          if (data.error) appendAssistantContent(assistantId, String(data.error));
-          return;
-        }
-        if (event.event === 'error') {
-          const data = asRecord(event.data);
-          appendAssistantContent(assistantId, String(data.error ?? 'Agent 运行失败'));
-        }
-      });
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') return;
-      appendAssistantContent(assistantId, error instanceof Error ? error.message : String(error));
-    } finally {
-      if (agentAbortControllerRef.current?.signal.aborted || agentAbortControllerRef.current) {
-        agentAbortControllerRef.current = null;
-      }
-      setAgentSending(false);
-    }
-  }, [
-    agentInput,
-    agentSending,
-    state,
-    workspaceId,
-    agentMessages,
-    appendAssistantContent,
-    appendTimelineTextItem,
-    appendTimelineMessage,
-    appendToolCall,
-    completeLatestToolCall,
-    applyWorkflowPatch,
-  ]);
-
-  const stopWorkflowAgentMessage = useCallback(() => {
-    agentAbortControllerRef.current?.abort();
-    agentAbortControllerRef.current = null;
-    setAgentSending(false);
-  }, []);
 
   // ---- Shortcuts ----
   useEditorShortcuts({
@@ -686,19 +355,17 @@ function WorkflowEditorInner({
       />
 
       <FloatingChatPanel
-        isOpen={agentOpen}
-        onClose={() => setAgentOpen(false)}
-        onToggle={() => setAgentOpen((open) => !open)}
-        agent={{ name: '工作流助手', role: 'LangChain', status: agentSending ? 'busy' : 'online' }}
-        messages={agentMessages}
-        sending={agentSending}
-        input={agentInput}
-        onInputChange={setAgentInput}
-        onSend={sendWorkflowAgentMessage}
-        onStop={stopWorkflowAgentMessage}
-        onDeleteMessage={(messageId) => {
-          setAgentMessages((messages) => messages.filter((message) => message.id !== messageId));
-        }}
+        isOpen={chat.agentOpen}
+        onClose={() => chat.setAgentOpen(false)}
+        onToggle={() => chat.setAgentOpen((open) => !open)}
+        agent={{ name: '工作流助手', role: 'LangChain', status: chat.agentSending ? 'busy' : 'online' }}
+        messages={chat.agentMessages}
+        sending={chat.agentSending}
+        input={chat.agentInput}
+        onInputChange={chat.setAgentInput}
+        onSend={chat.sendWorkflowAgentMessage}
+        onStop={chat.stopWorkflowAgentMessage}
+        onDeleteMessage={chat.deleteAgentMessage}
         inputPlaceholder="描述要修改的工作流..."
         headerActions={
           <>
@@ -707,7 +374,7 @@ function WorkflowEditorInner({
               variant="ghost"
               size="icon"
               className="h-8 w-8 rounded-full hover:bg-background/50"
-              onClick={openAgentSettings}
+              onClick={chat.openAgentSettings}
               title="模型设置"
             >
               <Settings2 className="h-4 w-4" />
@@ -717,7 +384,7 @@ function WorkflowEditorInner({
               variant="ghost"
               size="icon"
               className="h-8 w-8 rounded-full hover:bg-background/50"
-              onClick={clearWorkflowAgentMessages}
+              onClick={chat.clearWorkflowAgentMessages}
               title="清空消息"
             >
               <Trash2 className="h-4 w-4" />
@@ -736,24 +403,24 @@ function WorkflowEditorInner({
         )}
       />
 
-      <Dialog open={agentSettingsOpen} onOpenChange={setAgentSettingsOpen}>
+      <Dialog open={chat.agentSettingsOpen} onOpenChange={chat.setAgentSettingsOpen}>
         <DialogContent className="flex max-h-[86vh] max-w-3xl flex-col overflow-hidden p-0">
           <DialogHeader className="border-b px-5 py-4">
             <DialogTitle>工作流助手模型设置</DialogTitle>
           </DialogHeader>
-          {agentSettingsLoading || !agentSettingsDraft ? (
+          {chat.agentSettingsLoading || !chat.agentSettingsDraft ? (
             <div className="flex h-64 items-center justify-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
               加载中...
             </div>
           ) : (
             <AgentEditor
-              agent={agentSettingsDraft}
+              agent={chat.agentSettingsDraft}
               onSaved={(saved) => {
-                setAgentSettingsDraft(saved);
-                setAgentSettingsOpen(false);
+                chat.setAgentSettingsDraft(saved);
+                chat.setAgentSettingsOpen(false);
               }}
-              onBack={() => setAgentSettingsOpen(false)}
+              onBack={() => chat.setAgentSettingsOpen(false)}
               fixedValues={WORKFLOW_AGENT_FIXED_VALUES}
               lockedFields={{
                 role: true,
@@ -770,273 +437,6 @@ function WorkflowEditorInner({
       </Dialog>
     </div>
   );
-}
-
-function WorkflowAgentTimeline({ timeline }: { timeline?: WorkflowTimelineItem[] }) {
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  if (!timeline?.length) return null;
-
-  return (
-    <div className="mt-2 flex w-full flex-col gap-1.5">
-      {timeline.map((item) => {
-        if (item.type === 'thinking') {
-          return <WorkflowAgentThinkingCard key={item.id} item={item} expanded={Boolean(expanded[item.id])} onToggle={() => setExpanded((state) => ({ ...state, [item.id]: !state[item.id] }))} />;
-        }
-        if (item.type === 'message') {
-          return <WorkflowAgentMessageCard key={item.id} item={item} />;
-        }
-        const open = expanded[item.id];
-        const isError = item.status === 'error';
-        return (
-          <div key={item.id} className="rounded-lg border bg-background/80 text-xs shadow-sm">
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 px-2.5 py-2 text-left"
-              onClick={() => setExpanded((state) => ({ ...state, [item.id]: !state[item.id] }))}
-            >
-              {item.status === 'running' ? (
-                <Loader2 className="size-3.5 shrink-0 animate-spin text-muted-foreground" />
-              ) : isError ? (
-                <AlertCircle className="size-3.5 shrink-0 text-destructive" />
-              ) : (
-                <CheckCircle2 className="size-3.5 shrink-0 text-emerald-600" />
-              )}
-              <Wrench className="size-3.5 shrink-0 text-muted-foreground" />
-              <span className="min-w-0 flex-1 truncate font-medium">{item.name}</span>
-              <ChevronDown className={cn('size-3.5 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} />
-            </button>
-            {open ? (
-              <div className="border-t px-2.5 py-2">
-                <ToolJsonBlock label="Input" value={item.input} />
-                {item.result !== undefined ? <ToolJsonBlock label="Result" value={item.result} /> : null}
-              </div>
-            ) : null}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function WorkflowAgentMessageCard({ item }: { item: Extract<WorkflowTimelineItem, { type: 'message' }> }) {
-  return (
-    <div className="whitespace-pre-wrap break-words rounded-lg border bg-muted/50 px-2.5 py-2 text-xs leading-relaxed shadow-sm">
-      {item.content}
-    </div>
-  );
-}
-
-function WorkflowAgentThinkingCard({ item, expanded, onToggle }: { item: Extract<WorkflowTimelineItem, { type: 'thinking' }>; expanded: boolean; onToggle: () => void }) {
-  return (
-    <div className="rounded-lg border bg-muted/30 text-xs shadow-sm">
-      <button type="button" className="flex w-full items-center gap-2 px-2.5 py-2 text-left" onClick={onToggle}>
-        <ChevronDown className={cn('size-3.5 shrink-0 text-muted-foreground transition-transform', expanded && 'rotate-180')} />
-        <span className="min-w-0 flex-1 truncate font-medium text-muted-foreground">思考过程</span>
-      </button>
-      {expanded ? (
-        <div className="whitespace-pre-wrap break-words border-t px-2.5 py-2 text-muted-foreground">
-          {item.content}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function ToolJsonBlock({ label, value }: { label: string; value: unknown }) {
-  return (
-    <JsonViewer
-      data={value as import('@/components/viewers/json-viewer').JsonValue}
-      title={label}
-      defaultExpanded={2}
-      rootName={label.toLowerCase()}
-      className="mb-2 last:mb-0"
-      style={{ maxHeight: '10rem', overflow: 'auto' }}
-    />
-  );
-}
-
-async function resolveWorkflowAgentPreset(): Promise<AgentConfig | null> {
-  const response = await fetchWithAuth('/api/agents/presets');
-  if (!response.ok) return null;
-  const presets = await response.json() as AgentConfig[];
-  return presets.find(isWorkflowAgentPreset) ?? null;
-}
-
-async function resolveWorkflowAgentSettingsDraft(): Promise<AgentPreset> {
-  const response = await fetchWithAuth('/api/agents/presets');
-  const presets = response.ok ? await response.json() as AgentConfig[] : [];
-  const existing = presets.find(isWorkflowAgentPreset);
-  if (existing) return withWorkflowAgentFixedValues(normalizeAgent(existing));
-  return withWorkflowAgentFixedValues({
-    ...newAgentDraft('agent'),
-    id: `draft-${WORKFLOW_AGENT_TEMPLATE_ID}-${Date.now()}`,
-  });
-}
-
-function isWorkflowAgentPreset(preset: AgentConfig): boolean {
-  return preset.templateId === WORKFLOW_AGENT_TEMPLATE_ID || preset.name === WORKFLOW_AGENT_FIXED_VALUES.name;
-}
-
-function withWorkflowAgentFixedValues(agent: AgentPreset): AgentPreset {
-  return {
-    ...agent,
-    ...WORKFLOW_AGENT_FIXED_VALUES,
-    modelProvider: agent.modelProvider,
-    modelId: agent.modelId,
-    apiBase: agent.apiBase,
-    apiKey: agent.apiKey,
-    avatarUrl: agent.avatarUrl,
-    icon: agent.icon,
-    temperature: agent.temperature,
-    maxTokens: agent.maxTokens,
-  };
-}
-
-async function readSseStream(response: Response, onEvent: (event: SseEvent) => void): Promise<void> {
-  const reader = response.body?.getReader();
-  if (!reader) return;
-  const decoder = new TextDecoder();
-  let buffer = '';
-
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const chunks = buffer.split(/\n\n/);
-    buffer = chunks.pop() ?? '';
-    for (const chunk of chunks) {
-      const event = parseSseEvent(chunk);
-      if (event) onEvent(event);
-    }
-  }
-
-  if (buffer.trim()) {
-    const event = parseSseEvent(buffer);
-    if (event) onEvent(event);
-  }
-}
-
-function parseSseEvent(chunk: string): SseEvent | null {
-  let event = 'message';
-  const dataLines: string[] = [];
-  for (const line of chunk.split(/\r?\n/)) {
-    if (line.startsWith('event:')) event = line.slice('event:'.length).trim();
-    if (line.startsWith('data:')) dataLines.push(line.slice('data:'.length).trim());
-  }
-  if (!dataLines.length) return null;
-  try {
-    return { event, data: JSON.parse(dataLines.join('\n')) };
-  } catch {
-    return { event, data: dataLines.join('\n') };
-  }
-}
-
-function consumeThinkingStream(state: ThinkingStreamState, text: string): Array<{ type: 'content' | 'thinking'; content: string }> {
-  const parts: Array<{ type: 'content' | 'thinking'; content: string }> = [];
-  let rest = state.buffer + text;
-  state.buffer = '';
-
-  while (rest.length) {
-    if (state.inThinking) {
-      const closeIndex = rest.search(/<\/think>/i);
-      if (closeIndex === -1) {
-        if (rest.trim()) parts.push({ type: 'thinking', content: rest });
-        break;
-      }
-      const thinking = rest.slice(0, closeIndex);
-      if (thinking.trim()) parts.push({ type: 'thinking', content: thinking });
-      rest = rest.slice(closeIndex).replace(/^<\/think>/i, '');
-      state.inThinking = false;
-      continue;
-    }
-
-    const openIndex = rest.search(/<think\s*>/i);
-    if (openIndex === -1) {
-      const maybePartialOpen = findPartialThinkOpen(rest);
-      if (maybePartialOpen >= 0) {
-        const beforePartial = rest.slice(0, maybePartialOpen);
-        if (beforePartial.trim()) parts.push({ type: 'content', content: beforePartial });
-        state.buffer = rest.slice(maybePartialOpen);
-      } else if (rest.trim()) {
-        parts.push({ type: 'content', content: rest });
-      }
-      break;
-    }
-
-    const before = rest.slice(0, openIndex);
-    if (before.trim()) parts.push({ type: 'content', content: before });
-    rest = rest.slice(openIndex).replace(/^<think\s*>/i, '');
-    state.inThinking = true;
-  }
-
-  return parts;
-}
-
-function findPartialThinkOpen(text: string): number {
-  const lower = text.toLowerCase();
-  const token = '<think>';
-  const maxLength = Math.min(token.length - 1, lower.length);
-  for (let length = maxLength; length > 0; length--) {
-    const suffix = lower.slice(-length);
-    if (token.startsWith(suffix)) return lower.length - length;
-  }
-  return -1;
-}
-
-function hydrateWorkflowAgentChatMessage(message: PersistedWorkflowAgentChatMessage): WorkflowAgentChatMessage {
-  const timestamp = new Date(message.timestamp);
-  const timeline = message.timeline?.length
-    ? message.timeline
-    : message.toolCalls?.map((toolCall) => ({ ...toolCall, type: 'tool' as const }));
-  return {
-    ...message,
-    timeline,
-    timestamp: Number.isNaN(timestamp.getTime()) ? new Date() : timestamp,
-  };
-}
-
-function serializeWorkflowAgentChatMessage(message: WorkflowAgentChatMessage): PersistedWorkflowAgentChatMessage {
-  return {
-    ...message,
-    timestamp: message.timestamp.toISOString(),
-  };
-}
-
-function getWorkflowAgentTimeline(message: WorkflowAgentChatMessage): WorkflowTimelineItem[] {
-  const timeline = message.timeline?.length
-    ? message.timeline
-    : message.toolCalls?.map((toolCall) => ({ ...toolCall, type: 'tool' as const })) ?? [];
-  const thinking = timeline.find((item) => item.type === 'thinking');
-  if (!thinking) return timeline;
-  return [thinking, ...timeline.filter((item) => item.id !== thinking.id)];
-}
-
-function readWorkflowPatch(result: unknown): { workflow_id: string; nodes: Workflow['nodes']; edges: Workflow['edges']; updatedAt?: number } | null {
-  const record = asRecord(result);
-  const patch = asRecord(record.workflow_patch);
-  if (typeof patch.workflow_id !== 'string' || !Array.isArray(patch.nodes) || !Array.isArray(patch.edges)) return null;
-  return {
-    workflow_id: patch.workflow_id,
-    nodes: patch.nodes as Workflow['nodes'],
-    edges: patch.edges as Workflow['edges'],
-    updatedAt: typeof patch.updatedAt === 'number' ? patch.updatedAt : undefined,
-  };
-}
-
-function isSuccessfulToolResult(result: unknown): boolean {
-  const record = asRecord(result);
-  return record.success !== false;
-}
-
-function asRecord(value: unknown): Record<string, unknown> {
-  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
-}
-
-function findLastIndex<T>(items: T[], predicate: (item: T) => boolean): number {
-  for (let index = items.length - 1; index >= 0; index--) {
-    if (predicate(items[index])) return index;
-  }
-  return -1;
 }
 
 // ---- Main export (with ReactFlowProvider) ----

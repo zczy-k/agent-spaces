@@ -103,6 +103,7 @@ export function useWorkflowEditorCanvas({
         if (prop.default !== undefined) data[prop.key] = prop.default;
       }
     }
+    if (def?.outputs?.length) data.outputs = def.outputs;
 
     if (nodeSelectContext.mode === 'connection-drop') {
       const sourceNode = workflow.nodes.find(node => node.id === nodeSelectContext.sourceNodeId);

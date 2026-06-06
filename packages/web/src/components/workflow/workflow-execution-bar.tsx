@@ -496,6 +496,7 @@ export function WorkflowExecutionBar({
         open={inputDialogOpen}
         fields={inputFields}
         startNodeLabel={activeStartNode?.label || '开始'}
+        workflowId={workflowId}
         onOpenChange={setInputDialogOpen}
         onSubmit={submitInput}
       />
