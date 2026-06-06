@@ -19,6 +19,7 @@ type FormatFileProps =
 import { getWS } from '@/lib/ws';
 import { Loader2, Play, Square, Download } from 'lucide-react';
 import { BackButton } from '@/components/common/back-button';
+import { useTranslations } from 'next-intl';
 
 interface FileOutput {
   name: string;
@@ -84,6 +85,7 @@ function extractEndOutput(log: ExecutionLog): unknown {
 }
 
 export default function WorkflowSharePage() {
+  const t = useTranslations('workflows');
   const searchParams = useSearchParams();
   const workflowId = searchParams.get('workflow_id') || '';
   const paramsStr = searchParams.get('params');
@@ -164,9 +166,9 @@ export default function WorkflowSharePage() {
     setExecuting(false); setCurrentExecutionId(null);
   }, [currentExecutionId]);
 
-  if (!workflowId) return <div className="flex items-center justify-center h-full text-sm text-muted-foreground">缺少 workflow_id 参数</div>;
+  if (!workflowId) return <div className="flex items-center justify-center h-full text-sm text-muted-foreground">{t('share.missingId')}</div>;
   if (loading) return <div className="flex items-center justify-center h-full"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
-  if (!workflow) return <div className="flex items-center justify-center h-full text-sm text-muted-foreground">工作流不存在</div>;
+  if (!workflow) return <div className="flex items-center justify-center h-full text-sm text-muted-foreground">{t('share.notFound')}</div>;
 
   const hasResult = executionLog && executionLog.steps.length > 0;
 
@@ -180,7 +182,7 @@ export default function WorkflowSharePage() {
               <span className="w-6 h-6 rounded bg-primary/10 text-xs font-bold flex items-center justify-center text-primary shrink-0">{(workflow.name || 'W').charAt(0).toUpperCase()}</span>
             )}
             <h1 className="text-lg font-semibold truncate">{workflow.name}</h1>
-            <span className="text-sm text-muted-foreground">{workflow.nodes.length} 节点</span>
+            <span className="text-sm text-muted-foreground">{t('share.nodes', { count: workflow.nodes.length })}</span>
           </div>
           {workflow.description && <p className="text-sm text-muted-foreground mt-0.5 line-clamp-1">{workflow.description}</p>}
         </div>
@@ -190,26 +192,26 @@ export default function WorkflowSharePage() {
         {/* Left: input form */}
         <div className="w-[360px] shrink-0 flex flex-col">
           <Card className="rounded-lg flex-1 min-h-0 flex flex-col">
-            <CardHeader className="p-3 pb-2 shrink-0"><CardTitle className="text-xs">执行参数</CardTitle></CardHeader>
+            <CardHeader className="p-3 pb-2 shrink-0"><CardTitle className="text-xs">{t('share.params')}</CardTitle></CardHeader>
             <CardContent className="p-3 pt-0 flex-1 min-h-0 flex flex-col">
               {inputFields.length > 0 ? (
                 <ExecutionInputForm fields={inputFields} initialValues={initialValues} onSubmit={handleExecute} disabled={executing}
                   footer={submit => (
                     <div className="pt-2 shrink-0 flex gap-2">
-                      <Button size="sm" className="h-7 text-xs gap-1 flex-1" disabled={executing} onClick={submit}><Play className="h-3 w-3" /> 执行</Button>
-                      {executing && <Button variant="destructive" size="sm" className="h-7 text-xs gap-1" onClick={handleStop}><Square className="h-3 w-3" /> 停止</Button>}
+                      <Button size="sm" className="h-7 text-xs gap-1 flex-1" disabled={executing} onClick={submit}><Play className="h-3 w-3" /> {t('share.execute')}</Button>
+                      {executing && <Button variant="destructive" size="sm" className="h-7 text-xs gap-1" onClick={handleStop}><Square className="h-3 w-3" /> {t('share.stop')}</Button>}
                     </div>
                   )}
                 />
               ) : (
                 <div className="flex-1 flex items-center justify-center">
                   <div className="text-center">
-                    <p className="text-xs text-muted-foreground mb-3">无输入参数，直接执行</p>
+                    <p className="text-xs text-muted-foreground mb-3">{t('share.noInputHint')}</p>
                     <Button size="sm" className="h-7 text-xs gap-1" disabled={executing} onClick={() => handleExecute({})}>
                       {executing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
-                      {executing ? '执行中...' : '执行'}
+                      {executing ? t('share.executing') : t('share.execute')}
                     </Button>
-                    {executing && <Button variant="destructive" size="sm" className="h-7 text-xs gap-1" onClick={handleStop}><Square className="h-3 w-3" /> 停止</Button>}
+                    {executing && <Button variant="destructive" size="sm" className="h-7 text-xs gap-1" onClick={handleStop}><Square className="h-3 w-3" /> {t('share.stop')}</Button>}
                   </div>
                 </div>
               )}
@@ -233,12 +235,12 @@ export default function WorkflowSharePage() {
               <div className="flex-1 min-w-0 flex flex-col gap-3">
                 {/* JSON 输出 */}
                 <Card size="sm" className="m-px rounded-lg flex-1 min-h-0 flex flex-col py-0">
-                  <CardHeader className="p-3 pb-1 shrink-0"><CardTitle className="text-xs">JSON 输出</CardTitle></CardHeader>
+                  <CardHeader className="p-3 pb-1 shrink-0"><CardTitle className="text-xs">{t('share.jsonOutput')}</CardTitle></CardHeader>
                   <CardContent className="px-2 pb-2 flex-1 min-h-0 overflow-auto">
                     {endOutput !== null ? (
                       <JsonViewer data={endOutput as import('@/components/viewers/json-viewer').JsonValue} rootName="output" defaultExpanded={2} className="border-0 shadow-none" />
                     ) : (
-                      <div className="flex items-center justify-center h-full text-xs text-muted-foreground">暂无输出</div>
+                      <div className="flex items-center justify-center h-full text-xs text-muted-foreground">{t('share.noOutput')}</div>
                     )}
                   </CardContent>
                 </Card>
@@ -246,7 +248,7 @@ export default function WorkflowSharePage() {
                 {/* 成品输出 */}
                 <Card size="sm" className="m-px rounded-lg shrink-0 py-0">
                   <div className="flex items-center justify-between p-3 pb-1">
-                    <CardTitle className="text-xs">成品输出</CardTitle>
+                    <CardTitle className="text-xs">{t('share.fileOutput')}</CardTitle>
                     {fileOutputs.length > 0 && (
                       <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => fileOutputs.forEach(f => window.open(f.url, '_blank'))}>
                         <Download className="h-3.5 w-3.5" />
@@ -266,7 +268,7 @@ export default function WorkflowSharePage() {
                         ))}
                       </div>
                     ) : (
-                      <div className="flex items-center justify-center py-6 text-xs text-muted-foreground">暂无文件输出</div>
+                      <div className="flex items-center justify-center py-6 text-xs text-muted-foreground">{t('share.noFileOutput')}</div>
                     )}
                   </CardContent>
                 </Card>
@@ -276,13 +278,13 @@ export default function WorkflowSharePage() {
             <Card className="rounded-lg flex-1 min-h-0 flex flex-col">
               <CardContent className="flex-1 flex items-center justify-center">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                <span className="ml-2 text-xs text-muted-foreground">执行中...</span>
+                <span className="ml-2 text-xs text-muted-foreground">{t('share.executing')}</span>
               </CardContent>
             </Card>
           ) : (
             <Card className="rounded-lg flex-1 min-h-0 flex flex-col">
               <CardContent className="flex-1 flex items-center justify-center text-xs text-muted-foreground">
-                填写参数并点击执行
+                {t('share.fillAndRun')}
               </CardContent>
             </Card>
           )}

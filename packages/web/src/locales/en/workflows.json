@@ -136,5 +136,20 @@
     "empty": "Staging area is empty",
     "emptyHint": "Drag nodes here to save for later",
     "uncategorized": "Uncategorized"
+  },
+  "share": {
+    "missingId": "Missing workflow_id parameter",
+    "notFound": "Workflow not found",
+    "nodes": "{count} nodes",
+    "params": "Execution Parameters",
+    "execute": "Run",
+    "executing": "Running...",
+    "stop": "Stop",
+    "noInputHint": "No input parameters, run directly",
+    "jsonOutput": "JSON Output",
+    "noOutput": "No output yet",
+    "fileOutput": "File Output",
+    "noFileOutput": "No file output",
+    "fillAndRun": "Fill in parameters and click Run"
   }
 }

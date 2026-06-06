@@ -136,5 +136,20 @@
     "empty": "暂存区为空",
     "emptyHint": "将节点拖入此区域保存备用",
     "uncategorized": "未分类"
+  },
+  "share": {
+    "missingId": "缺少 workflow_id 参数",
+    "notFound": "工作流不存在",
+    "nodes": "{count} 节点",
+    "params": "执行参数",
+    "execute": "执行",
+    "executing": "执行中...",
+    "stop": "停止",
+    "noInputHint": "无输入参数，直接执行",
+    "jsonOutput": "JSON 输出",
+    "noOutput": "暂无输出",
+    "fileOutput": "成品输出",
+    "noFileOutput": "暂无文件输出",
+    "fillAndRun": "填写参数并点击执行"
   }
 }
