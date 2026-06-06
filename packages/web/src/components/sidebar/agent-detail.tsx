@@ -35,6 +35,7 @@ import {
   WandSparkles,
   Check,
   X as XIcon,
+  Camera,
 } from "lucide-react";
 import { sdk } from "@/lib/sdk";
 import { DiffViewer } from "@/components/git/diff-viewer";
@@ -148,25 +149,75 @@ export function AgentDetail({
   return (
     <div className="flex flex-col gap-5 p-5">
       <Section icon={<MessageSquare className="size-3.5" />} title={t("detail.basic")}>
-        <div className="flex items-start gap-4">
-          <AvatarUploader
-            name={agent.name}
-            avatarUrl={agent.avatarUrl}
-            icon={agent.icon}
-            apiBase={agent.apiBase}
-            onAvatarUrlChange={(url) => onChange("avatarUrl", url)}
-            onIconChange={(icon) => onChange("icon", icon)}
-          />
-          <div className="flex flex-1 flex-col gap-2.5">
-            <FieldGroup label={t("detail.name")}>
-              <Input value={agent.name} onChange={(e) => onChange("name", e.target.value)} />
-            </FieldGroup>
-            <FieldGroup label={t("detail.role")}>
+        {/* Background + Avatar + Name/Role layout */}
+        <div className="flex flex-col">
+          {/* Background image area */}
+          <div className="relative h-24 rounded-t-xl bg-muted overflow-hidden group">
+            {agent.backgroundUrl ? (
+              <>
+                <img
+                  src={agent.backgroundUrl}
+                  alt="Background"
+                  className="size-full object-cover"
+                />
+                <button
+                  type="button"
+                  className="absolute top-2 right-2 flex size-6 items-center justify-center rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:bg-black/70"
+                  onClick={() => onChange("backgroundUrl", "")}
+                >
+                  <X className="size-3" />
+                </button>
+              </>
+            ) : (
+              <div className="size-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/50">
+                <span className="text-xs text-muted-foreground">Default background</span>
+              </div>
+            )}
+            {/* Upload background button */}
+            <label className="absolute bottom-2 right-2 flex size-6 items-center justify-center rounded-full bg-black/50 text-white cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70">
+              <Camera className="size-3" />
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    onChange("backgroundUrl", reader.result as string);
+                  };
+                  reader.readAsDataURL(file);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+          </div>
+          {/* Avatar + Name/Row row: avatar overlaps background bottom */}
+          <div className="flex items-end gap-4 px-4 -mt-6">
+            <div className="relative shrink-0">
+              <AvatarUploader
+                name={agent.name}
+                avatarUrl={agent.avatarUrl}
+                icon={agent.icon}
+                apiBase={agent.apiBase}
+                onAvatarUrlChange={(url) => onChange("avatarUrl", url)}
+                onIconChange={(icon) => onChange("icon", icon)}
+                hideUploadLabel
+              />
+            </div>
+            <div className="flex flex-1 flex-col gap-1 pb-1">
+              <Input
+                value={agent.name}
+                onChange={(e) => onChange("name", e.target.value)}
+                className="h-7 text-sm font-medium border-0 px-0 shadow-none focus-visible:ring-0"
+                placeholder={t("detail.name")}
+              />
               <select
                 value={agent.role}
                 onChange={(e) => onChange("role", e.target.value as AgentConfig["role"])}
                 disabled={lockedFields?.role}
-                className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring dark:bg-input/30"
+                className="h-6 w-full rounded-md border border-input bg-transparent px-2 text-xs outline-none focus-visible:border-ring dark:bg-input/30"
               >
                 {uniqueRoleOptions.map((role) => (
                   <option key={role} value={role}>
@@ -174,7 +225,7 @@ export function AgentDetail({
                   </option>
                 ))}
               </select>
-            </FieldGroup>
+            </div>
           </div>
         </div>
         <FieldGroup label={t("detail.description")}>

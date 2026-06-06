@@ -16,6 +16,7 @@ export interface AvatarUploaderProps {
   onAvatarUrlChange: (url: string) => void;
   onIconChange: (icon: string) => void;
   className?: string;
+  hideUploadLabel?: boolean;
 }
 
 export function AvatarUploader({
@@ -26,6 +27,7 @@ export function AvatarUploader({
   onAvatarUrlChange,
   onIconChange,
   className,
+  hideUploadLabel,
 }: AvatarUploaderProps) {
   const t = useTranslations("agent");
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
@@ -81,6 +83,7 @@ export function AvatarUploader({
           </PopoverContent>
         </Popover>
       )}
+      {!hideUploadLabel && (
       <label className="text-[10px] text-primary cursor-pointer hover:underline">
         {t("detail.uploadAvatar")}
         <input
@@ -100,6 +103,7 @@ export function AvatarUploader({
           }}
         />
       </label>
+      )}
       <AvatarPicker
         src={avatarSrc}
         open={avatarPickerOpen}

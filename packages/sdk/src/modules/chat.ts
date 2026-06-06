@@ -8,6 +8,7 @@ export interface ChatAgent {
   avatar?: string;
   avatarUrl?: string;
   icon?: string;
+  backgroundUrl?: string;
   description?: string;
   systemPrompt?: string;
   modelProvider?: string;

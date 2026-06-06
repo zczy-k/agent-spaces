@@ -12,6 +12,7 @@ export type AgentPreset = Omit<AgentConfig, "mcps" | "skills" | "modelProvider">
   description: string;
   avatarUrl: string;
   icon: string;
+  backgroundUrl: string;
   modelProvider: AgentConfig["modelProvider"] | "";
   modelId: string;
   apiBase: string;
@@ -102,6 +103,7 @@ export const ROLE_TEMPLATES: Record<BuiltInRole, Omit<AgentPreset, "id">> = {
     description: "通用 Agent，可在 workflow 中承担任意执行节点",
     avatarUrl: "",
     icon: "",
+    backgroundUrl: "",
     runtimeKind: "claude-code",
     modelProvider: "anthropic-messages",
     modelId: "claude-sonnet-4-6",
@@ -124,6 +126,7 @@ export const ROLE_TEMPLATES: Record<BuiltInRole, Omit<AgentPreset, "id">> = {
     description: "任务调度者，负责任务分发和协调",
     avatarUrl: "",
     icon: "",
+    backgroundUrl: "",
     runtimeKind: "claude-code",
     modelProvider: "anthropic-messages",
     modelId: "claude-sonnet-4-6",
@@ -146,6 +149,7 @@ export const ROLE_TEMPLATES: Record<BuiltInRole, Omit<AgentPreset, "id">> = {
     description: "任务创建者，负责把 issue 拆成可执行任务",
     avatarUrl: "",
     icon: "",
+    backgroundUrl: "",
     runtimeKind: "claude-code",
     modelProvider: "anthropic-messages",
     modelId: "claude-sonnet-4-6",
@@ -168,6 +172,7 @@ export const ROLE_TEMPLATES: Record<BuiltInRole, Omit<AgentPreset, "id">> = {
     description: "消息机器人，负责处理外部聊天平台中的用户消息",
     avatarUrl: "",
     icon: "",
+    backgroundUrl: "",
     runtimeKind: "claude-code",
     modelProvider: "anthropic-messages",
     modelId: "claude-sonnet-4-6",
@@ -193,6 +198,7 @@ export function normalizeAgent(agent: AgentConfig): AgentPreset {
     description: agent.description || "",
     avatarUrl: agent.avatarUrl || "",
     icon: agent.icon || "",
+    backgroundUrl: agent.backgroundUrl || "",
     runtimeKind: agent.runtimeKind || "open-agent-sdk",
     modelProvider: agent.modelProvider || "",
     modelId: agent.modelId || "claude-sonnet-4-6",
@@ -260,6 +266,7 @@ export function newEmptyAgent(): AgentPreset {
     description: "",
     avatarUrl: "",
     icon: "",
+    backgroundUrl: "",
     runtimeKind: "claude-code",
     modelProvider: "",
     modelId: "",
