@@ -1,6 +1,7 @@
 {
   "id": "workflow.aliyun-ai",
   "name": "阿里云百炼AI",
+  "icon": "icon.svg",
   "version": "1.0.0",
   "description": "阿里云百炼AI图片与视频生成，支持千问文生图/图像编辑、万相文生图/图生视频/文生视频/视频编辑/参考生视频/首尾帧生视频/图生动作、可灵生图、图像扩图、声动人像",
   "author": { "name": "workflow" },

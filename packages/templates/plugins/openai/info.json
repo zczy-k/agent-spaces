@@ -1,6 +1,7 @@
 {
   "id": "workflow.openai",
   "name": "OpenAI",
+  "icon": "icon.svg",
   "version": "2.0.0",
   "description": "OpenAI 集成插件，支持文生图、图片编辑、Chat Completions、Embeddings、Audio TTS/STT",
   "author": { "name": "workflow" },

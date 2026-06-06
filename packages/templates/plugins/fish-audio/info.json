@@ -2,6 +2,7 @@
   "id": "workflow.fish-audio",
   "name": "FishAudio 语音合成",
   "version": "1.0.0",
+  "icon": "icon.png",
   "description": "FishAudio 语音合成与语音识别，支持 TTS 文字转语音、STT 语音转文字",
   "author": { "name": "workflow" },
   "tags": ["AI", "语音合成", "TTS", "语音识别", "STT", "FishAudio"],

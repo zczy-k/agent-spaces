@@ -198,14 +198,12 @@ export function WorkflowsPage() {
         </div>
         {allTags.length > 0 && (
           <Popover>
-            <PopoverTrigger>
-              <Button variant="outline" size="sm" className="h-8 gap-1.5">
-                <Filter className="h-3.5 w-3.5" />
-                {t('page.tags')}
-                {selectedTags.length > 0 && (
-                  <Badge variant="secondary" className="h-4 px-1 text-[10px]">{selectedTags.length}</Badge>
-                )}
-              </Button>
+            <PopoverTrigger className="inline-flex items-center justify-center gap-1.5 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 rounded-md px-3 text-sm font-medium cursor-pointer">
+              <Filter className="h-3.5 w-3.5" />
+              {t('page.tags')}
+              {selectedTags.length > 0 && (
+                <Badge variant="secondary" className="h-4 px-1 text-[10px]">{selectedTags.length}</Badge>
+              )}
             </PopoverTrigger>
             <PopoverContent align="start" className="w-48 p-2">
               <div className="flex flex-col gap-1">

@@ -1,6 +1,7 @@
 {
   "id": "workflow.window-manager",
   "name": "窗口管理",
+  "icon": "icon.png",
   "version": "1.0.0",
   "description": "提供独立浏览器窗口的创建、导航、关闭、截图等操作节点",
   "author": { "name": "workflow" },
