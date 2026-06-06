@@ -1,14 +1,21 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
+import { dirname, basename } from 'path';
 import * as pluginService from '../services/plugin.js';
 
 const router = Router();
 
 router.get('/:pluginId/icon', (req: Request<{ pluginId: string }>, res: Response) => {
   try {
-    const result = pluginService.getPluginIconPath(req.params.pluginId);
+    const pluginId = req.params.pluginId;
+    const result = pluginService.getPluginIconPath(pluginId);
     if (!result) return res.status(404).json({ error: 'Icon not found' });
-    res.sendFile(result);
+    res.sendFile(basename(result), { root: dirname(result) }, (err) => {
+      if (err) {
+        console.warn('[plugin] icon send failed', { pluginId, path: result, error: err.message });
+        if (!res.headersSent) res.status(404).json({ error: 'Icon file not found' });
+      }
+    });
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }

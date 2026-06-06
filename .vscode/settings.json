@@ -1,6 +1,7 @@
 {
     "taskManager.favorites": [
         "agent_spaces/packages/server/npm/dev - packages/server",
+        "agent_spaces/packages/templates/npm/serve - packages/templates",
         "agent_spaces/packages/web/npm/dev - packages/web"
     ]
 }

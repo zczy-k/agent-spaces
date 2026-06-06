@@ -1,7 +1,7 @@
 'use client';
 
 import { Package, PackagePlus, Store } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 type PluginIconSource =
   | { type: 'url'; url: string }
@@ -9,12 +9,17 @@ type PluginIconSource =
 
 export function PluginIcon({ source, className }: { source: PluginIconSource; className?: string }) {
   const [failed, setFailed] = useState(false);
+  const url = source.type === 'url' ? source.url : '';
+
+  useEffect(() => {
+    setFailed(false);
+  }, [url]);
 
   if (source.type === 'url' && !failed) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={source.url}
+        src={url}
         alt=""
         className={className ?? 'h-8 w-8 object-contain'}
         onError={() => setFailed(true)}

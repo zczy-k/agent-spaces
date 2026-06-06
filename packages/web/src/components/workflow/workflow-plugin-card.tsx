@@ -6,6 +6,7 @@ import type { StoreWorkflowPlugin, WorkflowPlugin } from '@/lib/workflow-plugin-
 import { Download, RefreshCw, Settings, Trash2 } from 'lucide-react';
 import { PluginIcon } from './workflow-plugin-icon';
 import { resolveStoreUrl } from '@/lib/agent-store';
+import { resolveServerAssetUrl } from '@/lib/server';
 
 export function LocalPluginCard({
   plugin,
@@ -23,7 +24,7 @@ export function LocalPluginCard({
   onUninstallAction?: () => void;
 }) {
   const iconSrc = plugin.iconPath
-    ? { type: 'url' as const, url: `/api/plugins/${encodeURIComponent(plugin.id)}/icon` }
+    ? { type: 'url' as const, url: resolveServerAssetUrl(`/api/plugins/${encodeURIComponent(plugin.id)}/icon`) }
     : { type: 'builtin' as const, variant: 'local' as const };
 
   return (

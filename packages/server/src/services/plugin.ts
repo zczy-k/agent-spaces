@@ -210,7 +210,7 @@ export function getPluginIconPath(pluginId: string): string | null {
   const dir = resolvePluginDir(pluginId);
   if (!dir) return null;
   const manifest = readManifestFromDir(dir);
-  const iconRel = manifest?.iconPath || (manifest as any)?.icon;
+  const iconRel = manifest?.iconPath || (manifest as any)?.icon || detectIconFile(pluginId);
   if (!iconRel || typeof iconRel !== 'string') return null;
   const iconAbs = path.resolve(dir, iconRel);
   if (!existsSync(iconAbs)) return null;
