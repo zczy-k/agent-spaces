@@ -267,7 +267,7 @@ module.exports = {
           model: 'videoretalk',
           input: { video_url: args.videoUrl, audio_url: args.audioUrl },
         }
-        return executeAsyncTask(api, args, ASYNC_ENDPOINTS.videoSynthesis, body, (result) => ({
+        return executeAsyncTask(api, args, ASYNC_ENDPOINTS.image2video, body, (result) => ({
           success: true, message: '视频生成完成', data: { videoUrl: result.output?.video_url, requestId: result.request_id },
         }))
       }
