@@ -119,7 +119,8 @@ export function WorkflowExecutionBar({
     nodeLabel: string;
     defaultName: string;
     defaultJson: string;
-  }>({ open: false, nodeId: '', nodeLabel: '', defaultName: '', defaultJson: '' });
+    key: number;
+  }>({ open: false, nodeId: '', nodeLabel: '', defaultName: '', defaultJson: '', key: 0 });
 
   const badge = STATUS_BADGE[status] || STATUS_BADGE.idle;
   const isRunning = status === 'running';
@@ -368,7 +369,7 @@ export function WorkflowExecutionBar({
                                       const outputData = (typeof step.output === 'object' && step.output && !Array.isArray(step.output))
                                         ? step.output as Record<string, unknown>
                                         : {};
-                                      setPresetDialogState({
+                                      setPresetDialogState(prev => ({
                                         open: true,
                                         nodeId: step.nodeId,
                                         nodeLabel: step.nodeLabel || step.nodeId,
@@ -378,7 +379,8 @@ export function WorkflowExecutionBar({
                                           inputs: inputData,
                                           outputs: outputData,
                                         }, null, 2),
-                                      });
+                                        key: prev.key + 1,
+                                      }));
                                     }}
                                   >
                                     <Braces className="h-3 w-3" />
@@ -473,6 +475,7 @@ export function WorkflowExecutionBar({
       />
 
       <SavePresetDialog
+        key={presetDialogState.key}
         open={presetDialogState.open}
         onOpenChange={(open) => setPresetDialogState(prev => ({ ...prev, open }))}
         defaultName={presetDialogState.defaultName}

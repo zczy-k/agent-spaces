@@ -318,7 +318,11 @@ export function WorkflowPropertiesPanel({
                 if (isDebugging) {
                   onCancelDebug?.();
                 } else if (node) {
-                  setNodeTestDialogOpen(true);
+                  if (selectedJsonPreset) {
+                    onDebugNode(node.id, selectedJsonPreset.inputs, selectedJsonPreset.data);
+                  } else {
+                    setNodeTestDialogOpen(true);
+                  }
                 }
               }}
             >
