@@ -42,6 +42,7 @@ const DEBUG_WORKFLOW_CANVAS = process.env.NODE_ENV !== 'production';
 interface WorkflowCanvasProps {
   workflow: Workflow;
   isPreview: boolean;
+  isRunning?: boolean;
   executionLog?: ExecutionLog | null;
   selectedNodeId?: string | null;
   onNodeAdd: (type: string, position: { x: number; y: number }) => void;
@@ -167,7 +168,7 @@ function CanvasToolbar({
 }
 
 export function WorkflowCanvas({
-  workflow, isPreview, executionLog, selectedNodeId,
+  workflow, isPreview, isRunning = false, executionLog, selectedNodeId,
   onNodeAdd, onNodeDelete, onNodeSelect,
   onNodeDataUpdate, onNodesChange, onEdgesChange, onConnect,
   canUndo = false, canRedo = false, onUndo, onRedo, onExitPreview, onAutoLayout,
@@ -187,6 +188,7 @@ export function WorkflowCanvas({
   });
   const [isExporting, setIsExporting] = useState(false);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+  const isCanvasLocked = isPreview || isRunning;
 
   const executionNodeIds = useMemo(() => {
     const running = new Set<string>();
@@ -225,13 +227,14 @@ export function WorkflowCanvas({
           label: n.data?.label || n.label,
           nodeType: n.type,
           isPreview,
+          isCanvasLocked,
           width,
           height,
           isRunning: executionNodeIds.running.has(n.id),
         } as Record<string, unknown>,
       };
     }),
-    [workflow.nodes, selectedNodeId, isPreview, executionNodeIds],
+    [workflow.nodes, selectedNodeId, isPreview, isCanvasLocked, executionNodeIds],
   );
 
   React.useEffect(() => {
@@ -373,26 +376,27 @@ export function WorkflowCanvas({
         composite: e.composite,
         sourceHandle: e.sourceHandle,
         isRunning: runningEdgeIds.has(e.id),
-        canDeleteEdge: !isPreview,
+        canEditEdge: !isCanvasLocked,
+        canDeleteEdge: !isCanvasLocked,
       } as Record<string, unknown>,
     })),
-    [workflow.edges, runningEdgeIds, selectedEdgeId, isPreview],
+    [workflow.edges, runningEdgeIds, selectedEdgeId, isCanvasLocked],
   );
 
   const handleDragOver = useCallback((event: React.DragEvent) => {
+    if (isCanvasLocked) return;
     event.preventDefault();
-    if (isPreview) return;
     if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
-  }, [isPreview]);
+  }, [isCanvasLocked]);
 
   const handleDrop = useCallback((event: React.DragEvent) => {
-    if (isPreview) return;
+    if (isCanvasLocked) return;
     const type = event.dataTransfer.getData(WORKFLOW_NODE_DRAG_MIME);
     if (!type) return;
 
     const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
     onNodeAdd(type, position);
-  }, [isPreview, screenToFlowPosition, onNodeAdd]);
+  }, [isCanvasLocked, screenToFlowPosition, onNodeAdd]);
 
   const handleNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     const multi = false; // Could check for shift/meta key
@@ -407,10 +411,10 @@ export function WorkflowCanvas({
 
   const removeEdge = useCallback((edgeId: string) => {
     const edge = workflow.edges.find(item => item.id === edgeId);
-    if (!edge || edge.composite?.locked || isPreview) return;
+    if (!edge || edge.composite?.locked || isCanvasLocked) return;
     setSelectedEdgeId(null);
     onEdgesChange([{ id: edgeId, type: 'remove' }]);
-  }, [isPreview, onEdgesChange, workflow.edges]);
+  }, [isCanvasLocked, onEdgesChange, workflow.edges]);
 
   const selectEdge = useCallback((edgeId: string | null) => {
     setSelectedEdgeId(edgeId);
@@ -462,6 +466,7 @@ export function WorkflowCanvas({
   }, [rfNodes]);
 
   const handleNodesChangeWithDebug = useCallback((changes: NodeChange[]) => {
+    if (isCanvasLocked) return;
     if (DEBUG_WORKFLOW_CANVAS) {
       console.debug('[WorkflowCanvas] onNodesChange', {
         changes,
@@ -469,9 +474,15 @@ export function WorkflowCanvas({
       });
     }
     onNodesChange(changes);
-  }, [getNodeDebugSnapshot, onNodesChange]);
+  }, [getNodeDebugSnapshot, isCanvasLocked, onNodesChange]);
+
+  const handleEdgesChangeWithLock = useCallback((changes: EdgeChange[]) => {
+    if (isCanvasLocked) return;
+    onEdgesChange(changes);
+  }, [isCanvasLocked, onEdgesChange]);
 
   const handleConnectWithDebug = useCallback((connection: Connection) => {
+    if (isCanvasLocked) return;
     connectSucceededRef.current = true;
     if (DEBUG_WORKFLOW_CANVAS) {
       console.debug('[WorkflowCanvas] onConnect', {
@@ -481,10 +492,10 @@ export function WorkflowCanvas({
       });
     }
     onConnect(connection);
-  }, [getNodeDebugSnapshot, onConnect]);
+  }, [getNodeDebugSnapshot, isCanvasLocked, onConnect]);
 
   const handleConnectStart: OnConnectStart = useCallback((_, params) => {
-    if (!isPreview) {
+    if (!isCanvasLocked) {
       const nodeId = typeof params === 'object' && params && 'nodeId' in params
         ? String((params as { nodeId?: string | null }).nodeId || '')
         : '';
@@ -503,11 +514,11 @@ export function WorkflowCanvas({
       params,
       snapshot: getNodeDebugSnapshot(nodeId),
     });
-  }, [getNodeDebugSnapshot, isPreview]);
+  }, [getNodeDebugSnapshot, isCanvasLocked]);
 
   const handleConnectEnd: OnConnectEnd = useCallback((event) => {
     const connectSource = connectSourceRef.current;
-    if (!isPreview && connectSource && !connectSucceededRef.current) {
+    if (!isCanvasLocked && connectSource && !connectSucceededRef.current) {
       let clientPosition: { x: number; y: number } | null = null;
       if ('clientX' in event && 'clientY' in event) {
         clientPosition = { x: event.clientX, y: event.clientY };
@@ -532,7 +543,7 @@ export function WorkflowCanvas({
       eventType: event.type,
       snapshot: getNodeDebugSnapshot(),
     });
-  }, [getNodeDebugSnapshot, isPreview, onConnectionDrop, screenToFlowPosition]);
+  }, [getNodeDebugSnapshot, isCanvasLocked, onConnectionDrop, screenToFlowPosition]);
 
   const handleNodeDragStart = useCallback((_: React.MouseEvent, node: Node) => {
     if (!DEBUG_WORKFLOW_CANVAS) return;
@@ -595,10 +606,11 @@ export function WorkflowCanvas({
 
   // Handle edge insert node events from WorkflowEdge
   const handleEdgeInsertNode = useCallback((e: Event) => {
+    if (isCanvasLocked) return;
     const detail = (e as CustomEvent).detail;
     // This will open node select dialog — handled by editor
     window.dispatchEvent(new CustomEvent('workflow:open-node-select', { detail }));
-  }, []);
+  }, [isCanvasLocked]);
 
   const handleEdgeSelect = useCallback((e: Event) => {
     const detail = (e as CustomEvent).detail as { edgeId?: string | null } | undefined;
@@ -613,15 +625,17 @@ export function WorkflowCanvas({
 
   // Handle node delete events from WorkflowNode
   const handleNodeDelete = useCallback((e: Event) => {
+    if (isCanvasLocked) return;
     const detail = (e as CustomEvent).detail;
     onNodeDelete(detail.nodeId);
-  }, [onNodeDelete]);
+  }, [isCanvasLocked, onNodeDelete]);
 
   const handleNodeDataUpdate = useCallback((e: Event) => {
+    if (isCanvasLocked) return;
     const detail = (e as CustomEvent).detail;
     if (!detail?.nodeId || !detail?.data) return;
     onNodeDataUpdate(detail.nodeId, detail.data);
-  }, [onNodeDataUpdate]);
+  }, [isCanvasLocked, onNodeDataUpdate]);
 
   // Register custom event listeners
   React.useEffect(() => {
@@ -640,7 +654,7 @@ export function WorkflowCanvas({
   }, [handleEdgeDelete, handleEdgeInsertNode, handleEdgeSelect, handleNodeDelete, handleNodeDataUpdate]);
 
   React.useEffect(() => {
-    if (isPreview || !selectedEdgeId) return;
+    if (isCanvasLocked || !selectedEdgeId) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Delete' && event.key !== 'Backspace') return;
@@ -662,7 +676,7 @@ export function WorkflowCanvas({
 
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, [isPreview, removeEdge, selectedEdgeId]);
+  }, [isCanvasLocked, removeEdge, selectedEdgeId]);
 
   return (
     <div ref={reactFlowWrapper} className="relative flex-1 h-full w-full">
@@ -671,7 +685,7 @@ export function WorkflowCanvas({
         nodes={rfNodes}
         edges={rfEdges}
         onNodesChange={handleNodesChangeWithDebug}
-        onEdgesChange={onEdgesChange}
+        onEdgesChange={handleEdgesChangeWithLock}
         onConnect={handleConnectWithDebug}
         onConnectStart={handleConnectStart}
         onConnectEnd={handleConnectEnd}
@@ -690,9 +704,10 @@ export function WorkflowCanvas({
         snapGrid={[15, 15]}
         minZoom={0.2}
         maxZoom={4}
-        deleteKeyCode={isPreview || selectedEdgeId ? null : ['Backspace', 'Delete']}
-        nodesDraggable={!isPreview}
-        nodesConnectable={!isPreview}
+        deleteKeyCode={isCanvasLocked || selectedEdgeId ? null : ['Backspace', 'Delete']}
+        nodesDraggable={!isCanvasLocked}
+        nodesConnectable={!isCanvasLocked}
+        edgesReconnectable={!isCanvasLocked}
         defaultEdgeOptions={{ type: 'custom' }}
       >
         <Background variant={BackgroundVariant.Dots} gap={15} size={1} />
@@ -703,14 +718,14 @@ export function WorkflowCanvas({
       <CanvasToolbar
         workflow={workflow}
         isPreview={isPreview}
-        canUndo={canUndo}
-        canRedo={canRedo}
+        canUndo={!isCanvasLocked && canUndo}
+        canRedo={!isCanvasLocked && canRedo}
         minimapVisible={minimapVisible}
         isExporting={isExporting}
         onUndo={onUndo}
         onRedo={onRedo}
         onExitPreview={onExitPreview}
-        onAutoLayout={onAutoLayout}
+        onAutoLayout={isCanvasLocked ? undefined : onAutoLayout}
         onToggleMinimap={toggleMinimap}
         onExport={exportCanvas}
       />

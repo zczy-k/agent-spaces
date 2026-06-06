@@ -16,6 +16,7 @@ export function WorkflowEdge({
   const edgeSourceHandle = (data as Record<string, unknown>)?.sourceHandle as string | undefined ?? null;
   const isLoopBodyEdge = edgeSourceHandle === LOOP_BODY_SOURCE_HANDLE;
   const isRunning = (data as Record<string, unknown>)?.isRunning === true;
+  const canEditEdge = (data as Record<string, unknown>)?.canEditEdge === true;
   const canDeleteEdge = (data as Record<string, unknown>)?.canDeleteEdge === true;
 
   const [edgePath, labelX, labelY] = getBezierPath({
@@ -51,7 +52,7 @@ export function WorkflowEdge({
           <animateMotion dur="1.4s" repeatCount="indefinite" path={edgePath} />
         </circle>
       )}
-      {!isLocked && (
+      {!isLocked && canEditEdge && (
         <EdgeLabelRenderer>
           <div
             style={{

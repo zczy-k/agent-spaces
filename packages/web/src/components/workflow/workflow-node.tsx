@@ -35,6 +35,7 @@ type WorkflowNodeData = Record<string, unknown> & {
   width?: number;
   height?: number;
   isPreview?: boolean;
+  isCanvasLocked?: boolean;
   isRunning?: boolean;
 };
 
@@ -64,6 +65,11 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
 
   const isBoundaryNode = definition?.type === 'start' || definition?.type === 'end';
   const isLoopBody = definition?.type === LOOP_BODY_NODE_TYPE;
+  const isCanvasLocked = nodeData.isPreview || nodeData.isCanvasLocked;
+
+  React.useEffect(() => {
+    if (isCanvasLocked) setIsEditing(false);
+  }, [isCanvasLocked]);
 
   const showTargetHandle = definition?.handles?.target !== false;
   const showSourceHandle = definition?.handles?.source !== false;
@@ -187,19 +193,20 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
   }
 
   const startEdit = useCallback(() => {
+    if (isCanvasLocked) return;
     setEditLabel(displayLabel);
     setIsEditing(true);
     setTimeout(() => inputRef.current?.focus(), 0);
-  }, [displayLabel]);
+  }, [displayLabel, isCanvasLocked]);
 
   const finishEdit = useCallback(() => {
     setIsEditing(false);
-    if (editLabel && editLabel !== displayLabel) {
+    if (!isCanvasLocked && editLabel && editLabel !== displayLabel) {
       window.dispatchEvent(new CustomEvent('workflow:update-node-data', {
         detail: { nodeId: id, data: { label: editLabel } },
       }));
     }
-  }, [editLabel, displayLabel, id]);
+  }, [editLabel, displayLabel, id, isCanvasLocked]);
 
   // Execution status is injected by WorkflowCanvas from the current execution log.
   const nodeStatus = nodeData.isRunning ? 'running' : 'idle';
@@ -209,21 +216,23 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
 
   // Node delete via custom event
   const handleDelete = useCallback(() => {
+    if (isCanvasLocked) return;
     window.dispatchEvent(new CustomEvent('workflow:delete-node', { detail: { nodeId: id } }));
-  }, [id]);
+  }, [id, isCanvasLocked]);
 
   const handleResizeEnd = useCallback((_: unknown, params: { width: number; height: number }) => {
+    if (isCanvasLocked) return;
     const width = Math.max(nodeMinWidth, Math.round(params.width));
     const height = Math.max(nodeMinHeight, Math.round(params.height));
     window.dispatchEvent(new CustomEvent('workflow:update-node-data', {
       detail: { nodeId: id, data: { width, height } },
     }));
-  }, [id, nodeMinHeight, nodeMinWidth]);
+  }, [id, isCanvasLocked, nodeMinHeight, nodeMinWidth]);
 
   return (
     <>
       <NodeResizer
-        isVisible={selected && !nodeData.isPreview}
+        isVisible={selected && !isCanvasLocked}
         minWidth={nodeMinWidth}
         minHeight={nodeMinHeight}
         onResizeEnd={handleResizeEnd}
@@ -269,7 +278,7 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
         )}
 
         {/* Hover test button */}
-        {!isBoundaryNode && !nodeData.isPreview && isHovered && (
+        {!isBoundaryNode && !isCanvasLocked && isHovered && (
           <button
             className="absolute -top-2 -left-2 w-5 h-5 rounded-full bg-green-500 text-white flex items-center justify-center hover:bg-green-600 z-10"
             onClick={(e) => { e.stopPropagation(); }}
@@ -279,7 +288,7 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
         )}
 
         {/* Hover delete button */}
-        {!isBoundaryNode && !nodeData.isPreview && isHovered && (
+        {!isBoundaryNode && !isCanvasLocked && isHovered && (
           <button
             className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:bg-destructive/80 z-10"
             onClick={handleDelete}

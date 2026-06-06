@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
 import type { WorkflowTemplate } from '@agent-spaces/shared';
 import { WorkflowCanvas } from './workflow-canvas';
@@ -72,18 +73,24 @@ function WorkflowEditorInner({
 
   const { isExpanded: execExpanded, toggle: toggleExec } = useExecutionPanel();
   const clipboard = useClipboard();
+  const isWorkflowRunning = execution.execStatus === 'running';
+
+  useEffect(() => {
+    if (!isWorkflowRunning || !canvas.nodeSelectOpen) return;
+    canvas.handleNodeSelectOpenChange(false);
+  }, [canvas.handleNodeSelectOpenChange, canvas.nodeSelectOpen, isWorkflowRunning]);
 
   // ---- Shortcuts ----
   useEditorShortcuts({
     onSave: state.saveWorkflow,
-    onUndo: state.handleUndo,
-    onRedo: state.handleRedo,
-    onDelete: state.selectedNodeId ? () => canvas.handleNodeDelete(state.selectedNodeId!) : undefined,
+    onUndo: isWorkflowRunning ? undefined : state.handleUndo,
+    onRedo: isWorkflowRunning ? undefined : state.handleRedo,
+    onDelete: !isWorkflowRunning && state.selectedNodeId ? () => canvas.handleNodeDelete(state.selectedNodeId!) : undefined,
     onCopy: state.selectedNodeId && state.workflow ? () => {
       const node = state.workflow!.nodes.find(n => n.id === state.selectedNodeId);
       if (node) clipboard.copy([node], []);
     } : undefined,
-    onPaste: () => {
+    onPaste: isWorkflowRunning ? undefined : () => {
       const pasted = clipboard.paste();
       if (pasted && state.workflow) {
         state.pushUndo('paste');
@@ -136,8 +143,8 @@ function WorkflowEditorInner({
         isDirty={state.isDirty}
         isPreview={state.isPreview}
         executionStatus={execution.execStatus}
-        canUndo={state.undoStack.length > 0}
-        canRedo={state.redoStack.length > 0}
+        canUndo={!isWorkflowRunning && state.undoStack.length > 0}
+        canRedo={!isWorkflowRunning && state.redoStack.length > 0}
         onBack={onBack}
         onSave={state.saveWorkflow}
         onExecute={execution.handleExecute}
@@ -180,6 +187,7 @@ function WorkflowEditorInner({
               <WorkflowCanvas
                 workflow={workflow}
                 isPreview={state.isPreview}
+                isRunning={isWorkflowRunning}
                 executionLog={execution.executionLog}
                 selectedNodeId={state.selectedNodeId}
                 onNodeAdd={canvas.handleNodeAdd}
@@ -348,10 +356,10 @@ function WorkflowEditorInner({
       />
 
       <WorkflowNodeSelectDialog
-        open={canvas.nodeSelectOpen}
+        open={canvas.nodeSelectOpen && !isWorkflowRunning}
         workflow={workflow}
         onOpenChange={canvas.handleNodeSelectOpenChange}
-        onSelect={canvas.handleNodeSelectFromDialog}
+        onSelect={isWorkflowRunning ? () => {} : canvas.handleNodeSelectFromDialog}
       />
 
       <FloatingChatPanel
@@ -404,7 +412,7 @@ function WorkflowEditorInner({
       />
 
       <Dialog open={chat.agentSettingsOpen} onOpenChange={chat.setAgentSettingsOpen}>
-        <DialogContent className="flex max-h-[86vh] max-w-3xl flex-col overflow-hidden p-0">
+        <DialogContent className="flex max-h-[86vh] min-w-[60vw] flex-col overflow-hidden p-0">
           <DialogHeader className="border-b px-5 py-4">
             <DialogTitle>工作流助手模型设置</DialogTitle>
           </DialogHeader>

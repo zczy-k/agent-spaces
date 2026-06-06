@@ -266,25 +266,12 @@ export function FloatingChatPanel({
                     variants={messageVariants}
                     className={cn('flex gap-3', msg.role === 'user' ? 'flex-row-reverse self-end' : '')}
                   >
-                    <Avatar className="h-8 w-8 shrink-0 border border-border/40 shadow-sm">
-                      <AvatarFallback
-                        className={cn(
-                          'text-xs font-semibold',
-                          msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary'
-                        )}
-                      >
-                        {msg.role === 'user' ? 'ME' : agent.name.slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
                     <div
                       className={cn(
                         'group/message flex max-w-[85%] flex-col gap-1',
                         msg.role === 'user' ? 'items-end' : ''
                       )}
                     >
-                      <span className="text-xs font-medium text-muted-foreground">
-                        {msg.role === 'user' ? 'You' : agent.name}
-                      </span>
                       {hasMessageBody ? (
                         <div
                           className={cn(
@@ -356,11 +343,6 @@ export function FloatingChatPanel({
                   className="flex gap-3"
                   aria-label="AI is typing"
                 >
-                  <Avatar className="h-8 w-8 border border-border/40 shadow-sm">
-                    <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                      {agent.name.slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
                   <div className="flex flex-col gap-1">
                     <div className="rounded-2xl rounded-tl-none bg-muted/50 px-4 py-3 shadow-sm backdrop-blur-sm border border-border/20 w-16 flex items-center justify-center gap-1">
                       <span className="h-1.5 w-1.5 rounded-full bg-foreground/40 animate-bounce [animation-delay:-0.3s]" />
