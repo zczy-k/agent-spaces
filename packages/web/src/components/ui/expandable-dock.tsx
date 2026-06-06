@@ -1,6 +1,12 @@
 'use client';
 
-import React, { useState, ReactNode, useRef, useEffect } from 'react';
+import React, {
+  useState,
+  ReactNode,
+  useRef,
+  useEffect,
+  useCallback,
+} from 'react';
 import { motion } from 'motion/react';
 import { cn } from '@/lib/utils';
 
@@ -26,19 +32,37 @@ const ExpandableDock = ({
   >('collapsed');
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  const handleExpand = () => {
+  const clearTimers = useCallback(() => {
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
+  }, []);
+
+  const handleExpand = useCallback(() => {
+    clearTimers();
     setAnimationStage('widthExpanding');
-    setTimeout(() => setAnimationStage('heightExpanding'), 400);
-    setTimeout(() => setAnimationStage('fullyExpanded'), 850);
-  };
+    timersRef.current.push(
+      setTimeout(() => setAnimationStage('heightExpanding'), 400),
+      setTimeout(() => setAnimationStage('fullyExpanded'), 850),
+    );
+  }, [clearTimers]);
 
-  const handleCollapse = () => {
+  const handleCollapse = useCallback(() => {
+    clearTimers();
     setAnimationStage('contentFadingOut');
-    setTimeout(() => setAnimationStage('heightCollapsing'), 250);
-    setTimeout(() => setAnimationStage('widthCollapsing'), 650);
-    setTimeout(() => setAnimationStage('collapsed'), 1050);
-  };
+    timersRef.current.push(
+      setTimeout(() => setAnimationStage('heightCollapsing'), 250),
+      setTimeout(() => setAnimationStage('widthCollapsing'), 650),
+      setTimeout(() => setAnimationStage('collapsed'), 1050),
+    );
+  }, [clearTimers]);
+
+  // 热加载后重置到 collapsed
+  useEffect(() => {
+    setAnimationStage('collapsed');
+    return clearTimers;
+  }, [clearTimers]);
 
   const isCollapsed = animationStage === 'collapsed';
   const isExpanded = animationStage === 'fullyExpanded';
@@ -55,17 +79,12 @@ const ExpandableDock = ({
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isExpanded]);
+  }, [isExpanded, handleCollapse]);
 
   return (
-    <div className='fixed bottom-13 left-1/2 -translate-x-1/2 z-50 w-full px-4 sm:px-0'>
+    <div className='fixed bottom-13 left-1/2 -translate-x-1/2 z-50 w-full px-4 sm:px-0 flex justify-center'>
       <motion.div
         ref={containerRef}
-        initial={{
-          width: 'min(90vw, 360px)',
-          height: 68,
-          borderRadius: 999,
-        }}
         animate={{
           width:
             animationStage === 'collapsed' ||
@@ -86,10 +105,19 @@ const ExpandableDock = ({
           borderRadius: { duration: 0.3, ease: [0.4, 0, 0.2, 1] },
         }}
         className={cn(
-          'bg-white dark:bg-black backdrop-blur-md shadow-2xl overflow-hidden flex flex-col-reverse mx-auto border border-border',
+          'bg-white dark:bg-black backdrop-blur-md shadow-2xl overflow-hidden flex flex-col mx-auto border border-border',
           className,
         )}
       >
+        <motion.div
+          animate={{
+            opacity: isExpanded ? 1 : 0,
+          }}
+          transition={{ duration: 0.3 }}
+          className='p-4 sm:p-6 flex-1 min-h-0 flex flex-col overflow-auto'
+        >
+          {children}
+        </motion.div>
         <div
           onClick={isCollapsed ? handleExpand : handleCollapse}
           className={cn(
@@ -99,18 +127,6 @@ const ExpandableDock = ({
         >
           {headerContent}
         </div>
-        <motion.div
-          animate={{
-            opacity: isExpanded ? 1 : 0,
-            height: isExpanded ? 'auto' : 0,
-          }}
-          transition={{ duration: 0.3 }}
-          className='p-4 sm:p-6 flex-1 flex flex-col overflow-hidden'
-        >
-          <div className='overflow-y-hidden overflow-x-auto scrollbar-none'>
-            {children}
-          </div>
-        </motion.div>
       </motion.div>
     </div>
   );

@@ -5,7 +5,7 @@ import {
   Plus, X, ChevronRight, Sidebar, Layers, BookOpen,
   Minimize2, Maximize2, Check, MoreHorizontal,
   CheckCircle, Sparkles, FileCheck, List, History,
-  Trash,
+  Search, Trash,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
@@ -286,7 +286,21 @@ export function DatabaseMainPanel({
         </div>
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center p-8 bg-background select-none text-center">
-          <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-muted to-muted/80 border border-border flex items-center justify-center text-4xl mb-6 shadow-md shadow-black/10 text-muted-foreground animate-bounce">📁</div>
+          <div className="mb-6">
+            <ImagesBadge
+              text=""
+              items={[
+                <FileCard key="doc" formatFile="doc" />,
+                <FileCard key="pdf" formatFile="pdf" />,
+                <FileCard key="md" formatFile="md" />,
+              ]}
+              folderSize={{ width: 56, height: 42 }}
+              teaserImageSize={{ width: 32, height: 24 }}
+              hoverImageSize={{ width: 72, height: 48 }}
+              hoverTranslateY={-50}
+              hoverSpread={30}
+            />
+          </div>
           <h2 className="text-xl font-bold text-foreground tracking-tight">{t('knowledgeEditor')}</h2>
           <p className="text-xs text-muted-foreground mt-1.5 max-w-[340px] leading-relaxed">
             {t('emptyHint')}
@@ -332,15 +346,9 @@ export function DatabaseMainPanel({
       <ExpandableDock
         headerContent={
           <div className="flex items-center gap-3 w-full" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-            <ImagesBadge
-              text={t('globalSearch')}
-              items={[
-                <FileCard key="doc" formatFile="doc" />,
-                <FileCard key="pdf" formatFile="pdf" />,
-                <FileCard key="md" formatFile="md" />,
-              ]}
-              href={undefined}
-            />
+            <div className="flex-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+              <Search className="w-4 h-4" /><span>{t('globalSearch')}</span>
+            </div>
             <div className="w-px h-4 bg-border" />
             <button onClick={onOpenTrash}
               className="relative ml-auto flex items-center gap-1.5 text-sm text-muted-foreground hover:text-rose-400 transition-colors cursor-pointer">

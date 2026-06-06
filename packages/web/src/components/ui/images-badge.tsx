@@ -129,10 +129,15 @@ export function ImagesBadge(props: ImagesBadgeProps | ImagesBadgeCompatProps) {
                 ? (index - 0.5) * 3
                 : (index - 1) * 3;
 
+          const isImage = typeof item === "string";
+
           return (
             <motion.div
               key={index}
-              className="absolute top-0.5 left-1/2 origin-bottom overflow-hidden rounded-[3px] bg-white shadow-sm ring-1 shadow-black/10 ring-black/10 dark:bg-neutral-800 dark:shadow-white/10 dark:ring-white/10"
+              className={cn(
+                "absolute top-0.5 left-1/2 origin-bottom overflow-hidden rounded-[3px]",
+                isImage && "bg-white shadow-sm ring-1 shadow-black/10 ring-black/10 dark:bg-neutral-800 dark:shadow-white/10 dark:ring-white/10",
+              )}
               animate={{
                 x: `calc(-50% + ${isHovered ? hoverX : 0}px)`,
                 y: isHovered ? hoverY : teaseY,
@@ -152,14 +157,14 @@ export function ImagesBadge(props: ImagesBadgeProps | ImagesBadgeCompatProps) {
                 zIndex: 10 + index,
               }}
             >
-              {typeof item === "string" ? (
+              {isImage ? (
                 <img
                   src={item}
                   alt={`Preview ${index + 1}`}
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center [&>div]:scale-[0.6] [&>div]:origin-center">
+                <div className="flex h-full w-full items-center justify-center [&>div]:!ring-0 [&>div]:!shadow-none [&>div]:!border-0 [&>div]:!bg-transparent [&>div]:scale-[0.55] [&>div]:origin-center">
                   {item}
                 </div>
               )}
