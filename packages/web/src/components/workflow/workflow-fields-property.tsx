@@ -33,6 +33,13 @@ function getVariableExpression(value: string | number): string | null {
   return match?.[1]?.trim() || null;
 }
 
+function normalizeVariableFieldPath(fieldPath: string): string {
+  return fieldPath
+    .replace(/\["([^"]+)"\]/g, '.$1')
+    .replace(/^\./, '')
+    .trim();
+}
+
 function getVariableBadgeLabel(
   value: string | number,
   variableContext?: WorkflowVariableContext,
@@ -45,7 +52,8 @@ function getVariableBadgeLabel(
     const [, nodeId, fieldPath] = nodeMatch;
     const node = variableContext?.nodes.find((item) => item.id === nodeId);
     const nodeLabel = node?.label || nodeId;
-    return fieldPath ? `${nodeLabel}.${fieldPath}` : nodeLabel;
+    const normalizedFieldPath = normalizeVariableFieldPath(fieldPath);
+    return normalizedFieldPath ? `${nodeLabel}.${normalizedFieldPath}` : nodeLabel;
   }
 
   const configMatch = expression.match(CONFIG_VARIABLE_PATTERN);
@@ -87,7 +95,7 @@ function VariableBadgeInput({
         <span className="min-w-0 truncate">{label}</span>
         <button
           type="button"
-          aria-label={`清除${placeholder ?? '变量'}`}
+          aria-label={`Clear ${placeholder ?? 'variable'}`}
           className="shrink-0 rounded-sm p-0.5 text-muted-foreground hover:bg-background/80 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
           disabled={readOnly}
           onClick={onClear}
