@@ -30,6 +30,7 @@
   "speechNoConfig": "No speech recognition configured",
   "speechAddConfig": "Add Config",
   "git": "Git",
+  "npm": "NPM",
   "agentStore": "Agent Store",
   "storeApiBase": "Store API Base URL",
   "storeApiBaseDesc": "Configure the online Agent resource store base URL. Leave empty to use built-in local resources. Used for fetching output-styles, prompt templates, skills etc.",

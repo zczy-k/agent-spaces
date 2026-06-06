@@ -8,6 +8,7 @@ import { spawnSync } from 'node:child_process';
 import vm from 'node:vm';
 import AdmZip from 'adm-zip';
 import { createBuiltinPluginApi } from './plugin-runtime-api.js';
+import { getNpmSettings } from '../storage/npm-settings-store.js';
 
 const require = createRequire(import.meta.url);
 
@@ -133,10 +134,24 @@ function installPluginDependencies(dir: string): void {
   if (!hasPackageDependencies(dir)) return;
   if (existsSync(path.join(dir, 'node_modules'))) return;
 
-  const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-  const result = spawnSync(npmCommand, ['install', '--omit=dev'], {
+  const npmSettings = getNpmSettings();
+  const npmCommand = 'npm';
+  const npmArgs = ['install', '--omit=dev', `--registry=${npmSettings.registry}`];
+  if (npmSettings.proxy) {
+    npmArgs.push(`--proxy=${npmSettings.proxy}`, `--https-proxy=${npmSettings.proxy}`);
+  }
+  const result = spawnSync(npmCommand, npmArgs, {
     cwd: dir,
     encoding: 'utf-8',
+    env: {
+      ...process.env,
+      NPM_CONFIG_REGISTRY: npmSettings.registry,
+      ...(npmSettings.proxy ? {
+        NPM_CONFIG_PROXY: npmSettings.proxy,
+        NPM_CONFIG_HTTPS_PROXY: npmSettings.proxy,
+      } : {}),
+    },
+    shell: process.platform === 'win32',
     stdio: 'pipe',
   });
 
@@ -144,7 +159,9 @@ function installPluginDependencies(dir: string): void {
     const detail = (result.error?.message || result.stderr || result.stdout || '').trim();
     console.error('[plugin] failed to install dependencies', {
       dir,
-      command: `${npmCommand} install --omit=dev`,
+      command: `${npmCommand} ${npmArgs.join(' ')}`,
+      registry: npmSettings.registry,
+      proxy: npmSettings.proxy ? 'configured' : 'none',
       status: result.status,
       signal: result.signal,
       error: result.error?.message,

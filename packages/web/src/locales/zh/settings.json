@@ -30,6 +30,7 @@
   "speechNoConfig": "暂无语音识别配置",
   "speechAddConfig": "添加配置",
   "git": "Git",
+  "npm": "NPM",
   "agentStore": "在线商店",
   "storeApiBase": "商店 API 地址",
   "storeApiBaseDesc": "配置在线 Agent 资源商店的基础 URL，留空则使用本地内置资源。适用于 output-styles、prompt 模板、skills 等资源的在线获取。",

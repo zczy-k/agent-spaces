@@ -10,7 +10,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { User, Palette, Globe, Shield, Mic, GitBranch, Store, Bot, Info, Keyboard, Rocket, Database } from "lucide-react";
+import { User, Palette, Globe, Shield, Mic, GitBranch, Store, Bot, Info, Keyboard, Rocket, Database, Package } from "lucide-react";
 import { GitSettingsForm } from "@/components/git/git-settings-form";
 import { AppearanceTab } from "./settings/appearance-tab";
 import { LanguageTab } from "./settings/language-tab";
@@ -23,6 +23,7 @@ import { ShortcutsTab } from "./settings/shortcuts-tab";
 import { StartupTab } from "./settings/startup-tab";
 import { AgentStoreTab } from "./settings/agent-store-tab";
 import { DataTab } from "./settings/data-tab";
+import { NpmSettingsTab } from "./settings/npm-settings-tab";
 
 const tabs = [
   { key: "appearance", icon: Palette },
@@ -32,6 +33,7 @@ const tabs = [
   { key: "security", icon: Shield },
   { key: "robots", icon: Bot },
   { key: "agent_store", icon: Store },
+  { key: "npm", icon: Package },
   { key: "data", icon: Database },
   { key: "git", icon: GitBranch },
   { key: "speech", icon: Mic },
@@ -61,6 +63,7 @@ export function SettingsDialog({
     security: t("security"),
     robots: t("robots"),
     agent_store: t("agentStore"),
+    npm: t("npm"),
     data: t("data"),
     git: t("git"),
     speech: t("speech"),
@@ -84,6 +87,8 @@ export function SettingsDialog({
         return <RobotAccountsTab />;
       case "agent_store":
         return <AgentStoreTab />;
+      case "npm":
+        return <NpmSettingsTab />;
       case "data":
         return <DataTab />;
       case "git":

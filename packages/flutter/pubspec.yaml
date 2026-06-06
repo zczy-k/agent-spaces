@@ -82,6 +82,8 @@ flutter:
     - assets/web/_next/static/media/
     - assets/web/_not-found/
     - assets/web/_not-found/__next._not-found/
+    - assets/web/chat/
+    - assets/web/chat/__next.chat/
     - assets/web/icons/
     - assets/web/login/
     - assets/web/login/__next.login/
@@ -127,6 +129,12 @@ flutter:
     - assets/web/workflows/_/__next.workflows/
     - assets/web/workflows/_/__next.workflows/$d$id/
     - assets/web/workflows/__next.workflows/
+    - assets/web/workflows/detail/
+    - assets/web/workflows/detail/__next.workflows/
+    - assets/web/workflows/detail/__next.workflows/detail/
+    - assets/web/workflows/share/
+    - assets/web/workflows/share/__next.workflows/
+    - assets/web/workflows/share/__next.workflows/share/
     - assets/web/workspace/
     - assets/web/workspace/_/
     - assets/web/workspace/_/__next.workspace/
