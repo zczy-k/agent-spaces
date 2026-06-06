@@ -52,8 +52,12 @@ const nextConfig: NextConfig = {
       return {
         beforeFiles: [
           {
-            source: "/workflows/share.html",
-            destination: "/workflows/share",
+            source: "/index.html",
+            destination: "/",
+          },
+          {
+            source: "/:path*.html",
+            destination: "/:path*",
           },
         ],
         afterFiles: [

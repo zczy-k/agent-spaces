@@ -14,14 +14,34 @@ const handle = app.getRequestHandler();
 
 await app.prepare();
 
+function normalizeHtmlAppUrl(req) {
+  if (!req.url) return;
+
+  const url = new URL(req.url, `http://${hostname}:${port}`);
+  const { pathname } = url;
+
+  if (
+    pathname.startsWith("/api/") ||
+    pathname.startsWith("/_next/") ||
+    pathname.startsWith("/public/") ||
+    pathname.startsWith("/static/")
+  ) {
+    return;
+  }
+
+  if (pathname === "/index.html") {
+    url.pathname = "/";
+  } else if (pathname.endsWith(".html")) {
+    url.pathname = pathname.slice(0, -".html".length);
+  } else {
+    return;
+  }
+
+  req.url = `${url.pathname}${url.search}`;
+}
+
 const server = http.createServer((req, res) => {
-    if (req.url) {
-      const url = new URL(req.url, `http://${hostname}:${port}`);
-      if (url.pathname === "/workflows/share.html") {
-        url.pathname = "/workflows/share";
-        req.url = `${url.pathname}${url.search}`;
-      }
-    }
+    if (dev) normalizeHtmlAppUrl(req);
 
     if (dev) {
       launchEditorMiddleware(req, res, () => handle(req, res));
