@@ -12,6 +12,10 @@ export function isWorkspacePath(pathname: string): boolean {
   return normalizeAppPath(pathname).startsWith("/workspace/");
 }
 
+export function isWorkflowSharePath(pathname: string): boolean {
+  return normalizeAppPath(pathname) === "/workflows/share";
+}
+
 export function workspaceIdFromLocation(pathname: string, search: string): string | null {
   const queryId = new URLSearchParams(search).get("workspaceId");
   if (queryId) return queryId;

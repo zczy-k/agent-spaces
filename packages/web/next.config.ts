@@ -49,28 +49,36 @@ const nextConfig: NextConfig = {
   ...(isStaticExport ? {} : {
     async rewrites() {
       const serverUrl = process.env.SERVER_URL || "http://localhost:3100";
-      return [
-        {
-          source: "/api/:path*",
-          destination: `${serverUrl}/api/:path*`,
-        },
-        {
-          source: "/ws",
-          destination: `${serverUrl}/ws`,
-        },
-        {
-          source: "/ws/speech",
-          destination: `${serverUrl}/ws/speech`,
-        },
-        {
-          source: "/public/:path*",
-          destination: `${serverUrl}/public/:path*`,
-        },
-        {
-          source: "/static/:path*",
-          destination: `${serverUrl}/public/:path*`,
-        },
-      ];
+      return {
+        beforeFiles: [
+          {
+            source: "/workflows/share.html",
+            destination: "/workflows/share",
+          },
+        ],
+        afterFiles: [
+          {
+            source: "/api/:path*",
+            destination: `${serverUrl}/api/:path*`,
+          },
+          {
+            source: "/ws",
+            destination: `${serverUrl}/ws`,
+          },
+          {
+            source: "/ws/speech",
+            destination: `${serverUrl}/ws/speech`,
+          },
+          {
+            source: "/public/:path*",
+            destination: `${serverUrl}/public/:path*`,
+          },
+          {
+            source: "/static/:path*",
+            destination: `${serverUrl}/public/:path*`,
+          },
+        ],
+      };
     },
   }),
   transpilePackages: ["flexlayout-react"],

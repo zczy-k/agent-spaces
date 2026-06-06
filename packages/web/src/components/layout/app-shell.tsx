@@ -8,7 +8,7 @@ import { WorkspaceTabs } from "@/components/layout/workspace-tabs";
 import { DevInspector } from "@/components/layout/dev-inspector";
 import { WorkspaceDialog } from "@/components/workspace/workspace-dialog";
 import { useWorkspaceStore } from "@/stores/workspace";
-import { isLoginPath } from "@/lib/routes";
+import { isLoginPath, isWorkflowSharePath } from "@/lib/routes";
 import { ContentUsageReporter } from "@/components/home/content-usage-reporter";
 import { sdk } from "@/lib/sdk";
 
@@ -30,7 +30,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  if (pathname === '/workflows/share') {
+  if (isWorkflowSharePath(pathname)) {
     return <>{children}</>;
   }
 
