@@ -4,6 +4,16 @@ import * as pluginService from '../services/plugin.js';
 
 const router = Router();
 
+router.get('/:pluginId/icon', (req: Request<{ pluginId: string }>, res: Response) => {
+  try {
+    const result = pluginService.getPluginIconPath(req.params.pluginId);
+    if (!result) return res.status(404).json({ error: 'Icon not found' });
+    res.sendFile(result);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 router.get('/', (_req: Request, res: Response) => {
   try {
     res.json(pluginService.listPlugins());

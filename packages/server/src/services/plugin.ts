@@ -186,13 +186,24 @@ function normalizePlugin(dirName: string, manifest: PluginManifest, state: Plugi
     type: manifest.type,
     enabled: state.enabled[id] ?? Boolean(manifest.enabled),
     config: Array.isArray(manifest.config) ? manifest.config : [],
-    iconPath: manifest.iconPath || '',
+    iconPath: manifest.iconPath || (manifest as any).icon || '',
   };
 }
 
 function getManifest(pluginId: string): PluginManifest | null {
   const dir = resolvePluginDir(pluginId);
   return dir ? readManifestFromDir(dir) : null;
+}
+
+export function getPluginIconPath(pluginId: string): string | null {
+  const dir = resolvePluginDir(pluginId);
+  if (!dir) return null;
+  const manifest = readManifestFromDir(dir);
+  const iconRel = manifest?.iconPath || (manifest as any)?.icon;
+  if (!iconRel || typeof iconRel !== 'string') return null;
+  const iconAbs = path.resolve(dir, iconRel);
+  if (!existsSync(iconAbs)) return null;
+  return iconAbs;
 }
 
 function createRequireStub(): object {

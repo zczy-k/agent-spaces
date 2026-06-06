@@ -3,7 +3,8 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { StoreWorkflowPlugin, WorkflowPlugin } from '@/lib/workflow-plugin-api';
-import { Download, PackagePlus, RefreshCw, Settings, Store, Trash2 } from 'lucide-react';
+import { Download, RefreshCw, Settings, Trash2 } from 'lucide-react';
+import { PluginIcon } from './workflow-plugin-icon';
 
 export function LocalPluginCard({
   plugin,
@@ -20,9 +21,13 @@ export function LocalPluginCard({
   onConfigAction?: () => void;
   onUninstallAction?: () => void;
 }) {
+  const iconSrc = plugin.iconPath
+    ? { type: 'url' as const, url: `/api/plugins/${encodeURIComponent(plugin.id)}/icon` }
+    : { type: 'builtin' as const, variant: 'local' as const };
+
   return (
     <PluginCardShell
-      icon="local"
+      iconSrc={iconSrc}
       name={plugin.name}
       version={plugin.version}
       description={plugin.description}
@@ -58,9 +63,13 @@ export function StorePluginCard({
   installing: boolean;
   onInstallAction: () => void;
 }) {
+  const iconSrc = plugin.iconUrl
+    ? { type: 'url' as const, url: plugin.iconUrl }
+    : { type: 'builtin' as const, variant: 'store' as const };
+
   return (
     <PluginCardShell
-      icon="store"
+      iconSrc={iconSrc}
       name={plugin.name}
       version={plugin.version}
       description={plugin.description}
@@ -98,7 +107,7 @@ export function StorePluginCard({
 }
 
 function PluginCardShell({
-  icon,
+  iconSrc,
   name,
   version,
   description,
@@ -108,7 +117,7 @@ function PluginCardShell({
   headerExtra,
   children,
 }: {
-  icon: 'local' | 'store';
+  iconSrc: Parameters<typeof PluginIcon>[0]['source'];
   name: string;
   version: string;
   description?: string;
@@ -122,7 +131,7 @@ function PluginCardShell({
     <div className="group flex min-h-[156px] flex-col rounded-md border bg-background p-3">
       <div className="flex items-start gap-2">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-muted">
-          {icon === 'store' ? <Store className="h-4 w-4 text-muted-foreground" /> : <PackagePlus className="h-4 w-4 text-muted-foreground" />}
+          <PluginIcon source={iconSrc} />
         </div>
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-medium">{name}</div>

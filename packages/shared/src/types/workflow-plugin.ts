@@ -32,6 +32,8 @@ export interface PluginInfo {
   description: string
   author: PluginAuthor
   tags?: string[]
+  /** Relative path to icon file (svg, png, jpeg, webp, etc.) within the plugin directory */
+  icon?: string
   minAppVersion?: string
   hasView?: boolean
   hasWorkflow?: boolean
