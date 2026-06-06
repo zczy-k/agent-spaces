@@ -275,6 +275,66 @@ module.exports = {
 - 每个工具名必须全局唯一；不同工具文件里不要重复声明同名 `name`
 - `handler` 只处理当前文件声明的工具，未知工具返回失败结果
 
+### 复用 workflow node 与 Agent tool 定义
+
+当同一个能力既要注册为 workflow node，又要暴露为 Agent tool，推荐把元数据和执行逻辑放在一份动作定义里，并在 `main.js` 的 `activate(context)` 中通过 `context.registerActions(actions)` 注册。插件加载器会把这份动作定义转换成 workflow nodes 和 Agent tools，避免在 `workflow.js` 和 `tools.js` 中重复维护字段、schema 和 handler。
+
+参考 `packages/templates/plugins/aliyun_oss`：
+
+```text
+aliyun_oss/
+├── actions.js      # 唯一动作定义：字段、输出、执行逻辑
+├── main.js         # activate(context) 中注册 actions
+├── workflow.js     # 兼容旧入口，可为空
+└── tools.js        # 兼容旧入口，可为空
+```
+
+核心写法：
+
+```javascript
+// actions.js
+module.exports = [
+  {
+    name: 'my_action',
+    label: '我的节点',
+    category: '示例',
+    icon: 'Box',
+    description: '同一份定义同时用于 workflow 和 tool',
+    properties: [
+      { key: 'prompt', label: 'Prompt', type: 'textarea', required: true },
+    ],
+    outputs: [
+      { key: 'success', type: 'boolean' },
+      { key: 'message', type: 'string' },
+    ],
+    run: async (ctx, args) => {
+      return { success: true, message: args.prompt }
+    },
+  },
+]
+```
+
+```javascript
+// main.js
+const actions = require('./actions')
+
+exports.activate = (context) => {
+  context.registerActions(actions)
+}
+```
+
+```javascript
+// workflow.js
+module.exports = { nodes: [] }
+```
+
+```javascript
+// tools.js
+module.exports = { tools: [] }
+```
+
+如两侧参数不完全一致，可在动作定义里单独提供 `toolProperties`；如某个 workflow node 不应暴露给 Agent，设置 `tool: false`。
+
 ## `api.js`
 
 只有当你需要扩展默认 API 时再写。

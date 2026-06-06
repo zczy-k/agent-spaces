@@ -45,6 +45,7 @@ export function IOFieldsSections({
             value={getOutputFields(data.inputFields)}
             onChange={(value) => onDataChange('inputFields', value)}
             variableContext={variableContext}
+            showRequired
           />
         </section>
       )}

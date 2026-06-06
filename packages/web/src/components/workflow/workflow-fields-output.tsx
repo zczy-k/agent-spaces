@@ -82,11 +82,13 @@ export function OutputFieldsEditor({
   onChange,
   variableContext,
   depth = 0,
+  showRequired = false,
 }: {
   value: OutputField[];
   onChange: (v: OutputField[]) => void;
   variableContext?: WorkflowVariableContext;
   depth?: number;
+  showRequired?: boolean;
 }) {
   const fields = getOutputFields(value);
   const [expandedFields, setExpandedFields] = useState<Set<number>>(() => new Set());
@@ -166,12 +168,14 @@ export function OutputFieldsEditor({
                     >
                       <ChevronRight className="h-3 w-3" />
                     </Button>
-                    <Checkbox
-                      checked={Boolean(field.required) || false}
-                      onCheckedChange={(checked) => updateField(index, { required: checked === true || undefined })}
-                      className="h-3.5 w-3.5"
-                      title="必填"
-                    />
+                    {showRequired && (
+                      <Checkbox
+                        checked={Boolean(field.required) || false}
+                        onCheckedChange={(checked) => updateField(index, { required: checked === true || undefined })}
+                        className="h-3.5 w-3.5"
+                        title="必填"
+                      />
+                    )}
                     <Input
                       value={field.key ?? ''}
                       onChange={(e) => updateField(index, { key: e.target.value })}

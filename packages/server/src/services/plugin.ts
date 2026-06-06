@@ -21,7 +21,7 @@ type PluginManifest = Partial<Omit<PluginMeta, 'enabled' | 'tags' | 'hasView'>> 
   enabled?: boolean;
   config?: PluginConfigField[];
   workflowNodes?: NodeTypeDefinition[];
-  entries?: { workflow?: string };
+  entries?: { server?: string; workflow?: string; tools?: string | string[] };
 };
 
 type WorkflowNodeHandler = (ctx: any, args: Record<string, any>) => Promise<any>;
@@ -37,7 +37,41 @@ type ExecutablePlugin = {
   api: Record<string, any>;
 };
 
+type PluginRuntimeState = {
+  activated: boolean;
+  actions: PluginActionDefinition[];
+};
+
+type PluginActionProperty = Record<string, any> & {
+  key: string;
+  label?: string;
+  type?: string;
+  required?: boolean;
+  toolRequired?: boolean;
+  tooltip?: string;
+  description?: string;
+  schemaType?: string;
+  items?: Record<string, unknown>;
+  enum?: unknown[];
+  default?: unknown;
+};
+
+type PluginActionDefinition = Record<string, any> & {
+  name: string;
+  label: string;
+  category: string;
+  icon: string;
+  description: string;
+  properties?: PluginActionProperty[];
+  toolProperties?: PluginActionProperty[];
+  configProperties?: PluginActionProperty[];
+  outputs?: unknown[];
+  tool?: false | { name?: string; description?: string };
+  run: WorkflowNodeHandler;
+};
+
 const STATE_FILE = () => path.join(pluginsDir(), 'state.json');
+const pluginRuntimeState = new Map<string, PluginRuntimeState>();
 
 function templatesPluginsDir(): string {
   const candidates = [
@@ -155,14 +189,167 @@ function createRequireStub(): object {
   });
 }
 
+function toJsonSchemaType(type: unknown): string {
+  switch (type) {
+    case 'textarea':
+    case 'select':
+    case 'text':
+      return 'string';
+    case 'number':
+      return 'number';
+    case 'boolean':
+    case 'checkbox':
+      return 'boolean';
+    case 'array':
+    case 'output_fields':
+    case 'conditions':
+      return 'array';
+    default:
+      return 'string';
+  }
+}
+
+function propertyToSchema(property: PluginActionProperty): Record<string, unknown> {
+  const schema: Record<string, unknown> = {
+    type: property.schemaType || toJsonSchemaType(property.type),
+  };
+
+  const description = property.description || property.tooltip || property.label;
+  if (description) schema.description = description;
+  if (property.items) schema.items = property.items;
+  if (property.enum) schema.enum = property.enum;
+  if (property.default !== undefined && typeof property.default !== 'string') {
+    schema.default = property.default;
+  }
+
+  return schema;
+}
+
+function createPluginActions(actions: PluginActionDefinition[]) {
+  const workflowNodes = actions.map(({ run, tool: _tool, ...action }) => {
+    const properties = [...(action.properties || []), ...(action.configProperties || [])];
+    return {
+      type: action.name,
+      label: action.label,
+      category: action.category,
+      icon: action.icon,
+      description: action.description,
+      properties,
+      outputs: action.outputs || [],
+      handler: run,
+    };
+  });
+
+  const tools = actions
+    .filter(action => action.tool !== false)
+    .map((action) => {
+      const tool = action.tool || {};
+      const properties = [...(action.toolProperties || action.properties || []), ...(action.configProperties || [])];
+      const required = properties
+        .filter(property => property.required && property.toolRequired !== false)
+        .map(property => property.key);
+
+      return {
+        name: tool.name || action.name,
+        description: tool.description || action.description,
+        input_schema: {
+          type: 'object',
+          properties: Object.fromEntries(properties.map(property => [property.key, propertyToSchema(property)])),
+          required,
+        },
+      };
+    });
+
+  const handlers = new Map<string, WorkflowNodeHandler>();
+  for (const action of actions) {
+    handlers.set(action.name, action.run);
+    if (action.tool && action.tool.name) handlers.set(action.tool.name, action.run);
+  }
+
+  return {
+    workflow: () => ({ nodes: workflowNodes }),
+    tools: () => ({
+      tools,
+      handler: async (name: string, args: Record<string, any>, api: Record<string, any>) => {
+        const run = handlers.get(name);
+        if (!run) return { success: false, message: `未知工具: ${name}` };
+        return run({ api, logger: api?.logger || console }, args);
+      },
+    }),
+  };
+}
+
+function createPluginRequire(entryPath: string) {
+  const relativeRequire = createRequire(entryPath);
+  return (request: string) => {
+    const normalized = request.replace(/^node:/, '');
+    if (builtinModules.includes(normalized)) return require(request);
+    if (request.startsWith('./') || request.startsWith('../') || path.isAbsolute(request)) {
+      return relativeRequire(request);
+    }
+    return createRequireStub();
+  };
+}
+
+function createPluginContext(plugin: PluginMeta) {
+  return {
+    plugin,
+    config: getPluginConfig(plugin.id),
+    logger: {
+      info: (message: string) => console.info(`[plugin:${plugin.id}] ${message}`),
+      warning: (message: string) => console.warn(`[plugin:${plugin.id}] ${message}`),
+      error: (message: string) => console.error(`[plugin:${plugin.id}] ${message}`),
+    },
+    registerActions: (actions: PluginActionDefinition[]) => {
+      const state = pluginRuntimeState.get(plugin.id) ?? { activated: false, actions: [] };
+      state.actions = Array.isArray(actions) ? actions : [];
+      pluginRuntimeState.set(plugin.id, state);
+    },
+  };
+}
+
+function activatePlugin(plugin: PluginMeta): void {
+  const current = pluginRuntimeState.get(plugin.id);
+  if (current?.activated) return;
+
+  const nextState = current ?? { activated: false, actions: [] };
+  pluginRuntimeState.set(plugin.id, nextState);
+
+  const manifest = getManifest(plugin.id);
+  const dir = resolvePluginDir(plugin.id);
+  if (!manifest || !dir) {
+    nextState.activated = true;
+    return;
+  }
+
+  const serverEntry = manifest.entries?.server || 'main.js';
+  const serverPath = path.join(dir, serverEntry);
+  if (!existsSync(serverPath) || (!serverPath.endsWith('.js') && !serverPath.endsWith('.cjs'))) {
+    nextState.activated = true;
+    return;
+  }
+
+  const source = readFileSync(serverPath, 'utf-8');
+  const module = { exports: {} as { activate?: (context: ReturnType<typeof createPluginContext>) => unknown } };
+  const script = new vm.Script(`(function(require, module, exports, __filename, __dirname) {\n${source}\n})`, { filename: serverPath });
+  const runner = script.runInNewContext({ console, Buffer, URL, URLSearchParams, fetch, setTimeout, clearTimeout });
+  runner(createPluginRequire(serverPath), module, module.exports, serverPath, path.dirname(serverPath));
+
+  if (typeof module.exports.activate === 'function') {
+    module.exports.activate(createPluginContext(plugin));
+  }
+  nextState.activated = true;
+}
+
+function getRegisteredPluginActions(plugin: PluginMeta): PluginActionDefinition[] {
+  activatePlugin(plugin);
+  return pluginRuntimeState.get(plugin.id)?.actions ?? [];
+}
+
 function loadCommonJsWorkflowNodes(workflowPath: string): NodeTypeDefinition[] {
   const source = readFileSync(workflowPath, 'utf-8');
   const module = { exports: {} as { nodes?: NodeTypeDefinition[] } | NodeTypeDefinition[] };
-  const localRequire = (request: string) => {
-    const normalized = request.replace(/^node:/, '');
-    if (builtinModules.includes(normalized)) return require(request);
-    return createRequireStub();
-  };
+  const localRequire = createPluginRequire(workflowPath);
   const script = new vm.Script(`(function(require, module, exports, __filename, __dirname) {\n${source}\n})`, { filename: workflowPath });
   const runner = script.runInNewContext({ console, Buffer, URL, URLSearchParams, fetch, setTimeout, clearTimeout });
   runner(localRequire, module, module.exports, workflowPath, path.dirname(workflowPath));
@@ -174,7 +361,7 @@ function loadCommonJsWorkflowNodes(workflowPath: string): NodeTypeDefinition[] {
 function loadCommonJsWorkflowModule(workflowPath: string): { nodes: NodeTypeDefinition[]; handlers: Map<string, WorkflowNodeHandler> } {
   const source = readFileSync(workflowPath, 'utf-8');
   const module = { exports: {} as { nodes?: Array<NodeTypeDefinition & { handler?: WorkflowNodeHandler }> } };
-  const localRequire = createRequire(workflowPath);
+  const localRequire = createPluginRequire(workflowPath);
   const script = new vm.Script(`(function(require, module, exports, __filename, __dirname) {\n${source}\n})`, { filename: workflowPath });
   const runner = script.runInNewContext({ console, Buffer, URL, URLSearchParams, fetch, setTimeout, clearTimeout });
   runner(localRequire, module, module.exports, workflowPath, path.dirname(workflowPath));
@@ -294,6 +481,12 @@ export function getWorkflowNodes(pluginId: string): NodeTypeDefinition[] {
   if (!manifest) throw new Error('Plugin not found');
   if (Array.isArray(manifest.workflowNodes)) return manifest.workflowNodes;
 
+  const plugin = listPlugins().find(item => item.id === pluginId);
+  if (plugin) {
+    const actions = getRegisteredPluginActions(plugin);
+    if (actions.length) return createPluginActions(actions).workflow().nodes as NodeTypeDefinition[];
+  }
+
   const workflowPath = getWorkflowEntryPath(pluginId);
   if (!workflowPath) return [];
   if (workflowPath.endsWith('.js') || workflowPath.endsWith('.cjs')) {
@@ -304,9 +497,42 @@ export function getWorkflowNodes(pluginId: string): NodeTypeDefinition[] {
   return Array.isArray(payload?.nodes) ? payload.nodes : [];
 }
 
+export function getPluginTools(pluginId: string): Array<{ name: string; description: string; input_schema: Record<string, unknown> }> {
+  const plugin = listPlugins().find(item => item.id === pluginId);
+  if (!plugin) throw new Error('Plugin not found');
+
+  const actions = getRegisteredPluginActions(plugin);
+  if (!actions.length) return [];
+  return createPluginActions(actions).tools().tools;
+}
+
+export async function executePluginTool(
+  pluginId: string,
+  name: string,
+  args: Record<string, any>,
+  api: Record<string, any> = {},
+): Promise<any> {
+  const plugin = listPlugins().find(item => item.id === pluginId);
+  if (!plugin) throw new Error('Plugin not found');
+
+  const actions = getRegisteredPluginActions(plugin);
+  if (!actions.length) throw new Error(`Plugin has no registered tools: ${pluginId}`);
+
+  return createPluginActions(actions).tools().handler(name, args, api);
+}
+
 function getExecutablePluginByNodeType(nodeType: string): ExecutablePlugin | null {
   for (const plugin of listWorkflowPlugins()) {
     if (!plugin.enabled) continue;
+
+    const actions = getRegisteredPluginActions(plugin);
+    if (actions.length) {
+      const { nodes } = createPluginActions(actions).workflow();
+      const rawNode = (nodes as Array<NodeTypeDefinition & { handler?: WorkflowNodeHandler }>).find(node => node.type === nodeType);
+      const handler = rawNode?.handler;
+      if (handler) return { plugin, handler, api: createBuiltinPluginApi() };
+    }
+
     const workflowPath = getWorkflowEntryPath(plugin.id);
     if (!workflowPath || (!workflowPath.endsWith('.js') && !workflowPath.endsWith('.cjs'))) continue;
 
