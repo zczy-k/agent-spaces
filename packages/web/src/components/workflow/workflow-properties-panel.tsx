@@ -76,6 +76,7 @@ export function WorkflowPropertiesPanel({
   const canDebugSelectedNode = Boolean(node && definition?.debuggable !== false && node.type !== 'start' && node.type !== 'end');
   const isDebugging = Boolean(node && debugNodeId === node.id && debugStatus === 'running');
   const hasDebugOutput = Boolean(node && debugNodeId === node.id && debugResult);
+  const nodeId = node?.id;
   const variableContext = useMemo<WorkflowVariableContext | undefined>(() => {
     if (!node) return undefined;
     return { nodes, edges, currentNodeId: node.id, enabledPlugins };
@@ -83,11 +84,11 @@ export function WorkflowPropertiesPanel({
 
   // Handlers
   const isVariableRef = (value: unknown): boolean => typeof value === 'string' && value.includes('{{');
-  const isVariableModeActive = (key: string, value: unknown): boolean => {
+  const isVariableModeActive = useCallback((key: string, value: unknown): boolean => {
     if (variableModeDisabled.has(key)) return false;
     return isVariableRef(value) || variableModeEnabled.has(key);
-  };
-  const toggleVariableMode = (key: string, value: unknown) => {
+  }, [variableModeDisabled, variableModeEnabled]);
+  const toggleVariableMode = useCallback((key: string, value: unknown) => {
     if (isVariableModeActive(key, value)) {
       setVariableModeEnabled((current) => { const next = new Set(current); next.delete(key); return next; });
       setVariableModeDisabled((current) => new Set(current).add(key));
@@ -95,24 +96,28 @@ export function WorkflowPropertiesPanel({
       setVariableModeDisabled((current) => { const next = new Set(current); next.delete(key); return next; });
       setVariableModeEnabled((current) => new Set(current).add(key));
     }
-  };
+  }, [isVariableModeActive]);
   const clearVariableModeDisabledOverride = useCallback((key: string) => {
-    if (!variableModeDisabled.has(key)) return;
-    setVariableModeDisabled((current) => { const next = new Set(current); next.delete(key); return next; });
-  }, [variableModeDisabled]);
+    setVariableModeDisabled((current) => {
+      if (!current.has(key)) return current;
+      const next = new Set(current);
+      next.delete(key);
+      return next;
+    });
+  }, []);
   const handleDataChange = useCallback((key: string, value: unknown) => {
-    if (!node) return;
+    if (!nodeId) return;
     clearVariableModeDisabledOverride(key);
-    onUpdateData(node.id, { [key]: value });
-  }, [clearVariableModeDisabledOverride, node, onUpdateData]);
-  const toVariableInputValue = (value: unknown): string | number => {
+    onUpdateData(nodeId, { [key]: value });
+  }, [clearVariableModeDisabledOverride, nodeId, onUpdateData]);
+  const toVariableInputValue = useCallback((value: unknown): string | number => {
     if (typeof value === 'string' || typeof value === 'number') return value;
     if (typeof value === 'boolean') return String(value);
     return '';
-  };
-  const insertVariable = (key: string, variablePath: string) => {
+  }, []);
+  const insertVariable = useCallback((key: string, variablePath: string) => {
     handleDataChange(key, variablePath);
-  };
+  }, [handleDataChange]);
   const updateJsonPresets = useCallback((presets: JsonPreset[]) => {
     handleDataChange(JSON_PRESETS_KEY, presets);
   }, [handleDataChange]);

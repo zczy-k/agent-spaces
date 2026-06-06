@@ -194,8 +194,12 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
 
   const finishEdit = useCallback(() => {
     setIsEditing(false);
-    // Node label update handled by store through selection
-  }, []);
+    if (editLabel && editLabel !== displayLabel) {
+      window.dispatchEvent(new CustomEvent('workflow:update-node-data', {
+        detail: { nodeId: id, data: { label: editLabel } },
+      }));
+    }
+  }, [editLabel, displayLabel, id]);
 
   // Execution status is injected by WorkflowCanvas from the current execution log.
   const nodeStatus = nodeData.isRunning ? 'running' : 'idle';

@@ -222,7 +222,7 @@ export function WorkflowCanvas({
         style: { minWidth, minHeight, width, height },
         data: {
           ...n.data,
-          label: n.label,
+          label: n.data?.label || n.label,
           nodeType: n.type,
           isPreview,
           width,

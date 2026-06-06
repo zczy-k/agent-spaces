@@ -210,7 +210,11 @@ export function useWorkflowEditorCanvas({
       if (!w) return null;
       return {
         ...w,
-        nodes: w.nodes.map(n => n.id === nodeId ? { ...n, data: { ...n.data, ...data } } : n),
+        nodes: w.nodes.map(n => n.id === nodeId ? {
+          ...n,
+          label: typeof data.label === 'string' ? data.label : n.label,
+          data: { ...n.data, ...data },
+        } : n),
       };
     });
     markDirty();

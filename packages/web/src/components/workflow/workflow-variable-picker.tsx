@@ -45,7 +45,7 @@ function getConnectedNodeIds(edges: WorkflowEdge[], nodeId: string): Set<string>
 
 function getNodeLabel(node: WorkflowNode): string {
   const def = getNodeDefinition(node.type);
-  return node.label || def?.label || node.type;
+  return (node.data?.label as string) || node.label || def?.label || node.type;
 }
 
 function getNodeOutputs(node: WorkflowNode): OutputField[] {

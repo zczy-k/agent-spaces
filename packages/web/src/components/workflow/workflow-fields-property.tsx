@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { NodeProperty } from '@agent-spaces/shared';
 import { X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +28,133 @@ const PURE_VARIABLE_PATTERN = /^\s*\{\{\s*(.*?)\s*\}\}\s*$/;
 const NODE_VARIABLE_PATTERN = /^__(?:data|inputs)__\["([^"]+)"\]\.?(.*)$/;
 const CONFIG_VARIABLE_PATTERN = /^__config__\["([^"]+)"\]\["([^"]+)"\]$/;
 const LOOP_VARIABLE_PATTERN = /^__loop__\.?(.*)$/;
+const TEXT_COMMIT_DELAY_MS = 250;
+
+function useDebouncedDraft(
+  value: string,
+  onCommit: (value: string) => void,
+) {
+  const [draft, setDraft] = useState(value);
+  const onCommitRef = useRef(onCommit);
+  const draftRef = useRef(value);
+  const dirtyRef = useRef(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    onCommitRef.current = onCommit;
+  }, [onCommit]);
+
+  useEffect(() => {
+    setDraft(value);
+    draftRef.current = value;
+    dirtyRef.current = false;
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }, [value]);
+
+  const flush = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    if (!dirtyRef.current) return;
+    dirtyRef.current = false;
+    onCommitRef.current(draftRef.current);
+  }, []);
+
+  const updateDraft = useCallback((nextValue: string) => {
+    setDraft(nextValue);
+    draftRef.current = nextValue;
+    dirtyRef.current = true;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(flush, TEXT_COMMIT_DELAY_MS);
+  }, [flush]);
+
+  useEffect(() => () => flush(), [flush]);
+
+  return { draft, updateDraft, flush };
+}
+
+function DebouncedTextInput({
+  value,
+  onChange,
+  placeholder,
+  disabled,
+  className,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  className?: string;
+}) {
+  const { draft, updateDraft, flush } = useDebouncedDraft(value, onChange);
+
+  return (
+    <Input
+      value={draft}
+      onChange={(e) => updateDraft(e.target.value)}
+      onBlur={flush}
+      placeholder={placeholder}
+      disabled={disabled}
+      className={className}
+    />
+  );
+}
+
+function DebouncedTextarea({
+  value,
+  onChange,
+  placeholder,
+  disabled,
+  className,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  className?: string;
+}) {
+  const { draft, updateDraft, flush } = useDebouncedDraft(value, onChange);
+
+  return (
+    <Textarea
+      value={draft}
+      onChange={(e) => updateDraft(e.target.value)}
+      onBlur={flush}
+      placeholder={placeholder}
+      disabled={disabled}
+      className={className}
+    />
+  );
+}
+
+function DebouncedNumberInput({
+  value,
+  onChange,
+  disabled,
+  className,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  className?: string;
+}) {
+  const { draft, updateDraft, flush } = useDebouncedDraft(value, onChange);
+
+  return (
+    <Input
+      type="number"
+      value={draft}
+      onChange={(e) => updateDraft(e.target.value)}
+      onBlur={flush}
+      disabled={disabled}
+      className={className}
+    />
+  );
+}
 
 function getVariableExpression(value: string | number): string | null {
   const match = String(value).match(PURE_VARIABLE_PATTERN);
@@ -160,9 +288,9 @@ export function PropertyField({
   switch (prop.type) {
     case 'text':
       return (
-        <Input
+        <DebouncedTextInput
           value={String(value ?? '')}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={onChange}
           placeholder={prop.tooltip}
           disabled={disabled}
           className="h-7 text-xs"
@@ -171,9 +299,9 @@ export function PropertyField({
 
     case 'textarea':
       return (
-        <Textarea
+        <DebouncedTextarea
           value={String(value ?? '')}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={onChange}
           placeholder={prop.tooltip}
           disabled={disabled}
           className="min-h-[72px] text-xs"
@@ -182,10 +310,9 @@ export function PropertyField({
 
     case 'number':
       return (
-        <Input
-          type="number"
+        <DebouncedNumberInput
           value={String(value ?? '')}
-          onChange={(e) => onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+          onChange={(nextValue) => onChange(nextValue === '' ? undefined : Number(nextValue))}
           disabled={disabled}
           className="h-7 text-xs"
         />
@@ -261,9 +388,9 @@ export function PropertyField({
 
     default:
       return (
-        <Input
+        <DebouncedTextInput
           value={String(value ?? '')}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={onChange}
           disabled={disabled}
           className="h-7 text-xs"
         />
