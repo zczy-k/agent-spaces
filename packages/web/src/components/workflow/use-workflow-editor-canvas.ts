@@ -233,11 +233,12 @@ export function useWorkflowEditorCanvas({
     setSelectedNodeId(selected ? next[next.length - 1] ?? null : id);
   }, [selectedNodeId, selectedNodeIds, setSelectedNodeId, setSelectedNodeIds]);
 
-  const handleNodesSelect = useCallback((ids: string[]) => {
-    if (areStringArraysEqual(selectedNodeIds, ids)) return;
+  const handleNodesSelect = useCallback((ids: string[], options?: { primaryNodeId?: string | null }) => {
+    const primaryNodeId = options?.primaryNodeId ?? (ids.length === 1 ? ids[0] : null);
+    if (selectedNodeId === primaryNodeId && areStringArraysEqual(selectedNodeIds, ids)) return;
     setSelectedNodeIds(ids);
-    setSelectedNodeId(ids[ids.length - 1] ?? null);
-  }, [selectedNodeIds, setSelectedNodeId, setSelectedNodeIds]);
+    setSelectedNodeId(primaryNodeId);
+  }, [selectedNodeId, selectedNodeIds, setSelectedNodeId, setSelectedNodeIds]);
 
   const handleNodeDataUpdate = useCallback((nodeId: string, data: Record<string, unknown>) => {
     setWorkflow(w => {

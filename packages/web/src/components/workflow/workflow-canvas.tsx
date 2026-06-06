@@ -39,6 +39,10 @@ const nodeTypes = { custom: WorkflowNodeComponent };
 const edgeTypes = { custom: WorkflowEdgeComponent };
 const DEBUG_WORKFLOW_CANVAS = process.env.NODE_ENV !== 'production';
 
+function areStringArraysEqual(a: string[], b: string[]) {
+  return a.length === b.length && a.every((item, index) => item === b[index]);
+}
+
 interface WorkflowCanvasProps {
   workflow: Workflow;
   isPreview: boolean;
@@ -49,7 +53,7 @@ interface WorkflowCanvasProps {
   onNodeAdd: (type: string, position: { x: number; y: number }) => void;
   onNodeDelete: (id: string) => void;
   onNodeSelect: (id: string | null, multi?: boolean) => void;
-  onNodesSelect?: (ids: string[]) => void;
+  onNodesSelect?: (ids: string[], options?: { primaryNodeId?: string | null }) => void;
   onNodeDataUpdate: (id: string, data: Record<string, unknown>) => void;
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
@@ -181,6 +185,8 @@ export function WorkflowCanvas({
   const lastCanvasDomDebugSignature = useRef<string | null>(null);
   const connectSourceRef = useRef<{ nodeId: string; handleId: string | null } | null>(null);
   const connectSucceededRef = useRef(false);
+  const isRangeSelectingRef = useRef(false);
+  const pendingRangeSelectionRef = useRef<string[] | null>(null);
   const { fitView, getViewport, screenToFlowPosition, setViewport } = useReactFlow();
   const [helperHorizontal] = useState<number | undefined>();
   const [helperVertical] = useState<number | undefined>();
@@ -431,12 +437,6 @@ export function WorkflowCanvas({
     selectEdge(edge.id);
   }, [selectEdge]);
 
-  const handleSelectionChange = useCallback(({ nodes }: { nodes: Node[] }) => {
-    const ids = nodes.map(node => node.id);
-    if (ids.length > 0) setSelectedEdgeId(null);
-    onNodesSelect?.(ids);
-  }, [onNodesSelect]);
-
   const getNodeDebugSnapshot = useCallback((nodeId?: string | null) => {
     const wrapper = reactFlowWrapper.current;
     const domNodes = wrapper
@@ -479,6 +479,24 @@ export function WorkflowCanvas({
 
   const handleNodesChangeWithDebug = useCallback((changes: NodeChange[]) => {
     if (isCanvasLocked) return;
+    const selectionChanges = changes.filter(
+      (change): change is NodeChange & { type: 'select'; id: string; selected: boolean } => change.type === 'select',
+    );
+    if (selectionChanges.length > 0 && onNodesSelect) {
+      const nextSelectedIds = new Set(selectedNodeIds);
+      for (const change of selectionChanges) {
+        if (change.selected) nextSelectedIds.add(change.id);
+        else nextSelectedIds.delete(change.id);
+      }
+      const nextIds = workflow.nodes.map(node => node.id).filter(id => nextSelectedIds.has(id));
+      if (!areStringArraysEqual(selectedNodeIds, nextIds)) {
+        if (nextIds.length > 0) setSelectedEdgeId(null);
+        pendingRangeSelectionRef.current = nextIds;
+        onNodesSelect(nextIds, {
+          primaryNodeId: isRangeSelectingRef.current ? null : undefined,
+        });
+      }
+    }
     if (DEBUG_WORKFLOW_CANVAS) {
       console.debug('[WorkflowCanvas] onNodesChange', {
         changes,
@@ -486,12 +504,25 @@ export function WorkflowCanvas({
       });
     }
     onNodesChange(changes);
-  }, [getNodeDebugSnapshot, isCanvasLocked, onNodesChange]);
+  }, [getNodeDebugSnapshot, isCanvasLocked, onNodesChange, onNodesSelect, selectedNodeIds, workflow.nodes]);
 
   const handleEdgesChangeWithLock = useCallback((changes: EdgeChange[]) => {
     if (isCanvasLocked) return;
     onEdgesChange(changes);
   }, [isCanvasLocked, onEdgesChange]);
+
+  const handleSelectionStart = useCallback(() => {
+    isRangeSelectingRef.current = true;
+    pendingRangeSelectionRef.current = selectedNodeIds;
+    onNodesSelect?.(selectedNodeIds, { primaryNodeId: null });
+  }, [onNodesSelect, selectedNodeIds]);
+
+  const handleSelectionEnd = useCallback(() => {
+    isRangeSelectingRef.current = false;
+    const ids = pendingRangeSelectionRef.current ?? selectedNodeIds;
+    pendingRangeSelectionRef.current = null;
+    onNodesSelect?.(ids, { primaryNodeId: ids.length === 1 ? ids[0] : null });
+  }, [onNodesSelect, selectedNodeIds]);
 
   const handleConnectWithDebug = useCallback((connection: Connection) => {
     if (isCanvasLocked) return;
@@ -707,7 +738,8 @@ export function WorkflowCanvas({
         onNodeDragStart={handleNodeDragStart}
         onNodeDragStop={handleNodeDragStop}
         onEdgeClick={handleEdgeClick}
-        onSelectionChange={handleSelectionChange}
+        onSelectionStart={handleSelectionStart}
+        onSelectionEnd={handleSelectionEnd}
         onPaneClick={handlePaneClick}
         onError={handleReactFlowError}
         nodeTypes={nodeTypes}
