@@ -30,6 +30,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
+  if (pathname === '/workflows/share') {
+    return <>{children}</>;
+  }
+
   return (
     <>
       <DevInspector />
