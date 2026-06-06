@@ -24,7 +24,7 @@ export function WorkflowCard({ workflow, onDuplicate, onDelete }: WorkflowCardPr
     >
       <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+          <DropdownMenuTrigger>
             <Button variant="ghost" size="icon" className="h-7 w-7">
               <MoreVertical className="h-3.5 w-3.5" />
             </Button>

@@ -17,7 +17,7 @@ type FormatFileProps =
   | "code" | "html" | "js" | "jsx" | "tsx" | "css" | "json"
   | "img" | "png" | "jpg" | "jpeg" | "video";
 import { getWS } from '@/lib/ws';
-import { Loader2, Play, Square } from 'lucide-react';
+import { Loader2, Play, Square, Download } from 'lucide-react';
 
 interface FileOutput {
   name: string;
@@ -243,7 +243,14 @@ export default function WorkflowSharePage() {
 
                 {/* 成品输出 */}
                 <Card size="sm" className="m-px rounded-lg shrink-0 py-0">
-                  <CardHeader className="p-3 pb-1"><CardTitle className="text-xs">成品输出</CardTitle></CardHeader>
+                  <div className="flex items-center justify-between p-3 pb-1">
+                    <CardTitle className="text-xs">成品输出</CardTitle>
+                    {fileOutputs.length > 0 && (
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => fileOutputs.forEach(f => window.open(f.url, '_blank'))}>
+                        <Download className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
                   <CardContent className="px-3 pb-3">
                     {fileOutputs.length > 0 ? (
                       <div className="flex flex-wrap gap-3">

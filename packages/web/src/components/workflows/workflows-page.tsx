@@ -196,7 +196,7 @@ export function WorkflowsPage() {
         </div>
         {allTags.length > 0 && (
           <Popover>
-            <PopoverTrigger asChild>
+            <PopoverTrigger>
               <Button variant="outline" size="sm" className="h-8 gap-1.5">
                 <Filter className="h-3.5 w-3.5" />
                 标签
