@@ -265,7 +265,7 @@ export function WorkflowVariablePicker({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+      <DropdownMenuTrigger>
         {children || (
           <span
             role="button"
