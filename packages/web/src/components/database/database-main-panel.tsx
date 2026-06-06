@@ -5,7 +5,7 @@ import {
   Plus, X, ChevronRight, Sidebar, Layers, BookOpen,
   Minimize2, Maximize2, Check, MoreHorizontal,
   CheckCircle, Sparkles, FileCheck, List, History,
-  Search, Trash,
+  Trash,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
@@ -19,6 +19,8 @@ import { TableOfContents, extractTocFromHtml, extractTocFromMarkdown } from './t
 import { VersionHistoryDialog } from './version-history-dialog';
 import QuickSearchContent from './quick-search-modal';
 import ExpandableDock from '@/components/ui/expandable-dock';
+import { ImagesBadge } from '@/components/ui/images-badge';
+import { FileCard } from '@/components/file-card-collections';
 import type { PanelImperativeHandle } from 'react-resizable-panels';
 
 interface DatabaseMainPanelProps {
@@ -330,9 +332,15 @@ export function DatabaseMainPanel({
       <ExpandableDock
         headerContent={
           <div className="flex items-center gap-3 w-full" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-            <div className="flex-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-              <Search className="w-4 h-4" /><span>{t('globalSearch')}</span>
-            </div>
+            <ImagesBadge
+              text={t('globalSearch')}
+              items={[
+                <FileCard key="doc" formatFile="doc" />,
+                <FileCard key="pdf" formatFile="pdf" />,
+                <FileCard key="md" formatFile="md" />,
+              ]}
+              href={undefined}
+            />
             <div className="w-px h-4 bg-border" />
             <button onClick={onOpenTrash}
               className="relative ml-auto flex items-center gap-1.5 text-sm text-muted-foreground hover:text-rose-400 transition-colors cursor-pointer">

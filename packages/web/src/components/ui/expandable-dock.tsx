@@ -58,7 +58,7 @@ const ExpandableDock = ({
   }, [isExpanded]);
 
   return (
-    <div className='fixed bottom-8 left-1/2 -translate-x-1/2 z-50 w-full px-4 sm:px-0'>
+    <div className='fixed bottom-13 left-1/2 -translate-x-1/2 z-50 w-full px-4 sm:px-0'>
       <motion.div
         ref={containerRef}
         initial={{
@@ -86,13 +86,16 @@ const ExpandableDock = ({
           borderRadius: { duration: 0.3, ease: [0.4, 0, 0.2, 1] },
         }}
         className={cn(
-          'bg-white dark:bg-black backdrop-blur-md shadow-2xl overflow-hidden flex flex-col-reverse mx-auto',
+          'bg-white dark:bg-black backdrop-blur-md shadow-2xl overflow-hidden flex flex-col-reverse mx-auto border border-border',
           className,
         )}
       >
         <div
           onClick={isCollapsed ? handleExpand : handleCollapse}
-          className='flex items-center gap-4 px-4 sm:px-6 py-4 text-white w-full h-17 whitespace-nowrap cursor-pointer border-t border-gray-800 shrink-0'
+          className={cn(
+            'flex items-center gap-4 px-4 sm:px-6 py-4 text-white w-full h-17 whitespace-nowrap cursor-pointer shrink-0',
+            isExpanded && 'border-t border-border',
+          )}
         >
           {headerContent}
         </div>
