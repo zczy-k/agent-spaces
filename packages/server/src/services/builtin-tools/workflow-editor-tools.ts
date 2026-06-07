@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid';
-import type { NodeTypeDefinition, Workflow, WorkflowEdge, WorkflowNode } from '@agent-spaces/shared';
+import type { NodeTypeDefinition, OutputField, Workflow, WorkflowEdge, WorkflowNode } from '@agent-spaces/shared';
 import type { AgentFunctionTool } from '../../adapters/agent-runtime-types.js';
 import * as workflowService from '../workflow.js';
 
@@ -22,11 +22,13 @@ const WORKFLOW_AGENT_SYSTEM_PROMPT = `你是 Agent Spaces 的工作流编辑助�
 1. 准备使用、创建、插入或更新某个节点类型前，必须先调用 search_node_usage 查看节点定义。
 2. 如果用户只描述用途但没给出节点类型，先用 list_node_types 找候选，再用 search_node_usage 看具体字段、句柄和使用说明。
 3. 编辑现有工作流前，优先调用 get_current_workflow；需要完整 data 时用 summarize=false。
-4. 节点参数里的字符串值支持变量引用，优先使用 {{ __data__["节点ID"].字段路径 }} 和 {{ context.some.path }}。
-5. 结束节点返回结果来自 data.outputs，设置时使用 data: { outputs: [{ key, type, value }] }。
-6. 需要数据整形、字段映射或结构转换时，优先插入 run_code 节点；代码中不要写 {{ }}，必须定义 async function main({ params, context })。
-7. 复杂、多步、批量或破坏性改动前先调用 create_workflow_version。
-8. 修改后通常调用 auto_layout 整理画布。
+4. 节点参数里的字符串值支持变量引用。上游节点输出使用 {{ __data__["节点ID"].字段路径 }}，节点输入字段使用 {{ __inputs__["节点ID"].字段路径 }}，当前运行上下文使用 {{ context.some.path }}。
+5. 开始节点或支持输入字段的节点，输入字段来自 data.inputFields。需要新增或替换输入字段时优先调用 set_node_io_fields，field_kind=inputFields。
+6. 结束节点返回结果来自 data.outputs，设置时优先调用 set_node_io_fields，field_kind=outputs；变量放在每个输出项的 value 里，例如 { key, type, value }。
+7. 需要数据整形、字段映射或结构转换时，优先插入 run_code 节点；代码中不要写 {{ }}，必须定义 async function main({ params, context })。
+8. run_code 返回结构变化后，要同步设置节点的 data.outputs，让下游变量选择器能看到字段。
+9. 复杂、多步、批量或破坏性改动前先调用 create_workflow_version。
+10. 修改后通常调用 auto_layout 整理画布。
 
 约束：
 - 只能使用本次 Agent Spaces runtime 暴露的工作流编辑工具。
@@ -67,13 +69,15 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
 
   const definitionByType = new Map(ctx.nodeDefinitions.map((definition) => [definition.type, definition]));
   const searchDefinitions = (input: JsonRecord) => {
-    const keyword = stringInput(input, 'keyword')?.toLowerCase();
+    const name = stringInput(input, 'name')?.toLowerCase();
+    const keyword = (stringInput(input, 'keyword') ?? stringInput(input, 'name'))?.toLowerCase();
     const type = stringInput(input, 'type')?.toLowerCase();
     const label = stringInput(input, 'label')?.toLowerCase();
     const category = stringInput(input, 'category')?.toLowerCase();
     const description = stringInput(input, 'description')?.toLowerCase();
     return ctx.nodeDefinitions.filter((definition) => {
       const checks = [
+        name ? [definition.type, definition.label].join(' ').toLowerCase().includes(name) : true,
         keyword ? searchableDefinitionText(definition).includes(keyword) : true,
         type ? definition.type.toLowerCase().includes(type) : true,
         label ? definition.label.toLowerCase().includes(label) : true,
@@ -103,7 +107,7 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
     },
     {
       name: 'get_current_workflow',
-      description: '读取当前编辑器中的工作流草稿，包含尚未保存的编辑状态。默认返回摘要，summarize=false 返回完整数据。',
+      description: '读取当前编辑器中的工作流草稿，包含尚未保存的编辑状态。默认返回摘要，summarize=false 返回完整 data；字符串 "false" 也按 false 处理。',
       inputSchema: schema({ summarize: { type: 'boolean', description: '是否返回摘要，默认 true。' } }),
       annotations: { readOnly: true },
       execute: async (input) => ({
@@ -230,17 +234,20 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
     },
     {
       name: 'update_node',
-      description: '更新指定节点的 label 或 data。data 会与现有 data 浅合并。',
+      description: '更新指定节点的 label 或 data。data 会与现有 data 浅合并；data 应传对象，兼容 JSON 字符串。',
       inputSchema: schema({
         nodeId: { type: 'string', description: '要更新的节点 ID。' },
         node_id: { type: 'string', description: '要更新的节点 ID，兼容蛇形命名。' },
+        id: { type: 'string', description: '要更新的节点 ID，兼容旧参数。' },
         label: { type: 'string', description: '可选，节点显示名称。' },
-        data: { type: 'object', description: '要合并的节点参数。', properties: {} },
+        data: { type: ['object', 'string'], description: '要合并的节点参数对象；兼容 JSON 字符串。', properties: {} },
       }),
       execute: async (input) => {
         const record = asRecord(input);
-        const nodeId = stringInputAny(record, ['nodeId', 'node_id']);
+        const nodeId = stringInputAny(record, ['nodeId', 'node_id', 'id']);
         if (!nodeId) return { success: false, message: 'nodeId is required' };
+        const dataResult = objectInputResult(record, 'data');
+        if (!dataResult.success) return dataResult;
         let found = false;
         const nodes = draft.nodes.map((node) => {
           if (node.id !== nodeId) return node;
@@ -248,7 +255,62 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
           return {
             ...node,
             label: stringInput(record, 'label') ?? node.label,
-            data: { ...node.data, ...objectInput(record, 'data') },
+            data: { ...node.data, ...dataResult.value },
+          };
+        });
+        return found ? commit({ ...draft, nodes }) : { success: false, message: `Node not found: ${nodeId}` };
+      },
+    },
+    {
+      name: 'set_node_io_fields',
+      description: '新增、合并或替换节点的输入/输出字段数组。输入字段写入 data.inputFields；输出字段写入 data.outputs。开始节点输入字段变量引用使用 {{ __inputs__["节点ID"].字段 }}，普通节点输出变量引用使用 {{ __data__["节点ID"].字段 }}。',
+      inputSchema: schema({
+        nodeId: { type: 'string', description: '要更新的节点 ID。' },
+        node_id: { type: 'string', description: '要更新的节点 ID，兼容蛇形命名。' },
+        fieldKind: { type: 'string', enum: ['inputFields', 'outputs'], description: '要更新的字段类型：inputFields 或 outputs。' },
+        field_kind: { type: 'string', enum: ['inputFields', 'outputs'], description: '要更新的字段类型，兼容蛇形命名。' },
+        mode: { type: 'string', enum: ['append', 'merge', 'replace'], description: 'append 追加新字段；merge 按 key 合并/覆盖；replace 替换整个数组。默认 merge。' },
+        fields: {
+          type: 'array',
+          description: '字段数组，每项至少包含 key 和 type；object 类型可带 children；结束节点 outputs 可带 value。',
+          items: {
+            type: 'object',
+            properties: {
+              key: { type: 'string', description: '字段 key。' },
+              type: { type: 'string', description: '字段类型，例如 string/number/boolean/object/file/any/string[]/number[]/file[]/any[]。' },
+              value: { description: '输出字段值，结束节点常用，可为变量引用。' },
+              description: { type: 'string', description: '字段说明。' },
+              required: { type: 'boolean', description: '是否必填，常用于输入字段。' },
+              children: { type: 'array', description: 'object 字段的子字段。' },
+            },
+            required: ['key', 'type'],
+          },
+        },
+      }, ['fields']),
+      execute: async (input) => {
+        const record = asRecord(input);
+        const nodeId = stringInputAny(record, ['nodeId', 'node_id']);
+        if (!nodeId) return { success: false, message: 'nodeId is required' };
+        const fieldKind = stringInputAny(record, ['fieldKind', 'field_kind']);
+        if (fieldKind !== 'inputFields' && fieldKind !== 'outputs') {
+          return { success: false, message: 'fieldKind must be inputFields or outputs' };
+        }
+        const rawMode = stringInput(record, 'mode') ?? 'merge';
+        const mode = rawMode === 'append' || rawMode === 'replace' || rawMode === 'merge' ? rawMode : 'merge';
+        const fieldsResult = outputFieldsInput(record.fields);
+        if (!fieldsResult.success) return fieldsResult;
+
+        let found = false;
+        const nodes = draft.nodes.map((node) => {
+          if (node.id !== nodeId) return node;
+          found = true;
+          const existing = Array.isArray(node.data?.[fieldKind]) ? node.data[fieldKind] as OutputField[] : [];
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              [fieldKind]: mergeOutputFields(existing, fieldsResult.fields, mode),
+            },
           };
         });
         return found ? commit({ ...draft, nodes }) : { success: false, message: `Node not found: ${nodeId}` };
@@ -422,7 +484,14 @@ function summarizeWorkflow(workflow: Workflow, summarize: boolean): unknown {
     id: workflow.id,
     name: workflow.name,
     description: workflow.description,
-    nodes: workflow.nodes.map((node) => ({ id: node.id, type: node.type, label: node.label, dataKeys: Object.keys(node.data ?? {}) })),
+    nodes: workflow.nodes.map((node) => ({
+      id: node.id,
+      type: node.type,
+      label: node.label,
+      dataKeys: Object.keys(node.data ?? {}),
+      inputFields: summarizeOutputFields(node.data?.inputFields),
+      outputs: summarizeOutputFields(node.data?.outputs),
+    })),
     edges: workflow.edges.map((edge) => ({ id: edge.id, source: edge.source, target: edge.target, sourceHandle: edge.sourceHandle, targetHandle: edge.targetHandle })),
   };
 }
@@ -442,7 +511,7 @@ function describeNodeUsage(definition: NodeTypeDefinition) {
     ...definition,
     exampleData: defaultData(definition),
     usage: {
-      variables: '字符串字段支持 {{ __data__["节点ID"].字段路径 }} 和 {{ context.some.path }}。',
+      variables: '字符串字段支持 {{ __data__["节点ID"].字段路径 }}、{{ __inputs__["节点ID"].字段路径 }} 和 {{ context.some.path }}。',
       handles: definition.handles ?? {},
     },
   };
@@ -479,12 +548,14 @@ function searchableDefinitionText(definition: NodeTypeDefinition): string {
     definition.category,
     definition.description,
     ...definition.properties.map((property) => `${property.key} ${property.label} ${property.tooltip ?? ''}`),
+    ...(definition.outputs ?? []).map((output) => `${output.key} ${output.type} ${output.description ?? ''}`),
   ].join(' ').toLowerCase();
 }
 
 function workflowSearchSchema(): Record<string, unknown> {
   return schema({
     keyword: { type: 'string', description: '模糊搜索关键词。' },
+    name: { type: 'string', description: '兼容参数，按节点 type 或 label 搜索。' },
     type: { type: 'string', description: '按节点类型筛选。' },
     label: { type: 'string', description: '按节点标签筛选。' },
     category: { type: 'string', description: '按分类筛选。' },
@@ -520,7 +591,13 @@ function numberInput(input: JsonRecord, key: string, fallback: number): number {
 
 function booleanInput(input: JsonRecord, key: string, fallback: boolean): boolean {
   const value = input[key];
-  return typeof value === 'boolean' ? value : fallback;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'true') return true;
+    if (normalized === 'false') return false;
+  }
+  return fallback;
 }
 
 function booleanInputAny(input: JsonRecord, keys: string[], fallback: boolean): boolean {
@@ -532,8 +609,85 @@ function booleanInputAny(input: JsonRecord, keys: string[], fallback: boolean): 
 }
 
 function objectInput(input: JsonRecord, key: string): JsonRecord {
+  const result = objectInputResult(input, key);
+  return result.success ? result.value : {};
+}
+
+function objectInputResult(input: JsonRecord, key: string): { success: true; value: JsonRecord } | { success: false; message: string } {
   const value = input[key];
-  return value && typeof value === 'object' && !Array.isArray(value) ? value as JsonRecord : {};
+  if (value === undefined) return { success: true, value: {} };
+  if (value && typeof value === 'object' && !Array.isArray(value)) return { success: true, value: value as JsonRecord };
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return { success: true, value: parsed as JsonRecord };
+      return { success: false, message: `${key} JSON must be an object` };
+    } catch {
+      return { success: false, message: `${key} must be an object or JSON object string` };
+    }
+  }
+  return { success: false, message: `${key} must be an object` };
+}
+
+function summarizeOutputFields(value: unknown): Array<Pick<OutputField, 'key' | 'type' | 'description' | 'required'>> | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value
+    .filter((field): field is OutputField => field && typeof field === 'object' && !Array.isArray(field))
+    .map((field) => ({
+      key: String(field.key ?? ''),
+      type: String(field.type ?? 'any') as OutputField['type'],
+      description: typeof field.description === 'string' ? field.description : undefined,
+      required: typeof field.required === 'boolean' ? field.required : undefined,
+    }))
+    .filter((field) => field.key);
+}
+
+function outputFieldsInput(value: unknown): { success: true; fields: OutputField[] } | { success: false; message: string } {
+  if (!Array.isArray(value)) return { success: false, message: 'fields must be an array' };
+  const fields: OutputField[] = [];
+  for (const item of value) {
+    const field = normalizeOutputField(item);
+    if (!field) return { success: false, message: 'each field must include non-empty string key and type' };
+    fields.push(field);
+  }
+  return { success: true, fields };
+}
+
+function normalizeOutputField(value: unknown): OutputField | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const record = value as JsonRecord;
+  const key = typeof record.key === 'string' ? record.key.trim() : '';
+  const type = typeof record.type === 'string' ? record.type.trim() : '';
+  if (!key || !type) return null;
+  const field: OutputField = { key, type: type as OutputField['type'] };
+  if ('value' in record) field.value = clone(record.value);
+  if (typeof record.fileNameFilter === 'string') field.fileNameFilter = record.fileNameFilter;
+  if (typeof record.description === 'string') field.description = record.description;
+  if (typeof record.required === 'boolean') field.required = record.required;
+  if (Array.isArray(record.children)) {
+    const children = record.children.map(normalizeOutputField);
+    if (children.some((child) => !child)) return null;
+    field.children = children as OutputField[];
+  }
+  return field;
+}
+
+function mergeOutputFields(existing: OutputField[], incoming: OutputField[], mode: 'append' | 'merge' | 'replace'): OutputField[] {
+  if (mode === 'replace') return clone(incoming);
+  if (mode === 'append') return [...clone(existing), ...clone(incoming)];
+
+  const merged = clone(existing);
+  const indexByKey = new Map(merged.map((field, index) => [field.key, index]));
+  for (const field of incoming) {
+    const index = indexByKey.get(field.key);
+    if (index === undefined) {
+      indexByKey.set(field.key, merged.length);
+      merged.push(clone(field));
+    } else {
+      merged[index] = { ...merged[index], ...clone(field) };
+    }
+  }
+  return merged;
 }
 
 function clone<T>(value: T): T {

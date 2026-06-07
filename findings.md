@@ -1,29 +1,44 @@
 # Findings & Decisions
 
 ## Requirements
-- User reports the search node tool differs from WorkFox.
-- It cannot search/list the nodes currently allowed in the workflow.
-- Target file: `/Users/Zhuanz/Documents/agent_spaces/packages/server/src/services/builtin-tools/workflow-editor-tools.ts`.
+- User reports a migration defect from WorkFox in workflow agent execution capability.
+- Defective feature: adding input/output fields to nodes.
+- Current target: `/Users/Zhuanz/Documents/agent_spaces/packages/server/src/services/builtin-tools/workflow-editor-tools.ts`.
+- Failure log: `/Users/Zhuanz/.agent-spaces-data/workflows/743fdc89-3489-4d04-82cd-2f818abec122/chat.json`.
+- WorkFox reference: `/Users/Zhuanz/Documents/work_fox/src/lib/agent/tools.ts`.
 
 ## Research Findings
-- WorkFox `workflow-tools.ts` describes `list_node_types` as listing "工作流中可用的节点类型列表".
-- WorkFox node registry search/list functions combine built-in `allNodeDefinitions` and `pluginNodeDefinitions`.
-- Agent Spaces has the same concept in `packages/web/src/lib/workflow-nodes.ts`: built-in `allNodeDefinitions` plus `_pluginNodeDefinitions`.
-- Agent Spaces workflow sidebar registers enabled workflow plugin nodes into `_pluginNodeDefinitions`.
-- Current workflow agent request in `use-workflow-editor-agent-chat.ts` sends only `allNodeDefinitions`, so workflow editor tools cannot list/search currently enabled plugin nodes.
-- Current server `workflow-editor-tools.ts` only searches the `nodeDefinitions` sent by the client, so the missing node list originates from the frontend payload.
+- Current `workflow-editor-tools.ts` exposes generic workflow tools: `create_node`, `update_node`, edge operations, batch update, layout, and node definition search/list.
+- Current `update_node` shallow-merges `data` only: `data: { ...node.data, ...objectInput(record, 'data') }`.
+- There is no dedicated current tool named around adding input/output fields.
+- Initial inspection of `/Users/Zhuanz/Documents/work_fox/src/lib/agent/tools.ts` shows browser-agent discovery tooling and `delay`; literal search in that file did not show workflow node input/output field operations.
+- Chat log is a JSON array with 2 top-level messages.
+- Failure log showed `get_current_workflow` was called with `{ "summarize": "false" }`; previous boolean parsing treated this as default true, so the agent saw only `dataKeys` and not actual `data.inputFields`.
+- Agent Spaces and WorkFox variable pickers both use `{{ __inputs__["节点ID"].字段 }}` for node input fields and `{{ __data__["节点ID"].字段 }}` for node outputs.
+- Current system prompt only mentioned `__data__` and `context`, which made the start-node input-field path ambiguous for the workflow agent.
+- The execution manager resolves `__inputs__` references, so documenting and producing them is runtime-compatible.
+- Latest failed log shows `search_node_usage` was called with `{ "name": "minimax_tts" }`; current search ignored `name`, returning all 44 nodes.
+- Latest failed log shows `update_node` was first called with `id` instead of `nodeId`, then with `nodeId` but `data` as a JSON string. Current `objectInput` ignored string data, so the tool returned success while dropping the intended `text` update.
+- Latest failed log used `{{ __inputs__["node"]["text"] }}` bracket syntax for field access. Runtime currently supports `__inputs__["node"].text` but not bracket field path after the node id.
 
 ## Technical Decisions
 | Decision | Rationale |
 |----------|-----------|
-| Export and use a complete node registry list from `workflow-nodes.ts` | Matches WorkFox behavior and reuses the registry already maintained by the sidebar |
-| Keep server tools based on supplied `nodeDefinitions` | The server receives the current workflow/editor state; fixing the payload is the smallest behavioral correction |
+| Add `set_node_io_fields` | Gives the agent a focused operation for `data.inputFields` and `data.outputs` instead of relying on generic shallow `update_node` |
+| Include summarized input/output fields in summarized workflow | Lets the agent see existing field keys without always fetching full data |
+| Teach prompt `__inputs__` syntax | Matches UI and execution runtime behavior |
+| Accept common model-generated parameter variants | Avoids silent no-op updates from JSON string data and bracket field paths |
 
 ## Issues Encountered
 | Issue | Resolution |
 |-------|------------|
-| Workflow agent sees only built-in nodes | Send built-in + registered plugin node definitions |
+| `summarize: "false"` did not return full workflow data | `booleanInput` now accepts string `"true"`/`"false"` |
+| No direct field-edit tool | Added `set_node_io_fields` with append/merge/replace modes |
+| `update_node` success with no data change | Patch `objectInput` to parse JSON-string objects and accept `id` as node id alias |
+| `search_node_usage` ignored `name` | Treat `name` as a keyword/type/label search alias |
+| Runtime may not resolve `__inputs__["node"]["text"]` | Normalize bracket field paths in variable resolution |
 
 ## Resources
 - Current implementation: `packages/server/src/services/builtin-tools/workflow-editor-tools.ts`
-- WorkFox reference: to be located.
+- WorkFox reference: `/Users/Zhuanz/Documents/work_fox/src/lib/agent/tools.ts`
+- Chat log: `/Users/Zhuanz/.agent-spaces-data/workflows/743fdc89-3489-4d04-82cd-2f818abec122/chat.json`

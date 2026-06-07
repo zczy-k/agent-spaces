@@ -5,34 +5,43 @@
 ### Phase 1: Requirements & Discovery
 - **Status:** in_progress
 - Actions taken:
-  - Loaded planning-with-files for this multi-step parity fix.
-  - Reset planning files from the prior unrelated task to the current node search tool task.
-  - Queried CodeGraph for current workflow editor tool context.
-  - Compared WorkFox workflow tool definitions and node registry behavior.
-  - Found Agent Spaces sends only built-in `allNodeDefinitions` to the workflow agent, omitting registered plugin nodes.
-  - Added `getAllNodeDefinitions()` and changed workflow agent requests to send built-in plus registered plugin node definitions.
-  - Updated `list_node_types` and `search_node_usage` to describe/search the current available node definitions and return counts.
-- Files created/modified:
-  - `task_plan.md`
-  - `findings.md`
-  - `progress.md`
+  - Loaded planning-with-files for this multi-step migration parity fix.
+  - Reset planning files from the prior completed task to the current add input/output field defect.
+  - Queried CodeGraph for workflow editor tool context.
+  - Inspected current `workflow-editor-tools.ts`; found only shallow `update_node` data merge for node changes.
+  - Inspected the provided WorkFox `tools.ts` beginning and searched it for input/output field terms; it appears unrelated to workflow node field editing.
+  - Checked chat log structure; it contains two top-level messages.
+  - Found the log's `summarize: "false"` call returned a summarized workflow, hiding actual `inputFields`.
+  - Confirmed current Agent Spaces UI/runtime uses `__inputs__` for node input-field references.
+  - Patched `workflow-editor-tools.ts` to document `__inputs__`, add `set_node_io_fields`, accept string booleans, and show summarized IO fields.
+  - Fixed a TypeScript cast issue after the first build attempt.
+  - Inspected latest failed chat log after user reported agent execution failure.
+  - Found `update_node.data` was passed as a JSON string and got ignored, causing a success result without the `text` field.
+  - Found `search_node_usage` ignored a `name` search parameter and returned all nodes.
+  - Found generated `__inputs__` expression used bracket field path syntax that runtime did not parse.
+  - Patched `search_node_usage`/`list_node_types` search to accept `name`.
+  - Patched `update_node` to accept `id` and JSON-string `data`.
+  - Patched execution variable resolution to accept bracket field paths like `__inputs__["node"]["text"]`.
 
 ## Test Results
 | Test | Input | Expected | Actual | Status |
 |------|-------|----------|--------|--------|
 | Server build | `pnpm --filter @agent-spaces/server build` | TypeScript compiles | Passed | pass |
-| Plugin node smoke test | Compiled `workflow-editor-tools.js` with a mock plugin node | `list_node_types` and `search_node_usage` find plugin node | Both returned `demo_plugin_node` | pass |
-| Focused frontend ESLint | `pnpm --filter @agent-spaces/web exec eslint src/components/workflow/use-workflow-editor-agent-chat.ts src/lib/workflow-nodes.ts` | No errors | 0 errors, 1 existing hook dependency warning in `use-workflow-editor-agent-chat.ts` | pass |
+| Diff whitespace check | `git diff --check` | No whitespace errors | Passed | pass |
+| Workflow editor smoke | Node script invoking compiled `createWorkflowEditorFunctionTools` | `summarize: "false"` returns full data; `set_node_io_fields` writes `inputFields` and `outputs` | Passed | pass |
+| Latest log repro smoke | Node script invoking compiled `createWorkflowEditorFunctionTools` with `{ name: "minimax_tts" }` and `update_node` `{ id, data: JSON.stringify(...) }` | Search returns only `minimax_tts`; `text` is written to node data | Passed | pass |
+| Execution variable smoke | Node script invoking compiled `ExecutionManager.resolveStringValue` with `{{ __inputs__["start1"]["text"] }}` | Resolves direct, nested, and inline bracket syntax | Passed | pass |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |
 |-----------|-------|---------|------------|
+| 2026-06-07 | TS2352 converting `OutputField` to `JsonRecord` | First server build after patch | Replaced casts with direct typed property access |
 
 ## 5-Question Reboot Check
 | Question | Answer |
 |----------|--------|
-| Where am I? | Phase 1 discovery |
-| Where am I going? | Restore WorkFox-like allowed node search/list behavior |
-| What's the goal? | Search/list tools return nodes allowed in the current workflow |
-| What have I learned? | Current issue is centered on `workflow-editor-tools.ts` |
-| What have I done? | Started discovery and reset task records |
+| Where am I? | Complete |
+| Where am I going? | Diagnose and fix add input/output field behavior |
+| What's the goal? | Restore WorkFox parity for workflow agent node IO field edits |
+| What have I learned? | Follow-up failure was caused by ignored JSON-string `data`, ignored `name` search parameter, and unsupported bracket variable field syntax |
+| What have I done? | Patched and verified workflow editor tools plus execution variable parsing |

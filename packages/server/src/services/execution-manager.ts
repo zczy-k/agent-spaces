@@ -1242,21 +1242,21 @@ export class ExecutionManager {
     const loopMetaMatch = value.match(/^\s*\{\{\s*__loop__\.(index|count|item|isFirst|isLast)\s*\}\}\s*$/);
     if (loopMetaMatch) return this.getLoopMetaValue(session, loopMetaMatch[1]) ?? '';
 
-    const dataMatch = value.match(/^\s*\{\{\s*__data__\[(["'])([^"']+)\1\]\.([^}]+?)\s*\}\}\s*$/);
+    const dataMatch = value.match(/^\s*\{\{\s*__data__\[(["'])([^"']+)\1\](?:\.|\[)([^}]+?)\s*\}\}\s*$/);
     if (dataMatch) {
       const data = this.getNodeExecutionData(session, dataMatch[2]);
       if (data != null) {
-        const result = getNestedValue(data, dataMatch[3]);
+        const result = getNestedValue(data, normalizeVariablePath(dataMatch[3]));
         if (result !== undefined) return result;
       }
       return '';
     }
 
-    const inputMatch = value.match(/^\s*\{\{\s*__inputs__\[(["'])([^"']+)\1\]\.([^}]+?)\s*\}\}\s*$/);
+    const inputMatch = value.match(/^\s*\{\{\s*__inputs__\[(["'])([^"']+)\1\](?:\.|\[)([^}]+?)\s*\}\}\s*$/);
     if (inputMatch) {
       const inputData = this.getNodeExecutionInput(session, inputMatch[2]);
       if (inputData != null) {
-        const result = getNestedValue(inputData, inputMatch[3]);
+        const result = getNestedValue(inputData, normalizeVariablePath(inputMatch[3]));
         if (result !== undefined) return result;
       }
       return '';
@@ -1283,13 +1283,13 @@ export class ExecutionManager {
     let text = value
       .replace(/\{\{\s*__loop__\.vars\.([^}]+?)\s*\}\}/g, (_m, p) => String(this.getLoopVariableValue(session, p) ?? ''))
       .replace(/\{\{\s*__loop__\.(index|count|item|isFirst|isLast)\s*\}\}/g, (_m, k) => String(this.getLoopMetaValue(session, k) ?? ''))
-      .replace(/\{\{\s*__data__\[(["'])([^"']+)\1\]\.([^}]+?)\s*\}\}/g, (_m, _q, nid, fp) => {
+      .replace(/\{\{\s*__data__\[(["'])([^"']+)\1\](?:\.|\[)([^}]+?)\s*\}\}/g, (_m, _q, nid, fp) => {
         const d = this.getNodeExecutionData(session, nid);
-        return d == null ? '' : String(getNestedValue(d, fp) ?? '');
+        return d == null ? '' : String(getNestedValue(d, normalizeVariablePath(fp)) ?? '');
       })
-      .replace(/\{\{\s*__inputs__\[(["'])([^"']+)\1\]\.([^}]+?)\s*\}\}/g, (_m, _q, nid, fp) => {
+      .replace(/\{\{\s*__inputs__\[(["'])([^"']+)\1\](?:\.|\[)([^}]+?)\s*\}\}/g, (_m, _q, nid, fp) => {
         const d = this.getNodeExecutionInput(session, nid);
-        return d == null ? '' : String(getNestedValue(d, fp) ?? '');
+        return d == null ? '' : String(getNestedValue(d, normalizeVariablePath(fp)) ?? '');
       })
       .replace(
         /\{\{\s*__config__\[(["'])([^"']+)\1\]\[(["'])([^"']+)\3\](?:\.(\w+(?:\.\w+)*))?\s*\}\}/g,
@@ -1647,13 +1647,26 @@ function sleep(ms: number): Promise<void> {
 }
 
 function getNestedValue(obj: any, path: string): any {
-  const parts = path.split('.');
+  const parts = normalizeVariablePath(path).split('.');
   let current = obj;
   for (const part of parts) {
     if (current == null) return undefined;
     current = current[part];
   }
   return current;
+}
+
+function normalizeVariablePath(path: string): string {
+  return path
+    .trim()
+    .replace(/^\[\s*/, '')
+    .replace(/\s*\]$/, '')
+    .replace(/\]\s*\[\s*/g, '.')
+    .replace(/\[\s*(["'])([^"']+)\1\s*\]/g, '.$2')
+    .replace(/^(["'])([^"']+)\1$/, '$2')
+    .replace(/(["'])\s*\.\s*(["'])/g, '.')
+    .replace(/["']/g, '')
+    .replace(/^\./, '');
 }
 
 function shouldInterrupt(session: ExecutionSession): boolean {
