@@ -17,7 +17,7 @@ import { appendOutputStyleToPrompt, summarizeResult } from './agent-runtime-type
 
 const DEFAULT_DATA_DIR = join(process.env.HOME || '~', '.agent-spaces-data');
 const MAX_DEBUG_LOG_CHARS = 500;
-const STREAM_EVENT_THROTTLE_MS = 80;
+const STREAM_EVENT_THROTTLE_MS = 100;
 
 /**
  * Runtime backed by LangChain.js.
