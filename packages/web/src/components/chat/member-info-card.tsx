@@ -145,22 +145,22 @@ export function MemberInfoCard({ agentId, displayName, channels = [], compact = 
               </button>
             )}
           </div>
-          <div className="flex items-end gap-3 px-3 -mt-6">
+          <div className="relative flex items-end gap-3 px-4 -mt-8">
             <AgentIcon
               agentId={agentId}
               name={resolvedName}
-              className="shrink-0 size-14 rounded-xl border-2 border-background"
+              className="shrink-0 size-12 rounded-xl border-2 border-background shadow-sm"
             />
             <div className="flex-1 min-w-0 pb-1">
               <div className="flex items-baseline gap-1.5">
-                <p className="font-medium truncate text-base">{resolvedName}</p>
+                <p className="font-semibold truncate text-[15px]">{resolvedName}</p>
                 <span className="shrink-0 text-[11px] text-muted-foreground">{agent?.role || agentId}</span>
               </div>
-              <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+              <div className="flex items-center gap-1 flex-wrap mt-1">
                 {badges.map((b) => (
                   <span
                     key={b.label}
-                    className={`inline-flex items-center rounded-full bg-muted px-1.5 py-px text-[10px] leading-tight ${b.variant === 'mono' ? 'font-mono' : ''}`}
+                    className={`inline-flex items-center rounded-full border border-border/40 bg-background px-1.5 py-px text-[10px] leading-tight text-muted-foreground ${b.variant === 'mono' ? 'font-mono' : ''}`}
                   >
                     {b.label}
                   </span>
@@ -203,9 +203,9 @@ export function MemberInfoCard({ agentId, displayName, channels = [], compact = 
           )}
         </div>
       )}
-      {agent && <AgentDetails agent={agent} />}
+      {agent && <div className={!compact ? 'px-4' : ''}><AgentDetails agent={agent} /></div>}
       {!compact && channels.length > 0 && (
-        <div className="space-y-1 pt-1">
+        <div className="space-y-1 px-4 pt-1">
           <p className="text-xs font-medium text-muted-foreground">{t('channels')}</p>
           <div className="flex flex-wrap gap-1.5">
             {channels.map((ch) => (

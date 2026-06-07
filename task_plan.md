@@ -1,48 +1,44 @@
-# Task Plan: Execution Log Preview Migration
+# Task Plan: Workflow Node Search Tool Parity
 
 ## Goal
-Restore the WorkFox execution record preview behavior in Agent Spaces web: selecting an execution history item should preview that log snapshot on the canvas, and exiting preview should restore the live editable workflow.
+Make the workflow editor node search tools behave like WorkFox, especially returning the node list allowed in the current workflow instead of an incomplete/global-only list.
 
 ## Current Phase
-Delivery
+Complete
 
 ## Phases
 
 ### Phase 1: Requirements & Discovery
-- [x] Inspect WorkFox `ExecutionBar.vue`, `WorkflowEditor.vue`, and `CanvasToolbar.vue` behavior
-- [x] Inspect Agent Spaces workflow editor, canvas, execution bar, and hooks
+- [x] Capture user request
+- [x] Inspect current `workflow-editor-tools.ts`
+- [x] Find and inspect WorkFox equivalent behavior
+- [x] Identify how Agent Spaces builds allowed node definitions
 - **Status:** complete
 
 ### Phase 2: Diagnosis
-- [x] Identify missing current-hook preview state wiring
-- [x] Identify incorrect toolbar exit-preview callback
+- [x] Identify exact behavior mismatch
+- [x] Choose minimal compatible API/schema change
 - **Status:** complete
 
 ### Phase 3: Implementation
-- [x] Add enter/exit preview actions to current editor state hook
-- [x] Wire execution log selection to enter preview
-- [x] Wire all exit-preview controls to restore the previous workflow
-- [x] Prevent preview snapshots from being saved by auto/manual save
+- [x] Patch search/list tools
+- [x] Preserve previous parameter compatibility changes
 - **Status:** complete
 
 ### Phase 4: Verification
-- [x] Run focused type/lint checks where practical
-- [x] Record any existing unrelated blockers
+- [x] Run server build and focused smoke tests
+- [x] Record unrelated blockers if any
 - **Status:** complete
 
 ### Phase 5: Delivery
-- [ ] Summarize changed files and verification
-- **Status:** in_progress
+- [x] Summarize changes and verification
+- **Status:** complete
 
 ## Decisions Made
 | Decision | Rationale |
 |----------|-----------|
-| Implement in current split hooks instead of old zustand store | `workflow-editor.tsx` no longer uses `packages/web/src/stores/workflow-editor.ts` |
-| Restore full workflow from a ref when exiting preview | Matches WorkFox behavior and avoids marking preview as a real edit |
-| Keep execution selection state in execution hook | The execution bar already consumes that state; editor coordinates canvas preview |
+| Continue with planning files but reset task content | Existing planning files were for an unrelated completed migration task |
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
 |-------|---------|------------|
-| Full web `tsc --noEmit` fails in unrelated files | 1 | Recorded blockers: `images-badge.tsx`, `message-dock.tsx`, `workflow-version-panel.tsx` |
-| Targeted `tsc` with explicit files does not load Next/tsconfig JSX aliases | 1 | Used full `tsc` for project signal and focused ESLint/diff checks for touched files |

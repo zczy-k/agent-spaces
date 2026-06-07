@@ -51,22 +51,20 @@ export function MemberInfoDialog({ open, onOpenChange, memberName, displayName, 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{t('info')}</DialogTitle>
-          <DialogDescription />
-        </DialogHeader>
+      <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden">
         <MemberInfoCard agentId={memberName} displayName={displayName} channels={channels} />
-        {isMember && memberName !== 'user' && (
-          <button
-            onClick={handleRemove}
-            disabled={removing}
-            className="flex items-center justify-center gap-2 w-full mt-2 px-3 py-2 rounded-md text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50 transition-colors cursor-pointer"
-          >
-            <UserMinus className="size-4" />
-            {removing ? t('removing') : t('removeFromChannel')}
-          </button>
-        )}
+        <div className="px-4 pb-4">
+          {isMember && memberName !== 'user' && (
+            <button
+              onClick={handleRemove}
+              disabled={removing}
+              className="flex items-center justify-center gap-2 w-full mt-2 px-3 py-2 rounded-md text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50 transition-colors cursor-pointer"
+            >
+              <UserMinus className="size-4" />
+              {removing ? t('removing') : t('removeFromChannel')}
+            </button>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );

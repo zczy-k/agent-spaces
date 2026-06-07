@@ -2,6 +2,7 @@
 
 import { lazy, Suspense, type ReactNode } from "react";
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
+import { useAgentStore } from "@/stores/agent";
 
 const MemberInfoCard = lazy(() =>
   import("./member-info-card").then((m) => ({ default: m.MemberInfoCard }))
@@ -26,19 +27,30 @@ export function MemberHoverCard({
   onConfigure,
   children,
 }: MemberHoverCardProps) {
+  const agent = useAgentStore((s) => s.agents.find((a) => a.id === agentId));
+  const backgroundSrc = agent?.backgroundUrl || '';
+
   return (
     <HoverCard>
       <HoverCardTrigger render={<div className="inline-flex items-center" />}>{children}</HoverCardTrigger>
-      <HoverCardContent side={side} align={align} className="w-72">
-        <Suspense fallback={<div className="h-20" />}>
-          <MemberInfoCard
-            agentId={agentId}
-            displayName={displayName}
-            channels={channels}
-            compact
-            onConfigure={onConfigure}
-          />
-        </Suspense>
+      <HoverCardContent side={side} align={align} className="w-72 overflow-hidden p-0">
+        {backgroundSrc && (
+          <div className="absolute inset-0">
+            <img src={backgroundSrc} alt="" className="size-full object-cover blur-xl scale-110" />
+            <div className="absolute inset-0 bg-background/70" />
+          </div>
+        )}
+        <div className="relative p-3">
+          <Suspense fallback={<div className="h-20" />}>
+            <MemberInfoCard
+              agentId={agentId}
+              displayName={displayName}
+              channels={channels}
+              compact
+              onConfigure={onConfigure}
+            />
+          </Suspense>
+        </div>
       </HoverCardContent>
     </HoverCard>
   );

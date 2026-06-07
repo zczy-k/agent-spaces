@@ -342,6 +342,10 @@ const _pluginNodesListeners = new Set<() => void>();
 
 export function getPluginNodesVersion() { return _pluginNodesVersion; }
 
+export function getAllNodeDefinitions(): NodeTypeDefinition[] {
+  return [...allNodeDefinitions, ..._pluginNodeDefinitions];
+}
+
 export function subscribePluginNodesVersion(listener: () => void): () => void {
   _pluginNodesListeners.add(listener);
   return () => _pluginNodesListeners.delete(listener);
@@ -365,7 +369,7 @@ export function clearPluginNodeDefinitions(): void {
 
 export function getNodeDefinitionsByCategory(): Record<string, NodeTypeDefinition[]> {
   const groups: Record<string, NodeTypeDefinition[]> = {};
-  for (const def of [...allNodeDefinitions, ..._pluginNodeDefinitions]) {
+  for (const def of getAllNodeDefinitions()) {
     if (!groups[def.category]) groups[def.category] = [];
     groups[def.category].push(def);
   }
@@ -378,7 +382,7 @@ export function getNodeDefinition(type: string): NodeTypeDefinition | undefined 
 
 export function searchNodeDefinitions(query: string): NodeTypeDefinition[] {
   const q = query.toLowerCase();
-  return [...allNodeDefinitions, ..._pluginNodeDefinitions].filter(
+  return getAllNodeDefinitions().filter(
     d => d.label.toLowerCase().includes(q) || d.type.toLowerCase().includes(q),
   );
 }

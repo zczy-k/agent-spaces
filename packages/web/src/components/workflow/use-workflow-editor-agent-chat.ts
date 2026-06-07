@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Workflow } from '@agent-spaces/shared';
 import type { AgentPreset } from '@/components/sidebar/agent-shared';
-import { allNodeDefinitions } from '@/lib/workflow-nodes';
+import { getAllNodeDefinitions } from '@/lib/workflow-nodes';
 import { workflowChatApi } from '@/lib/workflow-api';
 import { fetchWithAuth } from '@/lib/auth';
 import type { WorkflowAgentChatMessage, ThinkingStreamState, WorkflowToolCall, WorkflowTimelineItem } from './workflow-editor-agent-utils';
@@ -257,7 +257,7 @@ export function useWorkflowEditorAgentChat({
             })),
           workflowAgent: {
             workflow,
-            nodeDefinitions: allNodeDefinitions,
+            nodeDefinitions: getAllNodeDefinitions(),
             selectedNodes,
           },
         }),

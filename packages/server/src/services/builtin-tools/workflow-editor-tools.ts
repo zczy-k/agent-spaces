@@ -161,9 +161,13 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
     },
     {
       name: 'list_node_types',
-      description: '分页查询可用节点类型列表。默认返回精简摘要；includeDetails=true 返回完整定义。',
+      description: '分页查询当前工作流可用的节点类型列表。默认返回精简摘要；支持 keyword/type/label/category/description 筛选；includeDetails=true 返回完整定义。',
       inputSchema: schema({
+        keyword: { type: 'string', description: '模糊搜索关键词，会同时匹配 type、label、category、description。' },
+        type: { type: 'string', description: '按节点类型模糊筛选。' },
+        label: { type: 'string', description: '按节点标签模糊筛选。' },
         category: { type: 'string', description: '按分类筛选。' },
+        description: { type: 'string', description: '按节点描述模糊筛选。' },
         page: { type: 'number', description: '页码，从 1 开始，默认 1。' },
         pageSize: { type: 'number', description: '每页数量，默认 20，最大 50。' },
         page_size: { type: 'number', description: '每页数量，兼容蛇形命名。' },
@@ -173,10 +177,7 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
       annotations: { readOnly: true },
       execute: async (input) => {
         const record = asRecord(input);
-        const category = stringInput(record, 'category')?.toLowerCase();
-        const filtered = category
-          ? ctx.nodeDefinitions.filter((definition) => definition.category.toLowerCase().includes(category))
-          : ctx.nodeDefinitions;
+        const filtered = searchDefinitions(record);
         const page = Math.max(1, numberInput(record, 'page', 1));
         const pageSize = Math.min(50, Math.max(1, numberInput(record, 'pageSize', numberInput(record, 'page_size', 20))));
         const includeDetails = booleanInputAny(record, ['includeDetails', 'include_details'], false);
@@ -186,16 +187,25 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
           page,
           page_size: pageSize,
           total: filtered.length,
+          available_total: ctx.nodeDefinitions.length,
           nodes: includeDetails ? items : items.map(summarizeNodeDefinition),
         };
       },
     },
     {
       name: 'search_node_usage',
-      description: '查询节点类型的具体用法，返回字段说明、句柄、输出和示例 data。准备使用陌生节点前必须调用。',
+      description: '查询当前工作流可用节点类型的具体用法，返回字段说明、句柄、输出和示例 data。准备使用陌生节点前必须调用。',
       inputSchema: workflowSearchSchema(),
       annotations: { readOnly: true },
-      execute: async (input) => ({ success: true, nodes: searchDefinitions(asRecord(input)).map(describeNodeUsage) }),
+      execute: async (input) => {
+        const nodes = searchDefinitions(asRecord(input));
+        return {
+          success: true,
+          total: nodes.length,
+          available_total: ctx.nodeDefinitions.length,
+          nodes: nodes.map(describeNodeUsage),
+        };
+      },
     },
     {
       name: 'create_node',
