@@ -33,14 +33,11 @@ export function MemberHoverCard({
   return (
     <HoverCard>
       <HoverCardTrigger render={<div className="inline-flex items-center" />}>{children}</HoverCardTrigger>
-      <HoverCardContent side={side} align={align} className="w-72 overflow-hidden p-0">
+      <HoverCardContent side={side} align={align} className={`w-72 relative overflow-hidden p-0 ${backgroundSrc ? 'border-0 shadow-none' : ''}`}>
         {backgroundSrc && (
-          <div className="absolute inset-0">
-            <img src={backgroundSrc} alt="" className="size-full object-cover blur-xl scale-110" />
-            <div className="absolute inset-0 bg-background/70" />
-          </div>
+          <img src={backgroundSrc} alt="" className="absolute inset-0 size-full object-cover opacity-90" />
         )}
-        <div className="relative p-3">
+        <div className={`relative z-10 p-3 ${backgroundSrc ? 'bg-popover/80' : ''}`}>
           <Suspense fallback={<div className="h-20" />}>
             <MemberInfoCard
               agentId={agentId}

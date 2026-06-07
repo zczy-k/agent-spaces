@@ -161,7 +161,7 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
     },
     {
       name: 'list_node_types',
-      description: '分页查询当前工作流可用的节点类型列表。默认返回精简摘要；支持 keyword/type/label/category/description 筛选；includeDetails=true 返回完整定义。',
+      description: '分页查询当前工作流可用的节点类型列表，返回轻量摘要；支持 keyword/type/label/category/description 筛选。需要字段、输出和示例 data 时继续调用 search_node_usage。',
       inputSchema: schema({
         keyword: { type: 'string', description: '模糊搜索关键词，会同时匹配 type、label、category、description。' },
         type: { type: 'string', description: '按节点类型模糊筛选。' },
@@ -171,8 +171,6 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
         page: { type: 'number', description: '页码，从 1 开始，默认 1。' },
         pageSize: { type: 'number', description: '每页数量，默认 20，最大 50。' },
         page_size: { type: 'number', description: '每页数量，兼容蛇形命名。' },
-        includeDetails: { type: 'boolean', description: '是否返回完整节点定义。' },
-        include_details: { type: 'boolean', description: '是否返回完整节点定义，兼容蛇形命名。' },
       }),
       annotations: { readOnly: true },
       execute: async (input) => {
@@ -180,7 +178,6 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
         const filtered = searchDefinitions(record);
         const page = Math.max(1, numberInput(record, 'page', 1));
         const pageSize = Math.min(50, Math.max(1, numberInput(record, 'pageSize', numberInput(record, 'page_size', 20))));
-        const includeDetails = booleanInputAny(record, ['includeDetails', 'include_details'], false);
         const items = filtered.slice((page - 1) * pageSize, page * pageSize);
         return {
           success: true,
@@ -188,7 +185,7 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
           page_size: pageSize,
           total: filtered.length,
           available_total: ctx.nodeDefinitions.length,
-          nodes: includeDetails ? items : items.map(summarizeNodeDefinition),
+          nodes: items.map(summarizeNodeDefinition),
         };
       },
     },
@@ -437,14 +434,6 @@ function summarizeNodeDefinition(definition: NodeTypeDefinition) {
     category: definition.category,
     description: definition.description,
     handles: definition.handles,
-    properties: definition.properties.map((property) => ({
-      key: property.key,
-      label: property.label,
-      type: property.type,
-      required: property.required,
-      default: property.default,
-    })),
-    outputs: definition.outputs,
   };
 }
 
