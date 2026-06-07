@@ -61,7 +61,7 @@ export { createInspectorApi } from './modules/inspector';
 export { createAvatarApi } from './modules/avatar';
 export { createAgentCommandsApi } from './modules/agent-commands';
 export { createChatApi } from './modules/chat';
-export type { ChatAgent, ChatMessage } from './modules/chat';
+export type { ChatAgent, ChatMessage, ChatWorkspace, ChatSession } from './modules/chat';
 
 // ---- 工厂函数 ----
 

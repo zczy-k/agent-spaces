@@ -44,6 +44,23 @@ export interface ChatMessage {
   };
 }
 
+export interface ChatWorkspace {
+  id: string;
+  name: string;
+  agentIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChatSession {
+  id: string;
+  workspaceId: string;
+  agentId: string;
+  title?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export function createChatApi(http: { get: Function; post: Function; put: Function; delete: Function }) {
   return {
     listAgents: (): Promise<ChatAgent[]> =>
@@ -75,5 +92,38 @@ export function createChatApi(http: { get: Function; post: Function; put: Functi
       if (opts?.depth != null) qs.set('depth', String(opts.depth));
       return http.get(`/api/chat/agents/${agentId}/workspace/tree${qs.size ? `?${qs}` : ''}`);
     },
+
+    // Workspace CRUD
+    listWorkspaces: (): Promise<ChatWorkspace[]> =>
+      http.get('/api/chat/workspaces'),
+
+    createWorkspace: (data: { name: string; agentIds?: string[] }): Promise<ChatWorkspace> =>
+      http.post('/api/chat/workspaces', data),
+
+    updateWorkspace: (id: string, data: { name?: string; agentIds?: string[] }): Promise<ChatWorkspace> =>
+      http.put(`/api/chat/workspaces/${id}`, data),
+
+    deleteWorkspace: (id: string): Promise<void> =>
+      http.delete(`/api/chat/workspaces/${id}`),
+
+    // Session CRUD
+    listSessions: (workspaceId: string): Promise<ChatSession[]> =>
+      http.get(`/api/chat/workspaces/${workspaceId}/sessions`),
+
+    createSession: (workspaceId: string, agentId: string): Promise<ChatSession> =>
+      http.post(`/api/chat/workspaces/${workspaceId}/sessions`, { agentId }),
+
+    renameSession: (workspaceId: string, sessionId: string, title: string): Promise<ChatSession> =>
+      http.put(`/api/chat/workspaces/${workspaceId}/sessions/${sessionId}`, { title }),
+
+    deleteSession: (workspaceId: string, sessionId: string): Promise<void> =>
+      http.delete(`/api/chat/workspaces/${workspaceId}/sessions/${sessionId}`),
+
+    // Session Messages
+    listSessionMessages: (workspaceId: string, sessionId: string): Promise<ChatMessage[]> =>
+      http.get(`/api/chat/sessions/${sessionId}/messages?workspaceId=${encodeURIComponent(workspaceId)}`),
+
+    clearSessionMessages: (workspaceId: string, sessionId: string): Promise<void> =>
+      http.delete(`/api/chat/sessions/${sessionId}/messages?workspaceId=${encodeURIComponent(workspaceId)}`),
   };
 }
