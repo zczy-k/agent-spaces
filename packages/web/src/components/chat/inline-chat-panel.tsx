@@ -9,7 +9,7 @@ import { useTranslations } from "next-intl";
 import { useRef, useEffect, useMemo, useState } from "react";
 import type { Attachment as MessageAttachment } from "@agent-spaces/shared";
 import { ChatComposerInput, type ChatComposerInputHandle } from "./chat-composer-input";
-import { ChatMessageBubble } from "./chat-message-bubble";
+import { ChatMessageList } from "./chat-message-list";
 import type { ChatMessage } from "@agent-spaces/sdk";
 
 interface InlineChatPanelProps {
@@ -162,13 +162,13 @@ export function InlineChatPanel({
           {messageItems.map((item) => {
             if (item.type === "single") {
               return (
-                <ChatMessageBubble
+                <ChatMessageList
                   key={item.message.id}
-                  message={item.message}
-                  agentId={agentId}
-                  agentName={agentName}
-                  agentAvatar={agentAvatar}
-                  onDelete={onDelete ? () => onDelete(item.message.id) : undefined}
+                  messages={[item.message]}
+                  sending={false}
+                  workspaceId={workspaceId}
+                  showTypingIndicator={false}
+                  onDeleteMessage={onDelete}
                 />
               );
             }
@@ -184,23 +184,25 @@ export function InlineChatPanel({
             const isStreamingVersion = selectedMessage?.id === streamingMessage?.id;
 
             return (
-              <ChatMessageBubble
+              <ChatMessageList
                 key={item.key}
-                message={selectedMessage}
-                agentId={agentId}
-                agentName={agentName}
-                agentAvatar={agentAvatar}
-                onRegenerate={!sending && onRegenerate ? () => {
+                messages={[selectedMessage]}
+                sending={false}
+                workspaceId={workspaceId}
+                showTypingIndicator={false}
+                onDeleteMessage={!isStreamingVersion ? onDelete : undefined}
+                onRegenerateMessage={!sending && onRegenerate ? (message) => {
                   setRegeneratingVersionKey(item.key);
                   setRegenerationStartedAt(new Date().toISOString());
                   setSelectedVersions((prev) => ({ ...prev, [item.key]: item.messages.length }));
-                  onRegenerate(selectedMessage.id);
+                  onRegenerate(message.id);
                 } : undefined}
-                onDelete={!isStreamingVersion && onDelete ? () => onDelete(selectedMessage.id) : undefined}
-                versionIndex={clampedIndex}
-                versionCount={versionMessages.length}
-                onVersionChange={(index) => setSelectedVersions((prev) => ({ ...prev, [item.key]: index }))}
-                isStreaming={isStreamingVersion}
+                versionInfo={() => ({
+                  index: clampedIndex,
+                  count: versionMessages.length,
+                  onChange: (index) => setSelectedVersions((prev) => ({ ...prev, [item.key]: index })),
+                })}
+                isStreamingMessage={(message) => message.id === streamingMessage?.id}
               />
             );
           })}

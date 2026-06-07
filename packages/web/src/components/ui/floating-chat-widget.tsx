@@ -2,10 +2,10 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Markdown } from '@/components/ui/markdown';
+import { ChatMessageList } from '@/components/chat/chat-message-list';
 import { cn } from '@/lib/utils';
 import { AnimatePresence, motion, type Variants } from 'framer-motion';
-import { MessageSquare, Send, X, ChevronDown, ChevronRight, Brain, Square, Copy, Trash2, ArrowDown } from 'lucide-react';
+import { MessageSquare, Send, X, Square, ArrowDown } from 'lucide-react';
 import { useId, useRef, useEffect, useState } from 'react';
 
 export interface ChatMessage {
@@ -90,50 +90,6 @@ const containerVariants: Variants = {
   },
 };
 
-const messageVariants: Variants = {
-  hidden: { opacity: 0, y: 10, x: -10 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    x: 0,
-    transition: { type: 'spring' as const, stiffness: 500, damping: 30 },
-  },
-};
-
-function formatTime(date: Date) {
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-}
-
-function extractThinkingContent(content: string): { thinking: string | null; message: string } {
-  const match = content.match(/^<think\s*>([\s\S]*?)<\/think>\s*([\s\S]*)$/);
-  if (match) {
-    return { thinking: match[1].trim(), message: match[2].trim() };
-  }
-  return { thinking: null, message: content };
-}
-
-function ThinkingBlock({ content }: { content: string }) {
-  const [expanded, setExpanded] = useState(false);
-  return (
-    <div className="mb-2">
-      <button
-        type="button"
-        onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-1 text-xs text-muted-foreground/70 hover:text-muted-foreground transition-colors"
-      >
-        <Brain className="h-3 w-3" />
-        {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-        <span>思考过程</span>
-      </button>
-      {expanded && (
-        <div className="mt-1 text-xs text-muted-foreground/70 border-l-2 border-muted-foreground/20 pl-3 whitespace-pre-wrap break-words">
-          {content}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function StatusDot({ status }: { status?: string }) {
   return (
     <span
@@ -169,7 +125,6 @@ export function FloatingChatPanel({
 }: FloatingChatPanelProps) {
   const widgetId = useId();
   const listRef = useRef<HTMLDivElement>(null);
-  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
 
   const isNearBottom = () => {
@@ -200,17 +155,6 @@ export function FloatingChatPanel({
       e.preventDefault();
       onSend();
     }
-  };
-
-  const handleCopyMessage = async (message: ChatMessage) => {
-    const text = serializeForCopy
-      ? serializeForCopy(message)
-      : extractThinkingContent(message.content).message || message.content;
-    await navigator.clipboard.writeText(text);
-    setCopiedMessageId(message.id);
-    window.setTimeout(() => {
-      setCopiedMessageId((current) => current === message.id ? null : current);
-    }, 1200);
   };
 
   return (
@@ -268,110 +212,22 @@ export function FloatingChatPanel({
               className="flex flex-col gap-3 overflow-y-auto p-4 bg-gradient-to-b from-background/20 to-background/40"
               style={{ height }}
             >
-              {messages.length === 0 && !sending && (
-                <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-                  暂无消息
-                </div>
-              )}
-
-              {messages.map((msg) => {
-                const { thinking, message } = msg.role === 'agent'
-                  ? extractThinkingContent(msg.content)
-                  : { thinking: null, message: msg.content };
-                const hasMessageBody = msg.role === 'user' || thinking !== null || message.trim().length > 0;
-                if (!hasMessageBody && !renderMessageExtras) return null;
-                return (
-                  <motion.div
-                    key={msg.id}
-                    variants={messageVariants}
-                    className={cn('flex gap-3', msg.role === 'user' ? 'flex-row-reverse self-end' : '')}
-                  >
-                    <div
-                      className={cn(
-                        'group/message flex max-w-[85%] flex-col gap-1',
-                        msg.role === 'user' ? 'items-end' : ''
-                      )}
-                    >
-                      {hasMessageBody ? (
-                        <div
-                          className={cn(
-                            'px-4 py-2.5 text-sm leading-relaxed shadow-sm border border-border/20',
-                            msg.role === 'user'
-                              ? 'rounded-2xl rounded-tr-none bg-primary text-primary-foreground'
-                              : 'rounded-2xl rounded-tl-none bg-muted/50 backdrop-blur-sm'
-                          )}
-                        >
-                          {msg.role === 'user' ? (
-                            <p className="whitespace-pre-wrap break-words">{msg.content}</p>
-                          ) : (
-                            <>
-                              {thinking !== null && <ThinkingBlock content={thinking} />}
-                              {message.trim().length > 0 ? (
-                                renderMessageContent ? (
-                                  renderMessageContent({ ...msg, content: message })
-                                ) : markdown ? (
-                                  <Markdown content={message} workspaceId={workspaceId} />
-                                ) : (
-                                  <p className="whitespace-pre-wrap break-words">{message}</p>
-                                )
-                              ) : null}
-                            </>
-                          )}
-                        </div>
-                      ) : null}
-                      {renderMessageExtras?.(msg)}
-                      <div className={cn('flex items-center gap-1', msg.role === 'user' ? 'flex-row-reverse' : '')}>
-                        <span
-                          className={cn(
-                            'text-[10px] font-mono',
-                            msg.role === 'user' ? 'text-primary-foreground/50' : 'text-muted-foreground/60'
-                          )}
-                        >
-                          {formatTime(msg.timestamp)}
-                        </span>
-                        <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover/message:opacity-100">
-                          <button
-                            type="button"
-                            className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
-                            onClick={() => void handleCopyMessage(msg)}
-                            title={copiedMessageId === msg.id ? '已复制' : '复制消息'}
-                          >
-                            <Copy className="h-3 w-3" />
-                          </button>
-                          {onDeleteMessage ? (
-                            <button
-                              type="button"
-                              className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                              onClick={() => onDeleteMessage(msg.id)}
-                              title="删除消息"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </button>
-                          ) : null}
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-
-              {/* Typing indicator */}
-              {sending && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex gap-3"
-                  aria-label="AI is typing"
-                >
-                  <div className="flex flex-col gap-1">
-                    <div className="rounded-2xl rounded-tl-none bg-muted/50 px-4 py-3 shadow-sm backdrop-blur-sm border border-border/20 w-16 flex items-center justify-center gap-1">
-                      <span className="h-1.5 w-1.5 rounded-full bg-foreground/40 animate-bounce [animation-delay:-0.3s]" />
-                      <span className="h-1.5 w-1.5 rounded-full bg-foreground/40 animate-bounce [animation-delay:-0.15s]" />
-                      <span className="h-1.5 w-1.5 rounded-full bg-foreground/40 animate-bounce" />
-                    </div>
+              <ChatMessageList
+                messages={messages}
+                sending={sending}
+                markdown={markdown}
+                workspaceId={workspaceId}
+                animated
+                renderEmpty={
+                  <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+                    暂无消息
                   </div>
-                </motion.div>
-              )}
+                }
+                renderMessageContent={renderMessageContent}
+                renderMessageExtras={renderMessageExtras}
+                onDeleteMessage={onDeleteMessage}
+                serializeForCopy={serializeForCopy}
+              />
             </div>
 
             {/* Scroll to bottom */}
