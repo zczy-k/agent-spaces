@@ -60,6 +60,7 @@ export interface ChatSession {
   workspaceId: string;
   agentId: string;
   title?: string;
+  archived?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -344,13 +345,14 @@ export function createSession(workspaceId: string, agentId: string): ChatSession
   return session;
 }
 
-export function updateSession(workspaceId: string, sessionId: string, data: { title?: string }): ChatSession | null {
+export function updateSession(workspaceId: string, sessionId: string, data: { title?: string; archived?: boolean }): ChatSession | null {
   const sessions = readJsonFile<ChatSession[]>(sessionsFile(workspaceId)) ?? [];
   const idx = sessions.findIndex(s => s.id === sessionId);
   if (idx === -1) return null;
   sessions[idx] = {
     ...sessions[idx],
     ...(data.title !== undefined && { title: data.title }),
+    ...(data.archived !== undefined && { archived: data.archived }),
     updatedAt: new Date().toISOString(),
   };
   writeJsonFile(sessionsFile(workspaceId), sessions);

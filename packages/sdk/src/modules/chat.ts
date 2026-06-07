@@ -57,11 +57,12 @@ export interface ChatSession {
   workspaceId: string;
   agentId: string;
   title?: string;
+  archived?: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
-export function createChatApi(http: { get: Function; post: Function; put: Function; delete: Function }) {
+export function createChatApi(http: { get: Function; post: Function; put: Function; patch: Function; delete: Function }) {
   return {
     listAgents: (): Promise<ChatAgent[]> =>
       http.get('/api/chat/agents'),
@@ -115,6 +116,9 @@ export function createChatApi(http: { get: Function; post: Function; put: Functi
 
     renameSession: (workspaceId: string, sessionId: string, title: string): Promise<ChatSession> =>
       http.put(`/api/chat/workspaces/${workspaceId}/sessions/${sessionId}`, { title }),
+
+    updateSession: (workspaceId: string, sessionId: string, data: { title?: string; archived?: boolean }): Promise<ChatSession> =>
+      http.patch(`/api/chat/workspaces/${workspaceId}/sessions/${sessionId}`, data),
 
     deleteSession: (workspaceId: string, sessionId: string): Promise<void> =>
       http.delete(`/api/chat/workspaces/${workspaceId}/sessions/${sessionId}`),

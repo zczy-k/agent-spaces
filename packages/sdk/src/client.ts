@@ -178,6 +178,17 @@ export class HttpClient {
     });
   }
 
+  /** PATCH + JSON 解析 */
+  async patch<T>(path: string, body: unknown, opts?: RequestOptions): Promise<T> {
+    const res = await this.request(path, {
+      ...opts,
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...(opts?.headers as Record<string, string> ?? {}) },
+      body: JSON.stringify(body),
+    });
+    return res.json();
+  }
+
   /** DELETE */
   async delete(path: string, opts?: RequestOptions): Promise<void> {
     await this.request(path, { ...opts, method: 'DELETE' });

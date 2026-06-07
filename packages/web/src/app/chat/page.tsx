@@ -34,6 +34,8 @@ export default function ChatPage() {
     selectWorkspace,
     createSession,
     deleteSession,
+    archiveSession,
+    unarchiveSession,
     selectSession,
     sendSessionMessage,
     regenerateSessionMessage,
@@ -154,6 +156,8 @@ export default function ChatPage() {
         onNewSession={() => setAgentPickerOpen(true)}
         onSelectSession={selectSession}
         onDeleteSession={deleteSession}
+        onArchiveSession={archiveSession}
+        onUnarchiveSession={unarchiveSession}
         className="w-[280px] shrink-0 rounded-xl border border-border/40 bg-background shadow-sm"
       />
 

@@ -11,10 +11,10 @@ import {
 import { cn } from "@/lib/utils";
 import { AgentIcon } from "@/components/common/agent-icon";
 import {
-  MessageSquarePlus, Settings2, Search, Trash2,
+  MessageSquarePlus, Settings2, Search, Trash2, Archive, ArchiveRestore,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import type { ChatAgent, ChatWorkspace, ChatSession } from "@agent-spaces/sdk";
 import { formatDistanceToNow } from "date-fns";
 
@@ -31,7 +31,69 @@ interface ChatSessionListProps {
   onNewSession: () => void;
   onSelectSession: (sessionId: string) => void;
   onDeleteSession: (sessionId: string) => void;
+  onArchiveSession: (sessionId: string) => void;
+  onUnarchiveSession: (sessionId: string) => void;
   className?: string;
+}
+
+interface SessionItemProps {
+  session: ChatSession & { agent?: ChatAgent };
+  isActive: boolean;
+  isSending: boolean;
+  onSelect: () => void;
+  onContextMenu: (e: React.MouseEvent, sessionId: string, archived: boolean) => void;
+}
+
+function SessionItem({ session, isActive, isSending, onSelect, onContextMenu }: SessionItemProps) {
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      aria-label={`Chat: ${session.title || "New Chat"}`}
+      className={cn(
+        "group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left hover:bg-accent focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+        isActive && "bg-accent"
+      )}
+      onClick={onSelect}
+      onContextMenu={(e) => onContextMenu(e, session.id, !!session.archived)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
+    >
+      <div className="relative flex-shrink-0">
+        {session.agent && (
+          <AgentIcon
+            agentId={session.agent.id}
+            name={session.agent.name}
+            avatarUrl={session.agent.avatar}
+            icon={session.agent.icon}
+            className="size-8"
+          />
+        )}
+        {isSending && (
+          <span className="-bottom-0 absolute right-0 flex items-center">
+            <span
+              aria-label="running"
+              className="inline-block size-2.5 rounded-full border-2 border-background bg-blue-500 animate-pulse"
+            />
+          </span>
+        )}
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="truncate text-sm font-medium">
+          {session.title || "New Chat"}
+        </span>
+        <span className="truncate text-muted-foreground text-xs">
+          {session.agent?.name ?? "Unknown"}
+          {" · "}
+          {formatDistanceToNow(new Date(session.updatedAt), { addSuffix: true })}
+        </span>
+      </div>
+    </div>
+  );
 }
 
 export function ChatAgentList({
@@ -47,10 +109,20 @@ export function ChatAgentList({
   onNewSession,
   onSelectSession,
   onDeleteSession,
+  onArchiveSession,
+  onUnarchiveSession,
   className,
 }: ChatSessionListProps) {
   const [search, setSearch] = useState("");
   const t = useTranslations("chat.agentList");
+
+  // Context menu state
+  const [ctxMenu, setCtxMenu] = useState<{
+    x: number;
+    y: number;
+    sessionId: string;
+    archived: boolean;
+  } | null>(null);
 
   // Enrich sessions with agent info for display
   const enrichedSessions = useMemo(() => {
@@ -68,6 +140,18 @@ export function ChatAgentList({
       (s.agent?.name ?? "").toLowerCase().includes(search.toLowerCase())
     );
   });
+
+  const activeSessions = filtered.filter((s) => !s.archived);
+  const archivedSessions = filtered.filter((s) => !!s.archived);
+
+  const handleContextMenu = useCallback((e: React.MouseEvent, sessionId: string, archived: boolean) => {
+    e.preventDefault();
+    setCtxMenu({ x: e.clientX, y: e.clientY, sessionId, archived });
+  }, []);
+
+  const closeContextMenu = useCallback(() => {
+    setCtxMenu(null);
+  }, []);
 
   return (
     <aside
@@ -145,68 +229,42 @@ export function ChatAgentList({
             </Empty>
           </div>
         ) : (
-          filtered.map((session) => (
-            <div
-              key={session.id}
-              role="button"
-              tabIndex={0}
-              aria-label={`Chat: ${session.title || "New Chat"}`}
-              className={cn(
-                "group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left hover:bg-accent focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
-                activeSessionId === session.id && "bg-accent"
-              )}
-              onClick={() => onSelectSession(session.id)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  onSelectSession(session.id);
-                }
-              }}
-            >
-              <div className="relative flex-shrink-0">
-                {session.agent && (
-                  <AgentIcon
-                    agentId={session.agent.id}
-                    name={session.agent.name}
-                    avatarUrl={session.agent.avatar}
-                    icon={session.agent.icon}
-                    className="size-8"
+          <>
+            {/* Active sessions */}
+            {activeSessions.length > 0 && (
+              <div className="flex flex-col gap-0.5">
+                {activeSessions.map((session) => (
+                  <SessionItem
+                    key={session.id}
+                    session={session}
+                    isActive={activeSessionId === session.id}
+                    isSending={!!sending[session.id]}
+                    onSelect={() => onSelectSession(session.id)}
+                    onContextMenu={handleContextMenu}
                   />
-                )}
-                {sending[session.id] && (
-                  <span className="-bottom-0 absolute right-0 flex items-center">
-                    <span
-                      aria-label="running"
-                      className="inline-block size-2.5 rounded-full border-2 border-background bg-blue-500 animate-pulse"
-                    />
-                  </span>
-                )}
+                ))}
               </div>
-              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="truncate text-sm font-medium">
-                  {session.title || "New Chat"}
-                </span>
-                <span className="truncate text-muted-foreground text-xs">
-                  {session.agent?.name ?? "Unknown"}
-                  {" · "}
-                  {formatDistanceToNow(new Date(session.updatedAt), { addSuffix: true })}
-                </span>
+            )}
+
+            {/* Archived sessions */}
+            {archivedSessions.length > 0 && (
+              <div className="mt-1">
+                <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground">
+                  {t("archived")}
+                </div>
+                {archivedSessions.map((session) => (
+                  <SessionItem
+                    key={session.id}
+                    session={session}
+                    isActive={activeSessionId === session.id}
+                    isSending={!!sending[session.id]}
+                    onSelect={() => onSelectSession(session.id)}
+                    onContextMenu={handleContextMenu}
+                  />
+                ))}
               </div>
-              <Button
-                aria-label="Delete session"
-                className="ml-auto size-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDeleteSession(session.id);
-                }}
-                size="icon"
-                variant="ghost"
-                type="button"
-              >
-                <Trash2 aria-hidden="true" className="size-3.5 text-muted-foreground" focusable="false" />
-              </Button>
-            </div>
-          ))
+            )}
+          </>
         )}
       </div>
 
@@ -222,6 +280,51 @@ export function ChatAgentList({
           {t("manageAgents")}
         </Button>
       </div>
+
+      {/* Context Menu */}
+      {ctxMenu && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={closeContextMenu} onContextMenu={(e) => { e.preventDefault(); closeContextMenu(); }} />
+          <div
+            className="fixed z-50 min-w-[120px] rounded-md border bg-popover p-1 shadow-md"
+            style={{ left: ctxMenu.x, top: ctxMenu.y }}
+          >
+            {ctxMenu.archived ? (
+              <button
+                className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
+                onClick={() => {
+                  onUnarchiveSession(ctxMenu.sessionId);
+                  closeContextMenu();
+                }}
+              >
+                <ArchiveRestore className="size-3.5" />
+                {t("unarchive")}
+              </button>
+            ) : (
+              <button
+                className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
+                onClick={() => {
+                  onArchiveSession(ctxMenu.sessionId);
+                  closeContextMenu();
+                }}
+              >
+                <Archive className="size-3.5" />
+                {t("archive")}
+              </button>
+            )}
+            <button
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-destructive hover:bg-accent"
+              onClick={() => {
+                onDeleteSession(ctxMenu.sessionId);
+                closeContextMenu();
+              }}
+            >
+              <Trash2 className="size-3.5" />
+              {t("delete")}
+            </button>
+          </div>
+        </>
+      )}
     </aside>
   );
 }

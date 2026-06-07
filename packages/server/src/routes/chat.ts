@@ -99,9 +99,9 @@ router.post('/workspaces/:wsId/sessions', (req, res) => {
 
 router.patch('/workspaces/:wsId/sessions/:sessionId', (req, res) => {
   const { wsId, sessionId } = req.params;
-  const { title } = req.body as { title?: string };
+  const { title, archived } = req.body as { title?: string; archived?: boolean };
   try {
-    const session = svc.updateSession(wsId, sessionId, { title });
+    const session = svc.updateSession(wsId, sessionId, { title, archived });
     if (!session) {
       res.status(404).json({ error: 'Session not found' });
       return;

@@ -48,6 +48,8 @@ interface ChatStore {
   loadSessions: (workspaceId: string) => Promise<void>;
   createSession: (agentId: string) => Promise<string | null>;
   deleteSession: (sessionId: string) => Promise<void>;
+  archiveSession: (sessionId: string) => Promise<void>;
+  unarchiveSession: (sessionId: string) => Promise<void>;
   selectSession: (id: string) => void;
 
   // Session messages
@@ -227,6 +229,25 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         : s.activeSessionId;
       return { sessions, activeSessionId };
     });
+  },
+
+  archiveSession: async (sessionId) => {
+    const wsId = get().activeWorkspaceId;
+    if (!wsId) return;
+    const updated = await sdk.chat.updateSession(wsId, sessionId, { archived: true });
+    set((s) => ({
+      sessions: s.sessions.map(ses => ses.id === sessionId ? updated : ses),
+      activeSessionId: s.activeSessionId === sessionId ? null : s.activeSessionId,
+    }));
+  },
+
+  unarchiveSession: async (sessionId) => {
+    const wsId = get().activeWorkspaceId;
+    if (!wsId) return;
+    const updated = await sdk.chat.updateSession(wsId, sessionId, { archived: false });
+    set((s) => ({
+      sessions: s.sessions.map(ses => ses.id === sessionId ? updated : ses),
+    }));
   },
 
   selectSession: (id) => {
