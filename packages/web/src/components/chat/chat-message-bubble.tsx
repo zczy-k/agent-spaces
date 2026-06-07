@@ -29,6 +29,7 @@ interface ChatMessageBubbleProps {
   versionIndex?: number;
   versionCount?: number;
   onVersionChange?: (index: number) => void;
+  isStreaming?: boolean;
 }
 
 export function ChatMessageBubble({
@@ -42,6 +43,7 @@ export function ChatMessageBubble({
   versionIndex = 0,
   versionCount = 1,
   onVersionChange,
+  isStreaming = false,
 }: ChatMessageBubbleProps) {
   const [copied, setCopied] = useState(false);
   const t = useTranslations('chat.messageBubble');
@@ -57,6 +59,7 @@ export function ChatMessageBubble({
   const isUser = message.role === "user";
   const hasVersions = !isUser && versionCount > 1 && onVersionChange;
   const versionNumber = Math.min(versionIndex + 1, versionCount);
+  const showStreamingPlaceholder = isStreaming && !thinking && !text;
 
   return (
     <div className={cn("flex gap-3 group/msg", isUser && "flex-row-reverse", className)}>
@@ -75,7 +78,15 @@ export function ChatMessageBubble({
               <pre className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">{thinking}</pre>
             </details>
           )}
-          <Markdown content={text} />
+          {showStreamingPlaceholder ? (
+            <div className="flex items-center gap-1 py-1">
+              <span className="size-1.5 animate-bounce rounded-full bg-foreground/40 [animation-delay:-0.3s]" />
+              <span className="size-1.5 animate-bounce rounded-full bg-foreground/40 [animation-delay:-0.15s]" />
+              <span className="size-1.5 animate-bounce rounded-full bg-foreground/40" />
+            </div>
+          ) : (
+            <Markdown content={text} />
+          )}
         </div>
         <div className={cn("flex items-center gap-1", isUser && "flex-row-reverse")}>
           <span className="text-[10px] text-muted-foreground/60">{formatTime(message.timestamp)}</span>

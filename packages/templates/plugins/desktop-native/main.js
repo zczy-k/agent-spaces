@@ -1,4 +1,7 @@
+const actions = require('./actions')
+
 exports.activate = (context) => {
+  context.registerActions(actions)
   context.logger.info('桌面原生插件已激活')
 }
 

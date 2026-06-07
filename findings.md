@@ -1,25 +1,22 @@
 # Findings & Decisions
 
 ## Requirements
-- User reports that after entering execution record preview mode, workflow nodes do not show the bottom-right icon for hovering/opening node output logs.
-- Reference behavior is in `/Users/Zhuanz/Documents/work_fox/src/components/workflow/CustomNodeWrapper.vue`.
+- User reports that after clicking regenerate, the new message does not display over the original message. It opens as a new message and only merges into the version branch when completion arrives.
 
 ## Research Findings
-- WorkFox `CustomNodeWrapper.vue` computes the current node's execution step from `store.isPreview ? store.selectedExecutionLog : store.executionLog`.
-- WorkFox shows an execution result affordance when node status is `completed` or `error` and an execution step exists.
-- The WorkFox popover includes error, input, output, and node logs.
-- Agent Spaces `WorkflowCanvas` currently passes only `isRunning` into node data, and only when the log status is `running`.
-- Agent Spaces `WorkflowNode` already tracks hover state and has absolute hover controls, so the missing feature belongs there.
-- Agent Spaces already has `Popover` and `JsonViewer` components used by the execution bar.
+- `ChatMessageBubble` only invokes `onRegenerate`; it does not control where streaming output appears.
+- `InlineChatPanel` groups adjacent agent replies into version groups with `groupMessageVersions`.
+- On regenerate, `InlineChatPanel` sets the selected version index to `item.messages.length`, anticipating a future version.
+- The in-progress stream still renders through the common bottom streaming block because `streamingContent` and `streamingThinking` are agent-level state.
+- After completion, the saved agent message becomes adjacent to the original reply and `groupMessageVersions` merges it into the version group.
 
 ## Technical Decisions
 | Decision | Rationale |
 |----------|-----------|
-| Add `executionStep` to `WorkflowNodeData` | Gives each rendered node all data needed for its own result popover |
-| Use a compact bottom-right `FileText` icon | Matches the user's requested visual affordance and avoids expanding node height |
-| Use `HoverCard` instead of `Popover` | User explicitly requested hover-card floating display |
+| Keep regenerate placement state in `InlineChatPanel` | It already knows the version group key and controls rendering |
+| Represent active regenerated output as a temporary `ChatMessage` | Reuses existing `ChatMessageBubble` rendering, version controls, and Markdown handling |
+| Suppress the bottom streaming block only while regenerating | Normal user sends should still show a new bottom response |
 
 ## Issues Encountered
 | Issue | Resolution |
 |-------|------------|
-| In-app browser `iab` was unavailable | Could not perform screenshot verification; used static checks |

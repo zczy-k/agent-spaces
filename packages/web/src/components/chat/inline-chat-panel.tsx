@@ -16,6 +16,7 @@ interface InlineChatPanelProps {
   agentId: string;
   agentName: string;
   agentAvatar?: string;
+  agentDescription?: string;
   messages: ChatMessage[];
   sending: boolean;
   error?: string;
@@ -35,6 +36,7 @@ export function InlineChatPanel({
   agentId,
   agentName,
   agentAvatar,
+  agentDescription,
   messages,
   sending,
   error = "",
@@ -52,13 +54,41 @@ export function InlineChatPanel({
   const listRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<ChatComposerInputHandle>(null);
   const [selectedVersions, setSelectedVersions] = useState<Record<string, number>>({});
+  const [regeneratingVersionKey, setRegeneratingVersionKey] = useState<string | null>(null);
+  const [regenerationStartedAt, setRegenerationStartedAt] = useState<string | null>(null);
   const messageItems = useMemo(() => groupMessageVersions(messages), [messages]);
   const t = useTranslations('chat.inlineChat');
+  const isRegenerating = sending && regeneratingVersionKey !== null;
 
   useEffect(() => {
     if (!listRef.current) return;
     listRef.current.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, sending, error, streamingContent, streamingThinking]);
+
+  useEffect(() => {
+    if (sending) return;
+    setRegeneratingVersionKey(null);
+    setRegenerationStartedAt(null);
+  }, [sending]);
+
+  const handleSend = (
+    content: string,
+    mentions: string[],
+    attachments: MessageAttachment[],
+    contextLength: number,
+  ) => {
+    setRegeneratingVersionKey(null);
+    setRegenerationStartedAt(null);
+    onSend(content, mentions, attachments, contextLength);
+  };
+
+  const createStreamingMessage = (key: string): ChatMessage => ({
+    id: `${agentId}:regenerating:${key}`,
+    agentId,
+    role: "agent",
+    content: streamingThinking ? `<think>${streamingThinking}</think>${streamingContent}` : streamingContent,
+    timestamp: regenerationStartedAt ?? new Date().toISOString(),
+  });
 
   return (
     <div className="flex h-full flex-col">
@@ -69,11 +99,19 @@ export function InlineChatPanel({
           onClick={() => onEditAgent(agentId)}
           type="button"
         >
-          <AgentIcon agentId={agentId} name={agentName} avatarUrl={agentAvatar} className="size-9" bordered />
+          <div className="relative flex flex-shrink-0 items-end">
+            <AgentIcon agentId={agentId} name={agentName} avatarUrl={agentAvatar} className="size-9" bordered />
+            <span className="-bottom-0 absolute right-0 flex items-center">
+              <span
+                aria-label={sending ? "running" : "idle"}
+                className={`inline-block size-2.5 rounded-full border-2 border-background ${sending ? "bg-blue-500 animate-pulse" : "bg-green-500"}`}
+              />
+            </span>
+          </div>
           <div>
             <h3 className="text-base font-semibold text-primary decoration-primary/30 hover:decoration-primary transition-colors">{agentName}</h3>
-            <span className="text-xs text-muted-foreground">
-              {sending ? t('typing') : t('online')}
+            <span className="truncate text-xs text-muted-foreground">
+              {agentDescription || (sending ? t('typing') : t('online'))}
             </span>
           </div>
         </button>
@@ -131,9 +169,15 @@ export function InlineChatPanel({
               );
             }
 
-            const selectedIndex = selectedVersions[item.key] ?? item.messages.length - 1;
-            const clampedIndex = Math.min(selectedIndex, item.messages.length - 1);
-            const selectedMessage = item.messages[clampedIndex];
+            const streamingMessage = isRegenerating && regeneratingVersionKey === item.key
+              ? createStreamingMessage(item.key)
+              : null;
+            const versionMessages = streamingMessage ? [...item.messages, streamingMessage] : item.messages;
+            const selectedIndex = selectedVersions[item.key] ?? versionMessages.length - 1;
+            const clampedIndex = Math.min(selectedIndex, versionMessages.length - 1);
+            const selectedMessage = versionMessages[clampedIndex];
+            if (!selectedMessage) return null;
+            const isStreamingVersion = selectedMessage?.id === streamingMessage?.id;
 
             return (
               <ChatMessageBubble
@@ -142,14 +186,17 @@ export function InlineChatPanel({
                 agentId={agentId}
                 agentName={agentName}
                 agentAvatar={agentAvatar}
-                onRegenerate={onRegenerate ? () => {
+                onRegenerate={!sending && onRegenerate ? () => {
+                  setRegeneratingVersionKey(item.key);
+                  setRegenerationStartedAt(new Date().toISOString());
                   setSelectedVersions((prev) => ({ ...prev, [item.key]: item.messages.length }));
                   onRegenerate(selectedMessage.id);
                 } : undefined}
-                onDelete={onDelete ? () => onDelete(selectedMessage.id) : undefined}
+                onDelete={!isStreamingVersion && onDelete ? () => onDelete(selectedMessage.id) : undefined}
                 versionIndex={clampedIndex}
-                versionCount={item.messages.length}
+                versionCount={versionMessages.length}
                 onVersionChange={(index) => setSelectedVersions((prev) => ({ ...prev, [item.key]: index }))}
+                isStreaming={isStreamingVersion}
               />
             );
           })}
@@ -162,7 +209,7 @@ export function InlineChatPanel({
               </div>
             </div>
           )}
-          {sending && (streamingContent || streamingThinking) && (
+          {sending && !isRegenerating && (streamingContent || streamingThinking) && (
             <div className="flex gap-3">
               <AgentIcon agentId={agentId} name={agentName} avatarUrl={agentAvatar} className="size-7" bordered />
               <div className="max-w-[78%] rounded-2xl rounded-tl-none bg-muted/50 px-4 py-3 text-sm">
@@ -180,7 +227,7 @@ export function InlineChatPanel({
               </div>
             </div>
           )}
-          {sending && !streamingContent && !streamingThinking && (
+          {sending && !isRegenerating && !streamingContent && !streamingThinking && (
             <div className="flex gap-3">
               <AgentIcon agentId={agentId} name={agentName} avatarUrl={agentAvatar} className="size-7" bordered />
               <div className="flex items-center gap-1 rounded-2xl rounded-tl-none bg-muted/50 px-4 py-3">
@@ -200,7 +247,7 @@ export function InlineChatPanel({
           workspaceId={workspaceId || ""}
           agents={[]}
           placeholder={t('messagePlaceholder', { name: agentName })}
-          onSubmit={onSend}
+          onSubmit={handleSend}
           isProcessing={sending}
           onStop={onStop}
           disableMentionSuggestions

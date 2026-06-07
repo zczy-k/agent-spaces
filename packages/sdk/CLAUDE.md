@@ -4,11 +4,11 @@
 
 ## 模块职责
 
-前端 API 统一调用包。提供类型安全的 HTTP 客户端封装（HttpClient），按功能域拆分为 34 个 API 模块适配器，覆盖 Agent Spaces 平台全部 REST API。web 包通过 `lib/sdk.ts` 单例消费，自动注入 Bearer Token 和服务器地址。
+前端 API 统一调用包。提供类型安全的 HTTP 客户端封装（HttpClient），按功能域拆分为 39 个 API 模块适配器，覆盖 Agent Spaces 平台全部 REST API。web 包通过 `lib/sdk.ts` 单例消费，自动注入 Bearer Token 和服务器地址。
 
 ## 入口与启动
 
-- **入口文件**：`src/index.ts` — 导出 `createSDK()` 工厂函数和所有模块工厂
+- **入口文件**：`src/index.ts` -- 导出 `createSDK()` 工厂函数和所有模块工厂
 - **构建命令**：`pnpm build`（tsc 编译到 dist/）
 - **消费方式**：web 包 `src/lib/sdk.ts` 创建单例，组件通过 `sdk.xxx.method()` 调用
 
@@ -28,7 +28,8 @@ createSDK(config)
         ├── robotAccounts ├── auth           ├── data
         ├── version       ├── search         ├── agentStore
         ├── font          ├── inspector      ├── avatar
-        └── agentCommands
+        ├── agentCommands ├── chat           ├── npmSettings
+        └── (39 modules total)
 ```
 
 ### HttpClient 核心方法
@@ -59,7 +60,7 @@ export function createXxxApi(http: HttpClient) {
 
 ## 依赖
 
-- `@agent-spaces/shared`（workspace:*）— 共享类型定义
+- `@agent-spaces/shared`（workspace:*）-- 共享类型定义
 
 ## 文件清单
 
@@ -67,8 +68,43 @@ export function createXxxApi(http: HttpClient) {
 |------|------|
 | `src/client.ts` | HttpClient 封装（baseUrl + Bearer Token + 错误处理 + 调试日志） |
 | `src/types.ts` | SDK 内部类型（SDKConfig, RequestOptions, PromptTemplate 等） |
-| `src/index.ts` | 工厂函数 createSDK()，注册 34 个 API 模块 |
-| `src/modules/*.ts` | 34 个 API 模块适配器 |
+| `src/index.ts` | 工厂函数 createSDK()，注册 39 个 API 模块 |
+| `src/modules/npm-settings.ts` | NPM Settings API（get/update，registry/proxy 配置） |
+| `src/modules/chat.ts` | Chat Agent API（CRUD + 消息 + 工作目录 + SSE 执行） |
+| `src/modules/workflow.ts` | Workflow API（CRUD + duplicate + trigger） |
+| `src/modules/workflow-plugin.ts` | Workflow Plugin API（list/store/enable/disable/config/nodes） |
+| `src/modules/worktree.ts` | Worktree API（CRUD + Diff + PR） |
+| `src/modules/workspace.ts` | Workspace API（CRUD + Prompt + Clone + Reveal + 文件操作） |
+| `src/modules/version.ts` | Version API（check + update） |
+| `src/modules/tools.ts` | 内置工具管理 API |
+| `src/modules/task.ts` | Task API（CRUD + retry + cancel） |
+| `src/modules/subscription.ts` | Subscription API（CRUD + quota） |
+| `src/modules/speech.ts` | Speech Recognition API（CRUD） |
+| `src/modules/skills.ts` | Skills API（list/sync/import/update/delete） |
+| `src/modules/search.ts` | Search API（code/files） |
+| `src/modules/robot-accounts.ts` | Robot Account API（CRUD） |
+| `src/modules/prompts.ts` | Prompt Template API（CRUD + apply + agents） |
+| `src/modules/output-styles.ts` | Output Style API（CRUD） |
+| `src/modules/notification.ts` | Notification API（CRUD + read/readAll） |
+| `src/modules/mcps.ts` | MCP API（list/import/update/delete） |
+| `src/modules/llm.ts` | LLM Model/Provider API（CRUD） |
+| `src/modules/kanban.ts` | Kanban API（board/columns/tasks/reorder） |
+| `src/modules/issue.ts` | Issue API（CRUD + start + comments） |
+| `src/modules/inspector.ts` | Inspector API（track） |
+| `src/modules/hooks.ts` | Hook API（CRUD + upload + apply） |
+| `src/modules/git.ts` | Git API（status/diff/log/commit/push/pull/高级操作） |
+| `src/modules/font.ts` | Font API（list/upload/delete） |
+| `src/modules/editor.ts` | Editor API（file tree/content） |
+| `src/modules/database.ts` | Database API（CRUD + nodes + search + vector） |
+| `src/modules/data.ts` | Data Import/Export API（ZIP archive） |
+| `src/modules/command.ts` | Quick Command API（CRUD + run/stop/processes） |
+| `src/modules/code-favorites.ts` | Code Favorites API（CRUD） |
+| `src/modules/channel.ts` | Channel API（CRUD + messages + tool-details） |
+| `src/modules/avatar.ts` | Avatar Upload API |
+| `src/modules/auth.ts` | Auth API（login/check/change-secret） |
+| `src/modules/agent.ts` | Agent API（sessions + presets + test-connection + templates + usage） |
+| `src/modules/agent-store.ts` | Agent Store API（在线导入/同步） |
+| `src/modules/agent-commands.ts` | Agent Commands API（CRUD + apply） |
 
 ## 关键设计
 
@@ -76,3 +112,11 @@ export function createXxxApi(http: HttpClient) {
 - **调试模式**：`setDebug(true)` 输出请求/响应日志
 - **服务器切换**：SDK 单例通过 Proxy 动态获取最新 baseUrl，支持运行时切换服务器
 - **类型安全**：所有 API 方法和返回值完整类型化，类型从 `@agent-spaces/shared` 导入
+
+## 变更记录 (Changelog)
+
+| 时间 | 操作 | 说明 |
+|------|------|------|
+| 2026-06-07T19:26:50+08:00 | 增量更新 | **新增 npm-settings 模块**（modules/npm-settings.ts，NpmSettings get/update API）；**文件数 38->39** |
+| 2026-06-05T19:44:59+08:00 | 增量更新 | **新增 Chat 模块**（modules/chat.ts，Chat Agent CRUD + 消息 + 工作目录 + SSE 执行）；**文件数 37->38** |
+| 2026-06-04T23:38:49+08:00 | 初始化 | init-architect 首次扫描生成 SDK CLAUDE.md |

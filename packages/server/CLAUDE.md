@@ -4,7 +4,7 @@
 
 ## 模块职责
 
-Express 5 后端服务，提供 REST API、WebSocket 实时通信、认证中间件、六运行时 Agent 编排引擎（OpenAgentSdk / ClaudeCode / Codex / LangChain / Hermes / OhMyPi）、通用 AI 文本请求层（支持 Anthropic/OpenAI/Gemini 三种供应商）、AI 标题生成（频道/Issue 自动标题）、Workflow 系统（WorkFox DAG 执行引擎 + 校验/CRUD/Task 映射/Command 节点执行/运行时校验/触发器/交互管理/执行通道/Webhook Hook）、Plugin 插件系统（自定义 Workflow 节点类型 + CJS 沙箱加载 + Store 安装 + 配置管理 + 执行引擎集成）、Hook 系统（Agent 工具调用前后自定义钩子，shell/webhook/script 三种动作）、输出风格管理（OutputStyle 模板 CRUD + 运行时注入）、Anthropic Bridge 协议中转（7 文件子模块）、持久上下文加载（CLAUDE.md/AGENTS.md 自动注入）、通知中心（飞书 Lark + 企微 WeChat + Native 双适配器 + Bot Agent + 16 个内置斜杠命令）、应用内通知（NotificationCenter）、PTY 终端管理、文件系统操作、Git 操作（含 Clone SSE）、SQLite Agent Usage 统计与费用估算、LLM 模型/供应商管理、Agent Preset 管理、内置 Function Call 工具、Commit Agent（自动生成 conventional commit message）、Issue 评论与重试恢复、工具详情持久化、Agent SSE API（HTTP 流式调用）、代码搜索（ripgrep + Node.js 回退）、订阅管理（智谱/MiniMax/AICode 配额查询）、语音识别（腾讯语音 WebSocket 流式）、快捷命令（CRUD + 运行/停止/自动重启）、Agent Designer（AI 自动生成预设）、Skill/MCP 全局管理、Prompt 模板管理（CRUD + 批量应用）、代码收藏（CRUD + 按工作空间持久化）、TypeScript LSP 服务（typescript-language-server + vscode-ws-jsonrpc）、DOM Inspector 源码定位（免认证端点 + WS 广播）、数据导入导出（ZIP 归档 + cc-switch 迁移）、用户设置管理能力。作为整个平台的核心运行时，管理 Workspace 生命周期、Issue/Task 状态机（含 Workflow DAG 依赖调度）、Agent 会话调度和数据持久化。
+Express 5 后端服务，提供 REST API、WebSocket 实时通信、认证中间件、六运行时 Agent 编排引擎（OpenAgentSdk / ClaudeCode / Codex / LangChain / Hermes / OhMyPi）、通用 AI 文本请求层（支持 Anthropic/OpenAI/Gemini 三种供应商）、AI 标题生成（频道/Issue 自动标题）、Workflow 系统（WorkFox DAG 执行引擎 + 校验/CRUD/Task 映射/Command 节点执行/运行时校验/触发器/交互管理/执行通道/Webhook Hook）、Plugin 插件系统（自定义 Workflow 节点类型 + CJS 沙箱加载 + Store 安装 + 配置管理 + 执行引擎集成 + Plugin Runtime API HTTP 请求封装）、Hook 系统（Agent 工具调用前后自定义钩子，shell/webhook/script 三种动作）、输出风格管理（OutputStyle 模板 CRUD + 运行时注入）、Anthropic Bridge 协议中转（7 文件子模块）、持久上下文加载（CLAUDE.md/AGENTS.md 自动注入）、通知中心（飞书 Lark + 企微 WeChat + Native 双适配器 + Bot Agent + 16 个内置斜杠命令）、应用内通知（NotificationCenter）、PTY 终端管理、文件系统操作、Git 操作（含 Clone SSE）、SQLite Agent Usage 统计与费用估算、LLM 模型/供应商管理、Agent Preset 管理、内置 Function Call 工具、Commit Agent（自动生成 conventional commit message）、Issue 评论与重试恢复、工具详情持久化、Agent SSE API（HTTP 流式调用）、代码搜索（ripgrep + Node.js 回退）、订阅管理（智谱/MiniMax/AICode 配额查询）、语音识别（腾讯语音 WebSocket 流式）、快捷命令（CRUD + 运行/停止/自动重启）、Agent Designer（AI 自动生成预设）、Skill/MCP 全局管理、Prompt 模板管理（CRUD + 批量应用）、代码收藏（CRUD + 按工作空间持久化）、TypeScript LSP 服务（typescript-language-server + vscode-ws-jsonrpc）、DOM Inspector 源码定位（免认证端点 + WS 广播）、数据导入导出（ZIP 归档 + cc-switch 迁移）、NPM 设置管理（registry/proxy 配置）、用户设置管理能力。作为整个平台的核心运行时，管理 Workspace 生命周期、Issue/Task 状态机（含 Workflow DAG 依赖调度）、Agent 会话调度和数据持久化。
 
 ## 入口与启动
 
@@ -12,7 +12,7 @@ Express 5 后端服务，提供 REST API、WebSocket 实时通信、认证中间
 - **启动命令**：`pnpm dev`（tsx watch 热重载）或 `pnpm start`（编译后运行）
 - **默认端口**：`3100`（可通过 `PORT` 环境变量修改）
 - **数据目录**：`~/.agent-spaces-data`（可通过 `AGENT_SPACES_DATA_DIR` 修改）
-- **启动流程**：Express 初始化 -> auth 中间件注册 -> 路由注册（含 workflow/command/search/subscription/speech-recognition/skill/mcp/notification/code-favorites/prompt-template/hooks/output-style/version/database/kanban/worktree/robot-account/agent-commands/plugin/chat） -> Inspector track 端点（免认证） -> HTTP Server 创建 -> WebSocket Server 创建（含 /ws + /ws/speech + /ws/lsp/typescript） -> 启动 Issue 重试恢复 -> 启动持久化通知服务
+- **启动流程**：Express 初始化 -> auth 中间件注册 -> 路由注册（含 workflow/command/search/subscription/speech-recognition/skill/mcp/notification/code-favorites/prompt-template/hooks/output-style/version/database/kanban/worktree/robot-account/agent-commands/plugin/chat/npm-settings） -> Inspector track 端点（免认证） -> HTTP Server 创建 -> WebSocket Server 创建（含 /ws + /ws/speech + /ws/lsp/typescript） -> 启动 Issue 重试恢复 -> 启动持久化通知服务
 
 ## 对外接口
 
@@ -32,6 +32,7 @@ Express 5 后端服务，提供 REST API、WebSocket 实时通信、认证中间
 | `/api/version` | GET | 当前版本信息（免认证） |
 | `/api/version/check` | GET | 检查最新版本（免认证） |
 | `/api/version/update` | POST | 触发自更新 |
+| `/api/npm-settings` | GET/PUT | NPM 设置（registry/proxy 配置） |
 | `/api/workspaces` | GET/POST | 列出/创建工作空间 |
 | `/api/workspaces/:id` | GET/PUT/DELETE | 获取/更新/删除工作空间 |
 | `/api/workspaces/:id/prompt` | GET/PUT | 读取/写入工作空间 Prompt（Markdown） |
@@ -250,6 +251,32 @@ Agent 工具调用前后的自定义钩子系统，per-tool-call 粒度。
 - **持久化**：`~/.agent-spaces-data/output-styles/meta.json`
 - **注入方式**：Agent 运行时通过 `resolveOutputStyleContent()` 将 content 拼接到 systemPrompt
 
+### NPM 设置管理
+
+NPM registry 和 proxy 配置管理。
+
+| 文件 | 职责 |
+|------|------|
+| `routes/npm-settings.ts` | NPM Settings REST API（GET/PUT），读写 registry 和 proxy 配置 |
+| `storage/npm-settings-store.ts` | NPM 设置持久化（`~/.agent-spaces-data/npm-settings.json`），默认 registry: `https://registry.npmmirror.com` |
+
+- **NpmSettings 类型**：registry（string）, proxy?（string）
+- **持久化**：`~/.agent-spaces-data/npm-settings.json`
+- **默认值**：`registry` 默认 `https://registry.npmmirror.com`
+
+### Plugin Runtime API
+
+为 Plugin 沙箱执行环境提供的 HTTP 请求封装层。
+
+| 文件 | 职责 |
+|------|------|
+| `services/plugin-runtime-api.ts` | `createBuiltinPluginApi()` 工厂函数，提供 HTTP 请求（GET/POST + TLS 隧道代理）+ 文件系统操作（read/write/edit/delete/list/stat/rename/copy） |
+
+- **HTTP 请求**：`fetchText` / `fetchJson` / `fetchBuffer` / `fetchBuffers` / `postJson`
+- **TLS 隧道**：支持 HTTPS 请求通过 HTTP CONNECT 代理隧道，含 Basic Auth 认证
+- **文件系统**：`writeFile` / `writeBinaryFile` / `readFile` / `editFile` / `deleteFile` / `listFiles` / `createDir` / `removeDir` / `stat` / `exists` / `rename` / `copyFile`
+- **模式匹配**：`matchPattern` 支持 `*` 和 `?` 通配符匹配文件名
+
 ### Workflow 系统
 
 Workflow 是 Issue 自动化的可视化 DAG 模板系统，替代旧硬编码 pipeline。
@@ -277,9 +304,9 @@ Workflow 自定义节点类型插件系统，支持 Store 安装、CJS 沙箱加
 - 支持 manifest 格式：`plugin.json` / `manifest.json` / `info.json` / `web-plugin.json` / `package.json`
 
 **Workflow 节点注册**：
-- `getWorkflowNodes(pluginId)` — 从 manifest.workflowNodes 或 entries.workflow 加载节点定义
-- `canExecuteWorkflowNode(nodeType)` — 检查节点是否可执行
-- `executeWorkflowNode(nodeType, data, config)` — 通过 vm.Script 沙箱执行插件节点
+- `getWorkflowNodes(pluginId)` -- 从 manifest.workflowNodes 或 entries.workflow 加载节点定义
+- `canExecuteWorkflowNode(nodeType)` -- 检查节点是否可执行
+- `executeWorkflowNode(nodeType, data, config)` -- 通过 vm.Script 沙箱执行插件节点
 
 **execution-manager 集成**（execution-manager.ts 第 611 行）：
 ```typescript
@@ -289,8 +316,8 @@ if (pluginService.canExecuteWorkflowNode(node.type)) {
 ```
 
 **配置加载**：
-- `loadPluginConfigs()` — 为执行会话加载插件配置
-- `getReferencedPluginIds()` — 从 Workflow 中提取引用的插件 ID
+- `loadPluginConfigs()` -- 为执行会话加载插件配置
+- `getReferencedPluginIds()` -- 从 Workflow 中提取引用的插件 ID
 - 支持全局配置 + Workflow 级别的配置方案（workflowStore.readPluginScheme）
 - 配置通过 `session.context.__config__` 注入执行环境
 
@@ -665,6 +692,7 @@ Issue 自动化入口重构:
 ```
 ~/.agent-spaces-data/
   auth.json                         # Secret Key 认证信息
+  npm-settings.json                 # NPM registry/proxy 配置
   agents/
     agents.sqlite                   # Agent Session + Usage（SQLite）
   workspaces/
@@ -785,6 +813,7 @@ packages/server/src/
     plugin.ts                     # Plugin 插件管理路由（list/workflow/store/enable/disable/config/workflow-nodes）
     chat.ts                       # Chat Agent REST API（CRUD + 消息 + 工作目录）
     chat-run.ts                   # Chat Agent SSE 流式执行（LangChain + 事件转发）
+    npm-settings.ts               # NPM Settings REST API（GET/PUT，registry/proxy 配置）
   services/
     workspace.ts                  # Workspace 服务（含 .agentspace 初始化）
     workspace-prompt.ts           # 工作空间 Prompt 读写服务（Markdown）
@@ -826,13 +855,14 @@ packages/server/src/
     ai-text.ts                    # 通用 AI 文本请求（Anthropic/OpenAI/Gemini 统一接口）
     generated-title.ts            # AI 标题生成调度（频道/Issue）
     version.ts                    # 版本检查 + 自更新脚本生成
-    execution-manager.ts           # WorkFox DAG 执行引擎（1393行，循环/分支/变量/断点/恢复 + Plugin 节点集成）
+    execution-manager.ts           # WorkFox DAG 执行引擎（1557行，循环/分支/变量/断点/恢复 + Plugin 节点集成）
     interaction-manager.ts         # 交互管理器（alert/prompt/form/table_confirm）
     workflow-trigger-service.ts    # Workflow 触发器（cron + webhook）
     worktree.ts                   # Worktree 服务（创建/删除/Diff/PR）
     robot-account.ts              # Robot Account 凭证服务
     agent-commands.ts             # Agent Commands 服务
     plugin.ts                     # Plugin 插件管理服务（安装/启用/禁用/配置/沙箱加载/节点注册）
+    plugin-runtime-api.ts         # Plugin Runtime API（HTTP 请求封装 + TLS 隧道代理 + 文件系统操作，createBuiltinPluginApi 工厂函数）
     chat.ts                       # Chat 服务层（Agent CRUD + 消息管理）
     database-vector.ts            # 文档向量搜索（Embedding 索引 + 相似度查询）
     kanban.ts                     # Kanban 看板服务
@@ -880,6 +910,7 @@ packages/server/src/
     worktree-store.ts             # Worktree 持久化
     robot-account-store.ts        # Robot Account 持久化
     chat-store.ts                 # Chat 持久化（per-agent 目录 JSON 存储）
+    npm-settings-store.ts         # NPM Settings 持久化（npm-settings.json，默认 registry: npmmirror）
     usage.ts                      # Token usage 输出文本解析
   adapters/
     git.ts                        # simple-git 封装（status, diff, log, clone, commit, push, pull）
@@ -959,11 +990,14 @@ packages/server/src/
 - **Q: 输出风格如何使用？** A: 通过 `POST /api/output-styles` 创建输出格式模板（Markdown），Agent 运行时通过 `resolveOutputStyleContent()` 将模板内容注入 systemPrompt。
 - **Q: AI 标题生成如何工作？** A: 频道创建和 Issue 创建时，后端异步调用 Title Generator Agent（使用 `requestAiText()`）生成标题，完成后通过 WebSocket 推送更新。
 - **Q: 通用 AI 文本请求层是什么？** A: `services/ai-text.ts` 提供统一的 `requestAiText()` 接口，自动路由 Anthropic/OpenAI/Gemini 三种供应商，供标题生成、Agent Designer 等功能使用。
+- **Q: NPM 设置如何配置？** A: 通过 `GET/PUT /api/npm-settings` 读取或更新 registry 和 proxy 配置，存储在 `~/.agent-spaces-data/npm-settings.json`，默认 registry 为 `https://registry.npmmirror.com`。
+- **Q: Plugin Runtime API 是什么？** A: `services/plugin-runtime-api.ts` 提供的 `createBuiltinPluginApi()` 工厂函数，为 Plugin 沙箱执行环境提供 HTTP 请求（含 TLS 隧道代理）和文件系统操作能力。
 
 ## 变更记录 (Changelog)
 
 | 时间 | 操作 | 说明 |
 |------|------|------|
+| 2026-06-07T19:26:50+08:00 | 增量更新 | **NPM 设置管理**（新增 routes/npm-settings.ts REST API + storage/npm-settings-store.ts 持久化，默认 registry: npmmirror）；**Plugin Runtime API**（新增 services/plugin-runtime-api.ts，createBuiltinPluginApi 工厂函数，HTTP 请求 + TLS 隧道代理 + 文件系统操作，303 行）；**execution-manager 增长**（1393->1557 行）；**文件数 165->168** |
 | 2026-06-05T19:44:59+08:00 | 增量更新 | **Chat 独立页面系统**（新增 routes/chat.ts Chat Agent REST API + routes/chat-run.ts LangChain SSE 流式执行 + services/chat.ts Chat 服务层 + storage/chat-store.ts per-agent 目录 JSON 持久化 + ws/chat-handler.ts WebSocket handler）；**Workflow 内置工具扩展**（新增 services/builtin-tools/workflow-exec-tools.ts Workflow 执行工具 + workflow-editor-tools.ts Workflow 编辑工具，Agent 可调用 Workflow 执行和编辑操作）；**文件数 158->165** |
 | 2026-06-04T23:38:49+08:00 | 增量更新 | **Plugin 插件系统**（新增 services/plugin.ts 299行，插件全生命周期管理 + CJS 沙箱加载 + 自定义 Workflow 节点注册与执行；新增 routes/plugin.ts，8 个 REST API 端点）；**execution-manager 扩展**（集成 Plugin 节点执行，canExecuteWorkflowNode/executeWorkflowNode，1393行）；**文件数 156->158** |
 | 2026-06-03T23:00:29+08:00 | 增量更新 | **WorkFox DAG 执行引擎**（新增 services/execution-manager.ts 1321行，支持循环/分支/变量/断点/恢复）；**交互管理器**（新增 services/interaction-manager.ts，alert/prompt/form/table_confirm 交互）；**Workflow 触发器**（新增 services/workflow-trigger-service.ts，cron + webhook 触发）；**执行通道**（新增 ws/execution-channels.ts，WebSocket 执行通道注册）；**Workflow Webhook Hook**（新增 routes/workflow-hook.ts，SSE 流式结果）；**数据导入导出**（新增 routes/data.ts + routes/import.ts，ZIP 归档 15+ 数据类别 + cc-switch 数据迁移）；**notification-hub 扩展**（新增 bot-commands.ts/events.ts/format.ts/helpers.ts 4 文件）；**新增 services/global-wechat-qr.ts/issue-retry.ts/workspace-prompt.ts**；**新增 ws/agent-prompt.ts**；**新增 storage/user-settings-store.ts**；**文件数 149->156** |

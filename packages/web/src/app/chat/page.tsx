@@ -212,6 +212,7 @@ export default function ChatPage() {
             agentId={activeAgent.id}
             agentName={activeAgent.name}
             agentAvatar={activeAgent.avatar}
+            agentDescription={activeAgent.description}
             messages={activeMessages}
             sending={isSending}
             error={activeError}
