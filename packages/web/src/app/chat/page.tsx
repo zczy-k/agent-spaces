@@ -146,15 +146,13 @@ export default function ChatPage() {
   const workspaceAgents = agents.filter((a) => workspaceAgentIds.has(a.id));
   const agentCandidates = workspaceAgents.map((a) => ({
     id: a.id,
-    name: a.name,
-    avatar: a.avatar || a.avatarUrl,
-    role: "agent" as const,
+    label: a.name,
+    description: a.description,
   }));
   const allAgentCandidates = agents.map((a) => ({
     id: a.id,
-    name: a.name,
-    avatar: a.avatar || a.avatarUrl,
-    role: "agent" as const,
+    label: a.name,
+    description: a.description,
   }));
 
   return (
