@@ -38,3 +38,12 @@
 ## 2026-06-07 23:18:33 CST
 
 - Changed `getAgentWorkspace()` to lazily create the chat agent default workspace directory when it is missing.
+
+## 2026-06-07 23:18:33 CST
+
+- Inspected the reported `messages.json`; confirmed tool timeline persistence exists but failed attempts were incorrectly marked as success.
+- Updated LangChain runtime to pass each built-in tool's real input schema to `tool()`.
+- Emitted `tool_result` events for function tool errors so UI and persisted timeline can show failed calls.
+- Changed final timeline normalization so still-running tool calls become error entries instead of success entries.
+- Made persisted tool call ids unique for new runs and made the restored timeline renderer tolerate old duplicate ids.
+- Render old `success` tool entries without a result as an error-like result in the UI.

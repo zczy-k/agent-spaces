@@ -4,7 +4,6 @@ import { MultiServerMCPClient } from '@langchain/mcp-adapters';
 import type { Connection } from '@langchain/mcp-adapters';
 import { createAgent, initChatModel, tool } from 'langchain';
 import type { CreateAgentParams } from 'langchain';
-import { z } from 'zod';
 import type {
   AgentFunctionTool,
   AgentRunOptions,
@@ -289,13 +288,14 @@ function buildLangChainTools(
         const message = err instanceof Error ? err.message : String(err);
         log(`tool error | source=function name=${runtimeTool.name} elapsedMs=${Date.now() - startedAt} error=${truncateForLog(message, 1000)}`);
         if (err instanceof Error && err.stack) console.error(err.stack);
+        options?.onEvent?.({ type: 'tool_result', toolUseId: runtimeTool.name, result: { success: false, error: message } });
         throw err;
       }
     },
     {
       name: runtimeTool.name,
       description: runtimeTool.description,
-      schema: z.object({}).passthrough(),
+      schema: runtimeTool.inputSchema,
     },
   )) as NonNullable<CreateAgentParams['tools']>;
 }

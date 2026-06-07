@@ -10,3 +10,5 @@
 - `useChatStore.handleChatRunEvent` did not consume `tool_use` / `tool_result`, so inline chat had no runtime tool timeline to render.
 - Chat run prompt history is built from `message.role` and `message.content` only, so adding timeline/toolCalls fields to messages does not include tool return data in the next request context.
 - `/api/chat/agents/:id/workspace/tree` returns 404 when `getAgentWorkspace()` sees a missing working directory. Chat agents use an internal default workspace path, so that directory should be lazily created if absent.
+- The inspected session messages show `timeline/toolCalls` are saved, but failed `WriteWorkspaceFile` attempts had no result and were marked `success`. LangChain function tools were exposed with `z.object({}).passthrough()`, so the model saw an empty schema instead of required `path/content`.
+- The inspected timeline also reused `WriteWorkspaceFile` as every tool call id, which can produce duplicate React keys when rendering restored history.

@@ -328,7 +328,7 @@ function writeRuntimeEvent(res: Response, event: AgentRuntimeEvent): void {
 function collectRuntimeTimeline(timeline: WorkflowAgentTimelineItem[], event: AgentRuntimeEvent): void {
   if (event.type === 'tool_use') {
     timeline.push({
-      id: event.id || `${event.name}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      id: `${event.name}-${timeline.length}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       type: 'tool',
       name: event.name,
       input: event.input,
@@ -372,7 +372,7 @@ function createTimelinePayload(timeline: WorkflowAgentTimelineItem[]): {
   if (!timeline.length) return {};
   const completedTimeline = timeline.map((item) => (
     item.type === 'tool' && item.status === 'running'
-      ? { ...item, status: 'success' as const }
+      ? { ...item, status: 'error' as const, result: { success: false, error: 'Tool did not return a result.' } }
       : item
   ));
   return {

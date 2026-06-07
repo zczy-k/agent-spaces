@@ -12,13 +12,14 @@ export function ChatToolTimeline({ timeline }: { timeline?: WorkflowAgentTimelin
 
   return (
     <div className="mt-2 flex w-full flex-col gap-1.5">
-      {timeline.map((item) => {
+      {timeline.map((item, index) => {
         if (item.type !== "tool") return null;
 
         const open = expanded[item.id];
-        const isError = item.status === "error";
+        const missingResult = item.status === "success" && item.result === undefined;
+        const isError = item.status === "error" || missingResult;
         return (
-          <div key={item.id} className="rounded-lg border bg-background/80 text-xs shadow-sm">
+          <div key={`${item.id}-${index}`} className="rounded-lg border bg-background/80 text-xs shadow-sm">
             <button
               type="button"
               className="flex w-full items-center gap-2 px-2.5 py-2 text-left"
@@ -39,6 +40,7 @@ export function ChatToolTimeline({ timeline }: { timeline?: WorkflowAgentTimelin
               <div className="border-t px-2.5 py-2">
                 <ToolJsonBlock label="Input" value={item.input} />
                 {item.result !== undefined ? <ToolJsonBlock label="Result" value={item.result} /> : null}
+                {missingResult ? <ToolJsonBlock label="Result" value={{ success: false, error: "Tool did not return a result." }} /> : null}
               </div>
             ) : null}
           </div>
