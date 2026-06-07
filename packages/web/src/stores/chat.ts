@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import type { StoreApi } from 'zustand';
 import { sdk } from '@/lib/sdk';
-import type { ChatAgent, ChatMessage } from '@agent-spaces/sdk';
+import type { ChatAgent, ChatMessage, ChatWorkspace, ChatSession } from '@agent-spaces/sdk';
 
 const activeChatRequests = new Map<string, AbortController>();
 type ChatSet = StoreApi<ChatStore>['setState'];
@@ -15,6 +15,11 @@ interface ChatStore {
   errors: Record<string, string>;
   streamingContent: Record<string, string>;
   streamingThinking: Record<string, string>;
+
+  workspaces: ChatWorkspace[];
+  activeWorkspaceId: string | null;
+  sessions: ChatSession[];
+  activeSessionId: string | null;
 
   loadAgents: () => Promise<void>;
   createAgent: (data: Omit<ChatAgent, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
@@ -31,6 +36,26 @@ interface ChatStore {
   onMessageSaved: (msg: ChatMessage) => void;
   onAgentCompleted: (agentId: string, message: ChatMessage) => void;
   onAgentError: (agentId: string, error: string) => void;
+
+  // Workspace
+  loadWorkspaces: () => Promise<void>;
+  createWorkspace: (name: string, agentIds?: string[]) => Promise<void>;
+  updateWorkspace: (id: string, data: { name?: string; agentIds?: string[] }) => Promise<void>;
+  deleteWorkspace: (id: string) => Promise<void>;
+  selectWorkspace: (id: string) => void;
+
+  // Session
+  loadSessions: (workspaceId: string) => Promise<void>;
+  createSession: (agentId: string) => Promise<string | null>;
+  deleteSession: (sessionId: string) => Promise<void>;
+  selectSession: (id: string) => void;
+
+  // Session messages
+  loadSessionMessages: (workspaceId: string, sessionId: string) => Promise<void>;
+  sendSessionMessage: (content: string) => void;
+  regenerateSessionMessage: (messageId: string) => void;
+  stopSession: () => void;
+  clearSessionMessages: () => void;
 }
 
 export const useChatStore = create<ChatStore>((set, get) => ({
@@ -41,6 +66,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   errors: {},
   streamingContent: {},
   streamingThinking: {},
+  workspaces: [],
+  activeWorkspaceId: null,
+  sessions: [],
+  activeSessionId: null,
 
   loadAgents: async () => {
     try {
@@ -125,6 +154,132 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     await sdk.chat.clearMessages(agentId);
     set((s) => ({
       messages: { ...s.messages, [agentId]: [] },
+    }));
+  },
+
+  // --- Workspace ---
+  loadWorkspaces: async () => {
+    try {
+      const workspaces = await sdk.chat.listWorkspaces();
+      set({ workspaces });
+      if (workspaces.length > 0 && !get().activeWorkspaceId) {
+        get().selectWorkspace(workspaces[0].id);
+      }
+    } catch { /* ignore */ }
+  },
+
+  createWorkspace: async (name, agentIds) => {
+    const ws = await sdk.chat.createWorkspace({ name, agentIds });
+    set((s) => ({ workspaces: [...s.workspaces, ws] }));
+  },
+
+  updateWorkspace: async (id, data) => {
+    const updated = await sdk.chat.updateWorkspace(id, data);
+    set((s) => ({
+      workspaces: s.workspaces.map(ws => ws.id === id ? updated : ws),
+    }));
+  },
+
+  deleteWorkspace: async (id) => {
+    await sdk.chat.deleteWorkspace(id);
+    set((s) => {
+      const workspaces = s.workspaces.filter(ws => ws.id !== id);
+      const activeWorkspaceId = s.activeWorkspaceId === id
+        ? (workspaces[0]?.id ?? null)
+        : s.activeWorkspaceId;
+      return { workspaces, activeWorkspaceId, sessions: [], activeSessionId: null };
+    });
+  },
+
+  selectWorkspace: (id) => {
+    set({ activeWorkspaceId: id, sessions: [], activeSessionId: null });
+    get().loadSessions(id);
+  },
+
+  // --- Session ---
+  loadSessions: async (workspaceId) => {
+    try {
+      const sessions = await sdk.chat.listSessions(workspaceId);
+      set({ sessions });
+    } catch { /* ignore */ }
+  },
+
+  createSession: async (agentId) => {
+    const wsId = get().activeWorkspaceId;
+    if (!wsId) return null;
+    const session = await sdk.chat.createSession(wsId, agentId);
+    if (!session) return null;
+    set((s) => ({
+      sessions: [session, ...s.sessions],
+      activeSessionId: session.id,
+    }));
+    return session.id;
+  },
+
+  deleteSession: async (sessionId) => {
+    const wsId = get().activeWorkspaceId;
+    if (!wsId) return;
+    await sdk.chat.deleteSession(wsId, sessionId);
+    set((s) => {
+      const sessions = s.sessions.filter(ses => ses.id !== sessionId);
+      const activeSessionId = s.activeSessionId === sessionId
+        ? (sessions[0]?.id ?? null)
+        : s.activeSessionId;
+      return { sessions, activeSessionId };
+    });
+  },
+
+  selectSession: (id) => {
+    set({ activeSessionId: id });
+    const wsId = get().activeWorkspaceId;
+    if (wsId) get().loadSessionMessages(wsId, id);
+  },
+
+  // --- Session Messages ---
+  loadSessionMessages: async (workspaceId, sessionId) => {
+    try {
+      const msgs = await sdk.chat.listSessionMessages(workspaceId, sessionId);
+      set((s) => ({ messages: { ...s.messages, [sessionId]: msgs } }));
+    } catch { /* ignore */ }
+  },
+
+  sendSessionMessage: async (content) => {
+    const { activeWorkspaceId: wsId, activeSessionId: sessionId, sessions } = get();
+    if (!wsId || !sessionId) return;
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) return;
+    if (get().sending[sessionId]) return;
+    await runSessionChat(wsId, sessionId, session.agentId, { content }, get, set);
+  },
+
+  regenerateSessionMessage: async (messageId) => {
+    const { activeWorkspaceId: wsId, activeSessionId: sessionId, sessions } = get();
+    if (!wsId || !sessionId) return;
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) return;
+    if (get().sending[sessionId]) return;
+    await runSessionChat(wsId, sessionId, session.agentId, { regenerateFromMessageId: messageId }, get, set);
+  },
+
+  stopSession: () => {
+    const { activeSessionId: sessionId } = get();
+    if (!sessionId) return;
+    activeChatRequests.get(sessionId)?.abort();
+    activeChatRequests.delete(sessionId);
+    set((s) => ({
+      sending: { ...s.sending, [sessionId]: false },
+      errors: { ...s.errors, [sessionId]: '' },
+      streamingContent: { ...s.streamingContent, [sessionId]: '' },
+      streamingThinking: { ...s.streamingThinking, [sessionId]: '' },
+    }));
+  },
+
+  clearSessionMessages: async () => {
+    const { activeWorkspaceId: wsId, activeSessionId: sessionId } = get();
+    if (!wsId || !sessionId) return;
+    await sdk.chat.clearSessionMessages(wsId, sessionId);
+    set((s) => ({
+      messages: { ...s.messages, [sessionId]: [] },
     }));
   },
 
@@ -303,4 +458,52 @@ function appendStreamingText(
       [agentId]: (s[key][agentId] ?? '') + chunk,
     },
   }));
+}
+
+async function runSessionChat(
+  workspaceId: string,
+  sessionId: string,
+  _agentId: string,
+  body: { content?: string; regenerateFromMessageId?: string },
+  get: () => ChatStore,
+  set: ChatSet,
+): Promise<void> {
+  const controller = new AbortController();
+  activeChatRequests.set(sessionId, controller);
+  set((s) => ({
+    sending: { ...s.sending, [sessionId]: true },
+    errors: { ...s.errors, [sessionId]: '' },
+    streamingContent: { ...s.streamingContent, [sessionId]: '' },
+    streamingThinking: { ...s.streamingThinking, [sessionId]: '' },
+  }));
+
+  try {
+    const response = await sdk.http.raw(`/api/chat/sessions/${sessionId}/run`, {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        Accept: 'text/event-stream',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ ...body, workspaceId }),
+    });
+
+    if (!response.ok || !response.body) {
+      get().onAgentError(sessionId, await response.text().catch(() => response.statusText));
+      return;
+    }
+
+    await readChatRunStream(sessionId, response.body, get, set);
+  } catch (err) {
+    if (!(err instanceof DOMException && err.name === 'AbortError')) {
+      get().onAgentError(sessionId, err instanceof Error ? err.message : String(err));
+    }
+  } finally {
+    if (activeChatRequests.get(sessionId) === controller) {
+      activeChatRequests.delete(sessionId);
+    }
+    set((s) => ({
+      sending: { ...s.sending, [sessionId]: false },
+    }));
+  }
 }
