@@ -1,15 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useChatStore } from "@/stores/chat";
+import { useChatStore, type ChatTab } from "@/stores/chat";
 import { ChatAgentList } from "@/components/chat/chat-agent-list";
 import { InlineChatPanel } from "@/components/chat/inline-chat-panel";
 import { ChatRightPanel } from "@/components/chat/chat-right-panel";
+import { ChatFileViewer } from "@/components/chat/chat-file-viewer";
 import { AddChatAgentDialog } from "@/components/chat/add-chat-agent-dialog";
 import { AddMemberDialog } from "@/components/chat/add-member-dialog";
 import { ChatAgentPickerDialog } from "@/components/chat/chat-agent-picker-dialog";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, FileIcon, X } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { FileIconImg } from "@/components/editor/file-icon";
 import type { ChatAgent } from "@agent-spaces/sdk";
 import type { AgentPreset } from "@/components/sidebar/agent-shared";
 
@@ -61,6 +64,11 @@ export default function ChatPage() {
     regenerateSessionMessage,
     stopSession,
     clearSessionMessages,
+    openFileTabs,
+    activeFileTabPath,
+    openChatFile,
+    closeChatFile,
+    setActiveFileTab,
   } = useChatStore();
 
   const [agentPickerOpen, setAgentPickerOpen] = useState(false);
@@ -79,13 +87,39 @@ export default function ChatPage() {
   const activeSession = sessions.find((s) => s.id === activeSessionId);
   const activeAgent = activeSession
     ? agents.find((a) => a.id === activeSession.agentId)
-    : undefined;
+    : activeFileTabPath
+      ? agents.find((a) => openFileTabs.some((f) => f.path === activeFileTabPath && f.agentId === a.id))
+      : undefined;
   const activeMessages = activeSessionId ? (messages[activeSessionId] ?? []) : [];
   const isSending = activeSessionId ? (sending[activeSessionId] ?? false) : false;
   const activeError = activeSessionId ? (errors[activeSessionId] ?? "") : "";
   const activeStreamingContent = activeSessionId ? (streamingContent[activeSessionId] ?? "") : "";
   const activeStreamingThinking = activeSessionId ? (streamingThinking[activeSessionId] ?? "") : "";
   const activeStreamingTimeline = activeSessionId ? (streamingTimeline[activeSessionId] ?? []) : [];
+
+  // Build tabs: sessions + open files
+  const tabs: ChatTab[] = useMemo(() => {
+    const sessionTabs: ChatTab[] = sessions
+      .filter((s) => !s.archived)
+      .map((s) => {
+        const agent = agents.find((a) => a.id === s.agentId);
+        return {
+          type: 'session' as const,
+          id: s.id,
+          label: s.title || agent?.name || 'Chat',
+          agentId: s.agentId,
+        };
+      });
+    const fileTabs: ChatTab[] = openFileTabs.map((f) => ({
+      type: 'file' as const,
+      id: `file:${f.path}`,
+      path: f.path,
+      name: f.name,
+    }));
+    return [...sessionTabs, ...fileTabs];
+  }, [sessions, agents, openFileTabs]);
+
+  const activeTabId = activeSessionId ?? (activeFileTabPath ? `file:${activeFileTabPath}` : null);
 
   useEffect(() => {
     loadAgents();
@@ -159,6 +193,38 @@ export default function ChatPage() {
     [createAgent]
   );
 
+  const handleTabClick = useCallback(
+    (tab: ChatTab) => {
+      if (tab.type === 'session') {
+        selectSession(tab.id);
+      } else {
+        setActiveFileTab(tab.path);
+      }
+    },
+    [selectSession, setActiveFileTab]
+  );
+
+  const handleTabClose = useCallback(
+    (e: React.MouseEvent, tab: ChatTab) => {
+      e.stopPropagation();
+      if (tab.type === 'session') {
+        archiveSession(tab.id);
+      } else {
+        closeChatFile(tab.path);
+      }
+    },
+    [archiveSession, closeChatFile]
+  );
+
+  const handleFileSelect = useCallback(
+    (path: string) => {
+      const agentId = activeAgent?.id ?? activeSession?.agentId;
+      if (!agentId) return;
+      openChatFile(agentId, path);
+    },
+    [activeAgent, activeSession, openChatFile]
+  );
+
   const workspaceAgentIds = new Set(activeWorkspace?.agentIds ?? []);
   const workspaceAgents = agents.filter((a) => workspaceAgentIds.has(a.id));
   const agentCandidates = workspaceAgents.map((a) => ({
@@ -166,6 +232,10 @@ export default function ChatPage() {
     label: a.name,
     description: a.description,
   }));
+
+  const activeFile = activeFileTabPath
+    ? openFileTabs.find((f) => f.path === activeFileTabPath)
+    : null;
 
   return (
     <ResizablePanelGroup
@@ -197,36 +267,77 @@ export default function ChatPage() {
       <ResizableHandle withHandle />
 
       <ResizablePanel id={PANEL_ID_CHAT} defaultSize="53%" minSize="35%">
-        <div className="flex h-full w-full rounded-xl border border-border/40 bg-background shadow-sm">
-          {activeAgent && activeSession ? (
-            <InlineChatPanel
-              agentId={activeAgent.id}
-              agentName={activeAgent.name}
-              agentAvatar={activeAgent.avatar}
-              agentIcon={activeAgent.icon}
-              agentDescription={activeAgent.description}
-              messages={activeMessages}
-              sending={isSending}
-              error={activeError}
-              streamingContent={activeStreamingContent}
-              streamingThinking={activeStreamingThinking}
-              streamingTimeline={activeStreamingTimeline}
-              archived={!!activeSession.archived}
-              onSend={handleSend}
-              onStop={stopSession}
-              onClearMessages={clearSessionMessages}
-              onRegenerate={handleRegenerate}
-              onEditAgent={(id) => {
-                const agent = agents.find((a) => a.id === id);
-                if (agent) setEditAgent(agent);
-              }}
-            />
-          ) : (
-            <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-muted-foreground">
-              <MessageSquare className="size-12" />
-              <p className="text-sm">Select a session or start a new chat</p>
+        <div className="flex h-full w-full flex-col rounded-xl border border-border/40 bg-background shadow-sm">
+          {/* Tab bar */}
+          {tabs.length > 0 && (
+            <div className="flex items-center border-b bg-muted/30 overflow-x-auto shrink-0">
+              {tabs.map((tab) => {
+                const isActive = activeTabId === (tab.type === 'session' ? tab.id : tab.id);
+                return (
+                  <div
+                    key={tab.id}
+                    className={cn(
+                      "flex items-center gap-1 px-3 py-1.5 text-xs border-r cursor-pointer shrink-0 select-none",
+                      isActive
+                        ? "bg-background text-foreground border-b-2 border-b-primary"
+                        : "text-muted-foreground hover:bg-accent"
+                    )}
+                    onClick={() => handleTabClick(tab)}
+                  >
+                    {tab.type === 'session' ? (
+                      <MessageSquare className="size-3 shrink-0" />
+                    ) : (
+                      <FileIconImg name={tab.name} />
+                    )}
+                    <span className="truncate max-w-28">
+                      {tab.type === 'session' ? tab.label : tab.name}
+                    </span>
+                    <button
+                      className="ml-1 hover:bg-accent rounded p-0.5"
+                      onClick={(e) => handleTabClose(e, tab)}
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
+
+          {/* Tab content */}
+          <div className="min-h-0 flex-1">
+            {activeSession && activeAgent ? (
+              <InlineChatPanel
+                agentId={activeAgent.id}
+                agentName={activeAgent.name}
+                agentAvatar={activeAgent.avatar}
+                agentIcon={activeAgent.icon}
+                agentDescription={activeAgent.description}
+                messages={activeMessages}
+                sending={isSending}
+                error={activeError}
+                streamingContent={activeStreamingContent}
+                streamingThinking={activeStreamingThinking}
+                streamingTimeline={activeStreamingTimeline}
+                archived={!!activeSession.archived}
+                onSend={handleSend}
+                onStop={stopSession}
+                onClearMessages={clearSessionMessages}
+                onRegenerate={handleRegenerate}
+                onEditAgent={(id) => {
+                  const agent = agents.find((a) => a.id === id);
+                  if (agent) setEditAgent(agent);
+                }}
+              />
+            ) : activeFile ? (
+              <ChatFileViewer path={activeFile.path} content={activeFile.content} />
+            ) : (
+              <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-muted-foreground">
+                <MessageSquare className="size-12" />
+                <p className="text-sm">Select a session or start a new chat</p>
+              </div>
+            )}
+          </div>
         </div>
       </ResizablePanel>
 
@@ -234,7 +345,7 @@ export default function ChatPage() {
         <>
           <ResizableHandle withHandle />
           <ResizablePanel id={PANEL_ID_RIGHT} defaultSize="25%" minSize="18%" maxSize="40%" collapsible>
-            <ChatRightPanel agentId={activeAgent.id} />
+            <ChatRightPanel agentId={activeAgent.id} onFileSelect={handleFileSelect} />
           </ResizablePanel>
         </>
       )}

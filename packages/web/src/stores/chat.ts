@@ -5,6 +5,17 @@ import { sdk } from '@/lib/sdk';
 import type { ChatAgent, ChatMessage, ChatWorkspace, ChatSession } from '@agent-spaces/sdk';
 import type { WorkflowAgentTimelineItem } from '@agent-spaces/shared';
 
+export interface ChatFileTab {
+  path: string;
+  name: string;
+  content: string;
+  agentId: string;
+}
+
+export type ChatTab =
+  | { type: 'session'; id: string; label: string; agentId: string }
+  | { type: 'file'; id: string; path: string; name: string };
+
 const activeChatRequests = new Map<string, AbortController>();
 type ChatSet = StoreApi<ChatStore>['setState'];
 
@@ -60,6 +71,13 @@ interface ChatStore {
   regenerateSessionMessage: (messageId: string) => void;
   stopSession: () => void;
   clearSessionMessages: () => void;
+
+  // File tabs
+  openFileTabs: ChatFileTab[];
+  activeFileTabPath: string | null;
+  openChatFile: (agentId: string, path: string) => Promise<void>;
+  closeChatFile: (path: string) => void;
+  setActiveFileTab: (path: string | null) => void;
 }
 
 export const useChatStore = create<ChatStore>((set, get) => ({
@@ -75,6 +93,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   activeWorkspaceId: null,
   sessions: [],
   activeSessionId: null,
+
+  openFileTabs: [],
+  activeFileTabPath: null,
 
   loadAgents: async () => {
     try {
@@ -342,6 +363,38 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingThinking: { ...s.streamingThinking, [agentId]: '' },
       streamingTimeline: { ...s.streamingTimeline, [agentId]: [] },
     }));
+  },
+
+  // --- File Tabs ---
+  openChatFile: async (agentId, path) => {
+    const existing = get().openFileTabs.find((f) => f.path === path && f.agentId === agentId);
+    if (existing) {
+      set({ activeFileTabPath: path, activeSessionId: null });
+      return;
+    }
+    try {
+      const result = await sdk.chat.workspaceFileContent(agentId, path);
+      const name = path.split('/').pop() || path;
+      set((s) => ({
+        openFileTabs: [...s.openFileTabs, { path, name, content: result.content, agentId }],
+        activeFileTabPath: path,
+        activeSessionId: null,
+      }));
+    } catch { /* ignore */ }
+  },
+
+  closeChatFile: (path) => {
+    set((s) => {
+      const openFileTabs = s.openFileTabs.filter((f) => f.path !== path);
+      const activeFileTabPath = s.activeFileTabPath === path
+        ? (openFileTabs[openFileTabs.length - 1]?.path ?? null)
+        : s.activeFileTabPath;
+      return { openFileTabs, activeFileTabPath };
+    });
+  },
+
+  setActiveFileTab: (path) => {
+    set({ activeFileTabPath: path, activeSessionId: null });
   },
 }));
 

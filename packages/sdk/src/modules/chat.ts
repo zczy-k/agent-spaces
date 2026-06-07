@@ -96,6 +96,9 @@ export function createChatApi(http: { get: Function; post: Function; put: Functi
       return http.get(`/api/chat/agents/${agentId}/workspace/tree${qs.size ? `?${qs}` : ''}`);
     },
 
+    workspaceFileContent: (agentId: string, path: string): Promise<{ content: string; encoding: string }> =>
+      http.get(`/api/chat/agents/${agentId}/workspace/content?path=${encodeURIComponent(path)}`),
+
     // Workspace CRUD
     listWorkspaces: (): Promise<ChatWorkspace[]> =>
       http.get('/api/chat/workspaces'),

@@ -11,6 +11,7 @@ import { useChatStore } from "@/stores/chat";
 
 interface ChatRightPanelProps {
   agentId?: string;
+  onFileSelect?: (path: string) => void;
 }
 
 function filterTree(nodes: FileNode[], query: string): FileNode[] {
@@ -29,7 +30,7 @@ function filterTree(nodes: FileNode[], query: string): FileNode[] {
   }, []);
 }
 
-export function ChatRightPanel({ agentId }: ChatRightPanelProps) {
+export function ChatRightPanel({ agentId, onFileSelect }: ChatRightPanelProps) {
   const t = useTranslations('chat.rightPanel');
   const [tree, setTree] = useState<FileNode[]>([]);
   const [loading, setLoading] = useState(false);
@@ -101,6 +102,8 @@ export function ChatRightPanel({ agentId }: ChatRightPanelProps) {
           <FileTree
             expanded={expanded}
             onExpandedChange={setExpanded}
+            selectedPath={undefined}
+            onFileSelect={onFileSelect}
             workspaceId={workspaceTreeId}
             boundDir={boundDir}
             className="h-full"

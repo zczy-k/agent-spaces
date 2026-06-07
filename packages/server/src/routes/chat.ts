@@ -293,6 +293,31 @@ router.get('/agents/:id/workspace/tree', async (req, res) => {
   }
 });
 
+// GET /api/chat/agents/:id/workspace/content - read chat agent file content
+router.get('/agents/:id/workspace/content', async (req, res) => {
+  const { id } = req.params;
+  const path = typeof req.query.path === 'string' ? req.query.path : '';
+  if (!id || !path) {
+    res.status(400).json({ error: 'id and path are required' });
+    return;
+  }
+  try {
+    const workspace = svc.getAgentWorkspace(id);
+    if (!workspace) {
+      res.status(404).json({ error: 'Agent workspace not found' });
+      return;
+    }
+    const result = await fileService.readFileContent(workspace, path);
+    if (!result) {
+      res.status(404).json({ error: 'File not found' });
+      return;
+    }
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 function stringValue(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
