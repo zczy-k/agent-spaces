@@ -419,9 +419,16 @@ function handleChatRunEvent(
   if (!payload) return;
 
   switch (payload.event) {
-    case 'message_saved':
-      get().onMessageSaved(payload.data as ChatMessage);
+    case 'message_saved': {
+      const msg = payload.data as ChatMessage;
+      set((s) => ({
+        messages: {
+          ...s.messages,
+          [agentId]: [...(s.messages[agentId] ?? []), msg],
+        },
+      }));
       break;
+    }
     case 'output': {
       const data = payload.data as { chunk?: string };
       appendStreamingText(set, 'streamingContent', agentId, data.chunk);
@@ -434,12 +441,28 @@ function handleChatRunEvent(
     }
     case 'completed': {
       const data = payload.data as { message?: ChatMessage };
-      if (data.message) get().onAgentCompleted(agentId, data.message);
+      if (data.message) {
+        set((s) => ({
+          messages: {
+            ...s.messages,
+            [agentId]: [...(s.messages[agentId] ?? []), data.message!],
+          },
+          sending: { ...s.sending, [agentId]: false },
+          errors: { ...s.errors, [agentId]: '' },
+          streamingContent: { ...s.streamingContent, [agentId]: '' },
+          streamingThinking: { ...s.streamingThinking, [agentId]: '' },
+        }));
+      }
       break;
     }
     case 'error': {
       const data = payload.data as { error?: string };
-      get().onAgentError(agentId, data.error ?? 'Chat run failed');
+      set((s) => ({
+        sending: { ...s.sending, [agentId]: false },
+        errors: { ...s.errors, [agentId]: data.error ?? 'Chat run failed' },
+        streamingContent: { ...s.streamingContent, [agentId]: '' },
+        streamingThinking: { ...s.streamingThinking, [agentId]: '' },
+      }));
       break;
     }
   }
