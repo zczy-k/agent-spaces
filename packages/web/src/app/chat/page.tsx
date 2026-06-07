@@ -7,6 +7,7 @@ import { InlineChatPanel } from "@/components/chat/inline-chat-panel";
 import { ChatRightPanel } from "@/components/chat/chat-right-panel";
 import { AddChatAgentDialog } from "@/components/chat/add-chat-agent-dialog";
 import { AddMemberDialog } from "@/components/chat/add-member-dialog";
+import { ChatAgentPickerDialog } from "@/components/chat/chat-agent-picker-dialog";
 import { MessageSquare } from "lucide-react";
 import type { ChatAgent } from "@agent-spaces/sdk";
 import type { AgentPreset } from "@/components/sidebar/agent-shared";
@@ -93,17 +94,6 @@ export default function ChatPage() {
     [activeWorkspaceId, createSession]
   );
 
-  const handleMemberAdd = useCallback(
-    async (agentIds: string[]) => {
-      if (!activeWorkspaceId) return;
-      await updateWorkspace(activeWorkspaceId, {
-        agentIds: [...(activeWorkspace?.agentIds ?? []), ...agentIds],
-      });
-      setMemberDialogOpen(false);
-    },
-    [activeWorkspaceId, activeWorkspace, updateWorkspace]
-  );
-
   const handleCreateWorkspace = useCallback(async () => {
     if (!newWorkspaceName.trim()) return;
     await createWorkspace(newWorkspaceName.trim());
@@ -149,12 +139,6 @@ export default function ChatPage() {
     label: a.name,
     description: a.description,
   }));
-  const allAgentCandidates = agents.map((a) => ({
-    id: a.id,
-    label: a.name,
-    description: a.description,
-  }));
-
   return (
     <div className="flex h-full gap-4 bg-muted/30 p-2">
       <ChatAgentList
@@ -217,12 +201,27 @@ export default function ChatPage() {
       />
 
       {/* Manage workspace agents */}
-      <AddMemberDialog
+      <ChatAgentPickerDialog
         open={memberDialogOpen}
         onOpenChange={setMemberDialogOpen}
-        candidates={allAgentCandidates}
-        defaultSelected={activeWorkspace?.agentIds}
-        onAdd={handleMemberAdd}
+        chatAgents={agents}
+        selectedAgentIds={new Set(activeWorkspace?.agentIds ?? [])}
+        onAdd={handleAddAgent}
+        onAddToChat={(id) => {
+          if (!activeWorkspaceId) return;
+          updateWorkspace(activeWorkspaceId, {
+            agentIds: [...(activeWorkspace?.agentIds ?? []), id],
+          });
+        }}
+        onRemoveFromChat={(id) => {
+          if (!activeWorkspaceId) return;
+          updateWorkspace(activeWorkspaceId, {
+            agentIds: (activeWorkspace?.agentIds ?? []).filter((aid) => aid !== id),
+          });
+        }}
+        onRemoveAgent={deleteAgent}
+        onEditAgent={(agent) => setEditAgent(agent)}
+        onCreate={() => setCreateAgentOpen(true)}
       />
 
       {/* Edit Agent Dialog */}
