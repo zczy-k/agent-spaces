@@ -108,7 +108,7 @@ export function useWorkflowEditorAgentChat({
   }, []);
 
   const appendTimelineTextItem = useCallback((messageId: string, type: 'message' | 'thinking', content: string) => {
-    const text = type === 'thinking' ? content : content.trim();
+    const text = type === 'thinking' ? content : content;
     if (!text) return;
     setAgentMessages((messages) => messages.map((message) => {
       if (message.id !== messageId) return message;
@@ -130,7 +130,7 @@ export function useWorkflowEditorAgentChat({
 
       const latest = timeline.at(-1);
       if (latest?.type === type) {
-        timeline[timeline.length - 1] = { ...latest, content: `${latest.content}\n${text}` };
+        timeline[timeline.length - 1] = { ...latest, content: `${latest.content}${text}` };
       } else {
         timeline.push({
           id: `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,

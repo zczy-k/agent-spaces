@@ -1,68 +1,46 @@
-# Task Plan: Workflow Agent Node IO Field Parity
+# Task Plan: Preview Node Execution Result Entry
 
 ## Goal
-Fix the migrated workflow agent execution capability for adding input/output fields to nodes, using the current log and WorkFox source as parity references.
+Restore the WorkFox-style node-level execution result entry in Agent Spaces web preview mode: after selecting an execution history record, each node with an execution result should show a bottom-right icon that opens a floating detail view for that node's input, output, error, and logs.
 
 ## Current Phase
-Complete
+Delivery
 
 ## Phases
 
 ### Phase 1: Requirements & Discovery
-- [x] Inspect current workflow editor tool implementation
-- [x] Inspect WorkFox reference implementation
-- [x] Inspect failing chat log for exact tool calls/results
+- [x] Inspect current workflow node rendering and canvas log propagation
+- [x] Inspect WorkFox `CustomNodeWrapper.vue` execution result behavior
 - **Status:** complete
 
 ### Phase 2: Diagnosis
-- [x] Identify mismatch in add input/output field behavior
-- [x] Determine minimal compatible fix
+- [x] Current canvas only injects running state, not per-node execution step data
+- [x] Current node has no preview result popover/icon
 - **Status:** complete
 
 ### Phase 3: Implementation
-- [x] Patch current implementation
-- [x] Keep changes scoped to workflow agent tool behavior
+- [x] Inject per-node execution step into React Flow node data
+- [x] Add preview result icon and hover card to workflow node
+- [x] Keep edit/drag interactions locked in preview mode
 - **Status:** complete
 
 ### Phase 4: Verification
-- [x] Run focused tests/build/typecheck as available
-- [x] Add smoke coverage if practical
+- [x] Run focused lint/diff checks
+- [x] Record full typecheck blockers if still unrelated
 - **Status:** complete
 
 ### Phase 5: Delivery
-- [x] Summarize changes and verification
-- **Status:** complete
-
-### Phase 6: Follow-up Failure Fix
-- [x] Inspect latest failed chat log
-- [x] Patch tool parameter compatibility
-- [x] Verify update_node JSON-string data path
-- **Status:** complete
-
-### Phase 7: set_node_io_fields Fields Compatibility
-- [x] Inspect latest `set_node_io_fields` failure
-- [x] Accept JSON-string `fields`
-- [x] Verify log-shaped `set_node_io_fields` call
-- **Status:** complete
-
-### Phase 8: Start Input Reference Semantics
-- [x] Verify runtime source for start-node input fields
-- [x] Update workflow agent guidance to use `__data__` for start inputs
-- [x] Preserve compatibility for existing `__inputs__` expressions
-- **Status:** complete
+- [ ] Summarize changes and verification
+- **Status:** in_progress
 
 ## Decisions Made
 | Decision | Rationale |
 |----------|-----------|
-| Reset planning files for this task | Existing plan files were for a completed node search parity task |
-| Add a dedicated `set_node_io_fields` workflow editor tool | The log showed the agent lacked a direct, schema-guided way to add node input/output fields |
-| Accept string boolean values for `summarize` | The log showed the model passed `"false"` and got a summary instead of full node data |
-| Make generic `update_node` more forgiving | Latest log shows the agent still used `update_node` with `id` and JSON-string `data`; rejecting/dropping those makes the edit fail despite a success response |
-| Make `set_node_io_fields.fields` forgiving too | Latest log shows the agent sends `fields` as a JSON-string array |
-| Start-node runtime input should be referenced through `__data__` | Execution stores start node result in `__data__`; the UI's workflow input picker already emits `__data__` |
+| Show the icon only in preview mode | User specifically reported the missing preview-mode affordance |
+| Use existing `JsonViewer` and `HoverCard` components | Matches local UI primitives and the requested hover behavior |
+| Inject `executionStep` from `WorkflowCanvas` | Keeps `WorkflowNode` rendering independent from execution log lookup |
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
 |-------|---------|------------|
-| TypeScript cast warning in `summarizeOutputFields` | First build after patch | Removed unnecessary `JsonRecord` casts and read typed `OutputField` properties directly |
-| `set_node_io_fields` returned `fields must be an array` | Latest chat log replay | Added JSON array string parsing for `fields` |
+| Browser plugin returned `iab` unavailable | 1 | Recorded limitation; relied on focused lint/diff checks |

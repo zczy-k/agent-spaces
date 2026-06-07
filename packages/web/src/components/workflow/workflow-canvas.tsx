@@ -18,7 +18,7 @@ import {
   type OnConnectStart,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import type { ExecutionLog, Workflow } from '@agent-spaces/shared';
+import type { ExecutionLog, Workflow, ExecutionStep } from '@agent-spaces/shared';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -215,6 +215,14 @@ export function WorkflowCanvas({
     return { running, completed };
   }, [executionLog]);
 
+  const executionStepByNodeId = useMemo(() => {
+    const steps = new Map<string, ExecutionStep>();
+    for (const step of executionLog?.steps || []) {
+      steps.set(step.nodeId, step);
+    }
+    return steps;
+  }, [executionLog]);
+
   // Convert Workflow nodes/edges to ReactFlow format
   const rfNodes: Node[] = useMemo(() =>
     workflow.nodes.map(n => {
@@ -243,10 +251,11 @@ export function WorkflowCanvas({
           width,
           height,
           isRunning: executionNodeIds.running.has(n.id),
+          executionStep: executionStepByNodeId.get(n.id),
         } as Record<string, unknown>,
       };
     }),
-    [workflow.nodes, selectedNodeIdSet, isPreview, isCanvasLocked, executionNodeIds],
+    [workflow.nodes, selectedNodeIdSet, isPreview, isCanvasLocked, executionNodeIds, executionStepByNodeId],
   );
 
   React.useEffect(() => {

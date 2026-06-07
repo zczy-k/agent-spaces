@@ -4,9 +4,10 @@ import { useState } from 'react';
 import type { WorkflowTimelineItem } from './workflow-editor-agent-utils';
 import { cn } from '@/lib/utils';
 import { JsonViewer } from '@/components/viewers/json-viewer';
+import { Markdown } from '@/components/ui/markdown';
 import { Loader2, AlertCircle, CheckCircle2, ChevronDown, Wrench } from 'lucide-react';
 
-export function WorkflowAgentTimeline({ timeline }: { timeline?: WorkflowTimelineItem[] }) {
+export function WorkflowAgentTimeline({ timeline, workspaceId }: { timeline?: WorkflowTimelineItem[]; workspaceId?: string }) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   if (!timeline?.length) return null;
 
@@ -17,7 +18,7 @@ export function WorkflowAgentTimeline({ timeline }: { timeline?: WorkflowTimelin
           return <WorkflowAgentThinkingCard key={item.id} item={item} expanded={Boolean(expanded[item.id])} onToggle={() => setExpanded((state) => ({ ...state, [item.id]: !state[item.id] }))} />;
         }
         if (item.type === 'message') {
-          return <WorkflowAgentMessageCard key={item.id} item={item} />;
+          return <WorkflowAgentMessageCard key={item.id} item={item} workspaceId={workspaceId} />;
         }
         const open = expanded[item.id];
         const isError = item.status === 'error';
@@ -52,10 +53,10 @@ export function WorkflowAgentTimeline({ timeline }: { timeline?: WorkflowTimelin
   );
 }
 
-function WorkflowAgentMessageCard({ item }: { item: Extract<WorkflowTimelineItem, { type: 'message' }> }) {
+function WorkflowAgentMessageCard({ item, workspaceId }: { item: Extract<WorkflowTimelineItem, { type: 'message' }>; workspaceId?: string }) {
   return (
-    <div className="whitespace-pre-wrap break-words rounded-lg border bg-muted/50 px-2.5 py-2 text-xs leading-relaxed shadow-sm">
-      {item.content}
+    <div className="rounded-lg border bg-muted/50 px-2.5 py-2 text-xs leading-relaxed shadow-sm">
+      <Markdown content={item.content} workspaceId={workspaceId} />
     </div>
   );
 }

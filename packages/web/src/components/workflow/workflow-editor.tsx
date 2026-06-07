@@ -432,7 +432,7 @@ function WorkflowEditorInner({
             : null
         )}
         renderMessageExtras={(message) => (
-          <WorkflowAgentTimeline timeline={getWorkflowAgentTimeline(message as WorkflowAgentChatMessage)} />
+          <WorkflowAgentTimeline timeline={getWorkflowAgentTimeline(message as WorkflowAgentChatMessage)} workspaceId={workspaceId} />
         )}
         serializeForCopy={(message) => {
           const m = message as WorkflowAgentChatMessage;

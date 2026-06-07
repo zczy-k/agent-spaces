@@ -3,10 +3,16 @@
 import React, { useState, useMemo, useCallback, useRef, useSyncExternalStore } from 'react';
 import { Handle, NodeResizer, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
-import { X, Play } from 'lucide-react';
+import { AlertCircle, CheckCircle, FileText, Play, X, XCircle } from 'lucide-react';
 import { getNodeDefinition, getPluginNodesVersion, subscribePluginNodesVersion } from '@/lib/workflow-nodes';
-import { LOOP_BODY_NODE_TYPE, LOOP_BODY_SOURCE_HANDLE } from '@agent-spaces/shared';
+import { LOOP_BODY_NODE_TYPE, LOOP_BODY_SOURCE_HANDLE, type ExecutionStep } from '@agent-spaces/shared';
 import { BorderGlide } from '@/components/ui/border-glide';
+import {
+  HoverCard, HoverCardContent, HoverCardTrigger,
+} from '@/components/ui/hover-card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { JsonViewer } from '@/components/viewers/json-viewer';
+import { cn } from '@/lib/utils';
 import { WorkflowNodeDefinitionIcon } from './workflow-node-icon';
 
 const HEADER_HEIGHT = 33;
@@ -21,6 +27,7 @@ type WorkflowNodeData = Record<string, unknown> & {
   isPreview?: boolean;
   isCanvasLocked?: boolean;
   isRunning?: boolean;
+  executionStep?: ExecutionStep;
 };
 
 type WorkflowCustomViewProps = {
@@ -32,6 +39,125 @@ type PluginNodeDefinitionMeta = {
   pluginId?: string;
   pluginIconPath?: string;
 };
+
+function formatDuration(start: number, end?: number): string {
+  const ms = Math.max(0, (end || Date.now()) - start);
+  if (ms < 1000) return `${ms}ms`;
+  return `${(ms / 1000).toFixed(1)}s`;
+}
+
+function PlainValue({ value, empty }: { value: unknown; empty: string }) {
+  if (value === undefined || value === null || value === '') {
+    return <div className="text-[10px] text-muted-foreground">{empty}</div>;
+  }
+  if (typeof value === 'object') {
+    return (
+      <JsonViewer
+        data={value as Parameters<typeof JsonViewer>[0]['data']}
+        className="max-h-36 overflow-auto rounded-md border border-border bg-background text-[10px] shadow-none"
+        defaultExpanded={2}
+      />
+    );
+  }
+  return (
+    <pre className="max-h-32 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted/50 p-2 text-[10px]">
+      {String(value)}
+    </pre>
+  );
+}
+
+function ExecutionResultHoverCard({ step, visible }: { step: ExecutionStep; visible: boolean }) {
+  const isError = step.status === 'error';
+  const hasLogs = (step.logs || []).length > 0;
+
+  return (
+    <HoverCard openDelay={100} closeDelay={150}>
+      <HoverCardTrigger
+        render={(
+          <button
+            type="button"
+            className={cn(
+              'nodrag nopan absolute -bottom-2 -right-2 z-30 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm transition-opacity hover:bg-muted hover:text-foreground',
+              visible ? 'opacity-100' : 'opacity-0',
+              isError && 'text-destructive hover:text-destructive',
+            )}
+            onClick={(event) => event.stopPropagation()}
+            aria-label="查看执行结果"
+            title="查看执行结果"
+          />
+        )}
+      >
+        {isError ? <XCircle className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
+      </HoverCardTrigger>
+      <HoverCardContent
+        side="bottom"
+        sideOffset={8}
+        align="end"
+        className="nodrag nopan w-80 gap-0 overflow-hidden p-0"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-center gap-2 border-b border-border px-3 py-2">
+          {isError ? (
+            <XCircle className="h-3.5 w-3.5 shrink-0 text-destructive" />
+          ) : (
+            <CheckCircle className="h-3.5 w-3.5 shrink-0 text-green-500" />
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-xs font-medium">执行结果</div>
+            <div className="text-[10px] text-muted-foreground">
+              {step.status}{step.finishedAt ? ` · ${formatDuration(step.startedAt, step.finishedAt)}` : ''}
+            </div>
+          </div>
+        </div>
+
+        <ScrollArea className="max-h-[420px]">
+          <div className="space-y-3 p-3">
+            {step.error ? (
+              <div className="flex gap-1.5 rounded-md bg-destructive/10 p-2 text-[10px] text-destructive">
+                <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" />
+                <span className="break-all">{step.error}</span>
+              </div>
+            ) : null}
+
+            <section className="space-y-1.5">
+              <div className="text-[10px] font-medium text-muted-foreground">输出</div>
+              <PlainValue value={step.output} empty="无输出" />
+            </section>
+
+            <section className="space-y-1.5">
+              <div className="text-[10px] font-medium text-muted-foreground">日志</div>
+              {hasLogs ? (
+                <div className="space-y-1">
+                  {step.logs!.map((entry, index) => (
+                    <div
+                      key={`${entry.timestamp}-${index}`}
+                      className={cn(
+                        'rounded px-2 py-1 text-[10px]',
+                        entry.level === 'error' && 'bg-destructive/10 text-destructive',
+                        entry.level === 'warning' && 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-300',
+                        entry.level === 'info' && 'bg-blue-500/10 text-blue-700 dark:text-blue-300',
+                      )}
+                    >
+                      <span className="font-medium">{entry.level}</span>
+                      <span className="ml-1 break-all">{entry.message}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-[10px] text-muted-foreground">无日志</div>
+              )}
+            </section>
+
+            <section className="space-y-1.5">
+              <div className="text-[10px] font-medium text-muted-foreground">输入</div>
+              <PlainValue value={step.input} empty="无输入" />
+            </section>
+          </div>
+        </ScrollArea>
+      </HoverCardContent>
+    </HoverCard>
+  );
+}
 
 export function WorkflowNode({ id, data, type, selected }: NodeProps) {
   const nodeData = data as WorkflowNodeData;
@@ -204,9 +330,17 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
   }, [editLabel, displayLabel, id, isCanvasLocked]);
 
   // Execution status is injected by WorkflowCanvas from the current execution log.
-  const nodeStatus = nodeData.isRunning ? 'running' : 'idle';
+  const executionStep = nodeData.executionStep;
+  const nodeStatus = nodeData.isRunning ? 'running' : executionStep?.status || 'idle';
+  const hasPreviewExecutionResult = !!nodeData.isPreview
+    && !!executionStep
+    && (executionStep.status === 'completed' || executionStep.status === 'error');
   const statusColor = nodeStatus === 'running'
     ? 'border-blue-500 shadow-blue-500/30 shadow-md'
+    : nodeStatus === 'completed'
+      ? 'border-green-500/70 shadow-green-500/15 shadow-sm'
+      : nodeStatus === 'error'
+        ? 'border-destructive/70 shadow-destructive/15 shadow-sm'
     : 'border-border';
 
   // Node delete via custom event
@@ -291,6 +425,10 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
             <X className="w-3 h-3" />
           </button>
         )}
+
+        {hasPreviewExecutionResult && executionStep ? (
+          <ExecutionResultHoverCard step={executionStep} visible={isHovered || selected} />
+        ) : null}
 
         {/* Header */}
         {!isLoopBody && !CustomView && (
