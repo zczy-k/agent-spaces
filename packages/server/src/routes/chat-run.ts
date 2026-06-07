@@ -1,5 +1,5 @@
 import { Router, type Response } from 'express';
-import type { BuiltInAgentToolName } from '@agent-spaces/shared';
+import type { BuiltInAgentToolName, WorkflowAgentTimelineItem, WorkflowAgentToolCall } from '@agent-spaces/shared';
 import * as chatService from '../services/chat.js';
 import * as agentService from '../services/agent.js';
 import { LangChainRuntime } from '../adapters/langchain-runtime.js';
@@ -81,6 +81,7 @@ router.post('/sessions/:sessionId/run', async (req, res) => {
 
   const runtime = new LangChainRuntime(config);
   let completed = false;
+  const timeline: WorkflowAgentTimelineItem[] = [];
 
   res.on('close', () => {
     if (!completed && !res.writableEnded) runtime.stop();
@@ -116,6 +117,7 @@ router.post('/sessions/:sessionId/run', async (req, res) => {
       systemPrompt: agent.systemPrompt,
       outputStyle: agent.outputStyle,
       onEvent: (event: AgentRuntimeEvent) => {
+        collectRuntimeTimeline(timeline, event);
         writeRuntimeEvent(res, event);
       },
     });
@@ -135,6 +137,7 @@ router.post('/sessions/:sessionId/run', async (req, res) => {
       role: 'agent',
       content: agentContent,
       usage: result.usage,
+      ...createTimelinePayload(timeline),
     });
 
     completed = true;
@@ -218,6 +221,7 @@ router.post('/agents/:id/run', async (req, res) => {
 
   const runtime = new LangChainRuntime(config);
   let completed = false;
+  const timeline: WorkflowAgentTimelineItem[] = [];
 
   res.on('close', () => {
     if (!completed && !res.writableEnded) runtime.stop();
@@ -251,6 +255,7 @@ router.post('/agents/:id/run', async (req, res) => {
       systemPrompt: agent.systemPrompt,
       outputStyle: agent.outputStyle,
       onEvent: (event: AgentRuntimeEvent) => {
+        collectRuntimeTimeline(timeline, event);
         writeRuntimeEvent(res, event);
       },
     });
@@ -270,6 +275,7 @@ router.post('/agents/:id/run', async (req, res) => {
       role: 'agent',
       content: agentContent,
       usage: result.usage,
+      ...createTimelinePayload(timeline),
     });
 
     completed = true;
@@ -317,6 +323,78 @@ function writeRuntimeEvent(res: Response, event: AgentRuntimeEvent): void {
     case 'hook_event':
       break;
   }
+}
+
+function collectRuntimeTimeline(timeline: WorkflowAgentTimelineItem[], event: AgentRuntimeEvent): void {
+  if (event.type === 'tool_use') {
+    timeline.push({
+      id: event.id || `${event.name}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      type: 'tool',
+      name: event.name,
+      input: event.input,
+      status: 'running',
+    });
+    return;
+  }
+
+  if (event.type === 'tool_result') {
+    const name = event.toolUseId || 'tool';
+    const index = findLastIndex(timeline, (item) => item.type === 'tool' && item.status === 'running' && (item.id === name || item.name === name));
+    const fallbackIndex = index === -1
+      ? findLastIndex(timeline, (item) => item.type === 'tool' && item.status === 'running')
+      : index;
+
+    if (fallbackIndex === -1) {
+      timeline.push({
+        id: `${name}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        type: 'tool',
+        name,
+        result: event.result,
+        status: isErrorToolResult(event.result) ? 'error' : 'success',
+      });
+      return;
+    }
+
+    const item = timeline[fallbackIndex];
+    if (item?.type !== 'tool') return;
+    timeline[fallbackIndex] = {
+      ...item,
+      result: event.result,
+      status: isErrorToolResult(event.result) ? 'error' : 'success',
+    };
+  }
+}
+
+function createTimelinePayload(timeline: WorkflowAgentTimelineItem[]): {
+  timeline?: WorkflowAgentTimelineItem[];
+  toolCalls?: WorkflowAgentToolCall[];
+} {
+  if (!timeline.length) return {};
+  const completedTimeline = timeline.map((item) => (
+    item.type === 'tool' && item.status === 'running'
+      ? { ...item, status: 'success' as const }
+      : item
+  ));
+  return {
+    timeline: completedTimeline,
+    toolCalls: completedTimeline.filter((item): item is WorkflowAgentTimelineItem & { type: 'tool' } => item.type === 'tool'),
+  };
+}
+
+function isErrorToolResult(result: unknown): boolean {
+  return Boolean(
+    result
+    && typeof result === 'object'
+    && 'success' in result
+    && (result as { success?: unknown }).success === false
+  );
+}
+
+function findLastIndex<T>(items: T[], predicate: (item: T) => boolean): number {
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    if (predicate(items[index])) return index;
+  }
+  return -1;
 }
 
 function shouldIncludeHistoryMessage(message: { role: 'user' | 'agent'; content: string }): boolean {

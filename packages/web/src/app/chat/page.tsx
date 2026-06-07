@@ -222,7 +222,7 @@ export default function ChatPage() {
               }}
             />
           ) : (
-            <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
+            <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-muted-foreground">
               <MessageSquare className="size-12" />
               <p className="text-sm">Select a session or start a new chat</p>
             </div>

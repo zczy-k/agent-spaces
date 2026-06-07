@@ -27,3 +27,14 @@
 - Added `ChatToolTimeline` and rendered tool calls under the inline streaming message.
 - Avoided rendering the old standalone typing bubble when a tool timeline is already visible.
 - Adjusted the touched chat page resizable prop to the local component type and narrowed tool timeline updates for TypeScript.
+
+## 2026-06-07 23:18:33 CST
+
+- Added `timeline` and `toolCalls` fields to chat message types.
+- Collected runtime `tool_use` / `tool_result` events in `chat-run.ts` and persisted them with completed agent messages.
+- Rendered persisted message timeline entries in `InlineChatPanel`.
+- Kept prompt history generation unchanged so subsequent messages only include assistant/user text content.
+
+## 2026-06-07 23:18:33 CST
+
+- Changed `getAgentWorkspace()` to lazily create the chat agent default workspace directory when it is missing.

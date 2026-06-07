@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import * as store from '../storage/chat-store.js';
 import type { ChatAgent, ChatMessage, ChatWorkspace, ChatSession } from '../storage/chat-store.js';
 
@@ -84,7 +84,12 @@ export function getAgentConfigDir(agentId: string): string | null {
 
 export function getAgentWorkspace(agentId: string) {
   const workingDir = getAgentWorkingDir(agentId);
-  if (!workingDir || !existsSync(workingDir)) return null;
+  if (!workingDir) return null;
+  if (!existsSync(workingDir)) {
+    const defaultWorkingDir = store.chatWorkspaceDir(agentId);
+    if (workingDir !== defaultWorkingDir) return null;
+    mkdirSync(workingDir, { recursive: true });
+  }
   const now = new Date().toISOString();
   return {
     id: `chat:${agentId}`,

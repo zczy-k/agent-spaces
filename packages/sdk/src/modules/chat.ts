@@ -1,4 +1,4 @@
-import type { BuiltInAgentToolName, FileNode } from '@agent-spaces/shared';
+import type { BuiltInAgentToolName, FileNode, WorkflowAgentTimelineItem, WorkflowAgentToolCall } from '@agent-spaces/shared';
 
 export interface ChatAgent {
   id: string;
@@ -42,6 +42,8 @@ export interface ChatMessage {
     outputTokens?: number;
     totalTokens?: number;
   };
+  toolCalls?: WorkflowAgentToolCall[];
+  timeline?: WorkflowAgentTimelineItem[];
 }
 
 export interface ChatWorkspace {

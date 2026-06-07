@@ -9,6 +9,8 @@ Goal: Share one chat message display implementation between `inline-chat-panel.t
 3. Wire both panels to shared component - complete
 4. Typecheck/lint targeted files - complete
 5. Listen for inline chat tool SSE events - complete
+6. Persist inline chat tool timeline without adding tool results to prompt history - complete
+7. Fix missing chat agent workspace tree 404 - complete
 
 ## Decisions
 

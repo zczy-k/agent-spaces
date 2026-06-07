@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { getDataDir, ensureDir, readJsonFile, writeJsonFile, deleteFile } from './json-store.js';
 import path from 'node:path';
 import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import type { BuiltInAgentToolName } from '@agent-spaces/shared';
+import type { BuiltInAgentToolName, WorkflowAgentTimelineItem, WorkflowAgentToolCall } from '@agent-spaces/shared';
 
 export interface ChatAgent {
   id: string;
@@ -45,6 +45,8 @@ export interface ChatMessage {
     outputTokens?: number;
     totalTokens?: number;
   };
+  toolCalls?: WorkflowAgentToolCall[];
+  timeline?: WorkflowAgentTimelineItem[];
 }
 
 export interface ChatWorkspace {

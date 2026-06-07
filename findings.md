@@ -8,3 +8,5 @@
 - After extraction, `chat-message-bubble.tsx` has no remaining imports and can be removed to avoid a second message display implementation.
 - `/api/chat/sessions/:sessionId/run` and `/api/chat/agents/:id/run` already emit `tool_use` and `tool_result` SSE events.
 - `useChatStore.handleChatRunEvent` did not consume `tool_use` / `tool_result`, so inline chat had no runtime tool timeline to render.
+- Chat run prompt history is built from `message.role` and `message.content` only, so adding timeline/toolCalls fields to messages does not include tool return data in the next request context.
+- `/api/chat/agents/:id/workspace/tree` returns 404 when `getAgentWorkspace()` sees a missing working directory. Chat agents use an internal default workspace path, so that directory should be lazily created if absent.

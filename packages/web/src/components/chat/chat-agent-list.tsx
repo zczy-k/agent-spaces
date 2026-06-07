@@ -158,7 +158,7 @@ export function ChatAgentList({
     <aside
       aria-label="Chat Session List"
       className={cn(
-        "flex h-full max-w-sm w-full flex-col gap-2 overflow-hidden rounded-xl border bg-background",
+        "flex h-full w-full flex-col gap-2 overflow-hidden rounded-xl border bg-background",
         className
       )}
       role="complementary"

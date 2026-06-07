@@ -173,6 +173,7 @@ export function InlineChatPanel({
                   workspaceId={workspaceId}
                   showTypingIndicator={false}
                   onDeleteMessage={onDelete}
+                  renderMessageExtras={(message) => <ChatToolTimeline timeline={message.timeline} />}
                 />
               );
             }
@@ -195,6 +196,7 @@ export function InlineChatPanel({
                 workspaceId={workspaceId}
                 showTypingIndicator={false}
                 onDeleteMessage={!isStreamingVersion ? onDelete : undefined}
+                renderMessageExtras={(message) => <ChatToolTimeline timeline={message.timeline} />}
                 onRegenerateMessage={!sending && onRegenerate ? (message) => {
                   setRegeneratingVersionKey(item.key);
                   setRegenerationStartedAt(new Date().toISOString());
