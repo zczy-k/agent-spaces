@@ -103,14 +103,16 @@ export function ChatAgentList({ agents, activeId, sending, onSelect, onRemove, o
                 <li className="px-0" key={agent.id}>
                   <ContextMenu>
                     <ContextMenuTrigger>
-                      <button
+                      <div
+                        role="button"
+                        tabIndex={0}
                         aria-label={`Chat with ${agent.name}`}
                         className={cn(
                           "group flex w-full items-center gap-4 px-4 py-2 text-left hover:bg-accent focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
                           activeId === agent.id && "bg-accent"
                         )}
                         onClick={() => onSelect(agent.id)}
-                        type="button"
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(agent.id); } }}
                       >
                         <div className="relative flex flex-shrink-0 items-end">
                           <AgentIcon agentId={agent.id} name={agent.name} avatarUrl={agent.avatar} className="size-8" />
@@ -142,7 +144,7 @@ export function ChatAgentList({ agents, activeId, sending, onSelect, onRemove, o
                         >
                           <X aria-hidden="true" className="size-4 text-muted-foreground" focusable="false" />
                         </Button>
-                      </button>
+                      </div>
                     </ContextMenuTrigger>
                     <ContextMenuContent>
                       <ContextMenuItem onClick={() => onEdit(agent.id)}>
