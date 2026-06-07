@@ -61,6 +61,8 @@ export function ChatRightPanel({ agentId, onFileSelect }: ChatRightPanelProps) {
 
   useEffect(() => {
     loadTree();
+    const timer = setInterval(loadTree, 10_000);
+    return () => clearInterval(timer);
   }, [loadTree]);
 
   const filteredTree = useMemo(() => filterTree(tree, search), [tree, search]);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useChatStore, type ChatTab } from "@/stores/chat";
 import { ChatAgentList } from "@/components/chat/chat-agent-list";
@@ -37,6 +37,14 @@ function loadLayout(): Layout | undefined {
 }
 
 export default function ChatPage() {
+  return (
+    <Suspense>
+      <ChatPageInner />
+    </Suspense>
+  );
+}
+
+function ChatPageInner() {
   const {
     agents,
     workspaces,
@@ -83,7 +91,7 @@ export default function ChatPage() {
   const [newWorkspaceOpen, setNewWorkspaceOpen] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
 
-  const [searchParams] = useSearchParams();
+  const searchParams = useSearchParams();
   const router = useRouter();
 
   const defaultLayout = useMemo<Layout | undefined>(() => loadLayout(), []);
@@ -288,8 +296,9 @@ export default function ChatPage() {
       const agentId = activeAgent?.id ?? activeSession?.agentId;
       if (!agentId) return;
       openChatFile(agentId, path);
+      syncUrl({ type: 'file', id: path });
     },
-    [activeAgent, activeSession, openChatFile]
+    [activeAgent, activeSession, openChatFile, syncUrl]
   );
 
   const workspaceAgentIds = new Set(activeWorkspace?.agentIds ?? []);
