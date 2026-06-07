@@ -4,8 +4,162 @@ import * as fileService from '../services/file.js';
 
 const router = Router();
 
+// --- Migration guard ---
+let migrated = false;
+function ensureMigrated() {
+  if (migrated) return;
+  migrated = true;
+  try { svc.migrateToWorkspaces(); } catch { /* ignore */ }
+}
+
+// --- Workspace CRUD ---
+
+router.get('/workspaces', (_req, res) => {
+  ensureMigrated();
+  try {
+    res.json(svc.listWorkspaces());
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/workspaces', (req, res) => {
+  ensureMigrated();
+  const { name, agentIds } = req.body as { name?: string; agentIds?: string[] };
+  if (!name?.trim()) {
+    res.status(400).json({ error: 'name is required' });
+    return;
+  }
+  try {
+    const ws = svc.createWorkspace({ name: name.trim(), agentIds });
+    res.status(201).json(ws);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.put('/workspaces/:wsId', (req, res) => {
+  const { wsId } = req.params;
+  const { name, agentIds } = req.body as { name?: string; agentIds?: string[] };
+  try {
+    const ws = svc.updateWorkspace(wsId, { name: name?.trim(), agentIds });
+    if (!ws) {
+      res.status(404).json({ error: 'Workspace not found' });
+      return;
+    }
+    res.json(ws);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete('/workspaces/:wsId', (req, res) => {
+  const { wsId } = req.params;
+  try {
+    const deleted = svc.deleteWorkspace(wsId);
+    if (!deleted) {
+      res.status(404).json({ error: 'Workspace not found' });
+      return;
+    }
+    res.status(204).send();
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// --- Session CRUD ---
+
+router.get('/workspaces/:wsId/sessions', (req, res) => {
+  const { wsId } = req.params;
+  try {
+    res.json(svc.listSessions(wsId));
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/workspaces/:wsId/sessions', (req, res) => {
+  const { wsId } = req.params;
+  const { agentId } = req.body as { agentId?: string };
+  if (!agentId) {
+    res.status(400).json({ error: 'agentId is required' });
+    return;
+  }
+  try {
+    const session = svc.createSession(wsId, agentId);
+    if (!session) {
+      res.status(404).json({ error: 'Workspace or agent not found' });
+      return;
+    }
+    res.status(201).json(session);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.patch('/workspaces/:wsId/sessions/:sessionId', (req, res) => {
+  const { wsId, sessionId } = req.params;
+  const { title } = req.body as { title?: string };
+  try {
+    const session = svc.updateSession(wsId, sessionId, { title });
+    if (!session) {
+      res.status(404).json({ error: 'Session not found' });
+      return;
+    }
+    res.json(session);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete('/workspaces/:wsId/sessions/:sessionId', (req, res) => {
+  const { wsId, sessionId } = req.params;
+  try {
+    const deleted = svc.deleteSession(wsId, sessionId);
+    if (!deleted) {
+      res.status(404).json({ error: 'Session not found' });
+      return;
+    }
+    res.status(204).send();
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// --- Session Messages ---
+
+router.get('/sessions/:sessionId/messages', (req, res) => {
+  const { sessionId } = req.params;
+  const wsId = req.query.workspaceId as string;
+  if (!wsId) {
+    res.status(400).json({ error: 'workspaceId query param is required' });
+    return;
+  }
+  try {
+    res.json(svc.listSessionMessages(wsId, sessionId));
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete('/sessions/:sessionId/messages', (req, res) => {
+  const { sessionId } = req.params;
+  const wsId = req.query.workspaceId as string;
+  if (!wsId) {
+    res.status(400).json({ error: 'workspaceId query param is required' });
+    return;
+  }
+  try {
+    svc.clearSessionMessages(wsId, sessionId);
+    res.status(204).send();
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // GET /api/chat/agents — list all chat agents
 router.get('/agents', (_req, res) => {
+  ensureMigrated();
   try {
     res.json(svc.listAgents());
   } catch (error: any) {
