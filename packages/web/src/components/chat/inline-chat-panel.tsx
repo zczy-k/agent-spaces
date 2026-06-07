@@ -99,7 +99,7 @@ export function InlineChatPanel({
   });
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full w-full flex-col">
       {/* Header */}
       <div className="flex items-center gap-3 border-b px-4 py-3">
         <button

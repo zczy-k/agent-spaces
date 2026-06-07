@@ -197,7 +197,7 @@ export default function ChatPage() {
       <ResizableHandle withHandle />
 
       <ResizablePanel id={PANEL_ID_CHAT} defaultSize="53%" minSize="35%">
-        <div className="flex h-full rounded-xl border border-border/40 bg-background shadow-sm">
+        <div className="flex h-full w-full rounded-xl border border-border/40 bg-background shadow-sm">
           {activeAgent && activeSession ? (
             <InlineChatPanel
               agentId={activeAgent.id}
