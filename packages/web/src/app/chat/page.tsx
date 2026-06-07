@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useChatStore, type ChatTab } from "@/stores/chat";
 import { ChatAgentList } from "@/components/chat/chat-agent-list";
 import { InlineChatPanel } from "@/components/chat/inline-chat-panel";
@@ -70,6 +71,9 @@ export default function ChatPage() {
     openChatFile,
     closeChatFile,
     setActiveFileTab,
+    openSessionTabIds,
+    selectSessionTab,
+    removeSessionTab,
   } = useChatStore();
 
   const [agentPickerOpen, setAgentPickerOpen] = useState(false);
@@ -78,7 +82,9 @@ export default function ChatPage() {
   const [createAgentOpen, setCreateAgentOpen] = useState(false);
   const [newWorkspaceOpen, setNewWorkspaceOpen] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
-  const [openSessionTabIds, setOpenSessionTabIds] = useState<Set<string>>(new Set());
+
+  const [searchParams] = useSearchParams();
+  const router = useRouter();
 
   const defaultLayout = useMemo<Layout | undefined>(() => loadLayout(), []);
   const onLayoutChange = useCallback((layout: Layout) => {
@@ -100,9 +106,10 @@ export default function ChatPage() {
   const activeStreamingTimeline = activeSessionId ? (streamingTimeline[activeSessionId] ?? []) : [];
 
   // Build tabs: sessions + open files
+  const openSessionTabIdSet = useMemo(() => new Set(openSessionTabIds), [openSessionTabIds]);
   const tabs: ChatTab[] = useMemo(() => {
     const sessionTabs: ChatTab[] = sessions
-      .filter((s) => !s.archived && openSessionTabIds.has(s.id))
+      .filter((s) => !s.archived && openSessionTabIdSet.has(s.id))
       .map((s) => {
         const agent = agents.find((a) => a.id === s.agentId);
         return {
@@ -119,7 +126,7 @@ export default function ChatPage() {
       name: f.name,
     }));
     return [...sessionTabs, ...fileTabs];
-  }, [sessions, agents, openFileTabs, openSessionTabIds]);
+  }, [sessions, agents, openFileTabs, openSessionTabIdSet]);
 
   const activeTabId = activeSessionId ?? (activeFileTabPath ? `file:${activeFileTabPath}` : null);
 
@@ -127,6 +134,21 @@ export default function ChatPage() {
     loadAgents();
     loadWorkspaces();
   }, [loadAgents, loadWorkspaces]);
+
+  // Restore active tab from URL after sessions loaded
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (!tabParam || sessions.length === 0) return;
+    const [type, ...rest] = tabParam.split(':');
+    const id = rest.join(':');
+    if (type === 'session' && id) {
+      const session = sessions.find((s) => s.id === id && !s.archived);
+      if (session) selectSessionTab(id);
+    } else if (type === 'file' && id) {
+      const fileTab = openFileTabs.find((f) => f.path === id);
+      if (fileTab) setActiveFileTab(id);
+    }
+  }, [searchParams, sessions, openFileTabs, selectSessionTab, setActiveFileTab]);
 
   const handleSend = useCallback(
     (content: string) => {
@@ -195,48 +217,70 @@ export default function ChatPage() {
     [createAgent]
   );
 
+  // URL sync: push active tab to URL
+  const syncUrl = useCallback(
+    (tab: { type: string; id: string } | null) => {
+      if (!tab) {
+        router.replace('/chat', { scroll: false });
+      } else {
+        const params = new URLSearchParams();
+        params.set('tab', `${tab.type}:${tab.id}`);
+        router.replace(`/chat?${params.toString()}`, { scroll: false });
+      }
+    },
+    [router]
+  );
+
   // 左侧面板点击 session：开 tab + 激活
   const handleSelectSession = useCallback(
     (sessionId: string | null) => {
       if (!sessionId) return;
-      setOpenSessionTabIds((prev) => {
-        if (prev.has(sessionId)) return prev;
-        return new Set(prev).add(sessionId);
-      });
-      selectSession(sessionId);
+      selectSessionTab(sessionId);
+      syncUrl({ type: 'session', id: sessionId });
     },
-    [selectSession]
+    [selectSessionTab, syncUrl]
   );
 
   const handleTabClick = useCallback(
     (tab: ChatTab) => {
       if (tab.type === 'session') {
         selectSession(tab.id);
+        syncUrl({ type: 'session', id: tab.id });
       } else {
         setActiveFileTab(tab.path);
+        syncUrl({ type: 'file', id: tab.path });
       }
     },
-    [selectSession, setActiveFileTab]
+    [selectSession, setActiveFileTab, syncUrl]
   );
 
   const handleTabClose = useCallback(
     (e: React.MouseEvent, tab: ChatTab) => {
       e.stopPropagation();
       if (tab.type === 'session') {
-        setOpenSessionTabIds((prev) => {
-          const next = new Set(prev);
-          next.delete(tab.id);
-          return next;
-        });
+        removeSessionTab(tab.id);
         if (activeSessionId === tab.id) {
-          const remaining = sessions.filter((s) => openSessionTabIds.has(s.id) && s.id !== tab.id);
-          selectSession(remaining[0]?.id ?? null);
+          const remaining = sessions.filter((s) => openSessionTabIdSet.has(s.id) && s.id !== tab.id);
+          if (remaining.length > 0) {
+            selectSession(remaining[0].id);
+            syncUrl({ type: 'session', id: remaining[0].id });
+          } else {
+            syncUrl(null);
+          }
         }
       } else {
         closeChatFile(tab.path);
+        if (activeFileTabPath === tab.path) {
+          const remainingFiles = openFileTabs.filter((f) => f.path !== tab.path);
+          if (remainingFiles.length > 0) {
+            syncUrl({ type: 'file', id: remainingFiles[remainingFiles.length - 1].path });
+          } else {
+            syncUrl(null);
+          }
+        }
       }
     },
-    [activeSessionId, sessions, openSessionTabIds, selectSession, closeChatFile]
+    [activeSessionId, activeFileTabPath, sessions, openSessionTabIdSet, openFileTabs, selectSession, removeSessionTab, closeChatFile, syncUrl]
   );
 
   const handleFileSelect = useCallback(

@@ -19,6 +19,15 @@ export type ChatTab =
 const activeChatRequests = new Map<string, AbortController>();
 type ChatSet = StoreApi<ChatStore>['setState'];
 
+let stateSaveTimer: ReturnType<typeof setTimeout> | null = null;
+function debouncedSaveState() {
+  if (stateSaveTimer) clearTimeout(stateSaveTimer);
+  stateSaveTimer = setTimeout(() => {
+    stateSaveTimer = null;
+    useChatStore.getState().saveWorkspaceState();
+  }, 500);
+}
+
 interface ChatStore {
   agents: ChatAgent[];
   activeAgentId: string | null;
@@ -78,6 +87,14 @@ interface ChatStore {
   openChatFile: (agentId: string, path: string) => Promise<void>;
   closeChatFile: (path: string) => void;
   setActiveFileTab: (path: string | null) => void;
+
+  // Workspace state persistence
+  openSessionTabIds: string[];
+  loadWorkspaceState: (workspaceId: string) => Promise<void>;
+  saveWorkspaceState: () => void;
+  setOpenSessionTabIds: (ids: string[]) => void;
+  selectSessionTab: (sessionId: string) => void;
+  removeSessionTab: (sessionId: string) => void;
 }
 
 export const useChatStore = create<ChatStore>((set, get) => ({
@@ -96,6 +113,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   openFileTabs: [],
   activeFileTabPath: null,
+  openSessionTabIds: [],
 
   loadAgents: async () => {
     try {
@@ -221,8 +239,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
 
   selectWorkspace: (id) => {
-    set({ activeWorkspaceId: id, sessions: [], activeSessionId: null });
+    set({ activeWorkspaceId: id, sessions: [], activeSessionId: null, openFileTabs: [], activeFileTabPath: null, openSessionTabIds: [] });
     get().loadSessions(id);
+    get().loadWorkspaceState(id);
   },
 
   // --- Session ---
@@ -379,6 +398,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         activeFileTabPath: path,
         activeSessionId: null,
       }));
+      debouncedSaveState();
     } catch { /* ignore */ }
   },
 
@@ -390,10 +410,69 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         : s.activeFileTabPath;
       return { openFileTabs, activeFileTabPath };
     });
+    debouncedSaveState();
   },
 
   setActiveFileTab: (path) => {
     set({ activeFileTabPath: path, activeSessionId: null });
+    debouncedSaveState();
+  },
+
+  // --- Workspace State Persistence ---
+  loadWorkspaceState: async (workspaceId) => {
+    try {
+      const state = await sdk.chat.getWorkspaceState(workspaceId);
+      set({
+        openSessionTabIds: state.openSessionTabIds ?? [],
+        openFileTabs: [], // file content loaded on demand
+        activeFileTabPath: state.activeTab?.type === 'file' ? state.activeTab.id : null,
+        activeSessionId: state.activeTab?.type === 'session' ? state.activeTab.id : null,
+      });
+      // Pre-load file tab contents
+      for (const ft of (state.openFileTabs ?? [])) {
+        try {
+          const result = await sdk.chat.workspaceFileContent(ft.agentId, ft.path);
+          const name = ft.path.split('/').pop() || ft.path;
+          set((s) => ({ openFileTabs: [...s.openFileTabs, { path: ft.path, name, content: result.content, agentId: ft.agentId }] }));
+        } catch { /* skip files that can't be loaded */ }
+      }
+    } catch { /* ignore */ }
+  },
+
+  saveWorkspaceState: () => {
+    const { activeWorkspaceId, openSessionTabIds, openFileTabs, activeSessionId, activeFileTabPath } = get();
+    if (!activeWorkspaceId) return;
+    const activeTab = activeSessionId
+      ? { type: 'session' as const, id: activeSessionId }
+      : activeFileTabPath
+        ? { type: 'file' as const, id: activeFileTabPath }
+        : null;
+    const state = {
+      openSessionTabIds,
+      openFileTabs: openFileTabs.map((f) => ({ path: f.path, agentId: f.agentId })),
+      activeTab,
+    };
+    sdk.chat.saveWorkspaceState(activeWorkspaceId, state).catch(() => {});
+  },
+
+  setOpenSessionTabIds: (ids) => {
+    set({ openSessionTabIds: ids });
+  },
+
+  selectSessionTab: (sessionId) => {
+    const { openSessionTabIds } = get();
+    if (!openSessionTabIds.includes(sessionId)) {
+      set({ openSessionTabIds: [...openSessionTabIds, sessionId] });
+    }
+    get().selectSession(sessionId);
+    debouncedSaveState();
+  },
+
+  removeSessionTab: (sessionId) => {
+    set((s) => ({
+      openSessionTabIds: s.openSessionTabIds.filter((id) => id !== sessionId),
+    }));
+    debouncedSaveState();
   },
 }));
 

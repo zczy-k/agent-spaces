@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import * as svc from '../services/chat.js';
 import * as fileService from '../services/file.js';
+import * as chatStore from '../storage/chat-store.js';
 
 const router = Router();
 
@@ -62,6 +63,29 @@ router.delete('/workspaces/:wsId', (req, res) => {
       return;
     }
     res.status(204).send();
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/chat/workspaces/:wsId/state
+router.get('/workspaces/:wsId/state', (req, res) => {
+  const { wsId } = req.params;
+  ensureMigrated();
+  try {
+    res.json(chatStore.getWorkspaceState(wsId));
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT /api/chat/workspaces/:wsId/state
+router.put('/workspaces/:wsId/state', (req, res) => {
+  const { wsId } = req.params;
+  ensureMigrated();
+  try {
+    chatStore.saveWorkspaceState(wsId, req.body);
+    res.json(req.body);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

@@ -96,7 +96,7 @@ export interface AgentIconProps {
   rounded?: string;
 }
 
-export function AgentIcon({ agentId, name, avatarUrl, icon, apiBase, className, onClick, bordered = true, rounded = 'rounded-lg' }: AgentIconProps) {
+export function AgentIcon({ agentId, name, avatarUrl, icon, apiBase, className, onClick, bordered = true, rounded: roundedClass = 'rounded-lg' }: AgentIconProps) {
   const agents = useAgentStore((s) => s.agents);
   const [avatarError, setAvatarError] = useState(false);
   const [providerError, setProviderError] = useState(false);
@@ -134,7 +134,7 @@ export function AgentIcon({ agentId, name, avatarUrl, icon, apiBase, className, 
       onClick={onClick}
       className={cn(
         'flex items-center justify-center overflow-hidden bg-muted shrink-0',
-        rounded,
+        roundedClass,
         (src || showEmoji) && 'bg-transparent',
         bordered && 'border border-border',
         !onClick && 'pointer-events-none',
@@ -143,9 +143,9 @@ export function AgentIcon({ agentId, name, avatarUrl, icon, apiBase, className, 
       )}
     >
       {src ? (
-        <img src={src} alt={displayName} className="size-full object-cover rounded-[inherit]" onError={handleError} />
+        <img src={src} alt={displayName} className="size-full object-cover" onError={handleError} />
       ) : showEmoji ? (
-        <span className="select-none text-xl">{resolvedIcon}</span>
+        <span className="select-none text-sm leading-none">{resolvedIcon}</span>
       ) : (
         <span className="text-xs font-semibold select-none">{initial}</span>
       )}

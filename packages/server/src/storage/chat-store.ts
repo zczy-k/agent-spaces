@@ -254,6 +254,10 @@ function workspaceDir(wsId: string): string {
   return path.join(chatDir(), 'workspaces', wsId);
 }
 
+function workspaceStateFile(wsId: string): string {
+  return path.join(workspaceDir(wsId), 'state.json');
+}
+
 function sessionsFile(wsId: string): string {
   return path.join(workspaceDir(wsId), 'sessions.json');
 }
@@ -392,6 +396,24 @@ export function clearSessionMessages(workspaceId: string, sessionId: string): vo
 export function getRecentSessionMessages(workspaceId: string, sessionId: string, limit: number = 50): ChatMessage[] {
   const messages = listSessionMessages(workspaceId, sessionId);
   return messages.slice(-limit);
+}
+
+// --- Workspace State ---
+
+export interface WorkspaceTabState {
+  openSessionTabIds: string[];
+  openFileTabs: Array<{ path: string; agentId: string }>;
+  activeTab: { type: 'session'; id: string } | { type: 'file'; id: string } | null;
+}
+
+export function getWorkspaceState(wsId: string): WorkspaceTabState {
+  const state = readJsonFile<WorkspaceTabState>(workspaceStateFile(wsId));
+  return state ?? { openSessionTabIds: [], openFileTabs: [], activeTab: null };
+}
+
+export function saveWorkspaceState(wsId: string, state: WorkspaceTabState): void {
+  ensureDir(workspaceDir(wsId));
+  writeJsonFile(workspaceStateFile(wsId), state);
 }
 
 // --- Migration ---

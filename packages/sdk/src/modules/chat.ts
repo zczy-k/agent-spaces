@@ -134,5 +134,12 @@ export function createChatApi(http: { get: Function; post: Function; put: Functi
 
     clearSessionMessages: (workspaceId: string, sessionId: string): Promise<void> =>
       http.delete(`/api/chat/sessions/${sessionId}/messages?workspaceId=${encodeURIComponent(workspaceId)}`),
+
+    // Workspace State (tab persistence)
+    getWorkspaceState: (workspaceId: string): Promise<{ openSessionTabIds: string[]; openFileTabs: Array<{ path: string; agentId: string }>; activeTab: { type: string; id: string } | null }> =>
+      http.get(`/api/chat/workspaces/${workspaceId}/state`),
+
+    saveWorkspaceState: (workspaceId: string, state: Record<string, unknown>): Promise<void> =>
+      http.put(`/api/chat/workspaces/${workspaceId}/state`, state),
   };
 }
