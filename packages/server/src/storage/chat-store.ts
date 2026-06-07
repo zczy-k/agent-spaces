@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { getDataDir, ensureDir, readJsonFile, writeJsonFile, deleteFile } from './json-store.js';
 import path from 'node:path';
 import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
@@ -44,6 +45,23 @@ export interface ChatMessage {
     outputTokens?: number;
     totalTokens?: number;
   };
+}
+
+export interface ChatWorkspace {
+  id: string;
+  name: string;
+  agentIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChatSession {
+  id: string;
+  workspaceId: string;
+  agentId: string;
+  title?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 function chatDir(): string {
@@ -221,4 +239,192 @@ function readSkillContent(name: string): string | undefined {
 
   const content = readFileSync(source, 'utf-8');
   return content.trim() ? content : undefined;
+}
+
+// --- Workspace functions ---
+
+function workspacesFile(): string {
+  return path.join(chatDir(), 'workspaces.json');
+}
+
+function workspaceDir(wsId: string): string {
+  return path.join(chatDir(), 'workspaces', wsId);
+}
+
+function sessionsFile(wsId: string): string {
+  return path.join(workspaceDir(wsId), 'sessions.json');
+}
+
+function sessionDir(wsId: string, sessionId: string): string {
+  return path.join(workspaceDir(wsId), 'sessions', sessionId);
+}
+
+function sessionMessagesFile(wsId: string, sessionId: string): string {
+  return path.join(sessionDir(wsId, sessionId), 'messages.json');
+}
+
+export function listWorkspaces(): ChatWorkspace[] {
+  ensureDir(chatDir());
+  return readJsonFile<ChatWorkspace[]>(workspacesFile()) ?? [];
+}
+
+function saveWorkspaces(workspaces: ChatWorkspace[]): void {
+  writeJsonFile(workspacesFile(), workspaces);
+}
+
+export function findWorkspace(id: string): ChatWorkspace | undefined {
+  return listWorkspaces().find(ws => ws.id === id);
+}
+
+export function createWorkspace(data: { name: string; agentIds?: string[] }): ChatWorkspace {
+  const workspaces = listWorkspaces();
+  const ws: ChatWorkspace = {
+    id: randomUUID(),
+    name: data.name,
+    agentIds: data.agentIds ?? [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  workspaces.push(ws);
+  saveWorkspaces(workspaces);
+  ensureDir(workspaceDir(ws.id));
+  return ws;
+}
+
+export function updateWorkspace(id: string, data: { name?: string; agentIds?: string[] }): ChatWorkspace | null {
+  const workspaces = listWorkspaces();
+  const idx = workspaces.findIndex(ws => ws.id === id);
+  if (idx === -1) return null;
+  workspaces[idx] = {
+    ...workspaces[idx],
+    ...(data.name !== undefined && { name: data.name }),
+    ...(data.agentIds !== undefined && { agentIds: data.agentIds }),
+    updatedAt: new Date().toISOString(),
+  };
+  saveWorkspaces(workspaces);
+  return workspaces[idx];
+}
+
+export function deleteWorkspace(id: string): boolean {
+  const workspaces = listWorkspaces();
+  const idx = workspaces.findIndex(ws => ws.id === id);
+  if (idx === -1) return false;
+  workspaces.splice(idx, 1);
+  saveWorkspaces(workspaces);
+  rmSync(workspaceDir(id), { recursive: true, force: true });
+  return true;
+}
+
+// --- Session functions ---
+
+export function listSessions(workspaceId: string): ChatSession[] {
+  const sessions = readJsonFile<ChatSession[]>(sessionsFile(workspaceId)) ?? [];
+  return sessions.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+
+export function findSession(workspaceId: string, sessionId: string): ChatSession | undefined {
+  return listSessions(workspaceId).find(s => s.id === sessionId);
+}
+
+export function createSession(workspaceId: string, agentId: string): ChatSession | null {
+  if (!findWorkspace(workspaceId)) return null;
+  if (!findAgent(agentId)) return null;
+  const sessions = readJsonFile<ChatSession[]>(sessionsFile(workspaceId)) ?? [];
+  const session: ChatSession = {
+    id: randomUUID(),
+    workspaceId,
+    agentId,
+    title: undefined,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  sessions.push(session);
+  writeJsonFile(sessionsFile(workspaceId), sessions);
+  ensureDir(sessionDir(workspaceId, session.id));
+  return session;
+}
+
+export function updateSession(workspaceId: string, sessionId: string, data: { title?: string }): ChatSession | null {
+  const sessions = readJsonFile<ChatSession[]>(sessionsFile(workspaceId)) ?? [];
+  const idx = sessions.findIndex(s => s.id === sessionId);
+  if (idx === -1) return null;
+  sessions[idx] = {
+    ...sessions[idx],
+    ...(data.title !== undefined && { title: data.title }),
+    updatedAt: new Date().toISOString(),
+  };
+  writeJsonFile(sessionsFile(workspaceId), sessions);
+  return sessions[idx];
+}
+
+export function deleteSession(workspaceId: string, sessionId: string): boolean {
+  const sessions = readJsonFile<ChatSession[]>(sessionsFile(workspaceId)) ?? [];
+  const idx = sessions.findIndex(s => s.id === sessionId);
+  if (idx === -1) return false;
+  sessions.splice(idx, 1);
+  writeJsonFile(sessionsFile(workspaceId), sessions);
+  rmSync(sessionDir(workspaceId, sessionId), { recursive: true, force: true });
+  return true;
+}
+
+// --- Session Message functions ---
+
+export function listSessionMessages(workspaceId: string, sessionId: string): ChatMessage[] {
+  const messages = readJsonFile<ChatMessage[]>(sessionMessagesFile(workspaceId, sessionId)) ?? [];
+  messages.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+  return messages;
+}
+
+export function saveSessionMessage(workspaceId: string, sessionId: string, msg: ChatMessage): void {
+  const messages = readJsonFile<ChatMessage[]>(sessionMessagesFile(workspaceId, sessionId)) ?? [];
+  messages.push(msg);
+  writeJsonFile(sessionMessagesFile(workspaceId, sessionId), messages);
+}
+
+export function clearSessionMessages(workspaceId: string, sessionId: string): void {
+  deleteFile(sessionMessagesFile(workspaceId, sessionId));
+}
+
+export function getRecentSessionMessages(workspaceId: string, sessionId: string, limit: number = 50): ChatMessage[] {
+  const messages = listSessionMessages(workspaceId, sessionId);
+  return messages.slice(-limit);
+}
+
+// --- Migration ---
+
+export function migrateToWorkspaces(): void {
+  ensureDir(chatDir());
+  const existing = readJsonFile<ChatWorkspace[]>(workspacesFile());
+  if (existing && existing.length > 0) return;
+
+  const agents = listAgents();
+  const ws: ChatWorkspace = {
+    id: randomUUID(),
+    name: 'Default',
+    agentIds: agents.map(a => a.id),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  saveWorkspaces([ws]);
+  ensureDir(workspaceDir(ws.id));
+
+  for (const agent of agents) {
+    const oldMessages = readJsonFile<ChatMessage[]>(messagesFile(agent.id)) ?? [];
+    if (oldMessages.length === 0) continue;
+
+    const session: ChatSession = {
+      id: randomUUID(),
+      workspaceId: ws.id,
+      agentId: agent.id,
+      title: undefined,
+      createdAt: oldMessages[0].timestamp,
+      updatedAt: oldMessages[oldMessages.length - 1].timestamp,
+    };
+
+    const sessions = readJsonFile<ChatSession[]>(sessionsFile(ws.id)) ?? [];
+    sessions.push(session);
+    writeJsonFile(sessionsFile(ws.id), sessions);
+    ensureDir(sessionDir(ws.id, session.id));
+    writeJsonFile(sessionMessagesFile(ws.id, session.id), oldMessages);
+  }
 }

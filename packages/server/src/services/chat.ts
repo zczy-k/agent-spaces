@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import * as store from '../storage/chat-store.js';
-import type { ChatAgent, ChatMessage } from '../storage/chat-store.js';
+import type { ChatAgent, ChatMessage, ChatWorkspace, ChatSession } from '../storage/chat-store.js';
 
 // --- Agent CRUD ---
 
@@ -97,6 +97,74 @@ export function getAgentWorkspace(agentId: string) {
     activeIssues: [],
   };
 }
+
+// --- Workspace CRUD ---
+
+export function listWorkspaces(): ChatWorkspace[] {
+  return store.listWorkspaces();
+}
+
+export function createWorkspace(data: { name: string; agentIds?: string[] }): ChatWorkspace {
+  return store.createWorkspace(data);
+}
+
+export function updateWorkspace(id: string, data: { name?: string; agentIds?: string[] }): ChatWorkspace | null {
+  return store.updateWorkspace(id, data);
+}
+
+export function deleteWorkspace(id: string): boolean {
+  return store.deleteWorkspace(id);
+}
+
+// --- Session CRUD ---
+
+export function listSessions(workspaceId: string): ChatSession[] {
+  return store.listSessions(workspaceId);
+}
+
+export function createSession(workspaceId: string, agentId: string): ChatSession | null {
+  return store.createSession(workspaceId, agentId);
+}
+
+export function updateSession(workspaceId: string, sessionId: string, data: { title?: string }): ChatSession | null {
+  return store.updateSession(workspaceId, sessionId, data);
+}
+
+export function deleteSession(workspaceId: string, sessionId: string): boolean {
+  return store.deleteSession(workspaceId, sessionId);
+}
+
+export function findSession(workspaceId: string, sessionId: string): ChatSession | undefined {
+  return store.findSession(workspaceId, sessionId);
+}
+
+// --- Session Messages ---
+
+export function listSessionMessages(workspaceId: string, sessionId: string): ChatMessage[] {
+  return store.listSessionMessages(workspaceId, sessionId);
+}
+
+export function saveSessionMessage(workspaceId: string, sessionId: string, msg: Omit<ChatMessage, 'id' | 'timestamp'>): ChatMessage {
+  const message: ChatMessage = {
+    ...msg,
+    id: randomUUID(),
+    timestamp: new Date().toISOString(),
+  };
+  store.saveSessionMessage(workspaceId, sessionId, message);
+  return message;
+}
+
+export function clearSessionMessages(workspaceId: string, sessionId: string): void {
+  store.clearSessionMessages(workspaceId, sessionId);
+}
+
+export function getRecentSessionMessages(workspaceId: string, sessionId: string, limit?: number): ChatMessage[] {
+  return store.getRecentSessionMessages(workspaceId, sessionId, limit);
+}
+
+// --- Migration ---
+
+export { migrateToWorkspaces } from '../storage/chat-store.js';
 
 function normalizeAgentData(data: Partial<ChatAgent> & Record<string, unknown>): Omit<ChatAgent, 'id' | 'createdAt' | 'updatedAt'> {
   const provider = stringValue(data.provider) || stringValue(data.modelProvider) || 'openai-chat-completions';
