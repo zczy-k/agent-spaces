@@ -238,7 +238,7 @@ function groupMessageVersions(messages: ChatMessage[]): MessageRenderItem[] {
       }
 
       if (replies.length > 0) {
-        items.push({ type: "versions", key: message.id, messages: replies });
+        items.push({ type: "versions", key: `${message.id}-replies`, messages: replies });
         index = replyIndex - 1;
       }
       continue;
