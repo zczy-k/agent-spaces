@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { FolderTreeIcon, InfoIcon } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { FileNode } from "@agent-spaces/shared";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileTree, FileTreeNodes } from "@/components/editor/file-tree";
 import { sdk } from "@/lib/sdk";
 import { useChatStore } from "@/stores/chat";
@@ -14,7 +12,6 @@ interface ChatRightPanelProps {
 }
 
 export function ChatRightPanel({ agentId }: ChatRightPanelProps) {
-  const [tab, setTab] = useState("info");
   const t = useTranslations('chat.rightPanel');
   const [tree, setTree] = useState<FileNode[]>([]);
   const [loading, setLoading] = useState(false);
@@ -25,7 +22,7 @@ export function ChatRightPanel({ agentId }: ChatRightPanelProps) {
   const workspaceTreeId = agentId ? `chat:${agentId}` : undefined;
 
   useEffect(() => {
-    if (!agentId || tab !== "workspace") return;
+    if (!agentId) return;
 
     let cancelled = false;
     setLoading(true);
@@ -46,72 +43,35 @@ export function ChatRightPanel({ agentId }: ChatRightPanelProps) {
     return () => {
       cancelled = true;
     };
-  }, [agentId, tab]);
-
-  const infoRows = useMemo(() => ([
-    [t('id'), agent?.id ?? ""],
-    [t('name'), agent?.name ?? ""],
-    [t('model'), agent?.model ?? ""],
-    [t('workingDir'), boundDir],
-  ]), [agent, boundDir, t]);
+  }, [agentId]);
 
   return (
     <div className="flex h-full w-[320px] shrink-0 flex-col rounded-xl border border-border/40 bg-background shadow-sm">
-      <Tabs value={tab} onValueChange={setTab} className="flex min-h-0 flex-1 flex-col">
-        <TabsList className="mt-2 w-full">
-          <TabsTrigger value="info">
-            <InfoIcon className="size-4" />
-          </TabsTrigger>
-          <TabsTrigger value="workspace">
-            <FolderTreeIcon className="size-4" />
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="info" className="flex-1 overflow-auto p-3">
-          {agent ? (
-            <div className="space-y-2 text-xs">
-              {infoRows.map(([label, value]) => (
-                <div key={label} className="grid grid-cols-[72px_1fr] gap-2">
-                  <span className="text-muted-foreground">{label}</span>
-                  <span className="min-w-0 truncate" title={value}>{value || "-"}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              {t('noAgent')}
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="workspace" className="min-h-0 flex-1 overflow-hidden">
-          {!agentId ? (
-            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              {t('noAgent')}
-            </div>
-          ) : loading ? (
-            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              {t('loading')}
-            </div>
-          ) : error ? (
-            <div className="p-3 text-xs text-destructive">{error}</div>
-          ) : tree.length === 0 ? (
-            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              {t('emptyWorkspace')}
-            </div>
-          ) : (
-            <FileTree
-              expanded={expanded}
-              onExpandedChange={setExpanded}
-              workspaceId={workspaceTreeId}
-              boundDir={boundDir}
-              className="h-full"
-            >
-              <FileTreeNodes nodes={tree} />
-            </FileTree>
-          )}
-        </TabsContent>
-      </Tabs>
+      {!agentId ? (
+        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+          {t('noAgent')}
+        </div>
+      ) : loading ? (
+        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+          {t('loading')}
+        </div>
+      ) : error ? (
+        <div className="p-3 text-xs text-destructive">{error}</div>
+      ) : tree.length === 0 ? (
+        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+          {t('emptyWorkspace')}
+        </div>
+      ) : (
+        <FileTree
+          expanded={expanded}
+          onExpandedChange={setExpanded}
+          workspaceId={workspaceTreeId}
+          boundDir={boundDir}
+          className="h-full"
+        >
+          <FileTreeNodes nodes={tree} />
+        </FileTree>
+      )}
     </div>
   );
 }

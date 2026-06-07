@@ -23,6 +23,7 @@ import {
   Database,
   LayoutGrid,
   Workflow,
+  Files,
   Search,
   Wrench,
 } from 'lucide-react';
@@ -54,6 +55,10 @@ const TOOL_CATEGORIES: Record<string, { keys: string[]; icon: typeof Hash }> = {
   kanban: {
     keys: ['ListKanbanBoards', 'ViewKanbanBoard', 'CreateKanbanBoard', 'UpdateKanbanBoard', 'DeleteKanbanBoard'],
     icon: LayoutGrid,
+  },
+  files: {
+    keys: ['ListWorkspaceFiles', 'SearchWorkspaceFiles', 'ReadWorkspaceFile', 'WriteWorkspaceFile', 'DeleteWorkspacePath', 'MoveWorkspacePath'],
+    icon: Files,
   },
   workflow: {
     keys: ['list_workflows', 'search_workflow', 'execute_workflow_sync', 'execute_workflow_async', 'get_workflow_result', 'get_workflow_latest_result'],

@@ -46,6 +46,7 @@ export function getToolIcon(name: string): Icon {
   if (name === "CreateCurrentChannelIssue") return IconPlus;
   if (name === "ViewCurrentChannelIssue") return IconFileText;
   if (name === "AddCurrentChannelComment") return IconMessageCirclePlus;
+  if (name.includes("WorkspaceFile") || name.includes("WorkspacePath")) return IconFileText;
   return IconTools;
 }
 

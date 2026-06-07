@@ -8,6 +8,7 @@ import {
   createCommandFunctionTools,
   createDatabaseFunctionTools,
   createKanbanFunctionTools,
+  createWorkspaceFileFunctionTools,
   createWorkflowExecutionFunctionTools,
 } from '../services/builtin-tools/index.js';
 
@@ -100,9 +101,10 @@ router.post('/sessions/:sessionId/run', async (req, res) => {
     const configDir = chatService.getAgentConfigDir(agentId) || undefined;
     const tools = normalizeToolNames(agent.tools);
     const functionTools = [
-      ...createCommandFunctionTools(agentId, tools),
-      ...createDatabaseFunctionTools(agentId, tools),
-      ...createKanbanFunctionTools(agentId, tools),
+      ...createCommandFunctionTools(workspaceId, tools),
+      ...createDatabaseFunctionTools(workspaceId, tools),
+      ...createKanbanFunctionTools(workspaceId, tools),
+      ...createWorkspaceFileFunctionTools(workspaceId, tools, () => chatService.getAgentWorkspace(agentId)),
       ...createWorkflowExecutionFunctionTools(tools),
     ];
     const result = await runtime.execute(prompt, workingDir, {

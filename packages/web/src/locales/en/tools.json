@@ -15,6 +15,7 @@
     "terminal": "Terminal",
     "database": "Database",
     "kanban": "Kanban",
+    "files": "Files",
     "workflow": "Workflow"
   }
 }

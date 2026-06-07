@@ -1,0 +1,308 @@
+import { stat } from 'node:fs/promises';
+import { basename } from 'node:path';
+import { BUILT_IN_AGENT_TOOLS, type BuiltInAgentToolName, type FileNode, type Workspace } from '@agent-spaces/shared';
+import type { AgentFunctionTool } from '../../adapters/agent-runtime-types.js';
+import * as fileService from '../file.js';
+import { assertRecord, readRequiredString, readStringOrDefault } from './input-helpers.js';
+
+const MAX_READ_BYTES = 1024 * 1024;
+const MAX_SEARCH_FILES = 200;
+const MAX_SEARCH_MATCHES = 50;
+
+const workspacePathInputSchema = {
+  type: 'object',
+  properties: {
+    path: {
+      type: 'string',
+      description: 'Workspace-relative file or directory path. Absolute paths and parent traversal are not allowed.',
+    },
+  },
+  required: ['path'],
+  additionalProperties: false,
+};
+
+const listWorkspaceFilesInputSchema = {
+  type: 'object',
+  properties: {
+    path: {
+      type: 'string',
+      description: 'Workspace-relative directory path. Defaults to workspace root.',
+    },
+    depth: {
+      type: 'number',
+      minimum: 1,
+      maximum: 10,
+      description: 'Directory traversal depth. Defaults to 2, capped at 10.',
+    },
+  },
+  additionalProperties: false,
+};
+
+const searchWorkspaceFilesInputSchema = {
+  type: 'object',
+  properties: {
+    query: {
+      type: 'string',
+      description: 'Case-insensitive text to search for in workspace file paths and text content.',
+    },
+    path: {
+      type: 'string',
+      description: 'Workspace-relative directory path. Defaults to workspace root.',
+    },
+    maxFiles: {
+      type: 'number',
+      minimum: 1,
+      maximum: MAX_SEARCH_FILES,
+      description: `Maximum files to inspect. Defaults to 50, capped at ${MAX_SEARCH_FILES}.`,
+    },
+    maxMatches: {
+      type: 'number',
+      minimum: 1,
+      maximum: MAX_SEARCH_MATCHES,
+      description: `Maximum matches to return. Defaults to 20, capped at ${MAX_SEARCH_MATCHES}.`,
+    },
+  },
+  required: ['query'],
+  additionalProperties: false,
+};
+
+const writeWorkspaceFileInputSchema = {
+  type: 'object',
+  properties: {
+    path: {
+      type: 'string',
+      description: 'Workspace-relative file path to write.',
+    },
+    content: {
+      type: 'string',
+      description: 'UTF-8 text content to write.',
+    },
+    mode: {
+      type: 'string',
+      enum: ['overwrite', 'append'],
+      description: 'overwrite replaces the file, append appends to the existing file. Defaults to overwrite.',
+    },
+  },
+  required: ['path', 'content'],
+  additionalProperties: false,
+};
+
+const moveWorkspaceFileInputSchema = {
+  type: 'object',
+  properties: {
+    sourcePath: {
+      type: 'string',
+      description: 'Existing workspace-relative source file or directory path.',
+    },
+    targetPath: {
+      type: 'string',
+      description: 'Workspace-relative destination file or directory path.',
+    },
+  },
+  required: ['sourcePath', 'targetPath'],
+  additionalProperties: false,
+};
+
+export function createWorkspaceFileFunctionTools(
+  workspaceId: string,
+  allowedTools?: BuiltInAgentToolName[],
+  resolveWorkspace?: () => Workspace | null,
+): AgentFunctionTool[] {
+  const allowedToolNames = getAllowedWorkspaceFileToolNames(allowedTools);
+  const tools: AgentFunctionTool[] = [
+    {
+      name: 'ListWorkspaceFiles',
+      description: 'List files and directories in the current workspace filesystem. Use workspace-relative paths only.',
+      inputSchema: listWorkspaceFilesInputSchema,
+      annotations: { readOnly: true, openWorld: false },
+      execute: async (input) => listWorkspaceFiles(workspaceId, input, resolveWorkspace),
+    },
+    {
+      name: 'SearchWorkspaceFiles',
+      description: 'Search workspace file paths and UTF-8 text file content. Use this to find relevant files before reading them.',
+      inputSchema: searchWorkspaceFilesInputSchema,
+      annotations: { readOnly: true, openWorld: false },
+      execute: async (input) => searchWorkspaceFiles(workspaceId, input, resolveWorkspace),
+    },
+    {
+      name: 'ReadWorkspaceFile',
+      description: `Read a UTF-8 text file from the current workspace. Files larger than ${MAX_READ_BYTES} bytes are rejected.`,
+      inputSchema: workspacePathInputSchema,
+      annotations: { readOnly: true, openWorld: false },
+      execute: async (input) => readWorkspaceFile(workspaceId, input, resolveWorkspace),
+    },
+    {
+      name: 'WriteWorkspaceFile',
+      description: 'Write UTF-8 text content to a workspace file. Creates parent directories when needed.',
+      inputSchema: writeWorkspaceFileInputSchema,
+      annotations: { destructive: false, openWorld: false },
+      execute: async (input) => writeWorkspaceFile(workspaceId, input, resolveWorkspace),
+    },
+    {
+      name: 'DeleteWorkspacePath',
+      description: 'Delete a workspace file or directory recursively by workspace-relative path.',
+      inputSchema: workspacePathInputSchema,
+      annotations: { destructive: true, openWorld: false },
+      execute: async (input) => deleteWorkspacePath(workspaceId, input, resolveWorkspace),
+    },
+    {
+      name: 'MoveWorkspacePath',
+      description: 'Move or rename a workspace file or directory using workspace-relative paths.',
+      inputSchema: moveWorkspaceFileInputSchema,
+      annotations: { destructive: false, openWorld: false },
+      execute: async (input) => moveWorkspacePath(workspaceId, input, resolveWorkspace),
+    },
+  ];
+
+  return tools.filter((tool) => allowedToolNames.has(tool.name as BuiltInAgentToolName));
+}
+
+async function listWorkspaceFiles(workspaceId: string, input: unknown, resolveWorkspace?: () => Workspace | null): Promise<{ workspaceId: string; path: string; files: FileNode[] }> {
+  const workspace = getWorkspaceOrThrow(workspaceId, resolveWorkspace);
+  const data = readInputRecord(input);
+  const relPath = readWorkspacePath(readStringOrDefault(data.path, ''));
+  const depth = clampNumber(data.depth, 2, 1, 10);
+  const files = await fileService.readTree(workspace, relPath, depth);
+  return { workspaceId, path: relPath, files };
+}
+
+async function readWorkspaceFile(workspaceId: string, input: unknown, resolveWorkspace?: () => Workspace | null): Promise<{ path: string; content: string; encoding: string; size: number }> {
+  const workspace = getWorkspaceOrThrow(workspaceId, resolveWorkspace);
+  const data = readInputRecord(input);
+  const relPath = readWorkspacePath(readRequiredString(data.path, 'path'));
+  const abs = fileService.resolvePath(workspace, relPath);
+  if (!abs) throw new Error('Invalid workspace path.');
+  const fileStat = await stat(abs).catch(() => null);
+  if (!fileStat || !fileStat.isFile()) throw new Error('Workspace file not found.');
+  if (fileStat.size > MAX_READ_BYTES) throw new Error(`File is too large to read. Maximum size is ${MAX_READ_BYTES} bytes.`);
+  const result = await fileService.readFileContent(workspace, relPath);
+  if (!result) throw new Error('Failed to read workspace file as UTF-8 text.');
+  return { path: relPath, content: result.content, encoding: result.encoding, size: fileStat.size };
+}
+
+async function writeWorkspaceFile(workspaceId: string, input: unknown, resolveWorkspace?: () => Workspace | null): Promise<{ ok: true; path: string; mode: 'overwrite' | 'append' }> {
+  const workspace = getWorkspaceOrThrow(workspaceId, resolveWorkspace);
+  const data = readInputRecord(input);
+  const relPath = readWorkspacePath(readRequiredString(data.path, 'path'));
+  const content = readStringOrDefault(data.content, '');
+  const mode = readStringOrDefault(data.mode, 'overwrite') === 'append' ? 'append' : 'overwrite';
+  const nextContent = mode === 'append'
+    ? `${(await fileService.readFileContent(workspace, relPath))?.content ?? ''}${content}`
+    : content;
+  const ok = await fileService.writeFileContent(workspace, relPath, nextContent);
+  if (!ok) throw new Error('Failed to write workspace file.');
+  return { ok: true, path: relPath, mode };
+}
+
+async function deleteWorkspacePath(workspaceId: string, input: unknown, resolveWorkspace?: () => Workspace | null): Promise<{ ok: true; path: string }> {
+  const workspace = getWorkspaceOrThrow(workspaceId, resolveWorkspace);
+  const data = readInputRecord(input);
+  const relPath = readWorkspacePath(readRequiredString(data.path, 'path'));
+  const ok = await fileService.deletePath(workspace, relPath);
+  if (!ok) throw new Error('Failed to delete workspace path.');
+  return { ok: true, path: relPath };
+}
+
+async function moveWorkspacePath(workspaceId: string, input: unknown, resolveWorkspace?: () => Workspace | null): Promise<{ ok: true; sourcePath: string; targetPath: string }> {
+  const workspace = getWorkspaceOrThrow(workspaceId, resolveWorkspace);
+  const data = readInputRecord(input);
+  const sourcePath = readWorkspacePath(readRequiredString(data.sourcePath, 'sourcePath'));
+  const targetPath = readWorkspacePath(readRequiredString(data.targetPath, 'targetPath'));
+  const ok = await fileService.renamePath(workspace, sourcePath, targetPath);
+  if (!ok) throw new Error('Failed to move workspace path.');
+  return { ok: true, sourcePath, targetPath };
+}
+
+async function searchWorkspaceFiles(
+  workspaceId: string,
+  input: unknown,
+  resolveWorkspace?: () => Workspace | null,
+): Promise<{ query: string; path: string; matches: Array<{ path: string; name: string; type: 'path' | 'content'; line?: number; preview?: string }> }> {
+  const workspace = getWorkspaceOrThrow(workspaceId, resolveWorkspace);
+  const data = readInputRecord(input);
+  const query = readRequiredString(data.query, 'query').toLowerCase();
+  const relPath = readWorkspacePath(readStringOrDefault(data.path, ''));
+  const maxFiles = clampNumber(data.maxFiles, 50, 1, MAX_SEARCH_FILES);
+  const maxMatches = clampNumber(data.maxMatches, 20, 1, MAX_SEARCH_MATCHES);
+  const tree = await fileService.readTree(workspace, relPath, Infinity);
+  const files = flattenFiles(tree).slice(0, maxFiles);
+  const matches: Array<{ path: string; name: string; type: 'path' | 'content'; line?: number; preview?: string }> = [];
+
+  for (const file of files) {
+    if (matches.length >= maxMatches) break;
+    if (file.path.toLowerCase().includes(query) || file.name.toLowerCase().includes(query)) {
+      matches.push({ path: file.path, name: file.name, type: 'path' });
+      if (matches.length >= maxMatches) break;
+    }
+    const abs = fileService.resolvePath(workspace, file.path);
+    const fileStat = abs ? await stat(abs).catch(() => null) : null;
+    if (!fileStat || !fileStat.isFile() || fileStat.size > MAX_READ_BYTES) continue;
+    const content = await fileService.readFileContent(workspace, file.path);
+    if (!content) continue;
+    const lines = content.content.split(/\r?\n/);
+    const lineIndex = lines.findIndex((line) => line.toLowerCase().includes(query));
+    if (lineIndex !== -1) {
+      matches.push({
+        path: file.path,
+        name: basename(file.path),
+        type: 'content',
+        line: lineIndex + 1,
+        preview: lines[lineIndex].trim().slice(0, 500),
+      });
+    }
+  }
+
+  return { query, path: relPath, matches };
+}
+
+function getWorkspaceOrThrow(workspaceId: string, resolveWorkspace?: () => Workspace | null): Workspace {
+  const workspace = fileService.getWorkspace(workspaceId) ?? resolveWorkspace?.();
+  if (!workspace) throw new Error(`Workspace not found: ${workspaceId}`);
+  return workspace;
+}
+
+function readInputRecord(input: unknown): Record<string, unknown> {
+  if (input === undefined || input === null) return {};
+  return assertRecord(input);
+}
+
+function readWorkspacePath(path: string): string {
+  const trimmed = path.trim();
+  if (/^[a-zA-Z]:\//.test(trimmed.replace(/\\/g, '/'))) throw new Error('Absolute paths are not allowed.');
+  const normalized = trimmed.replace(/\\/g, '/').replace(/^\/+/, '');
+  if (normalized.split('/').some((part) => part === '..')) throw new Error('Parent path traversal is not allowed.');
+  return normalized;
+}
+
+function clampNumber(value: unknown, fallback: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, typeof value === 'number' && Number.isFinite(value) ? Math.floor(value) : fallback));
+}
+
+function flattenFiles(nodes: FileNode[]): Array<FileNode & { type: 'file' }> {
+  const result: Array<FileNode & { type: 'file' }> = [];
+  for (const node of nodes) {
+    if (node.type === 'file') result.push(node as FileNode & { type: 'file' });
+    if (node.children?.length) result.push(...flattenFiles(node.children));
+  }
+  return result;
+}
+
+function getAllowedWorkspaceFileToolNames(allowedTools?: BuiltInAgentToolName[]): Set<BuiltInAgentToolName> {
+  const names = new Set(allowedTools ?? BUILT_IN_AGENT_TOOLS.map((tool) => tool.name));
+  const hasWorkspaceFileTools = Array.from(names).some((name) => isWorkspaceFileToolName(name));
+  if (hasWorkspaceFileTools) {
+    names.add('ListWorkspaceFiles');
+    names.add('SearchWorkspaceFiles');
+    names.add('ReadWorkspaceFile');
+  }
+  return names;
+}
+
+function isWorkspaceFileToolName(name: BuiltInAgentToolName): boolean {
+  return name === 'ListWorkspaceFiles'
+    || name === 'SearchWorkspaceFiles'
+    || name === 'ReadWorkspaceFile'
+    || name === 'WriteWorkspaceFile'
+    || name === 'DeleteWorkspacePath'
+    || name === 'MoveWorkspacePath';
+}

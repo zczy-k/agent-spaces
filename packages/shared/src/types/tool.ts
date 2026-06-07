@@ -115,6 +115,36 @@ export const BUILT_IN_AGENT_TOOLS = [
     description: 'Delete the workspace Kanban board with its columns and tasks.',
   },
   {
+    name: 'ListWorkspaceFiles',
+    label: 'List Workspace Files',
+    description: 'List files and directories in the current workspace filesystem.',
+  },
+  {
+    name: 'SearchWorkspaceFiles',
+    label: 'Search Workspace Files',
+    description: 'Search workspace file paths and UTF-8 text file content.',
+  },
+  {
+    name: 'ReadWorkspaceFile',
+    label: 'Read Workspace File',
+    description: 'Read a UTF-8 text file from the current workspace filesystem.',
+  },
+  {
+    name: 'WriteWorkspaceFile',
+    label: 'Write Workspace File',
+    description: 'Write UTF-8 text content to a workspace file.',
+  },
+  {
+    name: 'DeleteWorkspacePath',
+    label: 'Delete Workspace Path',
+    description: 'Delete a workspace file or directory recursively.',
+  },
+  {
+    name: 'MoveWorkspacePath',
+    label: 'Move Workspace Path',
+    description: 'Move or rename a workspace file or directory.',
+  },
+  {
     name: 'list_workflows',
     label: 'List Workflows',
     description: 'List saved workflows and their start node input fields.',

@@ -126,7 +126,7 @@ export function createSession(workspaceId: string, agentId: string): ChatSession
   return store.createSession(workspaceId, agentId);
 }
 
-export function updateSession(workspaceId: string, sessionId: string, data: { title?: string }): ChatSession | null {
+export function updateSession(workspaceId: string, sessionId: string, data: { title?: string; archived?: boolean }): ChatSession | null {
   return store.updateSession(workspaceId, sessionId, data);
 }
 

@@ -2,4 +2,5 @@ export { createIssueFunctionTools, isBuiltInIssueToolName } from './issue-tools.
 export { createCommandFunctionTools } from './command-tools.js';
 export { createDatabaseFunctionTools } from './database-tools.js';
 export { createKanbanFunctionTools } from './kanban-tools.js';
+export { createWorkspaceFileFunctionTools } from './workspace-file-tools.js';
 export { createWorkflowExecutionFunctionTools, setWorkflowExecutionManager } from './workflow-exec-tools.js';
