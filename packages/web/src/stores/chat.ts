@@ -240,7 +240,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     if (!session) return null;
     set((s) => ({
       sessions: [session, ...s.sessions],
-      activeSessionId: session.id,
     }));
     return session.id;
   },

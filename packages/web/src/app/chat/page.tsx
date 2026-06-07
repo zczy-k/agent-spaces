@@ -13,6 +13,7 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/componen
 import { MessageSquare, FileIcon, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FileIconImg } from "@/components/editor/file-icon";
+import { AgentIcon } from "@/components/common/agent-icon";
 import type { ChatAgent } from "@agent-spaces/sdk";
 import type { AgentPreset } from "@/components/sidebar/agent-shared";
 
@@ -77,6 +78,7 @@ export default function ChatPage() {
   const [createAgentOpen, setCreateAgentOpen] = useState(false);
   const [newWorkspaceOpen, setNewWorkspaceOpen] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
+  const [openSessionTabIds, setOpenSessionTabIds] = useState<Set<string>>(new Set());
 
   const defaultLayout = useMemo<Layout | undefined>(() => loadLayout(), []);
   const onLayoutChange = useCallback((layout: Layout) => {
@@ -100,7 +102,7 @@ export default function ChatPage() {
   // Build tabs: sessions + open files
   const tabs: ChatTab[] = useMemo(() => {
     const sessionTabs: ChatTab[] = sessions
-      .filter((s) => !s.archived)
+      .filter((s) => !s.archived && openSessionTabIds.has(s.id))
       .map((s) => {
         const agent = agents.find((a) => a.id === s.agentId);
         return {
@@ -117,7 +119,7 @@ export default function ChatPage() {
       name: f.name,
     }));
     return [...sessionTabs, ...fileTabs];
-  }, [sessions, agents, openFileTabs]);
+  }, [sessions, agents, openFileTabs, openSessionTabIds]);
 
   const activeTabId = activeSessionId ?? (activeFileTabPath ? `file:${activeFileTabPath}` : null);
 
@@ -193,6 +195,19 @@ export default function ChatPage() {
     [createAgent]
   );
 
+  // 左侧面板点击 session：开 tab + 激活
+  const handleSelectSession = useCallback(
+    (sessionId: string | null) => {
+      if (!sessionId) return;
+      setOpenSessionTabIds((prev) => {
+        if (prev.has(sessionId)) return prev;
+        return new Set(prev).add(sessionId);
+      });
+      selectSession(sessionId);
+    },
+    [selectSession]
+  );
+
   const handleTabClick = useCallback(
     (tab: ChatTab) => {
       if (tab.type === 'session') {
@@ -208,12 +223,20 @@ export default function ChatPage() {
     (e: React.MouseEvent, tab: ChatTab) => {
       e.stopPropagation();
       if (tab.type === 'session') {
-        archiveSession(tab.id);
+        setOpenSessionTabIds((prev) => {
+          const next = new Set(prev);
+          next.delete(tab.id);
+          return next;
+        });
+        if (activeSessionId === tab.id) {
+          const remaining = sessions.filter((s) => openSessionTabIds.has(s.id) && s.id !== tab.id);
+          selectSession(remaining[0]?.id ?? null);
+        }
       } else {
         closeChatFile(tab.path);
       }
     },
-    [archiveSession, closeChatFile]
+    [activeSessionId, sessions, openSessionTabIds, selectSession, closeChatFile]
   );
 
   const handleFileSelect = useCallback(
@@ -256,7 +279,7 @@ export default function ChatPage() {
           onCreateWorkspace={() => setNewWorkspaceOpen(true)}
           onManageAgents={handleManageAgents}
           onNewSession={() => setAgentPickerOpen(true)}
-          onSelectSession={selectSession}
+          onSelectSession={handleSelectSession}
           onDeleteSession={deleteSession}
           onArchiveSession={archiveSession}
           onUnarchiveSession={unarchiveSession}
@@ -285,7 +308,14 @@ export default function ChatPage() {
                     onClick={() => handleTabClick(tab)}
                   >
                     {tab.type === 'session' ? (
-                      <MessageSquare className="size-3 shrink-0" />
+                      <AgentIcon
+                        agentId={tab.agentId}
+                        name={agents.find((a) => a.id === tab.agentId)?.name ?? ''}
+                        avatarUrl={agents.find((a) => a.id === tab.agentId)?.avatar}
+                        icon={agents.find((a) => a.id === tab.agentId)?.icon}
+                        className="size-4 shrink-0"
+                        rounded=""
+                      />
                     ) : (
                       <FileIconImg name={tab.name} />
                     )}
