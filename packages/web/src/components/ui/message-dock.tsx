@@ -276,23 +276,25 @@ export function MessageDock({
           )}
 
           {/* First separator */}
-          <motion.div
-            className="w-px h-6 bg-gray-300 mr-2 -ml-2"
-            animate={{
-              opacity: isExpanded ? 0 : 1,
-              scaleY: isExpanded ? 0 : 1,
-            }}
-            transition={{
-              type: "spring",
-              stiffness: 300,
-              damping: 30,
-              delay: isExpanded ? 0 : 0.3,
-            }}
-          />
+          {showSparkleButton && (
+            <motion.div
+              className="w-px h-6 bg-gray-300 mr-2 -ml-2"
+              animate={{
+                opacity: isExpanded ? 0 : 1,
+                scaleY: isExpanded ? 0 : 1,
+              }}
+              transition={{
+                type: "spring",
+                stiffness: 300,
+                damping: 30,
+                delay: isExpanded ? 0 : 0.3,
+              }}
+            />
+          )}
 
           {/* Character buttons */}
-          {characters.slice(1, -1).map((character, index) => {
-            const actualIndex = index + 1;
+          {characters.slice(showSparkleButton ? 1 : 0, showMenuButton ? -1 : undefined).map((character, index) => {
+            const actualIndex = (showSparkleButton ? 1 : 0) + index;
             const isSelected = expandedCharacter === actualIndex;
 
             return (
@@ -337,7 +339,11 @@ export function MessageDock({
                   whileTap={{ scale: 0.95 }}
                   aria-label={`Message ${character.name}`}
                 >
-                  <span className="text-2xl">{character.emoji}</span>
+                  {character.avatar ? (
+                    <img src={character.avatar} alt={character.name} className="size-6 rounded-full object-cover" />
+                  ) : (
+                    <span className="text-2xl">{character.emoji}</span>
+                  )}
 
                   {character.online && (
                     <motion.div
@@ -409,18 +415,20 @@ export function MessageDock({
           </AnimatePresence>
 
           {/* Second separator */}
-          <motion.div
-            className="w-px h-6 bg-gray-300 ml-2 -mr-2"
-            animate={{
-              opacity: isExpanded ? 0 : 1,
-              scaleY: isExpanded ? 0 : 1,
-            }}
-            transition={{
-              type: "spring",
-              stiffness: 300,
-              damping: 30,
-            }}
-          />
+          {showMenuButton && (
+            <motion.div
+              className="w-px h-6 bg-gray-300 ml-2 -mr-2"
+              animate={{
+                opacity: isExpanded ? 0 : 1,
+                scaleY: isExpanded ? 0 : 1,
+              }}
+              transition={{
+                type: "spring",
+                stiffness: 300,
+                damping: 30,
+              }}
+            />
+          )}
 
           {/* Menu / Send button */}
           {showMenuButton && (

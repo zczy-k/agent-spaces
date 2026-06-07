@@ -1,5 +1,12 @@
 import { v4 as uuid } from 'uuid';
+import Dagre from '@dagrejs/dagre';
 import type { NodeTypeDefinition, OutputField, Workflow, WorkflowEdge, WorkflowNode } from '@agent-spaces/shared';
+import {
+  getCompositeParentId,
+  isHiddenWorkflowEdge,
+  isHiddenWorkflowNode,
+  isScopeBoundaryWorkflowNode,
+} from '@agent-spaces/shared';
 import type { AgentFunctionTool } from '../../adapters/agent-runtime-types.js';
 import * as workflowService from '../workflow.js';
 
@@ -57,14 +64,24 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
   const versions = new Map<string, Pick<Workflow, 'nodes' | 'edges'>>();
   let draft = cloneWorkflow(ctx.workflow);
 
-  const commit = (next: Workflow) => {
+  const commit = (next: Workflow, meta?: JsonRecord) => {
     draft = {
       ...next,
       nodes: clone(next.nodes),
       edges: clone(next.edges),
       updatedAt: Date.now(),
     };
-    return workflowResult(true, 'updated', draft);
+    return workflowResult(true, 'updated', draft, undefined, meta);
+  };
+
+  const commitCompact = (next: Workflow, meta?: JsonRecord) => {
+    draft = {
+      ...next,
+      nodes: clone(next.nodes),
+      edges: clone(next.edges),
+      updatedAt: Date.now(),
+    };
+    return workflowPatchResult(true, 'updated', draft, meta);
   };
 
   const definitionByType = new Map(ctx.nodeDefinitions.map((definition) => [definition.type, definition]));
@@ -456,7 +473,9 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
       inputSchema: schema({ direction: { type: 'string', description: '布局方向，LR 或 TB，默认 LR。' } }),
       execute: async (input) => {
         const direction = stringInput(asRecord(input), 'direction') === 'TB' ? 'TB' : 'LR';
-        return commit({ ...draft, nodes: layoutNodes(draft.nodes, direction) });
+        const nodes = layoutNodes(draft.nodes, draft.edges, ctx.nodeDefinitions, direction);
+        const affectedNodeCount = countPositionChanges(draft.nodes, nodes);
+        return commitCompact({ ...draft, nodes }, { affected_node_count: affectedNodeCount });
       },
     },
   ];
@@ -464,10 +483,11 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
   return tools;
 }
 
-function workflowResult(success: boolean, message: string, workflow: Workflow, results?: unknown[]) {
+function workflowResult(success: boolean, message: string, workflow: Workflow, results?: unknown[], meta?: JsonRecord) {
   return {
     success,
     message,
+    ...meta,
     workflow,
     workflow_patch: {
       workflow_id: workflow.id,
@@ -476,6 +496,20 @@ function workflowResult(success: boolean, message: string, workflow: Workflow, r
       updatedAt: workflow.updatedAt,
     },
     results,
+  };
+}
+
+function workflowPatchResult(success: boolean, message: string, workflow: Workflow, meta?: JsonRecord) {
+  return {
+    success,
+    message,
+    ...meta,
+    workflow_patch: {
+      workflow_id: workflow.id,
+      nodes: workflow.nodes,
+      edges: workflow.edges,
+      updatedAt: workflow.updatedAt,
+    },
   };
 }
 
@@ -533,13 +567,78 @@ function nextNodePosition(nodes: WorkflowNode[]): WorkflowNode['position'] {
   return { x: maxX + 260, y: Math.round(avgY) };
 }
 
-function layoutNodes(nodes: WorkflowNode[], direction: 'LR' | 'TB'): WorkflowNode[] {
-  return nodes.map((node, index) => ({
-    ...node,
-    position: direction === 'TB'
-      ? { x: 160 + (index % 4) * 260, y: 100 + Math.floor(index / 4) * 180 }
-      : { x: 120 + index * 260, y: 120 + (index % 3) * 150 },
-  }));
+function layoutNodes(
+  nodes: WorkflowNode[],
+  edges: WorkflowEdge[],
+  definitions: NodeTypeDefinition[],
+  direction: 'LR' | 'TB',
+): WorkflowNode[] {
+  const graph = new Dagre.graphlib.Graph();
+  graph.setDefaultEdgeLabel(() => ({}));
+  graph.setGraph({ rankdir: direction, nodesep: 60, ranksep: 80 });
+
+  const definitionByType = new Map(definitions.map((definition) => [definition.type, definition]));
+  const layoutNodes = nodes.filter((node) => !isHiddenWorkflowNode(node) && !getCompositeParentId(node));
+  const layoutNodeIds = new Set(layoutNodes.map((node) => node.id));
+  const nodeSizes = new Map<string, { width: number; height: number }>();
+
+  for (const node of layoutNodes) {
+    const definition = definitionByType.get(node.type);
+    const size = {
+      width: typeof node.data?.width === 'number' ? node.data.width : definition?.customViewMinSize?.width || 220,
+      height: typeof node.data?.height === 'number' ? node.data.height : definition?.customViewMinSize?.height || 120,
+    };
+    nodeSizes.set(node.id, size);
+    graph.setNode(node.id, size);
+  }
+
+  for (const edge of edges.filter((edge) =>
+    !isHiddenWorkflowEdge(edge)
+    && layoutNodeIds.has(edge.source)
+    && layoutNodeIds.has(edge.target)
+  )) {
+    graph.setEdge(edge.source, edge.target);
+  }
+
+  Dagre.layout(graph);
+
+  const nextNodes = nodes.map((node) => ({ ...node, position: { ...node.position } }));
+  const nodeById = new Map(nextNodes.map((node) => [node.id, node]));
+
+  for (const node of layoutNodes) {
+    const nextNode = nodeById.get(node.id);
+    const layoutPosition = graph.node(node.id);
+    const size = nodeSizes.get(node.id);
+    if (!nextNode || !layoutPosition) continue;
+
+    const nextPosition = {
+      x: layoutPosition.x - (size?.width ?? 220) / 2,
+      y: layoutPosition.y - (size?.height ?? 120) / 2,
+    };
+
+    if (isScopeBoundaryWorkflowNode(nextNode)) {
+      const dx = nextPosition.x - nextNode.position.x;
+      const dy = nextPosition.y - nextNode.position.y;
+      for (const child of nextNodes.filter((item) => getCompositeParentId(item) === nextNode.id)) {
+        child.position = {
+          x: child.position.x + dx,
+          y: child.position.y + dy,
+        };
+      }
+    }
+
+    nextNode.position = nextPosition;
+  }
+
+  return nextNodes;
+}
+
+function countPositionChanges(before: WorkflowNode[], after: WorkflowNode[]): number {
+  const beforeById = new Map(before.map((node) => [node.id, node.position]));
+  return after.filter((node) => {
+    const previous = beforeById.get(node.id);
+    return previous && (previous.x !== node.position.x || previous.y !== node.position.y);
+  }).length;
 }
 
 function searchableDefinitionText(definition: NodeTypeDefinition): string {

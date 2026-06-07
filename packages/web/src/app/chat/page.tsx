@@ -9,6 +9,7 @@ import { ChatRightPanel } from "@/components/chat/chat-right-panel";
 import { AddChatAgentDialog } from "@/components/chat/add-chat-agent-dialog";
 import { ChatAgentPickerDialog } from "@/components/chat/chat-agent-picker-dialog";
 import { MessageSquare } from "lucide-react";
+import { MessageDock, type Character } from "@/components/ui/message-dock";
 import type { ChatAgent } from "@agent-spaces/sdk";
 import type { AgentPreset } from "@/components/sidebar/agent-shared";
 
@@ -42,6 +43,13 @@ export default function ChatPage() {
   const [editAgent, setEditAgent] = useState<ChatAgent | undefined>(undefined);
   const [createOpen, setCreateOpen] = useState(false);
   const [chatListIds, setChatListIds] = useState<Set<string>>(new Set());
+  const [favoriteAgentIds, setFavoriteAgentIds] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem('agent-spaces:chat-favorite-agents');
+      if (stored) return new Set(JSON.parse(stored));
+    } catch { /* ignore */ }
+    return new Set();
+  });
 
   const chatListAgents = agents.filter((a) => chatListIds.has(a.id));
   const activeAgent = agents.find((a) => a.id === activeAgentId);
@@ -50,6 +58,17 @@ export default function ChatPage() {
   const activeError = activeAgentId ? (errors[activeAgentId] ?? "") : "";
   const activeStreamingContent = activeAgentId ? (streamingContent[activeAgentId] ?? "") : "";
   const activeStreamingThinking = activeAgentId ? (streamingThinking[activeAgentId] ?? "") : "";
+
+  const favoriteCharacters: Character[] = agents
+    .filter((a) => favoriteAgentIds.has(a.id))
+    .map((agent) => ({
+      id: agent.id,
+      emoji: agent.icon || "🤖",
+      name: agent.name,
+      online: true,
+      avatar: agent.avatar || agent.avatarUrl || undefined,
+      gradientColors: "#86efac, #dcfce7",
+    }));
 
   // URL -> store: on mount and when agents load, restore selection from URL
   useEffect(() => {
@@ -76,6 +95,11 @@ export default function ChatPage() {
       setChatListIds(new Set(agents.map((a) => a.id)));
     }
   }, [agents, chatListIds.size]);
+
+  // Persist favorites
+  useEffect(() => {
+    localStorage.setItem('agent-spaces:chat-favorite-agents', JSON.stringify([...favoriteAgentIds]));
+  }, [favoriteAgentIds]);
 
   // When a new agent is added to the store, auto-add to chat list
   useEffect(() => {
@@ -139,6 +163,23 @@ export default function ChatPage() {
     });
     // New agent auto-added to chatListIds via the useEffect above
   }, [createAgent]);
+
+  const handleToggleFavorite = useCallback((id: string) => {
+    setFavoriteAgentIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const handleDockMessageSend = useCallback((message: string, character: Character) => {
+    const agentId = character.id as string;
+    if (!agentId) return;
+    setChatListIds((prev) => { const n = new Set(prev); n.add(agentId); return n; });
+    selectAgent(agentId);
+    sendMessage(agentId, message.trim());
+  }, [selectAgent, sendMessage]);
 
   return (
     <div className="flex h-full gap-4 bg-muted/30 p-2">
@@ -209,6 +250,8 @@ export default function ChatPage() {
         }}
         onEditAgent={(agent) => { setDialogOpen(false); setEditAgent(agent); }}
         onCreate={() => { setDialogOpen(false); setCreateOpen(true); }}
+        favoriteIds={favoriteAgentIds}
+        onToggleFavorite={handleToggleFavorite}
       />
 
       <AddChatAgentDialog
@@ -229,6 +272,18 @@ export default function ChatPage() {
           setCreateOpen(false);
         }}
       />
+
+      {favoriteCharacters.length > 0 && (
+        <MessageDock
+          characters={favoriteCharacters}
+          onMessageSend={handleDockMessageSend}
+          showSparkleButton={false}
+          showMenuButton={false}
+          position="bottom"
+          placeholder={(name) => `Message ${name}...`}
+          closeOnSend={true}
+        />
+      )}
     </div>
   );
 }

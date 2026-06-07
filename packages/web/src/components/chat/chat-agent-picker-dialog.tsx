@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { AgentIcon } from "@/components/common/agent-icon";
 import { StoreTabPanel } from "@/components/common/store-tab-panel";
 import { Switch } from "@/components/ui/switch";
-import { Bot, FileText, Store, Plus, Check, WandSparkles, Trash2, Pencil } from "lucide-react";
+import { Bot, FileText, Store, Plus, Check, WandSparkles, Trash2, Pencil, Star } from "lucide-react";
 import { fetchStoreIndex } from "@/lib/agent-store";
 import { sdk } from "@/lib/sdk";
 import type { AgentPreset } from "@/components/sidebar/agent-shared";
@@ -41,6 +41,8 @@ interface ChatAgentPickerDialogProps {
   onRemoveFromChat?: (id: string) => void;
   onEditAgent?: (agent: ChatAgent) => void;
   onCreate?: () => void;
+  favoriteIds?: Set<string>;
+  onToggleFavorite?: (id: string) => void;
 }
 
 export function ChatAgentPickerDialog({
@@ -52,6 +54,8 @@ export function ChatAgentPickerDialog({
   onRemoveFromChat,
   onEditAgent,
   onCreate,
+  favoriteIds,
+  onToggleFavorite,
 }: ChatAgentPickerDialogProps) {
   const t = useTranslations("agent");
   const tc = useTranslations("common");
@@ -301,6 +305,16 @@ export function ChatAgentPickerDialog({
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5">
+                    {onToggleFavorite && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className={`size-7 opacity-0 group-hover:opacity-100 transition-opacity ${favoriteIds?.has(agent.id) ? '!opacity-100 text-yellow-500' : ''}`}
+                        onClick={() => onToggleFavorite(agent.id)}
+                      >
+                        <Star className={`size-3.5 ${favoriteIds?.has(agent.id) ? 'fill-current' : ''}`} />
+                      </Button>
+                    )}
                     {onEditAgent && (
                       <Button
                         size="icon"
