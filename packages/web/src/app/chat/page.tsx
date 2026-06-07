@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useChatStore } from "@/stores/chat";
 import { ChatAgentList } from "@/components/chat/chat-agent-list";
 import { InlineChatPanel } from "@/components/chat/inline-chat-panel";
@@ -8,9 +8,28 @@ import { ChatRightPanel } from "@/components/chat/chat-right-panel";
 import { AddChatAgentDialog } from "@/components/chat/add-chat-agent-dialog";
 import { AddMemberDialog } from "@/components/chat/add-member-dialog";
 import { ChatAgentPickerDialog } from "@/components/chat/chat-agent-picker-dialog";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { MessageSquare } from "lucide-react";
 import type { ChatAgent } from "@agent-spaces/sdk";
 import type { AgentPreset } from "@/components/sidebar/agent-shared";
+
+const PANEL_ID_AGENT_LIST = "chat-agent-list";
+const PANEL_ID_CHAT = "chat-main";
+const PANEL_ID_RIGHT = "chat-right";
+
+const LAYOUT_KEY = "agent-spaces:chat-layout";
+type Layout = Record<string, number>;
+
+function loadLayout(): Layout | undefined {
+  try {
+    const raw = localStorage.getItem(LAYOUT_KEY);
+    if (!raw) return undefined;
+    const layout = JSON.parse(raw) as Layout;
+    return layout[PANEL_ID_AGENT_LIST] && layout[PANEL_ID_CHAT] ? layout : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 export default function ChatPage() {
   const {
@@ -24,6 +43,7 @@ export default function ChatPage() {
     errors,
     streamingContent,
     streamingThinking,
+    streamingTimeline,
     loadAgents,
     loadWorkspaces,
     createAgent,
@@ -45,11 +65,15 @@ export default function ChatPage() {
 
   const [agentPickerOpen, setAgentPickerOpen] = useState(false);
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
-  const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const [editAgent, setEditAgent] = useState<ChatAgent | undefined>(undefined);
   const [createAgentOpen, setCreateAgentOpen] = useState(false);
   const [newWorkspaceOpen, setNewWorkspaceOpen] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
+
+  const defaultLayout = useMemo<Layout | undefined>(() => loadLayout(), []);
+  const onLayoutChange = useCallback((layout: Layout) => {
+    try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch {}
+  }, []);
 
   const activeWorkspace = workspaces.find((ws) => ws.id === activeWorkspaceId);
   const activeSession = sessions.find((s) => s.id === activeSessionId);
@@ -61,6 +85,7 @@ export default function ChatPage() {
   const activeError = activeSessionId ? (errors[activeSessionId] ?? "") : "";
   const activeStreamingContent = activeSessionId ? (streamingContent[activeSessionId] ?? "") : "";
   const activeStreamingThinking = activeSessionId ? (streamingThinking[activeSessionId] ?? "") : "";
+  const activeStreamingTimeline = activeSessionId ? (streamingTimeline[activeSessionId] ?? []) : [];
 
   useEffect(() => {
     loadAgents();
@@ -141,60 +166,77 @@ export default function ChatPage() {
     label: a.name,
     description: a.description,
   }));
+
   return (
-    <div className="flex h-full gap-4 bg-muted/30 p-2">
-      <ChatAgentList
-        workspaces={workspaces}
-        activeWorkspaceId={activeWorkspaceId}
-        agents={agents}
-        sessions={sessions}
-        activeSessionId={activeSessionId}
-        sending={sending}
-        onWorkspaceChange={selectWorkspace}
-        onCreateWorkspace={() => setNewWorkspaceOpen(true)}
-        onManageAgents={handleManageAgents}
-        onNewSession={() => setAgentPickerOpen(true)}
-        onSelectSession={selectSession}
-        onDeleteSession={deleteSession}
-        onArchiveSession={archiveSession}
-        onUnarchiveSession={unarchiveSession}
-        className="w-[280px] shrink-0 rounded-xl border border-border/40 bg-background shadow-sm"
-      />
+    <ResizablePanelGroup
+      orientation="horizontal"
+      defaultLayout={defaultLayout}
+      onLayoutChange={onLayoutChange}
+      className="h-full bg-muted/30 gap-3 p-2"
+    >
+      <ResizablePanel id={PANEL_ID_AGENT_LIST} defaultSize="22%" minSize="15%" maxSize="35%">
+        <ChatAgentList
+          workspaces={workspaces}
+          activeWorkspaceId={activeWorkspaceId}
+          agents={agents}
+          sessions={sessions}
+          activeSessionId={activeSessionId}
+          sending={sending}
+          onWorkspaceChange={selectWorkspace}
+          onCreateWorkspace={() => setNewWorkspaceOpen(true)}
+          onManageAgents={handleManageAgents}
+          onNewSession={() => setAgentPickerOpen(true)}
+          onSelectSession={selectSession}
+          onDeleteSession={deleteSession}
+          onArchiveSession={archiveSession}
+          onUnarchiveSession={unarchiveSession}
+          className="h-full rounded-xl border border-border/40 bg-background shadow-sm"
+        />
+      </ResizablePanel>
 
-      <div className="flex-1 rounded-xl border border-border/40 bg-background shadow-sm">
-        {activeAgent && activeSession ? (
-          <InlineChatPanel
-            agentId={activeAgent.id}
-            agentName={activeAgent.name}
-            agentAvatar={activeAgent.avatar}
-            agentIcon={activeAgent.icon}
-            agentDescription={activeAgent.description}
-            messages={activeMessages}
-            sending={isSending}
-            error={activeError}
-            streamingContent={activeStreamingContent}
-            streamingThinking={activeStreamingThinking}
-            archived={!!activeSession.archived}
-            onSend={handleSend}
-            onStop={stopSession}
-            onClearMessages={clearSessionMessages}
-            onRegenerate={handleRegenerate}
-            onEditAgent={(id) => {
-              const agent = agents.find((a) => a.id === id);
-              if (agent) setEditAgent(agent);
-            }}
-            onToggleRightPanel={() => setRightPanelOpen((v) => !v)}
-          />
-        ) : (
-          <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
-            <MessageSquare className="size-12" />
-            <p className="text-sm">Select a session or start a new chat</p>
-          </div>
-        )}
-      </div>
+      <ResizableHandle withHandle />
 
-      {rightPanelOpen && activeAgent && (
-        <ChatRightPanel agentId={activeAgent.id} />
+      <ResizablePanel id={PANEL_ID_CHAT} defaultSize="53%" minSize="35%">
+        <div className="flex h-full rounded-xl border border-border/40 bg-background shadow-sm">
+          {activeAgent && activeSession ? (
+            <InlineChatPanel
+              agentId={activeAgent.id}
+              agentName={activeAgent.name}
+              agentAvatar={activeAgent.avatar}
+              agentIcon={activeAgent.icon}
+              agentDescription={activeAgent.description}
+              messages={activeMessages}
+              sending={isSending}
+              error={activeError}
+              streamingContent={activeStreamingContent}
+              streamingThinking={activeStreamingThinking}
+              streamingTimeline={activeStreamingTimeline}
+              archived={!!activeSession.archived}
+              onSend={handleSend}
+              onStop={stopSession}
+              onClearMessages={clearSessionMessages}
+              onRegenerate={handleRegenerate}
+              onEditAgent={(id) => {
+                const agent = agents.find((a) => a.id === id);
+                if (agent) setEditAgent(agent);
+              }}
+            />
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
+              <MessageSquare className="size-12" />
+              <p className="text-sm">Select a session or start a new chat</p>
+            </div>
+          )}
+        </div>
+      </ResizablePanel>
+
+      {activeAgent && (
+        <>
+          <ResizableHandle withHandle />
+          <ResizablePanel id={PANEL_ID_RIGHT} defaultSize="25%" minSize="18%" maxSize="40%" collapsible>
+            <ChatRightPanel agentId={activeAgent.id} />
+          </ResizablePanel>
+        </>
       )}
 
       {/* Agent picker for new session */}
@@ -284,6 +326,6 @@ export default function ChatPage() {
           </div>
         </div>
       )}
-    </div>
+    </ResizablePanelGroup>
   );
 }

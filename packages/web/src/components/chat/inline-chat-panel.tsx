@@ -8,8 +8,10 @@ import { Eraser, MessageSquare, PanelRightOpen } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRef, useEffect, useMemo, useState } from "react";
 import type { Attachment as MessageAttachment } from "@agent-spaces/shared";
+import type { WorkflowAgentTimelineItem } from "@agent-spaces/shared";
 import { ChatComposerInput, type ChatComposerInputHandle } from "./chat-composer-input";
 import { ChatMessageList } from "./chat-message-list";
+import { ChatToolTimeline } from "./chat-tool-timeline";
 import type { ChatMessage } from "@agent-spaces/sdk";
 
 interface InlineChatPanelProps {
@@ -23,6 +25,7 @@ interface InlineChatPanelProps {
   error?: string;
   streamingContent?: string;
   streamingThinking?: string;
+  streamingTimeline?: WorkflowAgentTimelineItem[];
   workspaceId?: string;
   onSend: (content: string, mentions: string[], attachments: MessageAttachment[], contextLength: number) => void;
   onStop: () => void;
@@ -45,6 +48,7 @@ export function InlineChatPanel({
   error = "",
   streamingContent = "",
   streamingThinking = "",
+  streamingTimeline = [],
   workspaceId,
   onSend,
   onStop,
@@ -215,25 +219,17 @@ export function InlineChatPanel({
               </div>
             </div>
           )}
-          {sending && !isRegenerating && (streamingContent || streamingThinking) && (
-            <div className="flex gap-3">
-              <AgentIcon agentId={agentId} name={agentName} avatarUrl={agentAvatar} icon={agentIcon} className="size-7" bordered />
-              <div className="max-w-[78%] rounded-2xl rounded-tl-none bg-muted/50 px-4 py-3 text-sm">
-                {streamingThinking && (
-                  <details className="mb-2 rounded-md border border-border/40 bg-background/40 px-3 py-2 text-xs text-muted-foreground">
-                    <summary className="cursor-pointer select-none font-medium">{t('thinking')}</summary>
-                    <div className="mt-2 whitespace-pre-wrap break-words">{streamingThinking}</div>
-                  </details>
-                )}
-                {streamingContent && (
-                  <div className="whitespace-pre-wrap break-words leading-relaxed">
-                    {streamingContent}
-                  </div>
-                )}
-              </div>
-            </div>
+          {sending && !isRegenerating && (streamingContent || streamingThinking || streamingTimeline.length > 0) && (
+            <ChatMessageList
+              messages={[createStreamingMessage("current")]}
+              sending={false}
+              workspaceId={workspaceId}
+              showTypingIndicator={false}
+              isStreamingMessage={() => true}
+              renderMessageExtras={() => <ChatToolTimeline timeline={streamingTimeline} />}
+            />
           )}
-          {sending && !isRegenerating && !streamingContent && !streamingThinking && (
+          {sending && !isRegenerating && !streamingContent && !streamingThinking && streamingTimeline.length === 0 && (
             <div className="flex gap-3">
               <AgentIcon agentId={agentId} name={agentName} avatarUrl={agentAvatar} icon={agentIcon} className="size-7" bordered />
               <div className="flex items-center gap-1 rounded-2xl rounded-tl-none bg-muted/50 px-4 py-3">

@@ -65,7 +65,7 @@ export function ChatRightPanel({ agentId }: ChatRightPanelProps) {
   const filteredTree = useMemo(() => filterTree(tree, search), [tree, search]);
 
   return (
-    <div className="flex h-full w-[320px] shrink-0 flex-col rounded-xl border border-border/40 bg-background shadow-sm">
+    <div className="flex h-full flex-col overflow-hidden rounded-xl border border-border/40 bg-background shadow-sm">
       <div className="flex items-center gap-1.5 border-b border-border/40 px-2 py-2">
         <div className="relative flex-1">
           <SearchIcon className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />

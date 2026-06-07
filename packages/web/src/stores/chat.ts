@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import type { StoreApi } from 'zustand';
 import { sdk } from '@/lib/sdk';
 import type { ChatAgent, ChatMessage, ChatWorkspace, ChatSession } from '@agent-spaces/sdk';
+import type { WorkflowAgentTimelineItem } from '@agent-spaces/shared';
 
 const activeChatRequests = new Map<string, AbortController>();
 type ChatSet = StoreApi<ChatStore>['setState'];
@@ -15,6 +16,7 @@ interface ChatStore {
   errors: Record<string, string>;
   streamingContent: Record<string, string>;
   streamingThinking: Record<string, string>;
+  streamingTimeline: Record<string, WorkflowAgentTimelineItem[]>;
 
   workspaces: ChatWorkspace[];
   activeWorkspaceId: string | null;
@@ -68,6 +70,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   errors: {},
   streamingContent: {},
   streamingThinking: {},
+  streamingTimeline: {},
   workspaces: [],
   activeWorkspaceId: null,
   sessions: [],
@@ -102,6 +105,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       const { [id]: _error, ...restErrors } = s.errors;
       const { [id]: _streamingContent, ...restStreamingContent } = s.streamingContent;
       const { [id]: _streamingThinking, ...restStreamingThinking } = s.streamingThinking;
+      const { [id]: _streamingTimeline, ...restStreamingTimeline } = s.streamingTimeline;
       return {
         agents: s.agents.filter((a) => a.id !== id),
         messages: restMessages,
@@ -109,6 +113,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         errors: restErrors,
         streamingContent: restStreamingContent,
         streamingThinking: restStreamingThinking,
+        streamingTimeline: restStreamingTimeline,
         activeAgentId: s.activeAgentId === id ? null : s.activeAgentId,
       };
     });
@@ -149,6 +154,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       errors: { ...s.errors, [agentId]: '' },
       streamingContent: { ...s.streamingContent, [agentId]: '' },
       streamingThinking: { ...s.streamingThinking, [agentId]: '' },
+      streamingTimeline: { ...s.streamingTimeline, [agentId]: [] },
     }));
   },
 
@@ -292,6 +298,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       errors: { ...s.errors, [sessionId]: '' },
       streamingContent: { ...s.streamingContent, [sessionId]: '' },
       streamingThinking: { ...s.streamingThinking, [sessionId]: '' },
+      streamingTimeline: { ...s.streamingTimeline, [sessionId]: [] },
     }));
   },
 
@@ -323,6 +330,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       errors: { ...s.errors, [agentId]: '' },
       streamingContent: { ...s.streamingContent, [agentId]: '' },
       streamingThinking: { ...s.streamingThinking, [agentId]: '' },
+      streamingTimeline: { ...s.streamingTimeline, [agentId]: [] },
     }));
   },
 
@@ -332,6 +340,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       errors: { ...s.errors, [agentId]: error },
       streamingContent: { ...s.streamingContent, [agentId]: '' },
       streamingThinking: { ...s.streamingThinking, [agentId]: '' },
+      streamingTimeline: { ...s.streamingTimeline, [agentId]: [] },
     }));
   },
 }));
@@ -349,6 +358,7 @@ async function runChatAgent(
     errors: { ...s.errors, [agentId]: '' },
     streamingContent: { ...s.streamingContent, [agentId]: '' },
     streamingThinking: { ...s.streamingThinking, [agentId]: '' },
+    streamingTimeline: { ...s.streamingTimeline, [agentId]: [] },
   }));
 
   try {
@@ -472,8 +482,19 @@ function handleChatRunEvent(
           errors: { ...s.errors, [agentId]: '' },
           streamingContent: { ...s.streamingContent, [agentId]: '' },
           streamingThinking: { ...s.streamingThinking, [agentId]: '' },
+          streamingTimeline: { ...s.streamingTimeline, [agentId]: [] },
         }));
       }
+      break;
+    }
+    case 'tool_use': {
+      const data = payload.data as { name?: string; input?: unknown };
+      appendStreamingToolUse(set, agentId, data);
+      break;
+    }
+    case 'tool_result': {
+      const data = payload.data as { name?: string; result?: unknown };
+      completeStreamingToolCall(set, agentId, data);
       break;
     }
     case 'error': {
@@ -483,6 +504,7 @@ function handleChatRunEvent(
         errors: { ...s.errors, [agentId]: data.error ?? 'Chat run failed' },
         streamingContent: { ...s.streamingContent, [agentId]: '' },
         streamingThinking: { ...s.streamingThinking, [agentId]: '' },
+        streamingTimeline: { ...s.streamingTimeline, [agentId]: [] },
       }));
       break;
     }
@@ -504,6 +526,86 @@ function appendStreamingText(
   }));
 }
 
+function appendStreamingToolUse(
+  set: ChatSet,
+  agentId: string,
+  data: { name?: string; input?: unknown },
+): void {
+  const name = data.name || 'tool';
+  set((s) => ({
+    streamingTimeline: {
+      ...s.streamingTimeline,
+      [agentId]: [
+        ...(s.streamingTimeline[agentId] ?? []),
+        {
+          id: `${name}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          type: 'tool',
+          name,
+          input: data.input,
+          status: 'running',
+        },
+      ],
+    },
+  }));
+}
+
+function completeStreamingToolCall(
+  set: ChatSet,
+  agentId: string,
+  data: { name?: string; result?: unknown },
+): void {
+  const name = data.name || 'tool';
+  set((s) => {
+    const timeline = [...(s.streamingTimeline[agentId] ?? [])];
+    const index = findLastIndex(timeline, (item) => item.type === 'tool' && item.status === 'running' && item.name === name);
+    const fallbackIndex = index === -1
+      ? findLastIndex(timeline, (item) => item.type === 'tool' && item.status === 'running')
+      : index;
+
+    if (fallbackIndex === -1) {
+      timeline.push({
+        id: `${name}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        type: 'tool',
+        name,
+        result: data.result,
+        status: isErrorToolResult(data.result) ? 'error' : 'success',
+      });
+    } else {
+      const item = timeline[fallbackIndex];
+      if (item?.type === 'tool') {
+        timeline[fallbackIndex] = {
+          ...item,
+          result: data.result,
+          status: isErrorToolResult(data.result) ? 'error' : 'success',
+        };
+      }
+    }
+
+    return {
+      streamingTimeline: {
+        ...s.streamingTimeline,
+        [agentId]: timeline,
+      },
+    };
+  });
+}
+
+function isErrorToolResult(result: unknown): boolean {
+  return Boolean(
+    result
+    && typeof result === 'object'
+    && 'success' in result
+    && (result as { success?: unknown }).success === false
+  );
+}
+
+function findLastIndex<T>(items: T[], predicate: (item: T) => boolean): number {
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    if (predicate(items[index])) return index;
+  }
+  return -1;
+}
+
 async function runSessionChat(
   workspaceId: string,
   sessionId: string,
@@ -519,6 +621,7 @@ async function runSessionChat(
     errors: { ...s.errors, [sessionId]: '' },
     streamingContent: { ...s.streamingContent, [sessionId]: '' },
     streamingThinking: { ...s.streamingThinking, [sessionId]: '' },
+    streamingTimeline: { ...s.streamingTimeline, [sessionId]: [] },
   }));
 
   try {

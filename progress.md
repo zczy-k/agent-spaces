@@ -18,3 +18,12 @@
 - Targeted eslint passed for `chat-message-list.tsx`, `inline-chat-panel.tsx`, and `floating-chat-widget.tsx`.
 - Confirmed no remaining `ChatMessageBubble` references.
 - Full lint/tsc are still blocked by unrelated existing errors outside the touched files.
+
+## 2026-06-07 23:18:33 CST
+
+- Added runtime `streamingTimeline` state to `useChatStore`.
+- Added handlers for `tool_use` and `tool_result` SSE events.
+- Passed active session tool timeline into `InlineChatPanel`.
+- Added `ChatToolTimeline` and rendered tool calls under the inline streaming message.
+- Avoided rendering the old standalone typing bubble when a tool timeline is already visible.
+- Adjusted the touched chat page resizable prop to the local component type and narrowed tool timeline updates for TypeScript.

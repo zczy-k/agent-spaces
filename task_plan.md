@@ -8,6 +8,7 @@ Goal: Share one chat message display implementation between `inline-chat-panel.t
 2. Extract shared message display component - complete
 3. Wire both panels to shared component - complete
 4. Typecheck/lint targeted files - complete
+5. Listen for inline chat tool SSE events - complete
 
 ## Decisions
 
