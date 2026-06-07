@@ -221,7 +221,9 @@
     "id": "ID",
     "name": "Name",
     "model": "Model",
-    "workingDir": "Working Dir"
+    "workingDir": "Working Dir",
+    "searchFiles": "Search files…",
+    "noResults": "No results"
   },
   "agentList": {
     "title": "Agents",

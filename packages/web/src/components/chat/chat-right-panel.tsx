@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { RefreshCwIcon, SearchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { FileNode } from "@agent-spaces/shared";
+import { Input } from "@/components/ui/input";
 import { FileTree, FileTreeNodes } from "@/components/editor/file-tree";
 import { sdk } from "@/lib/sdk";
 import { useChatStore } from "@/stores/chat";
@@ -11,67 +13,102 @@ interface ChatRightPanelProps {
   agentId?: string;
 }
 
+function filterTree(nodes: FileNode[], query: string): FileNode[] {
+  if (!query) return nodes;
+  const lower = query.toLowerCase();
+  return nodes.reduce<FileNode[]>((acc, node) => {
+    if (node.name.toLowerCase().includes(lower)) {
+      acc.push(node);
+    } else if (node.type === "directory" && node.children) {
+      const filtered = filterTree(node.children, query);
+      if (filtered.length > 0) {
+        acc.push({ ...node, children: filtered });
+      }
+    }
+    return acc;
+  }, []);
+}
+
 export function ChatRightPanel({ agentId }: ChatRightPanelProps) {
   const t = useTranslations('chat.rightPanel');
   const [tree, setTree] = useState<FileNode[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState("");
   const agent = useChatStore((s) => s.agents.find((item) => item.id === agentId));
   const boundDir = agent?.workingDir ?? "";
   const workspaceTreeId = agentId ? `chat:${agentId}` : undefined;
 
-  useEffect(() => {
+  const loadTree = useCallback(() => {
     if (!agentId) return;
 
-    let cancelled = false;
     setLoading(true);
     setError("");
     sdk.chat.workspaceTree(agentId)
       .then((nodes) => {
-        if (cancelled) return;
         setTree(nodes);
         setExpanded(new Set(nodes.filter((node) => node.type === "directory").map((node) => node.path)));
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load workspace");
+        setError(err instanceof Error ? err.message : "Failed to load workspace");
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        setLoading(false);
       });
-
-    return () => {
-      cancelled = true;
-    };
   }, [agentId]);
+
+  useEffect(() => {
+    loadTree();
+  }, [loadTree]);
+
+  const filteredTree = useMemo(() => filterTree(tree, search), [tree, search]);
 
   return (
     <div className="flex h-full w-[320px] shrink-0 flex-col rounded-xl border border-border/40 bg-background shadow-sm">
-      {!agentId ? (
-        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-          {t('noAgent')}
+      <div className="flex items-center gap-1.5 border-b border-border/40 px-2 py-2">
+        <div className="relative flex-1">
+          <SearchIcon className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={t('searchFiles')}
+            className="h-7 pl-7 text-xs"
+          />
         </div>
-      ) : loading ? (
-        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-          {t('loading')}
-        </div>
-      ) : error ? (
-        <div className="p-3 text-xs text-destructive">{error}</div>
-      ) : tree.length === 0 ? (
-        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-          {t('emptyWorkspace')}
-        </div>
-      ) : (
-        <FileTree
-          expanded={expanded}
-          onExpandedChange={setExpanded}
-          workspaceId={workspaceTreeId}
-          boundDir={boundDir}
-          className="h-full"
+        <button
+          type="button"
+          onClick={loadTree}
+          disabled={loading}
+          className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
         >
-          <FileTreeNodes nodes={tree} />
-        </FileTree>
-      )}
+          <RefreshCwIcon className={`size-3.5 ${loading ? 'animate-spin' : ''}`} />
+        </button>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-hidden">
+        {!agentId ? (
+          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+            {t('noAgent')}
+          </div>
+        ) : error ? (
+          <div className="p-3 text-xs text-destructive">{error}</div>
+        ) : filteredTree.length === 0 ? (
+          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+            {tree.length === 0 ? t('emptyWorkspace') : t('noResults')}
+          </div>
+        ) : (
+          <FileTree
+            expanded={expanded}
+            onExpandedChange={setExpanded}
+            workspaceId={workspaceTreeId}
+            boundDir={boundDir}
+            className="h-full"
+          >
+            <FileTreeNodes nodes={filteredTree} />
+          </FileTree>
+        )}
+      </div>
     </div>
   );
 }

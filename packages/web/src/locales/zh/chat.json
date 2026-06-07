@@ -221,7 +221,9 @@
     "id": "ID",
     "name": "名称",
     "model": "模型",
-    "workingDir": "工作目录"
+    "workingDir": "工作目录",
+    "searchFiles": "搜索文件…",
+    "noResults": "无匹配结果"
   },
   "agentList": {
     "title": "Agents",
