@@ -16,6 +16,7 @@ interface InlineChatPanelProps {
   agentId: string;
   agentName: string;
   agentAvatar?: string;
+  agentIcon?: string;
   agentDescription?: string;
   messages: ChatMessage[];
   sending: boolean;
@@ -36,6 +37,7 @@ export function InlineChatPanel({
   agentId,
   agentName,
   agentAvatar,
+  agentIcon,
   agentDescription,
   messages,
   sending,
@@ -100,7 +102,7 @@ export function InlineChatPanel({
           type="button"
         >
           <div className="relative flex flex-shrink-0 items-end">
-            <AgentIcon agentId={agentId} name={agentName} avatarUrl={agentAvatar} className="size-9" bordered />
+            <AgentIcon agentId={agentId} name={agentName} avatarUrl={agentAvatar} icon={agentIcon} className="size-9" bordered />
             <span className="-bottom-0 absolute right-0 flex items-center">
               <span
                 aria-label={sending ? "running" : "idle"}
@@ -202,7 +204,7 @@ export function InlineChatPanel({
           })}
           {error && (
             <div className="flex gap-3">
-              <AgentIcon agentId={agentId} name={agentName} avatarUrl={agentAvatar} className="size-7" bordered />
+              <AgentIcon agentId={agentId} name={agentName} avatarUrl={agentAvatar} icon={agentIcon} className="size-7" bordered />
               <div className="max-w-[78%] rounded-2xl rounded-tl-none border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
                 <div className="font-medium">{t('requestFailed')}</div>
                 <div className="mt-1 whitespace-pre-wrap break-words text-xs">{error}</div>
@@ -211,7 +213,7 @@ export function InlineChatPanel({
           )}
           {sending && !isRegenerating && (streamingContent || streamingThinking) && (
             <div className="flex gap-3">
-              <AgentIcon agentId={agentId} name={agentName} avatarUrl={agentAvatar} className="size-7" bordered />
+              <AgentIcon agentId={agentId} name={agentName} avatarUrl={agentAvatar} icon={agentIcon} className="size-7" bordered />
               <div className="max-w-[78%] rounded-2xl rounded-tl-none bg-muted/50 px-4 py-3 text-sm">
                 {streamingThinking && (
                   <details className="mb-2 rounded-md border border-border/40 bg-background/40 px-3 py-2 text-xs text-muted-foreground">
@@ -229,7 +231,7 @@ export function InlineChatPanel({
           )}
           {sending && !isRegenerating && !streamingContent && !streamingThinking && (
             <div className="flex gap-3">
-              <AgentIcon agentId={agentId} name={agentName} avatarUrl={agentAvatar} className="size-7" bordered />
+              <AgentIcon agentId={agentId} name={agentName} avatarUrl={agentAvatar} icon={agentIcon} className="size-7" bordered />
               <div className="flex items-center gap-1 rounded-2xl rounded-tl-none bg-muted/50 px-4 py-3">
                 <span className="size-1.5 animate-bounce rounded-full bg-foreground/40 [animation-delay:-0.3s]" />
                 <span className="size-1.5 animate-bounce rounded-full bg-foreground/40 [animation-delay:-0.15s]" />
