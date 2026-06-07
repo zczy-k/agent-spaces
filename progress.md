@@ -22,6 +22,11 @@
   - Patched `search_node_usage`/`list_node_types` search to accept `name`.
   - Patched `update_node` to accept `id` and JSON-string `data`.
   - Patched execution variable resolution to accept bracket field paths like `__inputs__["node"]["text"]`.
+  - Inspected latest `set_node_io_fields` failure; `fields` was passed as a JSON-string array.
+  - Patched `set_node_io_fields` to accept `fields` as either an array or JSON array string.
+  - Confirmed start node workflow inputs are available via `__data__["开始节点ID"].field`, matching the UI workflow input picker.
+  - Updated workflow editor agent guidance and `set_node_io_fields` description to recommend `__data__` for start-node input references.
+  - Added execution compatibility by syncing start-node execution result into `__inputs__` as well.
 
 ## Test Results
 | Test | Input | Expected | Actual | Status |
@@ -31,11 +36,14 @@
 | Workflow editor smoke | Node script invoking compiled `createWorkflowEditorFunctionTools` | `summarize: "false"` returns full data; `set_node_io_fields` writes `inputFields` and `outputs` | Passed | pass |
 | Latest log repro smoke | Node script invoking compiled `createWorkflowEditorFunctionTools` with `{ name: "minimax_tts" }` and `update_node` `{ id, data: JSON.stringify(...) }` | Search returns only `minimax_tts`; `text` is written to node data | Passed | pass |
 | Execution variable smoke | Node script invoking compiled `ExecutionManager.resolveStringValue` with `{{ __inputs__["start1"]["text"] }}` | Resolves direct, nested, and inline bracket syntax | Passed | pass |
+| `set_node_io_fields` log repro | Node script invoking compiled `createWorkflowEditorFunctionTools` with `fields` as JSON string array | Outputs field is written successfully | Passed | pass |
+| Start input reference smoke | Node script invoking compiled `ExecutionManager.resolveStringValue` | `__data__` resolves recommended start input path; `__inputs__` remains compatible | Passed | pass |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |
 |-----------|-------|---------|------------|
 | 2026-06-07 | TS2352 converting `OutputField` to `JsonRecord` | First server build after patch | Replaced casts with direct typed property access |
+| 2026-06-07 | `set_node_io_fields` returned `fields must be an array` | Latest chat log replay | Added JSON array string parsing for `fields` |
 
 ## 5-Question Reboot Check
 | Question | Answer |
@@ -43,5 +51,5 @@
 | Where am I? | Complete |
 | Where am I going? | Diagnose and fix add input/output field behavior |
 | What's the goal? | Restore WorkFox parity for workflow agent node IO field edits |
-| What have I learned? | Follow-up failure was caused by ignored JSON-string `data`, ignored `name` search parameter, and unsupported bracket variable field syntax |
+| What have I learned? | Start-node workflow inputs should be generated as `__data__` references; `__inputs__` is now only compatibility for generated/ordinary node input expressions |
 | What have I done? | Patched and verified workflow editor tools plus execution variable parsing |

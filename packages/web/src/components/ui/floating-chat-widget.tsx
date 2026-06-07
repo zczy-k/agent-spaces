@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Markdown } from '@/components/ui/markdown';
 import { cn } from '@/lib/utils';
 import { AnimatePresence, motion, type Variants } from 'framer-motion';
-import { MessageSquare, Send, X, ChevronDown, ChevronRight, Brain, Square, Copy, Trash2 } from 'lucide-react';
+import { MessageSquare, Send, X, ChevronDown, ChevronRight, Brain, Square, Copy, Trash2, ArrowDown } from 'lucide-react';
 import { useId, useRef, useEffect, useState } from 'react';
 
 export interface ChatMessage {
@@ -170,16 +170,30 @@ export function FloatingChatPanel({
   const widgetId = useId();
   const listRef = useRef<HTMLDivElement>(null);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
+
+  const isNearBottom = () => {
+    const el = listRef.current;
+    if (!el) return true;
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+  };
 
   useEffect(() => {
-    if (!listRef.current) return;
-    listRef.current.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages, sending]);
+    const el = listRef.current;
+    if (!el) return;
+    const onScroll = () => setShowScrollBtn(!isNearBottom());
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen || !listRef.current) return;
     listRef.current.scrollTop = listRef.current.scrollHeight;
   }, [isOpen]);
+
+  const scrollToBottom = () => {
+    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
@@ -209,7 +223,7 @@ export function FloatingChatPanel({
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="overflow-hidden rounded-2xl border border-border/40 bg-background/60 shadow-2xl backdrop-blur-xl ring-1 ring-white/10"
+            className="relative overflow-hidden rounded-2xl border border-border/40 bg-background/60 shadow-2xl backdrop-blur-xl ring-1 ring-white/10"
             style={{ width, maxHeight: height + 220 }}
           >
             {/* Header */}
@@ -359,6 +373,17 @@ export function FloatingChatPanel({
                 </motion.div>
               )}
             </div>
+
+            {/* Scroll to bottom */}
+            {showScrollBtn && (
+              <button
+                type="button"
+                onClick={scrollToBottom}
+                className="absolute bottom-20 right-4 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-background/80 shadow-lg border border-border/40 backdrop-blur-sm hover:bg-background transition-colors"
+              >
+                <ArrowDown className="h-4 w-4 text-muted-foreground" />
+              </button>
+            )}
 
             {/* Input */}
             <div className="border-t border-border/40 bg-background/60 p-3 backdrop-blur-md">

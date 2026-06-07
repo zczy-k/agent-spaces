@@ -39,6 +39,18 @@ Complete
 - [x] Verify update_node JSON-string data path
 - **Status:** complete
 
+### Phase 7: set_node_io_fields Fields Compatibility
+- [x] Inspect latest `set_node_io_fields` failure
+- [x] Accept JSON-string `fields`
+- [x] Verify log-shaped `set_node_io_fields` call
+- **Status:** complete
+
+### Phase 8: Start Input Reference Semantics
+- [x] Verify runtime source for start-node input fields
+- [x] Update workflow agent guidance to use `__data__` for start inputs
+- [x] Preserve compatibility for existing `__inputs__` expressions
+- **Status:** complete
+
 ## Decisions Made
 | Decision | Rationale |
 |----------|-----------|
@@ -46,8 +58,11 @@ Complete
 | Add a dedicated `set_node_io_fields` workflow editor tool | The log showed the agent lacked a direct, schema-guided way to add node input/output fields |
 | Accept string boolean values for `summarize` | The log showed the model passed `"false"` and got a summary instead of full node data |
 | Make generic `update_node` more forgiving | Latest log shows the agent still used `update_node` with `id` and JSON-string `data`; rejecting/dropping those makes the edit fail despite a success response |
+| Make `set_node_io_fields.fields` forgiving too | Latest log shows the agent sends `fields` as a JSON-string array |
+| Start-node runtime input should be referenced through `__data__` | Execution stores start node result in `__data__`; the UI's workflow input picker already emits `__data__` |
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
 |-------|---------|------------|
 | TypeScript cast warning in `summarizeOutputFields` | First build after patch | Removed unnecessary `JsonRecord` casts and read typed `OutputField` properties directly |
+| `set_node_io_fields` returned `fields must be an array` | Latest chat log replay | Added JSON array string parsing for `fields` |
