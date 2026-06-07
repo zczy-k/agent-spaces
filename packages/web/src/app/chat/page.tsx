@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useChatStore } from "@/stores/chat";
 import { ChatAgentList } from "@/components/chat/chat-agent-list";
@@ -43,6 +43,8 @@ export default function ChatPage() {
   const [editAgent, setEditAgent] = useState<ChatAgent | undefined>(undefined);
   const [createOpen, setCreateOpen] = useState(false);
   const [chatListIds, setChatListIds] = useState<Set<string>>(new Set());
+  const chatListInitializedRef = useRef(false);
+  const previousAgentIdsRef = useRef<Set<string>>(new Set());
   const [favoriteAgentIds, setFavoriteAgentIds] = useState<Set<string>>(() => {
     try {
       const stored = localStorage.getItem('agent-spaces:chat-favorite-agents');
@@ -91,10 +93,12 @@ export default function ChatPage() {
 
   // Sync chatListIds from store agents on first load
   useEffect(() => {
-    if (agents.length > 0 && chatListIds.size === 0) {
+    if (!chatListInitializedRef.current && agents.length > 0) {
       setChatListIds(new Set(agents.map((a) => a.id)));
+      previousAgentIdsRef.current = new Set(agents.map((a) => a.id));
+      chatListInitializedRef.current = true;
     }
-  }, [agents, chatListIds.size]);
+  }, [agents]);
 
   // Persist favorites
   useEffect(() => {
@@ -103,15 +107,20 @@ export default function ChatPage() {
 
   // When a new agent is added to the store, auto-add to chat list
   useEffect(() => {
-    const newIds = agents.filter((a) => !chatListIds.has(a.id));
-    if (newIds.length > 0 && chatListIds.size > 0) {
+    if (!chatListInitializedRef.current) return;
+
+    const previousIds = previousAgentIdsRef.current;
+    const addedAgents = agents.filter((a) => !previousIds.has(a.id));
+    previousAgentIdsRef.current = new Set(agents.map((a) => a.id));
+
+    if (addedAgents.length > 0) {
       setChatListIds((prev) => {
         const next = new Set(prev);
-        newIds.forEach((a) => next.add(a.id));
+        addedAgents.forEach((a) => next.add(a.id));
         return next;
       });
     }
-  }, [agents, chatListIds]);
+  }, [agents]);
 
   const handleSend = useCallback((content: string, _mentions: string[], _attachments: unknown[], _contextLength: number) => {
     if (!activeAgentId || isSending) return;
@@ -131,7 +140,7 @@ export default function ChatPage() {
     });
     if (activeAgentId === id) {
       const remaining = chatListAgents.filter((a) => a.id !== id);
-      selectAgent(remaining[0]?.id ?? null);
+      if (remaining[0]) selectAgent(remaining[0].id);
     }
   }, [activeAgentId, selectAgent, chatListAgents]);
 
@@ -232,7 +241,11 @@ export default function ChatPage() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         chatAgents={agents}
+        selectedAgentIds={chatListIds}
         onAdd={handleAddAgent}
+        onAddToChat={(id) => {
+          setChatListIds((prev) => { const n = new Set(prev); n.add(id); return n; });
+        }}
         onRemoveAgent={async (id) => {
           setChatListIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
           if (activeAgentId === id) {

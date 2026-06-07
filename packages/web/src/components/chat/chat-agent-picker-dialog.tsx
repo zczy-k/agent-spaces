@@ -36,7 +36,9 @@ interface ChatAgentPickerDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   chatAgents: ChatAgent[];
+  selectedAgentIds?: Set<string>;
   onAdd: (preset: AgentPreset) => void;
+  onAddToChat?: (id: string) => void;
   onRemoveAgent?: (id: string) => void;
   onRemoveFromChat?: (id: string) => void;
   onEditAgent?: (agent: ChatAgent) => void;
@@ -49,7 +51,9 @@ export function ChatAgentPickerDialog({
   open,
   onOpenChange,
   chatAgents,
+  selectedAgentIds,
   onAdd,
+  onAddToChat,
   onRemoveAgent,
   onRemoveFromChat,
   onEditAgent,
@@ -77,13 +81,13 @@ export function ChatAgentPickerDialog({
   // ── Tab ──
   const [activeTab, setActiveTab] = useState<TabType>("local");
 
-  // Track added agents from chat store
+  // Track selected agents from the channel chat list
   useEffect(() => {
     if (!open) return;
     setLocalSearch("");
     setActiveTab("local");
-    setAddedIds(new Set(chatAgents.map((a) => a.id)));
-  }, [open, chatAgents]);
+    setAddedIds(new Set(selectedAgentIds ?? chatAgents.map((a) => a.id)));
+  }, [open, selectedAgentIds, chatAgents]);
 
   // Fetch store agents on open
   useEffect(() => {
@@ -109,6 +113,11 @@ export function ChatAgentPickerDialog({
   // ── Handlers ──
   const handleAdd = useCallback(
     (agent: ChatAgent) => {
+      setAddedIds((prev) => new Set(prev).add(agent.id));
+      if (onAddToChat) {
+        onAddToChat(agent.id);
+        return;
+      }
       onAdd({
         id: agent.id,
         name: agent.name,
@@ -134,9 +143,8 @@ export function ChatAgentPickerDialog({
         maxTokens: agent.maxTokens ?? 4096,
         enabled: agent.enabled ?? true,
       });
-      setAddedIds((prev) => new Set(prev).add(agent.id));
     },
-    [onAdd],
+    [onAdd, onAddToChat],
   );
 
   const handleImportFromStore = useCallback(

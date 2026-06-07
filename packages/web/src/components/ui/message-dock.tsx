@@ -211,7 +211,7 @@ export function MessageDock({
       variants={enableAnimations ? containerVariants : {}}
     >
       <motion.div
-        className="rounded-full px-4 py-2 shadow-2xl border border-gray-200/50"
+        className="rounded-full px-4 py-2 shadow-2xl border border-gray-200/50 h-14"
         animate={{
           width: isExpanded ? expandedWidth : collapsedWidth,
           background:
@@ -236,7 +236,7 @@ export function MessageDock({
             : { duration: 0 }
         }
       >
-        <div className="flex items-center gap-2 relative">
+        <div className="flex items-center gap-2 relative h-full">
           {/* Sparkle button */}
           {showSparkleButton && (
             <motion.div
@@ -302,7 +302,7 @@ export function MessageDock({
                 key={character.name}
                 className={cn(
                   "relative",
-                  isSelected && isExpanded && "absolute left-1 top-1 z-20"
+                  isSelected && isExpanded && "absolute left-1 top-0 z-20"
                 )}
                 style={{
                   width: isSelected && isExpanded ? 0 : "auto",
@@ -386,7 +386,8 @@ export function MessageDock({
                 }}
                 placeholder={placeholder(selectedCharacter?.name || "")}
                 className={cn(
-                  "w-[300px] absolute left-14 right-0 bg-transparent border-none outline-none text-sm font-medium z-50",
+                  "w-[300px] absolute top-0 bottom-0 my-auto h-fit right-0 bg-transparent border-none outline-none text-sm font-medium z-50",
+                  showSparkleButton ? "left-14" : "left-12",
                   theme === "dark"
                     ? "text-gray-100 placeholder-gray-400"
                     : "text-gray-700 placeholder-gray-600"
