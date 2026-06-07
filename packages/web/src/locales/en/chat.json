@@ -235,7 +235,13 @@
     "addAgent": "Add agent",
     "searchAgents": "Search agents",
     "chatWith": "Chat with {name}",
-    "removeFromChat": "Remove from chat"
+    "removeFromChat": "Remove from chat",
+    "workspaces": "Chat Workspaces",
+    "newWorkspace": "New Workspace",
+    "newChat": "New Chat",
+    "noSessions": "No sessions yet",
+    "noSessionsDesc": "Click the button above to start a new chat",
+    "manageAgents": "Manage Agents"
   },
   "navigator": {
     "you": "You"

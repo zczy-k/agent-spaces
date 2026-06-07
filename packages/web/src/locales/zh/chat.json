@@ -235,7 +235,13 @@
     "addAgent": "添加 Agent",
     "searchAgents": "搜索 agents",
     "chatWith": "与 {name} 对话",
-    "removeFromChat": "从聊天中移除"
+    "removeFromChat": "从聊天中移除",
+    "workspaces": "Chat 工作区",
+    "newWorkspace": "新建工作区",
+    "newChat": "新对话",
+    "noSessions": "暂无对话",
+    "noSessionsDesc": "点击上方按钮开始新对话",
+    "manageAgents": "管理 Agents"
   },
   "navigator": {
     "you": "你"
