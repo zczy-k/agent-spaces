@@ -106,8 +106,12 @@ export function AgentIcon({ agentId, name, avatarUrl, icon, apiBase, className, 
   const resolvedIcon = icon ?? agent?.icon;
   const resolvedApiBase = apiBase ?? agent?.apiBase;
 
-  const src = (!avatarError && resolveServerAssetUrl(resolvedAvatarUrl))
-    || (!providerError ? getProviderIconUrl(resolvedApiBase) : '');
+  const avatarSrc = !avatarError && resolveServerAssetUrl(resolvedAvatarUrl);
+  const providerSrc = !providerError ? getProviderIconUrl(resolvedApiBase) : '';
+  const showEmoji = !!resolvedIcon;
+
+  // 优先级：avatar > icon (emoji) > provider icon > name initial
+  const src = !showEmoji && (avatarSrc || providerSrc);
 
   useEffect(() => {
     setAvatarError(false);
@@ -123,9 +127,6 @@ export function AgentIcon({ agentId, name, avatarUrl, icon, apiBase, className, 
       setProviderError(true);
     }
   };
-
-  // 优先级：avatar > icon > provider icon > name initial
-  const showEmoji = !src && resolvedIcon;
 
   return (
     <div

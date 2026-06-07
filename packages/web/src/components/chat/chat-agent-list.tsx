@@ -115,7 +115,7 @@ export function ChatAgentList({ agents, activeId, sending, onSelect, onRemove, o
                         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(agent.id); } }}
                       >
                         <div className="relative flex flex-shrink-0 items-end">
-                          <AgentIcon agentId={agent.id} name={agent.name} avatarUrl={agent.avatar} className="size-8" />
+                          <AgentIcon agentId={agent.id} name={agent.name} avatarUrl={agent.avatar} icon={agent.icon} className="size-8" />
                           <span className="-bottom-0 absolute right-0 flex items-center">
                             <span
                               aria-label={sending[agent.id] ? "running" : "idle"}

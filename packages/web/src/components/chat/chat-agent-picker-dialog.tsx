@@ -296,6 +296,7 @@ export function ChatAgentPickerDialog({
                     agentId={agent.id}
                     name={agent.name}
                     avatarUrl={agent.avatar}
+                    icon={agent.icon}
                     className="size-8"
                   />
                   <div
