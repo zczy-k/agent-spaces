@@ -52,7 +52,8 @@ function SessionItem({ session, isActive, isSending, onSelect, onContextMenu }: 
       aria-label={`Chat: ${session.title || "New Chat"}`}
       className={cn(
         "group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left hover:bg-accent focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
-        isActive && "bg-accent"
+        isActive && "bg-accent",
+        !!session.archived && "opacity-60"
       )}
       onClick={onSelect}
       onContextMenu={(e) => onContextMenu(e, session.id, !!session.archived)}

@@ -196,7 +196,8 @@
     "thinking": "Thinking",
     "clearMessages": "Clear messages",
     "togglePanel": "Toggle right panel",
-    "messagePlaceholder": "Message {name}..."
+    "messagePlaceholder": "Message {name}...",
+    "archivedPreview": "Archived messages are view-only"
   },
   "messageBubble": {
     "thinking": "Thinking...",

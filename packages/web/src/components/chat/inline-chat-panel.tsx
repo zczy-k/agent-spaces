@@ -31,6 +31,7 @@ interface InlineChatPanelProps {
   onToggleRightPanel?: () => void;
   onRegenerate?: (messageId: string) => void;
   onDelete?: (messageId: string) => void;
+  archived?: boolean;
 }
 
 export function InlineChatPanel({
@@ -52,6 +53,7 @@ export function InlineChatPanel({
   onToggleRightPanel,
   onRegenerate,
   onDelete,
+  archived = false,
 }: InlineChatPanelProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<ChatComposerInputHandle>(null);
@@ -243,24 +245,26 @@ export function InlineChatPanel({
       </div>
 
       {/* Input */}
-      <div className="border-t p-3">
-        <ChatComposerInput
-          ref={composerRef}
-          workspaceId={workspaceId || ""}
-          agents={[]}
-          placeholder={t('messagePlaceholder', { name: agentName })}
-          onSubmit={handleSend}
-          isProcessing={sending}
-          onStop={onStop}
-          disableMentionSuggestions
-          enableAttachments={false}
-          enableVoice={false}
-          enableAutoMode={false}
-          enableContextControl={false}
-          enableSlashCommands={false}
-          enableAgentResources={false}
-        />
-      </div>
+      {!archived && (
+        <div className="border-t p-3">
+          <ChatComposerInput
+            ref={composerRef}
+            workspaceId={workspaceId || ""}
+            agents={[]}
+            placeholder={t('messagePlaceholder', { name: agentName })}
+            onSubmit={handleSend}
+            isProcessing={sending}
+            onStop={onStop}
+            disableMentionSuggestions
+            enableAttachments={false}
+            enableVoice={false}
+            enableAutoMode={false}
+            enableContextControl={false}
+            enableSlashCommands={false}
+            enableAgentResources={false}
+          />
+        </div>
+      )}
     </div>
   );
 }

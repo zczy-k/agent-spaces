@@ -174,6 +174,7 @@ export default function ChatPage() {
             error={activeError}
             streamingContent={activeStreamingContent}
             streamingThinking={activeStreamingThinking}
+            archived={!!activeSession.archived}
             onSend={handleSend}
             onStop={stopSession}
             onClearMessages={clearSessionMessages}
