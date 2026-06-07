@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SearchSelect } from "@/components/ui/search-select";
+import { ImagePickerDialog } from "@/components/ui/image-picker-dialog";
 import {
   Dialog,
   DialogContent,
@@ -86,6 +87,8 @@ export function AgentDetail({
   const [mcpsDialogOpen, setMcpsDialogOpen] = useState(false);
   const [skillsDialogOpen, setSkillsDialogOpen] = useState(false);
   const [previewPrompt, setPreviewPrompt] = useState("");
+  const [bgPickerSrc, setBgPickerSrc] = useState("");
+  const [bgPickerOpen, setBgPickerOpen] = useState(false);
 
   const { models: allLlmModels, providers: llmProviders, ensure: ensureLLM } = useLLMStore();
   const llmModels = allLlmModels.filter((m) => !m.embedding);
@@ -185,7 +188,8 @@ export function AgentDetail({
                   if (!file) return;
                   const reader = new FileReader();
                   reader.onload = () => {
-                    onChange("backgroundUrl", reader.result as string);
+                    setBgPickerSrc(reader.result as string);
+                    setBgPickerOpen(true);
                   };
                   reader.readAsDataURL(file);
                   e.target.value = "";
@@ -553,6 +557,14 @@ export function AgentDetail({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ImagePickerDialog
+        src={bgPickerSrc}
+        open={bgPickerOpen}
+        onOpenChange={setBgPickerOpen}
+        onCropComplete={(dataUrl) => onChange("backgroundUrl", dataUrl)}
+        defaultAspect={16 / 9}
+      />
     </div>
   );
 }

@@ -123,39 +123,86 @@ export function MemberInfoCard({ agentId, displayName, channels = [], compact = 
   if (agent?.modelProvider) badges.push({ label: PROVIDER_LABELS[agent.modelProvider] || agent.modelProvider });
   if (agent?.modelId) badges.push({ label: agent.modelId, variant: 'mono' });
 
+  const backgroundSrc = agent?.backgroundUrl || '';
+
   return (
-    <div className={compact ? 'space-y-1.5' : 'space-y-2'}>
-      <div className="flex items-center gap-3">
-        <AgentIcon
-          agentId={agentId}
-          name={resolvedName}
-          className={compact ? 'size-8 rounded-full' : 'size-10 rounded-full'}
-        />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-baseline gap-1.5">
-            <p className={`font-medium truncate ${compact ? 'text-sm' : 'text-base'}`}>{resolvedName}</p>
-            <span className="shrink-0 text-[11px] text-muted-foreground">{agent?.role || agentId}</span>
-          </div>
-          <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-            {badges.map((b) => (
-              <span
-                key={b.label}
-                className={`inline-flex items-center rounded-full bg-muted px-1.5 py-px text-[10px] leading-tight ${b.variant === 'mono' ? 'font-mono' : ''}`}
+    <div className={compact ? 'space-y-1.5' : 'space-y-3'}>
+      {/* Background + Avatar header */}
+      {!compact && (
+        <div className="flex flex-col">
+          <div className="relative h-24 rounded-t-xl bg-muted overflow-hidden">
+            {backgroundSrc ? (
+              <img src={backgroundSrc} alt="" className="size-full object-cover" />
+            ) : (
+              <div className="size-full bg-gradient-to-br from-muted to-muted/50" />
+            )}
+            {agent && onConfigure && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onConfigure(); }}
+                className="absolute top-2 right-2 p-1.5 rounded-md bg-black/40 text-white/80 hover:text-white hover:bg-black/60 transition-colors cursor-pointer"
               >
-                {b.label}
-              </span>
-            ))}
+                <Settings className="size-3.5" />
+              </button>
+            )}
+          </div>
+          <div className="flex items-end gap-3 px-3 -mt-6">
+            <AgentIcon
+              agentId={agentId}
+              name={resolvedName}
+              className="shrink-0 size-14 rounded-xl border-2 border-background"
+            />
+            <div className="flex-1 min-w-0 pb-1">
+              <div className="flex items-baseline gap-1.5">
+                <p className="font-medium truncate text-base">{resolvedName}</p>
+                <span className="shrink-0 text-[11px] text-muted-foreground">{agent?.role || agentId}</span>
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                {badges.map((b) => (
+                  <span
+                    key={b.label}
+                    className={`inline-flex items-center rounded-full bg-muted px-1.5 py-px text-[10px] leading-tight ${b.variant === 'mono' ? 'font-mono' : ''}`}
+                  >
+                    {b.label}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
-        {agent && onConfigure && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onConfigure(); }}
-            className="shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-          >
-            <Settings className="size-4" />
-          </button>
-        )}
-      </div>
+      )}
+      {compact && (
+        <div className="flex items-center gap-3">
+          <AgentIcon
+            agentId={agentId}
+            name={resolvedName}
+            className="shrink-0 size-8 rounded-full"
+          />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-baseline gap-1.5">
+              <p className="font-medium truncate text-sm">{resolvedName}</p>
+              <span className="shrink-0 text-[11px] text-muted-foreground">{agent?.role || agentId}</span>
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+              {badges.map((b) => (
+                <span
+                  key={b.label}
+                  className={`inline-flex items-center rounded-full bg-muted px-1.5 py-px text-[10px] leading-tight ${b.variant === 'mono' ? 'font-mono' : ''}`}
+                >
+                  {b.label}
+                </span>
+              ))}
+            </div>
+          </div>
+          {agent && onConfigure && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onConfigure(); }}
+              className="shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+            >
+              <Settings className="size-4" />
+            </button>
+          )}
+        </div>
+      )}
       {agent && <AgentDetails agent={agent} />}
       {!compact && channels.length > 0 && (
         <div className="space-y-1 pt-1">

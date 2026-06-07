@@ -168,6 +168,7 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
         pageSize: { type: 'number', description: '每页数量，默认 20，最大 50。' },
         page_size: { type: 'number', description: '每页数量，兼容蛇形命名。' },
         includeDetails: { type: 'boolean', description: '是否返回完整节点定义。' },
+        include_details: { type: 'boolean', description: '是否返回完整节点定义，兼容蛇形命名。' },
       }),
       annotations: { readOnly: true },
       execute: async (input) => {
@@ -178,7 +179,7 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
           : ctx.nodeDefinitions;
         const page = Math.max(1, numberInput(record, 'page', 1));
         const pageSize = Math.min(50, Math.max(1, numberInput(record, 'pageSize', numberInput(record, 'page_size', 20))));
-        const includeDetails = booleanInput(record, 'includeDetails', false);
+        const includeDetails = booleanInputAny(record, ['includeDetails', 'include_details'], false);
         const items = filtered.slice((page - 1) * pageSize, page * pageSize);
         return {
           success: true,
@@ -225,12 +226,13 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
       description: '更新指定节点的 label 或 data。data 会与现有 data 浅合并。',
       inputSchema: schema({
         nodeId: { type: 'string', description: '要更新的节点 ID。' },
+        node_id: { type: 'string', description: '要更新的节点 ID，兼容蛇形命名。' },
         label: { type: 'string', description: '可选，节点显示名称。' },
         data: { type: 'object', description: '要合并的节点参数。', properties: {} },
-      }, ['nodeId']),
+      }),
       execute: async (input) => {
         const record = asRecord(input);
-        const nodeId = stringInput(record, 'nodeId');
+        const nodeId = stringInputAny(record, ['nodeId', 'node_id']);
         if (!nodeId) return { success: false, message: 'nodeId is required' };
         let found = false;
         const nodes = draft.nodes.map((node) => {
@@ -248,10 +250,13 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
     {
       name: 'delete_node',
       description: '删除指定节点及其相关连线。',
-      inputSchema: schema({ nodeId: { type: 'string', description: '要删除的节点 ID。' } }, ['nodeId']),
+      inputSchema: schema({
+        nodeId: { type: 'string', description: '要删除的节点 ID。' },
+        node_id: { type: 'string', description: '要删除的节点 ID，兼容蛇形命名。' },
+      }),
       annotations: { destructive: true },
       execute: async (input) => {
-        const nodeId = stringInput(asRecord(input), 'nodeId');
+        const nodeId = stringInputAny(asRecord(input), ['nodeId', 'node_id']);
         if (!nodeId) return { success: false, message: 'nodeId is required' };
         if (!draft.nodes.some((node) => node.id === nodeId)) return { success: false, message: `Node not found: ${nodeId}` };
         return commit({
@@ -268,7 +273,9 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
         source: { type: 'string', description: '起始节点 ID。' },
         target: { type: 'string', description: '目标节点 ID。' },
         sourceHandle: { type: 'string', description: '起始连接点。' },
+        source_handle: { type: 'string', description: '起始连接点，兼容蛇形命名。' },
         targetHandle: { type: 'string', description: '目标连接点。' },
+        target_handle: { type: 'string', description: '目标连接点，兼容蛇形命名。' },
       }, ['source', 'target']),
       execute: async (input) => {
         const record = asRecord(input);
@@ -281,8 +288,8 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
           id: `e-${source}-${target}-${Date.now().toString(36)}`,
           source,
           target,
-          sourceHandle: stringInput(record, 'sourceHandle') ?? undefined,
-          targetHandle: stringInput(record, 'targetHandle') ?? undefined,
+          sourceHandle: stringInputAny(record, ['sourceHandle', 'source_handle']) ?? undefined,
+          targetHandle: stringInputAny(record, ['targetHandle', 'target_handle']) ?? undefined,
         };
         return commit({ ...draft, edges: [...draft.edges, edge] });
       },
@@ -290,10 +297,13 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
     {
       name: 'delete_edge',
       description: '删除指定连线。',
-      inputSchema: schema({ edgeId: { type: 'string', description: '要删除的连线 ID。' } }, ['edgeId']),
+      inputSchema: schema({
+        edgeId: { type: 'string', description: '要删除的连线 ID。' },
+        edge_id: { type: 'string', description: '要删除的连线 ID，兼容蛇形命名。' },
+      }),
       annotations: { destructive: true },
       execute: async (input) => {
-        const edgeId = stringInput(asRecord(input), 'edgeId');
+        const edgeId = stringInputAny(asRecord(input), ['edgeId', 'edge_id']);
         if (!edgeId) return { success: false, message: 'edgeId is required' };
         if (!draft.edges.some((edge) => edge.id === edgeId)) return { success: false, message: `Edge not found: ${edgeId}` };
         return commit({ ...draft, edges: draft.edges.filter((edge) => edge.id !== edgeId) });
@@ -304,13 +314,14 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
       description: '在已有连线中插入新节点，替换为 source -> 新节点 -> target 两条边。',
       inputSchema: schema({
         edgeId: { type: 'string', description: '要插入的边 ID。' },
+        edge_id: { type: 'string', description: '要插入的边 ID，兼容蛇形命名。' },
         type: { type: 'string', description: '新节点类型。' },
         label: { type: 'string', description: '新节点显示名称。' },
         data: { type: 'object', description: '新节点参数。', properties: {} },
-      }, ['edgeId', 'type']),
+      }, ['type']),
       execute: async (input) => {
         const record = asRecord(input);
-        const edgeId = stringInput(record, 'edgeId');
+        const edgeId = stringInputAny(record, ['edgeId', 'edge_id']);
         const type = stringInput(record, 'type');
         const edge = draft.edges.find((item) => item.id === edgeId);
         if (!edge) return { success: false, message: `Edge not found: ${edgeId ?? ''}` };
@@ -495,6 +506,14 @@ function stringInput(input: JsonRecord, key: string): string | undefined {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined;
 }
 
+function stringInputAny(input: JsonRecord, keys: string[]): string | undefined {
+  for (const key of keys) {
+    const value = stringInput(input, key);
+    if (value !== undefined) return value;
+  }
+  return undefined;
+}
+
 function numberInput(input: JsonRecord, key: string, fallback: number): number {
   const value = input[key];
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
@@ -503,6 +522,14 @@ function numberInput(input: JsonRecord, key: string, fallback: number): number {
 function booleanInput(input: JsonRecord, key: string, fallback: boolean): boolean {
   const value = input[key];
   return typeof value === 'boolean' ? value : fallback;
+}
+
+function booleanInputAny(input: JsonRecord, keys: string[], fallback: boolean): boolean {
+  for (const key of keys) {
+    const value = input[key];
+    if (typeof value === 'boolean') return value;
+  }
+  return fallback;
 }
 
 function objectInput(input: JsonRecord, key: string): JsonRecord {

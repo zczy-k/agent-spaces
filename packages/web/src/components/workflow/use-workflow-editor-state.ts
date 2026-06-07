@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import type { Workflow, WorkflowTemplate } from '@agent-spaces/shared';
+import type { ExecutionLog, Workflow, WorkflowTemplate } from '@agent-spaces/shared';
 import { useWorkflowStore } from '@/stores/workflow';
 import { workflowApi } from '@/lib/workflow-api';
 import { loadWorkflowLayout } from './workflow-editor-types';
@@ -37,6 +37,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
   const [embeddedSubWorkflowId, setEmbeddedSubWorkflowId] = useState<string | null>(null);
 
   const autoSaveTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const prePreviewWorkflowRef = useRef<Workflow | null>(null);
 
   // ---- Load workflow ----
   useEffect(() => {
@@ -48,7 +49,9 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
     setLoadError(null);
     workflowApi.get(template.id)
       .then((wf) => {
+        prePreviewWorkflowRef.current = null;
         setWorkflow(wf);
+        setIsPreview(false);
         setIsLoading(false);
       })
       .catch((err) => {
@@ -59,6 +62,42 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
 
   // ---- Dirty tracking ----
   const markDirty = useCallback(() => setIsDirty(true), []);
+
+  const cloneWorkflow = useCallback((value: Workflow): Workflow => JSON.parse(JSON.stringify(value)) as Workflow, []);
+
+  const enterPreview = useCallback((log: ExecutionLog) => {
+    if (!log.snapshot) return;
+
+    setWorkflow((current) => {
+      if (!current) return current;
+      if (!prePreviewWorkflowRef.current) {
+        prePreviewWorkflowRef.current = cloneWorkflow(current);
+      }
+
+      return {
+        ...current,
+        nodes: JSON.parse(JSON.stringify(log.snapshot!.nodes)) as Workflow['nodes'],
+        edges: JSON.parse(JSON.stringify(log.snapshot!.edges)) as Workflow['edges'],
+        groups: log.snapshot!.groups
+          ? JSON.parse(JSON.stringify(log.snapshot!.groups)) as Workflow['groups']
+          : [],
+      };
+    });
+    setSelectedNodeId(null);
+    setSelectedNodeIds([]);
+    setIsPreview(true);
+  }, [cloneWorkflow]);
+
+  const exitPreview = useCallback(() => {
+    setWorkflow((current) => {
+      const restored = prePreviewWorkflowRef.current;
+      prePreviewWorkflowRef.current = null;
+      return restored ? cloneWorkflow(restored) : current;
+    });
+    setSelectedNodeId(null);
+    setSelectedNodeIds([]);
+    setIsPreview(false);
+  }, [cloneWorkflow]);
 
   // ---- Undo / Redo ----
   const pushUndo = useCallback((_description?: string) => {
@@ -92,6 +131,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
 
   // ---- Save ----
   const saveWorkflow = useCallback(async (workflowToSave?: Workflow) => {
+    if (isPreview) return;
     const nextWorkflow = workflowToSave ?? workflow;
     if (!nextWorkflow) return;
     setIsSaving(true);
@@ -106,15 +146,15 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
     } finally {
       setIsSaving(false);
     }
-  }, [workflow, store]);
+  }, [isPreview, workflow, store]);
 
   // ---- Auto-save ----
   useEffect(() => {
     autoSaveTimer.current = setInterval(() => {
-      if (isDirty && workflow) saveWorkflow();
+      if (isDirty && workflow && !isPreview) saveWorkflow();
     }, 10_000);
     return () => { if (autoSaveTimer.current) clearInterval(autoSaveTimer.current); };
-  }, [isDirty, workflow, saveWorkflow]);
+  }, [isDirty, isPreview, workflow, saveWorkflow]);
 
   // ---- Name editing ----
   const startEditName = useCallback(() => {
@@ -191,6 +231,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
 
     // Actions
     markDirty, pushUndo, handleUndo, handleRedo,
+    enterPreview, exitPreview,
     saveWorkflow,
     startEditName, finishEditName,
     handleExport, handleImport,

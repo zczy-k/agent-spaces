@@ -56,6 +56,8 @@ export interface FloatingChatPanelProps {
   renderMessageExtras?: (message: ChatMessage) => React.ReactNode;
   /** Optional delete handler. When provided, each message shows a delete action on hover. */
   onDeleteMessage?: (messageId: string) => void;
+  /** Optional custom serializer for copy action. Defaults to `message.content`. */
+  serializeForCopy?: (message: ChatMessage) => string;
 
   /** Panel size */
   width?: number;
@@ -161,6 +163,7 @@ export function FloatingChatPanel({
   renderMessageContent,
   renderMessageExtras,
   onDeleteMessage,
+  serializeForCopy,
   width = 400,
   height = 360,
 }: FloatingChatPanelProps) {
@@ -186,7 +189,10 @@ export function FloatingChatPanel({
   };
 
   const handleCopyMessage = async (message: ChatMessage) => {
-    await navigator.clipboard.writeText(extractThinkingContent(message.content).message || message.content);
+    const text = serializeForCopy
+      ? serializeForCopy(message)
+      : extractThinkingContent(message.content).message || message.content;
+    await navigator.clipboard.writeText(text);
     setCopiedMessageId(message.id);
     window.setTimeout(() => {
       setCopiedMessageId((current) => current === message.id ? null : current);

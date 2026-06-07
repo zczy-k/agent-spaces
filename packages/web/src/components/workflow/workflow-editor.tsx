@@ -34,7 +34,7 @@ import { useWorkflowEditorExecution } from './use-workflow-editor-execution';
 import { useWorkflowEditorAgentChat } from './use-workflow-editor-agent-chat';
 import { WorkflowAgentTimeline } from './workflow-editor-agent-chat-ui';
 import { WORKFLOW_AGENT_FIXED_VALUES, getWorkflowAgentTimeline } from './workflow-editor-agent-utils';
-import type { WorkflowAgentChatMessage } from './workflow-editor-agent-utils';
+import type { WorkflowAgentChatMessage, WorkflowToolCall } from './workflow-editor-agent-utils';
 
 // ---- Inner editor (needs ReactFlow context) ----
 
@@ -81,6 +81,10 @@ function WorkflowEditorInner({
   const selectedNodeIds = state.selectedNodeIds.length > 0
     ? state.selectedNodeIds
     : state.selectedNodeId ? [state.selectedNodeId] : [];
+  const exitExecutionPreview = () => {
+    state.exitPreview();
+    execution.clearSelectedExecutionLog();
+  };
 
   useEffect(() => {
     if (!isWorkflowRunning || !canvas.nodeSelectOpen) return;
@@ -154,21 +158,21 @@ function WorkflowEditorInner({
         workflow={workflow}
         isDirty={state.isDirty}
         isPreview={state.isPreview}
-        executionStatus={execution.execStatus}
         canUndo={!isWorkflowRunning && state.undoStack.length > 0}
         canRedo={!isWorkflowRunning && state.redoStack.length > 0}
         onBack={onBack}
+        onExitPreview={exitExecutionPreview}
         onSave={state.saveWorkflow}
-        onExecute={execution.handleExecute}
-        onPause={execution.handlePauseExecution}
-        onResume={execution.handleResumeExecution}
-        onStop={execution.handleStopExecution}
         onUndo={state.handleUndo}
         onRedo={state.handleRedo}
-        onAutoLayout={() => {}}
         onExport={state.handleExport}
         onImport={state.handleImport}
         onOpenPluginManager={() => state.setPluginsDialogOpen(true)}
+        onOpenWorkflowLocation={() => {
+          if (workflow?.id) {
+            fetch(`/api/folder/reveal?path=${encodeURIComponent(`~/.agent-spaces-data/workflows/${workflow.id}`)}`, { method: 'POST' });
+          }
+        }}
         onWorkflowInfoChange={(updates) => {
           if (workflow) {
             const updated = { ...workflow, ...updates };
@@ -216,7 +220,7 @@ function WorkflowEditorInner({
                 canRedo={state.redoStack.length > 0}
                 onUndo={state.handleUndo}
                 onRedo={state.handleRedo}
-                onExitPreview={() => state.setIsPreview(false)}
+                onExitPreview={exitExecutionPreview}
                 onAutoLayout={canvas.handleAutoLayout}
               />
             </div>
@@ -234,10 +238,13 @@ function WorkflowEditorInner({
               onPause={execution.handlePauseExecution}
               onResume={execution.handleResumeExecution}
               onStop={execution.handleStopExecution}
-              onSelectLog={execution.handleSelectExecutionLog}
+              onSelectLog={(log) => {
+                execution.handleSelectExecutionLog(log);
+                state.enterPreview(log);
+              }}
               onDeleteLog={execution.handleDeleteExecutionLog}
               onClearLogs={execution.handleClearExecutionLogs}
-              onExitPreview={() => state.setIsPreview(false)}
+              onExitPreview={exitExecutionPreview}
               onUpdateNodeData={canvas.handleNodeDataUpdate}
             />
           </div>
@@ -427,6 +434,25 @@ function WorkflowEditorInner({
         renderMessageExtras={(message) => (
           <WorkflowAgentTimeline timeline={getWorkflowAgentTimeline(message as WorkflowAgentChatMessage)} />
         )}
+        serializeForCopy={(message) => {
+          const m = message as WorkflowAgentChatMessage;
+          const thinkMatch = m.content.match(/^<think\s*>([\s\S]*?)<\/think>\s*([\s\S]*)$/);
+          const text = thinkMatch ? thinkMatch[2].trim() : m.content;
+          const timeline = getWorkflowAgentTimeline(m);
+          if (!timeline.length) return text;
+          const lines: string[] = [];
+          for (const item of timeline) {
+            if (item.type === 'message') {
+              lines.push(`[消息] ${item.content}`);
+            } else if (item.type === 'tool') {
+              const tool = item as WorkflowToolCall;
+              const input = tool.input != null ? `\n  输入: ${JSON.stringify(tool.input, null, 2)}` : '';
+              const result = tool.result != null ? `\n  结果: ${JSON.stringify(tool.result, null, 2)}` : '';
+              lines.push(`[${tool.status === 'success' ? '✓' : tool.status === 'error' ? '✗' : '…'}] ${tool.name}${input}${result}`);
+            }
+          }
+          return lines.length ? `${text}\n\n---\n${lines.join('\n')}` : text;
+        }}
       />
 
       <Dialog open={chat.agentSettingsOpen} onOpenChange={chat.setAgentSettingsOpen}>

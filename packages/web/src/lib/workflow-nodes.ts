@@ -223,6 +223,12 @@ const aiNodes: NodeTypeDefinition[] = [
       { key: 'prompt', label: '任务', type: 'textarea', required: true },
       { key: 'systemPrompt', label: '系统提示词', type: 'textarea' },
       { key: 'cwd', label: '工作目录', type: 'text' },
+      {
+        key: 'additionalDirectories',
+        label: '额外目录',
+        type: 'textarea',
+        tooltip: '每行一个可访问目录，会追加到 Agent runtime 的 sandboxDirs/additionalDirectories。',
+      },
       { key: 'permissionMode', label: '权限模式', type: 'select', default: 'dontAsk',
         options: [
           { label: '默认', value: 'default' },
@@ -233,6 +239,9 @@ const aiNodes: NodeTypeDefinition[] = [
           { label: '跳过权限', value: 'bypassPermissions' },
         ],
       },
+      { key: 'extraInstructions', label: '额外指令', type: 'textarea' },
+      { key: 'loadProjectClaudeMd', label: '加载项目规则', type: 'checkbox', default: true },
+      { key: 'loadRuleMd', label: '加载规则目录', type: 'checkbox', default: true },
     ],
   },
 ];

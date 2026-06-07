@@ -30,10 +30,12 @@ import type {
   WorkflowExecuteResponse,
 } from '@agent-spaces/shared';
 import { createErrorShape } from '@agent-spaces/shared';
+import type { AgentRuntimeConfig } from '../adapters/agent-runtime-types.js';
 import type { InteractionManager } from './interaction-manager.js';
 import * as workflowStore from '../storage/workflow-store.js';
 import * as pluginService from './plugin.js';
 import { executeCommandNode } from './workflow-command-runner.js';
+import { getThinkingRuntimeConfig } from './llm-model-config.js';
 
 interface ExecutionManagerDeps {
   interactionManager: InteractionManager
@@ -703,31 +705,67 @@ export class ExecutionManager {
     appendLog: (level: ExecutionLogEntry['level'], message: string) => void,
   ): Promise<any> {
     const { createAgentRuntime } = await import('../adapters/agent-runtime.js');
-    const { listPresets } = await import('./agent.js');
+    const agentService = await import('./agent.js');
 
     const agentConfigId = resolvedData.agentConfigId as string;
-    const presets = listPresets(session.workflow.id);
+    const presets = agentService.listPresets(session.workflow.id);
     const preset = presets.find(p => p.id === agentConfigId);
     if (!preset) throw new Error(`Agent preset not found: ${agentConfigId}`);
 
     appendLog('info', `Using agent: ${preset.name || preset.id}`);
 
+    const permissionMode = normalizeAgentPermissionMode(resolvedData.permissionMode);
     const runtime = createAgentRuntime({
       kind: preset.runtimeKind as any,
       provider: preset.modelProvider as any,
       model: preset.modelId,
       apiKey: preset.apiKey,
-      baseURL: preset.apiBase,
+      baseURL: getRuntimeBaseURL(preset.modelProvider, preset.apiBase),
+      adapterBaseURL: preset.apiBase,
+      permissionMode,
+      ...getThinkingRuntimeConfig(preset),
     });
 
     const prompt = String(resolvedData.prompt || '');
     const systemPrompt = typeof resolvedData.systemPrompt === 'string' ? resolvedData.systemPrompt : undefined;
-    const fullPrompt = systemPrompt ? `${systemPrompt}\n\n${prompt}` : prompt;
-    const workingDir = preset.workingDir || resolvedData.cwd as string || process.cwd();
+    const extraInstructions = typeof resolvedData.extraInstructions === 'string' ? resolvedData.extraInstructions.trim() : '';
+    const ruleLoadingInstructions = [
+      resolvedData.loadProjectClaudeMd === false ? '不要主动加载项目 CLAUDE.md/AGENTS.md 规则文件。' : '',
+      resolvedData.loadRuleMd === false ? '不要主动加载 .claude/rules 或同类规则目录。' : '',
+    ].filter(Boolean).join('\n');
+    const workflowContext = [
+      `当前工作流: ${session.workflow.name}${session.workflow.id ? ` (${session.workflow.id})` : ''}`,
+      typeof session.workflow.description === 'string' && session.workflow.description.trim()
+        ? `工作流描述:\n${session.workflow.description.trim()}`
+        : '',
+    ].filter(Boolean).join('\n\n');
+    const fullPrompt = [systemPrompt, extraInstructions, ruleLoadingInstructions, workflowContext, prompt]
+      .map(part => typeof part === 'string' ? part.trim() : '')
+      .filter(Boolean)
+      .join('\n\n');
+    const workingDir = typeof resolvedData.cwd === 'string' && resolvedData.cwd.trim()
+      ? resolvedData.cwd.trim()
+      : agentService.resolveWorkingDir(session.workflow.id, preset);
+    const configDir = agentService.getAgentConfigDir(session.workflow.id, preset);
+    const sandboxDirs = uniqueStrings([
+      ...normalizeStringList(preset.sandboxDirs),
+      ...normalizeStringList(resolvedData.additionalDirectories),
+    ]);
+    const mcpServers = agentService.getMcpServers(preset.mcps);
+    const skills = agentService.getAvailableSkillNames(configDir, preset.skills);
+
+    appendLog('info', `Runtime: ${preset.runtimeKind || 'open-agent-sdk'}; permissionMode=${permissionMode}; cwd=${workingDir}`);
+    if (sandboxDirs.length) appendLog('info', `Additional directories: ${sandboxDirs.join(', ')}`);
 
     const result = await runtime.execute(fullPrompt, workingDir, {
+      maxTurns: 100,
+      mcpServers,
+      skills,
+      configDir,
+      sandboxDirs,
       systemPrompt: preset.systemPrompt,
       outputStyle: preset.outputStyle,
+      userPrompt: prompt,
       onEvent: (event) => {
         if (event.type === 'output') {
           appendLog('info', event.line);
@@ -743,9 +781,21 @@ export class ExecutionManager {
 
     appendLog('info', `Agent completed: ${result.summary || 'done'}`);
     return {
+      content: result.output?.join('\n').trim() || result.summary,
       output: result.output || result.summary,
       summary: result.summary,
       usage: result.usage,
+      runtime: {
+        cwd: workingDir,
+        additionalDirectories: sandboxDirs,
+        permissionMode,
+        extraInstructions,
+        loadProjectClaudeMd: resolvedData.loadProjectClaudeMd !== false,
+        loadRuleMd: resolvedData.loadRuleMd !== false,
+        enabledPlugins: session.workflow.enabledPlugins,
+        mcpServers: Object.keys(mcpServers ?? {}),
+        skills,
+      },
     };
   }
 
@@ -1608,6 +1658,55 @@ function getNestedValue(obj: any, path: string): any {
 
 function shouldInterrupt(session: ExecutionSession): boolean {
   return session.stopRequested || session.status === 'error';
+}
+
+function normalizeStringList(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === 'string')
+      .map(item => item.trim())
+      .filter(Boolean);
+  }
+
+  if (typeof value === 'string') {
+    return value
+      .split('\n')
+      .map(item => item.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+}
+
+function uniqueStrings(values: string[]): string[] {
+  const seen = new Set<string>();
+  return values.filter((value) => {
+    if (seen.has(value)) return false;
+    seen.add(value);
+    return true;
+  });
+}
+
+function normalizeAgentPermissionMode(value: unknown): AgentRuntimeConfig['permissionMode'] {
+  switch (value) {
+    case 'default':
+    case 'acceptEdits':
+    case 'bypassPermissions':
+    case 'plan':
+    case 'dontAsk':
+    case 'auto':
+      return value;
+    default:
+      return 'dontAsk';
+  }
+}
+
+function getRuntimeBaseURL(provider?: string, apiBase?: string): string | undefined {
+  if (
+    provider === 'openai-responses-to-anthropic-messages'
+    || provider === 'openai-chat-completions-to-anthropic-messages'
+  ) return undefined;
+  return apiBase;
 }
 
 // Composite node helpers (from workflow-composite.ts shared types)

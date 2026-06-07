@@ -267,6 +267,11 @@ export function useWorkflowEditorExecution({
     setExecStatus(selectedLog.status);
   }, []);
 
+  const clearSelectedExecutionLog = useCallback(() => {
+    setExecutionLog(null);
+    setSelectedExecutionLogId(null);
+  }, []);
+
   const handleDeleteExecutionLog = useCallback(async (logId: string) => {
     if (!workflow) return;
     await executionLogApi.delete(workflow.id, logId);
@@ -314,6 +319,7 @@ export function useWorkflowEditorExecution({
     handleResumeExecution,
     handleStopExecution,
     handleSelectExecutionLog,
+    clearSelectedExecutionLog,
     handleDeleteExecutionLog,
     handleClearExecutionLogs,
 

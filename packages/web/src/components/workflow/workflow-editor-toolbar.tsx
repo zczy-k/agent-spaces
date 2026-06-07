@@ -2,13 +2,16 @@
 
 import { useState } from 'react';
 import {
-  Save, ArrowLeft, Play, Square, Pause,
-  Download, Upload, Undo2, Redo2, PackagePlus,
+  Save, ArrowLeft,
+  Download, Upload, Undo2, Redo2, PackagePlus, MoreVertical, FolderOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { WorkflowInfoDialog } from './workflow-info-dialog';
 import type { Workflow } from '@agent-spaces/shared';
 
@@ -16,21 +19,17 @@ interface EditorToolbarProps {
   workflow: Workflow | null;
   isDirty: boolean;
   isPreview: boolean;
-  executionStatus: string;
   canUndo: boolean;
   canRedo: boolean;
   onBack: () => void;
+  onExitPreview: () => void;
   onSave: () => void;
-  onExecute: () => void;
-  onPause: () => void;
-  onResume: () => void;
-  onStop: () => void;
   onUndo: () => void;
   onRedo: () => void;
-  onAutoLayout: () => void;
   onExport: () => void;
   onImport: () => void;
   onOpenPluginManager: () => void;
+  onOpenWorkflowLocation: () => void;
   onWorkflowInfoChange: (updates: Partial<Workflow>) => void;
 }
 
@@ -48,14 +47,12 @@ function ToolBtn({ tooltip, children, ...props }: React.ComponentProps<typeof Bu
 }
 
 export function WorkflowEditorToolbar({
-  workflow, isDirty, isPreview, executionStatus,
+  workflow, isDirty, isPreview,
   canUndo, canRedo,
-  onBack, onSave, onExecute, onPause, onResume, onStop,
-  onUndo, onRedo, onAutoLayout, onExport, onImport,
-  onOpenPluginManager, onWorkflowInfoChange,
+  onBack, onExitPreview, onSave,
+  onUndo, onRedo, onExport, onImport,
+  onOpenPluginManager, onOpenWorkflowLocation, onWorkflowInfoChange,
 }: EditorToolbarProps) {
-  const isRunning = executionStatus === 'running';
-  const isPaused = executionStatus === 'paused';
   const [infoOpen, setInfoOpen] = useState(false);
 
   return (
@@ -108,22 +105,33 @@ export function WorkflowEditorToolbar({
       <div className="w-px h-5 bg-border mx-1" />
 
       {isPreview && (
-        <Button variant="ghost" size="sm" className="h-7 gap-1 text-blue-500" onClick={onBack}>
+        <Button variant="ghost" size="sm" className="h-7 gap-1 text-blue-500" onClick={onExitPreview}>
           退出预览
         </Button>
       )}
 
-      <div className="w-px h-5 bg-border mx-1" />
-
       <ToolBtn tooltip="保存 (Ctrl+S)" variant="ghost" size="icon" className="h-7 w-7" onClick={onSave} disabled={!isDirty}>
         <Save className="h-4 w-4" />
       </ToolBtn>
-      <ToolBtn tooltip="导出" variant="ghost" size="icon" className="h-7 w-7" onClick={onExport}>
-        <Download className="h-4 w-4" />
-      </ToolBtn>
-      <ToolBtn tooltip="导入" variant="ghost" size="icon" className="h-7 w-7" onClick={onImport}>
-        <Upload className="h-4 w-4" />
-      </ToolBtn>
+      <DropdownMenu>
+        <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7" />}>
+          <MoreVertical className="h-4 w-4" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={onExport}>
+            <Download className="h-4 w-4 mr-2" />
+            导出
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onImport}>
+            <Upload className="h-4 w-4 mr-2" />
+            导入
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onOpenWorkflowLocation} disabled={!workflow}>
+            <FolderOpen className="h-4 w-4 mr-2" />
+            打开工作流位置
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }

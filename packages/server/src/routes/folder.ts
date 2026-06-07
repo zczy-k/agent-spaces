@@ -3,6 +3,7 @@ import { readdir, stat, mkdir, access, readFile } from 'node:fs/promises';
 import { join, resolve, sep, extname } from 'node:path';
 import { homedir } from 'node:os';
 import { constants } from 'node:fs';
+import { exec } from 'node:child_process';
 
 const router = Router();
 
@@ -149,6 +150,29 @@ router.get('/read-file', async (req: Request, res: Response) => {
   } catch (err: any) {
     res.status(400).json({ error: err.message || 'Cannot read file' });
   }
+});
+
+router.post('/reveal', (req: Request, res: Response) => {
+  const raw = (req.query.path as string) || '';
+  if (!raw) {
+    res.status(400).json({ error: 'path is required' });
+    return;
+  }
+  const dir = resolve(raw.replace(/^~[/\\]/, homedir() + sep));
+
+  const cmd = process.platform === 'darwin'
+    ? `open "${dir}"`
+    : process.platform === 'win32'
+      ? `explorer "${dir}"`
+      : `xdg-open "${dir}"`;
+
+  exec(cmd, (err, stdout, stderr) => {
+    if (err) {
+      res.status(500).json({ error: 'Failed to reveal directory', detail: err.message });
+      return;
+    }
+    res.json({ success: true, path: dir });
+  });
 });
 
 export default router;
