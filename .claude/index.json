@@ -1,11 +1,11 @@
 {
-  "version": "1.16.0",
-  "timestamp": "2026-06-07T19:26:50+08:00",
+  "version": "1.17.0",
+  "timestamp": "2026-06-08T16:36:52+08:00",
   "project": {
     "name": "agent-spaces",
     "type": "pnpm-monorepo + flutter",
     "language": "TypeScript + Dart",
-    "description": "多 Agent 协同编程平台（含六运行时 Agent Workflow 执行引擎、通用 AI 文本请求层、AI 标题生成、DAG 可视化编排含循环/分支/变量/断点/恢复/触发器/分组/插件系统、Plugin 插件系统含自定义节点/配置/Store安装/CJS沙箱加载/Plugin Runtime API、Hook 系统、输出风格管理、Chat 独立页面（LangChain 运行时驱动）、Workflow 内置工具（执行+编辑）、i18n 中英文切换（31 命名空间拆分）、通知中心、用量统计（含 Commit Graph + Activity Graph + Content Usage Report）、订阅管理、语音识别、快捷命令、代码搜索、Agent SSE API、Command Palette、代码收藏、Prompt 模板管理、TypeScript LSP、DOM Inspector、持久上下文加载、Kanban 看板、Notion 风格文档数据库含向量搜索、Worktree 并行开发、Robot Account 凭证管理、Agent Commands 管理、字体管理、版本自更新系统、Diff Viewer、JSON Viewer、Log Viewer、CodexFunctionToolBridge MCP 桥接、主题风格系统、布局模板管理、Agent Store、终端注册表、Send to Issue/Channel、HTML->Markdown 转换、数据导入/导出、NPM 设置管理、前端 SDK 统一 API 调用层 39 模块、Agent 模板库含 Chat Agent 预设、Flutter 多平台客户端含远程终端和文件源）"
+    "description": "多 Agent 协同编程平台（含六运行时 Agent Workflow 执行引擎、通用 AI 文本请求层、AI 标题生成、DAG 可视化编排含循环/分支/变量/断点/恢复/触发器/分组/插件系统、Workflow UI 可视化 UI 编辑系统（React/HTML 模式 + Babel 实时预览 + Plugin 工具集成 + Agent Chat 协作 + ZIP 导入）、Plugin 插件系统含自定义节点/配置/Store安装/CJS沙箱加载/Plugin Runtime API、Hook 系统、输出风格管理、Chat 独立页面（LangChain 运行时驱动）、Workflow 内置工具（执行+编辑+UI+工作空间文件）、i18n 中英文切换（31 命名空间拆分）、通知中心、用量统计（含 Commit Graph + Activity Graph + Content Usage Report）、订阅管理、语音识别、快捷命令、代码搜索、Agent SSE API、Command Palette、代码收藏、Prompt 模板管理、TypeScript LSP、DOM Inspector、持久上下文加载、Kanban 看板、Notion 风格文档数据库含向量搜索、Worktree 并行开发、Robot Account 凭证管理、Agent Commands 管理、字体管理、版本自更新系统、Diff Viewer、JSON Viewer、Log Viewer、CodexFunctionToolBridge MCP 桥接、主题风格系统、布局模板管理、Agent Store、终端注册表、Send to Issue/Channel、HTML->Markdown 转换、数据导入/导出、NPM 设置管理、前端 SDK 统一 API 调用层 40 模块、Agent 模板库含 Chat Agent 预设、Flutter 多平台客户端含远程终端和文件源）"
   },
   "modules": [
     {
@@ -24,77 +24,58 @@
       "path": "packages/sdk",
       "packageId": "@agent-spaces/sdk",
       "language": "TypeScript",
-      "role": "前端 API 统一 SDK（39 个 API 模块适配器，新增 npm-settings 模块）",
+      "role": "前端 API 统一 SDK（40 个 API 模块适配器，新增 workflow-ui 模块）",
       "entry": "src/index.ts",
-      "sourceFiles": 39,
+      "sourceFiles": 40,
       "newFiles": [
-        "src/modules/npm-settings.ts"
+        "src/modules/workflow-ui.ts"
       ],
       "claudeMd": "packages/sdk/CLAUDE.md",
-      "coverage": { "scanned": 39, "total": 39, "percentage": 100, "gaps": [] }
+      "coverage": { "scanned": 40, "total": 40, "percentage": 100, "gaps": [] }
     },
     {
       "name": "server",
       "path": "packages/server",
       "packageId": "@agent-spaces/server",
       "language": "TypeScript",
-      "role": "Express REST API + WebSocket + 认证中间件 + 六运行时 Agent 编排 + Chat 系统 + Workflow 执行引擎（1557行） + Plugin 插件系统含 Plugin Runtime API + NPM Settings + Hook 系统 + 通知中心 + Worktree + Kanban + DocNode + Agent SSE API",
+      "role": "Express REST API + WebSocket + 认证中间件 + 六运行时 Agent 编排 + Chat 系统 + Workflow 执行引擎（1557行） + Workflow UI 系统（CRUD + 文件管理 + ZIP 导入 + Plugin 工具集成） + Plugin 插件系统含 Plugin Runtime API + NPM Settings + Hook 系统 + 通知中心 + Worktree + Kanban + DocNode + Agent SSE API + 工作空间文件工具",
       "entry": "src/app.ts",
-      "sourceFiles": 168,
+      "sourceFiles": 173,
       "newFiles": [
-        "src/routes/npm-settings.ts",
-        "src/storage/npm-settings-store.ts",
-        "src/services/plugin-runtime-api.ts"
+        "src/routes/workflow-ui.ts",
+        "src/services/workflow-ui.ts",
+        "src/storage/workflow-ui-store.ts",
+        "src/services/builtin-tools/workflow-ui-tools.ts",
+        "src/services/builtin-tools/workspace-file-tools.ts"
       ],
       "claudeMd": "packages/server/CLAUDE.md",
-      "coverage": { "scanned": 168, "total": 168, "percentage": 100, "gaps": [] }
+      "coverage": { "scanned": 173, "total": 173, "percentage": 100, "gaps": [] }
     },
     {
       "name": "web",
       "path": "packages/web",
       "packageId": "@agent-spaces/web",
       "language": "TypeScript/TSX",
-      "role": "Next.js 前端 SPA（含 Chat 独立页面 /chat、Workflow 编辑器独立页 /workflows/[id]、Workflow 分享页 /workflows/share、Workflow 59 文件完整编辑器含 Agent Chat + 属性面板扩展、sidebar 57 文件含 NPM Settings Tab、SDK 统一 API 调用层、i18n 31 命名空间、34 个 Zustand Stores）",
+      "role": "Next.js 前端 SPA（含 Workflow UI 编辑器 /workflows-ui/[id] + Workflow UI 管理页 /workflows-ui、Workflow 编辑器独立页 /workflows/[id]、Workflow 分享页 /workflows/share、Chat 独立页面 /chat、SDK 统一 API 调用层 40 模块、i18n 31 命名空间）",
       "entry": "src/app/layout.tsx",
-      "sourceFiles": 493,
+      "sourceFiles": 500,
       "newFiles": [
-        "src/app/workflows/share/page.tsx",
-        "src/components/sidebar/settings/npm-settings-tab.tsx",
-        "src/components/workflow/use-workflow-editor-agent-chat.ts",
-        "src/components/workflow/workflow-editor-agent-chat-ui.tsx",
-        "src/components/workflow/workflow-editor-agent-utils.ts",
-        "src/components/workflow/workflow-node-icon.tsx",
-        "src/components/workflow/workflow-node-select-dialog.tsx",
-        "src/components/workflow/workflow-plugin-icon.tsx",
-        "src/components/workflow/workflow-plugin-card.tsx",
-        "src/components/workflow/work-plugin-icon.tsx",
-        "src/components/workflow/workflow-properties-node-header.tsx",
-        "src/components/workflow/workflow-execution-input-dialog.tsx",
-        "src/components/workflow/workflow-execution-node-dialog.tsx",
-        "src/components/workflow/workflow-fields-array.tsx",
-        "src/components/workflow/workflow-fields-conditions.tsx",
-        "src/components/workflow/workflow-fields-output.tsx",
-        "src/components/workflow/workflow-fields-property.tsx",
-        "src/components/workflow/workflow-properties-fields.tsx",
-        "src/components/workflow/workflow-properties-import-dialog.tsx",
-        "src/components/workflow/workflow-properties-io-sections.tsx",
-        "src/components/workflow/workflow-properties-list.tsx",
-        "src/components/workflow/workflow-properties-preset-dialog.tsx",
-        "src/components/workflow/workflow-properties-toolbar.tsx",
-        "src/components/workflow/workflow-properties-utils.ts",
-        "src/components/workflow/workflow-info-dialog.tsx",
-        "src/components/workflow/workflow-list-dialog.tsx",
-        "src/components/workflow/workflow-save-preset-dialog.tsx",
-        "src/components/workflow/workflow-card.tsx",
-        "src/components/sidebar/skills-dialog/skill-filter-sidebar.tsx",
-        "src/components/sidebar/skills-dialog/skill-card-grid.tsx",
-        "src/components/sidebar/skills-dialog/skill-git-import-dialog.tsx",
-        "src/components/sidebar/skills-dialog/use-skill-import.ts"
+        "src/components/workflows-ui/workflow-ui-editor.tsx",
+        "src/components/workflows-ui/workflow-ui-chat.tsx",
+        "src/components/workflows-ui/workflow-ui-preview.tsx",
+        "src/components/workflows-ui/workflow-ui-preview-toolbar.tsx",
+        "src/components/workflows-ui/workflow-ui-tool-execute-dialog.tsx",
+        "src/components/workflows-ui/workflow-ui-plugin-tools-dialog.tsx",
+        "src/components/workflows-ui/workflows-ui-page.tsx",
+        "src/components/workflows-ui/workflows-ui-create-dialog.tsx",
+        "src/components/workflows-ui/workflows-ui-card.tsx",
+        "src/app/workflows-ui/page.tsx",
+        "src/app/workflows-ui/[id]/page.tsx",
+        "src/app/workflows-ui/[id]/workflow-ui-editor-page-client.tsx",
+        "src/lib/ui-exports.ts"
       ],
       "claudeMd": "packages/web/CLAUDE.md",
-      "coverage": { "scanned": 493, "total": 493, "percentage": 100, "gaps": [
-        "web CLAUDE.md 内容更新不完整（Workflow 编辑器 36->59、Sidebar 45->57、Skills 7->11、Store 25->34 等数字未在行内更新，仅 Changelog 有记录）"
-      ] }
+      "coverage": { "scanned": 500, "total": 500, "percentage": 100, "gaps": [] }
     },
     {
       "name": "flutter",
@@ -115,54 +96,39 @@
       "role": "Agent 预设模板库（184 Agent + 6 Chat Agent + 9 MCP + 15 Skill + 107 Plugin + 1 Workflow）",
       "entry": "agents/index.json",
       "sourceFiles": 324,
-      "newFiles": [
-        "chat/index.json",
-        "chat/chat-code-assistant.md",
-        "chat/chat-creative-consultant.md",
-        "chat/chat-data-analyst.md",
-        "chat/chat-study-tutor.md",
-        "chat/chat-translation-assistant.md",
-        "chat/chat-writing-assistant.md"
-      ],
       "claudeMd": "packages/templates/CLAUDE.md",
       "coverage": { "scanned": 324, "total": 324, "percentage": 100, "gaps": [] }
     }
   ],
   "scanCoverage": {
-    "totalSourceFiles": 1099,
-    "scannedFiles": 1099,
+    "totalSourceFiles": 1112,
+    "scannedFiles": 1112,
     "coveragePercentage": 100,
     "ignoredDirectories": ["node_modules", ".next", "dist", ".git", ".agent-spaces-data", "build"],
     "truncated": false,
-    "gapDetails": [
-      {
-        "module": "web",
-        "type": "doc-lag",
-        "description": "web CLAUDE.md 行内数字未全面更新（Workflow 36->59, Sidebar 45->57, Skills 7->11, Store 25->34），需下次完整重写更新"
-      }
-    ],
+    "gapDetails": [],
     "moduleBreakdown": {
       "shared": { "total": 29, "scanned": 29, "percentage": 100 },
-      "sdk": { "total": 39, "scanned": 39, "percentage": 100 },
-      "server": { "total": 168, "scanned": 168, "percentage": 100 },
-      "web": { "total": 493, "scanned": 493, "percentage": 100 },
+      "sdk": { "total": 40, "scanned": 40, "percentage": 100 },
+      "server": { "total": 173, "scanned": 173, "percentage": 100 },
+      "web": { "total": 500, "scanned": 500, "percentage": 100 },
       "flutter": { "total": 46, "scanned": 46, "percentage": 100 },
       "templates": { "total": 324, "scanned": 324, "percentage": 100 }
     }
   },
   "changesFromPrevious": {
-    "previousVersion": "1.15.0",
-    "previousTimestamp": "2026-06-05T19:44:59+08:00",
-    "summary": "NPM Settings 管理（server 新增 routes/npm-settings.ts + storage/npm-settings-store.ts；sdk 新增 modules/npm-settings.ts；web 新增 settings/npm-settings-tab.tsx）；Plugin Runtime API（server 新增 services/plugin-runtime-api.ts 303 行 HTTP 封装 + TLS 隧道 + 文件系统操作）；execution-manager 增长 1393->1557 行；Workflow 编辑器大幅扩展 36->59 文件（属性面板拆分 + Agent Chat 集成 + 新节点/字段组件 + 预设管理 + 执行对话框）；Workflow Share 页面（web 新增 app/workflows/share/page.tsx）；Sidebar 扩展 45->57 文件（NPM Settings Tab + Skills Dialog 拆分 7->11 文件）；Chat Agent 模板（templates 新增 chat/ 目录 6 个预设）；server 165->168、sdk 38->39、web 344->493、templates 376->324"
+    "previousVersion": "1.16.0",
+    "previousTimestamp": "2026-06-07T19:26:50+08:00",
+    "summary": "Workflow UI 可视化 UI 编辑系统（server 新增 routes/workflow-ui.ts REST API + services/workflow-ui.ts 服务层 + storage/workflow-ui-store.ts 持久化 + services/builtin-tools/workflow-ui-tools.ts 4 个 Agent 工具 + services/builtin-tools/workspace-file-tools.ts 工作空间文件工具；web 新增 components/workflows-ui/ 9 文件编辑器 + app/workflows-ui/ 2 路由 + lib/ui-exports.ts UI 组件导出；sdk 新增 modules/workflow-ui.ts WorkflowUiProject API）；server 168->173、sdk 39->40、web 493->500、shared 29 不变、flutter 46 不变、templates 324 不变"
   },
   "nextSteps": {
-    "description": "核心模块全部扫描完成（1099 源文件，100% 覆盖率），但 web CLAUDE.md 行内文档滞后。",
+    "description": "核心模块全部扫描完成（1112 源文件，100% 覆盖率）。",
     "suggestions": [
-      "下次运行需完整重写 web CLAUDE.md（更新 Workflow 36->59、Sidebar 45->57、Skills 7->11、Store 25->34 等行内数字）",
-      "NPM Settings 集成测试（server + sdk + web NPM Settings Tab 联调）",
-      "Plugin Runtime API 测试（TLS 隧道代理 + 文件系统操作 + 模式匹配）",
-      "Workflow Share 页面测试（参数解析 + WebSocket 执行 + 文件输出提取）",
-      "Chat Agent 模板导入测试（从 templates/chat 导入到 Chat 页面）"
+      "Workflow UI Babel 预览测试（React 模式编译 + HTML 模式渲染）",
+      "Workflow UI ZIP 导入测试（yauzl 解压 + manifest 解析 + 文件创建）",
+      "Workflow UI Plugin 工具集成测试（list_plugin_tools/get_plugin_tool_detail/execute_plugin_tool）",
+      "Workflow UI Agent Chat 协作测试（频道自动创建 + Agent 绑定 + 上下文注入）",
+      "workspace-file-tools 测试（read_workspace_file/list_workspace_files/search_workspace_files）"
     ]
   }
 }

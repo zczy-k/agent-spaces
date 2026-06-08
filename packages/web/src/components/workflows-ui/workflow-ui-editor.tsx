@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Check, Pencil } from 'lucide-react';
 import { sdk } from '@/lib/sdk';
 import { fetchWithAuth } from '@/lib/auth';
 import type { WorkflowUiProject } from '@agent-spaces/sdk';
@@ -73,6 +73,8 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
   const loadedFileContentRef = useRef('');
   const filesRef = useRef<string[]>([]);
   const previewCodeRef = useRef('');
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'modified' | 'saving'>('saved');
+  const handleSaveRef = useRef<() => Promise<void>>(async () => {});
 
   // Mount host APIs used by Workflow UI preview code.
   useEffect(() => {
@@ -205,6 +207,7 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
             previewCodeRef.current = content;
             loadedFileContentRef.current = content;
             localDirtyRef.current = false;
+            setSaveStatus('saved');
           }
         }
       } catch (error) {
@@ -244,6 +247,7 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
       if (shouldUpdateEditor) {
         loadedFileContentRef.current = content;
         localDirtyRef.current = false;
+        setSaveStatus('saved');
         setSourceCode(content);
       }
 
@@ -290,13 +294,20 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
   const handleSave = useCallback(async () => {
     if (!activeFile) return;
     try {
+      setSaveStatus('saving');
       await sdk.workflowUi.writeFile(projectId, activeFile, sourceCode);
       loadedFileContentRef.current = sourceCode;
       localDirtyRef.current = false;
+      setSaveStatus('saved');
     } catch (error) {
       console.error('Failed to save file:', error);
+      setSaveStatus(localDirtyRef.current ? 'modified' : 'saved');
     }
   }, [projectId, activeFile, sourceCode]);
+
+  useEffect(() => {
+    handleSaveRef.current = handleSave;
+  }, [handleSave]);
 
   const handleManualRefresh = useCallback(async () => {
     await refreshFileTree();
@@ -308,6 +319,7 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
       await sdk.workflowUi.writeFile(projectId, activeFile, sourceCode).catch(() => {});
       loadedFileContentRef.current = sourceCode;
       localDirtyRef.current = false;
+      setSaveStatus('saved');
     }
     try {
       const { content } = await sdk.workflowUi.readFile(projectId, file);
@@ -318,6 +330,7 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
       setPreviewRefreshKey((key) => key + 1);
       loadedFileContentRef.current = content;
       localDirtyRef.current = false;
+      setSaveStatus('saved');
     } catch (error) {
       console.error('Failed to load file:', error);
     }
@@ -365,7 +378,9 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
               value={sourceCode}
               onChange={(v) => {
                 const nextCode = v || '';
-                localDirtyRef.current = nextCode !== loadedFileContentRef.current;
+                const dirty = nextCode !== loadedFileContentRef.current;
+                localDirtyRef.current = dirty;
+                setSaveStatus(dirty ? 'modified' : 'saved');
                 setSourceCode(nextCode);
               }}
               options={{
@@ -390,7 +405,7 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
                 editor.addCommand(
                   // eslint-disable-next-line no-bitwise
                   monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
-                  () => handleSave(),
+                  () => handleSaveRef.current(),
                 );
               }}
             />
@@ -425,6 +440,24 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
         </span>
         <span>{files.length} 文件</span>
         <span className="ml-auto">{activeFile}</span>
+        {saveStatus === 'modified' && (
+          <span className="flex items-center gap-1 text-amber-500">
+            <Pencil className="h-3 w-3" />
+            已修改
+          </span>
+        )}
+        {saveStatus === 'saving' && (
+          <span className="flex items-center gap-1">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            保存中...
+          </span>
+        )}
+        {saveStatus === 'saved' && (
+          <span className="flex items-center gap-1 text-emerald-500">
+            <Check className="h-3 w-3" />
+            已保存
+          </span>
+        )}
       </div>
 
       <WorkflowUiChat
