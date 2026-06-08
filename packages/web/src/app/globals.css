@@ -439,7 +439,7 @@
 }
 
 .flexlayout__tab_button--unselected {
-  background-color: var(--accent) !important;
+  background-color: transparent !important;
   color: var(--muted-foreground) !important;
 }
 
@@ -496,7 +496,7 @@
 }
 
 .flexlayout__border_button--unselected {
-  background-color: var(--accent) !important;
+  background-color: transparent !important;
   color: var(--muted-foreground) !important;
 }
 
@@ -511,7 +511,7 @@
 }
 
 .dark .flexlayout__tab_button--unselected {
-  background-color: var(--accent) !important;
+  background-color: transparent !important;
   color: var(--muted-foreground) !important;
 }
 
@@ -530,7 +530,7 @@
 }
 
 .dark .flexlayout__border_button--unselected {
-  background-color: var(--accent) !important;
+  background-color: transparent !important;
   color: var(--muted-foreground) !important;
 }
 
