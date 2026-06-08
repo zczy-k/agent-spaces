@@ -22,6 +22,7 @@ interface ChatInputAgentBarProps {
   onActivateAgent: (agent: MentionedAgent) => void;
   onOpenAddMember: () => void;
   onToggleNotify: () => void;
+  onAgentActivated?: (agent: MentionedAgent) => void;
 }
 
 export function ChatInputAgentBar({
@@ -32,6 +33,7 @@ export function ChatInputAgentBar({
   onActivateAgent,
   onOpenAddMember,
   onToggleNotify,
+  onAgentActivated,
 }: ChatInputAgentBarProps) {
   const t = useTranslations("chat");
   const [configAgentId, setConfigAgentId] = useState<string | null>(null);
@@ -57,7 +59,7 @@ export function ChatInputAgentBar({
                 <ShinyBadge
                   shiny={isActive}
                   shinySpeed={3}
-                  onClick={() => onActivateAgent(agent)}
+                  onClick={() => { onActivateAgent(agent); onAgentActivated?.(agent); }}
                   className={cn(
                     "shrink-0 inline-flex items-center gap-1 h-6 pl-0.5 pr-1.5 rounded-full text-xs transition-all cursor-pointer",
                     isActive && "bg-primary/10 text-primary border border-primary/30"

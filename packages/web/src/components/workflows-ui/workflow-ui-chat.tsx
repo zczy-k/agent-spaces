@@ -1,8 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { MessageSquare, Settings, X } from 'lucide-react';
-import { AgentPickerDialog } from '@/components/common/agent-picker-dialog';
+import { MessageSquare, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ChatPanel } from '@/components/chat/chat-panel';
 import { useAgentStore } from '@/stores/agent';
@@ -11,7 +10,8 @@ import { useWorkspaceStore } from '@/stores/workspace';
 import { workspaceIdFromLocation } from '@/lib/routes';
 import { sdk } from '@/lib/sdk';
 import { cn } from '@/lib/utils';
-import type { AgentConfig, Channel } from '@agent-spaces/shared';
+import type { Channel } from '@agent-spaces/shared';
+import type { MentionedAgent } from '@/components/chat/chat-input-utils';
 import type { WorkflowUiProject } from '@agent-spaces/sdk';
 
 interface WorkflowUiChatProps {
@@ -30,7 +30,6 @@ export function WorkflowUiChat({
   onUpdateProject,
 }: WorkflowUiChatProps) {
   const [open, setOpen] = useState(false);
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [channelId, setChannelId] = useState<string | null>(null);
   const [selectedAgentId, setSelectedAgentId] = useState(project.agentConfigId ?? '');
 
@@ -47,11 +46,6 @@ export function WorkflowUiChat({
     }
     return workspaces[0]?.id ?? null;
   }, [workspaceId, workspaces]);
-
-  const selectedAgent = useMemo(
-    () => agents.find((agent) => agent.id === selectedAgentId),
-    [agents, selectedAgentId],
-  );
 
   useEffect(() => {
     ensureAgents();
@@ -154,55 +148,17 @@ export function WorkflowUiChat({
     ensureWorkflowChannel(selectedAgentId);
   }, [ensureWorkflowChannel, open, selectedAgentId]);
 
-  const handleSelectAgent = useCallback((agentId: string) => {
-    setSelectedAgentId(agentId);
-    setPickerOpen(false);
-    onUpdateProject({ agentConfigId: agentId });
-    ensureWorkflowChannel(agentId);
-  }, [ensureWorkflowChannel, onUpdateProject]);
-
-  const pickerAgents = useMemo(
-    () => agents
-      .filter((agent: AgentConfig) => agent.enabled !== false)
-      .map((agent: AgentConfig) => ({
-        id: agent.id,
-        name: agent.name,
-        avatarUrl: agent.avatarUrl,
-        icon: agent.icon,
-        description: agent.description || agent.role,
-      })),
-    [agents],
-  );
-
   return (
     <>
       <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4">
         {open && (
           <div className="flex h-[min(720px,calc(100vh-7rem))] w-[min(520px,calc(100vw-3rem))] flex-col overflow-hidden rounded-lg border bg-background shadow-2xl">
-            <div className="flex items-center gap-2 border-b px-3 py-2">
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold">
-                  {selectedAgent?.name ?? '选择 Agent'}
-                </div>
-                <div className="truncate text-xs text-muted-foreground">
-                  Workflow UI - {project.name}
-                </div>
-              </div>
+            <div className="flex items-center justify-end border-b px-2 py-1">
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="size-8"
-                onClick={() => setPickerOpen(true)}
-                title="选择 Agent"
-              >
-                <Settings className="size-4" />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="size-8"
+                className="size-8 shrink-0"
                 onClick={() => setOpen(false)}
                 title="关闭"
               >
@@ -215,10 +171,8 @@ export function WorkflowUiChat({
                 未找到当前工作区，无法加载 Agent 聊天。
               </div>
             ) : !selectedAgentId ? (
-              <div className="flex flex-1 items-center justify-center">
-                <Button type="button" onClick={() => setPickerOpen(true)}>
-                  选择 Agent
-                </Button>
+              <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+                请在上方选择一个 Agent
               </div>
             ) : !channelId ? (
               <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
@@ -233,6 +187,10 @@ export function WorkflowUiChat({
                   activeFilePath,
                   projectType: project.type,
                   fileContent,
+                }}
+                onAgentActivated={(agent: MentionedAgent) => {
+                  setSelectedAgentId(agent.id);
+                  onUpdateProject({ agentConfigId: agent.id });
                 }}
               />
             )}
@@ -253,19 +211,6 @@ export function WorkflowUiChat({
           {open ? <X className="size-6" /> : <MessageSquare className="size-6" />}
         </button>
       </div>
-
-      <AgentPickerDialog
-        open={pickerOpen}
-        onClose={() => setPickerOpen(false)}
-        onConfirm={() => setPickerOpen(false)}
-        title="选择 Agent"
-        description="选择用于辅助编辑当前 Workflow UI 的 Agent。"
-        agents={pickerAgents}
-        selected={selectedAgentId ? [selectedAgentId] : []}
-        onToggle={handleSelectAgent}
-        confirmText="选择"
-        singleSelect
-      />
     </>
   );
 }

@@ -27,6 +27,7 @@ import { sdk } from '@/lib/sdk';
 import { useIssueStore } from '@/stores/issue';
 import { useMobilePanelStore } from '@/stores/mobile-panel';
 import type { AgentConfig, Channel, Message } from '@agent-spaces/shared';
+import type { MentionedAgent } from './chat-input-utils';
 
 const channelTypeStatus: Record<Channel['type'], { status: 'online' | 'offline' | 'maintenance' | 'degraded' }> = {
   general: { status: 'online' },
@@ -90,9 +91,10 @@ interface ChatPanelProps {
   workspaceId: string;
   channelId?: string;
   workflowUiContext?: WorkflowUiMessageContext;
+  onAgentActivated?: (agent: MentionedAgent) => void;
 }
 
-export function ChatPanel({ workspaceId, channelId, workflowUiContext }: ChatPanelProps) {
+export function ChatPanel({ workspaceId, channelId, workflowUiContext, onAgentActivated }: ChatPanelProps) {
   const t = useTranslations('chat');
   const tc = useTranslations('common');
   const { activeChannelId, channels, messages, loadMessages, loadChannelState, sendMessage, addMessage, updateMessage, stopProcessingMessages, deleteMessage, clearMessages, upsertChannel } = useChannelStore();
@@ -366,7 +368,7 @@ export function ChatPanel({ workspaceId, channelId, workflowUiContext }: ChatPan
             }}
           />
         ) : null}
-        <ChatInput ref={chatInputRef} channelName={channel.name} channelId={channel.id} workspaceId={workspaceId} channel={channel} agents={mentionAgents} messages={msgs} onSend={handleSend} isProcessing={isProcessing} onStop={handleStop} replyTo={replyTo} onCancelReply={() => setReplyTo(null)} />
+        <ChatInput ref={chatInputRef} channelName={channel.name} channelId={channel.id} workspaceId={workspaceId} channel={channel} agents={mentionAgents} messages={msgs} onSend={handleSend} isProcessing={isProcessing} onStop={handleStop} replyTo={replyTo} onCancelReply={() => setReplyTo(null)} onAgentActivated={onAgentActivated} />
       </div>
 
       {/* 右侧：信息面板 - Drawer */}

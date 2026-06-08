@@ -26,6 +26,7 @@ interface ChatInputProps {
   onStop?: () => void;
   replyTo?: { id: string; label: string } | null;
   onCancelReply?: () => void;
+  onAgentActivated?: (agent: MentionedAgent) => void;
 }
 
 export interface ChatInputHandle {
@@ -41,7 +42,7 @@ const EMPTY_COMPOSER_STATE: ChatComposerInputState = {
 };
 
 export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput(
-  { channelName, channelId, workspaceId, channel, agents, messages = [], onSend, isProcessing = false, onStop, replyTo, onCancelReply },
+  { channelName, channelId, workspaceId, channel, agents, messages = [], onSend, isProcessing = false, onStop, replyTo, onCancelReply, onAgentActivated },
   ref,
 ) {
   const t = useTranslations("chat");
@@ -122,6 +123,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
               lastActiveAgentId={lastActiveAgentId}
               channel={channel}
               onActivateAgent={activateAgent}
+              onAgentActivated={onAgentActivated}
               onOpenAddMember={() => setAddMemberOpen(true)}
               onToggleNotify={() => updateChannel(workspaceId, channelId, { notifyOnComplete: !channel.notifyOnComplete })}
             />
