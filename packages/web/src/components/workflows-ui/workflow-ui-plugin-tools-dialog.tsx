@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from 'react';
-import { Play, Wrench } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Loader2, PackagePlus, Play, Wrench } from 'lucide-react';
+import { fetchWithAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -11,7 +12,11 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { fetchWithAuth } from '@/lib/auth';
+import { Switch } from '@/components/ui/switch';
+import { sdk } from '@/lib/sdk';
+import { pluginApi, type WorkflowPlugin } from '@/lib/workflow-plugin-api';
+import { WorkflowPluginsDialog } from '@/components/workflow/workflow-plugins-dialog';
+import type { Workflow } from '@agent-spaces/shared';
 
 interface PluginTool {
   name: string;
@@ -22,41 +27,88 @@ interface PluginTool {
 interface WorkflowUiPluginToolsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  projectId: string;
   enabledPlugins: string[];
+  onEnabledPluginsChange: (plugins: string[]) => void;
 }
 
 export function WorkflowUiPluginToolsDialog({
   open,
   onOpenChange,
+  projectId,
   enabledPlugins,
+  onEnabledPluginsChange,
 }: WorkflowUiPluginToolsDialogProps) {
+  const [plugins, setPlugins] = useState<WorkflowPlugin[]>([]);
   const [toolsByPlugin, setToolsByPlugin] = useState<Record<string, PluginTool[]>>({});
   const [loading, setLoading] = useState(false);
   const [executing, setExecuting] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
+  const [pluginsDialogOpen, setPluginsDialogOpen] = useState(false);
+
+  // Adapt project enabledPlugins to Workflow shape for WorkflowPluginsDialog
+  const adapterWorkflow: Workflow = useMemo(() => ({
+    id: projectId,
+    name: '',
+    folderId: null,
+    nodes: [],
+    edges: [],
+    createdAt: 0,
+    updatedAt: 0,
+    enabledPlugins,
+  }), [projectId, enabledPlugins]);
+
+  const enabledSet = useMemo(() => new Set(enabledPlugins), [enabledPlugins]);
 
   useEffect(() => {
-    if (!open || !enabledPlugins.length) return;
+    if (!open) return;
     let cancelled = false;
     async function load() {
       setLoading(true);
-      const map: Record<string, PluginTool[]> = {};
-      for (const pluginId of enabledPlugins) {
-        try {
-          const resp = await fetchWithAuth(`/api/plugins/${pluginId}/tools`);
-          if (resp.ok) {
-            map[pluginId] = await resp.json();
-          }
-        } catch { /* ignore */ }
-      }
-      if (!cancelled) {
-        setToolsByPlugin(map);
-        setLoading(false);
+      try {
+        const allPlugins = await pluginApi.list();
+        if (cancelled) return;
+        setPlugins(allPlugins);
+
+        // load tools for each plugin
+        const map: Record<string, PluginTool[]> = {};
+        await Promise.all(
+          allPlugins.map(async (p) => {
+            try {
+              const resp = await fetchWithAuth(`/api/plugins/${p.id}/tools`);
+              if (resp.ok) {
+                const tools = await resp.json();
+                if (tools.length > 0) map[p.id] = tools;
+              }
+            } catch { /* ignore */ }
+          }),
+        );
+        if (!cancelled) setToolsByPlugin(map);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     }
     load();
     return () => { cancelled = true; };
-  }, [open, enabledPlugins]);
+  }, [open]);
+
+  const handleTogglePlugin = useCallback(async (pluginId: string) => {
+    const next = new Set(enabledPlugins);
+    const enabling = !next.has(pluginId);
+    if (enabling) {
+      next.add(pluginId);
+      // enable the plugin globally if not already
+      const plugin = plugins.find(p => p.id === pluginId);
+      if (plugin && !plugin.enabled) {
+        await pluginApi.enable(pluginId);
+        setPlugins(items => items.map(item => item.id === pluginId ? { ...item, enabled: true } : item));
+      }
+    } else {
+      next.delete(pluginId);
+    }
+    onEnabledPluginsChange(Array.from(next));
+    await sdk.workflowUi.update(projectId, { enabledPlugins: Array.from(next) });
+  }, [enabledPlugins, plugins, projectId, onEnabledPluginsChange]);
 
   const handleExecute = useCallback(async (pluginId: string, toolName: string) => {
     setExecuting(`${pluginId}/${toolName}`);
@@ -81,46 +133,72 @@ export function WorkflowUiPluginToolsDialog({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Wrench className="h-4 w-4" /> 插件 Tools
+            <Wrench className="h-4 w-4" /> 插件管理
+            <div className="flex-1" />
+            <Button variant="ghost" size="sm" className="h-6 gap-1 text-xs" onClick={() => setPluginsDialogOpen(true)}>
+              <PackagePlus className="h-3 w-3" /> 插件商店
+            </Button>
           </DialogTitle>
         </DialogHeader>
 
         {loading ? (
-          <div className="py-8 text-center text-sm text-muted-foreground">加载中...</div>
-        ) : Object.keys(toolsByPlugin).length === 0 ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : plugins.length === 0 ? (
           <div className="py-8 text-center text-sm text-muted-foreground">
-            未启用任何插件，或插件没有注册 tools
+            未安装任何插件
           </div>
         ) : (
           <ScrollArea className="max-h-96">
-            <div className="space-y-4">
-              {Object.entries(toolsByPlugin).map(([pluginId, tools]) => (
-                <div key={pluginId}>
-                  <div className="text-xs font-medium text-muted-foreground mb-1.5">
-                    {pluginId}
-                    <Badge variant="secondary" className="ml-2 text-[10px]">{tools.length} tools</Badge>
-                  </div>
-                  <div className="space-y-1">
-                    {tools.map((tool) => (
-                      <div key={tool.name} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted text-xs">
-                        <div className="min-w-0 flex-1">
-                          <div className="font-mono font-medium truncate">{tool.name}</div>
-                          {tool.description && <div className="text-muted-foreground truncate">{tool.description}</div>}
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 shrink-0"
-                          disabled={executing === `${pluginId}/${tool.name}`}
-                          onClick={() => handleExecute(pluginId, tool.name)}
-                        >
-                          <Play className="h-3 w-3" />
-                        </Button>
+            <div className="space-y-3">
+              {plugins.map((plugin) => {
+                const isEnabled = enabledSet.has(plugin.id);
+                const tools = toolsByPlugin[plugin.id] || [];
+                return (
+                  <div key={plugin.id} className="rounded-md border">
+                    {/* Group header */}
+                    <div className="flex items-center gap-2 px-3 py-2 bg-muted/40">
+                      <div className="min-w-0 flex-1">
+                        <span className="text-xs font-medium">{plugin.name}</span>
+                        <span className="ml-1.5 text-[10px] text-muted-foreground">{plugin.version}</span>
+                        {tools.length > 0 && (
+                          <Badge variant="secondary" className="ml-2 text-[10px]">{tools.length} tools</Badge>
+                        )}
                       </div>
-                    ))}
+                      <Switch
+                        checked={isEnabled}
+                        onCheckedChange={() => handleTogglePlugin(plugin.id)}
+                        className="scale-75"
+                      />
+                    </div>
+                    {/* Plugin description */}
+                    <div className="px-3 pb-1 text-[11px] text-muted-foreground">{plugin.description}</div>
+                    {/* Tools list */}
+                    {tools.length > 0 && (
+                      <div className="border-t">
+                        {tools.map((tool) => (
+                          <div key={tool.name} className="flex items-center gap-2 px-3 py-1.5 hover:bg-muted text-xs">
+                            <div className="min-w-0 flex-1">
+                              <div className="font-mono font-medium truncate">{tool.name}</div>
+                              {tool.description && <div className="text-muted-foreground truncate">{tool.description}</div>}
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 shrink-0"
+                              disabled={executing === `${plugin.id}/${tool.name}`}
+                              onClick={() => handleExecute(plugin.id, tool.name)}
+                            >
+                              <Play className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </ScrollArea>
         )}
@@ -131,6 +209,23 @@ export function WorkflowUiPluginToolsDialog({
           </div>
         )}
       </DialogContent>
+
+      <WorkflowPluginsDialog
+        open={pluginsDialogOpen}
+        onOpenChange={(nextOpen) => {
+          setPluginsDialogOpen(nextOpen);
+          if (!nextOpen) {
+            // Reload plugins after closing the store dialog
+            pluginApi.list().then(setPlugins).catch(() => {});
+          }
+        }}
+        workflow={adapterWorkflow}
+        onWorkflowChange={(wf) => {
+          const next = wf.enabledPlugins || [];
+          onEnabledPluginsChange(next);
+          sdk.workflowUi.update(projectId, { enabledPlugins: next });
+        }}
+      />
     </Dialog>
   );
 }

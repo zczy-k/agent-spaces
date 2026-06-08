@@ -1,6 +1,6 @@
 "use client";
 
-import { RefreshCw, Zap } from 'lucide-react';
+import { RefreshCw, Settings, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -9,12 +9,14 @@ interface WorkflowUiPreviewToolbarProps {
   autoRefresh: boolean;
   onAutoRefreshChange: (auto: boolean) => void;
   onRefresh: () => void;
+  onOpenPluginDialog?: () => void;
 }
 
 export function WorkflowUiPreviewToolbar({
   autoRefresh,
   onAutoRefreshChange,
   onRefresh,
+  onOpenPluginDialog,
 }: WorkflowUiPreviewToolbarProps) {
   return (
     <div className="flex items-center gap-3 px-3 py-1.5 border-t border-border bg-muted/30">
@@ -33,6 +35,11 @@ export function WorkflowUiPreviewToolbar({
       <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={onRefresh}>
         <RefreshCw className="h-3 w-3 mr-1" /> 刷新
       </Button>
+      {onOpenPluginDialog && (
+        <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={onOpenPluginDialog}>
+          <Settings className="h-3 w-3 mr-1" /> 插件
+        </Button>
+      )}
     </div>
   );
 }

@@ -31,7 +31,9 @@ export function WorkflowUiPreview({ type, sourceCode, error, onError }: Workflow
       const Babel = require('@babel/standalone');
       const compiled = Babel.transform(code, {
         presets: ['react'],
+        plugins: ['transform-modules-commonjs'],
         filename: 'preview.jsx',
+        sourceType: 'module',
       }).code;
 
       // Execute with new Function, inject React and UI components

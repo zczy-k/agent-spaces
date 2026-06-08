@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Loader2, Settings } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { sdk } from '@/lib/sdk';
 import { fetchWithAuth } from '@/lib/auth';
 import type { WorkflowUiProject } from '@agent-spaces/sdk';
@@ -10,7 +10,14 @@ import { WorkflowUiPreview } from './workflow-ui-preview';
 import { WorkflowUiPreviewToolbar } from './workflow-ui-preview-toolbar';
 import { WorkflowUiChat } from './workflow-ui-chat';
 import { WorkflowUiPluginToolsDialog } from './workflow-ui-plugin-tools-dialog';
-import { Button } from '@/components/ui/button';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+import dynamic from 'next/dynamic';
+import '@/lib/monaco-loader';
+
+const MonacoEditor = dynamic(
+  () => import('@monaco-editor/react').then((mod) => mod.default),
+  { ssr: false, loading: () => <div className="flex items-center justify-center h-full text-muted-foreground text-sm">Loading editor...</div> },
+);
 
 interface WorkflowUiEditorProps {
   projectId: string;
@@ -129,9 +136,9 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Main content */}
-      <div className="flex-1 flex min-h-0">
+      <ResizablePanelGroup direction="horizontal" className="flex-1 min-h-0">
         {/* Left: file tree + editor */}
-        <div className="w-80 border-r border-border flex flex-col shrink-0">
+        <ResizablePanel id="workflow-ui-editor" defaultSize="30%" minSize="15%" className="flex flex-col">
           {/* File tree */}
           <div className="border-b border-border p-2 max-h-48 overflow-auto">
             <div className="text-xs font-medium text-muted-foreground mb-1">文件</div>
@@ -147,46 +154,61 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
               </button>
             ))}
           </div>
-          {/* Code editor (textarea, Monaco later) */}
+          {/* Code editor */}
           <div className="flex-1 min-h-0">
-            <textarea
+            <MonacoEditor
+              height="100%"
+              language="typescript"
+              theme="vs-dark"
               value={sourceCode}
-              onChange={(e) => setSourceCode(e.target.value)}
-              onKeyDown={(e) => {
-                if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-                  e.preventDefault();
-                  handleSave();
-                }
+              onChange={(v) => setSourceCode(v || '')}
+              options={{
+                minimap: { enabled: false },
+                fontSize: 12,
+                lineNumbers: 'on',
+                scrollBeyondLastLine: false,
+                wordWrap: 'on',
+                padding: { top: 8 },
+                overviewRulerBorder: false,
+                hideCursorInOverviewRuler: true,
+                scrollbar: { verticalScrollbarSize: 8, horizontalScrollbarSize: 8 },
+                "semanticHighlighting.enabled": false,
+                renderWhitespace: 'none',
+                wordBasedSuggestions: 'off',
               }}
-              className="w-full h-full resize-none border-none outline-none p-3 font-mono text-xs bg-background"
-              spellCheck={false}
+              onMount={(editor, monaco) => {
+                monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
+                  noSemanticValidation: true,
+                  noSyntaxValidation: true,
+                });
+                editor.addCommand(
+                  // eslint-disable-next-line no-bitwise
+                  monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
+                  () => handleSave(),
+                );
+              }}
             />
           </div>
-        </div>
+        </ResizablePanel>
+
+        <ResizableHandle withHandle />
 
         {/* Right: preview */}
-        <div className="flex-1 flex flex-col min-h-0">
+        <ResizablePanel id="workflow-ui-preview" defaultSize="70%" minSize="30%" className="flex flex-col">
+           <WorkflowUiPreviewToolbar
+            autoRefresh={autoRefresh}
+            onAutoRefreshChange={setAutoRefresh}
+            onRefresh={handleManualRefresh}
+            onOpenPluginDialog={() => setPluginDialogOpen(true)}
+          />
           <WorkflowUiPreview
             type={project.type}
             sourceCode={previewCode}
             error={previewError}
             onError={setPreviewError}
           />
-          <WorkflowUiPreviewToolbar
-            autoRefresh={autoRefresh}
-            onAutoRefreshChange={setAutoRefresh}
-            onRefresh={handleManualRefresh}
-          />
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 text-xs"
-            onClick={() => setPluginDialogOpen(true)}
-          >
-            <Settings className="h-3 w-3 mr-1" /> 插件
-          </Button>
-        </div>
-      </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
 
       {/* Bottom status bar */}
       <div className="flex items-center gap-4 px-3 py-1 border-t border-border bg-muted/30 text-xs text-muted-foreground">
@@ -213,7 +235,11 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
       <WorkflowUiPluginToolsDialog
         open={pluginDialogOpen}
         onOpenChange={setPluginDialogOpen}
+        projectId={project.id}
         enabledPlugins={project.enabledPlugins ?? []}
+        onEnabledPluginsChange={(plugins) => {
+          if (project) setProject({ ...project, enabledPlugins: plugins });
+        }}
       />
     </div>
   );
