@@ -3,11 +3,14 @@
 import type { WorkflowUiProject } from '@agent-spaces/sdk';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Pencil, Copy, Trash2, MoreVertical, Puzzle, Download } from 'lucide-react';
+import { Pencil, Copy, Trash2, MoreVertical, Puzzle, Download, Share2, Check } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { InputGroup, InputGroupInput, InputGroupAddon, InputGroupButton } from '@/components/ui/input-group';
 import { nativeNavigate } from '@/lib/navigate';
 import { useRouter } from 'next/navigation';
 import { sdk } from '@/lib/sdk';
+import { useState } from 'react';
 
 interface WorkflowsUiCardProps {
   project: WorkflowUiProject;
@@ -17,6 +20,12 @@ interface WorkflowsUiCardProps {
 
 export function WorkflowsUiCard({ project, onDelete, onDuplicate }: WorkflowsUiCardProps) {
   const router = useRouter();
+  const [shareOpen, setShareOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const shareUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/workflows-ui-preview/${project.id}`
+    : '';
 
   const handleExportZip = async () => {
     const blob = await sdk.workflowUi.exportZip(project.id);
@@ -26,6 +35,12 @@ export function WorkflowsUiCard({ project, onDelete, onDuplicate }: WorkflowsUiC
     a.download = `${(project.name || 'project').replace(/[^\w\-.]/g, '_')}.zip`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleCopyLink = async () => {
+    await navigator.clipboard.writeText(shareUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const pluginCount = project.enabledPlugins?.length ?? 0;
@@ -55,9 +70,29 @@ export function WorkflowsUiCard({ project, onDelete, onDuplicate }: WorkflowsUiC
             <DropdownMenuItem onClick={handleExportZip}>
               <Download className="h-3.5 w-3.5 mr-2" /> Export ZIP
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setShareOpen(true); }}>
+              <Share2 className="h-3.5 w-3.5 mr-2" /> Share
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+      <Dialog open={shareOpen} onOpenChange={setShareOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Share &ldquo;{project.name}&rdquo;</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center space-x-2">
+            <InputGroup>
+              <InputGroupInput readOnly value={shareUrl} onClick={(e) => (e.target as HTMLInputElement).select()} />
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton size="xs" onClick={handleCopyLink}>
+                  {copied ? <><Check className="h-3.5 w-3.5" /> Copied</> : 'Copy'}
+                </InputGroupButton>
+              </InputGroupAddon>
+            </InputGroup>
+          </div>
+        </DialogContent>
+      </Dialog>
       <CardHeader className="pb-2">
         <div className="flex items-center gap-2">
           <span className="w-6 h-6 rounded bg-primary/10 text-xs font-bold flex items-center justify-center text-primary shrink-0">
