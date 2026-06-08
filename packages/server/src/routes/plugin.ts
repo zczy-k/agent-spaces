@@ -2,6 +2,7 @@ import { Router } from 'express';
 import type { Request, Response } from 'express';
 import { dirname, basename } from 'path';
 import * as pluginService from '../services/plugin.js';
+import { createBuiltinPluginApi } from '../services/plugin-runtime-api.js';
 
 const router = Router();
 
@@ -96,6 +97,28 @@ router.get('/:pluginId/workflow-nodes', (req: Request<{ pluginId: string }>, res
     res.json({ pluginId: req.params.pluginId, nodes: pluginService.getWorkflowNodes(req.params.pluginId) });
   } catch (error: any) {
     res.status(400).json({ error: error.message });
+  }
+});
+
+// ---- Plugin Tools ----
+
+router.get('/:pluginId/tools', (req: Request<{ pluginId: string }>, res: Response) => {
+  try {
+    const tools = pluginService.getPluginTools(req.params.pluginId);
+    res.json(tools);
+  } catch (error: any) {
+    res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message });
+  }
+});
+
+router.post('/:pluginId/tools/execute', async (req: Request<{ pluginId: string }>, res: Response) => {
+  try {
+    const { name, args } = req.body;
+    if (!name) { res.status(400).json({ error: 'name is required' }); return; }
+    const result = await pluginService.executePluginTool(req.params.pluginId, name, args ?? {}, createBuiltinPluginApi());
+    res.json({ success: true, result });
+  } catch (error: any) {
+    res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message });
   }
 });
 

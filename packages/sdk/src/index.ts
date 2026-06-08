@@ -62,6 +62,7 @@ export { createAvatarApi } from './modules/avatar';
 export { createAgentCommandsApi } from './modules/agent-commands';
 export { createChatApi } from './modules/chat';
 export type { ChatAgent, ChatMessage, ChatWorkspace, ChatSession } from './modules/chat';
+export { createWorkflowUiApi, type WorkflowUiProject } from './modules/workflow-ui';
 
 // ---- 工厂函数 ----
 
@@ -104,6 +105,7 @@ import { createInspectorApi } from './modules/inspector';
 import { createAvatarApi } from './modules/avatar';
 import { createAgentCommandsApi } from './modules/agent-commands';
 import { createChatApi } from './modules/chat';
+import { createWorkflowUiApi } from './modules/workflow-ui';
 
 export interface SDK {
   /** 底层 HTTP 客户端 */
@@ -150,6 +152,7 @@ export interface SDK {
   readonly avatar: ReturnType<typeof createAvatarApi>;
   readonly agentCommands: ReturnType<typeof createAgentCommandsApi>;
   readonly chat: ReturnType<typeof createChatApi>;
+  readonly workflowUi: ReturnType<typeof createWorkflowUiApi>;
 }
 
 /**
@@ -204,5 +207,6 @@ export function createSDK(config: SDKConfig): SDK {
     avatar: createAvatarApi(http),
     agentCommands: createAgentCommandsApi(http),
     chat: createChatApi(http),
+    workflowUi: createWorkflowUiApi(http),
   };
 }
