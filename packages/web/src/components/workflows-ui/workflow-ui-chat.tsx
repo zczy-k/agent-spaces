@@ -152,7 +152,7 @@ export function WorkflowUiChat({
     <>
       <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4">
         {open && (
-          <div className="flex h-[min(720px,calc(100vh-7rem))] w-[min(520px,calc(100vw-3rem))] flex-col overflow-hidden rounded-lg border bg-background shadow-2xl">
+          <div className="flex h-[min(820px,calc(100vh-7rem))] w-[min(520px,calc(100vw-3rem))] flex-col overflow-hidden rounded-lg border bg-background shadow-2xl">
             <div className="flex items-center justify-end border-b px-2 py-1">
               <Button
                 type="button"
@@ -179,20 +179,22 @@ export function WorkflowUiChat({
                 正在准备聊天频道...
               </div>
             ) : (
-              <ChatPanel
-                workspaceId={resolvedWorkspaceId}
-                channelId={channelId}
-                workflowUiContext={{
-                  projectId: project.id,
-                  activeFilePath,
-                  projectType: project.type,
-                  fileContent,
-                }}
-                onAgentActivated={(agent: MentionedAgent) => {
-                  setSelectedAgentId(agent.id);
-                  onUpdateProject({ agentConfigId: agent.id });
-                }}
-              />
+              <div className="flex-1 min-h-0 overflow-hidden">
+                <ChatPanel
+                  workspaceId={resolvedWorkspaceId}
+                  channelId={channelId}
+                  workflowUiContext={{
+                    projectId: project.id,
+                    activeFilePath,
+                    projectType: project.type,
+                    fileContent,
+                  }}
+                  onAgentActivated={(agent: MentionedAgent) => {
+                    setSelectedAgentId(agent.id);
+                    onUpdateProject({ agentConfigId: agent.id });
+                  }}
+                />
+              </div>
             )}
           </div>
         )}
