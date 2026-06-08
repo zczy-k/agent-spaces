@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import type { WorkflowUiProject } from '@agent-spaces/sdk';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +13,6 @@ import { WorkflowsUiEditDialog } from './workflows-ui-edit-dialog';
 import { nativeNavigate } from '@/lib/navigate';
 import { useRouter } from 'next/navigation';
 import { sdk } from '@/lib/sdk';
-import { useState } from 'react';
 
 interface WorkflowsUiCardProps {
   project: WorkflowUiProject;
@@ -21,6 +22,7 @@ interface WorkflowsUiCardProps {
 }
 
 export function WorkflowsUiCard({ project, onDelete, onDuplicate, onUpdated }: WorkflowsUiCardProps) {
+  const t = useTranslations('workflows-ui');
   const router = useRouter();
   const [shareOpen, setShareOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -54,21 +56,21 @@ export function WorkflowsUiCard({ project, onDelete, onDuplicate, onUpdated }: W
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditOpen(true); }}>
-              <Pencil className="h-3.5 w-3.5 mr-2" /> Edit
+              <Pencil className="h-3.5 w-3.5 mr-2" /> {t('card.edit')}
             </DropdownMenuItem>
             {onDuplicate && (
               <DropdownMenuItem onClick={() => onDuplicate(project.id)}>
-                <Copy className="h-3.5 w-3.5 mr-2" /> Duplicate
+                <Copy className="h-3.5 w-3.5 mr-2" /> {t('card.duplicate')}
               </DropdownMenuItem>
             )}
             <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteOpen(true)}>
-              <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
+              <Trash2 className="h-3.5 w-3.5 mr-2" /> {t('card.delete')}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={handleExportZip}>
-              <Download className="h-3.5 w-3.5 mr-2" /> Export ZIP
+              <Download className="h-3.5 w-3.5 mr-2" /> {t('card.exportZip')}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setShareOpen(true); }}>
-              <Share2 className="h-3.5 w-3.5 mr-2" /> Share
+              <Share2 className="h-3.5 w-3.5 mr-2" /> {t('card.share')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -79,15 +81,15 @@ export function WorkflowsUiCard({ project, onDelete, onDuplicate, onUpdated }: W
         <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete Project</AlertDialogTitle>
+              <AlertDialogTitle>{t('card.deleteTitle')}</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete &quot;{project.name}&quot;? This action cannot be undone.
+                {t('card.deleteConfirm', { name: project.name })}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel>{t('card.cancel')}</AlertDialogCancel>
               <AlertDialogAction className="bg-destructive text-white hover:bg-destructive/90" onClick={() => onDelete(project.id)}>
-                Delete
+                {t('card.delete')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

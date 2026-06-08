@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Loader2, PackagePlus, Play, Wrench } from 'lucide-react';
 import { fetchWithAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
@@ -42,6 +43,7 @@ export function WorkflowUiPluginToolsDialog({
   enabledPlugins,
   onEnabledPluginsChange,
 }: WorkflowUiPluginToolsDialogProps) {
+  const t = useTranslations('workflows-ui');
   const [plugins, setPlugins] = useState<WorkflowPlugin[]>([]);
   const [toolsByPlugin, setToolsByPlugin] = useState<Record<string, PluginTool[]>>({});
   const [loading, setLoading] = useState(false);
@@ -128,10 +130,10 @@ export function WorkflowUiPluginToolsDialog({
       >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Wrench className="h-4 w-4" /> 插件管理
+            <Wrench className="h-4 w-4" /> {t('pluginTools.title')}
             <div className="flex-1" />
             <Button variant="ghost" size="sm" className="h-6 gap-1 text-xs me-8" onClick={() => setPluginsDialogOpen(true)}>
-              <PackagePlus className="h-3 w-3" /> 插件商店
+              <PackagePlus className="h-3 w-3" /> {t('pluginTools.store')}
             </Button>
           </DialogTitle>
         </DialogHeader>
@@ -142,7 +144,7 @@ export function WorkflowUiPluginToolsDialog({
           </div>
         ) : plugins.length === 0 ? (
           <div className="py-8 text-center text-sm text-muted-foreground">
-            未安装任何插件
+            {t('pluginTools.noPlugins')}
           </div>
         ) : (
           <ScrollArea className="flex-1 min-h-0">
@@ -161,7 +163,7 @@ export function WorkflowUiPluginToolsDialog({
                         <span className="text-xs font-medium">{plugin.name}</span>
                         <span className="ml-1.5 text-[10px] text-muted-foreground">{plugin.version}</span>
                         {tools.length > 0 && (
-                          <Badge variant="secondary" className="ml-2 text-[10px]">{tools.length} tools</Badge>
+                          <Badge variant="secondary" className="ml-2 text-[10px]">{t('pluginTools.tools', { count: tools.length })}</Badge>
                         )}
                       </div>
                       <Switch

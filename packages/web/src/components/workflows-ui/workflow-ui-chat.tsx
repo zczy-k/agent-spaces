@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { MessageSquare, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ChatPanel } from '@/components/chat/chat-panel';
@@ -29,6 +30,7 @@ export function WorkflowUiChat({
   fileContent,
   onUpdateProject,
 }: WorkflowUiChatProps) {
+  const t = useTranslations('workflows-ui');
   const [open, setOpen] = useState(false);
   const [channelId, setChannelId] = useState<string | null>(null);
   const [selectedAgentId, setSelectedAgentId] = useState(project.agentConfigId ?? '');
@@ -67,16 +69,16 @@ export function WorkflowUiChat({
   const buildInitialMessage = useCallback(() => {
     const clippedContent = fileContent.slice(0, 6000);
     return [
-      `请作为 Workflow UI 项目 "${project.name}" 的开发助手。`,
-      `当前项目 ID: ${project.id}`,
-      `当前文件: ${activeFilePath || '(未选择文件)'}`,
+      t('chat.assistantPrompt', { name: project.name }),
+      t('chat.projectId', { id: project.id }),
+      t('chat.currentFile', { path: activeFilePath || t('chat.noFile') }),
       '',
-      '当前文件内容如下，请后续回答优先基于这个上下文：',
+      t('chat.fileContentHint'),
       '```',
       clippedContent,
       '```',
     ].join('\n');
-  }, [activeFilePath, fileContent, project.id, project.name]);
+  }, [activeFilePath, fileContent, project.id, project.name, t]);
 
   const findStoredChannel = useCallback((agentId: string): Channel | null => {
     if (typeof window === 'undefined') return null;
@@ -97,10 +99,10 @@ export function WorkflowUiChat({
 
     const agent = agents.find((item) => item.id === agentId);
     const channel = await sdk.channel.create(resolvedWorkspaceId, {
-      name: `Workflow UI - ${project.name}`,
+      name: t('chat.channelName', { name: project.name }),
       type: 'agent',
       members: [agentId],
-      titlePrompt: `Workflow UI ${project.name} ${activeFilePath}`,
+      titlePrompt: t('chat.channelTitlePrompt', { name: project.name, path: activeFilePath }),
     });
     upsertChannel(channel);
     setChannelId(channel.id);
@@ -140,6 +142,7 @@ export function WorkflowUiChat({
     project.type,
     resolvedWorkspaceId,
     sendMessage,
+    t,
     upsertChannel,
   ]);
 
@@ -160,7 +163,7 @@ export function WorkflowUiChat({
                 size="icon"
                 className="size-8 shrink-0"
                 onClick={() => setOpen(false)}
-                title="关闭"
+                title={t('chat.close')}
               >
                 <X className="size-4" />
               </Button>
@@ -168,15 +171,15 @@ export function WorkflowUiChat({
 
             {!resolvedWorkspaceId ? (
               <div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-muted-foreground">
-                未找到当前工作区，无法加载 Agent 聊天。
+                {t('chat.noWorkspace')}
               </div>
             ) : !selectedAgentId ? (
               <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-                请在上方选择一个 Agent
+                {t('chat.selectAgent')}
               </div>
             ) : !channelId ? (
               <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-                正在准备聊天频道...
+                {t('chat.preparing')}
               </div>
             ) : (
               <div className="flex-1 min-h-0 overflow-hidden">
@@ -208,7 +211,7 @@ export function WorkflowUiChat({
               ? 'bg-destructive text-destructive-foreground'
               : 'bg-primary text-primary-foreground hover:bg-primary/90',
           )}
-          title={open ? '关闭聊天' : '打开聊天'}
+          title={open ? t('chat.closeChat') : t('chat.openChat')}
         >
           {open ? <X className="size-6" /> : <MessageSquare className="size-6" />}
         </button>

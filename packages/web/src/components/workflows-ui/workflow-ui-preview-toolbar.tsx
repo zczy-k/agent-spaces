@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from 'next-intl';
 import { RefreshCw, Settings, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -18,6 +19,7 @@ export function WorkflowUiPreviewToolbar({
   onRefresh,
   onOpenPluginDialog,
 }: WorkflowUiPreviewToolbarProps) {
+  const t = useTranslations('workflows-ui');
   return (
     <div className="flex items-center gap-3 px-3 py-1.5">
       <div className="flex items-center gap-2">
@@ -29,15 +31,15 @@ export function WorkflowUiPreviewToolbar({
         />
         <Label htmlFor="auto-refresh" className="text-xs text-muted-foreground cursor-pointer">
           <Zap className="h-3 w-3 inline mr-1" />
-          自动预览
+          {t('preview.autoPreview')}
         </Label>
       </div>
       <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={onRefresh}>
-        <RefreshCw className="h-3 w-3 mr-1" /> 刷新
+        <RefreshCw className="h-3 w-3 mr-1" /> {t('preview.refresh')}
       </Button>
       {onOpenPluginDialog && (
         <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={onOpenPluginDialog}>
-          <Settings className="h-3 w-3 mr-1" /> 插件
+          <Settings className="h-3 w-3 mr-1" /> {t('preview.plugins')}
         </Button>
       )}
     </div>

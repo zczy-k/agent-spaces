@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 
@@ -12,6 +13,7 @@ interface WorkflowUiPreviewProps {
 }
 
 export function WorkflowUiPreview({ type, sourceCode, error, onError }: WorkflowUiPreviewProps) {
+  const t = useTranslations('workflows-ui');
   const containerRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<ReactDOM.Root | null>(null);
 
@@ -50,7 +52,7 @@ export function WorkflowUiPreview({ type, sourceCode, error, onError }: Workflow
 
       const Component = moduleExports.default;
       if (!Component) {
-        onError('入口文件必须 export default 一个 React 组件');
+        onError(t('preview.entryExportError'));
         return;
       }
 
@@ -60,7 +62,7 @@ export function WorkflowUiPreview({ type, sourceCode, error, onError }: Workflow
     } catch (err: any) {
       onError(err.message || String(err));
     }
-  }, [onError]);
+  }, [onError, t]);
 
   // HTML mode: direct render + eval script
   const renderHtml = useCallback((html: string) => {

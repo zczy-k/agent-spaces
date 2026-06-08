@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
@@ -27,6 +28,7 @@ interface WorkflowUiIndexItem {
 }
 
 export function WorkflowsUiStoreDialog({ open, onOpenChange, onImported }: WorkflowsUiStoreDialogProps) {
+  const t = useTranslations('workflows-ui');
   const [templates, setTemplates] = useState<WorkflowUiIndexItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState<string | null>(null);
@@ -70,15 +72,15 @@ export function WorkflowsUiStoreDialog({ open, onOpenChange, onImported }: Workf
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Store className="h-5 w-5" />
-            模板商店
+            {t('store.title')}
           </DialogTitle>
-          <DialogDescription>从商店下载 Workflow UI 模板，一键导入。</DialogDescription>
+          <DialogDescription>{t('store.description')}</DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[60vh]">
           {loading ? (
-            <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">加载中...</div>
+            <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">{t('store.loading')}</div>
           ) : templates.length === 0 ? (
-            <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">暂无模板</div>
+            <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">{t('store.empty')}</div>
           ) : (
             <div className="flex flex-col gap-3 pr-2">
               {templates.map((item) => (
@@ -100,7 +102,7 @@ export function WorkflowsUiStoreDialog({ open, onOpenChange, onImported }: Workf
                       ) : (
                         <>
                           <Download className="size-3.5 mr-1" />
-                          导入
+                          {t('store.import')}
                         </>
                       )}
                     </Button>

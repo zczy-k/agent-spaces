@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { sdk } from '@/lib/sdk';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +19,7 @@ interface WorkflowsUiCreateDialogProps {
 }
 
 export function WorkflowsUiCreateDialog({ open, onOpenChange }: WorkflowsUiCreateDialogProps) {
+  const t = useTranslations('workflows-ui');
   const router = useRouter();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -51,13 +53,13 @@ export function WorkflowsUiCreateDialog({ open, onOpenChange }: WorkflowsUiCreat
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Create Custom Page</DialogTitle>
+          <DialogTitle>{t('create.title')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>Name</Label>
+            <Label>{t('create.name')}</Label>
             <Input
-              placeholder="Page name"
+              placeholder={t('create.namePlaceholder')}
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -66,9 +68,9 @@ export function WorkflowsUiCreateDialog({ open, onOpenChange }: WorkflowsUiCreat
             />
           </div>
           <div className="space-y-2">
-            <Label>Description</Label>
+            <Label>{t('create.description')}</Label>
             <Textarea
-              placeholder="Optional description"
+              placeholder={t('create.descriptionPlaceholder')}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
@@ -76,7 +78,7 @@ export function WorkflowsUiCreateDialog({ open, onOpenChange }: WorkflowsUiCreat
             />
           </div>
           <div className="space-y-2">
-            <Label>Type</Label>
+            <Label>{t('create.type')}</Label>
             <Select value={type} onValueChange={(v) => setType(v as 'react' | 'html')} disabled={creating}>
               <SelectTrigger>
                 <SelectValue />
@@ -91,7 +93,7 @@ export function WorkflowsUiCreateDialog({ open, onOpenChange }: WorkflowsUiCreat
         <DialogFooter>
           <Button onClick={handleCreate} disabled={!name.trim() || creating}>
             {creating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Create
+            {t('create.submit')}
           </Button>
         </DialogFooter>
       </DialogContent>

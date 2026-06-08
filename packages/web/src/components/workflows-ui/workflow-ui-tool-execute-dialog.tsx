@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
 import { fetchWithAuth } from '@/lib/auth';
 import { resolveServerAssetUrl } from '@/lib/server';
@@ -78,6 +79,7 @@ export function WorkflowUiToolExecuteDialog({
   pluginIconPath,
   tool,
 }: ToolExecuteDialogProps) {
+  const t = useTranslations('workflows-ui');
   const [config, setConfig] = useState<Record<string, string>>({});
   const [args, setArgs] = useState<Record<string, unknown>>({});
   const [loading, setLoading] = useState(false);
@@ -177,7 +179,7 @@ export function WorkflowUiToolExecuteDialog({
               </div>
             ) : fields.length === 0 ? (
               <div className="py-4 text-center text-xs text-muted-foreground">
-                此工具无需参数
+                {t('toolExecute.noParams')}
               </div>
             ) : (
               <ScrollArea className="flex-1 overflow-hidden">
@@ -204,7 +206,7 @@ export function WorkflowUiToolExecuteDialog({
                 </div>
               ) : (
                 <ScrollArea className="flex-1 overflow-hidden">
-                  <JsonViewer data={result.data} rootName="result" defaultExpanded={2} />
+                  <JsonViewer data={result.data as any} rootName="result" defaultExpanded={2} />
                 </ScrollArea>
               )}
             </div>
@@ -213,11 +215,11 @@ export function WorkflowUiToolExecuteDialog({
 
         <div className="shrink-0 flex items-center justify-end gap-2 pt-1">
           <Button variant="outline" size="sm" onClick={() => { setArgs(buildDefaults(config)); setResult(null); }}>
-            重置
+            {t('toolExecute.reset')}
           </Button>
           <Button size="sm" disabled={executing || loading} onClick={handleExecute}>
             {executing && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
-            执行
+            {t('toolExecute.execute')}
           </Button>
         </div>
       </DialogContent>

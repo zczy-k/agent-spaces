@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import type { WorkflowUiProject } from '@agent-spaces/sdk';
 import { sdk } from '@/lib/sdk';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,7 @@ function fileToBase64(file: File): Promise<string> {
 }
 
 export function WorkflowsUiPage() {
+  const t = useTranslations('workflows-ui');
   const [projects, setProjects] = useState<WorkflowUiProject[]>([]);
   const [search, setSearch] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
@@ -86,45 +88,45 @@ export function WorkflowsUiPage() {
       {/* Header */}
       <div className="hidden md:flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-lg font-semibold">自定义页面</h2>
+          <h2 className="text-lg font-semibold">{t('page.title')}</h2>
           <p className="text-sm text-muted-foreground">
-            Create and manage custom UI pages for your workflows.
+            {t('page.subtitle')}
           </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setStoreOpen(true)}>
             <Store className="h-4 w-4 mr-2" />
-            商店
+            {t('page.store')}
           </Button>
           <Button variant="outline" onClick={handleImport}>
             <Upload className="h-4 w-4 mr-2" />
-            导入 ZIP
+            {t('page.importZip')}
           </Button>
           <Button onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
-            新建
+            {t('page.create')}
           </Button>
         </div>
       </div>
 
       {/* Mobile header */}
       <div className="md:hidden mb-4">
-        <h2 className="text-lg font-semibold">自定义页面</h2>
+        <h2 className="text-lg font-semibold">{t('page.title')}</h2>
         <p className="text-sm text-muted-foreground mb-3">
-          Create and manage custom UI pages for your workflows.
+          {t('page.subtitle')}
         </p>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => setStoreOpen(true)}>
             <Store className="h-4 w-4 mr-2" />
-            商店
+            {t('page.store')}
           </Button>
           <Button variant="outline" size="sm" onClick={handleImport}>
             <Upload className="h-4 w-4 mr-2" />
-            导入 ZIP
+            {t('page.importZip')}
           </Button>
           <Button size="sm" onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
-            新建
+            {t('page.create')}
           </Button>
         </div>
       </div>
@@ -133,7 +135,7 @@ export function WorkflowsUiPage() {
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search pages..."
+          placeholder={t('page.searchPlaceholder')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9"
@@ -143,21 +145,21 @@ export function WorkflowsUiPage() {
       {/* Content */}
       {loading ? (
         <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
-          Loading...
+          {t('page.loading')}
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
           <FileQuestion className="h-10 w-10 mb-3" />
           {projects.length === 0 ? (
             <>
-              <p className="text-sm mb-3">No custom pages yet.</p>
+              <p className="text-sm mb-3">{t('page.empty')}</p>
               <Button variant="outline" onClick={() => setCreateOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
-                创建第一个页面
+                {t('page.createFirst')}
               </Button>
             </>
           ) : (
-            <p className="text-sm">No pages match your search.</p>
+            <p className="text-sm">{t('page.noMatch')}</p>
           )}
         </div>
       ) : (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Loader2, Check, Pencil, Share2 } from 'lucide-react';
 import { sdk } from '@/lib/sdk';
 import type { WorkflowUiProject } from '@agent-spaces/sdk';
@@ -33,6 +34,7 @@ interface WorkflowUiEditorProps {
 }
 
 export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
+  const t = useTranslations('workflows-ui');
   const [project, setProject] = useState<WorkflowUiProject | null>(null);
   const [files, setFiles] = useState<string[]>([]);
   const [activeFile, setActiveFile] = useState<string>('');
@@ -218,7 +220,7 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
   }
 
   if (!project) {
-    return <div className="p-4 text-muted-foreground">项目不存在</div>;
+    return <div className="p-4 text-muted-foreground">{t('editor.notFound')}</div>;
   }
 
   return (
@@ -246,7 +248,7 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
           <div className="flex flex-col h-full rounded-xl border border-border bg-background overflow-hidden">
           {/* File tree */}
           <div className="border-b border-border p-2 max-h-48 overflow-auto">
-            <div className="text-xs font-medium text-muted-foreground mb-1">文件</div>
+            <div className="text-xs font-medium text-muted-foreground mb-1">{t('editor.files')}</div>
             <div className="flex flex-wrap gap-1">
             {files.map((file) => (
               <Badge
@@ -326,24 +328,24 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
         <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
           {project.type === 'react' ? 'React' : 'HTML'}
         </span>
-        <span>{files.length} 文件</span>
+        <span>{t('editor.fileCount', { count: files.length })}</span>
         <span className="ml-auto">{activeFile}</span>
         {saveStatus === 'modified' && (
           <span className="flex items-center gap-1 text-amber-500">
             <Pencil className="h-3 w-3" />
-            已修改
+            {t('editor.modified')}
           </span>
         )}
         {saveStatus === 'saving' && (
           <span className="flex items-center gap-1">
             <Loader2 className="h-3 w-3 animate-spin" />
-            保存中...
+            {t('editor.saving')}
           </span>
         )}
         {saveStatus === 'saved' && (
           <span className="flex items-center gap-1 text-emerald-500">
             <Check className="h-3 w-3" />
-            已保存
+            {t('editor.saved')}
           </span>
         )}
       </div>
