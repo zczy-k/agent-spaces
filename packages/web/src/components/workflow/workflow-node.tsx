@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useCallback, useRef, useSyncExternalStore } from 'react';
-import { Handle, NodeResizer, Position } from '@xyflow/react';
+import { Handle, NodeResizer, Position, useUpdateNodeInternals } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import { AlertCircle, CheckCircle, FileText, Play, X, XCircle } from 'lucide-react';
 import { getNodeDefinition, getPluginNodesVersion, subscribePluginNodesVersion } from '@/lib/workflow-nodes';
@@ -162,6 +162,7 @@ function ExecutionResultHoverCard({ step, visible }: { step: ExecutionStep; visi
 export function WorkflowNode({ id, data, type, selected }: NodeProps) {
   const nodeData = data as WorkflowNodeData;
   const workflowNodeType = typeof nodeData.nodeType === 'string' ? nodeData.nodeType : type;
+  const updateNodeInternals = useUpdateNodeInternals();
   useSyncExternalStore(
     subscribePluginNodesVersion,
     getPluginNodesVersion,
@@ -231,6 +232,10 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
     nodeMinHeight,
     typeof nodeData.height === 'number' ? nodeData.height : nodeMinHeight,
   );
+
+  React.useEffect(() => {
+    updateNodeInternals(id);
+  }, [id, updateNodeInternals, sourceHandleCount, showTargetHandle, showSourceHandle, nodeHeight]);
 
   React.useEffect(() => {
     if (!DEBUG_WORKFLOW_NODE) return;

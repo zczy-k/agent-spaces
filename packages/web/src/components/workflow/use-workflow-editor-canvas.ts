@@ -11,6 +11,7 @@ import {
   isHiddenWorkflowNode,
   isScopeBoundaryWorkflowNode,
 } from '@agent-spaces/shared';
+import { createWorkflowEdgeId } from '@/lib/workflow-edge-id';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import type { NodeSelectContext } from './workflow-editor-types';
 
@@ -131,7 +132,11 @@ export function useWorkflowEditorCanvas({
         },
       };
       const newEdge: Workflow['edges'][0] = {
-        id: `e-${nodeSelectContext.sourceNodeId}-${id}`,
+        id: createWorkflowEdgeId({
+          source: nodeSelectContext.sourceNodeId,
+          target: id,
+          sourceHandle: nodeSelectContext.sourceHandle,
+        }),
         source: nodeSelectContext.sourceNodeId,
         target: id,
         sourceHandle: nodeSelectContext.sourceHandle || undefined,
@@ -170,14 +175,21 @@ export function useWorkflowEditorCanvas({
       },
     };
     const firstEdge: Workflow['edges'][0] = {
-      id: `e-${nodeSelectContext.sourceNodeId}-${id}`,
+      id: createWorkflowEdgeId({
+        source: nodeSelectContext.sourceNodeId,
+        target: id,
+        sourceHandle: nodeSelectContext.sourceHandle,
+      }),
       source: nodeSelectContext.sourceNodeId,
       target: id,
       sourceHandle: nodeSelectContext.sourceHandle || undefined,
       targetHandle: undefined,
     };
     const secondEdge: Workflow['edges'][0] = {
-      id: `e-${id}-${nodeSelectContext.targetNodeId}`,
+      id: createWorkflowEdgeId({
+        source: id,
+        target: nodeSelectContext.targetNodeId,
+      }),
       source: id,
       target: nodeSelectContext.targetNodeId,
       sourceHandle: undefined,
@@ -260,7 +272,7 @@ export function useWorkflowEditorCanvas({
     if (!workflow) return;
     pushUndo('connect');
     const edge: Workflow['edges'][0] = {
-      id: `e-${connection.source}-${connection.target}`,
+      id: createWorkflowEdgeId(connection),
       source: connection.source,
       target: connection.target,
       sourceHandle: connection.sourceHandle || undefined,

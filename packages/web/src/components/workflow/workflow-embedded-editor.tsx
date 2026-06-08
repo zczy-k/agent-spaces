@@ -6,6 +6,7 @@ import type { NodeChange, EdgeChange, Connection, Node, Edge } from '@xyflow/rea
 import '@xyflow/react/dist/style.css';
 import type { Workflow, WorkflowNode, WorkflowEdge } from '@agent-spaces/shared';
 import { workflowApi } from '@/lib/workflow-api';
+import { createWorkflowEdgeId } from '@/lib/workflow-edge-id';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { WorkflowNode as WorkflowNodeComponent } from './workflow-node';
 import { WorkflowEdge as WorkflowEdgeComponent } from './workflow-edge';
@@ -138,9 +139,11 @@ function EmbeddedEditorInner({
   const handleConnect = useCallback((connection: Connection) => {
     if (!workflow) return;
     const edge: Workflow['edges'][0] = {
-      id: `e-${connection.source}-${connection.target}`,
+      id: createWorkflowEdgeId(connection),
       source: connection.source,
       target: connection.target,
+      sourceHandle: connection.sourceHandle || undefined,
+      targetHandle: connection.targetHandle || undefined,
     };
     setWorkflow(w => w ? { ...w, edges: [...w.edges, edge] } : null);
     markDirty();

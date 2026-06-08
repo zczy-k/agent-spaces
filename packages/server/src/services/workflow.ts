@@ -70,7 +70,9 @@ function topologicalSort(nodes: WorkflowNode[], edges: WorkflowEdge[]): string[]
 function hasDuplicateEdges(edges: WorkflowEdge[]): boolean {
   const seen = new Set<string>();
   for (const e of edges) {
-    const key = `${e.source}->${e.target}`;
+    const sourceHandle = e.sourceHandle ?? '';
+    const targetHandle = e.targetHandle ?? '';
+    const key = `${e.source}:${sourceHandle}->${e.target}:${targetHandle}`;
     if (seen.has(key)) return true;
     seen.add(key);
   }
