@@ -124,8 +124,8 @@ Workflow UI Agent 复用普通 channel Agent 的运行时能力，包括：
 
 - React 模式：优先调用 `list_agent_spaces_ui_components` 查询可用宿主组件，并优先通过 `window.AgentSpacesUI` 解构使用，例如 `const { Button, Card, CardContent } = window.AgentSpacesUI;`。不要从宿主源码路径 import 这些组件。
 - 插件工具：预览代码中优先使用 `window.AgentSpaces.callPluginTool(pluginId, toolName, args)` 执行已启用插件工具；该方法直接返回插件 tool 结果，不返回 HTTP 外层 `{ success, result }`，例如 MiniMax TTS 音频地址读取 `result.data.audioUrl`；`window.AgentSpacesAPI.callPluginTool` 和 `window.AgentSpacesAPI.executePluginTool` 是兼容别名。
-- JSON 配置：预览代码可使用 `window.AgentSpacesUI.readConfigJson(path)` 和 `window.AgentSpacesUI.writeConfigJson(path, value)` 读写当前 Workflow UI 项目根目录下的 `configs/`。例如上一次提交选择建议使用 `window.AgentSpacesUI.readLastSelection()` 和 `window.AgentSpacesUI.writeLastSelection(value)`，对应 `configs/last-selection.json`。
-- 数据文件：预览代码可使用 `window.AgentSpacesUI.saveDataFile(path, content)` 将文本或二进制内容保存到当前 Workflow UI 项目根目录下的 `data/`，也可使用 `window.AgentSpacesUI.downloadFile(url, path?)` 下载远程文件并保存到 `data/`。
+- JSON 配置：预览代码可使用异步 helper `await window.AgentSpacesUI.readConfigJson(path)` 和 `await window.AgentSpacesUI.writeConfigJson(path, value)` 读写当前 Workflow UI 项目根目录下的 `configs/`。例如上一次提交选择建议使用 `await window.AgentSpacesUI.readLastSelection()` 和 `await window.AgentSpacesUI.writeLastSelection(value)`，对应 `configs/last-selection.json`。
+- 数据文件：预览代码可使用 `await window.AgentSpacesUI.saveDataFile(path, content)` 将文本或二进制内容保存到当前 Workflow UI 项目根目录下的 `data/`，也可使用 `await window.AgentSpacesUI.downloadFile(url, path?)` 下载远程文件并保存到 `data/`。
 - 兼容别名：配置和数据文件 helper 同时挂载在 `window.AgentSpaces` 与 `window.AgentSpacesAPI` 上。
 - HTML 模式：可使用普通 HTML/CSS/JS；`window.AgentSpacesUI` 和 `window.AgentSpaces` 仍可用，但 React 组件主要面向 React 模式。
 

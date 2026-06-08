@@ -89,13 +89,20 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
 
     const readConfigJson = async <T,>(filePath = LAST_SELECTION_CONFIG): Promise<T | null> => {
       const path = normalizeRelativePath(filePath, LAST_SELECTION_CONFIG);
-      const { value } = await sdk.workflowUi.readConfig<T>(projectId, path);
+      const resp = await fetchWithAuth(`/api/workflows-ui/${projectId}/configs/content?path=${encodeURIComponent(path)}`);
+      if (!resp.ok) throw new Error(`Failed to read config: ${resp.status} ${resp.statusText}`);
+      const { value } = await resp.json();
       return value;
     };
 
     const writeConfigJson = async (filePath: string, value: unknown) => {
       const path = normalizeRelativePath(filePath, LAST_SELECTION_CONFIG);
-      await sdk.workflowUi.writeConfig(projectId, path, value);
+      const resp = await fetchWithAuth(`/api/workflows-ui/${projectId}/configs/content`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path, value }),
+      });
+      if (!resp.ok) throw new Error(`Failed to write config: ${resp.status} ${resp.statusText}`);
       return { ok: true, path: `configs/${path}` };
     };
 
@@ -105,12 +112,24 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
     const saveDataFile = async (filePath: string, content: string | Blob | ArrayBuffer | Uint8Array) => {
       const path = normalizeRelativePath(filePath, 'download.bin');
       if (typeof content === 'string') {
-        return sdk.workflowUi.writeDataFile(projectId, path, content);
+        const resp = await fetchWithAuth(`/api/workflows-ui/${projectId}/data/content`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path, content }),
+        });
+        if (!resp.ok) throw new Error(`Failed to save data file: ${resp.status} ${resp.statusText}`);
+        return resp.json();
       }
 
       const blob = content instanceof Blob ? content : new Blob([content]);
       const base64 = await blobToBase64(blob);
-      return sdk.workflowUi.writeDataFile(projectId, path, base64, 'base64');
+      const resp = await fetchWithAuth(`/api/workflows-ui/${projectId}/data/content`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path, content: base64, encoding: 'base64' }),
+      });
+      if (!resp.ok) throw new Error(`Failed to save data file: ${resp.status} ${resp.statusText}`);
+      return resp.json();
     };
 
     const downloadFile = async (url: string, filePath?: string, init?: RequestInit) => {
@@ -118,7 +137,13 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
       if (!response.ok) throw new Error(`Download failed: ${response.status} ${response.statusText}`);
       const path = normalizeRelativePath(filePath ?? inferDownloadFileName(url), 'download.bin');
       const base64 = await blobToBase64(await response.blob());
-      return sdk.workflowUi.writeDataFile(projectId, path, base64, 'base64');
+      const resp = await fetchWithAuth(`/api/workflows-ui/${projectId}/data/content`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path, content: base64, encoding: 'base64' }),
+      });
+      if (!resp.ok) throw new Error(`Failed to save downloaded file: ${resp.status} ${resp.statusText}`);
+      return resp.json();
     };
 
     const hostUi = {
