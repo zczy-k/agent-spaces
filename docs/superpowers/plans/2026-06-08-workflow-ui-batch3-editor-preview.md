@@ -6,7 +6,9 @@
 
 **Architecture:** 三区布局（编辑器 | 预览+工具栏 | 状态栏）。`ui-exports.ts` 暴露宿主组件到 `window.AgentSpacesUI`。React 模式用 `@babel/standalone` 编译 JSX → `new Function()` 渲染。HTML 模式用 `dangerouslySetInnerHTML` + eval script。
 
-**Tech Stack:** Monaco Editor, @babel/standalone, React, resizable-panels
+**Tech Stack:** textarea MVP, @babel/standalone, React. Monaco/resizable-panels are deferred to a later batch.
+
+**Scope Note:** This batch intentionally does not implement Monaco. Do not claim Monaco support in acceptance criteria until a separate Monaco integration task replaces the textarea.
 
 ---
 
@@ -63,14 +65,12 @@ export { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 - [ ] **Step 2: 验证编译**
 
-Run: `cd packages/web && npx tsc --noEmit --pretty 2>&1 | grep -i "ui-exports" || echo "OK"`
+Run: `cd packages/web; npx tsc --noEmit --pretty 2>&1 | Select-String -Pattern "ui-exports" -CaseSensitive:$false; if (-not $?) { "OK" }`
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Report changed files**
 
-```bash
-git add packages/web/src/lib/ui-exports.ts
-git commit -m "feat(workflow-ui): add UI components export file"
-```
+Record changed files and verification result in the final response. Do not run `git commit`.
+Changed files: `packages/web/src/lib/ui-exports.ts`
 
 ---
 
@@ -110,12 +110,10 @@ export default function WorkflowUiEditorPageClient() {
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Report changed files**
 
-```bash
-git add packages/web/src/app/workflows-ui/[id]/page.tsx "packages/web/src/app/workflows-ui/[id]/workflow-ui-editor-page-client.tsx"
-git commit -m "feat(workflow-ui): add editor page route"
-```
+Record changed files and verification result in the final response. Do not run `git commit`.
+Changed files: `packages/web/src/app/workflows-ui/[id]/page.tsx "packages/web/src/app/workflows-ui/[id]/workflow-ui-editor-page-client.tsx"`
 
 ---
 
@@ -256,12 +254,10 @@ export function WorkflowUiPreview({ type, sourceCode, error, onError }: Workflow
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Report changed files**
 
-```bash
-git add packages/web/src/components/workflows-ui/workflow-ui-preview.tsx package.json pnpm-lock.yaml
-git commit -m "feat(workflow-ui): add preview component with Babel compilation"
-```
+Record changed files and verification result in the final response. Do not run `git commit`.
+Changed files: `packages/web/src/components/workflows-ui/workflow-ui-preview.tsx package.json pnpm-lock.yaml`
 
 ---
 
@@ -319,12 +315,10 @@ export function WorkflowUiPreviewToolbar({
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [ ] **Step 2: Report changed files**
 
-```bash
-git add packages/web/src/components/workflows-ui/workflow-ui-preview-toolbar.tsx
-git commit -m "feat(workflow-ui): add preview toolbar with auto/manual toggle"
-```
+Record changed files and verification result in the final response. Do not run `git commit`.
+Changed files: `packages/web/src/components/workflows-ui/workflow-ui-preview-toolbar.tsx`
 
 ---
 
@@ -523,14 +517,12 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
 
 - [ ] **Step 2: 验证编译**
 
-Run: `cd packages/web && npx tsc --noEmit --pretty 2>&1 | grep -i "workflow-ui-editor\|ui-exports" || echo "OK"`
+Run: `cd packages/web; npx tsc --noEmit --pretty 2>&1 | Select-String -Pattern "workflow-ui-editor\|ui-exports" -CaseSensitive:$false; if (-not $?) { "OK" }`
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Report changed files**
 
-```bash
-git add packages/web/src/components/workflows-ui/workflow-ui-editor.tsx
-git commit -m "feat(workflow-ui): add main editor with file tree, preview, auto-refresh"
-```
+Record changed files and verification result in the final response. Do not run `git commit`.
+Changed files: `packages/web/src/components/workflows-ui/workflow-ui-editor.tsx`
 
 ---
 

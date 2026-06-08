@@ -8,6 +8,11 @@
 
 **Tech Stack:** Express, AgentFunctionTool, getPluginTools(), executePluginTool()
 
+**Integration Contract:**
+- Creating and exporting `createWorkflowUiFunctionTools` is not enough. The tools become effective only when batch 4 extends `packages/server/src/routes/agent-sse.ts` to detect `workflowUiContext` and pass `functionTools: createWorkflowUiFunctionTools({ enabledPlugins })` to the runtime.
+- Frontend plugin tool calls must use `fetchWithAuth` from `packages/web/src/lib/auth.ts`; do not manually read `localStorage.getItem('token')`.
+- The plugin tools dialog must include a minimal JSON args editor before executing a tool. Executing every tool with `{}` is only acceptable for tools whose schema has no required fields.
+
 ---
 
 ## File Structure
@@ -175,14 +180,12 @@ export { createWorkflowUiFunctionTools, type WorkflowUiToolContext } from './wor
 
 - [ ] **Step 3: 验证编译**
 
-Run: `cd packages/server && npx tsc --noEmit --pretty 2>&1 | grep -i "workflow-ui-tools" || echo "OK"`
+Run: `cd packages/server; npx tsc --noEmit --pretty 2>&1 | Select-String -Pattern "workflow-ui-tools" -CaseSensitive:$false; if (-not $?) { "OK" }`
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: Report changed files**
 
-```bash
-git add packages/server/src/services/builtin-tools/workflow-ui-tools.ts packages/server/src/services/builtin-tools/index.ts
-git commit -m "feat(workflow-ui): add plugin tools function call tools for Agent"
-```
+Record changed files and verification result in the final response. Do not run `git commit`.
+Changed files: `packages/server/src/services/builtin-tools/workflow-ui-tools.ts packages/server/src/services/builtin-tools/index.ts`
 
 ---
 
@@ -230,14 +233,12 @@ import { createBuiltinPluginApi } from '../services/plugin-runtime-api.js';
 
 - [ ] **Step 2: 验证编译**
 
-Run: `cd packages/server && npx tsc --noEmit --pretty 2>&1 | grep -i "plugin.ts" || echo "OK"`
+Run: `cd packages/server; npx tsc --noEmit --pretty 2>&1 | Select-String -Pattern "plugin.ts" -CaseSensitive:$false; if (-not $?) { "OK" }`
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Report changed files**
 
-```bash
-git add packages/server/src/routes/plugin.ts
-git commit -m "feat(workflow-ui): expose plugin tools list and execute REST API"
-```
+Record changed files and verification result in the final response. Do not run `git commit`.
+Changed files: `packages/server/src/routes/plugin.ts`
 
 ---
 
@@ -264,6 +265,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { fetchWithAuth } from '@/lib/auth';
 import { sdk } from '@/lib/sdk';
 
 interface PluginTool {
@@ -296,9 +298,7 @@ export function WorkflowUiPluginToolsDialog({
       const map: Record<string, PluginTool[]> = {};
       for (const pluginId of enabledPlugins) {
         try {
-          const resp = await fetch(`/api/plugins/${pluginId}/tools`, {
-            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-          });
+          const resp = await fetchWithAuth(`/api/plugins/${pluginId}/tools`);
           if (resp.ok) {
             map[pluginId] = await resp.json();
           }
@@ -317,12 +317,9 @@ export function WorkflowUiPluginToolsDialog({
     setExecuting(`${pluginId}/${toolName}`);
     setResult(null);
     try {
-      const resp = await fetch(`/api/plugins/${pluginId}/tools/execute`, {
+      const resp = await fetchWithAuth(`/api/plugins/${pluginId}/tools/execute`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: toolName, args: {} }),
       });
       const data = await resp.json();
@@ -399,12 +396,10 @@ export function WorkflowUiPluginToolsDialog({
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [ ] **Step 2: Report changed files**
 
-```bash
-git add packages/web/src/components/workflows-ui/workflow-ui-plugin-tools-dialog.tsx
-git commit -m "feat(workflow-ui): add plugin tools management dialog"
-```
+Record changed files and verification result in the final response. Do not run `git commit`.
+Changed files: `packages/web/src/components/workflows-ui/workflow-ui-plugin-tools-dialog.tsx`
 
 ---
 
@@ -431,12 +426,9 @@ const [pluginDialogOpen, setPluginDialogOpen] = useState(false);
 ```typescript
 (window as any).AgentSpacesAPI = {
   executePluginTool: async (pluginId: string, toolName: string, args: Record<string, any>) => {
-    const resp = await fetch(`/api/plugins/${pluginId}/tools/execute`, {
+    const resp = await fetchWithAuth(`/api/plugins/${pluginId}/tools/execute`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: toolName, args }),
     });
     return resp.json();
@@ -467,14 +459,12 @@ const [pluginDialogOpen, setPluginDialogOpen] = useState(false);
 
 - [ ] **Step 2: 验证编译**
 
-Run: `cd packages/web && npx tsc --noEmit --pretty 2>&1 | grep -i "workflow-ui" || echo "OK"`
+Run: `cd packages/web; npx tsc --noEmit --pretty 2>&1 | Select-String -Pattern "workflow-ui" -CaseSensitive:$false; if (-not $?) { "OK" }`
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Report changed files**
 
-```bash
-git add packages/web/src/components/workflows-ui/workflow-ui-editor.tsx
-git commit -m "feat(workflow-ui): integrate plugin tools into editor with AgentSpacesAPI"
-```
+Record changed files and verification result in the final response. Do not run `git commit`.
+Changed files: `packages/web/src/components/workflows-ui/workflow-ui-editor.tsx`
 
 ---
 

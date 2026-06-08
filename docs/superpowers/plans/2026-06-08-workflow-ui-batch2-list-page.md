@@ -39,12 +39,10 @@ export default function WorkflowsUiRoute() {
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [ ] **Step 2: Report changed files**
 
-```bash
-git add packages/web/src/app/workflows-ui/page.tsx
-git commit -m "feat(workflow-ui): add list page route"
-```
+Record changed files and verification result in the final response. Do not run `git commit`.
+Changed files: `packages/web/src/app/workflows-ui/page.tsx`
 
 ---
 
@@ -150,12 +148,10 @@ export function WorkflowsUiCard({ project, onDelete, onDuplicate }: WorkflowsUiC
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [ ] **Step 2: Report changed files**
 
-```bash
-git add packages/web/src/components/workflows-ui/workflows-ui-card.tsx
-git commit -m "feat(workflow-ui): add project card component"
-```
+Record changed files and verification result in the final response. Do not run `git commit`.
+Changed files: `packages/web/src/components/workflows-ui/workflows-ui-card.tsx`
 
 ---
 
@@ -257,12 +253,10 @@ export function WorkflowsUiCreateDialog({ open, onOpenChange }: WorkflowsUiCreat
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [ ] **Step 2: Report changed files**
 
-```bash
-git add packages/web/src/components/workflows-ui/workflows-ui-create-dialog.tsx
-git commit -m "feat(workflow-ui): add create project dialog"
-```
+Record changed files and verification result in the final response. Do not run `git commit`.
+Changed files: `packages/web/src/components/workflows-ui/workflows-ui-create-dialog.tsx`
 
 ---
 
@@ -335,8 +329,7 @@ export function WorkflowsUiPage() {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
       try {
-        const buffer = await file.arrayBuffer();
-        const base64 = Buffer.from(buffer).toString('base64');
+        const base64 = await fileToBase64(file);
         await sdk.workflowUi.importZip({ zip: base64, name: file.name.replace(/\.zip$/i, '') });
         loadProjects();
       } catch (error) {
@@ -402,14 +395,12 @@ export function WorkflowsUiPage() {
 
 - [ ] **Step 2: 验证编译**
 
-Run: `cd packages/web && npx tsc --noEmit --pretty 2>&1 | head -30`
+Run: `cd packages/web; npx tsc --noEmit --pretty 2>&1 | Select-Object -First 30`
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Report changed files**
 
-```bash
-git add packages/web/src/components/workflows-ui/workflows-ui-page.tsx
-git commit -m "feat(workflow-ui): add list page with search, import, create"
-```
+Record changed files and verification result in the final response. Do not run `git commit`.
+Changed files: `packages/web/src/components/workflows-ui/workflows-ui-page.tsx`
 
 ---
 

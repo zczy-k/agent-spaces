@@ -6,7 +6,14 @@
 
 **Architecture:** 复用 `FloatingChatPanel` 组件。Agent 选择器复用 workspace 内的 Agent Preset 列表。通过现有 WebSocket `agent.start` 通道启动 Agent，额外注入 `workflowUiContext`（当前文件路径 + 内容）到 prompt。
 
-**Tech Stack:** FloatingChatPanel, Agent Preset, WebSocket, AgentRuntimeEvent
+**Tech Stack:** FloatingChatPanel, Agent Preset, `/api/agent-sse/run`, fetchWithAuth, AgentRuntimeEvent
+
+**API Contract Fix:**
+- Use the existing SSE endpoint `POST /api/agent-sse/run`; do not use WebSocket `agent.start` for this batch.
+- Frontend requests must use `fetchWithAuth` from `packages/web/src/lib/auth.ts`; do not read tokens through `(sdk.http as any).getToken`.
+- Extend `packages/server/src/routes/agent-sse.ts` with a `workflowUiContext` body field. `ws/agent-prompt.ts` is not sufficient for this path.
+- When `workflowUiContext` is present, build a Workflow UI system prompt and register Workflow UI function tools from `createWorkflowUiFunctionTools({ enabledPlugins })` after batch 5 exports them.
+- Reuse the existing workflow editor SSE parsing pattern in `packages/web/src/components/workflow/use-workflow-editor-agent-chat.ts` (`readSseStream`, output/reasoning/tool_use/tool_result/done/error events).
 
 ---
 
@@ -42,6 +49,7 @@ import {
 } from '@/components/ui/dialog';
 import { FloatingChatPanel } from '@/components/ui/floating-chat-widget';
 import type { ChatMessage } from '@/components/ui/floating-chat-widget';
+import { fetchWithAuth } from '@/lib/auth';
 import { sdk } from '@/lib/sdk';
 import type { WorkflowUiProject } from '@agent-spaces/sdk';
 
@@ -119,12 +127,9 @@ export function WorkflowUiChat({
 
     try {
       // 使用 Agent SSE API 发送消息
-      const response = await fetch('/api/agent-sse/run', {
+      const response = await fetchWithAuth('/api/agent-sse/run', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(sdk.http as any).getToken ? { Authorization: `Bearer ${(sdk.http as any).getToken()}` } : {},
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           agentId: agent.id,
           workspaceId,
@@ -266,12 +271,10 @@ export function WorkflowUiChat({
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [ ] **Step 2: Report changed files**
 
-```bash
-git add packages/web/src/components/workflows-ui/workflow-ui-chat.tsx
-git commit -m "feat(workflow-ui): add AI chat assistant with FloatingChatPanel"
-```
+Record changed files and verification result in the final response. Do not run `git commit`.
+Changed files: `packages/web/src/components/workflows-ui/workflow-ui-chat.tsx`
 
 ---
 
@@ -306,14 +309,12 @@ import { WorkflowUiChat } from './workflow-ui-chat';
 
 - [ ] **Step 2: 验证编译**
 
-Run: `cd packages/web && npx tsc --noEmit --pretty 2>&1 | grep -i "workflow-ui" || echo "OK"`
+Run: `cd packages/web; npx tsc --noEmit --pretty 2>&1 | Select-String -Pattern "workflow-ui" -CaseSensitive:$false; if (-not $?) { "OK" }`
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Report changed files**
 
-```bash
-git add packages/web/src/components/workflows-ui/workflow-ui-editor.tsx
-git commit -m "feat(workflow-ui): integrate AI chat into editor"
-```
+Record changed files and verification result in the final response. Do not run `git commit`.
+Changed files: `packages/web/src/components/workflows-ui/workflow-ui-editor.tsx`
 
 ---
 

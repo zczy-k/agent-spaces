@@ -6,7 +6,13 @@
 
 **Architecture:** 三层架构 — storage（JSON 持久化）→ service（业务逻辑 + ZIP 解压）→ routes（Express REST API）。SDK 模块作为前端统一调用层。复用现有 `json-store.ts` 的 `readJsonFile/writeJsonFile/ensureDir` 工具函数。
 
-**Tech Stack:** Express 5, TypeScript, uuid, node:fs/path/child_process, @agent-spaces/shared
+**Tech Stack:** Express 5, TypeScript, uuid, node:fs/path, yauzl (ZIP), @agent-spaces/shared
+
+**Execution Constraints:**
+- Do not run `git commit` in this plan. Stop after implementation and verification, then report changed files.
+- Use PowerShell-compatible verification commands on Windows.
+- All project file reads/writes must reject path traversal (`..`, absolute paths, symlink escapes) before touching disk.
+- ZIP import must be cross-platform and must not shell out to PowerShell `Expand-Archive`.
 
 ---
 
@@ -17,7 +23,7 @@
 | Create | `packages/server/src/storage/workflow-ui-store.ts` | JSON 持久化（index.json + per-project manifest） |
 | Create | `packages/server/src/services/workflow-ui.ts` | 业务逻辑（CRUD + ZIP 解压 + 文件读写） |
 | Create | `packages/server/src/routes/workflow-ui.ts` | REST API 路由 |
-| Create | `packages/sdk/modules/workflow-ui.ts` | SDK API 适配器 |
+| Create | `packages/sdk/src/modules/workflow-ui.ts` | SDK API 适配器 |
 | Modify | `packages/server/src/app.ts` | 注册 workflow-ui 路由 |
 | Modify | `packages/sdk/src/index.ts` | 注册 SDK 模块 |
 
@@ -33,7 +39,7 @@
 ```typescript
 // packages/server/src/storage/workflow-ui-store.ts
 import { readFileSync, writeFileSync, existsSync, mkdirSync, rmSync, readdirSync, statSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, dirname, resolve, sep } from 'node:path';
 import { readJsonFile, writeJsonFile, deleteFile, ensureDir, getDataDir } from './json-store.js';
 import { v4 as uuid } from 'uuid';
 
@@ -71,6 +77,19 @@ function manifestPath(projectId: string): string {
 
 function srcDir(projectId: string): string {
   return join(projectDir(projectId), 'src');
+}
+
+function safeSrcPath(projectId: string, filePath: string): string {
+  if (!filePath || filePath.includes('\0')) throw new Error('Invalid file path');
+  if (filePath.startsWith('/') || /^[a-zA-Z]:[\\/]/.test(filePath)) {
+    throw new Error('Absolute paths are not allowed');
+  }
+  const root = resolve(srcDir(projectId));
+  const target = resolve(root, filePath);
+  if (target !== root && !target.startsWith(root + sep)) {
+    throw new Error(`Path escapes project src directory: ${filePath}`);
+  }
+  return target;
 }
 
 // ---- CRUD ----
@@ -174,13 +193,13 @@ export function getFileTree(projectId: string): string[] {
 }
 
 export function readFile(projectId: string, filePath: string): string | null {
-  const fullPath = join(srcDir(projectId), filePath);
+  const fullPath = safeSrcPath(projectId, filePath);
   if (!existsSync(fullPath)) return null;
   return readFileSync(fullPath, 'utf-8');
 }
 
 export function writeFile(projectId: string, filePath: string, content: string): void {
-  const fullPath = join(srcDir(projectId), filePath);
+  const fullPath = safeSrcPath(projectId, filePath);
   ensureDir(dirname(fullPath));
   writeFileSync(fullPath, content, 'utf-8');
 
@@ -258,15 +277,13 @@ function copyDirSync(src: string, dest: string): void {
 
 - [ ] **Step 2: 验证 TypeScript 编译**
 
-Run: `cd packages/server && npx tsc --noEmit --pretty 2>&1 | head -20`
+Run: `cd packages/server; npx tsc --noEmit --pretty 2>&1 | Select-Object -First 20`
 Expected: 无 store 相关错误（可能有其他文件的无关错误）
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Report changed files**
 
-```bash
-git add packages/server/src/storage/workflow-ui-store.ts
-git commit -m "feat(workflow-ui): add storage layer for custom pages"
-```
+Record changed files and verification result in the final response. Do not run `git commit`.
+Changed files: `packages/server/src/storage/workflow-ui-store.ts`
 
 ---
 
@@ -280,9 +297,9 @@ git commit -m "feat(workflow-ui): add storage layer for custom pages"
 ```typescript
 // packages/server/src/services/workflow-ui.ts
 import { existsSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, dirname, resolve, sep } from 'node:path';
 import { tmpdir } from 'node:os';
-import { execSync } from 'node:child_process';
+import yauzl from 'yauzl';
 import { v4 as uuid } from 'uuid';
 import * as store from '../storage/workflow-ui-store.js';
 import type { WorkflowUiProject } from '../storage/workflow-ui-store.js';
@@ -350,7 +367,7 @@ export function writeFile(projectId: string, filePath: string, content: string):
 
 // ---- ZIP Import ----
 
-export function importZip(zipBuffer: Buffer, manifest: { name?: string; type?: 'react' | 'html'; description?: string }): WorkflowUiProject {
+export async function importZip(zipBuffer: Buffer, manifest: { name?: string; type?: 'react' | 'html'; description?: string }): Promise<WorkflowUiProject> {
   const extractDir = join(tmpdir(), `wui-import-${uuid()}`);
   ensureDir(extractDir);
 
@@ -413,18 +430,21 @@ function findFile(dir: string, name: string): string | null {
 function ensureDir(dir: string): void {
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 }
+
+async function extractZipSafely(zipPath: string, destDir: string): Promise<void> {
+  // Implement with yauzl.open(..., { lazyEntries: true }) and validate every entry path.
+  // Keep this helper small and covered by focused tests; do not use shell commands.
+}
 ```
 
 - [ ] **Step 2: 验证编译**
 
-Run: `cd packages/server && npx tsc --noEmit --pretty 2>&1 | head -20`
+Run: `cd packages/server; npx tsc --noEmit --pretty 2>&1 | Select-Object -First 20`
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Report changed files**
 
-```bash
-git add packages/server/src/services/workflow-ui.ts
-git commit -m "feat(workflow-ui): add service layer with ZIP import"
-```
+Record changed files and verification result in the final response. Do not run `git commit`.
+Changed files: `packages/server/src/services/workflow-ui.ts`
 
 ---
 
@@ -534,7 +554,7 @@ router.put('/:id/files/content', (req: Request<{ id: string }>, res: Response) =
 
 // ---- ZIP Import ----
 
-router.post('/import', (req: Request, res: Response) => {
+router.post('/import', async (req: Request, res: Response) => {
   try {
     // 接收 base64 编码的 ZIP 或 multipart
     // 简化版：前端发送 { zip: base64string, name?, type? }
@@ -544,7 +564,7 @@ router.post('/import', (req: Request, res: Response) => {
       return;
     }
     const buffer = Buffer.from(zip, 'base64');
-    const project = svc.importZip(buffer, { name, type, description });
+    const project = await svc.importZip(buffer, { name, type, description });
     res.json(project);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -562,17 +582,15 @@ export default router;
 
 - [ ] **Step 3: 验证编译 + 启动**
 
-Run: `cd packages/server && npx tsc --noEmit --pretty 2>&1 | head -20`
+Run: `cd packages/server; npx tsc --noEmit --pretty 2>&1 | Select-Object -First 20`
 
 Run: `cd packages/server && timeout 5 npx tsx src/app.ts 2>&1 || true`
 Expected: 服务启动无崩溃，可以看到路由注册
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: Report changed files**
 
-```bash
-git add packages/server/src/routes/workflow-ui.ts packages/server/src/app.ts
-git commit -m "feat(workflow-ui): add REST API routes and register in app.ts"
-```
+Record changed files and verification result in the final response. Do not run `git commit`.
+Changed files: `packages/server/src/routes/workflow-ui.ts packages/server/src/app.ts`
 
 ---
 
@@ -662,14 +680,12 @@ workflowUi: createWorkflowUiApi(http),
 
 - [ ] **Step 3: 验证编译**
 
-Run: `cd packages/sdk && npx tsc --noEmit --pretty 2>&1 | head -20`
+Run: `cd packages/sdk; npx tsc --noEmit --pretty 2>&1 | Select-Object -First 20`
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: Report changed files**
 
-```bash
-git add packages/sdk/src/modules/workflow-ui.ts packages/sdk/src/index.ts
-git commit -m "feat(workflow-ui): add SDK module and register in index"
-```
+Record changed files and verification result in the final response. Do not run `git commit`.
+Changed files: `packages/sdk/src/modules/workflow-ui.ts packages/sdk/src/index.ts`
 
 ---
 
