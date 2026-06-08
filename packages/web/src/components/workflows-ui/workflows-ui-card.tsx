@@ -100,6 +100,7 @@ export function WorkflowsUiCard({ project, onDelete, onDuplicate, onUpdated }: W
         <div className="flex items-center gap-2">
           <AgentIcon
             name={project.name}
+            avatarUrl={project.avatarUrl ? sdk.workflowUi.getAvatarUrl(project.id) : undefined}
             icon={project.icon}
             className="size-6 rounded shrink-0"
           />

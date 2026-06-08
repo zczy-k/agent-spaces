@@ -27,6 +27,7 @@ interface WorkflowUiIndexItem {
   name: string;
   filename: string;
   icon?: string;
+  iconUrl?: string;
 }
 
 export function WorkflowsUiStoreDialog({ open, onOpenChange, onImported }: WorkflowsUiStoreDialogProps) {
@@ -94,6 +95,7 @@ export function WorkflowsUiStoreDialog({ open, onOpenChange, onImported }: Workf
                     <div className="flex items-center gap-2 min-w-0">
                       <AgentIcon
                         name={item.name}
+                        avatarUrl={item.iconUrl ? resolveStoreUrl(item.iconUrl) : undefined}
                         icon={item.icon}
                         className="size-6 rounded shrink-0"
                       />

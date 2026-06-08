@@ -226,17 +226,22 @@ function scanWorkflowUiStore() {
   const dir = join(agentsDir, 'workflow-ui');
   if (!existsSync(dir)) return;
   const index = [];
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+  for (const entry of readdirSync(dir, { withFileTypes: true})) {
     if (!entry.isDirectory()) continue;
     const templateDir = join(dir, entry.name);
     const manifestFile = join(templateDir, 'manifest.json');
     let name = entry.name.replace(/[-_]/g, ' ');
     let icon;
+    let iconUrl;
     if (existsSync(manifestFile)) {
       try {
         const manifest = JSON.parse(readFileSync(manifestFile, 'utf-8'));
         name = manifest.name || name;
         icon = manifest.icon;
+        // If icon points to an existing file, build iconUrl like plugins do
+        if (manifest.icon && existsSync(join(templateDir, manifest.icon))) {
+          iconUrl = `workflow-ui/${entry.name}/${manifest.icon}`;
+        }
       } catch { /* ignore */ }
     }
     const zipFilename = `${entry.name}.zip`;
@@ -246,7 +251,7 @@ function scanWorkflowUiStore() {
     try {
       execSync(`cd "${templateDir}" && zip -r "${zipPath}" .`, { stdio: 'pipe' });
     } catch { /* ignore zip errors */ }
-    index.push({ id: entry.name, name, filename: zipFilename, icon });
+    index.push({ id: entry.name, name, filename: zipFilename, icon, iconUrl });
   }
   writeFileSync(join(dir, 'index.json'), JSON.stringify(index, null, 2), 'utf-8');
   console.log(`[workflow-ui] ${index.length} templates`);

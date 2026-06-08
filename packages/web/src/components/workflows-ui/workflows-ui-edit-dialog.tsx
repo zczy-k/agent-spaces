@@ -24,6 +24,7 @@ export function WorkflowsUiEditDialog({ project, open, onOpenChange, onUpdated }
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [icon, setIcon] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -31,8 +32,14 @@ export function WorkflowsUiEditDialog({ project, open, onOpenChange, onUpdated }
       setName(project.name);
       setDescription(project.description ?? '');
       setIcon(project.icon ?? '');
+      setAvatarUrl(project.avatarUrl ? `${sdk.workflowUi.getAvatarUrl(project.id)}?t=${Date.now()}` : '');
     }
   }, [project]);
+
+  const handleAvatarUrlChange = async (url: string) => {
+    if (!project) return;
+    setAvatarUrl(url);
+  };
 
   const handleSave = async () => {
     if (!project || !name.trim() || saving) return;
@@ -59,9 +66,9 @@ export function WorkflowsUiEditDialog({ project, open, onOpenChange, onUpdated }
         <div className="space-y-4">
           <AvatarUploader
             name={name}
-            avatarUrl=""
+            avatarUrl={avatarUrl}
             icon={icon}
-            onAvatarUrlChange={() => {}}
+            onAvatarUrlChange={handleAvatarUrlChange}
             onIconChange={setIcon}
             hideUploadLabel
           />

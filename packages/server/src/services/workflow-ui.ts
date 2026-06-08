@@ -67,7 +67,7 @@ export default App;
 
 export function updateProject(
   projectId: string,
-  updates: Partial<Pick<WorkflowUiProject, 'name' | 'description' | 'tags' | 'enabledPlugins' | 'agentConfigId' | 'mainFile' | 'icon'>>,
+  updates: Partial<Pick<WorkflowUiProject, 'name' | 'description' | 'tags' | 'enabledPlugins' | 'agentConfigId' | 'mainFile' | 'icon' | 'avatarUrl'>>,
 ): WorkflowUiProject {
   return store.updateProject(projectId, updates);
 }
@@ -136,6 +136,14 @@ export async function exportZip(projectId: string): Promise<Buffer> {
     }
   }
 
+  // Add avatar file if exists
+  if (manifest.avatarUrl) {
+    const avatarPath = join(store.getProjectDir(projectId), manifest.avatarUrl);
+    if (existsSync(avatarPath)) {
+      archive.file(avatarPath, { name: manifest.avatarUrl });
+    }
+  }
+
   await archive.finalize();
   return Buffer.concat(chunks);
 }
@@ -186,6 +194,7 @@ export async function importZip(
       tags: projectManifest.tags,
       enabledPlugins: projectManifest.enabledPlugins,
       icon: projectManifest.icon,
+      avatarUrl: projectManifest.avatarUrl,
     });
 
     // Copy icon file if present
@@ -193,6 +202,14 @@ export async function importZip(
       const iconSrc = join(contentDir, projectManifest.icon);
       if (existsSync(iconSrc)) {
         copyFileSync(iconSrc, join(store.getProjectDir(project.id), projectManifest.icon));
+      }
+    }
+
+    // Copy avatar file if present
+    if (projectManifest.avatarUrl && typeof projectManifest.avatarUrl === 'string') {
+      const avatarSrc = join(contentDir, projectManifest.avatarUrl);
+      if (existsSync(avatarSrc)) {
+        copyFileSync(avatarSrc, join(store.getProjectDir(project.id), projectManifest.avatarUrl));
       }
     }
 

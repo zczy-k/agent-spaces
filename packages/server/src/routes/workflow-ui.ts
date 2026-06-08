@@ -1,5 +1,8 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
+import { existsSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { randomUUID } from 'crypto';
 import * as svc from '../services/workflow-ui.js';
 
 const router = Router();
@@ -82,6 +85,47 @@ router.put('/:id/data/content', (req: Request<{ id: string }>, res: Response) =>
     const size = svc.writeDataFile(req.params.id, filePath, data);
     res.json({ ok: true, path: `data/${filePath}`, size });
   } catch (error: any) { res.status(500).json({ error: error.message }); }
+});
+
+// Avatar upload
+router.post('/:id/avatar', (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const { dataUrl } = req.body as { dataUrl?: string };
+    if (!dataUrl || !dataUrl.startsWith('data:')) { res.status(400).json({ error: 'Invalid dataUrl' }); return; }
+    const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+    if (!match) { res.status(400).json({ error: 'Invalid base64 data' }); return; }
+    const [, mime, base64] = match;
+    const extByMime: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' };
+    const ext = extByMime[mime.toLowerCase()];
+    if (!ext) { res.status(400).json({ error: 'Unsupported image type' }); return; }
+
+    const project = svc.getProject(req.params.id);
+
+    // Remove old avatar file
+    if (project.avatarUrl) {
+      const oldPath = join(svc.store.getProjectDir(project.id), project.avatarUrl);
+      if (existsSync(oldPath)) rmSync(oldPath, { force: true });
+    }
+
+    const filename = `avatar.${ext}`;
+    const dir = svc.store.getProjectDir(project.id);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, filename), Buffer.from(base64, 'base64'));
+
+    const updated = svc.updateProject(req.params.id, { avatarUrl: filename });
+    res.json({ url: updated.avatarUrl });
+  } catch (error: any) { res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message }); }
+});
+
+// Serve project avatar
+router.get('/:id/avatar', (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const project = svc.getProject(req.params.id);
+    if (!project.avatarUrl) { res.status(404).json({ error: 'No avatar' }); return; }
+    const filePath = join(svc.store.getProjectDir(project.id), project.avatarUrl);
+    if (!existsSync(filePath)) { res.status(404).json({ error: 'Avatar file not found' }); return; }
+    res.sendFile(filePath);
+  } catch (error: any) { res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message }); }
 });
 
 // ZIP Export

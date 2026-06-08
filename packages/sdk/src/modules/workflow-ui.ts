@@ -11,6 +11,7 @@ export interface WorkflowUiProject {
   agentConfigId?: string;
   mainFile: string;
   icon?: string;
+  avatarUrl?: string;
   createdAt: string;
   updatedAt: string;
   storeUrl?: string;
@@ -28,7 +29,7 @@ export function createWorkflowUiApi(http: HttpClient) {
     create: (data: { name: string; type: 'react' | 'html'; description?: string; tags?: string[] }): Promise<WorkflowUiProject> =>
       http.post('/api/workflows-ui', data),
 
-    update: (id: string, data: Partial<Pick<WorkflowUiProject, 'name' | 'description' | 'tags' | 'enabledPlugins' | 'agentConfigId' | 'mainFile' | 'icon'>>): Promise<WorkflowUiProject> =>
+    update: (id: string, data: Partial<Pick<WorkflowUiProject, 'name' | 'description' | 'tags' | 'enabledPlugins' | 'agentConfigId' | 'mainFile' | 'icon' | 'avatarUrl'>>): Promise<WorkflowUiProject> =>
       http.put(`/api/workflows-ui/${id}`, data),
 
     delete_: (id: string): Promise<void> =>
@@ -57,5 +58,11 @@ export function createWorkflowUiApi(http: HttpClient) {
 
     exportZip: (id: string): Promise<Blob> =>
       http.raw(`/api/workflows-ui/${id}/export`).then(r => r.blob()),
+
+    uploadAvatar: (id: string, dataUrl: string): Promise<{ url: string }> =>
+      http.post(`/api/workflows-ui/${id}/avatar`, { dataUrl }),
+
+    getAvatarUrl: (id: string): string =>
+      `/api/workflows-ui/${id}/avatar`,
   };
 }

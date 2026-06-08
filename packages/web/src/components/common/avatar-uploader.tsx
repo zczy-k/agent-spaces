@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { AgentIcon } from "@/components/common/agent-icon";
 import { AvatarPicker } from "@/components/sidebar/settings/avatar-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { X } from "lucide-react";
+import { X, ImagePlus, Smile } from "lucide-react";
 import EmojiPicker from "emoji-picker-react";
 
 export interface AvatarUploaderProps {
@@ -30,9 +30,24 @@ export function AvatarUploader({
   hideUploadLabel,
 }: AvatarUploaderProps) {
   const t = useTranslations("agent");
-  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+  const [popoverOpen, setPopoverOpen] = useState(false);
   const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
   const [avatarSrc, setAvatarSrc] = useState("");
+  const [tab, setTab] = useState<"emoji" | "image">("emoji");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setAvatarSrc(reader.result as string);
+      setAvatarPickerOpen(true);
+      setPopoverOpen(false);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
 
   return (
     <div className={`relative flex flex-col items-center gap-1.5 ${className ?? ""}`}>
@@ -54,7 +69,7 @@ export function AvatarUploader({
           </button>
         </div>
       ) : (
-        <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
+        <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
           <PopoverTrigger
             render={
               <button
@@ -69,40 +84,90 @@ export function AvatarUploader({
               <span className="text-lg text-muted-foreground">{name?.charAt(0).toUpperCase() || "?"}</span>
             )}
           </PopoverTrigger>
-          <PopoverContent side="bottom" align="start" className="w-auto p-0">
-            <EmojiPicker
-              onEmojiClick={(emoji) => {
-                onIconChange(emoji.emoji);
-                setEmojiPickerOpen(false);
-              }}
-              width={280}
-              height={350}
-              previewConfig={{ showPreview: false }}
-              skinTonesDisabled
-            />
+          <PopoverContent side="bottom" align="center" className="w-auto p-0">
+            {/* Tab header */}
+            <div className="flex border-b border-border">
+              <button
+                type="button"
+                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium cursor-pointer transition-colors ${
+                  tab === "emoji"
+                    ? "text-primary border-b-2 border-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => setTab("emoji")}
+              >
+                <Smile className="size-3.5" />
+                Emoji
+              </button>
+              <button
+                type="button"
+                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium cursor-pointer transition-colors ${
+                  tab === "image"
+                    ? "text-primary border-b-2 border-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => setTab("image")}
+              >
+                <ImagePlus className="size-3.5" />
+                {t("detail.uploadAvatar")}
+              </button>
+            </div>
+
+            {/* Tab content */}
+            {tab === "emoji" ? (
+              <EmojiPicker
+                onEmojiClick={(emoji) => {
+                  onIconChange(emoji.emoji);
+                  setPopoverOpen(false);
+                }}
+                width={280}
+                height={300}
+                previewConfig={{ showPreview: false }}
+                skinTonesDisabled
+              />
+            ) : (
+              <div className="p-3 flex flex-col items-center gap-2">
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md border border-dashed border-border text-sm text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors cursor-pointer"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <ImagePlus className="size-4" />
+                  {t("detail.uploadAvatar")}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+              </div>
+            )}
           </PopoverContent>
         </Popover>
       )}
-      {!hideUploadLabel && (
-      <label className="text-[10px] text-primary cursor-pointer hover:underline">
-        {t("detail.uploadAvatar")}
-        <input
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = () => {
-              setAvatarSrc(reader.result as string);
-              setAvatarPickerOpen(true);
-            };
-            reader.readAsDataURL(file);
-            e.target.value = "";
-          }}
-        />
-      </label>
+
+      {!hideUploadLabel && !avatarUrl && (
+        <label className="text-[10px] text-primary cursor-pointer hover:underline">
+          {t("detail.uploadAvatar")}
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = () => {
+                setAvatarSrc(reader.result as string);
+                setAvatarPickerOpen(true);
+              };
+              reader.readAsDataURL(file);
+              e.target.value = "";
+            }}
+          />
+        </label>
       )}
       <AvatarPicker
         src={avatarSrc}
