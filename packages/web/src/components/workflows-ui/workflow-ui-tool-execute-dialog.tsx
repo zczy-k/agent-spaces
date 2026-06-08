@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
 import { fetchWithAuth } from '@/lib/auth';
@@ -86,7 +86,7 @@ export function WorkflowUiToolExecuteDialog({
   const [executing, setExecuting] = useState(false);
   const [result, setResult] = useState<{ data: unknown } | { error: string } | null>(null);
 
-  const fields = parseSchemaProperties(tool?.input_schema);
+  const fields = useMemo(() => parseSchemaProperties(tool?.input_schema), [tool?.input_schema]);
 
   const buildDefaults = useCallback((cfg: Record<string, string>) => {
     const initial: Record<string, unknown> = {};

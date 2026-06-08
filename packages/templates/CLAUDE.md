@@ -124,8 +124,3 @@ vibe: Short personality tagline
 - **多模板类型**：统一管理 Agent/ChatAgent/MCP/Skill/Plugin/Workflow/Prompt/OutputStyle 八种模板
 
 ## 变更记录 (Changelog)
-
-| 时间 | 操作 | 说明 |
-|------|------|------|
-| 2026-06-07T19:26:50+08:00 | 增量更新 | **新增 Chat Agent 模板**（chat/ 目录：6 个 Chat Agent 预设 -- Code Assistant/Creative Consultant/Data Analyst/Study Tutor/Translation Assistant/Writing Assistant + index.json 索引）；**文件数 324（新增 7 个 Chat 模板文件）** |
-| 2026-06-04T23:38:49+08:00 | 初始化 | init-architect 首次扫描生成 templates CLAUDE.md |

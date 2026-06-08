@@ -10,7 +10,7 @@ export interface Channel {
   id: string;
   workspaceId: string;
   name: string;
-  type: 'general' | 'issue' | 'agent';
+  type: 'general' | 'issue' | 'agent' | 'workflows-ui';
   issueId?: string;
   members: string[];
   pinnedMentionId?: string;

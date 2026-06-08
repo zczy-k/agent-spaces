@@ -114,9 +114,3 @@ export function createXxxApi(http: HttpClient) {
 - **类型安全**：所有 API 方法和返回值完整类型化，类型从 `@agent-spaces/shared` 导入
 
 ## 变更记录 (Changelog)
-
-| 时间 | 操作 | 说明 |
-|------|------|------|
-| 2026-06-07T19:26:50+08:00 | 增量更新 | **新增 npm-settings 模块**（modules/npm-settings.ts，NpmSettings get/update API）；**文件数 38->39** |
-| 2026-06-05T19:44:59+08:00 | 增量更新 | **新增 Chat 模块**（modules/chat.ts，Chat Agent CRUD + 消息 + 工作目录 + SSE 执行）；**文件数 37->38** |
-| 2026-06-04T23:38:49+08:00 | 初始化 | init-architect 首次扫描生成 SDK CLAUDE.md |

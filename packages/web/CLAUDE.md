@@ -721,8 +721,3 @@ packages/web/
 ```
 
 ## 变更记录 (Changelog)
-
-| 时间 | 操作 | 说明 |
-|------|------|------|
-| 2026-06-05T19:44:59+08:00 | 增量更新 | **Chat 独立页面**（新增 /chat 路由 + stores/chat.ts 307 行 Chat Store + 15+ Chat 组件：inline-chat-panel/chat-panel/chat-message-bubble/chat-agent-list/chat-agent-picker-dialog/chat-right-panel/add-chat-agent-dialog/chat-composer-input/readonly-code-block/member-hover-card/message-parts/ask-user-question/chain-of-thought/chat-input/chat-input-agent-bar/chat-input-info-bar，SSE 流式执行 + AbortController + URL 状态同步）；**Workflow 编辑器独立页**（新增 /workflows/[id] 路由）；**Settings 子目录拆分**（新增 components/sidebar/settings/ 13 文件：appearance/language/account/security/speech/robot-accounts/startup/shortcuts/about/custom-font/avatar-picker/agent-store/data）；**Sidebar 32->45 文件**；**Store 24->25**；**登录装饰组件**（login-hero + rotating-text）；**全局 Loading**（loading.tsx）；**文件数 250->344** |
-| 2026-06-04T23:38:49+08:00 | 增量更新 | **Plugin 系统前端**（新增 workflow-plugins-dialog/plugin-picker-dialog/plugin-config-dialog 3 个插件管理组件）；**交互对话框**（新增 workflow-interaction-dialog.tsx，alert/prompt/form/table_confirm 4 种交互）；**新节点组件**（新增 workflow-agent-node/workflow-command-node/sticky-note-view）；**编辑器 Hooks 拆分**（新增 use-workflow-editor-state/execution/canvas 3 个 Hook，从 workflow-editor.tsx 提取）；**新增 lib/workflow-plugin-api.ts + lib/sdk.ts**（Plugin API 层 + SDK 单例桥接）；**新增 workflow-editor-types.ts**（类型定义）；**Workflow 编辑器 26->36 组件** |

@@ -250,62 +250,6 @@ flutter test
 38. Plugin 插件：在 Workflow 编辑器中管理插件（安装/启用/禁用/配置），插件提供自定义 Workflow 节点类型
 39. NPM Settings：通过 /api/npm-settings 管理代理等 NPM 配置
 
-## 测试策略
-
-当前为 MVP 阶段，暂无自动化测试。规划中的测试策略：
-
-- **后端单元测试**：services/storage 层的 CRUD 与状态转换
-- **后端集成测试**：REST API + WebSocket 事件端到端
-- **Workflow 执行引擎测试**：DAG 遍历/循环/分支/变量/断点/恢复（execution-manager 1557 行核心引擎）
-- **Workflow 系统测试**：DAG 校验（环检测/重复边/自环）、Task 映射、运行时校验、Command 节点执行
-- **Workflow 触发器测试**：cron 定时触发 + webhook HTTP 触发
-- **Workflow 交互测试**：interaction-manager alert/prompt/form/table_confirm 交互
-- **Plugin 系统测试**：插件安装/启用/禁用/配置/CJS 沙箱加载/自定义节点执行
-- **Agent 编排测试**：Workflow -> Task 映射 -> Agent 执行 -> Issue 状态流转
-- **Agent 运行时测试**：OpenAgentSdkRuntime / ClaudeCodeRuntime / CodexRuntime / LangChainRuntime / HermesRuntime / OhMyPiRuntime 的 execute/stop 行为
-- **Hermes 运行时测试**：CLI 进程管理、输出流解析、错误处理
-- **OhMyPi 运行时测试**：omp CLI 进程管理、输出流解析、环境变量注入
-- **Anthropic Bridge 测试**：Anthropic Messages <-> OpenAI Chat/Responses 协议转换
-- **Agent SSE API 测试**：HTTP SSE 流式调用、Key 认证、多消息格式
-- **Hook 系统测试**：hook-engine 规则匹配、命令执行、wrapOnEventWithHooks 拦截
-- **输出风格测试**：CRUD + resolveOutputStyleContent 注入
-- **Kanban 测试**：SQLite 存储 CRUD + 拖拽排序 + 布局切换
-- **文档数据库测试**：DocNode 树形结构 CRUD + 移动 + 软删除/恢复 + 搜索
-- **文档向量搜索测试**：Embedding 索引构建 + 相似度查询 + 错误处理
-- **Worktree 系统测试**：创建/删除/Diff/PR 创建/合并/状态更新
-- **Pull Request Agent 测试**：AI 生成 PR 描述 + 上下文构建
-- **Robot Account 测试**：凭证 CRUD + resolveCredentials + QR Code 自动创建
-- **通知中心测试**：Lark/WeChat/Native Adapter 消息收发与命令处理
-- **应用内通知测试**：NotificationCenter CRUD + WebSocket 推送
-- **订阅管理测试**：ZhiPu/MiniMax/AICode 配额查询和错误处理
-- **语音识别测试**：腾讯语音 WebSocket 流式会话
-- **快捷命令测试**：CRUD + 运行/停止/自动重启
-- **代码搜索测试**：ripgrep + Node.js 回退、正则/文件模式选项
-- **代码收藏测试**：CRUD + 按工作空间持久化
-- **Prompt 模板测试**：CRUD + 批量应用到 Agent
-- **Agent Commands 测试**：CRUD + applyCommandToAgents
-- **持久上下文测试**：CLAUDE.md/AGENTS.md 自动加载 + 截断预算
-- **TypeScript LSP 测试**：WebSocket 连接/断开、typescript-language-server 子进程管理
-- **Git 操作日志测试**：操作审计记录 + 内存管理
-- **版本自更新测试**：npm registry 查询 + 更新脚本生成 + 开发模式限制
-- **CodexFunctionToolBridge 测试**：MCP Server 桥接 + 工具转换 + HTTP Transport
-- **字体管理测试**：上传/删除/列表 + 格式校验
-- **认证中间件测试**：Token 验证与路由保护
-- **AI 文本请求层测试**：Anthropic/OpenAI/Gemini 供应商路由 + 错误处理
-- **标题生成测试**：Title Generator Agent + 异步更新 + 回退
-- **数据导入测试**：cc-switch 迁移 + ZIP 归档导入/导出
-- **Workflow Store 测试**：版本目录存储 + 执行日志 + 插件配置 + 旧格式自动迁移
-- **NPM Settings 测试**：配置 CRUD + 代理设置
-- **Plugin Runtime API 测试**：HTTP 请求代理 + TLS 隧道
-- **SDK 测试**：39 个 API 模块的请求/响应/错误处理
-- **前端组件测试**：关键 UI 组件的渲染与交互
-- **Store 测试**：Zustand store 的状态变更逻辑（含 workflow-editor store）
-- **i18n 测试**：翻译 key 完整性、语言切换、命名空间拆分验证
-- **Flutter Provider 测试**：BrowserNotifier/BookmarkNotifier/SettingsNotifier/TerminalCredentialsNotifier 状态变更
-- **Flutter JsBridge 测试**：事件收发、RPC 调用、Promise 回调
-- **Flutter Widget 测试**：TabBar 交互、BookmarksScreen CRUD 对话框、FileSourceTree 浏览
-- **Flutter FileSource 测试**：SFTP/FTP/WebDAV/Storage 连接、列表、文件操作
-
 ## 编码规范
 
 - TypeScript strict 模式，ESNext 模块
@@ -467,23 +411,3 @@ Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
 4. Use `query_graph` pattern="tests_for" to check coverage.
 
 ## 变更记录 (Changelog)
-
-| 时间 | 操作 | 说明 |
-|------|------|------|
-| 2026-06-07T19:26:50+08:00 | 增量更新 | **Workflow 编辑器大幅扩展**（web workflow/ 从 36 扩展到 58 文件：新增 workflow-properties-fields/workflow-properties-import-dialog/workflow-properties-io-sections/workflow-properties-list/workflow-properties-preset-dialog/workflow-properties-toolbar/workflow-properties-utils/workflow-fields-array/workflow-fields-conditions/workflow-fields-output/workflow-fields-property/workflow-execution-input-dialog/workflow-execution-node-dialog/workflow-save-preset-dialog/workflow-list-dialog/workflow-info-dialog/workflow-editor-agent-chat-ui/workflow-editor-agent-utils/workflow-node-icon/workflow-node-select-dialog 等；新增 /workflows/share 分享页）；**Workflow 属性面板重构**（10+ 属性子组件，支持字段/条件/输出/预设/导入等）；**Sidebar 扩展**（45->57 文件：新增 settings/npm-settings-tab、skills-dialog 子目录扩展 skill-git-import-dialog/skill-filter-sidebar/skill-card-grid/use-skill-import）；**execution-manager 扩展**（1393->1557 行）；**server 新增 NPM Settings**（routes/npm-settings.ts + storage/npm-settings-store.ts）；**server 新增 Plugin Runtime API**（services/plugin-runtime-api.ts，HTTP 请求封装 + TLS 隧道支持）；**Templates 新增 Chat Agent 模板**（chat/ 目录 7 文件：code-assistant/creative-consultant/data-analyst/study-tutor/translation-assistant/writing-assistant + index.json）；**i18n 扩展**（新增 workflows 命名空间，31+ 命名空间）；**server 165->168、web 344->493、sdk 38->39（新增 npm-settings）、templates 376->324、shared 29 不变、flutter 46 不变** |
-| 2026-06-05T19:44:59+08:00 | 增量更新 | **Chat 独立页面系统**（server 新增 routes/chat.ts Chat Agent REST API + routes/chat-run.ts LangChain SSE 流式执行 + services/chat.ts Chat 服务层 + storage/chat-store.ts per-workspace JSON 持久化 + ws/chat-handler.ts WebSocket handler 提取；web 新增 /chat 独立页面 + stores/chat.ts + 15+ Chat 组件：inline-chat-panel/chat-panel/chat-message-bubble/chat-agent-list/chat-agent-picker-dialog/chat-right-panel/add-chat-agent-dialog/chat-composer-input/readonly-code-block/member-hover-card/message-parts/ask-user-question/chain-of-thought/chat-input/chat-input-agent-bar/chat-input-info-bar）；**SDK 新增 Chat 模块**（sdk 新增 modules/chat.ts，38 个 API 适配器）；**Workflow 内置工具扩展**（server 新增 services/builtin-tools/workflow-exec-tools.ts + workflow-editor-tools.ts，Agent 可调用 Workflow 执行和编辑操作）；**web 大规模组件新增**（94 文件：sidebar/settings/ 子目录拆分 13 文件 + Workflow 独立页面 /workflows/[id] + 登录装饰组件 + 全局 Loading + 大量 UI 组件）；**server 158->165、sdk 37->38、web 250->344、shared 29 不变、flutter 46 不变、templates 376 不变** |
-| 2026-06-04T23:38:49+08:00 | 增量更新 | **Plugin 插件系统**（server 新增 services/plugin.ts 299 行完整插件管理：安装/启用/禁用/配置/Store 导入/CJS 沙箱加载 vm.Script/自定义 Workflow 节点注册与执行；新增 routes/plugin.ts REST API：list/workflow/store-install/enable/disable/config/workflow-nodes）；**SDK 包新增**（packages/sdk 37 源文件：HttpClient 封装 + 37 API 模块适配器，web 通过 lib/sdk.ts 代理单例消费；新增 CLAUDE.md）；**Templates 包新增**（packages/templates 376 模板文件：184 Agent（15 分类）+ 9 MCP + 15 Skill + 107 Plugin + 1 Workflow + Prompt + Output Style；新增 CLAUDE.md）；**web Workflow 编辑器扩展**（26->36 组件：新增 workflow-plugins-dialog/workflow-plugin-picker-dialog/workflow-plugin-config-dialog/workflow-interaction-dialog/workflow-mini-preview/workflow-agent-node/workflow-command-node/sticky-note-view/use-workflow-editor-state/use-workflow-editor-execution/use-workflow-editor-canvas/workflow-editor-types；新增 lib/workflow-plugin-api.ts Plugin API 层 + lib/sdk.ts SDK 单例）；**server execution-manager 扩展**（1321->1393 行，集成 Plugin 节点执行 canExecuteWorkflowNode/executeWorkflowNode）；**server 156->158、shared 29 不变、web 250 不变、flutter 46 不变** |
-| 2026-06-03T23:00:29+08:00 | 增量更新 | **WorkFox Workflow 执行引擎**（server 新增 services/execution-manager.ts 1321 行核心 DAG 执行引擎，支持循环/分支/变量/断点/恢复；新增 services/interaction-manager.ts 交互管理器，支持 alert/prompt/form/table_confirm UI 交互；新增 services/workflow-trigger-service.ts 触发器服务，支持 cron 定时 + webhook HTTP 触发；新增 ws/execution-channels.ts WebSocket 执行通道注册；新增 routes/workflow-hook.ts Workflow Webhook Hook SSE 流式结果）；**Workflow Store 重写**（storage/workflow-store.ts 重写为 per-workflow 目录存储，支持版本/执行日志/插件配置，旧格式自动迁移）；**shared Unified Workflow Types**（workflow.ts 大幅重写为 WorkFox 规范类型：Workflow/WorkflowNode/WorkflowEdge/WorkflowGroup/WorkflowFolder/ExecutionLog/ExecutionStep/EngineStatus 等；新增 workflow-execution.ts 执行事件类型；新增 workflow-errors.ts 错误码体系；新增 workflow-plugin.ts 插件类型；新增 workflow-composite.ts 复合节点工具函数；新增 workflow-shortcut.ts 快捷键类型；新增 workflow-ws.ts WebSocket 协议类型）；**web Workflow 编辑器大幅扩展**（components/workflow/ 从 ~8 文件扩展到 26 文件，新增 workflow-editor/workflow-canvas/workflow-node/workflow-edge/workflow-properties-panel/workflow-variable-picker/workflow-version-panel/workflow-staging-panel/workflow-operation-history/workflow-execution-bar/workflow-trigger-dialog/workflow-embedded-editor/workflow-group-node/workflow-loop-body-container/workflow-node-sidebar/workflow-editor-toolbar/workflow-canvas-context-menu/workflow-helper-lines 等；新增 stores/workflow-editor.ts 768 行完整编辑器状态管理；新增 lib/workflow-api.ts + lib/workflow-nodes.ts + hooks/use-workflow-editor.ts；新增 components/home/workflow-execution-panel.tsx 执行面板）；**数据导入/导出**（server 新增 routes/import.ts cc-switch 迁移路由 + routes/data.ts ZIP 归档导入/导出 API，支持 15+ 数据类别）；**新增文档**（docs/hermes-mcp-config-findings.md + docs/langchain-agent-runtime.md + docs/oh-my-pi-agent-runtime.md + docs/open-agent-sdk-runtime.md）；**shared 23->29、server 149->156、web 250 不变、flutter 46 不变** |
-| 2026-06-02T09:07:04+08:00 | 增量更新 | **第六运行时 OhMyPi**（server 新增 adapters/oh-my-pi-runtime.ts，基于 omp CLI 的进程适配运行时，支持 CodexFunctionToolBridge MCP 桥接）；**通用 AI 文本请求层**（server 新增 services/ai-text.ts，统一 Anthropic/OpenAI/Gemini 三种供应商的文本生成请求，含 URL 脱敏）；**AI 标题生成**（server 新增 services/generated-title.ts + agents/title-generator-agent.ts，频道/Issue 创建时自动异步生成标题）；**Workflow Command Runner**（server 新增 services/workflow-command-runner.ts，Command 节点的 shell 命令执行器）；**web 大规模组件拆分与新增**（sidebar 从 10+ 组件拆分为 55+ 组件；新增 database/ 15 文件、kanban/ 6 文件、worktree/ 3 文件、git/ 20 文件、forgeui/animated-tabs.tsx）；**Store 18->31**；**Lib 新增 6 个**；**i18n 25+->30+**；**shared 23 不变、server 144->149、web 390->250（源文件精确计数）、flutter 46 不变** |
-| 2026-05-28T14:35:28+08:00 | 增量更新 | **版本自更新系统** + **CodexFunctionToolBridge** + **PTY 服务提取** + **Workspace 服务** + **Git 路由大幅扩展** + **notification-hub 提取** + **i18n 重构** + **Dashboard 增强** + **Diff/JSON/Log Viewer**；**shared 23 不变、server 138->144、web 327->390、flutter 47->46** |
-| 2026-05-25T22:19:18+08:00 | 增量更新 | **第五运行时 Hermes** + **Worktree** + **Robot Account** + **Agent Commands** + **Workflow Command 节点**；**shared 22->23、server 128->138、web 296->327、flutter 26->47** |
-| 2026-05-22T12:52:36+08:00 | 增量更新 | **Kanban 看板系统** + **Notion 风格文档数据库** + **Issue 服务层独立**；**shared 20->22、server 118->128、web 265->296、flutter 21->26** |
-| 2026-05-20T14:08:52+08:00 | 增量更新 | **Hook 系统** + **输出风格管理** + **Issue Task Controller 重构** + **Agent 运行时接口提取** + **Bot Agent 提取** + **Web 组件大规模拆分重构**；**shared 19->20、server 113->118、web 245->265、flutter 21 不变** |
-| 2026-05-19T09:45:03+08:00 | 增量更新 | **代码收藏** + **Prompt 模板管理** + **TypeScript LSP** + **持久上下文加载** + **DOM Inspector** + **回复 AI 消息工作流** + **编辑器增强** + **聊天增强** + **浮动组件**；**shared 18->19、server 106->113、web 215->245、flutter 18->21** |
-| 2026-05-17T15:04:39+08:00 | 增量更新 | **新增 Flutter 客户端模块**（18 个 Dart 源文件） |
-| 2026-05-16T17:36:40+08:00 | 增量更新 | **第四运行时 LangChain** + **订阅管理** + **语音识别** + **快捷命令** + **代码搜索** + **Agent SSE API** + **Agent Designer** + **应用内通知** + **Skill/MCP 管理** + **Command Palette** + **Iframe 管理** + **独立设置页**；**shared 13->18、server 73->106、web 168->215** |
-| 2026-05-08T17:18:31+08:00 | 增量更新 | **Workflow 系统** + **i18n 中英文切换** + **Native 通知**；**server 70->73、shared 12->13、web 141->168** |
-| 2026-05-05T23:52:43+08:00 | 增量更新 | 认证系统 + 通知中心 + Commit Agent + Issue 自动化重构 + ClaudeCodeRuntime 拆分 + Agent Usage Dashboard |
-| 2026-05-04T21:04:42+08:00 | 增量更新 | 三运行时架构 + Anthropic Bridge + Issue 自动化编排链路 + Function Call Tools |
-| 2026-05-02T23:43:41 | 增量更新 | 补充双运行时架构、LLM 管理、Agent Preset 系统 |
-| 2026-05-02T01:07:33 | 初始化 | init-architect 首次扫描生成根级与模块级 CLAUDE.md |

@@ -994,22 +994,3 @@ packages/server/src/
 - **Q: Plugin Runtime API 是什么？** A: `services/plugin-runtime-api.ts` 提供的 `createBuiltinPluginApi()` 工厂函数，为 Plugin 沙箱执行环境提供 HTTP 请求（含 TLS 隧道代理）和文件系统操作能力。
 
 ## 变更记录 (Changelog)
-
-| 时间 | 操作 | 说明 |
-|------|------|------|
-| 2026-06-07T19:26:50+08:00 | 增量更新 | **NPM 设置管理**（新增 routes/npm-settings.ts REST API + storage/npm-settings-store.ts 持久化，默认 registry: npmmirror）；**Plugin Runtime API**（新增 services/plugin-runtime-api.ts，createBuiltinPluginApi 工厂函数，HTTP 请求 + TLS 隧道代理 + 文件系统操作，303 行）；**execution-manager 增长**（1393->1557 行）；**文件数 165->168** |
-| 2026-06-05T19:44:59+08:00 | 增量更新 | **Chat 独立页面系统**（新增 routes/chat.ts Chat Agent REST API + routes/chat-run.ts LangChain SSE 流式执行 + services/chat.ts Chat 服务层 + storage/chat-store.ts per-agent 目录 JSON 持久化 + ws/chat-handler.ts WebSocket handler）；**Workflow 内置工具扩展**（新增 services/builtin-tools/workflow-exec-tools.ts Workflow 执行工具 + workflow-editor-tools.ts Workflow 编辑工具，Agent 可调用 Workflow 执行和编辑操作）；**文件数 158->165** |
-| 2026-06-04T23:38:49+08:00 | 增量更新 | **Plugin 插件系统**（新增 services/plugin.ts 299行，插件全生命周期管理 + CJS 沙箱加载 + 自定义 Workflow 节点注册与执行；新增 routes/plugin.ts，8 个 REST API 端点）；**execution-manager 扩展**（集成 Plugin 节点执行，canExecuteWorkflowNode/executeWorkflowNode，1393行）；**文件数 156->158** |
-| 2026-06-03T23:00:29+08:00 | 增量更新 | **WorkFox DAG 执行引擎**（新增 services/execution-manager.ts 1321行，支持循环/分支/变量/断点/恢复）；**交互管理器**（新增 services/interaction-manager.ts，alert/prompt/form/table_confirm 交互）；**Workflow 触发器**（新增 services/workflow-trigger-service.ts，cron + webhook 触发）；**执行通道**（新增 ws/execution-channels.ts，WebSocket 执行通道注册）；**Workflow Webhook Hook**（新增 routes/workflow-hook.ts，SSE 流式结果）；**数据导入导出**（新增 routes/data.ts + routes/import.ts，ZIP 归档 15+ 数据类别 + cc-switch 数据迁移）；**notification-hub 扩展**（新增 bot-commands.ts/events.ts/format.ts/helpers.ts 4 文件）；**新增 services/global-wechat-qr.ts/issue-retry.ts/workspace-prompt.ts**；**新增 ws/agent-prompt.ts**；**新增 storage/user-settings-store.ts**；**文件数 149->156** |
-| 2026-06-02T09:07:04+08:00 | 增量更新 | **第六运行时 OhMyPi**（新增 adapters/oh-my-pi-runtime.ts，基于 omp CLI 的进程适配运行时，支持 CodexFunctionToolBridge MCP 桥接）；**通用 AI 文本请求层**（新增 services/ai-text.ts，统一 Anthropic/OpenAI/Gemini 三种供应商的文本生成请求，含 URL 脱敏 maskAiTextUrl）；**AI 标题生成**（新增 services/generated-title.ts + agents/title-generator-agent.ts，频道/Issue 创建时自动异步生成标题，scheduleChannelTitleGeneration/scheduleIssueTitleGeneration）；**Workflow Command Runner**（新增 services/workflow-command-runner.ts，Command 节点的 shell 命令执行器 executeCommandNode）；**Agent 运行时接口增强**（agent-runtime-types.ts 新增 AgentRunOptions/appendOutputStyleToPrompt/summarizeResult）；**文件数 144->149** |
-| 2026-05-28T14:35:28+08:00 | 增量更新 | **版本自更新系统**（新增 services/version.ts + routes/version.ts）；**CodexFunctionToolBridge**（新增 adapters/codex-function-tool-bridge.ts）；**PTY 服务提取**（新增 services/pty.ts）；**Workspace 服务**（新增 services/workspace.ts）；**Git 路由大幅扩展**（routes/git.ts 高级 Git 操作 + withLog 包装器）；**notification-hub 提取**（新增 service.ts + bot-agent.ts）；**文件数 138->144** |
-| 2026-05-25T22:19:18+08:00 | 增量更新 | **第五运行时 Hermes**；**Worktree 系统**；**Robot Account**；**Agent Commands**；**Workflow Command 节点**；**内置工具拆分**；**文档数据库增强**；**Git 操作日志**；**字体管理 API**；**文件数 128->138** |
-| 2026-05-22T12:52:36+08:00 | 增量更新 | **Kanban 看板系统** + **Notion 风格文档数据库** + **Issue 服务层独立**；**文件数 118->128** |
-| 2026-05-20T14:08:52+08:00 | 增量更新 | **Hook 系统** + **输出风格管理** + **Issue Task Controller 拆分** + **Agent 运行时接口提取** + **Bot Agent 提取**；**文件数 113->118** |
-| 2026-05-19T09:45:03+08:00 | 增量更新 | **代码收藏** + **Prompt 模板管理** + **TypeScript LSP** + **持久上下文加载** + **DOM Inspector**；**文件数 106->113** |
-| 2026-05-16T17:36:40+08:00 | 增量更新 | **第四运行时 LangChain** + **订阅管理** + **语音识别** + **快捷命令** + **代码搜索** + **Agent SSE API** + **Agent Designer** + **应用内通知** + **Skill/MCP 管理**；**文件数 73->106** |
-| 2026-05-08T17:18:31+08:00 | 增量更新 | **Workflow 系统**；**文件数 70->73** |
-| 2026-05-05T23:52:43+08:00 | 增量更新 | 认证系统、通知中心 12 文件、Commit Agent、Issue Runner 重构、ClaudeCodeRuntime 拆分为 7 文件子模块、SQLite Agent Usage |
-| 2026-05-04T21:04:42+08:00 | 增量更新+补扫 | 三运行时、Anthropic Bridge、runMentionedAgent 深度流程、Issue 自动化编排链路重构、Function Call Tools |
-| 2026-05-02T23:43:41 | 增量更新 | 补充双运行时架构、Agent Preset 系统、LLM 管理、API 路由全量更新 |
-| 2026-05-02T01:07:33 | 初始化 | init-architect 首次扫描生成 |

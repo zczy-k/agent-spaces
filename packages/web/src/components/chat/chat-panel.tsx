@@ -111,7 +111,7 @@ export function ChatPanel({ workspaceId, channelId, workflowUiContext, onAgentAc
   const ensureAgents = useAgentStore((s) => s.ensure);
 
   const currentChannelId = channelId ?? activeChannelId;
-  const channel = channels.find((c) => c.id === currentChannelId);
+  const channel = channels.find((c) => c.id === currentChannelId) ?? { id: currentChannelId!, name: currentChannelId!, type: 'agent' as const, members: [] };
   const msgs = useMemo(
     () => currentChannelId ? (messages[currentChannelId] || []) : [],
     [currentChannelId, messages],
@@ -247,14 +247,6 @@ export function ChatPanel({ workspaceId, channelId, workflowUiContext, onAgentAc
     await sdk.channel.deleteMessage(workspaceId, deletingMsg.channelId, deletingMsg.id);
     setDeletingMsg(null);
   }, [workspaceId, deletingMsg]);
-
-  if (!channel) {
-    return (
-      <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-        {t('emptyState')}
-      </div>
-    );
-  }
 
   const typeConf = (() => {
     const base = channelTypeStatus[channel.type];
