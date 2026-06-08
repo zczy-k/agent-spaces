@@ -242,6 +242,10 @@ function scanWorkflowUiStore() {
         }
       } catch { /* ignore */ }
     }
+    // Fallback: use avatar.png if no iconUrl yet
+    if (!iconUrl && existsSync(join(templateDir, 'avatar.png'))) {
+      iconUrl = `workflow-ui/${entry.name}/avatar.png`;
+    }
     // Collect relative file paths instead of generating zip
     const files = [];
     function walk(d, prefix) {

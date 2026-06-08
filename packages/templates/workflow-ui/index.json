@@ -1,9 +1,11 @@
 [
   {
     "id": "minimax_tts",
-    "name": "minimax配音",
-    "icon": "🎙️",
+    "name": "minimax tts",
+    "icon": "🫨",
+    "iconUrl": "workflow-ui/minimax_tts/avatar.png",
     "files": [
+      "avatar.png",
       "manifest.json",
       "src/index.jsx"
     ]

@@ -27,6 +27,7 @@ interface WorkflowUiIndexItem {
   name: string;
   icon?: string;
   iconUrl?: string;
+  desc?: string;
   files: string[];
 }
 
@@ -40,7 +41,19 @@ export function WorkflowsUiStoreDialog({ open, onOpenChange, onImported }: Workf
     setLoading(true);
     try {
       const index = await fetchStoreIndex<WorkflowUiIndexItem>('workflow-ui/index.json');
-      setTemplates(index);
+      const withDesc = await Promise.all(
+        index.map(async (item) => {
+          try {
+            const res = await fetch(resolveStoreUrl(`workflow-ui/${item.id}/manifest.json`));
+            if (res.ok) {
+              const manifest = await res.json();
+              return { ...item, desc: manifest.description as string | undefined };
+            }
+          } catch { /* ignore */ }
+          return item;
+        }),
+      );
+      setTemplates(withDesc);
     } catch {
       /* ignore */
     }
@@ -97,7 +110,7 @@ export function WorkflowsUiStoreDialog({ open, onOpenChange, onImported }: Workf
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="!w-[80vw] !max-w-none !h-[80vh] !max-h-none flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Store className="h-5 w-5" />
@@ -105,45 +118,46 @@ export function WorkflowsUiStoreDialog({ open, onOpenChange, onImported }: Workf
           </DialogTitle>
           <DialogDescription>{t('store.description')}</DialogDescription>
         </DialogHeader>
-        <ScrollArea className="max-h-[60vh]">
+        <ScrollArea className="flex-1 -mx-6 px-6">
           {loading ? (
             <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">{t('store.loading')}</div>
           ) : templates.length === 0 ? (
             <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">{t('store.empty')}</div>
           ) : (
-            <div className="flex flex-col gap-3 pr-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 pb-2">
               {templates.map((item) => (
                 <div
                   key={item.id}
-                  className="rounded-xl border border-border bg-background p-4 hover:bg-accent/30 transition-colors"
+                  className="rounded-xl border border-border bg-background p-4 hover:bg-accent/30 transition-colors flex flex-col gap-3"
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <AgentIcon
-                        name={item.name}
-                        avatarUrl={item.iconUrl ? resolveStoreUrl(item.iconUrl) : undefined}
-                        icon={item.icon}
-                        className="size-6 rounded shrink-0"
-                      />
-                      <span className="font-medium text-sm truncate">{item.name}</span>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0"
-                      disabled={importing !== null}
-                      onClick={() => handleImport(item)}
-                    >
-                      {importing === item.id ? (
-                        <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                      ) : (
-                        <>
-                          <Download className="size-3.5 mr-1" />
-                          {t('store.import')}
-                        </>
-                      )}
-                    </Button>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <AgentIcon
+                      name={item.name}
+                      avatarUrl={item.iconUrl ? resolveStoreUrl(item.iconUrl) : undefined}
+                      icon={item.icon}
+                      className="size-6 rounded shrink-0"
+                    />
+                    <span className="font-medium text-sm truncate">{item.name}</span>
                   </div>
+                  {item.desc && (
+                    <p className="text-xs text-muted-foreground line-clamp-2">{item.desc}</p>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 mt-auto w-full"
+                    disabled={importing !== null}
+                    onClick={() => handleImport(item)}
+                  >
+                    {importing === item.id ? (
+                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    ) : (
+                      <>
+                        <Download className="size-3.5 mr-1" />
+                        {t('store.import')}
+                      </>
+                    )}
+                  </Button>
                 </div>
               ))}
             </div>
