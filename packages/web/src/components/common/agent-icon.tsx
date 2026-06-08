@@ -109,10 +109,10 @@ export function AgentIcon({ agentId, name, avatarUrl, icon, apiBase, className, 
 
   const avatarSrc = !avatarError && resolveServerAssetUrl(resolvedAvatarUrl);
   const providerSrc = !providerError ? getProviderIconUrl(resolvedApiBase) : '';
-  const showEmoji = !!resolvedIcon;
+  const showEmoji = !avatarSrc && !!resolvedIcon;
 
   // 优先级：avatar > icon (emoji) > provider icon > name initial
-  const src = !showEmoji && (avatarSrc || providerSrc);
+  const src = avatarSrc || (!showEmoji && providerSrc);
 
   useEffect(() => {
     setAvatarError(false);

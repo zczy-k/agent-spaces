@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { AgentIcon } from "@/components/common/agent-icon";
 import { AvatarPicker } from "@/components/sidebar/settings/avatar-picker";
+import { ImagePickerDialog } from "@/components/ui/image-picker-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { X, ImagePlus, Smile } from "lucide-react";
 import EmojiPicker from "emoji-picker-react";
@@ -17,6 +18,8 @@ export interface AvatarUploaderProps {
   onIconChange: (icon: string) => void;
   className?: string;
   hideUploadLabel?: boolean;
+  /** Custom upload handler. Receives cropped dataUrl, returns the final URL to display. */
+  onUploadDataUrl?: (dataUrl: string) => Promise<string>;
 }
 
 export function AvatarUploader({
@@ -28,6 +31,7 @@ export function AvatarUploader({
   onIconChange,
   className,
   hideUploadLabel,
+  onUploadDataUrl,
 }: AvatarUploaderProps) {
   const t = useTranslations("agent");
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -169,13 +173,32 @@ export function AvatarUploader({
           />
         </label>
       )}
-      <AvatarPicker
-        src={avatarSrc}
-        open={avatarPickerOpen}
-        onOpenChange={setAvatarPickerOpen}
-        onUploaded={(url) => onAvatarUrlChange(url)}
-        skipUserSettings
-      />
+      {onUploadDataUrl ? (
+        <ImagePickerDialog
+          src={avatarSrc}
+          open={avatarPickerOpen}
+          onOpenChange={setAvatarPickerOpen}
+          onCropComplete={async (dataUrl) => {
+            try {
+              const url = await onUploadDataUrl(dataUrl);
+              onIconChange("");
+              onAvatarUrlChange(url);
+            } catch { /* ignore */ }
+            setAvatarPickerOpen(false);
+          }}
+        />
+      ) : (
+        <AvatarPicker
+          src={avatarSrc}
+          open={avatarPickerOpen}
+          onOpenChange={setAvatarPickerOpen}
+          onUploaded={(url) => {
+            onIconChange("")
+            onAvatarUrlChange(url)
+          }}
+          skipUserSettings
+        />
+      )}
     </div>
   );
 }

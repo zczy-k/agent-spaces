@@ -41,6 +41,12 @@ export function WorkflowsUiEditDialog({ project, open, onOpenChange, onUpdated }
     setAvatarUrl(url);
   };
 
+  const handleUploadDataUrl = async (dataUrl: string): Promise<string> => {
+    if (!project) return '';
+    const { url } = await sdk.workflowUi.uploadAvatar(project.id, dataUrl);
+    return `${sdk.workflowUi.getAvatarUrl(project.id)}?t=${Date.now()}`;
+  };
+
   const handleSave = async () => {
     if (!project || !name.trim() || saving) return;
     setSaving(true);
@@ -70,6 +76,7 @@ export function WorkflowsUiEditDialog({ project, open, onOpenChange, onUpdated }
             icon={icon}
             onAvatarUrlChange={handleAvatarUrlChange}
             onIconChange={setIcon}
+            onUploadDataUrl={handleUploadDataUrl}
             hideUploadLabel
           />
           <div className="space-y-2">

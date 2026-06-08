@@ -23,8 +23,9 @@ export function WorkflowUiPreview({ type, sourceCode, error, onError }: Workflow
 
     // Cleanup previous render
     if (rootRef.current) {
-      try { rootRef.current.unmount(); } catch { /* ignore */ }
+      const oldRoot = rootRef.current;
       rootRef.current = null;
+      queueMicrotask(() => { try { oldRoot.unmount(); } catch { /* ignore */ } });
     }
     containerRef.current.innerHTML = '';
 
@@ -99,11 +100,13 @@ export function WorkflowUiPreview({ type, sourceCode, error, onError }: Workflow
     }
   }, [sourceCode, type, renderReact, renderHtml]);
 
-  // Cleanup
+  // Cleanup — defer unmount to avoid "synchronously unmounting a root during React render"
   useEffect(() => {
     return () => {
       if (rootRef.current) {
-        try { rootRef.current.unmount(); } catch { /* ignore */ }
+        const root = rootRef.current;
+        rootRef.current = null;
+        queueMicrotask(() => { try { root.unmount(); } catch { /* ignore */ } });
       }
     };
   }, []);

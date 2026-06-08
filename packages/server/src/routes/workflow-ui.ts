@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
-import { existsSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync, rmSync, createReadStream } from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID } from 'crypto';
 import * as svc from '../services/workflow-ui.js';
@@ -124,7 +124,11 @@ router.get('/:id/avatar', (req: Request<{ id: string }>, res: Response) => {
     if (!project.avatarUrl) { res.status(404).json({ error: 'No avatar' }); return; }
     const filePath = join(svc.store.getProjectDir(project.id), project.avatarUrl);
     if (!existsSync(filePath)) { res.status(404).json({ error: 'Avatar file not found' }); return; }
-    res.sendFile(filePath);
+    const ext = project.avatarUrl.split('.').pop()?.toLowerCase() ?? 'png';
+    const mimeMap: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif' };
+    res.setHeader('Content-Type', mimeMap[ext] ?? 'image/png');
+    res.setHeader('Cache-Control', 'no-cache');
+    createReadStream(filePath).pipe(res);
   } catch (error: any) { res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message }); }
 });
 
