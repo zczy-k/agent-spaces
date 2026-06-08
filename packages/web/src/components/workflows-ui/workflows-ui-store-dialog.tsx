@@ -25,9 +25,9 @@ interface WorkflowsUiStoreDialogProps {
 interface WorkflowUiIndexItem {
   id: string;
   name: string;
-  filename: string;
   icon?: string;
   iconUrl?: string;
+  files: string[];
 }
 
 export function WorkflowsUiStoreDialog({ open, onOpenChange, onImported }: WorkflowsUiStoreDialogProps) {
@@ -54,14 +54,40 @@ export function WorkflowsUiStoreDialog({ open, onOpenChange, onImported }: Workf
   const handleImport = async (item: WorkflowUiIndexItem) => {
     setImporting(item.id);
     try {
-      const url = resolveStoreUrl(`workflow-ui/${item.filename}`);
-      const res = await fetch(url);
-      if (!res.ok) return;
-      const blob = await res.blob();
-      const buffer = await blob.arrayBuffer();
-      const zip = btoa(String.fromCharCode(...new Uint8Array(buffer)));
-      const name = item.name;
-      await sdk.workflowUi.importZip({ zip, name });
+      // Fetch manifest first
+      const manifestRes = await fetch(resolveStoreUrl(`workflow-ui/${item.id}/manifest.json`));
+      const manifest = manifestRes.ok ? await manifestRes.json() : {};
+      const type = manifest.type === 'html' ? 'html' : 'react';
+
+      // Create project
+      const project = await sdk.workflowUi.create({
+        name: item.name,
+        type,
+        description: manifest.description,
+        tags: manifest.tags,
+      });
+
+      // Write source files (under src/)
+      const srcFiles = item.files.filter(f => f.startsWith('src/'));
+      await Promise.all(
+        srcFiles.map(async (file) => {
+          const res = await fetch(resolveStoreUrl(`workflow-ui/${item.id}/${file}`));
+          if (!res.ok) return;
+          const content = await res.text();
+          const relPath = file.replace(/^src\//, '');
+          await sdk.workflowUi.writeFile(project.id, relPath, content);
+        }),
+      );
+
+      // Update project metadata from manifest
+      if (manifest.enabledPlugins || manifest.agentConfigId || manifest.icon) {
+        await sdk.workflowUi.update(project.id, {
+          enabledPlugins: manifest.enabledPlugins,
+          agentConfigId: manifest.agentConfigId,
+          icon: manifest.icon,
+        });
+      }
+
       onImported();
       onOpenChange(false);
     } finally {

@@ -2,7 +2,10 @@
   {
     "id": "minimax_tts",
     "name": "minimax配音",
-    "filename": "minimax_tts.zip",
-    "icon": "🎙️"
+    "icon": "🎙️",
+    "files": [
+      "manifest.json",
+      "src/index.jsx"
+    ]
   }
 ]

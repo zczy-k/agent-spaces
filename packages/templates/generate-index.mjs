@@ -2,7 +2,6 @@
 import { readdirSync, readFileSync, writeFileSync, existsSync, unlinkSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { execSync } from 'node:child_process';
 
 const agentsDir = fileURLToPath(new URL('.', import.meta.url));
 
@@ -238,20 +237,28 @@ function scanWorkflowUiStore() {
         const manifest = JSON.parse(readFileSync(manifestFile, 'utf-8'));
         name = manifest.name || name;
         icon = manifest.icon;
-        // If icon points to an existing file, build iconUrl like plugins do
         if (manifest.icon && existsSync(join(templateDir, manifest.icon))) {
           iconUrl = `workflow-ui/${entry.name}/${manifest.icon}`;
         }
       } catch { /* ignore */ }
     }
-    const zipFilename = `${entry.name}.zip`;
-    const zipPath = join(dir, zipFilename);
-    // (Re)generate zip from directory
+    // Collect relative file paths instead of generating zip
+    const files = [];
+    function walk(d, prefix) {
+      for (const f of readdirSync(d, { withFileTypes: true })) {
+        const rel = prefix ? `${prefix}/${f.name}` : f.name;
+        if (f.isDirectory()) {
+          walk(join(d, f.name), rel);
+        } else {
+          files.push(rel);
+        }
+      }
+    }
+    walk(templateDir, '');
+    // Remove stale zip if exists
+    const zipPath = join(dir, `${entry.name}.zip`);
     if (existsSync(zipPath)) unlinkSync(zipPath);
-    try {
-      execSync(`cd "${templateDir}" && zip -r "${zipPath}" .`, { stdio: 'pipe' });
-    } catch { /* ignore zip errors */ }
-    index.push({ id: entry.name, name, filename: zipFilename, icon, iconUrl });
+    index.push({ id: entry.name, name, icon, iconUrl, files });
   }
   writeFileSync(join(dir, 'index.json'), JSON.stringify(index, null, 2), 'utf-8');
   console.log(`[workflow-ui] ${index.length} templates`);
