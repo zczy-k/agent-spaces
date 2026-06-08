@@ -220,3 +220,17 @@ function scanWorkflowStore() {
   console.log(`[workflows] ${index.length} templates`);
 }
 scanWorkflowStore();
+
+function scanWorkflowUiStore() {
+  const dir = join(agentsDir, 'workflow-ui');
+  if (!existsSync(dir)) return;
+  const files = readdirSync(dir).filter((f) => f.endsWith('.zip'));
+  const index = files.map((filename) => {
+    const id = basename(filename, '.zip');
+    const name = id.replace(/[-_]/g, ' ');
+    return { id, name, filename };
+  });
+  writeFileSync(join(dir, 'index.json'), JSON.stringify(index, null, 2), 'utf-8');
+  console.log(`[workflow-ui] ${index.length} templates`);
+}
+scanWorkflowUiStore();

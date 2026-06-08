@@ -5,9 +5,10 @@ import type { WorkflowUiProject } from '@agent-spaces/sdk';
 import { sdk } from '@/lib/sdk';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Plus, Upload, FileQuestion } from 'lucide-react';
+import { Search, Plus, Upload, FileQuestion, Store } from 'lucide-react';
 import { WorkflowsUiCard } from './workflows-ui-card';
 import { WorkflowsUiCreateDialog } from './workflows-ui-create-dialog';
+import { WorkflowsUiStoreDialog } from './workflows-ui-store-dialog';
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -25,6 +26,7 @@ export function WorkflowsUiPage() {
   const [projects, setProjects] = useState<WorkflowUiProject[]>([]);
   const [search, setSearch] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
+  const [storeOpen, setStoreOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const loadProjects = useCallback(async () => {
@@ -90,6 +92,10 @@ export function WorkflowsUiPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setStoreOpen(true)}>
+            <Store className="h-4 w-4 mr-2" />
+            商店
+          </Button>
           <Button variant="outline" onClick={handleImport}>
             <Upload className="h-4 w-4 mr-2" />
             导入 ZIP
@@ -108,6 +114,10 @@ export function WorkflowsUiPage() {
           Create and manage custom UI pages for your workflows.
         </p>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setStoreOpen(true)}>
+            <Store className="h-4 w-4 mr-2" />
+            商店
+          </Button>
           <Button variant="outline" size="sm" onClick={handleImport}>
             <Upload className="h-4 w-4 mr-2" />
             导入 ZIP
@@ -164,6 +174,7 @@ export function WorkflowsUiPage() {
       )}
 
       <WorkflowsUiCreateDialog open={createOpen} onOpenChange={setCreateOpen} />
+      <WorkflowsUiStoreDialog open={storeOpen} onOpenChange={setStoreOpen} onImported={loadProjects} />
     </div>
   );
 }
