@@ -275,7 +275,9 @@ function formatWorkflowUiPromptContext(context: WorkflowUiPromptContext): string
     '- If you need available host UI components, call list_agent_spaces_ui_components before creating hand-written equivalents.',
     '- In React mode, prefer components exposed by window.AgentSpacesUI over hand-written UI components. Example: `const { Button, Card, CardContent } = window.AgentSpacesUI;`.',
     '- In React mode, do not import host UI components from source paths; destructure them from window.AgentSpacesUI.',
-    '- In HTML mode, window.AgentSpacesUI and window.AgentSpacesAPI may exist, but plain HTML/CSS/JS is acceptable when React components are not practical.',
+    '- To execute enabled plugin tools from preview code, call `window.AgentSpaces.callPluginTool(pluginId, toolName, args)`.',
+    '- `window.AgentSpacesAPI.callPluginTool` and `window.AgentSpacesAPI.executePluginTool` are compatibility aliases; prefer `window.AgentSpaces.callPluginTool` in new code.',
+    '- In HTML mode, window.AgentSpacesUI and window.AgentSpaces are available, but plain HTML/CSS/JS is acceptable when React components are not practical.',
   );
 
   return lines;

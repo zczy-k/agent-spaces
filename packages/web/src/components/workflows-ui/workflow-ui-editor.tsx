@@ -14,6 +14,12 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/componen
 import dynamic from 'next/dynamic';
 import '@/lib/monaco-loader';
 
+const FILE_POLL_INTERVAL_MS = 2000;
+
+function areFileListsEqual(left: string[], right: string[]) {
+  return left.length === right.length && left.every((file, index) => file === right[index]);
+}
+
 const MonacoEditor = dynamic(
   () => import('@monaco-editor/react').then((mod) => mod.default),
   { ssr: false, loading: () => <div className="flex items-center justify-center h-full text-muted-foreground text-sm">Loading editor...</div> },
@@ -29,27 +35,40 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
   const [activeFile, setActiveFile] = useState<string>('');
   const [sourceCode, setSourceCode] = useState('');
   const [previewCode, setPreviewCode] = useState('');
+  const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [loading, setLoading] = useState(true);
   const [pluginDialogOpen, setPluginDialogOpen] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const localDirtyRef = useRef(false);
+  const loadedFileContentRef = useRef('');
+  const filesRef = useRef<string[]>([]);
+  const previewCodeRef = useRef('');
 
-  // Mount window.AgentSpacesUI
+  // Mount host APIs used by Workflow UI preview code.
   useEffect(() => {
+    const executePluginTool = async (pluginId: string, toolName: string, args: Record<string, any>) => {
+      const resp = await fetchWithAuth(`/api/plugins/${pluginId}/tools/execute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: toolName, args }),
+      });
+      return resp.json();
+    };
+
     (window as any).AgentSpacesUI = AgentSpacesUI;
+    (window as any).AgentSpaces = {
+      callPluginTool: executePluginTool,
+      executePluginTool,
+    };
     (window as any).AgentSpacesAPI = {
-      executePluginTool: async (pluginId: string, toolName: string, args: Record<string, any>) => {
-        const resp = await fetchWithAuth(`/api/plugins/${pluginId}/tools/execute`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: toolName, args }),
-        });
-        return resp.json();
-      },
+      callPluginTool: executePluginTool,
+      executePluginTool,
     };
     return () => {
       delete (window as any).AgentSpacesUI;
+      delete (window as any).AgentSpaces;
       delete (window as any).AgentSpacesAPI;
     };
   }, []);
@@ -64,6 +83,7 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
         if (cancelled) return;
         setProject(p);
         setFiles(tree);
+        filesRef.current = tree;
         if (tree.length > 0) {
           const mainFile = tree.includes(p.mainFile) ? p.mainFile : tree[0];
           setActiveFile(mainFile);
@@ -71,6 +91,9 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
           if (!cancelled) {
             setSourceCode(content);
             setPreviewCode(content);
+            previewCodeRef.current = content;
+            loadedFileContentRef.current = content;
+            localDirtyRef.current = false;
           }
         }
       } catch (error) {
@@ -83,12 +106,70 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
     return () => { cancelled = true; };
   }, [projectId]);
 
+  const refreshFileTree = useCallback(async () => {
+    try {
+      const tree = await sdk.workflowUi.getFileTree(projectId);
+      if (!areFileListsEqual(filesRef.current, tree)) {
+        filesRef.current = tree;
+        setFiles(tree);
+      }
+      return tree;
+    } catch (error) {
+      console.error('Failed to refresh file tree:', error);
+      return null;
+    }
+  }, [projectId]);
+
+  const refreshActiveFile = useCallback(async (options?: { force?: boolean; syncPreview?: boolean }) => {
+    if (!activeFile) return;
+
+    try {
+      const { content } = await sdk.workflowUi.readFile(projectId, activeFile);
+      const fileChanged = content !== loadedFileContentRef.current;
+      if (!fileChanged && !options?.force) return;
+
+      const shouldUpdateEditor = options?.force || !localDirtyRef.current;
+
+      if (shouldUpdateEditor) {
+        loadedFileContentRef.current = content;
+        localDirtyRef.current = false;
+        setSourceCode(content);
+      }
+
+      if (options?.syncPreview && shouldUpdateEditor) {
+        if (content !== previewCodeRef.current || options.force) {
+          previewCodeRef.current = content;
+          setPreviewCode(content);
+          setPreviewRefreshKey((key) => key + 1);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to refresh file:', error);
+    }
+  }, [projectId, activeFile]);
+
+  // Poll latest files written outside this editor, for example by workflow UI agents.
+  useEffect(() => {
+    if (!activeFile) return;
+
+    const interval = setInterval(() => {
+      refreshFileTree();
+      refreshActiveFile({ syncPreview: autoRefresh });
+    }, FILE_POLL_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, [activeFile, autoRefresh, refreshActiveFile, refreshFileTree]);
+
   // Auto-refresh debounce
   useEffect(() => {
     if (!autoRefresh) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      setPreviewCode(sourceCode);
+      if (sourceCode !== previewCodeRef.current) {
+        previewCodeRef.current = sourceCode;
+        setPreviewCode(sourceCode);
+        setPreviewRefreshKey((key) => key + 1);
+      }
     }, 800);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -99,23 +180,33 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
     if (!activeFile) return;
     try {
       await sdk.workflowUi.writeFile(projectId, activeFile, sourceCode);
+      loadedFileContentRef.current = sourceCode;
+      localDirtyRef.current = false;
     } catch (error) {
       console.error('Failed to save file:', error);
     }
   }, [projectId, activeFile, sourceCode]);
 
-  const handleManualRefresh = useCallback(() => {
-    setPreviewCode(sourceCode);
-  }, [sourceCode]);
+  const handleManualRefresh = useCallback(async () => {
+    await refreshFileTree();
+    await refreshActiveFile({ force: true, syncPreview: true });
+  }, [refreshActiveFile, refreshFileTree]);
 
   const handleFileSelect = useCallback(async (file: string) => {
     if (activeFile && sourceCode) {
       await sdk.workflowUi.writeFile(projectId, activeFile, sourceCode).catch(() => {});
+      loadedFileContentRef.current = sourceCode;
+      localDirtyRef.current = false;
     }
     try {
       const { content } = await sdk.workflowUi.readFile(projectId, file);
       setActiveFile(file);
       setSourceCode(content);
+      setPreviewCode(content);
+      previewCodeRef.current = content;
+      setPreviewRefreshKey((key) => key + 1);
+      loadedFileContentRef.current = content;
+      localDirtyRef.current = false;
     } catch (error) {
       console.error('Failed to load file:', error);
     }
@@ -161,7 +252,11 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
               language="typescript"
               theme="vs-dark"
               value={sourceCode}
-              onChange={(v) => setSourceCode(v || '')}
+              onChange={(v) => {
+                const nextCode = v || '';
+                localDirtyRef.current = nextCode !== loadedFileContentRef.current;
+                setSourceCode(nextCode);
+              }}
               options={{
                 minimap: { enabled: false },
                 fontSize: 12,
@@ -202,6 +297,7 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
             onOpenPluginDialog={() => setPluginDialogOpen(true)}
           />
           <WorkflowUiPreview
+            key={previewRefreshKey}
             type={project.type}
             sourceCode={previewCode}
             error={previewError}

@@ -123,7 +123,8 @@ Workflow UI Agent 复用普通 channel Agent 的运行时能力，包括：
 后端会把 `workflowUiContext.projectType` 注入 Agent 提示词：
 
 - React 模式：优先调用 `list_agent_spaces_ui_components` 查询可用宿主组件，并优先通过 `window.AgentSpacesUI` 解构使用，例如 `const { Button, Card, CardContent } = window.AgentSpacesUI;`。不要从宿主源码路径 import 这些组件。
-- HTML 模式：可使用普通 HTML/CSS/JS；`window.AgentSpacesUI` 和 `window.AgentSpacesAPI` 仍可能存在，但 React 组件主要面向 React 模式。
+- 插件工具：预览代码中优先使用 `window.AgentSpaces.callPluginTool(pluginId, toolName, args)` 执行已启用插件工具；`window.AgentSpacesAPI.callPluginTool` 和 `window.AgentSpacesAPI.executePluginTool` 是兼容别名。
+- HTML 模式：可使用普通 HTML/CSS/JS；`window.AgentSpacesUI` 和 `window.AgentSpaces` 仍可用，但 React 组件主要面向 React 模式。
 
 ## 上下文注入
 
