@@ -4,8 +4,11 @@ import { useState } from 'react';
 import { sdk } from '@/lib/sdk';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Code, FileText, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { nativeNavigate } from '@/lib/navigate';
 import { useRouter } from 'next/navigation';
 
@@ -17,16 +20,20 @@ interface WorkflowsUiCreateDialogProps {
 export function WorkflowsUiCreateDialog({ open, onOpenChange }: WorkflowsUiCreateDialogProps) {
   const router = useRouter();
   const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [type, setType] = useState<'react' | 'html'>('react');
   const [creating, setCreating] = useState(false);
 
-  const handleCreate = async (type: 'react' | 'html') => {
+  const handleCreate = async () => {
     const trimmed = name.trim();
     if (!trimmed || creating) return;
     setCreating(true);
     try {
-      const project = await sdk.workflowUi.create({ name: trimmed, type });
+      const project = await sdk.workflowUi.create({ name: trimmed, type, description: description.trim() || undefined });
       onOpenChange(false);
       setName('');
+      setDescription('');
+      setType('react');
       nativeNavigate(router, `/workflows-ui/${project.id}`);
     } finally {
       setCreating(false);
@@ -34,9 +41,9 @@ export function WorkflowsUiCreateDialog({ open, onOpenChange }: WorkflowsUiCreat
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleCreate('react');
+      handleCreate();
     }
   };
 
@@ -46,29 +53,45 @@ export function WorkflowsUiCreateDialog({ open, onOpenChange }: WorkflowsUiCreat
         <DialogHeader>
           <DialogTitle>Create Custom Page</DialogTitle>
         </DialogHeader>
-        <Input
-          placeholder="Page name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={creating}
-          autoFocus
-        />
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button
-            variant="outline"
-            onClick={() => handleCreate('html')}
-            disabled={!name.trim() || creating}
-          >
-            {creating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
-            HTML
-          </Button>
-          <Button
-            onClick={() => handleCreate('react')}
-            disabled={!name.trim() || creating}
-          >
-            {creating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Code className="h-4 w-4 mr-2" />}
-            React
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Name</Label>
+            <Input
+              placeholder="Page name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={creating}
+              autoFocus
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Description</Label>
+            <Textarea
+              placeholder="Optional description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              disabled={creating}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Type</Label>
+            <Select value={type} onValueChange={(v) => setType(v as 'react' | 'html')} disabled={creating}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="react">React</SelectItem>
+                <SelectItem value="html">HTML</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button onClick={handleCreate} disabled={!name.trim() || creating}>
+            {creating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            Create
           </Button>
         </DialogFooter>
       </DialogContent>

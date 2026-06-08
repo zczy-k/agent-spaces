@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Pencil, Copy, Trash2, MoreVertical, Puzzle, Download, Share2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ShareDialog } from '@/components/common/share-dialog';
+import { WorkflowsUiEditDialog } from './workflows-ui-edit-dialog';
 import { nativeNavigate } from '@/lib/navigate';
 import { useRouter } from 'next/navigation';
 import { sdk } from '@/lib/sdk';
@@ -15,11 +16,13 @@ interface WorkflowsUiCardProps {
   project: WorkflowUiProject;
   onDelete: (id: string) => void;
   onDuplicate?: (id: string) => void;
+  onUpdated?: (project: WorkflowUiProject) => void;
 }
 
-export function WorkflowsUiCard({ project, onDelete, onDuplicate }: WorkflowsUiCardProps) {
+export function WorkflowsUiCard({ project, onDelete, onDuplicate, onUpdated }: WorkflowsUiCardProps) {
   const router = useRouter();
   const [shareOpen, setShareOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   const shareUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/workflows-ui-preview/${project.id}`
@@ -48,7 +51,7 @@ export function WorkflowsUiCard({ project, onDelete, onDuplicate }: WorkflowsUiC
             <MoreVertical className="h-3.5 w-3.5" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => nativeNavigate(router, `/workflows-ui/${project.id}`)}>
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditOpen(true); }}>
               <Pencil className="h-3.5 w-3.5 mr-2" /> Edit
             </DropdownMenuItem>
             {onDuplicate && (
@@ -70,6 +73,7 @@ export function WorkflowsUiCard({ project, onDelete, onDuplicate }: WorkflowsUiC
       </div>
       <div onClick={(e) => e.stopPropagation()}>
         <ShareDialog open={shareOpen} onOpenChange={setShareOpen} title={project.name} url={shareUrl} />
+        <WorkflowsUiEditDialog project={project} open={editOpen} onOpenChange={setEditOpen} onUpdated={onUpdated} />
       </div>
       <CardHeader className="pb-2">
         <div className="flex items-center gap-2">

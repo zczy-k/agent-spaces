@@ -56,6 +56,10 @@ export function WorkflowsUiPage() {
     setProjects((prev) => prev.filter((p) => p.id !== id));
   }, []);
 
+  const handleUpdated = useCallback((updated: WorkflowUiProject) => {
+    setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+  }, []);
+
   const handleImport = useCallback(async () => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -153,6 +157,7 @@ export function WorkflowsUiPage() {
               key={project.id}
               project={project}
               onDelete={handleDelete}
+              onUpdated={handleUpdated}
             />
           ))}
         </div>
