@@ -42,7 +42,6 @@ const BUILTIN_FONTS = [
 const STORAGE_KEY = "customFont";
 const CUSTOM_FONTS_KEY = "customFonts";
 const FONT_VARIABLES = ["--font-app", "--font-sans", "--font-heading", "--font-mid", "--font-mono"];
-const DEFAULT_FONT_FAMILY = `"Helvetica Neue", Helvetica, Arial, sans-serif`;
 
 interface CustomFont {
   name: string;
@@ -50,7 +49,6 @@ interface CustomFont {
 }
 
 function getFontFamily(value: string, customFonts: CustomFont[]) {
-  if (!value) return DEFAULT_FONT_FAMILY;
   const builtin = BUILTIN_FONTS.find(f => f.value === value);
   if (builtin) return value;
   const custom = customFonts.find(f => f.name === value);
@@ -59,10 +57,19 @@ function getFontFamily(value: string, customFonts: CustomFont[]) {
 }
 
 function applyFont(value: string, customFonts: CustomFont[]) {
+  const root = document.documentElement;
+  root.dataset.customFont = value ? "true" : "false";
+
+  if (!value) {
+    for (const variable of FONT_VARIABLES) {
+      root.style.removeProperty(variable);
+    }
+    return;
+  }
+
   const family = getFontFamily(value, customFonts);
-  document.documentElement.dataset.customFont = value ? "true" : "false";
   for (const variable of FONT_VARIABLES) {
-    document.documentElement.style.setProperty(variable, family);
+    root.style.setProperty(variable, family);
   }
 }
 

@@ -1,6 +1,22 @@
 export const THEME_STYLE_STORAGE_KEY = "theme-style";
 export const THEME_STYLE_CUSTOM_CSS_KEY = "theme-style-custom-css";
 const STYLE_EL_ID = "theme-style-override";
+const FONT_LINK_EL_ID = "theme-style-google-fonts";
+const THEME_FONT_VARIABLES = ["sans", "serif", "mono", "app", "heading", "mid"];
+const GENERIC_FONT_FAMILIES = new Set([
+  "serif",
+  "sans-serif",
+  "monospace",
+  "cursive",
+  "fantasy",
+  "system-ui",
+  "ui-serif",
+  "ui-sans-serif",
+  "ui-monospace",
+  "emoji",
+  "math",
+  "fangsong",
+]);
 
 export const THEME_STYLES: Record<string, string> = {
   mira: `:root {
@@ -280,7 +296,91 @@ export const THEME_STYLES: Record<string, string> = {
 }`,
 };
 
+function splitFontFamilies(value: string) {
+  const families: string[] = [];
+  let current = "";
+  let quote: string | null = null;
+  let parenDepth = 0;
+
+  for (const char of value) {
+    if (quote) {
+      if (char === quote) quote = null;
+      current += char;
+      continue;
+    }
+
+    if (char === '"' || char === "'") {
+      quote = char;
+      current += char;
+      continue;
+    }
+
+    if (char === "(") parenDepth += 1;
+    if (char === ")") parenDepth = Math.max(0, parenDepth - 1);
+
+    if (char === "," && parenDepth === 0) {
+      families.push(current.trim());
+      current = "";
+      continue;
+    }
+
+    current += char;
+  }
+
+  if (current.trim()) families.push(current.trim());
+  return families;
+}
+
+function normalizeFontFamily(value: string) {
+  const family = value.trim().replace(/^["']|["']$/g, "");
+  if (!family || family.startsWith("var(")) return "";
+  if (GENERIC_FONT_FAMILIES.has(family.toLowerCase())) return "";
+  return family;
+}
+
+function getThemeFontFamilies(css: string) {
+  const families = new Set<string>();
+  const variablePattern = new RegExp(`--font-(${THEME_FONT_VARIABLES.join("|")})\\s*:\\s*([^;]+);`, "g");
+  for (const match of css.matchAll(variablePattern)) {
+    const value = match[2];
+    const family = splitFontFamilies(value).map(normalizeFontFamily).find(Boolean);
+    if (family) families.add(family);
+  }
+  return [...families];
+}
+
+function getGoogleFontsUrl(families: string[]) {
+  if (families.length === 0) return "";
+  const params = families
+    .sort((a, b) => a.localeCompare(b))
+    .map((family) => `family=${encodeURIComponent(family).replace(/%20/g, "+")}`)
+    .join("&");
+  return `https://fonts.googleapis.com/css2?${params}&display=swap`;
+}
+
+function applyThemeFonts(css: string) {
+  const href = getGoogleFontsUrl(getThemeFontFamilies(css));
+  const existing = document.getElementById(FONT_LINK_EL_ID) as HTMLLinkElement | null;
+
+  if (!href) {
+    existing?.remove();
+    return;
+  }
+
+  if (existing) {
+    if (existing.href !== href) existing.href = href;
+    return;
+  }
+
+  const link = document.createElement("link");
+  link.id = FONT_LINK_EL_ID;
+  link.rel = "stylesheet";
+  link.href = href;
+  document.head.appendChild(link);
+}
+
 export function applyThemeStyle(css: string) {
+  applyThemeFonts(css);
   let el = document.getElementById(STYLE_EL_ID) as HTMLStyleElement | null;
   if (!el) {
     el = document.createElement("style");
@@ -292,6 +392,7 @@ export function applyThemeStyle(css: string) {
 
 export function removeThemeStyle() {
   document.getElementById(STYLE_EL_ID)?.remove();
+  document.getElementById(FONT_LINK_EL_ID)?.remove();
 }
 
 export function applySavedThemeStyle() {
