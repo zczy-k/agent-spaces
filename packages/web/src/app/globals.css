@@ -190,6 +190,11 @@
 
 .workspace-flexlayout-shell .flexlayout__layout {
   background-color: var(--sidebar) !important;
+  --color-tabset-background: var(--card);
+  --color-tabset-background-selected: var(--card);
+  --color-border-background: var(--card);
+  --color-border-tab-content: var(--card);
+  --color-tab-content: var(--card);
 }
 
 .flexlayout__layout_main {
@@ -329,6 +334,51 @@
 
 .dark .workspace-flexlayout-shell .flexlayout__layout {
   background-color: var(--sidebar) !important;
+  --color-tabset-background: var(--card);
+  --color-tabset-background-selected: var(--card);
+  --color-border-background: var(--card);
+  --color-border-tab-content: var(--card);
+  --color-tab-content: var(--card);
+}
+
+.workspace-flexlayout-shell .flexlayout__tabset,
+.workspace-flexlayout-shell .flexlayout__tabset-selected,
+.workspace-flexlayout-shell .flexlayout__tab,
+.workspace-flexlayout-shell .flexlayout__tabset_tabbar_outer_top,
+.workspace-flexlayout-shell .flexlayout__border,
+.workspace-flexlayout-shell .flexlayout__border_bottom,
+.workspace-flexlayout-shell .flexlayout__border_tab_contents {
+  background-color: var(--card) !important;
+  border-color: var(--border) !important;
+}
+
+.workspace-flexlayout-shell .flexlayout__border_inner {
+  background-color: var(--card) !important;
+}
+
+.workspace-flexlayout-shell .flexlayout__border_bottom .flexlayout__border_inner {
+  border: 0 !important;
+  border-top: 1px solid var(--border) !important;
+}
+
+.dark .workspace-flexlayout-shell .flexlayout__tabset,
+.dark .workspace-flexlayout-shell .flexlayout__tabset-selected,
+.dark .workspace-flexlayout-shell .flexlayout__tab,
+.dark .workspace-flexlayout-shell .flexlayout__tabset_tabbar_outer_top,
+.dark .workspace-flexlayout-shell .flexlayout__border,
+.dark .workspace-flexlayout-shell .flexlayout__border_bottom,
+.dark .workspace-flexlayout-shell .flexlayout__border_tab_contents {
+  background-color: var(--card) !important;
+  border-color: var(--border) !important;
+}
+
+.dark .workspace-flexlayout-shell .flexlayout__border_inner {
+  background-color: var(--card) !important;
+}
+
+.dark .workspace-flexlayout-shell .flexlayout__border_bottom .flexlayout__border_inner {
+  border: 0 !important;
+  border-top: 1px solid var(--border) !important;
 }
 
 .dark .flexlayout__tabset {

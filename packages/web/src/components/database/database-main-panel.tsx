@@ -309,27 +309,8 @@ export function DatabaseMainPanel({
           <p className="text-xs text-muted-foreground mt-1.5 max-w-[340px] leading-relaxed">
             {t('emptyHint')}
           </p>
-          <div className="mt-8 bg-card border border-border rounded-2xl p-4 shadow-xl max-w-sm w-full">
-            <div className="text-[10px] font-bold text-muted-foreground mb-2.5 uppercase tracking-wider text-left">{t('shortcuts')}</div>
-            <div className="space-y-1.5 font-medium text-xs text-muted-foreground">
-              <div className="flex items-center justify-between text-[11px]">
-                <span>{t('globalSearch')}</span>
-                <div className="flex items-center gap-0.5">
-                  <kbd className="bg-background border border-border rounded px-1.5 py-0.2 text-[9px] font-mono text-muted-foreground">Ctrl</kbd>+<kbd className="bg-background border border-border rounded px-1.5 py-0.2 text-[9px] font-mono text-muted-foreground">K</kbd>
-                </div>
-              </div>
-              <div className="flex items-center justify-between text-[11px]">
-                <span>{t('editorModeSwitch')}</span>
-                <span className="text-muted-foreground/60">{t('topRightTab')}</span>
-              </div>
-              <div className="flex items-center justify-between text-[11px]">
-                <span>{t('nestedArchive')}</span>
-                <span className="text-muted-foreground/60">{t('sidebarDrag')}</span>
-              </div>
-            </div>
-          </div>
           <button onClick={() => handleAddChild(null)}
-            className="mt-6 px-5 h-10 rounded-xl bg-muted hover:bg-muted/80 border border-border text-foreground font-semibold text-xs cursor-pointer flex items-center gap-2">
+            className="mt-8 px-5 h-10 rounded-xl bg-muted hover:bg-muted/80 border border-border text-foreground font-semibold text-xs cursor-pointer flex items-center gap-2">
             <Plus className="w-4 h-4" /><span>{t('quickCreateFirst')}</span>
           </button>
         </div>
