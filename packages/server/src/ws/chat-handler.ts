@@ -55,10 +55,10 @@ export function registerChatHandlers(): void {
             broadcastToWorkspace(workspaceId, 'chat.agent.thinking', { agentId, chunk: event.text });
             break;
           case 'tool_use':
-            broadcastToWorkspace(workspaceId, 'chat.agent.tool_use', { agentId, name: event.name, input: event.input });
+            broadcastToWorkspace(workspaceId, 'chat.agent.tool_use', { agentId, id: event.id, name: event.name, input: event.input });
             break;
           case 'tool_result':
-            broadcastToWorkspace(workspaceId, 'chat.agent.tool_result', { agentId, name: event.toolUseId, result: event.result });
+            broadcastToWorkspace(workspaceId, 'chat.agent.tool_result', { agentId, toolUseId: event.toolUseId, result: event.result });
             break;
         }
       },

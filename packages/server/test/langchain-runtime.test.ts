@@ -4,6 +4,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
+  createLangChainRunProgress,
   buildLangChainPromptWithSkills,
   createThrottledRuntimeEventSink,
   extractReasoningFromToken,
@@ -13,6 +14,34 @@ import {
   resolveLangChainModelSettings,
   stringifyToolResult,
 } from '../src/adapters/langchain-runtime.js';
+
+test('LangChain run progress flags tool results without final assistant text as incomplete', () => {
+  const progress = createLangChainRunProgress();
+
+  progress.recordAiText();
+  progress.recordToolUse();
+  progress.recordToolResult();
+
+  assert.match(progress.getIncompleteReason() ?? '', /without a final assistant response/);
+});
+
+test('LangChain run progress accepts final assistant text after tools', () => {
+  const progress = createLangChainRunProgress();
+
+  progress.recordToolUse();
+  progress.recordToolResult();
+  progress.recordAiText();
+
+  assert.equal(progress.getIncompleteReason(), undefined);
+});
+
+test('LangChain run progress flags pending tool calls', () => {
+  const progress = createLangChainRunProgress();
+
+  progress.recordToolUse();
+
+  assert.match(progress.getIncompleteReason() ?? '', /pending tool calls/);
+});
 
 test('resolveLangChainModelSettings uses OpenAI for BigModel compatible Anthropic misconfiguration', () => {
   const settings = resolveLangChainModelSettings({
@@ -80,6 +109,8 @@ test('LangChain stream text extraction falls back to message content', () => {
 test('LangChain stream token filter skips tool results', () => {
   assert.equal(isAiStreamToken({ type: 'ai', contentBlocks: [{ type: 'text', text: 'hello' }] }), true);
   assert.equal(isAiStreamToken({ role: 'assistant', contentBlocks: [{ type: 'reasoning', reasoning: 'thinking' }] }), true);
+  assert.equal(isAiStreamToken({ id: ['langchain_core', 'messages', 'AIMessage'], kwargs: { content: 'hello' } }), true);
+  assert.equal(isAiStreamToken({ type: 'generic', role: 'assistant', content: 'hello' }), true);
   assert.equal(isAiStreamToken({ type: 'tool', contentBlocks: [{ type: 'reasoning', reasoning: 'tool output' }] }), false);
   assert.equal(isAiStreamToken({ tool_call_id: 'call-1', contentBlocks: [{ type: 'text', text: 'tool output' }] }), false);
 });

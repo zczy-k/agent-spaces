@@ -619,12 +619,12 @@ function handleChatRunEvent(
       break;
     }
     case 'tool_use': {
-      const data = payload.data as { name?: string; input?: unknown };
+      const data = payload.data as { id?: string; name?: string; input?: unknown };
       appendStreamingToolUse(set, agentId, data);
       break;
     }
     case 'tool_result': {
-      const data = payload.data as { name?: string; result?: unknown };
+      const data = payload.data as { toolUseId?: string; name?: string; result?: unknown };
       completeStreamingToolCall(set, agentId, data);
       break;
     }
@@ -660,7 +660,7 @@ function appendStreamingText(
 function appendStreamingToolUse(
   set: ChatSet,
   agentId: string,
-  data: { name?: string; input?: unknown },
+  data: { id?: string; name?: string; input?: unknown },
 ): void {
   const name = data.name || 'tool';
   set((s) => ({
@@ -669,7 +669,7 @@ function appendStreamingToolUse(
       [agentId]: [
         ...(s.streamingTimeline[agentId] ?? []),
         {
-          id: `${name}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          id: data.id || `${name}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           type: 'tool',
           name,
           input: data.input,
@@ -683,21 +683,21 @@ function appendStreamingToolUse(
 function completeStreamingToolCall(
   set: ChatSet,
   agentId: string,
-  data: { name?: string; result?: unknown },
+  data: { toolUseId?: string; name?: string; result?: unknown },
 ): void {
-  const name = data.name || 'tool';
+  const toolUseId = data.toolUseId || data.name || 'tool';
   set((s) => {
     const timeline = [...(s.streamingTimeline[agentId] ?? [])];
-    const index = findLastIndex(timeline, (item) => item.type === 'tool' && item.status === 'running' && item.name === name);
+    const index = findLastIndex(timeline, (item) => item.type === 'tool' && item.status === 'running' && item.id === toolUseId);
     const fallbackIndex = index === -1
       ? findLastIndex(timeline, (item) => item.type === 'tool' && item.status === 'running')
       : index;
 
     if (fallbackIndex === -1) {
       timeline.push({
-        id: `${name}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        id: `${toolUseId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         type: 'tool',
-        name,
+        name: data.name || toolUseId,
         result: data.result,
         status: isErrorToolResult(data.result) ? 'error' : 'success',
       });

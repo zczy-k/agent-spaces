@@ -17,6 +17,8 @@ import { appendOutputStyleToPrompt, summarizeResult } from './agent-runtime-type
 const DEFAULT_DATA_DIR = join(process.env.HOME || '~', '.agent-spaces-data');
 const MAX_DEBUG_LOG_CHARS = 500;
 const STREAM_EVENT_THROTTLE_MS = 100;
+const STREAM_NO_PROGRESS_TIMEOUT_MS = 30_000;
+const EMPTY_AI_CHUNK_LOG_INTERVAL = 20;
 
 /**
  * Runtime backed by LangChain.js.
@@ -40,6 +42,7 @@ export class LangChainRuntime implements AgentRuntime {
     const eventSink = createThrottledRuntimeEventSink(options?.onEvent);
     const runtimeOptions = options ? { ...options, onEvent: eventSink.emit } : undefined;
     let mcpClient: MultiServerMCPClient | undefined;
+    const progress = createLangChainRunProgress();
 
     const skillPrompts = loadConfiguredSkillPrompts(runtimeOptions?.configDir, runtimeOptions?.skills);
     d(`starting | cwd=${cwd} provider=${this.config.provider ?? 'auto'} langchainProvider=${modelSettings.provider ?? 'auto'} model=${model} baseURL=${this.config.baseURL ?? 'default'} apiKey=${this.config.apiKey ? 'set' : 'unset'} maxTurns=${runtimeOptions?.maxTurns ?? '∞'} tools=${runtimeOptions?.functionTools?.map((runtimeTool) => runtimeTool.name).join(',') || '-'} mcpServers=${Object.keys(runtimeOptions?.mcpServers ?? {}).join(',') || '-'} skills=${skillPrompts.map((skill) => skill.name).join(',') || '-'} sandboxDirs=${runtimeOptions?.sandboxDirs?.join(',') ?? '-'}`);
@@ -61,11 +64,11 @@ export class LangChainRuntime implements AgentRuntime {
         () => initChatModel(model, buildModelConfig(this.config)),
       );
       d(`chat model initialized | type=${getObjectTypeName(chatModel)}`);
-      mcpClient = createLangChainMcpClient(runtimeOptions?.mcpServers, output, runtimeOptions, d);
+      mcpClient = createLangChainMcpClient(runtimeOptions?.mcpServers, output, runtimeOptions, d, progress);
       d(`MCP client ${mcpClient ? 'created' : 'not created'}`);
       const mcpTools = mcpClient ? await mcpClient.getTools() : [];
       if (mcpClient) d(`resolved MCP tools | servers=${Object.keys(runtimeOptions?.mcpServers ?? {}).join(',') || '-'} count=${mcpTools.length} tools=${mcpTools.map((mcpTool) => mcpTool.name).join(',') || '-'}`);
-      const runtimeTools = buildLangChainTools(runtimeOptions?.functionTools, output, runtimeOptions, d);
+      const runtimeTools = buildLangChainTools(runtimeOptions?.functionTools, output, runtimeOptions, d, progress);
       d(`creating agent | runtimeTools=${runtimeTools.length} mcpTools=${mcpTools.length} systemPrompt=${runtimeOptions?.systemPrompt ? `${runtimeOptions.systemPrompt.length}chars` : '-'} outputStyle=${runtimeOptions?.outputStyle ?? '-'}`);
       const agent = createAgent({
         model: chatModel,
@@ -90,14 +93,24 @@ export class LangChainRuntime implements AgentRuntime {
         {
           signal: this.abortController?.signal,
           recursionLimit,
-          streamMode: 'messages',
+          streamMode: ['messages', 'values'],
         },
       );
 
       const textParts: string[] = [];
+      let finalStateMessages: unknown[] = [];
       let usage: AgentRunResult['usage'];
+      let emptyAiChunkCount = 0;
+      let emptyAiChunkStart = 0;
+      let emptyAiChunkLastId = '';
       for await (const chunk of stream) {
-        const token = Array.isArray(chunk) ? chunk[0] : chunk;
+        const streamChunk = splitLangChainStreamChunk(chunk);
+        if (streamChunk.mode === 'values') {
+          finalStateMessages = extractStateMessages(streamChunk.payload);
+          continue;
+        }
+
+        const token = Array.isArray(streamChunk.payload) ? streamChunk.payload[0] : streamChunk.payload;
         if (!isRecord(token)) {
           // d(`stream token skipped | type=${typeof token}`);
           continue;
@@ -105,23 +118,66 @@ export class LangChainRuntime implements AgentRuntime {
 
         const tokenUsage = extractUsageFromMessage(token);
         if (tokenUsage) usage = tokenUsage;
-        if (!isAiStreamToken(token)) {
+        const text = extractTextFromToken(token);
+        const reasoning = extractReasoningFromToken(token);
+        const toolCallCount = countToolCalls(token);
+        const messageMeta = Array.isArray(streamChunk.payload) && isRecord(streamChunk.payload[1])
+          ? streamChunk.payload[1]
+          : undefined;
+        const isAiToken = isAiStreamToken(token);
+        const hasMeaningfulChunk = Boolean(text || reasoning || toolCallCount > 0);
+        if (isAiToken && !hasMeaningfulChunk) {
+          const tokenId = typeof token.id === 'string' ? token.id : '';
+          if (tokenId !== emptyAiChunkLastId) {
+            emptyAiChunkLastId = tokenId;
+            emptyAiChunkCount = 0;
+            emptyAiChunkStart = Date.now();
+          }
+          emptyAiChunkCount += 1;
+          const stalledMs = Date.now() - emptyAiChunkStart;
+          if (emptyAiChunkCount === 1 || emptyAiChunkCount % EMPTY_AI_CHUNK_LOG_INTERVAL === 0) {
+            d(`stream ai empty | count=${emptyAiChunkCount} stalledMs=${stalledMs} id=${tokenId || '-'} step=${messageMeta?.langgraph_step ?? '-'} node=${messageMeta?.langgraph_node ?? '-'}`);
+          }
+          if (progress.hasSeenToolResult() && stalledMs >= STREAM_NO_PROGRESS_TIMEOUT_MS) {
+            this.abortController?.abort();
+            throw new Error(`LangChain stream stalled after tool results: no assistant text/reasoning/tool calls for ${stalledMs}ms while receiving empty AI chunks.`);
+          }
+          continue;
+        }
+        if (hasMeaningfulChunk) {
+          emptyAiChunkCount = 0;
+          emptyAiChunkStart = 0;
+          emptyAiChunkLastId = '';
+        }
+        // if (isAiToken || toolCallCount > 0) {
+        //   d(`stream ai | ${summarizeStreamTokenForLog(token, text, reasoning, tokenUsage)} step=${messageMeta?.langgraph_step ?? '-'} node=${messageMeta?.langgraph_node ?? '-'}`);
+        // }
+        if (!isAiToken) {
           // d(`stream token skipped | ${summarizeStreamTokenForLog(token, '', '', tokenUsage)}`);
           continue;
         }
 
-        const text = extractTextFromToken(token);
-        const reasoning = extractReasoningFromToken(token);
-        // d(`stream token | ${summarizeStreamTokenForLog(token, text, reasoning, tokenUsage)}`);
         if (reasoning) {
           runtimeOptions?.onEvent?.({ type: 'reasoning', text: reasoning, status: 'streaming' });
         }
         if (text) {
+          progress.recordAiText();
           textParts.push(text);
           runtimeOptions?.onEvent?.({ type: 'output', line: text });
         }
       }
       eventSink.flush();
+
+      const stateSummary = summarizeStateMessagesForLog(finalStateMessages);
+      if (stateSummary) d(`final state | ${stateSummary}`);
+      const fallbackText = extractFinalAssistantTextFromState(finalStateMessages);
+      if (fallbackText && !textParts.join('').endsWith(fallbackText)) {
+        d(`final state fallback text | chars=${fallbackText.length} preview=${truncateForLog(fallbackText, 1200)}`);
+        progress.recordAiText();
+        textParts.push(fallbackText);
+        runtimeOptions?.onEvent?.({ type: 'output', line: fallbackText });
+        eventSink.flush();
+      }
 
       const text = textParts.join('');
       d(`final text | chars=${text.length} preview=${truncateForLog(text, 1200) || '-'}`);
@@ -133,6 +189,19 @@ export class LangChainRuntime implements AgentRuntime {
         const usageLine = `[Usage] tokens=${usage.totalTokens ?? '-'} input=${usage.inputTokens ?? '-'} output=${usage.outputTokens ?? '-'}`;
         output.push(usageLine);
         runtimeOptions?.onEvent?.({ type: 'output', line: usageLine });
+      }
+
+      const incompleteReason = progress.getIncompleteReason();
+      if (incompleteReason) {
+        d(`incomplete | ${incompleteReason}`);
+        return {
+          success: false,
+          summary: 'LangChain execution ended before final response',
+          artifacts: [],
+          error: incompleteReason,
+          output,
+          usage,
+        };
       }
 
       const elapsed = Date.now() - startTime;
@@ -176,6 +245,47 @@ export class LangChainRuntime implements AgentRuntime {
 interface SkillPrompt {
   name: string;
   content: string;
+}
+
+interface LangChainRunProgress {
+  recordToolUse: () => void;
+  recordToolResult: () => void;
+  recordAiText: () => void;
+  hasSeenToolResult: () => boolean;
+  getIncompleteReason: () => string | undefined;
+}
+
+export function createLangChainRunProgress(): LangChainRunProgress {
+  let toolUseCount = 0;
+  let toolResultCount = 0;
+  let aiTextAfterLastToolResult = true;
+
+  return {
+    recordToolUse() {
+      toolUseCount += 1;
+      aiTextAfterLastToolResult = false;
+    },
+    recordToolResult() {
+      toolResultCount += 1;
+      aiTextAfterLastToolResult = false;
+    },
+    recordAiText() {
+      aiTextAfterLastToolResult = true;
+    },
+    hasSeenToolResult() {
+      return toolResultCount > 0;
+    },
+    getIncompleteReason() {
+      if (toolUseCount === 0) return undefined;
+      if (toolResultCount < toolUseCount) {
+        return `LangChain stream ended with pending tool calls: used=${toolUseCount} results=${toolResultCount}.`;
+      }
+      if (!aiTextAfterLastToolResult) {
+        return `LangChain stream ended after tool results without a final assistant response: tools=${toolUseCount}.`;
+      }
+      return undefined;
+    },
+  };
 }
 
 export function buildLangChainPromptWithSkills(
@@ -270,25 +380,29 @@ function buildLangChainTools(
   output: string[],
   options: AgentRunOptions | undefined,
   log: (message: string) => void,
+  progress: LangChainRunProgress = createLangChainRunProgress(),
 ): NonNullable<CreateAgentParams['tools']> {
   if (!functionTools?.length) return [];
   return functionTools.map((runtimeTool) => tool(
     async (input: unknown) => {
       const startedAt = Date.now();
+      const toolUseId = `${runtimeTool.name}-${startedAt}-${Math.random().toString(36).slice(2, 8)}`;
       const line = `Tool: ${runtimeTool.name} input=${JSON.stringify(input)}`;
-      log(`tool use | source=function name=${runtimeTool.name} descriptionChars=${runtimeTool.description.length} input=${summarizeForLog(input, 800)}`);
+      progress.recordToolUse();
+      log(`tool use | source=function id=${toolUseId} name=${runtimeTool.name} descriptionChars=${runtimeTool.description.length} input=${summarizeForLog(input, 800)}`);
       output.push(line);
-      options?.onEvent?.({ type: 'tool_use', id: runtimeTool.name, name: runtimeTool.name, input, line });
+      options?.onEvent?.({ type: 'tool_use', id: toolUseId, name: runtimeTool.name, input, line });
       try {
         const result = await runtimeTool.execute(input);
-        log(`tool result | source=function name=${runtimeTool.name} elapsedMs=${Date.now() - startedAt} output=${summarizeForLog(result, 1000)}`);
-        options?.onEvent?.({ type: 'tool_result', toolUseId: runtimeTool.name, result });
+        progress.recordToolResult();
+        log(`tool result | source=function id=${toolUseId} name=${runtimeTool.name} elapsedMs=${Date.now() - startedAt} output=${summarizeForLog(result, 1000)}`);
+        options?.onEvent?.({ type: 'tool_result', toolUseId, result });
         return stringifyToolResult(result);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        log(`tool error | source=function name=${runtimeTool.name} elapsedMs=${Date.now() - startedAt} error=${truncateForLog(message, 1000)}`);
+        log(`tool error | source=function id=${toolUseId} name=${runtimeTool.name} elapsedMs=${Date.now() - startedAt} error=${truncateForLog(message, 1000)}`);
         if (err instanceof Error && err.stack) console.error(err.stack);
-        options?.onEvent?.({ type: 'tool_result', toolUseId: runtimeTool.name, result: { success: false, error: message } });
+        options?.onEvent?.({ type: 'tool_result', toolUseId, result: { success: false, error: message } });
         throw err;
       }
     },
@@ -380,6 +494,7 @@ function createLangChainMcpClient(
   output: string[],
   options: AgentRunOptions | undefined,
   log: (message: string) => void,
+  progress: LangChainRunProgress = createLangChainRunProgress(),
 ): MultiServerMCPClient | undefined {
   log(`normalizing MCP servers | requested=${Object.keys(mcpServers ?? {}).join(',') || '-'}`);
   const normalizedMcpServers = normalizeLangChainMcpServers(mcpServers);
@@ -398,6 +513,7 @@ function createLangChainMcpClient(
     beforeToolCall: (request) => {
       const name = formatMcpToolName(request.serverName, request.name);
       const line = `Tool: ${name} input=${JSON.stringify(request.args ?? {})}`;
+      progress.recordToolUse();
       log(`tool use | source=mcp server=${request.serverName} name=${name} input=${summarizeForLog(request.args ?? {}, 800)}`);
       output.push(line);
       options?.onEvent?.({ type: 'tool_use', id: name, name, input: request.args ?? {}, line });
@@ -405,6 +521,7 @@ function createLangChainMcpClient(
     afterToolCall: (result) => {
       const name = formatMcpToolName(result.serverName, result.name);
       const outputText = stringifyToolResult(result.result);
+      progress.recordToolResult();
       log(`tool result | source=mcp server=${result.serverName} name=${name} chars=${outputText.length} output=${truncateForLog(outputText, 1000)}`);
       options?.onEvent?.({ type: 'tool_result', toolUseId: name, result: outputText });
       return { result: outputText };
@@ -564,9 +681,90 @@ function summarizeStreamTokenForLog(
     reasoningChars: reasoning.length,
     reasoningPreview: reasoning ? truncateForLog(reasoning, 160) : undefined,
     usage,
-    toolCallCount: Array.isArray(token.tool_calls) ? token.tool_calls.length : undefined,
+    toolCallCount: countToolCalls(token) || undefined,
     invalidToolCallCount: Array.isArray(token.invalid_tool_calls) ? token.invalid_tool_calls.length : undefined,
+    finishReason: extractFinishReason(token),
   }), 500);
+}
+
+function splitLangChainStreamChunk(chunk: unknown): { mode?: string; payload: unknown } {
+  if (
+    Array.isArray(chunk)
+    && chunk.length === 2
+    && typeof chunk[0] === 'string'
+    && (chunk[0] === 'messages' || chunk[0] === 'values')
+  ) {
+    return { mode: chunk[0], payload: chunk[1] };
+  }
+  return { payload: chunk };
+}
+
+function extractStateMessages(state: unknown): unknown[] {
+  if (!isRecord(state) || !Array.isArray(state.messages)) return [];
+  return state.messages;
+}
+
+function extractFinalAssistantTextFromState(messages: unknown[]): string {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (!isRecord(message) || !isAiStreamToken(message)) continue;
+    if (countToolCalls(message) > 0) return '';
+    return extractTextFromToken(message);
+  }
+  return '';
+}
+
+function summarizeStateMessagesForLog(messages: unknown[]): string {
+  if (!messages.length) return '';
+  const summary = messages.map((message, index) => {
+    if (!isRecord(message)) return `${index}:unknown`;
+    const type = getMessageType(message) ?? message.type ?? message.role ?? inferSerializedMessageType(message);
+    const kwargs = isRecord(message.kwargs) ? message.kwargs : undefined;
+    const role = typeof message.role === 'string'
+      ? message.role
+      : typeof kwargs?.role === 'string'
+        ? kwargs.role
+        : undefined;
+    const text = extractTextFromToken(message);
+    const toolCalls = countToolCalls(message);
+    const finishReason = extractFinishReason(message);
+    return [
+      `${index}:${String(type || 'unknown')}`,
+      role && role !== type ? `role=${role}` : undefined,
+      text ? `text=${text.length}` : undefined,
+      toolCalls ? `toolCalls=${toolCalls}` : undefined,
+      finishReason ? `finish=${finishReason}` : undefined,
+      type === 'generic' ? `keys=${Object.keys(message).join(',')}` : undefined,
+    ].filter(Boolean).join('/');
+  });
+  return summary.join(' > ');
+}
+
+function inferSerializedMessageType(message: Record<string, unknown>): string | undefined {
+  const id = Array.isArray(message.id) ? message.id : undefined;
+  return typeof id?.at(-1) === 'string' ? id.at(-1) : undefined;
+}
+
+function countToolCalls(message: Record<string, unknown>): number {
+  const direct = Array.isArray(message.tool_calls) ? message.tool_calls.length : 0;
+  if (direct) return direct;
+  const kwargs = isRecord(message.kwargs) ? message.kwargs : undefined;
+  return Array.isArray(kwargs?.tool_calls) ? kwargs.tool_calls.length : 0;
+}
+
+function extractFinishReason(message: Record<string, unknown>): string | undefined {
+  const responseMetadata = isRecord(message.response_metadata) ? message.response_metadata : undefined;
+  const kwargs = isRecord(message.kwargs) ? message.kwargs : undefined;
+  const kwargsResponseMetadata = isRecord(kwargs?.response_metadata) ? kwargs.response_metadata : undefined;
+  const additionalKwargs = isRecord(message.additional_kwargs) ? message.additional_kwargs : undefined;
+  const kwargsAdditional = isRecord(kwargs?.additional_kwargs) ? kwargs.additional_kwargs : undefined;
+  const value = responseMetadata?.finish_reason
+    ?? responseMetadata?.finishReason
+    ?? kwargsResponseMetadata?.finish_reason
+    ?? kwargsResponseMetadata?.finishReason
+    ?? additionalKwargs?.finish_reason
+    ?? kwargsAdditional?.finish_reason;
+  return typeof value === 'string' ? value : undefined;
 }
 
 function summarizeMcpServersForLog(mcpServers: Record<string, Connection>): string {
@@ -658,15 +856,18 @@ export function extractTextFromToken(token: Record<string, unknown>): string {
     .filter(Boolean)
     .join('');
   if (text) return text;
+  if (isRecord(token.kwargs)) return extractTextFromToken(token.kwargs);
   return stringifyMessageContent(token.content);
 }
 
 export function extractReasoningFromToken(token: Record<string, unknown>): string {
   const blocks = Array.isArray(token.contentBlocks) ? token.contentBlocks : [];
-  return blocks
+  const reasoning = blocks
     .map((block) => extractContentBlockReasoning(block))
     .filter(Boolean)
     .join('');
+  if (reasoning) return reasoning;
+  return isRecord(token.kwargs) ? extractReasoningFromToken(token.kwargs) : '';
 }
 
 function extractContentBlockText(block: unknown): string {
@@ -685,11 +886,14 @@ function extractContentBlockReasoning(block: unknown): string {
 }
 
 export function isAiStreamToken(token: Record<string, unknown>): boolean {
-  const type = String(getMessageType(token) ?? token.type ?? '').toLowerCase();
-  if (type) return type === 'ai' || type === 'assistant' || type === 'aimessagechunk';
+  const type = String(getMessageType(token) ?? inferSerializedMessageType(token) ?? token.type ?? '').toLowerCase();
+  if (type === 'ai' || type === 'assistant' || type === 'aimessage' || type === 'aimessagechunk') return true;
+  if (type && type !== 'generic') return false;
 
   const role = String(token.role ?? '').toLowerCase();
   if (role) return role === 'ai' || role === 'assistant';
+
+  if (isRecord(token.kwargs)) return isAiStreamToken(token.kwargs);
 
   if (typeof token.tool_call_id === 'string' || typeof token.toolCallId === 'string') return false;
   if (!Array.isArray(token.contentBlocks)) return false;

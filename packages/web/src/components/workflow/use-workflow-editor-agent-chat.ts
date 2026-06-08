@@ -150,11 +150,11 @@ export function useWorkflowEditorAgentChat({
     appendTimelineTextItem(messageId, 'message', content);
   }, [appendTimelineTextItem]);
 
-  const completeLatestToolCall = useCallback((messageId: string, toolName: string, result: unknown) => {
+  const completeLatestToolCall = useCallback((messageId: string, toolUseId: string, result: unknown) => {
     setAgentMessages((messages) => messages.map((message) => {
       if (message.id !== messageId || !message.timeline?.length) return message;
       const timeline = [...message.timeline];
-      const index = findLastIndex(timeline, (item) => item.type === 'tool' && item.name === toolName && item.status === 'running');
+      const index = findLastIndex(timeline, (item) => item.type === 'tool' && item.id === toolUseId && item.status === 'running');
       if (index === -1) return message;
       timeline[index] = {
         ...timeline[index],
@@ -295,9 +295,10 @@ export function useWorkflowEditorAgentChat({
         }
         if (event.event === 'tool_use') {
           const data = asRecord(event.data);
+          const name = String(data.name ?? 'tool');
           appendToolCall(assistantId, {
-            id: `${String(data.name ?? 'tool')}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-            name: String(data.name ?? 'tool'),
+            id: typeof data.id === 'string' ? data.id : `${name}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            name,
             input: data.input,
             status: 'running',
           });
@@ -305,8 +306,8 @@ export function useWorkflowEditorAgentChat({
         }
         if (event.event === 'tool_result') {
           const data = asRecord(event.data);
-          const toolName = String(data.toolUseId ?? 'tool');
-          completeLatestToolCall(assistantId, toolName, data.result);
+          const toolUseId = String(data.toolUseId ?? 'tool');
+          completeLatestToolCall(assistantId, toolUseId, data.result);
           applyWorkflowPatch(data.result);
           return;
         }

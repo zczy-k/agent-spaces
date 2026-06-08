@@ -314,10 +314,10 @@ function writeRuntimeEvent(res: Response, event: AgentRuntimeEvent): void {
       writeSse(res, 'thinking', { chunk: event.text, status: event.status });
       break;
     case 'tool_use':
-      writeSse(res, 'tool_use', { name: event.name, input: event.input });
+      writeSse(res, 'tool_use', { id: event.id, name: event.name, input: event.input });
       break;
     case 'tool_result':
-      writeSse(res, 'tool_result', { name: event.toolUseId, result: event.result });
+      writeSse(res, 'tool_result', { toolUseId: event.toolUseId, result: event.result });
       break;
     case 'session':
     case 'hook_event':
@@ -339,7 +339,7 @@ function collectRuntimeTimeline(timeline: WorkflowAgentTimelineItem[], event: Ag
 
   if (event.type === 'tool_result') {
     const name = event.toolUseId || 'tool';
-    const index = findLastIndex(timeline, (item) => item.type === 'tool' && item.status === 'running' && (item.id === name || item.name === name));
+    const index = findLastIndex(timeline, (item) => item.type === 'tool' && item.status === 'running' && item.id === name);
     const fallbackIndex = index === -1
       ? findLastIndex(timeline, (item) => item.type === 'tool' && item.status === 'running')
       : index;

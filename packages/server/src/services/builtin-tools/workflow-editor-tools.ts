@@ -86,10 +86,9 @@ export function createWorkflowEditorFunctionTools(ctx: WorkflowEditorToolContext
 
   const definitionByType = new Map(ctx.nodeDefinitions.map((definition) => [definition.type, definition]));
   const searchDefinitions = (input: JsonRecord) => {
-    const nodeType = stringInputAny(input, ['type', 'nodeType', 'node_type', 'name'])?.toLowerCase();
-    const name = stringInputAny(input, ['name', 'nodeType', 'node_type'])?.toLowerCase();
-    const keyword = (stringInput(input, 'keyword') ?? stringInputAny(input, ['name', 'nodeType', 'node_type']))?.toLowerCase();
-    const type = stringInput(input, 'type')?.toLowerCase() ?? nodeType;
+    const type = stringInputAny(input, ['type', 'nodeType', 'node_type'])?.toLowerCase();
+    const name = stringInput(input, 'name')?.toLowerCase();
+    const keyword = stringInput(input, 'keyword')?.toLowerCase();
     const label = stringInput(input, 'label')?.toLowerCase();
     const category = stringInput(input, 'category')?.toLowerCase();
     const description = stringInput(input, 'description')?.toLowerCase();
