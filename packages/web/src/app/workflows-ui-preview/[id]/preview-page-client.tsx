@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { sdk } from '@/lib/sdk';
 import type { WorkflowUiProject } from '@agent-spaces/sdk';
 import { WorkflowUiPreview } from '@/components/workflows-ui/workflow-ui-preview';
-import * as AgentSpacesUI from '@/lib/ui-exports';
+import { useWorkflowUiHostApi } from '@/components/workflows-ui/use-workflow-ui-host-api';
 import { Loader2 } from 'lucide-react';
 
 export default function WorkflowUiPreviewPageClient() {
@@ -14,6 +14,8 @@ export default function WorkflowUiPreviewPageClient() {
   const [sourceCode, setSourceCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useWorkflowUiHostApi(params.id);
 
   const loadProject = useCallback(async () => {
     try {
@@ -33,12 +35,6 @@ export default function WorkflowUiPreviewPageClient() {
   }, [params.id]);
 
   useEffect(() => { loadProject(); }, [loadProject]);
-
-  // Inject UI components for React mode preview
-  useEffect(() => {
-    (window as any).AgentSpacesUI = AgentSpacesUI;
-    return () => { delete (window as any).AgentSpacesUI; };
-  }, []);
 
   if (loading) {
     return (
