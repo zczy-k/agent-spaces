@@ -276,7 +276,13 @@ function formatWorkflowUiPromptContext(context: WorkflowUiPromptContext): string
     '- In React mode, prefer components exposed by window.AgentSpacesUI over hand-written UI components. Example: `const { Button, Card, CardContent } = window.AgentSpacesUI;`.',
     '- In React mode, do not import host UI components from source paths; destructure them from window.AgentSpacesUI.',
     '- To execute enabled plugin tools from preview code, call `window.AgentSpaces.callPluginTool(pluginId, toolName, args)`.',
+    '- `window.AgentSpaces.callPluginTool` returns the plugin tool result directly, not the HTTP wrapper. For example, read MiniMax TTS audio from `result.data.audioUrl`.',
     '- `window.AgentSpacesAPI.callPluginTool` and `window.AgentSpacesAPI.executePluginTool` are compatibility aliases; prefer `window.AgentSpaces.callPluginTool` in new code.',
+    '- Preview code can persist JSON configuration with `window.AgentSpacesUI.readConfigJson(path)` and `window.AgentSpacesUI.writeConfigJson(path, value)`. Paths are relative to the Workflow UI project `configs/` directory.',
+    '- For remembering the last submitted selection, prefer `window.AgentSpacesUI.readLastSelection()` and `window.AgentSpacesUI.writeLastSelection(value)`, which use `configs/last-selection.json`.',
+    '- Preview code can save generated text or binary data under the Workflow UI project `data/` directory with `window.AgentSpacesUI.saveDataFile(path, content)`.',
+    '- Preview code can download a remote file into the Workflow UI project `data/` directory with `window.AgentSpacesUI.downloadFile(url, path?)`.',
+    '- The same config and data file helpers are also available on `window.AgentSpaces` and `window.AgentSpacesAPI` for compatibility.',
     '- In HTML mode, window.AgentSpacesUI and window.AgentSpaces are available, but plain HTML/CSS/JS is acceptable when React components are not practical.',
   );
 

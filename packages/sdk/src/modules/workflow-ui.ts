@@ -42,6 +42,15 @@ export function createWorkflowUiApi(http: HttpClient) {
     writeFile: (id: string, filePath: string, content: string): Promise<void> =>
       http.putVoid(`/api/workflows-ui/${id}/files/content`, { path: filePath, content }),
 
+    readConfig: <T = unknown>(id: string, filePath: string): Promise<{ value: T | null }> =>
+      http.get(`/api/workflows-ui/${id}/configs/content?path=${encodeURIComponent(filePath)}`),
+
+    writeConfig: (id: string, filePath: string, value: unknown): Promise<void> =>
+      http.putVoid(`/api/workflows-ui/${id}/configs/content`, { path: filePath, value }),
+
+    writeDataFile: (id: string, filePath: string, content: string, encoding?: 'base64'): Promise<{ ok: true; path: string; size: number }> =>
+      http.put(`/api/workflows-ui/${id}/data/content`, { path: filePath, content, encoding }),
+
     importZip: (data: { zip: string; name?: string; type?: 'react' | 'html'; description?: string }): Promise<WorkflowUiProject> =>
       http.post('/api/workflows-ui/import', data),
   };

@@ -52,6 +52,33 @@ function safeSrcPath(projectId: string, filePath: string): string {
   return target;
 }
 
+function safeProjectSubdirPath(projectId: string, dirName: 'configs' | 'data', filePath: string): string {
+  if (!filePath || filePath.includes('\0')) throw new Error('Invalid file path');
+  if (filePath.startsWith('/') || /^[a-zA-Z]:[\\/]/.test(filePath)) {
+    throw new Error('Absolute paths are not allowed');
+  }
+  const root = resolve(projectDir(projectId), dirName);
+  const target = resolve(root, filePath);
+  if (target !== root && !target.startsWith(root + sep)) {
+    throw new Error(`Path escapes project ${dirName} directory: ${filePath}`);
+  }
+  return target;
+}
+
+function touchProject(projectId: string): void {
+  const manifest = readJsonFile<WorkflowUiProject>(manifestPath(projectId));
+  if (!manifest) return;
+
+  manifest.updatedAt = new Date().toISOString();
+  writeJsonFile(manifestPath(projectId), manifest);
+  const projects = listProjects();
+  const idx = projects.findIndex(p => p.id === projectId);
+  if (idx !== -1) {
+    projects[idx] = manifest;
+    writeJsonFile(indexPath(), projects);
+  }
+}
+
 // ---- CRUD ----
 
 export function listProjects(): WorkflowUiProject[] {
@@ -159,18 +186,28 @@ export function writeFile(projectId: string, filePath: string, content: string):
   const fullPath = safeSrcPath(projectId, filePath);
   ensureDir(dirname(fullPath));
   writeFileSync(fullPath, content, 'utf-8');
+  touchProject(projectId);
+}
 
-  const manifest = readJsonFile<WorkflowUiProject>(manifestPath(projectId));
-  if (manifest) {
-    manifest.updatedAt = new Date().toISOString();
-    writeJsonFile(manifestPath(projectId), manifest);
-    const projects = listProjects();
-    const idx = projects.findIndex(p => p.id === projectId);
-    if (idx !== -1) {
-      projects[idx] = manifest;
-      writeJsonFile(indexPath(), projects);
-    }
-  }
+export function readConfig(projectId: string, filePath: string): unknown | null {
+  const fullPath = safeProjectSubdirPath(projectId, 'configs', filePath);
+  if (!existsSync(fullPath)) return null;
+  return JSON.parse(readFileSync(fullPath, 'utf-8'));
+}
+
+export function writeConfig(projectId: string, filePath: string, value: unknown): void {
+  const fullPath = safeProjectSubdirPath(projectId, 'configs', filePath);
+  ensureDir(dirname(fullPath));
+  writeFileSync(fullPath, JSON.stringify(value, null, 2), 'utf-8');
+  touchProject(projectId);
+}
+
+export function writeDataFile(projectId: string, filePath: string, content: Buffer | string): number {
+  const fullPath = safeProjectSubdirPath(projectId, 'data', filePath);
+  ensureDir(dirname(fullPath));
+  writeFileSync(fullPath, content);
+  touchProject(projectId);
+  return Buffer.byteLength(content);
 }
 
 // ---- ZIP Import ----

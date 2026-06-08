@@ -92,6 +92,18 @@ export function writeFile(projectId: string, filePath: string, content: string):
   store.writeFile(projectId, filePath, content);
 }
 
+export function readConfig(projectId: string, filePath: string): unknown | null {
+  return store.readConfig(projectId, filePath);
+}
+
+export function writeConfig(projectId: string, filePath: string, value: unknown): void {
+  store.writeConfig(projectId, filePath, value);
+}
+
+export function writeDataFile(projectId: string, filePath: string, content: Buffer | string): number {
+  return store.writeDataFile(projectId, filePath, content);
+}
+
 // ---- ZIP Import ----
 
 export async function importZip(

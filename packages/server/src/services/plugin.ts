@@ -775,7 +775,8 @@ export async function executePluginTool(
   const actions = getRegisteredPluginActions(plugin);
   if (!actions.length) throw new Error(`Plugin has no registered tools: ${pluginId}`);
 
-  return createPluginActions(actions).tools().handler(name, args, api);
+  const mergedArgs = Object.assign({}, getPluginConfig(pluginId), args);
+  return createPluginActions(actions).tools().handler(name, mergedArgs, api);
 }
 
 function getExecutablePluginByNodeType(nodeType: string): ExecutablePlugin | null {

@@ -57,6 +57,33 @@ router.put('/:id/files/content', (req: Request<{ id: string }>, res: Response) =
   } catch (error: any) { res.status(500).json({ error: error.message }); }
 });
 
+router.get('/:id/configs/content', (req: Request<{ id: string }, any, any, { path?: string }>, res: Response) => {
+  try {
+    const filePath = req.query.path as string;
+    if (!filePath) { res.status(400).json({ error: 'path query parameter is required' }); return; }
+    res.json({ value: svc.readConfig(req.params.id, filePath) });
+  } catch (error: any) { res.status(500).json({ error: error.message }); }
+});
+
+router.put('/:id/configs/content', (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const { path: filePath, value } = req.body;
+    if (!filePath || value === undefined) { res.status(400).json({ error: 'path and value are required' }); return; }
+    svc.writeConfig(req.params.id, filePath, value);
+    res.json({ ok: true });
+  } catch (error: any) { res.status(500).json({ error: error.message }); }
+});
+
+router.put('/:id/data/content', (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const { path: filePath, content, encoding } = req.body;
+    if (!filePath || content === undefined) { res.status(400).json({ error: 'path and content are required' }); return; }
+    const data = encoding === 'base64' ? Buffer.from(String(content), 'base64') : String(content);
+    const size = svc.writeDataFile(req.params.id, filePath, data);
+    res.json({ ok: true, path: `data/${filePath}`, size });
+  } catch (error: any) { res.status(500).json({ error: error.message }); }
+});
+
 // ZIP Import
 router.post('/import', async (req: Request, res: Response) => {
   try {

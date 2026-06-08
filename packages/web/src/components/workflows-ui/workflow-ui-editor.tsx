@@ -15,9 +15,37 @@ import dynamic from 'next/dynamic';
 import '@/lib/monaco-loader';
 
 const FILE_POLL_INTERVAL_MS = 2000;
+const LAST_SELECTION_CONFIG = 'last-selection.json';
 
 function areFileListsEqual(left: string[], right: string[]) {
   return left.length === right.length && left.every((file, index) => file === right[index]);
+}
+
+function normalizeRelativePath(filePath: string, fallback: string) {
+  const normalized = (filePath || fallback).trim().replace(/\\/g, '/').replace(/^\/+/, '');
+  if (!normalized || normalized.includes('\0') || normalized.split('/').includes('..')) {
+    throw new Error(`Invalid file path: ${filePath}`);
+  }
+  return normalized;
+}
+
+function inferDownloadFileName(url: string) {
+  try {
+    const parsed = new URL(url, window.location.href);
+    const lastSegment = parsed.pathname.split('/').filter(Boolean).pop();
+    return lastSegment ? decodeURIComponent(lastSegment) : 'download.bin';
+  } catch {
+    return 'download.bin';
+  }
+}
+
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
 }
 
 const MonacoEditor = dynamic(
@@ -54,24 +82,82 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: toolName, args }),
       });
-      return resp.json();
+      const payload = await resp.json();
+      if (!resp.ok) return payload;
+      return Object.prototype.hasOwnProperty.call(payload, 'result') ? payload.result : payload;
     };
 
-    (window as any).AgentSpacesUI = AgentSpacesUI;
+    const readConfigJson = async <T,>(filePath = LAST_SELECTION_CONFIG): Promise<T | null> => {
+      const path = normalizeRelativePath(filePath, LAST_SELECTION_CONFIG);
+      const { value } = await sdk.workflowUi.readConfig<T>(projectId, path);
+      return value;
+    };
+
+    const writeConfigJson = async (filePath: string, value: unknown) => {
+      const path = normalizeRelativePath(filePath, LAST_SELECTION_CONFIG);
+      await sdk.workflowUi.writeConfig(projectId, path, value);
+      return { ok: true, path: `configs/${path}` };
+    };
+
+    const readLastSelection = <T,>() => readConfigJson<T>(LAST_SELECTION_CONFIG);
+    const writeLastSelection = (value: unknown) => writeConfigJson(LAST_SELECTION_CONFIG, value);
+
+    const saveDataFile = async (filePath: string, content: string | Blob | ArrayBuffer | Uint8Array) => {
+      const path = normalizeRelativePath(filePath, 'download.bin');
+      if (typeof content === 'string') {
+        return sdk.workflowUi.writeDataFile(projectId, path, content);
+      }
+
+      const blob = content instanceof Blob ? content : new Blob([content]);
+      const base64 = await blobToBase64(blob);
+      return sdk.workflowUi.writeDataFile(projectId, path, base64, 'base64');
+    };
+
+    const downloadFile = async (url: string, filePath?: string, init?: RequestInit) => {
+      const response = await fetch(url, init);
+      if (!response.ok) throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+      const path = normalizeRelativePath(filePath ?? inferDownloadFileName(url), 'download.bin');
+      const base64 = await blobToBase64(await response.blob());
+      return sdk.workflowUi.writeDataFile(projectId, path, base64, 'base64');
+    };
+
+    const hostUi = {
+      ...AgentSpacesUI,
+      readConfigJson,
+      writeConfigJson,
+      readLastSelection,
+      writeLastSelection,
+      saveDataFile,
+      downloadFile,
+    };
+
+    (window as any).AgentSpacesUI = hostUi;
     (window as any).AgentSpaces = {
       callPluginTool: executePluginTool,
       executePluginTool,
+      readConfigJson,
+      writeConfigJson,
+      readLastSelection,
+      writeLastSelection,
+      saveDataFile,
+      downloadFile,
     };
     (window as any).AgentSpacesAPI = {
       callPluginTool: executePluginTool,
       executePluginTool,
+      readConfigJson,
+      writeConfigJson,
+      readLastSelection,
+      writeLastSelection,
+      saveDataFile,
+      downloadFile,
     };
     return () => {
       delete (window as any).AgentSpacesUI;
       delete (window as any).AgentSpaces;
       delete (window as any).AgentSpacesAPI;
     };
-  }, []);
+  }, [projectId]);
 
   // Load project
   useEffect(() => {
