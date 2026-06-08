@@ -32,6 +32,7 @@
     "@forgeui": "https://forgeui.in/r/{name}.json",
     "@scrollxui": "https://www.scrollxui.dev/registry/{name}.json",
     "@aceternity": "https://ui.aceternity.com/registry/{name}.json",
-    "@react-bits": "https://reactbits.dev/r/{name}.json"
+    "@react-bits": "https://reactbits.dev/r/{name}.json",
+    "@shadcn-space": "https://shadcnspace.com/r/{name}.json"
   }
 }
