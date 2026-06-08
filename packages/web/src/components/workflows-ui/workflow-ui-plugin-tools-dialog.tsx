@@ -123,12 +123,14 @@ export function WorkflowUiPluginToolsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent
+        className="!w-[80vw] !h-[80vh] !max-w-none sm:!max-w-none !flex !flex-col !overflow-hidden"
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Wrench className="h-4 w-4" /> 插件管理
             <div className="flex-1" />
-            <Button variant="ghost" size="sm" className="h-6 gap-1 text-xs" onClick={() => setPluginsDialogOpen(true)}>
+            <Button variant="ghost" size="sm" className="h-6 gap-1 text-xs me-8" onClick={() => setPluginsDialogOpen(true)}>
               <PackagePlus className="h-3 w-3" /> 插件商店
             </Button>
           </DialogTitle>
@@ -143,8 +145,8 @@ export function WorkflowUiPluginToolsDialog({
             未安装任何插件
           </div>
         ) : (
-          <ScrollArea className="max-h-96">
-            <div className="space-y-3">
+          <ScrollArea className="flex-1 min-h-0">
+            <div className="space-y-4">
               {plugins.map((plugin) => {
                 const isEnabled = enabledSet.has(plugin.id);
                 const tools = toolsByPlugin[plugin.id] || [];
@@ -169,21 +171,28 @@ export function WorkflowUiPluginToolsDialog({
                       />
                     </div>
                     {/* Plugin description */}
-                    <div className="px-3 pb-1 text-[11px] text-muted-foreground">{plugin.description}</div>
-                    {/* Tools list */}
+                    <div className="px-3 py-1 text-[11px] text-muted-foreground">{plugin.description}</div>
+                    {/* Tools cards grid */}
                     {tools.length > 0 && (
-                      <div className="border-t">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 p-3">
                         {tools.map((tool) => (
-                          <div key={tool.name} className="flex items-center gap-2 px-3 py-1.5 hover:bg-muted text-xs">
-                            <div className="min-w-0 flex-1">
-                              <div className="font-mono font-medium truncate">{tool.name}</div>
-                              {tool.description && <div className="text-muted-foreground truncate">{tool.description}</div>}
+                          <div
+                            key={tool.name}
+                            className="group flex flex-col gap-1 rounded-md border p-2 hover:bg-muted cursor-pointer transition-colors"
+                            onClick={() => handleOpenToolDialog(plugin.id, plugin.name, plugin.iconPath, tool)}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <Wrench className="h-3 w-3 shrink-0 text-muted-foreground" />
+                              <span className="font-mono text-xs font-medium truncate">{tool.name}</span>
                             </div>
+                            {tool.description && (
+                              <span className="text-[11px] text-muted-foreground line-clamp-2">{tool.description}</span>
+                            )}
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-6 shrink-0"
-                              onClick={() => handleOpenToolDialog(plugin.id, plugin.name, plugin.iconPath, tool)}
+                              className="mt-auto h-5 self-end opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => { e.stopPropagation(); handleOpenToolDialog(plugin.id, plugin.name, plugin.iconPath, tool); }}
                             >
                               <Play className="h-3 w-3" />
                             </Button>

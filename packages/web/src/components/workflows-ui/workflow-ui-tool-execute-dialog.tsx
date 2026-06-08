@@ -78,13 +78,27 @@ export function WorkflowUiToolExecuteDialog({
   pluginIconPath,
   tool,
 }: ToolExecuteDialogProps) {
-  const [, setConfig] = useState<Record<string, string>>({});
+  const [config, setConfig] = useState<Record<string, string>>({});
   const [args, setArgs] = useState<Record<string, unknown>>({});
   const [loading, setLoading] = useState(false);
   const [executing, setExecuting] = useState(false);
   const [result, setResult] = useState<{ data: unknown } | { error: string } | null>(null);
 
   const fields = parseSchemaProperties(tool?.input_schema);
+
+  const buildDefaults = useCallback((cfg: Record<string, string>) => {
+    const initial: Record<string, unknown> = {};
+    fields.forEach((f) => {
+      if (f.default !== undefined) {
+        initial[f.key] = f.default;
+      } else if (cfg[f.key] !== undefined && cfg[f.key] !== '') {
+        initial[f.key] = f.type === 'number' ? Number(cfg[f.key]) : cfg[f.key];
+      } else if (f.type === 'boolean') {
+        initial[f.key] = false;
+      }
+    });
+    return initial;
+  }, [fields]);
 
   // Load plugin config + reset args when tool changes
   useEffect(() => {
@@ -96,22 +110,11 @@ export function WorkflowUiToolExecuteDialog({
       .getConfig(pluginId)
       .then((cfg) => {
         setConfig(cfg);
-        // Pre-fill args: schema default -> plugin config -> empty
-        const initial: Record<string, unknown> = {};
-        fields.forEach((f) => {
-          if (f.default !== undefined) {
-            initial[f.key] = f.default;
-          } else if (cfg[f.key] !== undefined && cfg[f.key] !== '') {
-            initial[f.key] = f.type === 'number' ? Number(cfg[f.key]) : cfg[f.key];
-          } else if (f.type === 'boolean') {
-            initial[f.key] = false;
-          }
-        });
-        setArgs(initial);
+        setArgs(buildDefaults(cfg));
       })
       .catch(() => setArgs({}))
       .finally(() => setLoading(false));
-  }, [open, pluginId, tool]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, pluginId, tool, buildDefaults]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleChange = useCallback((key: string, value: unknown) => {
     setArgs((prev) => ({ ...prev, [key]: value }));
@@ -152,8 +155,8 @@ export function WorkflowUiToolExecuteDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-[80vw]">
-        <DialogHeader>
+      <DialogContent className="!w-[80vw] !h-[80vh] !max-w-none sm:!max-w-none !flex !flex-col !overflow-hidden !gap-0">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2 text-sm">
             <PluginIcon
               source={pluginIconPath ? { type: 'url', url: resolveServerAssetUrl(`/api/plugins/${pluginId}/icon`) } : { type: 'builtin', variant: 'local' }}
@@ -165,9 +168,9 @@ export function WorkflowUiToolExecuteDialog({
           )}
         </DialogHeader>
 
-        <div className={`grid gap-4 ${isWideScreen ? 'grid-cols-2' : 'grid-cols-1'}`}>
+        <div className={`flex-1 min-h-0 overflow-hidden grid gap-4 ${isWideScreen ? 'grid-cols-2' : 'grid-cols-1'}`}>
           {/* Left: parameters */}
-          <div className="min-w-0 space-y-3">
+          <div className="min-w-0 flex flex-col overflow-hidden">
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -177,7 +180,7 @@ export function WorkflowUiToolExecuteDialog({
                 此工具无需参数
               </div>
             ) : (
-              <ScrollArea className="max-h-[70vh]">
+              <ScrollArea className="flex-1 overflow-hidden">
                 <div className="space-y-3 pr-2">
                   {fields.map((field) => (
                     <FieldRow
@@ -190,30 +193,32 @@ export function WorkflowUiToolExecuteDialog({
                 </div>
               </ScrollArea>
             )}
-
-            <div className="flex items-center gap-2 pt-1">
-              <Button variant="outline" size="sm" onClick={() => handleClose(false)}>
-                关闭
-              </Button>
-              <Button size="sm" disabled={executing || loading} onClick={handleExecute}>
-                {executing && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
-                执行
-              </Button>
-            </div>
           </div>
 
           {/* Right: result (only when wide screen / result exists) */}
           {isWideScreen && (
-            <div className="min-w-0 border-l pl-4">
+            <div className="min-w-0 border-l pl-4 flex flex-col overflow-hidden">
               {'error' in result! ? (
                 <div className="rounded border border-destructive/50 bg-destructive/10 p-3 text-xs text-destructive">
                   {result.error}
                 </div>
               ) : (
-                <JsonViewer data={result.data} rootName="result" defaultExpanded={2} className="max-h-[70vh]" />
+                <ScrollArea className="flex-1 overflow-hidden">
+                  <JsonViewer data={result.data} rootName="result" defaultExpanded={2} />
+                </ScrollArea>
               )}
             </div>
           )}
+        </div>
+
+        <div className="shrink-0 flex items-center justify-end gap-2 pt-1">
+          <Button variant="outline" size="sm" onClick={() => { setArgs(buildDefaults(config)); setResult(null); }}>
+            重置
+          </Button>
+          <Button size="sm" disabled={executing || loading} onClick={handleExecute}>
+            {executing && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+            执行
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
