@@ -3,10 +3,11 @@
 import type { WorkflowUiProject } from '@agent-spaces/sdk';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Pencil, Copy, Trash2, MoreVertical, Puzzle } from 'lucide-react';
+import { Pencil, Copy, Trash2, MoreVertical, Puzzle, Download } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { nativeNavigate } from '@/lib/navigate';
 import { useRouter } from 'next/navigation';
+import { sdk } from '@/lib/sdk';
 
 interface WorkflowsUiCardProps {
   project: WorkflowUiProject;
@@ -16,6 +17,16 @@ interface WorkflowsUiCardProps {
 
 export function WorkflowsUiCard({ project, onDelete, onDuplicate }: WorkflowsUiCardProps) {
   const router = useRouter();
+
+  const handleExportZip = async () => {
+    const blob = await sdk.workflowUi.exportZip(project.id);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${(project.name || 'project').replace(/[^\w\-.]/g, '_')}.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const pluginCount = project.enabledPlugins?.length ?? 0;
 
@@ -41,6 +52,9 @@ export function WorkflowsUiCard({ project, onDelete, onDuplicate }: WorkflowsUiC
             <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => onDelete(project.id)}>
               <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleExportZip}>
+              <Download className="h-3.5 w-3.5 mr-2" /> Export ZIP
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -50,7 +64,7 @@ export function WorkflowsUiCard({ project, onDelete, onDuplicate }: WorkflowsUiC
             {(project.name || 'U').charAt(0).toUpperCase()}
           </span>
           <CardTitle className="text-sm truncate">{project.name}</CardTitle>
-          <Badge variant={project.type === 'react' ? 'default' : 'secondary'} className="text-[10px] ml-auto shrink-0">
+          <Badge variant={project.type === 'react' ? 'default' : 'secondary'} className="text-[10px] ml-auto me-6 shrink-0">
             {project.type === 'react' ? 'React' : 'HTML'}
           </Badge>
         </div>

@@ -84,6 +84,18 @@ router.put('/:id/data/content', (req: Request<{ id: string }>, res: Response) =>
   } catch (error: any) { res.status(500).json({ error: error.message }); }
 });
 
+// ZIP Export
+router.get('/:id/export', async (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const zip = await svc.exportZip(req.params.id);
+    const project = svc.getProject(req.params.id);
+    const name = (project?.name ?? 'project').replace(/[^\w\-.]/g, '_');
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${name}.zip"`);
+    res.send(zip);
+  } catch (error: any) { res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message }); }
+});
+
 // ZIP Import
 router.post('/import', async (req: Request, res: Response) => {
   try {

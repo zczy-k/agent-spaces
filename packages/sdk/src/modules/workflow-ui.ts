@@ -53,5 +53,8 @@ export function createWorkflowUiApi(http: HttpClient) {
 
     importZip: (data: { zip: string; name?: string; type?: 'react' | 'html'; description?: string }): Promise<WorkflowUiProject> =>
       http.post('/api/workflows-ui/import', data),
+
+    exportZip: (id: string): Promise<Blob> =>
+      http.raw(`/api/workflows-ui/${id}/export`).then(r => r.blob()),
   };
 }

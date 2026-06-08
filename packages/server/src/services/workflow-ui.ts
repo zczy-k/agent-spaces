@@ -104,6 +104,34 @@ export function writeDataFile(projectId: string, filePath: string, content: Buff
   return store.writeDataFile(projectId, filePath, content);
 }
 
+// ---- ZIP Export ----
+
+export async function exportZip(projectId: string): Promise<Buffer> {
+  const project = store.getProject(projectId);
+  if (!project) throw new Error(`Project not found: ${projectId}`);
+
+  const archiver = (await import('archiver')).default;
+  const archive = archiver('zip', { zlib: { level: 6 } });
+  const chunks: Buffer[] = [];
+
+  archive.on('data', (chunk: Buffer) => chunks.push(chunk));
+
+  // Add manifest (strip internal fields)
+  const { id, createdAt, updatedAt, ...manifest } = project;
+  archive.append(JSON.stringify(manifest, null, 2), { name: 'manifest.json' });
+
+  // Add source files
+  for (const filePath of store.getFileTree(projectId)) {
+    const content = store.readFile(projectId, filePath);
+    if (content !== null) {
+      archive.append(content, { name: `src/${filePath}` });
+    }
+  }
+
+  await archive.finalize();
+  return Buffer.concat(chunks);
+}
+
 // ---- ZIP Import ----
 
 export async function importZip(
