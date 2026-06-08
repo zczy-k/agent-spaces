@@ -10,16 +10,19 @@ import { ExecutionChecklist } from '@/components/ui/checklist-cell';
 import { ExecutionInputForm } from '@/components/workflow/workflow-execution-input-dialog';
 import { JsonViewer } from '@/components/viewers/json-viewer';
 import FileCard from '@/components/file-card-collections';
+import { getWS } from '@/lib/ws';
+import { sendNativeNotification } from '@/lib/native-notification';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+import { Loader2, Play, Square, Download } from 'lucide-react';
+import { BackButton } from '@/components/common/back-button';
+import { useTranslations } from 'next-intl';
 
 type FormatFileProps =
   | "doc" | "pdf" | "md" | "mdx" | "csv" | "xls" | "xlsx" | "txt"
   | "ppt" | "pptx" | "zip" | "rar" | "tar" | "gz"
   | "code" | "html" | "js" | "jsx" | "tsx" | "css" | "json"
   | "img" | "png" | "jpg" | "jpeg" | "video";
-import { getWS } from '@/lib/ws';
-import { Loader2, Play, Square, Download } from 'lucide-react';
-import { BackButton } from '@/components/common/back-button';
-import { useTranslations } from 'next-intl';
 
 interface FileOutput {
   name: string;
@@ -27,7 +30,17 @@ interface FileOutput {
   url: string;
 }
 
-/** 从扩展名推断 FormatFileProps 类型 */
+type EntryStatus = 'running' | 'completed' | 'error' | 'stopped';
+
+interface ExecutionEntry {
+  localId: number;
+  executionId: string;
+  status: EntryStatus;
+  log: ExecutionLog | null;
+  inputValues: Record<string, unknown>;
+  createdAt: number;
+}
+
 function extToFormat(ext: string): FormatFileProps {
   const map: Record<string, FormatFileProps> = {
     pdf: 'pdf', doc: 'doc', docx: 'doc', md: 'md', mdx: 'mdx', txt: 'txt',
@@ -41,7 +54,6 @@ function extToFormat(ext: string): FormatFileProps {
   return map[ext.toLowerCase()] || 'code';
 }
 
-/** 提取 end 节点输出中的文件 URL */
 function extractFileOutputs(log: ExecutionLog): FileOutput[] {
   const endIds = new Set((log.snapshot?.nodes || []).filter(n => n.type === 'end').map(n => n.id));
   const results: FileOutput[] = [];
@@ -49,7 +61,6 @@ function extractFileOutputs(log: ExecutionLog): FileOutput[] {
 
   function walk(obj: unknown) {
     if (typeof obj === 'string') {
-      // 匹配包含扩展名的 URL 或路径
       const match = obj.match(/\/([^/?#]+\.(?:mp4|mp3|wav|flac|aac|ogg|pdf|doc|docx|md|mdx|txt|csv|xls|xlsx|ppt|pptx|zip|rar|tar|gz|html|htm|js|jsx|tsx|css|json|png|jpg|jpeg|gif|webp|svg|bmp|avi|mov|mkv|webm))(?:\?|#|$)/i);
       if (match && !seen.has(obj)) {
         seen.add(obj);
@@ -71,7 +82,6 @@ function extractFileOutputs(log: ExecutionLog): FileOutput[] {
   return results;
 }
 
-/** 提取 end 节点的完整输出数据 */
 function extractEndOutput(log: ExecutionLog): unknown {
   const endIds = new Set((log.snapshot?.nodes || []).filter(n => n.type === 'end').map(n => n.id));
   const outputs: unknown[] = [];
@@ -84,6 +94,28 @@ function extractEndOutput(log: ExecutionLog): unknown {
   return outputs;
 }
 
+/** 在 entries 数组中匹配或分配 executionId */
+function matchAndUpdate(
+  prev: ExecutionEntry[],
+  execId: string,
+  update: Partial<ExecutionEntry>
+): ExecutionEntry[] {
+  const hasExact = prev.some(en => en.executionId === execId);
+  if (hasExact) {
+    return prev.map(en => en.executionId === execId ? { ...en, ...update } : en);
+  }
+  const idx = prev.findIndex(en => en.status === 'running' && !en.executionId);
+  if (idx === -1) return prev;
+  return prev.map((en, i) => i === idx ? { ...en, executionId: execId, ...update } : en);
+}
+
+const STATUS_COLORS: Record<EntryStatus, string> = {
+  running: 'bg-blue-500 animate-pulse',
+  completed: 'bg-green-500',
+  error: 'bg-red-500',
+  stopped: 'bg-yellow-500',
+};
+
 export default function WorkflowSharePage() {
   const t = useTranslations('workflows');
   const searchParams = useSearchParams();
@@ -93,16 +125,21 @@ export default function WorkflowSharePage() {
   const [workflow, setWorkflow] = useState<Workflow | null>(null);
   const [loading, setLoading] = useState(true);
   const [initialValues, setInitialValues] = useState<Record<string, string>>({});
-  const [executing, setExecuting] = useState(false);
-  const [currentExecutionId, setCurrentExecutionId] = useState<string | null>(null);
-  const [executionLog, setExecutionLog] = useState<ExecutionLog | null>(null);
-  const cleanupRef = useRef<(() => void)[]>([]);
 
+  // Multi-execution state
+  const [entries, setEntries] = useState<ExecutionEntry[]>([]);
+  const [activeLocalId, setActiveLocalId] = useState<number | null>(null);
+  const nextLocalIdRef = useRef(1);
+  const prevStatusMapRef = useRef<Map<number, EntryStatus>>(new Map());
+  const pendingConnCleanupRef = useRef<(() => void)[]>([]);
+
+  // Load workflow
   useEffect(() => {
     if (!workflowId) { setLoading(false); return; }
     workflowApi.get(workflowId).then(setWorkflow).catch(() => setWorkflow(null)).finally(() => setLoading(false));
   }, [workflowId]);
 
+  // Parse URL params
   useEffect(() => {
     if (!paramsStr) return;
     try {
@@ -115,7 +152,69 @@ export default function WorkflowSharePage() {
     } catch { /* ignore */ }
   }, [paramsStr]);
 
-  useEffect(() => { return () => { for (const c of cleanupRef.current) c(); cleanupRef.current = []; }; }, []);
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => { for (const c of pendingConnCleanupRef.current) c(); pendingConnCleanupRef.current = []; };
+  }, []);
+
+  // Global WS listeners for all executions
+  useEffect(() => {
+    if (!workflowId) return;
+    const ws = getWS('workflows');
+
+    const offLog = ws.on('execution:log', (data) => {
+      const e = data as { workflowId?: string; executionId?: string; log?: ExecutionLog };
+      if (e.workflowId !== workflowId || !e.log) return;
+      const execId = e.executionId || e.log.id;
+      if (!execId) return;
+      setEntries(prev => matchAndUpdate(prev, execId, { log: e.log! }));
+    });
+
+    const offDone = ws.on('workflow:completed', (data) => {
+      const e = data as { workflowId?: string; log?: ExecutionLog };
+      if (e.workflowId !== workflowId || !e.log) return;
+      const execId = e.log.id;
+      if (!execId) return;
+      setEntries(prev => matchAndUpdate(prev, execId, { status: 'completed', log: e.log! }));
+    });
+
+    const offErr = ws.on('workflow:error', (data) => {
+      const e = data as { workflowId?: string; log?: ExecutionLog };
+      if (e.workflowId !== workflowId) return;
+      const execId = e.log?.id;
+      if (!execId) return;
+      setEntries(prev => {
+        const existing = prev.find(en => en.executionId === execId);
+        const currentLog = existing?.log ?? null;
+        return matchAndUpdate(prev, execId, { status: 'error', log: e.log ?? currentLog });
+      });
+    });
+
+    return () => { offLog(); offDone(); offErr(); };
+  }, [workflowId]);
+
+  // Notification effect: detect status transitions
+  useEffect(() => {
+    for (const entry of entries) {
+      const prev = prevStatusMapRef.current.get(entry.localId);
+      if (prev === entry.status) continue;
+      prevStatusMapRef.current.set(entry.localId, entry.status);
+      if (prev === 'running') {
+        if (entry.status === 'completed') {
+          toast.success(t('share.execCompleted', { id: entry.localId }));
+          sendNativeNotification('Agent Spaces', t('share.execCompleted', { id: entry.localId })).catch(() => {});
+        } else if (entry.status === 'error') {
+          toast.error(t('share.execError', { id: entry.localId }));
+          sendNativeNotification('Agent Spaces', t('share.execError', { id: entry.localId })).catch(() => {});
+        }
+      }
+    }
+  }, [entries, t]);
+
+  // Active entry
+  const activeEntry = useMemo(() =>
+    entries.find(e => e.localId === activeLocalId) ?? null
+  , [entries, activeLocalId]);
 
   const inputFields = useMemo<OutputField[]>(() => {
     const startNode = (workflow?.nodes || []).find(n => n.type === 'start');
@@ -123,57 +222,52 @@ export default function WorkflowSharePage() {
     return Array.isArray(fields) ? fields as OutputField[] : [];
   }, [workflow]);
 
-  const endOutput = useMemo(() => executionLog ? extractEndOutput(executionLog) : null, [executionLog]);
-  const fileOutputs = useMemo(() => executionLog ? extractFileOutputs(executionLog) : [], [executionLog]);
+  const endOutput = useMemo(() => activeEntry?.log ? extractEndOutput(activeEntry.log) : null, [activeEntry]);
+  const fileOutputs = useMemo(() => activeEntry?.log ? extractFileOutputs(activeEntry.log) : [], [activeEntry]);
 
   const handleExecute = useCallback((values: Record<string, unknown>) => {
     if (!workflowId || !workflow) return;
-    for (const c of cleanupRef.current) c(); cleanupRef.current = [];
+    const localId = nextLocalIdRef.current++;
+    setEntries(prev => [...prev, {
+      localId, executionId: '', status: 'running', log: null, inputValues: values, createdAt: Date.now(),
+    }]);
+    setActiveLocalId(localId);
 
-    setExecuting(true); setExecutionLog(null);
     const ws = getWS('workflows');
-    const send = () => ws.send('workflow:execute', { workflowId, input: values, snapshot: { nodes: workflow.nodes, edges: workflow.edges, groups: workflow.groups || [] } });
-
-    const offLog = ws.on('execution:log', (data) => {
-      const e = data as { workflowId?: string; executionId?: string; log?: ExecutionLog };
-      if (e.workflowId !== workflowId || !e.log) return;
-      if (e.executionId || e.log.id) setCurrentExecutionId(e.executionId || e.log.id);
-      setExecutionLog(e.log);
+    const send = () => ws.send('workflow:execute', {
+      workflowId, input: values,
+      snapshot: { nodes: workflow.nodes, edges: workflow.edges, groups: workflow.groups || [] },
     });
-    const offDone = ws.on('workflow:completed', (data) => {
-      const e = data as { workflowId?: string; log?: ExecutionLog };
-      if (e.workflowId !== workflowId) return;
-      if (e.log) setExecutionLog(e.log);
-      setExecuting(false); setCurrentExecutionId(null);
-    });
-    const offErr = ws.on('workflow:error', (data) => {
-      const e = data as { workflowId?: string; log?: ExecutionLog };
-      if (e.workflowId !== workflowId) return;
-      if (e.log) setExecutionLog(e.log);
-      setExecuting(false); setCurrentExecutionId(null);
-    });
-    cleanupRef.current = [offLog, offDone, offErr];
-
     if (ws.connected) { send(); } else {
-      const offConn = ws.on('connected', () => { offConn(); cleanupRef.current = cleanupRef.current.filter(c => c !== offConn); send(); });
-      cleanupRef.current.push(offConn);
+      const offConn = ws.on('connected', () => {
+        offConn();
+        pendingConnCleanupRef.current = pendingConnCleanupRef.current.filter(c => c !== offConn);
+        send();
+      });
+      pendingConnCleanupRef.current.push(offConn);
     }
   }, [workflowId, workflow]);
 
-  const handleStop = useCallback(() => {
-    if (!currentExecutionId) return;
-    getWS('workflows').send('workflow:stop', { executionId: currentExecutionId });
-    setExecuting(false); setCurrentExecutionId(null);
-  }, [currentExecutionId]);
+  const handleStop = useCallback((localId: number) => {
+    setEntries(prev => {
+      const entry = prev.find(e => e.localId === localId);
+      if (!entry?.executionId || entry.status !== 'running') return prev;
+      getWS('workflows').send('workflow:stop', { executionId: entry.executionId });
+      return prev.map(e => e.localId === localId ? { ...e, status: 'stopped' as EntryStatus } : e);
+    });
+  }, []);
+
+  const isExecuting = activeEntry?.status === 'running';
 
   if (!workflowId) return <div className="flex items-center justify-center h-full text-sm text-muted-foreground">{t('share.missingId')}</div>;
   if (loading) return <div className="flex items-center justify-center h-full"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
   if (!workflow) return <div className="flex items-center justify-center h-full text-sm text-muted-foreground">{t('share.notFound')}</div>;
 
-  const hasResult = executionLog && executionLog.steps.length > 0;
+  const hasResult = activeEntry?.log && activeEntry.log.steps.length > 0;
 
   return (
     <div className="h-full flex flex-col p-4 gap-3">
+      {/* Header */}
       <div className="flex items-center gap-3 shrink-0">
         <BackButton />
         <div className="flex-1 min-w-0">
@@ -189,17 +283,50 @@ export default function WorkflowSharePage() {
       </div>
 
       <div className="flex-1 min-h-0 flex gap-3">
-        {/* Left: input form */}
-        <div className="w-[360px] shrink-0 flex flex-col">
+        {/* Left: entry tabs + input form */}
+        <div className="w-[360px] shrink-0 flex flex-col gap-2">
+          {/* Execution tabs */}
+          {entries.length > 0 && (
+            <div className="flex items-center gap-1.5 px-1 py-1 shrink-0">
+              {entries.map(entry => (
+                <button
+                  key={entry.localId}
+                  onClick={() => setActiveLocalId(entry.localId)}
+                  className={cn(
+                    "relative w-7 h-7 rounded-full text-xs font-medium flex items-center justify-center transition-colors shrink-0",
+                    entry.localId === activeLocalId
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted hover:bg-muted-foreground/10 text-muted-foreground"
+                  )}
+                >
+                  {entry.localId}
+                  {entry.status !== 'running' && (
+                    <span className={cn(
+                      "absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-background",
+                      STATUS_COLORS[entry.status]
+                    )} />
+                  )}
+                  {entry.status === 'running' && (
+                    <span className={cn(
+                      "absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-background",
+                      STATUS_COLORS.running
+                    )} />
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Input form */}
           <Card className="rounded-lg flex-1 min-h-0 flex flex-col">
             <CardHeader className="p-3 pb-2 shrink-0"><CardTitle className="text-xs">{t('share.params')}</CardTitle></CardHeader>
             <CardContent className="p-3 pt-0 flex-1 min-h-0 flex flex-col">
               {inputFields.length > 0 ? (
-                <ExecutionInputForm fields={inputFields} initialValues={initialValues} onSubmit={handleExecute} disabled={executing}
+                <ExecutionInputForm fields={inputFields} initialValues={initialValues} onSubmit={handleExecute} disabled={false}
                   footer={submit => (
                     <div className="pt-2 shrink-0 flex gap-2">
-                      <Button size="sm" className="h-7 text-xs gap-1 flex-1" disabled={executing} onClick={submit}><Play className="h-3 w-3" /> {t('share.execute')}</Button>
-                      {executing && <Button variant="destructive" size="sm" className="h-7 text-xs gap-1" onClick={handleStop}><Square className="h-3 w-3" /> {t('share.stop')}</Button>}
+                      <Button size="sm" className="h-7 text-xs gap-1 flex-1" onClick={submit}><Play className="h-3 w-3" /> {t('share.execute')}</Button>
+                      {isExecuting && <Button variant="destructive" size="sm" className="h-7 text-xs gap-1" onClick={() => activeEntry && handleStop(activeEntry.localId)}><Square className="h-3 w-3" /> {t('share.stop')}</Button>}
                     </div>
                   )}
                 />
@@ -207,11 +334,10 @@ export default function WorkflowSharePage() {
                 <div className="flex-1 flex items-center justify-center">
                   <div className="text-center">
                     <p className="text-xs text-muted-foreground mb-3">{t('share.noInputHint')}</p>
-                    <Button size="sm" className="h-7 text-xs gap-1" disabled={executing} onClick={() => handleExecute({})}>
-                      {executing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
-                      {executing ? t('share.executing') : t('share.execute')}
+                    <Button size="sm" className="h-7 text-xs gap-1" onClick={() => handleExecute({})}>
+                      <Play className="h-3 w-3" /> {t('share.execute')}
                     </Button>
-                    {executing && <Button variant="destructive" size="sm" className="h-7 text-xs gap-1" onClick={handleStop}><Square className="h-3 w-3" /> {t('share.stop')}</Button>}
+                    {isExecuting && <Button variant="destructive" size="sm" className="h-7 text-xs gap-1 mt-2" onClick={() => activeEntry && handleStop(activeEntry.localId)}><Square className="h-3 w-3" /> {t('share.stop')}</Button>}
                   </div>
                 </div>
               )}
@@ -219,68 +345,75 @@ export default function WorkflowSharePage() {
           </Card>
         </div>
 
-        {/* Right: 3 cards layout */}
+        {/* Right: results for active entry */}
         <div className="flex-1 min-w-0 flex flex-col gap-3 overflow-auto">
-          {hasResult ? (
-            <div className="flex gap-3 min-h-0 flex-1">
-              {/* Left: Step */}
-              <Card size="sm" className="m-px rounded-lg w-[320px] shrink-0 flex flex-col py-0">
-                <CardHeader className="p-3 pb-1 shrink-0"><CardTitle className="text-xs">Step</CardTitle></CardHeader>
-                <CardContent className="px-0 pb-0 flex-1 min-h-0 overflow-auto">
-                  <ExecutionChecklist steps={executionLog!.steps} />
+          {activeEntry ? (
+            hasResult ? (
+              <div className="flex gap-3 min-h-0 flex-1">
+                {/* Steps */}
+                <Card size="sm" className="m-px rounded-lg w-[320px] shrink-0 flex flex-col py-0">
+                  <CardHeader className="p-3 pb-1 shrink-0"><CardTitle className="text-xs">Step</CardTitle></CardHeader>
+                  <CardContent className="px-0 pb-0 flex-1 min-h-0 overflow-auto">
+                    <ExecutionChecklist steps={activeEntry.log!.steps} />
+                  </CardContent>
+                </Card>
+
+                {/* JSON + File output */}
+                <div className="flex-1 min-w-0 flex flex-col gap-3">
+                  <Card size="sm" className="m-px rounded-lg flex-1 min-h-0 flex flex-col py-0">
+                    <CardHeader className="p-3 pb-1 shrink-0"><CardTitle className="text-xs">{t('share.jsonOutput')}</CardTitle></CardHeader>
+                    <CardContent className="px-2 pb-2 flex-1 min-h-0 overflow-auto">
+                      {endOutput !== null ? (
+                        <JsonViewer data={endOutput as import('@/components/viewers/json-viewer').JsonValue} rootName="output" defaultExpanded={2} className="border-0 shadow-none" />
+                      ) : (
+                        <div className="flex items-center justify-center h-full text-xs text-muted-foreground">{t('share.noOutput')}</div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card size="sm" className="m-px rounded-lg shrink-0 py-0">
+                    <div className="flex items-center justify-between p-3 pb-1">
+                      <CardTitle className="text-xs">{t('share.fileOutput')}</CardTitle>
+                      {fileOutputs.length > 0 && (
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => fileOutputs.forEach(f => window.open(f.url, '_blank'))}>
+                          <Download className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                    <CardContent className="px-3 pb-3">
+                      {fileOutputs.length > 0 ? (
+                        <div className="flex flex-wrap gap-3">
+                          {fileOutputs.map((f, i) => (
+                            <a key={i} href={f.url} target="_blank" rel="noopener noreferrer" className="group">
+                              <FileCard formatFile={f.format} />
+                              <div className="mt-1 text-[10px] text-muted-foreground text-center max-w-[56px] truncate group-hover:text-foreground transition-colors">
+                                {f.name}
+                              </div>
+                            </a>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center py-6 text-xs text-muted-foreground">{t('share.noFileOutput')}</div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            ) : activeEntry.status === 'running' ? (
+              <Card className="rounded-lg flex-1 min-h-0 flex flex-col">
+                <CardContent className="flex-1 flex items-center justify-center">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  <span className="ml-2 text-xs text-muted-foreground">{t('share.executing')}</span>
                 </CardContent>
               </Card>
-
-              {/* Right: JSON + 成品输出 */}
-              <div className="flex-1 min-w-0 flex flex-col gap-3">
-                {/* JSON 输出 */}
-                <Card size="sm" className="m-px rounded-lg flex-1 min-h-0 flex flex-col py-0">
-                  <CardHeader className="p-3 pb-1 shrink-0"><CardTitle className="text-xs">{t('share.jsonOutput')}</CardTitle></CardHeader>
-                  <CardContent className="px-2 pb-2 flex-1 min-h-0 overflow-auto">
-                    {endOutput !== null ? (
-                      <JsonViewer data={endOutput as import('@/components/viewers/json-viewer').JsonValue} rootName="output" defaultExpanded={2} className="border-0 shadow-none" />
-                    ) : (
-                      <div className="flex items-center justify-center h-full text-xs text-muted-foreground">{t('share.noOutput')}</div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* 成品输出 */}
-                <Card size="sm" className="m-px rounded-lg shrink-0 py-0">
-                  <div className="flex items-center justify-between p-3 pb-1">
-                    <CardTitle className="text-xs">{t('share.fileOutput')}</CardTitle>
-                    {fileOutputs.length > 0 && (
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => fileOutputs.forEach(f => window.open(f.url, '_blank'))}>
-                        <Download className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                  <CardContent className="px-3 pb-3">
-                    {fileOutputs.length > 0 ? (
-                      <div className="flex flex-wrap gap-3">
-                        {fileOutputs.map((f, i) => (
-                          <a key={i} href={f.url} target="_blank" rel="noopener noreferrer" className="group">
-                            <FileCard formatFile={f.format} />
-                            <div className="mt-1 text-[10px] text-muted-foreground text-center max-w-[56px] truncate group-hover:text-foreground transition-colors">
-                              {f.name}
-                            </div>
-                          </a>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-center py-6 text-xs text-muted-foreground">{t('share.noFileOutput')}</div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          ) : executing ? (
-            <Card className="rounded-lg flex-1 min-h-0 flex flex-col">
-              <CardContent className="flex-1 flex items-center justify-center">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                <span className="ml-2 text-xs text-muted-foreground">{t('share.executing')}</span>
-              </CardContent>
-            </Card>
+            ) : (
+              <Card className="rounded-lg flex-1 min-h-0 flex flex-col">
+                <CardContent className="flex-1 flex flex-col items-center justify-center gap-2">
+                  {activeEntry.status === 'error' && <span className="text-xs text-red-500">{t('share.execError', { id: activeEntry.localId })}</span>}
+                  {activeEntry.status === 'stopped' && <span className="text-xs text-yellow-600">{t('share.execStopped', { id: activeEntry.localId })}</span>}
+                </CardContent>
+              </Card>
+            )
           ) : (
             <Card className="rounded-lg flex-1 min-h-0 flex flex-col">
               <CardContent className="flex-1 flex items-center justify-center text-xs text-muted-foreground">

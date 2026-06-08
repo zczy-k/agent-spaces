@@ -27,6 +27,10 @@
     "empty": "暂无通知",
     "clearAll": "清空",
     "markAllRead": "全部已读",
+    "new": "新",
+    "all": "全部",
+    "unread": "未读",
+    "allCaughtUp": "已全部读完！",
     "backToList": "返回列表",
     "type": {
       "issue_completed": "Issue 完成",

@@ -150,6 +150,9 @@
     "noOutput": "暂无输出",
     "fileOutput": "成品输出",
     "noFileOutput": "暂无文件输出",
-    "fillAndRun": "填写参数并点击执行"
+    "fillAndRun": "填写参数并点击执行",
+    "execCompleted": "执行 #{id} 已完成",
+    "execError": "执行 #{id} 出错",
+    "execStopped": "执行 #{id} 已停止"
   }
 }

@@ -27,6 +27,10 @@
     "empty": "No notifications",
     "clearAll": "Clear all",
     "markAllRead": "Mark all read",
+    "new": "new",
+    "all": "All",
+    "unread": "Unread",
+    "allCaughtUp": "You're all caught up!",
     "backToList": "Back to list",
     "type": {
       "issue_completed": "Issue Completed",

@@ -150,6 +150,9 @@
     "noOutput": "No output yet",
     "fileOutput": "File Output",
     "noFileOutput": "No file output",
-    "fillAndRun": "Fill in parameters and click Run"
+    "fillAndRun": "Fill in parameters and click Run",
+    "execCompleted": "Run #{id} completed",
+    "execError": "Run #{id} failed",
+    "execStopped": "Run #{id} stopped"
   }
 }
