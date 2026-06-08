@@ -21,7 +21,7 @@ function parseFileRef(href: string): { path: string; line?: number; column?: num
 
 const staticComponents: Components = {
   pre: ({ children }) => (
-    <pre className="bg-background/50 rounded-md p-3 overflow-x-auto text-xs my-2">{children}</pre>
+    <pre className="my-2 max-w-full overflow-x-auto rounded-md bg-background/50 p-3 text-xs">{children}</pre>
   ),
   code: ({ className, children, ...props }) => {
     const isInline = !className;
@@ -33,10 +33,10 @@ const staticComponents: Components = {
       <code className={className} {...props}>{children}</code>
     );
   },
-  p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-  ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-1">{children}</ul>,
-  ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-1">{children}</ol>,
-  li: ({ children }) => <li className="text-sm">{children}</li>,
+  p: ({ children }) => <p className="mb-2 min-w-0 last:mb-0">{children}</p>,
+  ul: ({ children }) => <ul className="mb-2 min-w-0 list-disc space-y-1 pl-4">{children}</ul>,
+  ol: ({ children }) => <ol className="mb-2 min-w-0 list-decimal space-y-1 pl-4">{children}</ol>,
+  li: ({ children }) => <li className="min-w-0 text-sm">{children}</li>,
   h1: ({ children }) => <h1 className="text-lg font-bold mb-2">{children}</h1>,
   h2: ({ children }) => <h2 className="text-base font-bold mb-2">{children}</h2>,
   h3: ({ children }) => <h3 className="text-sm font-bold mb-1">{children}</h3>,
@@ -44,8 +44,8 @@ const staticComponents: Components = {
     <blockquote className="border-l-2 border-muted-foreground/30 pl-3 my-2 text-muted-foreground">{children}</blockquote>
   ),
   table: ({ children }) => (
-    <div className="overflow-x-auto my-2">
-      <table className="text-xs border-collapse">{children}</table>
+    <div className="my-2 min-w-0 max-w-full overflow-x-auto">
+      <table className="w-max min-w-full border-collapse text-xs">{children}</table>
     </div>
   ),
   th: ({ children }) => (
@@ -96,7 +96,7 @@ export function Markdown({ content, workspaceId }: MarkdownProps) {
   };
 
   return (
-    <div className="break-all overflow-hidden select-text" style={{ WebkitUserSelect: 'text', userSelect: 'text' }}>
+    <div className="min-w-0 max-w-full break-all overflow-hidden select-text" style={{ WebkitUserSelect: 'text', userSelect: 'text' }}>
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
         {content}
       </ReactMarkdown>

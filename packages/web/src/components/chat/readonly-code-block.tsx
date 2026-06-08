@@ -53,13 +53,14 @@ export function ReadonlyCodeBlock({
           rootName={title ?? "root"}
           defaultExpanded={1}
           colorTheme={resolvedTheme === "dark" ? "github-dark" : "github-light"}
+          className="min-w-0 max-w-full"
         />
       )
     }
   }
 
   return (
-    <div className="overflow-hidden rounded-md border bg-background">
+    <div className="min-w-0 max-w-full overflow-hidden rounded-md border bg-background">
       {title ? (
         <div className="border-b bg-muted/30 px-2 py-1 font-mono text-muted-foreground text-xs">
           {title}

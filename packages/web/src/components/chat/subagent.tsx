@@ -36,7 +36,7 @@ import { cn } from "@/lib/utils"
 export type AgentProps = HTMLAttributes<HTMLDivElement>
 
 export const Agent = memo(({ className, ...props }: AgentProps) => (
-  <div className={cn("not-prose w-full rounded-md border", className)} {...props} />
+  <div className={cn("not-prose min-w-0 w-full rounded-md border", className)} {...props} />
 ))
 
 export type AgentHeaderProps = HTMLAttributes<HTMLDivElement> & {
@@ -45,12 +45,12 @@ export type AgentHeaderProps = HTMLAttributes<HTMLDivElement> & {
 }
 
 export const AgentHeader = memo(({ className, name, model, ...props }: AgentHeaderProps) => (
-  <div className={cn("flex w-full items-center justify-between gap-4 p-3", className)} {...props}>
-    <div className="flex items-center gap-2">
+  <div className={cn("flex min-w-0 w-full items-center justify-between gap-4 p-3", className)} {...props}>
+    <div className="flex min-w-0 items-center gap-2">
       <BotIcon className="size-4 text-muted-foreground" />
-      <span className="font-medium text-sm">{name}</span>
+      <span className="min-w-0 truncate font-medium text-sm">{name}</span>
       {model && (
-        <Badge className="font-mono text-xs" variant="secondary">
+        <Badge className="min-w-0 max-w-40 truncate font-mono text-xs" variant="secondary">
           {model}
         </Badge>
       )}
@@ -61,7 +61,7 @@ export const AgentHeader = memo(({ className, name, model, ...props }: AgentHead
 export type AgentContentProps = HTMLAttributes<HTMLDivElement>
 
 export const AgentContent = memo(({ className, ...props }: AgentContentProps) => (
-  <div className={cn("space-y-4 p-4 pt-0", className)} {...props} />
+  <div className={cn("min-w-0 space-y-4 p-4 pt-0", className)} {...props} />
 ))
 
 export type AgentInstructionsProps = HTMLAttributes<HTMLDivElement> & {
@@ -115,7 +115,7 @@ export const AgentTool = memo(({ className, tool, value, ...props }: AgentToolPr
       </AccordionTrigger>
       <AccordionContent className="px-3 pb-3">
         <div className="rounded-md bg-muted/50">
-          <pre className="overflow-auto p-3 font-mono text-xs">
+          <pre className="max-w-full overflow-auto p-3 font-mono text-xs">
             {JSON.stringify(schema, null, 2)}
           </pre>
         </div>

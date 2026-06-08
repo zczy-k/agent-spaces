@@ -68,7 +68,7 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
   }, [message.content]);
 
   return (
-    <div className={`group flex gap-2 px-3 py-1.5 items-start ${isUser ? 'flex-row-reverse' : ''}`}>
+    <div className={`group flex min-w-0 max-w-full gap-2 px-3 py-1.5 items-start ${isUser ? 'flex-row-reverse' : ''}`}>
       {isUser ? (
         <AgentIcon
           agentId={undefined}
@@ -85,7 +85,7 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
           />
         </MemberHoverCard>
       )}
-      <div className={`flex flex-col min-w-0 w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
+      <div className={`flex flex-col min-w-0 flex-1 max-w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
         {!isUser && (
         <div className="flex items-center gap-2 mb-0.5">
           <span className="text-xs font-medium text-foreground">
@@ -105,7 +105,7 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
           <span className="text-[10px] text-muted-foreground">{time}</span>
         </div>
         )}
-        <div className={`relative overflow-hidden rounded-lg ${!isUser && isStreaming ? 'p-[1px]' : ''}`}>
+        <div className={`relative min-w-0 max-w-full overflow-hidden rounded-lg ${!isUser && isStreaming ? 'p-[1px]' : ''}`}>
           {!isUser && isStreaming && (
             <div className="absolute inset-0 pointer-events-none">
               <MovingBorder
@@ -119,7 +119,7 @@ export function MessageItem({ message, workspaceId, onEdit, onDelete, onReply }:
               />
             </div>
           )}
-        <div className={`min-w-0 max-w-full text-sm rounded-lg px-3 py-2 relative z-[1] ${isUser ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+        <div className={`min-w-0 max-w-full overflow-hidden text-sm rounded-lg px-3 py-2 relative z-[1] ${isUser ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
           <MessageParts message={message} isUser={isUser} workspaceId={workspaceId} />
           {!isUser && isStreaming && (
             <div className="mt-1">

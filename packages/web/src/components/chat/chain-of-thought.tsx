@@ -74,7 +74,7 @@ export const ChainOfThought = memo(
 
     return (
       <ChainOfThoughtContext.Provider value={chainOfThoughtContext}>
-        <div className={cn("not-prose max-w-prose overflow-hidden space-y-4", className)} {...props}>
+        <div className={cn("not-prose min-w-0 max-w-full overflow-hidden space-y-4", className)} {...props}>
           {children}
         </div>
       </ChainOfThoughtContext.Provider>
@@ -101,7 +101,7 @@ export const ChainOfThoughtHeader = memo(
           {...props}
           >
           <BrainIcon className="size-4" />
-          <span className="flex-1 text-left">{children ?? t('chainOfThought.defaultHeader')}</span>
+          <span className="min-w-0 flex-1 truncate text-left">{children ?? t('chainOfThought.defaultHeader')}</span>
           {loading && <Loader size={14} />}
           <ChevronDownIcon
             className={cn("size-4 transition-transform", isOpen ? "rotate-180" : "rotate-0")}
@@ -191,7 +191,7 @@ export const ChainOfThoughtContent = memo(
       <Collapsible open={isOpen}>
         <CollapsibleContent
           className={cn(
-            "mt-2 space-y-3",
+            "mt-2 min-w-0 max-w-full space-y-3 overflow-hidden",
             "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 text-popover-foreground outline-none data-[state=closed]:animate-out data-[state=open]:animate-in",
             className,
           )}

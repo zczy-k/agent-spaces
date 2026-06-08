@@ -163,8 +163,8 @@ export function ToolStep({
       icon={getToolIcon(chain.toolName, status)}
       label={
         <ContextMenu>
-          <ContextMenuTrigger className="group/tool-step flex min-w-0 items-center gap-1.5 overflow-hidden">
-            <span className="shrink-0">{chain.filePath ? chain.title.replace(new RegExp(`\\s+${escapeRegExp(fileName(chain.filePath))}$`), "") : chain.title}</span>
+          <ContextMenuTrigger className="group/tool-step flex min-w-0 max-w-full items-center gap-1.5 overflow-hidden">
+            <span className="min-w-0 shrink truncate">{chain.filePath ? chain.title.replace(new RegExp(`\\s+${escapeRegExp(fileName(chain.filePath))}$`), "") : chain.title}</span>
             {chain.description ? (
               <span className="min-w-0 shrink truncate text-muted-foreground text-xs">
                 {chain.description}
@@ -218,7 +218,7 @@ export function ToolStep({
         </div>
       ) : null}
       {open ? (
-        <div className="space-y-2">
+        <div className="min-w-0 max-w-full space-y-2 overflow-hidden">
           {loading ? (
             <div className="rounded-md border bg-muted/40 p-2 text-muted-foreground text-xs">{t('messageParts.loadingDetails')}</div>
           ) : error ? (
@@ -296,7 +296,7 @@ function ToolDetailView({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="min-w-0 max-w-full space-y-2 overflow-hidden">
       {sections.map((section) => (
         <ReadonlyCodeBlock
           key={section.title}
