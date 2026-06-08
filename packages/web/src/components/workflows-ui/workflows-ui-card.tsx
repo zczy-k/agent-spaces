@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Pencil, Copy, Trash2, MoreVertical, Puzzle, Download, Share2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ShareDialog } from '@/components/common/share-dialog';
 import { WorkflowsUiEditDialog } from './workflows-ui-edit-dialog';
 import { nativeNavigate } from '@/lib/navigate';
@@ -23,6 +24,7 @@ export function WorkflowsUiCard({ project, onDelete, onDuplicate, onUpdated }: W
   const router = useRouter();
   const [shareOpen, setShareOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const shareUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/workflows-ui-preview/${project.id}`
@@ -59,7 +61,7 @@ export function WorkflowsUiCard({ project, onDelete, onDuplicate, onUpdated }: W
                 <Copy className="h-3.5 w-3.5 mr-2" /> Duplicate
               </DropdownMenuItem>
             )}
-            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => onDelete(project.id)}>
+            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteOpen(true)}>
               <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
             </DropdownMenuItem>
             <DropdownMenuItem onClick={handleExportZip}>
@@ -74,6 +76,22 @@ export function WorkflowsUiCard({ project, onDelete, onDuplicate, onUpdated }: W
       <div onClick={(e) => e.stopPropagation()}>
         <ShareDialog open={shareOpen} onOpenChange={setShareOpen} title={project.name} url={shareUrl} />
         <WorkflowsUiEditDialog project={project} open={editOpen} onOpenChange={setEditOpen} onUpdated={onUpdated} />
+        <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Project</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete &quot;{project.name}&quot;? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction className="bg-destructive text-white hover:bg-destructive/90" onClick={() => onDelete(project.id)}>
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
       <CardHeader className="pb-2">
         <div className="flex items-center gap-2">
