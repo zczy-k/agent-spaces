@@ -6,10 +6,11 @@ import { broadcastToWorkspace } from './connection-manager.js';
 import { createMessage, updateMessage, listMessages } from '../services/message.js';
 import { getChannel, updateChannel } from '../services/channel.js';
 import * as issueService from '../services/issue.js';
-import { createIssueFunctionTools, createCommandFunctionTools, createDatabaseFunctionTools, createKanbanFunctionTools, createWorkflowExecutionFunctionTools } from '../services/builtin-tools/index.js';
+import { createIssueFunctionTools, createCommandFunctionTools, createDatabaseFunctionTools, createKanbanFunctionTools, createWorkflowExecutionFunctionTools, createWorkflowUiFunctionTools } from '../services/builtin-tools/index.js';
 import { startScheduler } from '../agents/scheduler-agent.js';
 import * as agentService from '../services/agent.js';
 import * as wsService from '../services/workspace.js';
+import * as workflowUiService from '../services/workflow-ui.js';
 import type { AgentContext } from '../agents/agent-context.js';
 import { createAgentRuntime } from '../adapters/agent-runtime.js';
 import type { AgentRuntime } from '../adapters/agent-runtime-types.js';
@@ -22,6 +23,7 @@ import type { PendingAskUserQuestion } from './message-parts.js';
 import { buildAgentPrompt, buildBuiltInTools } from './agent-prompt.js';
 import type { BuiltInToolContext } from './agent-prompt.js';
 import { wrapOnEventWithHooks } from '../services/hook-engine.js';
+import { getDataDir } from '../storage/json-store.js';
 
 interface ActiveChannelRun {
   agentId: string;
@@ -36,6 +38,13 @@ interface PendingQuestionRun {
   question: string;
 }
 
+interface WorkflowUiMessageContext {
+  projectId: string;
+  activeFilePath?: string;
+  projectType?: 'react' | 'html';
+  fileContent?: string;
+}
+
 interface RunMentionedAgentOptions {
   agentSessionId?: string;
   messageId?: string;
@@ -46,6 +55,7 @@ interface RunMentionedAgentOptions {
   contextLength?: number;
   excludeHistoryMessageIds?: string[];
   excludeHistoryReplyIds?: string[];
+  workflowUiContext?: WorkflowUiMessageContext;
 }
 
 // --- State ---
@@ -224,6 +234,7 @@ export async function runMentionedAgent(
   const skills = agentService.getAvailableSkillNames(configDir, preset.skills);
   const workspace = wsService.getById(workspaceId);
   const { channel, issue } = resolveIssueChannelContext(workspaceId, channelId);
+  const workflowUiRuntimeContext = resolveWorkflowUiRuntimeContext(options.workflowUiContext);
   const functionTools = [
     ...createIssueFunctionTools(workspaceId, channel, {
       senderId: preset.id,
@@ -233,14 +244,22 @@ export async function runMentionedAgent(
     ...createDatabaseFunctionTools(workspaceId, preset.tools),
     ...createKanbanFunctionTools(workspaceId, preset.tools),
     ...createWorkflowExecutionFunctionTools(preset.tools),
+    ...(workflowUiRuntimeContext ? createWorkflowUiFunctionTools({
+      enabledPlugins: workflowUiRuntimeContext.enabledPlugins,
+    }) : []),
   ];
-  const workingDir = agentService.resolveWorkingDir(workspaceId, preset);
+  const workingDir = workflowUiRuntimeContext?.projectDir ?? agentService.resolveWorkingDir(workspaceId, preset);
+  const boundDirs = workflowUiRuntimeContext ? [workflowUiRuntimeContext.projectDir] : workspace?.boundDirs;
+  const sandboxDirs = workflowUiRuntimeContext
+    ? [workflowUiRuntimeContext.projectDir]
+    : preset.sandboxDirs;
+  const workspaceRoot = boundDirs?.[0];
   const startTime = Date.now();
   const runtimePromptConfig = {
     runtimeKind: preset.runtimeKind,
     mcpServers: Object.keys(mcpServers ?? {}),
     skills,
-    boundDirs: workspace?.boundDirs,
+    boundDirs,
     workingDir,
     excludeNativeClaudeMd: preset.runtimeKind === 'claude-code',
     builtInTools: buildBuiltInTools(functionTools, channel, issue),
@@ -293,8 +312,8 @@ export async function runMentionedAgent(
     : options.resumeSessionId ?? existingMessage?.metadata?.runtimeSessionId;
   const persistentContext = buildPersistentAgentContextDetails({
     workspaceId,
-    workingDir: workspace?.boundDirs?.[0] || workingDir,
-    boundDirs: workspace?.boundDirs,
+    workingDir: workspaceRoot || workingDir,
+    boundDirs,
     excludeNativeClaudeMd: preset.runtimeKind === 'claude-code',
   }).summary;
   try {
@@ -345,7 +364,7 @@ export async function runMentionedAgent(
       lastLiveUpdate = now;
       const parts = buildAgentMessageParts({
         sessionId: nextSession.id,
-        workspaceRoot: workspace?.boundDirs?.[0],
+        workspaceRoot,
         presetName: preset.name || preset.role,
         role: preset.role,
         agentConfigId: preset.id,
@@ -387,7 +406,7 @@ export async function runMentionedAgent(
       mcpServers,
       skills,
       configDir,
-      sandboxDirs: preset.sandboxDirs,
+      sandboxDirs,
       outputStyle: preset.outputStyle,
       resumeSessionId: isRuntimeSessionResume ? options.resumeSessionId : undefined,
       userPrompt: runtimeUserPrompt,
@@ -444,7 +463,7 @@ export async function runMentionedAgent(
             workspaceId,
             channelId,
             messageId: pending.id,
-            title: summarizeToolLine(event.line, workspace?.boundDirs?.[0]).title,
+            title: summarizeToolLine(event.line, workspaceRoot).title,
             raw: event.line,
             input: event.input,
             createdAt: new Date().toISOString(),
@@ -454,7 +473,7 @@ export async function runMentionedAgent(
           liveOutputItems.push(buildOutputItem({
             id: event.id,
             type: 'tool_use',
-            title: summarizeToolLine(event.line, workspace?.boundDirs?.[0]).title,
+            title: summarizeToolLine(event.line, workspaceRoot).title,
             toolUseId: event.id,
             toolName: event.name,
             text: event.line,
@@ -468,7 +487,7 @@ export async function runMentionedAgent(
             ? askUserQuestions.find((question) => question.toolUseId === event.toolUseId)
             : undefined;
           if (askedQuestion) return;
-          const detail = findToolDetailForResult(event.toolUseId, event.result, toolUseDetailIds, toolDetails, workspace?.boundDirs?.[0]);
+          const detail = findToolDetailForResult(event.toolUseId, event.result, toolUseDetailIds, toolDetails, workspaceRoot);
           if (detail && isAgentSpacesIssueTool(detail.raw || detail.title)) {
             const updatedChannel = getChannel(workspaceId, channelId);
             if (updatedChannel) broadcastToWorkspace(workspaceId, 'channel.updated', updatedChannel);
@@ -515,7 +534,7 @@ export async function runMentionedAgent(
       const waitingOutput = stripAskUserQuestionErrorLines(liveOutput);
       const waitingParts = buildContinuationParts(existingMessage?.parts, nextSession.id, options.appendUserMessage, buildAgentMessageParts({
         sessionId: nextSession.id,
-        workspaceRoot: workspace?.boundDirs?.[0],
+        workspaceRoot,
         presetName: preset.name || preset.role,
         role: preset.role,
         agentConfigId: preset.id,
@@ -587,7 +606,7 @@ export async function runMentionedAgent(
 
     const replyParts = buildContinuationParts(existingMessage?.parts, nextSession.id, options.appendUserMessage, buildAgentMessageParts({
       sessionId: nextSession.id,
-      workspaceRoot: workspace?.boundDirs?.[0],
+      workspaceRoot,
       presetName: preset.name || preset.role,
       role: preset.role,
       agentConfigId: preset.id,
@@ -641,7 +660,7 @@ export async function runMentionedAgent(
     broadcastToWorkspace(workspaceId, 'agent.error', { agentId: nextSession.id, error });
     const errorParts = buildContinuationParts(existingMessage?.parts, nextSession.id, options.appendUserMessage, buildAgentMessageParts({
       sessionId: nextSession.id,
-      workspaceRoot: workspace?.boundDirs?.[0],
+      workspaceRoot,
       presetName: preset.name || preset.role,
       role: preset.role,
       agentConfigId: preset.id,
@@ -686,6 +705,26 @@ export async function runMentionedAgent(
 }
 
 // --- Internal helpers ---
+
+function resolveWorkflowUiRuntimeContext(context: WorkflowUiMessageContext | undefined): {
+  projectDir: string;
+  enabledPlugins: string[];
+} | null {
+  const projectId = context?.projectId?.trim();
+  if (!projectId) return null;
+
+  try {
+    const project = workflowUiService.getProject(projectId);
+    const projectDir = join(getDataDir(), 'workflows-ui', project.id);
+    if (!existsSync(projectDir) || !statSync(projectDir).isDirectory()) return null;
+    return {
+      projectDir,
+      enabledPlugins: project.enabledPlugins ?? [],
+    };
+  } catch {
+    return null;
+  }
+}
 
 function expandAgentSlashCommandPrompt(prompt: string, agentDir: string | undefined): string {
   if (!agentDir) return prompt;

@@ -92,6 +92,13 @@ export interface TaskOutputPayload {
   data: string;
 }
 
+export interface WorkflowUiMessageContext {
+  projectId: string;
+  activeFilePath?: string;
+  projectType?: 'react' | 'html';
+  fileContent?: string;
+}
+
 // ---- Client → Server Event Map ----
 
 export type ClientEventMap = {
@@ -100,7 +107,7 @@ export type ClientEventMap = {
   'terminal.input': TerminalInputPayload;
   'terminal.resize': TerminalResizePayload;
   'terminal.close': TerminalClosePayload;
-  'channel.message': { channelId: string; content: string; type?: string; mentions?: string[]; attachments?: import('./channel.js').Attachment[]; replyToMessageId?: string; contextLength?: number };
+  'channel.message': { channelId: string; content: string; type?: string; mentions?: string[]; attachments?: import('./channel.js').Attachment[]; replyToMessageId?: string; contextLength?: number; workflowUiContext?: WorkflowUiMessageContext };
   'channel.stop': { channelId: string };
   'channel.answer_question': { channelId: string; messageId: string; questionId: string; answer: string };
   'agent.start': { workspaceId: string; role: string; issueId?: string };

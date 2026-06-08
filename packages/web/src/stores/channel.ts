@@ -3,6 +3,13 @@ import type { Channel, Message } from '@agent-spaces/shared';
 import { getWS } from '@/lib/ws';
 import { sdk } from '@/lib/sdk';
 
+export interface WorkflowUiMessageContext {
+  projectId: string;
+  activeFilePath?: string;
+  projectType?: 'react' | 'html';
+  fileContent?: string;
+}
+
 interface ChannelStore {
   workspaceId: string | null;
   channels: Channel[];
@@ -19,7 +26,7 @@ interface ChannelStore {
   setActiveChannel: (id: string) => void;
   loadMessages: (workspaceId: string, channelId: string) => Promise<void>;
   loadChannelState: (workspaceId: string, channelId: string) => Promise<ChannelState | null>;
-  sendMessage: (workspaceId: string, channelId: string, content: string, mentions?: string[], attachments?: Message['attachments'], replyToMessageId?: string, contextLength?: number) => void;
+  sendMessage: (workspaceId: string, channelId: string, content: string, mentions?: string[], attachments?: Message['attachments'], replyToMessageId?: string, contextLength?: number, workflowUiContext?: WorkflowUiMessageContext) => void;
   addMessage: (channelId: string, message: Message) => void;
   updateMessage: (channelId: string, message: Message) => void;
   stopProcessingMessages: (channelId: string) => void;
@@ -130,9 +137,9 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
     }
   },
 
-  sendMessage: (workspaceId, channelId, content, mentions = [], attachments = [], replyToMessageId, contextLength) => {
+  sendMessage: (workspaceId, channelId, content, mentions = [], attachments = [], replyToMessageId, contextLength, workflowUiContext) => {
     const ws = getWS(workspaceId);
-    ws.send('channel.message', { channelId, content, mentions, attachments, replyToMessageId, contextLength });
+    ws.send('channel.message', { channelId, content, mentions, attachments, replyToMessageId, contextLength, workflowUiContext });
   },
 
   addMessage: (channelId, message) => {

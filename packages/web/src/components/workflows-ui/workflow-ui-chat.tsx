@@ -1,29 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Settings } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { MessageSquare, Settings, X } from 'lucide-react';
+import { AgentPickerDialog } from '@/components/common/agent-picker-dialog';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  FloatingChatPanel,
-  type ChatMessage,
-  type ChatAgentInfo,
-} from '@/components/ui/floating-chat-widget';
-import { fetchWithAuth } from '@/lib/auth';
+import { ChatPanel } from '@/components/chat/chat-panel';
+import { useAgentStore } from '@/stores/agent';
+import { useChannelStore } from '@/stores/channel';
+import { useWorkspaceStore } from '@/stores/workspace';
+import { workspaceIdFromLocation } from '@/lib/routes';
 import { sdk } from '@/lib/sdk';
+import { cn } from '@/lib/utils';
+import type { AgentConfig, Channel } from '@agent-spaces/shared';
 import type { WorkflowUiProject } from '@agent-spaces/sdk';
-
-interface AgentPreset {
-  id: string;
-  name: string;
-  avatar?: string;
-  role?: string;
-}
 
 interface WorkflowUiChatProps {
   project: WorkflowUiProject;
@@ -40,192 +29,243 @@ export function WorkflowUiChat({
   fileContent,
   onUpdateProject,
 }: WorkflowUiChatProps) {
-  const [chatOpen, setChatOpen] = useState(false);
-  const [chatInput, setChatInput] = useState('');
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [sending, setSending] = useState(false);
-  const [agent, setAgent] = useState<AgentPreset | null>(null);
-  const [agents, setAgents] = useState<AgentPreset[]>([]);
+  const [open, setOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const abortRef = useRef<AbortController | null>(null);
+  const [channelId, setChannelId] = useState<string | null>(null);
+  const [selectedAgentId, setSelectedAgentId] = useState(project.agentConfigId ?? '');
 
-  // Load agent list
-  useEffect(() => {
-    async function load() {
-      try {
-        const presets = await sdk.agent.listPresets();
-        setAgents(presets.map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          avatar: p.avatar,
-          role: p.role,
-        })));
+  const agents = useAgentStore((s) => s.agents);
+  const ensureAgents = useAgentStore((s) => s.ensure);
+  const workspaces = useWorkspaceStore((s) => s.workspaces);
+  const { loadChannels, upsertChannel, sendMessage } = useChannelStore();
 
-        if (project.agentConfigId) {
-          const current = presets.find((p: any) => p.id === project.agentConfigId);
-          if (current) {
-            setAgent({ id: current.id, name: current.name, avatar: (current as any).avatar, role: current.role });
-          }
-        }
-      } catch (error) {
-        console.error('Failed to load agents:', error);
-      }
+  const resolvedWorkspaceId = useMemo(() => {
+    if (workspaceId) return workspaceId;
+    if (typeof window !== 'undefined') {
+      const fromLocation = workspaceIdFromLocation(window.location.pathname, window.location.search);
+      if (fromLocation) return fromLocation;
     }
-    load();
+    return workspaces[0]?.id ?? null;
+  }, [workspaceId, workspaces]);
+
+  const selectedAgent = useMemo(
+    () => agents.find((agent) => agent.id === selectedAgentId),
+    [agents, selectedAgentId],
+  );
+
+  useEffect(() => {
+    ensureAgents();
+  }, [ensureAgents]);
+
+  useEffect(() => {
+    setSelectedAgentId(project.agentConfigId ?? '');
   }, [project.agentConfigId]);
 
-  const handleSend = useCallback(async () => {
-    if (!chatInput.trim() || !agent || sending) return;
+  useEffect(() => {
+    if (!resolvedWorkspaceId) return;
+    loadChannels(resolvedWorkspaceId);
+  }, [resolvedWorkspaceId, loadChannels]);
 
-    const userMessage: ChatMessage = {
-      id: `msg_${Date.now()}`,
-      role: 'user',
-      content: chatInput.trim(),
-      timestamp: new Date(),
-    };
-    setChatMessages((prev) => [...prev, userMessage]);
-    setChatInput('');
-    setSending(true);
+  const buildStorageKey = useCallback((agentId: string) => {
+    return `agent-spaces:workflow-ui-chat:${project.id}:${agentId}`;
+  }, [project.id]);
 
-    try {
-      abortRef.current = new AbortController();
-      const response = await fetchWithAuth('/api/agent-sse/run', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          agentId: agent.id,
-          workspaceId,
-          message: chatInput.trim(),
-          workflowUiContext: {
-            projectId: project.id,
-            activeFilePath,
-            projectType: project.type,
-            fileContent: fileContent.slice(0, 4000),
-          },
-        }),
-        signal: abortRef.current.signal,
-      });
+  const buildInitialMessage = useCallback(() => {
+    const clippedContent = fileContent.slice(0, 6000);
+    return [
+      `请作为 Workflow UI 项目 "${project.name}" 的开发助手。`,
+      `当前项目 ID: ${project.id}`,
+      `当前文件: ${activeFilePath || '(未选择文件)'}`,
+      '',
+      '当前文件内容如下，请后续回答优先基于这个上下文：',
+      '```',
+      clippedContent,
+      '```',
+    ].join('\n');
+  }, [activeFilePath, fileContent, project.id, project.name]);
 
-      if (!response.ok || !response.body) {
-        throw new Error(`HTTP ${response.status}`);
-      }
+  const findStoredChannel = useCallback((agentId: string): Channel | null => {
+    if (typeof window === 'undefined') return null;
+    const storedId = window.localStorage.getItem(buildStorageKey(agentId));
+    if (!storedId) return null;
+    return useChannelStore.getState().channels.find((channel) => channel.id === storedId) ?? null;
+  }, [buildStorageKey]);
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let assistantContent = '';
+  const ensureWorkflowChannel = useCallback(async (agentId: string) => {
+    if (!resolvedWorkspaceId) return null;
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        for (const line of chunk.split('\n')) {
-          if (!line.startsWith('data: ')) continue;
-          const data = line.slice(6);
-          if (data === '[DONE]') continue;
-          try {
-            const parsed = JSON.parse(data);
-            if (parsed.type === 'output' && parsed.text) {
-              assistantContent += parsed.text;
-              setChatMessages((prev) => {
-                const last = prev[prev.length - 1];
-                if (last?.role === 'agent' && last.id === `assistant_${userMessage.id}`) {
-                  return [...prev.slice(0, -1), { ...last, content: assistantContent }];
-                }
-                return [...prev, {
-                  id: `assistant_${userMessage.id}`,
-                  role: 'agent' as const,
-                  content: assistantContent,
-                  timestamp: new Date(),
-                }];
-              });
-            }
-          } catch { /* ignore parse errors */ }
-        }
-      }
-    } catch (error: any) {
-      if (error.name !== 'AbortError') {
-        setChatMessages((prev) => [...prev, {
-          id: `error_${Date.now()}`,
-          role: 'agent',
-          content: `错误: ${error.message}`,
-          timestamp: new Date(),
-        }]);
-      }
-    } finally {
-      setSending(false);
-      abortRef.current = null;
+    await loadChannels(resolvedWorkspaceId);
+    const stored = findStoredChannel(agentId);
+    if (stored) {
+      setChannelId(stored.id);
+      return stored.id;
     }
-  }, [chatInput, agent, sending, workspaceId, project, activeFilePath, fileContent]);
 
-  const handleStop = useCallback(() => {
-    abortRef.current?.abort();
-    setSending(false);
-  }, []);
+    const agent = agents.find((item) => item.id === agentId);
+    const channel = await sdk.channel.create(resolvedWorkspaceId, {
+      name: `Workflow UI - ${project.name}`,
+      type: 'agent',
+      members: [agentId],
+      titlePrompt: `Workflow UI ${project.name} ${activeFilePath}`,
+    });
+    upsertChannel(channel);
+    setChannelId(channel.id);
 
-  const handleSelectAgent = useCallback((preset: AgentPreset) => {
-    setAgent(preset);
-    setChatMessages([]);
-    onUpdateProject({ agentConfigId: preset.id });
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(buildStorageKey(agentId), channel.id);
+    }
+
+    const mentionHtml = `<span data-type="mention" data-id="${agentId}" data-label="${agent?.name || agentId}"></span>`;
+    sendMessage(
+      resolvedWorkspaceId,
+      channel.id,
+      `${mentionHtml} ${buildInitialMessage()}`,
+      [agentId],
+      [],
+      undefined,
+      undefined,
+      {
+        projectId: project.id,
+        activeFilePath,
+        projectType: project.type,
+        fileContent,
+      },
+    );
+
+    return channel.id;
+  }, [
+    activeFilePath,
+    agents,
+    buildInitialMessage,
+    buildStorageKey,
+    findStoredChannel,
+    loadChannels,
+    fileContent,
+    project.id,
+    project.name,
+    project.type,
+    resolvedWorkspaceId,
+    sendMessage,
+    upsertChannel,
+  ]);
+
+  useEffect(() => {
+    if (!open || !selectedAgentId) return;
+    ensureWorkflowChannel(selectedAgentId);
+  }, [ensureWorkflowChannel, open, selectedAgentId]);
+
+  const handleSelectAgent = useCallback((agentId: string) => {
+    setSelectedAgentId(agentId);
     setPickerOpen(false);
-  }, [onUpdateProject]);
+    onUpdateProject({ agentConfigId: agentId });
+    ensureWorkflowChannel(agentId);
+  }, [ensureWorkflowChannel, onUpdateProject]);
 
-  const agentInfo: ChatAgentInfo = {
-    name: agent?.name ?? 'AI 助手',
-    avatar: agent?.avatar,
-    role: agent?.role,
-    status: sending ? 'busy' : 'online',
-  };
+  const pickerAgents = useMemo(
+    () => agents
+      .filter((agent: AgentConfig) => agent.enabled !== false)
+      .map((agent: AgentConfig) => ({
+        id: agent.id,
+        name: agent.name,
+        avatarUrl: agent.avatarUrl,
+        icon: agent.icon,
+        description: agent.description || agent.role,
+      })),
+    [agents],
+  );
 
   return (
     <>
-      <FloatingChatPanel
-        isOpen={chatOpen}
-        onClose={() => setChatOpen(false)}
-        onToggle={() => setChatOpen((prev) => !prev)}
-        agent={agentInfo}
-        messages={chatMessages}
-        sending={sending}
-        input={chatInput}
-        onInputChange={setChatInput}
-        onSend={handleSend}
-        onStop={handleStop}
-        inputPlaceholder={agent ? `向 ${agent.name} 提问...` : '选择 Agent...'}
-        markdown
-        headerActions={
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-background/50" onClick={() => setPickerOpen(true)}>
-            <Settings className="h-4 w-4" />
-          </Button>
-        }
-      />
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4">
+        {open && (
+          <div className="flex h-[min(720px,calc(100vh-7rem))] w-[min(520px,calc(100vw-3rem))] flex-col overflow-hidden rounded-lg border bg-background shadow-2xl">
+            <div className="flex items-center gap-2 border-b px-3 py-2">
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-semibold">
+                  {selectedAgent?.name ?? '选择 Agent'}
+                </div>
+                <div className="truncate text-xs text-muted-foreground">
+                  Workflow UI - {project.name}
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-8"
+                onClick={() => setPickerOpen(true)}
+                title="选择 Agent"
+              >
+                <Settings className="size-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-8"
+                onClick={() => setOpen(false)}
+                title="关闭"
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
 
-      {/* Agent picker dialog */}
-      <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>选择 AI 助手</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-1 max-h-64 overflow-auto">
-            {agents.length === 0 ? (
-              <div className="text-sm text-muted-foreground py-4 text-center">
-                暂无可用 Agent，请先在工作空间中创建 Agent
+            {!resolvedWorkspaceId ? (
+              <div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-muted-foreground">
+                未找到当前工作区，无法加载 Agent 聊天。
+              </div>
+            ) : !selectedAgentId ? (
+              <div className="flex flex-1 items-center justify-center">
+                <Button type="button" onClick={() => setPickerOpen(true)}>
+                  选择 Agent
+                </Button>
+              </div>
+            ) : !channelId ? (
+              <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+                正在准备聊天频道...
               </div>
             ) : (
-              agents.map((preset) => (
-                <button
-                  key={preset.id}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded text-sm hover:bg-muted cursor-pointer ${
-                    preset.id === agent?.id ? 'bg-accent' : ''
-                  }`}
-                  onClick={() => handleSelectAgent(preset)}
-                >
-                  <span className="font-medium">{preset.name}</span>
-                  {preset.role && <span className="text-xs text-muted-foreground">{preset.role}</span>}
-                </button>
-              ))
+              <ChatPanel
+                workspaceId={resolvedWorkspaceId}
+                channelId={channelId}
+                workflowUiContext={{
+                  projectId: project.id,
+                  activeFilePath,
+                  projectType: project.type,
+                  fileContent,
+                }}
+              />
             )}
           </div>
-        </DialogContent>
-      </Dialog>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          className={cn(
+            'flex size-14 cursor-pointer items-center justify-center rounded-full shadow-2xl transition-colors',
+            open
+              ? 'bg-destructive text-destructive-foreground'
+              : 'bg-primary text-primary-foreground hover:bg-primary/90',
+          )}
+          title={open ? '关闭聊天' : '打开聊天'}
+        >
+          {open ? <X className="size-6" /> : <MessageSquare className="size-6" />}
+        </button>
+      </div>
+
+      <AgentPickerDialog
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onConfirm={() => setPickerOpen(false)}
+        title="选择 Agent"
+        description="选择用于辅助编辑当前 Workflow UI 的 Agent。"
+        agents={pickerAgents}
+        selected={selectedAgentId ? [selectedAgentId] : []}
+        onToggle={handleSelectAgent}
+        confirmText="选择"
+        singleSelect
+      />
     </>
   );
 }

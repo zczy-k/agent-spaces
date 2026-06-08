@@ -13,6 +13,13 @@ import { stripHtml, extractMentionIds } from './html-utils.js';
 
 type EventHandler = (ws: WebSocket, workspaceId: string, data: unknown) => void;
 
+interface WorkflowUiMessageContext {
+  projectId: string;
+  activeFilePath?: string;
+  projectType?: 'react' | 'html';
+  fileContent?: string;
+}
+
 const handlers = new Map<string, EventHandler>();
 
 export function registerHandler(event: string, handler: EventHandler) {
@@ -67,7 +74,7 @@ for (const evt of terminalEvents) {
 
 // Register channel handlers
 registerHandler('channel.message', (_ws, workspaceId, data) => {
-  const { channelId, content, type, mentions, attachments, replyToMessageId, contextLength } = data as {
+  const { channelId, content, type, mentions, attachments, replyToMessageId, contextLength, workflowUiContext } = data as {
     channelId: string;
     content: string;
     type?: string;
@@ -75,6 +82,7 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
     attachments?: Message['attachments'];
     replyToMessageId?: string;
     contextLength?: number;
+    workflowUiContext?: WorkflowUiMessageContext;
   };
   const normalizedContextLength = normalizeContextLength(contextLength);
   if (!channelId || (!content && !attachments?.length)) return;
@@ -98,6 +106,7 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
         resumeSessionId: normalizedContextLength > 0 ? updated.metadata?.runtimeSessionId : undefined,
         excludeHistoryReplyIds: latestReplyId ? [latestReplyId] : undefined,
         contextLength: normalizedContextLength,
+        workflowUiContext,
       });
     }
     return;
@@ -123,6 +132,7 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
     void runMentionedAgent(workspaceId, channelId, agentId, stripHtml(content), {
       excludeHistoryMessageIds: [message.id],
       contextLength: normalizedContextLength,
+      workflowUiContext,
     });
   }
 });

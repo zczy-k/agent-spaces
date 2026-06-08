@@ -3,6 +3,7 @@
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useChannelStore } from '@/stores/channel';
+import type { WorkflowUiMessageContext } from '@/stores/channel';
 import { useAgentStore } from '@/stores/agent';
 import { getWS } from '@/lib/ws';
 import { MessageItem } from './message-item';
@@ -87,9 +88,11 @@ function ChannelMemberAvatars({ members }: { members: string[] }) {
 
 interface ChatPanelProps {
   workspaceId: string;
+  channelId?: string;
+  workflowUiContext?: WorkflowUiMessageContext;
 }
 
-export function ChatPanel({ workspaceId }: ChatPanelProps) {
+export function ChatPanel({ workspaceId, channelId, workflowUiContext }: ChatPanelProps) {
   const t = useTranslations('chat');
   const tc = useTranslations('common');
   const { activeChannelId, channels, messages, loadMessages, loadChannelState, sendMessage, addMessage, updateMessage, stopProcessingMessages, deleteMessage, clearMessages, upsertChannel } = useChannelStore();
@@ -105,10 +108,11 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
   const agents = useAgentStore((s) => s.agents);
   const ensureAgents = useAgentStore((s) => s.ensure);
 
-  const channel = channels.find((c) => c.id === activeChannelId);
+  const currentChannelId = channelId ?? activeChannelId;
+  const channel = channels.find((c) => c.id === currentChannelId);
   const msgs = useMemo(
-    () => activeChannelId ? (messages[activeChannelId] || []) : [],
-    [activeChannelId, messages],
+    () => currentChannelId ? (messages[currentChannelId] || []) : [],
+    [currentChannelId, messages],
   );
   const lastMessageStatus = msgs[msgs.length - 1]?.status;
   const pendingQuestion = useMemo(() => findPendingQuestion(msgs), [msgs]);
@@ -128,45 +132,45 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
   }, [agents, channel]);
 
   useEffect(() => {
-    if (activeChannelId) {
+    if (currentChannelId) {
       setChannelActive(false);
       setMessagesLoading(true);
-      loadMessages(workspaceId, activeChannelId).finally(() => setMessagesLoading(false));
+      loadMessages(workspaceId, currentChannelId).finally(() => setMessagesLoading(false));
     }
     ensureAgents();
-  }, [activeChannelId, workspaceId, loadMessages, ensureAgents]);
+  }, [currentChannelId, workspaceId, loadMessages, ensureAgents]);
 
   useEffect(() => {
     const ws = getWS(workspaceId);
     const unsub = ws.on('channel.message', (data: unknown) => {
       const msg = data as { channelId: string; id: string };
-      if (msg.channelId === activeChannelId) {
+      if (msg.channelId === currentChannelId) {
         addMessage(msg.channelId, data as Message);
       }
     });
     const unsubUpdate = ws.on('channel.message.updated', (data: unknown) => {
       const msg = data as { channelId: string; id: string };
-      if (msg.channelId === activeChannelId) {
+      if (msg.channelId === currentChannelId) {
         updateMessage(msg.channelId, data as Message);
       }
     });
     const unsubDelete = ws.on('channel.message.deleted', (data: unknown) => {
       const msg = data as { channelId: string; messageId: string };
-      if (msg.channelId === activeChannelId) {
+      if (msg.channelId === currentChannelId) {
         deleteMessage(msg.channelId, msg.messageId);
       }
     });
     const unsubCleared = ws.on('channel.messages.cleared', (data: unknown) => {
       const msg = data as { channelId: string };
-      if (msg.channelId === activeChannelId) {
+      if (msg.channelId === currentChannelId) {
         useChannelStore.setState((s) => ({
-          messages: { ...s.messages, [activeChannelId]: [] },
+          messages: { ...s.messages, [currentChannelId]: [] },
         }));
       }
     });
     const unsubChannelUpdated = ws.on('channel.updated', (data: unknown) => {
       const ch = data as { id: string };
-      if (ch.id === activeChannelId) {
+      if (ch.id === currentChannelId) {
         upsertChannel(data as Partial<Channel> & Pick<Channel, 'id'>);
       }
     });
@@ -177,7 +181,7 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
       unsubCleared();
       unsubChannelUpdated();
     };
-  }, [workspaceId, activeChannelId, addMessage, updateMessage, deleteMessage, upsertChannel]);
+  }, [workspaceId, currentChannelId, addMessage, updateMessage, deleteMessage, upsertChannel]);
 
   useEffect(() => {
     const container = bottomRef.current?.parentElement;
@@ -188,16 +192,16 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
   // by the HTTP state endpoint so waiting-for-user state does not depend only
   // on potentially missed WebSocket updates.
   useEffect(() => {
-    if (!activeChannelId || !workspaceId) return;
+    if (!currentChannelId || !workspaceId) return;
     const needsPolling = Boolean(lastMessageStatus && ['pending', 'streaming', 'waiting_for_user'].includes(lastMessageStatus)) || channelActive;
     if (!needsPolling) return;
 
     let cancelled = false;
     const poll = async () => {
-      const state = await loadChannelState(workspaceId, activeChannelId);
+      const state = await loadChannelState(workspaceId, currentChannelId);
       if (cancelled || !state) return;
       setChannelActive(state.active);
-      await loadMessages(workspaceId, activeChannelId);
+      await loadMessages(workspaceId, currentChannelId);
     };
     const interval = setInterval(poll, 3000);
     void poll();
@@ -205,22 +209,22 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [activeChannelId, workspaceId, channelActive, lastMessageStatus, loadMessages, loadChannelState]);
+  }, [currentChannelId, workspaceId, channelActive, lastMessageStatus, loadMessages, loadChannelState]);
 
   const handleSend = useCallback((content: string, mentions: string[], attachments?: Message['attachments'], replyToMessageId?: string, contextLength?: number) => {
-    if (!activeChannelId) return;
-    sendMessage(workspaceId, activeChannelId, content, mentions, attachments, replyToMessageId, contextLength);
-  }, [workspaceId, activeChannelId, sendMessage]);
+    if (!currentChannelId) return;
+    sendMessage(workspaceId, currentChannelId, content, mentions, attachments, replyToMessageId, contextLength, workflowUiContext);
+  }, [workspaceId, currentChannelId, sendMessage, workflowUiContext]);
 
   const isProcessing = channelActive || (msgs.length > 0
     && ['pending', 'streaming', 'waiting_for_user'].includes(msgs[msgs.length - 1].status ?? ''));
 
   const handleStop = useCallback(() => {
-    if (!activeChannelId) return;
-    stopProcessingMessages(activeChannelId);
+    if (!currentChannelId) return;
+    stopProcessingMessages(currentChannelId);
     const ws = getWS(workspaceId);
-    ws.send('channel.stop', { channelId: activeChannelId });
-  }, [workspaceId, activeChannelId, stopProcessingMessages]);
+    ws.send('channel.stop', { channelId: currentChannelId });
+  }, [workspaceId, currentChannelId, stopProcessingMessages]);
 
   const handleEditMessage = useCallback((msg: Message) => {
     chatInputRef.current?.setContent(msg.content, mentionAgents);
