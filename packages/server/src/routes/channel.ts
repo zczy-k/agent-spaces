@@ -24,12 +24,14 @@ router.get('/', (req: Request<ChannelParams>, res: Response) => {
 router.post('/', (req: Request<ChannelParams>, res: Response) => {
   const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
   const titlePrompt = typeof req.body.titlePrompt === 'string' ? req.body.titlePrompt.trim() : '';
-  const { type, members } = req.body;
-  const channel = createChannel(req.params.id, { name, type: type || 'general', members });
-  broadcastToWorkspace(req.params.id, 'channel.updated', channel);
-  res.status(201).json(channel);
+  const { type, members, overwrite } = req.body;
+  const { channel, created } = createChannel(req.params.id, { name, type: type || 'general', members, overwrite: overwrite === true });
+  if (created) {
+    broadcastToWorkspace(req.params.id, 'channel.updated', channel);
+  }
+  res.status(created ? 201 : 200).json(channel);
 
-  if (!name) {
+  if (created && !name) {
     scheduleChannelTitleGeneration({
       workspaceId: req.params.id,
       channelId: channel.id,

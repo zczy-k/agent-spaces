@@ -33,6 +33,7 @@ const channelTypeStatus: Record<Channel['type'], { status: 'online' | 'offline' 
   general: { status: 'online' },
   issue: { status: 'degraded' },
   agent: { status: 'maintenance' },
+  'workflows-ui': { status: 'online' },
 };
 
 const MAX_VISIBLE = 4;
@@ -111,7 +112,8 @@ export function ChatPanel({ workspaceId, channelId, workflowUiContext, onAgentAc
   const ensureAgents = useAgentStore((s) => s.ensure);
 
   const currentChannelId = channelId ?? activeChannelId;
-  const channel = channels.find((c) => c.id === currentChannelId) ?? { id: currentChannelId!, name: currentChannelId!, type: 'agent' as const, members: [] };
+  const isExternalChannelId = channelId && !channels.some((c) => c.id === channelId);
+  const channel = channels.find((c) => c.id === currentChannelId) ?? { id: currentChannelId!, name: currentChannelId!, type: (isExternalChannelId ? 'workflows-ui' : 'agent') as Channel['type'], members: [] };
   const msgs = useMemo(
     () => currentChannelId ? (messages[currentChannelId] || []) : [],
     [currentChannelId, messages],
@@ -120,8 +122,6 @@ export function ChatPanel({ workspaceId, channelId, workflowUiContext, onAgentAc
   const pendingQuestion = useMemo(() => findPendingQuestion(msgs), [msgs]);
 
   const mentionAgents = useMemo(() => {
-    if (!channel) return [];
-
     const enabledById = new Map(
       agents
         .filter((agent) => agent.enabled !== false)

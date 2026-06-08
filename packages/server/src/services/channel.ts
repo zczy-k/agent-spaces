@@ -28,9 +28,13 @@ export function getChannel(workspaceId: string, channelId: string): Channel | un
 
 export function createChannel(
   workspaceId: string,
-  data: { name: string; type: Channel['type']; members?: string[]; issueId?: string },
-): Channel {
+  data: { name: string; type: Channel['type']; members?: string[]; issueId?: string; overwrite?: boolean },
+): { channel: Channel; created: boolean } {
   const channels = listChannels(workspaceId);
+  if (!data.overwrite) {
+    const existing = channels.find((c) => c.name === data.name && c.type === data.type && !c.archived);
+    if (existing) return { channel: existing, created: false };
+  }
   const channel: Channel = {
     id: uuid(),
     workspaceId,
@@ -43,7 +47,7 @@ export function createChannel(
   channels.push(channel);
   writeJsonFile(channelsPath(workspaceId), channels);
   ensureDir(join(workspaceDir(workspaceId), 'channels', channel.id));
-  return channel;
+  return { channel, created: true };
 }
 
 export function updateChannel(
@@ -96,6 +100,6 @@ export function deleteChannel(workspaceId: string, channelId: string): boolean {
 export function ensureGeneralChannel(workspaceId: string): void {
   const channels = listChannels(workspaceId);
   if (!channels.some((c) => c.name === 'general')) {
-    createChannel(workspaceId, { name: 'general', type: 'general' });
+    createChannel(workspaceId, { name: 'general', type: 'general', overwrite: true });
   }
 }

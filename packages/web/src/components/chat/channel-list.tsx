@@ -30,6 +30,7 @@ const typeBadgeConfig: Record<Channel['type'], { className: string; icon: typeof
   general: { className: 'bg-muted text-muted-foreground', icon: Hash },
   issue: { className: 'bg-amber-500/15 text-amber-600', icon: AlertCircle },
   agent: { className: 'bg-blue-500/15 text-blue-600', icon: MessageCircle },
+  'workflows-ui': { className: 'bg-purple-500/15 text-purple-600', icon: MessageCircle },
 };
 
 const statusBadgeConfig: Record<string, { className: string; label: string }> = {

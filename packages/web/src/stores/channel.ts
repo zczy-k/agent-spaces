@@ -65,7 +65,7 @@ function getStoredActiveId(workspaceId: string, channels: Channel[]): string | n
 function isChannel(channel: Partial<Channel> & Pick<Channel, 'id'>): channel is Channel {
   return typeof channel.workspaceId === 'string'
     && typeof channel.name === 'string'
-    && (channel.type === 'general' || channel.type === 'issue' || channel.type === 'agent')
+    && (channel.type === 'general' || channel.type === 'issue' || channel.type === 'agent' || channel.type === 'workflows-ui')
     && Array.isArray(channel.members)
     && typeof channel.createdAt === 'string';
 }

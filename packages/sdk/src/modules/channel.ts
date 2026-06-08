@@ -6,7 +6,7 @@ export function createChannelApi(http: HttpClient) {
     list: (workspaceId: string): Promise<Channel[]> =>
       http.get(`/api/workspaces/${workspaceId}/channels`),
 
-    create: (workspaceId: string, data: { name: string; type?: string; members?: string[]; titlePrompt?: string }): Promise<Channel> =>
+    create: (workspaceId: string, data: { name: string; type?: string; members?: string[]; titlePrompt?: string; overwrite?: boolean }): Promise<Channel> =>
       http.post(`/api/workspaces/${workspaceId}/channels`, data),
 
     get: (workspaceId: string, channelId: string): Promise<Channel> =>

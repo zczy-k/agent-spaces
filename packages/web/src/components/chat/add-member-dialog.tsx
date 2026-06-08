@@ -49,7 +49,6 @@ export function AddMemberDialog({ open, onOpenChange, candidates, defaultSelecte
   };
 
   const handleConfirm = () => {
-    if (selected.length === 0) return;
     onAdd(selected);
     handleClose(false);
   };
@@ -81,7 +80,7 @@ export function AddMemberDialog({ open, onOpenChange, candidates, defaultSelecte
         />
         <DialogFooter>
           <Button variant="outline" onClick={() => handleClose(false)}>{t('cancel')}</Button>
-          <Button onClick={handleConfirm} disabled={selected.length === 0}>
+          <Button onClick={handleConfirm}>
             <UserPlus className="size-3.5 mr-1" />{t('confirm')} ({selected.length})
           </Button>
         </DialogFooter>
