@@ -19,6 +19,7 @@ import {
   Terminal,
   LayoutGrid,
   MessageCircle,
+  Workflow,
 } from "lucide-react";
 import type { Workspace } from "@agent-spaces/shared";
 import { sdk } from "@/lib/sdk";
@@ -101,6 +102,12 @@ export function buildDashboardRoutes(config: DashboardRoutesConfig): Route[] {
       title: ts("nav.workflows"),
       icon: <GitBranch className="size-4" />,
       link: "/workflows",
+    },
+    {
+      id: "workflows-ui",
+      title: ts("nav.workflowsUI"),
+      icon: <Workflow className="size-4" />,
+      link: "/workflows-ui",
     },
     {
       id: "chat",

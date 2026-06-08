@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { AvatarUploader } from '@/components/common/avatar-uploader';
 import { Loader2 } from 'lucide-react';
 
 interface WorkflowsUiEditDialogProps {
@@ -22,12 +23,14 @@ export function WorkflowsUiEditDialog({ project, open, onOpenChange, onUpdated }
   const t = useTranslations('workflows-ui');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [icon, setIcon] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (project) {
       setName(project.name);
       setDescription(project.description ?? '');
+      setIcon(project.icon ?? '');
     }
   }, [project]);
 
@@ -38,6 +41,7 @@ export function WorkflowsUiEditDialog({ project, open, onOpenChange, onUpdated }
       const updated = await sdk.workflowUi.update(project.id, {
         name: name.trim(),
         description: description.trim() || undefined,
+        icon: icon || undefined,
       });
       onUpdated?.(updated);
       onOpenChange(false);
@@ -53,6 +57,14 @@ export function WorkflowsUiEditDialog({ project, open, onOpenChange, onUpdated }
           <DialogTitle>{t('edit.title')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          <AvatarUploader
+            name={name}
+            avatarUrl=""
+            icon={icon}
+            onAvatarUrlChange={() => {}}
+            onIconChange={setIcon}
+            hideUploadLabel
+          />
           <div className="space-y-2">
             <Label>{t('edit.name')}</Label>
             <Input

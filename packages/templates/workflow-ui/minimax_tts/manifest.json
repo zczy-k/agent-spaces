@@ -1,0 +1,13 @@
+{
+  "name": "minimax配音",
+  "version": "1.0.0",
+  "type": "react",
+  "tags": [],
+  "mainFile": "index.jsx",
+  "icon": "🎙️",
+  "enabledPlugins": [
+    "workflow.minimax"
+  ],
+  "agentConfigId": "f98bd9a7-ddda-4766-a6d1-59a94ed4f7e4",
+  "description": "minimax配音界面"
+}

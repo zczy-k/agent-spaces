@@ -1,7 +1,8 @@
 [
   {
     "id": "minimax_tts",
-    "name": "minimax tts",
-    "filename": "minimax_tts.zip"
+    "name": "minimax配音",
+    "filename": "minimax_tts.zip",
+    "icon": "🎙️"
   }
 ]

@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Download, Store } from 'lucide-react';
 import { fetchStoreIndex, resolveStoreUrl } from '@/lib/agent-store';
+import { AgentIcon } from '@/components/common/agent-icon';
 import { sdk } from '@/lib/sdk';
 
 interface WorkflowsUiStoreDialogProps {
@@ -25,6 +26,7 @@ interface WorkflowUiIndexItem {
   id: string;
   name: string;
   filename: string;
+  icon?: string;
 }
 
 export function WorkflowsUiStoreDialog({ open, onOpenChange, onImported }: WorkflowsUiStoreDialogProps) {
@@ -89,7 +91,14 @@ export function WorkflowsUiStoreDialog({ open, onOpenChange, onImported }: Workf
                   className="rounded-xl border border-border bg-background p-4 hover:bg-accent/30 transition-colors"
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <span className="font-medium text-sm">{item.name}</span>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <AgentIcon
+                        name={item.name}
+                        icon={item.icon}
+                        className="size-6 rounded shrink-0"
+                      />
+                      <span className="font-medium text-sm truncate">{item.name}</span>
+                    </div>
                     <Button
                       variant="outline"
                       size="sm"

@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, writeFileSync, createWriteStream, rmSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync, createWriteStream, rmSync, readdirSync, readFileSync, copyFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import yauzl from 'yauzl';
@@ -67,7 +67,7 @@ export default App;
 
 export function updateProject(
   projectId: string,
-  updates: Partial<Pick<WorkflowUiProject, 'name' | 'description' | 'tags' | 'enabledPlugins' | 'agentConfigId' | 'mainFile'>>,
+  updates: Partial<Pick<WorkflowUiProject, 'name' | 'description' | 'tags' | 'enabledPlugins' | 'agentConfigId' | 'mainFile' | 'icon'>>,
 ): WorkflowUiProject {
   return store.updateProject(projectId, updates);
 }
@@ -128,6 +128,14 @@ export async function exportZip(projectId: string): Promise<Buffer> {
     }
   }
 
+  // Add icon file if exists
+  if (manifest.icon) {
+    const iconPath = join(store.getProjectDir(projectId), manifest.icon);
+    if (existsSync(iconPath)) {
+      archive.file(iconPath, { name: manifest.icon });
+    }
+  }
+
   await archive.finalize();
   return Buffer.concat(chunks);
 }
@@ -170,14 +178,25 @@ export async function importZip(
     // Source directory: prefer src/ subdirectory
     const srcBase = existsSync(join(contentDir, 'src')) ? join(contentDir, 'src') : contentDir;
 
-    return store.importFromDir(srcBase, {
+    const project = store.importFromDir(srcBase, {
       name,
       type: type as 'react' | 'html',
       description: manifest.description ?? projectManifest.description,
       mainFile,
       tags: projectManifest.tags,
       enabledPlugins: projectManifest.enabledPlugins,
+      icon: projectManifest.icon,
     });
+
+    // Copy icon file if present
+    if (projectManifest.icon && typeof projectManifest.icon === 'string') {
+      const iconSrc = join(contentDir, projectManifest.icon);
+      if (existsSync(iconSrc)) {
+        copyFileSync(iconSrc, join(store.getProjectDir(project.id), projectManifest.icon));
+      }
+    }
+
+    return project;
   } finally {
     try { rmSync(extractDir, { recursive: true, force: true }); } catch { /* ignore */ }
   }

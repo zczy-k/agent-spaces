@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-import { readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync, existsSync, unlinkSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execSync } from 'node:child_process';
 
 const agentsDir = fileURLToPath(new URL('.', import.meta.url));
 
@@ -224,12 +225,29 @@ scanWorkflowStore();
 function scanWorkflowUiStore() {
   const dir = join(agentsDir, 'workflow-ui');
   if (!existsSync(dir)) return;
-  const files = readdirSync(dir).filter((f) => f.endsWith('.zip'));
-  const index = files.map((filename) => {
-    const id = basename(filename, '.zip');
-    const name = id.replace(/[-_]/g, ' ');
-    return { id, name, filename };
-  });
+  const index = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const templateDir = join(dir, entry.name);
+    const manifestFile = join(templateDir, 'manifest.json');
+    let name = entry.name.replace(/[-_]/g, ' ');
+    let icon;
+    if (existsSync(manifestFile)) {
+      try {
+        const manifest = JSON.parse(readFileSync(manifestFile, 'utf-8'));
+        name = manifest.name || name;
+        icon = manifest.icon;
+      } catch { /* ignore */ }
+    }
+    const zipFilename = `${entry.name}.zip`;
+    const zipPath = join(dir, zipFilename);
+    // (Re)generate zip from directory
+    if (existsSync(zipPath)) unlinkSync(zipPath);
+    try {
+      execSync(`cd "${templateDir}" && zip -r "${zipPath}" .`, { stdio: 'pipe' });
+    } catch { /* ignore zip errors */ }
+    index.push({ id: entry.name, name, filename: zipFilename, icon });
+  }
   writeFileSync(join(dir, 'index.json'), JSON.stringify(index, null, 2), 'utf-8');
   console.log(`[workflow-ui] ${index.length} templates`);
 }

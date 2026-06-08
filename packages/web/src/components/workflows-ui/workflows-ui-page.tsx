@@ -84,7 +84,7 @@ export function WorkflowsUiPage() {
   }, [loadProjects]);
 
   return (
-    <div className="p-6 h-full overflow-y-auto">
+    <div className="p-6 h-full flex flex-col overflow-y-auto">
       {/* Header */}
       <div className="hidden md:flex items-center justify-between mb-6">
         <div>
@@ -148,7 +148,7 @@ export function WorkflowsUiPage() {
           {t('page.loading')}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+        <div className="flex flex-col items-center justify-center flex-1 text-muted-foreground">
           <FileQuestion className="h-10 w-10 mb-3" />
           {projects.length === 0 ? (
             <>
@@ -163,7 +163,7 @@ export function WorkflowsUiPage() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 flex-1 content-start">
           {filtered.map((project) => (
             <WorkflowsUiCard
               key={project.id}

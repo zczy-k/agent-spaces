@@ -10,6 +10,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ShareDialog } from '@/components/common/share-dialog';
 import { WorkflowsUiEditDialog } from './workflows-ui-edit-dialog';
+import { AgentIcon } from '@/components/common/agent-icon';
 import { nativeNavigate } from '@/lib/navigate';
 import { useRouter } from 'next/navigation';
 import { sdk } from '@/lib/sdk';
@@ -97,9 +98,11 @@ export function WorkflowsUiCard({ project, onDelete, onDuplicate, onUpdated }: W
       </div>
       <CardHeader className="pb-2">
         <div className="flex items-center gap-2">
-          <span className="w-6 h-6 rounded bg-primary/10 text-xs font-bold flex items-center justify-center text-primary shrink-0">
-            {(project.name || 'U').charAt(0).toUpperCase()}
-          </span>
+          <AgentIcon
+            name={project.name}
+            icon={project.icon}
+            className="size-6 rounded shrink-0"
+          />
           <CardTitle className="text-sm truncate">{project.name}</CardTitle>
           <Badge variant={project.type === 'react' ? 'default' : 'secondary'} className="text-[10px] ml-auto me-6 shrink-0">
             {project.type === 'react' ? 'React' : 'HTML'}

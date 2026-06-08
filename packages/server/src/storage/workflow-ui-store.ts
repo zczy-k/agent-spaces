@@ -13,6 +13,7 @@ export interface WorkflowUiProject {
   enabledPlugins?: string[];
   agentConfigId?: string;
   mainFile: string;
+  icon?: string;
   createdAt: string;
   updatedAt: string;
   storeUrl?: string;
@@ -29,6 +30,10 @@ function indexPath(): string {
 
 function projectDir(projectId: string): string {
   return join(baseDir(), projectId);
+}
+
+export function getProjectDir(projectId: string): string {
+  return projectDir(projectId);
 }
 
 function manifestPath(projectId: string): string {
@@ -131,7 +136,7 @@ export function createProject(input: {
   return project;
 }
 
-export function updateProject(projectId: string, updates: Partial<Pick<WorkflowUiProject, 'name' | 'description' | 'tags' | 'enabledPlugins' | 'agentConfigId' | 'mainFile'>>): WorkflowUiProject {
+export function updateProject(projectId: string, updates: Partial<Pick<WorkflowUiProject, 'name' | 'description' | 'tags' | 'enabledPlugins' | 'agentConfigId' | 'mainFile' | 'icon'>>): WorkflowUiProject {
   const projects = listProjects();
   const index = projects.findIndex(p => p.id === projectId);
   if (index === -1) throw new Error(`Project not found: ${projectId}`);
@@ -225,6 +230,7 @@ export function importFromDir(extractDir: string, manifest: Partial<WorkflowUiPr
     enabledPlugins: manifest.enabledPlugins,
     agentConfigId: manifest.agentConfigId,
     mainFile: manifest.mainFile,
+    icon: manifest.icon,
     createdAt: now,
     updatedAt: now,
     storeUrl: manifest.storeUrl,

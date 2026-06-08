@@ -10,6 +10,7 @@ export interface WorkflowUiProject {
   enabledPlugins?: string[];
   agentConfigId?: string;
   mainFile: string;
+  icon?: string;
   createdAt: string;
   updatedAt: string;
   storeUrl?: string;
@@ -27,7 +28,7 @@ export function createWorkflowUiApi(http: HttpClient) {
     create: (data: { name: string; type: 'react' | 'html'; description?: string; tags?: string[] }): Promise<WorkflowUiProject> =>
       http.post('/api/workflows-ui', data),
 
-    update: (id: string, data: Partial<Pick<WorkflowUiProject, 'name' | 'description' | 'tags' | 'enabledPlugins' | 'agentConfigId' | 'mainFile'>>): Promise<WorkflowUiProject> =>
+    update: (id: string, data: Partial<Pick<WorkflowUiProject, 'name' | 'description' | 'tags' | 'enabledPlugins' | 'agentConfigId' | 'mainFile' | 'icon'>>): Promise<WorkflowUiProject> =>
       http.put(`/api/workflows-ui/${id}`, data),
 
     delete_: (id: string): Promise<void> =>
