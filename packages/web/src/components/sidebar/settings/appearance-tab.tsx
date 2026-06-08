@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useTheme } from "@/components/layout/theme-provider";
 import { cn } from "@/lib/utils";
-import { Sun, Moon, Monitor, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { SearchSelect } from "@/components/ui/search-select";
@@ -18,6 +18,7 @@ import {
   applyThemeStyle,
   removeThemeStyle,
   applyPrimaryColor,
+  removePrimaryColor,
   getDefaultPrimaryColor,
 } from "@/lib/theme-style";
 import { ColorPicker } from "@/components/ui/color-picker";
@@ -108,9 +109,9 @@ export function AppearanceTab() {
   });
 
   const themeOptions = [
-    { value: "light" as const, label: t("themeLight"), icon: Sun },
-    { value: "dark" as const, label: t("themeDark"), icon: Moon },
-    { value: "system" as const, label: t("themeSystem"), icon: Monitor },
+    { value: "light" as const, label: t("themeLight") },
+    { value: "dark" as const, label: t("themeDark") },
+    { value: "system" as const, label: t("themeSystem") },
   ];
 
   // Load custom font faces on mount
@@ -153,8 +154,13 @@ export function AppearanceTab() {
 
   const handlePrimaryColorChange = useCallback((color: string) => {
     setPrimaryColor(color);
-    localStorage.setItem(PRIMARY_COLOR_KEY, color);
-    applyPrimaryColor(color);
+    if (color) {
+      localStorage.setItem(PRIMARY_COLOR_KEY, color);
+      applyPrimaryColor(color);
+    } else {
+      localStorage.removeItem(PRIMARY_COLOR_KEY);
+      removePrimaryColor();
+    }
   }, []);
 
   const handleFontChange = useCallback((value: string) => {
@@ -206,19 +212,31 @@ export function AppearanceTab() {
         <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2.5 block">
           {t("theme")}
         </label>
-        <div className="grid grid-cols-3 gap-2">
-          {themeOptions.map(({ value, label, icon: Icon }) => (
+        <div className="flex gap-3">
+          {themeOptions.map(({ value, label }) => (
             <button
               key={value}
               type="button"
               onClick={() => setTheme(value)}
-              className={cn(
-                "flex flex-col items-center gap-1.5 rounded-lg border p-3 text-sm transition-colors hover:bg-muted/50",
-                theme === value && "border-primary bg-primary/5 text-primary",
-              )}
+              className="flex flex-col items-center gap-1.5 cursor-pointer group"
             >
-              <Icon className="size-5" />
-              <span className="text-xs font-medium">{label}</span>
+              <span
+                className={cn(
+                  "relative block h-[70px] w-[88px] overflow-hidden rounded-lg shadow-xs transition-shadow",
+                  "ring-2 ring-offset-1 ring-offset-background",
+                  theme === value ? "ring-primary/48 opacity-100" : "ring-transparent opacity-80 hover:opacity-100",
+                )}
+              >
+                {themePreviews[value]}
+              </span>
+              <span
+                className={cn(
+                  "text-xs font-medium transition-colors",
+                  theme === value ? "text-foreground" : "text-muted-foreground/70 group-hover:text-muted-foreground",
+                )}
+              >
+                {label}
+              </span>
             </button>
           ))}
         </div>
@@ -297,3 +315,38 @@ export function AppearanceTab() {
     </div>
   );
 }
+
+const themePreviews: Record<string, React.ReactNode> = {
+  light: (
+    <svg aria-hidden className="size-full" fill="none" viewBox="0 0 88 70" xmlns="http://www.w3.org/2000/svg">
+      <path className="fill-neutral-200" d="M0 0h88v70H0z" />
+      <path className="fill-white shadow-sm" d="M10 12a4 4 0 0 1 4-4h74v62H10V12Z" />
+      <circle className="fill-neutral-300" cx="28" cy="26" r="8" />
+      <rect className="fill-neutral-200" height="4" rx="2" width="58" x="20" y="42" />
+      <rect className="fill-neutral-200" height="4" rx="2" width="58" x="20" y="49" />
+      <rect className="fill-neutral-200" height="4" rx="2" width="29" x="20" y="56" />
+    </svg>
+  ),
+  dark: (
+    <svg aria-hidden className="size-full" fill="none" viewBox="0 0 88 70" xmlns="http://www.w3.org/2000/svg">
+      <path className="fill-neutral-900" d="M0 0h88v70H0z" />
+      <path className="fill-neutral-800 shadow-sm" d="M10 12a4 4 0 0 1 4-4h74v62H10V12Z" />
+      <circle className="fill-neutral-600" cx="28" cy="26" r="8" />
+      <rect className="fill-neutral-700" height="4" rx="2" width="58" x="20" y="42" />
+      <rect className="fill-neutral-700" height="4" rx="2" width="58" x="20" y="49" />
+      <rect className="fill-neutral-700" height="4" rx="2" width="29" x="20" y="56" />
+    </svg>
+  ),
+  system: (
+    <svg aria-hidden className="size-full" fill="none" viewBox="0 0 88 70" xmlns="http://www.w3.org/2000/svg">
+      <path className="fill-neutral-200" d="M0 0h44v70H0z" />
+      <path className="fill-neutral-900" d="M44 0h44v70H44z" />
+      <path className="fill-white shadow-sm" d="M10 12a4 4 0 0 1 4-4h30v62H10V12Z" />
+      <circle className="fill-neutral-300" cx="28" cy="26" r="8" />
+      <path className="fill-neutral-200" d="M20 44a2 2 0 0 1 2-2h22v4H22a2 2 0 0 1-2-2ZM20 51a2 2 0 0 1 2-2h22v4H22a2 2 0 0 1-2-2ZM20 58a2 2 0 0 1 2-2h22v4H22a2 2 0 0 1-2-2Z" />
+      <path className="fill-neutral-800 shadow-sm" d="M54 12a4 4 0 0 1 4-4h30v62H54V12Z" />
+      <circle className="fill-neutral-600" cx="72" cy="26" r="8" />
+      <path className="fill-neutral-700" d="M64 44a2 2 0 0 1 2-2h22v4H66a2 2 0 0 1-2-2ZM64 51a2 2 0 0 1 2-2h22v4H66a2 2 0 0 1-2-2ZM64 58a2 2 0 0 1 2-2h22v4H66a2 2 0 0 1-2-2Z" />
+    </svg>
+  ),
+};

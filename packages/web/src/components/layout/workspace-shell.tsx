@@ -602,7 +602,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   }
 
   return (
-    <div className="relative h-full w-full">
+    <div className="workspace-flexlayout-shell relative h-full w-full bg-sidebar">
       <Layout model={model} factory={factory} onRenderTab={onRenderTab} onModelChange={onModelChange} />
       <AddFavoriteDialog />
       <SendToChannelDialog />

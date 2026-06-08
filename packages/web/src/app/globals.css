@@ -188,6 +188,10 @@
   gap: 0;
 }
 
+.workspace-flexlayout-shell .flexlayout__layout {
+  background-color: var(--sidebar) !important;
+}
+
 .flexlayout__layout_main {
   gap: 0;
 }
@@ -321,6 +325,10 @@
   --color-popup-border: var(--input);
   --color-popup-unselected: var(--foreground);
   --color-popup-unselected-background: var(--card);
+}
+
+.dark .workspace-flexlayout-shell .flexlayout__layout {
+  background-color: var(--sidebar) !important;
 }
 
 .dark .flexlayout__tabset {

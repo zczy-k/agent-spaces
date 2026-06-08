@@ -30,7 +30,7 @@ export function ColorPicker({ colors, value, onChange, className }: ColorPickerP
         <button
           key={color}
           type="button"
-          onClick={() => onChange(color)}
+          onClick={() => onChange(value === color ? "" : color)}
           className={cn(
             "size-6 rounded-full border-2 transition-all shrink-0",
             value === color

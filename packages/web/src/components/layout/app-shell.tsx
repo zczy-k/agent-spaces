@@ -35,7 +35,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <SidebarProvider className="h-[var(--app-content-height)] min-h-0 bg-[#f2f3f5] dark:bg-[#0f1117]">
+      <SidebarProvider className="h-[var(--app-content-height)] min-h-0 bg-sidebar">
         <DashboardSidebar />
         <SidebarInset className="!bg-transparent">
           {showTabs && <WorkspaceTabs />}

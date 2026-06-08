@@ -142,14 +142,11 @@ export function DashboardSidebar() {
       variant="floating"
       collapsible="icon"
       animateStateChange={userToggled}
-      className={cn(
-        "overflow-hidden",
-        isWorkspace && "bg-[#f2f3f5] dark:bg-[#0f1117]"
-      )}
+      className="overflow-hidden"
     >
       <SidebarHeader
         className={cn(
-          "flex shrink-0 rounded-xl border border-border bg-card mx-2 mt-2 px-3 py-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]",
+          "flex shrink-0 rounded-xl border border-sidebar-border bg-sidebar mx-2 mt-2 px-3 py-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]",
           isCollapsed
             ? "flex-row items-center justify-between gap-y-4 md:flex-col md:items-center md:justify-center"
             : "flex-row items-center justify-between"
@@ -160,7 +157,7 @@ export function DashboardSidebar() {
             <UserIcon size={isCollapsed ? "sm" : "md"} />
             <span
               className={cn(
-                "absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-card",
+                "absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-sidebar",
                 wsConnected ? "bg-green-500" : "bg-yellow-500"
               )}
             />
@@ -199,10 +196,10 @@ export function DashboardSidebar() {
           <SidebarTrigger onClick={() => setUserToggled(true)} />
         </motion.div>
       </SidebarHeader>
-      <SidebarContent className="min-h-0 overflow-y-auto group-data-[collapsible=icon]:overflow-y-auto gap-2 mx-2 my-2 rounded-xl border border-border bg-card p-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <SidebarContent className="min-h-0 overflow-y-auto group-data-[collapsible=icon]:overflow-y-auto gap-2 mx-2 my-2 rounded-xl border border-sidebar-border bg-sidebar p-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <DashboardNavigation routes={dashboardRoutes} pathname={pathname} />
       </SidebarContent>
-      <SidebarFooter className="shrink-0 mx-2 mb-2 rounded-xl border border-border bg-card p-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <SidebarFooter className="shrink-0 mx-2 mb-2 rounded-xl border border-sidebar-border bg-sidebar p-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <ServerSwitcher />
       </SidebarFooter>
       <SidebarDialogGroup dialogs={dialogs} currentWorkspaceId={currentWorkspaceId} />

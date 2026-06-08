@@ -56,7 +56,7 @@ export function NotificationsPopover({ workspaceId }: { workspaceId: string }) {
             </Badge>
           )}
         </PopoverTrigger>
-        <PopoverContent side="right" className="w-80 p-0 my-6" align="start">
+        <PopoverContent side="right" className="p-0 my-6" align="start">
           <div className="flex items-center justify-between px-4 py-3 border-b">
             <div className="flex items-center gap-2">
               <span className="font-semibold text-sm">{t('title')}</span>
@@ -80,7 +80,7 @@ export function NotificationsPopover({ workspaceId }: { workspaceId: string }) {
           <div>
             <Tabs defaultValue="all" className="gap-0">
               <div className="px-4 py-2 border-b">
-                <TabsList className="h-8 w-full">
+                <TabsList className="h-8 grid grid-cols-2">
                   <TabsTrigger value="all" className="flex-1 text-xs">
                     {t('all')}
                   </TabsTrigger>
