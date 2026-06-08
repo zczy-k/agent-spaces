@@ -41,7 +41,7 @@ function isImagesBadgeCompat(props: ImagesBadgeProps | ImagesBadgeCompatProps): 
 export function ImagesBadge(props: ImagesBadgeProps | ImagesBadgeCompatProps) {
   const resolved: ImagesBadgeProps = isImagesBadgeCompat(props)
     ? { ...props, items: props.images }
-    : props;
+    : (props as ImagesBadgeProps);
 
   const {
     text,

@@ -19,7 +19,7 @@ function ensureChannel(workspaceId: string, issue: Issue): void {
     return;
   }
 
-  const channel = channelService.createChannel(workspaceId, {
+  const { channel } = channelService.createChannel(workspaceId, {
     name: issue.title,
     type: 'issue',
     issueId: issue.id,
@@ -62,7 +62,7 @@ export function create(workspaceId: string, input: CreateIssueInput): Issue {
   const now = new Date().toISOString();
   const issueId = uuid();
   const channelMembers = input.members || [];
-  const channel = channelService.createChannel(workspaceId, {
+  const { channel } = channelService.createChannel(workspaceId, {
     name: input.title,
     type: 'issue',
     issueId,

@@ -187,7 +187,7 @@ export function WorkflowVersionPanel({ workflowId, nodes, edges, onRestore }: Ve
   );
 }
 
-function formatTime(ts: number | string | undefined, t: (key: string, params?: Record<string, unknown>) => string): string {
+function formatTime(ts: number | string | undefined, t: (key: string, params?: Record<string, string | number | Date>) => string): string {
   if (!ts) return '';
   const d = new Date(typeof ts === 'string' ? ts : ts);
   if (isNaN(d.getTime())) return '';

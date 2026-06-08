@@ -113,7 +113,7 @@ export function ChatPanel({ workspaceId, channelId, workflowUiContext, onAgentAc
 
   const currentChannelId = channelId ?? activeChannelId;
   const isExternalChannelId = channelId && !channels.some((c) => c.id === channelId);
-  const channel = channels.find((c) => c.id === currentChannelId) ?? { id: currentChannelId!, name: currentChannelId!, type: (isExternalChannelId ? 'workflows-ui' : 'agent') as Channel['type'], members: [] };
+  const channel = channels.find((c) => c.id === currentChannelId) ?? { id: currentChannelId!, name: currentChannelId!, type: (isExternalChannelId ? 'workflows-ui' : 'agent') as Channel['type'], members: [], issueId: undefined, workspaceId: '', createdAt: '' } as Channel;
   const msgs = useMemo(
     () => currentChannelId ? (messages[currentChannelId] || []) : [],
     [currentChannelId, messages],

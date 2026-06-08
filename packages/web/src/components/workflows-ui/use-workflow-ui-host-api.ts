@@ -82,7 +82,7 @@ export function useWorkflowUiHostApi(projectId: string) {
         return resp.json();
       }
 
-      const blob = content instanceof Blob ? content : new Blob([content]);
+      const blob = content instanceof Blob ? content : new Blob([content as BlobPart]);
       const base64 = await blobToBase64(blob);
       const resp = await fetchWithAuth(`/api/workflows-ui/${projectId}/data/content`, {
         method: 'PUT',

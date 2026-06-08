@@ -223,14 +223,12 @@ const PopoverNotificationsDemo = () => {
           </Tabs>
 
           <div className='px-4 py-3 border-t'>
-            <Button
-              variant='ghost'
-              size='sm'
-              className='w-full text-sm cursor-pointer'
-              render={<a href='#' />}
+            <a
+              href='#'
+              className='inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground h-8 px-3 w-full cursor-pointer'
             >
               View all notifications
-            </Button>
+            </a>
           </div>
         </div>
       </PopoverContent>

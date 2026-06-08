@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react"
-import { AnimatePresence, motion, MotionConfig } from "framer-motion"
+import { AnimatePresence, motion, MotionConfig, type Variants } from "framer-motion"
 import { ChevronDownIcon, X } from "lucide-react"
 
 type TSelectData = {
@@ -43,10 +43,9 @@ const SelectAnimated = ({ data, defaultValue }: SelectAnimatedProps) => {
   return (
     <MotionConfig
       transition={{
-        type: "spring",
+        type: "spring" as const,
         stiffness: 300,
         damping: 25,
-        ease: "0.65, 0, 0.35, 1",
       }}
     >
       <motion.div className="flex items-center justify-center">
@@ -134,26 +133,26 @@ type SelectItemProps = {
   onChange?: (index: string) => void
 }
 
-const animation = {
+const animation: Variants = {
   hidden: {
     opacity: 0,
     y: 10,
   },
-  visible: {
+  visible: (custom: number) => ({
     opacity: 1,
     y: 0,
-    transition: (custom: number) => ({
+    transition: {
       delay: custom * 0.1,
       duration: 0.5,
-    }),
-  },
-  exit: {
+    },
+  }),
+  exit: (custom: number) => ({
     opacity: 0,
     y: 10,
-    transition: (custom: number) => ({
+    transition: {
       delay: custom * 0.1,
-    }),
-  },
+    },
+  }),
 }
 
 const SelectItem = ({

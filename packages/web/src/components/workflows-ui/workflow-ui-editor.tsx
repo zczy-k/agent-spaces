@@ -242,7 +242,7 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
       </div>
 
       {/* Main content */}
-      <ResizablePanelGroup direction="horizontal" className="flex-1 min-h-0">
+      <ResizablePanelGroup orientation="horizontal" className="flex-1 min-h-0">
         {/* Left: file tree + editor */}
         <ResizablePanel id="workflow-ui-editor" defaultSize="30%" minSize="15%" className="flex flex-col">
           <div className="flex flex-col h-full rounded-xl border border-border bg-background overflow-hidden">
