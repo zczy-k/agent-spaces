@@ -263,6 +263,11 @@ export async function runMentionedAgent(
     workingDir,
     excludeNativeClaudeMd: preset.runtimeKind === 'claude-code',
     builtInTools: buildBuiltInTools(functionTools, channel, issue),
+    workflowUiContext: workflowUiRuntimeContext ? {
+      projectId: workflowUiRuntimeContext.projectId,
+      activeFilePath: options.workflowUiContext?.activeFilePath,
+      projectType: workflowUiRuntimeContext.projectType,
+    } : undefined,
   };
   const existingMessage = options.messageId
     ? listMessages(workspaceId, channelId).find((message) => message.id === options.messageId)
@@ -707,7 +712,9 @@ export async function runMentionedAgent(
 // --- Internal helpers ---
 
 function resolveWorkflowUiRuntimeContext(context: WorkflowUiMessageContext | undefined): {
+  projectId: string;
   projectDir: string;
+  projectType?: 'react' | 'html';
   enabledPlugins: string[];
 } | null {
   const projectId = context?.projectId?.trim();
@@ -718,7 +725,9 @@ function resolveWorkflowUiRuntimeContext(context: WorkflowUiMessageContext | und
     const projectDir = join(getDataDir(), 'workflows-ui', project.id);
     if (!existsSync(projectDir) || !statSync(projectDir).isDirectory()) return null;
     return {
+      projectId: project.id,
       projectDir,
+      projectType: project.type,
       enabledPlugins: project.enabledPlugins ?? [],
     };
   } catch {

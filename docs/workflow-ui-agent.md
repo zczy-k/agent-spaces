@@ -111,11 +111,19 @@ Workflow UI Agent 复用普通 channel Agent 的运行时能力，包括：
 
 | 工具 | 能力 |
 | --- | --- |
+| `list_agent_spaces_ui_components` | 列出 `window.AgentSpacesUI` 当前暴露的 React UI 组件，Agent 在 React 模式编写 UI 前应优先查询。 |
 | `list_plugin_tools` | 列出当前 Workflow UI 项目已启用插件注册的 tools。 |
 | `get_plugin_tool_detail` | 查看指定插件 tool 的完整参数 schema 和描述。 |
 | `execute_plugin_tool` | 执行指定插件 tool 并返回结果。 |
 
 插件工具的可见范围来自项目的 `enabledPlugins`。
+
+## AgentSpacesUI 使用规则
+
+后端会把 `workflowUiContext.projectType` 注入 Agent 提示词：
+
+- React 模式：优先调用 `list_agent_spaces_ui_components` 查询可用宿主组件，并优先通过 `window.AgentSpacesUI` 解构使用，例如 `const { Button, Card, CardContent } = window.AgentSpacesUI;`。不要从宿主源码路径 import 这些组件。
+- HTML 模式：可使用普通 HTML/CSS/JS；`window.AgentSpacesUI` 和 `window.AgentSpacesAPI` 仍可能存在，但 React 组件主要面向 React 模式。
 
 ## 上下文注入
 

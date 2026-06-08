@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import type { AgentFunctionTool } from '../../adapters/agent-runtime-types.js';
 import { getPluginTools, executePluginTool } from '../plugin.js';
 import { createBuiltinPluginApi } from '../plugin-runtime-api.js';
@@ -17,12 +19,120 @@ function stringInput(input: JsonRecord, key: string): string | undefined {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined;
 }
 
+const FALLBACK_AGENT_SPACES_UI_COMPONENTS = [
+  'Accordion',
+  'AccordionContent',
+  'AccordionItem',
+  'AccordionTrigger',
+  'Alert',
+  'AlertDescription',
+  'AlertTitle',
+  'Avatar',
+  'AvatarFallback',
+  'AvatarImage',
+  'Badge',
+  'Button',
+  'Card',
+  'CardContent',
+  'CardDescription',
+  'CardFooter',
+  'CardHeader',
+  'CardTitle',
+  'Checkbox',
+  'Collapsible',
+  'CollapsibleContent',
+  'CollapsibleTrigger',
+  'Dialog',
+  'DialogContent',
+  'DialogDescription',
+  'DialogFooter',
+  'DialogHeader',
+  'DialogTitle',
+  'DialogTrigger',
+  'Input',
+  'Label',
+  'Popover',
+  'PopoverContent',
+  'PopoverTrigger',
+  'Progress',
+  'ScrollArea',
+  'ScrollBar',
+  'Select',
+  'SelectContent',
+  'SelectGroup',
+  'SelectItem',
+  'SelectLabel',
+  'SelectTrigger',
+  'SelectValue',
+  'Separator',
+  'Skeleton',
+  'Slider',
+  'Switch',
+  'Tabs',
+  'TabsContent',
+  'TabsList',
+  'TabsTrigger',
+  'Textarea',
+  'Toggle',
+  'ToggleGroup',
+  'ToggleGroupItem',
+  'Tooltip',
+  'TooltipContent',
+  'TooltipProvider',
+  'TooltipTrigger',
+];
+
+function listAgentSpacesUiComponents(): string[] {
+  const exportsPath = [
+    resolve(process.cwd(), 'packages/web/src/lib/ui-exports.ts'),
+    resolve(process.cwd(), '../web/src/lib/ui-exports.ts'),
+  ].find((candidate) => existsSync(candidate));
+  if (!exportsPath) return FALLBACK_AGENT_SPACES_UI_COMPONENTS;
+
+  const source = readFileSync(exportsPath, 'utf-8');
+  const names = new Set<string>();
+  const exportPattern = /export\s*\{([^}]+)\}\s*from\s*['"][^'"]+['"]/g;
+  for (const match of source.matchAll(exportPattern)) {
+    const exports = match[1] ?? '';
+    for (const item of exports.split(',')) {
+      const name = item.trim().split(/\s+as\s+/i)[0]?.trim();
+      if (name && /^[A-Z][A-Za-z0-9]*$/.test(name)) names.add(name);
+    }
+  }
+
+  return names.size ? [...names].sort((a, b) => a.localeCompare(b)) : FALLBACK_AGENT_SPACES_UI_COMPONENTS;
+}
+
 export interface WorkflowUiToolContext {
   enabledPlugins: string[];
 }
 
 export function createWorkflowUiFunctionTools(ctx: WorkflowUiToolContext): AgentFunctionTool[] {
   return [
+    {
+      name: 'list_agent_spaces_ui_components',
+      description: 'List React UI components exposed on window.AgentSpacesUI for Workflow UI projects. Use this before hand-writing UI controls in React mode.',
+      inputSchema: schema({
+        keyword: { type: 'string', description: 'Optional fuzzy filter for component names.' },
+      }),
+      annotations: { readOnly: true },
+      execute: async (input) => {
+        const record = asRecord(input);
+        const keyword = stringInput(record, 'keyword')?.toLowerCase();
+        const components = listAgentSpacesUiComponents()
+          .filter((name) => !keyword || name.toLowerCase().includes(keyword));
+
+        return {
+          success: true,
+          total: components.length,
+          usage: {
+            react: 'const { Button, Card, CardContent } = window.AgentSpacesUI;',
+            html: 'window.AgentSpacesUI is available, but React components are primarily intended for React mode.',
+          },
+          components,
+        };
+      },
+    },
     {
       name: 'list_plugin_tools',
       description: '列出当前 UI 项目已启用插件注册的所有 tools，返回轻量摘要（name/description）。需要执行某个 tool 时，先调用 get_plugin_tool_detail 查看参数 schema。',

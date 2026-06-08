@@ -14,6 +14,12 @@ export interface BuiltInToolContext {
   issueTitle?: string;
 }
 
+interface WorkflowUiPromptContext {
+  projectId: string;
+  activeFilePath?: string;
+  projectType?: 'react' | 'html';
+}
+
 export function buildAgentPrompt(
   workspaceId: string,
   systemPrompt: string | undefined,
@@ -27,6 +33,7 @@ export function buildAgentPrompt(
     workingDir?: string;
     excludeNativeClaudeMd?: boolean;
     builtInTools?: BuiltInToolContext[];
+    workflowUiContext?: WorkflowUiPromptContext;
   },
 ): string {
   const parts: string[] = [];
@@ -48,6 +55,9 @@ export function buildAgentPrompt(
     configLines.push('- For Bash commands that create or modify files under the current working directory, use relative paths such as `mkdir -p css js` instead of absolute paths.');
     if (runtimeConfig.builtInTools?.length) {
       configLines.push(...formatBuiltInToolContext(workspaceId, runtimeConfig.builtInTools));
+    }
+    if (runtimeConfig.workflowUiContext) {
+      configLines.push(...formatWorkflowUiPromptContext(runtimeConfig.workflowUiContext));
     }
     if (isIssueContextLookup(userPrompt)) {
       configLines.push(
@@ -249,6 +259,25 @@ function formatBuiltInToolContext(workspaceId: string, tools: BuiltInToolContext
   for (const tool of tools) {
     lines.push(`- ${formatCallableToolName(tool.name)}: ${tool.description}`);
   }
+  return lines;
+}
+
+function formatWorkflowUiPromptContext(context: WorkflowUiPromptContext): string[] {
+  const projectType = context.projectType ?? 'unknown';
+  const lines = [
+    'Workflow UI project rules:',
+    `- Current Workflow UI project id: ${context.projectId}`,
+    `- Current Workflow UI project mode: ${projectType}`,
+  ];
+  if (context.activeFilePath) lines.push(`- Current active file: ${context.activeFilePath}`);
+
+  lines.push(
+    '- If you need available host UI components, call list_agent_spaces_ui_components before creating hand-written equivalents.',
+    '- In React mode, prefer components exposed by window.AgentSpacesUI over hand-written UI components. Example: `const { Button, Card, CardContent } = window.AgentSpacesUI;`.',
+    '- In React mode, do not import host UI components from source paths; destructure them from window.AgentSpacesUI.',
+    '- In HTML mode, window.AgentSpacesUI and window.AgentSpacesAPI may exist, but plain HTML/CSS/JS is acceptable when React components are not practical.',
+  );
+
   return lines;
 }
 
