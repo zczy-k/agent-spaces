@@ -19,7 +19,7 @@ export function WorkflowUiPreviewToolbar({
   onOpenPluginDialog,
 }: WorkflowUiPreviewToolbarProps) {
   return (
-    <div className="flex items-center gap-3 px-3 py-1.5 border-t border-border bg-muted/30">
+    <div className="flex items-center gap-3 px-3 py-1.5">
       <div className="flex items-center gap-2">
         <Switch
           id="auto-refresh"

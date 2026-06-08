@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Loader2, Check, Pencil } from 'lucide-react';
+import { Loader2, Check, Pencil, Share2 } from 'lucide-react';
 import { sdk } from '@/lib/sdk';
 import type { WorkflowUiProject } from '@agent-spaces/sdk';
 import { WorkflowUiPreview } from './workflow-ui-preview';
@@ -10,6 +10,10 @@ import { useWorkflowUiHostApi } from './use-workflow-ui-host-api';
 import { WorkflowUiChat } from './workflow-ui-chat';
 import { WorkflowUiPluginToolsDialog } from './workflow-ui-plugin-tools-dialog';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+import { BackButton } from '@/components/common/back-button';
+import { ShareDialog } from '@/components/common/share-dialog';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import dynamic from 'next/dynamic';
 import '@/lib/monaco-loader';
 
@@ -39,6 +43,11 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [loading, setLoading] = useState(true);
   const [pluginDialogOpen, setPluginDialogOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+
+  const shareUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/workflows-ui-preview/${projectId}`
+    : '';
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const localDirtyRef = useRef(false);
   const loadedFileContentRef = useRef('');
@@ -213,25 +222,43 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full gap-2 p-2">
+      {/* Top toolbar */}
+      <div className="flex items-center gap-2 px-2 py-1 rounded-xl bg-muted/30 border border-border">
+        <BackButton />
+        <div className="flex-1">
+          <WorkflowUiPreviewToolbar
+            autoRefresh={autoRefresh}
+            onAutoRefreshChange={setAutoRefresh}
+            onRefresh={handleManualRefresh}
+            onOpenPluginDialog={() => setPluginDialogOpen(true)}
+          />
+        </div>
+        <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setShareOpen(true)}>
+          <Share2 className="size-4" />
+        </Button>
+      </div>
+
       {/* Main content */}
       <ResizablePanelGroup direction="horizontal" className="flex-1 min-h-0">
         {/* Left: file tree + editor */}
         <ResizablePanel id="workflow-ui-editor" defaultSize="30%" minSize="15%" className="flex flex-col">
+          <div className="flex flex-col h-full rounded-xl border border-border bg-background overflow-hidden">
           {/* File tree */}
           <div className="border-b border-border p-2 max-h-48 overflow-auto">
             <div className="text-xs font-medium text-muted-foreground mb-1">文件</div>
+            <div className="flex flex-wrap gap-1">
             {files.map((file) => (
-              <button
+              <Badge
                 key={file}
-                className={`w-full text-left px-2 py-1 text-xs rounded cursor-pointer ${
-                  file === activeFile ? 'bg-accent text-accent-foreground' : 'hover:bg-muted'
-                }`}
+                variant={file === activeFile ? 'default' : 'secondary'}
+                className="cursor-pointer text-xs"
                 onClick={() => handleFileSelect(file)}
               >
                 {file}
-              </button>
+              </Badge>
             ))}
+            </div>
           </div>
           {/* Code editor */}
           <div className="flex-1 min-h-0">
@@ -274,18 +301,14 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
               }}
             />
           </div>
+          </div>
         </ResizablePanel>
 
         <ResizableHandle withHandle />
 
         {/* Right: preview */}
         <ResizablePanel id="workflow-ui-preview" defaultSize="70%" minSize="30%" className="flex flex-col">
-           <WorkflowUiPreviewToolbar
-            autoRefresh={autoRefresh}
-            onAutoRefreshChange={setAutoRefresh}
-            onRefresh={handleManualRefresh}
-            onOpenPluginDialog={() => setPluginDialogOpen(true)}
-          />
+          <div className="flex flex-col h-full rounded-xl border border-border bg-background overflow-hidden">
           <WorkflowUiPreview
             key={previewRefreshKey}
             type={project.type}
@@ -293,11 +316,12 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
             error={previewError}
             onError={setPreviewError}
           />
+          </div>
         </ResizablePanel>
       </ResizablePanelGroup>
 
       {/* Bottom status bar */}
-      <div className="flex items-center gap-4 px-3 py-1 border-t border-border bg-muted/30 text-xs text-muted-foreground">
+      <div className="flex items-center gap-4 px-3 py-1 rounded-xl bg-muted/30 border border-border text-xs text-muted-foreground">
         <span>{project.name}</span>
         <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
           {project.type === 'react' ? 'React' : 'HTML'}
@@ -335,6 +359,8 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
           }
         }}
       />
+
+      <ShareDialog open={shareOpen} onOpenChange={setShareOpen} title={project.name} url={shareUrl} />
 
       <WorkflowUiPluginToolsDialog
         open={pluginDialogOpen}
