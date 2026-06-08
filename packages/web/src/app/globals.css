@@ -5,14 +5,15 @@
 
 @theme inline {
   /* Fonts */
-  --font-app: var(--font-sans);
+  --font-app: var(--app-font-sans);
   --font-dm-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-outfit: "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-poppins: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --font-heading: var(--font-sans);
-  --font-mid: var(--font-sans);
-  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --font-sans: var(--app-font-sans);
+  --font-serif: var(--app-font-serif);
+  --font-heading: var(--app-font-heading);
+  --font-mid: var(--app-font-mid);
+  --font-mono: var(--app-font-mono);
 
   /* Colors */
   --color-background: var(--background);
@@ -85,6 +86,11 @@
   --app-content-height: 100dvh;
   --app-top-inset: 0px;
   --keyboard-inset-height: 0px;
+  --app-font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --app-font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --app-font-heading: var(--app-font-sans);
+  --app-font-mid: var(--app-font-sans);
+  --app-font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   --background: #ffffff;
   --foreground: #222222;
   --card: #ffffff;
@@ -170,6 +176,12 @@
     @apply bg-background text-foreground;
     font-family: var(--font-app);
     padding-top: var(--app-top-inset);
+  }
+  button,
+  input,
+  select,
+  textarea {
+    font-family: var(--font-app);
   }
   html,
   body {

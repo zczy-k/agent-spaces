@@ -41,7 +41,18 @@ const BUILTIN_FONTS = [
 
 const STORAGE_KEY = "customFont";
 const CUSTOM_FONTS_KEY = "customFonts";
-const FONT_VARIABLES = ["--font-app", "--font-sans", "--font-heading", "--font-mid", "--font-mono"];
+const FONT_VARIABLES = [
+  "--font-app",
+  "--font-sans",
+  "--font-heading",
+  "--font-mid",
+  "--font-mono",
+  "--app-font-sans",
+  "--app-font-serif",
+  "--app-font-heading",
+  "--app-font-mid",
+  "--app-font-mono",
+];
 
 interface CustomFont {
   name: string;

@@ -2,7 +2,10 @@ export const THEME_STYLE_STORAGE_KEY = "theme-style";
 export const THEME_STYLE_CUSTOM_CSS_KEY = "theme-style-custom-css";
 const STYLE_EL_ID = "theme-style-override";
 const FONT_LINK_EL_ID = "theme-style-google-fonts";
+const FONT_PRECONNECT_EL_ID = "theme-style-google-fonts-preconnect";
+const FONT_PRECONNECT_STATIC_EL_ID = "theme-style-google-fonts-static-preconnect";
 const THEME_FONT_VARIABLES = ["sans", "serif", "mono", "app", "heading", "mid"];
+const APP_FONT_VARIABLES = ["sans", "serif", "mono", "heading", "mid"];
 const GENERIC_FONT_FAMILIES = new Set([
   "serif",
   "sans-serif",
@@ -16,6 +19,23 @@ const GENERIC_FONT_FAMILIES = new Set([
   "emoji",
   "math",
   "fangsong",
+]);
+const SYSTEM_FONT_FAMILIES = new Set([
+  "-apple-system",
+  "arial",
+  "blinkmacsystemfont",
+  "cambria",
+  "consolas",
+  "courier new",
+  "georgia",
+  "helvetica",
+  "helvetica neue",
+  "menlo",
+  "segoe ui",
+  "sf mono",
+  "sfmono-regular",
+  "times",
+  "times new roman",
 ]);
 
 export const THEME_STYLES: Record<string, string> = {
@@ -334,7 +354,8 @@ function splitFontFamilies(value: string) {
 function normalizeFontFamily(value: string) {
   const family = value.trim().replace(/^["']|["']$/g, "");
   if (!family || family.startsWith("var(")) return "";
-  if (GENERIC_FONT_FAMILIES.has(family.toLowerCase())) return "";
+  const normalized = family.toLowerCase();
+  if (GENERIC_FONT_FAMILIES.has(normalized) || SYSTEM_FONT_FAMILIES.has(normalized)) return "";
   return family;
 }
 
@@ -349,6 +370,37 @@ function getThemeFontFamilies(css: string) {
   return [...families];
 }
 
+function getThemeFontVariableValues(css: string) {
+  const values = new Map<string, string>();
+  const variablePattern = new RegExp(`--font-(${APP_FONT_VARIABLES.join("|")})\\s*:\\s*([^;]+);`, "g");
+  for (const match of css.matchAll(variablePattern)) {
+    const value = match[2].trim();
+    if (value.startsWith("var(") || values.has(match[1])) continue;
+    values.set(match[1], value);
+  }
+  return values;
+}
+
+function applyThemeFontVariables(css: string) {
+  const values = getThemeFontVariableValues(css);
+  const root = document.documentElement;
+  for (const variable of APP_FONT_VARIABLES) {
+    const value = values.get(variable);
+    if (value) {
+      root.style.setProperty(`--app-font-${variable}`, value);
+    } else {
+      root.style.removeProperty(`--app-font-${variable}`);
+    }
+  }
+}
+
+function removeThemeFontVariables() {
+  const root = document.documentElement;
+  for (const variable of APP_FONT_VARIABLES) {
+    root.style.removeProperty(`--app-font-${variable}`);
+  }
+}
+
 function getGoogleFontsUrl(families: string[]) {
   if (families.length === 0) return "";
   const params = families
@@ -358,14 +410,41 @@ function getGoogleFontsUrl(families: string[]) {
   return `https://fonts.googleapis.com/css2?${params}&display=swap`;
 }
 
+function ensureGoogleFontsPreconnect() {
+  if (!document.getElementById(FONT_PRECONNECT_EL_ID)) {
+    const link = document.createElement("link");
+    link.id = FONT_PRECONNECT_EL_ID;
+    link.rel = "preconnect";
+    link.href = "https://fonts.googleapis.com";
+    document.head.appendChild(link);
+  }
+
+  if (!document.getElementById(FONT_PRECONNECT_STATIC_EL_ID)) {
+    const link = document.createElement("link");
+    link.id = FONT_PRECONNECT_STATIC_EL_ID;
+    link.rel = "preconnect";
+    link.href = "https://fonts.gstatic.com";
+    link.crossOrigin = "anonymous";
+    document.head.appendChild(link);
+  }
+}
+
+function removeThemeFontLinks() {
+  document.getElementById(FONT_LINK_EL_ID)?.remove();
+  document.getElementById(FONT_PRECONNECT_EL_ID)?.remove();
+  document.getElementById(FONT_PRECONNECT_STATIC_EL_ID)?.remove();
+}
+
 function applyThemeFonts(css: string) {
   const href = getGoogleFontsUrl(getThemeFontFamilies(css));
   const existing = document.getElementById(FONT_LINK_EL_ID) as HTMLLinkElement | null;
 
   if (!href) {
-    existing?.remove();
+    removeThemeFontLinks();
     return;
   }
+
+  ensureGoogleFontsPreconnect();
 
   if (existing) {
     if (existing.href !== href) existing.href = href;
@@ -381,6 +460,7 @@ function applyThemeFonts(css: string) {
 
 export function applyThemeStyle(css: string) {
   applyThemeFonts(css);
+  applyThemeFontVariables(css);
   let el = document.getElementById(STYLE_EL_ID) as HTMLStyleElement | null;
   if (!el) {
     el = document.createElement("style");
@@ -392,7 +472,8 @@ export function applyThemeStyle(css: string) {
 
 export function removeThemeStyle() {
   document.getElementById(STYLE_EL_ID)?.remove();
-  document.getElementById(FONT_LINK_EL_ID)?.remove();
+  removeThemeFontLinks();
+  removeThemeFontVariables();
 }
 
 export function applySavedThemeStyle() {
