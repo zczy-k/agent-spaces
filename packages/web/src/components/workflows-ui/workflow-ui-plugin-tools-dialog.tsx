@@ -14,8 +14,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { sdk } from '@/lib/sdk';
+import { resolveServerAssetUrl } from '@/lib/server';
 import { pluginApi, type WorkflowPlugin } from '@/lib/workflow-plugin-api';
 import { WorkflowPluginsDialog } from '@/components/workflow/workflow-plugins-dialog';
+import { WorkflowUiToolExecuteDialog } from './workflow-ui-tool-execute-dialog';
+import { PluginIcon } from '@/components/workflow/workflow-plugin-icon';
 import type { Workflow } from '@agent-spaces/shared';
 
 interface PluginTool {
@@ -42,9 +45,13 @@ export function WorkflowUiPluginToolsDialog({
   const [plugins, setPlugins] = useState<WorkflowPlugin[]>([]);
   const [toolsByPlugin, setToolsByPlugin] = useState<Record<string, PluginTool[]>>({});
   const [loading, setLoading] = useState(false);
-  const [executing, setExecuting] = useState<string | null>(null);
-  const [result, setResult] = useState<string | null>(null);
   const [pluginsDialogOpen, setPluginsDialogOpen] = useState(false);
+  const [executeDialog, setExecuteDialog] = useState<{
+    pluginId: string;
+    pluginName: string;
+    pluginIconPath?: string;
+    tool: PluginTool;
+  } | null>(null);
 
   // Adapt project enabledPlugins to Workflow shape for WorkflowPluginsDialog
   const adapterWorkflow: Workflow = useMemo(() => ({
@@ -110,22 +117,8 @@ export function WorkflowUiPluginToolsDialog({
     await sdk.workflowUi.update(projectId, { enabledPlugins: Array.from(next) });
   }, [enabledPlugins, plugins, projectId, onEnabledPluginsChange]);
 
-  const handleExecute = useCallback(async (pluginId: string, toolName: string) => {
-    setExecuting(`${pluginId}/${toolName}`);
-    setResult(null);
-    try {
-      const resp = await fetchWithAuth(`/api/plugins/${pluginId}/tools/execute`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: toolName, args: {} }),
-      });
-      const data = await resp.json();
-      setResult(JSON.stringify(data, null, 2));
-    } catch (error: any) {
-      setResult(`Error: ${error.message}`);
-    } finally {
-      setExecuting(null);
-    }
+  const handleOpenToolDialog = useCallback((pluginId: string, pluginName: string, pluginIconPath: string | undefined, tool: PluginTool) => {
+    setExecuteDialog({ pluginId, pluginName, pluginIconPath, tool });
   }, []);
 
   return (
@@ -159,6 +152,9 @@ export function WorkflowUiPluginToolsDialog({
                   <div key={plugin.id} className="rounded-md border">
                     {/* Group header */}
                     <div className="flex items-center gap-2 px-3 py-2 bg-muted/40">
+                      <PluginIcon
+                        source={plugin.iconPath ? { type: 'url', url: resolveServerAssetUrl(`/api/plugins/${plugin.id}/icon`) } : { type: 'builtin', variant: 'local' }}
+                      />
                       <div className="min-w-0 flex-1">
                         <span className="text-xs font-medium">{plugin.name}</span>
                         <span className="ml-1.5 text-[10px] text-muted-foreground">{plugin.version}</span>
@@ -187,8 +183,7 @@ export function WorkflowUiPluginToolsDialog({
                               variant="ghost"
                               size="sm"
                               className="h-6 shrink-0"
-                              disabled={executing === `${plugin.id}/${tool.name}`}
-                              onClick={() => handleExecute(plugin.id, tool.name)}
+                              onClick={() => handleOpenToolDialog(plugin.id, plugin.name, plugin.iconPath, tool)}
                             >
                               <Play className="h-3 w-3" />
                             </Button>
@@ -203,12 +198,16 @@ export function WorkflowUiPluginToolsDialog({
           </ScrollArea>
         )}
 
-        {result && (
-          <div className="mt-2 rounded border bg-muted/50 p-3 max-h-32 overflow-auto">
-            <pre className="text-xs font-mono whitespace-pre-wrap">{result}</pre>
-          </div>
-        )}
       </DialogContent>
+
+      <WorkflowUiToolExecuteDialog
+        open={!!executeDialog}
+        onOpenChange={(nextOpen) => { if (!nextOpen) setExecuteDialog(null); }}
+        pluginId={executeDialog?.pluginId ?? ''}
+        pluginName={executeDialog?.pluginName ?? ''}
+        pluginIconPath={executeDialog?.pluginIconPath}
+        tool={executeDialog?.tool ?? null}
+      />
 
       <WorkflowPluginsDialog
         open={pluginsDialogOpen}
