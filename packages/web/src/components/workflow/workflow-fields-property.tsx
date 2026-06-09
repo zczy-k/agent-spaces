@@ -410,42 +410,37 @@ function CodePropertyEditor({
           language={language}
           theme="vs-dark"
           value={value}
-          onChange={(v) => onChange(v ?? '')}
-          options={getCodeEditorOptions(disabled || previewMode)}
+          options={getCodeEditorOptions(true)}
         />
-        {previewMode ? (
-          <Button
-            type="button"
-            variant="secondary"
-            size="icon"
-            className="absolute bottom-2 right-2 z-10 h-7 w-7 bg-background/90 shadow-sm"
-            title="全屏编辑"
-            onClick={() => setFullscreenOpen(true)}
-          >
-            <Maximize2 className="h-3.5 w-3.5" />
-          </Button>
-        ) : null}
+        <Button
+          type="button"
+          variant="secondary"
+          size="icon"
+          className="absolute bottom-2 right-2 z-10 h-7 w-7 bg-background/90 shadow-sm"
+          title="全屏编辑"
+          onClick={() => setFullscreenOpen(true)}
+        >
+          <Maximize2 className="h-3.5 w-3.5" />
+        </Button>
       </div>
 
-      {previewMode ? (
-        <Dialog open={fullscreenOpen} onOpenChange={setFullscreenOpen}>
-          <DialogContent className="!flex !h-[85vh] !w-[85vw] !max-w-none flex-col gap-0 overflow-hidden p-0">
-            <DialogHeader className="border-b px-4 py-3">
-              <DialogTitle className="text-sm">{label}</DialogTitle>
-            </DialogHeader>
-            <div className="min-h-0 flex-1">
-              <MonacoEditor
-                height="100%"
-                language={language}
-                theme="vs-dark"
-                value={value}
-                onChange={(v) => handleFullscreenChange(v ?? '')}
-                options={getCodeEditorOptions(disabled)}
-              />
-            </div>
-          </DialogContent>
-        </Dialog>
-      ) : null}
+      <Dialog open={fullscreenOpen} onOpenChange={setFullscreenOpen}>
+        <DialogContent className="!flex !h-[85vh] !w-[85vw] !max-w-none flex-col gap-0 overflow-hidden p-0">
+          <DialogHeader className="border-b px-4 py-3">
+            <DialogTitle className="text-sm">{label}</DialogTitle>
+          </DialogHeader>
+          <div className="min-h-0 flex-1">
+            <MonacoEditor
+              height="100%"
+              language={language}
+              theme="vs-dark"
+              value={value}
+              onChange={(v) => handleFullscreenChange(v ?? '')}
+              options={getCodeEditorOptions(disabled)}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

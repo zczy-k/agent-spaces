@@ -1,6 +1,7 @@
 'use client';
 
 import type { WorkflowNode } from '@agent-spaces/shared';
+import { useTranslations } from 'next-intl';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,7 @@ export function NodeHeader({
   onEditPreset,
   onUpdatePresets,
 }: NodeHeaderProps) {
+  const t = useTranslations('workflows');
   const resolveLabel = (v: unknown) => { const s = String(v ?? ''); return s && !s.startsWith('nodes.') ? s : ''; };
   const displayLabel = resolveLabel(data.label) || resolveLabel(node.label) || definition?.label || '';
   return (
@@ -61,14 +63,14 @@ export function NodeHeader({
             variant={selectedJsonPreset ? 'default' : 'outline'}
             className="h-6 cursor-pointer gap-1 px-2 text-[10px]"
           >
-            {selectedJsonPreset ? selectedJsonPreset.name : 'JSON 预设'}
+            {selectedJsonPreset ? selectedJsonPreset.name : t('editor.jsonPreset')}
             <ChevronDown className="h-3 w-3" />
           </Badge>
         </PopoverTrigger>
         <PopoverContent align="end" className="w-80 p-2">
           <div className="max-h-72 overflow-y-auto">
             {jsonPresets.length === 0 ? (
-              <div className="px-2 py-6 text-center text-xs text-muted-foreground">暂无预设</div>
+              <div className="px-2 py-6 text-center text-xs text-muted-foreground">{t('editor.noPreset')}</div>
             ) : jsonPresets.map(preset => (
               <div key={preset.id} className="flex items-center gap-1 rounded px-2 py-1.5 hover:bg-accent">
                 <button
@@ -99,7 +101,7 @@ export function NodeHeader({
           <div className="mt-2 border-t pt-2">
             <Button variant="outline" size="sm" className="h-7 w-full gap-1 text-xs" onClick={onAddPreset}>
               <Plus className="h-3.5 w-3.5" />
-              添加
+              {t('editor.addPreset')}
             </Button>
           </div>
         </PopoverContent>
