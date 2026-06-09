@@ -192,6 +192,7 @@ export interface NodeProperty {
   readonly?: boolean
   default?: unknown
   options?: { label: string; value: string }[]
+  language?: string
   tooltip?: string
   fields?: ArrayFieldItem[]
   itemTemplate?: Record<string, unknown>

@@ -570,6 +570,21 @@
         }
       }
     },
+    "code_render": {
+      "label": "Code Render",
+      "description": "Render a custom node surface with React or HTML",
+      "props": {
+        "renderType": {
+          "label": "Render Type",
+          "react": "React",
+          "html": "HTML"
+        },
+        "code": {
+          "label": "Code",
+          "tooltip": "React mode must export a default component. HTML mode can contain HTML and inline script."
+        }
+      }
+    },
     "sticky_note": {
       "label": "Sticky Note",
       "description": "Canvas annotation node, does not affect workflow execution",

@@ -570,6 +570,21 @@
         }
       }
     },
+    "code_render": {
+      "label": "代码渲染",
+      "description": "使用 React 或 HTML 渲染自定义节点界面",
+      "props": {
+        "renderType": {
+          "label": "渲染类型",
+          "react": "React",
+          "html": "HTML"
+        },
+        "code": {
+          "label": "代码",
+          "tooltip": "React 模式需要 export default 一个组件；HTML 模式可以包含 HTML 和内联 script。"
+        }
+      }
+    },
     "sticky_note": {
       "label": "便签",
       "description": "画布注释节点，不影响工作流执行",

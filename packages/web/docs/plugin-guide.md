@@ -353,10 +353,62 @@ module.exports = { tools: [] }
 - `toolProperties`：当 tool 入参与 workflow 属性不一致时使用
 - `configProperties`：通用配置字段，会追加到 workflow 属性和 tool 入参
 - `outputs`：workflow 输出字段
+- `customView`：可选，自定义节点主体视图；支持 `{ type: 'react' | 'html', sourceCode: string }`
+- `customViewMinSize`：可选，自定义视图节点最小尺寸，例如 `{ width: 260, height: 190 }`
 - `run(ctx, args)`：统一执行函数，workflow 和 tool 都会调用它
 - `tool: false`：仅注册 workflow node，不暴露为 Agent tool
 
 如两侧参数不完全一致，可在动作定义里单独提供 `toolProperties`；如某个字段在 workflow 中必填、但 tool 中不必填，可设置 `toolRequired: false`。
+
+### 插件节点 `customView`
+
+插件 workflow node 可以通过 `customView` 替换默认节点主体。当前支持两种渲染模式：
+
+- `react`：`sourceCode` 需要 `export default` 一个 React 组件，组件 props 为 `{ nodeId, data }`
+- `html`：`sourceCode` 可以包含 HTML 和内联 `<script>`，脚本里可使用 `container`、`props`、`AgentSpacesUI`、`AgentSpaces`、`AgentSpacesAPI`
+
+React 模式可以直接使用封装好的 UI 组件：
+
+```javascript
+customView: {
+  type: 'react',
+  sourceCode: `
+export default function View({ nodeId, data }) {
+  const { Card, CardContent, Badge } = window.AgentSpacesUI;
+  return (
+    <div className="h-full w-full bg-background p-2">
+      <Card className="h-full rounded-md shadow-none">
+        <CardContent className="space-y-2 p-3">
+          <Badge variant="secondary">React</Badge>
+          <div className="text-sm font-medium">{data.title || nodeId}</div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+`,
+},
+customViewMinSize: { width: 260, height: 190 },
+```
+
+HTML 模式适合轻量视图：
+
+```javascript
+customView: {
+  type: 'html',
+  sourceCode: `
+<div class="h-full w-full bg-background p-3">
+  <div class="rounded border bg-card p-3 text-sm" data-title></div>
+</div>
+<script>
+container.querySelector('[data-title]').textContent = props.data.title || props.nodeId;
+</script>
+`,
+},
+customViewMinSize: { width: 240, height: 160 },
+```
+
+完整示例见 `packages/templates/plugins/custom-view-demo`。其中 `custom_view_demo_react` 使用 `window.AgentSpacesUI` 渲染 React 节点界面，`custom_view_demo_html` 使用 HTML + script 渲染节点界面。
 
 ## 多语言配置
 

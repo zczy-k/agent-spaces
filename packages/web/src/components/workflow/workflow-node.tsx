@@ -25,6 +25,10 @@ import { cn } from '@/lib/utils';
 import { WorkflowNodeDefinitionIcon } from './workflow-node-icon';
 import { getWorkflowNodeSize } from './workflow-node-size';
 import {
+  isPluginWorkflowCustomViewDefinition,
+  PluginWorkflowCustomView,
+} from './plugin-workflow-custom-view';
+import {
   HEADER_HEIGHT,
   HANDLE_MARGIN,
   NODE_COLORS,
@@ -57,7 +61,13 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const definition = useLocalizedNodeDefinition(workflowNodeType || 'unknown');
   const pluginMeta = definition as (typeof definition & PluginNodeDefinitionMeta);
   const iconDefinition = definition ? { ...definition, ...pluginMeta } : null;
-  const CustomView = definition?.customView as React.ComponentType<WorkflowCustomViewProps> | undefined;
+  const pluginCustomView = isPluginWorkflowCustomViewDefinition(definition?.customView)
+    ? definition.customView
+    : null;
+  const CustomView = !pluginCustomView
+    ? definition?.customView as React.ComponentType<WorkflowCustomViewProps> | undefined
+    : undefined;
+  const hasCustomView = !!CustomView || !!pluginCustomView;
 
   const [isHovered, setIsHovered] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -459,7 +469,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       ) : null}
 
       {/* Header */}
-      {!isLoopBody && !CustomView && (
+      {!isLoopBody && !hasCustomView && (
         <div className="flex items-center gap-2 px-3 py-2 border-b border-border/50">
           <WorkflowNodeDefinitionIcon definition={iconDefinition} className="h-4 w-4 shrink-0 text-muted-foreground" />
           {isEditing ? (
@@ -508,8 +518,17 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         </div>
       ) : null}
 
+      {pluginCustomView ? (
+        <div className={cn(
+          'absolute inset-0 overflow-hidden rounded-lg',
+          isLoopBody && 'pointer-events-none',
+        )}>
+          <PluginWorkflowCustomView nodeId={id} data={nodeData} view={pluginCustomView} />
+        </div>
+      ) : null}
+
       {/* Media preview for executed nodes */}
-      {!CustomView && mediaItems.length > 0 && (
+      {!hasCustomView && mediaItems.length > 0 && (
         <div className="border-t border-border/50">
           <NodeMediaPreview items={mediaItems} />
         </div>

@@ -50,6 +50,24 @@
     "iconUrl": "plugins/aliyun_oss/icon.png"
   },
   {
+    "id": "workflow.custom-view-demo",
+    "name": "Custom View Demo",
+    "version": "1.0.0",
+    "description": "Demonstrates workflow plugin node customView rendering with React or HTML.",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "Example",
+      "customView",
+      "UI"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "custom-view-demo"
+  },
+  {
     "id": "workflow.desktop-native",
     "name": "Desktop Native",
     "version": "1.0.0",

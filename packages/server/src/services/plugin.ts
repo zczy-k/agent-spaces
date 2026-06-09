@@ -362,6 +362,8 @@ function createPluginActions(actions: PluginActionDefinition[]) {
       description: action.description,
       properties,
       outputs: action.outputs || [],
+      customView: action.customView,
+      customViewMinSize: action.customViewMinSize,
       handler: run,
     };
   });

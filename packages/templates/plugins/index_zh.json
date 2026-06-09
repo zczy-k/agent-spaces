@@ -50,6 +50,24 @@
     "iconUrl": "plugins/aliyun_oss/icon.png"
   },
   {
+    "id": "workflow.custom-view-demo",
+    "name": "自定义视图示例",
+    "version": "1.0.0",
+    "description": "演示工作流插件节点如何使用 React 或 HTML customView 渲染节点界面",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "示例",
+      "customView",
+      "UI"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "custom-view-demo"
+  },
+  {
     "id": "workflow.desktop-native",
     "name": "桌面原生",
     "version": "1.0.0",

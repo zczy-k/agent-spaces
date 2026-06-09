@@ -1,11 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import React from 'react';
-import ReactDOM from 'react-dom/client';
 import type { WorkflowUiProject } from '@agent-spaces/sdk';
 import { sdk } from '@/lib/sdk';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -14,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { PanelRightOpen, Loader2, Search } from 'lucide-react';
+import { WorkflowUiRenderer } from './workflow-ui-renderer';
 
 interface WorkflowUiPreviewProps {
   type: 'react' | 'html';
@@ -27,86 +25,10 @@ interface WorkflowUiPreviewProps {
 export function WorkflowUiPreview({ type, sourceCode, error, onError, projectId, projectName }: WorkflowUiPreviewProps) {
   const t = useTranslations('workflows-ui');
   const router = useRouter();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const rootRef = useRef<ReactDOM.Root | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [projects, setProjects] = useState<WorkflowUiProject[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [search, setSearch] = useState('');
-
-  // React mode: Babel compile + render
-  const renderReact = useCallback((code: string) => {
-    if (!containerRef.current) return;
-
-    // Cleanup previous render
-    if (rootRef.current) {
-      const oldRoot = rootRef.current;
-      rootRef.current = null;
-      queueMicrotask(() => { try { oldRoot.unmount(); } catch { /* ignore */ } });
-    }
-    containerRef.current.innerHTML = '';
-
-    try {
-      // Dynamic import of @babel/standalone
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const Babel = require('@babel/standalone');
-      const compiled = Babel.transform(code, {
-        presets: ['react'],
-        plugins: ['transform-modules-commonjs'],
-        filename: 'preview.jsx',
-        sourceType: 'module',
-      }).code;
-
-      // Execute with new Function, inject React and UI components
-      const moduleExports: Record<string, any> = {};
-      const fn = new Function(
-        'React', 'ReactDOM', 'exports', 'require',
-        compiled!
-      );
-      fn(React, ReactDOM, moduleExports, (id: string) => {
-        if (id === 'react') return React;
-        if (id === 'react-dom') return ReactDOM;
-        return null;
-      });
-
-      const Component = moduleExports.default;
-      if (!Component) {
-        onError(t('preview.entryExportError'));
-        return;
-      }
-
-      rootRef.current = ReactDOM.createRoot(containerRef.current);
-      rootRef.current.render(React.createElement(Component));
-      onError(null);
-    } catch (err: any) {
-      onError(err.message || String(err));
-    }
-  }, [onError, t]);
-
-  // HTML mode: direct render + eval script
-  const renderHtml = useCallback((html: string) => {
-    if (!containerRef.current) return;
-
-    const scriptRegex = /<script[^>]*>([\s\S]*?)<\/script>/gi;
-    const scripts: string[] = [];
-    const cleanHtml = html.replace(scriptRegex, (_match, content) => {
-      scripts.push(content);
-      return '';
-    });
-
-    containerRef.current.innerHTML = cleanHtml;
-
-    for (const script of scripts) {
-      try {
-        // eslint-disable-next-line react-hooks/unsupported-syntax
-        eval(script);
-      } catch (err: any) {
-        onError(`Script error: ${err.message}`);
-        return;
-      }
-    }
-    onError(null);
-  }, [onError]);
 
   // Load projects when drawer opens
   const handleDrawerOpen = useCallback((open: boolean) => {
@@ -125,28 +47,12 @@ export function WorkflowUiPreview({ type, sourceCode, error, onError, projectId,
     router.push(`/workflows-ui-preview/${id}`);
   }, [router]);
 
-  // Re-render on source change
-  useEffect(() => {
-    if (!sourceCode) return;
-    if (type === 'react') {
-      renderReact(sourceCode);
-    } else {
-      renderHtml(sourceCode);
-    }
-  }, [sourceCode, type, renderReact, renderHtml]);
-
-  // Cleanup — defer unmount to avoid "synchronously unmounting a root during React render"
-  useEffect(() => {
-    return () => {
-      if (rootRef.current) {
-        const root = rootRef.current;
-        rootRef.current = null;
-        queueMicrotask(() => { try { root.unmount(); } catch { /* ignore */ } });
-      }
-    };
-  }, []);
-
   const showToolbar = !!projectId;
+  const handleRendererError = useCallback((nextError: string | null) => {
+    onError(nextError === 'React custom view must export a default component.'
+      ? t('preview.entryExportError')
+      : nextError);
+  }, [onError, t]);
 
   return (
     <div className="relative flex flex-col h-full">
@@ -158,10 +64,8 @@ export function WorkflowUiPreview({ type, sourceCode, error, onError, projectId,
           </span>
           <div className="flex-1 flex justify-end">
             <Sheet open={drawerOpen} onOpenChange={handleDrawerOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7">
+              <SheetTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7" />}>
                   <PanelRightOpen className="h-4 w-4" />
-                </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-72 p-0">
                 <SheetHeader className="px-4 pt-4 pb-2">
@@ -217,7 +121,12 @@ export function WorkflowUiPreview({ type, sourceCode, error, onError, projectId,
           {error}
         </div>
       )}
-      <div ref={containerRef} className="flex-1 overflow-auto p-4" />
+      <WorkflowUiRenderer
+        type={type}
+        sourceCode={sourceCode}
+        onError={handleRendererError}
+        className="flex-1 p-4"
+      />
     </div>
   );
 }

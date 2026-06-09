@@ -1,6 +1,22 @@
 import type { NodeTypeDefinition } from '@agent-spaces/shared';
-import { GalleryPreviewView, MusicPlayerView, TableDisplayView } from '@/components/workflow/display-node-views';
+import { CodeRenderView, GalleryPreviewView, MusicPlayerView, TableDisplayView } from '@/components/workflow/display-node-views';
 import { StickyNoteView } from '@/components/workflow/sticky-note-view';
+
+const CODE_RENDER_DEFAULT_REACT = `export default function View() {
+  const { Card, CardContent, Badge } = window.AgentSpacesUI;
+
+  return (
+    <div className="h-full w-full bg-background p-2">
+      <Card className="h-full rounded-md shadow-none">
+        <CardContent className="space-y-2 p-3">
+          <Badge variant="secondary">React</Badge>
+          <div className="text-sm font-medium">Code Render</div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+`;
 
 export const displayNodes: NodeTypeDefinition[] = [
   {
@@ -137,6 +153,39 @@ export const displayNodes: NodeTypeDefinition[] = [
       { key: 'selectedRows', type: 'any' },
       { key: 'selectedCount', type: 'number' },
     ],
+  },
+  {
+    type: 'code_render',
+    label: 'nodes.code_render.label',
+    category: 'nodes.categories.display',
+    icon: 'Code2',
+    description: 'nodes.code_render.description',
+    customView: CodeRenderView,
+    customViewMinSize: { width: 280, height: 180 },
+    properties: [
+      {
+        key: 'renderType',
+        label: 'nodes.code_render.props.renderType.label',
+        type: 'select',
+        default: 'react',
+        required: true,
+        options: [
+          { label: 'nodes.code_render.props.renderType.react', value: 'react' },
+          { label: 'nodes.code_render.props.renderType.html', value: 'html' },
+        ],
+      },
+      {
+        key: 'code',
+        label: 'nodes.code_render.props.code.label',
+        type: 'code',
+        required: true,
+        default: CODE_RENDER_DEFAULT_REACT,
+        language: 'javascript',
+        tooltip: 'nodes.code_render.props.code.tooltip',
+      },
+    ],
+    handles: { source: false, target: false },
+    debuggable: false,
   },
   {
     type: 'sticky_note',

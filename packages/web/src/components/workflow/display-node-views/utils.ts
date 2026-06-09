@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { createElement, type ReactNode } from 'react';
 
 export type DisplayNodeViewProps = {
   data: Record<string, unknown>;
@@ -75,7 +75,7 @@ export function formatDuration(seconds: number | undefined): string {
 export function galleryItems(data: Record<string, unknown>): GalleryItem[] {
   const items = Array.isArray(data.items) ? data.items : [];
   return items
-    .map((item) => {
+    .map((item): GalleryItem | null => {
       const record = asRecord(item);
       const src = readString(record.src);
       if (!src) return null;
@@ -94,7 +94,7 @@ export function galleryItems(data: Record<string, unknown>): GalleryItem[] {
 export function trackItems(data: Record<string, unknown>): TrackItem[] {
   const tracks = Array.isArray(data.tracks) ? data.tracks : [];
   return tracks
-    .map((track) => {
+    .map((track): TrackItem | null => {
       const record = asRecord(track);
       const src = readString(record.src);
       if (!src) return null;
@@ -112,7 +112,7 @@ export function trackItems(data: Record<string, unknown>): TrackItem[] {
 export function tableHeaders(data: Record<string, unknown>): TableHeaderItem[] {
   const headers = Array.isArray(data.headers) ? data.headers : [];
   return headers
-    .map((header) => {
+    .map((header): TableHeaderItem | null => {
       const record = asRecord(header);
       const id = readString(record.id);
       if (!id) return null;
@@ -141,10 +141,12 @@ export function tableCells(data: Record<string, unknown>): TableCellItem[] {
 }
 
 export function EmptyDisplay({ icon, text }: { icon: ReactNode; text: string }) {
-  return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-muted/20 p-3 text-center text-[11px] text-muted-foreground">
-      <div className="text-muted-foreground/70">{icon}</div>
-      <div>{text}</div>
-    </div>
+  return createElement(
+    'div',
+    {
+      className: 'flex h-full w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-muted/20 p-3 text-center text-[11px] text-muted-foreground',
+    },
+    createElement('div', { className: 'text-muted-foreground/70' }, icon),
+    createElement('div', null, text),
   );
 }
