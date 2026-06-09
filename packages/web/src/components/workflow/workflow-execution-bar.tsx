@@ -2,22 +2,16 @@
 
 import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import type { ExecutionLog, ExecutionStep, OutputField, WorkflowNode } from '@agent-spaces/shared';
+import type { ExecutionLog, OutputField, WorkflowNode } from '@agent-spaces/shared';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  ResizableHandle, ResizablePanel, ResizablePanelGroup,
-} from '@/components/ui/resizable';
-import {
-  Tabs, TabsContent, TabsList, TabsTrigger,
-} from '@/components/ui/tabs';
-import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  AlertCircle, AlertTriangle, Braces, Check, CheckCircle, ChevronDown, ChevronUp,
-  Circle, Copy, Info, Loader2, MoreHorizontal, Pause, Play, Square, Trash2, XCircle,
+  AlertTriangle, Check, CheckCircle, ChevronDown, ChevronUp,
+  Circle, Clock, Copy, Loader2, MoreHorizontal, Pause, Play, Square, Trash2, XCircle,
 } from 'lucide-react';
 import { JsonViewer } from '@/components/viewers/json-viewer';
 import { cn } from '@/lib/utils';
@@ -25,13 +19,8 @@ import { executionLogApi } from '@/lib/workflow-api';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { ExecutionInputDialog } from './workflow-execution-input-dialog';
 import { SavePresetDialog } from './workflow-save-preset-dialog';
-import { WorkflowNodeDefinitionIcon } from './workflow-node-icon';
 
 type ExecutionStatus = 'idle' | 'running' | 'paused' | 'completed' | 'error' | 'stopped' | string;
-type PluginNodeDefinitionMeta = {
-  pluginId?: string;
-  pluginIconPath?: string;
-};
 
 interface ExecutionBarProps {
   status: ExecutionStatus;
@@ -68,44 +57,6 @@ function formatDuration(start: number, end?: number): string {
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
-function stringifyValue(value: unknown): string {
-  if (value === undefined || value === null) return '';
-  if (typeof value === 'string') return value;
-  try {
-    return JSON.stringify(value, null, 2);
-  } catch {
-    return String(value);
-  }
-}
-
-function stepIcon(status: ExecutionStep['status']) {
-  if (status === 'completed') return <CheckCircle className="h-3 w-3 text-green-500 shrink-0" />;
-  if (status === 'error') return <XCircle className="h-3 w-3 text-red-500 shrink-0" />;
-  if (status === 'running') return <Loader2 className="h-3 w-3 text-blue-500 animate-spin shrink-0" />;
-  return <Circle className="h-3 w-3 text-muted-foreground shrink-0" />;
-}
-
-function logIcon(level: string) {
-  if (level === 'info') return <Info className="h-2.5 w-2.5 shrink-0 mt-0.5" />;
-  if (level === 'warning') return <AlertTriangle className="h-2.5 w-2.5 shrink-0 mt-0.5" />;
-  return <AlertCircle className="h-2.5 w-2.5 shrink-0 mt-0.5" />;
-}
-
-function JsonBlock({ value, empty }: { value: unknown; empty: string }) {
-  if (value === undefined || value === null) {
-    return <div className="p-2 text-[10px] text-muted-foreground">{empty}</div>;
-  }
-  return (
-    <ScrollArea className="h-full">
-      <JsonViewer
-        data={value as Parameters<typeof JsonViewer>[0]['data']}
-        className="border-0 shadow-none rounded-none"
-        defaultExpanded={2}
-      />
-    </ScrollArea>
-  );
-}
-
 export function WorkflowExecutionBar({
   status, log, logs, selectedLogId, startNodes, variables = [], validationError, isExpanded, workflowId, onToggle,
   onExecute, onPause, onResume, onStop, onSelectLog, onDeleteLog, onClearLogs, onExitPreview,
@@ -114,7 +65,6 @@ export function WorkflowExecutionBar({
   const t = useTranslations('workflows');
   const [inputDialogOpen, setInputDialogOpen] = useState(false);
   const [selectedStartNodeId, setSelectedStartNodeId] = useState<string | null>(null);
-  const [stepTabs, setStepTabs] = useState<Record<string, string>>({});
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [presetDialogState, setPresetDialogState] = useState<{
     open: boolean;
@@ -158,12 +108,34 @@ export function WorkflowExecutionBar({
   const errorSteps = steps.filter(s => s.status === 'error').length;
   const progressText = displayLog ? `${completedSteps}/${steps.length}` : '';
   const elapsedText = displayLog ? formatDuration(displayLog.startedAt, displayLog.finishedAt) : '';
-  const nodeTypeById = useMemo(() => {
-    return new Map((displayLog?.snapshot?.nodes || []).map(node => [node.id, node.type]));
-  }, [displayLog]);
-  const nodeDefinitionById = useMemo(() => {
-    return new Map((displayLog?.snapshot?.nodes || []).map(node => [node.id, getNodeDefinition(node.type)]));
-  }, [displayLog]);
+
+  // Find the end node output for the selected log
+  const endStepOutput = useMemo(() => {
+    if (!displayLog || steps.length === 0) return null;
+    // Last completed/errored step that is an "end" type, or just the last step
+    const snapshotNodes = displayLog.snapshot?.nodes || [];
+    for (let i = steps.length - 1; i >= 0; i--) {
+      const step = steps[i];
+      const node = snapshotNodes.find(n => n.id === step.nodeId);
+      const def = node ? getNodeDefinition(node.type) : null;
+      if (def?.type === 'end') return step;
+    }
+    // Fallback: last step
+    return steps[steps.length - 1];
+  }, [displayLog, steps]);
+
+  // Build a summary of step statuses per log for the card display
+  const logStepSummary = useMemo(() => {
+    const map = new Map<string, { completed: number; error: number; total: number }>();
+    for (const item of logs) {
+      map.set(item.id, {
+        completed: item.steps.filter(s => s.status === 'completed').length,
+        error: item.steps.filter(s => s.status === 'error').length,
+        total: item.steps.length,
+      });
+    }
+    return map;
+  }, [logs]);
 
   const executeFromStartNode = (node?: WorkflowNode | null) => {
     const startNode = node ?? startNodes[0] ?? null;
@@ -247,58 +219,57 @@ export function WorkflowExecutionBar({
       </div>
 
       {isExpanded && (
-        <div className="border-t border-border flex-1 min-h-0 overflow-hidden">
-          <ResizablePanelGroup orientation="horizontal" className="h-full min-h-0 overflow-hidden">
-            <ResizablePanel
-              id="workflow-execution-history"
-              defaultSize="25%"
-              minSize="15%"
-              maxSize="40%"
-              className="min-h-0 overflow-hidden"
-            >
-              <div className="h-full flex flex-col">
-                <div className="flex items-center justify-between px-2 py-1 border-b border-border">
-                  <span className="text-[10px] text-muted-foreground font-medium">{t('execution.history')}</span>
-                  {logs.length > 0 && (
-                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={onClearLogs}>
-                      <Trash2 className="h-3 w-3 text-muted-foreground" />
-                    </Button>
-                  )}
-                </div>
-                <ScrollArea className="flex-1 min-h-0">
-                  <div className="space-y-px p-1">
-                    {logs.map(item => (
-                      <div
-                        key={item.id}
-                        role="button"
-                        tabIndex={0}
-                        className={cn(
-                          'w-full flex items-center gap-1.5 px-2 py-1 rounded text-[10px] text-left hover:bg-muted/50 transition-colors cursor-pointer',
-                          selectedLogId === item.id && 'bg-muted',
-                        )}
-                        onClick={() => onSelectLog(item)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter' || event.key === ' ') onSelectLog(item);
-                        }}
-                      >
-                        {item.status === 'completed' ? <CheckCircle className="h-3 w-3 text-green-500 shrink-0" /> :
-                          item.status === 'error' ? <XCircle className="h-3 w-3 text-red-500 shrink-0" /> :
-                          item.status === 'running' ? <Loader2 className="h-3 w-3 text-blue-500 animate-spin shrink-0" /> :
-                          <Circle className="h-3 w-3 text-muted-foreground shrink-0" />}
-                        <span className="flex-1 min-w-0">
-                          <span className="block truncate">{formatTime(item.startedAt)}</span>
-                          <span className="block text-muted-foreground">
-                            {t('execution.nodes', { count: item.steps.length })} · {formatDuration(item.startedAt, item.finishedAt)}
-                          </span>
-                        </span>
+        <div className="border-t border-border flex-1 min-h-0 overflow-hidden flex">
+          {/* Left: card list */}
+          <div className="h-full flex flex-col w-[220px] shrink-0 border-r border-border">
+            <div className="flex items-center justify-between px-2 py-1 border-b border-border">
+              <span className="text-[10px] text-muted-foreground font-medium">{t('execution.history')}</span>
+              {logs.length > 0 && (
+                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={onClearLogs}>
+                  <Trash2 className="h-3 w-3 text-muted-foreground" />
+                </Button>
+              )}
+            </div>
+            <ScrollArea className="flex-1 min-h-0">
+              <div className="space-y-1.5 p-1.5">
+                {logs.map(item => {
+                  const summary = logStepSummary.get(item.id);
+                  const statusColor = item.status === 'completed'
+                    ? 'border-green-500/40'
+                    : item.status === 'error'
+                    ? 'border-red-500/40'
+                    : item.status === 'running'
+                    ? 'border-blue-500/40'
+                    : 'border-border';
+
+                  return (
+                    <div
+                      key={item.id}
+                      role="button"
+                      tabIndex={0}
+                      className={cn(
+                        'rounded-lg border p-2 text-left transition-colors cursor-pointer',
+                        'hover:bg-muted/50',
+                        selectedLogId === item.id && 'bg-muted ring-1 ring-primary',
+                        statusColor,
+                      )}
+                      onClick={() => onSelectLog(item)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') onSelectLog(item);
+                      }}
+                    >
+                      <div className="flex items-center gap-1.5 mb-1">
+                        {item.status === 'completed' ? <CheckCircle className="h-3.5 w-3.5 text-green-500 shrink-0" /> :
+                          item.status === 'error' ? <XCircle className="h-3.5 w-3.5 text-red-500 shrink-0" /> :
+                          item.status === 'running' ? <Loader2 className="h-3.5 w-3.5 text-blue-500 animate-spin shrink-0" /> :
+                          <Circle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                        <span className="text-xs font-medium truncate">{formatTime(item.startedAt)}</span>
                         <DropdownMenu>
                           <DropdownMenuTrigger
-                            className="inline-flex h-5 w-5 items-center justify-center rounded hover:bg-muted"
+                            className="ml-auto inline-flex h-5 w-5 items-center justify-center rounded hover:bg-muted"
                             onClick={event => event.stopPropagation()}
                           >
-                            <span className="inline-flex h-5 w-5 items-center justify-center rounded hover:bg-muted">
-                              <MoreHorizontal className="h-3 w-3" />
-                            </span>
+                            <MoreHorizontal className="h-3 w-3" />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="min-w-32">
                             <DropdownMenuItem
@@ -338,176 +309,74 @@ export function WorkflowExecutionBar({
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
-                    ))}
-                    {logs.length === 0 && (
-                      <div className="text-center text-[10px] text-muted-foreground py-4">{t('execution.noLogs')}</div>
-                    )}
-                  </div>
-                </ScrollArea>
-              </div>
-            </ResizablePanel>
 
-            <ResizableHandle withHandle />
-
-            <ResizablePanel
-              id="workflow-execution-details"
-              defaultSize="75%"
-              minSize="40%"
-              className="min-h-0 overflow-hidden w-0 flex-1"
-            >
-              {displayLog ? (
-                <ScrollArea className="h-full">
-                  <div className="flex h-full gap-2 px-2 py-2 overflow-x-auto">
-                    {steps.map((step, index) => {
-                      if (step.error?.trim() === 'Inactive branch') return null;
-
-                      const key = `${step.nodeId}-${step.startedAt}-${index}`;
-                      const activeTab = stepTabs[key] || 'input';
-                      const nodeType = nodeTypeById.get(step.nodeId) || '';
-                      const definition = nodeDefinitionById.get(step.nodeId);
-                      const pluginMeta = definition as (typeof definition & PluginNodeDefinitionMeta);
-                      const iconDefinition = definition ? { ...definition, ...pluginMeta } : null;
-                      const resolvedNodeLabel = (step.nodeLabel && !step.nodeLabel.startsWith('nodes.')) ? step.nodeLabel : (definition?.label ? String(t(definition.label as Parameters<typeof t>[0])) : step.nodeId);
-                      const nodeInfo = [
-                        `# ${resolvedNodeLabel}`,
-                        `${t('execution.nodeType')}: ${nodeType}`,
-                        '',
-                        `## ${t('execution.input')}`,
-                        stringifyValue(step.input) || t('execution.none'),
-                        '',
-                        `## ${t('execution.output')}`,
-                        stringifyValue(step.output) || t('execution.none'),
-                      ].join('\n');
-
-                      return (
-                        <div key={key} className="w-[280px] h-full min-h-[260px] shrink-0 border border-border rounded-md flex flex-col overflow-hidden bg-background">
-                          <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-border">
-                            {stepIcon(step.status)}
-                            <WorkflowNodeDefinitionIcon definition={iconDefinition} className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                            <span className="text-xs font-medium truncate flex-1">{resolvedNodeLabel}</span>
-                            <span className="text-[10px] text-muted-foreground/70 shrink-0 font-mono">
-                              {nodeType}
-                            </span>
-                            <span className="text-[10px] text-muted-foreground shrink-0">
-                              {step.finishedAt ? formatDuration(step.startedAt, step.finishedAt) : '...'}
-                            </span>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger
-                                className="shrink-0 p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
-                              >
-                                <MoreHorizontal className="h-3 w-3" />
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-36">
-                                <DropdownMenuItem className="text-xs" onClick={() => copyText(`info-${key}`, nodeInfo)}>
-                                  {copiedKey === `info-${key}` ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                                  {t('execution.copy')}
-                                </DropdownMenuItem>
-                                {onUpdateNodeData && (
-                                  <DropdownMenuItem
-                                    className="text-xs"
-                                    onClick={() => {
-                                      const snapshotNode = displayLog?.snapshot?.nodes?.find(n => n.id === step.nodeId);
-                                      if (!snapshotNode) return;
-                                      const inputData = (typeof step.input === 'object' && step.input && !Array.isArray(step.input))
-                                        ? step.input as Record<string, unknown>
-                                        : {};
-                                      const outputData = (typeof step.output === 'object' && step.output && !Array.isArray(step.output))
-                                        ? step.output as Record<string, unknown>
-                                        : {};
-                                      setPresetDialogState(prev => ({
-                                        open: true,
-                                        nodeId: step.nodeId,
-                                        nodeLabel: resolvedNodeLabel,
-                                        defaultName: t('execution.executionResult', { label: resolvedNodeLabel }),
-                                        defaultJson: JSON.stringify({
-                                          data: snapshotNode.data ?? {},
-                                          inputs: inputData,
-                                          outputs: outputData,
-                                        }, null, 2),
-                                        key: prev.key + 1,
-                                      }));
-                                    }}
-                                  >
-                                    <Braces className="h-3 w-3" />
-                                    {t('execution.savePreset')}
-                                  </DropdownMenuItem>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-
-                          {step.error && (
-                            <div className="px-2.5 py-1 text-[10px] text-red-500 bg-red-500/10 border-b border-border flex items-start gap-1">
-                              <span className="flex-1 break-all">{step.error}</span>
-                              <button
-                                type="button"
-                                className="shrink-0 p-0.5 rounded hover:bg-red-500/20"
-                                onClick={() => copyText(`error-${key}`, step.error || '')}
-                                title={t('execution.copyError')}
-                              >
-                                {copiedKey === `error-${key}` ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                              </button>
-                            </div>
-                          )}
-
-                          <Tabs
-                            value={activeTab}
-                            onValueChange={value => setStepTabs(prev => ({ ...prev, [key]: value }))}
-                            className="flex-1 flex flex-col min-h-0 gap-0"
-                          >
-                            <TabsList className="w-full h-7 rounded-none border-b border-border bg-transparent px-1">
-                              <TabsTrigger value="input" className="text-[10px] h-5 px-2 flex-1">{t('execution.input')}</TabsTrigger>
-                              <TabsTrigger value="output" className="text-[10px] h-5 px-2 flex-1">{t('execution.output')}</TabsTrigger>
-                              <TabsTrigger value="logs" className="text-[10px] h-5 px-2 flex-1">{t('execution.logs')}</TabsTrigger>
-                            </TabsList>
-                            <TabsContent value="input" className="flex-1 min-h-0 mt-0">
-                              <JsonBlock value={step.input} empty={t('execution.noInput')} />
-                            </TabsContent>
-                            <TabsContent value="output" className="flex-1 min-h-0 mt-0">
-                              <JsonBlock value={step.output} empty={t('execution.noOutput')} />
-                            </TabsContent>
-                            <TabsContent value="logs" className="flex-1 min-h-0 mt-0">
-                              {step.logs?.length ? (
-                                <ScrollArea className="h-full">
-                                  <div className="px-2 py-1">
-                                    {step.logs.map((entry, logIndex) => (
-                                      <div
-                                        key={`${entry.timestamp}-${logIndex}`}
-                                        className={cn(
-                                          'flex items-start gap-1 text-[10px] px-1.5 py-0.5 my-px rounded',
-                                          entry.level === 'info' && 'text-blue-600 dark:text-blue-400 bg-blue-500/10',
-                                          entry.level === 'warning' && 'text-yellow-600 dark:text-yellow-400 bg-yellow-500/10',
-                                          entry.level === 'error' && 'text-red-600 dark:text-red-400 bg-red-500/10',
-                                        )}
-                                      >
-                                        {logIcon(entry.level)}
-                                        <span className="break-all">{entry.message}</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </ScrollArea>
-                              ) : (
-                                <div className="p-2 text-[10px] text-muted-foreground">{t('execution.noLogsContent')}</div>
-                              )}
-                            </TabsContent>
-                          </Tabs>
-                        </div>
-                      );
-                    })}
-                    {steps.length === 0 && (
-                      <div className="flex-1 flex items-center justify-center text-[10px] text-muted-foreground">
-                        {t('execution.noSteps')}
+                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                        <span className="flex items-center gap-0.5">
+                          <Clock className="h-2.5 w-2.5" />
+                          {formatDuration(item.startedAt, item.finishedAt)}
+                        </span>
+                        <span>{t('execution.nodes', { count: item.steps.length })}</span>
                       </div>
-                    )}
-                  </div>
-                </ScrollArea>
-              ) : (
-                <div className="h-full flex items-center justify-center text-[10px] text-muted-foreground">
-                  {t('execution.selectLog')}
+
+                      {summary && summary.total > 0 && (
+                        <div className="mt-1.5 flex items-center gap-1">
+                          <div className="flex-1 h-1 rounded-full bg-muted overflow-hidden">
+                            <div
+                              className={cn(
+                                'h-full rounded-full transition-all',
+                                item.status === 'error' ? 'bg-red-500' : 'bg-green-500',
+                              )}
+                              style={{ width: `${(summary.completed / summary.total) * 100}%` }}
+                            />
+                          </div>
+                          <span className="text-[9px] text-muted-foreground shrink-0">
+                            {summary.completed}/{summary.total}
+                          </span>
+                          {summary.error > 0 && (
+                            <span className="text-[9px] text-red-500 shrink-0">
+                              {summary.error}✕
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                {logs.length === 0 && (
+                  <div className="text-center text-[10px] text-muted-foreground py-4">{t('execution.noLogs')}</div>
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+
+          {/* Right: end node output via JsonViewer */}
+          <div className="flex-1 min-w-0 min-h-0">
+            {endStepOutput ? (
+              <ScrollArea className="h-full">
+                <div className="p-2">
+                  {endStepOutput.error && (
+                    <div className="mb-2 px-2 py-1.5 text-[10px] text-red-500 bg-red-500/10 rounded-md border border-red-500/20 flex items-start gap-1">
+                      <XCircle className="h-3 w-3 shrink-0 mt-0.5" />
+                      <span className="break-all">{endStepOutput.error}</span>
+                    </div>
+                  )}
+                  {endStepOutput.output != null ? (
+                    <JsonViewer
+                      data={endStepOutput.output as Parameters<typeof JsonViewer>[0]['data']}
+                      className="border border-border rounded-md shadow-none"
+                      defaultExpanded={2}
+                    />
+                  ) : (
+                    <div className="text-[10px] text-muted-foreground py-4 text-center">{t('execution.noOutput')}</div>
+                  )}
                 </div>
-              )}
-            </ResizablePanel>
-          </ResizablePanelGroup>
+              </ScrollArea>
+            ) : (
+              <div className="h-full flex items-center justify-center text-[10px] text-muted-foreground">
+                {t('execution.selectLog')}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
