@@ -117,6 +117,7 @@
   "editor": {
     "loading": "加载工作流中...",
     "back": "返回",
+    "backToList": "返回列表",
     "noWorkflow": "未选择工作流",
     "properties": "属性",
     "history": "历史",
@@ -126,7 +127,20 @@
     "modelSettings": "模型设置",
     "clearMessages": "清空消息",
     "agentSettingsTitle": "工作流助手模型设置",
-    "loadingShort": "加载中..."
+    "loadingShort": "加载中...",
+    "pluginManager": "插件管理",
+    "untitled": "未命名",
+    "undo": "撤销",
+    "redo": "重做",
+    "exitPreview": "退出预览",
+    "save": "保存 (Ctrl+S)",
+    "export": "导出",
+    "import": "导入",
+    "openLocation": "打开工作流位置",
+    "stopTest": "停止测试",
+    "testScript": "测试脚本",
+    "delayExecution": "延迟执行",
+    "delayDescription": "执行当前节点前等待的毫秒数"
   },
   "version": {
     "count": "{count} 个版本",

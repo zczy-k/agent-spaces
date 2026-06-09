@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Save, ArrowLeft,
   Download, Upload, Undo2, Redo2, PackagePlus, MoreVertical, FolderOpen,
@@ -54,16 +55,17 @@ export function WorkflowEditorToolbar({
   onOpenPluginManager, onOpenWorkflowLocation, onWorkflowInfoChange,
 }: EditorToolbarProps) {
   const [infoOpen, setInfoOpen] = useState(false);
+  const t = useTranslations('workflows');
 
   return (
     <div className="flex items-center gap-1 px-3 py-1.5 bg-background border rounded-xl shrink-0">
-      <ToolBtn tooltip="返回列表" variant="ghost" size="icon" className="h-7 w-7" onClick={onBack}>
+      <ToolBtn tooltip={t('editor.backToList')} variant="ghost" size="icon" className="h-7 w-7" onClick={onBack}>
         <ArrowLeft className="h-4 w-4" />
       </ToolBtn>
 
       <div className="w-px h-5 bg-border mx-1" />
 
-      <ToolBtn tooltip="插件管理" variant="ghost" size="icon" className="h-7 w-7" onClick={onOpenPluginManager} disabled={!workflow}>
+      <ToolBtn tooltip={t('editor.pluginManager')} variant="ghost" size="icon" className="h-7 w-7" onClick={onOpenPluginManager} disabled={!workflow}>
         <PackagePlus className="h-4 w-4" />
       </ToolBtn>
 
@@ -78,10 +80,10 @@ export function WorkflowEditorToolbar({
             <span className="text-base leading-none">{workflow.icon}</span>
           ) : (
             <span className="w-4 h-4 rounded bg-primary/10 text-[10px] font-bold flex items-center justify-center text-primary">
-              {(workflow.name || '未').charAt(0).toUpperCase()}
+              {(workflow.name || t('card.defaultInitial')).charAt(0).toUpperCase()}
             </span>
           )}
-          {workflow.name || '未命名'}
+          {workflow.name || t('editor.untitled')}
           {isDirty && <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />}
         </button>
       )}
@@ -95,10 +97,10 @@ export function WorkflowEditorToolbar({
 
       <div className="flex-1" />
 
-      <ToolBtn tooltip="撤销" variant="ghost" size="icon" className="h-7 w-7" onClick={onUndo} disabled={!canUndo}>
+      <ToolBtn tooltip={t('editor.undo')} variant="ghost" size="icon" className="h-7 w-7" onClick={onUndo} disabled={!canUndo}>
         <Undo2 className="h-4 w-4" />
       </ToolBtn>
-      <ToolBtn tooltip="重做" variant="ghost" size="icon" className="h-7 w-7" onClick={onRedo} disabled={!canRedo}>
+      <ToolBtn tooltip={t('editor.redo')} variant="ghost" size="icon" className="h-7 w-7" onClick={onRedo} disabled={!canRedo}>
         <Redo2 className="h-4 w-4" />
       </ToolBtn>
 
@@ -106,11 +108,11 @@ export function WorkflowEditorToolbar({
 
       {isPreview && (
         <Button variant="ghost" size="sm" className="h-7 gap-1 text-blue-500" onClick={onExitPreview}>
-          退出预览
+          {t('editor.exitPreview')}
         </Button>
       )}
 
-      <ToolBtn tooltip="保存 (Ctrl+S)" variant="ghost" size="icon" className="h-7 w-7" onClick={onSave} disabled={!isDirty}>
+      <ToolBtn tooltip={t('editor.save')} variant="ghost" size="icon" className="h-7 w-7" onClick={onSave} disabled={!isDirty}>
         <Save className="h-4 w-4" />
       </ToolBtn>
       <DropdownMenu>
@@ -120,15 +122,15 @@ export function WorkflowEditorToolbar({
         <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={onExport}>
             <Download className="h-4 w-4 mr-2" />
-            导出
+            {t('editor.export')}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={onImport}>
             <Upload className="h-4 w-4 mr-2" />
-            导入
+            {t('editor.import')}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={onOpenWorkflowLocation} disabled={!workflow}>
             <FolderOpen className="h-4 w-4 mr-2" />
-            打开工作流位置
+            {t('editor.openLocation')}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

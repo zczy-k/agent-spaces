@@ -12,6 +12,11 @@ interface UseCanvasDomEventsParams {
   onNodeCopy?: (id: string) => void;
   onNodeClone?: (id: string) => void;
   onNodeStage?: (id: string) => void;
+  onNodeDebug?: (id: string) => void;
+  onCancelDebug?: () => void;
+  onExecuteFromNode?: (id: string) => void;
+  onResumeExecution?: () => void;
+  onStopExecution?: () => void;
 }
 
 export function useCanvasDomEvents({
@@ -24,6 +29,11 @@ export function useCanvasDomEvents({
   onNodeCopy,
   onNodeClone,
   onNodeStage,
+  onNodeDebug,
+  onCancelDebug,
+  onExecuteFromNode,
+  onResumeExecution,
+  onStopExecution,
 }: UseCanvasDomEventsParams) {
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
 
@@ -90,6 +100,32 @@ export function useCanvasDomEvents({
     onNodeSelect(detail.nodeId);
   }, [onNodeSelect]);
 
+  const handleNodeDebugEvent = useCallback((e: Event) => {
+    if (isCanvasLocked || !onNodeDebug) return;
+    const detail = (e as CustomEvent).detail as { nodeId?: string | null } | undefined;
+    if (!detail?.nodeId) return;
+    onNodeDebug(detail.nodeId);
+  }, [isCanvasLocked, onNodeDebug]);
+
+  const handleCancelDebugEvent = useCallback(() => {
+    onCancelDebug?.();
+  }, [onCancelDebug]);
+
+  const handleExecuteFromNodeEvent = useCallback((e: Event) => {
+    if (isCanvasLocked || !onExecuteFromNode) return;
+    const detail = (e as CustomEvent).detail as { nodeId?: string | null } | undefined;
+    if (!detail?.nodeId) return;
+    onExecuteFromNode(detail.nodeId);
+  }, [isCanvasLocked, onExecuteFromNode]);
+
+  const handleResumeExecutionEvent = useCallback(() => {
+    onResumeExecution?.();
+  }, [onResumeExecution]);
+
+  const handleStopExecutionEvent = useCallback(() => {
+    onStopExecution?.();
+  }, [onStopExecution]);
+
   // Register custom event listeners
   useEffect(() => {
     window.addEventListener('workflow:edge-insert-node', handleEdgeInsertNode);
@@ -101,6 +137,11 @@ export function useCanvasDomEvents({
     window.addEventListener('workflow:clone-node', handleNodeCloneEvent);
     window.addEventListener('workflow:stage-node', handleNodeStageEvent);
     window.addEventListener('workflow:show-node-info', handleNodeInfoEvent);
+    window.addEventListener('workflow:debug-node', handleNodeDebugEvent);
+    window.addEventListener('workflow:cancel-debug-node', handleCancelDebugEvent);
+    window.addEventListener('workflow:execute-from-node', handleExecuteFromNodeEvent);
+    window.addEventListener('workflow:resume-execution', handleResumeExecutionEvent);
+    window.addEventListener('workflow:stop-execution', handleStopExecutionEvent);
     return () => {
       window.removeEventListener('workflow:edge-insert-node', handleEdgeInsertNode);
       window.removeEventListener('workflow:select-edge', handleEdgeSelect);
@@ -111,8 +152,13 @@ export function useCanvasDomEvents({
       window.removeEventListener('workflow:clone-node', handleNodeCloneEvent);
       window.removeEventListener('workflow:stage-node', handleNodeStageEvent);
       window.removeEventListener('workflow:show-node-info', handleNodeInfoEvent);
+      window.removeEventListener('workflow:debug-node', handleNodeDebugEvent);
+      window.removeEventListener('workflow:cancel-debug-node', handleCancelDebugEvent);
+      window.removeEventListener('workflow:execute-from-node', handleExecuteFromNodeEvent);
+      window.removeEventListener('workflow:resume-execution', handleResumeExecutionEvent);
+      window.removeEventListener('workflow:stop-execution', handleStopExecutionEvent);
     };
-  }, [handleEdgeDelete, handleEdgeInsertNode, handleEdgeSelect, handleNodeDelete, handleNodeDataUpdate, handleNodeCopyEvent, handleNodeCloneEvent, handleNodeStageEvent, handleNodeInfoEvent]);
+  }, [handleEdgeDelete, handleEdgeInsertNode, handleEdgeSelect, handleNodeDelete, handleNodeDataUpdate, handleNodeCopyEvent, handleNodeCloneEvent, handleNodeStageEvent, handleNodeInfoEvent, handleNodeDebugEvent, handleCancelDebugEvent, handleExecuteFromNodeEvent, handleResumeExecutionEvent, handleStopExecutionEvent]);
 
   // Keyboard delete for selected edge
   useEffect(() => {

@@ -117,6 +117,7 @@
   "editor": {
     "loading": "Loading workflow...",
     "back": "Back",
+    "backToList": "Back to List",
     "noWorkflow": "No workflow selected",
     "properties": "Properties",
     "history": "History",
@@ -126,7 +127,20 @@
     "modelSettings": "Model settings",
     "clearMessages": "Clear messages",
     "agentSettingsTitle": "Workflow Assistant Model Settings",
-    "loadingShort": "Loading..."
+    "loadingShort": "Loading...",
+    "pluginManager": "Plugin Manager",
+    "untitled": "Untitled",
+    "undo": "Undo",
+    "redo": "Redo",
+    "exitPreview": "Exit Preview",
+    "save": "Save (Ctrl+S)",
+    "export": "Export",
+    "import": "Import",
+    "openLocation": "Open Workflow Location",
+    "stopTest": "Stop Test",
+    "testScript": "Test Script",
+    "delayExecution": "Delay Execution",
+    "delayDescription": "Milliseconds to wait before executing this node"
   },
   "version": {
     "count": "{count} versions",

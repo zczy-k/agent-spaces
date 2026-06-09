@@ -12,6 +12,12 @@ interface UseCanvasDataParams {
   executionLog: ExecutionLog | null | undefined;
   isPreview: boolean;
   isCanvasLocked: boolean;
+  execStatus?: string;
+  debugNodeId?: string | null;
+  debugStatus?: 'idle' | 'running' | 'completed' | 'error';
+  pausedNodeId?: string | null;
+  pausedReason?: string | null;
+  partialExecutionStartNodeId?: string | null;
 }
 
 export function useCanvasData({
@@ -22,6 +28,12 @@ export function useCanvasData({
   executionLog,
   isPreview,
   isCanvasLocked,
+  execStatus = 'idle',
+  debugNodeId = null,
+  debugStatus = 'idle',
+  pausedNodeId = null,
+  pausedReason = null,
+  partialExecutionStartNodeId = null,
 }: UseCanvasDataParams) {
   const selectedNodeIdSet = useMemo(
     () => new Set(selectedNodeIds.length > 0 ? selectedNodeIds : selectedNodeId ? [selectedNodeId] : []),
@@ -53,6 +65,8 @@ export function useCanvasData({
     workflow.nodes.map(n => {
       const definition = getNodeDefinition(n.type);
       const { minWidth, minHeight, width, height } = getWorkflowNodeSize(definition, n.data);
+      const hasIncoming = workflow.edges.some(edge => edge.target === n.id);
+      const hasOutgoing = workflow.edges.some(edge => edge.source === n.id);
       return {
         id: n.id,
         type: 'custom',
@@ -76,11 +90,18 @@ export function useCanvasData({
           width,
           height,
           isRunning: executionNodeIds.running.has(n.id),
+          execStatus,
+          debugNodeId,
+          debugStatus,
+          pausedNodeId,
+          pausedReason,
+          partialExecutionStartNodeId,
+          isFirstConnectedNode: hasOutgoing && !hasIncoming,
           executionStep: executionStepByNodeId.get(n.id),
         } as Record<string, unknown>,
       };
     }),
-    [workflow.nodes, selectedNodeIdSet, isPreview, isCanvasLocked, executionNodeIds, executionStepByNodeId],
+    [workflow.nodes, workflow.edges, selectedNodeIdSet, isPreview, isCanvasLocked, executionNodeIds, execStatus, debugNodeId, debugStatus, pausedNodeId, pausedReason, partialExecutionStartNodeId, executionStepByNodeId],
   );
 
   const runningEdgeIds = useMemo(() => {

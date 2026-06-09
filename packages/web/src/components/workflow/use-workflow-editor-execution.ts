@@ -20,6 +20,9 @@ export function useWorkflowEditorExecution({
   const [executionLogs, setExecutionLogs] = useState<ExecutionLog[]>([]);
   const [selectedExecutionLogId, setSelectedExecutionLogId] = useState<string | null>(null);
   const [currentExecutionId, setCurrentExecutionId] = useState<string | null>(null);
+  const [pausedNodeId, setPausedNodeId] = useState<string | null>(null);
+  const [pausedReason, setPausedReason] = useState<string | null>(null);
+  const [partialExecutionStartNodeId, setPartialExecutionStartNodeId] = useState<string | null>(null);
   const executionCleanupRef = useRef<(() => void)[]>([]);
 
   // ---- Debug state ----
@@ -57,6 +60,9 @@ export function useWorkflowEditorExecution({
     setExecutionLogs([]);
     setSelectedExecutionLogId(null);
     setCurrentExecutionId(null);
+    setPausedNodeId(null);
+    setPausedReason(null);
+    setPartialExecutionStartNodeId(null);
     void loadExecutionLogs();
   }, [workflowId, loadExecutionLogs]);
 
@@ -171,6 +177,9 @@ export function useWorkflowEditorExecution({
     setExecutionLog(null);
     setSelectedExecutionLogId(null);
     setCurrentExecutionId(null);
+    setPausedNodeId(null);
+    setPausedReason(null);
+    setPartialExecutionStartNodeId(startNodeId ?? null);
 
     const ws = getWS('workflows');
     const sendExecuteRequest = () => {
@@ -197,6 +206,7 @@ export function useWorkflowEditorExecution({
       if (result.status) setExecStatus(result.status);
     });
     const offError = ws.on('workflow:execute:error', () => {
+      setPartialExecutionStartNodeId(null);
       setExecStatus('error');
     });
     const offLog = ws.on('execution:log', (data) => {
@@ -208,6 +218,22 @@ export function useWorkflowEditorExecution({
       setExecutionLogs(prev => [event.log!, ...prev.filter(item => item.id !== event.log!.id)]);
       setExecStatus(event.log.status);
     });
+    const offPaused = ws.on('workflow:paused', (data) => {
+      const event = data as { workflowId?: string; executionId?: string; currentNodeId?: string; reason?: string };
+      if (event.workflowId !== workflow.id) return;
+      if (event.executionId) setCurrentExecutionId(event.executionId);
+      setPausedNodeId(event.currentNodeId ?? null);
+      setPausedReason(event.reason ?? null);
+      setExecStatus('paused');
+    });
+    const offResumed = ws.on('workflow:resumed', (data) => {
+      const event = data as { workflowId?: string; executionId?: string };
+      if (event.workflowId !== workflow.id) return;
+      if (event.executionId) setCurrentExecutionId(event.executionId);
+      setPausedNodeId(null);
+      setPausedReason(null);
+      setExecStatus('running');
+    });
     const offCompleted = ws.on('workflow:completed', (data) => {
       const event = data as { workflowId?: string; executionId?: string; log?: ExecutionLog };
       if (event.workflowId !== workflow.id) return;
@@ -217,6 +243,9 @@ export function useWorkflowEditorExecution({
         setSelectedExecutionLogId(event.log.id);
         setExecutionLogs(prev => [event.log!, ...prev.filter(item => item.id !== event.log!.id)]);
       }
+      setPausedNodeId(null);
+      setPausedReason(null);
+      setPartialExecutionStartNodeId(null);
       setExecStatus('completed');
       void loadExecutionLogs();
     });
@@ -229,10 +258,13 @@ export function useWorkflowEditorExecution({
         setSelectedExecutionLogId(event.log.id);
         setExecutionLogs(prev => [event.log!, ...prev.filter(item => item.id !== event.log!.id)]);
       }
+      setPausedNodeId(null);
+      setPausedReason(null);
+      setPartialExecutionStartNodeId(null);
       setExecStatus('error');
       void loadExecutionLogs();
     });
-    executionCleanupRef.current = [offResult, offError, offLog, offCompleted, offFailed];
+    executionCleanupRef.current = [offResult, offError, offLog, offPaused, offResumed, offCompleted, offFailed];
 
     if (ws.connected) {
       sendExecuteRequest();
@@ -255,12 +287,17 @@ export function useWorkflowEditorExecution({
   const handleResumeExecution = useCallback(() => {
     if (!currentExecutionId) return;
     getWS('workflows').send('workflow:resume', { executionId: currentExecutionId });
+    setPausedNodeId(null);
+    setPausedReason(null);
     setExecStatus('running');
   }, [currentExecutionId]);
 
   const handleStopExecution = useCallback(() => {
     if (!currentExecutionId) return;
     getWS('workflows').send('workflow:stop', { executionId: currentExecutionId });
+    setPausedNodeId(null);
+    setPausedReason(null);
+    setPartialExecutionStartNodeId(null);
     setExecStatus('stopped');
   }, [currentExecutionId]);
 
@@ -313,6 +350,9 @@ export function useWorkflowEditorExecution({
     executionLogs,
     selectedExecutionLogId,
     currentExecutionId,
+    pausedNodeId,
+    pausedReason,
+    partialExecutionStartNodeId,
     startNodes,
     executionValidationError,
 

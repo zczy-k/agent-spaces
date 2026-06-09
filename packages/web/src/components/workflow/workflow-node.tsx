@@ -16,10 +16,12 @@ import {
   Flag,
   FlagOff,
   Info,
+  Loader2,
   Palette,
   Play,
   Settings,
   SkipForward,
+  Square,
   Trash2,
   X,
   XCircle,
@@ -69,6 +71,13 @@ type WorkflowNodeData = Record<string, unknown> & {
   nodeState?: NodeRunState;
   breakpoint?: NodeBreakpoint;
   nodeColor?: string;
+  execStatus?: string;
+  debugNodeId?: string | null;
+  debugStatus?: 'idle' | 'running' | 'completed' | 'error';
+  pausedNodeId?: string | null;
+  pausedReason?: string | null;
+  partialExecutionStartNodeId?: string | null;
+  isFirstConnectedNode?: boolean;
   executionStep?: ExecutionStep;
 };
 
@@ -96,6 +105,20 @@ const NODE_COLORS: Array<{ label: string; value: string | null; className: strin
   { label: '红色', value: 'red', className: 'bg-red-500', borderClassName: 'border-red-500' },
   { label: '靛蓝', value: 'indigo', className: 'bg-indigo-500', borderClassName: 'border-indigo-500' },
 ];
+
+const NODE_COLOR_MAP: Record<string, string> = {
+  emerald: '#10b981',
+  blue: '#3b82f6',
+  violet: '#8b5cf6',
+  rose: '#f43f5e',
+  orange: '#f97316',
+  amber: '#f59e0b',
+  cyan: '#06b6d4',
+  pink: '#ec4899',
+  slate: '#64748b',
+  red: '#ef4444',
+  indigo: '#6366f1',
+};
 
 function formatDuration(start: number, end?: number): string {
   const ms = Math.max(0, (end || Date.now()) - start);
@@ -387,9 +410,33 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
   // Execution status is injected by WorkflowCanvas from the current execution log.
   const executionStep = nodeData.executionStep;
   const nodeStatus = nodeData.isRunning ? 'running' : executionStep?.status || 'idle';
-  const hasPreviewExecutionResult = !!nodeData.isPreview
-    && !!executionStep
+  const currentNodeState = nodeData.nodeState || 'normal';
+  const currentBreakpoint = nodeData.breakpoint || null;
+  const isCurrentNodeDebugging = nodeData.debugNodeId === id && nodeData.debugStatus === 'running';
+  const isExecutionBusy = nodeData.execStatus === 'running' || nodeData.execStatus === 'paused';
+  const isPartialTesting = nodeData.execStatus === 'running' && nodeData.partialExecutionStartNodeId === id;
+  const isPausedAtThisNode = nodeData.execStatus === 'paused'
+    && nodeData.pausedNodeId === id
+    && (
+      nodeData.pausedReason === 'breakpoint-start'
+      || nodeData.pausedReason === 'breakpoint-end'
+      || !!currentBreakpoint
+    );
+  const hasExecutionResult = !!executionStep
     && (executionStep.status === 'completed' || executionStep.status === 'error');
+
+  const stateBadge = currentNodeState === 'disabled'
+    ? '已禁'
+    : currentNodeState === 'skipped' ? '已跳' : '';
+  const breakpointBadge = currentBreakpoint === 'start'
+    ? '开始断点'
+    : currentBreakpoint === 'end' ? '结束断点' : '';
+  const nodeColorStyle = nodeData.nodeColor && NODE_COLOR_MAP[nodeData.nodeColor]
+    ? { backgroundColor: `${NODE_COLOR_MAP[nodeData.nodeColor]}1a` }
+    : undefined;
+  const stateBackgroundClass = currentNodeState === 'disabled'
+    ? 'bg-red-500/10'
+    : currentNodeState === 'skipped' ? 'bg-yellow-500/10' : 'bg-background';
 
   // Extract media items from execution output based on output field definitions
   const mediaItems = useMemo(() => {
@@ -431,12 +478,16 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
     return items
   }, [executionStep, nodeData.outputs])
 
-  const statusColor = nodeStatus === 'running'
+  const statusColor = isPausedAtThisNode
+    ? 'border-blue-600 ring-2 ring-blue-500 shadow-blue-500/40 shadow-md animate-pulse'
+    : nodeStatus === 'running'
     ? 'border-blue-500 shadow-blue-500/30 shadow-md'
     : nodeStatus === 'completed'
       ? 'border-green-500/70 shadow-green-500/15 shadow-sm'
       : nodeStatus === 'error'
         ? 'border-destructive/70 shadow-destructive/15 shadow-sm'
+        : nodeStatus === 'skipped'
+          ? 'border-yellow-500'
     : NODE_COLORS.find(color => color.value === nodeData.nodeColor)?.borderClassName || 'border-border';
 
   const dispatchNodeUpdate = useCallback((updates: Record<string, unknown>) => {
@@ -475,6 +526,32 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
 
   const handleShowInfo = useCallback(() => {
     window.dispatchEvent(new CustomEvent('workflow:show-node-info', { detail: { nodeId: id } }));
+  }, [id]);
+
+  const handleTestNode = useCallback((event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (isCurrentNodeDebugging) {
+      window.dispatchEvent(new CustomEvent('workflow:cancel-debug-node', { detail: { nodeId: id } }));
+      return;
+    }
+    if (isCanvasLocked || isBoundaryNode) return;
+    window.dispatchEvent(new CustomEvent('workflow:debug-node', { detail: { nodeId: id } }));
+  }, [id, isBoundaryNode, isCanvasLocked, isCurrentNodeDebugging]);
+
+  const handlePartialTest = useCallback((event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (isCanvasLocked || isBoundaryNode || isExecutionBusy) return;
+    window.dispatchEvent(new CustomEvent('workflow:execute-from-node', { detail: { nodeId: id } }));
+  }, [id, isBoundaryNode, isCanvasLocked, isExecutionBusy]);
+
+  const handleResumeFromBreakpoint = useCallback((event: React.MouseEvent) => {
+    event.stopPropagation();
+    window.dispatchEvent(new CustomEvent('workflow:resume-execution', { detail: { nodeId: id } }));
+  }, [id]);
+
+  const handleStopAtBreakpoint = useCallback((event: React.MouseEvent) => {
+    event.stopPropagation();
+    window.dispatchEvent(new CustomEvent('workflow:stop-execution', { detail: { nodeId: id } }));
   }, [id]);
 
   const setNodeColor = useCallback((color: string | null) => {
@@ -522,14 +599,15 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
         >
           <div
             ref={nodeRootRef}
-            className={`border-2 rounded-lg shadow-sm cursor-pointer transition-colors relative flex flex-col bg-background
+            className={`border-2 rounded-lg shadow-sm cursor-pointer transition-colors relative flex flex-col
               ${statusColor} ${selected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background shadow-md' : ''}
-              ${isLoopBody ? 'loop-body-node' : ''}`}
+              ${stateBackgroundClass} ${isLoopBody ? 'loop-body-node' : ''}`}
             style={{
               minWidth: nodeMinWidth,
               minHeight: nodeMinHeight,
               width: nodeWidth,
               height: nodeHeight,
+              ...nodeColorStyle,
             }}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
@@ -563,9 +641,10 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
         {!isBoundaryNode && !isCanvasLocked && isHovered && (
           <button
             className="absolute -top-2 -left-2 w-5 h-5 rounded-full bg-green-500 text-white flex items-center justify-center hover:bg-green-600 z-10"
-            onClick={(e) => { e.stopPropagation(); }}
+            onClick={handleTestNode}
+            title={isCurrentNodeDebugging ? '取消测试' : '测试节点'}
           >
-            <Play className="w-3 h-3" />
+            {isCurrentNodeDebugging ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
           </button>
         )}
 
@@ -579,8 +658,52 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
           </button>
         )}
 
-        {hasPreviewExecutionResult && executionStep ? (
+        {stateBadge ? (
+          <span
+            className={cn(
+              'absolute -top-2 left-1/2 z-10 -translate-x-1/2 rounded-full px-1.5 py-0 text-[10px] font-medium text-white',
+              currentNodeState === 'disabled' ? 'bg-red-500' : 'bg-yellow-500',
+            )}
+          >
+            {stateBadge}
+          </span>
+        ) : null}
+
+        {breakpointBadge ? (
+          <span
+            className={cn(
+              'absolute -bottom-2 left-2 z-10 inline-flex items-center gap-1 rounded-full px-1.5 py-0 text-[10px] font-medium text-white',
+              currentBreakpoint === 'start' ? 'bg-blue-500' : 'bg-purple-500',
+            )}
+          >
+            <Flag className="h-2.5 w-2.5" />
+            {breakpointBadge}
+          </span>
+        ) : null}
+
+        {hasExecutionResult && executionStep ? (
           <ExecutionResultHoverCard step={executionStep} visible={isHovered || selected} />
+        ) : null}
+
+        {isPausedAtThisNode ? (
+          <div className="nodrag nopan absolute left-2 right-2 -bottom-10 z-40 flex items-center gap-1 rounded border border-blue-500/40 bg-background/95 p-1 shadow-lg">
+            <button
+              type="button"
+              className="inline-flex h-6 flex-1 items-center justify-center gap-1 rounded bg-blue-500 px-2 text-[10px] font-medium text-white hover:bg-blue-600"
+              onClick={handleResumeFromBreakpoint}
+            >
+              <Play className="h-3 w-3" />
+              继续运行
+            </button>
+            <button
+              type="button"
+              className="inline-flex h-6 flex-1 items-center justify-center gap-1 rounded bg-destructive px-2 text-[10px] font-medium text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleStopAtBreakpoint}
+            >
+              <Square className="h-3 w-3" />
+              中断
+            </button>
+          </div>
         ) : null}
 
         {/* Header */}
@@ -600,12 +723,27 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
               />
             ) : (
               <div
-                className="text-xs truncate hover:bg-muted/50 rounded px-1 py-0.5 min-w-0 flex-1"
+                className={cn(
+                  'text-xs truncate hover:bg-muted/50 rounded px-1 py-0.5 min-w-0 flex-1',
+                  currentNodeState === 'disabled' && 'opacity-50 line-through',
+                )}
                 onDoubleClick={(e) => { e.stopPropagation(); startEdit(); }}
               >
                 {displayLabel}
               </div>
             )}
+            {nodeData.isFirstConnectedNode && !isBoundaryNode && !nodeData.isPreview ? (
+              <button
+                type="button"
+                className="nodrag nopan shrink-0 inline-flex items-center gap-1 rounded border border-border bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={isExecutionBusy}
+                title="局部测试"
+                onClick={handlePartialTest}
+              >
+                {isPartialTesting ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Play className="h-2.5 w-2.5" />}
+                局部测试
+              </button>
+            ) : null}
           </div>
         )}
 

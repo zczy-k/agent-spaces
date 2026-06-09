@@ -39,6 +39,7 @@ function areStringArraysEqual(a: string[], b: string[]) {
 interface WorkflowCanvasProps {
   workflow: Workflow;
   isPreview: boolean;
+  execStatus?: string;
   isRunning?: boolean;
   executionLog?: ExecutionLog | null;
   selectedNodeId?: string | null;
@@ -49,6 +50,16 @@ interface WorkflowCanvasProps {
   onNodeCopy?: (id: string) => void;
   onNodeClone?: (id: string) => void;
   onNodeStage?: (id: string) => void;
+  debugNodeId?: string | null;
+  debugStatus?: 'idle' | 'running' | 'completed' | 'error';
+  onNodeDebug?: (id: string) => void;
+  onCancelDebug?: () => void;
+  onExecuteFromNode?: (id: string) => void;
+  onResumeExecution?: () => void;
+  onStopExecution?: () => void;
+  pausedNodeId?: string | null;
+  pausedReason?: string | null;
+  partialExecutionStartNodeId?: string | null;
   onNodeSelect: (id: string | null, multi?: boolean) => void;
   onNodesSelect?: (ids: string[], options?: { primaryNodeId?: string | null }) => void;
   onNodeDataUpdate: (id: string, data: Record<string, unknown>) => void;
@@ -69,12 +80,16 @@ interface WorkflowCanvasProps {
 }
 
 export function WorkflowCanvas({
-  workflow, isPreview, isRunning = false, executionLog, selectedNodeId,
+  workflow, isPreview, execStatus = 'idle', isRunning = false, executionLog, selectedNodeId,
   selectedNodeIds = [], onNodeAdd, onNodeDelete, onNodeSelect, onNodesSelect,
   onStagedNodeDrop, onNodeDataUpdate, onNodesChange, onEdgesChange, onConnect,
   canUndo = false, canRedo = false, onUndo, onRedo, onExitPreview, onAutoLayout,
   onConnectionDrop,
   onNodeCopy, onNodeClone, onNodeStage,
+  debugNodeId = null, debugStatus = 'idle', onNodeDebug, onCancelDebug,
+  onExecuteFromNode, onResumeExecution, onStopExecution,
+  pausedNodeId = null, pausedReason = null,
+  partialExecutionStartNodeId = null,
 }: WorkflowCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const connectSourceRef = useRef<{ nodeId: string; handleId: string | null } | null>(null);
@@ -97,6 +112,11 @@ export function WorkflowCanvas({
     onNodeCopy,
     onNodeClone,
     onNodeStage,
+    onNodeDebug,
+    onCancelDebug,
+    onExecuteFromNode,
+    onResumeExecution,
+    onStopExecution,
   });
 
   const { rfNodes, rfEdges } = useCanvasData({
@@ -107,6 +127,12 @@ export function WorkflowCanvas({
     executionLog,
     isPreview,
     isCanvasLocked,
+    execStatus,
+    debugNodeId,
+    debugStatus,
+    pausedNodeId,
+    pausedReason,
+    partialExecutionStartNodeId,
   });
 
   const { getNodeDebugSnapshot } = useCanvasDebug(rfNodes, reactFlowWrapper, workflow);

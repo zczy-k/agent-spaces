@@ -68,7 +68,7 @@ function WorkflowEditorInner({
     workflowId: state.workflowId,
   });
 
-  const isWorkflowRunning = execution.execStatus === 'running';
+  const isWorkflowRunning = execution.execStatus === 'running' || execution.execStatus === 'paused';
   const isWorkflowReadOnly = state.isPreview || isWorkflowRunning;
 
   const canvas = useWorkflowEditorCanvas({
@@ -278,6 +278,7 @@ function WorkflowEditorInner({
               <WorkflowCanvas
                 workflow={workflow}
                 isPreview={state.isPreview}
+                execStatus={execution.execStatus}
                 isRunning={isWorkflowRunning}
                 executionLog={execution.executionLog}
                 selectedNodeId={state.selectedNodeId}
@@ -288,6 +289,16 @@ function WorkflowEditorInner({
                 onNodeCopy={canvas.handleNodeCopy}
                 onNodeClone={canvas.handleNodeClone}
                 onNodeStage={canvas.handleNodeStage}
+                debugNodeId={execution.debugNodeId}
+                debugStatus={execution.debugStatus}
+                pausedNodeId={execution.pausedNodeId}
+                pausedReason={execution.pausedReason}
+                partialExecutionStartNodeId={execution.partialExecutionStartNodeId}
+                onNodeDebug={execution.handleDebugNode}
+                onCancelDebug={execution.handleCancelDebug}
+                onExecuteFromNode={(nodeId) => execution.handleExecute(undefined, nodeId)}
+                onResumeExecution={execution.handleResumeExecution}
+                onStopExecution={execution.handleStopExecution}
                 onNodeSelect={canvas.handleNodeSelect}
                 onNodesSelect={canvas.handleNodesSelect}
                 onNodeDataUpdate={canvas.handleNodeDataUpdate}

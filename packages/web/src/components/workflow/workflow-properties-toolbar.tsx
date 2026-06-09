@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import type { WorkflowNode } from '@agent-spaces/shared';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -36,18 +37,20 @@ export function Toolbar({
   onCancelDebug,
   onOpenTestDialog,
 }: ToolbarProps) {
+  const t = useTranslations('workflows');
+
   return (
     <div className="flex shrink-0 items-center gap-1 border-b px-3 py-1.5">
-      <Badge variant="secondary" className="h-5 rounded px-2 text-[10px]">属性</Badge>
-      {canEditInputFields && <Badge variant="outline" className="h-5 cursor-pointer rounded px-2 text-[10px]" onClick={() => document.getElementById('input-fields-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>输入</Badge>}
-      {canEditOutputFields && <Badge variant="outline" className="h-5 cursor-pointer rounded px-2 text-[10px]" onClick={() => document.getElementById('output-fields-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>输出</Badge>}
+      <Badge variant="secondary" className="h-5 rounded px-2 text-[10px]">{t('editor.properties')}</Badge>
+      {canEditInputFields && <Badge variant="outline" className="h-5 cursor-pointer rounded px-2 text-[10px]" onClick={() => document.getElementById('input-fields-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{t('properties.inputFields')}</Badge>}
+      {canEditOutputFields && <Badge variant="outline" className="h-5 cursor-pointer rounded px-2 text-[10px]" onClick={() => document.getElementById('output-fields-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{t('properties.outputFields')}</Badge>}
       <div className="ml-auto flex items-center gap-1">
         {canDebug && (
           <Button
             variant="ghost"
             size="icon"
             className={`h-6 w-6 ${isDebugging ? 'text-destructive' : 'text-muted-foreground hover:text-foreground'}`}
-            title={isDebugging ? '停止测试' : '测试脚本'}
+            title={isDebugging ? t('editor.stopTest') : t('editor.testScript')}
             onClick={() => {
               if (isDebugging) {
                 onCancelDebug();
@@ -81,8 +84,8 @@ export function Toolbar({
               )}
             </PopoverTrigger>
             <PopoverContent align="end" className="w-56 space-y-2 p-3">
-              <p className="text-xs font-medium">延迟执行</p>
-              <p className="text-xs text-muted-foreground">执行当前节点前等待的毫秒数</p>
+              <p className="text-xs font-medium">{t('editor.delayExecution')}</p>
+              <p className="text-xs text-muted-foreground">{t('editor.delayDescription')}</p>
               <Input
                 type="number"
                 min={0}
