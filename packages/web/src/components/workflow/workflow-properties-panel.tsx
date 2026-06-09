@@ -22,7 +22,7 @@ import { ExecutionNodeDialog } from './workflow-execution-node-dialog';
 import { NodeHeader } from './workflow-properties-node-header';
 import { Toolbar } from './workflow-properties-toolbar';
 import { PropertiesList } from './workflow-properties-list';
-import { IOFieldsSections } from './workflow-properties-io-sections';
+import { InputFieldsSection, OutputFieldsSection } from './workflow-properties-io-sections';
 import { ImportDialog } from './workflow-properties-import-dialog';
 import { PresetDialog } from './workflow-properties-preset-dialog';
 
@@ -260,18 +260,14 @@ export function WorkflowPropertiesPanel({
             </div>
           )}
 
-          <IOFieldsSections
-            node={node}
-            data={data}
-            canEditInputFields={canEditInputFields}
-            canEditOutputFields={canEditOutputFields}
-            variableContext={variableContext}
-            selectedJsonPreset={selectedJsonPreset}
-            debugResult={debugResult}
-            hasDebugOutput={hasDebugOutput}
-            onDataChange={handleDataChange}
-            onOpenImport={() => setImportOpen(true)}
-          />
+          {canEditInputFields && (
+            <InputFieldsSection
+              node={node}
+              data={data}
+              variableContext={variableContext}
+              onDataChange={handleDataChange}
+            />
+          )}
 
           <PropertiesList
             properties={visibleProperties}
@@ -287,6 +283,19 @@ export function WorkflowPropertiesPanel({
             onDataChange={handleDataChange}
             onPreviewDataChange={handlePreviewDataChange}
           />
+
+          {canEditOutputFields && (
+            <OutputFieldsSection
+              node={node}
+              data={data}
+              variableContext={variableContext}
+              selectedJsonPreset={selectedJsonPreset}
+              debugResult={debugResult}
+              hasDebugOutput={hasDebugOutput}
+              onDataChange={handleDataChange}
+              onOpenImport={() => setImportOpen(true)}
+            />
+          )}
 
         </div>
       </ScrollArea>

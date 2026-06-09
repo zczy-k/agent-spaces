@@ -1,4 +1,5 @@
 import type { NodeTypeDefinition } from '@agent-spaces/shared';
+import { GalleryPreviewView, MusicPlayerView, TableDisplayView } from '@/components/workflow/display-node-views';
 import { StickyNoteView } from '@/components/workflow/sticky-note-view';
 
 export const displayNodes: NodeTypeDefinition[] = [
@@ -8,6 +9,8 @@ export const displayNodes: NodeTypeDefinition[] = [
     category: 'nodes.categories.display',
     icon: 'Image',
     description: 'nodes.gallery_preview.description',
+    customView: GalleryPreviewView,
+    customViewMinSize: { width: 220, height: 180 },
     properties: [
       {
         key: 'items',
@@ -40,6 +43,8 @@ export const displayNodes: NodeTypeDefinition[] = [
     category: 'nodes.categories.display',
     icon: 'Music',
     description: 'nodes.music_player.description',
+    customView: MusicPlayerView,
+    customViewMinSize: { width: 260, height: 150 },
     properties: [
       {
         key: 'tracks',
@@ -77,6 +82,8 @@ export const displayNodes: NodeTypeDefinition[] = [
     category: 'nodes.categories.display',
     icon: 'Table',
     description: 'nodes.table_display.description',
+    customView: TableDisplayView,
+    customViewMinSize: { width: 320, height: 200 },
     properties: [
       {
         key: 'headers',
