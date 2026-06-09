@@ -6,6 +6,7 @@ import { applyNodeChanges, applyEdgeChanges } from '@xyflow/react';
 import type { NodeChange, EdgeChange, Connection } from '@xyflow/react';
 import type { Workflow } from '@agent-spaces/shared';
 import {
+  LOOP_NEXT_SOURCE_HANDLE,
   getCompositeParentId,
   isHiddenWorkflowEdge,
   isHiddenWorkflowNode,
@@ -34,6 +35,137 @@ function areStringArraysEqual(a: string[], b: string[]) {
   return a.length === b.length && a.every((item, index) => item === b[index]);
 }
 
+function createWorkflowNodeId(): string {
+  return `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function createNodeData(type: string): Record<string, unknown> {
+  const def = getNodeDefinition(type);
+  const data: Record<string, unknown> = {};
+  if (def?.properties) {
+    for (const prop of def.properties) {
+      if (prop.default !== undefined) data[prop.key] = prop.default;
+    }
+  }
+  if (def?.outputs?.length) data.outputs = def.outputs;
+  return data;
+}
+
+function cloneNodeData(data: Record<string, unknown>): Record<string, unknown> {
+  return JSON.parse(JSON.stringify(data)) as Record<string, unknown>;
+}
+
+function createNodesForDefinition(
+  type: string,
+  position: { x: number; y: number },
+  rootData?: Record<string, unknown>,
+): { rootNode: Workflow['nodes'][0]; nodes: Workflow['nodes']; edges: Workflow['edges'] } | null {
+  const def = getNodeDefinition(type);
+
+  if (!def?.compound) {
+    const rootNode: Workflow['nodes'][0] = {
+      id: createWorkflowNodeId(),
+      type,
+      label: def?.label || type,
+      position,
+      data: { ...createNodeData(type), ...(rootData || {}) },
+    };
+    return { rootNode, nodes: [rootNode], edges: [] };
+  }
+
+  const roleMap = new Map<string, Workflow['nodes'][0]>();
+  const rootRole = def.compound.rootRole || def.compound.children[0]?.role;
+  if (!rootRole) return null;
+
+  for (const childDef of def.compound.children) {
+    const isRoot = childDef.role === rootRole;
+    const nodeDefinition = getNodeDefinition(childDef.type);
+    const offset = childDef.offset || { x: 0, y: 0 };
+    const childData = {
+      ...createNodeData(childDef.type),
+      ...(childDef.data ? cloneNodeData(childDef.data) : {}),
+      ...(isRoot && rootData ? rootData : {}),
+    };
+    const node: Workflow['nodes'][0] = {
+      id: createWorkflowNodeId(),
+      type: childDef.type,
+      label: isRoot ? (def.label || childDef.label || childDef.type) : (childDef.label || nodeDefinition?.label || childDef.type),
+      position: {
+        x: position.x + offset.x,
+        y: position.y + offset.y,
+      },
+      data: childData,
+      composite: {
+        role: childDef.role,
+        generated: !isRoot,
+        hidden: !!childDef.hidden,
+        scopeBoundary: !!childDef.scopeBoundary,
+      },
+    };
+    roleMap.set(childDef.role, node);
+  }
+
+  const rootNode = roleMap.get(rootRole);
+  if (!rootNode) return null;
+
+  rootNode.composite = {
+    ...(rootNode.composite || {}),
+    rootId: rootNode.id,
+    parentId: null,
+    generated: false,
+    hidden: false,
+  };
+
+  for (const childDef of def.compound.children) {
+    const node = roleMap.get(childDef.role);
+    if (!node || node.id === rootNode.id) continue;
+    const parentRole = childDef.parentRole || rootRole;
+    const parentNode = roleMap.get(parentRole);
+    node.composite = {
+      ...(node.composite || {}),
+      rootId: rootNode.id,
+      parentId: parentNode?.id || rootNode.id,
+    };
+  }
+
+  const edges: Workflow['edges'] = [];
+  for (const edgeDef of def.compound.edges || []) {
+    const sourceNode = roleMap.get(edgeDef.sourceRole);
+    const targetNode = roleMap.get(edgeDef.targetRole);
+    if (!sourceNode || !targetNode) continue;
+    edges.push({
+      id: createWorkflowEdgeId({
+        source: sourceNode.id,
+        target: targetNode.id,
+        sourceHandle: edgeDef.sourceHandle,
+        targetHandle: edgeDef.targetHandle,
+      }),
+      source: sourceNode.id,
+      target: targetNode.id,
+      sourceHandle: edgeDef.sourceHandle ?? null,
+      targetHandle: edgeDef.targetHandle ?? null,
+      composite: {
+        rootId: rootNode.id,
+        parentId: sourceNode.id,
+        generated: true,
+        hidden: !!edgeDef.hidden,
+        locked: !!edgeDef.locked,
+      },
+    });
+  }
+
+  const nodes = [rootNode, ...Array.from(roleMap.values()).filter(node => node.id !== rootNode.id)];
+  return { rootNode, nodes, edges };
+}
+
+function getOutgoingSourceHandle(type: string): string | undefined {
+  const def = getNodeDefinition(type);
+  if (def?.compound && def.handles?.sourceHandles?.some(handle => handle.id === LOOP_NEXT_SOURCE_HANDLE)) {
+    return LOOP_NEXT_SOURCE_HANDLE;
+  }
+  return undefined;
+}
+
 export function useWorkflowEditorCanvas({
   workflow, isReadOnly = false, setWorkflow, markDirty, pushUndo,
   selectedNodeId, setSelectedNodeId, selectedNodeIds, setSelectedNodeIds,
@@ -45,24 +177,12 @@ export function useWorkflowEditorCanvas({
   // ---- Node operations ----
   const handleNodeAdd = useCallback((type: string, position: { x: number; y: number }) => {
     if (!workflow || isReadOnly) return;
+    const created = createNodesForDefinition(type, position);
+    if (!created) return;
     pushUndo('add node');
-    const id = `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    const def = getNodeDefinition(type);
-    const data: Record<string, unknown> = {};
-    if (def?.properties) {
-      for (const prop of def.properties) {
-        if (prop.default !== undefined) data[prop.key] = prop.default;
-      }
-    }
-    if (def?.outputs?.length) data.outputs = def.outputs;
-    const newNode: Workflow['nodes'][0] = {
-      id, type,
-      label: def?.label || type,
-      position, data,
-    };
-    setWorkflow(w => w ? { ...w, nodes: [...w.nodes, newNode] } : null);
-    setSelectedNodeId(id);
-    setSelectedNodeIds([id]);
+    setWorkflow(w => w ? { ...w, nodes: [...w.nodes, ...created.nodes], edges: [...w.edges, ...created.edges] } : null);
+    setSelectedNodeId(created.rootNode.id);
+    setSelectedNodeIds([created.rootNode.id]);
     markDirty();
   }, [workflow, isReadOnly, pushUndo, markDirty, setSelectedNodeId, setSelectedNodeIds]);
 
@@ -111,15 +231,6 @@ export function useWorkflowEditorCanvas({
     if (def?.manualCreate === false) return;
     if (def?.singleton && workflow.nodes.some(node => node.type === type)) return;
 
-    const id = `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    const data: Record<string, unknown> = {};
-    if (def?.properties) {
-      for (const prop of def.properties) {
-        if (prop.default !== undefined) data[prop.key] = prop.default;
-      }
-    }
-    if (def?.outputs?.length) data.outputs = def.outputs;
-
     if (nodeSelectContext.mode === 'connection-drop') {
       const sourceNode = workflow.nodes.find(node => node.id === nodeSelectContext.sourceNodeId);
       if (!sourceNode) return;
@@ -127,25 +238,19 @@ export function useWorkflowEditorCanvas({
         x: sourceNode.position.x + 250,
         y: sourceNode.position.y,
       };
-      const newNode: Workflow['nodes'][0] = {
-        id,
-        type,
-        label: def?.label || type,
-        position,
-        data: {
-          ...data,
+      const created = createNodesForDefinition(type, position, {
           sourceNodeId: nodeSelectContext.sourceNodeId,
           sourceHandle: nodeSelectContext.sourceHandle,
-        },
-      };
+      });
+      if (!created) return;
       const newEdge: Workflow['edges'][0] = {
         id: createWorkflowEdgeId({
           source: nodeSelectContext.sourceNodeId,
-          target: id,
+          target: created.rootNode.id,
           sourceHandle: nodeSelectContext.sourceHandle,
         }),
         source: nodeSelectContext.sourceNodeId,
-        target: id,
+        target: created.rootNode.id,
         sourceHandle: nodeSelectContext.sourceHandle || undefined,
         targetHandle: undefined,
       };
@@ -153,11 +258,11 @@ export function useWorkflowEditorCanvas({
       pushUndo('add connected node');
       setWorkflow(current => current ? {
         ...current,
-        nodes: [...current.nodes, newNode],
-        edges: [...current.edges, newEdge],
+        nodes: [...current.nodes, ...created.nodes],
+        edges: [...current.edges, newEdge, ...created.edges],
       } : null);
-      setSelectedNodeId(id);
-      setSelectedNodeIds([id]);
+      setSelectedNodeId(created.rootNode.id);
+      setSelectedNodeIds([created.rootNode.id]);
       markDirty();
       return;
     }
@@ -170,51 +275,48 @@ export function useWorkflowEditorCanvas({
       x: (sourceNode.position.x + targetNode.position.x) / 2,
       y: (sourceNode.position.y + targetNode.position.y) / 2,
     };
-    const newNode: Workflow['nodes'][0] = {
-      id,
-      type,
-      label: def?.label || type,
-      position,
-      data: {
-        ...data,
+    const created = createNodesForDefinition(type, position, {
         sourceNodeId: nodeSelectContext.sourceNodeId,
         sourceHandle: nodeSelectContext.sourceHandle,
-      },
-    };
+    });
+    if (!created) return;
+    const outgoingSourceHandle = getOutgoingSourceHandle(type);
     const firstEdge: Workflow['edges'][0] = {
       id: createWorkflowEdgeId({
         source: nodeSelectContext.sourceNodeId,
-        target: id,
+        target: created.rootNode.id,
         sourceHandle: nodeSelectContext.sourceHandle,
       }),
       source: nodeSelectContext.sourceNodeId,
-      target: id,
+      target: created.rootNode.id,
       sourceHandle: nodeSelectContext.sourceHandle || undefined,
       targetHandle: undefined,
     };
     const secondEdge: Workflow['edges'][0] = {
       id: createWorkflowEdgeId({
-        source: id,
+        source: created.rootNode.id,
         target: nodeSelectContext.targetNodeId,
+        sourceHandle: outgoingSourceHandle,
       }),
-      source: id,
+      source: created.rootNode.id,
       target: nodeSelectContext.targetNodeId,
-      sourceHandle: undefined,
+      sourceHandle: outgoingSourceHandle,
       targetHandle: undefined,
     };
 
     pushUndo('insert node');
     setWorkflow(current => current ? {
       ...current,
-      nodes: [...current.nodes, newNode],
+      nodes: [...current.nodes, ...created.nodes],
       edges: [
         ...current.edges.filter(edge => edge.id !== nodeSelectContext.edgeId),
         firstEdge,
+        ...created.edges,
         secondEdge,
       ],
     } : null);
-    setSelectedNodeId(id);
-    setSelectedNodeIds([id]);
+    setSelectedNodeId(created.rootNode.id);
+    setSelectedNodeIds([created.rootNode.id]);
     markDirty();
   }, [workflow, nodeSelectContext, isReadOnly, pushUndo, markDirty, setSelectedNodeId, setSelectedNodeIds]);
 

@@ -17,7 +17,7 @@ import {
   type OnConnectEnd,
   type OnConnectStart,
 } from '@xyflow/react';
-import { Grid3X3, Grip } from 'lucide-react';
+import { Grid3X3, Grip, Waypoints } from 'lucide-react';
 import '@xyflow/react/dist/style.css';
 import type { ExecutionLog, Workflow, StagedNode } from '@agent-spaces/shared';
 import { WORKFLOW_NODE_DRAG_MIME, WORKFLOW_STAGED_NODE_DRAG_MIME } from './workflow-drag-types';
@@ -112,6 +112,7 @@ export function WorkflowCanvas({
     : bgVariantKey === 'cross' ? BackgroundVariant.Cross
     : BackgroundVariant.Dots;
   const snapEnabled = canvasPrefs.snapGrid !== false;
+  const layoutEngine = (canvasPrefs.layoutEngine as string) || 'dagre';
 
   const updateCanvasPrefs = useCallback((patch: Record<string, unknown>) => {
     onCanvasPreferencesChange?.({ ...canvasPrefs, ...patch });
@@ -374,6 +375,7 @@ export function WorkflowCanvas({
         nodesConnectable={!isCanvasLocked}
         edgesReconnectable={!isCanvasLocked}
         defaultEdgeOptions={{ type: 'custom' }}
+        attributionPosition="bottom-left"
       >
         <Background variant={bgVariant} gap={15} size={1} />
         <Controls position="bottom-left">
@@ -392,6 +394,17 @@ export function WorkflowCanvas({
             onClick={() => updateCanvasPrefs({ snapGrid: !snapEnabled })}
           >
             <Grip size={14} />
+          </ControlButton>
+          <ControlButton
+            title={`布局引擎: ${layoutEngine}`}
+            onClick={() => {
+              const engines = ['dagre', 'elk'] as const;
+              const idx = engines.indexOf(layoutEngine as typeof engines[number]);
+              const next = engines[(idx + 1) % engines.length];
+              updateCanvasPrefs({ layoutEngine: next });
+            }}
+          >
+            <Waypoints size={14} />
           </ControlButton>
         </Controls>
         {minimapVisible && <MiniMap />}

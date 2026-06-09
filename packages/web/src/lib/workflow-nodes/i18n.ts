@@ -104,6 +104,7 @@ export function useLocalizedNodeDefinitionsByCategory(): Record<string, NodeType
   const all = translateAll(getAllNodeDefinitions(), t);
   const groups: Record<string, NodeTypeDefinition[]> = {};
   for (const def of all) {
+    if (def.manualCreate === false) continue;
     if (!groups[def.category]) groups[def.category] = [];
     groups[def.category].push(def);
   }
