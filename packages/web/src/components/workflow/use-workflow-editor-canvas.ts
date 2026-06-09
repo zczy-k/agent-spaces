@@ -41,6 +41,16 @@ function areStringArraysEqual(a: string[], b: string[]) {
   return a.length === b.length && a.every((item, index) => item === b[index]);
 }
 
+function isNodePositionOrDimensionChange(
+  change: NodeChange,
+): change is NodeChange & { type: 'position' | 'dimensions'; id: string } {
+  return change.type === 'position' || change.type === 'dimensions';
+}
+
+function isNodeRemoveChange(change: NodeChange): change is NodeChange & { type: 'remove'; id: string } {
+  return change.type === 'remove';
+}
+
 function createWorkflowNodeId(): string {
   return `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -57,8 +67,132 @@ function createNodeData(type: string): Record<string, unknown> {
   return data;
 }
 
+const SCOPE_CONTAINER_PADDING = {
+  top: 100,
+  right: 56,
+  bottom: 44,
+  left: 56,
+};
+
+const MIN_SCOPE_CONTAINER_SIZE = {
+  width: 520,
+  height: 260,
+};
+
+const LOOP_BODY_MIN_SCOPE_CONTAINER_SIZE = {
+  width: 150,
+  height: 260,
+};
+
+const DEFAULT_SCOPE_CHILD_SIZE = {
+  width: 220,
+  height: 120,
+};
+
 function cloneNodeData(data: Record<string, unknown>): Record<string, unknown> {
   return JSON.parse(JSON.stringify(data)) as Record<string, unknown>;
+}
+
+function cloneWorkflowNodes(nodes: Workflow['nodes']): Workflow['nodes'] {
+  return nodes.map(node => ({
+    ...node,
+    position: { ...node.position },
+    data: { ...node.data },
+    composite: node.composite ? { ...node.composite } : undefined,
+  }));
+}
+
+function getLayoutNodeSize(node: Workflow['nodes'][0]): { width: number; height: number } {
+  return {
+    width: typeof node.data?.width === 'number' ? node.data.width : DEFAULT_SCOPE_CHILD_SIZE.width,
+    height: typeof node.data?.height === 'number' ? node.data.height : DEFAULT_SCOPE_CHILD_SIZE.height,
+  };
+}
+
+function syncScopeBoundaryLayout(nodes: Workflow['nodes'], scopeNodeId: string): boolean {
+  const scopeNode = nodes.find(node => node.id === scopeNodeId);
+  if (!scopeNode || !isScopeBoundaryWorkflowNode(scopeNode)) return false;
+
+  const children = nodes.filter(node => getCompositeParentId(node) === scopeNodeId && !isHiddenWorkflowNode(node));
+  if (!children.length) return false;
+
+  const minX = Math.min(...children.map(node => node.position.x));
+  const minY = Math.min(...children.map(node => node.position.y));
+  const maxX = Math.max(...children.map(node => {
+    const size = getLayoutNodeSize(node);
+    return node.position.x + size.width;
+  }));
+  const maxY = Math.max(...children.map(node => {
+    const size = getLayoutNodeSize(node);
+    return node.position.y + size.height;
+  }));
+
+  const minSize = scopeNode.type === LOOP_BODY_NODE_TYPE
+    ? LOOP_BODY_MIN_SCOPE_CONTAINER_SIZE
+    : MIN_SCOPE_CONTAINER_SIZE;
+  const nextPosition = {
+    x: minX - SCOPE_CONTAINER_PADDING.left,
+    y: minY - SCOPE_CONTAINER_PADDING.top,
+  };
+  const nextWidth = Math.max(
+    minSize.width,
+    maxX - minX + SCOPE_CONTAINER_PADDING.left + SCOPE_CONTAINER_PADDING.right,
+  );
+  const nextHeight = Math.max(
+    minSize.height,
+    maxY - minY + SCOPE_CONTAINER_PADDING.top + SCOPE_CONTAINER_PADDING.bottom,
+  );
+
+  const positionChanged = scopeNode.position.x !== nextPosition.x || scopeNode.position.y !== nextPosition.y;
+  const sizeChanged = scopeNode.data.width !== nextWidth || scopeNode.data.height !== nextHeight;
+  if (!positionChanged && !sizeChanged) return false;
+
+  if (positionChanged) {
+    scopeNode.position = nextPosition;
+  }
+  if (sizeChanged) {
+    scopeNode.data = {
+      ...scopeNode.data,
+      width: nextWidth,
+      height: nextHeight,
+    };
+  }
+  return true;
+}
+
+function syncAllScopeBoundaryLayouts(nodes: Workflow['nodes']): boolean {
+  let changed = false;
+  const scopeNodeIds = nodes
+    .filter(node => isScopeBoundaryWorkflowNode(node))
+    .map(node => node.id);
+
+  for (let i = scopeNodeIds.length - 1; i >= 0; i -= 1) {
+    changed = syncScopeBoundaryLayout(nodes, scopeNodeIds[i]) || changed;
+  }
+  return changed;
+}
+
+function shiftScopeChildren(
+  nodes: Workflow['nodes'],
+  scopeNodeId: string,
+  dx: number,
+  dy: number,
+  skippedNodeIds: Set<string>,
+): void {
+  if (dx === 0 && dy === 0) return;
+
+  for (const child of nodes.filter(node => getCompositeParentId(node) === scopeNodeId)) {
+    if (!skippedNodeIds.has(child.id)) {
+      child.position = {
+        x: child.position.x + dx,
+        y: child.position.y + dy,
+      };
+      skippedNodeIds.add(child.id);
+    }
+    if (isScopeBoundaryWorkflowNode(child)) {
+      shiftScopeChildren(nodes, child.id, dx, dy, skippedNodeIds);
+    }
+  }
 }
 
 function createLoopBoundaryLabel(loopNode: Workflow['nodes'][0], type: 'start' | 'end'): string {
@@ -69,12 +203,6 @@ function createLoopBodyBoundaryNodes(
   loopNode: Workflow['nodes'][0],
   bodyNode: Workflow['nodes'][0],
 ): { nodes: Workflow['nodes']; edges: Workflow['edges'] } {
-  bodyNode.data = {
-    ...bodyNode.data,
-    width: Math.max(typeof bodyNode.data.width === 'number' ? bodyNode.data.width : 0, 620),
-    height: Math.max(typeof bodyNode.data.height === 'number' ? bodyNode.data.height : 0, 320),
-  };
-
   const startNode: Workflow['nodes'][0] = {
     id: createWorkflowNodeId(),
     type: 'start',
@@ -138,6 +266,133 @@ function createLoopBodyBoundaryNodes(
       },
     ],
   };
+}
+
+function ensureLoopBodyBoundaryNodes(nodes: Workflow['nodes'], edges: Workflow['edges']): boolean {
+  let changed = false;
+
+  for (const bodyNode of nodes) {
+    if (bodyNode.type !== LOOP_BODY_NODE_TYPE || bodyNode.composite?.role !== LOOP_BODY_ROLE) continue;
+
+    const children = nodes.filter(node => getCompositeParentId(node) === bodyNode.id);
+    for (const child of children) {
+      const isBoundaryChild = child.type === 'start' || child.type === 'end';
+      if (
+        child.composite?.rootId === bodyNode.id
+        && child.composite?.parentId === bodyNode.id
+        && (!isBoundaryChild || (child.composite.generated === true && child.composite.hidden === false))
+      ) {
+        continue;
+      }
+      child.composite = {
+        ...(child.composite || {}),
+        rootId: bodyNode.id,
+        parentId: bodyNode.id,
+        ...(isBoundaryChild ? { generated: true, hidden: false } : {}),
+      };
+      changed = true;
+    }
+
+    const loopNode = nodes.find(node => node.id === bodyNode.composite?.rootId) || bodyNode;
+    let startNode = children.find(node => node.type === 'start');
+    let endNode = children.find(node => node.type === 'end');
+
+    if (!startNode) {
+      startNode = {
+        id: createWorkflowNodeId(),
+        type: 'start',
+        label: createLoopBoundaryLabel(loopNode, 'start'),
+        position: { x: bodyNode.position.x + 80, y: bodyNode.position.y + 140 },
+        data: {},
+        composite: {
+          rootId: bodyNode.id,
+          parentId: bodyNode.id,
+          generated: true,
+          hidden: false,
+        },
+      };
+      nodes.push(startNode);
+      changed = true;
+    }
+
+    if (!endNode) {
+      endNode = {
+        id: createWorkflowNodeId(),
+        type: 'end',
+        label: createLoopBoundaryLabel(loopNode, 'end'),
+        position: { x: bodyNode.position.x + 420, y: bodyNode.position.y + 140 },
+        data: {},
+        composite: {
+          rootId: bodyNode.id,
+          parentId: bodyNode.id,
+          generated: true,
+          hidden: false,
+        },
+      };
+      nodes.push(endNode);
+      changed = true;
+    }
+
+    const entryEdgeId = createWorkflowEdgeId({
+      source: bodyNode.id,
+      target: startNode.id,
+      sourceHandle: null,
+      targetHandle: 'target',
+    });
+    const entryEdge = edges.find(edge => edge.id === entryEdgeId);
+    const entryComposite = {
+      rootId: bodyNode.id,
+      parentId: bodyNode.id,
+      generated: true,
+      hidden: true,
+      locked: true,
+    };
+    if (entryEdge) {
+      if (
+        entryEdge.sourceHandle !== null
+        || entryEdge.targetHandle !== 'target'
+        || entryEdge.composite?.rootId !== entryComposite.rootId
+        || entryEdge.composite?.parentId !== entryComposite.parentId
+        || entryEdge.composite?.generated !== true
+        || entryEdge.composite?.hidden !== true
+        || entryEdge.composite?.locked !== true
+      ) {
+        entryEdge.sourceHandle = null;
+        entryEdge.targetHandle = 'target';
+        entryEdge.composite = entryComposite;
+        changed = true;
+      }
+    } else {
+      edges.push({
+        id: entryEdgeId,
+        source: bodyNode.id,
+        target: startNode.id,
+        sourceHandle: null,
+        targetHandle: 'target',
+        composite: entryComposite,
+      });
+      changed = true;
+    }
+
+    const startToEndId = createWorkflowEdgeId({
+      source: startNode.id,
+      target: endNode.id,
+      sourceHandle: null,
+      targetHandle: 'target',
+    });
+    if (!edges.some(edge => edge.id === startToEndId)) {
+      edges.push({
+        id: startToEndId,
+        source: startNode.id,
+        target: endNode.id,
+        sourceHandle: null,
+        targetHandle: 'target',
+      });
+      changed = true;
+    }
+  }
+
+  return changed;
 }
 
 function createNodesForDefinition(
@@ -265,6 +520,7 @@ function createNodesForDefinition(
     const boundaries = createLoopBodyBoundaryNodes(rootNode, bodyNode);
     nodes.push(...boundaries.nodes);
     edges.push(...boundaries.edges);
+    syncScopeBoundaryLayout(nodes, bodyNode.id);
   }
   return { rootNode, nodes, edges };
 }
@@ -308,6 +564,22 @@ export function useWorkflowEditorCanvas({
 }: UseWorkflowEditorCanvasParams) {
   const [nodeSelectOpen, setNodeSelectOpen] = useState(false);
   const [nodeSelectContext, setNodeSelectContext] = useState<NodeSelectContext | null>(null);
+  const workflowId = workflow?.id;
+
+  useEffect(() => {
+    if (!workflowId) return;
+    setWorkflow(current => {
+      if (!current) return null;
+      const nextNodes = cloneWorkflowNodes(current.nodes);
+      const nextEdges = current.edges.map(edge => ({
+        ...edge,
+        composite: edge.composite ? { ...edge.composite } : undefined,
+      }));
+      const boundaryChanged = ensureLoopBodyBoundaryNodes(nextNodes, nextEdges);
+      const layoutChanged = syncAllScopeBoundaryLayouts(nextNodes);
+      return boundaryChanged || layoutChanged ? { ...current, nodes: nextNodes, edges: nextEdges } : current;
+    });
+  }, [workflowId, setWorkflow]);
 
   // ---- Node operations ----
   const handleNodeAdd = useCallback((type: string, position: { x: number; y: number }) => {
@@ -396,11 +668,16 @@ export function useWorkflowEditorCanvas({
       };
 
       pushUndo('add connected node');
-      setWorkflow(current => current ? {
-        ...current,
-        nodes: [...current.nodes, ...created.nodes],
-        edges: [...current.edges, newEdge, ...created.edges],
-      } : null);
+      setWorkflow(current => {
+        if (!current) return null;
+        const nextNodes = [...current.nodes, ...created.nodes];
+        if (scopeNode) syncScopeBoundaryLayout(nextNodes, scopeNode.id);
+        return {
+          ...current,
+          nodes: nextNodes,
+          edges: [...current.edges, newEdge, ...created.edges],
+        };
+      });
       setSelectedNodeId(created.rootNode.id);
       setSelectedNodeIds([created.rootNode.id]);
       markDirty();
@@ -450,16 +727,21 @@ export function useWorkflowEditorCanvas({
     };
 
     pushUndo('insert node');
-    setWorkflow(current => current ? {
-      ...current,
-      nodes: [...current.nodes, ...created.nodes],
-      edges: [
-        ...current.edges.filter(edge => edge.id !== nodeSelectContext.edgeId),
-        firstEdge,
-        ...created.edges,
-        secondEdge,
-      ],
-    } : null);
+    setWorkflow(current => {
+      if (!current) return null;
+      const nextNodes = [...current.nodes, ...created.nodes];
+      if (scopeNode) syncScopeBoundaryLayout(nextNodes, scopeNode.id);
+      return {
+        ...current,
+        nodes: nextNodes,
+        edges: [
+          ...current.edges.filter(edge => edge.id !== nodeSelectContext.edgeId),
+          firstEdge,
+          ...created.edges,
+          secondEdge,
+        ],
+      };
+    });
     setSelectedNodeId(created.rootNode.id);
     setSelectedNodeIds([created.rootNode.id]);
     markDirty();
@@ -468,11 +750,18 @@ export function useWorkflowEditorCanvas({
   const handleNodeDelete = useCallback((nodeId: string) => {
     if (!workflow || isReadOnly) return;
     pushUndo('delete node');
-    setWorkflow(w => w ? {
-      ...w,
-      nodes: w.nodes.filter(n => n.id !== nodeId),
-      edges: w.edges.filter(e => e.source !== nodeId && e.target !== nodeId),
-    } : null);
+    setWorkflow(w => {
+      if (!w) return null;
+      const removedNode = w.nodes.find(node => node.id === nodeId);
+      const nextNodes = w.nodes.filter(n => n.id !== nodeId);
+      const parentId = removedNode ? getCompositeParentId(removedNode) : null;
+      if (parentId) syncScopeBoundaryLayout(nextNodes, parentId);
+      return {
+        ...w,
+        nodes: nextNodes,
+        edges: w.edges.filter(e => e.source !== nodeId && e.target !== nodeId),
+      };
+    });
     if (selectedNodeId === nodeId) setSelectedNodeId(null);
     setSelectedNodeIds(ids => ids.filter(id => id !== nodeId));
     markDirty();
@@ -539,16 +828,20 @@ export function useWorkflowEditorCanvas({
     setWorkflow(w => {
       if (!w) return null;
       const { nodeState, breakpoint, nodeColor, ...nodeData } = data;
+      const currentNode = w.nodes.find(node => node.id === nodeId);
+      const parentId = currentNode ? getCompositeParentId(currentNode) : null;
+      const nextNodes = w.nodes.map(n => n.id === nodeId ? {
+        ...n,
+        label: typeof data.label === 'string' ? data.label : n.label,
+        ...(typeof nodeState === 'string' ? { nodeState: nodeState as typeof n.nodeState } : {}),
+        ...('breakpoint' in data ? { breakpoint: breakpoint === null ? undefined : breakpoint as typeof n.breakpoint } : {}),
+        ...('nodeColor' in data ? { nodeColor: nodeColor === null ? undefined : nodeColor as string | undefined } : {}),
+        data: { ...n.data, ...nodeData },
+      } : n);
+      if (parentId) syncScopeBoundaryLayout(nextNodes, parentId);
       return {
         ...w,
-        nodes: w.nodes.map(n => n.id === nodeId ? {
-          ...n,
-          label: typeof data.label === 'string' ? data.label : n.label,
-          ...(typeof nodeState === 'string' ? { nodeState: nodeState as typeof n.nodeState } : {}),
-          ...('breakpoint' in data ? { breakpoint: breakpoint === null ? undefined : breakpoint as typeof n.breakpoint } : {}),
-          ...('nodeColor' in data ? { nodeColor: nodeColor === null ? undefined : nodeColor as string | undefined } : {}),
-          data: { ...n.data, ...nodeData },
-        } : n),
+        nodes: nextNodes,
       };
     });
     markDirty();
@@ -574,45 +867,106 @@ export function useWorkflowEditorCanvas({
   const handleNodesChange = useCallback((changes: NodeChange[]) => {
     if (!workflow || isReadOnly) return;
     const hasDelete = changes.some(c => c.type === 'remove');
-
-    const rfNodes = workflow.nodes.map(n => {
-      const definition = getNodeDefinition(n.type);
-      const { minWidth, minHeight, width, height } = getWorkflowNodeSize(definition, n.data);
-      return {
-        id: n.id,
-        type: 'custom' as const,
-        position: n.position,
-        width,
-        height,
-        initialWidth: width,
-        initialHeight: height,
-        measured: { width, height },
-        style: { minWidth, minHeight, width, height },
-        data: { ...n.data, label: n.label, nodeType: n.type, width, height },
-      };
-    });
-    const updated = applyNodeChanges(changes, rfNodes);
     const hasDimensionChange = changes.some(c => c.type === 'dimensions');
+    const hasPositionChange = changes.some(c => c.type === 'position' && !!c.position);
+    if (!hasDelete && !hasDimensionChange && !hasPositionChange) return;
+
+    const rfNodes = workflow.nodes
+      .filter(n => !isHiddenWorkflowNode(n))
+      .map(n => {
+        const definition = getNodeDefinition(n.type);
+        const { minWidth, minHeight, width, height } = getWorkflowNodeSize(definition, n.data);
+        return {
+          id: n.id,
+          type: 'custom' as const,
+          position: n.position,
+          width,
+          height,
+          initialWidth: width,
+          initialHeight: height,
+          measured: { width, height },
+          style: { minWidth, minHeight, width, height },
+          data: { ...n.data, label: n.label, nodeType: n.type, width, height },
+        };
+      });
+    const updated = applyNodeChanges(changes, rfNodes);
+    const updatedById = new Map(updated.map(node => [node.id, node]));
+    const dimensionNodeIds = new Set(
+      changes
+        .filter((change): change is NodeChange & { type: 'dimensions'; id: string } => change.type === 'dimensions')
+        .map(change => change.id),
+    );
+    const changedNodeIds = new Set(
+      changes
+        .filter(isNodePositionOrDimensionChange)
+        .map(change => change.id),
+    );
 
     setWorkflow(w => {
       if (!w) return null;
+      const nextNodes = cloneWorkflowNodes(w.nodes);
+      const nextEdges = w.edges.map(edge => ({
+        ...edge,
+        composite: edge.composite ? { ...edge.composite } : undefined,
+      }));
+      const removedNodeIds = new Set(
+        changes
+          .filter(isNodeRemoveChange)
+          .map(change => change.id),
+      );
+      const touchedScopeNodeIds = new Set<string>();
+      const movedNodeIds = new Set(changedNodeIds);
+
+      if (removedNodeIds.size > 0) {
+        for (const node of nextNodes) {
+          if (!removedNodeIds.has(node.id)) continue;
+          const parentId = getCompositeParentId(node);
+          if (parentId) touchedScopeNodeIds.add(parentId);
+        }
+      }
+
+      for (const node of nextNodes) {
+        if (removedNodeIds.has(node.id)) continue;
+        if (!changedNodeIds.has(node.id)) continue;
+        const updatedNode = updatedById.get(node.id);
+        if (!updatedNode) continue;
+
+        const nextPosition = updatedNode.position;
+        const dx = nextPosition.x - node.position.x;
+        const dy = nextPosition.y - node.position.y;
+
+        node.position = nextPosition;
+        if (dimensionNodeIds.has(node.id)) {
+          const width = typeof updatedNode.width === 'number' ? Math.round(updatedNode.width) : node.data.width;
+          const height = typeof updatedNode.height === 'number' ? Math.round(updatedNode.height) : node.data.height;
+          node.data = { ...node.data, width, height };
+        }
+
+        if ((dx !== 0 || dy !== 0) && isScopeBoundaryWorkflowNode(node)) {
+          movedNodeIds.add(node.id);
+          shiftScopeChildren(nextNodes, node.id, dx, dy, movedNodeIds);
+        }
+
+        const parentId = getCompositeParentId(node);
+        if (parentId) touchedScopeNodeIds.add(parentId);
+      }
+
+      const remainingNodes = nextNodes.filter(node => !removedNodeIds.has(node.id));
+      for (const scopeNodeId of touchedScopeNodeIds) {
+        syncScopeBoundaryLayout(remainingNodes, scopeNodeId);
+      }
+      if (ensureLoopBodyBoundaryNodes(remainingNodes, nextEdges)) {
+        syncAllScopeBoundaryLayouts(remainingNodes);
+      }
+
       return {
         ...w,
-        nodes: updated.map(n => {
-          const existing = w.nodes.find(wn => wn.id === n.id);
-          if (!existing) return w.nodes.find(wn => wn.id === n.id)!;
-          const width = typeof n.width === 'number' ? Math.round(n.width) : existing.data.width;
-          const height = typeof n.height === 'number' ? Math.round(n.height) : existing.data.height;
-          return {
-            ...existing,
-            position: n.position,
-            data: hasDimensionChange ? { ...existing.data, width, height } : existing.data,
-          };
-        }).filter(Boolean),
+        nodes: remainingNodes,
+        edges: nextEdges,
       };
     });
-    if (hasDelete || hasDimensionChange) markDirty();
-  }, [workflow, isReadOnly, pushUndo, markDirty]);
+    if (hasDelete || hasDimensionChange || hasPositionChange) markDirty();
+  }, [workflow, isReadOnly, markDirty]);
 
   const handleEdgesChange = useCallback((changes: EdgeChange[]) => {
     if (!workflow || isReadOnly) return;
@@ -721,6 +1075,7 @@ export function useWorkflowEditorCanvas({
       if (!current) return null;
       const nextNodes = current.nodes.map(node => ({ ...node, position: { ...node.position } }));
       const nodeById = new Map(nextNodes.map(node => [node.id, node]));
+      const touchedScopeNodeIds = new Set<string>();
 
       for (const node of layoutNodes) {
         const nextNode = nodeById.get(node.id);
@@ -730,15 +1085,14 @@ export function useWorkflowEditorCanvas({
         if (isScopeBoundaryWorkflowNode(nextNode)) {
           const dx = nextPosition.x - nextNode.position.x;
           const dy = nextPosition.y - nextNode.position.y;
-          for (const child of nextNodes.filter(item => getCompositeParentId(item) === nextNode.id)) {
-            child.position = {
-              x: child.position.x + dx,
-              y: child.position.y + dy,
-            };
-          }
+          shiftScopeChildren(nextNodes, nextNode.id, dx, dy, new Set([nextNode.id]));
+          touchedScopeNodeIds.add(nextNode.id);
         }
 
         nextNode.position = nextPosition;
+      }
+      for (const scopeNodeId of touchedScopeNodeIds) {
+        syncScopeBoundaryLayout(nextNodes, scopeNodeId);
       }
 
       return { ...current, nodes: nextNodes };

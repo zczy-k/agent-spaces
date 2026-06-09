@@ -8,7 +8,6 @@ import { WorkspaceTabs } from "@/components/layout/workspace-tabs";
 import { WorkspaceDialog } from "@/components/workspace/workspace-dialog";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { isLoginPath, isWorkflowSharePath } from "@/lib/routes";
-import { ContentUsageReporter } from "@/components/home/content-usage-reporter";
 import { sdk } from "@/lib/sdk";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -42,7 +41,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </SidebarInset>
       </SidebarProvider>
-      <ContentUsageReporter />
       <GlobalWorkspaceDialog />
     </>
   );
