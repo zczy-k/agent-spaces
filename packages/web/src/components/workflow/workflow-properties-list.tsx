@@ -116,25 +116,23 @@ const PropertyItem = memo(function PropertyItem({
             <ChevronRight
               className={`h-3 w-3 shrink-0 text-muted-foreground transition-transform ${!collapsed ? 'rotate-90' : ''}`}
             />
-            <span className="flex min-w-0 items-center gap-1">
-              <span className="truncate">{prop.label}</span>
-              {prop.required && <span className="text-destructive">*</span>}
-              {prop.tooltip && (
-                <TooltipProvider delay={300}>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Info className="h-3 w-3 cursor-help text-muted-foreground" />
-                    </TooltipTrigger>
-                    <TooltipContent side="right" className="max-w-[240px]">
-                      <p>{prop.tooltip}</p>
-                      <p className="mt-0.5 text-[10px] opacity-60">类型: {prop.type}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-            </span>
+            <span className="truncate">{prop.label}</span>
+            {prop.required && <span className="text-destructive">*</span>}
           </button>
         </CollapsibleTriggerAsChild>
+        {prop.tooltip && (
+          <TooltipProvider delay={300}>
+            <Tooltip>
+              <TooltipTrigger>
+                <Info className="h-3 w-3 shrink-0 cursor-help text-muted-foreground" />
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-[240px]">
+                <p>{prop.tooltip}</p>
+                <p className="mt-0.5 text-[10px] opacity-60">类型: {prop.type}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
         <button
           type="button"
           className={`rounded p-0.5 transition-colors hover:bg-accent ${variableMode ? 'text-primary' : 'text-muted-foreground'}`}

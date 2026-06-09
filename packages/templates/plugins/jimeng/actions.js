@@ -54,7 +54,7 @@ module.exports = (t) => [
       { key: 'success', type: 'boolean' },
       { key: 'message', type: 'string' },
       { key: 'data', type: 'object', children: [
-        { key: 'images', type: 'object', children: [] },
+        { key: 'images', type: 'image[]' },
         { key: 'created', type: 'number' },
       ] },
     ],
@@ -113,9 +113,9 @@ module.exports = (t) => [
       { key: 'success', type: 'boolean' },
       { key: 'message', type: 'string' },
       { key: 'data', type: 'object', children: [
-        { key: 'images', type: 'object', children: [] },
+        { key: 'images', type: 'image[]' },
         { key: 'created', type: 'number' },
-        { key: 'inputImages', type: 'object', children: [] },
+        { key: 'inputImages', type: 'image[]' },
       ] },
     ],
     run: async (ctx, args) => {
@@ -173,7 +173,7 @@ module.exports = (t) => [
       { key: 'success', type: 'boolean' },
       { key: 'message', type: 'string' },
       { key: 'data', type: 'object', children: [
-        { key: 'videos', type: 'object', children: [] },
+        { key: 'videos', type: 'video' },
         { key: 'created', type: 'number' },
       ] },
     ],
