@@ -45,6 +45,18 @@
     "startLabel": "开始",
     "endLabel": "结束"
   },
+  "outputFields": {
+    "name": "名称",
+    "type": "类型",
+    "dragSortField": "拖拽排序字段",
+    "dragSort": "拖拽排序",
+    "required": "必填",
+    "fieldNamePlaceholder": "字段名",
+    "fileNameFilterPlaceholder": "文件名过滤，如 *.pdf、.png",
+    "defaultValuePlaceholder": "默认值",
+    "descriptionPlaceholder": "描述（可选）",
+    "addField": "添加字段"
+  },
   "properties": {
     "startNodeInput": "开始节点输入",
     "inputFields": "输入字段",

@@ -45,6 +45,18 @@
     "startLabel": "Start",
     "endLabel": "End"
   },
+  "outputFields": {
+    "name": "Name",
+    "type": "Type",
+    "dragSortField": "Drag to reorder field",
+    "dragSort": "Drag to sort",
+    "required": "Required",
+    "fieldNamePlaceholder": "Field name",
+    "fileNameFilterPlaceholder": "File name filter, e.g. *.pdf, .png",
+    "defaultValuePlaceholder": "Default value",
+    "descriptionPlaceholder": "Description (optional)",
+    "addField": "Add field"
+  },
   "properties": {
     "startNodeInput": "Start Node Input",
     "inputFields": "Input Fields",

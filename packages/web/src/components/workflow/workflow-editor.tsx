@@ -123,6 +123,21 @@ function WorkflowEditorInner({
     const step = execution.executionLog?.steps.find(item => item.nodeId === state.selectedNodeId);
     return toPreviewDebugResult(step);
   }, [execution.executionLog, state.isPreview, state.selectedNodeId]);
+  const { isPreview, setWorkflow } = state;
+  const handlePreviewNodeDataUpdate = useCallback((nodeId: string, data: Record<string, unknown>) => {
+    if (!isPreview) return;
+    setWorkflow((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        nodes: current.nodes.map((node) => node.id === nodeId ? {
+          ...node,
+          label: typeof data.label === 'string' ? data.label : node.label,
+          data: { ...node.data, ...data },
+        } : node),
+      };
+    });
+  }, [isPreview, setWorkflow]);
   const exitExecutionPreview = () => {
     state.exitPreview();
     execution.clearSelectedExecutionLog();
@@ -335,11 +350,13 @@ function WorkflowEditorInner({
             <TabsContent value="properties" className="flex-1 min-h-0 m-0">
               <WorkflowPropertiesPanel
                 node={state.selectedNode}
+                isPreview={state.isPreview}
                 nodes={workflow.nodes}
                 edges={workflow.edges}
                 enabledPlugins={workflow.enabledPlugins}
                 variables={workflow.variables || []}
                 onUpdateData={canvas.handleNodeDataUpdate}
+                onPreviewUpdateData={handlePreviewNodeDataUpdate}
                 debugNodeId={execution.debugNodeId}
                 debugStatus={execution.debugStatus}
                 debugResult={execution.debugResult}

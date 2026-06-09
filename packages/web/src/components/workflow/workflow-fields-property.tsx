@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { NodeProperty } from '@agent-spaces/shared';
-import { X } from 'lucide-react';
+import { Maximize2, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
@@ -233,6 +235,8 @@ export function PropertyField({
   prop,
   value,
   onChange,
+  onPreviewChange,
+  previewMode = false,
   variableContext,
   variableMode = false,
   variableValue = '',
@@ -241,6 +245,8 @@ export function PropertyField({
   prop: NodeProperty;
   value: unknown;
   onChange: (v: unknown) => void;
+  onPreviewChange?: (v: unknown) => void;
+  previewMode?: boolean;
   variableContext?: WorkflowVariableContext;
   variableMode?: boolean;
   variableValue?: string | number;
@@ -344,31 +350,15 @@ export function PropertyField({
 
     case 'code':
       return (
-        <div className="border rounded-md overflow-hidden">
-          <MonacoEditor
-            height="160px"
-            language={(prop as unknown as Record<string, unknown>).language as string || 'javascript'}
-            theme="vs-dark"
-            value={String(value ?? '')}
-            onChange={(v) => onChange(v ?? '')}
-            options={{
-              readOnly: disabled,
-              minimap: { enabled: false },
-              fontSize: 12,
-              lineNumbers: 'on',
-              scrollBeyondLastLine: false,
-              wordWrap: 'on',
-              folding: false,
-              glyphMargin: false,
-              overviewRulerBorder: false,
-              hideCursorInOverviewRuler: true,
-              overviewRulerLanes: 0,
-              renderLineHighlight: 'none',
-              scrollbar: { verticalScrollbarSize: 6, horizontalScrollbarSize: 6 },
-              padding: { top: 4, bottom: 4 },
-            }}
-          />
-        </div>
+        <CodePropertyEditor
+          label={prop.label}
+          language={(prop as unknown as Record<string, unknown>).language as string || 'javascript'}
+          value={String(value ?? '')}
+          disabled={disabled}
+          previewMode={previewMode}
+          onChange={(nextValue) => onChange(nextValue)}
+          onPreviewChange={onPreviewChange ? (nextValue) => onPreviewChange(nextValue) : undefined}
+        />
       );
 
     case 'output_fields':
@@ -390,4 +380,91 @@ export function PropertyField({
         />
       );
   }
+}
+
+function CodePropertyEditor({
+  label,
+  language,
+  value,
+  disabled,
+  previewMode,
+  onChange,
+  onPreviewChange,
+}: {
+  label: string;
+  language: string;
+  value: string;
+  disabled: boolean;
+  previewMode: boolean;
+  onChange: (value: string) => void;
+  onPreviewChange?: (value: string) => void;
+}) {
+  const [fullscreenOpen, setFullscreenOpen] = useState(false);
+  const handleFullscreenChange = onPreviewChange ?? onChange;
+
+  return (
+    <>
+      <div className="relative overflow-hidden rounded-md border">
+        <MonacoEditor
+          height="160px"
+          language={language}
+          theme="vs-dark"
+          value={value}
+          onChange={(v) => onChange(v ?? '')}
+          options={getCodeEditorOptions(disabled || previewMode)}
+        />
+        {previewMode ? (
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon"
+            className="absolute bottom-2 right-2 z-10 h-7 w-7 bg-background/90 shadow-sm"
+            title="全屏编辑"
+            onClick={() => setFullscreenOpen(true)}
+          >
+            <Maximize2 className="h-3.5 w-3.5" />
+          </Button>
+        ) : null}
+      </div>
+
+      {previewMode ? (
+        <Dialog open={fullscreenOpen} onOpenChange={setFullscreenOpen}>
+          <DialogContent className="!flex !h-[85vh] !w-[85vw] !max-w-none flex-col gap-0 overflow-hidden p-0">
+            <DialogHeader className="border-b px-4 py-3">
+              <DialogTitle className="text-sm">{label}</DialogTitle>
+            </DialogHeader>
+            <div className="min-h-0 flex-1">
+              <MonacoEditor
+                height="100%"
+                language={language}
+                theme="vs-dark"
+                value={value}
+                onChange={(v) => handleFullscreenChange(v ?? '')}
+                options={getCodeEditorOptions(disabled)}
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      ) : null}
+    </>
+  );
+}
+
+function getCodeEditorOptions(readOnly: boolean) {
+  return {
+    readOnly,
+    minimap: { enabled: false },
+    fontSize: 12,
+    lineNumbers: 'on' as const,
+    scrollBeyondLastLine: false,
+    wordWrap: 'on' as const,
+    folding: false,
+    glyphMargin: false,
+    overviewRulerBorder: false,
+    hideCursorInOverviewRuler: true,
+    overviewRulerLanes: 0,
+    renderLineHighlight: 'none' as const,
+    scrollbar: { verticalScrollbarSize: 6, horizontalScrollbarSize: 6 },
+    padding: { top: 4, bottom: 4 },
+  };
 }

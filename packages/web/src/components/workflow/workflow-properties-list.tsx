@@ -12,6 +12,7 @@ import type { WorkflowVariableContext } from './workflow-variable-picker';
 interface PropertiesListProps {
   properties: NodeProperty[];
   data: Record<string, unknown>;
+  isPreview?: boolean;
   collapsedKeys: Set<string>;
   onCollapsedChange: (keys: Set<string>) => void;
   variableContext: WorkflowVariableContext | undefined;
@@ -20,11 +21,13 @@ interface PropertiesListProps {
   toVariableInputValue: (value: unknown) => string | number;
   onInsertVariable: (key: string, path: string) => void;
   onDataChange: (key: string, value: unknown) => void;
+  onPreviewDataChange?: (key: string, value: unknown) => void;
 }
 
 export function PropertiesList({
   properties,
   data,
+  isPreview = false,
   collapsedKeys,
   onCollapsedChange,
   variableContext,
@@ -33,6 +36,7 @@ export function PropertiesList({
   toVariableInputValue,
   onInsertVariable,
   onDataChange,
+  onPreviewDataChange,
 }: PropertiesListProps) {
   return (
     <section className="space-y-3">
@@ -43,6 +47,7 @@ export function PropertiesList({
             key={prop.key}
             prop={prop}
             value={value}
+            isPreview={isPreview}
             collapsed={collapsedKeys.has(prop.key)}
             collapsedKeys={collapsedKeys}
             onCollapsedChange={onCollapsedChange}
@@ -52,6 +57,7 @@ export function PropertiesList({
             toVariableInputValue={toVariableInputValue}
             onInsertVariable={onInsertVariable}
             onDataChange={onDataChange}
+            onPreviewDataChange={onPreviewDataChange}
           />
         );
       })}
@@ -62,6 +68,7 @@ export function PropertiesList({
 const PropertyItem = memo(function PropertyItem({
   prop,
   value,
+  isPreview,
   collapsed,
   collapsedKeys,
   onCollapsedChange,
@@ -71,9 +78,11 @@ const PropertyItem = memo(function PropertyItem({
   toVariableInputValue,
   onInsertVariable,
   onDataChange,
+  onPreviewDataChange,
 }: {
   prop: NodeProperty;
   value: unknown;
+  isPreview: boolean;
   collapsed: boolean;
   collapsedKeys: Set<string>;
   onCollapsedChange: (keys: Set<string>) => void;
@@ -83,6 +92,7 @@ const PropertyItem = memo(function PropertyItem({
   toVariableInputValue: (value: unknown) => string | number;
   onInsertVariable: (key: string, path: string) => void;
   onDataChange: (key: string, value: unknown) => void;
+  onPreviewDataChange?: (key: string, value: unknown) => void;
 }) {
   const variableValue = useMemo(() => toVariableInputValue(value), [toVariableInputValue, value]);
 
@@ -139,6 +149,8 @@ const PropertyItem = memo(function PropertyItem({
           prop={prop}
           value={value}
           onChange={(nextValue) => onDataChange(prop.key, nextValue)}
+          onPreviewChange={(nextValue) => onPreviewDataChange?.(prop.key, nextValue)}
+          previewMode={isPreview}
           variableContext={variableContext}
           variableMode={variableMode}
           variableValue={variableValue}

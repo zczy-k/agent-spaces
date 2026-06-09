@@ -28,11 +28,13 @@ import { PresetDialog } from './workflow-properties-preset-dialog';
 
 interface PropertiesPanelProps {
   node: WorkflowNode | null;
+  isPreview?: boolean;
   nodes?: WorkflowNode[];
   edges?: WorkflowEdge[];
   enabledPlugins?: string[];
   variables?: OutputField[];
   onUpdateData: (nodeId: string, data: Record<string, unknown>) => void;
+  onPreviewUpdateData?: (nodeId: string, data: Record<string, unknown>) => void;
   debugNodeId?: string | null;
   debugStatus?: 'idle' | 'running' | 'completed' | 'error';
   debugResult?: DebugResult | null;
@@ -43,11 +45,13 @@ interface PropertiesPanelProps {
 
 export function WorkflowPropertiesPanel({
   node,
+  isPreview = false,
   nodes = [],
   edges = [],
   enabledPlugins = [],
   variables = [],
   onUpdateData,
+  onPreviewUpdateData,
   debugNodeId = null,
   debugStatus = 'idle',
   debugResult = null,
@@ -117,6 +121,10 @@ export function WorkflowPropertiesPanel({
     clearVariableModeDisabledOverride(key);
     onUpdateData(nodeId, { [key]: value });
   }, [clearVariableModeDisabledOverride, nodeId, onUpdateData]);
+  const handlePreviewDataChange = useCallback((key: string, value: unknown) => {
+    if (!nodeId) return;
+    onPreviewUpdateData?.(nodeId, { [key]: value });
+  }, [nodeId, onPreviewUpdateData]);
   const toVariableInputValue = useCallback((value: unknown): string | number => {
     if (typeof value === 'string' || typeof value === 'number') return value;
     if (typeof value === 'boolean') return String(value);
@@ -255,6 +263,7 @@ export function WorkflowPropertiesPanel({
           <PropertiesList
             properties={visibleProperties}
             data={data}
+            isPreview={isPreview}
             collapsedKeys={collapsedKeys}
             onCollapsedChange={setCollapsedKeys}
             variableContext={variableContext}
@@ -263,6 +272,7 @@ export function WorkflowPropertiesPanel({
             toVariableInputValue={toVariableInputValue}
             onInsertVariable={insertVariable}
             onDataChange={handleDataChange}
+            onPreviewDataChange={handlePreviewDataChange}
           />
 
           <IOFieldsSections
