@@ -4,7 +4,7 @@ import React, { useState, useMemo, useCallback, useRef, useSyncExternalStore } f
 import { Handle, NodeResizer, Position, useUpdateNodeInternals } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import { AlertCircle, CheckCircle, ClipboardCopy, Copy, FileText, Inbox, Play, X, XCircle } from 'lucide-react';
-import { getNodeDefinition, getPluginNodesVersion, subscribePluginNodesVersion } from '@/lib/workflow-nodes';
+import { getPluginNodesVersion, subscribePluginNodesVersion, useLocalizedNodeDefinition } from '@/lib/workflow-nodes';
 import { LOOP_BODY_NODE_TYPE, LOOP_BODY_SOURCE_HANDLE, type ExecutionStep } from '@agent-spaces/shared';
 import { BorderGlide } from '@/components/ui/border-glide';
 import {
@@ -171,7 +171,7 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
     getPluginNodesVersion,
     getPluginNodesVersion,
   );
-  const definition = getNodeDefinition(workflowNodeType || 'unknown');
+  const definition = useLocalizedNodeDefinition(workflowNodeType || 'unknown');
   const pluginMeta = definition as (typeof definition & PluginNodeDefinitionMeta);
   const iconDefinition = definition ? { ...definition, ...pluginMeta } : null;
   const CustomView = definition?.customView as React.ComponentType<WorkflowCustomViewProps> | undefined;

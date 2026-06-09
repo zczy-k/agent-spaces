@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, type DragEvent } from 'react';
 import type { StagedNode } from '@agent-spaces/shared';
 import { stagingApi } from '@/lib/workflow-api';
-import { getNodeDefinition } from '@/lib/workflow-nodes';
+import { useLocalizedNodeDefinition } from '@/lib/workflow-nodes';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { GripVertical, Trash2, Plus, Inbox, Loader2 } from 'lucide-react';
@@ -35,7 +35,7 @@ function SortableStagedItem({
     transform: CSS.Transform.toString(transform),
     transition,
   };
-  const def = getNodeDefinition(node.type);
+  const def = useLocalizedNodeDefinition(node.type);
   const label = (node.data?.label as string) || def?.label || node.type;
   const handleDragStart = useCallback((event: DragEvent<HTMLDivElement>) => {
     event.dataTransfer.setData(WORKFLOW_NODE_DRAG_MIME, node.type);

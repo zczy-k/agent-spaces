@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { getNodeDefinitionsByCategory } from '@/lib/workflow-nodes';
+import { useLocalizedNodeDefinitionsByCategory } from '@/lib/workflow-nodes';
 import {
   ContextMenu, ContextMenuContent, ContextMenuItem,
   ContextMenuSeparator, ContextMenuTrigger,
@@ -51,7 +51,7 @@ export function WorkflowCanvasContextMenu({
   onExport,
   canvasPosition,
 }: CanvasContextMenuProps) {
-  const categories = getNodeDefinitionsByCategory();
+  const categories = useLocalizedNodeDefinitionsByCategory();
 
   const handleAddNode = useCallback((type: string) => {
     const pos = canvasPosition || { x: 250, y: 250 };

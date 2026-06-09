@@ -78,6 +78,7 @@ export function FileUpload({
     accept: dropzoneAccept,
     maxFiles: maxFiles || undefined,
     maxSize,
+    useFsAccessApi: false,
     validator: fileNameFilter
       ? (file) => (
         matchesFileNameFilter(file.name, fileNameFilter)
@@ -101,7 +102,7 @@ export function FileUpload({
           disabled && "pointer-events-none opacity-50",
         )}
       >
-        <input {...getInputProps()} onClick={(e) => e.stopPropagation()} />
+        <input {...getInputProps()} />
         <Upload className="size-8 text-muted-foreground" />
         <div className="text-center">
           <p className="text-sm font-medium">

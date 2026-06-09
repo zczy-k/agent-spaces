@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import type { NodeTypeDefinition, PluginConfigField, Workflow } from '@agent-spaces/shared';
-import { getNodeDefinitionsByCategory, registerPluginNodeDefinitions, searchNodeDefinitions } from '@/lib/workflow-nodes';
+import { registerPluginNodeDefinitions, useLocalizedNodeDefinitionsByCategory, useLocalizedSearchNodeDefinitions } from '@/lib/workflow-nodes';
 import { pluginApi, workflowPluginSchemeApi, type WorkflowPlugin } from '@/lib/workflow-plugin-api';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -57,6 +57,9 @@ export function WorkflowNodeSidebar({
   const [newSchemeName, setNewSchemeName] = useState('');
   const [newSchemePluginId, setNewSchemePluginId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+
+  const allCategories = useLocalizedNodeDefinitionsByCategory();
+  const searchResults = useLocalizedSearchNodeDefinitions(searchQuery);
 
   const enabledPlugins = useMemo(() => workflow?.enabledPlugins || [], [workflow?.enabledPlugins]);
 
@@ -119,17 +122,16 @@ export function WorkflowNodeSidebar({
 
   const categories = useMemo(() => {
     if (searchQuery.trim()) {
-      const results = searchNodeDefinitions(searchQuery);
-      const grouped: Record<string, typeof results> = {};
-      for (const def of results) {
+      const grouped: Record<string, typeof searchResults> = {};
+      for (const def of searchResults) {
         if (def.manualCreate === false) continue;
         if (!grouped[def.category]) grouped[def.category] = [];
         grouped[def.category].push(def);
       }
       return grouped;
     }
-    return getNodeDefinitionsByCategory();
-  }, [searchQuery, workflowPlugins]);
+    return allCategories;
+  }, [searchQuery, searchResults, allCategories]);
 
   const pluginById = useMemo(() => new Map(workflowPlugins.map(plugin => [plugin.id, plugin])), [workflowPlugins]);
 

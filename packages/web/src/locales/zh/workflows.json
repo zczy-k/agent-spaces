@@ -182,5 +182,212 @@
     "execCompleted": "执行 #{id} 已完成",
     "execError": "执行 #{id} 出错",
     "execStopped": "执行 #{id} 已停止"
+  },
+  "nodes": {
+    "operators": {
+      "equals": "等于",
+      "not_equals": "不等于",
+      "greater_than": "大于",
+      "less_than": "小于",
+      "greater_than_or_equal": "大于等于",
+      "less_than_or_equal": "小于等于",
+      "contains": "包含",
+      "not_contains": "不包含",
+      "starts_with": "开头是",
+      "ends_with": "结尾是",
+      "is_empty": "为空",
+      "is_not_empty": "不为空",
+      "is_true": "为真",
+      "is_false": "为假"
+    },
+    "categories": {
+      "flowControl": "流程控制",
+      "ai": "AI",
+      "interaction": "交互",
+      "display": "展示"
+    },
+    "start": {
+      "label": "开始",
+      "description": "工作流入口节点，仅支持输出连接"
+    },
+    "end": {
+      "label": "结束",
+      "description": "工作流出口节点，仅支持输入连接"
+    },
+    "run_code": {
+      "label": "运行 JS 代码",
+      "description": "执行自定义 JavaScript 代码",
+      "props": {
+        "code": {
+          "label": "代码",
+          "tooltip": "JavaScript 代码。需定义 async function main({ params, context }) { ... }"
+        }
+      }
+    },
+    "toast": {
+      "label": "Toast 消息",
+      "description": "显示 Toast 通知消息",
+      "props": {
+        "message": { "label": "消息内容" },
+        "type": {
+          "label": "消息类型",
+          "info": "信息",
+          "success": "成功",
+          "warning": "警告",
+          "error": "错误"
+        }
+      }
+    },
+    "switch": {
+      "label": "选择器",
+      "description": "条件分支路由",
+      "props": {
+        "conditions": "条件列表"
+      }
+    },
+    "variable_aggregate": {
+      "label": "变量聚合",
+      "description": "对多个分支的输出变量进行分组聚合",
+      "props": {
+        "strategy": {
+          "label": "聚合策略",
+          "first_non_empty": "返回每个分组中第一个非空的值"
+        },
+        "groups": {
+          "label": "变量分组",
+          "fields": {
+            "key": "输出字段名",
+            "variables": "变量列表"
+          }
+        }
+      }
+    },
+    "set_variable": {
+      "label": "设置变量",
+      "description": "写入或覆盖工作流运行时变量，可一次设置多个变量",
+      "props": {
+        "variables": {
+          "label": "变量列表",
+          "fields": {
+            "key": "变量名",
+            "value": "变量值",
+            "value_placeholder": "支持 {{ }} 变量表达式"
+          }
+        }
+      }
+    },
+    "get_variable": {
+      "label": "获取变量",
+      "description": "读取工作流运行时变量",
+      "props": {
+        "key": "变量名",
+        "defaultValue": "默认值"
+      }
+    },
+    "delete_variable": {
+      "label": "删除变量",
+      "description": "从工作流运行时变量中删除指定变量",
+      "props": {
+        "key": "变量名"
+      }
+    },
+    "loop_break": {
+      "label": "跳出循环",
+      "description": "在 loop_body 中标记本轮结束后停止后续循环"
+    },
+    "loop": {
+      "label": "循环节点",
+      "description": "按次数、数组长度或循环体逻辑重复执行",
+      "handles": {
+        "body": "循环体",
+        "next": "完成后"
+      },
+      "props": {
+        "loopType": {
+          "label": "循环类型",
+          "count": "按次数循环",
+          "array": "使用数组循环",
+          "infinite": "无限循环"
+        },
+        "count": "循环次数",
+        "arrayPath": "数组变量",
+        "concurrency": "同时处理数量",
+        "sharedVariables": "中间变量"
+      }
+    },
+    "loop_body": {
+      "label": "循环体节点",
+      "description": "循环节点自动生成的内部锚点"
+    },
+    "agent_run": {
+      "label": "AI 执行",
+      "description": "调用 Agent 运行任务",
+      "props": {
+        "prompt": "任务",
+        "systemPrompt": "系统提示词",
+        "cwd": "工作目录",
+        "additionalDirectories": "额外目录",
+        "additionalDirectories_tooltip": "每行一个可访问目录，会追加到 Agent runtime 的 sandboxDirs/additionalDirectories。",
+        "permissionMode": "权限模式",
+        "extraInstructions": "额外指令",
+        "loadProjectClaudeMd": "加载项目规则",
+        "loadRuleMd": "加载规则目录"
+      }
+    },
+    "agent_run.props.permissionMode.default": "默认",
+    "agent_run.props.permissionMode.dontAsk": "不询问",
+    "agent_run.props.permissionMode.acceptEdits": "接受编辑",
+    "agent_run.props.permissionMode.plan": "计划模式",
+    "agent_run.props.permissionMode.auto": "自动",
+    "agent_run.props.permissionMode.bypassPermissions": "跳过权限",
+    "alert": {
+      "label": "消息弹窗",
+      "description": "显示消息弹窗",
+      "props": {
+        "title": "标题",
+        "title_default": "提示",
+        "message": "消息内容"
+      }
+    },
+    "prompt": {
+      "label": "输入弹窗",
+      "description": "弹出输入框",
+      "props": {
+        "title": "标题",
+        "title_default": "请输入",
+        "message": "提示文字",
+        "placeholder": "占位文本",
+        "defaultValue": "默认值"
+      }
+    },
+    "form": {
+      "label": "表单弹窗",
+      "description": "弹出自定义表单",
+      "props": {
+        "title": "标题",
+        "title_default": "表单",
+        "items": {
+          "label": "表单项",
+          "fields": {
+            "id": "字段ID",
+            "title": "显示名称",
+            "type": "字段类型",
+            "type_text": "文本",
+            "type_textarea": "多行文本",
+            "type_number": "数字",
+            "type_select": "选择",
+            "type_checkbox": "复选框"
+          }
+        }
+      }
+    },
+    "sticky_note": {
+      "label": "便签",
+      "description": "画布注释节点，不影响工作流执行",
+      "props": {
+        "content": "内容",
+        "content_tooltip": "便签文本内容"
+      }
+    }
   }
 }

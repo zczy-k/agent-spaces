@@ -7,6 +7,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { CONDITION_OPERATORS, NO_VALUE_OPERATORS } from '@/lib/workflow-nodes';
+import { useTranslations } from 'next-intl';
 import { isPlainObject } from './workflow-properties-utils';
 import { WorkflowVariablePicker, type WorkflowVariableContext } from './workflow-variable-picker';
 
@@ -19,6 +20,7 @@ export function ConditionsEditor({
   onChange: (v: Record<string, unknown>[]) => void;
   variableContext?: WorkflowVariableContext;
 }) {
+  const t = useTranslations('workflows');
   const conditions = Array.isArray(value) ? value.filter(isPlainObject) : [];
   const updateCondition = (index: number, patch: Record<string, unknown>) => {
     const next = [...conditions];
@@ -59,7 +61,7 @@ export function ConditionsEditor({
               <SelectContent>
                 {CONDITION_OPERATORS.map(option => (
                   <SelectItem key={option.value} value={option.value} className="text-xs">
-                    {option.label}
+                    {t(`nodes.${option.label}` as Parameters<typeof t>[0])}
                   </SelectItem>
                 ))}
               </SelectContent>

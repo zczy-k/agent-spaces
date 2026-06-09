@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { getNodeDefinition } from '@/lib/workflow-nodes';
+import { useLocalizedNodeDefinition } from '@/lib/workflow-nodes';
 import type { OutputField, WorkflowEdge, WorkflowNode } from '@agent-spaces/shared';
 import { Button } from '@/components/ui/button';
 import { Copy, X } from 'lucide-react';
@@ -65,7 +65,7 @@ export function WorkflowPropertiesPanel({
   const [nodeTestDialogOpen, setNodeTestDialogOpen] = useState(false);
 
   // Derived values
-  const definition = useMemo(() => node ? getNodeDefinition(node.type) : null, [node]);
+  const definition = useLocalizedNodeDefinition(node?.type ?? '');
   const data = useMemo(() => node?.data ?? {}, [node?.data]);
   const visibleProperties = useMemo(
     () => (definition?.properties ?? []).filter(prop => isVisible(prop, data)),

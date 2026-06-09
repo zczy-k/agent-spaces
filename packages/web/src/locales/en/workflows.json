@@ -182,5 +182,212 @@
     "execCompleted": "Run #{id} completed",
     "execError": "Run #{id} failed",
     "execStopped": "Run #{id} stopped"
+  },
+  "nodes": {
+    "operators": {
+      "equals": "Equals",
+      "not_equals": "Not equals",
+      "greater_than": "Greater than",
+      "less_than": "Less than",
+      "greater_than_or_equal": "Greater than or equal",
+      "less_than_or_equal": "Less than or equal",
+      "contains": "Contains",
+      "not_contains": "Does not contain",
+      "starts_with": "Starts with",
+      "ends_with": "Ends with",
+      "is_empty": "Is empty",
+      "is_not_empty": "Is not empty",
+      "is_true": "Is true",
+      "is_false": "Is false"
+    },
+    "categories": {
+      "flowControl": "Flow Control",
+      "ai": "AI",
+      "interaction": "Interaction",
+      "display": "Display"
+    },
+    "start": {
+      "label": "Start",
+      "description": "Workflow entry node, output connections only"
+    },
+    "end": {
+      "label": "End",
+      "description": "Workflow exit node, input connections only"
+    },
+    "run_code": {
+      "label": "Run JS Code",
+      "description": "Execute custom JavaScript code",
+      "props": {
+        "code": {
+          "label": "Code",
+          "tooltip": "JavaScript code. Define async function main({ params, context }) { ... }"
+        }
+      }
+    },
+    "toast": {
+      "label": "Toast Message",
+      "description": "Display a toast notification",
+      "props": {
+        "message": { "label": "Message" },
+        "type": {
+          "label": "Message Type",
+          "info": "Info",
+          "success": "Success",
+          "warning": "Warning",
+          "error": "Error"
+        }
+      }
+    },
+    "switch": {
+      "label": "Switch",
+      "description": "Conditional branch routing",
+      "props": {
+        "conditions": "Conditions"
+      }
+    },
+    "variable_aggregate": {
+      "label": "Variable Aggregate",
+      "description": "Group and aggregate output variables from multiple branches",
+      "props": {
+        "strategy": {
+          "label": "Aggregation Strategy",
+          "first_non_empty": "Return the first non-empty value in each group"
+        },
+        "groups": {
+          "label": "Variable Groups",
+          "fields": {
+            "key": "Output Field Name",
+            "variables": "Variable List"
+          }
+        }
+      }
+    },
+    "set_variable": {
+      "label": "Set Variable",
+      "description": "Write or overwrite workflow runtime variables, set multiple at once",
+      "props": {
+        "variables": {
+          "label": "Variable List",
+          "fields": {
+            "key": "Variable Name",
+            "value": "Variable Value",
+            "value_placeholder": "Supports {{ }} variable expressions"
+          }
+        }
+      }
+    },
+    "get_variable": {
+      "label": "Get Variable",
+      "description": "Read workflow runtime variables",
+      "props": {
+        "key": "Variable Name",
+        "defaultValue": "Default Value"
+      }
+    },
+    "delete_variable": {
+      "label": "Delete Variable",
+      "description": "Delete a variable from workflow runtime variables",
+      "props": {
+        "key": "Variable Name"
+      }
+    },
+    "loop_break": {
+      "label": "Break Loop",
+      "description": "Mark the end of the current iteration and stop further looping in loop_body"
+    },
+    "loop": {
+      "label": "Loop",
+      "description": "Repeat execution by count, array length, or loop body logic",
+      "handles": {
+        "body": "Loop Body",
+        "next": "After Completion"
+      },
+      "props": {
+        "loopType": {
+          "label": "Loop Type",
+          "count": "Count Loop",
+          "array": "Array Loop",
+          "infinite": "Infinite Loop"
+        },
+        "count": "Loop Count",
+        "arrayPath": "Array Variable",
+        "concurrency": "Concurrency",
+        "sharedVariables": "Shared Variables"
+      }
+    },
+    "loop_body": {
+      "label": "Loop Body",
+      "description": "Auto-generated internal anchor for loop nodes"
+    },
+    "agent_run": {
+      "label": "AI Execute",
+      "description": "Invoke an Agent to run a task",
+      "props": {
+        "prompt": "Task",
+        "systemPrompt": "System Prompt",
+        "cwd": "Working Directory",
+        "additionalDirectories": "Additional Directories",
+        "additionalDirectories_tooltip": "One accessible directory per line, appended to Agent runtime's sandboxDirs/additionalDirectories.",
+        "permissionMode": "Permission Mode",
+        "extraInstructions": "Extra Instructions",
+        "loadProjectClaudeMd": "Load Project Rules",
+        "loadRuleMd": "Load Rules Directory"
+      }
+    },
+    "agent_run.props.permissionMode.default": "Default",
+    "agent_run.props.permissionMode.dontAsk": "Don't Ask",
+    "agent_run.props.permissionMode.acceptEdits": "Accept Edits",
+    "agent_run.props.permissionMode.plan": "Plan Mode",
+    "agent_run.props.permissionMode.auto": "Auto",
+    "agent_run.props.permissionMode.bypassPermissions": "Bypass Permissions",
+    "alert": {
+      "label": "Alert Dialog",
+      "description": "Display an alert dialog",
+      "props": {
+        "title": "Title",
+        "title_default": "Notice",
+        "message": "Message"
+      }
+    },
+    "prompt": {
+      "label": "Input Dialog",
+      "description": "Pop up an input dialog",
+      "props": {
+        "title": "Title",
+        "title_default": "Please Enter",
+        "message": "Prompt Text",
+        "placeholder": "Placeholder",
+        "defaultValue": "Default Value"
+      }
+    },
+    "form": {
+      "label": "Form Dialog",
+      "description": "Pop up a custom form",
+      "props": {
+        "title": "Title",
+        "title_default": "Form",
+        "items": {
+          "label": "Form Items",
+          "fields": {
+            "id": "Field ID",
+            "title": "Display Name",
+            "type": "Field Type",
+            "type_text": "Text",
+            "type_textarea": "Textarea",
+            "type_number": "Number",
+            "type_select": "Select",
+            "type_checkbox": "Checkbox"
+          }
+        }
+      }
+    },
+    "sticky_note": {
+      "label": "Sticky Note",
+      "description": "Canvas annotation node, does not affect workflow execution",
+      "props": {
+        "content": "Content",
+        "content_tooltip": "Sticky note text content"
+      }
+    }
   }
 }

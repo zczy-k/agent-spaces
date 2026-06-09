@@ -4,8 +4,53 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import type { ExecutionLog, OperationEntry, Workflow, WorkflowTemplate } from '@agent-spaces/shared';
 import { useWorkflowStore } from '@/stores/workflow';
 import { operationHistoryApi, workflowApi } from '@/lib/workflow-api';
+import { createWorkflowEdgeId } from '@/lib/workflow-edge-id';
+import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { loadWorkflowLayout } from './workflow-editor-types';
 import type { Layout } from 'react-resizable-panels';
+
+type WorkflowSnapshot = Pick<Workflow, 'nodes' | 'edges'> & {
+  variables?: Workflow['variables'];
+};
+
+function normalizeLegacySourceHandle(snapshot: WorkflowSnapshot): WorkflowSnapshot {
+  const nodesById = new Map(snapshot.nodes.map(node => [node.id, node]));
+
+  const edges = snapshot.edges.map((edge) => {
+    const sourceHandle = edge.sourceHandle;
+    if (!sourceHandle?.startsWith('source-')) return edge;
+
+    const sourceNode = nodesById.get(edge.source);
+    const dynamicSource = sourceNode ? getNodeDefinition(sourceNode.type)?.handles?.dynamicSource : undefined;
+    if (!sourceNode || !dynamicSource) return edge;
+
+    const match = /^source-(\d+)$/.exec(sourceHandle);
+    if (!match) return edge;
+
+    const handleIndex = Number(match[1]);
+    const values = sourceNode.data?.[dynamicSource.dataKey];
+    const conditionCount = Array.isArray(values) ? values.length : 0;
+    const hasDefaultHandle = (dynamicSource.extraCount || 0) > 0;
+    const nextSourceHandle = handleIndex < conditionCount
+      ? `case-${handleIndex}`
+      : hasDefaultHandle && handleIndex === conditionCount ? 'default' : sourceHandle;
+
+    if (nextSourceHandle === sourceHandle) return edge;
+
+    return {
+      ...edge,
+      id: createWorkflowEdgeId({
+        source: edge.source,
+        target: edge.target,
+        sourceHandle: nextSourceHandle,
+        targetHandle: edge.targetHandle,
+      }),
+      sourceHandle: nextSourceHandle,
+    };
+  });
+
+  return { ...snapshot, edges };
+}
 
 export function useWorkflowEditorState(template: WorkflowTemplate | null) {
   const store = useWorkflowStore();
@@ -51,7 +96,8 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
     workflowApi.get(template.id)
       .then((wf) => {
         prePreviewWorkflowRef.current = null;
-        setWorkflow(wf);
+        const normalized = normalizeLegacySourceHandle(wf);
+        setWorkflow({ ...wf, nodes: normalized.nodes, edges: normalized.edges });
         setOperationLog([]);
         setIsPreview(false);
         setIsLoading(false);
@@ -145,7 +191,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
     if (undoStack.length === 0 || !workflow) return;
     const currentSnapshot = JSON.stringify({ nodes: workflow.nodes, edges: workflow.edges, variables: workflow.variables || [] });
     const prevSnapshot = undoStack[undoStack.length - 1];
-    const prev = JSON.parse(prevSnapshot);
+    const prev = normalizeLegacySourceHandle(JSON.parse(prevSnapshot) as WorkflowSnapshot);
     setUndoStack(s => s.slice(0, -1));
     setRedoStack(s => [...s, currentSnapshot]);
     setWorkflow(w => w ? { ...w, nodes: prev.nodes, edges: prev.edges, variables: prev.variables || [] } : null);
@@ -156,7 +202,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
     if (redoStack.length === 0 || !workflow) return;
     const currentSnapshot = JSON.stringify({ nodes: workflow.nodes, edges: workflow.edges, variables: workflow.variables || [] });
     const nextSnapshot = redoStack[redoStack.length - 1];
-    const next = JSON.parse(nextSnapshot);
+    const next = normalizeLegacySourceHandle(JSON.parse(nextSnapshot) as WorkflowSnapshot);
     setUndoStack(s => [...s, currentSnapshot]);
     setRedoStack(s => s.slice(0, -1));
     setWorkflow(w => w ? { ...w, nodes: next.nodes, edges: next.edges, variables: next.variables || [] } : null);

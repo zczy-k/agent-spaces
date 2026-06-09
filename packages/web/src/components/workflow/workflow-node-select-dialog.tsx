@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import type { NodeTypeDefinition, Workflow } from '@agent-spaces/shared';
-import { getNodeDefinitionsByCategory, searchNodeDefinitions } from '@/lib/workflow-nodes';
+import { useLocalizedNodeDefinitionsByCategory, useLocalizedSearchNodeDefinitions } from '@/lib/workflow-nodes';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -36,21 +36,23 @@ export function WorkflowNodeSelectDialog({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  const categories = useMemo(() => Object.keys(getNodeDefinitionsByCategory()), [open]);
+  const allCategories = useLocalizedNodeDefinitionsByCategory();
+  const searchResults = useLocalizedSearchNodeDefinitions(searchQuery);
+
+  const categories = useMemo(() => Object.keys(allCategories), [open, allCategories]);
 
   const filteredNodes = useMemo(() => {
     const query = searchQuery.trim();
     if (query) {
-      return getCreatableNodes(workflow, searchNodeDefinitions(query));
+      return getCreatableNodes(workflow, searchResults);
     }
 
-    const grouped = getNodeDefinitionsByCategory();
     if (selectedCategory) {
-      return getCreatableNodes(workflow, grouped[selectedCategory] || []);
+      return getCreatableNodes(workflow, allCategories[selectedCategory] || []);
     }
 
-    return getCreatableNodes(workflow, Object.values(grouped).flat());
-  }, [open, workflow, searchQuery, selectedCategory]);
+    return getCreatableNodes(workflow, Object.values(allCategories).flat());
+  }, [open, workflow, searchQuery, selectedCategory, allCategories, searchResults]);
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
