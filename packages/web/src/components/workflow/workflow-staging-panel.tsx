@@ -81,6 +81,20 @@ export function WorkflowStagingPanel({ workflowId, onAddFromStaging }: StagingPa
 
   useEffect(() => { loadStaging(); }, [loadStaging]);
 
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { staged } = (e as CustomEvent).detail;
+      if (!staged) return;
+      setNodes(prev => {
+        const updated = [...prev, staged];
+        stagingApi.save(workflowId, updated).catch(() => {});
+        return updated;
+      });
+    };
+    window.addEventListener('workflow:node-staged', handler);
+    return () => window.removeEventListener('workflow:node-staged', handler);
+  }, [workflowId]);
+
   const handleSave = useCallback(async (updated: StagedNode[]) => {
     setNodes(updated);
     try {

@@ -52,6 +52,9 @@ interface WorkflowCanvasProps {
   selectedNodeIds?: string[];
   onNodeAdd: (type: string, position: { x: number; y: number }) => void;
   onNodeDelete: (id: string) => void;
+  onNodeCopy?: (id: string) => void;
+  onNodeClone?: (id: string) => void;
+  onNodeStage?: (id: string) => void;
   onNodeSelect: (id: string | null, multi?: boolean) => void;
   onNodesSelect?: (ids: string[], options?: { primaryNodeId?: string | null }) => void;
   onNodeDataUpdate: (id: string, data: Record<string, unknown>) => void;
@@ -179,6 +182,7 @@ export function WorkflowCanvas({
   onNodeDataUpdate, onNodesChange, onEdgesChange, onConnect,
   canUndo = false, canRedo = false, onUndo, onRedo, onExitPreview, onAutoLayout,
   onConnectionDrop,
+  onNodeCopy, onNodeClone, onNodeStage,
 }: WorkflowCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const lastCanvasDebugSignature = useRef<string | null>(null);
@@ -689,6 +693,21 @@ export function WorkflowCanvas({
     onNodeDataUpdate(detail.nodeId, detail.data);
   }, [isCanvasLocked, onNodeDataUpdate]);
 
+  const handleNodeCopyEvent = useCallback((e: Event) => {
+    if (isCanvasLocked || !onNodeCopy) return;
+    onNodeCopy((e as CustomEvent).detail.nodeId);
+  }, [isCanvasLocked, onNodeCopy]);
+
+  const handleNodeCloneEvent = useCallback((e: Event) => {
+    if (isCanvasLocked || !onNodeClone) return;
+    onNodeClone((e as CustomEvent).detail.nodeId);
+  }, [isCanvasLocked, onNodeClone]);
+
+  const handleNodeStageEvent = useCallback((e: Event) => {
+    if (isCanvasLocked || !onNodeStage) return;
+    onNodeStage((e as CustomEvent).detail.nodeId);
+  }, [isCanvasLocked, onNodeStage]);
+
   // Register custom event listeners
   React.useEffect(() => {
     window.addEventListener('workflow:edge-insert-node', handleEdgeInsertNode);
@@ -696,14 +715,20 @@ export function WorkflowCanvas({
     window.addEventListener('workflow:delete-edge', handleEdgeDelete);
     window.addEventListener('workflow:delete-node', handleNodeDelete);
     window.addEventListener('workflow:update-node-data', handleNodeDataUpdate);
+    window.addEventListener('workflow:copy-node', handleNodeCopyEvent);
+    window.addEventListener('workflow:clone-node', handleNodeCloneEvent);
+    window.addEventListener('workflow:stage-node', handleNodeStageEvent);
     return () => {
       window.removeEventListener('workflow:edge-insert-node', handleEdgeInsertNode);
       window.removeEventListener('workflow:select-edge', handleEdgeSelect);
       window.removeEventListener('workflow:delete-edge', handleEdgeDelete);
       window.removeEventListener('workflow:delete-node', handleNodeDelete);
       window.removeEventListener('workflow:update-node-data', handleNodeDataUpdate);
+      window.removeEventListener('workflow:copy-node', handleNodeCopyEvent);
+      window.removeEventListener('workflow:clone-node', handleNodeCloneEvent);
+      window.removeEventListener('workflow:stage-node', handleNodeStageEvent);
     };
-  }, [handleEdgeDelete, handleEdgeInsertNode, handleEdgeSelect, handleNodeDelete, handleNodeDataUpdate]);
+  }, [handleEdgeDelete, handleEdgeInsertNode, handleEdgeSelect, handleNodeDelete, handleNodeDataUpdate, handleNodeCopyEvent, handleNodeCloneEvent, handleNodeStageEvent]);
 
   React.useEffect(() => {
     if (isCanvasLocked || !selectedEdgeId) return;

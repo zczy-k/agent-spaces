@@ -24,6 +24,8 @@ interface UseWorkflowEditorCanvasParams {
   setSelectedNodeId: React.Dispatch<React.SetStateAction<string | null>>;
   selectedNodeIds: string[];
   setSelectedNodeIds: React.Dispatch<React.SetStateAction<string[]>>;
+  onCopyNodes?: (nodeIds: string[]) => void;
+  onStageNode?: (nodeId: string) => void;
 }
 
 function areStringArraysEqual(a: string[], b: string[]) {
@@ -33,6 +35,7 @@ function areStringArraysEqual(a: string[], b: string[]) {
 export function useWorkflowEditorCanvas({
   workflow, setWorkflow, markDirty, pushUndo,
   selectedNodeId, setSelectedNodeId, selectedNodeIds, setSelectedNodeIds,
+  onCopyNodes, onStageNode,
 }: UseWorkflowEditorCanvasParams) {
   const [nodeSelectOpen, setNodeSelectOpen] = useState(false);
   const [nodeSelectContext, setNodeSelectContext] = useState<NodeSelectContext | null>(null);
@@ -223,6 +226,32 @@ export function useWorkflowEditorCanvas({
     setSelectedNodeIds(ids => ids.filter(id => id !== nodeId));
     markDirty();
   }, [workflow, pushUndo, markDirty, selectedNodeId, setSelectedNodeId, setSelectedNodeIds]);
+
+  const handleNodeClone = useCallback((nodeId: string) => {
+    if (!workflow) return;
+    const node = workflow.nodes.find(n => n.id === nodeId);
+    if (!node) return;
+    pushUndo('clone node');
+    const newId = `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const cloned = {
+      ...node,
+      id: newId,
+      position: { x: node.position.x + 40, y: node.position.y + 40 },
+      data: JSON.parse(JSON.stringify(node.data)),
+    };
+    setWorkflow(w => w ? { ...w, nodes: [...w.nodes, cloned] } : null);
+    setSelectedNodeId(newId);
+    setSelectedNodeIds([newId]);
+    markDirty();
+  }, [workflow, pushUndo, markDirty, setSelectedNodeId, setSelectedNodeIds]);
+
+  const handleNodeCopy = useCallback((nodeId: string) => {
+    onCopyNodes?.([nodeId]);
+  }, [onCopyNodes]);
+
+  const handleNodeStage = useCallback((nodeId: string) => {
+    onStageNode?.(nodeId);
+  }, [onStageNode]);
 
   const handleNodeSelect = useCallback((id: string | null, multi = false) => {
     if (!id) {
@@ -422,6 +451,9 @@ export function useWorkflowEditorCanvas({
     // Node operations
     handleNodeAdd,
     handleNodeDelete,
+    handleNodeCopy,
+    handleNodeClone,
+    handleNodeStage,
     handleNodeSelect,
     handleNodesSelect,
     handleNodeDataUpdate,

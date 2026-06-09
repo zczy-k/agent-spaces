@@ -59,6 +59,28 @@ function WorkflowEditorInner({
     setSelectedNodeId: state.setSelectedNodeId,
     selectedNodeIds: state.selectedNodeIds,
     setSelectedNodeIds: state.setSelectedNodeIds,
+    onCopyNodes: (nodeIds) => {
+      if (!state.workflow) return;
+      const ids = new Set(nodeIds);
+      const nodes = state.workflow.nodes.filter(n => ids.has(n.id));
+      const edges = state.workflow.edges.filter(e => ids.has(e.source) && ids.has(e.target));
+      if (nodes.length > 0) clipboard.copy(nodes, edges);
+    },
+    onStageNode: (nodeId) => {
+      if (!state.workflow) return;
+      const node = state.workflow.nodes.find(n => n.id === nodeId);
+      if (!node) return;
+      const staged = {
+        id: `staged_${Date.now()}`,
+        sourceNodeId: node.id,
+        type: node.type,
+        label: node.label,
+        data: JSON.parse(JSON.stringify(node.data)),
+        composite: node.composite ? JSON.parse(JSON.stringify(node.composite)) : undefined,
+        stagedAt: Date.now(),
+      };
+      window.dispatchEvent(new CustomEvent('workflow:node-staged', { detail: { staged } }));
+    },
   });
 
   const execution = useWorkflowEditorExecution({
@@ -209,6 +231,9 @@ function WorkflowEditorInner({
                 selectedNodeIds={state.selectedNodeIds}
                 onNodeAdd={canvas.handleNodeAdd}
                 onNodeDelete={canvas.handleNodeDelete}
+                onNodeCopy={canvas.handleNodeCopy}
+                onNodeClone={canvas.handleNodeClone}
+                onNodeStage={canvas.handleNodeStage}
                 onNodeSelect={canvas.handleNodeSelect}
                 onNodesSelect={canvas.handleNodesSelect}
                 onNodeDataUpdate={canvas.handleNodeDataUpdate}

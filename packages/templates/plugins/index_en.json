@@ -1,26 +1,26 @@
 [
   {
     "id": "workflow.aliyun-ai",
-    "name": "阿里云百炼AI",
+    "name": "Aliyun Bailian AI",
     "version": "1.0.0",
-    "description": "阿里云百炼AI图片与视频生成、语音识别，支持千问文生图/图像编辑、万相文生图/图生视频/文生视频/视频编辑/参考生视频/首尾帧生视频/图生动作、可灵生图、图像扩图、声动人像、ASR语音识别（FunASR/Paraformer/Qwen-ASR）",
+    "description": "Aliyun Bailian AI image & video generation and speech recognition. Supports Qwen text-to-image/image editing, Wan text-to-image/image-to-video/text-to-video/video editing/reference-to-video/first-last-frame-to-video/animate-move, Kling image generation, image outpainting, VideoRetalk, and ASR speech recognition (FunASR/Paraformer/Qwen-ASR).",
     "author": {
       "name": "workflow"
     },
     "tags": [
       "AI",
-      "图片生成",
-      "图片编辑",
-      "视频生成",
-      "视频编辑",
-      "阿里云",
-      "百炼",
-      "千问",
-      "万相",
-      "可灵",
-      "扩图",
-      "声动人像",
-      "语音识别",
+      "Image Generation",
+      "Image Editing",
+      "Video Generation",
+      "Video Editing",
+      "Aliyun",
+      "Bailian",
+      "Qwen",
+      "Wan",
+      "Kling",
+      "Outpainting",
+      "VideoRetalk",
+      "Speech Recognition",
       "ASR",
       "Paraformer"
     ],
@@ -32,16 +32,16 @@
   },
   {
     "id": "workflow.aliyun-oss",
-    "name": "Aliyun OSS",
+    "name": "阿里云OSS",
     "version": "1.0.0",
-    "description": "Aliyun OSS file storage with upload, download, delete, list, signed URL, and copy operations.",
+    "description": "阿里云OSS文件存储，支持上传、下载、删除、列举、签名URL等操作",
     "author": {
       "name": "workflow"
     },
     "tags": [
-      "Cloud Storage",
+      "云存储",
       "OSS",
-      "Aliyun"
+      "阿里云"
     ],
     "type": "server",
     "hasView": false,
@@ -51,16 +51,16 @@
   },
   {
     "id": "workflow.desktop-native",
-    "name": "桌面原生",
+    "name": "Desktop Native",
     "version": "1.0.0",
-    "description": "提供剪贴板读写、系统通知等桌面原生能力",
+    "description": "Provides desktop native capabilities such as clipboard access and system notifications",
     "author": {
       "name": "workflow"
     },
     "tags": [
-      "剪贴板",
-      "通知",
-      "桌面"
+      "Clipboard",
+      "Notification",
+      "Desktop"
     ],
     "type": "client",
     "hasView": false,
@@ -69,16 +69,33 @@
     "iconUrl": "plugins/desktop-native/icon.png"
   },
   {
-    "id": "workflow.epub-parser",
-    "name": "EPUB解析器",
+    "id": "workfox.dingtalk",
+    "name": "DingTalk",
     "version": "1.0.0",
-    "description": "解析EPUB电子书文件，提取书籍信息、目录、章节内容",
+    "description": "通过钉钉自定义机器人 Webhook 发送群消息，支持 text/markdown/link/actionCard/feedCard 五种消息类型",
+    "author": {
+      "name": "workfox"
+    },
+    "tags": [
+      "notification",
+      "dingtalk"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "dingtalk"
+  },
+  {
+    "id": "workflow.epub-parser",
+    "name": "EPUB Parser",
+    "version": "1.0.0",
+    "description": "Parse EPUB ebook files to extract book info, table of contents, and chapter content",
     "author": {
       "name": "workflow"
     },
     "tags": [
-      "文件处理",
-      "电子书",
+      "File Processing",
+      "E-Book",
       "EPUB"
     ],
     "type": "server",
@@ -89,17 +106,17 @@
   },
   {
     "id": "workflow.fetch",
-    "name": "网络请求",
+    "name": "HTTP Request",
     "version": "1.0.0",
-    "description": "提供网页内容捕获、网络文件下载等操作节点",
+    "description": "Provides web content fetching, network file download and other operation nodes",
     "author": {
       "name": "workflow"
     },
     "tags": [
-      "网络",
-      "请求",
-      "抓取",
-      "下载"
+      "Network",
+      "Request",
+      "Fetch",
+      "Download"
     ],
     "type": "server",
     "hasView": false,
@@ -109,16 +126,16 @@
   },
   {
     "id": "workflow.ffmpeg",
-    "name": "FFmpeg音视频处理",
+    "name": "FFmpeg Audio/Video Processing",
     "version": "1.0.0",
-    "description": "基于FFmpeg的音视频处理，支持格式转换、音视频合并、音视频分离",
+    "description": "FFmpeg-based audio/video processing with format conversion, merge, and demux support.",
     "author": {
       "name": "workflow"
     },
     "tags": [
       "FFmpeg",
-      "音视频",
-      "格式转换"
+      "Audio/Video",
+      "Format Conversion"
     ],
     "type": "server",
     "hasView": false,
@@ -128,16 +145,16 @@
   },
   {
     "id": "workflow.file-system",
-    "name": "文件系统",
+    "name": "File System",
     "version": "1.0.0",
-    "description": "提供文件读写、编辑、枚举、删除及目录管理等操作节点",
+    "description": "Provides workflow nodes for file read/write, edit, list, delete, and directory management",
     "author": {
       "name": "workflow"
     },
     "tags": [
-      "文件",
-      "目录",
-      "文件系统"
+      "File",
+      "Directory",
+      "File System"
     ],
     "type": "server",
     "hasView": false,
@@ -147,17 +164,17 @@
   },
   {
     "id": "workflow.fish-audio",
-    "name": "FishAudio 语音合成",
+    "name": "FishAudio Speech Synthesis",
     "version": "1.0.0",
-    "description": "FishAudio 语音合成与语音识别，支持 TTS 文字转语音、STT 语音转文字",
+    "description": "FishAudio speech synthesis and recognition, supporting TTS text-to-speech and STT speech-to-text",
     "author": {
       "name": "workflow"
     },
     "tags": [
       "AI",
-      "语音合成",
+      "Speech Synthesis",
       "TTS",
-      "语音识别",
+      "Speech Recognition",
       "STT",
       "FishAudio"
     ],
@@ -169,17 +186,17 @@
   },
   {
     "id": "workflow.jimeng",
-    "name": "即梦AI生图",
+    "name": "Jimeng AI Image Generation",
     "version": "1.0.0",
-    "description": "即梦AI图片/视频生成，支持文生图、图生图、文生视频",
+    "description": "Jimeng AI image and video generation with text-to-image, image-to-image, and text-to-video support.",
     "author": {
       "name": "workflow"
     },
     "tags": [
       "AI",
-      "图片生成",
-      "视频生成",
-      "即梦"
+      "Image Generation",
+      "Video Generation",
+      "Jimeng"
     ],
     "type": "server",
     "hasView": false,
@@ -189,16 +206,16 @@
   },
   {
     "id": "workflow.mail",
-    "name": "邮件发送",
+    "name": "Email",
     "version": "1.0.0",
-    "description": "通过 SMTP 发送邮件，支持 HTML/纯文本、附件、抄送/密送",
+    "description": "Send emails via SMTP with support for HTML/plain text, attachments, CC/BCC",
     "author": {
       "name": "workflow"
     },
     "tags": [
-      "邮件",
+      "Email",
       "SMTP",
-      "通知"
+      "Notification"
     ],
     "type": "server",
     "hasView": false,
@@ -210,19 +227,19 @@
     "id": "workflow.minimax",
     "name": "MiniMax AI",
     "version": "1.0.0",
-    "description": "MiniMax AI 多模态生成，支持文本合成(M2.x大模型)、角色对话(M2-her)、语音合成(TTS)、音乐生成、视频生成(文生/图生/首尾帧/主体参考)、歌词生成",
+    "description": "MiniMax AI multimodal generation with text synthesis (M2.x LLM), character dialogue (M2-her), TTS, music generation, video generation (text-to-video/image-to-video/first-last-frame/subject-reference), and lyrics generation",
     "author": {
       "name": "workflow"
     },
     "tags": [
       "AI",
-      "文本合成",
-      "角色对话",
-      "语音合成",
-      "音乐生成",
-      "视频生成",
+      "Text Synthesis",
+      "Character Dialogue",
+      "TTS",
+      "Music Generation",
+      "Video Generation",
       "MiniMax",
-      "海螺AI"
+      "Hailuo AI"
     ],
     "type": "server",
     "hasView": false,
@@ -231,16 +248,34 @@
     "iconUrl": "plugins/minimax/icon.svg"
   },
   {
+    "id": "workflow.mira-sdk",
+    "name": "Mira SDK",
+    "version": "1.0.0",
+    "description": "Mira App Server SDK for library management, file operations, plugin management, device communication, and system monitoring.",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "Mira",
+      "SDK",
+      "Library"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "mira-sdk"
+  },
+  {
     "id": "workflow.openai",
     "name": "OpenAI",
     "version": "2.0.0",
-    "description": "OpenAI 集成插件，支持文生图、图片编辑、Chat Completions、Embeddings、Audio TTS/STT",
+    "description": "OpenAI integration plugin supporting image generation, image editing, Chat Completions, Embeddings, and Audio TTS/STT.",
     "author": {
       "name": "workflow"
     },
     "tags": [
       "AI",
-      "图片生成",
+      "Image Generation",
       "OpenAI",
       "GPT",
       "Chat",
@@ -256,16 +291,16 @@
   },
   {
     "id": "workflow.tencent-cos",
-    "name": "腾讯云COS",
+    "name": "Tencent COS",
     "version": "1.0.0",
-    "description": "腾讯云COS对象存储，支持上传、下载、删除、列举、签名URL等操作",
+    "description": "Tencent COS object storage with upload, download, delete, list, signed URL, copy, and file metadata operations.",
     "author": {
       "name": "workflow"
     },
     "tags": [
-      "云存储",
+      "Cloud Storage",
       "COS",
-      "腾讯云"
+      "Tencent"
     ],
     "type": "server",
     "hasView": false,
@@ -294,16 +329,16 @@
   },
   {
     "id": "workflow.window-manager",
-    "name": "窗口管理",
+    "name": "Window Manager",
     "version": "1.0.0",
-    "description": "提供独立浏览器窗口的创建、导航、关闭、截图等操作节点",
+    "description": "Provides workflow nodes for creating, navigating, closing, and taking screenshots of independent browser windows.",
     "author": {
       "name": "workflow"
     },
     "tags": [
-      "窗口",
-      "浏览器",
-      "管理"
+      "Window",
+      "Browser",
+      "Management"
     ],
     "type": "client",
     "hasView": false,

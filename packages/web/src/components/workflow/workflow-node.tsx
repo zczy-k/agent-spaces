@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useCallback, useRef, useSyncExternalStore } from 'react';
 import { Handle, NodeResizer, Position, useUpdateNodeInternals } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
-import { AlertCircle, CheckCircle, Copy, FileText, Play, Scissors, Trash2, X, XCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle, ClipboardCopy, Copy, FileText, Inbox, Play, X, XCircle } from 'lucide-react';
 import { getNodeDefinition, getPluginNodesVersion, subscribePluginNodesVersion } from '@/lib/workflow-nodes';
 import { LOOP_BODY_NODE_TYPE, LOOP_BODY_SOURCE_HANDLE, type ExecutionStep } from '@agent-spaces/shared';
 import { BorderGlide } from '@/components/ui/border-glide';
@@ -16,7 +16,6 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { JsonViewer } from '@/components/viewers/json-viewer';
 import { cn } from '@/lib/utils';
-import { useWorkflowEditorStore } from '@/stores/workflow-editor';
 import { WorkflowNodeDefinitionIcon } from './workflow-node-icon';
 
 const HEADER_HEIGHT = 33;
@@ -358,6 +357,21 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
     window.dispatchEvent(new CustomEvent('workflow:delete-node', { detail: { nodeId: id } }));
   }, [id, isCanvasLocked]);
 
+  const handleCopy = useCallback(() => {
+    if (isCanvasLocked) return;
+    window.dispatchEvent(new CustomEvent('workflow:copy-node', { detail: { nodeId: id } }));
+  }, [id, isCanvasLocked]);
+
+  const handleClone = useCallback(() => {
+    if (isCanvasLocked) return;
+    window.dispatchEvent(new CustomEvent('workflow:clone-node', { detail: { nodeId: id } }));
+  }, [id, isCanvasLocked]);
+
+  const handleStage = useCallback(() => {
+    if (isCanvasLocked) return;
+    window.dispatchEvent(new CustomEvent('workflow:stage-node', { detail: { nodeId: id } }));
+  }, [id, isCanvasLocked]);
+
   const handleResizeEnd = useCallback((_: unknown, params: { width: number; height: number }) => {
     if (isCanvasLocked) return;
     const width = Math.max(nodeMinWidth, Math.round(params.width));
@@ -366,6 +380,8 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
       detail: { nodeId: id, data: { width, height } },
     }));
   }, [id, isCanvasLocked, nodeMinHeight, nodeMinWidth]);
+
+  const showContextMenu = !isBoundaryNode && !isCanvasLocked;
 
   return (
     <>
@@ -377,20 +393,22 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
         handleClassName="workflow-node-resize-handle"
         lineClassName="workflow-node-resize-line"
       />
-      <div
-        ref={nodeRootRef}
-        className={`border-2 rounded-lg shadow-sm cursor-pointer transition-colors relative flex flex-col bg-background
-          ${statusColor} ${selected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background shadow-md' : ''}
-          ${isLoopBody ? 'loop-body-node' : ''}`}
-        style={{
-          minWidth: nodeMinWidth,
-          minHeight: nodeMinHeight,
-          width: '100%',
-          height: '100%',
-        }}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
+      <ContextMenu>
+        <ContextMenuTrigger>
+          <div
+            ref={nodeRootRef}
+            className={`border-2 rounded-lg shadow-sm cursor-pointer transition-colors relative flex flex-col bg-background
+              ${statusColor} ${selected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background shadow-md' : ''}
+              ${isLoopBody ? 'loop-body-node' : ''}`}
+            style={{
+              minWidth: nodeMinWidth,
+              minHeight: nodeMinHeight,
+              width: '100%',
+              height: '100%',
+            }}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+          >
         {nodeData.isRunning && (
           <BorderGlide
             className="absolute inset-0 z-20 rounded-lg pointer-events-none"
@@ -524,6 +542,29 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
           </>
         )}
       </div>
+      </ContextMenuTrigger>
+      {showContextMenu && (
+        <ContextMenuContent className="w-40">
+          <ContextMenuItem className="text-xs gap-2" onClick={handleCopy}>
+            <Copy className="h-3 w-3" />
+            复制
+          </ContextMenuItem>
+          <ContextMenuItem className="text-xs gap-2" onClick={handleClone}>
+            <ClipboardCopy className="h-3 w-3" />
+            克隆
+          </ContextMenuItem>
+          <ContextMenuItem className="text-xs gap-2" onClick={handleStage}>
+            <Inbox className="h-3 w-3" />
+            暂存
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem className="text-xs gap-2" variant="destructive" onClick={handleDelete}>
+            <X className="h-3 w-3" />
+            删除
+          </ContextMenuItem>
+        </ContextMenuContent>
+      )}
+      </ContextMenu>
 
       <style>{`
         .handle-dot { transition: scale 0.2s ease, box-shadow 0.2s ease; }
