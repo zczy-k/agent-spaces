@@ -14,6 +14,7 @@ import {
   LOOP_NEXT_SOURCE_HANDLE,
   findCompositeChildByRole,
   getCompositeParentId,
+  getCompositeRootId,
   isHiddenWorkflowEdge,
   isHiddenWorkflowNode,
   isScopeBoundaryWorkflowNode,
@@ -53,6 +54,65 @@ function isNodeRemoveChange(change: NodeChange): change is NodeChange & { type: 
 
 function isSameHandle(a: string | null | undefined, b: string | null | undefined): boolean {
   return (a ?? null) === (b ?? null);
+}
+
+function isGeneratedWorkflowNode(node: Workflow['nodes'][0]): boolean {
+  return !!node.composite?.generated;
+}
+
+function canDeleteWorkflowNode(nodes: Workflow['nodes'], nodeId: string): boolean {
+  const node = nodes.find(item => item.id === nodeId);
+  if (!node) return false;
+  if (isScopeBoundaryWorkflowNode(node)) return false;
+  const parentNode = node.composite?.parentId
+    ? nodes.find(item => item.id === node.composite?.parentId)
+    : null;
+  if (parentNode && isScopeBoundaryWorkflowNode(parentNode)) {
+    return node.type !== 'start' && node.type !== 'end';
+  }
+  return !isGeneratedWorkflowNode(node);
+}
+
+function collectCompositeDescendantIds(nodes: Workflow['nodes'], parentIds: Set<string>): Set<string> {
+  const result = new Set<string>();
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const node of nodes) {
+      const parentId = getCompositeParentId(node);
+      if (!parentId || result.has(node.id)) continue;
+      if (parentIds.has(parentId) || result.has(parentId)) {
+        result.add(node.id);
+        changed = true;
+      }
+    }
+  }
+  return result;
+}
+
+function getWorkflowNodeDeleteIds(nodes: Workflow['nodes'], nodeId: string): { ids: Set<string>; rootId: string | null } | null {
+  const removedNode = nodes.find(node => node.id === nodeId);
+  if (!removedNode || !canDeleteWorkflowNode(nodes, nodeId)) return null;
+
+  const parentId = getCompositeParentId(removedNode);
+  const parentNode = parentId ? nodes.find(node => node.id === parentId) : null;
+  const ids = new Set<string>();
+  let rootId: string | null = null;
+
+  if (parentNode && isScopeBoundaryWorkflowNode(parentNode)) {
+    ids.add(nodeId);
+    return { ids, rootId };
+  }
+
+  rootId = getCompositeRootId(removedNode);
+  for (const node of nodes) {
+    if (getCompositeRootId(node) === rootId) ids.add(node.id);
+  }
+  for (const descendantId of collectCompositeDescendantIds(nodes, ids)) {
+    ids.add(descendantId);
+  }
+
+  return { ids, rootId };
 }
 
 function createWorkflowNodeId(): string {
@@ -764,21 +824,32 @@ export function useWorkflowEditorCanvas({
 
   const handleNodeDelete = useCallback((nodeId: string) => {
     if (!workflow || isReadOnly) return;
+    const deletePlan = getWorkflowNodeDeleteIds(workflow.nodes, nodeId);
+    if (!deletePlan) return;
     pushUndo('delete node');
     setWorkflow(w => {
       if (!w) return null;
       const removedNode = w.nodes.find(node => node.id === nodeId);
-      const nextNodes = w.nodes.filter(n => n.id !== nodeId);
+      const currentDeletePlan = getWorkflowNodeDeleteIds(w.nodes, nodeId);
+      if (!removedNode || !currentDeletePlan) return w;
       const parentId = removedNode ? getCompositeParentId(removedNode) : null;
-      if (parentId) syncScopeBoundaryLayout(nextNodes, parentId);
+      const deleteNodeIds = currentDeletePlan.ids;
+      const rootId = currentDeletePlan.rootId;
+
+      const nextNodes = w.nodes.filter(node => !deleteNodeIds.has(node.id));
+      if (parentId && !deleteNodeIds.has(parentId)) syncScopeBoundaryLayout(nextNodes, parentId);
       return {
         ...w,
         nodes: nextNodes,
-        edges: w.edges.filter(e => e.source !== nodeId && e.target !== nodeId),
+        edges: w.edges.filter(edge =>
+          !deleteNodeIds.has(edge.source)
+          && !deleteNodeIds.has(edge.target)
+          && (!rootId || edge.composite?.rootId !== rootId)
+        ),
       };
     });
-    if (selectedNodeId === nodeId) setSelectedNodeId(null);
-    setSelectedNodeIds(ids => ids.filter(id => id !== nodeId));
+    if (selectedNodeId && deletePlan.ids.has(selectedNodeId)) setSelectedNodeId(null);
+    setSelectedNodeIds(ids => ids.filter(id => !deletePlan.ids.has(id)));
     markDirty();
   }, [workflow, isReadOnly, pushUndo, markDirty, selectedNodeId, setSelectedNodeId, setSelectedNodeIds]);
 
@@ -882,6 +953,9 @@ export function useWorkflowEditorCanvas({
   const handleNodesChange = useCallback((changes: NodeChange[]) => {
     if (!workflow || isReadOnly) return;
     const hasDelete = changes.some(c => c.type === 'remove');
+    const hasAllowedDelete = changes
+      .filter(isNodeRemoveChange)
+      .some(change => !!getWorkflowNodeDeleteIds(workflow.nodes, change.id));
     const hasDimensionChange = changes.some(c => c.type === 'dimensions');
     const hasPositionChange = changes.some(c => c.type === 'position' && !!c.position);
     if (!hasDelete && !hasDimensionChange && !hasPositionChange) return;
@@ -927,7 +1001,18 @@ export function useWorkflowEditorCanvas({
       const removedNodeIds = new Set(
         changes
           .filter(isNodeRemoveChange)
-          .map(change => change.id),
+          .flatMap(change => {
+            const deletePlan = getWorkflowNodeDeleteIds(w.nodes, change.id);
+            return deletePlan ? Array.from(deletePlan.ids) : [];
+          }),
+      );
+      const removedRootIds = new Set(
+        changes
+          .filter(isNodeRemoveChange)
+          .flatMap(change => {
+            const deletePlan = getWorkflowNodeDeleteIds(w.nodes, change.id);
+            return deletePlan?.rootId ? [deletePlan.rootId] : [];
+          }),
       );
       const touchedScopeNodeIds = new Set<string>();
       const movedNodeIds = new Set(changedNodeIds);
@@ -977,10 +1062,14 @@ export function useWorkflowEditorCanvas({
       return {
         ...w,
         nodes: remainingNodes,
-        edges: nextEdges,
+        edges: nextEdges.filter(edge =>
+          !removedNodeIds.has(edge.source)
+          && !removedNodeIds.has(edge.target)
+          && (!edge.composite?.rootId || !removedRootIds.has(edge.composite.rootId))
+        ),
       };
     });
-    if (hasDelete || hasDimensionChange || hasPositionChange) markDirty();
+    if (hasAllowedDelete || hasDimensionChange || hasPositionChange) markDirty();
   }, [workflow, isReadOnly, markDirty]);
 
   const handleEdgesChange = useCallback((changes: EdgeChange[]) => {

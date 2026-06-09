@@ -74,6 +74,7 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
 
   const isBoundaryNode = definition?.type === 'start' || definition?.type === 'end';
   const isLoopBody = definition?.type === LOOP_BODY_NODE_TYPE;
+  const canDeleteNode = !isBoundaryNode && !isLoopBody;
   const isCanvasLocked = nodeData.isPreview || nodeData.isCanvasLocked;
 
   React.useEffect(() => {
@@ -460,7 +461,7 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
       )}
 
       {/* Hover delete button */}
-      {!isBoundaryNode && !isCanvasLocked && isHovered && (
+      {canDeleteNode && !isCanvasLocked && isHovered && (
         <button
           className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:bg-destructive/80 z-10"
           onClick={handleDelete}
@@ -641,7 +642,7 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
       />
       <WorkflowNodeContextMenu
         nodeId={id}
-        isBoundaryNode={isBoundaryNode}
+        isDeleteProtected={!canDeleteNode}
         isCanvasLocked={!!isCanvasLocked}
         style={{ width: nodeWidth, height: nodeHeight }}
         onSetColor={setNodeColor}

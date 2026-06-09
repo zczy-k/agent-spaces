@@ -34,7 +34,7 @@ import { NODE_COLORS, type NodeColorDef } from './workflow-node-types';
 export type WorkflowNodeContextMenuProps = {
   nodeId: string;
   isCanvasLocked: boolean;
-  isBoundaryNode: boolean;
+  isDeleteProtected: boolean;
   children: React.ReactNode;
   style?: React.CSSProperties;
   onSetColor: (color: string | null) => void;
@@ -59,7 +59,7 @@ function ColorItem({ color, onClick }: { color: NodeColorDef; onClick: () => voi
 }
 
 export function WorkflowNodeContextMenu({
-  isBoundaryNode,
+  isDeleteProtected,
   isCanvasLocked,
   children,
   style,
@@ -74,7 +74,7 @@ export function WorkflowNodeContextMenu({
   onDelete,
 }: WorkflowNodeContextMenuProps) {
   const t = useTranslations('workflows');
-  const showContextMenu = !isBoundaryNode && !isCanvasLocked;
+  const showContextMenu = !isDeleteProtected && !isCanvasLocked;
 
   const handleContextMenu = (event: React.MouseEvent) => {
     if (showContextMenu) return;
