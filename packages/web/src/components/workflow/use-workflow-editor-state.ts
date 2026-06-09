@@ -102,30 +102,30 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
   // ---- Undo / Redo ----
   const pushUndo = useCallback((_description?: string) => {
     if (!workflow) return;
-    const snapshot = JSON.stringify({ nodes: workflow.nodes, edges: workflow.edges });
+    const snapshot = JSON.stringify({ nodes: workflow.nodes, edges: workflow.edges, variables: workflow.variables || [] });
     setUndoStack(prev => [...prev, snapshot]);
     setRedoStack([]);
   }, [workflow]);
 
   const handleUndo = useCallback(() => {
     if (undoStack.length === 0 || !workflow) return;
-    const currentSnapshot = JSON.stringify({ nodes: workflow.nodes, edges: workflow.edges });
+    const currentSnapshot = JSON.stringify({ nodes: workflow.nodes, edges: workflow.edges, variables: workflow.variables || [] });
     const prevSnapshot = undoStack[undoStack.length - 1];
     const prev = JSON.parse(prevSnapshot);
     setUndoStack(s => s.slice(0, -1));
     setRedoStack(s => [...s, currentSnapshot]);
-    setWorkflow(w => w ? { ...w, nodes: prev.nodes, edges: prev.edges } : null);
+    setWorkflow(w => w ? { ...w, nodes: prev.nodes, edges: prev.edges, variables: prev.variables || [] } : null);
     markDirty();
   }, [undoStack, workflow, markDirty]);
 
   const handleRedo = useCallback(() => {
     if (redoStack.length === 0 || !workflow) return;
-    const currentSnapshot = JSON.stringify({ nodes: workflow.nodes, edges: workflow.edges });
+    const currentSnapshot = JSON.stringify({ nodes: workflow.nodes, edges: workflow.edges, variables: workflow.variables || [] });
     const nextSnapshot = redoStack[redoStack.length - 1];
     const next = JSON.parse(nextSnapshot);
     setUndoStack(s => [...s, currentSnapshot]);
     setRedoStack(s => s.slice(0, -1));
-    setWorkflow(w => w ? { ...w, nodes: next.nodes, edges: next.edges } : null);
+    setWorkflow(w => w ? { ...w, nodes: next.nodes, edges: next.edges, variables: next.variables || [] } : null);
     markDirty();
   }, [redoStack, workflow, markDirty]);
 

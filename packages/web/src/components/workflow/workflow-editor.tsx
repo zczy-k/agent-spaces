@@ -18,13 +18,14 @@ import { WorkflowInteractionDialog } from './workflow-interaction-dialog';
 import { WorkflowPluginsDialog } from './workflow-plugins-dialog';
 import { WorkflowPluginPickerDialog } from './workflow-plugin-picker-dialog';
 import { WorkflowNodeSelectDialog } from './workflow-node-select-dialog';
+import { WorkflowVariablesForm } from './workflow-variables-form';
 import { FloatingChatPanel } from '@/components/ui/floating-chat-widget';
 import { AgentEditor } from '@/components/sidebar/agent-editor';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ResizablePanel, ResizableHandle, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ExpandableTabs } from '@/components/ui/expandable-tabs';
-import { Loader2, AlertCircle, Settings2, Trash2, History, Package } from 'lucide-react';
+import { Loader2, AlertCircle, Settings2, Trash2, History, Package, Braces } from 'lucide-react';
 import { useEditorShortcuts, useClipboard, useExecutionPanel } from '@/hooks/use-workflow-editor';
 import { Button } from '@/components/ui/button';
 import { useWorkspaceStore } from '@/stores/workspace';
@@ -255,6 +256,7 @@ function WorkflowEditorInner({
               logs={execution.executionLogs}
               selectedLogId={execution.selectedExecutionLogId}
               startNodes={execution.startNodes}
+              variables={workflow.variables || []}
               validationError={execution.executionValidationError}
               isExpanded={execExpanded}
               workflowId={state.workflowId}
@@ -284,6 +286,7 @@ function WorkflowEditorInner({
             <ExpandableTabs
               tabs={[
                 { title: t('editor.properties'), icon: Settings2, value: 'properties' },
+                { title: '变量', icon: Braces, value: 'variables' },
                 { title: t('editor.history'), icon: History, value: 'history' },
                 { title: t('editor.staging'), icon: Package, value: 'staging' },
               ]}
@@ -297,12 +300,28 @@ function WorkflowEditorInner({
                 nodes={workflow.nodes}
                 edges={workflow.edges}
                 enabledPlugins={workflow.enabledPlugins}
+                variables={workflow.variables || []}
                 onUpdateData={canvas.handleNodeDataUpdate}
                 debugNodeId={execution.debugNodeId}
                 debugStatus={execution.debugStatus}
                 debugResult={execution.debugResult}
                 onDebugNode={execution.handleDebugNode}
                 onCancelDebug={execution.handleCancelDebug}
+              />
+            </TabsContent>
+            <TabsContent value="variables" className="flex-1 min-h-0 m-0">
+              <WorkflowVariablesForm
+                value={workflow.variables || []}
+                nodes={workflow.nodes}
+                edges={workflow.edges}
+                currentNodeId={state.selectedNodeId}
+                enabledPlugins={workflow.enabledPlugins}
+                variables={workflow.variables || []}
+                onChange={(variables) => {
+                  state.pushUndo('update variables');
+                  state.setWorkflow(w => w ? { ...w, variables } : null);
+                  state.markDirty();
+                }}
               />
             </TabsContent>
             <TabsContent value="history" className="flex-1 min-h-0 m-0">

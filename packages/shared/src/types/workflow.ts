@@ -153,6 +153,7 @@ export interface Workflow {
   layoutSnapshot?: Record<string, unknown>
   groups?: WorkflowGroup[]
   triggers?: WorkflowTrigger[]
+  variables?: OutputField[]
 }
 
 // ---- Node Property Definition (for editor) ----
@@ -287,6 +288,7 @@ export interface ExecutionLog {
     nodes: WorkflowNode[]
     edges: WorkflowEdge[]
     groups?: WorkflowGroup[]
+    variables?: OutputField[]
   }
 }
 

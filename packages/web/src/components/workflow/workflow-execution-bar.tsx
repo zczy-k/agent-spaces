@@ -39,11 +39,12 @@ interface ExecutionBarProps {
   logs: ExecutionLog[];
   selectedLogId: string | null;
   startNodes: WorkflowNode[];
+  variables?: OutputField[];
   validationError?: string | null;
   isExpanded: boolean;
   workflowId: string | null;
   onToggle: () => void;
-  onExecute: (input?: Record<string, unknown>, startNodeId?: string) => void;
+  onExecute: (input?: Record<string, unknown>, startNodeId?: string, env?: Record<string, unknown>) => void;
   onPause: () => void;
   onResume: () => void;
   onStop: () => void;
@@ -106,7 +107,7 @@ function JsonBlock({ value, empty }: { value: unknown; empty: string }) {
 }
 
 export function WorkflowExecutionBar({
-  status, log, logs, selectedLogId, startNodes, validationError, isExpanded, workflowId, onToggle,
+  status, log, logs, selectedLogId, startNodes, variables = [], validationError, isExpanded, workflowId, onToggle,
   onExecute, onPause, onResume, onStop, onSelectLog, onDeleteLog, onClearLogs, onExitPreview,
   onUpdateNodeData,
 }: ExecutionBarProps) {
@@ -149,6 +150,7 @@ export function WorkflowExecutionBar({
     const fields = activeStartNode?.data?.inputFields;
     return Array.isArray(fields) ? fields as OutputField[] : [];
   }, [activeStartNode]);
+  const variableFields = useMemo(() => Array.isArray(variables) ? variables : [], [variables]);
 
   const displayLog = log;
   const steps = displayLog?.steps || [];
@@ -167,15 +169,15 @@ export function WorkflowExecutionBar({
     const startNode = node ?? startNodes[0] ?? null;
     setSelectedStartNodeId(startNode?.id ?? null);
     const fields = Array.isArray(startNode?.data?.inputFields) ? startNode.data.inputFields as OutputField[] : [];
-    if (fields.length > 0) {
+    if (fields.length > 0 || variableFields.length > 0) {
       setInputDialogOpen(true);
       return;
     }
     onExecute(undefined, startNode?.id);
   };
 
-  const submitInput = (values: Record<string, unknown>) => {
-    onExecute(values, activeStartNode?.id);
+  const submitInput = (values: Record<string, unknown>, env?: Record<string, unknown>) => {
+    onExecute(values, activeStartNode?.id, env);
   };
 
   const copyText = async (key: string, text: string) => {
@@ -511,6 +513,7 @@ export function WorkflowExecutionBar({
       <ExecutionInputDialog
         open={inputDialogOpen}
         fields={inputFields}
+        variableFields={variableFields}
         startNodeLabel={activeStartNode?.label || t('execution.start')}
         workflowId={workflowId}
         onOpenChange={setInputDialogOpen}

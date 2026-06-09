@@ -49,6 +49,7 @@ interface ExecutionSession {
   nodes: WorkflowNode[]
   edges: WorkflowEdge[]
   groups?: WorkflowGroup[]
+  variables?: OutputField[]
   context: Record<string, any>
   status: EngineStatus
   executionOrder: WorkflowNode[]
@@ -140,7 +141,7 @@ export class ExecutionManager {
     const snapshot = this.resolveExecutionSnapshot(workflow, request);
     const executionId = randomUUID();
     const session = this.createSession(
-      executionId, workflow, ownerClientId, request.input || {}, snapshot, undefined, eventSink,
+      executionId, workflow, ownerClientId, request.input || {}, snapshot, undefined, request.env, eventSink,
     );
     session.context.__config__ = this.loadPluginConfigs(session);
 
@@ -162,6 +163,7 @@ export class ExecutionManager {
     const snapshotNodes = request.snapshot?.nodes ? clone(request.snapshot.nodes) : clone(workflow.nodes);
     const snapshotEdges = request.snapshot?.edges ? clone(request.snapshot.edges) : clone(workflow.edges);
     const snapshotGroups = request.snapshot?.groups ? clone(request.snapshot.groups) : clone(workflow.groups || []);
+    const snapshotVariables = request.snapshot?.variables ? clone(request.snapshot.variables) : clone(workflow.variables || []);
     const embeddedNode = request.embeddedNode ? clone(request.embeddedNode) : null;
     const nodes = embeddedNode
       ? snapshotNodes.some(n => n.id === request.nodeId)
@@ -176,7 +178,7 @@ export class ExecutionManager {
 
     const session = this.createSession(
       `debug-${randomUUID()}`, workflow, ownerClientId, request.input || {},
-      { nodes, edges: snapshotEdges, groups: snapshotGroups }, request.context,
+      { nodes, edges: snapshotEdges, groups: snapshotGroups, variables: snapshotVariables }, request.context, request.env,
     );
 
     try {
@@ -276,10 +278,11 @@ export class ExecutionManager {
   private resolveExecutionSnapshot(
     workflow: Workflow,
     request: WorkflowExecuteRequest,
-  ): { nodes: WorkflowNode[]; edges: WorkflowEdge[]; groups?: WorkflowGroup[] } | undefined {
+  ): { nodes: WorkflowNode[]; edges: WorkflowEdge[]; groups?: WorkflowGroup[]; variables?: OutputField[] } | undefined {
     const baseNodes = request.snapshot?.nodes ? clone(request.snapshot.nodes) : clone(workflow.nodes);
     const baseEdges = request.snapshot?.edges ? clone(request.snapshot.edges) : clone(workflow.edges);
     const baseGroups = request.snapshot?.groups ? clone(request.snapshot.groups) : clone(workflow.groups || []);
+    const baseVariables = request.snapshot?.variables ? clone(request.snapshot.variables) : clone(workflow.variables || []);
 
     const rootNodes = getNodesForExecutionScope(baseNodes, null);
     const startNodes = rootNodes.filter(n => n.type === 'start');
@@ -289,7 +292,7 @@ export class ExecutionManager {
       if (!startNode) {
         throw createErrorShape('BAD_REQUEST', `Start node not found: ${request.startNodeId}`);
       }
-      return this.buildReachableSnapshot(baseNodes, baseEdges, baseGroups, startNode.id);
+      return this.buildReachableSnapshot(baseNodes, baseEdges, baseGroups, baseVariables, startNode.id);
     }
 
     if (startNodes.length > 1) {
@@ -297,11 +300,11 @@ export class ExecutionManager {
       throw createErrorShape('BAD_REQUEST', `Multiple start nodes, specify startNodeId: ${choices}`);
     }
 
-    return request.snapshot ? { nodes: baseNodes, edges: baseEdges, groups: baseGroups } : undefined;
+    return request.snapshot ? { nodes: baseNodes, edges: baseEdges, groups: baseGroups, variables: baseVariables } : undefined;
   }
 
   private buildReachableSnapshot(
-    nodes: WorkflowNode[], edges: WorkflowEdge[], groups: WorkflowGroup[], firstNodeId: string,
+    nodes: WorkflowNode[], edges: WorkflowEdge[], groups: WorkflowGroup[], variables: OutputField[], firstNodeId: string,
   ) {
     const reachableIds = new Set<string>([firstNodeId]);
     const queue = [firstNodeId];
@@ -319,24 +322,32 @@ export class ExecutionManager {
       nodes: first ? [first, ...partialNodes.filter(n => n.id !== firstNodeId)] : partialNodes,
       edges: edges.filter(e => reachableIds.has(e.source) && reachableIds.has(e.target)),
       groups,
+      variables,
     };
   }
 
   private createSession(
     executionId: string, workflow: Workflow, ownerClientId: string,
     input: Record<string, unknown>,
-    snapshot?: { nodes: WorkflowNode[]; edges: WorkflowEdge[]; groups?: WorkflowGroup[] },
+    snapshot?: { nodes: WorkflowNode[]; edges: WorkflowEdge[]; groups?: WorkflowGroup[]; variables?: OutputField[] },
     context?: Record<string, unknown>,
+    env?: Record<string, unknown>,
     eventSink?: (channel: string, payload: unknown) => void,
   ): ExecutionSession {
+    const defaultEnv = this.buildOutputObject(snapshot?.variables ?? workflow.variables) ?? {};
     return {
       id: executionId, workflow, ownerClientId,
       nodes: snapshot?.nodes ? clone(snapshot.nodes) : clone(workflow.nodes),
       edges: snapshot?.edges ? clone(snapshot.edges) : clone(workflow.edges),
       groups: snapshot?.groups ? clone(snapshot.groups) : clone(workflow.groups || []),
+      variables: snapshot?.variables ? clone(snapshot.variables) : clone(workflow.variables || []),
       context: {
         ...(context ? clone(context) : {}),
         __data__: context?.__data__ && typeof context.__data__ === 'object' ? clone(context.__data__) : {},
+        __env__: {
+          ...defaultEnv,
+          ...(env ? clone(env) : {}),
+        },
         __input__: input,
       },
       status: 'idle', executionOrder: [], currentIndex: 0,
@@ -611,6 +622,12 @@ export class ExecutionManager {
         return this.executeSwitch(resolvedData.conditions);
       case 'variable_aggregate':
         return this.executeVariableAggregate(resolvedData.groups || []);
+      case 'set_variable':
+        return this.executeSetVariable(session, resolvedData.variables || [], appendLog);
+      case 'get_variable':
+        return this.executeGetVariable(session, resolvedData);
+      case 'delete_variable':
+        return this.executeDeleteVariable(session, resolvedData, appendLog);
       case 'sub_workflow':
         return this.executeSubWorkflow(session, resolvedData, appendLog);
       case 'loop':
@@ -927,6 +944,46 @@ export class ExecutionManager {
       result[key] = this.findFirstNonEmpty(variables);
       return result;
     }, {});
+  }
+
+  private executeSetVariable(
+    session: ExecutionSession,
+    variables: any[],
+    appendLog: (level: ExecutionLogEntry['level'], message: string) => void,
+  ): Record<string, any> {
+    if (!session.context.__env__ || typeof session.context.__env__ !== 'object') session.context.__env__ = {};
+    const items = Array.isArray(variables) ? variables : [];
+    let count = 0;
+    for (const item of items) {
+      const key = typeof item?.key === 'string' ? item.key.trim() : '';
+      if (!key) continue;
+      setNestedValue(session.context.__env__, key, item.value);
+      count++;
+    }
+    appendLog('info', `Set ${count} workflow variable(s)`);
+    return { env: clone(session.context.__env__) };
+  }
+
+  private executeGetVariable(session: ExecutionSession, resolvedData: Record<string, any>): Record<string, any> {
+    const key = typeof resolvedData.key === 'string' ? resolvedData.key.trim() : '';
+    if (!key) throw new Error('get_variable node missing key');
+    const value = getNestedValue(session.context.__env__ ?? {}, key);
+    return {
+      value: value === undefined ? resolvedData.defaultValue ?? '' : value,
+      exists: value !== undefined,
+    };
+  }
+
+  private executeDeleteVariable(
+    session: ExecutionSession,
+    resolvedData: Record<string, any>,
+    appendLog: (level: ExecutionLogEntry['level'], message: string) => void,
+  ): Record<string, any> {
+    const key = typeof resolvedData.key === 'string' ? resolvedData.key.trim() : '';
+    if (!key) throw new Error('delete_variable node missing key');
+    const deleted = deleteNestedValue(session.context.__env__ ?? {}, key);
+    appendLog(deleted ? 'info' : 'warning', deleted ? `Deleted workflow variable: ${key}` : `Workflow variable not found: ${key}`);
+    return { deleted, env: clone(session.context.__env__ ?? {}) };
   }
 
   private findFirstNonEmpty(variables: any[]): any {
@@ -1250,6 +1307,9 @@ export class ExecutionManager {
     const loopMetaMatch = value.match(/^\s*\{\{\s*__loop__\.(index|count|item|isFirst|isLast)\s*\}\}\s*$/);
     if (loopMetaMatch) return this.getLoopMetaValue(session, loopMetaMatch[1]) ?? '';
 
+    const envMatch = value.match(/^\s*\{\{\s*__env__\.([^}]+?)\s*\}\}\s*$/);
+    if (envMatch) return getNestedValue(session.context.__env__ ?? {}, envMatch[1]) ?? '';
+
     const dataMatch = value.match(/^\s*\{\{\s*__data__\[(["'])([^"']+)\1\](?:\.|\[)([^}]+?)\s*\}\}\s*$/);
     if (dataMatch) {
       const data = this.getNodeExecutionData(session, dataMatch[2]);
@@ -1291,6 +1351,7 @@ export class ExecutionManager {
     let text = value
       .replace(/\{\{\s*__loop__\.vars\.([^}]+?)\s*\}\}/g, (_m, p) => String(this.getLoopVariableValue(session, p) ?? ''))
       .replace(/\{\{\s*__loop__\.(index|count|item|isFirst|isLast)\s*\}\}/g, (_m, k) => String(this.getLoopMetaValue(session, k) ?? ''))
+      .replace(/\{\{\s*__env__\.([^}]+?)\s*\}\}/g, (_m, p) => String(getNestedValue(session.context.__env__ ?? {}, p) ?? ''))
       .replace(/\{\{\s*__data__\[(["'])([^"']+)\1\](?:\.|\[)([^}]+?)\s*\}\}/g, (_m, _q, nid, fp) => {
         const d = this.getNodeExecutionData(session, nid);
         return d == null ? '' : String(getNestedValue(d, normalizeVariablePath(fp)) ?? '');
@@ -1541,7 +1602,12 @@ export class ExecutionManager {
       startedAt: session.startedAt, finishedAt: session.finishedAt,
       status: session.status === 'running' ? 'running' : session.status === 'paused' ? 'paused' : session.status === 'completed' ? 'completed' : 'error',
       steps: clone(session.steps),
-      snapshot: { nodes: clone(session.nodes), edges: clone(session.edges), groups: clone(session.groups || []) },
+      snapshot: {
+        nodes: clone(session.nodes),
+        edges: clone(session.edges),
+        groups: clone(session.groups || []),
+        variables: clone(session.variables || []),
+      },
     };
   }
 
@@ -1662,6 +1728,33 @@ function getNestedValue(obj: any, path: string): any {
     current = current[part];
   }
   return current;
+}
+
+function setNestedValue(obj: Record<string, any>, path: string, value: unknown): void {
+  const parts = normalizeVariablePath(path).split('.').filter(Boolean);
+  if (parts.length === 0) return;
+  let current: Record<string, any> = obj;
+  for (const part of parts.slice(0, -1)) {
+    const next = current[part];
+    if (!next || typeof next !== 'object' || Array.isArray(next)) current[part] = {};
+    current = current[part];
+  }
+  current[parts[parts.length - 1]] = value;
+}
+
+function deleteNestedValue(obj: Record<string, any>, path: string): boolean {
+  const parts = normalizeVariablePath(path).split('.').filter(Boolean);
+  if (parts.length === 0) return false;
+  let current: Record<string, any> = obj;
+  for (const part of parts.slice(0, -1)) {
+    const next = current[part];
+    if (!next || typeof next !== 'object') return false;
+    current = next;
+  }
+  const last = parts[parts.length - 1];
+  if (!Object.prototype.hasOwnProperty.call(current, last)) return false;
+  delete current[last];
+  return true;
 }
 
 function normalizeVariablePath(path: string): string {

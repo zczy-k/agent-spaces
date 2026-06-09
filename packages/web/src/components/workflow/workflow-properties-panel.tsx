@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
-import type { WorkflowEdge, WorkflowNode } from '@agent-spaces/shared';
+import type { OutputField, WorkflowEdge, WorkflowNode } from '@agent-spaces/shared';
 import { Button } from '@/components/ui/button';
 import { Copy, X } from 'lucide-react';
 import { CheckCircle2, XCircle } from 'lucide-react';
@@ -31,6 +31,7 @@ interface PropertiesPanelProps {
   nodes?: WorkflowNode[];
   edges?: WorkflowEdge[];
   enabledPlugins?: string[];
+  variables?: OutputField[];
   onUpdateData: (nodeId: string, data: Record<string, unknown>) => void;
   debugNodeId?: string | null;
   debugStatus?: 'idle' | 'running' | 'completed' | 'error';
@@ -44,6 +45,7 @@ export function WorkflowPropertiesPanel({
   nodes = [],
   edges = [],
   enabledPlugins = [],
+  variables = [],
   onUpdateData,
   debugNodeId = null,
   debugStatus = 'idle',
@@ -81,8 +83,8 @@ export function WorkflowPropertiesPanel({
   const nodeId = node?.id;
   const variableContext = useMemo<WorkflowVariableContext | undefined>(() => {
     if (!node) return undefined;
-    return { nodes, edges, currentNodeId: node.id, enabledPlugins };
-  }, [edges, enabledPlugins, node, nodes]);
+    return { nodes, edges, currentNodeId: node.id, enabledPlugins, variables };
+  }, [edges, enabledPlugins, node, nodes, variables]);
 
   // Handlers
   const isVariableRef = (value: unknown): boolean => typeof value === 'string' && value.includes('{{');

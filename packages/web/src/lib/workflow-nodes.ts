@@ -148,6 +148,57 @@ const flowControlNodes: NodeTypeDefinition[] = [
     outputs: [{ key: 'result', type: 'object' }],
   },
   {
+    type: 'set_variable',
+    label: '设置变量',
+    category: '流程控制',
+    icon: 'Braces',
+    description: '写入或覆盖工作流运行时变量，可一次设置多个变量',
+    properties: [
+      {
+        key: 'variables',
+        label: '变量列表',
+        type: 'array',
+        default: [],
+        required: true,
+        itemTemplate: { key: '', value: '' },
+        fields: [
+          { key: 'key', label: '变量名', type: 'text', required: true, placeholder: 'name' },
+          { key: 'value', label: '变量值', type: 'text', placeholder: '支持 {{ }} 变量表达式' },
+        ],
+      },
+    ],
+    outputs: [{ key: 'env', type: 'object' }],
+  },
+  {
+    type: 'get_variable',
+    label: '获取变量',
+    category: '流程控制',
+    icon: 'Search',
+    description: '读取工作流运行时变量',
+    properties: [
+      { key: 'key', label: '变量名', type: 'text', required: true },
+      { key: 'defaultValue', label: '默认值', type: 'text' },
+    ],
+    outputs: [
+      { key: 'value', type: 'any' },
+      { key: 'exists', type: 'boolean' },
+    ],
+  },
+  {
+    type: 'delete_variable',
+    label: '删除变量',
+    category: '流程控制',
+    icon: 'Trash2',
+    description: '从工作流运行时变量中删除指定变量',
+    properties: [
+      { key: 'key', label: '变量名', type: 'text', required: true },
+    ],
+    outputs: [
+      { key: 'deleted', type: 'boolean' },
+      { key: 'env', type: 'object' },
+    ],
+  },
+  {
     type: LOOP_BREAK_NODE_TYPE,
     label: '跳出循环',
     category: '流程控制',

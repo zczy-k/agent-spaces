@@ -26,6 +26,7 @@ export interface WorkflowVariableContext {
   edges: WorkflowEdge[];
   currentNodeId?: string | null;
   enabledPlugins?: string[];
+  variables?: OutputField[];
 }
 
 interface VariablePickerProps extends WorkflowVariableContext {
@@ -70,6 +71,10 @@ function buildLoopVariablePath(fieldPath: string): string {
 
 function buildConfigPath(pluginId: string, key: string): string {
   return `{{ __config__["${pluginId}"]["${key}"] }}`;
+}
+
+function buildEnvPath(fieldPath: string): string {
+  return `{{ __env__.${fieldPath} }}`;
 }
 
 function mapLoopSharedVariables(fields: OutputField[], parentPath = 'vars'): VariableField[] {
@@ -185,6 +190,7 @@ export function WorkflowVariablePicker({
   currentNodeId,
   excludeNodeId,
   enabledPlugins = [],
+  variables = [],
   onSelect,
   children,
 }: VariablePickerProps) {
@@ -294,6 +300,21 @@ export function WorkflowVariablePicker({
             </DropdownMenuSubContent>
           </DropdownMenuSub>
         )}
+
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger className="text-xs font-medium">工作流变量</DropdownMenuSubTrigger>
+          <DropdownMenuSubContent className="min-w-[180px]">
+            {variables.length > 0 ? (
+              <VariableFieldMenu
+                fields={variables}
+                nodeId="__env__"
+                onSelect={(_nodeId, fieldPath) => onSelect(buildEnvPath(fieldPath))}
+              />
+            ) : (
+              <EmptyMenuItem>无变量</EmptyMenuItem>
+            )}
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
 
         <DropdownMenuSub>
           <DropdownMenuSubTrigger className="text-xs font-medium">节点输入</DropdownMenuSubTrigger>

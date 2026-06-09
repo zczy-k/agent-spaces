@@ -2,6 +2,7 @@ import type {
   EngineStatus,
   ExecutionLog,
   ExecutionStep,
+  OutputField,
   Workflow,
   WorkflowEdge,
   WorkflowGroup,
@@ -104,6 +105,7 @@ export interface ExecutionSnapshot {
   nodes: WorkflowNode[]
   edges: WorkflowEdge[]
   groups?: Workflow['groups']
+  variables?: OutputField[]
 }
 
 // ---- Backlog (for recovery) ----
@@ -148,6 +150,7 @@ export interface ExecutionControlRequest {
 export interface WorkflowExecuteRequest {
   workflowId: string
   input?: Record<string, unknown>
+  env?: Record<string, unknown>
   snapshot?: ExecutionSnapshot
   startNodeId?: string
 }
@@ -161,6 +164,7 @@ export interface WorkflowDebugNodeRequest {
   workflowId: string
   nodeId: string
   input?: Record<string, unknown>
+  env?: Record<string, unknown>
   context?: Record<string, unknown>
   snapshot?: ExecutionSnapshot
   embeddedNode?: WorkflowNode

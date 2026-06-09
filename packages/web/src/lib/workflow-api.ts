@@ -36,10 +36,11 @@ export const workflowApi = {
   execute(
     workflowId: string,
     input?: Record<string, unknown>,
-    snapshot?: { nodes: WorkflowNode[]; edges: Workflow['edges']; groups?: Workflow['groups'] },
+    snapshot?: { nodes: WorkflowNode[]; edges: Workflow['edges']; groups?: Workflow['groups']; variables?: Workflow['variables'] },
     startNodeId?: string,
+    env?: Record<string, unknown>,
   ) {
-    return { event: 'workflow:execute' as const, data: { workflowId, input, snapshot, startNodeId } };
+    return { event: 'workflow:execute' as const, data: { workflowId, input, env, snapshot, startNodeId } };
   },
 };
 

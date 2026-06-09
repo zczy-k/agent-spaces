@@ -124,6 +124,7 @@ export function useWorkflowEditorExecution({
           nodes: workflow.nodes,
           edges: workflow.edges,
           groups: workflow.groups || [],
+          variables: workflow.variables || [],
         },
       });
     };
@@ -163,7 +164,7 @@ export function useWorkflowEditorExecution({
   }, [workflow, cleanupDebugListeners]);
 
   // ---- Execution ----
-  const handleExecute = useCallback((input?: Record<string, unknown>, startNodeId?: string) => {
+  const handleExecute = useCallback((input?: Record<string, unknown>, startNodeId?: string, env?: Record<string, unknown>) => {
     if (!workflow) return;
     cleanupExecutionListeners();
     setExecStatus('running');
@@ -176,11 +177,13 @@ export function useWorkflowEditorExecution({
       ws.send('workflow:execute', {
         workflowId: workflow.id,
         input,
+        env,
         startNodeId,
         snapshot: {
           nodes: workflow.nodes,
           edges: workflow.edges,
           groups: workflow.groups || [],
+          variables: workflow.variables || [],
         },
       });
     };
