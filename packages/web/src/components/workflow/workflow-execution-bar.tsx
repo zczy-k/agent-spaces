@@ -367,8 +367,9 @@ export function WorkflowExecutionBar({
                       const definition = nodeDefinitionById.get(step.nodeId);
                       const pluginMeta = definition as (typeof definition & PluginNodeDefinitionMeta);
                       const iconDefinition = definition ? { ...definition, ...pluginMeta } : null;
+                      const resolvedNodeLabel = (step.nodeLabel && !step.nodeLabel.startsWith('nodes.')) ? step.nodeLabel : (definition?.label ? String(t(definition.label as Parameters<typeof t>[0])) : step.nodeId);
                       const nodeInfo = [
-                        `# ${step.nodeLabel || step.nodeId}`,
+                        `# ${resolvedNodeLabel}`,
                         `${t('execution.nodeType')}: ${nodeType}`,
                         '',
                         `## ${t('execution.input')}`,
@@ -383,7 +384,7 @@ export function WorkflowExecutionBar({
                           <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-border">
                             {stepIcon(step.status)}
                             <WorkflowNodeDefinitionIcon definition={iconDefinition} className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                            <span className="text-xs font-medium truncate flex-1">{step.nodeLabel || step.nodeId}</span>
+                            <span className="text-xs font-medium truncate flex-1">{resolvedNodeLabel}</span>
                             <span className="text-[10px] text-muted-foreground/70 shrink-0 font-mono">
                               {nodeType}
                             </span>
@@ -416,8 +417,8 @@ export function WorkflowExecutionBar({
                                       setPresetDialogState(prev => ({
                                         open: true,
                                         nodeId: step.nodeId,
-                                        nodeLabel: step.nodeLabel || step.nodeId,
-                                        defaultName: t('execution.executionResult', { label: step.nodeLabel || step.nodeId }),
+                                        nodeLabel: resolvedNodeLabel,
+                                        defaultName: t('execution.executionResult', { label: resolvedNodeLabel }),
                                         defaultJson: JSON.stringify({
                                           data: snapshotNode.data ?? {},
                                           inputs: inputData,

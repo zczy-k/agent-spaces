@@ -260,6 +260,19 @@ export function WorkflowPropertiesPanel({
             </div>
           )}
 
+          <IOFieldsSections
+            node={node}
+            data={data}
+            canEditInputFields={canEditInputFields}
+            canEditOutputFields={canEditOutputFields}
+            variableContext={variableContext}
+            selectedJsonPreset={selectedJsonPreset}
+            debugResult={debugResult}
+            hasDebugOutput={hasDebugOutput}
+            onDataChange={handleDataChange}
+            onOpenImport={() => setImportOpen(true)}
+          />
+
           <PropertiesList
             properties={visibleProperties}
             data={data}
@@ -275,18 +288,6 @@ export function WorkflowPropertiesPanel({
             onPreviewDataChange={handlePreviewDataChange}
           />
 
-          <IOFieldsSections
-            node={node}
-            data={data}
-            canEditInputFields={canEditInputFields}
-            canEditOutputFields={canEditOutputFields}
-            variableContext={variableContext}
-            selectedJsonPreset={selectedJsonPreset}
-            debugResult={debugResult}
-            hasDebugOutput={hasDebugOutput}
-            onDataChange={handleDataChange}
-            onOpenImport={() => setImportOpen(true)}
-          />
         </div>
       </ScrollArea>
 

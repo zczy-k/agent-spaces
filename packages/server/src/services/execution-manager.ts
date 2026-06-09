@@ -612,7 +612,8 @@ export class ExecutionManager {
         return this.executeCode(
           this.getRuntimeContext(session),
           String(resolvedData.code || ''),
-          this.buildOutputObject(resolvedData.inputFields) ?? {},
+          this.buildCodeParams(session, node, resolvedData),
+          appendLog,
         );
       case 'toast':
         return { message: String(resolvedData.message || ''), type: String(resolvedData.type || 'info') };
@@ -910,12 +911,65 @@ export class ExecutionManager {
     return { values: result, confirmed: result !== null };
   }
 
-  private executeCode(context: Record<string, any>, code: string, params: Record<string, any>): any {
+  private executeCode(
+    context: Record<string, any>,
+    code: string,
+    params: Record<string, any>,
+    appendLog: (level: ExecutionLogEntry['level'], message: string) => void,
+  ): any {
     const normalized = code
       .replace(/\basync\s+function\s+main\s*\(\s*\{\s*params\s*\}\s*:\s*Args\s*\)\s*:\s*Promise\s*<\s*Output\s*>/g, 'async function main({ params })')
       .replace(/\bfunction\s+main\s*\(\s*\{\s*params\s*\}\s*:\s*Args\s*\)\s*:\s*Output/g, 'function main({ params })');
-    const fn = new Function('context', 'params', `${normalized}\nif (typeof main === 'function') return main({ params, context })`);
-    return fn(context, params);
+    const formatConsoleValue = (value: unknown): string => {
+      if (typeof value === 'string') return value;
+      if (value instanceof Error) return value.stack || value.message;
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return String(value);
+      }
+    };
+    const workflowConsole = {
+      ...console,
+      log: (...args: unknown[]) => {
+        console.log(...args);
+        appendLog('info', args.map(formatConsoleValue).join(' '));
+      },
+      info: (...args: unknown[]) => {
+        console.info(...args);
+        appendLog('info', args.map(formatConsoleValue).join(' '));
+      },
+      warn: (...args: unknown[]) => {
+        console.warn(...args);
+        appendLog('warning', args.map(formatConsoleValue).join(' '));
+      },
+      error: (...args: unknown[]) => {
+        console.error(...args);
+        appendLog('error', args.map(formatConsoleValue).join(' '));
+      },
+    };
+    const fn = new Function('context', 'params', 'console', `${normalized}\nif (typeof main === 'function') return main({ params, context })`);
+    return fn(context, params, workflowConsole);
+  }
+
+  private buildCodeParams(
+    session: ExecutionSession,
+    node: WorkflowNode,
+    resolvedData: Record<string, any>,
+  ): Record<string, any> {
+    const explicitInput = this.buildOutputObject(resolvedData.inputFields);
+    if (explicitInput) return explicitInput;
+
+    const sourceNodeId = typeof resolvedData.sourceNodeId === 'string' && resolvedData.sourceNodeId
+      ? resolvedData.sourceNodeId
+      : session.edges.find(edge => edge.target === node.id && this.isActiveEdge(session, edge))?.source;
+    if (!sourceNodeId) return {};
+
+    const sourceOutput = this.getNodeExecutionData(session, sourceNodeId);
+    if (sourceOutput && typeof sourceOutput === 'object' && !Array.isArray(sourceOutput)) {
+      return { ...sourceOutput };
+    }
+    return sourceOutput === undefined ? {} : { input: sourceOutput };
   }
 
   private executeSwitch(conditions: unknown): any {

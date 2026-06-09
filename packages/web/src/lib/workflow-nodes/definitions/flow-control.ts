@@ -39,6 +39,7 @@ export const flowControlNodes: NodeTypeDefinition[] = [
     category: 'nodes.categories.flowControl',
     icon: 'Terminal',
     description: 'nodes.run_code.description',
+    allowInputFields: true,
     properties: [
       {
         key: 'code',

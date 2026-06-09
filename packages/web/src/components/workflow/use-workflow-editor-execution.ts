@@ -218,6 +218,14 @@ export function useWorkflowEditorExecution({
       setExecutionLogs(prev => [event.log!, ...prev.filter(item => item.id !== event.log!.id)]);
       setExecStatus(event.log.status);
     });
+    const offProgress = ws.on('node:progress', (data) => {
+      const event = data as { workflowId?: string; nodeLabel?: string; message?: string; data?: { level?: string } };
+      if (event.workflowId !== workflow.id || !event.message) return;
+      const prefix = event.nodeLabel ? `[Workflow:${event.nodeLabel}]` : '[Workflow]';
+      if (event.data?.level === 'error') console.error(prefix, event.message);
+      else if (event.data?.level === 'warning') console.warn(prefix, event.message);
+      else console.log(prefix, event.message);
+    });
     const offPaused = ws.on('workflow:paused', (data) => {
       const event = data as { workflowId?: string; executionId?: string; currentNodeId?: string; reason?: string };
       if (event.workflowId !== workflow.id) return;
@@ -264,7 +272,7 @@ export function useWorkflowEditorExecution({
       setExecStatus('error');
       void loadExecutionLogs();
     });
-    executionCleanupRef.current = [offResult, offError, offLog, offPaused, offResumed, offCompleted, offFailed];
+    executionCleanupRef.current = [offResult, offError, offLog, offProgress, offPaused, offResumed, offCompleted, offFailed];
 
     if (ws.connected) {
       sendExecuteRequest();
