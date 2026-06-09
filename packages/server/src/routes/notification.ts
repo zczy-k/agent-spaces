@@ -11,6 +11,17 @@ router.get('/', (req: Request<Params>, res: Response) => {
   res.json(nc.listNotifications(workspaceId));
 });
 
+router.post('/', (req: Request<Params>, res: Response) => {
+  const workspaceId = req.params.id;
+  const { type, title, description, data } = req.body;
+  if (!type || !title) {
+    res.status(400).json({ error: 'type and title are required' });
+    return;
+  }
+  const notification = nc.createNotification(workspaceId, type, title, description, data ?? {});
+  res.status(201).json(notification);
+});
+
 router.put('/:notificationId/read', (req: Request<Params>, res: Response) => {
   const workspaceId = req.params.id;
   const notificationId = req.params.notificationId!;

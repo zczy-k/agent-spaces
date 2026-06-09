@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { fetchWithAuth } from '@/lib/auth';
 import * as AgentSpacesUI from '@/lib/ui-exports';
+import { useEditorStore } from '@/stores/editor';
 
 const LAST_SELECTION_CONFIG = 'last-selection.json';
 
@@ -107,6 +108,50 @@ export function useWorkflowUiHostApi(projectId: string) {
       return resp.json();
     };
 
+    // ---- Plugin info ----
+    const getPluginInfo = async (pluginId: string) => {
+      const resp = await fetchWithAuth(`/api/plugins`);
+      if (!resp.ok) throw new Error(`Failed to list plugins: ${resp.status}`);
+      const plugins: any[] = await resp.json();
+      return plugins.find((p: any) => p.id === pluginId) ?? null;
+    };
+
+    // ---- Tool exists check ----
+    const toolExists = async (pluginId: string, toolName: string): Promise<boolean> => {
+      const resp = await fetchWithAuth(`/api/plugins/${pluginId}/tools`);
+      if (!resp.ok) return false;
+      const tools: Array<{ name: string }> = await resp.json();
+      return tools.some((t) => t.name === toolName);
+    };
+
+    // ---- Open file in editor ----
+    const openFile = async (filePath: string, line?: number, column?: number) => {
+      window.dispatchEvent(new CustomEvent('agent-spaces:open-file', {
+        detail: { workspaceId: projectId, path: filePath, line, column },
+      }));
+    };
+
+    // ---- Reveal folder in file manager ----
+    const revealFolder = async (folderPath?: string) => {
+      const query = folderPath ? `?path=${encodeURIComponent(folderPath)}` : '';
+      const resp = await fetchWithAuth(`/api/workspaces/${projectId}/files/reveal${query}`, {
+        method: 'POST',
+      });
+      if (!resp.ok) throw new Error(`Failed to reveal folder: ${resp.status}`);
+      return resp.json();
+    };
+
+    // ---- Send notification ----
+    const sendNotification = async (type: string, title: string, description?: string, data?: Record<string, unknown>) => {
+      const resp = await fetchWithAuth(`/api/workspaces/${projectId}/notifications`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, title, description, data }),
+      });
+      if (!resp.ok) throw new Error(`Failed to send notification: ${resp.status}`);
+      return resp.json();
+    };
+
     const hostUi = {
       ...AgentSpacesUI,
       readConfigJson,
@@ -117,10 +162,27 @@ export function useWorkflowUiHostApi(projectId: string) {
       downloadFile,
     };
 
-    (window as any).AgentSpacesUI = hostUi;
-    (window as any).AgentSpaces = {
+    const pluginApi = {
       callPluginTool: executePluginTool,
       executePluginTool,
+      getPluginInfo,
+      toolExists,
+    };
+
+    const fileApi = {
+      openFile,
+      revealFolder,
+    };
+
+    const notificationApi = {
+      sendNotification,
+    };
+
+    (window as any).AgentSpacesUI = hostUi;
+    (window as any).AgentSpaces = {
+      ...pluginApi,
+      ...fileApi,
+      ...notificationApi,
       readConfigJson,
       writeConfigJson,
       readLastSelection,
@@ -129,8 +191,9 @@ export function useWorkflowUiHostApi(projectId: string) {
       downloadFile,
     };
     (window as any).AgentSpacesAPI = {
-      callPluginTool: executePluginTool,
-      executePluginTool,
+      ...pluginApi,
+      ...fileApi,
+      ...notificationApi,
       readConfigJson,
       writeConfigJson,
       readLastSelection,
@@ -139,7 +202,22 @@ export function useWorkflowUiHostApi(projectId: string) {
       downloadFile,
     };
 
+    const handleOpenFile = (e: Event) => {
+      const { workspaceId, path, line, column } = (e as CustomEvent).detail;
+      const openFile = useEditorStore.getState().openFile;
+      openFile(workspaceId, path).then(() => {
+        // Scroll to line if specified (dispatched after content loads)
+        if (line != null) {
+          window.dispatchEvent(new CustomEvent('agent-spaces:scroll-to-line', {
+            detail: { path, line, column },
+          }));
+        }
+      });
+    };
+    window.addEventListener('agent-spaces:open-file', handleOpenFile);
+
     return () => {
+      window.removeEventListener('agent-spaces:open-file', handleOpenFile);
       delete (window as any).AgentSpacesUI;
       delete (window as any).AgentSpaces;
       delete (window as any).AgentSpacesAPI;
