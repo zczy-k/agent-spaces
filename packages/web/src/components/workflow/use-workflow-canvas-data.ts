@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { type Node, type Edge } from '@xyflow/react';
-import type { Workflow, ExecutionLog, ExecutionStep } from '@agent-spaces/shared';
+import { isHiddenWorkflowEdge, type Workflow, type ExecutionLog, type ExecutionStep } from '@agent-spaces/shared';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { getWorkflowNodeSize } from './workflow-node-size';
 import type { HandlePositionMode } from './workflow-node-types';
@@ -119,7 +119,7 @@ export function useCanvasData({
   }, [executionLog, executionNodeIds, workflow.edges]);
 
   const rfEdges: Edge[] = useMemo(() =>
-    workflow.edges.map(e => ({
+    workflow.edges.filter(edge => !isHiddenWorkflowEdge(edge)).map(e => ({
       id: e.id,
       source: e.source,
       target: e.target,

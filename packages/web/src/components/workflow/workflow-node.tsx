@@ -448,7 +448,6 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
           style={getHandleStyle(handlePositions.target, 0, 1)}
         />
       )}
-
       {/* Hover test button */}
       {!isBoundaryNode && !isCanvasLocked && isHovered && (
         <button

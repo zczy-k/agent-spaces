@@ -61,6 +61,79 @@ function cloneNodeData(data: Record<string, unknown>): Record<string, unknown> {
   return JSON.parse(JSON.stringify(data)) as Record<string, unknown>;
 }
 
+function createLoopBoundaryLabel(loopNode: Workflow['nodes'][0], type: 'start' | 'end'): string {
+  return `${loopNode.label || '循环'}${type === 'start' ? '开始' : '结束'}`;
+}
+
+function createLoopBodyBoundaryNodes(
+  loopNode: Workflow['nodes'][0],
+  bodyNode: Workflow['nodes'][0],
+): { nodes: Workflow['nodes']; edges: Workflow['edges'] } {
+  const startNode: Workflow['nodes'][0] = {
+    id: createWorkflowNodeId(),
+    type: 'start',
+    label: createLoopBoundaryLabel(loopNode, 'start'),
+    position: { x: bodyNode.position.x + 80, y: bodyNode.position.y + 140 },
+    data: {},
+    composite: {
+      rootId: bodyNode.id,
+      parentId: bodyNode.id,
+      generated: true,
+      hidden: false,
+    },
+  };
+  const endNode: Workflow['nodes'][0] = {
+    id: createWorkflowNodeId(),
+    type: 'end',
+    label: createLoopBoundaryLabel(loopNode, 'end'),
+    position: { x: bodyNode.position.x + 420, y: bodyNode.position.y + 140 },
+    data: {},
+    composite: {
+      rootId: bodyNode.id,
+      parentId: bodyNode.id,
+      generated: true,
+      hidden: false,
+    },
+  };
+
+  return {
+    nodes: [startNode, endNode],
+    edges: [
+      {
+        id: createWorkflowEdgeId({
+          source: bodyNode.id,
+          target: startNode.id,
+          sourceHandle: null,
+          targetHandle: 'target',
+        }),
+        source: bodyNode.id,
+        target: startNode.id,
+        sourceHandle: null,
+        targetHandle: 'target',
+        composite: {
+          rootId: bodyNode.id,
+          parentId: bodyNode.id,
+          generated: true,
+          hidden: true,
+          locked: true,
+        },
+      },
+      {
+        id: createWorkflowEdgeId({
+          source: startNode.id,
+          target: endNode.id,
+          sourceHandle: null,
+          targetHandle: 'target',
+        }),
+        source: startNode.id,
+        target: endNode.id,
+        sourceHandle: null,
+        targetHandle: 'target',
+      },
+    ],
+  };
+}
+
 function createNodesForDefinition(
   type: string,
   position: { x: number; y: number },
@@ -181,6 +254,12 @@ function createNodesForDefinition(
   }
 
   const nodes = [rootNode, ...Array.from(roleMap.values()).filter(node => node.id !== rootNode.id)];
+  const bodyNode = Array.from(roleMap.values()).find(node => node.type === LOOP_BODY_NODE_TYPE);
+  if (bodyNode) {
+    const boundaries = createLoopBodyBoundaryNodes(rootNode, bodyNode);
+    nodes.push(...boundaries.nodes);
+    edges.push(...boundaries.edges);
+  }
   return { rootNode, nodes, edges };
 }
 
@@ -200,8 +279,20 @@ function getInsertScopeNode(
   if (!sourceNodeId) return null;
   const sourceNode = nodes.find(node => node.id === sourceNodeId);
   if (sourceNode?.type === LOOP_BODY_NODE_TYPE) return sourceNode;
-  if (sourceHandle !== LOOP_BODY_SOURCE_HANDLE) return null;
-  return findCompositeChildByRole(nodes, sourceNodeId, LOOP_BODY_ROLE) ?? null;
+  if (sourceHandle === LOOP_BODY_SOURCE_HANDLE) {
+    return findCompositeChildByRole(nodes, sourceNodeId, LOOP_BODY_ROLE) ?? null;
+  }
+
+  let current = sourceNode;
+  while (current) {
+    const parentId = getCompositeParentId(current);
+    if (!parentId) return null;
+    const parent = nodes.find(node => node.id === parentId);
+    if (!parent) return null;
+    if (isScopeBoundaryWorkflowNode(parent)) return parent;
+    current = parent;
+  }
+  return null;
 }
 
 export function useWorkflowEditorCanvas({

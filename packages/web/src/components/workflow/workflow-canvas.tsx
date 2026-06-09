@@ -19,7 +19,7 @@ import {
 } from '@xyflow/react';
 import { Check, Grid3X3, Grip, PanelsTopLeft, Waypoints } from 'lucide-react';
 import '@xyflow/react/dist/style.css';
-import { LOOP_BODY_NODE_TYPE, type ExecutionLog, type Workflow, type StagedNode } from '@agent-spaces/shared';
+import type { ExecutionLog, Workflow, StagedNode } from '@agent-spaces/shared';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { WORKFLOW_NODE_DRAG_MIME, WORKFLOW_STAGED_NODE_DRAG_MIME } from './workflow-drag-types';
 import { WorkflowNode as WorkflowNodeComponent } from './workflow-node';
@@ -346,10 +346,8 @@ export function WorkflowCanvas({
   const handleConnectEnd: OnConnectEnd = useCallback((event) => {
     const connectSource = connectSourceRef.current;
     if (!isCanvasLocked && connectSource && !connectSucceededRef.current) {
-      const sourceNode = workflow.nodes.find(node => node.id === connectSource.nodeId);
       const isSourceHandle = connectSource.handleType === 'source';
-      const isLoopBodyTargetHandle = connectSource.handleType === 'target' && sourceNode?.type === LOOP_BODY_NODE_TYPE;
-      if (!isSourceHandle && !isLoopBodyTargetHandle) {
+      if (!isSourceHandle) {
         connectSourceRef.current = null;
         connectSucceededRef.current = false;
         return;
@@ -366,7 +364,7 @@ export function WorkflowCanvas({
       const position = clientPosition ? screenToFlowPosition(clientPosition) : null;
       onConnectionDrop?.({
         sourceNodeId: connectSource.nodeId,
-        sourceHandle: isSourceHandle ? connectSource.handleId : null,
+        sourceHandle: connectSource.handleId,
         position,
       });
     }
@@ -379,7 +377,7 @@ export function WorkflowCanvas({
       eventType: event.type,
       snapshot: getNodeDebugSnapshot(),
     });
-  }, [getNodeDebugSnapshot, isCanvasLocked, onConnectionDrop, screenToFlowPosition, workflow.nodes]);
+  }, [getNodeDebugSnapshot, isCanvasLocked, onConnectionDrop, screenToFlowPosition]);
 
   const handleNodeDragStart = useCallback((_: React.MouseEvent, node: Node) => {
     if (!DEBUG_WORKFLOW_CANVAS) return;
