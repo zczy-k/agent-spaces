@@ -2,9 +2,9 @@ const actions = require('./actions')
 
 exports.activate = (context) => {
   context.registerActions(actions)
-  context.logger.info('阿里云OSS插件已激活')
+  context.logger.info('Aliyun OSS plugin activated')
 }
 
 exports.deactivate = (context) => {
-  context.logger.info('阿里云OSS插件已停用')
+  context.logger.info('Aliyun OSS plugin deactivated')
 }

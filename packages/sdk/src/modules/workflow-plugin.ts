@@ -21,8 +21,8 @@ export function createWorkflowPluginApi(http: HttpClient) {
     installFromStore: (pluginId: string, sourceUrl?: string): Promise<PluginMeta> =>
       http.post(`/api/plugins/store/${encodeURIComponent(pluginId)}/install`, sourceUrl ? { sourceUrl } : undefined),
 
-    getWorkflowNodes: (pluginId: string): Promise<NodeTypeDefinition[]> =>
-      http.get<PluginWorkflowNodesResult>(`/api/plugins/${encodeURIComponent(pluginId)}/workflow-nodes`)
+    getWorkflowNodes: (pluginId: string, query = ''): Promise<NodeTypeDefinition[]> =>
+      http.get<PluginWorkflowNodesResult>(`/api/plugins/${encodeURIComponent(pluginId)}/workflow-nodes${query}`)
         .then(data => Array.isArray(data?.nodes) ? data.nodes : []),
 
     getConfig: (pluginId: string): Promise<Record<string, string>> =>

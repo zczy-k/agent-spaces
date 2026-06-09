@@ -4,6 +4,7 @@ import { isLoginPath } from './routes';
 
 const TOKEN_KEY = 'agent-spaces-token';
 const VERIFIED_KEY = 'agent-spaces-auth-verified';
+const LOCALE_KEY = 'agent-spaces-locale';
 
 function getTokenKey(): string {
   return `${TOKEN_KEY}:${loadActiveId()}`;
@@ -37,8 +38,13 @@ export function isAuthenticated(): boolean {
 
 export function authHeaders(): HeadersInit {
   const token = getToken();
-  if (token === null) return {};
-  return { Authorization: `Bearer ${token}` };
+  const headers: Record<string, string> = {};
+  if (token !== null) headers.Authorization = `Bearer ${token}`;
+  if (typeof window !== 'undefined') {
+    const locale = localStorage.getItem(LOCALE_KEY);
+    if (locale === 'en' || locale === 'zh') headers['Accept-Language'] = locale;
+  }
+  return headers;
 }
 
 function resolveUrl(input: string): string {

@@ -12,6 +12,15 @@ export type StoreWorkflowPlugin = Omit<WorkflowPlugin, 'enabled'> & {
   iconUrl?: string;
 };
 
+const LOCALE_STORAGE_KEY = 'agent-spaces-locale';
+
+function getPluginLocaleQuery(): string {
+  if (typeof window === 'undefined') return '';
+  const locale = localStorage.getItem(LOCALE_STORAGE_KEY);
+  if (locale !== 'en' && locale !== 'zh') return '';
+  return `?locale=${encodeURIComponent(locale)}`;
+}
+
 export const pluginApi = {
   list(): Promise<PluginMeta[]> {
     return sdk.workflowPlugin.listAll();
@@ -32,7 +41,7 @@ export const pluginApi = {
     return sdk.workflowPlugin.installFromStore(pluginId, sourceUrl);
   },
   getWorkflowNodes(pluginId: string): Promise<NodeTypeDefinition[]> {
-    return sdk.workflowPlugin.getWorkflowNodes(pluginId);
+    return sdk.workflowPlugin.getWorkflowNodes(pluginId, getPluginLocaleQuery());
   },
   getConfig(pluginId: string): Promise<Record<string, string>> {
     return sdk.workflowPlugin.getConfig(pluginId);

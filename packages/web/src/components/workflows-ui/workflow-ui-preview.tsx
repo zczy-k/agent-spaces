@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useCallback, useEffect, useRef } from 'react';
@@ -31,6 +32,7 @@ export function WorkflowUiPreview({ type, sourceCode, error, onError }: Workflow
 
     try {
       // Dynamic import of @babel/standalone
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const Babel = require('@babel/standalone');
       const compiled = Babel.transform(code, {
         presets: ['react'],
@@ -80,7 +82,7 @@ export function WorkflowUiPreview({ type, sourceCode, error, onError }: Workflow
 
     for (const script of scripts) {
       try {
-        // eslint-disable-next-line no-eval
+        // eslint-disable-next-line react-hooks/unsupported-syntax
         eval(script);
       } catch (err: any) {
         onError(`Script error: ${err.message}`);

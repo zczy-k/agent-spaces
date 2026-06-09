@@ -28,6 +28,7 @@ type PluginManifest = Partial<Omit<PluginMeta, 'enabled' | 'tags' | 'hasView'>> 
 
 type WorkflowNodeHandler = (ctx: any, args: Record<string, any>) => Promise<any>;
 type StoreFile = { path: string; downloadUrl: string };
+type PluginTranslator = (key: string, fallback?: string) => string;
 
 type PluginState = {
   enabled: Record<string, boolean>;
@@ -42,8 +43,11 @@ type ExecutablePlugin = {
 
 type PluginRuntimeState = {
   activated: boolean;
-  actions: PluginActionDefinition[];
+  registeredActions: RegisteredPluginActions | null;
+  localizedActions: Map<string, PluginActionDefinition[]>;
 };
+
+type RegisteredPluginActions = PluginActionDefinition[] | ((t: PluginTranslator) => PluginActionDefinition[]);
 
 type PluginActionProperty = Record<string, any> & {
   key: string;
@@ -123,6 +127,30 @@ function readManifestFromDir(dir: string): PluginManifest | null {
     if (manifest?.id || manifest?.name) return manifest;
   }
   return null;
+}
+
+function normalizeLocale(locale?: string): string {
+  const value = String(locale || '').toLowerCase();
+  if (value.startsWith('en')) return 'en';
+  return 'zh';
+}
+
+function readPluginLang(dir: string): Record<string, Record<string, string>> {
+  const lang = readJsonFile<Record<string, Record<string, string>>>(path.join(dir, 'lang.json'));
+  return lang && typeof lang === 'object' ? lang : {};
+}
+
+function createPluginTranslator(dir: string, locale?: string): PluginTranslator {
+  const lang = readPluginLang(dir);
+  const currentLocale = normalizeLocale(locale);
+  const current = lang[currentLocale] || {};
+  const fallbackLocale = currentLocale === 'en' ? 'zh' : 'en';
+  const fallbackLang = lang[fallbackLocale] || {};
+
+  return (key: string, fallback?: string) => {
+    if (typeof key !== 'string' || !key) return fallback ?? '';
+    return current[key] || fallbackLang[key] || fallback || key;
+  };
 }
 
 function hasPackageDependencies(dir: string): boolean {
@@ -256,6 +284,7 @@ function propertyToSchema(property: PluginActionProperty): Record<string, unknow
   };
 
   const description = property.description || property.tooltip || property.label;
+  if (property.label) schema.title = property.label;
   if (description) schema.description = description;
   if (property.items) schema.items = property.items;
   if (property.enum) schema.enum = property.enum;
@@ -313,7 +342,7 @@ function createPluginActions(actions: PluginActionDefinition[]) {
       tools,
       handler: async (name: string, args: Record<string, any>, api: Record<string, any>) => {
         const run = handlers.get(name);
-        if (!run) return { success: false, message: `未知工具: ${name}` };
+        if (!run) return { success: false, message: `Unknown tool: ${name}` };
         return run({ api, logger: api?.logger || console }, args);
       },
     }),
@@ -332,18 +361,25 @@ function createPluginRequire(entryPath: string) {
   };
 }
 
-function createPluginContext(plugin: PluginMeta) {
+function createPluginContext(plugin: PluginMeta, dir: string) {
+  const t = createPluginTranslator(dir);
   return {
     plugin,
     config: getPluginConfig(plugin.id),
+    t,
     logger: {
       info: (message: string) => console.info(`[plugin:${plugin.id}] ${message}`),
       warning: (message: string) => console.warn(`[plugin:${plugin.id}] ${message}`),
       error: (message: string) => console.error(`[plugin:${plugin.id}] ${message}`),
     },
-    registerActions: (actions: PluginActionDefinition[]) => {
-      const state = pluginRuntimeState.get(plugin.id) ?? { activated: false, actions: [] };
-      state.actions = Array.isArray(actions) ? actions : [];
+    registerActions: (actions: RegisteredPluginActions) => {
+      const state = pluginRuntimeState.get(plugin.id) ?? {
+        activated: false,
+        registeredActions: null,
+        localizedActions: new Map<string, PluginActionDefinition[]>(),
+      };
+      state.registeredActions = Array.isArray(actions) || typeof actions === 'function' ? actions : [];
+      state.localizedActions.clear();
       pluginRuntimeState.set(plugin.id, state);
     },
   };
@@ -353,7 +389,11 @@ function activatePlugin(plugin: PluginMeta): void {
   const current = pluginRuntimeState.get(plugin.id);
   if (current?.activated) return;
 
-  const nextState = current ?? { activated: false, actions: [] };
+  const nextState = current ?? {
+    activated: false,
+    registeredActions: null,
+    localizedActions: new Map<string, PluginActionDefinition[]>(),
+  };
   pluginRuntimeState.set(plugin.id, nextState);
 
   const manifest = getManifest(plugin.id);
@@ -377,14 +417,28 @@ function activatePlugin(plugin: PluginMeta): void {
   runner(createPluginRequire(serverPath), module, module.exports, serverPath, path.dirname(serverPath));
 
   if (typeof module.exports.activate === 'function') {
-    module.exports.activate(createPluginContext(plugin));
+    module.exports.activate(createPluginContext(plugin, dir));
   }
   nextState.activated = true;
 }
 
-function getRegisteredPluginActions(plugin: PluginMeta): PluginActionDefinition[] {
+function getRegisteredPluginActions(plugin: PluginMeta, locale?: string): PluginActionDefinition[] {
   activatePlugin(plugin);
-  return pluginRuntimeState.get(plugin.id)?.actions ?? [];
+  const state = pluginRuntimeState.get(plugin.id);
+  if (!state?.registeredActions) return [];
+
+  const normalizedLocale = normalizeLocale(locale);
+  const cached = state.localizedActions.get(normalizedLocale);
+  if (cached) return cached;
+
+  const dir = resolvePluginDir(plugin.id);
+  const t = dir ? createPluginTranslator(dir, normalizedLocale) : ((key: string, fallback?: string) => fallback || key);
+  const actions = typeof state.registeredActions === 'function'
+    ? state.registeredActions(t)
+    : state.registeredActions;
+  const normalizedActions = Array.isArray(actions) ? actions : [];
+  state.localizedActions.set(normalizedLocale, normalizedActions);
+  return normalizedActions;
 }
 
 function loadCommonJsWorkflowNodes(workflowPath: string): NodeTypeDefinition[] {
@@ -636,6 +690,7 @@ async function tryInstallStoreCommonFiles(pluginId: string, sourceUrl: string): 
     'workflow.js',
     'tools.js',
     'actions.js',
+    'lang.json',
     'shared.js',
   ]);
 
@@ -733,14 +788,14 @@ function getWorkflowEntryPath(pluginId: string): string | null {
   return existsSync(workflowPath) ? workflowPath : null;
 }
 
-export function getWorkflowNodes(pluginId: string): NodeTypeDefinition[] {
+export function getWorkflowNodes(pluginId: string, locale?: string): NodeTypeDefinition[] {
   const manifest = getManifest(pluginId);
   if (!manifest) throw new Error('Plugin not found');
   if (Array.isArray(manifest.workflowNodes)) return manifest.workflowNodes;
 
   const plugin = listPlugins().find(item => item.id === pluginId);
   if (plugin) {
-    const actions = getRegisteredPluginActions(plugin);
+    const actions = getRegisteredPluginActions(plugin, locale);
     if (actions.length) return createPluginActions(actions).workflow().nodes as NodeTypeDefinition[];
   }
 
@@ -754,11 +809,11 @@ export function getWorkflowNodes(pluginId: string): NodeTypeDefinition[] {
   return Array.isArray(payload?.nodes) ? payload.nodes : [];
 }
 
-export function getPluginTools(pluginId: string): Array<{ name: string; description: string; input_schema: Record<string, unknown> }> {
+export function getPluginTools(pluginId: string, locale?: string): Array<{ name: string; description: string; input_schema: Record<string, unknown> }> {
   const plugin = listPlugins().find(item => item.id === pluginId);
   if (!plugin) throw new Error('Plugin not found');
 
-  const actions = getRegisteredPluginActions(plugin);
+  const actions = getRegisteredPluginActions(plugin, locale);
   if (!actions.length) return [];
   return createPluginActions(actions).tools().tools;
 }
@@ -768,11 +823,12 @@ export async function executePluginTool(
   name: string,
   args: Record<string, any>,
   api: Record<string, any> = {},
+  locale?: string,
 ): Promise<any> {
   const plugin = listPlugins().find(item => item.id === pluginId);
   if (!plugin) throw new Error('Plugin not found');
 
-  const actions = getRegisteredPluginActions(plugin);
+  const actions = getRegisteredPluginActions(plugin, locale);
   if (!actions.length) throw new Error(`Plugin has no registered tools: ${pluginId}`);
 
   const mergedArgs = Object.assign({}, getPluginConfig(pluginId), args);

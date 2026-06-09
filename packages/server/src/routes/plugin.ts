@@ -6,6 +6,12 @@ import { createBuiltinPluginApi } from '../services/plugin-runtime-api.js';
 
 const router = Router();
 
+function resolveLocale(req: Request): string | undefined {
+  const queryLocale = typeof req.query.locale === 'string' ? req.query.locale : undefined;
+  const acceptLanguage = req.headers['accept-language'];
+  return queryLocale || (Array.isArray(acceptLanguage) ? acceptLanguage[0] : acceptLanguage);
+}
+
 router.get('/:pluginId/icon', (req: Request<{ pluginId: string }>, res: Response) => {
   try {
     const pluginId = req.params.pluginId;
@@ -94,7 +100,7 @@ router.put('/:pluginId/config', (req: Request<{ pluginId: string }>, res: Respon
 
 router.get('/:pluginId/workflow-nodes', (req: Request<{ pluginId: string }>, res: Response) => {
   try {
-    res.json({ pluginId: req.params.pluginId, nodes: pluginService.getWorkflowNodes(req.params.pluginId) });
+    res.json({ pluginId: req.params.pluginId, nodes: pluginService.getWorkflowNodes(req.params.pluginId, resolveLocale(req)) });
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }
@@ -104,7 +110,7 @@ router.get('/:pluginId/workflow-nodes', (req: Request<{ pluginId: string }>, res
 
 router.get('/:pluginId/tools', (req: Request<{ pluginId: string }>, res: Response) => {
   try {
-    const tools = pluginService.getPluginTools(req.params.pluginId);
+    const tools = pluginService.getPluginTools(req.params.pluginId, resolveLocale(req));
     res.json(tools);
   } catch (error: any) {
     res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message });
@@ -115,7 +121,7 @@ router.post('/:pluginId/tools/execute', async (req: Request<{ pluginId: string }
   try {
     const { name, args } = req.body;
     if (!name) { res.status(400).json({ error: 'name is required' }); return; }
-    const result = await pluginService.executePluginTool(req.params.pluginId, name, args ?? {}, createBuiltinPluginApi());
+    const result = await pluginService.executePluginTool(req.params.pluginId, name, args ?? {}, createBuiltinPluginApi(), resolveLocale(req));
     res.json({ success: true, result });
   } catch (error: any) {
     res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message });
