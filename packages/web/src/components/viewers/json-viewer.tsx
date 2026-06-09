@@ -1,26 +1,4 @@
 "use client"
-
-/**
- * jalco-ui
- * JsonViewer
- * by Justin Levine
- * ui.justinlevine.me
- *
- * Collapsible, syntax-colored JSON tree with path copying, search, and
- * 65 editor color themes powered by shiki.
- * Designed for dev dashboards, API documentation, and debugging tools.
- *
- * Props:
- * - data: any JSON-serializable value
- * - title?: heading label
- * - rootName?: label for the root node (default "root")
- * - defaultExpanded?: depth to expand by default (default 1), or true for all
- * - colorTheme?: shiki theme name or custom JsonColorTheme object
- * - className?: additional CSS classes
- *
- * Dependencies: lucide-react
- */
-
 import * as React from "react"
 import {
   Check,
