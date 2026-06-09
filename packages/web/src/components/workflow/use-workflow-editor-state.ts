@@ -16,7 +16,12 @@ type WorkflowSnapshot = Pick<Workflow, 'nodes' | 'edges'> & {
 function normalizeLegacySourceHandle(snapshot: WorkflowSnapshot): WorkflowSnapshot {
   const nodesById = new Map(snapshot.nodes.map(node => [node.id, node]));
 
-  const edges = snapshot.edges.map((edge) => {
+  const seen = new Set<string>();
+  const edges = snapshot.edges.filter((edge) => {
+    if (seen.has(edge.id)) return false;
+    seen.add(edge.id);
+    return true;
+  }).map((edge) => {
     const sourceHandle = edge.sourceHandle;
     if (!sourceHandle?.startsWith('source-')) return edge;
 

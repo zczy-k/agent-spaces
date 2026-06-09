@@ -13,95 +13,13 @@ function getHeaders(args) {
   }
 }
 
-// --- 语音合成辅助 ---
-const TTS_MODELS = [
-  { label: 'speech-2.8-hd (推荐)', value: 'speech-2.8-hd' },
-  { label: 'speech-2.8-turbo', value: 'speech-2.8-turbo' },
-  { label: 'speech-2.6-hd', value: 'speech-2.6-hd' },
-  { label: 'speech-2.6-turbo', value: 'speech-2.6-turbo' },
-  { label: 'speech-02-hd', value: 'speech-02-hd' },
-  { label: 'speech-02-turbo', value: 'speech-02-turbo' },
-]
-
-const AUDIO_FORMATS = [
-  { label: 'mp3 (默认)', value: 'mp3' },
-  { label: 'wav', value: 'wav' },
-  { label: 'flac', value: 'flac' },
-  { label: 'pcm', value: 'pcm' },
-]
-
-const EMOTIONS = [
-  { label: '自动', value: '' },
-  { label: '高兴', value: 'happy' },
-  { label: '悲伤', value: 'sad' },
-  { label: '愤怒', value: 'angry' },
-  { label: '害怕', value: 'fearful' },
-  { label: '厌恶', value: 'disgusted' },
-  { label: '惊讶', value: 'surprised' },
-  { label: '中性', value: 'calm' },
-  { label: '生动', value: 'fluent' },
-  { label: '低语', value: 'whisper' },
-]
-
-// --- 视频模型 ---
-const T2V_MODELS = [
-  { label: 'MiniMax-Hailuo-2.3 (推荐)', value: 'MiniMax-Hailuo-2.3' },
-  { label: 'MiniMax-Hailuo-02', value: 'MiniMax-Hailuo-02' },
-  { label: 'T2V-01-Director', value: 'T2V-01-Director' },
-  { label: 'T2V-01', value: 'T2V-01' },
-]
-
-const I2V_MODELS = [
-  { label: 'MiniMax-Hailuo-2.3 (推荐)', value: 'MiniMax-Hailuo-2.3' },
-  { label: 'MiniMax-Hailuo-2.3-Fast', value: 'MiniMax-Hailuo-2.3-Fast' },
-  { label: 'MiniMax-Hailuo-02', value: 'MiniMax-Hailuo-02' },
-  { label: 'I2V-01-Director', value: 'I2V-01-Director' },
-  { label: 'I2V-01-live', value: 'I2V-01-live' },
-  { label: 'I2V-01', value: 'I2V-01' },
-]
-
-const VIDEO_RESOLUTIONS = [
-  { label: '720P', value: '720P' },
-  { label: '768P (默认)', value: '768P' },
-  { label: '1080P', value: '1080P' },
-]
-
-const VIDEO_DURATIONS = [
-  { label: '6秒 (默认)', value: 6 },
-  { label: '10秒', value: 10 },
-]
-
-// --- Chat 模型 ---
-const CHAT_MODELS = [
-  { label: 'MiniMax-M2.7 (推荐)', value: 'MiniMax-M2.7' },
-  { label: 'MiniMax-M2.7-highspeed (极速)', value: 'MiniMax-M2.7-highspeed' },
-  { label: 'MiniMax-M2.5', value: 'MiniMax-M2.5' },
-  { label: 'MiniMax-M2.5-highspeed (极速)', value: 'MiniMax-M2.5-highspeed' },
-  { label: 'MiniMax-M2.1', value: 'MiniMax-M2.1' },
-  { label: 'MiniMax-M2.1-highspeed (极速)', value: 'MiniMax-M2.1-highspeed' },
-  { label: 'MiniMax-M2', value: 'MiniMax-M2' },
-]
-
-// --- 音乐模型 ---
-const MUSIC_MODELS = [
-  { label: 'music-2.6 (推荐)', value: 'music-2.6' },
-  { label: 'music-cover (翻唱)', value: 'music-cover' },
-  { label: 'music-2.6-free (免费)', value: 'music-2.6-free' },
-  { label: 'music-cover-free (免费翻唱)', value: 'music-cover-free' },
-]
-
-const MUSIC_FORMATS = [
-  { label: 'url (获取下载链接)', value: 'url' },
-  { label: 'hex (默认)', value: 'hex' },
-]
-
 const HER_MESSAGE_NAMES = {
   system: 'AI',
-  user_system: '用户',
-  group: '场景',
-  sample_message_user: '示例用户',
-  sample_message_ai: '示例AI',
-  user: '用户',
+  user_system: 'User',
+  group: 'Scene',
+  sample_message_user: 'Sample User',
+  sample_message_ai: 'Sample AI',
+  user: 'User',
   assistant: 'AI',
 }
 
@@ -125,7 +43,90 @@ function cleanHerMessages(raw, defaultRole = 'user') {
     .filter(m => m.content.trim())
 }
 
-module.exports = (t) => [
+module.exports = (t) => {
+  // --- TTS ---
+  const TTS_MODELS = [
+    { label: t('option.tts.speech28hd', 'speech-2.8-hd (Recommended)'), value: 'speech-2.8-hd' },
+    { label: 'speech-2.8-turbo', value: 'speech-2.8-turbo' },
+    { label: 'speech-2.6-hd', value: 'speech-2.6-hd' },
+    { label: 'speech-2.6-turbo', value: 'speech-2.6-turbo' },
+    { label: 'speech-02-hd', value: 'speech-02-hd' },
+    { label: 'speech-02-turbo', value: 'speech-02-turbo' },
+  ]
+
+  const AUDIO_FORMATS = [
+    { label: t('option.audio.mp3.default', 'mp3 (default)'), value: 'mp3' },
+    { label: 'wav', value: 'wav' },
+    { label: 'flac', value: 'flac' },
+    { label: 'pcm', value: 'pcm' },
+  ]
+
+  const EMOTIONS = [
+    { label: t('field.emotion.auto.label', 'Auto'), value: '' },
+    { label: t('field.emotion.happy.label', 'Happy'), value: 'happy' },
+    { label: t('field.emotion.sad.label', 'Sad'), value: 'sad' },
+    { label: t('field.emotion.angry.label', 'Angry'), value: 'angry' },
+    { label: t('field.emotion.fearful.label', 'Fearful'), value: 'fearful' },
+    { label: t('field.emotion.disgusted.label', 'Disgusted'), value: 'disgusted' },
+    { label: t('field.emotion.surprised.label', 'Surprised'), value: 'surprised' },
+    { label: t('field.emotion.calm.label', 'Neutral'), value: 'calm' },
+    { label: t('field.emotion.fluent.label', 'Vivid'), value: 'fluent' },
+    { label: t('field.emotion.whisper.label', 'Whisper'), value: 'whisper' },
+  ]
+
+  // --- Video models ---
+  const T2V_MODELS = [
+    { label: t('option.t2v.hailuo23', 'MiniMax-Hailuo-2.3 (Recommended)'), value: 'MiniMax-Hailuo-2.3' },
+    { label: 'MiniMax-Hailuo-02', value: 'MiniMax-Hailuo-02' },
+    { label: 'T2V-01-Director', value: 'T2V-01-Director' },
+    { label: 'T2V-01', value: 'T2V-01' },
+  ]
+
+  const I2V_MODELS = [
+    { label: t('option.i2v.hailuo23', 'MiniMax-Hailuo-2.3 (Recommended)'), value: 'MiniMax-Hailuo-2.3' },
+    { label: 'MiniMax-Hailuo-2.3-Fast', value: 'MiniMax-Hailuo-2.3-Fast' },
+    { label: 'MiniMax-Hailuo-02', value: 'MiniMax-Hailuo-02' },
+    { label: 'I2V-01-Director', value: 'I2V-01-Director' },
+    { label: 'I2V-01-live', value: 'I2V-01-live' },
+    { label: 'I2V-01', value: 'I2V-01' },
+  ]
+
+  const VIDEO_RESOLUTIONS = [
+    { label: '720P', value: '720P' },
+    { label: t('option.resolution.768p.default', '768P (default)'), value: '768P' },
+    { label: '1080P', value: '1080P' },
+  ]
+
+  const VIDEO_DURATIONS = [
+    { label: t('option.duration.6s', '6s (default)'), value: 6 },
+    { label: t('option.duration.10s', '10s'), value: 10 },
+  ]
+
+  // --- Chat models ---
+  const CHAT_MODELS = [
+    { label: t('option.chat.m27', 'MiniMax-M2.7 (Recommended)'), value: 'MiniMax-M2.7' },
+    { label: t('option.chat.m27hs', 'MiniMax-M2.7-highspeed (Fast)'), value: 'MiniMax-M2.7-highspeed' },
+    { label: 'MiniMax-M2.5', value: 'MiniMax-M2.5' },
+    { label: t('option.chat.m25hs', 'MiniMax-M2.5-highspeed (Fast)'), value: 'MiniMax-M2.5-highspeed' },
+    { label: 'MiniMax-M2.1', value: 'MiniMax-M2.1' },
+    { label: t('option.chat.m21hs', 'MiniMax-M2.1-highspeed (Fast)'), value: 'MiniMax-M2.1-highspeed' },
+    { label: 'MiniMax-M2', value: 'MiniMax-M2' },
+  ]
+
+  // --- Music models ---
+  const MUSIC_MODELS = [
+    { label: t('option.music.music26', 'music-2.6 (Recommended)'), value: 'music-2.6' },
+    { label: t('option.music.cover', 'music-cover (Cover)'), value: 'music-cover' },
+    { label: t('option.music.free', 'music-2.6-free (Free)'), value: 'music-2.6-free' },
+    { label: t('option.music.freeCover', 'music-cover-free (Free Cover)'), value: 'music-cover-free' },
+  ]
+
+  const MUSIC_FORMATS = [
+    { label: t('option.musicFormat.url', 'url (get download link)'), value: 'url' },
+    { label: t('option.musicFormat.hex', 'hex (default)'), value: 'hex' },
+  ]
+
+  return [
   // ============================
   // 文本合成（Chat Completion）
   // ============================
@@ -377,7 +378,7 @@ module.exports = (t) => [
       { key: 'sampleRate', label: t('field.sampleRate.label', 'Sample Rate'), type: 'select', default: 32000, options: [
         { label: '8000', value: 8000 }, { label: '16000', value: 16000 },
         { label: '22050', value: 22050 }, { label: '24000', value: 24000 },
-        { label: '32000 (默认)', value: 32000 }, { label: '44100', value: 44100 },
+        { label: t('option.sampleRate.32k', '32000 (default)'), value: 32000 }, { label: '44100', value: 44100 },
       ] },
       { key: 'outputFormat', label: t('field.outputFormat.label', 'Output Format'), type: 'select', default: 'url', options: [
         { label: t('field.urlRecommended.label', 'URL (recommended)'), value: 'url' },
@@ -482,7 +483,7 @@ module.exports = (t) => [
       { key: 'audioUrl', label: t('field.audioUrl.label', 'Reference Audio URL'), type: 'text', tooltip: t('field.audioUrl.tooltip', 'Cover mode only: reference audio URL (6s-6min, max 50MB)') },
       { key: 'outputFormat', label: t('field.outputFormat.label', 'Output Format'), type: 'select', default: 'url', options: MUSIC_FORMATS },
       { key: 'audioFormat', label: t('field.audioFormat.label', 'Audio Format'), type: 'select', default: 'mp3', options: [
-        { label: 'mp3 (默认)', value: 'mp3' }, { label: 'wav', value: 'wav' }, { label: 'pcm', value: 'pcm' },
+        { label: t('option.audio.mp3.default', 'mp3 (default)'), value: 'mp3' }, { label: 'wav', value: 'wav' }, { label: 'pcm', value: 'pcm' },
       ] },
       { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
     ],
@@ -766,7 +767,7 @@ module.exports = (t) => [
       { key: 'prompt', label: t('field.prompt.t2v.label', 'Video Description'), type: 'textarea', tooltip: t('field.prompt.sev.tooltip', 'Video text description, supports camera commands') },
       { key: 'duration', label: t('field.duration.label', 'Duration (sec)'), type: 'select', default: 6, options: VIDEO_DURATIONS },
       { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', default: '768P', options: [
-        { label: '768P (默认)', value: '768P' }, { label: '1080P', value: '1080P' },
+        { label: t('option.resolution.768p.default', '768P (default)'), value: '768P' }, { label: '1080P', value: '1080P' },
       ] },
       { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
     ],
@@ -978,4 +979,5 @@ module.exports = (t) => [
       }
     },
   },
-]
+  ]
+}

@@ -305,9 +305,11 @@ export function useWorkflowEditorCanvas({
   // ---- Edge operations ----
   const handleConnect = useCallback((connection: Connection) => {
     if (!workflow || isReadOnly) return;
+    const edgeId = createWorkflowEdgeId(connection);
+    if (workflow.edges.some(e => e.id === edgeId)) return;
     pushUndo('connect');
     const edge: Workflow['edges'][0] = {
-      id: createWorkflowEdgeId(connection),
+      id: edgeId,
       source: connection.source,
       target: connection.target,
       sourceHandle: connection.sourceHandle || undefined,

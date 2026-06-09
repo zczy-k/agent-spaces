@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, type MouseEvent } from "react";
 import { useDropzone, type Accept, type FileRejection } from "react-dropzone";
 import { Upload, X, FileIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -73,11 +73,12 @@ export function FileUpload({
     [value, onChange],
   );
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const { getRootProps, getInputProps, isDragActive, open: openFilePicker } = useDropzone({
     onDrop,
     accept: dropzoneAccept,
     maxFiles: maxFiles || undefined,
     maxSize,
+    noClick: true,
     useFsAccessApi: false,
     validator: fileNameFilter
       ? (file) => (
@@ -89,11 +90,20 @@ export function FileUpload({
     disabled,
   });
 
+  const handleDropzoneClick = useCallback((event: MouseEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    openFilePicker();
+  }, [openFilePicker]);
+
+  const stopInputClickPropagation = useCallback((event: MouseEvent<HTMLInputElement>) => {
+    event.stopPropagation();
+  }, []);
+
   return (
     <div className={cn("space-y-3", className)}>
       {/* Drop zone */}
       <div
-        {...getRootProps()}
+        {...getRootProps({ onClick: handleDropzoneClick })}
         className={cn(
           "relative flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-8 transition-colors cursor-pointer",
           isDragActive
@@ -102,7 +112,7 @@ export function FileUpload({
           disabled && "pointer-events-none opacity-50",
         )}
       >
-        <input {...getInputProps()} />
+        <input {...getInputProps({ onClick: stopInputClickPropagation })} />
         <Upload className="size-8 text-muted-foreground" />
         <div className="text-center">
           <p className="text-sm font-medium">
