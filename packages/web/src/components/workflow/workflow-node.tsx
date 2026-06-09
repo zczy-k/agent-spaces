@@ -407,19 +407,19 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           style={getHandleStyle(handlePositions.target, 0, 1)}
         />
       )}
-      <div className="absolute right-2 top-2 z-30 flex items-center gap-1">
+      <div className="absolute -right-1 -top-1 z-30 flex items-center gap-1">
         {hasCustomView && !isCanvasLocked ? (
           <button
             type="button"
             className={cn(
               WORKFLOW_NODE_DRAG_HANDLE_CLASS,
-              'inline-flex h-6 w-6 cursor-grab items-center justify-center rounded border border-border bg-background/95 text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground active:cursor-grabbing',
+              'inline-flex h-5 w-5 cursor-grab items-center justify-center rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground active:cursor-grabbing',
             )}
             title={t('nodeUi.drag')}
             aria-label={t('nodeUi.drag')}
             onClick={(event) => event.stopPropagation()}
           >
-            <Grip className="h-3.5 w-3.5" />
+            <Grip className="h-3 w-3" />
           </button>
         ) : null}
       </div>
@@ -602,14 +602,14 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       {canShowNodeToolbar ? (
         <NodeToolbar
           position={Position.Top}
-          align="start"
+          align="center"
           offset={8}
-          className="nodrag nopan flex items-center gap-1 rounded border border-border bg-background/95 p-1 shadow-md"
+          className="nodrag nopan flex items-center gap-1 rounded-full border border-border bg-background/95 p-1 shadow-md"
         >
           {!isBoundaryNode ? (
             <button
               type="button"
-              className="inline-flex h-7 w-7 items-center justify-center rounded bg-green-500 text-white hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-green-500 text-white hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-60"
               onClick={handleTestNode}
               title={isCurrentNodeDebugging ? t('nodeUi.test.cancel') : t('nodeUi.test.node')}
               aria-label={isCurrentNodeDebugging ? t('nodeUi.test.cancel') : t('nodeUi.test.node')}
@@ -620,7 +620,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           {canDeleteNode ? (
             <button
               type="button"
-              className="inline-flex h-7 w-7 items-center justify-center rounded bg-destructive text-destructive-foreground hover:bg-destructive/80"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/80"
               onClick={handleDelete}
               title={t('nodeUi.delete')}
               aria-label={t('nodeUi.delete')}
