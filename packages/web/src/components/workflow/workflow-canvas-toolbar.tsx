@@ -10,7 +10,7 @@ import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui/tooltip';
 import {
-  Download, EyeOff, FileImage, Image, LayoutGrid, Map as MapIcon, RotateCcw, RotateCw,
+  EyeOff, LayoutGrid, Map as MapIcon, RotateCcw, RotateCw,
 } from 'lucide-react';
 
 function CanvasToolbarButton({
@@ -34,26 +34,22 @@ export function CanvasToolbar({
   canUndo,
   canRedo,
   minimapVisible,
-  isExporting,
   onUndo,
   onRedo,
   onExitPreview,
   onAutoLayout,
   onToggleMinimap,
-  onExport,
 }: {
   workflow: Workflow;
   isPreview: boolean;
   canUndo: boolean;
   canRedo: boolean;
   minimapVisible: boolean;
-  isExporting: boolean;
   onUndo?: () => void;
   onRedo?: () => void;
   onExitPreview?: () => void;
   onAutoLayout?: (direction: 'LR' | 'TB') => void;
   onToggleMinimap: () => void;
-  onExport: (format: 'png' | 'jpeg') => void;
 }) {
   const hasNodes = workflow.nodes.length > 0;
 
@@ -95,21 +91,6 @@ export function CanvasToolbar({
           <MapIcon className="h-3.5 w-3.5" />
         </CanvasToolbarButton>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={!hasNodes || isExporting} />}>
-            <Download className="h-3.5 w-3.5" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="center" side="top">
-            <DropdownMenuItem onClick={() => onExport('png')}>
-              <FileImage className="mr-2 h-4 w-4" />
-              导出 PNG
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onExport('jpeg')}>
-              <Image className="mr-2 h-4 w-4" />
-              导出 JPEG
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </TooltipProvider>
     </div>
   );

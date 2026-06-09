@@ -132,6 +132,7 @@ interface WorkflowCanvasProps {
     position: { x: number; y: number } | null;
   }) => void;
   onCanvasPreferencesChange?: (prefs: Record<string, unknown>) => void;
+  canvasExportRef?: React.RefObject<{ exportCanvas: (format: 'png' | 'jpeg') => void } | null>;
 }
 
 export function WorkflowCanvas({
@@ -148,6 +149,7 @@ export function WorkflowCanvas({
   pausedNodeId = null, pausedReason = null,
   partialExecutionStartNodeId = null,
   onCanvasPreferencesChange,
+  canvasExportRef,
 }: WorkflowCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const connectSourceRef = useRef<{ nodeId: string; handleId: string | null; handleType: string | null } | null>(null);
@@ -232,8 +234,8 @@ export function WorkflowCanvas({
   }, [closeSelectionMenu, selectionMenu]);
 
   const screenDeltaToFlowDelta = useCallback((delta: { x: number; y: number }) => {
-    const origin = screenToFlowPosition({ x: 0, y: 0 });
-    const next = screenToFlowPosition({ x: delta.x, y: delta.y });
+    const origin = screenToFlowPosition({ x: 0, y: 0 }, { snapToGrid: false });
+    const next = screenToFlowPosition({ x: delta.x, y: delta.y }, { snapToGrid: false });
     return {
       x: next.x - origin.x,
       y: next.y - origin.y,
@@ -320,10 +322,14 @@ export function WorkflowCanvas({
     });
   }, [workflow.groups, workflow.nodes]);
 
-  const { minimapVisible, isExporting, toggleMinimap, exportCanvas } = useCanvasExport(
+  const { minimapVisible, toggleMinimap, exportCanvas } = useCanvasExport(
     reactFlowWrapper,
     workflow.name,
   );
+
+  if (canvasExportRef) {
+    canvasExportRef.current = { exportCanvas };
+  }
 
   // --- Interaction handlers ---
 
@@ -703,13 +709,11 @@ export function WorkflowCanvas({
         canUndo={!isCanvasLocked && canUndo}
         canRedo={!isCanvasLocked && canRedo}
         minimapVisible={minimapVisible}
-        isExporting={isExporting}
         onUndo={onUndo}
         onRedo={onRedo}
         onExitPreview={onExitPreview}
         onAutoLayout={isCanvasLocked ? undefined : onAutoLayout}
         onToggleMinimap={toggleMinimap}
-        onExport={exportCanvas}
       />
     </div>
   );

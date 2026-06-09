@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { ReactFlowProvider } from '@xyflow/react';
 import type { ExecutionStep, StagedNode, WorkflowTemplate } from '@agent-spaces/shared';
@@ -58,6 +58,7 @@ function WorkflowEditorInner({
   onBack: () => void;
 }) {
   const t = useTranslations('workflows');
+  const canvasExportRef = useRef<{ exportCanvas: (format: 'png' | 'jpeg') => void } | null>(null);
   // ---- State ----
   const state = useWorkflowEditorState(template);
   const workspaces = useWorkspaceStore((store) => store.workspaces);
@@ -241,7 +242,8 @@ function WorkflowEditorInner({
         onSave={isWorkflowReadOnly ? () => {} : state.saveWorkflow}
         onUndo={isWorkflowReadOnly ? () => {} : state.handleUndo}
         onRedo={isWorkflowReadOnly ? () => {} : state.handleRedo}
-        onExport={state.handleExport}
+        onExport={(format) => canvasExportRef.current?.exportCanvas(format)}
+        isExporting={false}
         onImport={isWorkflowReadOnly ? () => {} : state.handleImport}
         onOpenPluginManager={() => state.setPluginsDialogOpen(true)}
         onOpenWorkflowLocation={() => {
@@ -320,6 +322,7 @@ function WorkflowEditorInner({
                 onExitPreview={exitExecutionPreview}
                 onAutoLayout={canvas.handleAutoLayout}
                 onCanvasPreferencesChange={canvas.handleCanvasPreferencesChange}
+                canvasExportRef={canvasExportRef}
               />
             </div>
             <WorkflowExecutionBar
