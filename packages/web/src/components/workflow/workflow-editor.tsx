@@ -293,6 +293,8 @@ function WorkflowEditorInner({
                 onMergeNodesToWorkflow={canvas.handleMergeNodesToWorkflow}
                 onMergeNodesToGroup={canvas.handleMergeNodesToGroup}
                 onBatchDeleteNodes={canvas.handleBatchDeleteNodes}
+                onGroupUpdate={canvas.handleUpdateGroup}
+                onGroupDelete={canvas.handleUngroup}
                 debugNodeId={execution.debugNodeId}
                 debugStatus={execution.debugStatus}
                 pausedNodeId={execution.pausedNodeId}

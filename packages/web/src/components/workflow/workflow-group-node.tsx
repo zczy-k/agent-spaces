@@ -95,24 +95,24 @@ export function WorkflowGroupOverlay({
 
   return (
     <div
-      className={`absolute cursor-pointer transition-shadow ${isSelected ? 'ring-2 ring-primary ring-offset-1' : ''}`}
+      className={`pointer-events-none absolute transition-shadow ${isSelected ? 'ring-2 ring-primary ring-offset-1' : ''}`}
       style={{
         left: bounds.x,
         top: bounds.y,
         width: bounds.width,
         height: bounds.height,
         backgroundColor: colors.bg,
-        border: `1.5px solid ${isSelected ? 'var(--primary)' : colors.border}`,
+        border: `2px dashed ${isSelected ? 'var(--primary)' : colors.border}`,
         borderRadius: 8,
         overflow: 'hidden',
-        zIndex: -1,
+        zIndex: 0,
       }}
       onClick={(e) => { e.stopPropagation(); onSelect(group.id); }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
-        className="flex items-center gap-1 px-2 h-7 select-none"
+        className="pointer-events-auto flex h-7 cursor-move select-none items-center gap-1 px-2 backdrop-blur-sm"
         style={{ backgroundColor: colors.header }}
       >
         <button className="p-0 hover:bg-black/5 rounded" onClick={handleToggleCollapse}>

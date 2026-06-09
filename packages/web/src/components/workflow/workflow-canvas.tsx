@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ReactFlow,
   Background,
@@ -8,6 +8,7 @@ import {
   ControlButton,
   MiniMap,
   BackgroundVariant,
+  ViewportPortal,
   useReactFlow,
   type Node,
   type Edge,
@@ -17,19 +18,22 @@ import {
   type OnConnectEnd,
   type OnConnectStart,
 } from '@xyflow/react';
-import { Check, Grid3X3, Grip, PanelsTopLeft, Waypoints } from 'lucide-react';
+import { Check, Grid3X3, Grip, Group, PanelsTopLeft, Trash2, Waypoints, Workflow as WorkflowIcon } from 'lucide-react';
 import '@xyflow/react/dist/style.css';
 import type { ExecutionLog, Workflow, StagedNode } from '@agent-spaces/shared';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { WORKFLOW_NODE_DRAG_MIME, WORKFLOW_STAGED_NODE_DRAG_MIME } from './workflow-drag-types';
 import { WorkflowNode as WorkflowNodeComponent } from './workflow-node';
 import { WorkflowEdge as WorkflowEdgeComponent } from './workflow-edge';
+import { WorkflowGroupOverlay } from './workflow-group-node';
 import { WorkflowHelperLines } from './workflow-helper-lines';
 import { CanvasToolbar } from './workflow-canvas-toolbar';
 import { useCanvasData } from './use-workflow-canvas-data';
 import { useCanvasDebug } from './use-workflow-canvas-debug';
 import { useCanvasDomEvents } from './use-workflow-canvas-dom-events';
 import { useCanvasExport } from './use-workflow-canvas-export';
+import { getNodeDefinition } from '@/lib/workflow-nodes';
+import { getWorkflowNodeSize } from './workflow-node-size';
 import type { HandlePositionMode } from './workflow-node-types';
 
 const nodeTypes = { custom: WorkflowNodeComponent };
@@ -97,6 +101,8 @@ interface WorkflowCanvasProps {
   onMergeNodesToWorkflow?: (ids: string[]) => void;
   onMergeNodesToGroup?: (ids: string[]) => void;
   onBatchDeleteNodes?: (ids: string[]) => void;
+  onGroupUpdate?: (groupId: string, updates: Partial<NonNullable<Workflow['groups']>[number]>) => void;
+  onGroupDelete?: (groupId: string) => void;
   debugNodeId?: string | null;
   debugStatus?: 'idle' | 'running' | 'completed' | 'error';
   onNodeDebug?: (id: string) => void;
@@ -135,6 +141,7 @@ export function WorkflowCanvas({
   onConnectionDrop,
   onNodeCopy, onNodeClone, onNodeStage,
   onMergeNodesToWorkflow, onMergeNodesToGroup, onBatchDeleteNodes,
+  onGroupUpdate, onGroupDelete,
   debugNodeId = null, debugStatus = 'idle', onNodeDebug, onCancelDebug,
   onExecuteFromNode, onResumeExecution, onStopExecution,
   pausedNodeId = null, pausedReason = null,
@@ -146,6 +153,8 @@ export function WorkflowCanvas({
   const connectSucceededRef = useRef(false);
   const isRangeSelectingRef = useRef(false);
   const pendingRangeSelectionRef = useRef<string[] | null>(null);
+  const [selectionMenu, setSelectionMenu] = useState<{ x: number; y: number; nodeIds: string[] } | null>(null);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const { screenToFlowPosition } = useReactFlow();
   const [helperHorizontal] = useState<number | undefined>();
   const [helperVertical] = useState<number | undefined>();
@@ -167,6 +176,54 @@ export function WorkflowCanvas({
   const updateCanvasPrefs = useCallback((patch: Record<string, unknown>) => {
     onCanvasPreferencesChange?.({ ...canvasPrefs, ...patch });
   }, [canvasPrefs, onCanvasPreferencesChange]);
+
+  const closeSelectionMenu = useCallback(() => {
+    setSelectionMenu(null);
+  }, []);
+
+  useEffect(() => {
+    if (!selectionMenu) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof HTMLElement && target.closest('[data-workflow-selection-menu="true"]')) return;
+      closeSelectionMenu();
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeSelectionMenu();
+    };
+
+    window.addEventListener('pointerdown', handlePointerDown, true);
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDown, true);
+      window.removeEventListener('keydown', handleKeyDown, true);
+    };
+  }, [closeSelectionMenu, selectionMenu]);
+
+  const handleSelectionContextMenu = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    if (isCanvasLocked || selectedNodeIds.length < 2) return;
+
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    if (target.closest('.react-flow__node')) return;
+    const isSelectionOrPane = !!target.closest('.react-flow__nodesselection, .react-flow__selectionpane, .react-flow__pane');
+    if (!isSelectionOrPane) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    setSelectionMenu({
+      x: event.clientX,
+      y: event.clientY,
+      nodeIds: [...selectedNodeIds],
+    });
+  }, [isCanvasLocked, selectedNodeIds]);
+
+  const runSelectionAction = useCallback((action?: (ids: string[]) => void) => {
+    if (!selectionMenu || !action) return;
+    action(selectionMenu.nodeIds);
+    closeSelectionMenu();
+  }, [closeSelectionMenu, selectionMenu]);
 
   const handleLayoutEngineChange = useCallback((next: string) => {
     updateCanvasPrefs({ layoutEngine: next });
@@ -212,6 +269,41 @@ export function WorkflowCanvas({
   });
 
   const { getNodeDebugSnapshot } = useCanvasDebug(rfNodes, reactFlowWrapper, workflow);
+
+  const groupOverlayItems = useMemo(() => {
+    const groups = workflow.groups || [];
+    if (groups.length === 0) return [];
+    const workflowNodeById = new Map(workflow.nodes.map(node => [node.id, node]));
+    const groupById = new Map(groups.map(group => [group.id, group]));
+    const collectGroupNodeIds = (groupId: string, visited = new Set<string>()): string[] => {
+      if (visited.has(groupId)) return [];
+      visited.add(groupId);
+      const group = groupById.get(groupId);
+      if (!group) return [];
+      return [
+        ...group.childNodeIds,
+        ...group.childGroupIds.flatMap(childGroupId => collectGroupNodeIds(childGroupId, visited)),
+      ];
+    };
+
+    return groups.map((group) => {
+      const nodeIds = collectGroupNodeIds(group.id);
+      const childNodes = nodeIds
+        .map(nodeId => workflowNodeById.get(nodeId))
+        .filter((node): node is Workflow['nodes'][number] => !!node)
+        .map((node) => {
+          const definition = getNodeDefinition(node.type);
+          const size = getWorkflowNodeSize(definition, node.data);
+          return {
+            id: node.id,
+            position: node.position,
+            width: size.width,
+            height: size.height,
+          };
+        });
+      return { group, childNodes };
+    });
+  }, [workflow.groups, workflow.nodes]);
 
   const { minimapVisible, isExporting, toggleMinimap, exportCanvas } = useCanvasExport(
     reactFlowWrapper,
@@ -412,7 +504,11 @@ export function WorkflowCanvas({
 
   // --- Render ---
   return (
-    <div ref={reactFlowWrapper} className="relative flex-1 h-full w-full">
+    <div
+      ref={reactFlowWrapper}
+      className="relative flex-1 h-full w-full"
+      onContextMenuCapture={handleSelectionContextMenu}
+    >
       <ReactFlow
         className="h-full w-full"
         nodes={rfNodes}
@@ -446,6 +542,20 @@ export function WorkflowCanvas({
         elevateNodesOnSelect={false}
         defaultEdgeOptions={{ type: 'custom' }}
       >
+        <ViewportPortal>
+          {groupOverlayItems.map(({ group, childNodes }) => (
+            <WorkflowGroupOverlay
+              key={group.id}
+              group={group}
+              childNodes={childNodes}
+              isSelected={selectedGroupId === group.id}
+              isPreview={isPreview}
+              onSelect={setSelectedGroupId}
+              onDelete={(groupId) => onGroupDelete?.(groupId)}
+              onUpdate={(groupId, updates) => onGroupUpdate?.(groupId, updates)}
+            />
+          ))}
+        </ViewportPortal>
         <Background variant={bgVariant} gap={15} size={1} />
         <Controls position="bottom-left">
           <Popover>
@@ -516,6 +626,43 @@ export function WorkflowCanvas({
         {minimapVisible && <MiniMap />}
         <WorkflowHelperLines horizontal={helperHorizontal} vertical={helperVertical} />
       </ReactFlow>
+      {selectionMenu && (
+        <div
+          data-workflow-selection-menu="true"
+          className="fixed z-50 min-w-40 rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10"
+          style={{ left: selectionMenu.x, top: selectionMenu.y }}
+          onContextMenu={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+          }}
+        >
+          <button
+            type="button"
+            className="flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-xs hover:bg-accent hover:text-accent-foreground"
+            onClick={() => runSelectionAction(onMergeNodesToWorkflow)}
+          >
+            <WorkflowIcon className="h-3 w-3" />
+            合并为工作流
+          </button>
+          <button
+            type="button"
+            className="flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-xs hover:bg-accent hover:text-accent-foreground"
+            onClick={() => runSelectionAction(onMergeNodesToGroup)}
+          >
+            <Group className="h-3 w-3" />
+            合并成组
+          </button>
+          <div className="-mx-1 my-1 h-px bg-border" />
+          <button
+            type="button"
+            className="flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-xs text-destructive hover:bg-destructive/10"
+            onClick={() => runSelectionAction(onBatchDeleteNodes)}
+          >
+            <Trash2 className="h-3 w-3" />
+            批量删除
+          </button>
+        </div>
+      )}
       <CanvasToolbar
         workflow={workflow}
         isPreview={isPreview}

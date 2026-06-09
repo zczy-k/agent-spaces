@@ -1340,6 +1340,27 @@ export function useWorkflowEditorCanvas({
     markDirty();
   }, [workflow, isReadOnly, pushUndo, setWorkflow, markDirty]);
 
+  const handleUpdateGroup = useCallback((groupId: string, updates: Partial<NonNullable<Workflow['groups']>[number]>) => {
+    if (!workflow || isReadOnly) return;
+    const group = workflow.groups?.find(item => item.id === groupId);
+    if (!group) return;
+
+    const nextUpdates = { ...updates };
+    if (typeof nextUpdates.name === 'string') {
+      const trimmed = nextUpdates.name.trim();
+      if (!trimmed) delete nextUpdates.name;
+      else nextUpdates.name = trimmed;
+    }
+    if (Object.keys(nextUpdates).length === 0) return;
+
+    pushUndo('update group');
+    setWorkflow(w => w ? {
+      ...w,
+      groups: (w.groups || []).map(item => item.id === groupId ? { ...item, ...nextUpdates } : item),
+    } : null);
+    markDirty();
+  }, [workflow, isReadOnly, pushUndo, setWorkflow, markDirty]);
+
   const handleUngroup = useCallback((groupId: string) => {
     if (!workflow || isReadOnly) return;
     const group = workflow.groups?.find(item => item.id === groupId);
@@ -1795,6 +1816,7 @@ export function useWorkflowEditorCanvas({
     handleMergeNodesToGroup,
     handleBatchDeleteNodes,
     handleRenameGroup,
+    handleUpdateGroup,
     handleUngroup,
     handleBatchUngroup,
     handleFocusGroup,
