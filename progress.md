@@ -58,3 +58,7 @@
 - Targeted ESLint passed with existing hook dependency warnings in `use-workflow-editor-canvas.ts`; filtered TypeScript output had no hits for the touched workflow group files.
 - Expanded group drag start from the header strip to the full group background so empty space inside a group can be grabbed directly.
 - Reverted full group background pointer capture because it broke header interactions; restored header-only event handling with a larger header hit area and document-level drag listeners.
+- Fixed drag lag by batching pointermove deltas with `requestAnimationFrame`; pointer events now accumulate movement and commit at most once per frame, with a final flush on pointerup/cancel.
+- Replaced live group movement with a drag preview border: during drag only local preview state updates, and the accumulated movement is applied once on pointerup.
+- Fixed preview drift under canvas zoom by using screen-space delta for the preview transform while keeping flow-space delta for the final committed move.
+- Moved group drag preview rendering from `workflow-group-node.tsx` to `workflow-canvas.tsx` so the preview is drawn at the canvas `ViewportPortal` layer instead of inside the group overlay.

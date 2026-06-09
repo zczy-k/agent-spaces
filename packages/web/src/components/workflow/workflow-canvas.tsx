@@ -156,6 +156,11 @@ export function WorkflowCanvas({
   const pendingRangeSelectionRef = useRef<string[] | null>(null);
   const [selectionMenu, setSelectionMenu] = useState<{ x: number; y: number; nodeIds: string[] } | null>(null);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [groupDragPreview, setGroupDragPreview] = useState<{
+    groupId: string;
+    bounds: { x: number; y: number; width: number; height: number };
+    delta: { x: number; y: number };
+  } | null>(null);
   const { screenToFlowPosition } = useReactFlow();
   const [helperHorizontal] = useState<number | undefined>();
   const [helperVertical] = useState<number | undefined>();
@@ -564,9 +569,26 @@ export function WorkflowCanvas({
               onDelete={(groupId) => onGroupDelete?.(groupId)}
               onUpdate={(groupId, updates) => onGroupUpdate?.(groupId, updates)}
               onMove={(groupId, delta, options) => onGroupMove?.(groupId, delta, options)}
+              onDragPreviewChange={setGroupDragPreview}
               screenDeltaToFlowDelta={screenDeltaToFlowDelta}
             />
           ))}
+          {groupDragPreview && (
+            <div
+              className="pointer-events-none absolute"
+              style={{
+                left: groupDragPreview.bounds.x + groupDragPreview.delta.x,
+                top: groupDragPreview.bounds.y + groupDragPreview.delta.y,
+                width: groupDragPreview.bounds.width,
+                height: groupDragPreview.bounds.height,
+                border: '2px solid var(--primary)',
+                borderRadius: 8,
+                backgroundColor: 'rgba(59,130,246,0.06)',
+                boxShadow: '0 0 0 1px rgba(255,255,255,0.6)',
+                zIndex: 2,
+              }}
+            />
+          )}
         </ViewportPortal>
         <Background variant={bgVariant} gap={15} size={1} />
         <Controls position="bottom-left">

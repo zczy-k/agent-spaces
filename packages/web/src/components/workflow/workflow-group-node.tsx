@@ -18,6 +18,11 @@ interface GroupOverlayProps {
   onDelete: (groupId: string) => void;
   onUpdate: (groupId: string, updates: Partial<WorkflowGroup>) => void;
   onMove: (groupId: string, delta: { x: number; y: number }, options?: { pushUndo?: boolean }) => void;
+  onDragPreviewChange?: (preview: {
+    groupId: string;
+    bounds: { x: number; y: number; width: number; height: number };
+    delta: { x: number; y: number };
+  } | null) => void;
   screenDeltaToFlowDelta: (delta: { x: number; y: number }) => { x: number; y: number };
 }
 
@@ -36,7 +41,7 @@ function getGroupColor(color?: string) {
 
 export function WorkflowGroupOverlay({
   group, childNodes, isSelected, isPreview,
-  onSelect, onDelete, onUpdate, onMove, screenDeltaToFlowDelta,
+  onSelect, onDelete, onUpdate, onMove, onDragPreviewChange, screenDeltaToFlowDelta,
 }: GroupOverlayProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -108,11 +113,19 @@ export function WorkflowGroupOverlay({
     onSelect(group.id);
 
     let last = { x: event.clientX, y: event.clientY };
-    let hasPushedUndo = false;
+    let frameId: number | null = null;
+    let totalFlowDelta = { x: 0, y: 0 };
+    let pendingPreviewDelta = { x: 0, y: 0 };
     const pointerId = event.pointerId;
     const element = event.currentTarget;
     isDraggingRef.current = true;
+    onDragPreviewChange?.({ groupId: group.id, bounds, delta: { x: 0, y: 0 } });
     element.setPointerCapture(pointerId);
+
+    const flushPreview = () => {
+      frameId = null;
+      onDragPreviewChange?.({ groupId: group.id, bounds, delta: pendingPreviewDelta });
+    };
 
     const handlePointerMove = (moveEvent: PointerEvent) => {
       if (moveEvent.pointerId !== pointerId) return;
@@ -122,25 +135,42 @@ export function WorkflowGroupOverlay({
       };
       const flowDelta = screenDeltaToFlowDelta(screenDelta);
       last = { x: moveEvent.clientX, y: moveEvent.clientY };
-      if (flowDelta.x === 0 && flowDelta.y === 0) return;
-      onMove(group.id, flowDelta, { pushUndo: !hasPushedUndo });
-      hasPushedUndo = true;
+      if (screenDelta.x === 0 && screenDelta.y === 0) return;
+      totalFlowDelta = {
+        x: totalFlowDelta.x + flowDelta.x,
+        y: totalFlowDelta.y + flowDelta.y,
+      };
+      pendingPreviewDelta = totalFlowDelta;
+      if (frameId === null) {
+        frameId = requestAnimationFrame(flushPreview);
+      }
     };
 
-    const finishDrag = () => {
+    const finishDrag = (applyMove: boolean) => {
       isDraggingRef.current = false;
+      if (frameId !== null) {
+        cancelAnimationFrame(frameId);
+        frameId = null;
+      }
+      onDragPreviewChange?.(null);
       if (element.hasPointerCapture(pointerId)) {
         element.releasePointerCapture(pointerId);
       }
       document.removeEventListener('pointermove', handlePointerMove);
-      document.removeEventListener('pointerup', finishDrag);
-      document.removeEventListener('pointercancel', finishDrag);
+      document.removeEventListener('pointerup', handlePointerUp);
+      document.removeEventListener('pointercancel', handlePointerCancel);
+      if (applyMove && (totalFlowDelta.x !== 0 || totalFlowDelta.y !== 0)) {
+        onMove(group.id, totalFlowDelta);
+      }
     };
 
+    const handlePointerUp = () => finishDrag(true);
+    const handlePointerCancel = () => finishDrag(false);
+
     document.addEventListener('pointermove', handlePointerMove);
-    document.addEventListener('pointerup', finishDrag);
-    document.addEventListener('pointercancel', finishDrag);
-  }, [group.id, group.locked, isEditing, isPreview, onMove, onSelect, screenDeltaToFlowDelta]);
+    document.addEventListener('pointerup', handlePointerUp);
+    document.addEventListener('pointercancel', handlePointerCancel);
+  }, [bounds, group.id, group.locked, isEditing, isPreview, onDragPreviewChange, onMove, onSelect, screenDeltaToFlowDelta]);
 
   if (isPreview && collapsed) return null;
 
