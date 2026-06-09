@@ -291,12 +291,16 @@ export function useWorkflowEditorCanvas({
     if (isReadOnly) return;
     setWorkflow(w => {
       if (!w) return null;
+      const { nodeState, breakpoint, nodeColor, ...nodeData } = data;
       return {
         ...w,
         nodes: w.nodes.map(n => n.id === nodeId ? {
           ...n,
           label: typeof data.label === 'string' ? data.label : n.label,
-          data: { ...n.data, ...data },
+          ...(typeof nodeState === 'string' ? { nodeState: nodeState as typeof n.nodeState } : {}),
+          ...('breakpoint' in data ? { breakpoint: breakpoint === null ? undefined : breakpoint as typeof n.breakpoint } : {}),
+          ...('nodeColor' in data ? { nodeColor: nodeColor === null ? undefined : nodeColor as string | undefined } : {}),
+          data: { ...n.data, ...nodeData },
         } : n),
       };
     });

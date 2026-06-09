@@ -3,13 +3,47 @@
 import React, { useState, useMemo, useCallback, useRef, useSyncExternalStore } from 'react';
 import { Handle, NodeResizer, Position, useUpdateNodeInternals } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
-import { AlertCircle, CheckCircle, ClipboardCopy, Copy, FileText, Inbox, Play, X, XCircle } from 'lucide-react';
+import {
+  AlertCircle,
+  Archive,
+  ArchiveRestore,
+  CheckCircle,
+  CircleCheck,
+  CircleSlash,
+  ClipboardCopy,
+  Copy,
+  FileText,
+  Flag,
+  FlagOff,
+  Info,
+  Palette,
+  Play,
+  Settings,
+  SkipForward,
+  Trash2,
+  X,
+  XCircle,
+} from 'lucide-react';
 import { getPluginNodesVersion, subscribePluginNodesVersion, useLocalizedNodeDefinition } from '@/lib/workflow-nodes';
-import { LOOP_BODY_NODE_TYPE, LOOP_BODY_SOURCE_HANDLE, type ExecutionStep, type OutputField } from '@agent-spaces/shared';
+import {
+  LOOP_BODY_NODE_TYPE,
+  LOOP_BODY_SOURCE_HANDLE,
+  type ExecutionStep,
+  type NodeBreakpoint,
+  type NodeRunState,
+  type OutputField,
+} from '@agent-spaces/shared';
 import { BorderGlide } from '@/components/ui/border-glide';
 import { NodeMediaPreview, type MediaItem } from '@/components/ui/media-gallery';
 import {
-  ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger,
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import {
   HoverCard, HoverCardContent, HoverCardTrigger,
@@ -32,6 +66,9 @@ type WorkflowNodeData = Record<string, unknown> & {
   isPreview?: boolean;
   isCanvasLocked?: boolean;
   isRunning?: boolean;
+  nodeState?: NodeRunState;
+  breakpoint?: NodeBreakpoint;
+  nodeColor?: string;
   executionStep?: ExecutionStep;
 };
 
@@ -44,6 +81,21 @@ type PluginNodeDefinitionMeta = {
   pluginId?: string;
   pluginIconPath?: string;
 };
+
+const NODE_COLORS: Array<{ label: string; value: string | null; className: string; borderClassName: string }> = [
+  { label: '默认', value: null, className: 'bg-background border border-border', borderClassName: 'border-border' },
+  { label: '翡翠绿', value: 'emerald', className: 'bg-emerald-500', borderClassName: 'border-emerald-500' },
+  { label: '蓝色', value: 'blue', className: 'bg-blue-500', borderClassName: 'border-blue-500' },
+  { label: '紫色', value: 'violet', className: 'bg-violet-500', borderClassName: 'border-violet-500' },
+  { label: '玫红', value: 'rose', className: 'bg-rose-500', borderClassName: 'border-rose-500' },
+  { label: '橙色', value: 'orange', className: 'bg-orange-500', borderClassName: 'border-orange-500' },
+  { label: '琥珀', value: 'amber', className: 'bg-amber-500', borderClassName: 'border-amber-500' },
+  { label: '青色', value: 'cyan', className: 'bg-cyan-500', borderClassName: 'border-cyan-500' },
+  { label: '粉色', value: 'pink', className: 'bg-pink-500', borderClassName: 'border-pink-500' },
+  { label: '石板灰', value: 'slate', className: 'bg-slate-500', borderClassName: 'border-slate-500' },
+  { label: '红色', value: 'red', className: 'bg-red-500', borderClassName: 'border-red-500' },
+  { label: '靛蓝', value: 'indigo', className: 'bg-indigo-500', borderClassName: 'border-indigo-500' },
+];
 
 function formatDuration(start: number, end?: number): string {
   const ms = Math.max(0, (end || Date.now()) - start);
@@ -385,7 +437,14 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
       ? 'border-green-500/70 shadow-green-500/15 shadow-sm'
       : nodeStatus === 'error'
         ? 'border-destructive/70 shadow-destructive/15 shadow-sm'
-    : 'border-border';
+    : NODE_COLORS.find(color => color.value === nodeData.nodeColor)?.borderClassName || 'border-border';
+
+  const dispatchNodeUpdate = useCallback((updates: Record<string, unknown>) => {
+    if (isCanvasLocked) return;
+    window.dispatchEvent(new CustomEvent('workflow:update-node-data', {
+      detail: { nodeId: id, data: updates },
+    }));
+  }, [id, isCanvasLocked]);
 
   // Node delete via custom event
   const handleDelete = useCallback(() => {
@@ -407,6 +466,28 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
     if (isCanvasLocked) return;
     window.dispatchEvent(new CustomEvent('workflow:stage-node', { detail: { nodeId: id } }));
   }, [id, isCanvasLocked]);
+
+  const handleMoveToStage = useCallback(() => {
+    if (isCanvasLocked) return;
+    window.dispatchEvent(new CustomEvent('workflow:stage-node', { detail: { nodeId: id } }));
+    window.dispatchEvent(new CustomEvent('workflow:delete-node', { detail: { nodeId: id } }));
+  }, [id, isCanvasLocked]);
+
+  const handleShowInfo = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('workflow:show-node-info', { detail: { nodeId: id } }));
+  }, [id]);
+
+  const setNodeColor = useCallback((color: string | null) => {
+    dispatchNodeUpdate({ nodeColor: color });
+  }, [dispatchNodeUpdate]);
+
+  const setNodeState = useCallback((state: NodeRunState) => {
+    dispatchNodeUpdate({ nodeState: state });
+  }, [dispatchNodeUpdate]);
+
+  const setNodeBreakpoint = useCallback((breakpoint: NodeBreakpoint | null) => {
+    dispatchNodeUpdate({ breakpoint });
+  }, [dispatchNodeUpdate]);
 
   const handleResizeEnd = useCallback((_: unknown, params: { width: number; height: number }) => {
     if (isCanvasLocked) return;
@@ -596,23 +677,91 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
       </div>
       </ContextMenuTrigger>
       {showContextMenu && (
-        <ContextMenuContent className="w-40">
+        <ContextMenuContent className="w-48">
+          <ContextMenuSub>
+            <ContextMenuSubTrigger className="text-xs gap-2">
+              <Palette className="h-3 w-3" />
+              节点颜色
+            </ContextMenuSubTrigger>
+            <ContextMenuSubContent className="w-40">
+              {NODE_COLORS.map(color => (
+                <ContextMenuItem
+                  key={color.value ?? 'default'}
+                  className="text-xs gap-2"
+                  onClick={() => setNodeColor(color.value)}
+                >
+                  <span className={cn('h-3.5 w-3.5 shrink-0 rounded-sm', color.className)} />
+                  {color.label}
+                </ContextMenuItem>
+              ))}
+            </ContextMenuSubContent>
+          </ContextMenuSub>
+          <ContextMenuSub>
+            <ContextMenuSubTrigger className="text-xs gap-2">
+              <Settings className="h-3 w-3" />
+              节点状态
+            </ContextMenuSubTrigger>
+            <ContextMenuSubContent className="w-44">
+              <ContextMenuItem className="text-xs gap-2" onClick={() => setNodeState('normal')}>
+                <CircleCheck className="h-3 w-3 text-green-500" />
+                正常
+              </ContextMenuItem>
+              <ContextMenuItem className="text-xs gap-2" onClick={() => setNodeState('disabled')}>
+                <CircleSlash className="h-3 w-3 text-red-500" />
+                禁用（中止执行）
+              </ContextMenuItem>
+              <ContextMenuItem className="text-xs gap-2" onClick={() => setNodeState('skipped')}>
+                <SkipForward className="h-3 w-3 text-yellow-500" />
+                跳过（跳过执行）
+              </ContextMenuItem>
+            </ContextMenuSubContent>
+          </ContextMenuSub>
+          <ContextMenuSub>
+            <ContextMenuSubTrigger className="text-xs gap-2">
+              <Flag className="h-3 w-3" />
+              断点设置
+            </ContextMenuSubTrigger>
+            <ContextMenuSubContent className="w-44">
+              <ContextMenuItem className="text-xs gap-2" onClick={() => setNodeBreakpoint('start')}>
+                <Flag className="h-3 w-3 text-blue-500" />
+                设置开始断点
+              </ContextMenuItem>
+              <ContextMenuItem className="text-xs gap-2" onClick={() => setNodeBreakpoint('end')}>
+                <Flag className="h-3 w-3 text-purple-500" />
+                设置结束断点
+              </ContextMenuItem>
+              <ContextMenuItem className="text-xs gap-2" onClick={() => setNodeBreakpoint(null)}>
+                <FlagOff className="h-3 w-3 text-muted-foreground" />
+                取消断点
+              </ContextMenuItem>
+            </ContextMenuSubContent>
+          </ContextMenuSub>
+          <ContextMenuSeparator />
+          <ContextMenuItem className="text-xs gap-2" onClick={handleShowInfo}>
+            <Info className="h-3 w-3" />
+            查看节点信息
+          </ContextMenuItem>
           <ContextMenuItem className="text-xs gap-2" onClick={handleCopy}>
             <Copy className="h-3 w-3" />
-            复制
+            复制节点
           </ContextMenuItem>
           <ContextMenuItem className="text-xs gap-2" onClick={handleClone}>
             <ClipboardCopy className="h-3 w-3" />
-            克隆
+            克隆节点
           </ContextMenuItem>
+          <ContextMenuSeparator />
           <ContextMenuItem className="text-xs gap-2" onClick={handleStage}>
-            <Inbox className="h-3 w-3" />
-            暂存
+            <Archive className="h-3 w-3" />
+            复制到暂存
+          </ContextMenuItem>
+          <ContextMenuItem className="text-xs gap-2" onClick={handleMoveToStage}>
+            <ArchiveRestore className="h-3 w-3" />
+            移动到暂存
           </ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuItem className="text-xs gap-2" variant="destructive" onClick={handleDelete}>
-            <X className="h-3 w-3" />
-            删除
+            <Trash2 className="h-3 w-3" />
+            删除节点
           </ContextMenuItem>
         </ContextMenuContent>
       )}

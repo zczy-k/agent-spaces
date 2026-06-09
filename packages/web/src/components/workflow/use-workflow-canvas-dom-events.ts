@@ -84,6 +84,12 @@ export function useCanvasDomEvents({
     onNodeStage((e as CustomEvent).detail.nodeId);
   }, [isCanvasLocked, onNodeStage]);
 
+  const handleNodeInfoEvent = useCallback((e: Event) => {
+    const detail = (e as CustomEvent).detail as { nodeId?: string | null } | undefined;
+    if (!detail?.nodeId) return;
+    onNodeSelect(detail.nodeId);
+  }, [onNodeSelect]);
+
   // Register custom event listeners
   useEffect(() => {
     window.addEventListener('workflow:edge-insert-node', handleEdgeInsertNode);
@@ -94,6 +100,7 @@ export function useCanvasDomEvents({
     window.addEventListener('workflow:copy-node', handleNodeCopyEvent);
     window.addEventListener('workflow:clone-node', handleNodeCloneEvent);
     window.addEventListener('workflow:stage-node', handleNodeStageEvent);
+    window.addEventListener('workflow:show-node-info', handleNodeInfoEvent);
     return () => {
       window.removeEventListener('workflow:edge-insert-node', handleEdgeInsertNode);
       window.removeEventListener('workflow:select-edge', handleEdgeSelect);
@@ -103,8 +110,9 @@ export function useCanvasDomEvents({
       window.removeEventListener('workflow:copy-node', handleNodeCopyEvent);
       window.removeEventListener('workflow:clone-node', handleNodeCloneEvent);
       window.removeEventListener('workflow:stage-node', handleNodeStageEvent);
+      window.removeEventListener('workflow:show-node-info', handleNodeInfoEvent);
     };
-  }, [handleEdgeDelete, handleEdgeInsertNode, handleEdgeSelect, handleNodeDelete, handleNodeDataUpdate, handleNodeCopyEvent, handleNodeCloneEvent, handleNodeStageEvent]);
+  }, [handleEdgeDelete, handleEdgeInsertNode, handleEdgeSelect, handleNodeDelete, handleNodeDataUpdate, handleNodeCopyEvent, handleNodeCloneEvent, handleNodeStageEvent, handleNodeInfoEvent]);
 
   // Keyboard delete for selected edge
   useEffect(() => {
