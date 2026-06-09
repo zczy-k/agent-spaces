@@ -27,6 +27,8 @@ packages/templates/
     code-writing.json
   plugins/                  # Workflow 插件模板（按插件目录组织）
     index.json
+    index_zh.json
+    index_en.json
     fetch/
     openai/
     ...
@@ -52,7 +54,7 @@ fetchStoreIndex(path)  ← lib/agent-store.ts
 | `prompts-dialog.tsx` | `prompt/index.json` | Prompt 模板商店列表 |
 | `use-skills-data.ts` | `skills/index.json` | 技能商店列表 |
 | `workflow-templates-dialog.tsx` | `workflows/index.json` → 具体 `.json` | 工作流模板导入 |
-| `workflow-plugins-dialog.tsx` | `plugins/index.json` | Workflow 插件商店安装 |
+| `workflow-plugins-dialog.tsx` | `plugins/index_{locale}.json`，失败回退 `plugins/index.json` | Workflow 插件商店安装 |
 
 ## 后端静态服务
 
@@ -140,6 +142,46 @@ name: 技能显示名称
 }
 ```
 
+#### 插件商店多语言字段
+
+插件商店卡片只读取 manifest 中的插件级文案：`name`、`description`、`tags`。这些字段支持语言后缀：
+
+- `name_zh` / `name_en`
+- `description_zh` / `description_en`
+- `tags_zh` / `tags_en`
+
+示例：
+
+```json
+{
+  "id": "my.workflow.plugin",
+  "name": "我的 Workflow 插件",
+  "name_zh": "我的 Workflow 插件",
+  "name_en": "My Workflow Plugin",
+  "version": "1.0.0",
+  "description": "插件描述",
+  "description_zh": "插件描述",
+  "description_en": "Plugin description",
+  "tags": ["示例"],
+  "tags_zh": ["示例"],
+  "tags_en": ["Example"],
+  "hasWorkflow": true,
+  "entries": {
+    "workflow": "workflow.js"
+  }
+}
+```
+
+`generate-index.mjs` 会为插件商店生成多个索引：
+
+- `plugins/index.json`：默认索引，兼容旧前端和未做多语言的远程商店
+- `plugins/index_zh.json`：中文索引，优先读取 `_zh` 字段
+- `plugins/index_en.json`：英文索引，优先读取 `_en` 字段
+
+语言后缀字段缺失时，会回退到无后缀字段。例如 `name_en` 缺失时使用 `name`。
+
+插件 action 运行时的多语言不通过商店索引处理。workflow node 的 `label`、`description`、字段 tooltip、执行结果 `message` 应放在插件目录下的 `lang.json`，由插件运行时传入的 `t(key, fallback)` 处理。调试日志统一使用英文，不使用多语言。
+
 ### 6. 重新生成索引
 
 ```bash
@@ -147,6 +189,32 @@ pnpm --filter @agent-spaces/agents generate-index
 ```
 
 会扫描各子目录，更新对应的 `index.json`。前端通过索引文件发现新资源。
+
+## 前端多语言请求方式
+
+前端加载插件商店时，应基于当前 UI 语言请求对应索引：
+
+```ts
+const { locale } = useLocale()
+
+try {
+  const plugins = await fetchStoreIndex<StoreWorkflowPlugin>(`plugins/index_${locale}.json`)
+  setStorePlugins(plugins)
+} catch {
+  const plugins = await fetchStoreIndex<StoreWorkflowPlugin>('plugins/index.json')
+  setStorePlugins(plugins)
+}
+```
+
+实现要求：
+
+- 当前插件商店索引支持 `zh` 和 `en`
+- 必须保留 `plugins/index.json` 回退，避免远程商店未发布多语言索引时列表不可用
+- 切换语言后应重新加载插件商店索引
+- 安装插件时仍使用插件目录路径，例如 `resolveStoreUrl(\`plugins/${plugin.path}\`)`
+- 不要把语言后缀拼到插件目录路径或插件下载路径上
+
+目前 `packages/web/src/components/workflow/workflow-plugins-dialog.tsx` 已按该模式实现：读取 `useLocale()`，优先请求 `plugins/index_${locale}.json`，失败后回退 `plugins/index.json`。
 
 ## 远程商店配置
 

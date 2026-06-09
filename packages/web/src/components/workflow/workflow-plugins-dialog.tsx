@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { LocalPluginCard, StorePluginCard } from './workflow-plugin-card';
 import { WorkflowPluginConfigDialog } from './workflow-plugin-config-dialog';
+import { useLocale } from '@/components/layout/locale-provider';
 
 type PluginTab = 'local' | 'store';
 
@@ -41,6 +42,7 @@ export function WorkflowPluginsDialog({
   const [status, setStatus] = useState<'all' | 'enabled' | 'disabled'>('all');
   const [configPlugin, setConfigPlugin] = useState<WorkflowPlugin | null>(null);
   const [installingId, setInstallingId] = useState<string | null>(null);
+  const { locale } = useLocale();
 
   const enabledPluginIds = useMemo(() => new Set(workflow?.enabledPlugins || []), [workflow?.enabledPlugins]);
   const installedPluginIds = useMemo(() => new Set(plugins.map(plugin => plugin.id)), [plugins]);
@@ -88,7 +90,11 @@ export function WorkflowPluginsDialog({
   async function loadStorePlugins() {
     setStoreLoading(true);
     try {
-      setStorePlugins(await fetchStoreIndex<StoreWorkflowPlugin>('plugins/index.json'));
+      try {
+        setStorePlugins(await fetchStoreIndex<StoreWorkflowPlugin>(`plugins/index_${locale}.json`));
+      } catch {
+        setStorePlugins(await fetchStoreIndex<StoreWorkflowPlugin>('plugins/index.json'));
+      }
     } catch {
       setStorePlugins([]);
     } finally {
@@ -100,7 +106,7 @@ export function WorkflowPluginsDialog({
     if (!open) return;
     void loadPlugins();
     void loadStorePlugins();
-  }, [open]);
+  }, [open, locale]);
 
   function updateWorkflowPlugins(pluginId: string, enabled: boolean) {
     if (!workflow) return;

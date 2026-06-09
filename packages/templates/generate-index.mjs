@@ -121,6 +121,7 @@ function scanAgentStore() {
 function scanPluginStore() {
   const dir = join(agentsDir, 'plugins');
   if (!existsSync(dir)) return;
+  const locales = ['zh', 'en'];
   const remoteIndexPath = join(dir, 'plugins.json');
   const remoteItems = existsSync(remoteIndexPath)
     ? JSON.parse(readFileSync(remoteIndexPath, 'utf-8'))
@@ -134,7 +135,26 @@ function scanPluginStore() {
         return [manifestPath || downloadPath || item.id, item];
       }),
   );
-  const index = [];
+  const indexes = new Map([['default', []], ...locales.map(locale => [locale, []])]);
+  const pickLocalized = (data, field, locale) => data[`${field}_${locale}`] ?? data[field];
+  const buildItem = (entryName, data, locale) => {
+    const id = data.id || entryName;
+    return {
+      id,
+      name: locale ? pickLocalized(data, 'name', locale) || id : data.name || id,
+      version: data.version || '0.0.0',
+      description: locale ? pickLocalized(data, 'description', locale) || '' : data.description || '',
+      author: data.author || { name: 'Unknown' },
+      tags: locale && Array.isArray(data[`tags_${locale}`])
+        ? data[`tags_${locale}`]
+        : Array.isArray(data.tags) ? data.tags : [],
+      type: data.type,
+      hasView: Boolean(data.hasView),
+      hasWorkflow: Boolean(data.hasWorkflow || data.workflowNodes || data.entries?.workflow),
+      path: entryName,
+      iconUrl: data.iconUrl || data.iconPath || (data.icon ? `plugins/${entryName}/${data.icon}` : undefined),
+    };
+  };
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
     const pluginDir = join(dir, entry.name);
@@ -143,23 +163,14 @@ function scanPluginStore() {
     const localManifest = manifestFile ? JSON.parse(readFileSync(join(pluginDir, manifestFile), 'utf-8')) : {};
     const remoteManifest = remoteByDir.get(entry.name) || {};
     const data = { ...remoteManifest, ...localManifest };
-    const id = data.id || entry.name;
-    index.push({
-      id,
-      name: data.name || id,
-      version: data.version || '0.0.0',
-      description: data.description || '',
-      author: data.author || { name: 'Unknown' },
-      tags: Array.isArray(data.tags) ? data.tags : [],
-      type: data.type,
-      hasView: Boolean(data.hasView),
-      hasWorkflow: Boolean(data.hasWorkflow || data.workflowNodes || data.entries?.workflow),
-      path: entry.name,
-      iconUrl: data.iconUrl || data.iconPath || (data.icon ? `plugins/${entry.name}/${data.icon}` : undefined),
-    });
+    indexes.get('default').push(buildItem(entry.name, data));
+    for (const locale of locales) indexes.get(locale).push(buildItem(entry.name, data, locale));
   }
-  writeFileSync(join(dir, 'index.json'), JSON.stringify(index, null, 2), 'utf-8');
-  console.log(`[plugins] ${index.length} plugins`);
+  writeFileSync(join(dir, 'index.json'), JSON.stringify(indexes.get('default'), null, 2), 'utf-8');
+  for (const locale of locales) {
+    writeFileSync(join(dir, `index_${locale}.json`), JSON.stringify(indexes.get(locale), null, 2), 'utf-8');
+  }
+  console.log(`[plugins] ${indexes.get('default').length} plugins`);
 }
 
 scanAgentStore();
