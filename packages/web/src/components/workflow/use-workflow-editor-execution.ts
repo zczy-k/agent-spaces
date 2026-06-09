@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import type { ExecutionLog, InteractionRequest, Workflow } from '@agent-spaces/shared';
+import { getCompositeParentId, LOOP_BODY_NODE_TYPE, type ExecutionLog, type InteractionRequest, type Workflow } from '@agent-spaces/shared';
 import { executionLogApi } from '@/lib/workflow-api';
 import { getWS } from '@/lib/ws';
 import type { DebugResult } from './workflow-editor-types';
@@ -340,10 +340,17 @@ export function useWorkflowEditorExecution({
   }, [workflow]);
 
   // ---- Computed ----
-  const startNodes = useMemo(
-    () => (workflow?.nodes || []).filter(node => node.type === 'start'),
-    [workflow],
-  );
+  const startNodes = useMemo(() => {
+    const nodes = workflow?.nodes || [];
+    const nodeById = new Map(nodes.map(node => [node.id, node]));
+
+    return nodes.filter(node => {
+      if (node.type !== 'start') return false;
+      const parentId = getCompositeParentId(node);
+      if (!parentId) return true;
+      return nodeById.get(parentId)?.type !== LOOP_BODY_NODE_TYPE;
+    });
+  }, [workflow]);
 
   const executionValidationError = useMemo(() => {
     if (!workflow) return '未加载工作流';
