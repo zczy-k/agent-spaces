@@ -32,16 +32,16 @@
   },
   {
     "id": "workflow.aliyun-oss",
-    "name": "阿里云OSS",
+    "name": "Aliyun OSS",
     "version": "1.0.0",
-    "description": "阿里云OSS文件存储，支持上传、下载、删除、列举、签名URL等操作",
+    "description": "Aliyun OSS file storage. Supports upload, download, delete, list, signed URL and more.",
     "author": {
       "name": "workflow"
     },
     "tags": [
-      "云存储",
+      "Cloud Storage",
       "OSS",
-      "阿里云"
+      "Aliyun"
     ],
     "type": "server",
     "hasView": false,

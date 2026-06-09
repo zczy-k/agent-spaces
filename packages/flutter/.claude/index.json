@@ -1,0 +1,122 @@
+{
+  "timestamp": "2026-06-09T11:21:10+08:00",
+  "module": "packages/flutter",
+  "language": "Dart",
+  "framework": "Flutter SDK ^3.10.1",
+  "description": "Agent Spaces 原生多平台客户端外壳（WebView + SSH 终端 + 文件源管理器）",
+  "entrypoints": [
+    "lib/main.dart"
+  ],
+  "routes": [
+    { "path": "/", "screen": "HomeScreen" },
+    { "path": "/bookmarks", "screen": "BookmarksScreen" },
+    { "path": "/settings", "screen": "SettingsScreen" },
+    { "path": "/settings/terminal-credentials", "screen": "TerminalCredentialsScreen" },
+    { "path": "/settings/file-source-credentials", "screen": "FileSourceCredentialsScreen" },
+    { "path": "/about", "screen": "AboutScreen" }
+  ],
+  "providers": [
+    "lib/providers/browser_provider.dart",
+    "lib/providers/bookmark_provider.dart",
+    "lib/providers/settings_provider.dart",
+    "lib/providers/console_log_provider.dart",
+    "lib/providers/terminal_credentials_provider.dart",
+    "lib/providers/file_source_credentials_provider.dart"
+  ],
+  "models": [
+    "lib/models/browser_tab.dart",
+    "lib/models/bookmark.dart",
+    "lib/models/terminal_credential.dart",
+    "lib/models/file_source_config.dart",
+    "lib/models/file_source_credential.dart"
+  ],
+  "services": [
+    "lib/services/storage_service.dart",
+    "lib/services/notification_service.dart",
+    "lib/services/webview_service.dart",
+    "lib/services/file_sources/file_source.dart",
+    "lib/services/file_sources/file_source_factory.dart",
+    "lib/services/file_sources/path_utils.dart",
+    "lib/services/file_sources/webdav_url.dart",
+    "lib/services/file_sources/sftp_file_source.dart",
+    "lib/services/file_sources/ftp_file_source.dart",
+    "lib/services/file_sources/storage_file_source.dart",
+    "lib/services/file_sources/webdav_file_source.dart"
+  ],
+  "bridge": [
+    "lib/bridge/js_bridge.dart"
+  ],
+  "screens": [
+    "lib/screens/home_screen.dart",
+    "lib/screens/bookmarks_screen.dart",
+    "lib/screens/settings_screen.dart",
+    "lib/screens/terminal_credentials_screen.dart",
+    "lib/screens/file_source_credentials_screen.dart",
+    "lib/screens/about_screen.dart"
+  ],
+  "widgets": [
+    "lib/widgets/webview_panel.dart",
+    "lib/widgets/webview_instance.dart",
+    "lib/widgets/home_page.dart",
+    "lib/widgets/home_cards.dart",
+    "lib/widgets/device_selector.dart",
+    "lib/widgets/split_layout.dart",
+    "lib/widgets/file_source_tree.dart",
+    "lib/widgets/terminal_instance.dart",
+    "lib/widgets/terminal_login_form.dart",
+    "lib/widgets/terminal_toolbar.dart",
+    "lib/widgets/terminal_virtual_keyboard.dart",
+    "lib/widgets/tab_context_menu.dart",
+    "lib/widgets/tab_dialogs.dart",
+    "lib/widgets/tab_widgets.dart",
+    "lib/widgets/console_sheet.dart",
+    "lib/widgets/debug_widgets.dart"
+  ],
+  "tests": [
+    "test/widget_test.dart",
+    "test/services/file_sources/webdav_url_test.dart"
+  ],
+  "docs": [
+    "docs/file-source-tabs.md",
+    "CLAUDE.md",
+    "claude/overview.md",
+    "claude/conventions.md",
+    "claude/module-responsibilities.md",
+    "claude/entrypoints.md",
+    "claude/public-interfaces.md",
+    "claude/dependencies-and-config.md",
+    "claude/data-model.md",
+    "claude/testing-and-quality.md",
+    "claude/file-map.md",
+    "claude/faq.md",
+    "claude/changelog.md"
+  ],
+  "config_files": [
+    "pubspec.yaml",
+    "analysis_options.yaml"
+  ],
+  "coverage": {
+    "total_source_files": 44,
+    "total_test_files": 2,
+    "scanned_files": 46,
+    "coverage_percent": 100,
+    "scanned_details": "All 44 source files and 2 test files fully read and analyzed"
+  },
+  "gaps": {
+    "missing_tests": "Only 2 test files exist. No unit tests for providers, services, models, or bridge. No widget tests for screens.",
+    "missing_docs": "No README.md with build/run instructions. No CONTRIBUTING.md.",
+    "missing_i18n_files": "assets/translations/ directory referenced in pubspec.yaml but files not found (may be generated at build time)"
+  },
+  "ignored": {
+    "directories": [
+      "assets/web/ (large bundled web assets including Monaco editor)",
+      "ios/ (platform-specific build files)",
+      "android/ (platform-specific build files)",
+      "macos/ (platform-specific build files)",
+      "windows/ (platform-specific build files)",
+      "web/ (platform-specific build files)"
+    ],
+    "reason": "Binary/generated/platform-specific files not relevant to source code analysis"
+  },
+  "truncated": false
+}
