@@ -2,11 +2,13 @@
 
 import React, { useState, useMemo, useCallback, useRef, useSyncExternalStore } from 'react';
 import { useTranslations } from 'next-intl';
-import { Handle, NodeResizer, Position, useUpdateNodeInternals } from '@xyflow/react';
+import { Handle, NodeResizeControl, NodeToolbar, Position, useUpdateNodeInternals } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import {
   Flag,
+  Grip,
   Loader2,
+  MoveDiagonal,
   Play,
   Square,
   X,
@@ -48,6 +50,8 @@ const HANDLE_POSITION_MAP: Record<HandlePositionMode, { target: Position; source
   'right-left': { target: Position.Right, source: Position.Left },
 };
 
+const WORKFLOW_NODE_DRAG_HANDLE_CLASS = 'workflow-node-drag-handle';
+
 function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const nodeData = data as WorkflowNodeData;
   const t = useTranslations('workflows');
@@ -87,7 +91,11 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const isLoopBody = definition?.type === LOOP_BODY_NODE_TYPE;
   const canDeleteNode = !isBoundaryNode && !isLoopBody;
   const isCanvasLocked = nodeData.isPreview || nodeData.isCanvasLocked;
-  const selectedNodeIds = Array.isArray(nodeData.selectedNodeIds) ? nodeData.selectedNodeIds : [];
+  const selectedNodeIds = useMemo(
+    () => Array.isArray(nodeData.selectedNodeIds) ? nodeData.selectedNodeIds : [],
+    [nodeData.selectedNodeIds],
+  );
+  const canShowNodeToolbar = !isCanvasLocked && (!isBoundaryNode || canDeleteNode);
 
   React.useEffect(() => {
     if (isCanvasLocked) setIsEditing(false);
@@ -399,26 +407,22 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           style={getHandleStyle(handlePositions.target, 0, 1)}
         />
       )}
-      {/* Hover test button */}
-      {!isBoundaryNode && !isCanvasLocked && isHovered && (
-        <button
-          className="absolute -top-2 -left-2 w-5 h-5 rounded-full bg-green-500 text-white flex items-center justify-center hover:bg-green-600 z-10"
-          onClick={handleTestNode}
-          title={isCurrentNodeDebugging ? t('nodeUi.test.cancel') : t('nodeUi.test.node')}
-        >
-          {isCurrentNodeDebugging ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
-        </button>
-      )}
-
-      {/* Hover delete button */}
-      {canDeleteNode && !isCanvasLocked && isHovered && (
-        <button
-          className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:bg-destructive/80 z-10"
-          onClick={handleDelete}
-        >
-          <X className="w-3 h-3" />
-        </button>
-      )}
+      <div className="absolute right-2 top-2 z-30 flex items-center gap-1">
+        {hasCustomView && !isCanvasLocked ? (
+          <button
+            type="button"
+            className={cn(
+              WORKFLOW_NODE_DRAG_HANDLE_CLASS,
+              'inline-flex h-6 w-6 cursor-grab items-center justify-center rounded border border-border bg-background/95 text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground active:cursor-grabbing',
+            )}
+            title={t('nodeUi.drag')}
+            aria-label={t('nodeUi.drag')}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <Grip className="h-3.5 w-3.5" />
+          </button>
+        ) : null}
+      </div>
 
       {stateBadge ? (
         <span
@@ -444,7 +448,11 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       ) : null}
 
       {nodeData.isPreview && hasExecutionResult && executionStep ? (
-        <ExecutionResultHoverCard step={executionStep} visible={isHovered || selected} />
+        <ExecutionResultHoverCard
+          step={executionStep}
+          visible={isHovered || selected}
+          triggerClassName="-right-2 -top-2"
+        />
       ) : null}
 
       {isPausedAtThisNode ? (
@@ -591,14 +599,48 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
 
   return (
     <>
-      <NodeResizer
-        isVisible={selected && !isCanvasLocked}
-        minWidth={nodeMinWidth}
-        minHeight={nodeMinHeight}
-        onResizeEnd={handleResizeEnd}
-        handleClassName="workflow-node-resize-handle"
-        lineClassName="workflow-node-resize-line"
-      />
+      {canShowNodeToolbar ? (
+        <NodeToolbar
+          position={Position.Top}
+          align="start"
+          offset={8}
+          className="nodrag nopan flex items-center gap-1 rounded border border-border bg-background/95 p-1 shadow-md"
+        >
+          {!isBoundaryNode ? (
+            <button
+              type="button"
+              className="inline-flex h-7 w-7 items-center justify-center rounded bg-green-500 text-white hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={handleTestNode}
+              title={isCurrentNodeDebugging ? t('nodeUi.test.cancel') : t('nodeUi.test.node')}
+              aria-label={isCurrentNodeDebugging ? t('nodeUi.test.cancel') : t('nodeUi.test.node')}
+            >
+              {isCurrentNodeDebugging ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+            </button>
+          ) : null}
+          {canDeleteNode ? (
+            <button
+              type="button"
+              className="inline-flex h-7 w-7 items-center justify-center rounded bg-destructive text-destructive-foreground hover:bg-destructive/80"
+              onClick={handleDelete}
+              title={t('nodeUi.delete')}
+              aria-label={t('nodeUi.delete')}
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          ) : null}
+        </NodeToolbar>
+      ) : null}
+      {selected && !isCanvasLocked ? (
+        <NodeResizeControl
+          minWidth={nodeMinWidth}
+          minHeight={nodeMinHeight}
+          onResizeEnd={handleResizeEnd}
+          position="bottom-right"
+          style={{ background: 'transparent', border: 'none' }}
+        >
+          <MoveDiagonal className="workflow-node-resize-icon" />
+        </NodeResizeControl>
+      ) : null}
       <WorkflowNodeContextMenu
         nodeId={id}
         selectedNodeIds={selectedNodeIds}
@@ -624,14 +666,14 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       <style>{`
         .handle-dot { transition: scale 0.2s ease, box-shadow 0.2s ease; }
         .handle-dot:hover { scale: 1.6; box-shadow: 0 0 6px currentColor; }
-        .workflow-node-resize-line { border-color: var(--primary); }
-        .workflow-node-resize-handle {
-          width: 14px;
-          height: 14px;
-          border: 2px solid var(--primary);
-          border-radius: 4px;
-          background: var(--background);
-          box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+        .workflow-node-resize-icon {
+          position: absolute;
+          right: 4px;
+          bottom: 4px;
+          width: 18px;
+          height: 18px;
+          color: var(--primary);
+          filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
         }
         .source-handle-label { position: absolute; display: flex; align-items: center; pointer-events: none; }
       `}</style>

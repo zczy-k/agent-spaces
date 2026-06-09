@@ -82,11 +82,13 @@ export function useCanvasData({
       const parentId = getCompositeParentId(n);
       const isLoopBody = n.type === LOOP_BODY_NODE_TYPE;
       const isScopedChild = !!parentId && !isScopeBoundaryWorkflowNode(n);
+      const hasCustomView = !!definition?.customView;
       const zIndex = isLoopBody ? -100 : isScopedChild ? 1000 : 1;
       return {
         id: n.id,
         type: 'custom',
         position: n.position,
+        dragHandle: hasCustomView ? '.workflow-node-drag-handle' : undefined,
         selected: selectedNodeIdSet.has(n.id),
         zIndex,
         width,

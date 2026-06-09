@@ -37,7 +37,15 @@ function PlainValue({ value, empty }: { value: unknown; empty: string }) {
   );
 }
 
-export function ExecutionResultHoverCard({ step, visible }: { step: ExecutionStep; visible: boolean }) {
+export function ExecutionResultHoverCard({
+  step,
+  visible,
+  triggerClassName,
+}: {
+  step: ExecutionStep;
+  visible: boolean;
+  triggerClassName?: string;
+}) {
   const t = useTranslations('workflows');
   const isError = step.status === 'error';
   const hasLogs = (step.logs || []).length > 0;
@@ -49,7 +57,8 @@ export function ExecutionResultHoverCard({ step, visible }: { step: ExecutionSte
           <button
             type="button"
             className={cn(
-              'nodrag nopan absolute -bottom-2 -right-2 z-30 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm transition-opacity hover:bg-muted hover:text-foreground',
+              'nodrag nopan absolute z-30 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm transition-opacity hover:bg-muted hover:text-foreground',
+              triggerClassName || '-bottom-2 -right-2',
               visible ? 'opacity-100' : 'opacity-0',
               isError && 'text-destructive hover:text-destructive',
             )}

@@ -628,6 +628,8 @@
     },
     "resume": "Resume",
     "abort": "Abort",
+    "drag": "Drag node",
+    "delete": "Delete node",
     "condition": "Case {index}",
     "conditionDefault": "Default",
     "contextMenu": {
