@@ -13,6 +13,14 @@ type WorkflowSnapshot = Pick<Workflow, 'nodes' | 'edges'> & {
   variables?: Workflow['variables'];
 };
 
+function normalizeOperationEntries(value: unknown): OperationEntry[] {
+  if (Array.isArray(value)) return value as OperationEntry[];
+  if (value && typeof value === 'object' && Array.isArray((value as { entries?: unknown }).entries)) {
+    return (value as { entries: OperationEntry[] }).entries;
+  }
+  return [];
+}
+
 function normalizeLegacySourceHandle(snapshot: WorkflowSnapshot): WorkflowSnapshot {
   const nodesById = new Map(snapshot.nodes.map(node => [node.id, node]));
 
@@ -90,6 +98,11 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
   const autoSaveTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const prePreviewWorkflowRef = useRef<Workflow | null>(null);
 
+  // Auto-switch to properties tab when selecting a node
+  useEffect(() => {
+    if (selectedNodeId) setRightTab('properties');
+  }, [selectedNodeId]);
+
   // ---- Load workflow ----
   useEffect(() => {
     if (!template) {
@@ -164,7 +177,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
     let cancelled = false;
     operationHistoryApi.load(workflowId)
       .then((entries) => {
-        if (!cancelled) setOperationLog(entries);
+        if (!cancelled) setOperationLog(normalizeOperationEntries(entries));
       })
       .catch(() => {
         // Operation history is optional.
@@ -186,7 +199,8 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
     setUndoStack(prev => [...prev, snapshot]);
     setRedoStack([]);
     setOperationLog((prev) => {
-      const next = [...prev.slice(0, undoStack.length), entry];
+      const entries = normalizeOperationEntries(prev);
+      const next = [...entries.slice(0, undoStack.length), entry];
       void operationHistoryApi.save(workflow.id, next).catch(() => {});
       return next;
     });

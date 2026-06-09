@@ -259,7 +259,8 @@ router.get('/:workflowId/operation-history', (req: Request<{ workflowId: string 
 
 router.put('/:workflowId/operation-history', (req: Request<{ workflowId: string }>, res: Response) => {
   try {
-    ws.saveOperationHistory(req.params.workflowId, req.body);
+    const entries = Array.isArray(req.body) ? req.body : req.body?.entries;
+    ws.saveOperationHistory(req.params.workflowId, Array.isArray(entries) ? entries : []);
     res.json({ ok: true });
   } catch (error: any) {
     res.status(400).json({ error: error.message });
