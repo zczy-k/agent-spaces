@@ -260,7 +260,7 @@ function WorkflowEditorInner({
       <ResizablePanelGroup orientation="horizontal" defaultLayout={state.workflowLayout} onLayoutChange={state.onWorkflowLayoutChange} className="flex-1 min-h-0 gap-1.5">
         {/* Node sidebar */}
         <ResizablePanel id="workflow-node-sidebar" defaultSize="18%" minSize="12%" maxSize="30%">
-          <div className="rounded-xl bg-background overflow-hidden h-full">
+          <div className="rounded-xl border bg-background overflow-hidden h-full">
           <WorkflowNodeSidebar
             workflow={workflow}
             onWorkflowChange={state.handleWorkflowMetaChange}
@@ -273,7 +273,7 @@ function WorkflowEditorInner({
 
         {/* Canvas + Execution bar */}
         <ResizablePanel id="workflow-canvas" defaultSize="52%" minSize="30%">
-          <div className="flex flex-col h-full rounded-xl bg-background overflow-hidden">
+          <div className="flex flex-col h-full rounded-xl border bg-background overflow-hidden">
             <div className="flex-1 min-h-0">
               <WorkflowCanvas
                 workflow={workflow}
@@ -334,7 +334,7 @@ function WorkflowEditorInner({
 
         {/* Right panel */}
         <ResizablePanel id="workflow-right-panel" defaultSize="30%" minSize="15%" maxSize="50%">
-          <div className="rounded-xl bg-background overflow-hidden h-full">
+          <div className="rounded-xl border bg-background overflow-hidden h-full">
           <Tabs value={state.rightTab} onValueChange={state.setRightTab} className="flex flex-col h-full">
             <ExpandableTabs
               tabs={[

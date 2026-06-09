@@ -56,7 +56,7 @@ export function WorkflowEditorToolbar({
   const [infoOpen, setInfoOpen] = useState(false);
 
   return (
-    <div className="flex items-center gap-1 px-3 py-1.5 bg-background rounded-xl shrink-0">
+    <div className="flex items-center gap-1 px-3 py-1.5 bg-background border rounded-xl shrink-0">
       <ToolBtn tooltip="返回列表" variant="ghost" size="icon" className="h-7 w-7" onClick={onBack}>
         <ArrowLeft className="h-4 w-4" />
       </ToolBtn>

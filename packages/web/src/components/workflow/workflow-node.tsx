@@ -435,7 +435,10 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
         lineClassName="workflow-node-resize-line"
       />
       <ContextMenu key={showContextMenu ? 'context-menu-enabled' : 'context-menu-disabled'}>
-        <ContextMenuTrigger>
+        <ContextMenuTrigger
+          className="block"
+          style={{ width: nodeWidth, height: nodeHeight }}
+        >
           <div
             ref={nodeRootRef}
             className={`border-2 rounded-lg shadow-sm cursor-pointer transition-colors relative flex flex-col bg-background
@@ -444,8 +447,8 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
             style={{
               minWidth: nodeMinWidth,
               minHeight: nodeMinHeight,
-              width: '100%',
-              height: '100%',
+              width: nodeWidth,
+              height: nodeHeight,
             }}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
