@@ -449,5 +449,63 @@
         "reason_tooltip": "Optional, for logging purposes."
       }
     }
+  },
+  "nodeUi": {
+    "viewResult": "View execution result",
+    "executionResult": "Execution Result",
+    "output": "Output",
+    "input": "Input",
+    "logs": "Logs",
+    "noOutput": "No output",
+    "noInput": "No input",
+    "noLogs": "No logs",
+    "stateBadge": {
+      "disabled": "Off",
+      "skipped": "Skip"
+    },
+    "breakpointBadge": {
+      "start": "Start Breakpoint",
+      "end": "End Breakpoint"
+    },
+    "test": {
+      "node": "Test Node",
+      "cancel": "Cancel Test",
+      "partial": "Partial Test"
+    },
+    "resume": "Resume",
+    "abort": "Abort",
+    "condition": "Case {index}",
+    "conditionDefault": "Default",
+    "contextMenu": {
+      "color": "Node Color",
+      "state": "Node State",
+      "stateNormal": "Normal",
+      "stateDisabled": "Disable (abort execution)",
+      "stateSkipped": "Skip (skip execution)",
+      "breakpoint": "Breakpoint",
+      "breakpointStart": "Set start breakpoint",
+      "breakpointEnd": "Set end breakpoint",
+      "breakpointClear": "Clear breakpoint",
+      "info": "Node Info",
+      "copy": "Copy Node",
+      "clone": "Clone Node",
+      "stage": "Copy to Staging",
+      "moveToStage": "Move to Staging",
+      "delete": "Delete Node"
+    },
+    "colors": {
+      "default": "Default",
+      "emerald": "Emerald",
+      "blue": "Blue",
+      "violet": "Violet",
+      "rose": "Rose",
+      "orange": "Orange",
+      "amber": "Amber",
+      "cyan": "Cyan",
+      "pink": "Pink",
+      "slate": "Slate",
+      "red": "Red",
+      "indigo": "Indigo"
+    }
   }
 }

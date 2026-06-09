@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ReactFlow,
   Background,
   Controls,
+  ControlButton,
   MiniMap,
   BackgroundVariant,
   useReactFlow,
@@ -16,6 +17,7 @@ import {
   type OnConnectEnd,
   type OnConnectStart,
 } from '@xyflow/react';
+import { Grid3X3, Grip } from 'lucide-react';
 import '@xyflow/react/dist/style.css';
 import type { ExecutionLog, Workflow, StagedNode } from '@agent-spaces/shared';
 import { WORKFLOW_NODE_DRAG_MIME, WORKFLOW_STAGED_NODE_DRAG_MIME } from './workflow-drag-types';
@@ -77,6 +79,7 @@ interface WorkflowCanvasProps {
     sourceHandle: string | null;
     position: { x: number; y: number } | null;
   }) => void;
+  onCanvasPreferencesChange?: (prefs: Record<string, unknown>) => void;
 }
 
 export function WorkflowCanvas({
@@ -90,6 +93,7 @@ export function WorkflowCanvas({
   onExecuteFromNode, onResumeExecution, onStopExecution,
   pausedNodeId = null, pausedReason = null,
   partialExecutionStartNodeId = null,
+  onCanvasPreferencesChange,
 }: WorkflowCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const connectSourceRef = useRef<{ nodeId: string; handleId: string | null } | null>(null);
@@ -100,6 +104,18 @@ export function WorkflowCanvas({
   const [helperHorizontal] = useState<number | undefined>();
   const [helperVertical] = useState<number | undefined>();
   const isCanvasLocked = isPreview || isRunning;
+
+  // --- Canvas preferences (persisted in workflow.layoutSnapshot) ---
+  const canvasPrefs = useMemo(() => workflow.layoutSnapshot ?? {}, [workflow.layoutSnapshot]);
+  const bgVariantKey = (canvasPrefs.bgVariant as string) || 'dots';
+  const bgVariant = bgVariantKey === 'lines' ? BackgroundVariant.Lines
+    : bgVariantKey === 'cross' ? BackgroundVariant.Cross
+    : BackgroundVariant.Dots;
+  const snapEnabled = canvasPrefs.snapGrid !== false;
+
+  const updateCanvasPrefs = useCallback((patch: Record<string, unknown>) => {
+    onCanvasPreferencesChange?.({ ...canvasPrefs, ...patch });
+  }, [canvasPrefs, onCanvasPreferencesChange]);
 
   // --- Extracted hooks ---
   const { selectedEdgeId, selectEdge } = useCanvasDomEvents({
@@ -349,7 +365,7 @@ export function WorkflowCanvas({
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView
-        snapToGrid
+        snapToGrid={snapEnabled}
         snapGrid={[15, 15]}
         minZoom={0.2}
         maxZoom={4}
@@ -359,8 +375,25 @@ export function WorkflowCanvas({
         edgesReconnectable={!isCanvasLocked}
         defaultEdgeOptions={{ type: 'custom' }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={15} size={1} />
-        <Controls />
+        <Background variant={bgVariant} gap={15} size={1} />
+        <Controls position="bottom-left">
+          <ControlButton
+            title={`背景: ${bgVariantKey === 'dots' ? '点阵' : bgVariantKey === 'lines' ? '线条' : '十字'}`}
+            onClick={() => {
+              const keys = ['dots', 'lines', 'cross'] as const;
+              const idx = keys.indexOf(bgVariantKey as typeof keys[number]);
+              updateCanvasPrefs({ bgVariant: keys[(idx + 1) % keys.length] });
+            }}
+          >
+            <Grid3X3 size={14} />
+          </ControlButton>
+          <ControlButton
+            title={snapEnabled ? '网格吸附: 开' : '网格吸附: 关'}
+            onClick={() => updateCanvasPrefs({ snapGrid: !snapEnabled })}
+          >
+            <Grip size={14} />
+          </ControlButton>
+        </Controls>
         {minimapVisible && <MiniMap />}
         <WorkflowHelperLines horizontal={helperHorizontal} vertical={helperVertical} />
       </ReactFlow>

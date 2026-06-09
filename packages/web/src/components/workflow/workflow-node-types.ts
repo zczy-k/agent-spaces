@@ -1,0 +1,77 @@
+import type { NodeRunState, NodeBreakpoint } from '@agent-spaces/shared';
+
+export const HEADER_HEIGHT = 33;
+export const HANDLE_MARGIN = 12;
+
+export type WorkflowNodeData = Record<string, unknown> & {
+  label?: string;
+  nodeType?: string;
+  width?: number;
+  height?: number;
+  isPreview?: boolean;
+  isCanvasLocked?: boolean;
+  isRunning?: boolean;
+  nodeState?: NodeRunState;
+  breakpoint?: NodeBreakpoint;
+  nodeColor?: string;
+  execStatus?: string;
+  debugNodeId?: string | null;
+  debugStatus?: 'idle' | 'running' | 'completed' | 'error';
+  pausedNodeId?: string | null;
+  pausedReason?: string | null;
+  partialExecutionStartNodeId?: string | null;
+  isFirstConnectedNode?: boolean;
+  executionStep?: import('@agent-spaces/shared').ExecutionStep;
+};
+
+export type WorkflowCustomViewProps = {
+  nodeId: string;
+  data: Record<string, unknown>;
+};
+
+export type PluginNodeDefinitionMeta = {
+  pluginId?: string;
+  pluginIconPath?: string;
+};
+
+export type NodeColorDef = {
+  label: string;
+  value: string | null;
+  className: string;
+  borderClassName: string;
+};
+
+export const NODE_COLORS: NodeColorDef[] = [
+  { label: 'nodeUi.colors.default', value: null, className: 'bg-background border border-border', borderClassName: 'border-border' },
+  { label: 'nodeUi.colors.emerald', value: 'emerald', className: 'bg-emerald-500', borderClassName: 'border-emerald-500' },
+  { label: 'nodeUi.colors.blue', value: 'blue', className: 'bg-blue-500', borderClassName: 'border-blue-500' },
+  { label: 'nodeUi.colors.violet', value: 'violet', className: 'bg-violet-500', borderClassName: 'border-violet-500' },
+  { label: 'nodeUi.colors.rose', value: 'rose', className: 'bg-rose-500', borderClassName: 'border-rose-500' },
+  { label: 'nodeUi.colors.orange', value: 'orange', className: 'bg-orange-500', borderClassName: 'border-orange-500' },
+  { label: 'nodeUi.colors.amber', value: 'amber', className: 'bg-amber-500', borderClassName: 'border-amber-500' },
+  { label: 'nodeUi.colors.cyan', value: 'cyan', className: 'bg-cyan-500', borderClassName: 'border-cyan-500' },
+  { label: 'nodeUi.colors.pink', value: 'pink', className: 'bg-pink-500', borderClassName: 'border-pink-500' },
+  { label: 'nodeUi.colors.slate', value: 'slate', className: 'bg-slate-500', borderClassName: 'border-slate-500' },
+  { label: 'nodeUi.colors.red', value: 'red', className: 'bg-red-500', borderClassName: 'border-red-500' },
+  { label: 'nodeUi.colors.indigo', value: 'indigo', className: 'bg-indigo-500', borderClassName: 'border-indigo-500' },
+];
+
+export const NODE_COLOR_MAP: Record<string, string> = {
+  emerald: '#10b981',
+  blue: '#3b82f6',
+  violet: '#8b5cf6',
+  rose: '#f43f5e',
+  orange: '#f97316',
+  amber: '#f59e0b',
+  cyan: '#06b6d4',
+  pink: '#ec4899',
+  slate: '#64748b',
+  red: '#ef4444',
+  indigo: '#6366f1',
+};
+
+export function formatDuration(start: number, end?: number): string {
+  const ms = Math.max(0, (end || Date.now()) - start);
+  if (ms < 1000) return `${ms}ms`;
+  return `${(ms / 1000).toFixed(1)}s`;
+}

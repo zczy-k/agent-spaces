@@ -384,6 +384,12 @@ export function useWorkflowEditorCanvas({
     if (hasDelete) markDirty();
   }, [workflow, isReadOnly, pushUndo, markDirty]);
 
+  const handleCanvasPreferencesChange = useCallback((prefs: Record<string, unknown>) => {
+    if (!workflow || isReadOnly) return;
+    setWorkflow(w => w ? { ...w, layoutSnapshot: prefs } : null);
+    markDirty();
+  }, [workflow, isReadOnly, markDirty]);
+
   const handleAutoLayout = useCallback((direction: 'LR' | 'TB') => {
     if (!workflow || isReadOnly || workflow.nodes.length === 0) return;
     pushUndo('auto layout');
@@ -474,5 +480,8 @@ export function useWorkflowEditorCanvas({
     handleNodesChange,
     handleEdgesChange,
     handleAutoLayout,
+
+    // Canvas preferences
+    handleCanvasPreferencesChange,
   };
 }

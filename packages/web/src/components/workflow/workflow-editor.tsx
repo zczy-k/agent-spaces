@@ -312,6 +312,7 @@ function WorkflowEditorInner({
                 onRedo={isWorkflowReadOnly ? undefined : state.handleRedo}
                 onExitPreview={exitExecutionPreview}
                 onAutoLayout={canvas.handleAutoLayout}
+                onCanvasPreferencesChange={canvas.handleCanvasPreferencesChange}
               />
             </div>
             <WorkflowExecutionBar

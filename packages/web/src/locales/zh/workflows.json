@@ -449,5 +449,63 @@
         "reason_tooltip": "可选，用于日志记录。"
       }
     }
+  },
+  "nodeUi": {
+    "viewResult": "查看执行结果",
+    "executionResult": "执行结果",
+    "output": "输出",
+    "input": "输入",
+    "logs": "日志",
+    "noOutput": "无输出",
+    "noInput": "无输入",
+    "noLogs": "无日志",
+    "stateBadge": {
+      "disabled": "已禁",
+      "skipped": "已跳"
+    },
+    "breakpointBadge": {
+      "start": "开始断点",
+      "end": "结束断点"
+    },
+    "test": {
+      "node": "测试节点",
+      "cancel": "取消测试",
+      "partial": "局部测试"
+    },
+    "resume": "继续运行",
+    "abort": "中断",
+    "condition": "条件 {index}",
+    "conditionDefault": "默认",
+    "contextMenu": {
+      "color": "节点颜色",
+      "state": "节点状态",
+      "stateNormal": "正常",
+      "stateDisabled": "禁用（中止执行）",
+      "stateSkipped": "跳过（跳过执行）",
+      "breakpoint": "断点设置",
+      "breakpointStart": "设置开始断点",
+      "breakpointEnd": "设置结束断点",
+      "breakpointClear": "取消断点",
+      "info": "查看节点信息",
+      "copy": "复制节点",
+      "clone": "克隆节点",
+      "stage": "复制到暂存",
+      "moveToStage": "移动到暂存",
+      "delete": "删除节点"
+    },
+    "colors": {
+      "default": "默认",
+      "emerald": "翡翠绿",
+      "blue": "蓝色",
+      "violet": "紫色",
+      "rose": "玫红",
+      "orange": "橙色",
+      "amber": "琥珀",
+      "cyan": "青色",
+      "pink": "粉色",
+      "slate": "石板灰",
+      "red": "红色",
+      "indigo": "靛蓝"
+    }
   }
 }
