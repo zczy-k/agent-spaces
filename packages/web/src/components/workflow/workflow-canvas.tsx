@@ -436,6 +436,7 @@ export function WorkflowCanvas({
         nodesDraggable={!isCanvasLocked}
         nodesConnectable={!isCanvasLocked}
         edgesReconnectable={!isCanvasLocked}
+        elevateNodesOnSelect={false}
         defaultEdgeOptions={{ type: 'custom' }}
       >
         <Background variant={bgVariant} gap={15} size={1} />

@@ -3,6 +3,9 @@ import { type Node, type Edge } from '@xyflow/react';
 import {
   isHiddenWorkflowEdge,
   isHiddenWorkflowNode,
+  isScopeBoundaryWorkflowNode,
+  getCompositeParentId,
+  LOOP_BODY_NODE_TYPE,
   type Workflow,
   type ExecutionLog,
   type ExecutionStep,
@@ -76,17 +79,22 @@ export function useCanvasData({
       const { minWidth, minHeight, width, height } = getWorkflowNodeSize(definition, n.data);
       const hasIncoming = workflow.edges.some(edge => edge.target === n.id);
       const hasOutgoing = workflow.edges.some(edge => edge.source === n.id);
+      const parentId = getCompositeParentId(n);
+      const isLoopBody = n.type === LOOP_BODY_NODE_TYPE;
+      const isScopedChild = !!parentId && !isScopeBoundaryWorkflowNode(n);
+      const zIndex = isLoopBody ? -100 : isScopedChild ? 1000 : 1;
       return {
         id: n.id,
         type: 'custom',
         position: n.position,
         selected: selectedNodeIdSet.has(n.id),
+        zIndex,
         width,
         height,
         initialWidth: width,
         initialHeight: height,
         measured: { width, height },
-        style: { minWidth, minHeight, width, height },
+        style: { minWidth, minHeight, width, height, zIndex },
         data: {
           ...n.data,
           label: n.data?.label || n.label,

@@ -559,7 +559,10 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
       )}
 
       {CustomView ? (
-        <div className="absolute inset-0 overflow-hidden rounded-lg">
+        <div className={cn(
+          'absolute inset-0 overflow-hidden rounded-lg',
+          isLoopBody && 'pointer-events-none',
+        )}>
           <CustomView nodeId={id} data={nodeData} />
         </div>
       ) : null}

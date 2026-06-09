@@ -51,6 +51,10 @@ function isNodeRemoveChange(change: NodeChange): change is NodeChange & { type: 
   return change.type === 'remove';
 }
 
+function isSameHandle(a: string | null | undefined, b: string | null | undefined): boolean {
+  return (a ?? null) === (b ?? null);
+}
+
 function createWorkflowNodeId(): string {
   return `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -296,6 +300,8 @@ function ensureLoopBodyBoundaryNodes(nodes: Workflow['nodes'], edges: Workflow['
     const loopNode = nodes.find(node => node.id === bodyNode.composite?.rootId) || bodyNode;
     let startNode = children.find(node => node.type === 'start');
     let endNode = children.find(node => node.type === 'end');
+    const hadStartNode = !!startNode;
+    const hadEndNode = !!endNode;
 
     if (!startNode) {
       startNode = {
@@ -374,21 +380,23 @@ function ensureLoopBodyBoundaryNodes(nodes: Workflow['nodes'], edges: Workflow['
       changed = true;
     }
 
-    const startToEndId = createWorkflowEdgeId({
-      source: startNode.id,
-      target: endNode.id,
-      sourceHandle: null,
-      targetHandle: 'target',
-    });
-    if (!edges.some(edge => edge.id === startToEndId)) {
-      edges.push({
-        id: startToEndId,
+    if (!hadStartNode || !hadEndNode) {
+      const startToEndId = createWorkflowEdgeId({
         source: startNode.id,
         target: endNode.id,
         sourceHandle: null,
         targetHandle: 'target',
       });
-      changed = true;
+      if (!edges.some(edge => edge.id === startToEndId)) {
+        edges.push({
+          id: startToEndId,
+          source: startNode.id,
+          target: endNode.id,
+          sourceHandle: null,
+          targetHandle: 'target',
+        });
+        changed = true;
+      }
     }
   }
 
@@ -735,7 +743,14 @@ export function useWorkflowEditorCanvas({
         ...current,
         nodes: nextNodes,
         edges: [
-          ...current.edges.filter(edge => edge.id !== nodeSelectContext.edgeId),
+          ...current.edges.filter(edge => {
+            if (nodeSelectContext.edgeId && edge.id === nodeSelectContext.edgeId) return false;
+            return !(
+              edge.source === nodeSelectContext.sourceNodeId
+              && edge.target === nodeSelectContext.targetNodeId
+              && isSameHandle(edge.sourceHandle, nodeSelectContext.sourceHandle)
+            );
+          }),
           firstEdge,
           ...created.edges,
           secondEdge,
