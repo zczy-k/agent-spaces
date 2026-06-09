@@ -355,7 +355,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
     <div
       className={`border-2 rounded-lg shadow-sm cursor-pointer transition-colors relative flex flex-col
         ${statusColor} ${selected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background shadow-md' : ''}
-        ${stateBackgroundClass} ${isLoopBody ? 'loop-body-node' : ''}`}
+        ${stateBackgroundClass}`}
       style={{
         minWidth: nodeMinWidth,
         minHeight: nodeMinHeight,
@@ -615,7 +615,6 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
         }
         .source-handle-label { position: absolute; display: flex; align-items: center; pointer-events: none; }
-        .loop-body-node { border-color: rgba(114, 181, 197, 0.5); box-shadow: 0 10px 30px rgba(98, 156, 173, 0.14); background: linear-gradient(180deg, rgba(233, 247, 250, 0.95), rgba(246, 250, 251, 0.98)); }
       `}</style>
     </>
   );
