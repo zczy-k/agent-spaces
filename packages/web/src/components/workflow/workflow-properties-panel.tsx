@@ -36,6 +36,7 @@ interface PropertiesPanelProps {
   debugNodeId?: string | null;
   debugStatus?: 'idle' | 'running' | 'completed' | 'error';
   debugResult?: DebugResult | null;
+  previewResult?: DebugResult | null;
   onDebugNode?: (nodeId: string, inputs?: Record<string, unknown>, properties?: Record<string, unknown>) => void;
   onCancelDebug?: () => void;
 }
@@ -50,6 +51,7 @@ export function WorkflowPropertiesPanel({
   debugNodeId = null,
   debugStatus = 'idle',
   debugResult = null,
+  previewResult = null,
   onDebugNode,
   onCancelDebug,
 }: PropertiesPanelProps) {
@@ -79,7 +81,8 @@ export function WorkflowPropertiesPanel({
   const canEditDelay = Boolean(node && node.type !== 'start' && node.type !== 'end');
   const canDebugSelectedNode = Boolean(node && definition?.debuggable !== false && node.type !== 'start' && node.type !== 'end');
   const isDebugging = Boolean(node && debugNodeId === node.id && debugStatus === 'running');
-  const hasDebugOutput = Boolean(node && debugNodeId === node.id && debugResult);
+  const visibleDebugResult = previewResult ?? (node && debugNodeId === node.id ? debugResult : null);
+  const hasDebugOutput = Boolean(node && visibleDebugResult);
   const nodeId = node?.id;
   const variableContext = useMemo<WorkflowVariableContext | undefined>(() => {
     if (!node) return undefined;
@@ -189,38 +192,40 @@ export function WorkflowPropertiesPanel({
 
       <ScrollArea className="min-h-0 flex-1">
         <div className="space-y-4 p-3 pt-0">
-          {hasDebugOutput && debugResult && (
+          {hasDebugOutput && visibleDebugResult && (
             <section className="space-y-2 rounded border bg-muted/20 p-2 mt-2">
               <div className="flex items-center gap-1.5">
-                {debugResult.status === 'completed' ? (
+                {visibleDebugResult.status === 'completed' ? (
                   <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
                 ) : (
                   <XCircle className="h-3.5 w-3.5 shrink-0 text-red-500" />
                 )}
                 <span className="text-xs font-medium">
-                  {debugResult.status === 'completed' ? t('properties.testSuccess') : t('properties.testFailed')}
+                  {visibleDebugResult.status === 'completed' ? t('properties.testSuccess') : t('properties.testFailed')}
                 </span>
-                {typeof debugResult.duration === 'number' && (
-                  <span className="text-[10px] text-muted-foreground">{debugResult.duration}ms</span>
+                {typeof visibleDebugResult.duration === 'number' && (
+                  <span className="text-[10px] text-muted-foreground">{visibleDebugResult.duration}ms</span>
                 )}
-                <X
-                  className="ml-auto h-3.5 w-3.5 shrink-0 cursor-pointer text-muted-foreground hover:text-foreground"
-                  onClick={() => onCancelDebug?.()}
-                />
+                {!previewResult && (
+                  <X
+                    className="ml-auto h-3.5 w-3.5 shrink-0 cursor-pointer text-muted-foreground hover:text-foreground"
+                    onClick={() => onCancelDebug?.()}
+                  />
+                )}
               </div>
-              {debugResult.error && (
+              {visibleDebugResult.error && (
                 <div className="flex items-start gap-2 rounded bg-red-500/10 p-2">
                   <p className="min-w-0 flex-1 break-all text-[11px] font-mono text-red-500">
-                    {debugResult.error}
+                    {visibleDebugResult.error}
                   </p>
                   <Copy
                     className="mt-0.5 h-3.5 w-3.5 shrink-0 cursor-pointer text-red-400 hover:text-red-300"
-                    onClick={() => navigator.clipboard.writeText(debugResult.error ?? '')}
+                    onClick={() => navigator.clipboard.writeText(visibleDebugResult.error ?? '')}
                   />
                 </div>
               )}
-              {debugResult.output !== undefined && (
-                <JsonPreview value={debugResult.output} />
+              {visibleDebugResult.output !== undefined && (
+                <JsonPreview value={visibleDebugResult.output} />
               )}
             </section>
           )}

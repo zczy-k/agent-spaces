@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { ReactFlowProvider } from '@xyflow/react';
-import type { WorkflowTemplate } from '@agent-spaces/shared';
+import type { ExecutionStep, WorkflowTemplate } from '@agent-spaces/shared';
 import { WorkflowCanvas } from './workflow-canvas';
 import { WorkflowNodeSidebar } from './workflow-node-sidebar';
 import { WorkflowEditorToolbar } from './workflow-editor-toolbar';
@@ -36,8 +36,19 @@ import { useWorkflowEditorAgentChat } from './use-workflow-editor-agent-chat';
 import { WorkflowAgentTimeline } from './workflow-editor-agent-chat-ui';
 import { WORKFLOW_AGENT_FIXED_VALUES, getWorkflowAgentTimeline } from './workflow-editor-agent-utils';
 import type { WorkflowAgentChatMessage, WorkflowToolCall } from './workflow-editor-agent-utils';
+import type { DebugResult } from './workflow-editor-types';
 
 // ---- Inner editor (needs ReactFlow context) ----
+
+function toPreviewDebugResult(step: ExecutionStep | undefined): DebugResult | null {
+  if (!step || (step.status !== 'completed' && step.status !== 'error')) return null;
+  return {
+    status: step.status,
+    output: step.output,
+    error: step.error,
+    duration: step.finishedAt ? Math.max(0, step.finishedAt - step.startedAt) : undefined,
+  };
+}
 
 function WorkflowEditorInner({
   template, onBack,
@@ -50,9 +61,19 @@ function WorkflowEditorInner({
   const state = useWorkflowEditorState(template);
   const workspaces = useWorkspaceStore((store) => store.workspaces);
   const workspaceId = workspaces[0]?.id;
+  const clipboard = useClipboard();
+
+  const execution = useWorkflowEditorExecution({
+    workflow: state.workflow,
+    workflowId: state.workflowId,
+  });
+
+  const isWorkflowRunning = execution.execStatus === 'running';
+  const isWorkflowReadOnly = state.isPreview || isWorkflowRunning;
 
   const canvas = useWorkflowEditorCanvas({
     workflow: state.workflow,
+    isReadOnly: isWorkflowReadOnly,
     setWorkflow: state.setWorkflow,
     markDirty: state.markDirty,
     pushUndo: state.pushUndo,
@@ -84,11 +105,6 @@ function WorkflowEditorInner({
     },
   });
 
-  const execution = useWorkflowEditorExecution({
-    workflow: state.workflow,
-    workflowId: state.workflowId,
-  });
-
   const chat = useWorkflowEditorAgentChat({
     workflow: state.workflow,
     setWorkflow: state.setWorkflow,
@@ -99,11 +115,14 @@ function WorkflowEditorInner({
   });
 
   const { isExpanded: execExpanded, toggle: toggleExec } = useExecutionPanel();
-  const clipboard = useClipboard();
-  const isWorkflowRunning = execution.execStatus === 'running';
   const selectedNodeIds = state.selectedNodeIds.length > 0
     ? state.selectedNodeIds
     : state.selectedNodeId ? [state.selectedNodeId] : [];
+  const previewResult = useMemo(() => {
+    if (!state.isPreview || !state.selectedNodeId) return null;
+    const step = execution.executionLog?.steps.find(item => item.nodeId === state.selectedNodeId);
+    return toPreviewDebugResult(step);
+  }, [execution.executionLog, state.isPreview, state.selectedNodeId]);
   const exitExecutionPreview = () => {
     state.exitPreview();
     execution.clearSelectedExecutionLog();
@@ -117,16 +136,16 @@ function WorkflowEditorInner({
   // ---- Shortcuts ----
   useEditorShortcuts({
     onSave: state.saveWorkflow,
-    onUndo: isWorkflowRunning ? undefined : state.handleUndo,
-    onRedo: isWorkflowRunning ? undefined : state.handleRedo,
-    onDelete: !isWorkflowRunning && state.selectedNodeId ? () => canvas.handleNodeDelete(state.selectedNodeId!) : undefined,
-    onCopy: selectedNodeIds.length > 0 && state.workflow ? () => {
+    onUndo: isWorkflowReadOnly ? undefined : state.handleUndo,
+    onRedo: isWorkflowReadOnly ? undefined : state.handleRedo,
+    onDelete: !isWorkflowReadOnly && state.selectedNodeId ? () => canvas.handleNodeDelete(state.selectedNodeId!) : undefined,
+    onCopy: !isWorkflowReadOnly && selectedNodeIds.length > 0 && state.workflow ? () => {
       const selectedIds = new Set(selectedNodeIds);
       const nodes = state.workflow!.nodes.filter(node => selectedIds.has(node.id));
       const edges = state.workflow!.edges.filter(edge => selectedIds.has(edge.source) && selectedIds.has(edge.target));
       if (nodes.length > 0) clipboard.copy(nodes, edges);
     } : undefined,
-    onPaste: isWorkflowRunning ? undefined : () => {
+    onPaste: isWorkflowReadOnly ? undefined : () => {
       const pasted = clipboard.paste();
       if (pasted && state.workflow) {
         state.pushUndo('paste');
@@ -181,15 +200,15 @@ function WorkflowEditorInner({
         workflow={workflow}
         isDirty={state.isDirty}
         isPreview={state.isPreview}
-        canUndo={!isWorkflowRunning && state.undoStack.length > 0}
-        canRedo={!isWorkflowRunning && state.redoStack.length > 0}
+        canUndo={!isWorkflowReadOnly && state.undoStack.length > 0}
+        canRedo={!isWorkflowReadOnly && state.redoStack.length > 0}
         onBack={onBack}
         onExitPreview={exitExecutionPreview}
-        onSave={state.saveWorkflow}
-        onUndo={state.handleUndo}
-        onRedo={state.handleRedo}
+        onSave={isWorkflowReadOnly ? () => {} : state.saveWorkflow}
+        onUndo={isWorkflowReadOnly ? () => {} : state.handleUndo}
+        onRedo={isWorkflowReadOnly ? () => {} : state.handleRedo}
         onExport={state.handleExport}
-        onImport={state.handleImport}
+        onImport={isWorkflowReadOnly ? () => {} : state.handleImport}
         onOpenPluginManager={() => state.setPluginsDialogOpen(true)}
         onOpenWorkflowLocation={() => {
           if (workflow?.id) {
@@ -197,7 +216,7 @@ function WorkflowEditorInner({
           }
         }}
         onWorkflowInfoChange={(updates) => {
-          if (workflow) {
+          if (workflow && !isWorkflowReadOnly) {
             const updated = { ...workflow, ...updates };
             state.setWorkflow(updated);
             state.saveWorkflow(updated);
@@ -244,8 +263,8 @@ function WorkflowEditorInner({
                 onConnectionDrop={canvas.handleConnectionDrop}
                 canUndo={state.undoStack.length > 0}
                 canRedo={state.redoStack.length > 0}
-                onUndo={state.handleUndo}
-                onRedo={state.handleRedo}
+                onUndo={isWorkflowReadOnly ? undefined : state.handleUndo}
+                onRedo={isWorkflowReadOnly ? undefined : state.handleRedo}
                 onExitPreview={exitExecutionPreview}
                 onAutoLayout={canvas.handleAutoLayout}
               />
@@ -305,6 +324,7 @@ function WorkflowEditorInner({
                 debugNodeId={execution.debugNodeId}
                 debugStatus={execution.debugStatus}
                 debugResult={execution.debugResult}
+                previewResult={previewResult}
                 onDebugNode={execution.handleDebugNode}
                 onCancelDebug={execution.handleCancelDebug}
               />
@@ -318,6 +338,7 @@ function WorkflowEditorInner({
                 enabledPlugins={workflow.enabledPlugins}
                 variables={workflow.variables || []}
                 onChange={(variables) => {
+                  if (isWorkflowReadOnly) return;
                   state.pushUndo('update variables');
                   state.setWorkflow(w => w ? { ...w, variables } : null);
                   state.markDirty();
@@ -332,6 +353,7 @@ function WorkflowEditorInner({
                     nodes={workflow.nodes}
                     edges={workflow.edges}
                     onRestore={(version) => {
+                      if (isWorkflowReadOnly) return;
                       state.pushUndo('restore version');
                       state.setWorkflow(w => w ? {
                         ...w,
@@ -346,10 +368,10 @@ function WorkflowEditorInner({
                 <ResizablePanel id="history-operations" defaultSize="50%" minSize="20%">
                   <WorkflowOperationHistory
                     workflowId={workflow.id}
-                    currentUndoCount={state.undoStack.length}
-                    currentRedoCount={state.redoStack.length}
-                    onUndo={state.handleUndo}
-                    onRedo={state.handleRedo}
+                    currentUndoCount={isWorkflowReadOnly ? 0 : state.undoStack.length}
+                    currentRedoCount={isWorkflowReadOnly ? 0 : state.redoStack.length}
+                    onUndo={isWorkflowReadOnly ? () => {} : state.handleUndo}
+                    onRedo={isWorkflowReadOnly ? () => {} : state.handleRedo}
                   />
                 </ResizablePanel>
               </ResizablePanelGroup>
@@ -358,7 +380,7 @@ function WorkflowEditorInner({
               <WorkflowStagingPanel
                 workflowId={workflow.id}
                 onAddFromStaging={(staged) => {
-                  if (!workflow) return;
+                  if (!workflow || isWorkflowReadOnly) return;
                   state.pushUndo('add from staging');
                   const newNode: typeof workflow.nodes[0] = {
                     id: `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -384,6 +406,7 @@ function WorkflowEditorInner({
         triggers={workflow?.triggers || []}
         workflowId={workflow?.id || ''}
         onSave={(triggers) => {
+          if (isWorkflowReadOnly) return;
           state.setWorkflow(w => w ? { ...w, triggers } : null);
           state.markDirty();
         }}
@@ -397,7 +420,7 @@ function WorkflowEditorInner({
         subWorkflowId={state.embeddedSubWorkflowId}
         onClose={() => state.setEmbeddedEditorOpen(false)}
         onSave={(subId) => {
-          if (state.selectedNodeId && workflow) {
+          if (state.selectedNodeId && workflow && !isWorkflowReadOnly) {
             canvas.handleNodeDataUpdate(state.selectedNodeId, { workflowId: subId });
           }
           state.setEmbeddedEditorOpen(false);
@@ -425,10 +448,10 @@ function WorkflowEditorInner({
       />
 
       <WorkflowNodeSelectDialog
-        open={canvas.nodeSelectOpen && !isWorkflowRunning}
+        open={canvas.nodeSelectOpen && !isWorkflowReadOnly}
         workflow={workflow}
         onOpenChange={canvas.handleNodeSelectOpenChange}
-        onSelect={isWorkflowRunning ? () => {} : canvas.handleNodeSelectFromDialog}
+        onSelect={isWorkflowReadOnly ? () => {} : canvas.handleNodeSelectFromDialog}
       />
 
       <FloatingChatPanel

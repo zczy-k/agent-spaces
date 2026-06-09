@@ -17,6 +17,7 @@ import type { NodeSelectContext } from './workflow-editor-types';
 
 interface UseWorkflowEditorCanvasParams {
   workflow: Workflow | null;
+  isReadOnly?: boolean;
   setWorkflow: React.Dispatch<React.SetStateAction<Workflow | null>>;
   markDirty: () => void;
   pushUndo: (description?: string) => void;
@@ -33,7 +34,7 @@ function areStringArraysEqual(a: string[], b: string[]) {
 }
 
 export function useWorkflowEditorCanvas({
-  workflow, setWorkflow, markDirty, pushUndo,
+  workflow, isReadOnly = false, setWorkflow, markDirty, pushUndo,
   selectedNodeId, setSelectedNodeId, selectedNodeIds, setSelectedNodeIds,
   onCopyNodes, onStageNode,
 }: UseWorkflowEditorCanvasParams) {
@@ -42,7 +43,7 @@ export function useWorkflowEditorCanvas({
 
   // ---- Node operations ----
   const handleNodeAdd = useCallback((type: string, position: { x: number; y: number }) => {
-    if (!workflow) return;
+    if (!workflow || isReadOnly) return;
     pushUndo('add node');
     const id = `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const def = getNodeDefinition(type);
@@ -62,19 +63,21 @@ export function useWorkflowEditorCanvas({
     setSelectedNodeId(id);
     setSelectedNodeIds([id]);
     markDirty();
-  }, [workflow, pushUndo, markDirty, setSelectedNodeId, setSelectedNodeIds]);
+  }, [workflow, isReadOnly, pushUndo, markDirty, setSelectedNodeId, setSelectedNodeIds]);
 
   const handleConnectionDrop = useCallback((context: {
     sourceNodeId: string;
     sourceHandle: string | null;
     position: { x: number; y: number } | null;
   }) => {
+    if (isReadOnly) return;
     setNodeSelectContext({ mode: 'connection-drop', ...context });
     setNodeSelectOpen(true);
-  }, []);
+  }, [isReadOnly]);
 
   useEffect(() => {
     const handleOpenNodeSelect = (event: Event) => {
+      if (isReadOnly) return;
       const detail = (event as CustomEvent).detail as {
         edgeId?: string | null;
         source?: string | null;
@@ -94,7 +97,7 @@ export function useWorkflowEditorCanvas({
 
     window.addEventListener('workflow:open-node-select', handleOpenNodeSelect);
     return () => window.removeEventListener('workflow:open-node-select', handleOpenNodeSelect);
-  }, []);
+  }, [isReadOnly]);
 
   const handleNodeSelectOpenChange = useCallback((open: boolean) => {
     setNodeSelectOpen(open);
@@ -102,7 +105,7 @@ export function useWorkflowEditorCanvas({
   }, []);
 
   const handleNodeSelectFromDialog = useCallback((type: string) => {
-    if (!workflow || !nodeSelectContext) return;
+    if (!workflow || !nodeSelectContext || isReadOnly) return;
     const def = getNodeDefinition(type);
     if (def?.manualCreate === false) return;
     if (def?.singleton && workflow.nodes.some(node => node.type === type)) return;
@@ -212,10 +215,10 @@ export function useWorkflowEditorCanvas({
     setSelectedNodeId(id);
     setSelectedNodeIds([id]);
     markDirty();
-  }, [workflow, nodeSelectContext, pushUndo, markDirty, setSelectedNodeId, setSelectedNodeIds]);
+  }, [workflow, nodeSelectContext, isReadOnly, pushUndo, markDirty, setSelectedNodeId, setSelectedNodeIds]);
 
   const handleNodeDelete = useCallback((nodeId: string) => {
-    if (!workflow) return;
+    if (!workflow || isReadOnly) return;
     pushUndo('delete node');
     setWorkflow(w => w ? {
       ...w,
@@ -225,10 +228,10 @@ export function useWorkflowEditorCanvas({
     if (selectedNodeId === nodeId) setSelectedNodeId(null);
     setSelectedNodeIds(ids => ids.filter(id => id !== nodeId));
     markDirty();
-  }, [workflow, pushUndo, markDirty, selectedNodeId, setSelectedNodeId, setSelectedNodeIds]);
+  }, [workflow, isReadOnly, pushUndo, markDirty, selectedNodeId, setSelectedNodeId, setSelectedNodeIds]);
 
   const handleNodeClone = useCallback((nodeId: string) => {
-    if (!workflow) return;
+    if (!workflow || isReadOnly) return;
     const node = workflow.nodes.find(n => n.id === nodeId);
     if (!node) return;
     pushUndo('clone node');
@@ -243,15 +246,17 @@ export function useWorkflowEditorCanvas({
     setSelectedNodeId(newId);
     setSelectedNodeIds([newId]);
     markDirty();
-  }, [workflow, pushUndo, markDirty, setSelectedNodeId, setSelectedNodeIds]);
+  }, [workflow, isReadOnly, pushUndo, markDirty, setSelectedNodeId, setSelectedNodeIds]);
 
   const handleNodeCopy = useCallback((nodeId: string) => {
+    if (isReadOnly) return;
     onCopyNodes?.([nodeId]);
-  }, [onCopyNodes]);
+  }, [isReadOnly, onCopyNodes]);
 
   const handleNodeStage = useCallback((nodeId: string) => {
+    if (isReadOnly) return;
     onStageNode?.(nodeId);
-  }, [onStageNode]);
+  }, [isReadOnly, onStageNode]);
 
   const handleNodeSelect = useCallback((id: string | null, multi = false) => {
     if (!id) {
@@ -282,6 +287,7 @@ export function useWorkflowEditorCanvas({
   }, [selectedNodeId, selectedNodeIds, setSelectedNodeId, setSelectedNodeIds]);
 
   const handleNodeDataUpdate = useCallback((nodeId: string, data: Record<string, unknown>) => {
+    if (isReadOnly) return;
     setWorkflow(w => {
       if (!w) return null;
       return {
@@ -294,11 +300,11 @@ export function useWorkflowEditorCanvas({
       };
     });
     markDirty();
-  }, [markDirty]);
+  }, [isReadOnly, markDirty, setWorkflow]);
 
   // ---- Edge operations ----
   const handleConnect = useCallback((connection: Connection) => {
-    if (!workflow) return;
+    if (!workflow || isReadOnly) return;
     pushUndo('connect');
     const edge: Workflow['edges'][0] = {
       id: createWorkflowEdgeId(connection),
@@ -309,10 +315,10 @@ export function useWorkflowEditorCanvas({
     };
     setWorkflow(w => w ? { ...w, edges: [...w.edges, edge] } : null);
     markDirty();
-  }, [workflow, pushUndo, markDirty]);
+  }, [workflow, isReadOnly, pushUndo, markDirty]);
 
   const handleNodesChange = useCallback((changes: NodeChange[]) => {
-    if (!workflow) return;
+    if (!workflow || isReadOnly) return;
     const hasDelete = changes.some(c => c.type === 'remove');
     if (hasDelete) pushUndo('delete');
 
@@ -356,10 +362,10 @@ export function useWorkflowEditorCanvas({
       };
     });
     if (hasDelete || hasDimensionChange) markDirty();
-  }, [workflow, pushUndo, markDirty]);
+  }, [workflow, isReadOnly, pushUndo, markDirty]);
 
   const handleEdgesChange = useCallback((changes: EdgeChange[]) => {
-    if (!workflow) return;
+    if (!workflow || isReadOnly) return;
     const hasDelete = changes.some(c => c.type === 'remove');
     if (hasDelete) pushUndo('delete edge');
 
@@ -373,10 +379,10 @@ export function useWorkflowEditorCanvas({
 
     setWorkflow(w => w ? { ...w, edges: w.edges.filter(e => remainingIds.has(e.id)) } : null);
     if (hasDelete) markDirty();
-  }, [workflow, pushUndo, markDirty]);
+  }, [workflow, isReadOnly, pushUndo, markDirty]);
 
   const handleAutoLayout = useCallback((direction: 'LR' | 'TB') => {
-    if (!workflow || workflow.nodes.length === 0) return;
+    if (!workflow || isReadOnly || workflow.nodes.length === 0) return;
     pushUndo('auto layout');
 
     const graph = new Dagre.graphlib.Graph();
@@ -440,7 +446,7 @@ export function useWorkflowEditorCanvas({
       return { ...current, nodes: nextNodes };
     });
     markDirty();
-  }, [workflow, pushUndo, setWorkflow, markDirty]);
+  }, [workflow, isReadOnly, pushUndo, setWorkflow, markDirty]);
 
   return {
     // Node select dialog

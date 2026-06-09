@@ -22,7 +22,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { WorkflowPluginConfigDialog } from './workflow-plugin-config-dialog';
-import { Search, ChevronDown, ChevronRight, Plus, Settings, Trash2 } from 'lucide-react';
+import { Search, ChevronDown, ChevronRight, Plus, Settings, Trash2, LayoutList, LayoutGrid } from 'lucide-react';
 import { WorkflowNodeDefinitionIcon } from './workflow-node-icon';
 
 export const WORKFLOW_NODE_DRAG_MIME = 'application/vueflow';
@@ -57,6 +57,7 @@ export function WorkflowNodeSidebar({
   const [newSchemeDialogOpen, setNewSchemeDialogOpen] = useState(false);
   const [newSchemeName, setNewSchemeName] = useState('');
   const [newSchemePluginId, setNewSchemePluginId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
   const enabledPlugins = useMemo(() => workflow?.enabledPlugins || [], [workflow?.enabledPlugins]);
 
@@ -195,6 +196,9 @@ export function WorkflowNodeSidebar({
               className="pl-7 h-7 text-xs"
             />
           </div>
+          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setViewMode(m => m === 'list' ? 'grid' : 'list')}>
+            {viewMode === 'list' ? <LayoutGrid className="h-3.5 w-3.5" /> : <LayoutList className="h-3.5 w-3.5" />}
+          </Button>
           <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onOpenPluginPicker}>
             <Plus className="h-3.5 w-3.5" />
           </Button>
@@ -281,19 +285,21 @@ export function WorkflowNodeSidebar({
                   </span>
                 </div>
                 <CollapsibleContent>
-                  <div className="space-y-0.5 mt-0.5">
+                  <div className={viewMode === 'grid' ? 'grid grid-cols-2 gap-1 mt-0.5' : 'space-y-0.5 mt-0.5'}>
                     {nodes.map((node) => (
                       <HoverCard key={node.type} openDelay={400} closeDelay={100}>
-                        <HoverCardTrigger>
+                        <HoverCardTrigger className={viewMode === 'grid' ? 'contents' : undefined}>
                           <div
                             draggable
-                            className="flex items-center gap-2 px-2 py-1.5 text-xs rounded cursor-grab hover:bg-muted/50 active:cursor-grabbing"
+                            className={viewMode === 'grid'
+                              ? 'flex flex-col items-center gap-1 px-2 py-2 text-xs rounded cursor-grab hover:bg-muted/50 active:cursor-grabbing text-center'
+                              : 'flex items-center gap-2 px-2 py-1.5 text-xs rounded cursor-grab hover:bg-muted/50 active:cursor-grabbing'}
                             onDragStart={(e) => onDragStart(e, node.type)}
                           >
-                            <WorkflowNodeDefinitionIcon definition={node} className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                            <div className="min-w-0">
+                            <WorkflowNodeDefinitionIcon definition={node} className={viewMode === 'grid' ? 'h-5 w-5 shrink-0 text-muted-foreground' : 'h-3.5 w-3.5 shrink-0 text-muted-foreground'} />
+                            <div className="min-w-0 w-full">
                               <div className="truncate">{node.label}</div>
-                              {node.description && (
+                              {node.description && viewMode === 'list' && (
                                 <div className="text-[10px] text-muted-foreground truncate">{node.description}</div>
                               )}
                             </div>
