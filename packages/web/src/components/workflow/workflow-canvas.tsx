@@ -103,6 +103,7 @@ interface WorkflowCanvasProps {
   onBatchDeleteNodes?: (ids: string[]) => void;
   onGroupUpdate?: (groupId: string, updates: Partial<NonNullable<Workflow['groups']>[number]>) => void;
   onGroupDelete?: (groupId: string) => void;
+  onGroupMove?: (groupId: string, delta: { x: number; y: number }, options?: { pushUndo?: boolean }) => void;
   debugNodeId?: string | null;
   debugStatus?: 'idle' | 'running' | 'completed' | 'error';
   onNodeDebug?: (id: string) => void;
@@ -141,7 +142,7 @@ export function WorkflowCanvas({
   onConnectionDrop,
   onNodeCopy, onNodeClone, onNodeStage,
   onMergeNodesToWorkflow, onMergeNodesToGroup, onBatchDeleteNodes,
-  onGroupUpdate, onGroupDelete,
+  onGroupUpdate, onGroupDelete, onGroupMove,
   debugNodeId = null, debugStatus = 'idle', onNodeDebug, onCancelDebug,
   onExecuteFromNode, onResumeExecution, onStopExecution,
   pausedNodeId = null, pausedReason = null,
@@ -224,6 +225,15 @@ export function WorkflowCanvas({
     action(selectionMenu.nodeIds);
     closeSelectionMenu();
   }, [closeSelectionMenu, selectionMenu]);
+
+  const screenDeltaToFlowDelta = useCallback((delta: { x: number; y: number }) => {
+    const origin = screenToFlowPosition({ x: 0, y: 0 });
+    const next = screenToFlowPosition({ x: delta.x, y: delta.y });
+    return {
+      x: next.x - origin.x,
+      y: next.y - origin.y,
+    };
+  }, [screenToFlowPosition]);
 
   const handleLayoutEngineChange = useCallback((next: string) => {
     updateCanvasPrefs({ layoutEngine: next });
@@ -553,6 +563,8 @@ export function WorkflowCanvas({
               onSelect={setSelectedGroupId}
               onDelete={(groupId) => onGroupDelete?.(groupId)}
               onUpdate={(groupId, updates) => onGroupUpdate?.(groupId, updates)}
+              onMove={(groupId, delta, options) => onGroupMove?.(groupId, delta, options)}
+              screenDeltaToFlowDelta={screenDeltaToFlowDelta}
             />
           ))}
         </ViewportPortal>

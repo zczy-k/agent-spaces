@@ -17,6 +17,8 @@ interface GroupOverlayProps {
   onSelect: (groupId: string) => void;
   onDelete: (groupId: string) => void;
   onUpdate: (groupId: string, updates: Partial<WorkflowGroup>) => void;
+  onMove: (groupId: string, delta: { x: number; y: number }, options?: { pushUndo?: boolean }) => void;
+  screenDeltaToFlowDelta: (delta: { x: number; y: number }) => { x: number; y: number };
 }
 
 const GROUP_COLORS = [
@@ -34,7 +36,7 @@ function getGroupColor(color?: string) {
 
 export function WorkflowGroupOverlay({
   group, childNodes, isSelected, isPreview,
-  onSelect, onDelete, onUpdate,
+  onSelect, onDelete, onUpdate, onMove, screenDeltaToFlowDelta,
 }: GroupOverlayProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -91,6 +93,45 @@ export function WorkflowGroupOverlay({
     onDelete(group.id);
   }, [group.id, onDelete]);
 
+  const handleHeaderPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (isPreview || group.locked || isEditing) return;
+    const target = event.target;
+    if (target instanceof HTMLElement && target.closest('button,input')) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    onSelect(group.id);
+
+    let last = { x: event.clientX, y: event.clientY };
+    let hasPushedUndo = false;
+    const pointerId = event.pointerId;
+    const element = event.currentTarget;
+    element.setPointerCapture(pointerId);
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      const screenDelta = {
+        x: moveEvent.clientX - last.x,
+        y: moveEvent.clientY - last.y,
+      };
+      const flowDelta = screenDeltaToFlowDelta(screenDelta);
+      last = { x: moveEvent.clientX, y: moveEvent.clientY };
+      if (flowDelta.x === 0 && flowDelta.y === 0) return;
+      onMove(group.id, flowDelta, { pushUndo: !hasPushedUndo });
+      hasPushedUndo = true;
+    };
+
+    const finishDrag = () => {
+      element.releasePointerCapture(pointerId);
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', finishDrag);
+      window.removeEventListener('pointercancel', finishDrag);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', finishDrag);
+    window.addEventListener('pointercancel', finishDrag);
+  }, [group.id, group.locked, isEditing, isPreview, onMove, onSelect, screenDeltaToFlowDelta]);
+
   if (isPreview && collapsed) return null;
 
   return (
@@ -114,6 +155,7 @@ export function WorkflowGroupOverlay({
       <div
         className="pointer-events-auto flex h-7 cursor-move select-none items-center gap-1 px-2 backdrop-blur-sm"
         style={{ backgroundColor: colors.header }}
+        onPointerDown={handleHeaderPointerDown}
       >
         <button className="p-0 hover:bg-black/5 rounded" onClick={handleToggleCollapse}>
           {collapsed

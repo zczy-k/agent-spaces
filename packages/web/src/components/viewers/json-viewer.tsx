@@ -561,6 +561,11 @@ interface JsonViewerProps extends Omit<React.ComponentProps<"div">, "children" |
    * or a custom JsonColorTheme object. When omitted, uses Tailwind theme colors.
    */
   colorTheme?: ShikiThemeName | JsonColorTheme
+  /**
+   * Mini mode: no border/shadow/toolbar, fully expanded.
+   * For inline embedding in other components.
+   */
+  mini?: boolean
 }
 
 function JsonViewer({
@@ -570,13 +575,14 @@ function JsonViewer({
   defaultExpanded = 1,
   colorTheme,
   className,
+  mini = false,
   ...props
 }: JsonViewerProps) {
   const resolved = resolveTheme(colorTheme)
 
   const [collapsedPaths, setCollapsedPaths] = React.useState<Set<string>>(
     () => {
-      if (defaultExpanded === true) return new Set()
+      if (mini || defaultExpanded === true) return new Set()
       const collapsed = new Set<string>()
       collectPaths(data, rootName, defaultExpanded, 0, collapsed)
       return collapsed
@@ -655,7 +661,9 @@ function JsonViewer({
       <div
         data-slot="json-viewer"
         className={cn(
-          "overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm",
+          mini
+            ? "overflow-hidden"
+            : "overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm",
           className
         )}
         {...props}

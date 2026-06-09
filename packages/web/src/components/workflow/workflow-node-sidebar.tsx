@@ -24,6 +24,7 @@ import {
 import { WorkflowPluginConfigDialog } from './workflow-plugin-config-dialog';
 import { Search, ChevronDown, ChevronRight, Plus, Settings, Trash2, LayoutList, LayoutGrid } from 'lucide-react';
 import { WorkflowNodeDefinitionIcon } from './workflow-node-icon';
+import { JsonViewer } from '@/components/viewers/json-viewer';
 import { WORKFLOW_NODE_DRAG_MIME } from './workflow-drag-types';
 
 function stringToHsl(str: string, s: number, l: number): string {
@@ -334,17 +335,12 @@ export function WorkflowNodeSidebar({
                             {node.outputs && node.outputs.length > 0 && (
                               <div className="space-y-1">
                                 <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">输出</div>
-                                <div className="flex flex-wrap gap-1">
-                                  {node.outputs!.map(output => (
-                                    <span
-                                      key={output.key}
-                                      className="text-[10px] px-1.5 py-0.5 rounded font-mono"
-                                      style={{ backgroundColor: stringToHsl(output.key, 45, 90), color: stringToHsl(output.key, 55, 35) }}
-                                    >
-                                      {output.key}{output.type !== 'any' && <span className="opacity-60">: {output.type}</span>}
-                                    </span>
-                                  ))}
-                                </div>
+                                <JsonViewer
+                                  data={Object.fromEntries(node.outputs!.map(o => [o.key, o.type]))}
+                                  rootName=""
+                                  defaultExpanded={0}
+                                  className="text-[10px]"
+                                />
                               </div>
                             )}
                           </div>

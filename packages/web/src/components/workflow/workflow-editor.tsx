@@ -295,6 +295,7 @@ function WorkflowEditorInner({
                 onBatchDeleteNodes={canvas.handleBatchDeleteNodes}
                 onGroupUpdate={canvas.handleUpdateGroup}
                 onGroupDelete={canvas.handleUngroup}
+                onGroupMove={canvas.handleMoveGroup}
                 debugNodeId={execution.debugNodeId}
                 debugStatus={execution.debugStatus}
                 pausedNodeId={execution.pausedNodeId}

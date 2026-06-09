@@ -419,6 +419,37 @@ function computeGroupBounds(nodes: Workflow['nodes'], childNodeIds: string[]): P
   };
 }
 
+function collectWorkflowGroupNodeIds(groups: NonNullable<Workflow['groups']>, groupId: string, visited = new Set<string>()): Set<string> {
+  const result = new Set<string>();
+  if (visited.has(groupId)) return result;
+  visited.add(groupId);
+  const group = groups.find(item => item.id === groupId);
+  if (!group) return result;
+
+  for (const nodeId of group.childNodeIds) result.add(nodeId);
+  for (const childGroupId of group.childGroupIds) {
+    for (const nodeId of collectWorkflowGroupNodeIds(groups, childGroupId, visited)) {
+      result.add(nodeId);
+    }
+  }
+  return result;
+}
+
+function collectWorkflowGroupIds(groups: NonNullable<Workflow['groups']>, groupId: string, visited = new Set<string>()): Set<string> {
+  const result = new Set<string>();
+  if (visited.has(groupId)) return result;
+  visited.add(groupId);
+  const group = groups.find(item => item.id === groupId);
+  if (!group) return result;
+  result.add(groupId);
+  for (const childGroupId of group.childGroupIds) {
+    for (const id of collectWorkflowGroupIds(groups, childGroupId, visited)) {
+      result.add(id);
+    }
+  }
+  return result;
+}
+
 function syncScopeBoundaryLayout(nodes: Workflow['nodes'], scopeNodeId: string): boolean {
   const scopeNode = nodes.find(node => node.id === scopeNodeId);
   if (!scopeNode || !isScopeBoundaryWorkflowNode(scopeNode)) return false;
@@ -1431,6 +1462,39 @@ export function useWorkflowEditorCanvas({
     setSelectedNodeId(nodeIds.length === 1 ? nodeIds[0] : null);
   }, [workflow, setSelectedNodeId, setSelectedNodeIds]);
 
+  const handleMoveGroup = useCallback((groupId: string, delta: { x: number; y: number }, options?: { pushUndo?: boolean }) => {
+    if (!workflow || isReadOnly) return;
+    if (delta.x === 0 && delta.y === 0) return;
+    const groups = workflow.groups || [];
+    const group = groups.find(item => item.id === groupId);
+    if (!group || group.locked) return;
+
+    const movedNodeIds = collectWorkflowGroupNodeIds(groups, groupId);
+    for (const descendantId of collectCompositeDescendantIds(workflow.nodes, movedNodeIds)) {
+      movedNodeIds.add(descendantId);
+    }
+    const movedGroupIds = collectWorkflowGroupIds(groups, groupId);
+
+    if (options?.pushUndo !== false) pushUndo('move group');
+    setWorkflow(w => {
+      if (!w) return null;
+      return {
+        ...w,
+        nodes: w.nodes.map(node => movedNodeIds.has(node.id)
+          ? { ...node, position: { x: node.position.x + delta.x, y: node.position.y + delta.y } }
+          : node),
+        groups: (w.groups || []).map(item => movedGroupIds.has(item.id)
+          ? {
+              ...item,
+              x: typeof item.x === 'number' ? item.x + delta.x : item.x,
+              y: typeof item.y === 'number' ? item.y + delta.y : item.y,
+            }
+          : item),
+      };
+    });
+    markDirty();
+  }, [workflow, isReadOnly, pushUndo, setWorkflow, markDirty]);
+
   const handleNodeClone = useCallback((nodeId: string) => {
     if (!workflow || isReadOnly) return;
     const node = workflow.nodes.find(n => n.id === nodeId);
@@ -1820,6 +1884,7 @@ export function useWorkflowEditorCanvas({
     handleUngroup,
     handleBatchUngroup,
     handleFocusGroup,
+    handleMoveGroup,
     handleNodeSelect,
     handleNodesSelect,
     handleNodeDataUpdate,
