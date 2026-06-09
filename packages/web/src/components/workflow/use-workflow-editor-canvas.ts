@@ -6,11 +6,12 @@ import ELK from 'elkjs/lib/elk.bundled';
 import { applyNodeChanges, applyEdgeChanges } from '@xyflow/react';
 import type { NodeChange, EdgeChange, Connection } from '@xyflow/react';
 import type { ElkNode } from 'elkjs/lib/elk-api';
-import type { Workflow } from '@agent-spaces/shared';
+import type { OutputField, Workflow } from '@agent-spaces/shared';
 import {
   LOOP_BODY_ROLE,
   LOOP_BODY_NODE_TYPE,
   LOOP_BODY_SOURCE_HANDLE,
+  LOOP_NODE_TYPE,
   LOOP_NEXT_SOURCE_HANDLE,
   findCompositeChildByRole,
   getCompositeParentId,
@@ -20,7 +21,9 @@ import {
   isScopeBoundaryWorkflowNode,
 } from '@agent-spaces/shared';
 import { createWorkflowEdgeId } from '@/lib/workflow-edge-id';
+import { workflowApi } from '@/lib/workflow-api';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
+import { useWorkflowStore } from '@/stores/workflow';
 import type { NodeSelectContext } from './workflow-editor-types';
 import { getWorkflowNodeSize } from './workflow-node-size';
 
@@ -157,6 +160,10 @@ function cloneNodeData(data: Record<string, unknown>): Record<string, unknown> {
   return JSON.parse(JSON.stringify(data)) as Record<string, unknown>;
 }
 
+function cloneData<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
 function cloneWorkflowNodes(nodes: Workflow['nodes']): Workflow['nodes'] {
   return nodes.map(node => ({
     ...node,
@@ -170,6 +177,245 @@ function getLayoutNodeSize(node: Workflow['nodes'][0]): { width: number; height:
   return {
     width: typeof node.data?.width === 'number' ? node.data.width : DEFAULT_SCOPE_CHILD_SIZE.width,
     height: typeof node.data?.height === 'number' ? node.data.height : DEFAULT_SCOPE_CHILD_SIZE.height,
+  };
+}
+
+function makeInputReference(nodeId: string, fieldPath: string): string {
+  return `{{ __inputs__["${nodeId}"].${fieldPath} }}`;
+}
+
+function makeDataReference(nodeId: string, fieldPath: string): string {
+  return `{{ __data__["${nodeId}"].${fieldPath} }}`;
+}
+
+function sanitizeFieldKey(value: string): string {
+  const key = value.trim().replace(/[^\w]+/g, '_').replace(/^_+|_+$/g, '');
+  return key || 'input';
+}
+
+function normalizeInputKey(baseKey: string, usedKeys: Set<string>): string {
+  const sanitized = sanitizeFieldKey(baseKey);
+  let key = sanitized;
+  let index = 2;
+  while (usedKeys.has(key)) {
+    key = `${sanitized}_${index}`;
+    index += 1;
+  }
+  usedKeys.add(key);
+  return key;
+}
+
+function getReferenceFieldKey(node: Workflow['nodes'][0] | undefined, fieldPath: string): string {
+  const prefix = node?.label || node?.type || 'input';
+  const leaf = fieldPath.split('.').filter(Boolean).at(-1) || 'value';
+  return `${prefix}_${leaf}`;
+}
+
+function collectExternalReferences(
+  value: unknown,
+  selectedIds: Set<string>,
+): Array<{ raw: string; source: '__data__' | '__inputs__'; nodeId: string; fieldPath: string }> {
+  const refs: Array<{ raw: string; source: '__data__' | '__inputs__'; nodeId: string; fieldPath: string }> = [];
+  const pattern = /\{\{\s*(__data__|__inputs__)\[(["'])([^"']+)\2\]\.([^}]+?)\s*\}\}/g;
+
+  const visit = (item: unknown) => {
+    if (typeof item === 'string') {
+      for (const match of item.matchAll(pattern)) {
+        const nodeId = match[3];
+        if (!selectedIds.has(nodeId)) {
+          refs.push({
+            raw: match[0],
+            source: match[1] as '__data__' | '__inputs__',
+            nodeId,
+            fieldPath: match[4].trim(),
+          });
+        }
+      }
+      return;
+    }
+    if (Array.isArray(item)) {
+      for (const child of item) visit(child);
+      return;
+    }
+    if (item && typeof item === 'object') {
+      for (const child of Object.values(item)) visit(child);
+    }
+  };
+
+  visit(value);
+  return refs;
+}
+
+function replaceReferences(value: unknown, replacements: Map<string, string>): unknown {
+  if (typeof value === 'string') {
+    let next = value;
+    for (const [raw, replacement] of replacements) {
+      next = next.split(raw).join(replacement);
+    }
+    return next;
+  }
+  if (Array.isArray(value)) return value.map(item => replaceReferences(item, replacements));
+  if (value && typeof value === 'object') {
+    const next: Record<string, unknown> = {};
+    for (const [key, child] of Object.entries(value)) {
+      next[key] = replaceReferences(child, replacements);
+    }
+    return next;
+  }
+  return value;
+}
+
+function replaceReferenceNodeIds(value: unknown, replacements: Map<string, string>): unknown {
+  if (typeof value === 'string') {
+    return value.replace(
+      /(__data__|__inputs__)\[(["'])([^"']+)\2\]/g,
+      (raw, source: string, quote: string, nodeId: string) => {
+        const replacement = replacements.get(nodeId);
+        return replacement ? `${source}[${quote}${replacement}${quote}]` : raw;
+      },
+    );
+  }
+  if (Array.isArray(value)) return value.map(item => replaceReferenceNodeIds(item, replacements));
+  if (value && typeof value === 'object') {
+    const next: Record<string, unknown> = {};
+    for (const [key, child] of Object.entries(value)) {
+      next[key] = replaceReferenceNodeIds(child, replacements);
+    }
+    return next;
+  }
+  return value;
+}
+
+function clearStartInputFieldValues(workflow: { nodes?: Workflow['nodes'] }): void {
+  if (!Array.isArray(workflow.nodes)) return;
+  for (const node of workflow.nodes) {
+    if (node.type === 'start' && Array.isArray(node.data?.inputFields)) {
+      node.data.inputFields = node.data.inputFields.map((field) => {
+        const next = { ...(field as Record<string, unknown>) };
+        delete next.value;
+        return next;
+      });
+    }
+    const bodyWorkflow = node.data?.bodyWorkflow;
+    if (bodyWorkflow && typeof bodyWorkflow === 'object') {
+      clearStartInputFieldValues(bodyWorkflow as { nodes?: Workflow['nodes'] });
+    }
+  }
+}
+
+function remapSelectedWorkflowNodes(
+  nodes: Workflow['nodes'],
+  edges: Workflow['edges'],
+  selectedIds: Set<string>,
+  selectedRootIds: Set<string>,
+  startNodeId: string,
+  endNodeId: string,
+): { nodes: Workflow['nodes']; edges: Workflow['edges'] } {
+  const boundaryIdMap = new Map<string, string>();
+  for (const node of nodes) {
+    if (!selectedRootIds.has(node.id)) continue;
+    if (node.type === 'start') boundaryIdMap.set(node.id, startNodeId);
+    if (node.type === 'end') boundaryIdMap.set(node.id, endNodeId);
+  }
+  const remapNodeId = (nodeId: string): string => boundaryIdMap.get(nodeId) ?? nodeId;
+  const selectedNodes = nodes
+    .filter(node => selectedIds.has(node.id) && !boundaryIdMap.has(node.id))
+    .map(node => cloneData(node));
+  const selectedEdges = edges
+    .filter(edge => selectedIds.has(edge.source) && selectedIds.has(edge.target))
+    .map((edge) => {
+      const next = cloneData(edge);
+      next.source = remapNodeId(next.source);
+      next.target = remapNodeId(next.target);
+      next.id = createWorkflowEdgeId(next);
+      return next;
+    })
+    .filter((edge, index, items) => (
+      edge.source !== edge.target
+      && items.findIndex(item => item.id === edge.id) === index
+    ));
+  const selectedRootNodes = nodes.filter(node => selectedRootIds.has(node.id)).map(node => cloneData(node));
+  const rootEdges = edges.filter(edge => selectedRootIds.has(edge.source) && selectedRootIds.has(edge.target));
+  const firstNode = [...selectedRootNodes]
+    .filter(node => !rootEdges.some(edge => edge.target === node.id))
+    .sort((a, b) => a.position.x - b.position.x || a.position.y - b.position.y)[0]
+    ?? [...selectedRootNodes].sort((a, b) => a.position.x - b.position.x || a.position.y - b.position.y)[0];
+  const lastNode = [...selectedRootNodes]
+    .filter(node => !rootEdges.some(edge => edge.source === node.id))
+    .sort((a, b) => b.position.x - a.position.x || b.position.y - a.position.y)[0]
+    ?? [...selectedRootNodes].sort((a, b) => b.position.x - a.position.x || b.position.y - a.position.y)[0];
+  const firstTargetHandle = firstNode
+    ? rootEdges.find(edge => edge.target === firstNode.id)?.targetHandle ?? null
+    : null;
+  const firstNodeId = firstNode ? remapNodeId(firstNode.id) : null;
+  const entryEdges: Workflow['edges'] = firstNodeId && firstNodeId !== startNodeId ? [{
+    id: createWorkflowEdgeId({
+      source: startNodeId,
+      target: firstNodeId,
+      sourceHandle: null,
+      targetHandle: firstTargetHandle,
+    }),
+    source: startNodeId,
+    target: firstNodeId,
+    sourceHandle: null,
+    targetHandle: firstTargetHandle,
+  }] : [];
+  const lastNodeId = lastNode ? remapNodeId(lastNode.id) : null;
+  const exitSourceHandle = lastNode?.type === LOOP_NODE_TYPE ? LOOP_NEXT_SOURCE_HANDLE : null;
+  const exitEdges: Workflow['edges'] = lastNodeId && lastNodeId !== endNodeId ? [{
+    id: createWorkflowEdgeId({
+      source: lastNodeId,
+      target: endNodeId,
+      sourceHandle: exitSourceHandle,
+      targetHandle: null,
+    }),
+    source: lastNodeId,
+    target: endNodeId,
+    sourceHandle: exitSourceHandle,
+    targetHandle: null,
+  }] : [];
+
+  return {
+    nodes: selectedNodes,
+    edges: [...selectedEdges, ...entryEdges, ...exitEdges],
+  };
+}
+
+function cleanupGroupsOnNodeDelete(
+  groups: Workflow['groups'] | undefined,
+  deletedNodeIds: Set<string>,
+): Workflow['groups'] {
+  return (groups || [])
+    .map(group => ({
+      ...group,
+      childNodeIds: group.childNodeIds.filter(id => !deletedNodeIds.has(id)),
+      childGroupIds: [...group.childGroupIds],
+      savedNodeStates: Object.fromEntries(
+        Object.entries(group.savedNodeStates || {}).filter(([nodeId]) => !deletedNodeIds.has(nodeId)),
+      ),
+    }));
+}
+
+function computeGroupBounds(nodes: Workflow['nodes'], childNodeIds: string[]): Pick<NonNullable<Workflow['groups']>[0], 'x' | 'y' | 'width' | 'height'> | null {
+  const childNodes = childNodeIds
+    .map(id => nodes.find(node => node.id === id))
+    .filter((node): node is Workflow['nodes'][0] => !!node);
+  if (childNodes.length === 0) return null;
+  const minX = Math.min(...childNodes.map(node => node.position.x));
+  const minY = Math.min(...childNodes.map(node => node.position.y));
+  const maxX = Math.max(...childNodes.map((node) => {
+    const size = getLayoutNodeSize(node);
+    return node.position.x + size.width;
+  }));
+  const maxY = Math.max(...childNodes.map((node) => {
+    const size = getLayoutNodeSize(node);
+    return node.position.y + size.height;
+  }));
+  return {
+    x: minX - 24,
+    y: minY - 48,
+    width: Math.max(240, maxX - minX + 48),
+    height: Math.max(160, maxY - minY + 72),
   };
 }
 
@@ -630,6 +876,7 @@ export function useWorkflowEditorCanvas({
   selectedNodeId, setSelectedNodeId, selectedNodeIds, setSelectedNodeIds,
   onCopyNodes, onStageNode,
 }: UseWorkflowEditorCanvasParams) {
+  const upsertWorkflow = useWorkflowStore(store => store.upsertWorkflow);
   const [nodeSelectOpen, setNodeSelectOpen] = useState(false);
   const [nodeSelectContext, setNodeSelectContext] = useState<NodeSelectContext | null>(null);
   const rejectedNodeDeleteIdsRef = useRef<Set<string>>(new Set());
@@ -847,12 +1094,321 @@ export function useWorkflowEditorCanvas({
           && !deleteNodeIds.has(edge.target)
           && (!rootId || edge.composite?.rootId !== rootId)
         ),
+        groups: cleanupGroupsOnNodeDelete(w.groups, deleteNodeIds),
       };
     });
     if (selectedNodeId && deletePlan.ids.has(selectedNodeId)) setSelectedNodeId(null);
     setSelectedNodeIds(ids => ids.filter(id => !deletePlan.ids.has(id)));
     markDirty();
   }, [workflow, isReadOnly, pushUndo, markDirty, selectedNodeId, setSelectedNodeId, setSelectedNodeIds]);
+
+  const handleBatchDeleteNodes = useCallback((nodeIds: string[]) => {
+    if (!workflow || isReadOnly) return;
+    const deleteNodeIds = new Set<string>();
+    const deletedRootIds = new Set<string>();
+    for (const nodeId of nodeIds) {
+      const deletePlan = getWorkflowNodeDeleteIds(workflow.nodes, nodeId);
+      if (!deletePlan) continue;
+      for (const id of deletePlan.ids) deleteNodeIds.add(id);
+      if (deletePlan.rootId) deletedRootIds.add(deletePlan.rootId);
+    }
+    if (deleteNodeIds.size === 0) return;
+
+    pushUndo('batch delete nodes');
+    setWorkflow(w => {
+      if (!w) return null;
+      return {
+        ...w,
+        nodes: w.nodes.filter(node => !deleteNodeIds.has(node.id)),
+        edges: w.edges.filter(edge =>
+          !deleteNodeIds.has(edge.source)
+          && !deleteNodeIds.has(edge.target)
+          && (!edge.composite?.rootId || !deletedRootIds.has(edge.composite.rootId))
+        ),
+        groups: cleanupGroupsOnNodeDelete(w.groups, deleteNodeIds),
+      };
+    });
+    if (selectedNodeId && deleteNodeIds.has(selectedNodeId)) setSelectedNodeId(null);
+    setSelectedNodeIds(ids => ids.filter(id => !deleteNodeIds.has(id)));
+    markDirty();
+  }, [workflow, isReadOnly, pushUndo, markDirty, selectedNodeId, setSelectedNodeId, setSelectedNodeIds]);
+
+  const handleMergeNodesToGroup = useCallback((nodeIds: string[]) => {
+    if (!workflow || isReadOnly) return;
+    const childNodeIds = nodeIds.filter(id => canDeleteWorkflowNode(workflow.nodes, id));
+    if (childNodeIds.length < 2) return;
+
+    pushUndo('create group');
+    const groupId = `group_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    setWorkflow(w => {
+      if (!w) return null;
+      const groups = w.groups || [];
+      const childGroupIds = new Set<string>();
+      const standaloneNodeIds: string[] = [];
+
+      for (const nodeId of childNodeIds) {
+        const oldGroup = groups.find(group => group.childNodeIds.includes(nodeId));
+        if (oldGroup) {
+          childGroupIds.add(oldGroup.id);
+        } else {
+          standaloneNodeIds.push(nodeId);
+        }
+      }
+
+      const nestedGroupIds = Array.from(childGroupIds);
+      const existingGroups = groups.map(group => ({
+        ...group,
+        childNodeIds: [...group.childNodeIds],
+        childGroupIds: group.childGroupIds.filter(id => !childGroupIds.has(id)),
+        savedNodeStates: { ...(group.savedNodeStates || {}) },
+      }));
+      const bounds = computeGroupBounds(w.nodes, childNodeIds);
+      return {
+        ...w,
+        groups: [
+          ...existingGroups,
+          {
+            id: groupId,
+            name: `分组 ${existingGroups.length + 1}`,
+            childNodeIds: standaloneNodeIds,
+            childGroupIds: nestedGroupIds,
+            locked: false,
+            disabled: false,
+            savedNodeStates: {},
+            ...(bounds || {}),
+          },
+        ],
+      };
+    });
+    markDirty();
+  }, [workflow, isReadOnly, pushUndo, markDirty]);
+
+  const handleMergeNodesToWorkflow = useCallback(async (nodeIds: string[]) => {
+    if (!workflow || isReadOnly) return;
+    const rootIds = new Set(nodeIds.filter(id => (
+      workflow.nodes.some(node => node.id === id) && canDeleteWorkflowNode(workflow.nodes, id)
+    )));
+    if (rootIds.size < 2) return;
+
+    const selectedIds = new Set<string>();
+    for (const node of workflow.nodes) {
+      const rootId = getCompositeRootId(node);
+      if (rootIds.has(rootId)) selectedIds.add(node.id);
+    }
+    const nodes = workflow.nodes.filter(node => selectedIds.has(node.id));
+    if (nodes.length < 2) return;
+
+    const startNodeId = crypto.randomUUID();
+    const endNodeId = crypto.randomUUID();
+    const subNodeId = crypto.randomUUID();
+    const bounds = {
+      minX: Math.min(...nodes.map(node => node.position.x)),
+      minY: Math.min(...nodes.map(node => node.position.y)),
+      maxX: Math.max(...nodes.map(node => node.position.x)),
+    };
+
+    const usedInputKeys = new Set<string>();
+    const replacements = new Map<string, string>();
+    const selectedBoundaryReplacements = new Map<string, string>();
+    const startInputFields: OutputField[] = [];
+    const subNodeInputFields: OutputField[] = [];
+
+    for (const node of nodes) {
+      if (!rootIds.has(node.id)) continue;
+      if (node.type === 'start') selectedBoundaryReplacements.set(node.id, startNodeId);
+      if (node.type === 'end') selectedBoundaryReplacements.set(node.id, endNodeId);
+    }
+
+    for (const refItem of collectExternalReferences(nodes.map(node => node.data), selectedIds)) {
+      if (replacements.has(refItem.raw)) continue;
+      const sourceNode = workflow.nodes.find(node => node.id === refItem.nodeId);
+      const inputKey = normalizeInputKey(getReferenceFieldKey(sourceNode, refItem.fieldPath), usedInputKeys);
+      const originalReference = refItem.source === '__inputs__'
+        ? makeInputReference(refItem.nodeId, refItem.fieldPath)
+        : makeDataReference(refItem.nodeId, refItem.fieldPath);
+      startInputFields.push({ key: inputKey, type: 'any' });
+      subNodeInputFields.push({ key: inputKey, type: 'any', value: originalReference });
+      replacements.set(refItem.raw, makeInputReference(startNodeId, inputKey));
+    }
+
+    const selectedSnapshot = remapSelectedWorkflowNodes(
+      workflow.nodes,
+      workflow.edges,
+      selectedIds,
+      rootIds,
+      startNodeId,
+      endNodeId,
+    );
+    const extractedNodes = selectedSnapshot.nodes.map(node => ({
+      ...node,
+      data: replaceReferenceNodeIds(
+        replaceReferences(node.data, replacements),
+        selectedBoundaryReplacements,
+      ) as Record<string, unknown>,
+      position: {
+        x: node.position.x - bounds.minX + 260,
+        y: node.position.y - bounds.minY + 120,
+      },
+    }));
+    clearStartInputFieldValues({ nodes: extractedNodes });
+
+    const now = Date.now();
+    const workflowToCreate: Partial<Workflow> = {
+      name: `${workflow.name}-子工作流`,
+      folderId: workflow.folderId,
+      nodes: [
+        { id: startNodeId, type: 'start', label: '开始', position: { x: 80, y: 120 }, data: { inputFields: startInputFields } },
+        ...extractedNodes,
+        { id: endNodeId, type: 'end', label: '结束', position: { x: bounds.maxX - bounds.minX + 520, y: 120 }, data: {} },
+      ],
+      edges: selectedSnapshot.edges,
+      createdAt: now,
+      updatedAt: now,
+      enabledPlugins: workflow.enabledPlugins ? cloneData(workflow.enabledPlugins) : undefined,
+      pluginConfigSchemes: workflow.pluginConfigSchemes ? cloneData(workflow.pluginConfigSchemes) : undefined,
+      agentConfig: workflow.agentConfig ? cloneData(workflow.agentConfig) : undefined,
+    };
+    const createdWorkflow = await workflowApi.create(workflowToCreate);
+    upsertWorkflow(createdWorkflow);
+
+    const incomingEdges = workflow.edges.filter(edge => !selectedIds.has(edge.source) && selectedIds.has(edge.target));
+    const outgoingEdges = workflow.edges.filter(edge => selectedIds.has(edge.source) && !selectedIds.has(edge.target));
+    const replacementNode: Workflow['nodes'][0] = {
+      id: subNodeId,
+      type: 'sub_workflow',
+      label: '子工作流',
+      position: { x: bounds.minX, y: bounds.minY },
+      data: {
+        workflowId: createdWorkflow.id,
+        workflowName: createdWorkflow.name,
+        inputFields: subNodeInputFields,
+      },
+    };
+
+    const replacementEdges: Workflow['edges'] = [];
+    for (const edge of incomingEdges) {
+      const nextEdge = {
+        ...cloneData(edge),
+        target: subNodeId,
+        targetHandle: null,
+      };
+      nextEdge.id = createWorkflowEdgeId(nextEdge);
+      if (!replacementEdges.some(item => item.id === nextEdge.id)) replacementEdges.push(nextEdge);
+    }
+    for (const edge of outgoingEdges) {
+      const nextEdge = {
+        ...cloneData(edge),
+        source: subNodeId,
+        sourceHandle: null,
+      };
+      nextEdge.id = createWorkflowEdgeId(nextEdge);
+      if (!replacementEdges.some(item => item.id === nextEdge.id)) replacementEdges.push(nextEdge);
+    }
+
+    pushUndo('merge to sub workflow');
+    setWorkflow(w => {
+      if (!w) return null;
+      return {
+        ...w,
+        nodes: [
+          ...w.nodes.filter(node => !selectedIds.has(node.id)),
+          replacementNode,
+        ],
+        edges: [
+          ...w.edges.filter(edge => !selectedIds.has(edge.source) && !selectedIds.has(edge.target)),
+          ...replacementEdges,
+        ],
+        groups: cleanupGroupsOnNodeDelete(w.groups, selectedIds),
+      };
+    });
+    setSelectedNodeId(subNodeId);
+    setSelectedNodeIds([subNodeId]);
+    markDirty();
+  }, [workflow, isReadOnly, upsertWorkflow, pushUndo, setWorkflow, setSelectedNodeId, setSelectedNodeIds, markDirty]);
+
+  const handleRenameGroup = useCallback((groupId: string, name: string) => {
+    const trimmed = name.trim();
+    if (!workflow || isReadOnly || !trimmed) return;
+    const group = workflow.groups?.find(item => item.id === groupId);
+    if (!group || group.name === trimmed) return;
+
+    pushUndo('rename group');
+    setWorkflow(w => w ? {
+      ...w,
+      groups: (w.groups || []).map(item => item.id === groupId ? { ...item, name: trimmed } : item),
+    } : null);
+    markDirty();
+  }, [workflow, isReadOnly, pushUndo, setWorkflow, markDirty]);
+
+  const handleUngroup = useCallback((groupId: string) => {
+    if (!workflow || isReadOnly) return;
+    const group = workflow.groups?.find(item => item.id === groupId);
+    if (!group || group.locked) return;
+
+    pushUndo('ungroup');
+    setWorkflow(w => {
+      if (!w) return null;
+      const groups = w.groups || [];
+      const parentGroup = groups.find(item => item.childGroupIds.includes(groupId));
+      return {
+        ...w,
+        groups: groups
+          .filter(item => item.id !== groupId)
+          .map((item) => {
+            if (!parentGroup || item.id !== parentGroup.id) return item;
+            return {
+              ...item,
+              childGroupIds: [
+                ...item.childGroupIds.filter(id => id !== groupId),
+                ...group.childGroupIds.filter(id => !item.childGroupIds.includes(id)),
+              ],
+            };
+          }),
+      };
+    });
+    markDirty();
+  }, [workflow, isReadOnly, pushUndo, setWorkflow, markDirty]);
+
+  const handleBatchUngroup = useCallback((groupIds: string[]) => {
+    if (!workflow || isReadOnly) return;
+    const ids = new Set(groupIds);
+    const removableGroups = (workflow.groups || []).filter(group => ids.has(group.id) && !group.locked);
+    if (removableGroups.length === 0) return;
+
+    pushUndo('batch ungroup');
+    setWorkflow(w => {
+      if (!w) return null;
+      const removedById = new Map(removableGroups.map(group => [group.id, group]));
+      return {
+        ...w,
+        groups: (w.groups || [])
+          .filter(group => !removedById.has(group.id))
+          .map((group) => {
+            const directRemovedChildren = group.childGroupIds
+              .map(id => removedById.get(id))
+              .filter((item): item is NonNullable<Workflow['groups']>[number] => !!item);
+            if (directRemovedChildren.length === 0) return group;
+            const promotedChildGroupIds = directRemovedChildren.flatMap(item => item.childGroupIds);
+            return {
+              ...group,
+              childGroupIds: [
+                ...group.childGroupIds.filter(id => !removedById.has(id)),
+                ...promotedChildGroupIds.filter(id => !group.childGroupIds.includes(id)),
+              ],
+            };
+          }),
+      };
+    });
+    markDirty();
+  }, [workflow, isReadOnly, pushUndo, setWorkflow, markDirty]);
+
+  const handleFocusGroup = useCallback((groupId: string) => {
+    const group = workflow?.groups?.find(item => item.id === groupId);
+    if (!group) return;
+    const nodeIds = group.childNodeIds.filter(id => workflow?.nodes.some(node => node.id === id));
+    setSelectedNodeIds(nodeIds);
+    setSelectedNodeId(nodeIds.length === 1 ? nodeIds[0] : null);
+  }, [workflow, setSelectedNodeId, setSelectedNodeIds]);
 
   const handleNodeClone = useCallback((nodeId: string) => {
     if (!workflow || isReadOnly) return;
@@ -1075,6 +1631,7 @@ export function useWorkflowEditorCanvas({
           && !removedNodeIds.has(edge.target)
           && (!edge.composite?.rootId || !removedRootIds.has(edge.composite.rootId))
         ),
+        groups: cleanupGroupsOnNodeDelete(w.groups, removedNodeIds),
       };
     });
     if (hasAllowedDelete || hasDimensionChange || hasPositionChange) markDirty();
@@ -1234,6 +1791,13 @@ export function useWorkflowEditorCanvas({
     handleNodeCopy,
     handleNodeClone,
     handleNodeStage,
+    handleMergeNodesToWorkflow,
+    handleMergeNodesToGroup,
+    handleBatchDeleteNodes,
+    handleRenameGroup,
+    handleUngroup,
+    handleBatchUngroup,
+    handleFocusGroup,
     handleNodeSelect,
     handleNodesSelect,
     handleNodeDataUpdate,

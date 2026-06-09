@@ -94,6 +94,9 @@ interface WorkflowCanvasProps {
   onNodeCopy?: (id: string) => void;
   onNodeClone?: (id: string) => void;
   onNodeStage?: (id: string) => void;
+  onMergeNodesToWorkflow?: (ids: string[]) => void;
+  onMergeNodesToGroup?: (ids: string[]) => void;
+  onBatchDeleteNodes?: (ids: string[]) => void;
   debugNodeId?: string | null;
   debugStatus?: 'idle' | 'running' | 'completed' | 'error';
   onNodeDebug?: (id: string) => void;
@@ -131,6 +134,7 @@ export function WorkflowCanvas({
   canUndo = false, canRedo = false, onUndo, onRedo, onExitPreview, onAutoLayout,
   onConnectionDrop,
   onNodeCopy, onNodeClone, onNodeStage,
+  onMergeNodesToWorkflow, onMergeNodesToGroup, onBatchDeleteNodes,
   debugNodeId = null, debugStatus = 'idle', onNodeDebug, onCancelDebug,
   onExecuteFromNode, onResumeExecution, onStopExecution,
   pausedNodeId = null, pausedReason = null,
@@ -180,6 +184,9 @@ export function WorkflowCanvas({
     onNodeCopy,
     onNodeClone,
     onNodeStage,
+    onMergeNodesToWorkflow,
+    onMergeNodesToGroup,
+    onBatchDeleteNodes,
     onNodeDebug,
     onCancelDebug,
     onExecuteFromNode,

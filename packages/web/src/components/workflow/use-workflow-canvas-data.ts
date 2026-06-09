@@ -99,6 +99,7 @@ export function useCanvasData({
           ...n.data,
           label: n.data?.label || n.label,
           nodeType: n.type,
+          selectedNodeIds,
           nodeState: n.nodeState,
           breakpoint: n.breakpoint,
           nodeColor: n.nodeColor,
@@ -119,7 +120,7 @@ export function useCanvasData({
         } as Record<string, unknown>,
       };
     }),
-    [workflow.nodes, workflow.edges, selectedNodeIdSet, isPreview, isCanvasLocked, executionNodeIds, execStatus, debugNodeId, debugStatus, pausedNodeId, pausedReason, partialExecutionStartNodeId, handlePosition, executionStepByNodeId],
+    [workflow.nodes, workflow.edges, selectedNodeIdSet, selectedNodeIds, isPreview, isCanvasLocked, executionNodeIds, execStatus, debugNodeId, debugStatus, pausedNodeId, pausedReason, partialExecutionStartNodeId, handlePosition, executionStepByNodeId],
   );
 
   const runningEdgeIds = useMemo(() => {

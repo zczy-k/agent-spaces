@@ -11,6 +11,7 @@ import type { Layout } from 'react-resizable-panels';
 
 type WorkflowSnapshot = Pick<Workflow, 'nodes' | 'edges'> & {
   variables?: Workflow['variables'];
+  groups?: Workflow['groups'];
 };
 
 function normalizeOperationEntries(value: unknown): OperationEntry[] {
@@ -190,7 +191,12 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
 
   const pushUndo = useCallback((description?: string) => {
     if (!workflow) return;
-    const snapshot = JSON.stringify({ nodes: workflow.nodes, edges: workflow.edges, variables: workflow.variables || [] });
+    const snapshot = JSON.stringify({
+      nodes: workflow.nodes,
+      edges: workflow.edges,
+      variables: workflow.variables || [],
+      groups: workflow.groups || [],
+    });
     const entry: OperationEntry = {
       description: description || 'edit',
       timestamp: Date.now(),
@@ -208,23 +214,33 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
 
   const handleUndo = useCallback(() => {
     if (undoStack.length === 0 || !workflow) return;
-    const currentSnapshot = JSON.stringify({ nodes: workflow.nodes, edges: workflow.edges, variables: workflow.variables || [] });
+    const currentSnapshot = JSON.stringify({
+      nodes: workflow.nodes,
+      edges: workflow.edges,
+      variables: workflow.variables || [],
+      groups: workflow.groups || [],
+    });
     const prevSnapshot = undoStack[undoStack.length - 1];
     const prev = normalizeLegacySourceHandle(JSON.parse(prevSnapshot) as WorkflowSnapshot);
     setUndoStack(s => s.slice(0, -1));
     setRedoStack(s => [...s, currentSnapshot]);
-    setWorkflow(w => w ? { ...w, nodes: prev.nodes, edges: prev.edges, variables: prev.variables || [] } : null);
+    setWorkflow(w => w ? { ...w, nodes: prev.nodes, edges: prev.edges, variables: prev.variables || [], groups: prev.groups || [] } : null);
     markDirty();
   }, [undoStack, workflow, markDirty]);
 
   const handleRedo = useCallback(() => {
     if (redoStack.length === 0 || !workflow) return;
-    const currentSnapshot = JSON.stringify({ nodes: workflow.nodes, edges: workflow.edges, variables: workflow.variables || [] });
+    const currentSnapshot = JSON.stringify({
+      nodes: workflow.nodes,
+      edges: workflow.edges,
+      variables: workflow.variables || [],
+      groups: workflow.groups || [],
+    });
     const nextSnapshot = redoStack[redoStack.length - 1];
     const next = normalizeLegacySourceHandle(JSON.parse(nextSnapshot) as WorkflowSnapshot);
     setUndoStack(s => [...s, currentSnapshot]);
     setRedoStack(s => s.slice(0, -1));
-    setWorkflow(w => w ? { ...w, nodes: next.nodes, edges: next.edges, variables: next.variables || [] } : null);
+    setWorkflow(w => w ? { ...w, nodes: next.nodes, edges: next.edges, variables: next.variables || [], groups: next.groups || [] } : null);
     markDirty();
   }, [redoStack, workflow, markDirty]);
 

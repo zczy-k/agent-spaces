@@ -8,6 +8,7 @@ export type HandlePositionMode = 'top-bottom' | 'left-right' | 'bottom-top' | 'r
 export type WorkflowNodeData = Record<string, unknown> & {
   label?: string;
   nodeType?: string;
+  selectedNodeIds?: string[];
   width?: number;
   height?: number;
   isPreview?: boolean;

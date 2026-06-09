@@ -12,11 +12,19 @@ interface UseCanvasDomEventsParams {
   onNodeCopy?: (id: string) => void;
   onNodeClone?: (id: string) => void;
   onNodeStage?: (id: string) => void;
+  onMergeNodesToWorkflow?: (ids: string[]) => void;
+  onMergeNodesToGroup?: (ids: string[]) => void;
+  onBatchDeleteNodes?: (ids: string[]) => void;
   onNodeDebug?: (id: string) => void;
   onCancelDebug?: () => void;
   onExecuteFromNode?: (id: string) => void;
   onResumeExecution?: () => void;
   onStopExecution?: () => void;
+}
+
+function getNodeIdsFromEvent(event: Event): string[] {
+  const detail = (event as CustomEvent).detail as { nodeIds?: unknown } | undefined;
+  return Array.isArray(detail?.nodeIds) ? detail.nodeIds.filter((id): id is string => typeof id === 'string') : [];
 }
 
 export function useCanvasDomEvents({
@@ -29,6 +37,9 @@ export function useCanvasDomEvents({
   onNodeCopy,
   onNodeClone,
   onNodeStage,
+  onMergeNodesToWorkflow,
+  onMergeNodesToGroup,
+  onBatchDeleteNodes,
   onNodeDebug,
   onCancelDebug,
   onExecuteFromNode,
@@ -94,6 +105,21 @@ export function useCanvasDomEvents({
     onNodeStage((e as CustomEvent).detail.nodeId);
   }, [isCanvasLocked, onNodeStage]);
 
+  const handleMergeNodesToWorkflowEvent = useCallback((e: Event) => {
+    if (isCanvasLocked || !onMergeNodesToWorkflow) return;
+    onMergeNodesToWorkflow(getNodeIdsFromEvent(e));
+  }, [isCanvasLocked, onMergeNodesToWorkflow]);
+
+  const handleMergeNodesToGroupEvent = useCallback((e: Event) => {
+    if (isCanvasLocked || !onMergeNodesToGroup) return;
+    onMergeNodesToGroup(getNodeIdsFromEvent(e));
+  }, [isCanvasLocked, onMergeNodesToGroup]);
+
+  const handleBatchDeleteNodesEvent = useCallback((e: Event) => {
+    if (isCanvasLocked || !onBatchDeleteNodes) return;
+    onBatchDeleteNodes(getNodeIdsFromEvent(e));
+  }, [isCanvasLocked, onBatchDeleteNodes]);
+
   const handleNodeInfoEvent = useCallback((e: Event) => {
     const detail = (e as CustomEvent).detail as { nodeId?: string | null } | undefined;
     if (!detail?.nodeId) return;
@@ -136,6 +162,9 @@ export function useCanvasDomEvents({
     window.addEventListener('workflow:copy-node', handleNodeCopyEvent);
     window.addEventListener('workflow:clone-node', handleNodeCloneEvent);
     window.addEventListener('workflow:stage-node', handleNodeStageEvent);
+    window.addEventListener('workflow:merge-nodes-to-workflow', handleMergeNodesToWorkflowEvent);
+    window.addEventListener('workflow:merge-nodes-to-group', handleMergeNodesToGroupEvent);
+    window.addEventListener('workflow:batch-delete-nodes', handleBatchDeleteNodesEvent);
     window.addEventListener('workflow:show-node-info', handleNodeInfoEvent);
     window.addEventListener('workflow:debug-node', handleNodeDebugEvent);
     window.addEventListener('workflow:cancel-debug-node', handleCancelDebugEvent);
@@ -151,6 +180,9 @@ export function useCanvasDomEvents({
       window.removeEventListener('workflow:copy-node', handleNodeCopyEvent);
       window.removeEventListener('workflow:clone-node', handleNodeCloneEvent);
       window.removeEventListener('workflow:stage-node', handleNodeStageEvent);
+      window.removeEventListener('workflow:merge-nodes-to-workflow', handleMergeNodesToWorkflowEvent);
+      window.removeEventListener('workflow:merge-nodes-to-group', handleMergeNodesToGroupEvent);
+      window.removeEventListener('workflow:batch-delete-nodes', handleBatchDeleteNodesEvent);
       window.removeEventListener('workflow:show-node-info', handleNodeInfoEvent);
       window.removeEventListener('workflow:debug-node', handleNodeDebugEvent);
       window.removeEventListener('workflow:cancel-debug-node', handleCancelDebugEvent);
@@ -158,7 +190,7 @@ export function useCanvasDomEvents({
       window.removeEventListener('workflow:resume-execution', handleResumeExecutionEvent);
       window.removeEventListener('workflow:stop-execution', handleStopExecutionEvent);
     };
-  }, [handleEdgeDelete, handleEdgeInsertNode, handleEdgeSelect, handleNodeDelete, handleNodeDataUpdate, handleNodeCopyEvent, handleNodeCloneEvent, handleNodeStageEvent, handleNodeInfoEvent, handleNodeDebugEvent, handleCancelDebugEvent, handleExecuteFromNodeEvent, handleResumeExecutionEvent, handleStopExecutionEvent]);
+  }, [handleEdgeDelete, handleEdgeInsertNode, handleEdgeSelect, handleNodeDelete, handleNodeDataUpdate, handleNodeCopyEvent, handleNodeCloneEvent, handleNodeStageEvent, handleMergeNodesToWorkflowEvent, handleMergeNodesToGroupEvent, handleBatchDeleteNodesEvent, handleNodeInfoEvent, handleNodeDebugEvent, handleCancelDebugEvent, handleExecuteFromNodeEvent, handleResumeExecutionEvent, handleStopExecutionEvent]);
 
   // Keyboard delete for selected edge
   useEffect(() => {

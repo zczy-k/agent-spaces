@@ -11,11 +11,13 @@ import {
   Copy,
   Flag,
   FlagOff,
+  Group,
   Info,
   Palette,
   Settings,
   SkipForward,
   Trash2,
+  Workflow,
 } from 'lucide-react';
 import type { NodeBreakpoint, NodeRunState } from '@agent-spaces/shared';
 import {
@@ -33,6 +35,7 @@ import { NODE_COLORS, type NodeColorDef } from './workflow-node-types';
 
 export type WorkflowNodeContextMenuProps = {
   nodeId: string;
+  selectedNodeIds?: string[];
   isCanvasLocked: boolean;
   isDeleteProtected: boolean;
   children: React.ReactNode;
@@ -46,6 +49,9 @@ export type WorkflowNodeContextMenuProps = {
   onStage: () => void;
   onMoveToStage: () => void;
   onDelete: () => void;
+  onMergeToWorkflow?: () => void;
+  onMergeToGroup?: () => void;
+  onBatchDelete?: () => void;
 };
 
 function ColorItem({ color, onClick }: { color: NodeColorDef; onClick: () => void }) {
@@ -59,6 +65,7 @@ function ColorItem({ color, onClick }: { color: NodeColorDef; onClick: () => voi
 }
 
 export function WorkflowNodeContextMenu({
+  selectedNodeIds = [],
   isDeleteProtected,
   isCanvasLocked,
   children,
@@ -72,9 +79,13 @@ export function WorkflowNodeContextMenu({
   onStage,
   onMoveToStage,
   onDelete,
+  onMergeToWorkflow,
+  onMergeToGroup,
+  onBatchDelete,
 }: WorkflowNodeContextMenuProps) {
   const t = useTranslations('workflows');
-  const showContextMenu = !isDeleteProtected && !isCanvasLocked;
+  const isMultiSelect = selectedNodeIds.length >= 2;
+  const showContextMenu = (!isDeleteProtected || isMultiSelect) && !isCanvasLocked;
 
   const handleContextMenu = (event: React.MouseEvent) => {
     if (showContextMenu) return;
@@ -89,84 +100,112 @@ export function WorkflowNodeContextMenu({
       </ContextMenuTrigger>
       {showContextMenu && (
         <ContextMenuContent className="w-48">
-          <ContextMenuSub>
-            <ContextMenuSubTrigger className="text-xs gap-2">
-              <Palette className="h-3 w-3" />
-              {t('nodeUi.contextMenu.color')}
-            </ContextMenuSubTrigger>
-            <ContextMenuSubContent className="w-40">
-              {NODE_COLORS.map(color => (
-                <ColorItem key={color.value ?? 'default'} color={color} onClick={() => onSetColor(color.value)} />
-              ))}
-            </ContextMenuSubContent>
-          </ContextMenuSub>
-          <ContextMenuSub>
-            <ContextMenuSubTrigger className="text-xs gap-2">
-              <Settings className="h-3 w-3" />
-              {t('nodeUi.contextMenu.state')}
-            </ContextMenuSubTrigger>
-            <ContextMenuSubContent className="w-44">
-              <ContextMenuItem className="text-xs gap-2" onClick={() => onSetState('normal')}>
-                <CircleCheck className="h-3 w-3 text-green-500" />
-                {t('nodeUi.contextMenu.stateNormal')}
+          {isMultiSelect ? (
+            <>
+              <ContextMenuItem className="text-xs gap-2" onClick={onMergeToWorkflow}>
+                <Workflow className="h-3 w-3" />
+                合并为工作流
               </ContextMenuItem>
-              <ContextMenuItem className="text-xs gap-2" onClick={() => onSetState('disabled')}>
-                <CircleSlash className="h-3 w-3 text-red-500" />
-                {t('nodeUi.contextMenu.stateDisabled')}
+              <ContextMenuSub>
+                <ContextMenuSubTrigger className="text-xs gap-2">
+                  <Group className="h-3 w-3" />
+                  分组
+                </ContextMenuSubTrigger>
+                <ContextMenuSubContent className="w-40">
+                  <ContextMenuItem className="text-xs gap-2" onClick={onMergeToGroup}>
+                    <Group className="h-3 w-3" />
+                    合并成组
+                  </ContextMenuItem>
+                </ContextMenuSubContent>
+              </ContextMenuSub>
+              <ContextMenuSeparator />
+              <ContextMenuItem className="text-xs gap-2" variant="destructive" onClick={onBatchDelete}>
+                <Trash2 className="h-3 w-3" />
+                批量删除
               </ContextMenuItem>
-              <ContextMenuItem className="text-xs gap-2" onClick={() => onSetState('skipped')}>
-                <SkipForward className="h-3 w-3 text-yellow-500" />
-                {t('nodeUi.contextMenu.stateSkipped')}
+            </>
+          ) : (
+            <>
+              <ContextMenuSub>
+                <ContextMenuSubTrigger className="text-xs gap-2">
+                  <Palette className="h-3 w-3" />
+                  {t('nodeUi.contextMenu.color')}
+                </ContextMenuSubTrigger>
+                <ContextMenuSubContent className="w-40">
+                  {NODE_COLORS.map(color => (
+                    <ColorItem key={color.value ?? 'default'} color={color} onClick={() => onSetColor(color.value)} />
+                  ))}
+                </ContextMenuSubContent>
+              </ContextMenuSub>
+              <ContextMenuSub>
+                <ContextMenuSubTrigger className="text-xs gap-2">
+                  <Settings className="h-3 w-3" />
+                  {t('nodeUi.contextMenu.state')}
+                </ContextMenuSubTrigger>
+                <ContextMenuSubContent className="w-44">
+                  <ContextMenuItem className="text-xs gap-2" onClick={() => onSetState('normal')}>
+                    <CircleCheck className="h-3 w-3 text-green-500" />
+                    {t('nodeUi.contextMenu.stateNormal')}
+                  </ContextMenuItem>
+                  <ContextMenuItem className="text-xs gap-2" onClick={() => onSetState('disabled')}>
+                    <CircleSlash className="h-3 w-3 text-red-500" />
+                    {t('nodeUi.contextMenu.stateDisabled')}
+                  </ContextMenuItem>
+                  <ContextMenuItem className="text-xs gap-2" onClick={() => onSetState('skipped')}>
+                    <SkipForward className="h-3 w-3 text-yellow-500" />
+                    {t('nodeUi.contextMenu.stateSkipped')}
+                  </ContextMenuItem>
+                </ContextMenuSubContent>
+              </ContextMenuSub>
+              <ContextMenuSub>
+                <ContextMenuSubTrigger className="text-xs gap-2">
+                  <Flag className="h-3 w-3" />
+                  {t('nodeUi.contextMenu.breakpoint')}
+                </ContextMenuSubTrigger>
+                <ContextMenuSubContent className="w-44">
+                  <ContextMenuItem className="text-xs gap-2" onClick={() => onSetBreakpoint('start')}>
+                    <Flag className="h-3 w-3 text-blue-500" />
+                    {t('nodeUi.contextMenu.breakpointStart')}
+                  </ContextMenuItem>
+                  <ContextMenuItem className="text-xs gap-2" onClick={() => onSetBreakpoint('end')}>
+                    <Flag className="h-3 w-3 text-purple-500" />
+                    {t('nodeUi.contextMenu.breakpointEnd')}
+                  </ContextMenuItem>
+                  <ContextMenuItem className="text-xs gap-2" onClick={() => onSetBreakpoint(null)}>
+                    <FlagOff className="h-3 w-3 text-muted-foreground" />
+                    {t('nodeUi.contextMenu.breakpointClear')}
+                  </ContextMenuItem>
+                </ContextMenuSubContent>
+              </ContextMenuSub>
+              <ContextMenuSeparator />
+              <ContextMenuItem className="text-xs gap-2" onClick={onShowInfo}>
+                <Info className="h-3 w-3" />
+                {t('nodeUi.contextMenu.info')}
               </ContextMenuItem>
-            </ContextMenuSubContent>
-          </ContextMenuSub>
-          <ContextMenuSub>
-            <ContextMenuSubTrigger className="text-xs gap-2">
-              <Flag className="h-3 w-3" />
-              {t('nodeUi.contextMenu.breakpoint')}
-            </ContextMenuSubTrigger>
-            <ContextMenuSubContent className="w-44">
-              <ContextMenuItem className="text-xs gap-2" onClick={() => onSetBreakpoint('start')}>
-                <Flag className="h-3 w-3 text-blue-500" />
-                {t('nodeUi.contextMenu.breakpointStart')}
+              <ContextMenuItem className="text-xs gap-2" onClick={onCopy}>
+                <Copy className="h-3 w-3" />
+                {t('nodeUi.contextMenu.copy')}
               </ContextMenuItem>
-              <ContextMenuItem className="text-xs gap-2" onClick={() => onSetBreakpoint('end')}>
-                <Flag className="h-3 w-3 text-purple-500" />
-                {t('nodeUi.contextMenu.breakpointEnd')}
+              <ContextMenuItem className="text-xs gap-2" onClick={onClone}>
+                <ClipboardCopy className="h-3 w-3" />
+                {t('nodeUi.contextMenu.clone')}
               </ContextMenuItem>
-              <ContextMenuItem className="text-xs gap-2" onClick={() => onSetBreakpoint(null)}>
-                <FlagOff className="h-3 w-3 text-muted-foreground" />
-                {t('nodeUi.contextMenu.breakpointClear')}
+              <ContextMenuSeparator />
+              <ContextMenuItem className="text-xs gap-2" onClick={onStage}>
+                <Archive className="h-3 w-3" />
+                {t('nodeUi.contextMenu.stage')}
               </ContextMenuItem>
-            </ContextMenuSubContent>
-          </ContextMenuSub>
-          <ContextMenuSeparator />
-          <ContextMenuItem className="text-xs gap-2" onClick={onShowInfo}>
-            <Info className="h-3 w-3" />
-            {t('nodeUi.contextMenu.info')}
-          </ContextMenuItem>
-          <ContextMenuItem className="text-xs gap-2" onClick={onCopy}>
-            <Copy className="h-3 w-3" />
-            {t('nodeUi.contextMenu.copy')}
-          </ContextMenuItem>
-          <ContextMenuItem className="text-xs gap-2" onClick={onClone}>
-            <ClipboardCopy className="h-3 w-3" />
-            {t('nodeUi.contextMenu.clone')}
-          </ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem className="text-xs gap-2" onClick={onStage}>
-            <Archive className="h-3 w-3" />
-            {t('nodeUi.contextMenu.stage')}
-          </ContextMenuItem>
-          <ContextMenuItem className="text-xs gap-2" onClick={onMoveToStage}>
-            <ArchiveRestore className="h-3 w-3" />
-            {t('nodeUi.contextMenu.moveToStage')}
-          </ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem className="text-xs gap-2" variant="destructive" onClick={onDelete}>
-            <Trash2 className="h-3 w-3" />
-            {t('nodeUi.contextMenu.delete')}
-          </ContextMenuItem>
+              <ContextMenuItem className="text-xs gap-2" onClick={onMoveToStage}>
+                <ArchiveRestore className="h-3 w-3" />
+                {t('nodeUi.contextMenu.moveToStage')}
+              </ContextMenuItem>
+              <ContextMenuSeparator />
+              <ContextMenuItem className="text-xs gap-2" variant="destructive" onClick={onDelete}>
+                <Trash2 className="h-3 w-3" />
+                {t('nodeUi.contextMenu.delete')}
+              </ContextMenuItem>
+            </>
+          )}
         </ContextMenuContent>
       )}
     </ContextMenu>

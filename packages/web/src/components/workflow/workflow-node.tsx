@@ -76,6 +76,7 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
   const isLoopBody = definition?.type === LOOP_BODY_NODE_TYPE;
   const canDeleteNode = !isBoundaryNode && !isLoopBody;
   const isCanvasLocked = nodeData.isPreview || nodeData.isCanvasLocked;
+  const selectedNodeIds = Array.isArray(nodeData.selectedNodeIds) ? nodeData.selectedNodeIds : [];
 
   React.useEffect(() => {
     if (isCanvasLocked) setIsEditing(false);
@@ -358,6 +359,21 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
     window.dispatchEvent(new CustomEvent('workflow:stage-node', { detail: { nodeId: id } }));
     window.dispatchEvent(new CustomEvent('workflow:delete-node', { detail: { nodeId: id } }));
   }, [id, isCanvasLocked]);
+
+  const handleMergeToWorkflow = useCallback(() => {
+    if (isCanvasLocked || selectedNodeIds.length < 2) return;
+    window.dispatchEvent(new CustomEvent('workflow:merge-nodes-to-workflow', { detail: { nodeIds: selectedNodeIds } }));
+  }, [isCanvasLocked, selectedNodeIds]);
+
+  const handleMergeToGroup = useCallback(() => {
+    if (isCanvasLocked || selectedNodeIds.length < 2) return;
+    window.dispatchEvent(new CustomEvent('workflow:merge-nodes-to-group', { detail: { nodeIds: selectedNodeIds } }));
+  }, [isCanvasLocked, selectedNodeIds]);
+
+  const handleBatchDelete = useCallback(() => {
+    if (isCanvasLocked || selectedNodeIds.length < 1) return;
+    window.dispatchEvent(new CustomEvent('workflow:batch-delete-nodes', { detail: { nodeIds: selectedNodeIds } }));
+  }, [isCanvasLocked, selectedNodeIds]);
 
   const handleShowInfo = useCallback(() => {
     window.dispatchEvent(new CustomEvent('workflow:show-node-info', { detail: { nodeId: id } }));
@@ -642,6 +658,7 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
       />
       <WorkflowNodeContextMenu
         nodeId={id}
+        selectedNodeIds={selectedNodeIds}
         isDeleteProtected={!canDeleteNode}
         isCanvasLocked={!!isCanvasLocked}
         style={{ width: nodeWidth, height: nodeHeight }}
@@ -654,6 +671,9 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
         onStage={handleStage}
         onMoveToStage={handleMoveToStage}
         onDelete={handleDelete}
+        onMergeToWorkflow={handleMergeToWorkflow}
+        onMergeToGroup={handleMergeToGroup}
+        onBatchDelete={handleBatchDelete}
       >
         {nodeBody}
       </WorkflowNodeContextMenu>

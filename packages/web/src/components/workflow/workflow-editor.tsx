@@ -19,13 +19,14 @@ import { WorkflowPluginsDialog } from './workflow-plugins-dialog';
 import { WorkflowPluginPickerDialog } from './workflow-plugin-picker-dialog';
 import { WorkflowNodeSelectDialog } from './workflow-node-select-dialog';
 import { WorkflowVariablesForm } from './workflow-variables-form';
+import { WorkflowGroupManagePanel } from './workflow-group-manage-panel';
 import { FloatingChatPanel } from '@/components/ui/floating-chat-widget';
 import { AgentEditor } from '@/components/sidebar/agent-editor';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ResizablePanel, ResizableHandle, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ExpandableTabs } from '@/components/ui/expandable-tabs';
-import { Loader2, AlertCircle, Settings2, Trash2, History, Package, Braces } from 'lucide-react';
+import { Loader2, AlertCircle, Settings2, Trash2, History, Package, Braces, Group } from 'lucide-react';
 import { useEditorShortcuts, useClipboard, useExecutionPanel } from '@/hooks/use-workflow-editor';
 import { Button } from '@/components/ui/button';
 import { useWorkspaceStore } from '@/stores/workspace';
@@ -289,6 +290,9 @@ function WorkflowEditorInner({
                 onNodeCopy={canvas.handleNodeCopy}
                 onNodeClone={canvas.handleNodeClone}
                 onNodeStage={canvas.handleNodeStage}
+                onMergeNodesToWorkflow={canvas.handleMergeNodesToWorkflow}
+                onMergeNodesToGroup={canvas.handleMergeNodesToGroup}
+                onBatchDeleteNodes={canvas.handleBatchDeleteNodes}
                 debugNodeId={execution.debugNodeId}
                 debugStatus={execution.debugStatus}
                 pausedNodeId={execution.pausedNodeId}
@@ -352,6 +356,7 @@ function WorkflowEditorInner({
               tabs={[
                 { title: t('editor.properties'), icon: Settings2, value: 'properties' },
                 { title: '变量', icon: Braces, value: 'variables' },
+                { title: '分组', icon: Group, value: 'groups' },
                 { title: t('editor.history'), icon: History, value: 'history' },
                 { title: t('editor.staging'), icon: Package, value: 'staging' },
               ]}
@@ -391,6 +396,16 @@ function WorkflowEditorInner({
                   state.setWorkflow(w => w ? { ...w, variables } : null);
                   state.markDirty();
                 }}
+              />
+            </TabsContent>
+            <TabsContent value="groups" className="flex-1 min-h-0 m-0">
+              <WorkflowGroupManagePanel
+                groups={workflow.groups || []}
+                isReadOnly={isWorkflowReadOnly}
+                onRenameGroup={canvas.handleRenameGroup}
+                onUngroup={canvas.handleUngroup}
+                onBatchUngroup={canvas.handleBatchUngroup}
+                onFocusGroup={canvas.handleFocusGroup}
               />
             </TabsContent>
             <TabsContent value="history" className="flex-1 min-h-0 m-0">
