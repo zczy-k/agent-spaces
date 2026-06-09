@@ -69,6 +69,12 @@ function createLoopBodyBoundaryNodes(
   loopNode: Workflow['nodes'][0],
   bodyNode: Workflow['nodes'][0],
 ): { nodes: Workflow['nodes']; edges: Workflow['edges'] } {
+  bodyNode.data = {
+    ...bodyNode.data,
+    width: Math.max(typeof bodyNode.data.width === 'number' ? bodyNode.data.width : 0, 620),
+    height: Math.max(typeof bodyNode.data.height === 'number' ? bodyNode.data.height : 0, 320),
+  };
+
   const startNode: Workflow['nodes'][0] = {
     id: createWorkflowNodeId(),
     type: 'start',
