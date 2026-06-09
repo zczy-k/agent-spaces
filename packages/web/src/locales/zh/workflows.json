@@ -18,6 +18,18 @@
     "nodes": "{count} 个节点",
     "defaultInitial": "未"
   },
+  "pluginCard": {
+    "added": "已添加",
+    "notAdded": "未添加",
+    "installed": "已安装",
+    "notInstalled": "未安装",
+    "remove": "移除",
+    "addToWorkflow": "添加到 Workflow",
+    "reinstall": "重新安装",
+    "installing": "安装中",
+    "installAndAdd": "安装并添加",
+    "noDescription": "无描述"
+  },
   "templatesDialog": {
     "title": "工作流模板",
     "description": "选择一个模板快速创建工作流",

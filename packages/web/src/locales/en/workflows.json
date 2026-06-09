@@ -18,6 +18,18 @@
     "nodes": "{count} nodes",
     "defaultInitial": "N"
   },
+  "pluginCard": {
+    "added": "Added",
+    "notAdded": "Not added",
+    "installed": "Installed",
+    "notInstalled": "Not installed",
+    "remove": "Remove",
+    "addToWorkflow": "Add to Workflow",
+    "reinstall": "Reinstall",
+    "installing": "Installing",
+    "installAndAdd": "Install and add",
+    "noDescription": "No description"
+  },
   "templatesDialog": {
     "title": "Workflow Templates",
     "description": "Select a template to quickly create a workflow",

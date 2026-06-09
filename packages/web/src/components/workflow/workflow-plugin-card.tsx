@@ -2,11 +2,12 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import type { StoreWorkflowPlugin, WorkflowPlugin } from '@/lib/workflow-plugin-api';
-import { Download, RefreshCw, Settings, Trash2 } from 'lucide-react';
-import { PluginIcon } from './workflow-plugin-icon';
 import { resolveStoreUrl } from '@/lib/agent-store';
 import { resolveServerAssetUrl } from '@/lib/server';
+import type { StoreWorkflowPlugin, WorkflowPlugin } from '@/lib/workflow-plugin-api';
+import { Download, RefreshCw, Settings, Trash2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { PluginIcon } from './workflow-plugin-icon';
 
 export function LocalPluginCard({
   plugin,
@@ -23,6 +24,7 @@ export function LocalPluginCard({
   onConfigAction?: () => void;
   onUninstallAction?: () => void;
 }) {
+  const t = useTranslations('workflows');
   const iconSrc = plugin.iconPath
     ? { type: 'url' as const, url: resolveServerAssetUrl(`/api/plugins/${encodeURIComponent(plugin.id)}/icon`) }
     : { type: 'builtin' as const, variant: 'local' as const };
@@ -34,7 +36,7 @@ export function LocalPluginCard({
       version={plugin.version}
       description={plugin.description}
       tags={plugin.tags}
-      badge={inWorkflow ? '已添加' : '未添加'}
+      badge={inWorkflow ? t('pluginCard.added') : t('pluginCard.notAdded')}
       badgeVariant={inWorkflow ? 'default' : 'secondary'}
       headerExtra={onUninstallAction ? (
         <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={onUninstallAction}>
@@ -48,7 +50,7 @@ export function LocalPluginCard({
         </Button>
       ) : null}
       <Button size="sm" variant={inWorkflow ? 'outline' : 'default'} className="ml-auto h-7 text-xs" disabled={disabled} onClick={onToggleAction}>
-        {inWorkflow ? '移除' : '添加到 Workflow'}
+        {inWorkflow ? t('pluginCard.remove') : t('pluginCard.addToWorkflow')}
       </Button>
     </PluginCardShell>
   );
@@ -65,6 +67,7 @@ export function StorePluginCard({
   installing: boolean;
   onInstallAction: () => void;
 }) {
+  const t = useTranslations('workflows');
   const iconSrc = plugin.iconUrl
     ? { type: 'url' as const, url: resolveStoreUrl(plugin.iconUrl) }
     : { type: 'builtin' as const, variant: 'store' as const };
@@ -76,7 +79,7 @@ export function StorePluginCard({
       version={plugin.version}
       description={plugin.description}
       tags={plugin.tags}
-      badge={installed ? '已安装' : '未安装'}
+      badge={installed ? t('pluginCard.installed') : t('pluginCard.notInstalled')}
       badgeVariant={installed ? 'default' : 'outline'}
     >
       {plugin.type ? <Badge variant="secondary" className="text-[10px]">{plugin.type}</Badge> : null}
@@ -90,17 +93,17 @@ export function StorePluginCard({
         {installed ? (
           <>
             <Download className="h-3.5 w-3.5" />
-            重新安装
+            {t('pluginCard.reinstall')}
           </>
         ) : installing ? (
           <>
             <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-            安装中
+            {t('pluginCard.installing')}
           </>
         ) : (
           <>
             <Download className="h-3.5 w-3.5" />
-            安装并添加
+            {t('pluginCard.installAndAdd')}
           </>
         )}
       </Button>
@@ -129,6 +132,8 @@ function PluginCardShell({
   headerExtra?: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const t = useTranslations('workflows');
+
   return (
     <div className="group flex min-h-[156px] flex-col rounded-md border bg-background p-3">
       <div className="flex items-start gap-2">
@@ -150,7 +155,7 @@ function PluginCardShell({
           <Badge variant={badgeVariant}>{badge}</Badge>
         )}
       </div>
-      <p className="mt-2 line-clamp-3 min-h-[48px] text-xs text-muted-foreground">{description || '无描述'}</p>
+      <p className="mt-2 line-clamp-3 min-h-[48px] text-xs text-muted-foreground">{description || t('pluginCard.noDescription')}</p>
       <div className="mt-2 flex flex-wrap gap-1">
         {(tags || []).slice(0, 4).map(item => <Badge key={item} variant="outline" className="text-[10px]">{item}</Badge>)}
       </div>
