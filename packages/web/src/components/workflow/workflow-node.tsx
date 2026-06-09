@@ -29,6 +29,7 @@ import {
   HANDLE_MARGIN,
   NODE_COLORS,
   NODE_COLOR_MAP,
+  type HandlePositionMode,
   type WorkflowNodeData,
   type WorkflowCustomViewProps,
   type PluginNodeDefinitionMeta,
@@ -37,6 +38,12 @@ import { ExecutionResultHoverCard } from './workflow-node-execution-result';
 import { WorkflowNodeContextMenu } from './workflow-node-context-menu';
 
 const DEBUG_WORKFLOW_NODE = process.env.NODE_ENV !== 'production';
+const HANDLE_POSITION_MAP: Record<HandlePositionMode, { target: Position; source: Position }> = {
+  'top-bottom': { target: Position.Top, source: Position.Bottom },
+  'left-right': { target: Position.Left, source: Position.Right },
+  'bottom-top': { target: Position.Bottom, source: Position.Top },
+  'right-left': { target: Position.Right, source: Position.Left },
+};
 
 export function WorkflowNode({ id, data, type, selected }: NodeProps) {
   const nodeData = data as WorkflowNodeData;
@@ -76,6 +83,8 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
   const showTargetHandle = definition?.handles?.target !== false;
   const showSourceHandle = definition?.handles?.source !== false;
   const staticSourceHandles = definition?.handles?.sourceHandles || [];
+  const handlePositionMode = nodeData.handlePosition || 'left-right';
+  const handlePositions = HANDLE_POSITION_MAP[handlePositionMode] || HANDLE_POSITION_MAP['left-right'];
 
   // Dynamic handles for switch node
   const dynamicSource = definition?.handles?.dynamicSource;
@@ -108,7 +117,7 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
 
   React.useEffect(() => {
     updateNodeInternals(id);
-  }, [id, updateNodeInternals, sourceHandleCount, showTargetHandle, showSourceHandle, nodeHeight]);
+  }, [id, updateNodeInternals, sourceHandleCount, showTargetHandle, showSourceHandle, nodeHeight, handlePositions.target, handlePositions.source]);
 
   React.useEffect(() => {
     if (!DEBUG_WORKFLOW_NODE) return;
@@ -189,6 +198,32 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
   function getHandleTop(index: number, total: number): string {
     if (isLoopBody) return `${((index + 1) / (total + 1)) * 100}%`;
     return `${HEADER_HEIGHT + HANDLE_MARGIN + ((nodeHeight - HEADER_HEIGHT - HANDLE_MARGIN * 2) / (total + 1)) * (index + 1)}px`;
+  }
+
+  function getHandleOffset(index: number, total: number): string {
+    return `${((index + 1) / (total + 1)) * 100}%`;
+  }
+
+  function getHandleStyle(position: Position, index: number, total: number): React.CSSProperties | undefined {
+    if (isLoopBody) return { top: getHandleTop(index, total) };
+    if (position === Position.Left || position === Position.Right) {
+      return { top: getHandleTop(index, total) };
+    }
+    return { left: getHandleOffset(index, total) };
+  }
+
+  function getSourceLabelStyle(index: number, total: number): React.CSSProperties {
+    const offset = getHandleOffset(index, total);
+    if (handlePositions.source === Position.Left) {
+      return { top: getHandleTop(index, total), left: 10, transform: 'translateY(-50%)' };
+    }
+    if (handlePositions.source === Position.Top) {
+      return { left: offset, top: -16, transform: 'translateX(-50%)' };
+    }
+    if (handlePositions.source === Position.Bottom) {
+      return { left: offset, bottom: -16, transform: 'translateX(-50%)' };
+    }
+    return { top: getHandleTop(index, total), right: 10, transform: 'translateY(-50%)' };
   }
 
   const startEdit = useCallback(() => {
@@ -408,9 +443,9 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
       {/* Target handle */}
       {showTargetHandle && (
         <Handle
-          id="target" type="target" position={Position.Left}
+          id="target" type="target" position={handlePositions.target}
           className="!z-10 !w-3 !h-3 !bg-blue-500 !border-2 !border-blue-300 handle-dot"
-          style={!isLoopBody ? { top: getHandleTop(0, 1) } : undefined}
+          style={getHandleStyle(handlePositions.target, 0, 1)}
         />
       )}
 
@@ -541,10 +576,10 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
       {showSourceHandle && !dynamicHandles && (
         staticSourceHandles.length === 0 ? (
           <Handle
-            id="source" type="source" position={Position.Right}
+            id="source" type="source" position={handlePositions.source}
 
             className="!z-10 !w-3 !h-3 !bg-emerald-500 !border-2 !border-emerald-300 handle-dot"
-            style={!isLoopBody ? { top: getHandleTop(0, 1) } : undefined}
+            style={getHandleStyle(handlePositions.source, 0, 1)}
           />
         ) : (
           <>
@@ -552,15 +587,15 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
               <React.Fragment key={h.id}>
                 <div
                   className="source-handle-label"
-                  style={{ top: getHandleTop(index, staticSourceHandles.length) }}
+                  style={getSourceLabelStyle(index, staticSourceHandles.length)}
                 >
                   <span className="text-[9px] text-muted-foreground mr-1 whitespace-nowrap">{h.label || h.id}</span>
                 </div>
                 <Handle
-                  id={h.id} type="source" position={Position.Right}
+                  id={h.id} type="source" position={handlePositions.source}
 
                   className={`!z-10 !w-2.5 !h-2.5 handle-dot ${h.id === LOOP_BODY_SOURCE_HANDLE ? '!bg-blue-500 !border-blue-300' : '!bg-emerald-500 !border-emerald-300'}`}
-                  style={{ top: getHandleTop(index, staticSourceHandles.length), borderWidth: '2px' }}
+                  style={{ ...getHandleStyle(handlePositions.source, index, staticSourceHandles.length), borderWidth: '2px' }}
                 />
               </React.Fragment>
             ))}
@@ -575,15 +610,15 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
             <React.Fragment key={h.id}>
               <div
                 className="source-handle-label"
-                style={{ top: getHandleTop(h.index, h.total) }}
+                style={getSourceLabelStyle(h.index, h.total)}
               >
                 <span className="text-[9px] text-muted-foreground mr-1 whitespace-nowrap">{h.label}</span>
               </div>
               <Handle
-                id={h.id} type="source" position={Position.Right}
+                id={h.id} type="source" position={handlePositions.source}
 
                 className={`!z-10 !w-2.5 !h-2.5 handle-dot ${h.id === 'default' ? '!bg-orange-500 !border-orange-300' : '!bg-emerald-500 !border-emerald-300'}`}
-                style={{ top: getHandleTop(h.index, h.total), borderWidth: '2px' }}
+                style={{ ...getHandleStyle(handlePositions.source, h.index, h.total), borderWidth: '2px' }}
               />
             </React.Fragment>
           ))}
@@ -632,7 +667,7 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
           background: var(--background);
           box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
         }
-        .source-handle-label { position: absolute; right: 10px; display: flex; align-items: center; pointer-events: none; transform: translateY(-50%); }
+        .source-handle-label { position: absolute; display: flex; align-items: center; pointer-events: none; }
         .loop-body-node { border-color: rgba(114, 181, 197, 0.5); box-shadow: 0 10px 30px rgba(98, 156, 173, 0.14); background: linear-gradient(180deg, rgba(233, 247, 250, 0.95), rgba(246, 250, 251, 0.98)); }
       `}</style>
     </>

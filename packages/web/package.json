@@ -43,6 +43,7 @@
     "date-fns": "^4.1.0",
     "dexie": "^4.4.3",
     "diff": "^9.0.0",
+    "elkjs": "^0.11.1",
     "embla-carousel-react": "^8.6.0",
     "emoji-picker-react": "^4.19.1",
     "eventemitter2": "^6.4.9",

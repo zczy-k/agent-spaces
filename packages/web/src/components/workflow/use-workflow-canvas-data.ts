@@ -3,6 +3,7 @@ import { type Node, type Edge } from '@xyflow/react';
 import type { Workflow, ExecutionLog, ExecutionStep } from '@agent-spaces/shared';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { getWorkflowNodeSize } from './workflow-node-size';
+import type { HandlePositionMode } from './workflow-node-types';
 
 interface UseCanvasDataParams {
   workflow: Pick<Workflow, 'nodes' | 'edges'>;
@@ -18,6 +19,7 @@ interface UseCanvasDataParams {
   pausedNodeId?: string | null;
   pausedReason?: string | null;
   partialExecutionStartNodeId?: string | null;
+  handlePosition?: HandlePositionMode;
 }
 
 export function useCanvasData({
@@ -34,6 +36,7 @@ export function useCanvasData({
   pausedNodeId = null,
   pausedReason = null,
   partialExecutionStartNodeId = null,
+  handlePosition = 'left-right',
 }: UseCanvasDataParams) {
   const selectedNodeIdSet = useMemo(
     () => new Set(selectedNodeIds.length > 0 ? selectedNodeIds : selectedNodeId ? [selectedNodeId] : []),
@@ -96,12 +99,13 @@ export function useCanvasData({
           pausedNodeId,
           pausedReason,
           partialExecutionStartNodeId,
+          handlePosition,
           isFirstConnectedNode: hasOutgoing && !hasIncoming,
           executionStep: executionStepByNodeId.get(n.id),
         } as Record<string, unknown>,
       };
     }),
-    [workflow.nodes, workflow.edges, selectedNodeIdSet, isPreview, isCanvasLocked, executionNodeIds, execStatus, debugNodeId, debugStatus, pausedNodeId, pausedReason, partialExecutionStartNodeId, executionStepByNodeId],
+    [workflow.nodes, workflow.edges, selectedNodeIdSet, isPreview, isCanvasLocked, executionNodeIds, execStatus, debugNodeId, debugStatus, pausedNodeId, pausedReason, partialExecutionStartNodeId, handlePosition, executionStepByNodeId],
   );
 
   const runningEdgeIds = useMemo(() => {

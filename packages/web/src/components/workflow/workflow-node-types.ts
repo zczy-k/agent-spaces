@@ -3,6 +3,8 @@ import type { NodeRunState, NodeBreakpoint } from '@agent-spaces/shared';
 export const HEADER_HEIGHT = 33;
 export const HANDLE_MARGIN = 12;
 
+export type HandlePositionMode = 'top-bottom' | 'left-right' | 'bottom-top' | 'right-left';
+
 export type WorkflowNodeData = Record<string, unknown> & {
   label?: string;
   nodeType?: string;
@@ -21,6 +23,7 @@ export type WorkflowNodeData = Record<string, unknown> & {
   pausedReason?: string | null;
   partialExecutionStartNodeId?: string | null;
   isFirstConnectedNode?: boolean;
+  handlePosition?: HandlePositionMode;
   executionStep?: import('@agent-spaces/shared').ExecutionStep;
 };
 

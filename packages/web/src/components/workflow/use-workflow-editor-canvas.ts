@@ -2,8 +2,10 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import Dagre from '@dagrejs/dagre';
+import ELK from 'elkjs/lib/elk.bundled';
 import { applyNodeChanges, applyEdgeChanges } from '@xyflow/react';
 import type { NodeChange, EdgeChange, Connection } from '@xyflow/react';
+import type { ElkNode } from 'elkjs/lib/elk-api';
 import type { Workflow } from '@agent-spaces/shared';
 import {
   LOOP_NEXT_SOURCE_HANDLE,
@@ -492,14 +494,11 @@ export function useWorkflowEditorCanvas({
     markDirty();
   }, [workflow, isReadOnly, markDirty]);
 
-  const handleAutoLayout = useCallback((direction: 'LR' | 'TB') => {
+  const handleAutoLayout = useCallback(async (direction: 'LR' | 'TB', options?: { layoutEngine?: string }) => {
     if (!workflow || isReadOnly || workflow.nodes.length === 0) return;
     pushUndo('auto layout');
 
-    const graph = new Dagre.graphlib.Graph();
-    graph.setDefaultEdgeLabel(() => ({}));
-    graph.setGraph({ rankdir: direction, nodesep: 60, ranksep: 80 });
-
+    const layoutEngine = options?.layoutEngine || (workflow.layoutSnapshot?.layoutEngine as string) || 'dagre';
     const layoutNodes = workflow.nodes.filter(node => !isHiddenWorkflowNode(node) && !getCompositeParentId(node));
     const layoutNodeIds = new Set(layoutNodes.map(node => node.id));
     const nodeSizes = new Map<string, { width: number; height: number }>();
@@ -512,18 +511,68 @@ export function useWorkflowEditorCanvas({
         height: typeof node.data?.height === 'number' ? nodeSize.height : Math.max(nodeSize.height, 120),
       };
       nodeSizes.set(node.id, size);
-      graph.setNode(node.id, size);
     }
 
-    for (const edge of workflow.edges.filter(edge =>
+    const layoutEdges = workflow.edges.filter(edge =>
       !isHiddenWorkflowEdge(edge)
       && layoutNodeIds.has(edge.source)
       && layoutNodeIds.has(edge.target)
-    )) {
-      graph.setEdge(edge.source, edge.target);
-    }
+    );
+    const layoutPositions = new Map<string, { x: number; y: number }>();
 
-    Dagre.layout(graph);
+    if (layoutEngine === 'elk') {
+      const elk = new ELK();
+      const elkGraph: ElkNode = {
+        id: 'workflow',
+        layoutOptions: {
+          'elk.algorithm': 'layered',
+          'elk.direction': direction === 'LR' ? 'RIGHT' : 'DOWN',
+          'elk.spacing.nodeNode': '60',
+          'elk.layered.spacing.nodeNodeBetweenLayers': '90',
+        },
+        children: layoutNodes.map(node => {
+          const size = nodeSizes.get(node.id);
+          return {
+            id: node.id,
+            width: size?.width ?? 220,
+            height: size?.height ?? 120,
+          };
+        }),
+        edges: layoutEdges.map(edge => ({
+          id: edge.id,
+          sources: [edge.source],
+          targets: [edge.target],
+        })),
+      };
+      const result = await elk.layout(elkGraph);
+      for (const child of result.children ?? []) {
+        if (typeof child.x === 'number' && typeof child.y === 'number') {
+          layoutPositions.set(child.id, { x: child.x, y: child.y });
+        }
+      }
+    } else {
+      const graph = new Dagre.graphlib.Graph();
+      graph.setDefaultEdgeLabel(() => ({}));
+      graph.setGraph({ rankdir: direction, nodesep: 60, ranksep: 80 });
+
+      for (const node of layoutNodes) {
+        graph.setNode(node.id, nodeSizes.get(node.id) ?? { width: 220, height: 120 });
+      }
+      for (const edge of layoutEdges) {
+        graph.setEdge(edge.source, edge.target);
+      }
+
+      Dagre.layout(graph);
+      for (const node of layoutNodes) {
+        const layoutPosition = graph.node(node.id);
+        const size = nodeSizes.get(node.id);
+        if (!layoutPosition) continue;
+        layoutPositions.set(node.id, {
+          x: layoutPosition.x - (size?.width ?? 220) / 2,
+          y: layoutPosition.y - (size?.height ?? 120) / 2,
+        });
+      }
+    }
 
     setWorkflow(current => {
       if (!current) return null;
@@ -532,14 +581,8 @@ export function useWorkflowEditorCanvas({
 
       for (const node of layoutNodes) {
         const nextNode = nodeById.get(node.id);
-        const layoutPosition = graph.node(node.id);
-        const size = nodeSizes.get(node.id);
-        if (!nextNode || !layoutPosition) continue;
-
-        const nextPosition = {
-          x: layoutPosition.x - (size?.width ?? 220) / 2,
-          y: layoutPosition.y - (size?.height ?? 120) / 2,
-        };
+        const nextPosition = layoutPositions.get(node.id);
+        if (!nextNode || !nextPosition) continue;
 
         if (isScopeBoundaryWorkflowNode(nextNode)) {
           const dx = nextPosition.x - nextNode.position.x;
