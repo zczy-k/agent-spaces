@@ -608,7 +608,7 @@ export class ExecutionManager {
       case 'delay':
         return this.executeDelayNode(resolvedData, appendLog);
       case 'switch':
-        return this.executeSwitch(session, resolvedData.conditions || []);
+        return this.executeSwitch(resolvedData.conditions);
       case 'variable_aggregate':
         return this.executeVariableAggregate(resolvedData.groups || []);
       case 'sub_workflow':
@@ -899,12 +899,19 @@ export class ExecutionManager {
     return fn(context, params);
   }
 
-  private executeSwitch(session: ExecutionSession, conditions: ConditionItem[]): any {
-    for (let i = 0; i < conditions.length; i++) {
-      const cond = conditions[i];
-      const variable = this.resolveStringValue(session, cond.variable);
-      const value = this.resolveStringValue(session, cond.value);
-      if (this.evaluateCondition(variable, value, cond.operator)) {
+  private executeSwitch(conditions: unknown): any {
+    const conditionItems = Array.isArray(conditions) ? conditions : [];
+
+    for (let i = 0; i < conditionItems.length; i++) {
+      const cond = conditionItems[i];
+      if (!cond || typeof cond !== 'object') continue;
+
+      const item = cond as Partial<ConditionItem> & { field?: unknown };
+      const variable = item.variable ?? item.field ?? '';
+      const value = item.value ?? '';
+      const operator = typeof item.operator === 'string' ? item.operator : 'equals';
+
+      if (this.evaluateCondition(variable, value, operator)) {
         return { __branch__: `case-${i}`, matchedIndex: i };
       }
     }

@@ -2,115 +2,75 @@
 
 # @agent-spaces/sdk
 
-## 模块职责
+## 项目简介
 
-前端 API 统一调用包。提供类型安全的 HTTP 客户端封装（HttpClient），按功能域拆分为 39 个 API 模块适配器，覆盖 Agent Spaces 平台全部 REST API。web 包通过 `lib/sdk.ts` 单例消费，自动注入 Bearer Token 和服务器地址。
+`@agent-spaces/sdk` 是 Agent Spaces 平台的前端 API 统一调用层。它封装了平台所有后端 REST API 为类型安全的 TypeScript 函数，按业务域拆分为 39 个独立模块适配器。SDK 采用模块工厂模式，通过 `createSDK()` 一次创建，web 包单例消费，组件只需 `sdk.xxx.method()` 即可完成 API 调用。
 
-## 入口与启动
+SDK 层零业务逻辑，纯粹做 HTTP 请求映射。运行时仅依赖浏览器原生 `fetch` API，运行时依赖仅有 `@agent-spaces/shared` 的类型（编译后擦除）。
 
-- **入口文件**：`src/index.ts` -- 导出 `createSDK()` 工厂函数和所有模块工厂
-- **构建命令**：`pnpm build`（tsc 编译到 dist/）
-- **消费方式**：web 包 `src/lib/sdk.ts` 创建单例，组件通过 `sdk.xxx.method()` 调用
+## 约定的规则
 
-## 架构
+- **模块工厂模式**：每个 API 模块实现 `createXxxApi(http: HttpClient)` 工厂函数，返回标准方法对象
+- **DELETE 方法命名**：使用 `delete_` 避免 JS 保留字冲突
+- **路径编码**：路径参数直接拼接，查询参数中的用户输入必须 `encodeURIComponent()`
+- **类型来源**：优先从 `@agent-spaces/shared` 导入类型；如 shared 中无对应类型，可在模块内定义并导出
+- **无状态**：SDK 不缓存、不重试、不节流，纯请求映射
+- **构建**：`pnpm build`（tsc），`pnpm dev`（tsc --watch）
+- **TypeScript strict 模式，ESNext 模块，ESM**
+
+## 文件索引
+
+| 文件 | 说明 |
+|------|------|
+| [claude/overview.md](claude/overview.md) | 架构总览、设计目标、边界、HTTP 请求流程 |
+| [claude/conventions.md](claude/conventions.md) | 开发约定、模块工厂模式、命名规范、禁止事项 |
+| [claude/module-responsibilities.md](claude/module-responsibilities.md) | 39 个模块的职责说明 |
+| [claude/entrypoints.md](claude/entrypoints.md) | 入口文件、构建配置、消费方式 |
+| [claude/public-interfaces.md](claude/public-interfaces.md) | SDK 暴露的全部 API 接口（250+ 方法） |
+| [claude/dependencies-and-config.md](claude/dependencies-and-config.md) | 依赖关系、配置文件、构建顺序 |
+| [claude/data-model.md](claude/data-model.md) | SDK 内部类型、模块内联类型、shared 类型导入清单 |
+| [claude/testing-and-quality.md](claude/testing-and-quality.md) | 测试现状、验证命令、质量保障方式 |
+| [claude/file-map.md](claude/file-map.md) | 完整目录结构和文件说明 |
+| [claude/faq.md](claude/faq.md) | 常见问题 |
+| [claude/changelog.md](claude/changelog.md) | 变更记录 |
+
+## 核心架构
 
 ```
 createSDK(config)
-  └── HttpClient (baseUrl + token + onUnauthorized)
-        ├── workspace     ├── agent          ├── channel
-        ├── issue         ├── task           ├── git
-        ├── editor        ├── llm            ├── workflow
-        ├── workflowPlugin├── kanban         ├── database
-        ├── worktree      ├── hooks          ├── command
-        ├── subscription  ├── notification   ├── speech
-        ├── codeFavorites ├── prompts        ├── skills
-        ├── mcps          ├── outputStyles   ├── tools
-        ├── robotAccounts ├── auth           ├── data
-        ├── version       ├── search         ├── agentStore
-        ├── font          ├── inspector      ├── avatar
-        ├── agentCommands ├── chat           ├── npmSettings
-        └── (39 modules total)
+  └── HttpClient (baseUrl + token + onUnauthorized + debug)
+        ├── workspace       agent            channel
+        ├── issue           task             git
+        ├── editor          llm              workflow
+        ├── workflowPlugin  workflowUi       kanban
+        ├── database        worktree         hooks
+        ├── command         subscription     notification
+        ├── speech          codeFavorites    prompts
+        ├── skills          mcps             npmSettings
+        ├── outputStyles    tools            robotAccounts
+        ├── auth            data             version
+        ├── search          agentStore       font
+        ├── inspector       avatar           agentCommands
+        └── chat
 ```
 
-### HttpClient 核心方法
+### HttpClient 便捷方法
 
 | 方法 | 用途 |
 |------|------|
 | `get<T>()` | GET + JSON 解析 |
-| `post<T>()` | POST JSON + 解析 |
-| `postVoid()` | POST 不解析响应 |
+| `post<T>()` / `postVoid()` | POST JSON（解析/不解析） |
 | `put<T>()` / `putVoid()` | PUT JSON |
+| `patch<T>()` | PATCH + JSON 解析 |
 | `delete()` / `deleteOf<T>()` | DELETE |
 | `upload<T>()` | FormData 上传 |
 | `sse()` | SSE 流式响应 |
 | `raw()` | 原始 Response |
 
-### 模块工厂模式
+## 扫描状态
 
-每个模块遵循统一模式：
-
-```typescript
-export function createXxxApi(http: HttpClient) {
-  return {
-    method: (): Promise<Type> => http.get('/api/xxx'),
-    methodWithBody: (data: Type): Promise<Type> => http.post('/api/xxx', data),
-  };
-}
-```
-
-## 依赖
-
-- `@agent-spaces/shared`（workspace:*）-- 共享类型定义
-
-## 文件清单
-
-| 文件 | 职责 |
-|------|------|
-| `src/client.ts` | HttpClient 封装（baseUrl + Bearer Token + 错误处理 + 调试日志） |
-| `src/types.ts` | SDK 内部类型（SDKConfig, RequestOptions, PromptTemplate 等） |
-| `src/index.ts` | 工厂函数 createSDK()，注册 39 个 API 模块 |
-| `src/modules/npm-settings.ts` | NPM Settings API（get/update，registry/proxy 配置） |
-| `src/modules/chat.ts` | Chat Agent API（CRUD + 消息 + 工作目录 + SSE 执行） |
-| `src/modules/workflow.ts` | Workflow API（CRUD + duplicate + trigger） |
-| `src/modules/workflow-plugin.ts` | Workflow Plugin API（list/store/enable/disable/config/nodes） |
-| `src/modules/worktree.ts` | Worktree API（CRUD + Diff + PR） |
-| `src/modules/workspace.ts` | Workspace API（CRUD + Prompt + Clone + Reveal + 文件操作） |
-| `src/modules/version.ts` | Version API（check + update） |
-| `src/modules/tools.ts` | 内置工具管理 API |
-| `src/modules/task.ts` | Task API（CRUD + retry + cancel） |
-| `src/modules/subscription.ts` | Subscription API（CRUD + quota） |
-| `src/modules/speech.ts` | Speech Recognition API（CRUD） |
-| `src/modules/skills.ts` | Skills API（list/sync/import/update/delete） |
-| `src/modules/search.ts` | Search API（code/files） |
-| `src/modules/robot-accounts.ts` | Robot Account API（CRUD） |
-| `src/modules/prompts.ts` | Prompt Template API（CRUD + apply + agents） |
-| `src/modules/output-styles.ts` | Output Style API（CRUD） |
-| `src/modules/notification.ts` | Notification API（CRUD + read/readAll） |
-| `src/modules/mcps.ts` | MCP API（list/import/update/delete） |
-| `src/modules/llm.ts` | LLM Model/Provider API（CRUD） |
-| `src/modules/kanban.ts` | Kanban API（board/columns/tasks/reorder） |
-| `src/modules/issue.ts` | Issue API（CRUD + start + comments） |
-| `src/modules/inspector.ts` | Inspector API（track） |
-| `src/modules/hooks.ts` | Hook API（CRUD + upload + apply） |
-| `src/modules/git.ts` | Git API（status/diff/log/commit/push/pull/高级操作） |
-| `src/modules/font.ts` | Font API（list/upload/delete） |
-| `src/modules/editor.ts` | Editor API（file tree/content） |
-| `src/modules/database.ts` | Database API（CRUD + nodes + search + vector） |
-| `src/modules/data.ts` | Data Import/Export API（ZIP archive） |
-| `src/modules/command.ts` | Quick Command API（CRUD + run/stop/processes） |
-| `src/modules/code-favorites.ts` | Code Favorites API（CRUD） |
-| `src/modules/channel.ts` | Channel API（CRUD + messages + tool-details） |
-| `src/modules/avatar.ts` | Avatar Upload API |
-| `src/modules/auth.ts` | Auth API（login/check/change-secret） |
-| `src/modules/agent.ts` | Agent API（sessions + presets + test-connection + templates + usage） |
-| `src/modules/agent-store.ts` | Agent Store API（在线导入/同步） |
-| `src/modules/agent-commands.ts` | Agent Commands API（CRUD + apply） |
-
-## 关键设计
-
-- **自动认证**：HttpClient 自动注入 Bearer Token，401/403 触发 `onUnauthorized` 回调
-- **调试模式**：`setDebug(true)` 输出请求/响应日志
-- **服务器切换**：SDK 单例通过 Proxy 动态获取最新 baseUrl，支持运行时切换服务器
-- **类型安全**：所有 API 方法和返回值完整类型化，类型从 `@agent-spaces/shared` 导入
-
-## 变更记录 (Changelog)
+- **更新时间**：2026-06-09 11:48:01
+- **已扫描范围**：全部 42 个源文件（3 核心 + 39 模块），2 个配置文件
+- **跳过范围**：dist/（构建产物）
+- **覆盖率**：100%
+- **总 API 方法数**：约 250+

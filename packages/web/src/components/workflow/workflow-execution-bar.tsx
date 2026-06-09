@@ -431,7 +431,7 @@ export function WorkflowExecutionBar({
                             </DropdownMenu>
                           </div>
 
-                          {step.error && (
+                          {step.error && step.error.trim() !== 'Inactive branch' && (
                             <div className="px-2.5 py-1 text-[10px] text-red-500 bg-red-500/10 border-b border-border flex items-start gap-1">
                               <span className="flex-1 break-all">{step.error}</span>
                               <button
