@@ -390,7 +390,7 @@ module.exports = (t) => {
       { key: 'success', type: 'boolean' },
       { key: 'message', type: 'string' },
       { key: 'data', type: 'object', children: [
-        { key: 'audioUrl', type: 'string' },
+        { key: 'audioUrl', type: 'audio' },
         { key: 'audioHex', type: 'string' },
         { key: 'audioLength', type: 'number' },
         { key: 'audioFormat', type: 'string' },
@@ -491,6 +491,7 @@ module.exports = (t) => {
       { key: 'success', type: 'boolean' },
       { key: 'message', type: 'string' },
       { key: 'data', type: 'object', children: [
+        { key: 'audioUrl', type: 'audio' },
         { key: 'audioHex', type: 'string' },
         { key: 'duration', type: 'number' },
         { key: 'sampleRate', type: 'number' },
@@ -528,11 +529,14 @@ module.exports = (t) => {
       }
 
       ctx.logger.info(`音乐生成完成: 时长=${result.extra_info?.music_duration}ms`)
+      const audioUrl = args.outputFormat === 'url' ? result.data?.audio : undefined
+      const audioHex = args.outputFormat !== 'url' ? result.data?.audio : undefined
       return {
         success: true,
         message: t('message.musicComplete', 'Music generation completed'),
         data: {
-          audioHex: result.data?.audio,
+          audioUrl,
+          audioHex,
           duration: result.extra_info?.music_duration,
           sampleRate: result.extra_info?.music_sample_rate,
           traceId: result.trace_id,
@@ -949,7 +953,7 @@ module.exports = (t) => {
       { key: 'success', type: 'boolean' },
       { key: 'message', type: 'string' },
       { key: 'data', type: 'object', children: [
-        { key: 'downloadUrl', type: 'string' },
+        { key: 'downloadUrl', type: 'video' },
         { key: 'fileName', type: 'string' },
         { key: 'fileSize', type: 'number' },
       ] },

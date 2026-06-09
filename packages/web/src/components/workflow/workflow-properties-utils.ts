@@ -24,19 +24,27 @@ export const FIELD_TYPES: OutputField['type'][] = [
   'boolean',
   'object',
   'file',
+  'image',
+  'audio',
+  'video',
   'any',
   'string[]',
   'number[]',
   'file[]',
+  'image[]',
   'any[]',
 ];
 
 export function isArrayOutputFieldType(type: OutputField['type'] | undefined) {
-  return type === 'string[]' || type === 'number[]' || type === 'file[]' || type === 'any[]';
+  return type === 'string[]' || type === 'number[]' || type === 'file[]' || type === 'image[]' || type === 'any[]';
 }
 
 export function isFileOutputFieldType(type: OutputField['type'] | undefined) {
   return type === 'file' || type === 'file[]';
+}
+
+export function isMediaOutputFieldType(type: OutputField['type'] | undefined) {
+  return type === 'image' || type === 'audio' || type === 'video' || type === 'image[]';
 }
 
 export function stringifyOutputFieldValue(value: unknown): string {
