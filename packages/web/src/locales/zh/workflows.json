@@ -149,6 +149,19 @@
     "emptyHint": "将节点拖入此区域保存备用",
     "uncategorized": "未分类"
   },
+  "infoDialog": {
+    "title": "工作流信息",
+    "untitled": "未命名",
+    "nameLabel": "标题",
+    "namePlaceholder": "输入工作流标题",
+    "descriptionLabel": "注释",
+    "descriptionPlaceholder": "描述工作流的用途...",
+    "tagsLabel": "标签",
+    "tagPlaceholder": "输入标签后回车",
+    "addTag": "添加",
+    "cancel": "取消",
+    "save": "保存"
+  },
   "share": {
     "missingId": "缺少 workflow_id 参数",
     "notFound": "工作流不存在",

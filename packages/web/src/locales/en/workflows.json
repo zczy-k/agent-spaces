@@ -149,6 +149,19 @@
     "emptyHint": "Drag nodes here to save for later",
     "uncategorized": "Uncategorized"
   },
+  "infoDialog": {
+    "title": "Workflow Info",
+    "untitled": "Untitled",
+    "nameLabel": "Title",
+    "namePlaceholder": "Enter workflow title",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "Describe the workflow purpose...",
+    "tagsLabel": "Tags",
+    "tagPlaceholder": "Enter tag and press Enter",
+    "addTag": "Add",
+    "cancel": "Cancel",
+    "save": "Save"
+  },
   "share": {
     "missingId": "Missing workflow_id parameter",
     "notFound": "Workflow not found",
