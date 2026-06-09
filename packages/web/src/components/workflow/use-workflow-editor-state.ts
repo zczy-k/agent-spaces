@@ -135,11 +135,11 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
     setUndoStack(prev => [...prev, snapshot]);
     setRedoStack([]);
     setOperationLog((prev) => {
-      const next = [...prev, entry];
+      const next = [...prev.slice(0, undoStack.length), entry];
       void operationHistoryApi.save(workflow.id, next).catch(() => {});
       return next;
     });
-  }, [workflow]);
+  }, [workflow, undoStack.length]);
 
   const handleUndo = useCallback(() => {
     if (undoStack.length === 0 || !workflow) return;

@@ -387,6 +387,7 @@ function WorkflowEditorInner({
                 <ResizablePanel id="history-operations" defaultSize="50%" minSize="20%">
                   <WorkflowOperationHistory
                     entries={state.operationLog}
+                    currentEntryIndex={isWorkflowReadOnly ? -1 : state.undoStack.length - 1}
                     currentUndoCount={isWorkflowReadOnly ? 0 : state.undoStack.length}
                     currentRedoCount={isWorkflowReadOnly ? 0 : state.redoStack.length}
                     onUndo={isWorkflowReadOnly ? () => {} : state.handleUndo}

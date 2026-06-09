@@ -13,6 +13,7 @@ import {
 
 interface OperationHistoryProps {
   entries: OperationEntry[];
+  currentEntryIndex: number;
   currentUndoCount: number;
   currentRedoCount: number;
   onUndo: () => void;
@@ -47,7 +48,7 @@ const OPERATION_COLORS: Record<string, string> = {
 };
 
 export function WorkflowOperationHistory({
-  entries, currentUndoCount, currentRedoCount, onUndo, onRedo, onClear,
+  entries, currentEntryIndex, currentUndoCount, currentRedoCount, onUndo, onRedo, onClear,
 }: OperationHistoryProps) {
   const t = useTranslations('workflows');
 
@@ -114,6 +115,8 @@ export function WorkflowOperationHistory({
         ) : (
           <div className="space-y-0.5">
             {entries.slice().reverse().map((entry, i) => {
+              const entryIndex = entries.length - 1 - i;
+              const isCurrent = entryIndex === currentEntryIndex;
               // Parse operation type from description (format: "type: detail" or just description)
               const desc = entry.description || '';
               const opType = desc.split(':')[0]?.trim() || '';
@@ -123,7 +126,9 @@ export function WorkflowOperationHistory({
               return (
                 <div
                   key={`${entry.timestamp}-${i}`}
-                  className="flex items-center gap-2 px-2 py-1 rounded text-xs hover:bg-accent/50 transition-colors"
+                  className={`flex items-center gap-2 px-2 py-1 rounded text-xs transition-colors ${
+                    isCurrent ? 'bg-primary/10 ring-1 ring-primary/25' : 'hover:bg-accent/50'
+                  }`}
                 >
                   <Badge variant="secondary" className={`text-[9px] px-1 py-0 h-4 font-normal ${colorClass}`}>
                     {label}

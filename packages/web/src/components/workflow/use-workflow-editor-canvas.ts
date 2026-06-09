@@ -320,7 +320,6 @@ export function useWorkflowEditorCanvas({
   const handleNodesChange = useCallback((changes: NodeChange[]) => {
     if (!workflow || isReadOnly) return;
     const hasDelete = changes.some(c => c.type === 'remove');
-    if (hasDelete) pushUndo('delete');
 
     const rfNodes = workflow.nodes.map(n => {
       const definition = getNodeDefinition(n.type);
