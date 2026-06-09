@@ -13,7 +13,6 @@ export function ConsolePanel() {
       lsKey="console-panel:pos"
       onClick={toggle}
       visible={!open}
-      style={{ background: 'var(--primary)', color: 'var(--primary-foreground))', boxShadow: '0 4px 12px var(--primary) / 0.4' }}
     >
       <Terminal size={18} />
     </FloatingBall>

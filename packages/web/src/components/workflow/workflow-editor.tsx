@@ -162,6 +162,24 @@ function WorkflowEditorInner({
     },
   });
 
+  const addStagedNodeToCanvas = useCallback((staged: StagedNode, position: { x: number; y: number }) => {
+    const workflow = state.workflow;
+    if (!workflow || isWorkflowReadOnly) return;
+    state.pushUndo('add from staging');
+    const newNode: typeof workflow.nodes[0] = {
+      id: `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      type: staged.type,
+      label: staged.label || (staged.data?.label as string) || staged.type,
+      position,
+      data: { ...(staged.data || {}) },
+      composite: staged.composite ? JSON.parse(JSON.stringify(staged.composite)) : undefined,
+    };
+    state.setWorkflow(w => w ? { ...w, nodes: [...w.nodes, newNode] } : null);
+    state.setSelectedNodeId(newNode.id);
+    state.setSelectedNodeIds([newNode.id]);
+    state.markDirty();
+  }, [state, isWorkflowReadOnly]);
+
   // ---- Render ----
   if (state.isLoading) {
     return (
@@ -193,22 +211,6 @@ function WorkflowEditorInner({
   }
 
   const workflow = state.workflow;
-  const addStagedNodeToCanvas = useCallback((staged: StagedNode, position: { x: number; y: number }) => {
-    if (!workflow || isWorkflowReadOnly) return;
-    state.pushUndo('add from staging');
-    const newNode: typeof workflow.nodes[0] = {
-      id: `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      type: staged.type,
-      label: staged.label || (staged.data?.label as string) || staged.type,
-      position,
-      data: { ...(staged.data || {}) },
-      composite: staged.composite ? JSON.parse(JSON.stringify(staged.composite)) : undefined,
-    };
-    state.setWorkflow(w => w ? { ...w, nodes: [...w.nodes, newNode] } : null);
-    state.setSelectedNodeId(newNode.id);
-    state.setSelectedNodeIds([newNode.id]);
-    state.markDirty();
-  }, [workflow, isWorkflowReadOnly, state]);
 
   return (
     <div className="flex flex-col h-full bg-muted/30 p-1.5 gap-1.5" tabIndex={0}>

@@ -120,9 +120,17 @@ export const operationHistoryApi = {
 
 // ---- Staging ----
 
+function normalizeStagedNodes(value: unknown): StagedNode[] {
+  if (Array.isArray(value)) return value as StagedNode[];
+  if (value && typeof value === 'object' && Array.isArray((value as { nodes?: unknown }).nodes)) {
+    return (value as { nodes: StagedNode[] }).nodes;
+  }
+  return [];
+}
+
 export const stagingApi = {
-  load(workflowId: string): Promise<StagedNode[]> {
-    return sdk.workflow.loadStaging(workflowId);
+  async load(workflowId: string): Promise<StagedNode[]> {
+    return normalizeStagedNodes(await sdk.workflow.loadStaging(workflowId));
   },
   save(workflowId: string, nodes: StagedNode[]): Promise<void> {
     return sdk.workflow.saveStaging(workflowId, nodes);
