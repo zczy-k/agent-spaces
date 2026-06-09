@@ -79,6 +79,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
   const [workflow, setWorkflow] = useState<Workflow | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [autoSaveSuspended, setAutoSaveSuspended] = useState(false);
   const [isLoading, setIsLoading] = useState(!!template);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -98,6 +99,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
 
   const autoSaveTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const prePreviewWorkflowRef = useRef<Workflow | null>(null);
+
 
   // Auto-switch to properties tab when selecting a node
   useEffect(() => {
@@ -266,10 +268,13 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
   // ---- Auto-save ----
   useEffect(() => {
     autoSaveTimer.current = setInterval(() => {
-      if (isDirty && workflow && !isPreview) saveWorkflow();
+      if (isDirty && workflow && !isPreview) {
+        if (autoSaveSuspended) return;
+        saveWorkflow();
+      }
     }, 10_000);
     return () => { if (autoSaveTimer.current) clearInterval(autoSaveTimer.current); };
-  }, [isDirty, isPreview, workflow, saveWorkflow]);
+  }, [autoSaveSuspended, isDirty, isPreview, workflow, saveWorkflow]);
 
   // ---- Name editing ----
   const startEditName = useCallback(() => {
@@ -335,7 +340,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
   return {
     // State
     workflow, setWorkflow,
-    isDirty, isSaving, isLoading, loadError,
+    isDirty, isSaving, autoSaveSuspended, setAutoSaveSuspended, isLoading, loadError,
     selectedNodeId, setSelectedNodeId,
     selectedNodeIds, setSelectedNodeIds,
     rightTab, setRightTab,

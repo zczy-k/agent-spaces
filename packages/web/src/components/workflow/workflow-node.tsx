@@ -37,7 +37,6 @@ import {
 import { ExecutionResultHoverCard } from './workflow-node-execution-result';
 import { WorkflowNodeContextMenu } from './workflow-node-context-menu';
 
-const DEBUG_WORKFLOW_NODE = process.env.NODE_ENV !== 'production';
 const HANDLE_POSITION_MAP: Record<HandlePositionMode, { target: Position; source: Position }> = {
   'top-bottom': { target: Position.Top, source: Position.Bottom },
   'left-right': { target: Position.Left, source: Position.Right },
@@ -45,7 +44,7 @@ const HANDLE_POSITION_MAP: Record<HandlePositionMode, { target: Position; source
   'right-left': { target: Position.Right, source: Position.Left },
 };
 
-export function WorkflowNode({ id, data, type, selected }: NodeProps) {
+function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const nodeData = data as WorkflowNodeData;
   const t = useTranslations('workflows');
   const workflowNodeType = typeof nodeData.nodeType === 'string' ? nodeData.nodeType : type;
@@ -64,8 +63,6 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editLabel, setEditLabel] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
-  const nodeRootRef = useRef<HTMLDivElement>(null);
-  const lastNodeDebugSignature = useRef<string | null>(null);
 
   const displayLabel = useMemo(
     () => {
@@ -123,83 +120,7 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
 
   React.useEffect(() => {
     updateNodeInternals(id);
-  }, [id, updateNodeInternals, sourceHandleCount, showTargetHandle, showSourceHandle, nodeHeight, handlePositions.target, handlePositions.source]);
-
-  React.useEffect(() => {
-    if (!DEBUG_WORKFLOW_NODE) return;
-
-    const dataKeys = Object.keys(nodeData || {}).sort();
-    const rootRect = nodeRootRef.current?.getBoundingClientRect();
-    const rootStyle = nodeRootRef.current ? window.getComputedStyle(nodeRootRef.current) : null;
-    const flowNodeElement = nodeRootRef.current?.closest<HTMLElement>('.react-flow__node');
-    const flowNodeRect = flowNodeElement?.getBoundingClientRect();
-    const flowNodeStyle = flowNodeElement ? window.getComputedStyle(flowNodeElement) : null;
-    const debugPayload = {
-      id,
-      reactFlowType: type,
-      workflowNodeType,
-      label: displayLabel,
-      hasDefinition: !!definition,
-      definitionType: definition?.type,
-      showTargetHandle,
-      showSourceHandle,
-      staticSourceHandleCount: staticSourceHandles.length,
-      dynamicSourceHandleCount: dynamicHandles?.length || 0,
-      minWidth: nodeMinWidth,
-      minHeight: nodeMinHeight,
-      width: nodeWidth,
-      height: nodeHeight,
-      dataKeys,
-      rootRect: rootRect
-        ? {
-            x: Math.round(rootRect.x),
-            y: Math.round(rootRect.y),
-            width: Math.round(rootRect.width),
-            height: Math.round(rootRect.height),
-          }
-        : null,
-      rootDisplay: rootStyle?.display,
-      rootVisibility: rootStyle?.visibility,
-      rootOpacity: rootStyle?.opacity,
-      flowNodeRect: flowNodeRect
-        ? {
-            x: Math.round(flowNodeRect.x),
-            y: Math.round(flowNodeRect.y),
-            width: Math.round(flowNodeRect.width),
-            height: Math.round(flowNodeRect.height),
-          }
-        : null,
-      flowNodeTransform: flowNodeStyle?.transform,
-      flowNodeDisplay: flowNodeStyle?.display,
-      flowNodeVisibility: flowNodeStyle?.visibility,
-      flowNodeOpacity: flowNodeStyle?.opacity,
-    };
-    const debugSignature = JSON.stringify(debugPayload);
-
-    if (lastNodeDebugSignature.current === debugSignature) return;
-    lastNodeDebugSignature.current = debugSignature;
-
-    console.debug('[WorkflowNode] input changed', debugPayload);
-
-    if (!definition) {
-      console.warn('[WorkflowNode] definition missing', debugPayload);
-    }
-  }, [
-    id,
-    type,
-    workflowNodeType,
-    displayLabel,
-    definition,
-    showTargetHandle,
-    showSourceHandle,
-    staticSourceHandles.length,
-    dynamicHandles?.length,
-    nodeMinWidth,
-    nodeMinHeight,
-    nodeWidth,
-    nodeHeight,
-    nodeData,
-  ]);
+  }, [id, updateNodeInternals, sourceHandleCount, showTargetHandle, showSourceHandle, nodeHeight, handlePositions.target, handlePositions.source, workflowNodeType]);
 
   function getHandleTop(index: number, total: number): string {
     if (isLoopBody) return `${((index + 1) / (total + 1)) * 100}%`;
@@ -432,7 +353,6 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
 
   const nodeBody = (
     <div
-      ref={nodeRootRef}
       className={`border-2 rounded-lg shadow-sm cursor-pointer transition-colors relative flex flex-col
         ${statusColor} ${selected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background shadow-md' : ''}
         ${stateBackgroundClass} ${isLoopBody ? 'loop-body-node' : ''}`}
@@ -700,3 +620,33 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
     </>
   );
 }
+
+function areDataValuesEqual(prevValue: unknown, nextValue: unknown): boolean {
+  if (Object.is(prevValue, nextValue)) return true;
+  if (!Array.isArray(prevValue) || !Array.isArray(nextValue)) return false;
+  if (prevValue.length !== nextValue.length) return false;
+  return prevValue.every((item, index) => Object.is(item, nextValue[index]));
+}
+
+function areWorkflowNodeDataEqual(prevData: unknown, nextData: unknown): boolean {
+  if (Object.is(prevData, nextData)) return true;
+  if (!prevData || !nextData || typeof prevData !== 'object' || typeof nextData !== 'object') return false;
+
+  const prevRecord = prevData as Record<string, unknown>;
+  const nextRecord = nextData as Record<string, unknown>;
+  const prevKeys = Object.keys(prevRecord);
+  const nextKeys = Object.keys(nextRecord);
+  if (prevKeys.length !== nextKeys.length) return false;
+
+  return prevKeys.every(key => Object.prototype.hasOwnProperty.call(nextRecord, key)
+    && areDataValuesEqual(prevRecord[key], nextRecord[key]));
+}
+
+function areWorkflowNodePropsEqual(prev: NodeProps, next: NodeProps): boolean {
+  return prev.id === next.id
+    && prev.type === next.type
+    && prev.selected === next.selected
+    && areWorkflowNodeDataEqual(prev.data, next.data);
+}
+
+export const WorkflowNode = React.memo(WorkflowNodeComponent, areWorkflowNodePropsEqual);

@@ -10,6 +10,7 @@ import {
   BackgroundVariant,
   ViewportPortal,
   useReactFlow,
+  applyNodeChanges,
   type Node,
   type Edge,
   type NodeChange,
@@ -59,8 +60,20 @@ const HANDLE_POSITION_OPTIONS = [
   { value: 'right-left', label: 'right-left' },
 ] as const satisfies ReadonlyArray<{ value: HandlePositionMode; label: string }>;
 
+type GroupDragPreview = {
+  groupId: string;
+  bounds: { x: number; y: number; width: number; height: number };
+  delta: { x: number; y: number };
+};
+
 function areStringArraysEqual(a: string[], b: string[]) {
   return a.length === b.length && a.every((item, index) => item === b[index]);
+}
+
+function isPositionNodeChange(
+  change: NodeChange,
+): change is NodeChange & { type: 'position'; id: string; position: { x: number; y: number } } {
+  return change.type === 'position' && !!change.position;
 }
 
 function CanvasPopoverOption({
@@ -133,6 +146,7 @@ interface WorkflowCanvasProps {
   }) => void;
   onCanvasPreferencesChange?: (prefs: Record<string, unknown>) => void;
   canvasExportRef?: React.RefObject<{ exportCanvas: (format: 'png' | 'jpeg') => void } | null>;
+  onNodeDragStateChange?: (dragging: boolean) => void;
 }
 
 export function WorkflowCanvas({
@@ -150,6 +164,7 @@ export function WorkflowCanvas({
   partialExecutionStartNodeId = null,
   onCanvasPreferencesChange,
   canvasExportRef,
+  onNodeDragStateChange,
 }: WorkflowCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const connectSourceRef = useRef<{ nodeId: string; handleId: string | null; handleType: string | null } | null>(null);
@@ -158,11 +173,7 @@ export function WorkflowCanvas({
   const pendingRangeSelectionRef = useRef<string[] | null>(null);
   const [selectionMenu, setSelectionMenu] = useState<{ x: number; y: number; nodeIds: string[] } | null>(null);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
-  const [groupDragPreview, setGroupDragPreview] = useState<{
-    groupId: string;
-    bounds: { x: number; y: number; width: number; height: number };
-    delta: { x: number; y: number };
-  } | null>(null);
+  const [groupDragPreview, setGroupDragPreview] = useState<GroupDragPreview | null>(null);
   const { screenToFlowPosition } = useReactFlow();
   const [helperHorizontal] = useState<number | undefined>();
   const [helperVertical] = useState<number | undefined>();
@@ -285,7 +296,18 @@ export function WorkflowCanvas({
     handlePosition,
   });
 
-  const { getNodeDebugSnapshot } = useCanvasDebug(rfNodes, reactFlowWrapper, workflow);
+  const [canvasNodes, setCanvasNodes] = useState<Node[]>(rfNodes);
+  const isNodeDraggingRef = useRef(false);
+  const canvasNodesRef = useRef<Node[]>(rfNodes);
+  const draggedNodeIdsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (isNodeDraggingRef.current) return;
+    setCanvasNodes(rfNodes);
+    canvasNodesRef.current = rfNodes;
+  }, [rfNodes]);
+
+  const { getNodeDebugSnapshot } = useCanvasDebug(canvasNodes, reactFlowWrapper, workflow);
 
   const groupOverlayItems = useMemo(() => {
     const groups = workflow.groups || [];
@@ -380,6 +402,8 @@ export function WorkflowCanvas({
 
   const handleNodesChangeWithDebug = useCallback((changes: NodeChange[]) => {
     if (isCanvasLocked) return;
+    const positionChanges = changes.filter(isPositionNodeChange);
+    const positionCount = positionChanges.length;
     const selectionChanges = changes.filter(
       (change): change is NodeChange & { type: 'select'; id: string; selected: boolean } => change.type === 'select',
     );
@@ -398,13 +422,24 @@ export function WorkflowCanvas({
         });
       }
     }
-    if (DEBUG_WORKFLOW_CANVAS) {
-      console.debug('[WorkflowCanvas] onNodesChange', {
-        changes,
-        snapshot: getNodeDebugSnapshot(),
+
+    if (positionCount > 0) {
+      for (const change of positionChanges) {
+        draggedNodeIdsRef.current.add(change.id);
+      }
+      setCanvasNodes((nodes) => {
+        const nextNodes = applyNodeChanges(changes, nodes);
+        canvasNodesRef.current = nextNodes;
+        return nextNodes;
       });
     }
-    onNodesChange(changes);
+
+    const parentChanges = isNodeDraggingRef.current
+      ? changes.filter(change => change.type !== 'position')
+      : changes;
+    if (parentChanges.length > 0) {
+      onNodesChange(parentChanges);
+    }
   }, [getNodeDebugSnapshot, isCanvasLocked, onNodesChange, onNodesSelect, selectEdge, selectedNodeIds, workflow.nodes]);
 
   const handleEdgesChangeWithLock = useCallback((changes: EdgeChange[]) => {
@@ -500,20 +535,36 @@ export function WorkflowCanvas({
   }, [getNodeDebugSnapshot, isCanvasLocked, onConnectionDrop, screenToFlowPosition]);
 
   const handleNodeDragStart = useCallback((_: React.MouseEvent, node: Node) => {
-    if (!DEBUG_WORKFLOW_CANVAS) return;
-    console.debug('[WorkflowCanvas] onNodeDragStart', {
-      node,
-      snapshot: getNodeDebugSnapshot(node.id),
-    });
-  }, [getNodeDebugSnapshot]);
+    isNodeDraggingRef.current = true;
+    draggedNodeIdsRef.current = new Set([node.id]);
+    canvasNodesRef.current = canvasNodes;
+    onNodeDragStateChange?.(true);
+  }, [canvasNodes, onNodeDragStateChange]);
 
   const handleNodeDragStop = useCallback((_: React.MouseEvent, node: Node) => {
-    if (!DEBUG_WORKFLOW_CANVAS) return;
-    console.debug('[WorkflowCanvas] onNodeDragStop', {
-      node,
-      snapshot: getNodeDebugSnapshot(node.id),
-    });
-  }, [getNodeDebugSnapshot]);
+    const canvasNodeById = new Map(canvasNodesRef.current.map(item => [item.id, item]));
+    const workflowNodeById = new Map(workflow.nodes.map(item => [item.id, item]));
+    const positionChanges: NodeChange[] = Array.from(draggedNodeIdsRef.current)
+      .map((nodeId) => {
+        const canvasNode = canvasNodeById.get(nodeId);
+        const workflowNode = workflowNodeById.get(nodeId);
+        if (!canvasNode || !workflowNode) return null;
+        if (canvasNode.position.x === workflowNode.position.x && canvasNode.position.y === workflowNode.position.y) return null;
+        return {
+          id: nodeId,
+          type: 'position' as const,
+          position: canvasNode.position,
+          dragging: false,
+        };
+      })
+      .filter((change): change is NodeChange => !!change);
+    isNodeDraggingRef.current = false;
+    draggedNodeIdsRef.current = new Set();
+    onNodeDragStateChange?.(false);
+    if (positionChanges.length > 0) {
+      onNodesChange(positionChanges);
+    }
+  }, [onNodeDragStateChange, onNodesChange, workflow.nodes]);
 
   const handleReactFlowError = useCallback((code: string, message: string) => {
     console.warn('[WorkflowCanvas] ReactFlow error', {
@@ -532,7 +583,7 @@ export function WorkflowCanvas({
     >
       <ReactFlow
         className="h-full w-full"
-        nodes={rfNodes}
+        nodes={canvasNodes}
         edges={rfEdges}
         onNodesChange={handleNodesChangeWithDebug}
         onEdgesChange={handleEdgesChangeWithLock}

@@ -3,6 +3,135 @@ import { StickyNoteView } from '@/components/workflow/sticky-note-view';
 
 export const displayNodes: NodeTypeDefinition[] = [
   {
+    type: 'gallery_preview',
+    label: 'nodes.gallery_preview.label',
+    category: 'nodes.categories.display',
+    icon: 'Image',
+    description: 'nodes.gallery_preview.description',
+    properties: [
+      {
+        key: 'items',
+        label: 'nodes.gallery_preview.props.items.label',
+        type: 'array',
+        required: true,
+        tooltip: 'nodes.gallery_preview.props.items.tooltip',
+        itemTemplate: { id: '', src: '', thumb: '', type: 'image', caption: '' },
+        fields: [
+          { key: 'src', label: 'nodes.gallery_preview.props.items.fields.src', type: 'text', required: true, placeholder: 'nodes.gallery_preview.props.items.fields.src_placeholder' },
+          { key: 'thumb', label: 'nodes.gallery_preview.props.items.fields.thumb', type: 'text', placeholder: 'nodes.gallery_preview.props.items.fields.thumb_placeholder' },
+          {
+            key: 'type',
+            label: 'nodes.gallery_preview.props.items.fields.type.label',
+            type: 'select',
+            default: 'image',
+            options: [
+              { label: 'nodes.gallery_preview.props.items.fields.type.image', value: 'image' },
+              { label: 'nodes.gallery_preview.props.items.fields.type.video', value: 'video' },
+            ],
+          },
+          { key: 'caption', label: 'nodes.gallery_preview.props.items.fields.caption', type: 'text', placeholder: 'nodes.gallery_preview.props.items.fields.caption_placeholder' },
+        ],
+      },
+    ],
+  },
+  {
+    type: 'music_player',
+    label: 'nodes.music_player.label',
+    category: 'nodes.categories.display',
+    icon: 'Music',
+    description: 'nodes.music_player.description',
+    properties: [
+      {
+        key: 'tracks',
+        label: 'nodes.music_player.props.tracks.label',
+        type: 'array',
+        required: true,
+        tooltip: 'nodes.music_player.props.tracks.tooltip',
+        itemTemplate: { id: '', src: '', title: '', cover: '', duration: 0 },
+        fields: [
+          { key: 'src', label: 'nodes.music_player.props.tracks.fields.src', type: 'text', required: true, placeholder: 'nodes.music_player.props.tracks.fields.src_placeholder' },
+          { key: 'title', label: 'nodes.music_player.props.tracks.fields.title', type: 'text', placeholder: 'nodes.music_player.props.tracks.fields.title_placeholder' },
+          { key: 'cover', label: 'nodes.music_player.props.tracks.fields.cover', type: 'text', placeholder: 'nodes.music_player.props.tracks.fields.cover_placeholder' },
+          { key: 'duration', label: 'nodes.music_player.props.tracks.fields.duration', type: 'number', placeholder: 'nodes.music_player.props.tracks.fields.duration_placeholder' },
+        ],
+      },
+      {
+        key: 'volume',
+        label: 'nodes.music_player.props.volume',
+        type: 'number',
+        default: 80,
+        tooltip: 'nodes.music_player.props.volume_tooltip',
+      },
+      {
+        key: 'loop',
+        label: 'nodes.music_player.props.loop',
+        type: 'checkbox',
+        default: false,
+        tooltip: 'nodes.music_player.props.loop_tooltip',
+      },
+    ],
+  },
+  {
+    type: 'table_display',
+    label: 'nodes.table_display.label',
+    category: 'nodes.categories.display',
+    icon: 'Table',
+    description: 'nodes.table_display.description',
+    properties: [
+      {
+        key: 'headers',
+        label: 'nodes.table_display.props.headers.label',
+        type: 'array',
+        required: true,
+        tooltip: 'nodes.table_display.props.headers.tooltip',
+        itemTemplate: { id: '', title: '', type: 'string' },
+        fields: [
+          { key: 'id', label: 'nodes.table_display.props.headers.fields.id', type: 'text', required: true, placeholder: 'header1' },
+          { key: 'title', label: 'nodes.table_display.props.headers.fields.title', type: 'text', required: true, placeholder: 'nodes.table_display.props.headers.fields.title_placeholder' },
+          {
+            key: 'type',
+            label: 'nodes.table_display.props.headers.fields.type.label',
+            type: 'select',
+            default: 'string',
+            options: [
+              { label: 'nodes.table_display.props.headers.fields.type.string', value: 'string' },
+              { label: 'nodes.table_display.props.headers.fields.type.number', value: 'number' },
+              { label: 'nodes.table_display.props.headers.fields.type.boolean', value: 'boolean' },
+            ],
+          },
+        ],
+      },
+      {
+        key: 'cells',
+        label: 'nodes.table_display.props.cells.label',
+        type: 'array',
+        required: true,
+        tooltip: 'nodes.table_display.props.cells.tooltip',
+        itemTemplate: { id: '', data: '{}' },
+        fields: [
+          { key: 'id', label: 'nodes.table_display.props.cells.fields.id', type: 'text', required: true, placeholder: 'row1' },
+          { key: 'data', label: 'nodes.table_display.props.cells.fields.data', type: 'text', required: true, placeholder: '{"header1": "value"}' },
+        ],
+      },
+      {
+        key: 'selectionMode',
+        label: 'nodes.table_display.props.selectionMode.label',
+        type: 'select',
+        default: 'none',
+        required: true,
+        options: [
+          { label: 'nodes.table_display.props.selectionMode.none', value: 'none' },
+          { label: 'nodes.table_display.props.selectionMode.single', value: 'single' },
+          { label: 'nodes.table_display.props.selectionMode.multi', value: 'multi' },
+        ],
+      },
+    ],
+    outputs: [
+      { key: 'selectedRows', type: 'any' },
+      { key: 'selectedCount', type: 'number' },
+    ],
+  },
+  {
     type: 'sticky_note',
     label: 'nodes.sticky_note.label',
     category: 'nodes.categories.display',

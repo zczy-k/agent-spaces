@@ -1,11 +1,12 @@
 'use client';
 
+import React from 'react';
 import { BaseEdge, EdgeLabelRenderer, getBezierPath } from '@xyflow/react';
 import type { EdgeProps } from '@xyflow/react';
 import { LOOP_BODY_SOURCE_HANDLE } from '@agent-spaces/shared';
 import { Plus, Trash2 } from 'lucide-react';
 
-export function WorkflowEdge({
+function WorkflowEdgeComponent({
   id, source, target,
   sourceX, sourceY, targetX, targetY,
   sourcePosition, targetPosition,
@@ -105,4 +106,34 @@ export function WorkflowEdge({
       )}
     </>
   );
+}
+
+function areWorkflowEdgePropsEqual(prev: EdgeProps, next: EdgeProps): boolean {
+  return prev.id === next.id
+    && prev.source === next.source
+    && prev.target === next.target
+    && prev.sourceX === next.sourceX
+    && prev.sourceY === next.sourceY
+    && prev.targetX === next.targetX
+    && prev.targetY === next.targetY
+    && prev.sourcePosition === next.sourcePosition
+    && prev.targetPosition === next.targetPosition
+    && prev.selected === next.selected
+    && areWorkflowEdgeDataEqual(prev.data, next.data);
+}
+
+export const WorkflowEdge = React.memo(WorkflowEdgeComponent, areWorkflowEdgePropsEqual);
+
+function areWorkflowEdgeDataEqual(prevData: unknown, nextData: unknown): boolean {
+  if (Object.is(prevData, nextData)) return true;
+  if (!prevData || !nextData || typeof prevData !== 'object' || typeof nextData !== 'object') return false;
+
+  const prevRecord = prevData as Record<string, unknown>;
+  const nextRecord = nextData as Record<string, unknown>;
+  const prevKeys = Object.keys(prevRecord);
+  const nextKeys = Object.keys(nextRecord);
+  if (prevKeys.length !== nextKeys.length) return false;
+
+  return prevKeys.every(key => Object.prototype.hasOwnProperty.call(nextRecord, key)
+    && Object.is(prevRecord[key], nextRecord[key]));
 }

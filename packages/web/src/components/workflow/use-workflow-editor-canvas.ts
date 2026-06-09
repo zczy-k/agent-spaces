@@ -1643,9 +1643,34 @@ export function useWorkflowEditorCanvas({
         .filter(isNodePositionOrDimensionChange)
         .map(change => change.id),
     );
+    const canAttemptFastPositionUpdate = hasPositionChange && !hasDelete && !hasDimensionChange;
 
     setWorkflow(w => {
       if (!w) return null;
+
+      if (canAttemptFastPositionUpdate) {
+        const canFastUpdate = w.nodes.every((node) => {
+          if (!changedNodeIds.has(node.id)) return true;
+          return !isScopeBoundaryWorkflowNode(node) && !getCompositeParentId(node);
+        });
+        if (canFastUpdate) {
+          let changed = false;
+          const nextNodes = w.nodes.map((node) => {
+            if (!changedNodeIds.has(node.id)) return node;
+            const updatedNode = updatedById.get(node.id);
+            const nextPosition = updatedNode?.position;
+            if (!nextPosition) return node;
+            if (node.position.x === nextPosition.x && node.position.y === nextPosition.y) return node;
+            changed = true;
+            return {
+              ...node,
+              position: { x: nextPosition.x, y: nextPosition.y },
+            };
+          });
+          return changed ? { ...w, nodes: nextNodes } : w;
+        }
+      }
+
       const nextNodes = cloneWorkflowNodes(w.nodes);
       const nextEdges = w.edges.map(edge => ({
         ...edge,

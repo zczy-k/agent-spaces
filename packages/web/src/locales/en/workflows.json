@@ -431,6 +431,88 @@
         }
       }
     },
+    "gallery_preview": {
+      "label": "Gallery Preview",
+      "description": "Display an image/video resource gallery with multiple resources",
+      "props": {
+        "items": {
+          "label": "Resources",
+          "tooltip": "Add image or video resources to display",
+          "fields": {
+            "src": "Resource URL",
+            "src_placeholder": "Image/video URL",
+            "thumb": "Thumbnail",
+            "thumb_placeholder": "Thumbnail URL (optional)",
+            "type": {
+              "label": "Type",
+              "image": "Image",
+              "video": "Video"
+            },
+            "caption": "Caption",
+            "caption_placeholder": "Display caption (optional)"
+          }
+        }
+      }
+    },
+    "music_player": {
+      "label": "Music Player",
+      "description": "Play a list of audio files with volume control and looping",
+      "props": {
+        "tracks": {
+          "label": "Playlist",
+          "tooltip": "Add audio files to play",
+          "fields": {
+            "src": "Audio URL",
+            "src_placeholder": "Audio file URL or path",
+            "title": "Title",
+            "title_placeholder": "Track title (optional)",
+            "cover": "Cover",
+            "cover_placeholder": "Cover image URL (optional)",
+            "duration": "Duration (seconds)",
+            "duration_placeholder": "Audio duration (optional)"
+          }
+        },
+        "volume": "Volume",
+        "volume_tooltip": "Volume level (0-100)",
+        "loop": "Loop Playback",
+        "loop_tooltip": "Restart playback after the end"
+      }
+    },
+    "table_display": {
+      "label": "Table Display",
+      "description": "Display data tables with single or multi-row selection confirmation",
+      "props": {
+        "headers": {
+          "label": "Headers",
+          "tooltip": "Define table columns",
+          "fields": {
+            "id": "Field ID",
+            "title": "Display Name",
+            "title_placeholder": "Column name",
+            "type": {
+              "label": "Data Type",
+              "string": "String",
+              "number": "Number",
+              "boolean": "Boolean"
+            }
+          }
+        },
+        "cells": {
+          "label": "Rows",
+          "tooltip": "Table data rows",
+          "fields": {
+            "id": "Row ID",
+            "data": "Row Data (JSON)"
+          }
+        },
+        "selectionMode": {
+          "label": "Selection Mode",
+          "none": "No Selection",
+          "single": "Single",
+          "multi": "Multiple"
+        }
+      }
+    },
     "sticky_note": {
       "label": "Sticky Note",
       "description": "Canvas annotation node, does not affect workflow execution",
