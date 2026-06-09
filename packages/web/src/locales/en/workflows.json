@@ -220,7 +220,7 @@
       "props": {
         "code": {
           "label": "Code",
-          "tooltip": "JavaScript code. Define async function main({ params, context }) { ... }"
+          "tooltip": "JavaScript code. Define async function main(params, context)"
         }
       }
     },
@@ -271,7 +271,7 @@
           "fields": {
             "key": "Variable Name",
             "value": "Variable Value",
-            "value_placeholder": "Supports {{ }} variable expressions"
+            "value_placeholder": "Supports variable expressions, e.g.: name"
           }
         }
       }
@@ -329,17 +329,19 @@
         "additionalDirectories": "Additional Directories",
         "additionalDirectories_tooltip": "One accessible directory per line, appended to Agent runtime's sandboxDirs/additionalDirectories.",
         "permissionMode": "Permission Mode",
+        "pmOpts": {
+          "default": "Default",
+          "dontAsk": "Don't Ask",
+          "acceptEdits": "Accept Edits",
+          "plan": "Plan Mode",
+          "auto": "Auto",
+          "bypassPermissions": "Bypass Permissions"
+        },
         "extraInstructions": "Extra Instructions",
         "loadProjectClaudeMd": "Load Project Rules",
         "loadRuleMd": "Load Rules Directory"
       }
     },
-    "agent_run.props.permissionMode.default": "Default",
-    "agent_run.props.permissionMode.dontAsk": "Don't Ask",
-    "agent_run.props.permissionMode.acceptEdits": "Accept Edits",
-    "agent_run.props.permissionMode.plan": "Plan Mode",
-    "agent_run.props.permissionMode.auto": "Auto",
-    "agent_run.props.permissionMode.bypassPermissions": "Bypass Permissions",
     "alert": {
       "label": "Alert Dialog",
       "description": "Display an alert dialog",

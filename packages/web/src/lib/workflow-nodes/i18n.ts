@@ -6,12 +6,13 @@ type TranslateFn = (key: string, fallback?: string) => string;
 
 function wrapT(t: ReturnType<typeof useTranslations>): TranslateFn {
   return (key: string, fallback?: string) => {
-    // next-intl t() has a second param for rich text values,
-    // but we just want key lookup with fallback.
-    // If the key exists, t() returns the value; otherwise returns the key itself.
-    const result = t(key);
-    // If the result equals the key, it means no translation found — use fallback
-    return result === key && fallback ? fallback : result;
+    // Only translate strings that look like our i18n keys
+    if (!key.startsWith('nodes.')) return fallback ?? key;
+    try {
+      return t(key as Parameters<typeof t>[0]);
+    } catch {
+      return fallback ?? key;
+    }
   };
 }
 

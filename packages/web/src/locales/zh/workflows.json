@@ -220,7 +220,7 @@
       "props": {
         "code": {
           "label": "代码",
-          "tooltip": "JavaScript 代码。需定义 async function main({ params, context }) { ... }"
+          "tooltip": "JavaScript 代码。需定义 async function main(params, context)"
         }
       }
     },
@@ -271,7 +271,7 @@
           "fields": {
             "key": "变量名",
             "value": "变量值",
-            "value_placeholder": "支持 {{ }} 变量表达式"
+            "value_placeholder": "支持变量表达式，如：name"
           }
         }
       }
@@ -329,17 +329,19 @@
         "additionalDirectories": "额外目录",
         "additionalDirectories_tooltip": "每行一个可访问目录，会追加到 Agent runtime 的 sandboxDirs/additionalDirectories。",
         "permissionMode": "权限模式",
+        "pmOpts": {
+          "default": "默认",
+          "dontAsk": "不询问",
+          "acceptEdits": "接受编辑",
+          "plan": "计划模式",
+          "auto": "自动",
+          "bypassPermissions": "跳过权限"
+        },
         "extraInstructions": "额外指令",
         "loadProjectClaudeMd": "加载项目规则",
         "loadRuleMd": "加载规则目录"
       }
     },
-    "agent_run.props.permissionMode.default": "默认",
-    "agent_run.props.permissionMode.dontAsk": "不询问",
-    "agent_run.props.permissionMode.acceptEdits": "接受编辑",
-    "agent_run.props.permissionMode.plan": "计划模式",
-    "agent_run.props.permissionMode.auto": "自动",
-    "agent_run.props.permissionMode.bypassPermissions": "跳过权限",
     "alert": {
       "label": "消息弹窗",
       "description": "显示消息弹窗",
