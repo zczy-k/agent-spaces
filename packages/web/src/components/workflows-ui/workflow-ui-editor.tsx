@@ -311,6 +311,8 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
             sourceCode={previewCode}
             error={previewError}
             onError={setPreviewError}
+            projectId={project.id}
+            projectName={project.name}
           />
           </div>
         </ResizablePanel>

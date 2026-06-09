@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import type { Workflow } from '@agent-spaces/shared';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,7 @@ export function WorkflowPluginPickerDialog({
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [tagFilter, setTagFilter] = useState('__all__');
+  const t = useTranslations('workflows');
 
   const enabledSet = useMemo(() => new Set(workflow.enabledPlugins || []), [workflow.enabledPlugins]);
 
@@ -100,9 +102,9 @@ export function WorkflowPluginPickerDialog({
   }
 
   function typeLabel(type: string) {
-    if (type === 'all') return '全部';
-    if (type === 'server') return '服务端';
-    if (type === 'client') return '客户端';
+    if (type === 'all') return t('pluginPicker.typeAll');
+    if (type === 'server') return t('pluginPicker.typeServer');
+    if (type === 'client') return t('pluginPicker.typeClient');
     return type;
   }
 
@@ -110,7 +112,7 @@ export function WorkflowPluginPickerDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[640px]">
         <DialogHeader>
-          <DialogTitle>选择插件</DialogTitle>
+          <DialogTitle>{t('pluginPicker.title')}</DialogTitle>
         </DialogHeader>
 
         <div className="flex items-center gap-2 px-1">
@@ -119,17 +121,17 @@ export function WorkflowPluginPickerDialog({
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="搜索插件..."
+              placeholder={t('pluginPicker.searchPlaceholder')}
               className="h-8 pl-8"
             />
           </div>
           {tags.length > 0 && (
             <Select value={tagFilter} onValueChange={(value) => setTagFilter(value || '__all__')}>
               <SelectTrigger className="h-8 w-[140px] shrink-0 text-xs">
-                <SelectValue placeholder="按标签过滤" />
+                <SelectValue placeholder={t('pluginPicker.filterByTag')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__all__">全部标签</SelectItem>
+                <SelectItem value="__all__">{t('pluginPicker.allTags')}</SelectItem>
                 {tags.map(tag => <SelectItem key={tag} value={tag}>{tag}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -155,7 +157,7 @@ export function WorkflowPluginPickerDialog({
             {loading && (
               <div className="col-span-full flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                加载插件...
+                {t('pluginPicker.loading')}
               </div>
             )}
             {!loading && filtered.map((plugin) => {
@@ -182,7 +184,7 @@ export function WorkflowPluginPickerDialog({
                       <span className="w-full truncate text-center text-xs font-medium leading-tight">
                         {plugin.name}
                       </span>
-                      {enabled && <Badge variant="default" className="h-4 px-1.5 py-0 text-[10px]">已启用</Badge>}
+                      {enabled && <Badge variant="default" className="h-4 px-1.5 py-0 text-[10px]">{t('pluginPicker.enabled')}</Badge>}
                     </button>
                   </HoverCardTrigger>
                   <HoverCardContent className="w-72" side="top">
@@ -190,7 +192,7 @@ export function WorkflowPluginPickerDialog({
                       <div className="flex items-center justify-between gap-2">
                         <h4 className="truncate text-sm font-semibold">{plugin.name}</h4>
                         <Badge variant={enabled ? 'default' : 'secondary'} className="text-[10px]">
-                          {plugin.nodeCount} 个节点
+                          {t('pluginPicker.nodeCount', { count: plugin.nodeCount })}
                         </Badge>
                       </div>
                       <p className="text-xs leading-relaxed text-muted-foreground">{plugin.description}</p>
@@ -210,7 +212,7 @@ export function WorkflowPluginPickerDialog({
                         {plugin.type && (
                           <div className="flex items-center gap-1.5">
                             <Wrench className="h-3.5 w-3.5 opacity-70" />
-                            <span>{typeLabel(plugin.type)}插件</span>
+                            <span>{t('pluginPicker.typePlugin', { type: typeLabel(plugin.type) })}</span>
                           </div>
                         )}
                         {plugin.tags?.length ? (
@@ -225,7 +227,7 @@ export function WorkflowPluginPickerDialog({
                         ) : null}
                       </div>
                       <p className="border-t pt-1 text-[10px] text-muted-foreground/70">
-                        点击{enabled ? '禁用' : '启用'}此插件
+                        {t('pluginPicker.clickToToggle', { action: t(enabled ? 'pluginPicker.disable' : 'pluginPicker.enable') })}
                       </p>
                     </div>
                   </HoverCardContent>
@@ -234,7 +236,7 @@ export function WorkflowPluginPickerDialog({
             })}
             {!loading && filtered.length === 0 && (
               <div className="col-span-full py-8 text-center text-sm text-muted-foreground">
-                {query ? '没有匹配的插件' : '没有可用的工作流插件'}
+                {query ? t('pluginPicker.noMatch') : t('pluginPicker.noAvailable')}
               </div>
             )}
           </div>

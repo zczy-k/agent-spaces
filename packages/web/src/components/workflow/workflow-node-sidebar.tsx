@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import type { NodeTypeDefinition, PluginConfigField, Workflow } from '@agent-spaces/shared';
 import { registerPluginNodeDefinitions, useLocalizedNodeDefinitionsByCategory, useLocalizedSearchNodeDefinitions } from '@/lib/workflow-nodes';
 import { pluginApi, workflowPluginSchemeApi, type WorkflowPlugin } from '@/lib/workflow-plugin-api';
@@ -58,6 +59,7 @@ export function WorkflowNodeSidebar({
   const [newSchemeName, setNewSchemeName] = useState('');
   const [newSchemePluginId, setNewSchemePluginId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const t = useTranslations('workflows');
 
   const allCategories = useLocalizedNodeDefinitionsByCategory();
   const searchResults = useLocalizedSearchNodeDefinitions(searchQuery);
@@ -194,7 +196,7 @@ export function WorkflowNodeSidebar({
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="搜索节点..."
+              placeholder={t('sidebar.searchNodes')}
               className="pl-7 h-7 text-xs"
             />
           </div>
@@ -241,7 +243,7 @@ export function WorkflowNodeSidebar({
                             className="inline-flex h-5 max-w-[92px] items-center gap-0.5 rounded px-1.5 text-[10px] hover:bg-muted cursor-pointer"
                             onClick={(event) => event.stopPropagation()}
                           >
-                            <span className="truncate">{selectedScheme(categoryPluginMap[category]) || '默认配置'}</span>
+                            <span className="truncate">{selectedScheme(categoryPluginMap[category]) || t('sidebar.defaultConfig')}</span>
                             <ChevronDown className="h-2.5 w-2.5 shrink-0 opacity-50" />
                           </PopoverTrigger>
                           <PopoverContent className="w-44 p-0" align="end">
@@ -249,7 +251,7 @@ export function WorkflowNodeSidebar({
                               <CommandList>
                                 <CommandGroup>
                                   <CommandItem value="__default__" className="text-xs" onSelect={() => selectScheme(categoryPluginMap[category], '')}>
-                                    默认配置
+                                    {t('sidebar.defaultConfig')}
                                   </CommandItem>
                                   {(schemeMap[categoryPluginMap[category]] || []).map(name => (
                                     <CommandItem key={name} value={name} className="text-xs" onSelect={() => selectScheme(categoryPluginMap[category], name)}>
@@ -319,7 +321,7 @@ export function WorkflowNodeSidebar({
                             )}
                             {node.properties?.length > 0 && (
                               <div className="space-y-1">
-                                <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">参数</div>
+                                <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{t('sidebar.params')}</div>
                                 {node.properties.map(prop => (
                                   <div key={prop.key} className="flex items-center gap-1.5 text-xs">
                                     <span className="font-mono text-muted-foreground">{prop.key}</span>
@@ -334,7 +336,7 @@ export function WorkflowNodeSidebar({
                             )}
                             {node.outputs && node.outputs.length > 0 && (
                               <div className="space-y-1">
-                                <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">输出</div>
+                                <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{t('sidebar.outputs')}</div>
                                 <JsonViewer
                                   data={Object.fromEntries(node.outputs!.map(o => [o.key, o.type]))}
                                   rootName=""
@@ -357,13 +359,13 @@ export function WorkflowNodeSidebar({
       <AlertDialog open={newSchemeDialogOpen} onOpenChange={setNewSchemeDialogOpen}>
         <AlertDialogContent className="sm:max-w-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle>新增配置方案</AlertDialogTitle>
-            <AlertDialogDescription>输入方案名称，将基于插件默认配置创建新方案。</AlertDialogDescription>
+            <AlertDialogTitle>{t('sidebar.newSchemeTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('sidebar.newSchemeDesc')}</AlertDialogDescription>
           </AlertDialogHeader>
-          <Input value={newSchemeName} onChange={(event) => setNewSchemeName(event.target.value)} placeholder="方案名称" className="text-sm" />
+          <Input value={newSchemeName} onChange={(event) => setNewSchemeName(event.target.value)} placeholder={t('sidebar.schemeNamePlaceholder')} className="text-sm" />
           <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction disabled={!newSchemeName.trim()} onClick={createScheme}>创建</AlertDialogAction>
+            <AlertDialogCancel>{t('sidebar.cancel')}</AlertDialogCancel>
+            <AlertDialogAction disabled={!newSchemeName.trim()} onClick={createScheme}>{t('sidebar.create')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

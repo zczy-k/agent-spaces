@@ -28,6 +28,7 @@ import { WorkflowNode as WorkflowNodeComponent } from './workflow-node';
 import { WorkflowEdge as WorkflowEdgeComponent } from './workflow-edge';
 import { WorkflowGroupOverlay } from './workflow-group-node';
 import { WorkflowHelperLines } from './workflow-helper-lines';
+import { useTranslations } from 'next-intl';
 import { CanvasToolbar } from './workflow-canvas-toolbar';
 import { useCanvasData } from './use-workflow-canvas-data';
 import { useCanvasDebug } from './use-workflow-canvas-debug';
@@ -166,6 +167,7 @@ export function WorkflowCanvas({
   canvasExportRef,
   onNodeDragStateChange,
 }: WorkflowCanvasProps) {
+  const t = useTranslations('workflows');
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const connectSourceRef = useRef<{ nodeId: string; handleId: string | null; handleType: string | null } | null>(null);
   const connectSucceededRef = useRef(false);
@@ -733,7 +735,7 @@ export function WorkflowCanvas({
             onClick={() => runSelectionAction(onMergeNodesToWorkflow)}
           >
             <WorkflowIcon className="h-3 w-3" />
-            合并为工作流
+            {t('canvas.mergeToWorkflow')}
           </button>
           <button
             type="button"
@@ -741,7 +743,7 @@ export function WorkflowCanvas({
             onClick={() => runSelectionAction(onMergeNodesToGroup)}
           >
             <Group className="h-3 w-3" />
-            合并成组
+            {t('canvas.mergeToGroup')}
           </button>
           <div className="-mx-1 my-1 h-px bg-border" />
           <button
@@ -750,7 +752,7 @@ export function WorkflowCanvas({
             onClick={() => runSelectionAction(onBatchDeleteNodes)}
           >
             <Trash2 className="h-3 w-3" />
-            批量删除
+            {t('canvas.batchDelete')}
           </button>
         </div>
       )}

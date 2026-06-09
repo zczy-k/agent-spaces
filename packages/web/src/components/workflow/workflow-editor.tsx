@@ -362,8 +362,8 @@ function WorkflowEditorInner({
             <ExpandableTabs
               tabs={[
                 { title: t('editor.properties'), icon: Settings2, value: 'properties' },
-                { title: '变量', icon: Braces, value: 'variables' },
-                { title: '分组', icon: Group, value: 'groups' },
+                { title: t('editor.variables'), icon: Braces, value: 'variables' },
+                { title: t('editor.groups'), icon: Group, value: 'groups' },
                 { title: t('editor.history'), icon: History, value: 'history' },
                 { title: t('editor.staging'), icon: Package, value: 'staging' },
               ]}

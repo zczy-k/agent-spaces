@@ -50,14 +50,8 @@ export default function WorkflowUiPreviewPageClient() {
 
   return (
     <div className="h-screen flex flex-col">
-      <div className="px-4 py-2 border-b flex items-center gap-2">
-        <span className="text-sm font-medium">{project.name}</span>
-        <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-          {project.type === 'react' ? 'React' : 'HTML'}
-        </span>
-      </div>
-      <div className="flex-1">
-        <WorkflowUiPreview type={project.type} sourceCode={sourceCode} error={error} onError={setError} />
+      <div className="flex-1 min-h-0">
+        <WorkflowUiPreview type={project.type} sourceCode={sourceCode} error={error} onError={setError} projectId={project.id} projectName={project.name} />
       </div>
     </div>
   );

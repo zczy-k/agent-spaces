@@ -1,6 +1,7 @@
 'use client';
 
 import type { OutputField, WorkflowEdge, WorkflowNode } from '@agent-spaces/shared';
+import { useTranslations } from 'next-intl';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { OutputFieldsEditor } from './workflow-properties-fields';
 
@@ -21,14 +22,12 @@ export function WorkflowVariablesForm({
   enabledPlugins?: string[];
   variables?: OutputField[];
 }) {
-  return (
+  const t = useTranslations("workflows");
+    return (
     <ScrollArea className="h-full">
       <div className="space-y-3 p-3">
         <div>
-          <h3 className="text-sm font-medium">变量</h3>
-          <p className="mt-1 text-xs text-muted-foreground">
-            工作流运行时可通过 {'{{__env__.变量名}}'} 或 context.__env__.变量名 读取。
-          </p>
+          <h3 className="text-sm font-medium">{t('editor.variables')}</h3>
         </div>
         <OutputFieldsEditor
           value={value}

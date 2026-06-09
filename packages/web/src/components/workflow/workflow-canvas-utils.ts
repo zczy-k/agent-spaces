@@ -7,14 +7,17 @@ import {
   LOOP_BODY_SOURCE_HANDLE,
   LOOP_NEXT_SOURCE_HANDLE,
   findCompositeChildByRole,
+  getCompositeParentId,
+  getCompositeRootId,
   isHiddenWorkflowNode,
+  isScopeBoundaryWorkflowNode,
 } from '@agent-spaces/shared';
 
 export {
   getCompositeParentId,
   getCompositeRootId,
   isScopeBoundaryWorkflowNode,
-} from '@agent-spaces/shared';
+};
 import { createWorkflowEdgeId } from '@/lib/workflow-edge-id';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { getWorkflowNodeSize } from './workflow-node-size';

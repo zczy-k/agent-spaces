@@ -123,11 +123,11 @@ export function WorkflowEditorToolbar({
         <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={() => onExport('png')} disabled={isExporting}>
             <FileImage className="h-4 w-4 mr-2" />
-            导出 PNG
+            {t('editor.exportPng')}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => onExport('jpeg')} disabled={isExporting}>
             <Image className="h-4 w-4 mr-2" />
-            导出 JPEG
+            {t('editor.exportJpeg')}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={onImport}>
             <Upload className="h-4 w-4 mr-2" />

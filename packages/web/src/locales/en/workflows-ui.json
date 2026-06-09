@@ -56,7 +56,8 @@
     "autoPreview": "Auto Preview",
     "refresh": "Refresh",
     "plugins": "Plugins",
-    "entryExportError": "Entry file must export default a React component"
+    "entryExportError": "Entry file must export default a React component",
+    "switchProject": "Switch Page"
   },
   "chat": {
     "assistantPrompt": "Please act as the development assistant for Workflow UI project \"{name}\".",

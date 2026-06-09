@@ -140,7 +140,57 @@
     "stopTest": "Stop Test",
     "testScript": "Test Script",
     "delayExecution": "Delay Execution",
-    "delayDescription": "Milliseconds to wait before executing this node"
+    "delayDescription": "Milliseconds to wait before executing this node",
+    "variables": "Variables",
+    "groups": "Groups",
+    "exportPng": "Export PNG",
+    "exportJpeg": "Export JPEG"
+  },
+  "sidebar": {
+    "searchNodes": "Search nodes...",
+    "defaultConfig": "Default Config",
+    "addScheme": "New Scheme",
+    "deleteScheme": "Delete Current Scheme",
+    "newSchemeTitle": "New Config Scheme",
+    "newSchemeDesc": "Enter a scheme name to create from default plugin config.",
+    "schemeNamePlaceholder": "Scheme name",
+    "cancel": "Cancel",
+    "create": "Create",
+    "params": "Parameters",
+    "outputs": "Outputs"
+  },
+  "pluginPicker": {
+    "title": "Select Plugin",
+    "searchPlaceholder": "Search plugins...",
+    "filterByTag": "Filter by tag",
+    "allTags": "All tags",
+    "typeAll": "All",
+    "typeServer": "Server",
+    "typeClient": "Client",
+    "typePlugin": "{type} Plugin",
+    "loading": "Loading plugins...",
+    "enabled": "Enabled",
+    "nodeCount": "{count} nodes",
+    "clickToToggle": "Click to {action} this plugin",
+    "enable": "enable",
+    "disable": "disable",
+    "noMatch": "No matching plugins",
+    "noAvailable": "No workflow plugins available"
+  },
+  "canvasToolbar": {
+    "exitPreview": "Exit Preview",
+    "exitPreviewTooltip": "Exit execution record preview",
+    "undo": "Undo (Ctrl+Z)",
+    "redo": "Redo (Ctrl+Shift+Z)",
+    "horizontalLayout": "Horizontal Layout",
+    "verticalLayout": "Vertical Layout",
+    "hideMinimap": "Hide Minimap",
+    "showMinimap": "Show Minimap"
+  },
+  "canvas": {
+    "mergeToWorkflow": "Merge to Workflow",
+    "mergeToGroup": "Merge to Group",
+    "batchDelete": "Batch Delete"
   },
   "version": {
     "count": "{count} versions",

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import type { Workflow } from '@agent-spaces/shared';
 import { Button } from '@/components/ui/button';
 import {
@@ -51,6 +52,7 @@ export function CanvasToolbar({
   onAutoLayout?: (direction: 'LR' | 'TB') => void;
   onToggleMinimap: () => void;
 }) {
+  const t = useTranslations("workflows");
   const hasNodes = workflow.nodes.length > 0;
 
   return (
@@ -60,16 +62,16 @@ export function CanvasToolbar({
           <Tooltip>
             <TooltipTrigger render={<Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-orange-500 hover:text-orange-600" onClick={onExitPreview} />}>
               <EyeOff className="h-3.5 w-3.5" />
-              <span className="text-xs">退出预览</span>
+              <span className="text-xs">{t('canvasToolbar.exitPreview')}</span>
             </TooltipTrigger>
-            <TooltipContent side="top" className="text-xs">退出执行记录预览</TooltipContent>
+            <TooltipContent side="top" className="text-xs">{t('canvasToolbar.exitPreviewTooltip')}</TooltipContent>
           </Tooltip>
         ) : null}
 
-        <CanvasToolbarButton tooltip="撤销 (Ctrl+Z)" disabled={!canUndo} onClick={onUndo}>
+        <CanvasToolbarButton tooltip={t('canvasToolbar.undo')} disabled={!canUndo} onClick={onUndo}>
           <RotateCcw className="h-3.5 w-3.5" />
         </CanvasToolbarButton>
-        <CanvasToolbarButton tooltip="重做 (Ctrl+Shift+Z)" disabled={!canRedo} onClick={onRedo}>
+        <CanvasToolbarButton tooltip={t('canvasToolbar.redo')} disabled={!canRedo} onClick={onRedo}>
           <RotateCw className="h-3.5 w-3.5" />
         </CanvasToolbarButton>
 
@@ -78,13 +80,13 @@ export function CanvasToolbar({
             <LayoutGrid className="h-3.5 w-3.5" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="center" side="top">
-            <DropdownMenuItem onClick={() => onAutoLayout?.('LR')}>横向布局</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onAutoLayout?.('TB')}>垂直布局</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onAutoLayout?.('LR')}>{t('canvasToolbar.horizontalLayout')}</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onAutoLayout?.('TB')}>{t('canvasToolbar.verticalLayout')}</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
         <CanvasToolbarButton
-          tooltip={minimapVisible ? '隐藏小地图' : '显示小地图'}
+          tooltip={minimapVisible ? t('canvasToolbar.hideMinimap') : t('canvasToolbar.showMinimap')}
           className={`h-7 w-7 p-0 ${minimapVisible ? 'text-blue-500' : ''}`}
           onClick={onToggleMinimap}
         >
