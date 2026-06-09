@@ -14,6 +14,7 @@ import {
 import { createWorkflowEdgeId } from '@/lib/workflow-edge-id';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import type { NodeSelectContext } from './workflow-editor-types';
+import { getWorkflowNodeSize } from './workflow-node-size';
 
 interface UseWorkflowEditorCanvasParams {
   workflow: Workflow | null;
@@ -325,10 +326,7 @@ export function useWorkflowEditorCanvas({
 
     const rfNodes = workflow.nodes.map(n => {
       const definition = getNodeDefinition(n.type);
-      const minWidth = definition?.customViewMinSize?.width || 140;
-      const minHeight = definition?.customViewMinSize?.height || 60;
-      const width = Math.max(minWidth, typeof n.data?.width === 'number' ? n.data.width : minWidth);
-      const height = Math.max(minHeight, typeof n.data?.height === 'number' ? n.data.height : minHeight);
+      const { minWidth, minHeight, width, height } = getWorkflowNodeSize(definition, n.data);
       return {
         id: n.id,
         type: 'custom' as const,
@@ -396,9 +394,10 @@ export function useWorkflowEditorCanvas({
 
     for (const node of layoutNodes) {
       const definition = getNodeDefinition(node.type);
+      const nodeSize = getWorkflowNodeSize(definition, node.data);
       const size = {
-        width: typeof node.data?.width === 'number' ? node.data.width : definition?.customViewMinSize?.width || 220,
-        height: typeof node.data?.height === 'number' ? node.data.height : definition?.customViewMinSize?.height || 120,
+        width: typeof node.data?.width === 'number' ? nodeSize.width : Math.max(nodeSize.width, 220),
+        height: typeof node.data?.height === 'number' ? nodeSize.height : Math.max(nodeSize.height, 120),
       };
       nodeSizes.set(node.id, size);
       graph.setNode(node.id, size);

@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { type Node, type Edge } from '@xyflow/react';
 import type { Workflow, ExecutionLog, ExecutionStep } from '@agent-spaces/shared';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
+import { getWorkflowNodeSize } from './workflow-node-size';
 
 interface UseCanvasDataParams {
   workflow: Pick<Workflow, 'nodes' | 'edges'>;
@@ -51,10 +52,7 @@ export function useCanvasData({
   const rfNodes: Node[] = useMemo(() =>
     workflow.nodes.map(n => {
       const definition = getNodeDefinition(n.type);
-      const minWidth = definition?.customViewMinSize?.width || 140;
-      const minHeight = definition?.customViewMinSize?.height || 60;
-      const width = Math.max(minWidth, typeof n.data?.width === 'number' ? n.data.width : minWidth);
-      const height = Math.max(minHeight, typeof n.data?.height === 'number' ? n.data.height : minHeight);
+      const { minWidth, minHeight, width, height } = getWorkflowNodeSize(definition, n.data);
       return {
         id: n.id,
         type: 'custom',

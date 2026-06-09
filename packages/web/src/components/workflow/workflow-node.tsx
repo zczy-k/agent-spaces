@@ -18,6 +18,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { JsonViewer } from '@/components/viewers/json-viewer';
 import { cn } from '@/lib/utils';
 import { WorkflowNodeDefinitionIcon } from './workflow-node-icon';
+import { getWorkflowNodeSize } from './workflow-node-size';
 
 const HEADER_HEIGHT = 33;
 const HANDLE_MARGIN = 12;
@@ -218,24 +219,17 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
     }));
   }, [dynamicSource, data]);
 
-  const sourceHandleCount = dynamicHandles?.length
-    || staticSourceHandles.length
-    || (showSourceHandle ? 1 : 0);
-
-  const nodeMinHeight = useMemo(() => {
-    const base = definition?.customViewMinSize?.height || 60;
-    if (isLoopBody || sourceHandleCount <= 1) return base;
-    return Math.max(base, HEADER_HEIGHT + sourceHandleCount * 24 + 16);
-  }, [definition, isLoopBody, sourceHandleCount]);
-  const nodeMinWidth = definition?.customViewMinSize?.width || 140;
-  const nodeWidth = Math.max(
-    nodeMinWidth,
-    typeof nodeData.width === 'number' ? nodeData.width : nodeMinWidth,
+  const nodeSize = useMemo(
+    () => getWorkflowNodeSize(definition, nodeData),
+    [definition, nodeData],
   );
-  const nodeHeight = Math.max(
-    nodeMinHeight,
-    typeof nodeData.height === 'number' ? nodeData.height : nodeMinHeight,
-  );
+  const {
+    minWidth: nodeMinWidth,
+    minHeight: nodeMinHeight,
+    width: nodeWidth,
+    height: nodeHeight,
+    sourceHandleCount,
+  } = nodeSize;
 
   React.useEffect(() => {
     updateNodeInternals(id);
@@ -625,7 +619,14 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
         .handle-dot { transition: scale 0.2s ease, box-shadow 0.2s ease; }
         .handle-dot:hover { scale: 1.6; box-shadow: 0 0 6px currentColor; }
         .workflow-node-resize-line { border-color: var(--primary); }
-        .workflow-node-resize-handle { width: 8px; height: 8px; border: 1px solid var(--primary); background: var(--background); }
+        .workflow-node-resize-handle {
+          width: 14px;
+          height: 14px;
+          border: 2px solid var(--primary);
+          border-radius: 4px;
+          background: var(--background);
+          box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+        }
         .source-handle-label { position: absolute; right: 10px; display: flex; align-items: center; pointer-events: none; transform: translateY(-50%); }
         .loop-body-node { border-color: rgba(114, 181, 197, 0.5); box-shadow: 0 10px 30px rgba(98, 156, 173, 0.14); background: linear-gradient(180deg, rgba(233, 247, 250, 0.95), rgba(246, 250, 251, 0.98)); }
       `}</style>
