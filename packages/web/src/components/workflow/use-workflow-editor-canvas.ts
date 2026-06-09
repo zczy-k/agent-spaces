@@ -1395,7 +1395,7 @@ export function useWorkflowEditorCanvas({
   const handleUngroup = useCallback((groupId: string) => {
     if (!workflow || isReadOnly) return;
     const group = workflow.groups?.find(item => item.id === groupId);
-    if (!group || group.locked) return;
+    if (!group) return;
 
     pushUndo('ungroup');
     setWorkflow(w => {
@@ -1410,6 +1410,10 @@ export function useWorkflowEditorCanvas({
             if (!parentGroup || item.id !== parentGroup.id) return item;
             return {
               ...item,
+              childNodeIds: [
+                ...item.childNodeIds,
+                ...group.childNodeIds.filter(id => !item.childNodeIds.includes(id)),
+              ],
               childGroupIds: [
                 ...item.childGroupIds.filter(id => id !== groupId),
                 ...group.childGroupIds.filter(id => !item.childGroupIds.includes(id)),

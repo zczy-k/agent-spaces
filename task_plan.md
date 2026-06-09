@@ -11,12 +11,14 @@ Goal: Share one chat message display implementation between `inline-chat-panel.t
 5. Listen for inline chat tool SSE events - complete
 6. Persist inline chat tool timeline without adding tool results to prompt history - complete
 7. Fix missing chat agent workspace tree 404 - complete
+8. Fix workflow group overlay delete and drag stability - complete
 
 ## Decisions
 
 - Keep existing public `ChatMessage` shape exported by `floating-chat-widget.tsx` for current floating chat callers.
 - Move bubble rendering, thinking extraction, copy/delete actions, message extras, and version controls into a shared component.
 - Leave panel chrome/input behavior in each panel.
+- For the workflow group overlay, preserve existing color/lock changes while fixing pointer interaction around group deletion and dragging.
 
 ## Errors Encountered
 
@@ -24,3 +26,4 @@ Goal: Share one chat message display implementation between `inline-chat-panel.t
 |---|---|---|
 | Full `pnpm --filter @agent-spaces/web lint` failed on pre-existing repository issues | 1 | Ran targeted eslint for changed files; it passed. |
 | Full `pnpm --filter @agent-spaces/web exec tsc --noEmit` failed on pre-existing repository issues | 1 | Filtered TypeScript output for changed files; no matches. |
+| Targeted ESLint first run used repo-root paths under `pnpm --filter`, so ESLint looked for nested paths inside `packages/web` | 1 | Re-ran with package-relative paths; passed with existing warnings only. |

@@ -68,8 +68,12 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
   const lastNodeDebugSignature = useRef<string | null>(null);
 
   const displayLabel = useMemo(
-    () => nodeData.label || definition?.label || workflowNodeType || '',
-    [nodeData.label, definition, workflowNodeType],
+    () => {
+      const raw = nodeData.label;
+      const resolved = raw && !raw.startsWith('nodes.') ? raw : '';
+      return resolved || definition?.label || workflowNodeType || '';
+    },
+    [nodeData.label, definition?.label, workflowNodeType],
   );
 
   const isBoundaryNode = definition?.type === 'start' || definition?.type === 'end';

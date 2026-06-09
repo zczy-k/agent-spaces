@@ -47,3 +47,14 @@
 - Changed final timeline normalization so still-running tool calls become error entries instead of success entries.
 - Made persisted tool call ids unique for new runs and made the restored timeline renderer tolerate old duplicate ids.
 - Render old `success` tool entries without a result as an error-like result in the UI.
+
+## 2026-06-09 CST
+
+- Started workflow group overlay fix for inactive delete button and fragile drag strip.
+- Inspected `workflow-group-node.tsx`, `workflow-canvas.tsx`, and `use-workflow-editor-canvas.ts`.
+- Confirmed `onGroupDelete` maps to `handleUngroup`, so the component interaction needs to reliably reach the callback.
+- Updated group overlay button pointer handling, document-level drag listeners, pointer-id filtering, and a wider drag hot zone.
+- Changed ungroup so explicit delete/ungroup is allowed for locked groups and child nodes are promoted when ungrouping a nested group.
+- Targeted ESLint passed with existing hook dependency warnings in `use-workflow-editor-canvas.ts`; filtered TypeScript output had no hits for the touched workflow group files.
+- Expanded group drag start from the header strip to the full group background so empty space inside a group can be grabbed directly.
+- Reverted full group background pointer capture because it broke header interactions; restored header-only event handling with a larger header hit area and document-level drag listeners.

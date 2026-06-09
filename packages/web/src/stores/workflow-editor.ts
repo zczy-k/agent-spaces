@@ -310,7 +310,7 @@ export function createWorkflowEditorStore(workspaceId: string) {
       const node: WorkflowNode = {
         id,
         type,
-        label: def?.label || type,
+        label: '',
         position,
         data: {},
         ...(def?.singleton ? {} : {}),

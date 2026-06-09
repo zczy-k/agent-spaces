@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { OutputField, PluginConfigField, WorkflowEdge, WorkflowNode } from '@agent-spaces/shared';
-import { getCompositeParentId, isGeneratedWorkflowNode } from '@agent-spaces/shared';
+import { getCompositeParentId } from '@agent-spaces/shared';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -92,6 +92,32 @@ function mapLoopSharedVariables(fields: OutputField[], parentPath = 'vars'): Var
 function buildFieldPath(field: VariableField, parentPath?: string): string {
   if (field.expressionPath) return field.expressionPath;
   return parentPath ? `${parentPath}.${field.key}` : field.key;
+}
+
+function findLoopParentNode(currentNode: WorkflowNode | null, nodes: WorkflowNode[]): WorkflowNode | null {
+  if (!currentNode) return null;
+
+  const nodeById = new Map(nodes.map((node) => [node.id, node]));
+  let current: WorkflowNode | undefined = currentNode;
+
+  while (current) {
+    const parentId = getCompositeParentId(current);
+    if (!parentId) return null;
+
+    const parent = nodeById.get(parentId);
+    if (!parent) return null;
+
+    if (parent.type === 'loop') return parent;
+
+    if (parent.type === 'loop_body') {
+      const loopParentId = getCompositeParentId(parent);
+      return loopParentId ? nodeById.get(loopParentId) ?? null : null;
+    }
+
+    current = parent;
+  }
+
+  return null;
 }
 
 const FILE_CHILDREN: VariableField[] = [
@@ -226,13 +252,10 @@ export function WorkflowVariablePicker({
   }, [enabledPlugins]);
 
   const loopParentNode = useMemo(() => {
-    if (!currentNode) return null;
-    const parentId = getCompositeParentId(currentNode);
-    if (!parentId) return null;
-    return nodes.find((node) => node.id === parentId && node.type === 'loop') ?? null;
+    return findLoopParentNode(currentNode, nodes);
   }, [currentNode, nodes]);
 
-  const isInLoopBody = Boolean(loopParentNode && currentNode && isGeneratedWorkflowNode(currentNode));
+  const isInLoopBody = Boolean(loopParentNode && currentNode);
   const connectedNodeIds = useMemo(
     () => activeNodeId ? getConnectedNodeIds(edges, activeNodeId) : new Set<string>(),
     [activeNodeId, edges],

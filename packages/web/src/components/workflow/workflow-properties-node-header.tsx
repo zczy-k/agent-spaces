@@ -40,12 +40,14 @@ export function NodeHeader({
   onEditPreset,
   onUpdatePresets,
 }: NodeHeaderProps) {
+  const resolveLabel = (v: unknown) => { const s = String(v ?? ''); return s && !s.startsWith('nodes.') ? s : ''; };
+  const displayLabel = resolveLabel(data.label) || resolveLabel(node.label) || definition?.label || '';
   return (
     <div className="flex shrink-0 items-center gap-2 border-b p-3">
       <WorkflowNodeDefinitionIcon definition={definition} className="h-4 w-4 shrink-0 text-muted-foreground" />
       <div className="min-w-0 flex-1">
         <Input
-          value={String(data.label ?? node.label ?? '')}
+          value={displayLabel}
           onChange={(e) => onDataChange('label', e.target.value)}
           className="h-auto border-0 bg-transparent p-0 text-sm font-medium shadow-none outline-none ring-0 focus-visible:ring-0"
         />

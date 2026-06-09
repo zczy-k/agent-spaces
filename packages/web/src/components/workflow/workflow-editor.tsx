@@ -185,7 +185,7 @@ function WorkflowEditorInner({
     const newNode: typeof workflow.nodes[0] = {
       id: `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       type: staged.type,
-      label: staged.label || (staged.data?.label as string) || staged.type,
+      label: staged.label || (staged.data?.label as string) || '',
       position,
       data: { ...(staged.data || {}) },
       composite: staged.composite ? JSON.parse(JSON.stringify(staged.composite)) : undefined,

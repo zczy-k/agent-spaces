@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { ChevronDown, ChevronRight, Lock, Unlock, Trash2 } from 'lucide-react';
 import type { WorkflowGroup } from '@agent-spaces/shared';
 
@@ -42,6 +42,7 @@ export function WorkflowGroupOverlay({
   const [isHovered, setIsHovered] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(group.name);
+  const isDraggingRef = useRef(false);
   const colors = getGroupColor(group.color);
 
   const bounds = useMemo(() => {
@@ -93,10 +94,14 @@ export function WorkflowGroupOverlay({
     onDelete(group.id);
   }, [group.id, onDelete]);
 
+  const stopButtonPointerDown = useCallback((e: React.PointerEvent) => {
+    e.stopPropagation();
+  }, []);
+
   const handleHeaderPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     if (isPreview || group.locked || isEditing) return;
-    const target = event.target;
-    if (target instanceof HTMLElement && target.closest('button,input')) return;
+    const target = event.target as Element;
+    if (target.closest('button,input')) return;
 
     event.preventDefault();
     event.stopPropagation();
@@ -106,9 +111,11 @@ export function WorkflowGroupOverlay({
     let hasPushedUndo = false;
     const pointerId = event.pointerId;
     const element = event.currentTarget;
+    isDraggingRef.current = true;
     element.setPointerCapture(pointerId);
 
     const handlePointerMove = (moveEvent: PointerEvent) => {
+      if (moveEvent.pointerId !== pointerId) return;
       const screenDelta = {
         x: moveEvent.clientX - last.x,
         y: moveEvent.clientY - last.y,
@@ -121,15 +128,18 @@ export function WorkflowGroupOverlay({
     };
 
     const finishDrag = () => {
-      element.releasePointerCapture(pointerId);
-      window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('pointerup', finishDrag);
-      window.removeEventListener('pointercancel', finishDrag);
+      isDraggingRef.current = false;
+      if (element.hasPointerCapture(pointerId)) {
+        element.releasePointerCapture(pointerId);
+      }
+      document.removeEventListener('pointermove', handlePointerMove);
+      document.removeEventListener('pointerup', finishDrag);
+      document.removeEventListener('pointercancel', finishDrag);
     };
 
-    window.addEventListener('pointermove', handlePointerMove);
-    window.addEventListener('pointerup', finishDrag);
-    window.addEventListener('pointercancel', finishDrag);
+    document.addEventListener('pointermove', handlePointerMove);
+    document.addEventListener('pointerup', finishDrag);
+    document.addEventListener('pointercancel', finishDrag);
   }, [group.id, group.locked, isEditing, isPreview, onMove, onSelect, screenDeltaToFlowDelta]);
 
   if (isPreview && collapsed) return null;
@@ -149,15 +159,15 @@ export function WorkflowGroupOverlay({
         zIndex: 0,
       }}
       onClick={(e) => { e.stopPropagation(); onSelect(group.id); }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
     >
       <div
-        className="pointer-events-auto flex h-7 cursor-move select-none items-center gap-1 px-2 backdrop-blur-sm"
+        className={`pointer-events-auto flex h-10 select-none items-center gap-1 px-2 pb-2 backdrop-blur-sm ${group.locked || isPreview ? 'cursor-default' : 'cursor-move'}`}
         style={{ backgroundColor: colors.header }}
         onPointerDown={handleHeaderPointerDown}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => { if (!isDraggingRef.current) setIsHovered(false); }}
       >
-        <button className="p-0 hover:bg-black/5 rounded" onClick={handleToggleCollapse}>
+        <button className="p-0 hover:bg-black/5 rounded" onPointerDown={stopButtonPointerDown} onClick={handleToggleCollapse}>
           {collapsed
             ? <ChevronRight className="h-3 w-3 text-muted-foreground" />
             : <ChevronDown className="h-3 w-3 text-muted-foreground" />
@@ -184,17 +194,32 @@ export function WorkflowGroupOverlay({
         )}
 
         {isHovered && !isPreview && (
-          <div className="flex gap-0.5">
-            <button className="p-0.5 hover:bg-black/10 rounded" onClick={handleToggleLock}>
+          <div className="flex items-center gap-0.5">
+            {GROUP_COLORS.map(c => (
+              <button
+                key={c.name}
+                className={`size-2 rounded-full shrink-0 border transition-all ${
+                  group.color === c.name ? 'border-foreground/80 scale-125' : 'border-transparent hover:scale-110'
+                }`}
+                style={{ backgroundColor: c.border }}
+                onPointerDown={stopButtonPointerDown}
+                onClick={(e) => { e.stopPropagation(); onUpdate(group.id, { color: c.name }); }}
+              />
+            ))}
+            <div className="mx-0.5 h-3 w-px bg-border/50" />
+            <button className="p-0.5 hover:bg-black/10 rounded" onPointerDown={stopButtonPointerDown} onClick={handleToggleLock}>
               {group.locked
                 ? <Lock className="h-2.5 w-2.5 text-orange-500" />
                 : <Unlock className="h-2.5 w-2.5 text-muted-foreground" />
               }
             </button>
-            <button className="p-0.5 hover:bg-black/10 rounded" onClick={handleDelete}>
+            <button className="p-0.5 hover:bg-black/10 rounded" onPointerDown={stopButtonPointerDown} onClick={handleDelete}>
               <Trash2 className="h-2.5 w-2.5 text-destructive" />
             </button>
           </div>
+        )}
+        {group.locked && !isPreview && !isHovered && (
+          <Lock className="h-2.5 w-2.5 text-orange-500 shrink-0" />
         )}
       </div>
     </div>
