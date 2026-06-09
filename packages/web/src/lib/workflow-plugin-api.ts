@@ -23,10 +23,10 @@ function getPluginLocaleQuery(): string {
 
 export const pluginApi = {
   list(): Promise<PluginMeta[]> {
-    return sdk.workflowPlugin.listAll();
+    return sdk.workflowPlugin.listAll(getPluginLocaleQuery());
   },
   listWorkflowPlugins(): Promise<PluginMeta[]> {
-    return sdk.workflowPlugin.listWorkflow();
+    return sdk.workflowPlugin.listWorkflow(getPluginLocaleQuery());
   },
   enable(pluginId: string): Promise<PluginMeta> {
     return sdk.workflowPlugin.enable(pluginId);

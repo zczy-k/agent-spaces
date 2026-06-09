@@ -28,17 +28,17 @@ router.get('/:pluginId/icon', (req: Request<{ pluginId: string }>, res: Response
   }
 });
 
-router.get('/', (_req: Request, res: Response) => {
+router.get('/', (req: Request, res: Response) => {
   try {
-    res.json(pluginService.listPlugins());
+    res.json(pluginService.listPlugins(resolveLocale(req)));
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
 
-router.get('/workflow', (_req: Request, res: Response) => {
+router.get('/workflow', (req: Request, res: Response) => {
   try {
-    res.json(pluginService.listWorkflowPlugins());
+    res.json(pluginService.listWorkflowPlugins(resolveLocale(req)));
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

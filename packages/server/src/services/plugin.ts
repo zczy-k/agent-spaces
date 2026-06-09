@@ -18,6 +18,12 @@ type PluginManifest = Partial<Omit<PluginMeta, 'enabled' | 'tags' | 'hasView'>> 
   version?: string;
   description?: string;
   tags?: string[];
+  name_zh?: string;
+  name_en?: string;
+  description_zh?: string;
+  description_en?: string;
+  tags_zh?: string[];
+  tags_en?: string[];
   hasView?: boolean;
   hasWorkflow?: boolean;
   enabled?: boolean;
@@ -211,15 +217,30 @@ function detectIconFile(dirName: string): string | null {
   return null;
 }
 
-function normalizePlugin(dirName: string, manifest: PluginManifest, state: PluginState): PluginMeta {
+function localizedManifestString(manifest: PluginManifest, field: 'name' | 'description', locale?: string): string | undefined {
+  const normalizedLocale = normalizeLocale(locale);
+  const localized = (manifest as Record<string, unknown>)[`${field}_${normalizedLocale}`];
+  if (typeof localized === 'string' && localized.trim()) return localized;
+  const fallback = manifest[field];
+  return typeof fallback === 'string' ? fallback : undefined;
+}
+
+function localizedManifestTags(manifest: PluginManifest, locale?: string): string[] {
+  const normalizedLocale = normalizeLocale(locale);
+  const localized = (manifest as Record<string, unknown>)[`tags_${normalizedLocale}`];
+  if (Array.isArray(localized)) return localized.map(String);
+  return Array.isArray(manifest.tags) ? manifest.tags : [];
+}
+
+function normalizePlugin(dirName: string, manifest: PluginManifest, state: PluginState, locale?: string): PluginMeta {
   const id = String(manifest.id || dirName);
   return {
     id,
-    name: String(manifest.name || id),
+    name: String(localizedManifestString(manifest, 'name', locale) || id),
     version: String(manifest.version || '0.0.0'),
-    description: String(manifest.description || ''),
+    description: String(localizedManifestString(manifest, 'description', locale) || ''),
     author: manifest.author || { name: 'Unknown' },
-    tags: Array.isArray(manifest.tags) ? manifest.tags : [],
+    tags: localizedManifestTags(manifest, locale),
     hasView: Boolean(manifest.hasView),
     hasWorkflow: Boolean(manifest.hasWorkflow || manifest.workflowNodes?.length || manifest.entries?.workflow),
     type: manifest.type,
@@ -474,7 +495,7 @@ function loadCommonJsWorkflowModule(workflowPath: string): { nodes: NodeTypeDefi
   return { nodes, handlers };
 }
 
-export function listPlugins(): PluginMeta[] {
+export function listPlugins(locale?: string): PluginMeta[] {
   const root = pluginsDir();
   ensureDir(root);
   const state = readState();
@@ -482,13 +503,13 @@ export function listPlugins(): PluginMeta[] {
     .filter(entry => entry.isDirectory())
     .map((entry) => {
       const manifest = readManifestFromDir(path.join(root, entry.name));
-      return manifest ? normalizePlugin(entry.name, manifest, state) : null;
+      return manifest ? normalizePlugin(entry.name, manifest, state, locale) : null;
     })
     .filter((plugin): plugin is PluginMeta => Boolean(plugin));
 }
 
-export function listWorkflowPlugins(): PluginMeta[] {
-  return listPlugins().filter(plugin => plugin.hasWorkflow);
+export function listWorkflowPlugins(locale?: string): PluginMeta[] {
+  return listPlugins(locale).filter(plugin => plugin.hasWorkflow);
 }
 
 export function uninstallPlugin(pluginId: string): void {

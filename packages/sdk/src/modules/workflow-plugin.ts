@@ -3,11 +3,11 @@ import type { PluginMeta, NodeTypeDefinition, PluginWorkflowNodesResult, PluginC
 
 export function createWorkflowPluginApi(http: HttpClient) {
   return {
-    listAll: (): Promise<PluginMeta[]> =>
-      http.get('/api/plugins'),
+    listAll: (query = ''): Promise<PluginMeta[]> =>
+      http.get(`/api/plugins${query}`),
 
-    listWorkflow: (): Promise<PluginMeta[]> =>
-      http.get('/api/plugins/workflow'),
+    listWorkflow: (query = ''): Promise<PluginMeta[]> =>
+      http.get(`/api/plugins/workflow${query}`),
 
     enable: (pluginId: string): Promise<PluginMeta> =>
       http.post(`/api/plugins/${encodeURIComponent(pluginId)}/enable`),
