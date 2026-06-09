@@ -325,7 +325,7 @@ export function PropertyField({
           onValueChange={onChange}
           disabled={disabled}
         >
-          <SelectTrigger className="h-7 text-xs">
+          <SelectTrigger className="h-7 text-xs w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

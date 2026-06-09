@@ -1475,7 +1475,11 @@ export class ExecutionManager {
   ): boolean {
     if (completedNodeIds?.has(nodeId)) return true;
     const step = [...session.steps].reverse().find(s => s.nodeId === nodeId);
-    return step?.status === 'completed';
+    return this.doesStepSatisfyDownstreamDependency(step);
+  }
+
+  private doesStepSatisfyDownstreamDependency(step: ExecutionStep | undefined): boolean {
+    return step?.status === 'completed' || step?.status === 'skipped';
   }
 
   // ---- Private: Loop context ----
