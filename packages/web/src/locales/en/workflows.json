@@ -46,6 +46,13 @@
     "endLabel": "End"
   },
   "properties": {
+    "startNodeInput": "Start Node Input",
+    "inputFields": "Input Fields",
+    "outputFields": "Output Fields",
+    "import": "Import",
+    "applyPreset": "Apply Preset",
+    "applyTestOutput": "Apply Test Output",
+    "reset": "Reset",
     "emptyNode": "Select a node to view properties",
     "loopBodyHint": "Loop body nodes do not need separate configuration",
     "testSuccess": "Test passed",

@@ -1,6 +1,5 @@
 'use client';
 
-import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { sdk } from '@/lib/sdk';
@@ -15,13 +14,8 @@ import { Button } from '@/components/ui/button';
 import { FileIcon, FolderIcon, FolderOpenIcon, ChevronRightIcon, Loader2, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
-import '@/lib/monaco-loader';
+import { MonacoCodeEditor as MonacoEditor } from '@/components/editor/monaco-code-editor';
 import type { SkillInfo } from './types';
-
-const MonacoEditor = dynamic(
-  () => import('@monaco-editor/react').then((mod) => mod.default),
-  { ssr: false, loading: () => <div className="flex items-center justify-center h-full text-muted-foreground text-sm">Loading editor...</div> },
-);
 
 interface SkillFile {
   name: string;

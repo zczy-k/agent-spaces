@@ -46,6 +46,13 @@
     "endLabel": "结束"
   },
   "properties": {
+    "startNodeInput": "开始节点输入",
+    "inputFields": "输入字段",
+    "outputFields": "输出字段",
+    "import": "导入",
+    "applyPreset": "应用预设",
+    "applyTestOutput": "应用测试输出",
+    "reset": "重置",
     "emptyNode": "选择节点查看属性",
     "loopBodyHint": "循环体节点无需单独配置属性",
     "testSuccess": "测试成功",

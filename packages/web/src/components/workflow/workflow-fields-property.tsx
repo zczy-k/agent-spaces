@@ -1,6 +1,5 @@
 'use client';
 
-import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { NodeProperty } from '@agent-spaces/shared';
 import { X } from 'lucide-react';
@@ -12,17 +11,12 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/in
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import '@/lib/monaco-loader';
+import { MonacoCodeEditor as MonacoEditor } from '@/components/editor/monaco-code-editor';
 import { getOutputFields } from './workflow-properties-utils';
 import { WorkflowVariablePicker, type WorkflowVariableContext } from './workflow-variable-picker';
 import { OutputFieldsEditor } from './workflow-fields-output';
 import { ConditionsEditor } from './workflow-fields-conditions';
 import { ArrayFieldEditor } from './workflow-fields-array';
-
-const MonacoEditor = dynamic(
-  () => import('@monaco-editor/react').then((mod) => mod.default),
-  { ssr: false, loading: () => <div className="flex items-center justify-center h-[160px] text-muted-foreground text-xs">Loading...</div> },
-);
 
 const PURE_VARIABLE_PATTERN = /^\s*\{\{\s*(.*?)\s*\}\}\s*$/;
 const NODE_VARIABLE_PATTERN = /^__(?:data|inputs)__\["([^"]+)"\]\.?(.*)$/;

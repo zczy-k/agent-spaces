@@ -1,16 +1,10 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import "@/lib/monaco-loader";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useTranslations } from "next-intl";
 import { useTheme } from "@/components/layout/theme-provider";
-
-const MonacoEditor = dynamic(
-  () => import("@monaco-editor/react").then((mod) => mod.default),
-  { ssr: false, loading: () => <div className="flex items-center justify-center h-32 text-muted-foreground text-xs">Loading editor...</div> }
-);
+import { MonacoCodeEditor as MonacoEditor } from "@/components/editor/monaco-code-editor";
 
 interface Props {
   open: boolean;

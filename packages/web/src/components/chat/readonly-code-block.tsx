@@ -1,27 +1,8 @@
 "use client"
 
-import dynamic from "next/dynamic"
-import "@/lib/monaco-loader"
 import { useTheme } from "@/components/layout/theme-provider"
-import { useTranslations } from "next-intl"
 import { JsonViewer } from "@/components/viewers/json-viewer"
-
-function ReadonlyCodeBlockLoading() {
-  const t = useTranslations('chat')
-  return (
-    <div className="flex h-full items-center justify-center text-muted-foreground text-xs">
-      {t('readonlyCodeBlock.loading')}
-    </div>
-  )
-}
-
-const MonacoEditor = dynamic(
-  () => import("@monaco-editor/react").then((mod) => mod.default),
-  {
-    ssr: false,
-    loading: () => <ReadonlyCodeBlockLoading />,
-  },
-)
+import { MonacoCodeEditor as MonacoEditor } from "@/components/editor/monaco-code-editor"
 
 interface ReadonlyCodeBlockProps {
   value: string

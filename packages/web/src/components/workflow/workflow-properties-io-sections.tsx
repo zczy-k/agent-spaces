@@ -1,6 +1,7 @@
 'use client';
 
 import type { WorkflowNode } from '@agent-spaces/shared';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Import, FileDown, RotateCcw } from 'lucide-react';
 import { getOutputFields, toOutputFields } from './workflow-properties-utils';
@@ -34,12 +35,14 @@ export function IOFieldsSections({
   onDataChange,
   onOpenImport,
 }: IOFieldsSectionsProps) {
+  const t = useTranslations('workflows');
+
   return (
     <>
       {canEditInputFields && (
         <section id="input-fields-section" className="space-y-2 ">
           <div className="text-xs font-medium text-muted-foreground">
-            {node.type === 'sub_workflow' ? '开始节点输入' : '输入字段'}
+            {node.type === 'sub_workflow' ? t('properties.startNodeInput') : t('properties.inputFields')}
           </div>
           <OutputFieldsEditor
             value={getOutputFields(data.inputFields)}
@@ -53,7 +56,7 @@ export function IOFieldsSections({
       {canEditOutputFields && (
         <section id="output-fields-section" className="space-y-2 border-t pt-3">
           <div className="flex items-center gap-1.5">
-            <span className="text-xs font-medium text-muted-foreground">输出字段</span>
+            <span className="text-xs font-medium text-muted-foreground">{t('properties.outputFields')}</span>
             <div className="ml-auto flex items-center gap-1">
               <Button
                 variant="ghost"
@@ -62,7 +65,7 @@ export function IOFieldsSections({
                 onClick={onOpenImport}
               >
                 <Import className="h-3 w-3" />
-                导入
+                {t('properties.import')}
               </Button>
               {selectedJsonPreset && (
                 <Button
@@ -72,7 +75,7 @@ export function IOFieldsSections({
                   onClick={() => onDataChange('outputs', toOutputFields(selectedJsonPreset.outputs))}
                 >
                   <FileDown className="h-3 w-3" />
-                  应用预设
+                  {t('properties.applyPreset')}
                 </Button>
               )}
               {hasDebugOutput && debugResult?.output !== undefined && (
@@ -83,7 +86,7 @@ export function IOFieldsSections({
                   onClick={() => onDataChange('outputs', toOutputFields(debugResult.output))}
                 >
                   <FileDown className="h-3 w-3" />
-                  应用测试输出
+                  {t('properties.applyTestOutput')}
                 </Button>
               )}
               <Button
@@ -96,7 +99,7 @@ export function IOFieldsSections({
                 }}
               >
                 <RotateCcw className="h-3 w-3" />
-                重置
+                {t('properties.reset')}
               </Button>
             </div>
           </div>

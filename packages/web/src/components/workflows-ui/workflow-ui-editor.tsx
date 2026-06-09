@@ -15,19 +15,13 @@ import { BackButton } from '@/components/common/back-button';
 import { ShareDialog } from '@/components/common/share-dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import dynamic from 'next/dynamic';
-import '@/lib/monaco-loader';
+import { MonacoCodeEditor as MonacoEditor } from '@/components/editor/monaco-code-editor';
 
 const FILE_POLL_INTERVAL_MS = 2000;
 
 function areFileListsEqual(left: string[], right: string[]) {
   return left.length === right.length && left.every((file, index) => file === right[index]);
 }
-
-const MonacoEditor = dynamic(
-  () => import('@monaco-editor/react').then((mod) => mod.default),
-  { ssr: false, loading: () => <div className="flex items-center justify-center h-full text-muted-foreground text-sm">Loading editor...</div> },
-);
 
 interface WorkflowUiEditorProps {
   projectId: string;

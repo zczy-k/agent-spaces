@@ -1,8 +1,6 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useEffect, useRef, useCallback, useState } from "react";
-import "@/lib/monaco-loader";
 import "@/lib/monaco-builtin-actions";
 import "@/components/editor/code-editor-clipboard";
 import { applyRegisteredActions } from "@/lib/monaco-action-registry";
@@ -31,12 +29,8 @@ import { collapseEditorSelection } from "./code-editor-mobile";
 import { useMobileReadonlyOverlay } from "./useMobileReadonlyOverlay";
 import { MobileReadonlyOverlay } from "./code-editor-mobile-overlay";
 import type * as Monaco from 'monaco-editor';
+import { MonacoCodeEditor as MonacoEditor } from "@/components/editor/monaco-code-editor";
 // Note: /monaco-themes/* fetch calls intentionally kept as raw fetch (static Next.js assets, not API endpoints)
-
-function EditorLoadingFallback() {
-  const t = useTranslations('editor');
-  return <div className="flex items-center justify-center h-full text-muted-foreground text-sm">{t('loadingEditor')}</div>;
-}
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -82,12 +76,6 @@ function EditorStatusBar({ file, content, t }: {
 
 import { Markdown } from '@/components/ui/markdown';
 import { MermaidPreview } from '@/components/ui/mermaid-preview';
-
-
-const MonacoEditor = dynamic(
-  () => import("@monaco-editor/react").then((mod) => mod.default),
-  { ssr: false, loading: () => <EditorLoadingFallback /> }
-);
 
 interface CodeEditorProps {
   workspaceId: string;

@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import dynamic from 'next/dynamic';
 import { sdk } from '@/lib/sdk';
 import {
   Dialog,
@@ -36,11 +35,7 @@ import {
 } from 'lucide-react';
 import { AgentPickerDialog } from '@/components/common/agent-picker-dialog';
 import { cn } from '@/lib/utils';
-
-const MonacoEditor = dynamic(
-  () => import('@monaco-editor/react').then((mod) => mod.default),
-  { ssr: false, loading: () => <div className="flex items-center justify-center h-full text-muted-foreground text-sm">Loading editor...</div> },
-);
+import { MonacoCodeEditor as MonacoEditor } from '@/components/editor/monaco-code-editor';
 
 interface AgentInfo {
   agentId: string;
