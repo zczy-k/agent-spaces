@@ -8,7 +8,10 @@ import type { NodeChange, EdgeChange, Connection } from '@xyflow/react';
 import type { ElkNode } from 'elkjs/lib/elk-api';
 import type { Workflow } from '@agent-spaces/shared';
 import {
+  LOOP_BODY_ROLE,
+  LOOP_BODY_SOURCE_HANDLE,
   LOOP_NEXT_SOURCE_HANDLE,
+  findCompositeChildByRole,
   getCompositeParentId,
   isHiddenWorkflowEdge,
   isHiddenWorkflowNode,
@@ -61,8 +64,17 @@ function createNodesForDefinition(
   type: string,
   position: { x: number; y: number },
   rootData?: Record<string, unknown>,
+  scopeNode?: Workflow['nodes'][0] | null,
 ): { rootNode: Workflow['nodes'][0]; nodes: Workflow['nodes']; edges: Workflow['edges'] } | null {
   const def = getNodeDefinition(type);
+  const scopeComposite = scopeNode
+    ? {
+        rootId: scopeNode.composite?.rootId || scopeNode.id,
+        parentId: scopeNode.id,
+        generated: false,
+        hidden: false,
+      }
+    : undefined;
 
   if (!def?.compound) {
     const rootNode: Workflow['nodes'][0] = {
@@ -71,6 +83,7 @@ function createNodesForDefinition(
       label: def?.label || type,
       position,
       data: { ...createNodeData(type), ...(rootData || {}) },
+      composite: scopeComposite,
     };
     return { rootNode, nodes: [rootNode], edges: [] };
   }
@@ -130,6 +143,16 @@ function createNodesForDefinition(
     };
   }
 
+  if (scopeNode) {
+    for (const node of roleMap.values()) {
+      node.composite = {
+        ...(node.composite || {}),
+        rootId: scopeNode.composite?.rootId || scopeNode.id,
+        parentId: scopeNode.id,
+      };
+    }
+  }
+
   const edges: Workflow['edges'] = [];
   for (const edgeDef of def.compound.edges || []) {
     const sourceNode = roleMap.get(edgeDef.sourceRole);
@@ -166,6 +189,15 @@ function getOutgoingSourceHandle(type: string): string | undefined {
     return LOOP_NEXT_SOURCE_HANDLE;
   }
   return undefined;
+}
+
+function getInsertScopeNode(
+  nodes: Workflow['nodes'],
+  sourceNodeId?: string | null,
+  sourceHandle?: string | null,
+): Workflow['nodes'][0] | null {
+  if (!sourceNodeId || sourceHandle !== LOOP_BODY_SOURCE_HANDLE) return null;
+  return findCompositeChildByRole(nodes, sourceNodeId, LOOP_BODY_ROLE) ?? null;
 }
 
 export function useWorkflowEditorCanvas({
@@ -240,10 +272,15 @@ export function useWorkflowEditorCanvas({
         x: sourceNode.position.x + 250,
         y: sourceNode.position.y,
       };
+      const scopeNode = getInsertScopeNode(
+        workflow.nodes,
+        nodeSelectContext.sourceNodeId,
+        nodeSelectContext.sourceHandle,
+      );
       const created = createNodesForDefinition(type, position, {
-          sourceNodeId: nodeSelectContext.sourceNodeId,
-          sourceHandle: nodeSelectContext.sourceHandle,
-      });
+        sourceNodeId: nodeSelectContext.sourceNodeId,
+        sourceHandle: nodeSelectContext.sourceHandle,
+      }, scopeNode);
       if (!created) return;
       const newEdge: Workflow['edges'][0] = {
         id: createWorkflowEdgeId({
@@ -277,10 +314,15 @@ export function useWorkflowEditorCanvas({
       x: (sourceNode.position.x + targetNode.position.x) / 2,
       y: (sourceNode.position.y + targetNode.position.y) / 2,
     };
+    const scopeNode = getInsertScopeNode(
+      workflow.nodes,
+      nodeSelectContext.sourceNodeId,
+      nodeSelectContext.sourceHandle,
+    );
     const created = createNodesForDefinition(type, position, {
-        sourceNodeId: nodeSelectContext.sourceNodeId,
-        sourceHandle: nodeSelectContext.sourceHandle,
-    });
+      sourceNodeId: nodeSelectContext.sourceNodeId,
+      sourceHandle: nodeSelectContext.sourceHandle,
+    }, scopeNode);
     if (!created) return;
     const outgoingSourceHandle = getOutgoingSourceHandle(type);
     const firstEdge: Workflow['edges'][0] = {

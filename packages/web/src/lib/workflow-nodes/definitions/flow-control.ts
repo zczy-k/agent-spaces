@@ -8,6 +8,7 @@ import {
   LOOP_NODE_TYPE,
   LOOP_ROOT_ROLE,
 } from '@agent-spaces/shared';
+import { LoopBodyView } from '@/components/workflow/loop-body-view';
 import { RUN_CODE_DEFAULT_CODE } from '../constants';
 
 export const flowControlNodes: NodeTypeDefinition[] = [
@@ -210,6 +211,8 @@ export const flowControlNodes: NodeTypeDefinition[] = [
     description: 'nodes.loop_body.description',
     properties: [],
     handles: { target: true, source: false },
+    customView: LoopBodyView,
+    customViewMinSize: { width: 150, height: 260 },
     debuggable: false,
     manualCreate: false,
   },
