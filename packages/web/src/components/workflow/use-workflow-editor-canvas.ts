@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import Dagre from '@dagrejs/dagre';
 import ELK from 'elkjs/lib/elk.bundled';
 import { applyNodeChanges, applyEdgeChanges } from '@xyflow/react';
@@ -632,6 +632,7 @@ export function useWorkflowEditorCanvas({
 }: UseWorkflowEditorCanvasParams) {
   const [nodeSelectOpen, setNodeSelectOpen] = useState(false);
   const [nodeSelectContext, setNodeSelectContext] = useState<NodeSelectContext | null>(null);
+  const rejectedNodeDeleteIdsRef = useRef<Set<string>>(new Set());
   const workflowId = workflow?.id;
 
   useEffect(() => {
@@ -953,6 +954,13 @@ export function useWorkflowEditorCanvas({
   const handleNodesChange = useCallback((changes: NodeChange[]) => {
     if (!workflow || isReadOnly) return;
     const hasDelete = changes.some(c => c.type === 'remove');
+    const rejectedDeleteIds = new Set(
+      changes
+        .filter(isNodeRemoveChange)
+        .filter(change => !getWorkflowNodeDeleteIds(workflow.nodes, change.id))
+        .map(change => change.id),
+    );
+    rejectedNodeDeleteIdsRef.current = rejectedDeleteIds;
     const hasAllowedDelete = changes
       .filter(isNodeRemoveChange)
       .some(change => !!getWorkflowNodeDeleteIds(workflow.nodes, change.id));
@@ -1074,7 +1082,17 @@ export function useWorkflowEditorCanvas({
 
   const handleEdgesChange = useCallback((changes: EdgeChange[]) => {
     if (!workflow || isReadOnly) return;
-    const hasDelete = changes.some(c => c.type === 'remove');
+    const rejectedNodeDeleteIds = rejectedNodeDeleteIdsRef.current;
+    rejectedNodeDeleteIdsRef.current = new Set();
+    const allowedChanges = changes.filter(change => {
+      if (change.type !== 'remove') return true;
+      const edge = workflow.edges.find(item => item.id === change.id);
+      if (edge && (rejectedNodeDeleteIds.has(edge.source) || rejectedNodeDeleteIds.has(edge.target))) return false;
+      return !!edge && !edge.composite?.locked;
+    });
+    if (allowedChanges.length === 0) return;
+
+    const hasDelete = allowedChanges.some(c => c.type === 'remove');
     if (hasDelete) pushUndo('delete edge');
 
     const rfEdges = workflow.edges.map(e => ({
@@ -1082,7 +1100,7 @@ export function useWorkflowEditorCanvas({
       sourceHandle: e.sourceHandle || undefined, targetHandle: e.targetHandle || undefined,
       data: { composite: e.composite, sourceHandle: e.sourceHandle },
     }));
-    const updated = applyEdgeChanges(changes, rfEdges);
+    const updated = applyEdgeChanges(allowedChanges, rfEdges);
     const remainingIds = new Set(updated.map(e => e.id));
 
     setWorkflow(w => w ? { ...w, edges: w.edges.filter(e => remainingIds.has(e.id)) } : null);
