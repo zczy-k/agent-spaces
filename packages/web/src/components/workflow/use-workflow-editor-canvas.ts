@@ -9,6 +9,7 @@ import type { ElkNode } from 'elkjs/lib/elk-api';
 import type { Workflow } from '@agent-spaces/shared';
 import {
   LOOP_BODY_ROLE,
+  LOOP_BODY_NODE_TYPE,
   LOOP_BODY_SOURCE_HANDLE,
   LOOP_NEXT_SOURCE_HANDLE,
   findCompositeChildByRole,
@@ -196,7 +197,10 @@ function getInsertScopeNode(
   sourceNodeId?: string | null,
   sourceHandle?: string | null,
 ): Workflow['nodes'][0] | null {
-  if (!sourceNodeId || sourceHandle !== LOOP_BODY_SOURCE_HANDLE) return null;
+  if (!sourceNodeId) return null;
+  const sourceNode = nodes.find(node => node.id === sourceNodeId);
+  if (sourceNode?.type === LOOP_BODY_NODE_TYPE) return sourceNode;
+  if (sourceHandle !== LOOP_BODY_SOURCE_HANDLE) return null;
   return findCompositeChildByRole(nodes, sourceNodeId, LOOP_BODY_ROLE) ?? null;
 }
 

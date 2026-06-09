@@ -1,7 +1,12 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { LOOP_BODY_NODE_TYPE, LOOP_NODE_TYPE, LOOP_BODY_SOURCE_HANDLE } from '@agent-spaces/shared';
+import {
+  LOOP_BODY_NODE_TYPE,
+  LOOP_NODE_TYPE,
+  LOOP_BODY_SOURCE_HANDLE,
+  getCompositeParentId,
+} from '@agent-spaces/shared';
 import type { WorkflowNode, WorkflowEdge } from '@agent-spaces/shared';
 
 /**
@@ -31,6 +36,18 @@ function computeLoopBounds(
   // Find all nodes inside the loop body
   const innerNodeIds = new Set<string>();
   innerNodeIds.add(loopBodyNode.id);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const node of allNodes) {
+      const parentId = getCompositeParentId(node);
+      if (!parentId || innerNodeIds.has(node.id)) continue;
+      if (innerNodeIds.has(parentId)) {
+        innerNodeIds.add(node.id);
+        changed = true;
+      }
+    }
+  }
 
   // Walk edges from loop body to find all downstream nodes until we hit the next node after loop
   const visited = new Set<string>();

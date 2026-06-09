@@ -19,7 +19,7 @@ import {
 } from '@xyflow/react';
 import { Check, Grid3X3, Grip, PanelsTopLeft, Waypoints } from 'lucide-react';
 import '@xyflow/react/dist/style.css';
-import type { ExecutionLog, Workflow, StagedNode } from '@agent-spaces/shared';
+import { LOOP_BODY_NODE_TYPE, type ExecutionLog, type Workflow, type StagedNode } from '@agent-spaces/shared';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { WORKFLOW_NODE_DRAG_MIME, WORKFLOW_STAGED_NODE_DRAG_MIME } from './workflow-drag-types';
 import { WorkflowNode as WorkflowNodeComponent } from './workflow-node';
@@ -138,7 +138,7 @@ export function WorkflowCanvas({
   onCanvasPreferencesChange,
 }: WorkflowCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const connectSourceRef = useRef<{ nodeId: string; handleId: string | null } | null>(null);
+  const connectSourceRef = useRef<{ nodeId: string; handleId: string | null; handleType: string | null } | null>(null);
   const connectSucceededRef = useRef(false);
   const isRangeSelectingRef = useRef(false);
   const pendingRangeSelectionRef = useRef<string[] | null>(null);
@@ -326,7 +326,10 @@ export function WorkflowCanvas({
       const handleId = typeof params === 'object' && params && 'handleId' in params
         ? ((params as { handleId?: string | null }).handleId ?? null)
         : null;
-      connectSourceRef.current = nodeId ? { nodeId, handleId } : null;
+      const handleType = typeof params === 'object' && params && 'handleType' in params
+        ? ((params as { handleType?: string | null }).handleType ?? null)
+        : null;
+      connectSourceRef.current = nodeId ? { nodeId, handleId, handleType } : null;
       connectSucceededRef.current = false;
     }
 
@@ -343,6 +346,15 @@ export function WorkflowCanvas({
   const handleConnectEnd: OnConnectEnd = useCallback((event) => {
     const connectSource = connectSourceRef.current;
     if (!isCanvasLocked && connectSource && !connectSucceededRef.current) {
+      const sourceNode = workflow.nodes.find(node => node.id === connectSource.nodeId);
+      const isSourceHandle = connectSource.handleType === 'source';
+      const isLoopBodyTargetHandle = connectSource.handleType === 'target' && sourceNode?.type === LOOP_BODY_NODE_TYPE;
+      if (!isSourceHandle && !isLoopBodyTargetHandle) {
+        connectSourceRef.current = null;
+        connectSucceededRef.current = false;
+        return;
+      }
+
       let clientPosition: { x: number; y: number } | null = null;
       if ('clientX' in event && 'clientY' in event) {
         clientPosition = { x: event.clientX, y: event.clientY };
@@ -354,7 +366,7 @@ export function WorkflowCanvas({
       const position = clientPosition ? screenToFlowPosition(clientPosition) : null;
       onConnectionDrop?.({
         sourceNodeId: connectSource.nodeId,
-        sourceHandle: connectSource.handleId,
+        sourceHandle: isSourceHandle ? connectSource.handleId : null,
         position,
       });
     }
@@ -367,7 +379,7 @@ export function WorkflowCanvas({
       eventType: event.type,
       snapshot: getNodeDebugSnapshot(),
     });
-  }, [getNodeDebugSnapshot, isCanvasLocked, onConnectionDrop, screenToFlowPosition]);
+  }, [getNodeDebugSnapshot, isCanvasLocked, onConnectionDrop, screenToFlowPosition, workflow.nodes]);
 
   const handleNodeDragStart = useCallback((_: React.MouseEvent, node: Node) => {
     if (!DEBUG_WORKFLOW_CANVAS) return;
