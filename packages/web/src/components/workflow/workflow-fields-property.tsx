@@ -5,7 +5,6 @@ import type { NodeProperty } from '@agent-spaces/shared';
 import { Maximize2, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
@@ -19,6 +18,7 @@ import { WorkflowVariablePicker, type WorkflowVariableContext } from './workflow
 import { OutputFieldsEditor } from './workflow-fields-output';
 import { ConditionsEditor } from './workflow-fields-conditions';
 import { ArrayFieldEditor } from './workflow-fields-array';
+import { WorkflowCodeFullscreenDialog } from './workflow-code-fullscreen-dialog';
 
 const PURE_VARIABLE_PATTERN = /^\s*\{\{\s*(.*?)\s*\}\}\s*$/;
 const NODE_VARIABLE_PATTERN = /^__(?:data|inputs)__\["([^"]+)"\]\.?(.*)$/;
@@ -355,9 +355,7 @@ export function PropertyField({
           language={(prop as unknown as Record<string, unknown>).language as string || 'javascript'}
           value={String(value ?? '')}
           disabled={disabled}
-          previewMode={previewMode}
           onChange={(nextValue) => onChange(nextValue)}
-          onPreviewChange={onPreviewChange ? (nextValue) => onPreviewChange(nextValue) : undefined}
         />
       );
 
@@ -387,20 +385,15 @@ function CodePropertyEditor({
   language,
   value,
   disabled,
-  previewMode,
   onChange,
-  onPreviewChange,
 }: {
   label: string;
   language: string;
   value: string;
   disabled: boolean;
-  previewMode: boolean;
   onChange: (value: string) => void;
-  onPreviewChange?: (value: string) => void;
 }) {
   const [fullscreenOpen, setFullscreenOpen] = useState(false);
-  const handleFullscreenChange = onPreviewChange ?? onChange;
 
   return (
     <>
@@ -424,23 +417,15 @@ function CodePropertyEditor({
         </Button>
       </div>
 
-      <Dialog open={fullscreenOpen} onOpenChange={setFullscreenOpen}>
-        <DialogContent className="!flex !h-[85vh] !w-[85vw] !max-w-none flex-col gap-0 overflow-hidden p-0">
-          <DialogHeader className="border-b px-4 py-3">
-            <DialogTitle className="text-sm">{label}</DialogTitle>
-          </DialogHeader>
-          <div className="min-h-0 flex-1">
-            <MonacoEditor
-              height="100%"
-              language={language}
-              theme="vs-dark"
-              value={value}
-              onChange={(v) => handleFullscreenChange(v ?? '')}
-              options={getCodeEditorOptions(disabled)}
-            />
-          </div>
-        </DialogContent>
-      </Dialog>
+      <WorkflowCodeFullscreenDialog
+        open={fullscreenOpen}
+        onOpenChange={setFullscreenOpen}
+        label={label}
+        language={language}
+        value={value}
+        disabled={disabled}
+        onChange={onChange}
+      />
     </>
   );
 }

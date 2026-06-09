@@ -433,7 +433,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         </span>
       ) : null}
 
-      {hasExecutionResult && executionStep ? (
+      {nodeData.isPreview && hasExecutionResult && executionStep ? (
         <ExecutionResultHoverCard step={executionStep} visible={isHovered || selected} />
       ) : null}
 

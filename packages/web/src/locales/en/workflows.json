@@ -147,7 +147,11 @@
     "variables": "Variables",
     "groups": "Groups",
     "exportPng": "Export PNG",
-    "exportJpeg": "Export JPEG"
+    "exportJpeg": "Export JPEG",
+    "codeFullscreen": {
+      "saved": "Saved",
+      "unsaved": "Unsaved"
+    }
   },
   "sidebar": {
     "searchNodes": "Search nodes...",
