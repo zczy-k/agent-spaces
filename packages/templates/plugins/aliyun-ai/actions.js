@@ -66,7 +66,7 @@ const KF2V_MODELS = [
   { label: 'wanx2.1-kf2v-plus', value: 'wanx2.1-kf2v-plus' },
 ]
 
-const ANIMATE_MOVE_MODES = [
+const ANIMATE_MOVE_MODELS = [
   { label: 'wan-std (标准模式)', value: 'wan-std' },
   { label: 'wan-pro (专业模式)', value: 'wan-pro' },
 ]
@@ -108,31 +108,6 @@ const ASPECT_RATIO = [
 
 const CONFIG_PREFIX = '{{ __config__["workflow.aliyun-ai"]'
 
-const API_KEY_PROP = { key: 'apiKey', label: 'API Key', type: 'text', required: true, tooltip: '阿里云百炼 DashScope API Key', default: `${CONFIG_PREFIX}["apiKey"]}}` }
-const PROMPT_PROP = (label, tip) => ({ key: 'prompt', label, type: 'textarea', required: true, tooltip: tip })
-const NEGATIVE_PROMPT_PROP = { key: 'negativePrompt', label: '反向提示词', type: 'textarea', tooltip: '排除不想出现的内容' }
-const SEED_PROP = { key: 'seed', label: '随机种子', type: 'number', tooltip: '固定种子可复现结果，0~2147483647' }
-const WATERMARK_PROP = { key: 'watermark', label: '水印', type: 'select', default: 'false', options: [{ label: '不添加 (默认)', value: 'false' }, { label: '添加水印', value: 'true' }] }
-
-const IMAGE_OUTPUTS = [
-  { key: 'success', type: 'boolean' },
-  { key: 'message', type: 'string' },
-  { key: 'data', type: 'object', children: [
-    { key: 'images', type: 'object', children: [] },
-    { key: 'requestId', type: 'string' },
-  ] },
-]
-
-const VIDEO_OUTPUTS = [
-  { key: 'success', type: 'boolean' },
-  { key: 'message', type: 'string' },
-  { key: 'data', type: 'object', children: [
-    { key: 'videoUrl', type: 'string' },
-    { key: 'taskId', type: 'string' },
-    { key: 'requestId', type: 'string' },
-  ] },
-]
-
 // ── ASR Helpers ──────────────────────────────────────────────
 
 function parseArray(value) {
@@ -159,7 +134,7 @@ function extractAsrTexts(transcription) {
   return texts
 }
 
-async function fetchAsrTranscriptionContent(ctx, pollResult) {
+async function fetchAsrTranscriptionContent(ctx, pollResult, t) {
   const output = pollResult.output || {}
   const items = output.results || (output.result ? [output.result] : [])
 
@@ -196,7 +171,7 @@ async function fetchAsrTranscriptionContent(ctx, pollResult) {
 
   return {
     success: true,
-    message: `识别完成，共 ${details.length} 个文件，${texts.length} 段文本`,
+    message: t('message.asrDone', 'Recognition completed, {fileCount} file(s), {textCount} text segment(s)').replace('{fileCount}', details.length).replace('{textCount}', texts.length),
     data: {
       text: fullText,
       details,
@@ -208,7 +183,7 @@ async function fetchAsrTranscriptionContent(ctx, pollResult) {
 
 // ── Async task helper (for workflow context with ctx.logger) ──
 
-async function executeAsyncTaskCtx(ctx, apiKey, endpoint, body, extractResult) {
+async function executeAsyncTaskCtx(ctx, apiKey, endpoint, body, extractResult, t) {
   const asyncHeaders = { ...getHeaders({ apiKey }), 'X-DashScope-Async': 'enable' }
 
   ctx.logger.info(`创建异步任务: ${endpoint}`)
@@ -217,12 +192,12 @@ async function executeAsyncTaskCtx(ctx, apiKey, endpoint, body, extractResult) {
 
   if (createResult.code || createResult.message) {
     ctx.logger.error(`创建任务失败: ${createResult.code} - ${createResult.message}`)
-    return { success: false, message: `创建任务失败: ${createResult.code} - ${createResult.message}` }
+    return { success: false, message: t('message.taskFailed', 'Failed to create task: {code} - {message}').replace('{code}', createResult.code || '').replace('{message}', createResult.message || '') }
   }
 
   const taskId = createResult.output?.task_id
   if (!taskId) {
-    return { success: false, message: '创建任务成功但未获取到 task_id' }
+    return { success: false, message: t('message.taskNoId', 'Task created but no task_id returned') }
   }
   ctx.logger.info(`任务已创建: ${taskId}, 状态: ${createResult.output.task_status}`)
 
@@ -243,33 +218,60 @@ async function executeAsyncTaskCtx(ctx, apiKey, endpoint, body, extractResult) {
       const code = pollResult.output?.code || ''
       const msg = pollResult.output?.message || '未知错误'
       ctx.logger.error(`任务失败: ${code} - ${msg}`)
-      return { success: false, message: `任务失败: ${code} - ${msg}` }
+      return { success: false, message: t('message.taskPollFailed', 'Task failed: {code} - {message}').replace('{code}', code).replace('{message}', msg) }
     }
     if (status === 'UNKNOWN' || status === 'CANCELED') {
-      return { success: false, message: `任务异常: ${status}` }
+      return { success: false, message: t('message.taskAbnormal', 'Task abnormal: {status}').replace('{status}', status) }
     }
   }
-  return { success: false, message: '轮询超时，请稍后手动查询' }
+  return { success: false, message: t('message.pollTimeout', 'Polling timed out, please check manually later') }
 }
 
 // ── Actions ────────────────────────────────────────────────
 
-module.exports = [
+module.exports = (t) => {
+  // ── Common property helpers (need t) ───────────────────────
+  const API_KEY_PROP = { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, tooltip: t('config.apiKey.tooltip', 'Aliyun Bailian DashScope API Key'), default: `${CONFIG_PREFIX}["apiKey"]}}` }
+  const PROMPT_PROP = (label, tip) => ({ key: 'prompt', label, type: 'textarea', required: true, tooltip: tip })
+  const NEGATIVE_PROMPT_PROP = { key: 'negativePrompt', label: t('field.negativePrompt.label', 'Negative Prompt'), type: 'textarea', tooltip: t('field.negativePrompt.tooltip', 'Content to exclude from generation') }
+  const SEED_PROP = { key: 'seed', label: t('field.seed.label', 'Random Seed'), type: 'number', tooltip: t('field.seed.tooltip', 'Fixed seed for reproducible results, 0~2147483647') }
+  const WATERMARK_PROP = { key: 'watermark', label: t('field.watermark.label', 'Watermark'), type: 'select', default: 'false', options: [{ label: t('field.watermark.option_no', 'No watermark (default)'), value: 'false' }, { label: t('field.watermark.option_yes', 'Add watermark'), value: 'true' }] }
+
+  const IMAGE_OUTPUTS = [
+    { key: 'success', type: 'boolean' },
+    { key: 'message', type: 'string' },
+    { key: 'data', type: 'object', children: [
+      { key: 'images', type: 'object', children: [] },
+      { key: 'requestId', type: 'string' },
+    ] },
+  ]
+
+  const VIDEO_OUTPUTS = [
+    { key: 'success', type: 'boolean' },
+    { key: 'message', type: 'string' },
+    { key: 'data', type: 'object', children: [
+      { key: 'videoUrl', type: 'string' },
+      { key: 'taskId', type: 'string' },
+      { key: 'requestId', type: 'string' },
+    ] },
+  ]
+
+  return [
   // ─── 1. AI文生图 (SYNC) ────────────────────────────────
   {
     name: 'aliyun_text_to_image',
-    label: 'AI文生图',
-    category: '阿里云AI',
+    label: t('action.textToImage.label', 'AI Text to Image'),
+    category: t('category', 'Aliyun AI'),
     icon: 'Image',
-    description: '千问/万相文生图：通过文字描述生成图片（同步调用）',
+    description: t('action.textToImage.description', 'Qwen/Wan text-to-image: generate images from text descriptions (synchronous)'),
     properties: [
       API_KEY_PROP,
-      PROMPT_PROP('图片描述', '描述你想生成的图片内容'),
-      { key: 'model', label: '模型', type: 'select', default: 'qwen-image-2.0-pro', options: QWEN_IMAGE_MODELS },
-      { key: 'size', label: '分辨率', type: 'select', default: '2048*2048', options: RESOLUTION_IMAGE },
-      { key: 'n', label: '图片数量', type: 'number', default: 1, tooltip: '生成图片数量(1-6)' },
+      PROMPT_PROP(t('field.prompt.label_image', 'Image Description'), t('field.prompt.tooltip_image', 'Describe the image you want to generate')),
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'qwen-image-2.0-pro', options: QWEN_IMAGE_MODELS },
+      { key: 'size', label: t('field.size.label', 'Resolution'), type: 'select', default: '2048*2048', options: RESOLUTION_IMAGE },
+      { key: 'n', label: t('field.n.label_image_count', 'Image Count'), type: 'number', default: 1, tooltip: t('field.n.tooltip_image_count', 'Number of images to generate (1-6)') },
       NEGATIVE_PROMPT_PROP,
-      { key: 'promptExtend', label: '智能改写', type: 'select', default: 'true', options: [{ label: '开启 (默认)', value: 'true' }, { label: '关闭', value: 'false' }] },
+      { key: 'promptExtend', label: t('field.promptExtend.label', 'Smart Rewrite'), type: 'select', default: 'true', options: [{ label: t('field.promptExtend.option_on', 'Enabled (default)'), value: 'true' }, { label: t('field.promptExtend.option_off', 'Disabled'), value: 'false' }] },
       SEED_PROP,
     ],
     toolProperties: {
@@ -303,32 +305,32 @@ module.exports = [
       ctx.logger.info(`[文生图] 模型: ${body.model}, 分辨率: ${body.parameters.size}`)
       const result = await ctx.api.postJson(SYNC_ENDPOINT, { headers, body, timeout: 600000 })
       if (result.code || result.message) {
-        return { success: false, message: `API错误: ${result.code} - ${result.message}` }
+        return { success: false, message: t('message.apiError', 'API error: {code} - {message}').replace('{code}', result.code || '').replace('{message}', result.message || '') }
       }
       const urls = extractImageUrls(result)
-      return { success: true, message: `生成 ${urls.length} 张图片`, data: { images: urls, requestId: result.request_id } }
+      return { success: true, message: t('message.imagesGenerated', 'Generated {count} image(s)').replace('{count}', urls.length), data: { images: urls, requestId: result.request_id } }
     },
   },
 
   // ─── 2. AI图像编辑 (SYNC) ──────────────────────────────
   {
     name: 'aliyun_image_edit',
-    label: 'AI图像编辑',
-    category: '阿里云AI',
+    label: t('action.imageEdit.label', 'AI Image Edit'),
+    category: t('category', 'Aliyun AI'),
     icon: 'Wand2',
-    description: '千问/万相图像编辑：基于输入图片和文字描述进行风格迁移、物体增删、局部修改',
+    description: t('action.imageEdit.description', 'Qwen/Wan image editing: style transfer, object add/remove, and local edits based on input images and text'),
     properties: [
       API_KEY_PROP,
-      PROMPT_PROP('编辑指令', '描述编辑方向，如"将背景改为海边"'),
-      { key: 'images', label: '图片URL', type: 'textarea', required: true, tooltip: '输入图片URL数组，如 ["https://..."]' },
-      { key: 'model', label: '模型', type: 'select', default: 'qwen-image-2.0-pro', options: QWEN_EDIT_MODELS },
-      { key: 'size', label: '分辨率', type: 'select', default: '2048*2048', options: [
+      PROMPT_PROP(t('field.prompt.label_edit', 'Edit Instruction'), t('field.prompt.tooltip_edit', 'Describe the edit direction, e.g. "change background to seaside"')),
+      { key: 'images', label: t('field.images.label_url', 'Image URL'), type: 'textarea', required: true, tooltip: t('field.images.tooltip_url', 'Input image URL array, e.g. ["https://..."]') },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'qwen-image-2.0-pro', options: QWEN_EDIT_MODELS },
+      { key: 'size', label: t('field.size.label', 'Resolution'), type: 'select', default: '2048*2048', options: [
         { label: '2048*2048 (默认)', value: '2048*2048' },
         { label: '1024*1024', value: '1024*1024' },
       ] },
-      { key: 'n', label: '图片数量', type: 'number', default: 1 },
+      { key: 'n', label: t('field.n.label_image_count', 'Image Count'), type: 'number', default: 1 },
       NEGATIVE_PROMPT_PROP,
-      { key: 'promptExtend', label: '智能改写', type: 'select', default: 'true', options: [{ label: '开启 (默认)', value: 'true' }, { label: '关闭', value: 'false' }] },
+      { key: 'promptExtend', label: t('field.promptExtend.label', 'Smart Rewrite'), type: 'select', default: 'true', options: [{ label: t('field.promptExtend.option_on', 'Enabled (default)'), value: 'true' }, { label: t('field.promptExtend.option_off', 'Disabled'), value: 'false' }] },
     ],
     toolProperties: {
       type: 'object',
@@ -347,7 +349,7 @@ module.exports = [
     outputs: IMAGE_OUTPUTS,
     run: async (ctx, args) => {
       const images = Array.isArray(args.images) ? args.images : (() => { try { return JSON.parse(args.images) } catch { return [] } })()
-      if (!images.length) return { success: false, message: '需要至少1张输入图片' }
+      if (!images.length) return { success: false, message: t('message.needOneImage', 'At least 1 input image is required') }
       const headers = getHeaders(args)
       const content = images.map(img => ({ image: img }))
       content.push({ text: args.prompt })
@@ -364,28 +366,28 @@ module.exports = [
       ctx.logger.info(`[图像编辑] 模型: ${body.model}, 输入: ${images.length} 张`)
       const result = await ctx.api.postJson(SYNC_ENDPOINT, { headers, body, timeout: 600000 })
       if (result.code || result.message) {
-        return { success: false, message: `API错误: ${result.code} - ${result.message}` }
+        return { success: false, message: t('message.apiError', 'API error: {code} - {message}').replace('{code}', result.code || '').replace('{message}', result.message || '') }
       }
       const urls = extractImageUrls(result)
-      return { success: true, message: `生成 ${urls.length} 张图片`, data: { images: urls, requestId: result.request_id } }
+      return { success: true, message: t('message.imagesGenerated', 'Generated {count} image(s)').replace('{count}', urls.length), data: { images: urls, requestId: result.request_id } }
     },
   },
 
   // ─── 3. 万相文生图-旧版 (ASYNC) ────────────────────────
   {
     name: 'aliyun_wan_text_to_image_legacy',
-    label: '万相文生图(旧版)',
-    category: '阿里云AI',
+    label: t('action.wanTextToImageLegacy.label', 'Wan Text to Image (Legacy)'),
+    category: t('category', 'Aliyun AI'),
     icon: 'ImagePlus',
-    description: '万相2.5及以下版本文生图（异步调用，wan2.5/2.2/2.1模型）',
+    description: t('action.wanTextToImageLegacy.description', 'Wan 2.5 and earlier text-to-image (async, wan2.5/2.2/2.1 models)'),
     properties: [
       API_KEY_PROP,
-      PROMPT_PROP('图片描述', '描述你想生成的图片内容'),
-      { key: 'model', label: '模型', type: 'select', default: 'wan2.5-t2i-preview', options: WAN_T2I_MODELS },
-      { key: 'size', label: '分辨率', type: 'select', default: '1280*1280', options: RESOLUTION_WAN_T2I },
-      { key: 'n', label: '图片数量', type: 'number', default: 1, tooltip: '1-4张' },
+      PROMPT_PROP(t('field.prompt.label_image', 'Image Description'), t('field.prompt.tooltip_image', 'Describe the image you want to generate')),
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'wan2.5-t2i-preview', options: WAN_T2I_MODELS },
+      { key: 'size', label: t('field.size.label', 'Resolution'), type: 'select', default: '1280*1280', options: RESOLUTION_WAN_T2I },
+      { key: 'n', label: t('field.n.label_image_count', 'Image Count'), type: 'number', default: 1, tooltip: t('field.n.tooltip_wan', '1-4 images') },
       NEGATIVE_PROMPT_PROP,
-      { key: 'promptExtend', label: '智能改写', type: 'select', default: 'true', options: [{ label: '开启 (默认)', value: 'true' }, { label: '关闭', value: 'false' }] },
+      { key: 'promptExtend', label: t('field.promptExtend.label', 'Smart Rewrite'), type: 'select', default: 'true', options: [{ label: t('field.promptExtend.option_on', 'Enabled (default)'), value: 'true' }, { label: t('field.promptExtend.option_off', 'Disabled'), value: 'false' }] },
       SEED_PROP,
     ],
     toolProperties: {
@@ -420,41 +422,41 @@ module.exports = [
       return executeAsyncTaskCtx(ctx, args.apiKey, ASYNC_ENDPOINTS.wanText2Image, body, (result) => {
         const urls = extractLegacyImageUrls(result)
         ctx.logger.info(`[万相文生图] 完成，${urls.length} 张图片`)
-        return { success: true, message: `生成 ${urls.length} 张图片`, data: { images: urls, requestId: result.request_id } }
-      })
+        return { success: true, message: t('message.imagesGenerated', 'Generated {count} image(s)').replace('{count}', urls.length), data: { images: urls, requestId: result.request_id } }
+      }, t)
     },
   },
 
   // ─── 4. 图像画面扩展/扩图 (ASYNC) ──────────────────────
   {
     name: 'aliyun_image_out_painting',
-    label: 'AI图像扩图',
-    category: '阿里云AI',
+    label: t('action.imageOutPainting.label', 'AI Image Outpainting'),
+    category: t('category', 'Aliyun AI'),
     icon: 'Expand',
-    description: '图像画面扩展：按比例/按方向/按宽高比扩展图像，支持旋转',
+    description: t('action.imageOutPainting.description', 'Image outpainting: expand by ratio, direction, or aspect ratio. Supports rotation.'),
     properties: [
       API_KEY_PROP,
-      { key: 'imageUrl', label: '图片URL', type: 'text', required: true, tooltip: '输入图片URL' },
-      { key: 'expandMode', label: '扩展方式', type: 'select', default: 'ratio', options: [
-        { label: '按宽高比', value: 'ratio' },
-        { label: '按比例', value: 'scale' },
-        { label: '按方向像素', value: 'offset' },
+      { key: 'imageUrl', label: t('field.imageUrl.label', 'Image URL'), type: 'text', required: true, tooltip: t('field.imageUrl.tooltip', 'Input image URL') },
+      { key: 'expandMode', label: t('field.expandMode.label', 'Expand Mode'), type: 'select', default: 'ratio', options: [
+        { label: t('field.expandMode.option_ratio', 'By Aspect Ratio'), value: 'ratio' },
+        { label: t('field.expandMode.option_scale', 'By Scale'), value: 'scale' },
+        { label: t('field.expandMode.option_offset', 'By Direction Pixels'), value: 'offset' },
       ] },
-      { key: 'outputRatio', label: '宽高比', type: 'select', tooltip: '仅"按宽高比"模式生效', options: [
-        { label: '不设置', value: '' },
+      { key: 'outputRatio', label: t('field.outputRatio.label', 'Aspect Ratio'), type: 'select', tooltip: t('field.outputRatio.tooltip', 'Only effective in "By Aspect Ratio" mode'), options: [
+        { label: t('field.outputRatio.option_none', 'Not set'), value: '' },
         { label: '1:1', value: '1:1' },
         { label: '3:4', value: '3:4' },
         { label: '4:3', value: '4:3' },
         { label: '9:16', value: '9:16' },
         { label: '16:9', value: '16:9' },
       ] },
-      { key: 'xScale', label: '水平扩展比例', type: 'number', tooltip: '1.0~3.0，默认1.0' },
-      { key: 'yScale', label: '垂直扩展比例', type: 'number', tooltip: '1.0~3.0，默认1.0' },
-      { key: 'leftOffset', label: '左侧扩展(px)', type: 'number', tooltip: '添加像素数' },
-      { key: 'rightOffset', label: '右侧扩展(px)', type: 'number', tooltip: '添加像素数' },
-      { key: 'topOffset', label: '上方扩展(px)', type: 'number', tooltip: '添加像素数' },
-      { key: 'bottomOffset', label: '下方扩展(px)', type: 'number', tooltip: '添加像素数' },
-      { key: 'angle', label: '旋转角度', type: 'number', tooltip: '逆时针0~359度' },
+      { key: 'xScale', label: t('field.xScale.label', 'Horizontal Scale'), type: 'number', tooltip: t('field.xScale.tooltip', '1.0~3.0, default 1.0') },
+      { key: 'yScale', label: t('field.yScale.label', 'Vertical Scale'), type: 'number', tooltip: t('field.yScale.tooltip', '1.0~3.0, default 1.0') },
+      { key: 'leftOffset', label: t('field.leftOffset.label', 'Left Expand (px)'), type: 'number', tooltip: t('field.leftOffset.tooltip', 'Pixels to add') },
+      { key: 'rightOffset', label: t('field.rightOffset.label', 'Right Expand (px)'), type: 'number', tooltip: t('field.rightOffset.tooltip', 'Pixels to add') },
+      { key: 'topOffset', label: t('field.topOffset.label', 'Top Expand (px)'), type: 'number', tooltip: t('field.topOffset.tooltip', 'Pixels to add') },
+      { key: 'bottomOffset', label: t('field.bottomOffset.label', 'Bottom Expand (px)'), type: 'number', tooltip: t('field.bottomOffset.tooltip', 'Pixels to add') },
+      { key: 'angle', label: t('field.angle.label', 'Rotation Angle'), type: 'number', tooltip: t('field.angle.tooltip', 'Counter-clockwise 0~359 degrees') },
     ],
     toolProperties: {
       type: 'object',
@@ -481,7 +483,7 @@ module.exports = [
       ] },
     ],
     run: async (ctx, args) => {
-      if (!args.imageUrl) throw new Error('缺少输入图片URL')
+      if (!args.imageUrl) throw new Error(t('message.missingImageUrl', 'Missing input image URL'))
       const body = {
         model: 'image-out-painting',
         input: { image_url: args.imageUrl },
@@ -503,35 +505,35 @@ module.exports = [
       return executeAsyncTaskCtx(ctx, args.apiKey, ASYNC_ENDPOINTS.outPainting, body, (result) => {
         const url = result.output?.output_image_url
         ctx.logger.info('[图像扩图] 完成')
-        return { success: true, message: '图像扩图完成', data: { imageUrl: url, requestId: result.request_id } }
-      })
+        return { success: true, message: t('message.imageOutPaintingDone', 'Image outpainting completed'), data: { imageUrl: url, requestId: result.request_id } }
+      }, t)
     },
   },
 
   // ─── 5. 可灵图像生成 (ASYNC) ───────────────────────────
   {
     name: 'aliyun_kling_image_generation',
-    label: '可灵图像生成',
-    category: '阿里云AI',
+    label: t('action.klingImageGeneration.label', 'Kling Image Generation'),
+    category: t('category', 'Aliyun AI'),
     icon: 'Sparkles',
-    description: '可灵AI文生图/参考图生图，支持单图和组图模式',
+    description: t('action.klingImageGeneration.description', 'Kling AI text-to-image or reference-image-to-image, supports single and series modes'),
     properties: [
       API_KEY_PROP,
-      PROMPT_PROP('图片描述', '描述想生成的图片内容'),
-      { key: 'images', label: '参考图片URL', type: 'textarea', tooltip: '参考图URL数组(可选)，如 ["https://..."]' },
-      { key: 'model', label: '模型', type: 'select', default: 'kling/kling-v3-image-generation', options: KLING_IMAGE_MODELS },
-      { key: 'aspectRatio', label: '宽高比', type: 'select', default: '1:1', options: ASPECT_RATIO },
-      { key: 'resolution', label: '分辨率', type: 'select', default: '1k', options: [
+      PROMPT_PROP(t('field.prompt.label_image', 'Image Description'), t('field.prompt.tooltip_image', 'Describe the image you want to generate')),
+      { key: 'images', label: t('field.images.label_reference', 'Reference Image URL'), type: 'textarea', tooltip: t('field.images.tooltip_reference', 'Reference image URL array (optional), e.g. ["https://..."]') },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'kling/kling-v3-image-generation', options: KLING_IMAGE_MODELS },
+      { key: 'aspectRatio', label: t('field.aspectRatio.label', 'Aspect Ratio'), type: 'select', default: '1:1', options: ASPECT_RATIO },
+      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', default: '1k', options: [
         { label: '1K (默认)', value: '1k' },
         { label: '2K', value: '2k' },
         { label: '4K (仅omni)', value: '4k' },
       ] },
-      { key: 'n', label: '图片数量', type: 'number', default: 1, tooltip: '1-9张' },
-      { key: 'resultType', label: '生成类型', type: 'select', default: 'single', tooltip: '仅omni模型支持组图', options: [
-        { label: '单图 (默认)', value: 'single' },
-        { label: '组图', value: 'series' },
+      { key: 'n', label: t('field.n.label_image_count', 'Image Count'), type: 'number', default: 1, tooltip: t('field.n.tooltip_kling', '1-9 images') },
+      { key: 'resultType', label: t('field.resultType.label', 'Generation Type'), type: 'select', default: 'single', tooltip: t('field.resultType.tooltip', 'Only omni model supports series mode'), options: [
+        { label: t('field.resultType.option_single', 'Single (default)'), value: 'single' },
+        { label: t('field.resultType.option_series', 'Series'), value: 'series' },
       ] },
-      { key: 'seriesAmount', label: '组图张数', type: 'number', tooltip: '2-9张，仅组图模式' },
+      { key: 'seriesAmount', label: t('field.seriesAmount.label', 'Series Count'), type: 'number', tooltip: t('field.seriesAmount.tooltip', '2-9 images, series mode only') },
     ],
     toolProperties: {
       type: 'object',
@@ -568,28 +570,28 @@ module.exports = [
       return executeAsyncTaskCtx(ctx, args.apiKey, ASYNC_ENDPOINTS.klingImage, body, (result) => {
         const urls = extractImageUrls(result)
         ctx.logger.info(`[可灵生图] 完成，${urls.length} 张图片`)
-        return { success: true, message: `生成 ${urls.length} 张图片`, data: { images: urls, requestId: result.request_id } }
-      })
+        return { success: true, message: t('message.imagesGenerated', 'Generated {count} image(s)').replace('{count}', urls.length), data: { images: urls, requestId: result.request_id } }
+      }, t)
     },
   },
 
   // ─── 6. 万相图生视频-wan2.7 (ASYNC) ──────────────────
   {
     name: 'aliyun_image_to_video_v27',
-    label: '万相图生视频(2.7)',
-    category: '阿里云AI',
+    label: t('action.imageToVideoV27.label', 'Wan Image to Video (2.7)'),
+    category: t('category', 'Aliyun AI'),
     icon: 'Video',
-    description: '万相2.7图生视频：支持首帧生视频、首尾帧生视频、视频续写、音频驱动',
+    description: t('action.imageToVideoV27.description', 'Wan 2.7 image-to-video: supports first-frame, first-last-frame, video continuation, and audio-driven'),
     properties: [
       API_KEY_PROP,
-      PROMPT_PROP('视频描述', '描述视频内容（可选）'),
-      { key: 'media', label: '媒体素材', type: 'textarea', required: true, tooltip: 'JSON数组，如 [{"type":"first_frame","url":"https://..."}]。支持: first_frame, last_frame, driving_audio, first_clip' },
-      { key: 'resolution', label: '分辨率', type: 'select', default: '720P', options: [
+      PROMPT_PROP(t('field.prompt.label_video', 'Video Description'), t('field.prompt.tooltip_video_optional', 'Describe the video content (optional)')),
+      { key: 'media', label: t('field.media.label_v27', 'Media Assets'), type: 'textarea', required: true, tooltip: t('field.media.tooltip_v27', 'JSON array, e.g. [{"type":"first_frame","url":"https://..."}]. Supports: first_frame, last_frame, driving_audio, first_clip') },
+      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', default: '720P', options: [
         { label: '720P', value: '720P' },
         { label: '1080P', value: '1080P' },
       ] },
-      { key: 'duration', label: '视频时长(秒)', type: 'number', default: 5, tooltip: '2-15秒' },
-      { key: 'promptExtend', label: '智能改写', type: 'select', default: 'true', options: [{ label: '开启 (默认)', value: 'true' }, { label: '关闭', value: 'false' }] },
+      { key: 'duration', label: t('field.duration.label_seconds', 'Duration (seconds)'), type: 'number', default: 5, tooltip: t('field.duration.tooltip_v27', '2-15 seconds') },
+      { key: 'promptExtend', label: t('field.promptExtend.label', 'Smart Rewrite'), type: 'select', default: 'true', options: [{ label: t('field.promptExtend.option_on', 'Enabled (default)'), value: 'true' }, { label: t('field.promptExtend.option_off', 'Disabled'), value: 'false' }] },
       NEGATIVE_PROMPT_PROP,
       WATERMARK_PROP,
       SEED_PROP,
@@ -612,7 +614,7 @@ module.exports = [
     outputs: VIDEO_OUTPUTS,
     run: async (ctx, args) => {
       const media = Array.isArray(args.media) ? args.media : JSON.parse(args.media)
-      if (!media.length) throw new Error('需要至少1个媒体素材')
+      if (!media.length) throw new Error(t('message.needOneMedia', 'At least 1 media asset is required'))
       const body = {
         model: 'wan2.7-i2v',
         input: {
@@ -631,27 +633,27 @@ module.exports = [
       return executeAsyncTaskCtx(ctx, args.apiKey, ASYNC_ENDPOINTS.videoSynthesis, body, (result) => {
         const videoUrl = result.output?.video_url
         ctx.logger.info('[图生视频2.7] 完成')
-        return { success: true, message: '视频生成完成', data: { videoUrl, requestId: result.request_id } }
-      })
+        return { success: true, message: t('message.videoGenerated', 'Video generated successfully'), data: { videoUrl, requestId: result.request_id } }
+      }, t)
     },
   },
 
   // ─── 7. 万相图生视频-旧版 (ASYNC) ────────────────────
   {
     name: 'aliyun_image_to_video_legacy',
-    label: '万相图生视频(旧版)',
-    category: '阿里云AI',
+    label: t('action.imageToVideoLegacy.label', 'Wan Image to Video (Legacy)'),
+    category: t('category', 'Aliyun AI'),
     icon: 'Video',
-    description: '万相2.6及早期图生视频模型，基于首帧图像生成视频（wan2.6/2.5/2.2/2.1）',
+    description: t('action.imageToVideoLegacy.description', 'Wan 2.6 and earlier image-to-video models, generate video from first-frame image (wan2.6/2.5/2.2/2.1)'),
     properties: [
       API_KEY_PROP,
-      PROMPT_PROP('视频描述', '描述视频内容'),
-      { key: 'imageUrl', label: '首帧图片URL', type: 'text', required: true, tooltip: '首帧图像URL或Base64' },
-      { key: 'model', label: '模型', type: 'select', default: 'wan2.6-i2v-flash', options: I2V_LEGACY_MODELS },
-      { key: 'resolution', label: '分辨率', type: 'select', default: '720P', options: RESOLUTION_VIDEO },
-      { key: 'duration', label: '视频时长(秒)', type: 'number', default: 5, tooltip: '各模型支持范围不同' },
-      { key: 'audioUrl', label: '音频URL', type: 'text', tooltip: '背景音乐/配音(wan2.6/2.5支持)' },
-      { key: 'promptExtend', label: '智能改写', type: 'select', default: 'true', options: [{ label: '开启 (默认)', value: 'true' }, { label: '关闭', value: 'false' }] },
+      PROMPT_PROP(t('field.prompt.label_video', 'Video Description'), t('field.prompt.tooltip_video', 'Describe the video content')),
+      { key: 'imageUrl', label: t('field.imageUrl.label_first_frame', 'First Frame Image URL'), type: 'text', required: true, tooltip: t('field.imageUrl.tooltip_first_frame', 'First frame image URL or Base64') },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'wan2.6-i2v-flash', options: I2V_LEGACY_MODELS },
+      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', default: '720P', options: RESOLUTION_VIDEO },
+      { key: 'duration', label: t('field.duration.label_seconds', 'Duration (seconds)'), type: 'number', default: 5, tooltip: t('field.duration.tooltip_legacy', 'Varies by model') },
+      { key: 'audioUrl', label: t('field.audioUrl.label', 'Audio URL'), type: 'text', tooltip: t('field.audioUrl.tooltip', 'Background music/dubbing (wan2.6/2.5)') },
+      { key: 'promptExtend', label: t('field.promptExtend.label', 'Smart Rewrite'), type: 'select', default: 'true', options: [{ label: t('field.promptExtend.option_on', 'Enabled (default)'), value: 'true' }, { label: t('field.promptExtend.option_off', 'Disabled'), value: 'false' }] },
       NEGATIVE_PROMPT_PROP,
       WATERMARK_PROP,
       SEED_PROP,
@@ -674,7 +676,7 @@ module.exports = [
     },
     outputs: VIDEO_OUTPUTS,
     run: async (ctx, args) => {
-      if (!args.imageUrl) throw new Error('缺少首帧图片URL')
+      if (!args.imageUrl) throw new Error(t('message.missingImageUrl', 'Missing input image URL'))
       const body = {
         model: args.model || 'wan2.6-i2v-flash',
         input: {
@@ -694,26 +696,26 @@ module.exports = [
       return executeAsyncTaskCtx(ctx, args.apiKey, ASYNC_ENDPOINTS.videoSynthesis, body, (result) => {
         const videoUrl = result.output?.video_url
         ctx.logger.info('[图生视频旧版] 完成')
-        return { success: true, message: '视频生成完成', data: { videoUrl, requestId: result.request_id } }
-      })
+        return { success: true, message: t('message.videoGenerated', 'Video generated successfully'), data: { videoUrl, requestId: result.request_id } }
+      }, t)
     },
   },
 
   // ─── 8. 万相首尾帧生视频 (ASYNC) ──────────────────────
   {
     name: 'aliyun_first_last_frame_video',
-    label: '首尾帧生视频',
-    category: '阿里云AI',
+    label: t('action.firstLastFrameVideo.label', 'First-Last Frame to Video'),
+    category: t('category', 'Aliyun AI'),
     icon: 'Film',
-    description: '万相首尾帧生视频：基于首帧和尾帧图像生成平滑过渡视频',
+    description: t('action.firstLastFrameVideo.description', 'Wan first-last-frame to video: generate smooth transition video from first and last frame images'),
     properties: [
       API_KEY_PROP,
-      PROMPT_PROP('视频描述', '描述画面过渡效果'),
-      { key: 'firstFrameUrl', label: '首帧图片URL', type: 'text', required: true, tooltip: '首帧图像URL' },
-      { key: 'lastFrameUrl', label: '尾帧图片URL', type: 'text', required: true, tooltip: '尾帧图像URL' },
-      { key: 'model', label: '模型', type: 'select', default: 'wan2.2-kf2v-flash', options: KF2V_MODELS },
-      { key: 'resolution', label: '分辨率', type: 'select', default: '720P', options: RESOLUTION_VIDEO },
-      { key: 'promptExtend', label: '智能改写', type: 'select', default: 'true', options: [{ label: '开启 (默认)', value: 'true' }, { label: '关闭', value: 'false' }] },
+      PROMPT_PROP(t('field.prompt.label_video_transition', 'Video Description'), t('field.prompt.tooltip_video_transition', 'Describe the transition effect')),
+      { key: 'firstFrameUrl', label: t('field.firstFrameUrl.label', 'First Frame Image URL'), type: 'text', required: true, tooltip: t('field.firstFrameUrl.tooltip', 'First frame image URL') },
+      { key: 'lastFrameUrl', label: t('field.lastFrameUrl.label', 'Last Frame Image URL'), type: 'text', required: true, tooltip: t('field.lastFrameUrl.tooltip', 'Last frame image URL') },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'wan2.2-kf2v-flash', options: KF2V_MODELS },
+      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', default: '720P', options: RESOLUTION_VIDEO },
+      { key: 'promptExtend', label: t('field.promptExtend.label', 'Smart Rewrite'), type: 'select', default: 'true', options: [{ label: t('field.promptExtend.option_on', 'Enabled (default)'), value: 'true' }, { label: t('field.promptExtend.option_off', 'Disabled'), value: 'false' }] },
       NEGATIVE_PROMPT_PROP,
       WATERMARK_PROP,
       SEED_PROP,
@@ -735,8 +737,8 @@ module.exports = [
     },
     outputs: VIDEO_OUTPUTS,
     run: async (ctx, args) => {
-      if (!args.firstFrameUrl) throw new Error('缺少首帧图片URL')
-      if (!args.lastFrameUrl) throw new Error('缺少尾帧图片URL')
+      if (!args.firstFrameUrl) throw new Error(t('message.missingFirstFrameUrl', 'Missing first frame image URL'))
+      if (!args.lastFrameUrl) throw new Error(t('message.missingLastFrameUrl', 'Missing last frame image URL'))
       const body = {
         model: args.model || 'wan2.2-kf2v-flash',
         input: {
@@ -755,29 +757,29 @@ module.exports = [
       return executeAsyncTaskCtx(ctx, args.apiKey, ASYNC_ENDPOINTS.image2video, body, (result) => {
         const videoUrl = result.output?.video_url
         ctx.logger.info('[首尾帧生视频] 完成')
-        return { success: true, message: '视频生成完成', data: { videoUrl, requestId: result.request_id } }
-      })
+        return { success: true, message: t('message.videoGenerated', 'Video generated successfully'), data: { videoUrl, requestId: result.request_id } }
+      }, t)
     },
   },
 
   // ─── 9. 万相参考生视频 (ASYNC) ────────────────────────
   {
     name: 'aliyun_reference_video',
-    label: '参考生视频',
-    category: '阿里云AI',
+    label: t('action.referenceVideo.label', 'Reference to Video'),
+    category: t('category', 'Aliyun AI'),
     icon: 'UserRound',
-    description: '万相2.7参考生视频：将人或物体作为主角生成视频，支持多角色互动',
+    description: t('action.referenceVideo.description', 'Wan 2.7 reference-to-video: generate video with a person or object as the main character, supports multi-character interaction'),
     properties: [
       API_KEY_PROP,
-      PROMPT_PROP('视频描述', '用"图1""视频1"指代参考素材，描述视频内容'),
-      { key: 'media', label: '参考素材', type: 'textarea', required: true, tooltip: 'JSON数组，如 [{"type":"reference_image","url":"https://...","reference_voice":"https://...mp3"}]' },
-      { key: 'resolution', label: '分辨率', type: 'select', default: '720P', options: [
+      PROMPT_PROP(t('field.prompt.label_reference_video', 'Video Description'), t('field.prompt.tooltip_reference_video', 'Use "image 1" "video 1" to refer to reference materials, describe the video content')),
+      { key: 'media', label: t('field.media.label_reference', 'Reference Assets'), type: 'textarea', required: true, tooltip: t('field.media.tooltip_reference', 'JSON array, e.g. [{"type":"reference_image","url":"https://...","reference_voice":"https://...mp3"}]') },
+      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', default: '720P', options: [
         { label: '720P', value: '720P' },
         { label: '1080P', value: '1080P' },
       ] },
-      { key: 'ratio', label: '宽高比', type: 'select', default: '16:9', options: ASPECT_RATIO },
-      { key: 'duration', label: '视频时长(秒)', type: 'number', default: 5, tooltip: '2-15秒' },
-      { key: 'promptExtend', label: '智能改写', type: 'select', default: 'true', options: [{ label: '开启 (默认)', value: 'true' }, { label: '关闭', value: 'false' }] },
+      { key: 'ratio', label: t('field.ratio.label', 'Aspect Ratio'), type: 'select', default: '16:9', options: ASPECT_RATIO },
+      { key: 'duration', label: t('field.duration.label_seconds', 'Duration (seconds)'), type: 'number', default: 5, tooltip: t('field.duration.tooltip_v27', '2-15 seconds') },
+      { key: 'promptExtend', label: t('field.promptExtend.label', 'Smart Rewrite'), type: 'select', default: 'true', options: [{ label: t('field.promptExtend.option_on', 'Enabled (default)'), value: 'true' }, { label: t('field.promptExtend.option_off', 'Disabled'), value: 'false' }] },
       NEGATIVE_PROMPT_PROP,
       WATERMARK_PROP,
       SEED_PROP,
@@ -799,7 +801,7 @@ module.exports = [
     outputs: VIDEO_OUTPUTS,
     run: async (ctx, args) => {
       const media = Array.isArray(args.media) ? args.media : JSON.parse(args.media)
-      if (!media.length) throw new Error('需要至少1个参考素材')
+      if (!media.length) throw new Error(t('message.needOneReference', 'At least 1 reference asset is required'))
       const body = {
         model: 'wan2.7-r2v',
         input: {
@@ -819,29 +821,29 @@ module.exports = [
       return executeAsyncTaskCtx(ctx, args.apiKey, ASYNC_ENDPOINTS.videoSynthesis, body, (result) => {
         const videoUrl = result.output?.video_url
         ctx.logger.info('[参考生视频] 完成')
-        return { success: true, message: '视频生成完成', data: { videoUrl, requestId: result.request_id } }
-      })
+        return { success: true, message: t('message.videoGenerated', 'Video generated successfully'), data: { videoUrl, requestId: result.request_id } }
+      }, t)
     },
   },
 
   // ─── 10. 万相文生视频 (ASYNC) ─────────────────────────
   {
     name: 'aliyun_text_to_video',
-    label: '万相文生视频',
-    category: '阿里云AI',
+    label: t('action.textToVideo.label', 'Wan Text to Video'),
+    category: t('category', 'Aliyun AI'),
     icon: 'Clapperboard',
-    description: '万相2.7文生视频：基于文字描述生成视频，支持多镜头叙事、自动配音',
+    description: t('action.textToVideo.description', 'Wan 2.7 text-to-video: generate video from text, supports multi-shot narrative and automatic dubbing'),
     properties: [
       API_KEY_PROP,
-      PROMPT_PROP('视频描述', '详细描述视频场景、镜头、角色等'),
-      { key: 'resolution', label: '分辨率', type: 'select', default: '720P', options: [
+      PROMPT_PROP(t('field.prompt.label_video_gen', 'Video Description'), t('field.prompt.tooltip_video_gen', 'Describe the video scene, shots, characters, etc. in detail')),
+      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', default: '720P', options: [
         { label: '720P', value: '720P' },
         { label: '1080P', value: '1080P' },
       ] },
-      { key: 'ratio', label: '宽高比', type: 'select', default: '16:9', options: ASPECT_RATIO },
-      { key: 'duration', label: '视频时长(秒)', type: 'number', default: 5, tooltip: '2-15秒' },
-      { key: 'audioUrl', label: '音频URL', type: 'text', tooltip: '背景音乐/配音音频URL（可选）' },
-      { key: 'promptExtend', label: '智能改写', type: 'select', default: 'true', options: [{ label: '开启 (默认)', value: 'true' }, { label: '关闭', value: 'false' }] },
+      { key: 'ratio', label: t('field.ratio.label', 'Aspect Ratio'), type: 'select', default: '16:9', options: ASPECT_RATIO },
+      { key: 'duration', label: t('field.duration.label_seconds', 'Duration (seconds)'), type: 'number', default: 5, tooltip: t('field.duration.tooltip_v27', '2-15 seconds') },
+      { key: 'audioUrl', label: t('field.audioUrl.label', 'Audio URL'), type: 'text', tooltip: t('field.audioUrl.tooltip_optional', 'Background music/dubbing audio URL (optional)') },
+      { key: 'promptExtend', label: t('field.promptExtend.label', 'Smart Rewrite'), type: 'select', default: 'true', options: [{ label: t('field.promptExtend.option_on', 'Enabled (default)'), value: 'true' }, { label: t('field.promptExtend.option_off', 'Disabled'), value: 'false' }] },
       NEGATIVE_PROMPT_PROP,
       WATERMARK_PROP,
       SEED_PROP,
@@ -882,33 +884,33 @@ module.exports = [
       return executeAsyncTaskCtx(ctx, args.apiKey, ASYNC_ENDPOINTS.videoSynthesis, body, (result) => {
         const videoUrl = result.output?.video_url
         ctx.logger.info('[文生视频] 完成')
-        return { success: true, message: '视频生成完成', data: { videoUrl, requestId: result.request_id } }
-      })
+        return { success: true, message: t('message.videoGenerated', 'Video generated successfully'), data: { videoUrl, requestId: result.request_id } }
+      }, t)
     },
   },
 
   // ─── 11. 万相视频编辑 (ASYNC) ─────────────────────────
   {
     name: 'aliyun_video_editing',
-    label: '万相视频编辑',
-    category: '阿里云AI',
+    label: t('action.videoEditing.label', 'Wan Video Editing'),
+    category: t('category', 'Aliyun AI'),
     icon: 'PenTool',
-    description: '万相2.7视频编辑：支持指令编辑（改风格）和参考图编辑（局部替换）',
+    description: t('action.videoEditing.description', 'Wan 2.7 video editing: supports instruction-based editing (style change) and reference-image editing (local replacement)'),
     properties: [
       API_KEY_PROP,
-      PROMPT_PROP('编辑指令', '如"将画面转换为黏土风格"或"将衣服替换为参考图中的衣服"'),
-      { key: 'videoUrl', label: '视频URL', type: 'text', required: true, tooltip: '待编辑的视频URL(mp4/mov, 2-10秒)' },
-      { key: 'referenceImages', label: '参考图片URL', type: 'textarea', tooltip: '参考图URL数组(可选)，如 ["https://..."]，最多4张' },
-      { key: 'resolution', label: '分辨率', type: 'select', default: '720P', options: [
+      PROMPT_PROP(t('field.prompt.label_edit_video', 'Edit Instruction'), t('field.prompt.tooltip_edit_video', 'E.g. "convert to clay style" or "replace clothes with the reference image"')),
+      { key: 'videoUrl', label: t('field.videoUrl.label', 'Video URL'), type: 'text', required: true, tooltip: t('field.videoUrl.tooltip', 'Video URL to edit (mp4/mov, 2-10 seconds)') },
+      { key: 'referenceImages', label: t('field.referenceImages.label', 'Reference Image URL'), type: 'textarea', tooltip: t('field.referenceImages.tooltip', 'Reference image URL array (optional), e.g. ["https://..."], max 4') },
+      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', default: '720P', options: [
         { label: '720P', value: '720P' },
         { label: '1080P', value: '1080P' },
       ] },
-      { key: 'duration', label: '输出时长(秒)', type: 'number', tooltip: '0=使用原视频时长，2-10秒可截断' },
-      { key: 'audioSetting', label: '声音设置', type: 'select', default: 'auto', options: [
-        { label: '自动 (默认)', value: 'auto' },
-        { label: '保留原声', value: 'origin' },
+      { key: 'duration', label: t('field.duration.label_output', 'Output Duration (seconds)'), type: 'number', tooltip: t('field.duration.tooltip_output', '0=use original duration, 2-10 seconds to truncate') },
+      { key: 'audioSetting', label: t('field.audioSetting.label', 'Audio Setting'), type: 'select', default: 'auto', options: [
+        { label: t('field.audioSetting.option_auto', 'Auto (default)'), value: 'auto' },
+        { label: t('field.audioSetting.option_origin', 'Keep Original'), value: 'origin' },
       ] },
-      { key: 'promptExtend', label: '智能改写', type: 'select', default: 'true', options: [{ label: '开启 (默认)', value: 'true' }, { label: '关闭', value: 'false' }] },
+      { key: 'promptExtend', label: t('field.promptExtend.label', 'Smart Rewrite'), type: 'select', default: 'true', options: [{ label: t('field.promptExtend.option_on', 'Enabled (default)'), value: 'true' }, { label: t('field.promptExtend.option_off', 'Disabled'), value: 'false' }] },
       NEGATIVE_PROMPT_PROP,
       WATERMARK_PROP,
       SEED_PROP,
@@ -930,7 +932,7 @@ module.exports = [
     },
     outputs: VIDEO_OUTPUTS,
     run: async (ctx, args) => {
-      if (!args.videoUrl) throw new Error('缺少视频URL')
+      if (!args.videoUrl) throw new Error(t('message.missingVideoUrl', 'Missing video URL'))
       const media = [{ type: 'video', url: args.videoUrl }]
       if (args.referenceImages) {
         const imgs = Array.isArray(args.referenceImages) ? args.referenceImages : (() => { try { return JSON.parse(args.referenceImages) } catch { return [] } })()
@@ -955,23 +957,23 @@ module.exports = [
       return executeAsyncTaskCtx(ctx, args.apiKey, ASYNC_ENDPOINTS.videoSynthesis, body, (result) => {
         const videoUrl = result.output?.video_url
         ctx.logger.info('[视频编辑] 完成')
-        return { success: true, message: '视频编辑完成', data: { videoUrl, requestId: result.request_id } }
-      })
+        return { success: true, message: t('message.videoEditDone', 'Video editing completed'), data: { videoUrl, requestId: result.request_id } }
+      }, t)
     },
   },
 
   // ─── 12. 万相图生动作 (ASYNC) ──────────────────────────
   {
     name: 'aliyun_animate_move',
-    label: '万相图生动作',
-    category: '阿里云AI',
+    label: t('action.animateMove.label', 'Wan Animate Move'),
+    category: t('category', 'Aliyun AI'),
     icon: 'PersonStanding',
-    description: '万相图生动作：将参考视频的动作/表情迁移到人物图片中',
+    description: t('action.animateMove.description', 'Wan animate move: transfer actions and expressions from a reference video to a person image'),
     properties: [
       API_KEY_PROP,
-      { key: 'imageUrl', label: '人物图片URL', type: 'text', required: true, tooltip: '人物图片URL（正面、单人、清晰）' },
-      { key: 'videoUrl', label: '参考视频URL', type: 'text', required: true, tooltip: '参考动作视频URL（2-30秒）' },
-      { key: 'mode', label: '模式', type: 'select', default: 'wan-std', options: ANIMATE_MOVE_MODES },
+      { key: 'imageUrl', label: t('field.imageUrl.label', 'Image URL'), type: 'text', required: true, tooltip: t('field.imageUrl.tooltip_person', 'Person image URL (front-facing, single person, clear)') },
+      { key: 'videoUrl', label: t('field.videoUrl.label', 'Video URL'), type: 'text', required: true, tooltip: t('field.videoUrl.tooltip_reference', 'Reference action video URL (2-30 seconds)') },
+      { key: 'mode', label: t('field.model.label', 'Model'), type: 'select', default: 'wan-std', options: ANIMATE_MOVE_MODELS },
       WATERMARK_PROP,
     ],
     toolProperties: {
@@ -986,8 +988,8 @@ module.exports = [
     },
     outputs: VIDEO_OUTPUTS,
     run: async (ctx, args) => {
-      if (!args.imageUrl) throw new Error('缺少人物图片URL')
-      if (!args.videoUrl) throw new Error('缺少参考视频URL')
+      if (!args.imageUrl) throw new Error(t('message.missingPersonImageUrl', 'Missing person image URL'))
+      if (!args.videoUrl) throw new Error(t('message.missingReferenceVideoUrl', 'Missing reference video URL'))
       const body = {
         model: 'wan2.2-animate-move',
         input: {
@@ -1000,22 +1002,22 @@ module.exports = [
       return executeAsyncTaskCtx(ctx, args.apiKey, ASYNC_ENDPOINTS.image2video, body, (result) => {
         const videoUrl = result.output?.video_url
         ctx.logger.info('[图生动作] 完成')
-        return { success: true, message: '视频生成完成', data: { videoUrl, requestId: result.request_id } }
-      })
+        return { success: true, message: t('message.videoGenerated', 'Video generated successfully'), data: { videoUrl, requestId: result.request_id } }
+      }, t)
     },
   },
 
   // ─── 13. 声动人像VideoRetalk (ASYNC) ───────────────────
   {
     name: 'aliyun_videoretalk',
-    label: '声动人像',
-    category: '阿里云AI',
+    label: t('action.videoretalk.label', 'VideoRetalk'),
+    category: t('category', 'Aliyun AI'),
     icon: 'Mic',
-    description: '声动人像VideoRetalk：基于人物视频和人声音频生成口型匹配的新视频',
+    description: t('action.videoretalk.description', 'VideoRetalk: generate lip-synced video from a person video and voice audio'),
     properties: [
       API_KEY_PROP,
-      { key: 'videoUrl', label: '人物视频URL', type: 'text', required: true, tooltip: '正面镜头的人物视频URL' },
-      { key: 'audioUrl', label: '人声音频URL', type: 'text', required: true, tooltip: '人声清晰的音频文件URL(wav/mp3)' },
+      { key: 'videoUrl', label: t('field.videoUrl.label', 'Video URL'), type: 'text', required: true, tooltip: t('field.videoUrl.tooltip_person', 'Person video URL (front-facing)') },
+      { key: 'audioUrl', label: t('field.audioUrl.label', 'Audio URL'), type: 'text', required: true, tooltip: t('field.audioUrl.tooltip_voice', 'Clear voice audio file URL (wav/mp3)') },
     ],
     toolProperties: {
       type: 'object',
@@ -1028,8 +1030,8 @@ module.exports = [
     },
     outputs: VIDEO_OUTPUTS,
     run: async (ctx, args) => {
-      if (!args.videoUrl) throw new Error('缺少人物视频URL')
-      if (!args.audioUrl) throw new Error('缺少人声音频URL')
+      if (!args.videoUrl) throw new Error(t('message.missingPersonVideoUrl', 'Missing person video URL'))
+      if (!args.audioUrl) throw new Error(t('message.missingAudioUrl', 'Missing voice audio URL'))
       const body = {
         model: 'videoretalk',
         input: {
@@ -1040,18 +1042,18 @@ module.exports = [
       return executeAsyncTaskCtx(ctx, args.apiKey, ASYNC_ENDPOINTS.image2video, body, (result) => {
         const videoUrl = result.output?.video_url
         ctx.logger.info('[声动人像] 完成')
-        return { success: true, message: '视频生成完成', data: { videoUrl, requestId: result.request_id } }
-      })
+        return { success: true, message: t('message.videoGenerated', 'Video generated successfully'), data: { videoUrl, requestId: result.request_id } }
+      }, t)
     },
   },
 
   // ─── 14. 上传文件到百炼临时存储 ──────────────────────
   {
     name: 'aliyun_upload_file',
-    label: '上传文件(百炼)',
-    category: '阿里云AI',
+    label: t('action.uploadFile.label', 'Upload File (Bailian)'),
+    category: t('category', 'Aliyun AI'),
     icon: 'Upload',
-    description: '上传本地文件到阿里云百炼临时存储空间，获取 oss:// 临时URL（有效期48小时）',
+    description: t('action.uploadFile.description', 'Upload local file to Aliyun Bailian temporary storage and get an oss:// URL (valid for 48 hours)'),
     toolProperties: {
       type: 'object',
       properties: {
@@ -1063,8 +1065,8 @@ module.exports = [
     },
     properties: [
       API_KEY_PROP,
-      { key: 'filePath', label: '本地文件路径', type: 'text', required: true, tooltip: '本地文件的完整路径' },
-      { key: 'model', label: '目标模型', type: 'text', required: true, tooltip: '目标模型名，如 qwen-vl-plus、wan2.7-i2v' },
+      { key: 'filePath', label: t('field.filePath.label', 'Local File Path'), type: 'text', required: true, tooltip: t('field.filePath.tooltip', 'Full local file path') },
+      { key: 'model', label: t('field.model.label_target', 'Target Model'), type: 'text', required: true, tooltip: t('field.model.tooltip_target', 'Target model name, e.g. qwen-vl-plus, wan2.7-i2v') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -1079,7 +1081,7 @@ module.exports = [
     run: async (ctx, args) => {
       const { apiKey, filePath, model } = args
       if (!apiKey || !filePath || !model) {
-        return { success: false, message: '缺少必要参数: apiKey, filePath, model' }
+        return { success: false, message: t('message.missingParams', 'Missing required parameters: apiKey, filePath, model') }
       }
 
       // 1. 获取上传凭证
@@ -1088,7 +1090,7 @@ module.exports = [
       const policyResult = await ctx.api.getJson(policyUrl, { headers: policyHeaders, timeout: 30000 })
 
       if (!policyResult.data) {
-        return { success: false, message: `获取上传凭证失败: ${policyResult.message || JSON.stringify(policyResult)}` }
+        return { success: false, message: t('message.uploadPolicyFailed', 'Failed to get upload policy: {detail}').replace('{detail}', policyResult.message || JSON.stringify(policyResult)) }
       }
 
       const policy = policyResult.data
@@ -1110,7 +1112,7 @@ module.exports = [
       })
 
       if (!uploaded) {
-        return { success: false, message: '文件上传失败' }
+        return { success: false, message: t('message.uploadFailed', 'File upload failed') }
       }
 
       // 3. 拼接临时 URL
@@ -1119,7 +1121,7 @@ module.exports = [
 
       return {
         success: true,
-        message: `文件上传成功，临时URL有效期48小时${maxSizeInfo}`,
+        message: t('message.uploadSuccess', 'File uploaded successfully, temporary URL valid for 48 hours{sizeInfo}').replace('{sizeInfo}', maxSizeInfo),
         data: {
           url: ossUrl,
           fileName,
@@ -1134,14 +1136,14 @@ module.exports = [
   // ─── 15. 录音文件异步转写 (ASYNC) ──────────────────────
   {
     name: 'asr_file_recognition',
-    label: '录音文件转写',
-    category: '语音识别',
+    label: t('action.asrFileRecognition.label', 'Audio File Transcription'),
+    category: t('category_asr', 'Speech Recognition'),
     icon: 'FileAudio',
-    description: '提交音频/视频文件URL进行异步语音识别，支持 FunASR/Paraformer/Qwen 等多种模型，自动轮询获取转写结果',
+    description: t('action.asrFileRecognition.description', 'Submit audio/video file URL for async speech recognition, supports FunASR/Paraformer/Qwen models, auto-polls for results'),
     properties: [
-      { key: 'apiKey', label: 'API Key', type: 'text', required: true, tooltip: '阿里云百炼 DashScope API Key', default: `${CONFIG_PREFIX}["apiKey"]}}` },
-      { key: 'baseUrl', label: 'API 地址', type: 'text', default: '{{ __config__["workflow.aliyun-ai"]["baseUrl"] || "https://dashscope.aliyuncs.com" }}', tooltip: 'DashScope API 基础地址' },
-      { key: 'model', label: '识别模型', type: 'select', default: 'paraformer-v2', options: [
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, tooltip: t('config.apiKey.asr.tooltip', 'Aliyun Bailian DashScope API Key'), default: `${CONFIG_PREFIX}["apiKey"]}}` },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: '{{ __config__["workflow.aliyun-ai"]["baseUrl"] || "https://dashscope.aliyuncs.com" }}', tooltip: t('config.baseUrl.tooltip', 'DashScope API base URL') },
+      { key: 'model', label: t('field.model.label_asr', 'Recognition Model'), type: 'select', default: 'paraformer-v2', options: [
         { label: 'paraformer-v2 (推荐多语种)', value: 'paraformer-v2' },
         { label: 'paraformer-8k-v2 (8kHz电话)', value: 'paraformer-8k-v2' },
         { label: 'paraformer-v1 (中英文)', value: 'paraformer-v1' },
@@ -1149,12 +1151,12 @@ module.exports = [
         { label: 'paraformer-mtl-v1 (多语种)', value: 'paraformer-mtl-v1' },
         { label: 'fun-asr (中英文)', value: 'fun-asr' },
         { label: 'qwen3-asr-flash-filetrans (千问长音频)', value: 'qwen3-asr-flash-filetrans' },
-      ], tooltip: '不同模型支持的语种和采样率不同' },
-      { key: 'fileUrls', label: '音频文件URL', type: 'textarea', required: true, tooltip: 'FunASR/Paraformer: URL数组，如 ["https://...mp3"]，最多100个' },
-      { key: 'fileUrl', label: '音频文件URL(Qwen)', type: 'text', tooltip: '仅 Qwen-Filetrans: 单个音频文件URL' },
-      { key: 'languageHints', label: '语言提示', type: 'text', tooltip: 'Paraformer-v2 语言代码数组，如 ["zh","en"]' },
-      { key: 'language', label: '语言(Qwen)', type: 'select', default: '', options: [
-        { label: '自动检测', value: '' },
+      ], tooltip: t('field.model.tooltip_asr', 'Supported languages and sample rates vary by model') },
+      { key: 'fileUrls', label: t('field.fileUrls.label', 'Audio File URL'), type: 'textarea', required: true, tooltip: t('field.fileUrls.tooltip', 'FunASR/Paraformer: URL array, e.g. ["https://...mp3"], max 100') },
+      { key: 'fileUrl', label: t('field.fileUrl.label_qwen', 'Audio File URL (Qwen)'), type: 'text', tooltip: t('field.fileUrl.tooltip_qwen', 'Qwen-Filetrans only: single audio file URL') },
+      { key: 'languageHints', label: t('field.languageHints.label', 'Language Hints'), type: 'text', tooltip: t('field.languageHints.tooltip', 'Paraformer-v2 language code array, e.g. ["zh","en"]') },
+      { key: 'language', label: t('field.language.label_qwen', 'Language (Qwen)'), type: 'select', default: '', options: [
+        { label: t('field.language.option_auto', 'Auto Detect'), value: '' },
         { label: 'zh 中文', value: 'zh' },
         { label: 'en 英文', value: 'en' },
         { label: 'ja 日语', value: 'ja' },
@@ -1163,11 +1165,11 @@ module.exports = [
         { label: 'de 德语', value: 'de' },
         { label: 'fr 法语', value: 'fr' },
         { label: 'ru 俄语', value: 'ru' },
-      ], tooltip: 'Qwen-Filetrans 指定语种' },
-      { key: 'diarizationEnabled', label: '说话人分离', type: 'boolean', default: false, tooltip: '开启后识别结果中会区分不同说话人' },
-      { key: 'speakerCount', label: '说话人数量', type: 'number', tooltip: '说话人数量参考值(2-100)，需先开启说话人分离' },
-      { key: 'channelId', label: '音轨索引', type: 'text', tooltip: '指定音轨，如 [0] 或 [0,1]' },
-      { key: 'enableItn', label: '逆文本标准化', type: 'boolean', default: false, tooltip: 'Qwen-Filetrans: 是否启用 ITN' },
+      ], tooltip: t('field.language.tooltip_qwen', 'Qwen-Filetrans specified language') },
+      { key: 'diarizationEnabled', label: t('field.diarizationEnabled.label', 'Speaker Diarization'), type: 'boolean', default: false, tooltip: t('field.diarizationEnabled.tooltip', 'When enabled, different speakers will be distinguished in results') },
+      { key: 'speakerCount', label: t('field.speakerCount.label', 'Speaker Count'), type: 'number', tooltip: t('field.speakerCount.tooltip', 'Estimated speaker count (2-100), requires speaker diarization enabled first') },
+      { key: 'channelId', label: t('field.channelId.label', 'Channel Index'), type: 'text', tooltip: t('field.channelId.tooltip', 'Specify channel, e.g. [0] or [0,1]') },
+      { key: 'enableItn', label: t('field.enableItn.label', 'Inverse Text Normalization'), type: 'boolean', default: false, tooltip: t('field.enableItn.tooltip_qwen', 'Qwen-Filetrans: enable ITN') },
     ],
     toolProperties: {
       type: 'object',
@@ -1209,7 +1211,7 @@ module.exports = [
 
       if (isQwenFiletrans) {
         const fileUrl = args.fileUrl
-        if (!fileUrl) throw new Error('Qwen-Filetrans 模型需要提供 fileUrl（单个音频文件URL）')
+        if (!fileUrl) throw new Error(t('message.asrQwenNeedFileUrl', 'Qwen-Filetrans model requires fileUrl (single audio file URL)'))
         body.input = { file_url: fileUrl }
         body.parameters = {}
         if (args.channelId) body.parameters.channel_id = parseArray(args.channelId)
@@ -1217,7 +1219,7 @@ module.exports = [
         if (args.enableItn !== undefined) body.parameters.enable_itn = args.enableItn
       } else {
         const fileUrls = parseArray(args.fileUrls)
-        if (fileUrls.length === 0) throw new Error('需要提供 fileUrls（音频文件URL数组）')
+        if (fileUrls.length === 0) throw new Error(t('message.asrNeedFileUrls', 'fileUrls is required (audio file URL array)'))
         body.input = { file_urls: fileUrls }
         body.parameters = {}
         if (args.channelId) body.parameters.channel_id = parseArray(args.channelId)
@@ -1236,11 +1238,11 @@ module.exports = [
       const createResult = await ctx.api.postJson(submitEndpoint, { headers, body, timeout: 600000 })
 
       if (createResult.code || createResult.message) {
-        throw new Error(`创建任务失败: ${createResult.code} - ${createResult.message}`)
+        throw new Error(t('message.asrCreateFailed', 'Failed to create task: {code} - {message}').replace('{code}', createResult.code || '').replace('{message}', createResult.message || ''))
       }
 
       const taskId = createResult.output?.task_id
-      if (!taskId) throw new Error('创建任务成功但未获取到 task_id')
+      if (!taskId) throw new Error(t('message.asrNoTaskId', 'Task created but no task_id returned'))
 
       ctx.logger.info(`[ASR] 任务已提交: task_id=${taskId}，开始轮询...`)
 
@@ -1257,32 +1259,32 @@ module.exports = [
         ctx.logger.info(`[ASR] 任务 ${taskId} 状态: ${status}`)
 
         if (status === 'SUCCEEDED') {
-          return fetchAsrTranscriptionContent(ctx, pollResult)
+          return fetchAsrTranscriptionContent(ctx, pollResult, t)
         }
         if (status === 'FAILED') {
-          throw new Error(`任务失败: ${pollResult.output?.code || ''} - ${pollResult.output?.message || '未知错误'}`)
+          throw new Error(t('message.asrTaskFailed', 'Task failed: {code} - {message}').replace('{code}', pollResult.output?.code || '').replace('{message}', pollResult.output?.message || ''))
         }
         if (status === 'UNKNOWN' || status === 'CANCELED') {
-          throw new Error(`任务异常: ${status}`)
+          throw new Error(t('message.asrTaskAbnormal', 'Task abnormal: {status}').replace('{status}', status))
         }
       }
-      throw new Error('轮询超时（已等待 10 分钟）')
+      throw new Error(t('message.asrPollTimeout', 'Polling timed out (waited 10 minutes)'))
     },
   },
 
   // ─── 16. 千问实时语音识别 (SYNC) ──────────────────────
   {
     name: 'asr_qwen_flash',
-    label: '千问实时语音识别',
-    category: '语音识别',
+    label: t('action.asrQwenFlash.label', 'Qwen Real-time ASR'),
+    category: t('category_asr', 'Speech Recognition'),
     icon: 'AudioLines',
-    description: '千问 Qwen-ASR 实时语音识别（同步模式），适用于短音频快速转写，支持语种检测和情感分析',
+    description: t('action.asrQwenFlash.description', 'Qwen-ASR real-time speech recognition (synchronous), for short audio transcription with language detection and emotion analysis'),
     properties: [
-      { key: 'apiKey', label: 'API Key', type: 'text', required: true, tooltip: '阿里云百炼 DashScope API Key', default: `${CONFIG_PREFIX}["apiKey"]}}` },
-      { key: 'baseUrl', label: 'API 地址', type: 'text', default: '{{ __config__["workflow.aliyun-ai"]["baseUrl"] || "https://dashscope.aliyuncs.com" }}', tooltip: 'DashScope API 基础地址' },
-      { key: 'audio', label: '音频内容', type: 'textarea', required: true, tooltip: '公网可访问的音频URL，或 Base64 Data URI（data:audio/wav;base64,...）' },
-      { key: 'language', label: '语言', type: 'select', default: '', options: [
-        { label: '自动检测', value: '' },
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, tooltip: t('config.apiKey.asr.tooltip', 'Aliyun Bailian DashScope API Key'), default: `${CONFIG_PREFIX}["apiKey"]}}` },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: '{{ __config__["workflow.aliyun-ai"]["baseUrl"] || "https://dashscope.aliyuncs.com" }}', tooltip: t('config.baseUrl.tooltip', 'DashScope API base URL') },
+      { key: 'audio', label: t('field.audio.label', 'Audio Content'), type: 'textarea', required: true, tooltip: t('field.audio.tooltip', 'Public audio URL or Base64 Data URI (data:audio/wav;base64,...)') },
+      { key: 'language', label: t('field.language.label_asr_flash', 'Language'), type: 'select', default: '', options: [
+        { label: t('field.language.option_auto', 'Auto Detect'), value: '' },
         { label: 'zh 中文', value: 'zh' },
         { label: 'en 英文', value: 'en' },
         { label: 'ja 日语', value: 'ja' },
@@ -1290,8 +1292,8 @@ module.exports = [
         { label: 'de 德语', value: 'de' },
         { label: 'fr 法语', value: 'fr' },
         { label: 'ru 俄语', value: 'ru' },
-      ], tooltip: '指定语种可提升准确率，不指定则自动检测' },
-      { key: 'enableItn', label: '逆文本标准化', type: 'boolean', default: false, tooltip: '仅支持中文和英文' },
+      ], tooltip: t('field.language.tooltip_asr_flash', 'Specifying language improves accuracy. Auto-detected if not specified.') },
+      { key: 'enableItn', label: t('field.enableItn.label', 'Inverse Text Normalization'), type: 'boolean', default: false, tooltip: t('field.enableItn.tooltip', 'Only supports Chinese and English') },
     ],
     toolProperties: {
       type: 'object',
@@ -1317,7 +1319,7 @@ module.exports = [
     run: async (ctx, args) => {
       const baseUrl = (args.baseUrl || 'https://dashscope.aliyuncs.com').replace(/\/$/, '')
       const apiKey = args.apiKey
-      if (!args.audio) throw new Error('需要提供 audio（音频URL或Base64编码）')
+      if (!args.audio) throw new Error(t('message.asrNeedAudio', 'audio is required (audio URL or Base64 encoding)'))
 
       const headers = {
         'Content-Type': 'application/json',
@@ -1350,7 +1352,7 @@ module.exports = [
       const result = await ctx.api.postJson(syncEndpoint, { headers, body, timeout: 120000 })
 
       if (result.error) {
-        throw new Error(`识别失败: ${result.error.message || JSON.stringify(result.error)}`)
+        throw new Error(t('message.asrFlashFailed', 'Recognition failed: {error}').replace('{error}', result.error.message || JSON.stringify(result.error)))
       }
 
       const text = result.choices?.[0]?.message?.content || ''
@@ -1362,7 +1364,7 @@ module.exports = [
 
       return {
         success: true,
-        message: text ? '识别完成' : '识别完成但无内容',
+        message: text ? t('message.asrFlashDone', 'Recognition completed') : t('message.asrFlashDoneNoContent', 'Recognition completed but no content'),
         data: {
           text,
           language: audioInfo.language || '',
@@ -1373,4 +1375,5 @@ module.exports = [
       }
     },
   },
-]
+  ]
+}

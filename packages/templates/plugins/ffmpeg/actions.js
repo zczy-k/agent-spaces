@@ -20,17 +20,17 @@ function runCommand(cmd, outputPath, ctx) {
   })
 }
 
-module.exports = [
+module.exports = (t) => [
   {
     name: 'ffmpeg_format_convert',
-    label: '格式转换',
-    category: 'FFmpeg',
+    label: t('action.formatConvert.label', 'Format Convert'),
+    category: t('category', 'FFmpeg'),
     icon: 'FileVideo',
-    description: '音视频格式转换，支持常见音视频格式互转',
+    description: t('action.formatConvert.description', 'Convert audio/video formats. Supports common format conversions.'),
     tool: false,
     properties: [
-      { key: 'inputPath', label: '输入文件路径', type: 'text', required: true, tooltip: '输入文件的绝对路径' },
-      { key: 'outputFormat', label: '输出格式', type: 'select', required: true, default: 'mp4', options: [
+      { key: 'inputPath', label: t('field.inputPath.label', 'Input File Path'), type: 'text', required: true, tooltip: t('field.inputPath.tooltip', 'Absolute path of the input file.') },
+      { key: 'outputFormat', label: t('field.outputFormat.label', 'Output Format'), type: 'select', required: true, default: 'mp4', options: [
         { label: 'MP4', value: 'mp4' },
         { label: 'AVI', value: 'avi' },
         { label: 'MKV', value: 'mkv' },
@@ -44,24 +44,24 @@ module.exports = [
         { label: 'FLAC', value: 'flac' },
         { label: 'OGG', value: 'ogg' },
       ] },
-      { key: 'videoCodec', label: '视频编码器', type: 'select', options: [
-        { label: '自动', value: '' },
+      { key: 'videoCodec', label: t('field.videoCodec.label', 'Video Codec'), type: 'select', options: [
+        { label: t('field.codecAuto', 'Auto'), value: '' },
         { label: 'H.264', value: 'libx264' },
         { label: 'H.265', value: 'libx265' },
         { label: 'VP9', value: 'libvpx-vp9' },
         { label: 'AV1', value: 'libaom-av1' },
         { label: 'MPEG-4', value: 'mpeg4' },
       ] },
-      { key: 'audioCodec', label: '音频编码器', type: 'select', options: [
-        { label: '自动', value: '' },
+      { key: 'audioCodec', label: t('field.audioCodec.label', 'Audio Codec'), type: 'select', options: [
+        { label: t('field.codecAuto', 'Auto'), value: '' },
         { label: 'AAC', value: 'aac' },
         { label: 'MP3', value: 'libmp3lame' },
         { label: 'FLAC', value: 'flac' },
         { label: 'Vorbis', value: 'libvorbis' },
         { label: 'Opus', value: 'libopus' },
       ] },
-      { key: 'outputPath', label: '输出文件路径', type: 'text', tooltip: '留空则自动生成（同目录，换扩展名）' },
-      { key: 'ffmpegPath', label: 'FFmpeg路径', type: 'text', default: '{{ __config__["workflow.ffmpeg"]["ffmpegPath"] }}', tooltip: '留空使用系统PATH' },
+      { key: 'outputPath', label: t('field.outputPath.label', 'Output File Path'), type: 'text', tooltip: t('field.outputPathAuto.tooltip', 'Leave empty to auto-generate (same directory, new extension).') },
+      { key: 'ffmpegPath', label: t('field.ffmpegPath.label', 'FFmpeg Path'), type: 'text', default: '{{ __config__["workflow.ffmpeg"]["ffmpegPath"] }}', tooltip: t('field.ffmpegPath.tooltip', 'Leave empty to use system PATH.') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -73,7 +73,7 @@ module.exports = [
     run: async (ctx, args) => {
       const inputPath = args.inputPath
       if (!fs.existsSync(inputPath)) {
-        return { success: false, message: `输入文件不存在: ${inputPath}` }
+        return { success: false, message: t('message.inputFileNotFound', 'Input file not found: {path}').replace('{path}', inputPath) }
       }
       setFfmpegPath(args.ffmpegPath)
 
@@ -90,36 +90,36 @@ module.exports = [
 
       try {
         await runCommand(cmd, outputPath, ctx)
-        return { success: true, message: '格式转换完成', data: { outputPath } }
+        return { success: true, message: t('message.formatConvertDone', 'Format conversion completed.'), data: { outputPath } }
       } catch (err) {
-        return { success: false, message: `转换失败: ${err.message}` }
+        return { success: false, message: t('message.formatConvertFailed', 'Conversion failed: {error}').replace('{error}', err.message) }
       }
     },
   },
   {
     name: 'ffmpeg_merge',
-    label: '音视频合并',
-    category: 'FFmpeg',
+    label: t('action.merge.label', 'Merge Audio & Video'),
+    category: t('category', 'FFmpeg'),
     icon: 'Combine',
-    description: '将独立的音频和视频文件合并为一个文件',
+    description: t('action.merge.description', 'Merge separate audio and video files into one.'),
     tool: false,
     properties: [
-      { key: 'videoPath', label: '视频文件路径', type: 'text', required: true, tooltip: '视频文件的绝对路径' },
-      { key: 'audioPath', label: '音频文件路径', type: 'text', required: true, tooltip: '音频文件的绝对路径' },
-      { key: 'outputPath', label: '输出文件路径', type: 'text', required: true, tooltip: '合并后输出路径' },
-      { key: 'reEncode', label: '重新编码', type: 'boolean', default: false, tooltip: '关闭则直接拷贝流（速度更快，但格式必须兼容）' },
-      { key: 'videoCodec', label: '视频编码器', type: 'select', options: [
+      { key: 'videoPath', label: t('field.videoPath.label', 'Video File Path'), type: 'text', required: true, tooltip: t('field.videoPath.tooltip', 'Absolute path of the video file.') },
+      { key: 'audioPath', label: t('field.audioPath.label', 'Audio File Path'), type: 'text', required: true, tooltip: t('field.audioPath.tooltip', 'Absolute path of the audio file.') },
+      { key: 'outputPath', label: t('field.outputPath.label', 'Output File Path'), type: 'text', required: true, tooltip: t('field.outputPathRequired.tooltip', 'Output path for the merged file.') },
+      { key: 'reEncode', label: t('field.reEncode.label', 'Re-encode'), type: 'boolean', default: false, tooltip: t('field.reEncode.tooltip', 'Disable to copy streams directly (faster, but formats must be compatible).') },
+      { key: 'videoCodec', label: t('field.videoCodec.label', 'Video Codec'), type: 'select', options: [
         { label: 'H.264', value: 'libx264' },
         { label: 'H.265', value: 'libx265' },
         { label: 'VP9', value: 'libvpx-vp9' },
       ] },
-      { key: 'audioCodec', label: '音频编码器', type: 'select', options: [
+      { key: 'audioCodec', label: t('field.audioCodec.label', 'Audio Codec'), type: 'select', options: [
         { label: 'AAC', value: 'aac' },
         { label: 'MP3', value: 'libmp3lame' },
         { label: 'Opus', value: 'libopus' },
       ] },
-      { key: 'shortest', label: '以最短流为准', type: 'boolean', default: true, tooltip: '音视频长度不同时，以较短者为准截断' },
-      { key: 'ffmpegPath', label: 'FFmpeg路径', type: 'text', default: '{{ __config__["workflow.ffmpeg"]["ffmpegPath"] }}', tooltip: '留空使用系统PATH' },
+      { key: 'shortest', label: t('field.shortest.label', 'Use Shortest Stream'), type: 'boolean', default: true, tooltip: t('field.shortest.tooltip', 'When audio/video lengths differ, truncate to the shorter one.') },
+      { key: 'ffmpegPath', label: t('field.ffmpegPath.label', 'FFmpeg Path'), type: 'text', default: '{{ __config__["workflow.ffmpeg"]["ffmpegPath"] }}', tooltip: t('field.ffmpegPath.tooltip', 'Leave empty to use system PATH.') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -130,10 +130,10 @@ module.exports = [
     ],
     run: async (ctx, args) => {
       if (!fs.existsSync(args.videoPath)) {
-        return { success: false, message: `视频文件不存在: ${args.videoPath}` }
+        return { success: false, message: t('message.videoFileNotFound', 'Video file not found: {path}').replace('{path}', args.videoPath) }
       }
       if (!fs.existsSync(args.audioPath)) {
-        return { success: false, message: `音频文件不存在: ${args.audioPath}` }
+        return { success: false, message: t('message.audioFileNotFound', 'Audio file not found: {path}').replace('{path}', args.audioPath) }
       }
       setFfmpegPath(args.ffmpegPath)
 
@@ -156,36 +156,36 @@ module.exports = [
 
       try {
         await runCommand(cmd, args.outputPath, ctx)
-        return { success: true, message: '音视频合并完成', data: { outputPath: args.outputPath } }
+        return { success: true, message: t('message.mergeDone', 'Audio/video merge completed.'), data: { outputPath: args.outputPath } }
       } catch (err) {
-        return { success: false, message: `合并失败: ${err.message}` }
+        return { success: false, message: t('message.mergeFailed', 'Merge failed: {error}').replace('{error}', err.message) }
       }
     },
   },
   {
     name: 'ffmpeg_demux',
-    label: '音视频分离',
-    category: 'FFmpeg',
+    label: t('action.demux.label', 'Demux Audio/Video'),
+    category: t('category', 'FFmpeg'),
     icon: 'Split',
-    description: '从视频中提取音频轨道或去除音频轨道',
+    description: t('action.demux.description', 'Extract audio track from video or remove audio track.'),
     tool: false,
     properties: [
-      { key: 'inputPath', label: '输入文件路径', type: 'text', required: true, tooltip: '输入音视频文件的绝对路径' },
-      { key: 'mode', label: '分离模式', type: 'select', required: true, default: 'extract_audio', options: [
-        { label: '提取音频', value: 'extract_audio' },
-        { label: '去除音频（保留纯视频）', value: 'extract_video' },
-        { label: '同时提取音频和视频', value: 'extract_both' },
+      { key: 'inputPath', label: t('field.inputPath.label', 'Input File Path'), type: 'text', required: true, tooltip: t('field.inputPath.tooltip', 'Absolute path of the input file.') },
+      { key: 'mode', label: t('field.mode.label', 'Demux Mode'), type: 'select', required: true, default: 'extract_audio', options: [
+        { label: t('field.modeOption.extractAudio', 'Extract Audio'), value: 'extract_audio' },
+        { label: t('field.modeOption.extractVideo', 'Remove Audio (Video Only)'), value: 'extract_video' },
+        { label: t('field.modeOption.extractBoth', 'Extract Both Audio and Video'), value: 'extract_both' },
       ] },
-      { key: 'audioFormat', label: '音频格式', type: 'select', default: 'mp3', options: [
+      { key: 'audioFormat', label: t('field.audioFormat.label', 'Audio Format'), type: 'select', default: 'mp3', options: [
         { label: 'MP3', value: 'mp3' },
         { label: 'WAV', value: 'wav' },
         { label: 'AAC', value: 'aac' },
         { label: 'FLAC', value: 'flac' },
         { label: 'OGG', value: 'ogg' },
       ] },
-      { key: 'audioOutputPath', label: '音频输出路径', type: 'text', tooltip: '留空自动生成' },
-      { key: 'videoOutputPath', label: '视频输出路径', type: 'text', tooltip: '留空自动生成' },
-      { key: 'ffmpegPath', label: 'FFmpeg路径', type: 'text', default: '{{ __config__["workflow.ffmpeg"]["ffmpegPath"] }}', tooltip: '留空使用系统PATH' },
+      { key: 'audioOutputPath', label: t('field.audioOutputPath.label', 'Audio Output Path'), type: 'text', tooltip: t('field.audioOutputPath.tooltip', 'Leave empty to auto-generate.') },
+      { key: 'videoOutputPath', label: t('field.videoOutputPath.label', 'Video Output Path'), type: 'text', tooltip: t('field.videoOutputPath.tooltip', 'Leave empty to auto-generate.') },
+      { key: 'ffmpegPath', label: t('field.ffmpegPath.label', 'FFmpeg Path'), type: 'text', default: '{{ __config__["workflow.ffmpeg"]["ffmpegPath"] }}', tooltip: t('field.ffmpegPath.tooltip', 'Leave empty to use system PATH.') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -197,7 +197,7 @@ module.exports = [
     ],
     run: async (ctx, args) => {
       if (!fs.existsSync(args.inputPath)) {
-        return { success: false, message: `输入文件不存在: ${args.inputPath}` }
+        return { success: false, message: t('message.inputFileNotFound', 'Input file not found: {path}').replace('{path}', args.inputPath) }
       }
       setFfmpegPath(args.ffmpegPath)
 
@@ -232,14 +232,14 @@ module.exports = [
         await Promise.all(tasks)
         return {
           success: true,
-          message: '音视频分离完成',
+          message: t('message.demuxDone', 'Audio/video demux completed.'),
           data: {
             audioPath: (mode === 'extract_audio' || mode === 'extract_both') ? audioOut : '',
             videoPath: (mode === 'extract_video' || mode === 'extract_both') ? videoOut : '',
           },
         }
       } catch (err) {
-        return { success: false, message: `分离失败: ${err.message}` }
+        return { success: false, message: t('message.demuxFailed', 'Demux failed: {error}').replace('{error}', err.message) }
       }
     },
   },

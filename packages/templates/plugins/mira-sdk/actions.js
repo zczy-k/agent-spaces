@@ -1,0 +1,679 @@
+const { getClient, resetClient } = require('./shared')
+
+const CONFIG_PREFIX = '{{ __config__["workflow.mira-sdk"]'
+
+const commonOutputs = [
+  { key: 'success', type: 'boolean' },
+  { key: 'message', type: 'string' },
+]
+
+function createConfigProperties(t) {
+  return [
+    { key: 'baseUrl', label: 'Server URL', type: 'text', required: true, default: `${CONFIG_PREFIX}["baseUrl"]}}` },
+    { key: 'username', label: 'Username', type: 'text', default: `${CONFIG_PREFIX}["username"]}}` },
+    { key: 'password', label: 'Password', type: 'text', default: `${CONFIG_PREFIX}["password"]}}` },
+    { key: 'token', label: 'Token', type: 'text', default: `${CONFIG_PREFIX}["token"]}}` },
+    { key: 'timeout', label: 'Timeout (ms)', type: 'number', default: `${CONFIG_PREFIX}["timeout"]}}` },
+  ]
+}
+
+module.exports = (t) => {
+  const configProperties = createConfigProperties(t)
+
+  return [
+    // ─── 1. 系统健康检查 ────────────────────────────────────
+    {
+      name: 'mira_system_health',
+      label: t('action.health.label', 'System Health Check'),
+      category: t('category', 'Mira SDK'),
+      icon: 'Heart',
+      description: t('action.health.description', 'Check Mira server health status.'),
+      properties: [],
+      configProperties,
+      outputs: [
+        ...commonOutputs,
+        { key: 'data', type: 'object', children: [
+          { key: 'status', type: 'string' },
+          { key: 'uptime', type: 'number' },
+        ] },
+      ],
+      run: async (ctx, args) => {
+        const client = await getClient(args)
+        ctx.logger.info('Checking system health')
+        const health = await client.system().getHealth()
+        return { success: true, message: t('message.healthOk', 'Server is healthy'), data: health }
+      },
+    },
+
+    // ─── 2. 等待服务器就绪 ──────────────────────────────────
+    {
+      name: 'mira_system_wait_ready',
+      label: t('action.waitReady.label', 'Wait Server Ready'),
+      category: t('category', 'Mira SDK'),
+      icon: 'Loader',
+      description: t('action.waitReady.description', 'Wait until Mira server is ready.'),
+      properties: [
+        { key: 'timeout', label: 'Timeout (ms)', type: 'number', default: 30000, tooltip: t('field.timeout.tooltip', 'Max wait time in milliseconds.') },
+        { key: 'interval', label: 'Check Interval (ms)', type: 'number', default: 1000, tooltip: t('field.interval.tooltip', 'Check interval in milliseconds.') },
+      ],
+      configProperties,
+      outputs: commonOutputs,
+      run: async (ctx, args) => {
+        const client = await getClient(args)
+        const timeout = args.timeout || 30000
+        const interval = args.interval || 1000
+        ctx.logger.info(`Waiting for server ready: timeout=${timeout}ms, interval=${interval}ms`)
+        const ready = await client.system().waitForServer(timeout, interval)
+        return { success: ready, message: ready ? t('message.serverReady', 'Server is ready') : t('message.serverNotReady', 'Server not ready within timeout') }
+      },
+    },
+
+    // ─── 3. 获取系统信息 ────────────────────────────────────
+    {
+      name: 'mira_system_info',
+      label: t('action.systemInfo.label', 'System Info'),
+      category: t('category', 'Mira SDK'),
+      icon: 'Info',
+      description: t('action.systemInfo.description', 'Get Mira server system information.'),
+      properties: [],
+      configProperties,
+      outputs: [
+        ...commonOutputs,
+        { key: 'data', type: 'object', children: [] },
+      ],
+      run: async (ctx, args) => {
+        const client = await getClient(args)
+        ctx.logger.info('Fetching system info')
+        const info = await client.system().getSystemInfo()
+        return { success: true, message: t('message.infoFetched', 'System info fetched'), data: info }
+      },
+    },
+
+    // ─── 4. 用户登录 ────────────────────────────────────────
+    {
+      name: 'mira_auth_login',
+      label: t('action.login.label', 'Login'),
+      category: t('category', 'Mira SDK'),
+      icon: 'LogIn',
+      description: t('action.login.description', 'Login to Mira server with username and password.'),
+      properties: [
+        { key: 'username', label: 'Username', type: 'text', required: true },
+        { key: 'password', label: 'Password', type: 'text', required: true },
+      ],
+      configProperties,
+      outputs: commonOutputs,
+      run: async (ctx, args) => {
+        if (!args.username || !args.password) {
+          return { success: false, message: t('message.needCredentials', 'Username and password required.') }
+        }
+        resetClient()
+        const client = await getClient(args)
+        ctx.logger.info(`Logging in: ${args.username}`)
+        await client.auth().login(args.username, args.password)
+        return { success: true, message: t('message.loginOk', 'Login succeeded') }
+      },
+    },
+
+    // ─── 5. 获取用户信息 ────────────────────────────────────
+    {
+      name: 'mira_user_info',
+      label: t('action.userInfo.label', 'Get User Info'),
+      category: t('category', 'Mira SDK'),
+      icon: 'User',
+      description: t('action.userInfo.description', 'Get current logged-in user information.'),
+      properties: [],
+      configProperties,
+      outputs: [
+        ...commonOutputs,
+        { key: 'data', type: 'object', children: [
+          { key: 'id', type: 'number' },
+          { key: 'username', type: 'string' },
+        ] },
+      ],
+      run: async (ctx, args) => {
+        const client = await getClient(args)
+        ctx.logger.info('Fetching user info')
+        const info = await client.user().getInfo()
+        return { success: true, message: t('message.userInfoOk', 'User info fetched'), data: info }
+      },
+    },
+
+    // ─── 6. 获取所有素材库 ──────────────────────────────────
+    {
+      name: 'mira_libraries_list',
+      label: t('action.librariesList.label', 'List Libraries'),
+      category: t('category', 'Mira SDK'),
+      icon: 'Library',
+      description: t('action.librariesList.description', 'Get all material libraries.'),
+      properties: [],
+      configProperties,
+      outputs: [
+        ...commonOutputs,
+        { key: 'data', type: 'object', children: [
+          { key: 'libraries', type: 'object', children: [] },
+        ] },
+      ],
+      run: async (ctx, args) => {
+        const client = await getClient(args)
+        ctx.logger.info('Fetching libraries')
+        const libraries = await client.libraries().getAll()
+        return { success: true, message: t('message.librariesCount', 'Found {count} libraries').replace('{count}', String(Array.isArray(libraries) ? libraries.length : 0)), data: { libraries } }
+      },
+    },
+
+    // ─── 7. 创建本地素材库 ──────────────────────────────────
+    {
+      name: 'mira_library_create_local',
+      label: t('action.createLocalLib.label', 'Create Local Library'),
+      category: t('category', 'Mira SDK'),
+      icon: 'FolderPlus',
+      description: t('action.createLocalLib.description', 'Create a local material library.'),
+      properties: [
+        { key: 'name', label: 'Name', type: 'text', required: true, tooltip: t('field.libName.tooltip', 'Library name.') },
+        { key: 'path', label: 'Path', type: 'text', required: true, tooltip: t('field.libPath.tooltip', 'Local directory path.') },
+        { key: 'description', label: 'Description', type: 'text', tooltip: t('field.libDesc.tooltip', 'Library description.') },
+      ],
+      configProperties,
+      outputs: commonOutputs,
+      run: async (ctx, args) => {
+        if (!args.name || !args.path) {
+          return { success: false, message: t('message.needNameAndPath', 'Name and path required.') }
+        }
+        const client = await getClient(args)
+        ctx.logger.info(`Creating local library: ${args.name}`)
+        await client.libraries().createLocal(args.name, args.path, args.description || '')
+        return { success: true, message: t('message.libCreated', 'Library created: {name}').replace('{name}', args.name) }
+      },
+    },
+
+    // ─── 8. 创建远程素材库 ──────────────────────────────────
+    {
+      name: 'mira_library_create_remote',
+      label: t('action.createRemoteLib.label', 'Create Remote Library'),
+      category: t('category', 'Mira SDK'),
+      icon: 'Globe',
+      description: t('action.createRemoteLib.description', 'Create a remote material library.'),
+      properties: [
+        { key: 'name', label: 'Name', type: 'text', required: true },
+        { key: 'path', label: 'Path', type: 'text', required: true, tooltip: t('field.libPath.tooltip', 'Remote path.') },
+        { key: 'host', label: 'Host', type: 'text', required: true, tooltip: t('field.libHost.tooltip', 'Remote server host.') },
+        { key: 'port', label: 'Port', type: 'number', default: 8080 },
+        { key: 'description', label: 'Description', type: 'text' },
+      ],
+      configProperties,
+      outputs: commonOutputs,
+      run: async (ctx, args) => {
+        if (!args.name || !args.path || !args.host) {
+          return { success: false, message: t('message.needNamePathHost', 'Name, path, and host required.') }
+        }
+        const client = await getClient(args)
+        ctx.logger.info(`Creating remote library: ${args.name}`)
+        await client.libraries().createRemote(args.name, args.path, args.host, args.port || 8080, args.description || '')
+        return { success: true, message: t('message.libCreated', 'Library created: {name}').replace('{name}', args.name) }
+      },
+    },
+
+    // ─── 9. 启动/停止/重启素材库 ────────────────────────────
+    {
+      name: 'mira_library_start',
+      label: t('action.libStart.label', 'Start Library'),
+      category: t('category', 'Mira SDK'),
+      icon: 'Play',
+      description: t('action.libStart.description', 'Start a material library.'),
+      properties: [
+        { key: 'libraryId', label: 'Library ID', type: 'text', required: true },
+      ],
+      configProperties,
+      outputs: commonOutputs,
+      run: async (ctx, args) => {
+        if (!args.libraryId) return { success: false, message: t('message.needLibraryId', 'Library ID required.') }
+        const client = await getClient(args)
+        ctx.logger.info(`Starting library: ${args.libraryId}`)
+        await client.libraries().start(args.libraryId)
+        return { success: true, message: t('message.libStarted', 'Library started.') }
+      },
+    },
+    {
+      name: 'mira_library_stop',
+      label: t('action.libStop.label', 'Stop Library'),
+      category: t('category', 'Mira SDK'),
+      icon: 'Square',
+      description: t('action.libStop.description', 'Stop a material library.'),
+      properties: [
+        { key: 'libraryId', label: 'Library ID', type: 'text', required: true },
+      ],
+      configProperties,
+      outputs: commonOutputs,
+      tool: false,
+      run: async (ctx, args) => {
+        if (!args.libraryId) return { success: false, message: t('message.needLibraryId', 'Library ID required.') }
+        const client = await getClient(args)
+        ctx.logger.info(`Stopping library: ${args.libraryId}`)
+        await client.libraries().stop(args.libraryId)
+        return { success: true, message: t('message.libStopped', 'Library stopped.') }
+      },
+    },
+    {
+      name: 'mira_library_restart',
+      label: t('action.libRestart.label', 'Restart Library'),
+      category: t('category', 'Mira SDK'),
+      icon: 'RotateCcw',
+      description: t('action.libRestart.description', 'Restart a material library.'),
+      properties: [
+        { key: 'libraryId', label: 'Library ID', type: 'text', required: true },
+      ],
+      configProperties,
+      outputs: commonOutputs,
+      run: async (ctx, args) => {
+        if (!args.libraryId) return { success: false, message: t('message.needLibraryId', 'Library ID required.') }
+        const client = await getClient(args)
+        ctx.logger.info(`Restarting library: ${args.libraryId}`)
+        await client.libraries().restart(args.libraryId)
+        return { success: true, message: t('message.libRestarted', 'Library restarted.') }
+      },
+    },
+
+    // ─── 10. 上传文件 ───────────────────────────────────────
+    {
+      name: 'mira_file_upload',
+      label: t('action.fileUpload.label', 'Upload File'),
+      category: t('category', 'Mira SDK'),
+      icon: 'Upload',
+      description: t('action.fileUpload.description', 'Upload a file to a library.'),
+      properties: [
+        { key: 'libraryId', label: 'Library ID', type: 'text', required: true },
+        { key: 'filePath', label: 'File Path', type: 'text', required: true, tooltip: t('field.filePath.tooltip', 'Local file path to upload.') },
+        { key: 'tags', label: 'Tags', type: 'text', tooltip: t('field.tags.tooltip', 'Comma-separated tags.') },
+        { key: 'folderId', label: 'Folder ID', type: 'text', tooltip: t('field.folderId.tooltip', 'Target folder ID.') },
+      ],
+      toolProperties: [
+        { key: 'libraryId', label: 'Library ID', type: 'text', required: true },
+        { key: 'filePath', label: 'File Path', type: 'text', required: true },
+        { key: 'tags', label: 'Tags', type: 'text', tooltip: 'Comma-separated tags.' },
+        { key: 'folderId', label: 'Folder ID', type: 'text' },
+      ],
+      configProperties,
+      outputs: [
+        ...commonOutputs,
+        { key: 'data', type: 'object', children: [
+          { key: 'fileId', type: 'string' },
+          { key: 'fileName', type: 'string' },
+        ] },
+      ],
+      run: async (ctx, args) => {
+        if (!args.libraryId || !args.filePath) {
+          return { success: false, message: t('message.needLibraryAndFile', 'Library ID and file path required.') }
+        }
+        const client = await getClient(args)
+        const options = {}
+        if (args.tags) options.tags = args.tags.split(',').map(t => t.trim()).filter(Boolean)
+        if (args.folderId) options.folderId = args.folderId
+
+        ctx.logger.info(`Uploading file: ${args.filePath} -> library ${args.libraryId}`)
+
+        // 使用 ctx.api 读取本地文件
+        const fs = require('fs')
+        const path = require('path')
+        const buffer = fs.readFileSync(args.filePath)
+        const fileName = path.basename(args.filePath)
+
+        // 构造 File-like 对象供 SDK 使用
+        const fileBlob = new Blob([buffer])
+        const file = new File([fileBlob], fileName)
+
+        const result = await client.files().uploadFile(file, args.libraryId, options)
+        return { success: true, message: t('message.fileUploaded', 'File uploaded: {name}').replace('{name}', fileName), data: result }
+      },
+    },
+
+    // ─── 11. 下载文件 ───────────────────────────────────────
+    {
+      name: 'mira_file_download',
+      label: t('action.fileDownload.label', 'Download File'),
+      category: t('category', 'Mira SDK'),
+      icon: 'Download',
+      description: t('action.fileDownload.description', 'Download a file from a library.'),
+      properties: [
+        { key: 'libraryId', label: 'Library ID', type: 'text', required: true },
+        { key: 'fileId', label: 'File ID', type: 'text', required: true },
+        { key: 'savePath', label: 'Save Path', type: 'text', tooltip: t('field.savePath.tooltip', 'Local path to save. Leave empty to return content.') },
+      ],
+      configProperties,
+      outputs: [
+        ...commonOutputs,
+        { key: 'data', type: 'object', children: [
+          { key: 'filePath', type: 'string' },
+          { key: 'contentLength', type: 'number' },
+        ] },
+      ],
+      run: async (ctx, args) => {
+        if (!args.libraryId || !args.fileId) {
+          return { success: false, message: t('message.needLibraryAndFileId', 'Library ID and file ID required.') }
+        }
+        const client = await getClient(args)
+        ctx.logger.info(`Downloading file: ${args.fileId} from library ${args.libraryId}`)
+
+        if (args.savePath) {
+          await client.files().downloadAndSave(args.libraryId, args.fileId, args.savePath)
+          return { success: true, message: t('message.fileDownloaded', 'File downloaded.'), data: { filePath: args.savePath } }
+        }
+
+        const blob = await client.files().download(args.libraryId, args.fileId)
+        const text = await blob.text()
+        return { success: true, message: t('message.fileDownloaded', 'File downloaded.'), data: { content: text, contentLength: text.length } }
+      },
+    },
+
+    // ─── 12. 删除文件 ───────────────────────────────────────
+    {
+      name: 'mira_file_delete',
+      label: t('action.fileDelete.label', 'Delete File'),
+      category: t('category', 'Mira SDK'),
+      icon: 'Trash2',
+      description: t('action.fileDelete.description', 'Delete a file from a library.'),
+      properties: [
+        { key: 'libraryId', label: 'Library ID', type: 'text', required: true },
+        { key: 'fileId', label: 'File ID', type: 'text', required: true },
+      ],
+      configProperties,
+      outputs: commonOutputs,
+      run: async (ctx, args) => {
+        if (!args.libraryId || !args.fileId) {
+          return { success: false, message: t('message.needLibraryAndFileId', 'Library ID and file ID required.') }
+        }
+        const client = await getClient(args)
+        ctx.logger.info(`Deleting file: ${args.fileId} from library ${args.libraryId}`)
+        await client.files().delete(args.libraryId, args.fileId)
+        return { success: true, message: t('message.fileDeleted', 'File deleted.') }
+      },
+    },
+
+    // ─── 13. 搜索文件 ───────────────────────────────────────
+    {
+      name: 'mira_file_search',
+      label: t('action.fileSearch.label', 'Search Files'),
+      category: t('category', 'Mira SDK'),
+      icon: 'Search',
+      description: t('action.fileSearch.description', 'Search files by title in a library.'),
+      properties: [
+        { key: 'libraryId', label: 'Library ID', type: 'text', required: true },
+        { key: 'keyword', label: 'Keyword', type: 'text', required: true, tooltip: t('field.keyword.tooltip', 'Search keyword.') },
+      ],
+      configProperties,
+      outputs: [
+        ...commonOutputs,
+        { key: 'data', type: 'object', children: [
+          { key: 'files', type: 'object', children: [] },
+        ] },
+      ],
+      run: async (ctx, args) => {
+        if (!args.libraryId || !args.keyword) {
+          return { success: false, message: t('message.needLibraryAndKeyword', 'Library ID and keyword required.') }
+        }
+        const client = await getClient(args)
+        ctx.logger.info(`Searching files: "${args.keyword}" in library ${args.libraryId}`)
+        const results = await client.files().searchFilesByTitle(args.libraryId, args.keyword)
+        return { success: true, message: t('message.filesFound', 'Found {count} files').replace('{count}', String(Array.isArray(results) ? results.length : 0)), data: { files: results } }
+      },
+    },
+
+    // ─── 14. 获取所有插件 ───────────────────────────────────
+    {
+      name: 'mira_plugins_list',
+      label: t('action.pluginsList.label', 'List Plugins'),
+      category: t('category', 'Mira SDK'),
+      icon: 'Puzzle',
+      description: t('action.pluginsList.description', 'Get all installed plugins.'),
+      properties: [],
+      configProperties,
+      outputs: [
+        ...commonOutputs,
+        { key: 'data', type: 'object', children: [
+          { key: 'plugins', type: 'object', children: [] },
+        ] },
+      ],
+      run: async (ctx, args) => {
+        const client = await getClient(args)
+        ctx.logger.info('Fetching plugins')
+        const plugins = await client.plugins().getAll()
+        return { success: true, message: t('message.pluginsCount', 'Found {count} plugins').replace('{count}', String(Array.isArray(plugins) ? plugins.length : 0)), data: { plugins } }
+      },
+    },
+
+    // ─── 15. 启用/禁用插件 ──────────────────────────────────
+    {
+      name: 'mira_plugin_toggle',
+      label: t('action.pluginToggle.label', 'Toggle Plugin'),
+      category: t('category', 'Mira SDK'),
+      icon: 'ToggleRight',
+      description: t('action.pluginToggle.description', 'Enable or disable a plugin.'),
+      properties: [
+        { key: 'pluginId', label: 'Plugin ID', type: 'text', required: true },
+        {
+          key: 'action',
+          label: 'Action',
+          type: 'select',
+          required: true,
+          default: 'enable',
+          options: [{ label: 'Enable', value: 'enable' }, { label: 'Disable', value: 'disable' }],
+        },
+      ],
+      configProperties,
+      outputs: commonOutputs,
+      run: async (ctx, args) => {
+        if (!args.pluginId || !args.action) {
+          return { success: false, message: t('message.needPluginAndAction', 'Plugin ID and action required.') }
+        }
+        const client = await getClient(args)
+        const action = args.action === 'enable' ? 'enable' : 'disable'
+        ctx.logger.info(`${action} plugin: ${args.pluginId}`)
+        await client.plugins()[action](args.pluginId)
+        return { success: true, message: t('message.pluginToggled', 'Plugin {action}: {id}').replace('{action}', action).replace('{id}', args.pluginId) }
+      },
+    },
+
+    // ─── 16. 获取数据库表 ───────────────────────────────────
+    {
+      name: 'mira_database_tables',
+      label: t('action.dbTables.label', 'List Database Tables'),
+      category: t('category', 'Mira SDK'),
+      icon: 'Database',
+      description: t('action.dbTables.description', 'Get all database tables.'),
+      properties: [],
+      configProperties,
+      outputs: [
+        ...commonOutputs,
+        { key: 'data', type: 'object', children: [
+          { key: 'tables', type: 'object', children: [] },
+        ] },
+      ],
+      run: async (ctx, args) => {
+        const client = await getClient(args)
+        ctx.logger.info('Fetching database tables')
+        const tables = await client.database().getTables()
+        return { success: true, message: t('message.tablesCount', 'Found {count} tables').replace('{count}', String(Array.isArray(tables) ? tables.length : 0)), data: { tables } }
+      },
+    },
+
+    // ─── 17. 查询数据库表数据 ───────────────────────────────
+    {
+      name: 'mira_database_query',
+      label: t('action.dbQuery.label', 'Query Table Data'),
+      category: t('category', 'Mira SDK'),
+      icon: 'Table',
+      description: t('action.dbQuery.description', 'Get data from a database table.'),
+      properties: [
+        { key: 'tableName', label: 'Table Name', type: 'text', required: true, tooltip: t('field.tableName.tooltip', 'Database table name.') },
+      ],
+      configProperties,
+      outputs: [
+        ...commonOutputs,
+        { key: 'data', type: 'object', children: [
+          { key: 'rows', type: 'object', children: [] },
+        ] },
+      ],
+      run: async (ctx, args) => {
+        if (!args.tableName) {
+          return { success: false, message: t('message.needTableName', 'Table name required.') }
+        }
+        const client = await getClient(args)
+        ctx.logger.info(`Querying table: ${args.tableName}`)
+        const data = await client.database().getTableData(args.tableName)
+        return { success: true, message: t('message.dataFetched', 'Table data fetched'), data: { rows: data } }
+      },
+    },
+
+    // ─── 18. 获取设备列表 ───────────────────────────────────
+    {
+      name: 'mira_devices_list',
+      label: t('action.devicesList.label', 'List Devices'),
+      category: t('category', 'Mira SDK'),
+      icon: 'Smartphone',
+      description: t('action.devicesList.description', 'Get all connected devices.'),
+      properties: [],
+      configProperties,
+      outputs: [
+        ...commonOutputs,
+        { key: 'data', type: 'object', children: [
+          { key: 'devices', type: 'object', children: [] },
+        ] },
+      ],
+      run: async (ctx, args) => {
+        const client = await getClient(args)
+        ctx.logger.info('Fetching devices')
+        const devices = await client.devices().getAll()
+        return { success: true, message: t('message.devicesCount', 'Found {count} devices').replace('{count}', String(Array.isArray(devices) ? devices.length : 0)), data: { devices } }
+      },
+    },
+
+    // ─── 19. 发送设备消息 ───────────────────────────────────
+    {
+      name: 'mira_device_send_message',
+      label: t('action.deviceSend.label', 'Send Device Message'),
+      category: t('category', 'Mira SDK'),
+      icon: 'Send',
+      description: t('action.deviceSend.description', 'Send a message to a connected device.'),
+      properties: [
+        { key: 'clientId', label: 'Client ID', type: 'text', required: true },
+        { key: 'libraryId', label: 'Library ID', type: 'text', required: true },
+        { key: 'message', label: 'Message', type: 'textarea', required: true, tooltip: t('field.message.tooltip', 'Message to send. Can be JSON string.') },
+      ],
+      configProperties,
+      outputs: commonOutputs,
+      run: async (ctx, args) => {
+        if (!args.clientId || !args.libraryId || !args.message) {
+          return { success: false, message: t('message.needClientLibMsg', 'Client ID, Library ID, and message required.') }
+        }
+        const client = await getClient(args)
+        let msgData = args.message
+        try { msgData = JSON.parse(args.message) } catch {}
+        ctx.logger.info(`Sending message to device: ${args.clientId}`)
+        await client.devices().sendMessage(args.clientId, args.libraryId, msgData)
+        return { success: true, message: t('message.messageSent', 'Message sent.') }
+      },
+    },
+
+    // ─── 20. 广播消息到素材库 ───────────────────────────────
+    {
+      name: 'mira_device_broadcast',
+      label: t('action.broadcast.label', 'Broadcast to Library'),
+      category: t('category', 'Mira SDK'),
+      icon: 'Radio',
+      description: t('action.broadcast.description', 'Broadcast a message to all devices in a library.'),
+      properties: [
+        { key: 'libraryId', label: 'Library ID', type: 'text', required: true },
+        { key: 'message', label: 'Message', type: 'textarea', required: true },
+      ],
+      configProperties,
+      outputs: commonOutputs,
+      run: async (ctx, args) => {
+        if (!args.libraryId || !args.message) {
+          return { success: false, message: t('message.needLibraryAndMsg', 'Library ID and message required.') }
+        }
+        const client = await getClient(args)
+        let msgData = args.message
+        try { msgData = JSON.parse(args.message) } catch {}
+        ctx.logger.info(`Broadcasting to library: ${args.libraryId}`)
+        await client.devices().broadcastToLibrary(args.libraryId, msgData)
+        return { success: true, message: t('message.broadcastOk', 'Broadcast sent.') }
+      },
+    },
+
+    // ─── 21. 获取标签列表 ───────────────────────────────────
+    {
+      name: 'mira_tags_list',
+      label: t('action.tagsList.label', 'List Tags'),
+      category: t('category', 'Mira SDK'),
+      icon: 'Tag',
+      description: t('action.tagsList.description', 'Get all tags in a library.'),
+      properties: [
+        { key: 'libraryId', label: 'Library ID', type: 'text', required: true },
+      ],
+      configProperties,
+      outputs: [
+        ...commonOutputs,
+        { key: 'data', type: 'object', children: [
+          { key: 'tags', type: 'object', children: [] },
+        ] },
+      ],
+      run: async (ctx, args) => {
+        if (!args.libraryId) return { success: false, message: t('message.needLibraryId', 'Library ID required.') }
+        const client = await getClient(args)
+        ctx.logger.info(`Fetching tags for library: ${args.libraryId}`)
+        const result = await client.tags().getAll(args.libraryId)
+        return { success: true, message: t('message.tagsFetched', 'Tags fetched'), data: { tags: result } }
+      },
+    },
+
+    // ─── 22. 获取文件夹列表 ─────────────────────────────────
+    {
+      name: 'mira_folders_list',
+      label: t('action.foldersList.label', 'List Folders'),
+      category: t('category', 'Mira SDK'),
+      icon: 'FolderTree',
+      description: t('action.foldersList.description', 'Get all folders in a library.'),
+      properties: [
+        { key: 'libraryId', label: 'Library ID', type: 'text', required: true },
+      ],
+      configProperties,
+      outputs: [
+        ...commonOutputs,
+        { key: 'data', type: 'object', children: [
+          { key: 'folders', type: 'object', children: [] },
+        ] },
+      ],
+      run: async (ctx, args) => {
+        if (!args.libraryId) return { success: false, message: t('message.needLibraryId', 'Library ID required.') }
+        const client = await getClient(args)
+        ctx.logger.info(`Fetching folders for library: ${args.libraryId}`)
+        const result = await client.folders().getAll(args.libraryId)
+        return { success: true, message: t('message.foldersFetched', 'Folders fetched'), data: { folders: result } }
+      },
+    },
+
+    // ─── 23. 创建文件夹 ─────────────────────────────────────
+    {
+      name: 'mira_folder_create',
+      label: t('action.folderCreate.label', 'Create Folder'),
+      category: t('category', 'Mira SDK'),
+      icon: 'FolderPlus',
+      description: t('action.folderCreate.description', 'Create a folder in a library.'),
+      properties: [
+        { key: 'libraryId', label: 'Library ID', type: 'text', required: true },
+        { key: 'name', label: 'Folder Name', type: 'text', required: true },
+        { key: 'parentId', label: 'Parent Folder ID', type: 'text', tooltip: t('field.parentId.tooltip', 'Leave empty for root folder.') },
+      ],
+      configProperties,
+      outputs: commonOutputs,
+      run: async (ctx, args) => {
+        if (!args.libraryId || !args.name) {
+          return { success: false, message: t('message.needLibAndName', 'Library ID and folder name required.') }
+        }
+        const client = await getClient(args)
+        ctx.logger.info(`Creating folder: ${args.name} in library ${args.libraryId}`)
+        await client.folders().createFolder(args.libraryId, args.name, args.parentId || undefined)
+        return { success: true, message: t('message.folderCreated', 'Folder created: {name}').replace('{name}', args.name) }
+      },
+    },
+  ]
+}

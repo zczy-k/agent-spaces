@@ -1,15 +1,15 @@
-module.exports = [
+module.exports = (t) => [
   {
     name: 'fetch_text',
-    label: '捕获网页内容',
-    category: '网络请求',
+    label: t('action.fetch_text.label', 'Fetch Web Content'),
+    category: t('category', 'HTTP Request'),
     icon: 'Globe',
-    description: '请求 URL 并返回文本内容（HTML/JSON/纯文本等）',
+    description: t('action.fetch_text.description', 'Request a URL and return text content (HTML/JSON/plain text etc.)'),
     properties: [
-      { key: 'url', label: 'URL', type: 'text', required: true, tooltip: '目标 URL' },
-      { key: 'headers', label: '请求头', type: 'object', tooltip: '自定义请求头（JSON对象）' },
-      { key: 'encoding', label: '编码', type: 'text', default: 'utf-8', tooltip: '响应编码' },
-      { key: 'timeout', label: '超时(ms)', type: 'number', default: 30000, tooltip: '请求超时时间' },
+      { key: 'url', label: t('field.url.label', 'URL'), type: 'text', required: true, tooltip: t('field.url.tooltip', 'Target URL') },
+      { key: 'headers', label: t('field.headers.label', 'Headers'), type: 'object', tooltip: t('field.headers.tooltip', 'Custom request headers (JSON object)') },
+      { key: 'encoding', label: t('field.encoding.label', 'Encoding'), type: 'text', default: 'utf-8', tooltip: t('field.encoding.tooltip', 'Response encoding') },
+      { key: 'timeout', label: t('field.timeout.label', 'Timeout (ms)'), type: 'number', default: 30000, tooltip: t('field.timeout.tooltip', 'Request timeout') },
     ],
     outputs: [
       { key: 'text', type: 'string' },
@@ -21,19 +21,19 @@ module.exports = [
         encoding: args.encoding,
         timeout: args.timeout,
       })
-      return { success: true, message: `内容已捕获 (${text.length} 字符)`, data: { text, url: args.url } }
+      return { success: true, message: t('message.textFetched', 'Content fetched ({length} characters)').replace('{length}', text.length), data: { text, url: args.url } }
     },
   },
   {
     name: 'fetch_buffer',
-    label: '下载文件',
-    category: '网络请求',
+    label: t('action.fetch_buffer.label', 'Download File'),
+    category: t('category', 'HTTP Request'),
     icon: 'Download',
-    description: '下载网络文件并返回 Buffer（图片/音频/二进制等）',
+    description: t('action.fetch_buffer.description', 'Download a network file and return a Buffer (image/audio/binary etc.)'),
     properties: [
-      { key: 'url', label: 'URL', type: 'text', required: true, tooltip: '文件下载地址' },
-      { key: 'headers', label: '请求头', type: 'object', tooltip: '自定义请求头（JSON对象）' },
-      { key: 'timeout', label: '超时(ms)', type: 'number', default: 60000, tooltip: '下载超时时间' },
+      { key: 'url', label: t('field.url.label', 'URL'), type: 'text', required: true, tooltip: t('field.fileUrl.tooltip', 'File download URL') },
+      { key: 'headers', label: t('field.headers.label', 'Headers'), type: 'object', tooltip: t('field.headers.tooltip', 'Custom request headers (JSON object)') },
+      { key: 'timeout', label: t('field.timeout.label', 'Timeout (ms)'), type: 'number', default: 60000, tooltip: t('field.downloadTimeout.tooltip', 'Download timeout') },
     ],
     outputs: [
       { key: 'buffer', type: 'buffer' },
@@ -48,21 +48,21 @@ module.exports = [
       })
       return {
         success: true,
-        message: `文件已下载 (${(result.size / 1024).toFixed(1)} KB)`,
+        message: t('message.fileDownloaded', 'File downloaded ({size} KB)').replace('{size}', (result.size / 1024).toFixed(1)),
         data: { ...result, url: args.url },
       }
     },
   },
   {
     name: 'fetch_buffers',
-    label: '批量下载文件',
-    category: '网络请求',
+    label: t('action.fetch_buffers.label', 'Batch Download Files'),
+    category: t('category', 'HTTP Request'),
     icon: 'Files',
-    description: '批量下载多个网络文件，返回 Buffer 集合',
+    description: t('action.fetch_buffers.description', 'Batch download multiple network files and return a Buffer collection'),
     properties: [
-      { key: 'urls', label: 'URL列表', type: 'object', required: true, tooltip: 'URL数组，如 ["https://...","https://..."]' },
-      { key: 'headers', label: '请求头', type: 'object', tooltip: '自定义请求头（JSON对象）' },
-      { key: 'timeout', label: '超时(ms)', type: 'number', default: 60000, tooltip: '单个下载超时时间' },
+      { key: 'urls', label: t('field.urls.label', 'URL List'), type: 'object', required: true, tooltip: t('field.urls.tooltip', 'URL array, e.g. ["https://...","https://..."]') },
+      { key: 'headers', label: t('field.headers.label', 'Headers'), type: 'object', tooltip: t('field.headers.tooltip', 'Custom request headers (JSON object)') },
+      { key: 'timeout', label: t('field.timeout.label', 'Timeout (ms)'), type: 'number', default: 60000, tooltip: t('field.batchTimeout.tooltip', 'Single download timeout') },
     ],
     outputs: [
       { key: 'results', type: 'object', children: [
@@ -84,7 +84,7 @@ module.exports = [
       const successCount = results.filter(r => r.success).length
       return {
         success: true,
-        message: `批量下载完成: ${successCount}/${results.length} 成功`,
+        message: t('message.batchDownloaded', 'Batch download completed: {successCount}/{total} succeeded').replace('{successCount}', successCount).replace('{total}', results.length),
         data: { results, total: results.length, successCount },
       }
     },

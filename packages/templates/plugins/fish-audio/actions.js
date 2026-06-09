@@ -20,45 +20,45 @@ const {
 
 const CONFIG_PREFIX = '{{ __config__["workflow.fish-audio"]'
 
-module.exports = [
+module.exports = (t) => [
   // ─── TTS 文字转语音 ─────────────────────────
   {
     name: 'fish_audio_tts',
-    label: 'AI文字转语音',
-    category: 'FishAudio',
+    label: t('action.tts.label', 'AI Text to Speech'),
+    category: t('category', 'FishAudio'),
     icon: 'AudioWaveform',
-    description: '使用 FishAudio 将文字转换为自然语音（TTS）',
+    description: t('action.tts.description', 'Convert text to natural speech using FishAudio (TTS)'),
     properties: [
-      { key: 'apiKey', label: 'API Key', type: 'text', required: true, tooltip: 'FishAudio API Key（默认从插件配置读取）', default: `${CONFIG_PREFIX}["apiKey"]}}` },
-      { key: 'text', label: '文字内容', type: 'textarea', required: true, tooltip: '要转换为语音的文字' },
-      { key: 'referenceId', label: '音色模型 ID', type: 'text', tooltip: '音色模型 ID（默认从插件配置读取）', default: `${CONFIG_PREFIX}["referenceId"]}}` },
-      { key: 'model', label: 'TTS 模型', type: 'select', default: 's2-pro', options: [
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, tooltip: t('field.apiKey.tooltip', 'FishAudio API Key (read from plugin config by default)'), default: `${CONFIG_PREFIX}["apiKey"]}}` },
+      { key: 'text', label: t('field.text.label', 'Text Content'), type: 'textarea', required: true, tooltip: t('field.text.tooltip', 'Text to convert to speech') },
+      { key: 'referenceId', label: t('field.referenceId.label', 'Voice Model ID'), type: 'text', tooltip: t('field.referenceId.tooltip', 'Voice model ID (read from plugin config by default)'), default: `${CONFIG_PREFIX}["referenceId"]}}` },
+      { key: 'model', label: t('field.model.label', 'TTS Model'), type: 'select', default: 's2-pro', options: [
         { label: 'S2-Pro（推荐）', value: 's2-pro' },
         { label: 'S1', value: 's1' },
       ] },
-      { key: 'format', label: '音频格式', type: 'select', default: 'mp3', options: [
+      { key: 'format', label: t('field.format.label', 'Audio Format'), type: 'select', default: 'mp3', options: [
         { label: 'MP3（默认）', value: 'mp3' },
         { label: 'WAV', value: 'wav' },
         { label: 'PCM', value: 'pcm' },
         { label: 'Opus', value: 'opus' },
       ] },
-      { key: 'sampleRate', label: '采样率(Hz)', type: 'select', default: '44100', options: [
+      { key: 'sampleRate', label: t('field.sampleRate.label', 'Sample Rate (Hz)'), type: 'select', default: '44100', options: [
         { label: '44100 Hz（默认）', value: '44100' },
         { label: '16000 Hz', value: '16000' },
         { label: '24000 Hz', value: '24000' },
         { label: '32000 Hz', value: '32000' },
         { label: '48000 Hz（Opus 推荐）', value: '48000' },
       ] },
-      { key: 'speed', label: '语速(0.5-2.0)', type: 'number', default: 1, tooltip: '1.0 为正常语速' },
-      { key: 'volume', label: '音量(dB)', type: 'number', default: 0, tooltip: '0 为不变，正数放大，负数减小' },
-      { key: 'temperature', label: '表现力(0-1)', type: 'number', default: 0.7, tooltip: '越高越丰富多变' },
-      { key: 'latency', label: '延迟模式', type: 'select', default: 'normal', options: [
+      { key: 'speed', label: t('field.speed.label', 'Speed (0.5-2.0)'), type: 'number', default: 1, tooltip: t('field.speed.tooltip', '1.0 for normal speed') },
+      { key: 'volume', label: t('field.volume.label', 'Volume (dB)'), type: 'number', default: 0, tooltip: t('field.volume.tooltip', '0 for no change, positive to amplify, negative to reduce') },
+      { key: 'temperature', label: t('field.temperature.label', 'Expression (0-1)'), type: 'number', default: 0.7, tooltip: t('field.temperature.tooltip', 'Higher values produce more varied output') },
+      { key: 'latency', label: t('field.latency.label', 'Latency Mode'), type: 'select', default: 'normal', options: [
         { label: 'Normal（最佳质量）', value: 'normal' },
         { label: 'Balanced（较低延迟）', value: 'balanced' },
         { label: 'Low（最低延迟）', value: 'low' },
       ] },
-      { key: 'baseUrl', label: 'API 地址', type: 'text', default: `${CONFIG_PREFIX}["baseUrl"]}}`, tooltip: 'FishAudio API 基础地址' },
-      { key: 'proxy', label: 'HTTP 代理', type: 'text', tooltip: 'HTTP 代理地址，默认从插件配置读取', default: `${CONFIG_PREFIX}["httpProxy"]}}`, placeholder: 'http://127.0.0.1:7890' },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: `${CONFIG_PREFIX}["baseUrl"]}}`, tooltip: t('field.baseUrl.tooltip', 'FishAudio API base URL') },
+      { key: 'proxy', label: t('field.proxy.label', 'HTTP Proxy'), type: 'text', tooltip: t('field.proxy.tooltip', 'HTTP proxy address, read from plugin config by default'), default: `${CONFIG_PREFIX}["httpProxy"]}}`, placeholder: 'http://127.0.0.1:7890' },
     ],
     toolProperties: {
       type: 'object',
@@ -133,7 +133,7 @@ module.exports = [
 
       return {
         success: true,
-        message: `语音合成完成，音频已保存 (${(buffer.length / 1024).toFixed(1)}KB)`,
+        message: t('message.ttsSuccess', 'Speech synthesis completed, audio saved ({size}KB)').replace('{size}', (buffer.length / 1024).toFixed(1)),
         data: { filePath, format, size: buffer.length, mimeType },
       }
     },
@@ -142,14 +142,14 @@ module.exports = [
   // ─── STT 语音转文字 ─────────────────────────
   {
     name: 'fish_audio_stt',
-    label: 'AI语音转文字',
-    category: 'FishAudio',
+    label: t('action.stt.label', 'AI Speech to Text'),
+    category: t('category', 'FishAudio'),
     icon: 'Mic',
-    description: '使用 FishAudio 将音频文件转录为文字（STT）',
+    description: t('action.stt.description', 'Transcribe audio files to text using FishAudio (STT)'),
     properties: [
-      { key: 'apiKey', label: 'API Key', type: 'text', required: true, tooltip: 'FishAudio API Key（默认从插件配置读取）', default: `${CONFIG_PREFIX}["apiKey"]}}` },
-      { key: 'filePath', label: '音频文件路径', type: 'text', required: true, tooltip: '本地音频文件路径（支持 WAV/MP3/FLAC）' },
-      { key: 'language', label: '语言', type: 'select', default: 'auto', options: [
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, tooltip: t('field.apiKey.tooltip', 'FishAudio API Key (read from plugin config by default)'), default: `${CONFIG_PREFIX}["apiKey"]}}` },
+      { key: 'filePath', label: t('field.filePath.label', 'Audio File Path'), type: 'text', required: true, tooltip: t('field.filePath.tooltip', 'Local audio file path (supports WAV/MP3/FLAC)') },
+      { key: 'language', label: t('field.language.label', 'Language'), type: 'select', default: 'auto', options: [
         { label: '自动检测', value: 'auto' },
         { label: '中文', value: 'zh' },
         { label: '英文', value: 'en' },
@@ -159,8 +159,8 @@ module.exports = [
         { label: '德文', value: 'de' },
         { label: '西班牙文', value: 'es' },
       ] },
-      { key: 'baseUrl', label: 'API 地址', type: 'text', default: `${CONFIG_PREFIX}["baseUrl"]}}`, tooltip: 'FishAudio API 基础地址' },
-      { key: 'proxy', label: 'HTTP 代理', type: 'text', tooltip: 'HTTP 代理地址，默认从插件配置读取', default: `${CONFIG_PREFIX}["httpProxy"]}}`, placeholder: 'http://127.0.0.1:7890' },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: `${CONFIG_PREFIX}["baseUrl"]}}`, tooltip: t('field.baseUrl.tooltip', 'FishAudio API base URL') },
+      { key: 'proxy', label: t('field.proxy.label', 'HTTP Proxy'), type: 'text', tooltip: t('field.proxy.tooltip', 'HTTP proxy address, read from plugin config by default'), default: `${CONFIG_PREFIX}["httpProxy"]}}`, placeholder: 'http://127.0.0.1:7890' },
     ],
     toolProperties: {
       type: 'object',
@@ -208,7 +208,7 @@ module.exports = [
 
       return {
         success: true,
-        message: `语音识别完成，时长 ${result.duration?.toFixed(1) || '?'}秒`,
+        message: t('message.sttSuccess', 'Speech recognition completed, duration {duration}s').replace('{duration}', result.duration?.toFixed(1) || '?'),
         data: {
           text: result.text,
           duration: result.duration,

@@ -1,10 +1,10 @@
-module.exports = [
+module.exports = (t) => [
   {
     name: 'create_window',
-    label: '创建窗口',
-    category: '窗口管理',
+    label: t('action.create_window.label', 'Create Window'),
+    category: t('category', 'Window Manager'),
     icon: 'AppWindow',
-    description: '创建独立浏览器窗口',
+    description: t('action.create_window.description', 'Create an independent browser window'),
     toolProperties: [
       { key: 'url', type: 'string', description: '要打开的 URL', required: true },
       { key: 'title', type: 'string', description: '窗口标题' },
@@ -12,10 +12,10 @@ module.exports = [
       { key: 'height', type: 'number', description: '窗口高度，默认 800' },
     ],
     properties: [
-      { key: 'url', label: 'URL', type: 'text', required: true, tooltip: '要打开的 URL' },
-      { key: 'title', label: '窗口标题', type: 'text', tooltip: '窗口标题' },
-      { key: 'width', label: '宽度', type: 'number', default: 1280, tooltip: '窗口宽度' },
-      { key: 'height', label: '高度', type: 'number', default: 800, tooltip: '窗口高度' },
+      { key: 'url', label: t('field.url.label', 'URL'), type: 'text', required: true, tooltip: t('field.url.tooltip', 'The URL to open') },
+      { key: 'title', label: t('field.title.label', 'Window Title'), type: 'text', tooltip: t('field.title.tooltip', 'Window title') },
+      { key: 'width', label: t('field.width.label', 'Width'), type: 'number', default: 1280, tooltip: t('field.width.tooltip', 'Window width') },
+      { key: 'height', label: t('field.height.label', 'Height'), type: 'number', default: 800, tooltip: t('field.height.tooltip', 'Window height') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -29,22 +29,22 @@ module.exports = [
     ],
     run: async (ctx, args) => {
       const result = await ctx.api.createWindow(args)
-      return { success: true, message: `窗口已创建: ${result.id}`, data: result }
+      return { success: true, message: t('message.windowCreated', 'Window created: {id}').replace('{id}', result.id), data: result }
     },
   },
   {
     name: 'inject_js',
-    label: '注入JS代码',
-    category: '窗口管理',
+    label: t('action.inject_js.label', 'Inject JS Code'),
+    category: t('category', 'Window Manager'),
     icon: 'Code',
-    description: '向指定窗口注入并执行JavaScript代码',
+    description: t('action.inject_js.description', 'Inject and execute JavaScript code in a specified window'),
     toolProperties: [
       { key: 'windowId', type: 'number', description: '目标窗口 ID', required: true },
       { key: 'code', type: 'string', description: '要注入的 JavaScript 代码', required: true },
     ],
     properties: [
-      { key: 'windowId', label: '窗口 ID', type: 'number', required: true, tooltip: '目标窗口 ID' },
-      { key: 'code', label: 'JS代码', type: 'code', required: true, tooltip: '要注入的 JavaScript 代码' },
+      { key: 'windowId', label: t('field.windowId.label', 'Window ID'), type: 'number', required: true, tooltip: t('field.windowId.tooltip', 'Target window ID') },
+      { key: 'code', label: t('field.code.label', 'JS Code'), type: 'code', required: true, tooltip: t('field.code.tooltip', 'JavaScript code to inject') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -55,22 +55,22 @@ module.exports = [
     ],
     run: async (ctx, args) => {
       const result = await ctx.api.injectJS(args.windowId, args.code)
-      return { success: true, message: 'JS代码已执行', data: { result } }
+      return { success: true, message: t('message.jsExecuted', 'JS code executed'), data: { result } }
     },
   },
   {
     name: 'navigate_window',
-    label: '导航窗口',
-    category: '窗口管理',
+    label: t('action.navigate_window.label', 'Navigate Window'),
+    category: t('category', 'Window Manager'),
     icon: 'Navigation',
-    description: '导航独立窗口到指定 URL',
+    description: t('action.navigate_window.description', 'Navigate an independent window to a specified URL'),
     toolProperties: [
       { key: 'windowId', type: 'number', description: '目标窗口 ID', required: true },
       { key: 'url', type: 'string', description: '目标 URL', required: true },
     ],
     properties: [
-      { key: 'windowId', label: '窗口 ID', type: 'number', required: true, tooltip: '目标窗口 ID' },
-      { key: 'url', label: 'URL', type: 'text', required: true, tooltip: '目标 URL' },
+      { key: 'windowId', label: t('field.windowId.label', 'Window ID'), type: 'number', required: true, tooltip: t('field.windowId.tooltip', 'Target window ID') },
+      { key: 'url', label: t('field.url.label', 'URL'), type: 'text', required: true, tooltip: t('field.targetUrl.tooltip', 'The target URL') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -82,20 +82,20 @@ module.exports = [
     ],
     run: async (ctx, args) => {
       await ctx.api.navigateWindow(args.windowId, args.url)
-      return { success: true, message: `窗口 ${args.windowId} 已导航到 ${args.url}` }
+      return { success: true, message: t('message.windowNavigated', 'Window {windowId} navigated to {url}').replace('{windowId}', args.windowId).replace('{url}', args.url) }
     },
   },
   {
     name: 'close_window',
-    label: '关闭窗口',
-    category: '窗口管理',
+    label: t('action.close_window.label', 'Close Window'),
+    category: t('category', 'Window Manager'),
     icon: 'X',
-    description: '关闭指定的独立浏览器窗口',
+    description: t('action.close_window.description', 'Close a specified independent browser window'),
     toolProperties: [
       { key: 'windowId', type: 'number', description: '要关闭的窗口 ID', required: true },
     ],
     properties: [
-      { key: 'windowId', label: '窗口 ID', type: 'number', required: true, tooltip: '要关闭的窗口 ID' },
+      { key: 'windowId', label: t('field.windowId.label', 'Window ID'), type: 'number', required: true, tooltip: t('field.windowIdToClose.tooltip', 'Window ID to close') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -103,15 +103,15 @@ module.exports = [
     ],
     run: async (ctx, args) => {
       await ctx.api.closeWindow(args.windowId)
-      return { success: true, message: `窗口 ${args.windowId} 已关闭` }
+      return { success: true, message: t('message.windowClosed', 'Window {windowId} closed').replace('{windowId}', args.windowId) }
     },
   },
   {
     name: 'list_windows',
-    label: '列出窗口',
-    category: '窗口管理',
+    label: t('action.list_windows.label', 'List Windows'),
+    category: t('category', 'Window Manager'),
     icon: 'LayoutList',
-    description: '列出所有打开的浏览器窗口',
+    description: t('action.list_windows.description', 'List all open browser windows'),
     properties: [],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -127,20 +127,20 @@ module.exports = [
     ],
     run: async (ctx) => {
       const windows = await ctx.api.listWindows()
-      return { success: true, message: `共 ${windows.length} 个窗口`, data: { windows } }
+      return { success: true, message: t('message.windowCount', '{count} window(s) found').replace('{count}', windows.length), data: { windows } }
     },
   },
   {
     name: 'focus_window',
-    label: '聚焦窗口',
-    category: '窗口管理',
+    label: t('action.focus_window.label', 'Focus Window'),
+    category: t('category', 'Window Manager'),
     icon: 'Maximize',
-    description: '将指定窗口聚焦到前台',
+    description: t('action.focus_window.description', 'Bring a specified window to the foreground'),
     toolProperties: [
       { key: 'windowId', type: 'number', description: '目标窗口 ID', required: true },
     ],
     properties: [
-      { key: 'windowId', label: '窗口 ID', type: 'number', required: true, tooltip: '目标窗口 ID' },
+      { key: 'windowId', label: t('field.windowId.label', 'Window ID'), type: 'number', required: true, tooltip: t('field.windowId.tooltip', 'Target window ID') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -148,20 +148,20 @@ module.exports = [
     ],
     run: async (ctx, args) => {
       await ctx.api.focusWindow(args.windowId)
-      return { success: true, message: `窗口 ${args.windowId} 已聚焦` }
+      return { success: true, message: t('message.windowFocused', 'Window {windowId} focused').replace('{windowId}', args.windowId) }
     },
   },
   {
     name: 'screenshot_window',
-    label: '窗口截图',
-    category: '窗口管理',
+    label: t('action.screenshot_window.label', 'Window Screenshot'),
+    category: t('category', 'Window Manager'),
     icon: 'Camera',
-    description: '截取独立窗口的页面截图',
+    description: t('action.screenshot_window.description', 'Take a screenshot of an independent window'),
     toolProperties: [
       { key: 'windowId', type: 'number', description: '目标窗口 ID', required: true },
     ],
     properties: [
-      { key: 'windowId', label: '窗口 ID', type: 'number', required: true, tooltip: '目标窗口 ID' },
+      { key: 'windowId', label: t('field.windowId.label', 'Window ID'), type: 'number', required: true, tooltip: t('field.windowId.tooltip', 'Target window ID') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -172,20 +172,20 @@ module.exports = [
     ],
     run: async (ctx, args) => {
       const dataUrl = await ctx.api.screenshotWindow(args.windowId)
-      return { success: true, message: '截图完成', data: { screenshot: dataUrl } }
+      return { success: true, message: t('message.screenshotDone', 'Screenshot completed'), data: { screenshot: dataUrl } }
     },
   },
   {
     name: 'get_window_detail',
-    label: '窗口详情',
-    category: '窗口管理',
+    label: t('action.get_window_detail.label', 'Window Details'),
+    category: t('category', 'Window Manager'),
     icon: 'Info',
-    description: '获取窗口详细信息',
+    description: t('action.get_window_detail.description', 'Get detailed information about a window'),
     toolProperties: [
       { key: 'windowId', type: 'number', description: '目标窗口 ID', required: true },
     ],
     properties: [
-      { key: 'windowId', label: '窗口 ID', type: 'number', required: true, tooltip: '目标窗口 ID' },
+      { key: 'windowId', label: t('field.windowId.label', 'Window ID'), type: 'number', required: true, tooltip: t('field.windowId.tooltip', 'Target window ID') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -200,7 +200,7 @@ module.exports = [
     ],
     run: async (ctx, args) => {
       const detail = await ctx.api.getWindowDetail(args.windowId)
-      return { success: true, message: '窗口详情已获取', data: detail }
+      return { success: true, message: t('message.windowDetailGot', 'Window details retrieved'), data: detail }
     },
   },
 ]

@@ -4,15 +4,15 @@ async function getEpubParser() {
   return _epubParser
 }
 
-module.exports = [
+module.exports = (t) => [
   {
     name: 'epub_info',
-    label: 'EPUB书籍信息',
-    category: 'EPUB解析',
+    label: t('action.epub_info.label', 'EPUB Book Info'),
+    category: t('category', 'EPUB Parser'),
     icon: 'BookOpen',
-    description: '解析EPUB文件，提取书籍元信息（标题、作者、语言、出版社等）和目录结构',
+    description: t('action.epub_info.description', 'Parse an EPUB file to extract book metadata (title, author, language, publisher, etc.) and table of contents'),
     properties: [
-      { key: 'filePath', label: 'EPUB文件路径', type: 'text', required: true, tooltip: 'EPUB文件的绝对路径' },
+      { key: 'filePath', label: t('field.filePath.label', 'EPUB File Path'), type: 'text', required: true, tooltip: t('field.filePath.tooltip', 'Absolute path to the EPUB file') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -27,7 +27,7 @@ module.exports = [
     ],
     run: async (ctx, args) => {
       const { filePath } = args
-      if (!filePath) return { success: false, message: 'filePath 不能为空' }
+      if (!filePath) return { success: false, message: t('message.filePathRequired', 'filePath is required') }
 
       ctx.logger.info(`解析EPUB文件: ${filePath}`)
       const { initEpubFile } = await getEpubParser()
@@ -69,7 +69,7 @@ module.exports = [
         }
 
         ctx.logger.info(`解析完成: "${result.metadata.title}", 共 ${result.spineCount} 章`)
-        return { success: true, message: `解析完成: ${result.metadata.title}`, data: result }
+        return { success: true, message: t('message.parseComplete', 'Parse completed: {title}').replace('{title}', result.metadata.title), data: result }
       } finally {
         epub.destroy()
       }
@@ -77,14 +77,14 @@ module.exports = [
   },
   {
     name: 'epub_chapters',
-    label: 'EPUB章节内容',
-    category: 'EPUB解析',
+    label: t('action.epub_chapters.label', 'EPUB Chapter Content'),
+    category: t('category', 'EPUB Parser'),
     icon: 'FileText',
-    description: '解析EPUB文件，返回指定范围的章节内容（HTML文本和CSS）',
+    description: t('action.epub_chapters.description', 'Parse an EPUB file and return chapter content (HTML text and CSS) for a specified range'),
     properties: [
-      { key: 'filePath', label: 'EPUB文件路径', type: 'text', required: true, tooltip: 'EPUB文件的绝对路径' },
-      { key: 'start', label: '起始章节', type: 'number', default: 0, tooltip: '从0开始的章节索引' },
-      { key: 'count', label: '章节数量', type: 'number', default: 1, tooltip: '要加载的章节数量，0表示全部' },
+      { key: 'filePath', label: t('field.filePath.label', 'EPUB File Path'), type: 'text', required: true, tooltip: t('field.filePath.tooltip', 'Absolute path to the EPUB file') },
+      { key: 'start', label: t('field.start.label', 'Start Chapter'), type: 'number', default: 0, tooltip: t('field.start.tooltip', 'Chapter index starting from 0') },
+      { key: 'count', label: t('field.count.label', 'Chapter Count'), type: 'number', default: 1, tooltip: t('field.count.tooltip', 'Number of chapters to load, 0 for all') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -96,7 +96,7 @@ module.exports = [
     ],
     run: async (ctx, args) => {
       const { filePath, start = 0, count = 1 } = args
-      if (!filePath) return { success: false, message: 'filePath 不能为空' }
+      if (!filePath) return { success: false, message: t('message.filePathRequired', 'filePath is required') }
 
       ctx.logger.info(`加载章节: ${filePath}, start=${start}, count=${count}`)
       const { initEpubFile } = await getEpubParser()
@@ -127,7 +127,7 @@ module.exports = [
         ctx.logger.info(`加载完成: ${chapters.length}/${total} 章`)
         return {
           success: true,
-          message: `加载 ${chapters.length} 章（共 ${total} 章）`,
+          message: t('message.chaptersLoaded', 'Loaded {loaded} of {total} chapters').replace('{loaded}', chapters.length).replace('{total}', total),
           data: { total, chapters },
         }
       } finally {

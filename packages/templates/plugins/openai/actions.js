@@ -11,13 +11,13 @@ function pick(obj, keys) {
 const CONFIG_APIKEY = '{{ __config__["workflow.openai"]["apiKey"] }}'
 const CONFIG_BASEURL = '{{ __config__["workflow.openai"]["baseUrl"] }}'
 
-module.exports = [
+module.exports = (t) => [
   {
     name: 'openai_create_image',
-    label: 'OpenAI 文生图',
-    category: 'OpenAI',
+    label: t('action.createImage.label', 'OpenAI Create Image'),
+    category: t('category', 'OpenAI'),
     icon: 'Image',
-    description: '通过文字描述使用 OpenAI 生成图片',
+    description: t('action.createImage.description', 'Generate images from text descriptions using OpenAI.'),
     toolProperties: [
       { key: 'apiKey', type: 'string', description: 'OpenAI API Key', required: true },
       { key: 'prompt', type: 'string', description: '图片描述文字', required: true },
@@ -30,46 +30,46 @@ module.exports = [
       { key: 'baseUrl', type: 'string', description: 'API 基础地址' },
     ],
     properties: [
-      { key: 'apiKey', label: 'API Key', type: 'text', required: true, tooltip: 'OpenAI API Key', default: CONFIG_APIKEY },
-      { key: 'prompt', label: '图片描述', type: 'textarea', required: true, tooltip: '描述你想生成的图片内容' },
-      { key: 'model', label: '模型', type: 'select', default: 'gpt-image-1', options: [
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, tooltip: t('field.apiKey.tooltip', 'OpenAI API Key'), default: CONFIG_APIKEY },
+      { key: 'prompt', label: t('field.prompt.label', 'Image Description'), type: 'textarea', required: true, tooltip: t('field.prompt.tooltip', 'Describe the image you want to generate.') },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'gpt-image-1', options: [
         { label: 'gpt-image-2', value: 'gpt-image-2' },
-        { label: 'gpt-image-1 (默认)', value: 'gpt-image-1' },
+        { label: 'gpt-image-1 (Default)', value: 'gpt-image-1' },
         { label: 'gpt-image-1.5', value: 'gpt-image-1.5' },
         { label: 'gpt-image-1-mini', value: 'gpt-image-1-mini' },
         { label: 'dall-e-3', value: 'dall-e-3' },
         { label: 'dall-e-2', value: 'dall-e-2' },
       ] },
-      { key: 'size', label: '尺寸', type: 'select', default: 'auto', options: [
-        { label: '自动', value: 'auto' },
+      { key: 'size', label: t('field.size.label', 'Size'), type: 'select', default: 'auto', options: [
+        { label: t('option.auto', 'Auto'), value: 'auto' },
         { label: '1024x1024', value: '1024x1024' },
-        { label: '1536x1024 (横版)', value: '1536x1024' },
-        { label: '1024x1536 (竖版)', value: '1024x1536' },
+        { label: '1536x1024 (Landscape)', value: '1536x1024' },
+        { label: '1024x1536 (Portrait)', value: '1024x1536' },
         { label: '256x256 (dall-e-2)', value: '256x256' },
         { label: '512x512 (dall-e-2)', value: '512x512' },
         { label: '1792x1024 (dall-e-3)', value: '1792x1024' },
         { label: '1024x1792 (dall-e-3)', value: '1024x1792' },
       ] },
-      { key: 'quality', label: '质量', type: 'select', default: 'auto', options: [
-        { label: '自动', value: 'auto' },
-        { label: '高', value: 'high' },
-        { label: '中', value: 'medium' },
-        { label: '低', value: 'low' },
+      { key: 'quality', label: t('field.quality.label', 'Quality'), type: 'select', default: 'auto', options: [
+        { label: t('option.auto', 'Auto'), value: 'auto' },
+        { label: t('option.high', 'High'), value: 'high' },
+        { label: t('option.medium', 'Medium'), value: 'medium' },
+        { label: t('option.low', 'Low'), value: 'low' },
         { label: 'HD (dall-e-3)', value: 'hd' },
         { label: 'Standard (dall-e-3)', value: 'standard' },
       ] },
-      { key: 'n', label: '数量', type: 'number', default: 1, tooltip: '1-10，dall-e-3 仅支持 1' },
-      { key: 'output_format', label: '输出格式', type: 'select', default: 'png', options: [
-        { label: 'PNG (默认)', value: 'png' },
+      { key: 'n', label: t('field.n.label', 'Count'), type: 'number', default: 1, tooltip: t('field.n.tooltip', '1-10. dall-e-3 only supports 1.') },
+      { key: 'output_format', label: t('field.outputFormat.label', 'Output Format'), type: 'select', default: 'png', options: [
+        { label: 'PNG (Default)', value: 'png' },
         { label: 'JPEG', value: 'jpeg' },
         { label: 'WebP', value: 'webp' },
       ] },
-      { key: 'background', label: '背景', type: 'select', default: 'auto', options: [
-        { label: '自动', value: 'auto' },
-        { label: '透明', value: 'transparent' },
-        { label: '不透明', value: 'opaque' },
+      { key: 'background', label: t('field.background.label', 'Background'), type: 'select', default: 'auto', options: [
+        { label: t('option.auto', 'Auto'), value: 'auto' },
+        { label: t('option.transparent', 'Transparent'), value: 'transparent' },
+        { label: t('option.opaque', 'Opaque'), value: 'opaque' },
       ] },
-      { key: 'baseUrl', label: 'API 地址', type: 'text', default: CONFIG_BASEURL, tooltip: 'OpenAI API 基础地址' },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: CONFIG_BASEURL, tooltip: t('field.baseUrl.tooltip', 'OpenAI API base URL.') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -90,15 +90,15 @@ module.exports = [
       })
       const images = (result.data || []).map(d => d.b64_json || d.url).filter(Boolean)
       ctx.logger.info(`生成完成，共 ${images.length} 张图片`)
-      return { success: true, message: `生成 ${images.length} 张图片`, data: { images, created: result.created, usage: result.usage } }
+      return { success: true, message: t('message.generatedImages', 'Generated {count} image(s)').replace('{count}', images.length), data: { images, created: result.created, usage: result.usage } }
     },
   },
   {
     name: 'openai_edit_image',
-    label: 'OpenAI 图片编辑',
-    category: 'OpenAI',
+    label: t('action.editImage.label', 'OpenAI Edit Image'),
+    category: t('category', 'OpenAI'),
     icon: 'Wand2',
-    description: '基于输入图片和描述进行 AI 图片编辑',
+    description: t('action.editImage.description', 'AI-powered image editing based on input images and descriptions.'),
     toolProperties: [
       { key: 'apiKey', type: 'string', description: 'OpenAI API Key', required: true },
       { key: 'prompt', type: 'string', description: '编辑描述', required: true },
@@ -111,34 +111,34 @@ module.exports = [
       { key: 'baseUrl', type: 'string', description: 'API 基础地址' },
     ],
     properties: [
-      { key: 'apiKey', label: 'API Key', type: 'text', required: true, tooltip: 'OpenAI API Key', default: CONFIG_APIKEY },
-      { key: 'prompt', label: '编辑描述', type: 'textarea', required: true, tooltip: '描述你想要的编辑效果' },
-      { key: 'images', label: '图片 URL', type: 'textarea', required: true, tooltip: '输入图片 URL 数组，如 [{"image_url":"https://..."}]' },
-      { key: 'model', label: '模型', type: 'select', default: 'gpt-image-1', options: [
-        { label: 'gpt-image-1 (默认)', value: 'gpt-image-1' },
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, tooltip: t('field.apiKey.tooltip', 'OpenAI API Key'), default: CONFIG_APIKEY },
+      { key: 'prompt', label: t('field.promptEdit.label', 'Edit Description'), type: 'textarea', required: true, tooltip: t('field.promptEdit.tooltip', 'Describe the editing effect you want.') },
+      { key: 'images', label: t('field.imagesUrl.label', 'Image URLs'), type: 'textarea', required: true, tooltip: t('field.imagesUrl.tooltip', 'Input image URL array, e.g. [{"image_url":"https://..."}]') },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'gpt-image-1', options: [
+        { label: 'gpt-image-1 (Default)', value: 'gpt-image-1' },
         { label: 'gpt-image-1.5', value: 'gpt-image-1.5' },
         { label: 'gpt-image-1-mini', value: 'gpt-image-1-mini' },
         { label: 'chatgpt-image-latest', value: 'chatgpt-image-latest' },
       ] },
-      { key: 'size', label: '尺寸', type: 'select', default: 'auto', options: [
-        { label: '自动', value: 'auto' },
+      { key: 'size', label: t('field.size.label', 'Size'), type: 'select', default: 'auto', options: [
+        { label: t('option.auto', 'Auto'), value: 'auto' },
         { label: '1024x1024', value: '1024x1024' },
         { label: '1536x1024', value: '1536x1024' },
         { label: '1024x1536', value: '1024x1536' },
       ] },
-      { key: 'quality', label: '质量', type: 'select', default: 'auto', options: [
-        { label: '自动', value: 'auto' },
-        { label: '高', value: 'high' },
-        { label: '中', value: 'medium' },
-        { label: '低', value: 'low' },
+      { key: 'quality', label: t('field.quality.label', 'Quality'), type: 'select', default: 'auto', options: [
+        { label: t('option.auto', 'Auto'), value: 'auto' },
+        { label: t('option.high', 'High'), value: 'high' },
+        { label: t('option.medium', 'Medium'), value: 'medium' },
+        { label: t('option.low', 'Low'), value: 'low' },
       ] },
-      { key: 'n', label: '数量', type: 'number', default: 1 },
-      { key: 'background', label: '背景', type: 'select', default: 'auto', options: [
-        { label: '自动', value: 'auto' },
-        { label: '透明', value: 'transparent' },
-        { label: '不透明', value: 'opaque' },
+      { key: 'n', label: t('field.n.label', 'Count'), type: 'number', default: 1 },
+      { key: 'background', label: t('field.background.label', 'Background'), type: 'select', default: 'auto', options: [
+        { label: t('option.auto', 'Auto'), value: 'auto' },
+        { label: t('option.transparent', 'Transparent'), value: 'transparent' },
+        { label: t('option.opaque', 'Opaque'), value: 'opaque' },
       ] },
-      { key: 'baseUrl', label: 'API 地址', type: 'text', default: CONFIG_BASEURL, tooltip: 'OpenAI API 基础地址' },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: CONFIG_BASEURL, tooltip: t('field.baseUrl.tooltip', 'OpenAI API base URL.') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -161,15 +161,15 @@ module.exports = [
       })
       const outputImages = (result.data || []).map(d => d.b64_json || d.url).filter(Boolean)
       ctx.logger.info(`编辑完成，共 ${outputImages.length} 张图片`)
-      return { success: true, message: `图片编辑完成，生成 ${outputImages.length} 张图片`, data: { images: outputImages, created: result.created, usage: result.usage } }
+      return { success: true, message: t('message.imageEdited', 'Image editing completed, generated {count} image(s)').replace('{count}', outputImages.length), data: { images: outputImages, created: result.created, usage: result.usage } }
     },
   },
   {
     name: 'openai_chat',
-    label: 'OpenAI Chat',
-    category: 'OpenAI',
+    label: t('action.chat.label', 'OpenAI Chat'),
+    category: t('category', 'OpenAI'),
     icon: 'MessageSquare',
-    description: '使用 GPT 模型进行对话，支持多轮对话和 JSON 输出',
+    description: t('action.chat.description', 'Chat using GPT models with multi-turn conversation and JSON output support.'),
     toolProperties: [
       { key: 'apiKey', type: 'string', description: 'OpenAI API Key', required: true },
       { key: 'messages', type: 'array', items: { type: 'object', properties: { role: { type: 'string', description: 'system/user/assistant/developer' }, content: { type: 'string' } } }, description: '消息列表', required: true },
@@ -180,19 +180,19 @@ module.exports = [
       { key: 'baseUrl', type: 'string', description: 'API 基础地址' },
     ],
     properties: [
-      { key: 'apiKey', label: 'API Key', type: 'text', required: true, tooltip: 'OpenAI API Key', default: CONFIG_APIKEY },
-      { key: 'messages', label: '消息列表', type: 'array', required: true, tooltip: '对话消息列表', fields: [
-        { key: 'role', label: '角色', type: 'select', options: [
-          { label: '用户', value: 'user' },
-          { label: '助手', value: 'assistant' },
-          { label: '系统', value: 'system' },
-          { label: '开发者', value: 'developer' },
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, tooltip: t('field.apiKey.tooltip', 'OpenAI API Key'), default: CONFIG_APIKEY },
+      { key: 'messages', label: t('field.messages.label', 'Message List'), type: 'array', required: true, tooltip: t('field.messages.tooltip', 'Conversation message list.'), fields: [
+        { key: 'role', label: t('field.role.label', 'Role'), type: 'select', options: [
+          { label: t('option.user', 'User'), value: 'user' },
+          { label: t('option.assistant', 'Assistant'), value: 'assistant' },
+          { label: t('option.system', 'System'), value: 'system' },
+          { label: t('option.developer', 'Developer'), value: 'developer' },
         ], default: 'user' },
-        { key: 'content', label: '内容', type: 'text', placeholder: '消息内容' },
+        { key: 'content', label: t('field.content.label', 'Content'), type: 'text', placeholder: '消息内容' },
       ] },
-      { key: 'system', label: '系统提示', type: 'textarea', rows: 3, tooltip: '系统提示词（会作为第一条 system 消息插入）' },
-      { key: 'model', label: '模型', type: 'select', default: 'gpt-4o', options: [
-        { label: 'gpt-4o (默认)', value: 'gpt-4o' },
+      { key: 'system', label: t('field.system.label', 'System Prompt'), type: 'textarea', rows: 3, tooltip: t('field.system.tooltip', 'System prompt (inserted as the first system message).') },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'gpt-4o', options: [
+        { label: 'gpt-4o (Default)', value: 'gpt-4o' },
         { label: 'gpt-4o-mini', value: 'gpt-4o-mini' },
         { label: 'gpt-4.1', value: 'gpt-4.1' },
         { label: 'gpt-4.1-mini', value: 'gpt-4.1-mini' },
@@ -211,13 +211,13 @@ module.exports = [
         { label: 'gpt-5.4-pro', value: 'gpt-5.4-pro' },
         { label: 'gpt-5.5', value: 'gpt-5.5' },
       ] },
-      { key: 'temperature', label: '温度', type: 'range', default: 1, min: 0, max: 2, step: 0.1, tooltip: '0-2，越高越随机' },
-      { key: 'max_tokens', label: '最大 Token', type: 'number', tooltip: '最大输出 token 数' },
-      { key: 'response_format', label: '输出格式', type: 'select', default: 'text', options: [
-        { label: '文本', value: 'text' },
+      { key: 'temperature', label: t('field.temperature.label', 'Temperature'), type: 'range', default: 1, min: 0, max: 2, step: 0.1, tooltip: t('field.temperature.tooltip', '0-2, higher is more random.') },
+      { key: 'max_tokens', label: t('field.maxTokens.label', 'Max Tokens'), type: 'number', tooltip: t('field.maxTokens.tooltip', 'Maximum output token count.') },
+      { key: 'response_format', label: t('field.responseFormat.label', 'Output Format'), type: 'select', default: 'text', options: [
+        { label: t('option.text', 'Text'), value: 'text' },
         { label: 'JSON', value: 'json_object' },
       ] },
-      { key: 'baseUrl', label: 'API 地址', type: 'text', default: CONFIG_BASEURL, tooltip: 'OpenAI API 基础地址' },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: CONFIG_BASEURL, tooltip: t('field.baseUrl.tooltip', 'OpenAI API base URL.') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -283,16 +283,16 @@ module.exports = [
         }
       } catch (err) {
         ctx.logger.error(`Chat 失败: ${err.message}`)
-        return { success: false, message: `Chat 失败: ${err.message}`, data: {} }
+        return { success: false, message: t('message.chatFailed', 'Chat failed: {error}').replace('{error}', err.message), data: {} }
       }
     },
   },
   {
     name: 'openai_embeddings',
-    label: 'OpenAI Embeddings',
-    category: 'OpenAI',
+    label: t('action.embeddings.label', 'OpenAI Embeddings'),
+    category: t('category', 'OpenAI'),
     icon: 'Binary',
-    description: '生成文本向量嵌入，用于语义搜索、聚类、分类',
+    description: t('action.embeddings.description', 'Generate text vector embeddings for semantic search, clustering, and classification.'),
     toolProperties: [
       { key: 'apiKey', type: 'string', description: 'OpenAI API Key', required: true },
       { key: 'input', description: '文本或文本数组', oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }], required: true },
@@ -301,15 +301,15 @@ module.exports = [
       { key: 'baseUrl', type: 'string', description: 'API 基础地址' },
     ],
     properties: [
-      { key: 'apiKey', label: 'API Key', type: 'text', required: true, tooltip: 'OpenAI API Key', default: CONFIG_APIKEY },
-      { key: 'input', label: '输入文本', type: 'textarea', required: true, tooltip: '文本或 JSON 文本数组' },
-      { key: 'model', label: '模型', type: 'select', default: 'text-embedding-3-small', options: [
-        { label: 'text-embedding-3-small (默认)', value: 'text-embedding-3-small' },
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, tooltip: t('field.apiKey.tooltip', 'OpenAI API Key'), default: CONFIG_APIKEY },
+      { key: 'input', label: t('field.input.label', 'Input Text'), type: 'textarea', required: true, tooltip: t('field.input.tooltip', 'Text or JSON array of texts.') },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'text-embedding-3-small', options: [
+        { label: 'text-embedding-3-small (Default)', value: 'text-embedding-3-small' },
         { label: 'text-embedding-3-large', value: 'text-embedding-3-large' },
         { label: 'text-embedding-ada-002', value: 'text-embedding-ada-002' },
       ] },
-      { key: 'dimensions', label: '维度', type: 'number', tooltip: '输出向量维度' },
-      { key: 'baseUrl', label: 'API 地址', type: 'text', default: CONFIG_BASEURL, tooltip: 'OpenAI API 基础地址' },
+      { key: 'dimensions', label: t('field.dimensions.label', 'Dimensions'), type: 'number', tooltip: t('field.dimensions.tooltip', 'Output vector dimensions.') },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: CONFIG_BASEURL, tooltip: t('field.baseUrl.tooltip', 'OpenAI API base URL.') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -332,7 +332,7 @@ module.exports = [
       })
       return {
         success: true,
-        message: `生成 ${result.data.length} 条嵌入向量`,
+        message: t('message.generatedEmbeddings', 'Generated {count} embedding(s)').replace('{count}', result.data.length),
         data: {
           embeddings: result.data.map(d => ({ index: d.index, embedding: d.embedding })),
           model: result.model,
@@ -343,10 +343,10 @@ module.exports = [
   },
   {
     name: 'openai_tts',
-    label: 'OpenAI 语音合成',
-    category: 'OpenAI',
+    label: t('action.tts.label', 'OpenAI Text-to-Speech'),
+    category: t('category', 'OpenAI'),
     icon: 'Volume2',
-    description: '将文本转为自然语音音频',
+    description: t('action.tts.description', 'Convert text to natural speech audio.'),
     toolProperties: [
       { key: 'apiKey', type: 'string', description: 'OpenAI API Key', required: true },
       { key: 'input', type: 'string', description: '要转换的文本', required: true },
@@ -357,14 +357,14 @@ module.exports = [
       { key: 'baseUrl', type: 'string', description: 'API 基础地址' },
     ],
     properties: [
-      { key: 'apiKey', label: 'API Key', type: 'text', required: true, tooltip: 'OpenAI API Key', default: CONFIG_APIKEY },
-      { key: 'input', label: '文本', type: 'textarea', required: true, tooltip: '要转换的文本' },
-      { key: 'model', label: '模型', type: 'select', default: 'tts-1', options: [
-        { label: 'tts-1 (默认)', value: 'tts-1' },
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, tooltip: t('field.apiKey.tooltip', 'OpenAI API Key'), default: CONFIG_APIKEY },
+      { key: 'input', label: t('field.text.label', 'Text'), type: 'textarea', required: true, tooltip: t('field.text.tooltip', 'Text to convert.') },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'tts-1', options: [
+        { label: 'tts-1 (Default)', value: 'tts-1' },
         { label: 'tts-1-hd', value: 'tts-1-hd' },
         { label: 'gpt-4o-mini-tts', value: 'gpt-4o-mini-tts' },
       ] },
-      { key: 'voice', label: '声音', type: 'select', default: 'alloy', options: [
+      { key: 'voice', label: t('field.voice.label', 'Voice'), type: 'select', default: 'alloy', options: [
         { label: 'Alloy', value: 'alloy' },
         { label: 'Ash', value: 'ash' },
         { label: 'Coral', value: 'coral' },
@@ -375,15 +375,15 @@ module.exports = [
         { label: 'Sage', value: 'sage' },
         { label: 'Shimmer', value: 'shimmer' },
       ] },
-      { key: 'speed', label: '语速', type: 'number', default: 1, tooltip: '0.25-4.0' },
-      { key: 'response_format', label: '输出格式', type: 'select', default: 'mp3', options: [
+      { key: 'speed', label: t('field.speed.label', 'Speed'), type: 'number', default: 1, tooltip: t('field.speed.tooltip', '0.25-4.0') },
+      { key: 'response_format', label: t('field.outputFormat.label', 'Output Format'), type: 'select', default: 'mp3', options: [
         { label: 'MP3', value: 'mp3' },
         { label: 'WAV', value: 'wav' },
         { label: 'Opus', value: 'opus' },
         { label: 'AAC', value: 'aac' },
         { label: 'FLAC', value: 'flac' },
       ] },
-      { key: 'baseUrl', label: 'API 地址', type: 'text', default: CONFIG_BASEURL, tooltip: 'OpenAI API 基础地址' },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: CONFIG_BASEURL, tooltip: t('field.baseUrl.tooltip', 'OpenAI API base URL.') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -412,17 +412,17 @@ module.exports = [
       ctx.logger.info(`TTS 完成，${buffer.length} 字节`)
       return {
         success: true,
-        message: `语音生成完成，${buffer.length} 字节`,
+        message: t('message.ttsComplete', 'Speech generated, {size} bytes').replace('{size}', buffer.length),
         data: { audio_base64: base64, mime_type: mimeType, format: fmt, size: buffer.length },
       }
     },
   },
   {
     name: 'openai_stt',
-    label: 'OpenAI 语音识别',
-    category: 'OpenAI',
+    label: t('action.stt.label', 'OpenAI Speech-to-Text'),
+    category: t('category', 'OpenAI'),
     icon: 'Mic',
-    description: '将音频文件转录为文本（Whisper）',
+    description: t('action.stt.description', 'Transcribe audio files to text (Whisper).'),
     toolProperties: [
       { key: 'apiKey', type: 'string', description: 'OpenAI API Key', required: true },
       { key: 'file_url', type: 'string', description: '音频文件 URL', required: true },
@@ -432,26 +432,26 @@ module.exports = [
       { key: 'baseUrl', type: 'string', description: 'API 基础地址' },
     ],
     properties: [
-      { key: 'apiKey', label: 'API Key', type: 'text', required: true, tooltip: 'OpenAI API Key', default: CONFIG_APIKEY },
-      { key: 'file_url', label: '音频 URL', type: 'text', required: true, tooltip: '音频文件 URL' },
-      { key: 'model', label: '模型', type: 'select', default: 'whisper-1', options: [
-        { label: 'whisper-1 (默认)', value: 'whisper-1' },
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, tooltip: t('field.apiKey.tooltip', 'OpenAI API Key'), default: CONFIG_APIKEY },
+      { key: 'file_url', label: t('field.fileUrl.label', 'Audio URL'), type: 'text', required: true, tooltip: t('field.fileUrl.tooltip', 'Audio file URL.') },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'whisper-1', options: [
+        { label: 'whisper-1 (Default)', value: 'whisper-1' },
       ] },
-      { key: 'language', label: '语言', type: 'select', default: '', options: [
-        { label: '自动检测', value: '' },
-        { label: '中文', value: 'zh' },
-        { label: '英文', value: 'en' },
-        { label: '日文', value: 'ja' },
-        { label: '韩文', value: 'ko' },
+      { key: 'language', label: t('field.language.label', 'Language'), type: 'select', default: '', options: [
+        { label: t('option.autoDetect', 'Auto Detect'), value: '' },
+        { label: t('option.chinese', 'Chinese'), value: 'zh' },
+        { label: t('option.english', 'English'), value: 'en' },
+        { label: t('option.japanese', 'Japanese'), value: 'ja' },
+        { label: t('option.korean', 'Korean'), value: 'ko' },
       ] },
-      { key: 'response_format', label: '输出格式', type: 'select', default: 'json', options: [
+      { key: 'response_format', label: t('field.outputFormat.label', 'Output Format'), type: 'select', default: 'json', options: [
         { label: 'JSON', value: 'json' },
-        { label: '纯文本', value: 'text' },
+        { label: t('option.plainText', 'Plain Text'), value: 'text' },
         { label: 'SRT', value: 'srt' },
         { label: 'VTT', value: 'vtt' },
-        { label: '详细 JSON', value: 'verbose_json' },
+        { label: t('option.verboseJson', 'Verbose JSON'), value: 'verbose_json' },
       ] },
-      { key: 'baseUrl', label: 'API 地址', type: 'text', default: CONFIG_BASEURL, tooltip: 'OpenAI API 基础地址' },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: CONFIG_BASEURL, tooltip: t('field.baseUrl.tooltip', 'OpenAI API base URL.') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -465,7 +465,7 @@ module.exports = [
       const Buffer = require('buffer').Buffer
       ctx.logger.info(`STT - 文件: ${args.file_url}`)
       const resp = await globalThis.fetch(args.file_url)
-      if (!resp.ok) throw new Error(`下载音频失败: ${resp.status}`)
+      if (!resp.ok) throw new Error(t('message.downloadAudioFailed', 'Failed to download audio: {status}').replace('{status}', resp.status))
       const audioBuffer = Buffer.from(await resp.arrayBuffer())
       const audioBlob = new Blob([audioBuffer])
       const result = await client.audio.transcriptions.create({
@@ -484,18 +484,18 @@ module.exports = [
   },
   {
     name: 'openai_models',
-    label: 'OpenAI 模型列表',
-    category: 'OpenAI',
+    label: t('action.models.label', 'OpenAI Model List'),
+    category: t('category', 'OpenAI'),
     icon: 'List',
-    description: '列出可用的模型',
+    description: t('action.models.description', 'List available models.'),
     tool: false,
     toolProperties: [
       { key: 'apiKey', type: 'string', description: 'OpenAI API Key', required: true },
       { key: 'baseUrl', type: 'string', description: 'API 基础地址' },
     ],
     properties: [
-      { key: 'apiKey', label: 'API Key', type: 'text', required: true, tooltip: 'OpenAI API Key', default: CONFIG_APIKEY },
-      { key: 'baseUrl', label: 'API 地址', type: 'text', default: CONFIG_BASEURL, tooltip: 'OpenAI API 基础地址' },
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, tooltip: t('field.apiKey.tooltip', 'OpenAI API Key'), default: CONFIG_APIKEY },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: CONFIG_BASEURL, tooltip: t('field.baseUrl.tooltip', 'OpenAI API base URL.') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -512,7 +512,7 @@ module.exports = [
         models.push({ id: model.id, owned_by: model.owned_by, created: model.created })
       }
       ctx.logger.info(`模型列表: 共 ${models.length} 个模型`)
-      return { success: true, message: `共 ${models.length} 个模型`, data: { models } }
+      return { success: true, message: t('message.modelCount', '{count} model(s) found').replace('{count}', models.length), data: { models } }
     },
   },
 ]

@@ -1,14 +1,14 @@
-module.exports = [
+module.exports = (t) => [
   {
     name: 'write_text_file',
-    label: '写入文本文件',
-    category: '文件操作',
+    label: t('action.write_text_file.label', 'Write Text File'),
+    category: t('category', 'File Operations'),
     icon: 'FilePen',
-    description: '将文本内容写入文件（不存在则创建）',
+    description: t('action.write_text_file.description', 'Write text content to a file (creates if not exists)'),
     properties: [
-      { key: 'path', label: '文件路径', type: 'text', required: true, tooltip: '目标文件路径' },
-      { key: 'content', label: '文件内容', type: 'textarea', required: true, tooltip: '要写入的文本内容' },
-      { key: 'encoding', label: '编码', type: 'text', default: 'utf-8', tooltip: '文件编码，默认 utf-8' },
+      { key: 'path', label: t('field.path.label', 'File Path'), type: 'text', required: true, tooltip: t('field.path.tooltip', 'Target file path') },
+      { key: 'content', label: t('field.content.label', 'File Content'), type: 'textarea', required: true, tooltip: t('field.content.tooltip', 'Text content to write') },
+      { key: 'encoding', label: t('field.encoding.label', 'Encoding'), type: 'text', default: 'utf-8', tooltip: t('field.encoding.tooltip', 'File encoding, default utf-8') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -19,18 +19,18 @@ module.exports = [
     ],
     run: async (ctx, args) => {
       await ctx.api.writeFile(args.path, args.content, args.encoding)
-      return { success: true, message: `文件已写入: ${args.path}`, data: { path: args.path } }
+      return { success: true, message: t('message.fileWritten', 'File written: {path}').replace('{path}', args.path), data: { path: args.path } }
     },
   },
   {
     name: 'write_binary_file',
-    label: '写入二进制文件',
-    category: '文件操作',
+    label: t('action.write_binary_file.label', 'Write Binary File'),
+    category: t('category', 'File Operations'),
     icon: 'Binary',
-    description: '将二进制数据写入文件，适用于图片、音频等非文本文件',
+    description: t('action.write_binary_file.description', 'Write binary data to a file, suitable for images, audio, and other non-text files'),
     properties: [
-      { key: 'path', label: '文件路径', type: 'text', required: true, tooltip: '目标文件路径' },
-      { key: 'data', label: '二进制数据', type: 'buffer', required: true, tooltip: '要写入的二进制数据' },
+      { key: 'path', label: t('field.path.label', 'File Path'), type: 'text', required: true, tooltip: t('field.path.tooltip', 'Target file path') },
+      { key: 'data', label: t('field.data.label', 'Binary Data'), type: 'buffer', required: true, tooltip: t('field.data.tooltip', 'Binary data to write') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -41,18 +41,18 @@ module.exports = [
     ],
     run: async (ctx, args) => {
       await ctx.api.writeBinaryFile(args.path, args.data)
-      return { success: true, message: `二进制文件已写入: ${args.path}`, data: { path: args.path } }
+      return { success: true, message: t('message.binaryFileWritten', 'Binary file written: {path}').replace('{path}', args.path), data: { path: args.path } }
     },
   },
   {
     name: 'read_file',
-    label: '读取文件',
-    category: '文件操作',
+    label: t('action.read_file.label', 'Read File'),
+    category: t('category', 'File Operations'),
     icon: 'FileText',
-    description: '读取文件内容',
+    description: t('action.read_file.description', 'Read file content'),
     properties: [
-      { key: 'path', label: '文件路径', type: 'text', required: true, tooltip: '目标文件路径' },
-      { key: 'encoding', label: '编码', type: 'text', default: 'utf-8', tooltip: '文件编码' },
+      { key: 'path', label: t('field.path.label', 'File Path'), type: 'text', required: true, tooltip: t('field.path.tooltip', 'Target file path') },
+      { key: 'encoding', label: t('field.encoding.label', 'Encoding'), type: 'text', default: 'utf-8', tooltip: t('field.encoding_read.tooltip', 'File encoding') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -64,19 +64,19 @@ module.exports = [
     ],
     run: async (ctx, args) => {
       const content = await ctx.api.readFile(args.path, args.encoding)
-      return { success: true, message: `文件已读取: ${args.path}`, data: { content, path: args.path } }
+      return { success: true, message: t('message.fileRead', 'File read: {path}').replace('{path}', args.path), data: { content, path: args.path } }
     },
   },
   {
     name: 'edit_file',
-    label: '编辑文件',
-    category: '文件操作',
+    label: t('action.edit_file.label', 'Edit File'),
+    category: t('category', 'File Operations'),
     icon: 'FileEdit',
-    description: '替换文件中的指定内容',
+    description: t('action.edit_file.description', 'Replace specified content in a file'),
     properties: [
-      { key: 'path', label: '文件路径', type: 'text', required: true, tooltip: '目标文件路径' },
-      { key: 'oldContent', label: '原内容', type: 'textarea', required: true, tooltip: '要被替换的原内容' },
-      { key: 'newContent', label: '新内容', type: 'textarea', required: true, tooltip: '替换后的新内容' },
+      { key: 'path', label: t('field.path.label', 'File Path'), type: 'text', required: true, tooltip: t('field.path.tooltip', 'Target file path') },
+      { key: 'oldContent', label: t('field.oldContent.label', 'Old Content'), type: 'textarea', required: true, tooltip: t('field.oldContent.tooltip', 'Content to be replaced') },
+      { key: 'newContent', label: t('field.newContent.label', 'New Content'), type: 'textarea', required: true, tooltip: t('field.newContent.tooltip', 'New content after replacement') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -87,17 +87,17 @@ module.exports = [
     ],
     run: async (ctx, args) => {
       await ctx.api.editFile(args.path, args.oldContent, args.newContent)
-      return { success: true, message: `文件已编辑: ${args.path}`, data: { path: args.path } }
+      return { success: true, message: t('message.fileEdited', 'File edited: {path}').replace('{path}', args.path), data: { path: args.path } }
     },
   },
   {
     name: 'delete_file',
-    label: '删除文件',
-    category: '文件操作',
+    label: t('action.delete_file.label', 'Delete File'),
+    category: t('category', 'File Operations'),
     icon: 'Trash2',
-    description: '删除指定文件',
+    description: t('action.delete_file.description', 'Delete a specified file'),
     properties: [
-      { key: 'path', label: '文件路径', type: 'text', required: true, tooltip: '要删除的文件路径' },
+      { key: 'path', label: t('field.path.label', 'File Path'), type: 'text', required: true, tooltip: t('field.file_path_delete.tooltip', 'File path to delete') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -108,19 +108,19 @@ module.exports = [
     ],
     run: async (ctx, args) => {
       await ctx.api.deleteFile(args.path)
-      return { success: true, message: `文件已删除: ${args.path}`, data: { path: args.path } }
+      return { success: true, message: t('message.fileDeleted', 'File deleted: {path}').replace('{path}', args.path), data: { path: args.path } }
     },
   },
   {
     name: 'list_files',
-    label: '枚举文件',
-    category: '文件操作',
+    label: t('action.list_files.label', 'List Files'),
+    category: t('category', 'File Operations'),
     icon: 'FolderSearch',
-    description: '列出目录下的文件和子目录',
+    description: t('action.list_files.description', 'List files and subdirectories in a directory'),
     properties: [
-      { key: 'path', label: '目录路径', type: 'text', required: true, tooltip: '目标目录路径' },
-      { key: 'recursive', label: '递归', type: 'boolean', default: false, tooltip: '是否递归列出子目录' },
-      { key: 'pattern', label: '匹配模式', type: 'text', tooltip: '文件名匹配模式，如 *.txt' },
+      { key: 'path', label: t('field.dir_path.label', 'Directory Path'), type: 'text', required: true, tooltip: t('field.dir_path.tooltip', 'Target directory path') },
+      { key: 'recursive', label: t('field.recursive.label', 'Recursive'), type: 'boolean', default: false, tooltip: t('field.recursive.tooltip', 'Whether to recursively list subdirectories') },
+      { key: 'pattern', label: t('field.pattern.label', 'Pattern'), type: 'text', tooltip: t('field.pattern.tooltip', 'File name pattern, e.g. *.txt') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -135,18 +135,18 @@ module.exports = [
     ],
     run: async (ctx, args) => {
       const files = await ctx.api.listFiles(args.path, { recursive: args.recursive, pattern: args.pattern })
-      return { success: true, message: `共 ${files.length} 个条目`, data: { files } }
+      return { success: true, message: t('message.listCount', '{count} entries found').replace('{count}', files.length), data: { files } }
     },
   },
   {
     name: 'create_dir',
-    label: '创建目录',
-    category: '目录操作',
+    label: t('action.create_dir.label', 'Create Directory'),
+    category: t('category_dir', 'Directory Operations'),
     icon: 'FolderPlus',
-    description: '创建目录（支持递归创建）',
+    description: t('action.create_dir.description', 'Create a directory (supports recursive creation)'),
     properties: [
-      { key: 'path', label: '目录路径', type: 'text', required: true, tooltip: '要创建的目录路径' },
-      { key: 'recursive', label: '递归创建', type: 'boolean', default: true, tooltip: '是否递归创建父目录' },
+      { key: 'path', label: t('field.dir_path.label', 'Directory Path'), type: 'text', required: true, tooltip: t('field.dir_path_create.tooltip', 'Directory path to create') },
+      { key: 'recursive', label: t('field.recursive_create.label', 'Recursive Create'), type: 'boolean', default: true, tooltip: t('field.recursive_create.tooltip', 'Whether to recursively create parent directories') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -157,19 +157,19 @@ module.exports = [
     ],
     run: async (ctx, args) => {
       await ctx.api.createDir(args.path, { recursive: args.recursive })
-      return { success: true, message: `目录已创建: ${args.path}`, data: { path: args.path } }
+      return { success: true, message: t('message.dirCreated', 'Directory created: {path}').replace('{path}', args.path), data: { path: args.path } }
     },
   },
   {
     name: 'remove_dir',
-    label: '删除目录',
-    category: '目录操作',
+    label: t('action.remove_dir.label', 'Remove Directory'),
+    category: t('category_dir', 'Directory Operations'),
     icon: 'FolderX',
-    description: '删除目录',
+    description: t('action.remove_dir.description', 'Remove a directory'),
     properties: [
-      { key: 'path', label: '目录路径', type: 'text', required: true, tooltip: '要删除的目录路径' },
-      { key: 'recursive', label: '递归删除', type: 'boolean', default: false, tooltip: '是否递归删除所有内容' },
-      { key: 'force', label: '强制删除', type: 'boolean', default: false, tooltip: '目录不存在时不报错' },
+      { key: 'path', label: t('field.dir_path.label', 'Directory Path'), type: 'text', required: true, tooltip: t('field.dir_path_delete.tooltip', 'Directory path to remove') },
+      { key: 'recursive', label: t('field.recursive_delete.label', 'Recursive Delete'), type: 'boolean', default: false, tooltip: t('field.recursive_delete.tooltip', 'Whether to recursively delete all contents') },
+      { key: 'force', label: t('field.force.label', 'Force Delete'), type: 'boolean', default: false, tooltip: t('field.force.tooltip', 'Do not error if directory does not exist') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -180,17 +180,17 @@ module.exports = [
     ],
     run: async (ctx, args) => {
       await ctx.api.removeDir(args.path, { recursive: args.recursive, force: args.force })
-      return { success: true, message: `目录已删除: ${args.path}`, data: { path: args.path } }
+      return { success: true, message: t('message.dirDeleted', 'Directory removed: {path}').replace('{path}', args.path), data: { path: args.path } }
     },
   },
   {
     name: 'file_stat',
-    label: '文件信息',
-    category: '文件操作',
+    label: t('action.file_stat.label', 'File Info'),
+    category: t('category', 'File Operations'),
     icon: 'Info',
-    description: '获取文件或目录的详细信息',
+    description: t('action.file_stat.description', 'Get detailed information about a file or directory'),
     properties: [
-      { key: 'path', label: '路径', type: 'text', required: true, tooltip: '文件或目录路径' },
+      { key: 'path', label: t('field.stat_path.label', 'Path'), type: 'text', required: true, tooltip: t('field.stat_path.tooltip', 'File or directory path') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -205,18 +205,18 @@ module.exports = [
     ],
     run: async (ctx, args) => {
       const stat = await ctx.api.stat(args.path)
-      return { success: true, message: '文件信息已获取', data: stat }
+      return { success: true, message: t('message.statRetrieved', 'File info retrieved'), data: stat }
     },
   },
   {
     name: 'rename_file',
-    label: '重命名',
-    category: '文件操作',
+    label: t('action.rename_file.label', 'Rename'),
+    category: t('category', 'File Operations'),
     icon: 'PenLine',
-    description: '重命名或移动文件/目录',
+    description: t('action.rename_file.description', 'Rename or move a file/directory'),
     properties: [
-      { key: 'oldPath', label: '原路径', type: 'text', required: true, tooltip: '原文件/目录路径' },
-      { key: 'newPath', label: '新路径', type: 'text', required: true, tooltip: '新文件/目录路径' },
+      { key: 'oldPath', label: t('field.oldPath.label', 'Old Path'), type: 'text', required: true, tooltip: t('field.oldPath.tooltip', 'Original file/directory path') },
+      { key: 'newPath', label: t('field.newPath.label', 'New Path'), type: 'text', required: true, tooltip: t('field.newPath.tooltip', 'New file/directory path') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -228,18 +228,18 @@ module.exports = [
     ],
     run: async (ctx, args) => {
       await ctx.api.rename(args.oldPath, args.newPath)
-      return { success: true, message: `已重命名: ${args.oldPath} → ${args.newPath}`, data: { oldPath: args.oldPath, newPath: args.newPath } }
+      return { success: true, message: t('message.renamed', 'Renamed: {oldPath} -> {newPath}').replace('{oldPath}', args.oldPath).replace('{newPath}', args.newPath), data: { oldPath: args.oldPath, newPath: args.newPath } }
     },
   },
   {
     name: 'copy_file',
-    label: '复制文件',
-    category: '文件操作',
+    label: t('action.copy_file.label', 'Copy File'),
+    category: t('category', 'File Operations'),
     icon: 'Copy',
-    description: '复制文件到新路径',
+    description: t('action.copy_file.description', 'Copy a file to a new path'),
     properties: [
-      { key: 'src', label: '源路径', type: 'text', required: true, tooltip: '源文件路径' },
-      { key: 'dest', label: '目标路径', type: 'text', required: true, tooltip: '目标文件路径' },
+      { key: 'src', label: t('field.src.label', 'Source Path'), type: 'text', required: true, tooltip: t('field.src.tooltip', 'Source file path') },
+      { key: 'dest', label: t('field.dest.label', 'Destination Path'), type: 'text', required: true, tooltip: t('field.dest.tooltip', 'Destination file path') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -251,7 +251,7 @@ module.exports = [
     ],
     run: async (ctx, args) => {
       await ctx.api.copyFile(args.src, args.dest)
-      return { success: true, message: `文件已复制: ${args.src} → ${args.dest}`, data: { src: args.src, dest: args.dest } }
+      return { success: true, message: t('message.fileCopied', 'File copied: {src} -> {dest}').replace('{src}', args.src).replace('{dest}', args.dest), data: { src: args.src, dest: args.dest } }
     },
   },
 ]

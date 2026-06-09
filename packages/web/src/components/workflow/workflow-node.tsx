@@ -3,16 +3,20 @@
 import React, { useState, useMemo, useCallback, useRef, useSyncExternalStore } from 'react';
 import { Handle, NodeResizer, Position, useUpdateNodeInternals } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
-import { AlertCircle, CheckCircle, FileText, Play, X, XCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle, Copy, FileText, Play, Scissors, Trash2, X, XCircle } from 'lucide-react';
 import { getNodeDefinition, getPluginNodesVersion, subscribePluginNodesVersion } from '@/lib/workflow-nodes';
 import { LOOP_BODY_NODE_TYPE, LOOP_BODY_SOURCE_HANDLE, type ExecutionStep } from '@agent-spaces/shared';
 import { BorderGlide } from '@/components/ui/border-glide';
+import {
+  ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 import {
   HoverCard, HoverCardContent, HoverCardTrigger,
 } from '@/components/ui/hover-card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { JsonViewer } from '@/components/viewers/json-viewer';
 import { cn } from '@/lib/utils';
+import { useWorkflowEditorStore } from '@/stores/workflow-editor';
 import { WorkflowNodeDefinitionIcon } from './workflow-node-icon';
 
 const HEADER_HEIGHT = 33;

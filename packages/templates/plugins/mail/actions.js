@@ -12,26 +12,26 @@ function createTransporter(config) {
 
 const CONFIG_PREFIX = '{{ __config__["workflow.mail"]'
 
-module.exports = [
+module.exports = (t) => [
   {
     name: 'mail_send',
-    label: '发送邮件',
-    category: '邮件',
+    label: t('action.send.label', 'Send Email'),
+    category: t('category', 'Email'),
     icon: 'Mail',
-    description: '通过 SMTP 发送邮件',
+    description: t('action.send.description', 'Send email via SMTP'),
     properties: [
-      { key: 'host', label: 'SMTP 服务器', type: 'text', required: true, default: `${CONFIG_PREFIX}["host"]}}` },
-      { key: 'port', label: '端口', type: 'number', default: `${CONFIG_PREFIX}["port"] || 465}}` },
-      { key: 'user', label: '用户名', type: 'text', required: true, default: `${CONFIG_PREFIX}["user"]}}` },
-      { key: 'pass', label: '密码/授权码', type: 'text', required: true, default: `${CONFIG_PREFIX}["pass"]}}` },
-      { key: 'from', label: '发件人', type: 'text', default: `${CONFIG_PREFIX}["from"]}}`, tooltip: '"名称 <地址>" 或纯地址' },
-      { key: 'to', label: '收件人', type: 'text', required: true, tooltip: '多个用逗号分隔' },
-      { key: 'cc', label: '抄送', type: 'text', tooltip: '多个用逗号分隔' },
-      { key: 'bcc', label: '密送', type: 'text', tooltip: '多个用逗号分隔' },
-      { key: 'subject', label: '主题', type: 'text', required: true },
-      { key: 'body', label: '正文', type: 'textarea', required: true, tooltip: '纯文本或 HTML（勾选下方 HTML 开关）' },
-      { key: 'html', label: 'HTML 正文', type: 'boolean', default: false, tooltip: '勾选则正文按 HTML 渲染' },
-      { key: 'attachments', label: '附件路径', type: 'textarea', tooltip: '文件路径数组 JSON，如 ["/path/to/file.pdf"]' },
+      { key: 'host', label: t('field.host.label', 'SMTP Server'), type: 'text', required: true, default: `${CONFIG_PREFIX}["host"]}}` },
+      { key: 'port', label: t('field.port.label', 'Port'), type: 'number', default: `${CONFIG_PREFIX}["port"] || 465}}` },
+      { key: 'user', label: t('field.user.label', 'Username'), type: 'text', required: true, default: `${CONFIG_PREFIX}["user"]}}` },
+      { key: 'pass', label: t('field.pass.label', 'Password / Auth Code'), type: 'text', required: true, default: `${CONFIG_PREFIX}["pass"]}}` },
+      { key: 'from', label: t('field.from.label', 'From'), type: 'text', default: `${CONFIG_PREFIX}["from"]}}`, tooltip: t('field.from.tooltip', '"Name <address>" or plain address') },
+      { key: 'to', label: t('field.to.label', 'To'), type: 'text', required: true, tooltip: t('field.to.tooltip', 'Separate multiple with commas') },
+      { key: 'cc', label: t('field.cc.label', 'CC'), type: 'text', tooltip: t('field.cc.tooltip', 'Separate multiple with commas') },
+      { key: 'bcc', label: t('field.bcc.label', 'BCC'), type: 'text', tooltip: t('field.bcc.tooltip', 'Separate multiple with commas') },
+      { key: 'subject', label: t('field.subject.label', 'Subject'), type: 'text', required: true },
+      { key: 'body', label: t('field.body.label', 'Body'), type: 'textarea', required: true, tooltip: t('field.body.tooltip', 'Plain text or HTML (enable the HTML toggle below)') },
+      { key: 'html', label: t('field.html.label', 'HTML Body'), type: 'boolean', default: false, tooltip: t('field.html.tooltip', 'Enable to render body as HTML') },
+      { key: 'attachments', label: t('field.attachments.label', 'Attachment Paths'), type: 'textarea', tooltip: t('field.attachments.tooltip', 'JSON array of file paths, e.g. ["/path/to/file.pdf"]') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -67,7 +67,7 @@ module.exports = [
 
       return {
         success: true,
-        message: `邮件已发送至 ${mailOptions.to}`,
+        message: t('message.mailSent', 'Email sent to {to}').replace('{to}', mailOptions.to),
         data: { messageId: info.messageId, response: info.response },
       }
     },

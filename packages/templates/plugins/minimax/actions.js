@@ -6,7 +6,7 @@ function getBaseUrl(args) {
 
 function getHeaders(args) {
   const apiKey = args.apiKey
-  if (!apiKey) throw new Error('缺少 MiniMax API Key')
+  if (!apiKey) throw new Error('Missing MiniMax API Key')
   return {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${apiKey}`,
@@ -125,16 +125,16 @@ function cleanHerMessages(raw, defaultRole = 'user') {
     .filter(m => m.content.trim())
 }
 
-module.exports = [
+module.exports = (t) => [
   // ============================
   // 文本合成（Chat Completion）
   // ============================
   {
     name: 'minimax_chat',
-    label: '文本合成',
-    category: 'MiniMax AI',
+    label: t('action.chat.label', 'Text Completion'),
+    category: t('category', 'MiniMax AI'),
     icon: 'MessageSquare',
-    description: 'MiniMax 文本合成：支持多轮对话、工具调用(Function Calling)、图片理解、思维链推理',
+    description: t('action.chat.description', 'MiniMax text completion: multi-turn chat, function calling, image understanding, chain-of-thought reasoning'),
     toolProperties: [
       { key: 'apiKey', type: 'string', description: 'MiniMax API Key', required: true },
       { key: 'model', type: 'string', description: '模型: MiniMax-M2.7(默认)/MiniMax-M2.7-highspeed/MiniMax-M2.5/MiniMax-M2.5-highspeed/MiniMax-M2.1/MiniMax-M2.1-highspeed/MiniMax-M2' },
@@ -146,22 +146,22 @@ module.exports = [
       { key: 'baseUrl', type: 'string', description: 'API地址，默认 https://api.minimaxi.com' },
     ],
     properties: [
-      { key: 'apiKey', label: 'API Key', type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
-      { key: 'model', label: '模型', type: 'select', default: 'MiniMax-M2.7', options: CHAT_MODELS },
-      { key: 'systemPrompt', label: '系统提示词', type: 'textarea', tooltip: '系统角色的行为指令，定义 AI 的角色和约束' },
-      { key: 'messages', label: '消息列表', type: 'array', required: true, tooltip: '对话消息列表', fields: [
-        { key: 'role', label: '角色', type: 'select', options: [
-          { label: '用户', value: 'user' },
-          { label: '助手', value: 'assistant' },
-          { label: '系统', value: 'system' },
-          { label: '开发者', value: 'developer' },
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'MiniMax-M2.7', options: CHAT_MODELS },
+      { key: 'systemPrompt', label: t('field.systemPrompt.label', 'System Prompt'), type: 'textarea', tooltip: t('field.systemPrompt.tooltip', 'System behavior instructions, defining the AI role and constraints') },
+      { key: 'messages', label: t('field.messages.label', 'Messages'), type: 'array', required: true, tooltip: t('field.messages.tooltip', 'Conversation message list'), fields: [
+        { key: 'role', label: t('field.role.label', 'Role'), type: 'select', options: [
+          { label: t('field.role.user.label', 'User'), value: 'user' },
+          { label: t('field.role.assistant.label', 'Assistant'), value: 'assistant' },
+          { label: t('field.role.system.label', 'System'), value: 'system' },
+          { label: t('field.role.developer.label', 'Developer'), value: 'developer' },
         ], default: 'user' },
-        { key: 'content', label: '内容', type: 'text', placeholder: '消息内容' },
+        { key: 'content', label: t('field.content.label', 'Content'), type: 'text', placeholder: t('field.content.placeholder', 'Message content') },
       ] },
-      { key: 'temperature', label: '温度', type: 'number', default: 0.7, tooltip: '0-1，控制随机性，越高越随机，建议取值 0.7-1.0' },
-      { key: 'topP', label: 'Top P', type: 'number', default: 0.95, tooltip: '0-1，核采样参数' },
-      { key: 'maxCompletionTokens', label: '最大输出 Token', type: 'number', tooltip: '最大生成 token 数' },
-      { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
+      { key: 'temperature', label: t('field.temperature.label', 'Temperature'), type: 'number', default: 0.7, tooltip: t('field.temperature.chat.tooltip', '0-1, controls randomness. Higher is more random. Recommended: 0.7-1.0') },
+      { key: 'topP', label: t('field.topP.label', 'Top P'), type: 'number', default: 0.95, tooltip: t('field.topP.tooltip', '0-1, nucleus sampling parameter') },
+      { key: 'maxCompletionTokens', label: t('field.maxCompletionTokens.label', 'Max Output Tokens'), type: 'number', tooltip: t('field.maxCompletionTokens.chat.tooltip', 'Maximum number of tokens to generate') },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -208,13 +208,13 @@ module.exports = [
       const choice = result.choices?.[0]
       if (!choice) {
         const errMsg = result.error?.message || result.base_resp?.status_msg || JSON.stringify(result).slice(0, 200)
-        return { success: false, message: `文本合成失败: ${errMsg}` }
+        return { success: false, message: t('message.chatFailed', 'Text completion failed: {error}').replace('{error}', errMsg) }
       }
 
       ctx.logger.info(`文本合成完成: tokens=${result.usage?.total_tokens}, id=${result.id}`)
       return {
         success: true,
-        message: '文本合成完成',
+        message: t('message.chatComplete', 'Text completion finished'),
         data: {
           content: choice.message?.content || '',
           reasoningContent: choice.message?.reasoning_content || '',
@@ -231,10 +231,10 @@ module.exports = [
   // ============================
   {
     name: 'minimax_chat_her',
-    label: '角色对话',
-    category: 'MiniMax AI',
+    label: t('action.chatHer.label', 'Roleplay Chat'),
+    category: t('category', 'MiniMax AI'),
     icon: 'User',
-    description: 'MiniMax 角色对话（M2-her）：支持角色扮演、多轮对话，可定义角色人设和世界观',
+    description: t('action.chatHer.description', 'MiniMax roleplay chat (M2-her): supports character roleplay, multi-turn conversation, customizable persona and worldview'),
     toolProperties: [
       { key: 'apiKey', type: 'string', description: 'MiniMax API Key', required: true },
       { key: 'systemPrompt', type: 'string', description: '角色人设：定义 AI 的性格、背景、说话风格' },
@@ -248,29 +248,29 @@ module.exports = [
       { key: 'baseUrl', type: 'string', description: 'API地址，默认 https://api.minimaxi.com' },
     ],
     properties: [
-      { key: 'apiKey', label: 'API Key', type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
-      { key: 'systemPrompt', label: '角色人设', type: 'textarea', tooltip: '角色的系统设定，定义 AI 的性格、背景、说话风格' },
-      { key: 'userSystem', label: '用户设定', type: 'textarea', tooltip: '用户角色的系统设定（user_system role）' },
-      { key: 'group', label: '群组设定', type: 'textarea', tooltip: '世界观/场景设定（group role）' },
-      { key: 'sampleMessages', label: '示例对话', type: 'array', tooltip: '用 sample_message_user / sample_message_ai 角色提供对话示例', fields: [
-        { key: 'role', label: '角色', type: 'select', options: [
-          { label: '示例用户', value: 'sample_message_user' },
-          { label: '示例AI', value: 'sample_message_ai' },
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
+      { key: 'systemPrompt', label: t('field.herSystemPrompt.label', 'Character Persona'), type: 'textarea', tooltip: t('field.herSystemPrompt.tooltip', 'Character system settings, defining AI personality, background, and speaking style') },
+      { key: 'userSystem', label: t('field.userSystem.label', 'User Settings'), type: 'textarea', tooltip: t('field.userSystem.tooltip', 'User role system settings (user_system role)') },
+      { key: 'group', label: t('field.group.label', 'Group Settings'), type: 'textarea', tooltip: t('field.group.tooltip', 'Worldview/scene settings (group role)') },
+      { key: 'sampleMessages', label: t('field.sampleMessages.label', 'Sample Dialogue'), type: 'array', tooltip: t('field.sampleMessages.tooltip', 'Provide dialogue examples using sample_message_user / sample_message_ai roles'), fields: [
+        { key: 'role', label: t('field.role.label', 'Role'), type: 'select', options: [
+          { label: t('field.role.sampleUser.label', 'Sample User'), value: 'sample_message_user' },
+          { label: t('field.role.sampleAi.label', 'Sample AI'), value: 'sample_message_ai' },
         ], default: 'sample_message_user' },
-        { key: 'content', label: '内容', type: 'text', placeholder: '示例消息内容' },
+        { key: 'content', label: t('field.content.label', 'Content'), type: 'text', placeholder: t('field.sampleContent.placeholder', 'Sample message content') },
       ] },
-      { key: 'messages', label: '消息列表', type: 'array', required: true, tooltip: '对话消息列表', fields: [
-        { key: 'role', label: '角色', type: 'select', options: [
-          { label: '用户', value: 'user' },
-          { label: '助手', value: 'assistant' },
-          { label: '系统', value: 'system' },
+      { key: 'messages', label: t('field.messages.label', 'Messages'), type: 'array', required: true, tooltip: t('field.messages.tooltip', 'Conversation message list'), fields: [
+        { key: 'role', label: t('field.role.label', 'Role'), type: 'select', options: [
+          { label: t('field.role.user.label', 'User'), value: 'user' },
+          { label: t('field.role.assistant.label', 'Assistant'), value: 'assistant' },
+          { label: t('field.role.system.label', 'System'), value: 'system' },
         ], default: 'user' },
-        { key: 'content', label: '内容', type: 'text', placeholder: '消息内容' },
+        { key: 'content', label: t('field.content.label', 'Content'), type: 'text', placeholder: t('field.content.placeholder', 'Message content') },
       ] },
-      { key: 'temperature', label: '温度', type: 'number', default: 1.0, tooltip: '0-1，控制随机性，默认 1.0' },
-      { key: 'topP', label: 'Top P', type: 'number', default: 0.95, tooltip: '0-1，核采样参数' },
-      { key: 'maxCompletionTokens', label: '最大输出 Token', type: 'number', tooltip: '最大 2048' },
-      { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
+      { key: 'temperature', label: t('field.temperature.label', 'Temperature'), type: 'number', default: 1.0, tooltip: t('field.temperature.her.tooltip', '0-1, controls randomness. Default: 1.0') },
+      { key: 'topP', label: t('field.topP.label', 'Top P'), type: 'number', default: 0.95, tooltip: t('field.topP.tooltip', '0-1, nucleus sampling parameter') },
+      { key: 'maxCompletionTokens', label: t('field.maxCompletionTokens.label', 'Max Output Tokens'), type: 'number', tooltip: t('field.maxCompletionTokens.her.tooltip', 'Maximum 2048') },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -326,13 +326,13 @@ module.exports = [
       const choice = result.choices?.[0]
       if (!choice) {
         const errMsg = result.error?.message || result.base_resp?.status_msg || JSON.stringify(result).slice(0, 200)
-        return { success: false, message: `角色对话失败: ${errMsg}` }
+        return { success: false, message: t('message.herFailed', 'Roleplay chat failed: {error}').replace('{error}', errMsg) }
       }
 
       ctx.logger.info(`角色对话完成: tokens=${result.usage?.total_tokens}, id=${result.id}`)
       return {
         success: true,
-        message: '角色对话完成',
+        message: t('message.herComplete', 'Roleplay chat finished'),
         data: {
           content: choice.message?.content || '',
           totalTokens: result.usage?.total_tokens,
@@ -347,10 +347,10 @@ module.exports = [
   // ============================
   {
     name: 'minimax_tts',
-    label: '语音合成',
-    category: 'MiniMax AI',
+    label: t('action.tts.label', 'Text to Speech'),
+    category: t('category', 'MiniMax AI'),
     icon: 'AudioLines',
-    description: 'MiniMax 文字转语音（同步 TTS），支持多种音色、情绪、语速控制',
+    description: t('action.tts.description', 'MiniMax text-to-speech (sync TTS), multiple voices, emotions, and speed control'),
     toolProperties: [
       { key: 'apiKey', type: 'string', description: 'MiniMax API Key', required: true },
       { key: 'text', type: 'string', description: '待合成语音的文本（<10000字符）', required: true },
@@ -365,25 +365,25 @@ module.exports = [
       { key: 'baseUrl', type: 'string', description: 'API地址，默认 https://api.minimaxi.com' },
     ],
     properties: [
-      { key: 'apiKey', label: 'API Key', type: 'text', required: true, tooltip: 'MiniMax API Key', default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
-      { key: 'text', label: '文本内容', type: 'textarea', required: true, tooltip: '待合成语音的文本（<10000字符）' },
-      { key: 'model', label: '模型', type: 'select', default: 'speech-2.8-hd', options: TTS_MODELS },
-      { key: 'voiceId', label: '音色ID', type: 'text', default: 'Chinese (Mandarin)_Lyrical_Voice', tooltip: '系统音色ID，如 male-qn-qingse、English_Graceful_Lady' },
-      { key: 'speed', label: '语速', type: 'number', default: 1, tooltip: '0.5-2.0，默认1.0' },
-      { key: 'vol', label: '音量', type: 'number', default: 1, tooltip: '0-10，默认1.0' },
-      { key: 'pitch', label: '语调', type: 'number', default: 0, tooltip: '-12到12，默认0' },
-      { key: 'emotion', label: '情绪', type: 'select', default: '', options: EMOTIONS },
-      { key: 'audioFormat', label: '音频格式', type: 'select', default: 'mp3', options: AUDIO_FORMATS },
-      { key: 'sampleRate', label: '采样率', type: 'select', default: 32000, options: [
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, tooltip: t('field.apiKey.tooltip', 'MiniMax API Key'), default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
+      { key: 'text', label: t('field.text.label', 'Text Content'), type: 'textarea', required: true, tooltip: t('field.text.tooltip', 'Text to synthesize (<10000 characters)') },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'speech-2.8-hd', options: TTS_MODELS },
+      { key: 'voiceId', label: t('field.voiceId.label', 'Voice ID'), type: 'text', default: 'Chinese (Mandarin)_Lyrical_Voice', tooltip: t('field.voiceId.tooltip', 'System voice ID, e.g. male-qn-qingse, English_Graceful_Lady') },
+      { key: 'speed', label: t('field.speed.label', 'Speed'), type: 'number', default: 1, tooltip: t('field.speed.tooltip', '0.5-2.0, default 1.0') },
+      { key: 'vol', label: t('field.vol.label', 'Volume'), type: 'number', default: 1, tooltip: t('field.vol.tooltip', '0-10, default 1.0') },
+      { key: 'pitch', label: t('field.pitch.label', 'Pitch'), type: 'number', default: 0, tooltip: t('field.pitch.tooltip', '-12 to 12, default 0') },
+      { key: 'emotion', label: t('field.emotion.label', 'Emotion'), type: 'select', default: '', options: EMOTIONS },
+      { key: 'audioFormat', label: t('field.audioFormat.label', 'Audio Format'), type: 'select', default: 'mp3', options: AUDIO_FORMATS },
+      { key: 'sampleRate', label: t('field.sampleRate.label', 'Sample Rate'), type: 'select', default: 32000, options: [
         { label: '8000', value: 8000 }, { label: '16000', value: 16000 },
         { label: '22050', value: 22050 }, { label: '24000', value: 24000 },
         { label: '32000 (默认)', value: 32000 }, { label: '44100', value: 44100 },
       ] },
-      { key: 'outputFormat', label: '输出格式', type: 'select', default: 'url', options: [
-        { label: 'URL (推荐)', value: 'url' },
-        { label: 'HEX', value: 'hex' },
+      { key: 'outputFormat', label: t('field.outputFormat.label', 'Output Format'), type: 'select', default: 'url', options: [
+        { label: t('field.urlRecommended.label', 'URL (recommended)'), value: 'url' },
+        { label: t('field.hex.label', 'HEX'), value: 'hex' },
       ] },
-      { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -426,7 +426,8 @@ module.exports = [
       const result = await ctx.api.postJson(`${baseUrl}/v1/t2a_v2`, { headers, body, timeout: 120000 })
 
       if (result.base_resp?.status_code !== 0) {
-        return { success: false, message: `语音合成失败: ${result.base_resp?.status_msg || '未知错误'} (code: ${result.base_resp?.status_code})` }
+        const errMsg = result.base_resp?.status_msg || t('message.unknownError', 'Unknown error')
+        return { success: false, message: t('message.ttsFailed', 'Text-to-speech failed: {error} (code: {code})').replace('{error}', errMsg).replace('{code}', result.base_resp?.status_code) }
       }
 
       const audioUrl = args.outputFormat === 'url' ? result.data?.audio : undefined
@@ -435,7 +436,7 @@ module.exports = [
       ctx.logger.info(`语音合成完成: 时长=${result.extra_info?.audio_length}ms, 格式=${result.extra_info?.audio_format}`)
       return {
         success: true,
-        message: '语音合成完成',
+        message: t('message.ttsComplete', 'Text-to-speech completed'),
         data: {
           audioUrl,
           audioHex,
@@ -452,10 +453,10 @@ module.exports = [
   // ============================
   {
     name: 'minimax_music_generation',
-    label: '音乐生成',
-    category: 'MiniMax AI',
+    label: t('action.musicGeneration.label', 'Music Generation'),
+    category: t('category', 'MiniMax AI'),
     icon: 'Music',
-    description: 'MiniMax 音乐生成：通过描述和歌词生成歌曲，支持翻唱模式',
+    description: t('action.musicGeneration.description', 'MiniMax music generation: generate songs from descriptions and lyrics, cover mode supported'),
     toolProperties: [
       { key: 'apiKey', type: 'string', description: 'MiniMax API Key', required: true },
       { key: 'prompt', type: 'string', description: '音乐风格描述，如"流行音乐, 难过, 适合在下雨的晚上"', required: true },
@@ -468,22 +469,22 @@ module.exports = [
       { key: 'baseUrl', type: 'string', description: 'API地址，默认 https://api.minimaxi.com' },
     ],
     properties: [
-      { key: 'apiKey', label: 'API Key', type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
-      { key: 'prompt', label: '音乐描述', type: 'textarea', required: true, tooltip: '描述风格、情绪、场景，如"流行音乐, 难过, 适合在下雨的晚上"' },
-      { key: 'lyrics', label: '歌词', type: 'textarea', tooltip: '用 \\n 分隔每行，支持结构标签如 [Verse] [Chorus] 等' },
-      { key: 'model', label: '模型', type: 'select', default: 'music-2.6', options: MUSIC_MODELS },
-      { key: 'isInstrumental', label: '纯音乐', type: 'select', default: 'false', options: [
-        { label: '否', value: 'false' }, { label: '是', value: 'true' },
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
+      { key: 'prompt', label: t('field.prompt.music.label', 'Music Description'), type: 'textarea', required: true, tooltip: t('field.prompt.music.tooltip', 'Describe style, mood, scene, e.g. "pop music, sad, for a rainy night"') },
+      { key: 'lyrics', label: t('field.lyrics.label', 'Lyrics'), type: 'textarea', tooltip: t('field.lyrics.music.tooltip', 'Separate lines with \\n, supports structure tags like [Verse] [Chorus]') },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'music-2.6', options: MUSIC_MODELS },
+      { key: 'isInstrumental', label: t('field.isInstrumental.label', 'Instrumental'), type: 'select', default: 'false', options: [
+        { label: t('field.no.label', 'No'), value: 'false' }, { label: t('field.yes.label', 'Yes'), value: 'true' },
       ] },
-      { key: 'lyricsOptimizer', label: '自动生成歌词', type: 'select', default: 'false', options: [
-        { label: '否', value: 'false' }, { label: '是（根据描述自动生成）', value: 'true' },
+      { key: 'lyricsOptimizer', label: t('field.lyricsOptimizer.label', 'Auto-generate Lyrics'), type: 'select', default: 'false', options: [
+        { label: t('field.no.label', 'No'), value: 'false' }, { label: t('field.yesAutoGenerate.label', 'Yes (auto-generate from description)'), value: 'true' },
       ] },
-      { key: 'audioUrl', label: '参考音频URL', type: 'text', tooltip: '翻唱模式专用：参考音频URL（6秒-6分钟，最大50MB）' },
-      { key: 'outputFormat', label: '输出格式', type: 'select', default: 'url', options: MUSIC_FORMATS },
-      { key: 'audioFormat', label: '音频格式', type: 'select', default: 'mp3', options: [
+      { key: 'audioUrl', label: t('field.audioUrl.label', 'Reference Audio URL'), type: 'text', tooltip: t('field.audioUrl.tooltip', 'Cover mode only: reference audio URL (6s-6min, max 50MB)') },
+      { key: 'outputFormat', label: t('field.outputFormat.label', 'Output Format'), type: 'select', default: 'url', options: MUSIC_FORMATS },
+      { key: 'audioFormat', label: t('field.audioFormat.label', 'Audio Format'), type: 'select', default: 'mp3', options: [
         { label: 'mp3 (默认)', value: 'mp3' }, { label: 'wav', value: 'wav' }, { label: 'pcm', value: 'pcm' },
       ] },
-      { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -521,13 +522,14 @@ module.exports = [
       const result = await ctx.api.postJson(`${baseUrl}/v1/music_generation`, { headers, body, timeout: 600000 })
 
       if (result.base_resp?.status_code !== 0) {
-        return { success: false, message: `音乐生成失败: ${result.base_resp?.status_msg || '未知错误'} (code: ${result.base_resp?.status_code})` }
+        const errMsg = result.base_resp?.status_msg || t('message.unknownError', 'Unknown error')
+        return { success: false, message: t('message.musicFailed', 'Music generation failed: {error} (code: {code})').replace('{error}', errMsg).replace('{code}', result.base_resp?.status_code) }
       }
 
       ctx.logger.info(`音乐生成完成: 时长=${result.extra_info?.music_duration}ms`)
       return {
         success: true,
-        message: '音乐生成完成',
+        message: t('message.musicComplete', 'Music generation completed'),
         data: {
           audioHex: result.data?.audio,
           duration: result.extra_info?.music_duration,
@@ -543,10 +545,10 @@ module.exports = [
   // ============================
   {
     name: 'minimax_lyrics_generation',
-    label: '歌词生成',
-    category: 'MiniMax AI',
+    label: t('action.lyricsGeneration.label', 'Lyrics Generation'),
+    category: t('category', 'MiniMax AI'),
     icon: 'FileText',
-    description: 'MiniMax 歌词生成：支持完整歌曲创作和歌词编辑/续写',
+    description: t('action.lyricsGeneration.description', 'MiniMax lyrics generation: full song creation and lyrics editing/continuation'),
     toolProperties: [
       { key: 'apiKey', type: 'string', description: 'MiniMax API Key', required: true },
       { key: 'prompt', type: 'string', description: '歌曲主题/风格描述', required: true },
@@ -556,15 +558,15 @@ module.exports = [
       { key: 'baseUrl', type: 'string', description: 'API地址，默认 https://api.minimaxi.com' },
     ],
     properties: [
-      { key: 'apiKey', label: 'API Key', type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
-      { key: 'prompt', label: '描述', type: 'textarea', required: true, tooltip: '歌曲主题/风格描述，如"一首关于夏日海边的轻快情歌"' },
-      { key: 'mode', label: '模式', type: 'select', default: 'write_full_song', options: [
-        { label: '写完整歌曲', value: 'write_full_song' },
-        { label: '编辑/续写', value: 'edit' },
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
+      { key: 'prompt', label: t('field.prompt.lyrics.label', 'Description'), type: 'textarea', required: true, tooltip: t('field.prompt.lyrics.tooltip', 'Song theme/style description, e.g. "a breezy love song about a summer beach"') },
+      { key: 'mode', label: t('field.mode.label', 'Mode'), type: 'select', default: 'write_full_song', options: [
+        { label: t('field.mode.writeFullSong.label', 'Write Full Song'), value: 'write_full_song' },
+        { label: t('field.mode.edit.label', 'Edit/Continue'), value: 'edit' },
       ] },
-      { key: 'lyrics', label: '现有歌词', type: 'textarea', tooltip: '编辑模式下传入现有歌词用于续写/修改' },
-      { key: 'title', label: '歌曲标题', type: 'text', tooltip: '指定标题后输出保持该标题不变' },
-      { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
+      { key: 'lyrics', label: t('field.lyricsEdit.label', 'Existing Lyrics'), type: 'textarea', tooltip: t('field.lyricsEdit.tooltip', 'Provide existing lyrics for continuation/editing in edit mode') },
+      { key: 'title', label: t('field.title.label', 'Song Title'), type: 'text', tooltip: t('field.title.tooltip', 'The output will keep this title unchanged') },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -590,13 +592,14 @@ module.exports = [
       const result = await ctx.api.postJson(`${baseUrl}/v1/lyrics_generation`, { headers, body, timeout: 120000 })
 
       if (result.base_resp?.status_code !== 0) {
-        return { success: false, message: `歌词生成失败: ${result.base_resp?.status_msg || '未知错误'} (code: ${result.base_resp?.status_code})` }
+        const errMsg = result.base_resp?.status_msg || t('message.unknownError', 'Unknown error')
+        return { success: false, message: t('message.lyricsFailed', 'Lyrics generation failed: {error} (code: {code})').replace('{error}', errMsg).replace('{code}', result.base_resp?.status_code) }
       }
 
       ctx.logger.info(`歌词生成完成: 标题=${result.song_title}, 风格=${result.style_tags}`)
       return {
         success: true,
-        message: '歌词生成完成',
+        message: t('message.lyricsComplete', 'Lyrics generation completed'),
         data: {
           songTitle: result.song_title,
           styleTags: result.style_tags,
@@ -611,10 +614,10 @@ module.exports = [
   // ============================
   {
     name: 'minimax_text_to_video',
-    label: '文生视频',
-    category: 'MiniMax AI',
+    label: t('action.textToVideo.label', 'Text to Video'),
+    category: t('category', 'MiniMax AI'),
     icon: 'Video',
-    description: 'MiniMax 文生视频：通过文字描述生成视频，支持运镜控制指令',
+    description: t('action.textToVideo.description', 'MiniMax text-to-video: generate video from text descriptions with camera control'),
     toolProperties: [
       { key: 'apiKey', type: 'string', description: 'MiniMax API Key', required: true },
       { key: 'prompt', type: 'string', description: '视频描述（最大2000字符），支持 [左移][推进][固定] 等运镜指令', required: true },
@@ -625,15 +628,15 @@ module.exports = [
       { key: 'baseUrl', type: 'string', description: 'API地址，默认 https://api.minimaxi.com' },
     ],
     properties: [
-      { key: 'apiKey', label: 'API Key', type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
-      { key: 'prompt', label: '视频描述', type: 'textarea', required: true, tooltip: '视频文字描述（最大2000字符），支持 [左移] [推进] [固定] 等运镜指令' },
-      { key: 'model', label: '模型', type: 'select', default: 'MiniMax-Hailuo-2.3', options: T2V_MODELS },
-      { key: 'duration', label: '时长(秒)', type: 'select', default: 6, options: VIDEO_DURATIONS },
-      { key: 'resolution', label: '分辨率', type: 'select', default: '768P', options: VIDEO_RESOLUTIONS },
-      { key: 'promptOptimizer', label: '自动优化提示词', type: 'select', default: 'true', options: [
-        { label: '是 (默认)', value: 'true' }, { label: '否', value: 'false' },
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
+      { key: 'prompt', label: t('field.prompt.t2v.label', 'Video Description'), type: 'textarea', required: true, tooltip: t('field.prompt.t2v.tooltip', 'Video text description (max 2000 chars), supports camera commands like [Pan Left] [Push In] [Fixed]') },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'MiniMax-Hailuo-2.3', options: T2V_MODELS },
+      { key: 'duration', label: t('field.duration.label', 'Duration (sec)'), type: 'select', default: 6, options: VIDEO_DURATIONS },
+      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', default: '768P', options: VIDEO_RESOLUTIONS },
+      { key: 'promptOptimizer', label: t('field.promptOptimizer.label', 'Auto-optimize Prompt'), type: 'select', default: 'true', options: [
+        { label: t('field.yesDefault.label', 'Yes (default)'), value: 'true' }, { label: t('field.no.label', 'No'), value: 'false' },
       ] },
-      { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -658,13 +661,14 @@ module.exports = [
       const result = await ctx.api.postJson(`${baseUrl}/v1/video_generation`, { headers, body, timeout: 30000 })
 
       if (result.base_resp?.status_code !== 0) {
-        return { success: false, message: `文生视频失败: ${result.base_resp?.status_msg || '未知错误'} (code: ${result.base_resp?.status_code})` }
+        const errMsg = result.base_resp?.status_msg || t('message.unknownError', 'Unknown error')
+        return { success: false, message: t('message.t2vFailed', 'Text-to-video failed: {error} (code: {code})').replace('{error}', errMsg).replace('{code}', result.base_resp?.status_code) }
       }
 
       ctx.logger.info(`文生视频任务已创建: taskId=${result.task_id}`)
       return {
         success: true,
-        message: `视频生成任务已创建，taskId: ${result.task_id}`,
+        message: t('message.t2vTaskCreated', 'Video generation task created, taskId: {taskId}').replace('{taskId}', result.task_id),
         data: { taskId: result.task_id },
       }
     },
@@ -675,10 +679,10 @@ module.exports = [
   // ============================
   {
     name: 'minimax_image_to_video',
-    label: '图生视频',
-    category: 'MiniMax AI',
+    label: t('action.imageToVideo.label', 'Image to Video'),
+    category: t('category', 'MiniMax AI'),
     icon: 'Clapperboard',
-    description: 'MiniMax 图生视频：基于图片和文字描述生成视频',
+    description: t('action.imageToVideo.description', 'MiniMax image-to-video: generate video from an image and text description'),
     toolProperties: [
       { key: 'apiKey', type: 'string', description: 'MiniMax API Key', required: true },
       { key: 'firstFrameImage', type: 'string', description: '首帧图片 URL 或 Base64 Data URL', required: true },
@@ -689,16 +693,16 @@ module.exports = [
       { key: 'baseUrl', type: 'string', description: 'API地址，默认 https://api.minimaxi.com' },
     ],
     properties: [
-      { key: 'apiKey', label: 'API Key', type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
-      { key: 'firstFrameImage', label: '首帧图片', type: 'textarea', required: true, tooltip: '首帧图片 URL 或 Base64 Data URL（JPG/PNG/WebP，<20MB）' },
-      { key: 'prompt', label: '视频描述', type: 'textarea', tooltip: '视频文字描述（最大2000字符），支持运镜指令' },
-      { key: 'model', label: '模型', type: 'select', default: 'MiniMax-Hailuo-2.3', options: I2V_MODELS },
-      { key: 'duration', label: '时长(秒)', type: 'select', default: 6, options: VIDEO_DURATIONS },
-      { key: 'resolution', label: '分辨率', type: 'select', default: '768P', options: VIDEO_RESOLUTIONS },
-      { key: 'promptOptimizer', label: '自动优化提示词', type: 'select', default: 'true', options: [
-        { label: '是 (默认)', value: 'true' }, { label: '否', value: 'false' },
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
+      { key: 'firstFrameImage', label: t('field.firstFrameImage.label', 'First Frame Image'), type: 'textarea', required: true, tooltip: t('field.firstFrameImage.tooltip', 'First frame image URL or Base64 Data URL (JPG/PNG/WebP, <20MB)') },
+      { key: 'prompt', label: t('field.prompt.i2v.label', 'Video Description'), type: 'textarea', tooltip: t('field.prompt.i2v.tooltip', 'Video text description (max 2000 chars), supports camera commands') },
+      { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'MiniMax-Hailuo-2.3', options: I2V_MODELS },
+      { key: 'duration', label: t('field.duration.label', 'Duration (sec)'), type: 'select', default: 6, options: VIDEO_DURATIONS },
+      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', default: '768P', options: VIDEO_RESOLUTIONS },
+      { key: 'promptOptimizer', label: t('field.promptOptimizer.label', 'Auto-optimize Prompt'), type: 'select', default: 'true', options: [
+        { label: t('field.yesDefault.label', 'Yes (default)'), value: 'true' }, { label: t('field.no.label', 'No'), value: 'false' },
       ] },
-      { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -724,13 +728,14 @@ module.exports = [
       const result = await ctx.api.postJson(`${baseUrl}/v1/video_generation`, { headers, body, timeout: 30000 })
 
       if (result.base_resp?.status_code !== 0) {
-        return { success: false, message: `图生视频失败: ${result.base_resp?.status_msg || '未知错误'} (code: ${result.base_resp?.status_code})` }
+        const errMsg = result.base_resp?.status_msg || t('message.unknownError', 'Unknown error')
+        return { success: false, message: t('message.i2vFailed', 'Image-to-video failed: {error} (code: {code})').replace('{error}', errMsg).replace('{code}', result.base_resp?.status_code) }
       }
 
       ctx.logger.info(`图生视频任务已创建: taskId=${result.task_id}`)
       return {
         success: true,
-        message: `图生视频任务已创建，taskId: ${result.task_id}`,
+        message: t('message.i2vTaskCreated', 'Image-to-video task created, taskId: {taskId}').replace('{taskId}', result.task_id),
         data: { taskId: result.task_id },
       }
     },
@@ -741,10 +746,10 @@ module.exports = [
   // ============================
   {
     name: 'minimax_start_end_to_video',
-    label: '首尾帧视频',
-    category: 'MiniMax AI',
+    label: t('action.startEndToVideo.label', 'Start-End Frame Video'),
+    category: t('category', 'MiniMax AI'),
     icon: 'Film',
-    description: 'MiniMax 首尾帧生成视频：基于起始帧和结束帧图片生成过渡视频',
+    description: t('action.startEndToVideo.description', 'MiniMax start-end frame video: generate transition video from start and end frame images'),
     toolProperties: [
       { key: 'apiKey', type: 'string', description: 'MiniMax API Key', required: true },
       { key: 'firstFrameImage', type: 'string', description: '起始帧图片 URL 或 Base64 Data URL', required: true },
@@ -755,15 +760,15 @@ module.exports = [
       { key: 'baseUrl', type: 'string', description: 'API地址，默认 https://api.minimaxi.com' },
     ],
     properties: [
-      { key: 'apiKey', label: 'API Key', type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
-      { key: 'firstFrameImage', label: '首帧图片', type: 'textarea', required: true, tooltip: '起始帧图片 URL 或 Base64 Data URL' },
-      { key: 'lastFrameImage', label: '尾帧图片', type: 'textarea', required: true, tooltip: '结束帧图片 URL 或 Base64 Data URL' },
-      { key: 'prompt', label: '视频描述', type: 'textarea', tooltip: '视频文字描述，支持运镜指令' },
-      { key: 'duration', label: '时长(秒)', type: 'select', default: 6, options: VIDEO_DURATIONS },
-      { key: 'resolution', label: '分辨率', type: 'select', default: '768P', options: [
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
+      { key: 'firstFrameImage', label: t('field.firstFrameImage.label', 'First Frame Image'), type: 'textarea', required: true, tooltip: t('field.firstFrameImage.sev.tooltip', 'Start frame image URL or Base64 Data URL') },
+      { key: 'lastFrameImage', label: t('field.lastFrameImage.label', 'Last Frame Image'), type: 'textarea', required: true, tooltip: t('field.lastFrameImage.tooltip', 'End frame image URL or Base64 Data URL') },
+      { key: 'prompt', label: t('field.prompt.t2v.label', 'Video Description'), type: 'textarea', tooltip: t('field.prompt.sev.tooltip', 'Video text description, supports camera commands') },
+      { key: 'duration', label: t('field.duration.label', 'Duration (sec)'), type: 'select', default: 6, options: VIDEO_DURATIONS },
+      { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', default: '768P', options: [
         { label: '768P (默认)', value: '768P' }, { label: '1080P', value: '1080P' },
       ] },
-      { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -789,13 +794,14 @@ module.exports = [
       const result = await ctx.api.postJson(`${baseUrl}/v1/video_generation`, { headers, body, timeout: 30000 })
 
       if (result.base_resp?.status_code !== 0) {
-        return { success: false, message: `首尾帧视频失败: ${result.base_resp?.status_msg || '未知错误'} (code: ${result.base_resp?.status_code})` }
+        const errMsg = result.base_resp?.status_msg || t('message.unknownError', 'Unknown error')
+        return { success: false, message: t('message.sevFailed', 'Start-end frame video failed: {error} (code: {code})').replace('{error}', errMsg).replace('{code}', result.base_resp?.status_code) }
       }
 
       ctx.logger.info(`首尾帧视频任务已创建: taskId=${result.task_id}`)
       return {
         success: true,
-        message: `首尾帧视频任务已创建，taskId: ${result.task_id}`,
+        message: t('message.sevTaskCreated', 'Start-end frame video task created, taskId: {taskId}').replace('{taskId}', result.task_id),
         data: { taskId: result.task_id },
       }
     },
@@ -806,10 +812,10 @@ module.exports = [
   // ============================
   {
     name: 'minimax_subject_to_video',
-    label: '主体参考视频',
-    category: 'MiniMax AI',
+    label: t('action.subjectToVideo.label', 'Subject Reference Video'),
+    category: t('category', 'MiniMax AI'),
     icon: 'UserRound',
-    description: 'MiniMax 主体参考视频：基于人物主体图片生成视频（保持人物一致性）',
+    description: t('action.subjectToVideo.description', 'MiniMax subject reference video: generate video from a character image (maintains character consistency)'),
     toolProperties: [
       { key: 'apiKey', type: 'string', description: 'MiniMax API Key', required: true },
       { key: 'subjectImage', type: 'string', description: '人物面部参考图片 URL', required: true },
@@ -817,10 +823,10 @@ module.exports = [
       { key: 'baseUrl', type: 'string', description: 'API地址，默认 https://api.minimaxi.com' },
     ],
     properties: [
-      { key: 'apiKey', label: 'API Key', type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
-      { key: 'subjectImage', label: '人物图片', type: 'textarea', required: true, tooltip: '人物面部参考图片 URL（JPG/PNG/WebP，<20MB）' },
-      { key: 'prompt', label: '视频描述', type: 'textarea', tooltip: '视频文字描述' },
-      { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
+      { key: 'subjectImage', label: t('field.subjectImage.label', 'Character Image'), type: 'textarea', required: true, tooltip: t('field.subjectImage.tooltip', 'Character face reference image URL (JPG/PNG/WebP, <20MB)') },
+      { key: 'prompt', label: t('field.prompt.t2v.label', 'Video Description'), type: 'textarea', tooltip: t('field.prompt.sv.tooltip', 'Video text description') },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -848,13 +854,14 @@ module.exports = [
       const result = await ctx.api.postJson(`${baseUrl}/v1/video_generation`, { headers, body, timeout: 30000 })
 
       if (result.base_resp?.status_code !== 0) {
-        return { success: false, message: `主体参考视频失败: ${result.base_resp?.status_msg || '未知错误'} (code: ${result.base_resp?.status_code})` }
+        const errMsg = result.base_resp?.status_msg || t('message.unknownError', 'Unknown error')
+        return { success: false, message: t('message.svFailed', 'Subject reference video failed: {error} (code: {code})').replace('{error}', errMsg).replace('{code}', result.base_resp?.status_code) }
       }
 
       ctx.logger.info(`主体参考视频任务已创建: taskId=${result.task_id}`)
       return {
         success: true,
-        message: `主体参考视频任务已创建，taskId: ${result.task_id}`,
+        message: t('message.svTaskCreated', 'Subject reference video task created, taskId: {taskId}').replace('{taskId}', result.task_id),
         data: { taskId: result.task_id },
       }
     },
@@ -865,19 +872,19 @@ module.exports = [
   // ============================
   {
     name: 'minimax_video_query',
-    label: '视频任务查询',
-    category: 'MiniMax AI',
+    label: t('action.videoQuery.label', 'Video Task Query'),
+    category: t('category', 'MiniMax AI'),
     icon: 'Search',
-    description: '查询 MiniMax 视频生成任务状态（Preparing/Queueing/Processing/Success/Fail）',
+    description: t('action.videoQuery.description', 'Query MiniMax video generation task status (Preparing/Queueing/Processing/Success/Fail)'),
     toolProperties: [
       { key: 'apiKey', type: 'string', description: 'MiniMax API Key', required: true },
       { key: 'taskId', type: 'string', description: '视频生成任务ID', required: true },
       { key: 'baseUrl', type: 'string', description: 'API地址，默认 https://api.minimaxi.com' },
     ],
     properties: [
-      { key: 'apiKey', label: 'API Key', type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
-      { key: 'taskId', label: '任务ID', type: 'text', required: true, tooltip: '视频生成任务返回的 taskId' },
-      { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
+      { key: 'taskId', label: t('field.taskId.label', 'Task ID'), type: 'text', required: true, tooltip: t('field.taskId.tooltip', 'Task ID returned by video generation') },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -898,14 +905,15 @@ module.exports = [
       const result = await ctx.api.fetchJson(`${baseUrl}/v1/query/video_generation?task_id=${encodeURIComponent(args.taskId)}`, { headers, timeout: 30000 })
 
       if (result.base_resp?.status_code !== 0) {
-        return { success: false, message: `查询失败: ${result.base_resp?.status_msg || '未知错误'} (code: ${result.base_resp?.status_code})` }
+        const errMsg = result.base_resp?.status_msg || t('message.unknownError', 'Unknown error')
+        return { success: false, message: t('message.queryFailed', 'Query failed: {error} (code: {code})').replace('{error}', errMsg).replace('{code}', result.base_resp?.status_code) }
       }
 
       const status = result.status
       ctx.logger.info(`视频任务状态: ${status}, fileId=${result.file_id || '无'}`)
       return {
         success: true,
-        message: `任务状态: ${status}`,
+        message: t('message.queryStatus', 'Task status: {status}').replace('{status}', status),
         data: {
           status,
           taskId: result.task_id,
@@ -922,19 +930,19 @@ module.exports = [
   // ============================
   {
     name: 'minimax_video_download',
-    label: '视频下载',
-    category: 'MiniMax AI',
+    label: t('action.videoDownload.label', 'Video Download'),
+    category: t('category', 'MiniMax AI'),
     icon: 'Download',
-    description: '通过 fileId 获取 MiniMax 视频下载链接（有效期1小时）',
+    description: t('action.videoDownload.description', 'Get MiniMax video download link by fileId (valid for 1 hour)'),
     toolProperties: [
       { key: 'apiKey', type: 'string', description: 'MiniMax API Key', required: true },
       { key: 'fileId', type: 'string', description: '视频文件ID（从查询接口获取）', required: true },
       { key: 'baseUrl', type: 'string', description: 'API地址，默认 https://api.minimaxi.com' },
     ],
     properties: [
-      { key: 'apiKey', label: 'API Key', type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
-      { key: 'fileId', label: '文件ID', type: 'text', required: true, tooltip: '视频任务查询返回的 fileId' },
-      { key: 'baseUrl', label: 'API地址', type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
+      { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, default: '{{ __config__["workflow.minimax"]["apiKey"] }}' },
+      { key: 'fileId', label: t('field.fileId.label', 'File ID'), type: 'text', required: true, tooltip: t('field.fileId.tooltip', 'File ID returned by video task query') },
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: '{{ __config__["workflow.minimax"]["baseUrl"] }}' },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },
@@ -953,14 +961,15 @@ module.exports = [
       const result = await ctx.api.fetchJson(`${baseUrl}/v1/files/retrieve?file_id=${encodeURIComponent(args.fileId)}`, { headers, timeout: 30000 })
 
       if (result.base_resp?.status_code !== 0) {
-        return { success: false, message: `获取下载链接失败: ${result.base_resp?.status_msg || '未知错误'} (code: ${result.base_resp?.status_code})` }
+        const errMsg = result.base_resp?.status_msg || t('message.unknownError', 'Unknown error')
+        return { success: false, message: t('message.downloadFailed', 'Failed to get download link: {error} (code: {code})').replace('{error}', errMsg).replace('{code}', result.base_resp?.status_code) }
       }
 
       const file = result.file
       ctx.logger.info(`获取下载链接成功: ${file.filename}, 大小=${file.bytes}B`)
       return {
         success: true,
-        message: `下载链接获取成功（有效期1小时）`,
+        message: t('message.downloadSuccess', 'Download link retrieved (valid for 1 hour)'),
         data: {
           downloadUrl: file.download_url,
           fileName: file.filename,
