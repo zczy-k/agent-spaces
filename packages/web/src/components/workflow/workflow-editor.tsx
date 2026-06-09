@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { ReactFlowProvider } from '@xyflow/react';
-import type { ExecutionStep, WorkflowTemplate } from '@agent-spaces/shared';
+import type { ExecutionStep, StagedNode, WorkflowTemplate } from '@agent-spaces/shared';
 import { WorkflowCanvas } from './workflow-canvas';
 import { WorkflowNodeSidebar } from './workflow-node-sidebar';
 import { WorkflowEditorToolbar } from './workflow-editor-toolbar';
@@ -193,6 +193,22 @@ function WorkflowEditorInner({
   }
 
   const workflow = state.workflow;
+  const addStagedNodeToCanvas = useCallback((staged: StagedNode, position: { x: number; y: number }) => {
+    if (!workflow || isWorkflowReadOnly) return;
+    state.pushUndo('add from staging');
+    const newNode: typeof workflow.nodes[0] = {
+      id: `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      type: staged.type,
+      label: staged.label || (staged.data?.label as string) || staged.type,
+      position,
+      data: { ...(staged.data || {}) },
+      composite: staged.composite ? JSON.parse(JSON.stringify(staged.composite)) : undefined,
+    };
+    state.setWorkflow(w => w ? { ...w, nodes: [...w.nodes, newNode] } : null);
+    state.setSelectedNodeId(newNode.id);
+    state.setSelectedNodeIds([newNode.id]);
+    state.markDirty();
+  }, [workflow, isWorkflowReadOnly, state]);
 
   return (
     <div className="flex flex-col h-full bg-muted/30 p-1.5 gap-1.5" tabIndex={0}>
@@ -250,6 +266,7 @@ function WorkflowEditorInner({
                 selectedNodeId={state.selectedNodeId}
                 selectedNodeIds={state.selectedNodeIds}
                 onNodeAdd={canvas.handleNodeAdd}
+                onStagedNodeDrop={addStagedNodeToCanvas}
                 onNodeDelete={canvas.handleNodeDelete}
                 onNodeCopy={canvas.handleNodeCopy}
                 onNodeClone={canvas.handleNodeClone}
@@ -379,20 +396,7 @@ function WorkflowEditorInner({
             <TabsContent value="staging" className="flex-1 min-h-0 m-0">
               <WorkflowStagingPanel
                 workflowId={workflow.id}
-                onAddFromStaging={(staged) => {
-                  if (!workflow || isWorkflowReadOnly) return;
-                  state.pushUndo('add from staging');
-                  const newNode: typeof workflow.nodes[0] = {
-                    id: `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-                    type: staged.type,
-                    label: (staged.data?.label as string) || staged.type,
-                    position: { x: 250 + Math.random() * 100, y: 250 + Math.random() * 100 },
-                    data: { ...(staged.data || {}) },
-                  };
-                  state.setWorkflow(w => w ? { ...w, nodes: [...w.nodes, newNode] } : null);
-                  state.setSelectedNodeId(newNode.id);
-                  state.markDirty();
-                }}
+                onAddFromStaging={(staged) => addStagedNodeToCanvas(staged, { x: 250 + Math.random() * 100, y: 250 + Math.random() * 100 })}
               />
             </TabsContent>
           </Tabs>

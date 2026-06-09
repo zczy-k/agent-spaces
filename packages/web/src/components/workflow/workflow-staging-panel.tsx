@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, type DragEvent } from 'react';
 import type { StagedNode } from '@agent-spaces/shared';
 import { stagingApi } from '@/lib/workflow-api';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
@@ -15,6 +15,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useTranslations } from 'next-intl';
+import { WORKFLOW_NODE_DRAG_MIME, WORKFLOW_STAGED_NODE_DRAG_MIME } from './workflow-drag-types';
 
 interface StagingPanelProps {
   workflowId: string;
@@ -36,11 +37,18 @@ function SortableStagedItem({
   };
   const def = getNodeDefinition(node.type);
   const label = (node.data?.label as string) || def?.label || node.type;
+  const handleDragStart = useCallback((event: DragEvent<HTMLDivElement>) => {
+    event.dataTransfer.setData(WORKFLOW_NODE_DRAG_MIME, node.type);
+    event.dataTransfer.setData(WORKFLOW_STAGED_NODE_DRAG_MIME, JSON.stringify(node));
+    event.dataTransfer.effectAllowed = 'copy';
+  }, [node]);
 
   return (
     <div
       ref={setNodeRef}
       style={style}
+      draggable
+      onDragStart={handleDragStart}
       className="group flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent transition-colors border border-transparent hover:border-border"
     >
       <button {...attributes} {...listeners} className="cursor-grab touch-none">

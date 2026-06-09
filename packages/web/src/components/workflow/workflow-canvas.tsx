@@ -18,7 +18,7 @@ import {
   type OnConnectStart,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import type { ExecutionLog, Workflow, ExecutionStep } from '@agent-spaces/shared';
+import type { ExecutionLog, Workflow, ExecutionStep, StagedNode } from '@agent-spaces/shared';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -27,7 +27,7 @@ import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
-import { WORKFLOW_NODE_DRAG_MIME } from './workflow-node-sidebar';
+import { WORKFLOW_NODE_DRAG_MIME, WORKFLOW_STAGED_NODE_DRAG_MIME } from './workflow-drag-types';
 import { WorkflowNode as WorkflowNodeComponent } from './workflow-node';
 import { WorkflowEdge as WorkflowEdgeComponent } from './workflow-edge';
 import { WorkflowHelperLines } from './workflow-helper-lines';
@@ -51,6 +51,7 @@ interface WorkflowCanvasProps {
   selectedNodeId?: string | null;
   selectedNodeIds?: string[];
   onNodeAdd: (type: string, position: { x: number; y: number }) => void;
+  onStagedNodeDrop?: (node: StagedNode, position: { x: number; y: number }) => void;
   onNodeDelete: (id: string) => void;
   onNodeCopy?: (id: string) => void;
   onNodeClone?: (id: string) => void;
@@ -179,7 +180,7 @@ function CanvasToolbar({
 export function WorkflowCanvas({
   workflow, isPreview, isRunning = false, executionLog, selectedNodeId,
   selectedNodeIds = [], onNodeAdd, onNodeDelete, onNodeSelect, onNodesSelect,
-  onNodeDataUpdate, onNodesChange, onEdgesChange, onConnect,
+  onStagedNodeDrop, onNodeDataUpdate, onNodesChange, onEdgesChange, onConnect,
   canUndo = false, canRedo = false, onUndo, onRedo, onExitPreview, onAutoLayout,
   onConnectionDrop,
   onNodeCopy, onNodeClone, onNodeStage,
@@ -411,17 +412,32 @@ export function WorkflowCanvas({
   const handleDragOver = useCallback((event: React.DragEvent) => {
     if (isCanvasLocked) return;
     event.preventDefault();
-    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = Array.from(event.dataTransfer.types).includes(WORKFLOW_STAGED_NODE_DRAG_MIME)
+        ? 'copy'
+        : 'move';
+    }
   }, [isCanvasLocked]);
 
   const handleDrop = useCallback((event: React.DragEvent) => {
     if (isCanvasLocked) return;
+    event.preventDefault();
+    const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+    const stagedPayload = event.dataTransfer.getData(WORKFLOW_STAGED_NODE_DRAG_MIME);
+    if (stagedPayload && onStagedNodeDrop) {
+      try {
+        onStagedNodeDrop(JSON.parse(stagedPayload) as StagedNode, position);
+        return;
+      } catch (error) {
+        console.warn('[WorkflowCanvas] invalid staged node drag payload', error);
+      }
+    }
+
     const type = event.dataTransfer.getData(WORKFLOW_NODE_DRAG_MIME);
     if (!type) return;
 
-    const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
     onNodeAdd(type, position);
-  }, [isCanvasLocked, screenToFlowPosition, onNodeAdd]);
+  }, [isCanvasLocked, onStagedNodeDrop, screenToFlowPosition, onNodeAdd]);
 
   const handleNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
     const multi = event.shiftKey || event.metaKey || event.ctrlKey;

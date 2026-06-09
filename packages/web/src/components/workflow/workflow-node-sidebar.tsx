@@ -24,8 +24,7 @@ import {
 import { WorkflowPluginConfigDialog } from './workflow-plugin-config-dialog';
 import { Search, ChevronDown, ChevronRight, Plus, Settings, Trash2, LayoutList, LayoutGrid } from 'lucide-react';
 import { WorkflowNodeDefinitionIcon } from './workflow-node-icon';
-
-export const WORKFLOW_NODE_DRAG_MIME = 'application/vueflow';
+import { WORKFLOW_NODE_DRAG_MIME } from './workflow-drag-types';
 
 function stringToHsl(str: string, s: number, l: number): string {
   let hash = 0;
@@ -288,7 +287,7 @@ export function WorkflowNodeSidebar({
                   <div className={viewMode === 'grid' ? 'grid grid-cols-2 gap-1 mt-0.5' : 'space-y-0.5 mt-0.5'}>
                     {nodes.map((node) => (
                       <HoverCard key={node.type} openDelay={400} closeDelay={100}>
-                        <HoverCardTrigger className={viewMode === 'grid' ? 'contents' : undefined}>
+                        <HoverCardTrigger className={viewMode === 'grid' ? 'flex flex-col' : undefined}>
                           <div
                             draggable
                             className={viewMode === 'grid'

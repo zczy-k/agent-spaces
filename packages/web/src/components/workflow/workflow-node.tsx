@@ -382,6 +382,11 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
   }, [id, isCanvasLocked, nodeMinHeight, nodeMinWidth]);
 
   const showContextMenu = !isBoundaryNode && !isCanvasLocked;
+  const handleContextMenu = useCallback((event: React.MouseEvent) => {
+    if (showContextMenu) return;
+    event.preventDefault();
+    event.stopPropagation();
+  }, [showContextMenu]);
 
   return (
     <>
@@ -393,7 +398,7 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
         handleClassName="workflow-node-resize-handle"
         lineClassName="workflow-node-resize-line"
       />
-      <ContextMenu>
+      <ContextMenu key={showContextMenu ? 'context-menu-enabled' : 'context-menu-disabled'}>
         <ContextMenuTrigger>
           <div
             ref={nodeRootRef}
@@ -408,6 +413,7 @@ export function WorkflowNode({ id, data, type, selected }: NodeProps) {
             }}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
+            onContextMenu={handleContextMenu}
           >
         {nodeData.isRunning && (
           <BorderGlide
