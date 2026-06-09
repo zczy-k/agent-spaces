@@ -1,23 +1,23 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import type { OperationEntry } from '@agent-spaces/shared';
-import { operationHistoryApi } from '@/lib/workflow-api';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, History, Loader2, Undo2, Redo2 } from 'lucide-react';
+import { Trash2, History, Undo2, Redo2 } from 'lucide-react';
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui/tooltip';
 
 interface OperationHistoryProps {
-  workflowId: string;
+  entries: OperationEntry[];
   currentUndoCount: number;
   currentRedoCount: number;
   onUndo: () => void;
   onRedo: () => void;
+  onClear: () => Promise<void> | void;
 }
 
 const OPERATION_LABEL_KEYS: Record<string, string> = {
@@ -47,37 +47,13 @@ const OPERATION_COLORS: Record<string, string> = {
 };
 
 export function WorkflowOperationHistory({
-  workflowId, currentUndoCount, currentRedoCount, onUndo, onRedo,
+  entries, currentUndoCount, currentRedoCount, onUndo, onRedo, onClear,
 }: OperationHistoryProps) {
-  const [entries, setEntries] = useState<OperationEntry[]>([]);
   const t = useTranslations('workflows');
-  const [loading, setLoading] = useState(true);
-
-  const loadHistory = useCallback(async () => {
-    try {
-      const list = await operationHistoryApi.load(workflowId);
-      setEntries(list);
-    } catch {
-      // Operation history is optional
-    } finally {
-      setLoading(false);
-    }
-  }, [workflowId]);
-
-  useEffect(() => { loadHistory(); }, [loadHistory]);
 
   const handleClear = useCallback(async () => {
-    await operationHistoryApi.clear(workflowId);
-    setEntries([]);
-  }, [workflowId]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
+    await onClear();
+  }, [onClear]);
 
   return (
     <ScrollArea className="h-full">

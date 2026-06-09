@@ -90,7 +90,10 @@
     "noLogsContent": "No logs",
     "nodeType": "Node type",
     "none": "None",
-    "start": "Start"
+    "start": "Start",
+    "startExecution": "Start Execution",
+    "workflowInput": "Workflow Input",
+    "initVariables": "Initial Variables"
   },
   "editor": {
     "loading": "Loading workflow...",

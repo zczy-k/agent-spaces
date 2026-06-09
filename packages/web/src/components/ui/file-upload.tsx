@@ -101,7 +101,7 @@ export function FileUpload({
           disabled && "pointer-events-none opacity-50",
         )}
       >
-        <input {...getInputProps()} />
+        <input {...getInputProps()} onClick={(e) => e.stopPropagation()} />
         <Upload className="size-8 text-muted-foreground" />
         <div className="text-center">
           <p className="text-sm font-medium">

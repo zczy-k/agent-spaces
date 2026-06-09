@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { OutputField } from '@agent-spaces/shared';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { FileUpload, type FileUploadFile } from '@/components/ui/file-upload';
 import { Input } from '@/components/ui/input';
@@ -268,6 +269,7 @@ export function ExecutionInputDialog({
   onOpenChange: (open: boolean) => void;
   onSubmit: (values: Record<string, unknown>, env?: Record<string, unknown>) => void | Promise<void>;
 }) {
+  const t = useTranslations('workflows');
   const savedValues = workflowId ? loadSavedValues(workflowId, startNodeLabel) : undefined;
   const savedEnvValues = workflowId ? loadSavedValues(workflowId, `${startNodeLabel}:__env__`) : undefined;
   const hasInputFields = fields.length > 0;
@@ -285,21 +287,21 @@ export function ExecutionInputDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md max-h-[85vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="text-sm">工作流输入 · {startNodeLabel}</DialogTitle>
+          <DialogTitle className="text-sm">{startNodeLabel}</DialogTitle>
         </DialogHeader>
         {hasInputFields && !hasVariableFields ? (
           <ExecutionInputForm
             fields={fields}
             initialValues={savedValues}
             onSubmit={(values) => submit(values)}
-            submitLabel={<><Play className="h-3 w-3 mr-1" /> 开始执行</>}
+            submitLabel={<><Play className="h-3 w-3 mr-1" /> {t('execution.startExecution')}</>}
           />
         ) : hasVariableFields && !hasInputFields ? (
           <ExecutionInputForm
             fields={variableFields}
             initialValues={savedEnvValues}
             onSubmit={(env) => submit({}, env)}
-            submitLabel={<><Play className="h-3 w-3 mr-1" /> 开始执行</>}
+            submitLabel={<><Play className="h-3 w-3 mr-1" /> {t('execution.startExecution')}</>}
           />
         ) : (
           <CombinedExecutionInputForm
@@ -328,6 +330,7 @@ function CombinedExecutionInputForm({
   initialEnvValues?: Record<string, string>;
   onSubmit: (values: Record<string, unknown>, env: Record<string, unknown>) => void | Promise<void>;
 }) {
+  const t = useTranslations('workflows');
   const inputForm = useExecutionInputFormState(fields, initialValues);
   const envForm = useExecutionInputFormState(variableFields, initialEnvValues);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -346,20 +349,20 @@ function CombinedExecutionInputForm({
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
       <div className="min-h-0 flex-1">
-        <div className="mb-2 text-xs font-medium">工作流输入</div>
+        <div className="mb-2 text-xs font-medium">{t('execution.workflowInput')}</div>
         <ScrollArea className="max-h-[28vh] pr-2">
           <ExecutionInputFields fields={fields} form={inputForm} disabled={isSubmitting} />
         </ScrollArea>
       </div>
       <div className="min-h-0 flex-1 border-t pt-3">
-        <div className="mb-2 text-xs font-medium">初始化变量</div>
+        <div className="mb-2 text-xs font-medium">{t('execution.initVariables')}</div>
         <ScrollArea className="max-h-[28vh] pr-2">
           <ExecutionInputFields fields={variableFields} form={envForm} disabled={isSubmitting} />
         </ScrollArea>
       </div>
       <DialogFooter>
         <Button size="sm" onClick={submit} disabled={isSubmitting}>
-          <Play className="h-3 w-3 mr-1" /> 开始执行
+          <Play className="h-3 w-3 mr-1" /> {t('execution.startExecution')}
         </Button>
       </DialogFooter>
     </div>

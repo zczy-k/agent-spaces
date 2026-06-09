@@ -386,11 +386,12 @@ function WorkflowEditorInner({
                 <ResizableHandle withHandle />
                 <ResizablePanel id="history-operations" defaultSize="50%" minSize="20%">
                   <WorkflowOperationHistory
-                    workflowId={workflow.id}
+                    entries={state.operationLog}
                     currentUndoCount={isWorkflowReadOnly ? 0 : state.undoStack.length}
                     currentRedoCount={isWorkflowReadOnly ? 0 : state.redoStack.length}
                     onUndo={isWorkflowReadOnly ? () => {} : state.handleUndo}
                     onRedo={isWorkflowReadOnly ? () => {} : state.handleRedo}
+                    onClear={state.clearOperationHistory}
                   />
                 </ResizablePanel>
               </ResizablePanelGroup>

@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import type { ExecutionLog, Workflow, WorkflowTemplate } from '@agent-spaces/shared';
+import type { ExecutionLog, OperationEntry, Workflow, WorkflowTemplate } from '@agent-spaces/shared';
 import { useWorkflowStore } from '@/stores/workflow';
-import { workflowApi } from '@/lib/workflow-api';
+import { operationHistoryApi, workflowApi } from '@/lib/workflow-api';
 import { loadWorkflowLayout } from './workflow-editor-types';
 import type { Layout } from 'react-resizable-panels';
 
@@ -30,6 +30,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
   const [isPreview, setIsPreview] = useState(false);
   const [undoStack, setUndoStack] = useState<string[]>([]);
   const [redoStack, setRedoStack] = useState<string[]>([]);
+  const [operationLog, setOperationLog] = useState<OperationEntry[]>([]);
   const [triggerDialogOpen, setTriggerDialogOpen] = useState(false);
   const [pluginsDialogOpen, setPluginsDialogOpen] = useState(false);
   const [pluginPickerDialogOpen, setPluginPickerDialogOpen] = useState(false);
@@ -51,6 +52,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
       .then((wf) => {
         prePreviewWorkflowRef.current = null;
         setWorkflow(wf);
+        setOperationLog([]);
         setIsPreview(false);
         setIsLoading(false);
       })
@@ -100,11 +102,43 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
   }, [cloneWorkflow]);
 
   // ---- Undo / Redo ----
-  const pushUndo = useCallback((_description?: string) => {
+  const workflowId = workflow?.id ?? null;
+
+  useEffect(() => {
+    if (!workflowId) {
+      setOperationLog([]);
+      return;
+    }
+
+    let cancelled = false;
+    operationHistoryApi.load(workflowId)
+      .then((entries) => {
+        if (!cancelled) setOperationLog(entries);
+      })
+      .catch(() => {
+        // Operation history is optional.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [workflowId]);
+
+  const pushUndo = useCallback((description?: string) => {
     if (!workflow) return;
     const snapshot = JSON.stringify({ nodes: workflow.nodes, edges: workflow.edges, variables: workflow.variables || [] });
+    const entry: OperationEntry = {
+      description: description || 'edit',
+      timestamp: Date.now(),
+      snapshot,
+    };
     setUndoStack(prev => [...prev, snapshot]);
     setRedoStack([]);
+    setOperationLog((prev) => {
+      const next = [...prev, entry];
+      void operationHistoryApi.save(workflow.id, next).catch(() => {});
+      return next;
+    });
   }, [workflow]);
 
   const handleUndo = useCallback(() => {
@@ -203,13 +237,19 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
     input.click();
   }, []);
 
+  const clearOperationHistory = useCallback(async () => {
+    if (!workflow) return;
+    await operationHistoryApi.clear(workflow.id);
+    setUndoStack([]);
+    setRedoStack([]);
+    setOperationLog([]);
+  }, [workflow]);
+
   // ---- Computed ----
   const selectedNode = useMemo(
     () => workflow?.nodes.find(n => n.id === selectedNodeId) ?? null,
     [workflow, selectedNodeId],
   );
-
-  const workflowId = workflow?.id ?? null;
 
   return {
     // State
@@ -221,7 +261,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
     isEditingName, setIsEditingName,
     editingName, setEditingName,
     isPreview, setIsPreview,
-    undoStack, redoStack,
+    undoStack, redoStack, operationLog,
     triggerDialogOpen, setTriggerDialogOpen,
     pluginsDialogOpen, setPluginsDialogOpen,
     pluginPickerDialogOpen, setPluginPickerDialogOpen,
@@ -230,7 +270,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
     workflowLayout, onWorkflowLayoutChange,
 
     // Actions
-    markDirty, pushUndo, handleUndo, handleRedo,
+    markDirty, pushUndo, handleUndo, handleRedo, clearOperationHistory,
     enterPreview, exitPreview,
     saveWorkflow,
     startEditName, finishEditName,

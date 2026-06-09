@@ -90,7 +90,10 @@
     "noLogsContent": "无日志",
     "nodeType": "节点类型",
     "none": "无",
-    "start": "开始"
+    "start": "开始",
+    "startExecution": "开始执行",
+    "workflowInput": "工作流输入",
+    "initVariables": "初始化变量"
   },
   "editor": {
     "loading": "加载工作流中...",
