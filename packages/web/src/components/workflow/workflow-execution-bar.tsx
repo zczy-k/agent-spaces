@@ -357,6 +357,8 @@ export function WorkflowExecutionBar({
                 <ScrollArea className="h-full">
                   <div className="flex h-full gap-2 px-2 py-2 overflow-x-auto">
                     {steps.map((step, index) => {
+                      if (step.error?.trim() === 'Inactive branch') return null;
+
                       const key = `${step.nodeId}-${step.startedAt}-${index}`;
                       const activeTab = stepTabs[key] || 'input';
                       const nodeType = nodeTypeById.get(step.nodeId) || '';
@@ -431,7 +433,7 @@ export function WorkflowExecutionBar({
                             </DropdownMenu>
                           </div>
 
-                          {step.error && step.error.trim() !== 'Inactive branch' && (
+                          {step.error && (
                             <div className="px-2.5 py-1 text-[10px] text-red-500 bg-red-500/10 border-b border-border flex items-start gap-1">
                               <span className="flex-1 break-all">{step.error}</span>
                               <button
