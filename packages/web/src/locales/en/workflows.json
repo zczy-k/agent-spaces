@@ -202,6 +202,20 @@
     "execError": "Run #{id} failed",
     "execStopped": "Run #{id} stopped"
   },
+  "variablePicker": {
+    "insertVariable": "Insert Variable",
+    "workflowInput": "Workflow Input",
+    "workflowVariables": "Workflow Variables",
+    "nodeInput": "Node Input",
+    "nodeOutput": "Node Output",
+    "loopBodyVariables": "Loop Body Variables",
+    "intermediateVariables": "Intermediate Variables",
+    "configProperties": "Config Properties",
+    "noInputFields": "No input fields",
+    "noOutputFields": "No output fields",
+    "noVariables": "No variables",
+    "noConnectedNodes": "No directly connected nodes"
+  },
   "nodes": {
     "operators": {
       "equals": "Equals",
@@ -223,7 +237,8 @@
       "flowControl": "Flow Control",
       "ai": "AI",
       "interaction": "Interaction",
-      "display": "Display"
+      "display": "Display",
+      "utilities": "Utilities"
     },
     "start": {
       "label": "Start",
@@ -408,6 +423,16 @@
       "props": {
         "content": "Content",
         "content_tooltip": "Sticky note text content"
+      }
+    },
+    "delay": {
+      "label": "Delay",
+      "description": "Wait for a specified duration in milliseconds before continuing. Does not depend on a browser tab.",
+      "props": {
+        "milliseconds": "Duration (ms)",
+        "milliseconds_tooltip": "Wait duration, range 100-30000.",
+        "reason": "Reason",
+        "reason_tooltip": "Optional, for logging purposes."
       }
     }
   }

@@ -131,27 +131,27 @@ export interface LocalBridgeWorkflowNodeDefinition extends NodeTypeDefinition {
 const DELAY_NODE_PROPERTIES: NodeProperty[] = [
   {
     key: 'milliseconds',
-    label: '等待时长（毫秒）',
+    label: 'nodes.delay.props.milliseconds',
     type: 'number',
     required: true,
     default: 1000,
-    tooltip: '等待时长，范围 100-30000。',
+    tooltip: 'nodes.delay.props.milliseconds_tooltip',
   },
   {
     key: 'reason',
-    label: '等待原因',
+    label: 'nodes.delay.props.reason',
     type: 'text',
-    tooltip: '可选，用于日志记录。',
+    tooltip: 'nodes.delay.props.reason_tooltip',
   },
 ]
 
 export const LOCAL_BRIDGE_WORKFLOW_NODES: LocalBridgeWorkflowNodeDefinition[] = [
   {
     type: 'delay',
-    label: '延迟',
-    category: '辅助工具',
+    label: 'nodes.delay.label',
+    category: 'nodes.categories.utilities',
     icon: 'Circle',
-    description: '延迟等待指定毫秒数后继续执行。不依赖标签页。',
+    description: 'nodes.delay.description',
     properties: DELAY_NODE_PROPERTIES,
     runtime: 'main_process_bridge',
     source: 'browser_tool',

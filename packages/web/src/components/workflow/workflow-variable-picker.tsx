@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Braces } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { pluginApi, type WorkflowPlugin } from '@/lib/workflow-plugin-api';
 
@@ -194,6 +195,7 @@ export function WorkflowVariablePicker({
   onSelect,
   children,
 }: VariablePickerProps) {
+  const t = useTranslations('workflows');
   const activeNodeId = currentNodeId || excludeNodeId || null;
   const currentNode = useMemo(
     () => nodes.find((node) => node.id === activeNodeId) ?? null,
@@ -277,7 +279,7 @@ export function WorkflowVariablePicker({
             role="button"
             tabIndex={0}
             className="inline-flex items-center justify-center h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground rounded-md hover:bg-accent"
-            title="插入变量"
+            title={t('variablePicker.insertVariable')}
           >
             <Braces className="h-3.5 w-3.5" />
           </span>
@@ -286,7 +288,7 @@ export function WorkflowVariablePicker({
       <DropdownMenuContent align="end" className="w-56">
         {workflowInputNode && (
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="text-xs font-medium">工作流输入</DropdownMenuSubTrigger>
+            <DropdownMenuSubTrigger className="text-xs font-medium">{t('variablePicker.workflowInput')}</DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="min-w-[180px]">
               {workflowInputFields.length > 0 ? (
                 <VariableFieldMenu
@@ -295,14 +297,14 @@ export function WorkflowVariablePicker({
                   onSelect={(nodeId, fieldPath) => onSelect(buildVariablePath(nodeId, fieldPath))}
                 />
               ) : (
-                <EmptyMenuItem>无输入字段</EmptyMenuItem>
+                <EmptyMenuItem>{t('variablePicker.noInputFields')}</EmptyMenuItem>
               )}
             </DropdownMenuSubContent>
           </DropdownMenuSub>
         )}
 
         <DropdownMenuSub>
-          <DropdownMenuSubTrigger className="text-xs font-medium">工作流变量</DropdownMenuSubTrigger>
+          <DropdownMenuSubTrigger className="text-xs font-medium">{t('variablePicker.workflowVariables')}</DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="min-w-[180px]">
             {variables.length > 0 ? (
               <VariableFieldMenu
@@ -311,16 +313,16 @@ export function WorkflowVariablePicker({
                 onSelect={(_nodeId, fieldPath) => onSelect(buildEnvPath(fieldPath))}
               />
             ) : (
-              <EmptyMenuItem>无变量</EmptyMenuItem>
+              <EmptyMenuItem>{t('variablePicker.noVariables')}</EmptyMenuItem>
             )}
           </DropdownMenuSubContent>
         </DropdownMenuSub>
 
         <DropdownMenuSub>
-          <DropdownMenuSubTrigger className="text-xs font-medium">节点输入</DropdownMenuSubTrigger>
+          <DropdownMenuSubTrigger className="text-xs font-medium">{t('variablePicker.nodeInput')}</DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="w-56">
             {inputMenuNodes.length === 0 ? (
-              <EmptyMenuItem>没有直接相连的节点</EmptyMenuItem>
+              <EmptyMenuItem>{t('variablePicker.noConnectedNodes')}</EmptyMenuItem>
             ) : inputMenuNodes.map((node) => (
               <DropdownMenuSub key={node.id}>
                 <DropdownMenuSubTrigger className="text-xs">
@@ -334,7 +336,7 @@ export function WorkflowVariablePicker({
                       onSelect={(nodeId, fieldPath) => onSelect(buildInputFieldPath(nodeId, fieldPath))}
                     />
                   ) : (
-                    <EmptyMenuItem>无输入字段</EmptyMenuItem>
+                    <EmptyMenuItem>{t('variablePicker.noInputFields')}</EmptyMenuItem>
                   )}
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
@@ -343,10 +345,10 @@ export function WorkflowVariablePicker({
         </DropdownMenuSub>
 
         <DropdownMenuSub>
-          <DropdownMenuSubTrigger className="text-xs font-medium">节点输出</DropdownMenuSubTrigger>
+          <DropdownMenuSubTrigger className="text-xs font-medium">{t('variablePicker.nodeOutput')}</DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="w-56">
             {outputMenuNodes.length === 0 ? (
-              <EmptyMenuItem>没有直接相连的节点</EmptyMenuItem>
+              <EmptyMenuItem>{t('variablePicker.noConnectedNodes')}</EmptyMenuItem>
             ) : outputMenuNodes.map((node) => (
               <DropdownMenuSub key={node.id}>
                 <DropdownMenuSubTrigger className="text-xs">
@@ -360,7 +362,7 @@ export function WorkflowVariablePicker({
                       onSelect={(nodeId, fieldPath) => onSelect(buildVariablePath(nodeId, fieldPath))}
                     />
                   ) : (
-                    <EmptyMenuItem>无输出字段</EmptyMenuItem>
+                    <EmptyMenuItem>{t('variablePicker.noOutputFields')}</EmptyMenuItem>
                   )}
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
@@ -370,7 +372,7 @@ export function WorkflowVariablePicker({
 
         {loopBodyNodes.length > 0 && (
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="text-xs font-medium">循环体变量</DropdownMenuSubTrigger>
+            <DropdownMenuSubTrigger className="text-xs font-medium">{t('variablePicker.loopBodyVariables')}</DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="w-56">
               {loopBodyNodes.map((node) => (
                 <DropdownMenuSub key={node.id}>
@@ -385,7 +387,7 @@ export function WorkflowVariablePicker({
                         onSelect={(nodeId, fieldPath) => onSelect(buildVariablePath(nodeId, fieldPath))}
                       />
                     ) : (
-                      <EmptyMenuItem>无输出字段</EmptyMenuItem>
+                      <EmptyMenuItem>{t('variablePicker.noOutputFields')}</EmptyMenuItem>
                     )}
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
@@ -396,7 +398,7 @@ export function WorkflowVariablePicker({
 
         {loopVariableFields.length > 0 && (
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="text-xs font-medium">中间变量</DropdownMenuSubTrigger>
+            <DropdownMenuSubTrigger className="text-xs font-medium">{t('variablePicker.intermediateVariables')}</DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="w-56">
               <VariableFieldMenu
                 fields={loopVariableFields}
@@ -409,7 +411,7 @@ export function WorkflowVariablePicker({
 
         {plugins.length > 0 && (
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="text-xs font-medium">配置属性</DropdownMenuSubTrigger>
+            <DropdownMenuSubTrigger className="text-xs font-medium">{t('variablePicker.configProperties')}</DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="w-56">
               {plugins.map((plugin) => (
                 <DropdownMenuSub key={plugin.id}>

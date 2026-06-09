@@ -316,6 +316,41 @@ function propertyToSchema(property: PluginActionProperty): Record<string, unknow
   return schema;
 }
 
+function actionPropertiesToToolInputSchema(
+  action: PluginActionDefinition,
+): { properties: PluginActionProperty[]; inputSchema?: Record<string, unknown> } {
+  const baseProperties = action.toolProperties || action.properties || [];
+  if (Array.isArray(baseProperties)) {
+    return { properties: [...baseProperties, ...(action.configProperties || [])] };
+  }
+
+  if (typeof baseProperties === 'object') {
+    const schema = baseProperties as Record<string, unknown>;
+    const configProperties = action.configProperties || [];
+    if (configProperties.length === 0) return { properties: [], inputSchema: schema };
+
+    return {
+      properties: [],
+      inputSchema: {
+        ...schema,
+        type: schema.type || 'object',
+        properties: {
+          ...((schema.properties && typeof schema.properties === 'object') ? schema.properties : {}),
+          ...Object.fromEntries(configProperties.map(property => [property.key, propertyToSchema(property)])),
+        },
+        required: [
+          ...((Array.isArray(schema.required) ? schema.required : []) as string[]),
+          ...configProperties
+            .filter(property => property.required && property.toolRequired !== false)
+            .map(property => property.key),
+        ],
+      },
+    };
+  }
+
+  return { properties: [] };
+}
+
 function createPluginActions(actions: PluginActionDefinition[]) {
   const workflowNodes = actions.map(({ run, tool: _tool, ...action }) => {
     const properties = [...(action.properties || []), ...(action.configProperties || [])];
@@ -335,7 +370,7 @@ function createPluginActions(actions: PluginActionDefinition[]) {
     .filter(action => action.tool !== false)
     .map((action) => {
       const tool = action.tool || {};
-      const properties = [...(action.toolProperties || action.properties || []), ...(action.configProperties || [])];
+      const { properties, inputSchema } = actionPropertiesToToolInputSchema(action);
       const required = properties
         .filter(property => property.required && property.toolRequired !== false)
         .map(property => property.key);
@@ -343,7 +378,7 @@ function createPluginActions(actions: PluginActionDefinition[]) {
       return {
         name: tool.name || action.name,
         description: tool.description || action.description,
-        input_schema: {
+        input_schema: inputSchema || {
           type: 'object',
           properties: Object.fromEntries(properties.map(property => [property.key, propertyToSchema(property)])),
           required,

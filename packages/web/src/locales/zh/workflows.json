@@ -202,6 +202,20 @@
     "execError": "执行 #{id} 出错",
     "execStopped": "执行 #{id} 已停止"
   },
+  "variablePicker": {
+    "insertVariable": "插入变量",
+    "workflowInput": "工作流输入",
+    "workflowVariables": "工作流变量",
+    "nodeInput": "节点输入",
+    "nodeOutput": "节点输出",
+    "loopBodyVariables": "循环体变量",
+    "intermediateVariables": "中间变量",
+    "configProperties": "配置属性",
+    "noInputFields": "无输入字段",
+    "noOutputFields": "无输出字段",
+    "noVariables": "无变量",
+    "noConnectedNodes": "没有直接相连的节点"
+  },
   "nodes": {
     "operators": {
       "equals": "等于",
@@ -223,7 +237,8 @@
       "flowControl": "流程控制",
       "ai": "AI",
       "interaction": "交互",
-      "display": "展示"
+      "display": "展示",
+      "utilities": "辅助工具"
     },
     "start": {
       "label": "开始",
@@ -408,6 +423,16 @@
       "props": {
         "content": "内容",
         "content_tooltip": "便签文本内容"
+      }
+    },
+    "delay": {
+      "label": "延迟",
+      "description": "延迟等待指定毫秒数后继续执行。不依赖标签页。",
+      "props": {
+        "milliseconds": "等待时长（毫秒）",
+        "milliseconds_tooltip": "等待时长，范围 100-30000。",
+        "reason": "等待原因",
+        "reason_tooltip": "可选，用于日志记录。"
       }
     }
   }
