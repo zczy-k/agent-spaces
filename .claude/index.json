@@ -1,6 +1,6 @@
 {
   "version": "1.18.0",
-  "timestamp": "2026-06-09T11:04:09+08:00",
+  "timestamp": "2026-06-09T11:35:59+08:00",
   "project": {
     "name": "agent-spaces",
     "type": "pnpm-monorepo + flutter",
@@ -29,29 +29,46 @@
       "name": "shared",
       "path": "packages/shared",
       "language": "TypeScript",
-      "sourceFileCount": 29,
+      "sourceFileCount": 28,
       "claudeMd": "packages/shared/CLAUDE.md",
+      "claudeDir": "packages/shared/claude/",
       "entry": "src/index.ts",
-      "interfaces": [],
-      "tests": [],
-      "importantPaths": [
+      "interfaces": [
         "src/types/workspace.ts",
         "src/types/issue.ts",
         "src/types/task.ts",
         "src/types/agent.ts",
         "src/types/channel.ts",
-        "src/types/workflow.ts",
         "src/types/events.ts",
+        "src/types/workflow.ts",
+        "src/types/workflow-execution.ts",
+        "src/types/workflow-errors.ts",
+        "src/types/workflow-plugin.ts",
+        "src/types/workflow-composite.ts",
+        "src/types/workflow-shortcut.ts",
+        "src/types/workflow-ws.ts"
+      ],
+      "tests": [],
+      "importantPaths": [
+        "src/index.ts",
+        "src/types/index.ts",
+        "src/types/workspace.ts",
+        "src/types/channel.ts",
+        "src/types/events.ts",
+        "src/types/workflow.ts",
+        "src/types/workflow-ws.ts",
+        "src/types/tool.ts",
         "src/types/database.ts",
-        "src/types/kanban.ts",
-        "src/types/worktree.ts",
-        "src/types/hooks.ts",
-        "src/types/workflow-plugin.ts"
+        "src/types/agent.ts",
+        "src/types/hooks.ts"
       ],
       "coverage": {
         "scanned": true,
-        "percentage": 95,
-        "gaps": []
+        "percentage": 100,
+        "scannedFiles": 28,
+        "totalFiles": 28,
+        "gaps": [],
+        "lastScanTimestamp": "2026-06-09T11:35:59+08:00"
       }
     },
     {
