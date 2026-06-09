@@ -636,6 +636,19 @@ function JsonViewer({
 
   const isExpandable = data !== null && typeof data === "object"
   const type = typeOf(data)
+  const rootOpenBracket = type === "array" ? "[" : "{"
+  const rootCloseBracket = type === "array" ? "]" : "}"
+  const rootCount = isExpandable ? countEntries(data) : 0
+  const isRootCollapsed = isExpandable && collapsedPaths.has(rootName)
+
+  const rootEntries = isExpandable
+    ? Array.isArray(data)
+      ? data.map((v, i) => [i, v] as [number, JsonValue])
+      : (Object.entries(data as Record<string, JsonValue>) as [string, JsonValue][])
+    : []
+  const rootDisplayEntries = searchQuery
+    ? rootEntries.filter(([k, v]) => hasSearchMatch(v, k, searchQuery))
+    : rootEntries
 
   return (
     <ThemeContext value={resolved}>
@@ -742,33 +755,74 @@ function JsonViewer({
           }
         >
           {isExpandable ? (
-            <JsonNode
-              keyName={rootName}
-              value={data}
-              path={rootName}
-              depth={0}
-              defaultExpanded={defaultExpanded}
-              searchQuery={searchQuery}
-              collapsedPaths={collapsedPaths}
-              onToggle={togglePath}
-              isLast
-            />
+            <>
+              <div
+                className="group flex items-center gap-0 py-px font-mono text-xs"
+                style={{ paddingLeft: "8px", ...(resolved ? { color: resolved.punctuation } : {}) }}
+              >
+                <button
+                  type="button"
+                  onClick={() => togglePath(rootName)}
+                  aria-label={isRootCollapsed ? "Expand" : "Collapse"}
+                  className="flex size-4 shrink-0 items-center justify-center transition-transform"
+                  style={resolved ? { color: resolved.punctuation } : undefined}
+                >
+                  <ChevronRight
+                    className={cn(
+                      "size-3 transition-transform",
+                      !isRootCollapsed && "rotate-90",
+                      !resolved && "text-muted-foreground"
+                    )}
+                  />
+                </button>
+                <TokenSpan token="punctuation">{rootOpenBracket}</TokenSpan>
+                {isRootCollapsed && (
+                  <>
+                    <span
+                      className={cn("mx-1 text-[10px]", !resolved && "text-muted-foreground/60")}
+                      style={resolved ? { color: `${resolved.fg}60` } : undefined}
+                    >
+                      {rootCount} {rootCount === 1 ? "item" : "items"}
+                    </span>
+                    <TokenSpan token="punctuation">{rootCloseBracket}</TokenSpan>
+                  </>
+                )}
+              </div>
+              {!isRootCollapsed && (
+                <>
+                  {rootDisplayEntries.map(([k, v], i) => (
+                    <JsonNode
+                      key={`${k}-${i}`}
+                      keyName={k}
+                      value={v}
+                      path={buildPath(rootName, k)}
+                      depth={1}
+                      defaultExpanded={defaultExpanded}
+                      searchQuery={searchQuery}
+                      collapsedPaths={collapsedPaths}
+                      onToggle={togglePath}
+                      isLast={i === rootDisplayEntries.length - 1}
+                    />
+                  ))}
+                  <div
+                    className={cn("font-mono text-xs", !resolved && "text-muted-foreground")}
+                    style={{ paddingLeft: "24px", ...(resolved ? { color: resolved.punctuation } : {}) }}
+                  >
+                    {rootCloseBracket}
+                  </div>
+                </>
+              )}
+            </>
           ) : (
             <div className="px-4 py-2 font-mono text-xs break-all">
-              <TokenSpan token="key">{rootName}</TokenSpan>
-              <TokenSpan token="punctuation">: </TokenSpan>
               {typeof data === "string" ? (
-                <TokenSpan token="string">
-                  &quot;{data}&quot;
-                </TokenSpan>
+                <TokenSpan token="string">&quot;{data}&quot;</TokenSpan>
               ) : typeof data === "number" ? (
                 <TokenSpan token="number">{String(data)}</TokenSpan>
               ) : typeof data === "boolean" ? (
                 <TokenSpan token="boolean">{String(data)}</TokenSpan>
               ) : (
-                <TokenSpan token="null" italic>
-                  null
-                </TokenSpan>
+                <TokenSpan token="null" italic>null</TokenSpan>
               )}
             </div>
           )}

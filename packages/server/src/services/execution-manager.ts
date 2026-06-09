@@ -620,8 +620,10 @@ export class ExecutionManager {
         return this.executeDelayNode(resolvedData, appendLog);
       case 'switch':
         return this.executeSwitch(resolvedData.conditions);
-      case 'variable_aggregate':
-        return this.executeVariableAggregate(resolvedData.groups || []);
+      case 'variable_aggregate': {
+        const outputKey = this.getFirstObjectOutputKey(resolvedData.outputs) ?? 'result';
+        return { [outputKey]: this.executeVariableAggregate(resolvedData.groups || []) };
+      }
       case 'set_variable':
         return this.executeSetVariable(session, resolvedData.variables || [], appendLog);
       case 'get_variable':
@@ -1579,6 +1581,12 @@ export class ExecutionManager {
         : field.value ?? '';
     }
     return result;
+  }
+
+  private getFirstObjectOutputKey(outputs: OutputField[] | undefined): string | null {
+    if (!Array.isArray(outputs)) return null;
+    const field = outputs.find(item => item?.type === 'object' && typeof item.key === 'string' && item.key.trim());
+    return field?.key.trim() || null;
   }
 
   private recordSkippedStep(session: ExecutionSession, node: WorkflowNode, reason: string): void {
