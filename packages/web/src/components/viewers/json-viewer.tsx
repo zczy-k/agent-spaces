@@ -668,7 +668,8 @@ function JsonViewer({
         )}
         {...props}
       >
-        {/* Toolbar */}
+        {/* Toolbar — hidden in mini mode */}
+        {!mini && (
         <div className="group flex items-center justify-between border-b border-border/40 px-3 py-2 sm:px-4">
           <div className="flex items-center gap-2">
             {title && (
@@ -724,9 +725,10 @@ function JsonViewer({
             </button>
           </div>
         </div>
+        )}
 
-        {/* Search bar */}
-        {searchOpen && (
+        {/* Search bar — hidden in mini mode */}
+        {!mini && searchOpen && (
           <div className="flex items-center gap-2 border-b border-border/40 bg-muted/20 px-3 py-1.5 sm:px-4">
             <Search className="size-3.5 shrink-0 text-muted-foreground" />
             <input

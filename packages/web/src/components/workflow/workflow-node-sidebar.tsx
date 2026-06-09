@@ -338,7 +338,7 @@ export function WorkflowNodeSidebar({
                                 <JsonViewer
                                   data={Object.fromEntries(node.outputs!.map(o => [o.key, o.type]))}
                                   rootName=""
-                                  defaultExpanded={0}
+                                  mini
                                   className="text-[10px]"
                                 />
                               </div>
