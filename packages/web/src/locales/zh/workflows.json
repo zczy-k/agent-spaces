@@ -14,7 +14,11 @@
     "createdAt": "创建时间",
     "updatedAt": "最后更新",
     "asc": "升序",
-    "desc": "降序"
+    "desc": "降序",
+    "selectMode": "多选",
+    "selectedCount": "已选 {count} 项",
+    "exportSelected": "导出选中",
+    "deleteSelected": "删除选中"
   },
   "card": {
     "edit": "编辑",

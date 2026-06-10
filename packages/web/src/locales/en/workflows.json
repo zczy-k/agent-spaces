@@ -14,7 +14,11 @@
     "createdAt": "Created time",
     "updatedAt": "Last updated",
     "asc": "Ascending",
-    "desc": "Descending"
+    "desc": "Descending",
+    "selectMode": "Select",
+    "selectedCount": "{count} selected",
+    "exportSelected": "Export",
+    "deleteSelected": "Delete"
   },
   "card": {
     "edit": "Edit",

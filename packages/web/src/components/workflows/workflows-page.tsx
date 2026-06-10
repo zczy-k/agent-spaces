@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Plus, Upload, FileText, Search, Filter, ArrowUpDown } from 'lucide-react';
+import { Plus, Upload, FileText, Search, Filter, ArrowUpDown, CheckSquare, Download, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { WorkflowTemplatesDialog } from '@/components/workflows/workflow-templates-dialog';
 import { WorkflowListDialog } from '@/components/workflow/workflow-list-dialog';
@@ -19,6 +19,7 @@ import { sdk } from '@/lib/sdk';
 import { workflowApi } from '@/lib/workflow-api';
 import { nativeNavigate } from '@/lib/navigate';
 import type { AgentConfig } from '@agent-spaces/shared';
+import JSZip from 'jszip';
 
 export function WorkflowsPage() {
   const t = useTranslations('workflows');
@@ -31,6 +32,8 @@ export function WorkflowsPage() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [sortField, setSortField] = useState<'createdAt' | 'updatedAt'>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
@@ -171,6 +174,50 @@ export function WorkflowsPage() {
     setListDialogOpen(false);
   }, [upsertWorkflow, router, t]);
 
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const handleExportSelected = useCallback(async () => {
+    const selected = workflows.filter(wf => selectedIds.has(wf.id));
+    if (selected.length === 0) return;
+    if (selected.length === 1) {
+      const wf = selected[0];
+      const blob = new Blob([JSON.stringify(wf, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${wf.name || 'workflow'}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      return;
+    }
+    const zip = new JSZip();
+    for (const wf of selected) {
+      zip.file(`${wf.name || 'workflow'}.json`, JSON.stringify(wf, null, 2));
+    }
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'workflows.zip';
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [workflows, selectedIds]);
+
+  const handleDeleteSelected = useCallback(async () => {
+    const ids = Array.from(selectedIds);
+    for (const id of ids) {
+      await deleteWorkflow(id);
+    }
+    setSelectedIds(new Set());
+    setSelectionMode(false);
+  }, [selectedIds, deleteWorkflow]);
+
   return (
     <div className="p-6 h-full overflow-y-auto">
       <div className="hidden md:flex items-center justify-between mb-6">
@@ -181,6 +228,12 @@ export function WorkflowsPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant={selectionMode ? 'default' : 'outline'}
+            onClick={() => { setSelectionMode(!selectionMode); setSelectedIds(new Set()); }}
+          >
+            <CheckSquare className="h-4 w-4 mr-1" /> {t('page.selectMode')}
+          </Button>
           <Button variant="outline" onClick={() => setTemplatesOpen(true)}>
             <FileText className="h-4 w-4 mr-1" /> {t('page.templates')}
           </Button>
@@ -308,6 +361,9 @@ export function WorkflowsPage() {
               workflow={workflow}
               onDuplicate={handleDuplicate}
               onDelete={handleDelete}
+              selectionMode={selectionMode}
+              selected={selectedIds.has(workflow.id)}
+              onToggleSelect={() => toggleSelect(workflow.id)}
             />
           ))}
         </div>
@@ -347,6 +403,18 @@ export function WorkflowsPage() {
         onCreate={handleListCreate}
         onClose={() => setListDialogOpen(false)}
       />
+
+      {selectionMode && selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-background border rounded-lg shadow-lg px-4 py-3">
+          <span className="text-sm text-muted-foreground">{t('page.selectedCount', { count: selectedIds.size })}</span>
+          <Button variant="outline" size="sm" onClick={handleExportSelected}>
+            <Download className="h-4 w-4 mr-1" /> {t('page.exportSelected')}
+          </Button>
+          <Button variant="destructive" size="sm" onClick={handleDeleteSelected}>
+            <Trash2 className="h-4 w-4 mr-1" /> {t('page.deleteSelected')}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

@@ -3,45 +3,62 @@
 import type { WorkflowTemplate } from '@agent-spaces/shared';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Pencil, Copy, Trash2, MoreVertical } from 'lucide-react';
+import { Pencil, Copy, Trash2, MoreVertical, Check } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { nativeNavigate } from '@/lib/navigate';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface WorkflowCardProps {
   workflow: WorkflowTemplate;
   onDuplicate: (wf: WorkflowTemplate) => void;
   onDelete: (wf: WorkflowTemplate) => void;
+  selectionMode?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
 }
 
-export function WorkflowCard({ workflow, onDuplicate, onDelete }: WorkflowCardProps) {
+export function WorkflowCard({ workflow, onDuplicate, onDelete, selectionMode, selected, onToggleSelect }: WorkflowCardProps) {
   const router = useRouter();
   const t = useTranslations('workflows');
 
   return (
     <Card
-      className="group overflow-hidden hover:shadow-md transition-shadow cursor-pointer relative"
-      onClick={() => nativeNavigate(router, `/workflows/share.html?workflow_id=${workflow.id}`)}
+      className={`group overflow-hidden hover:shadow-md transition-shadow relative ${selectionMode ? 'cursor-pointer' : 'cursor-pointer'} ${selectionMode && selected ? 'ring-2 ring-primary' : ''}`}
+      onClick={() => {
+        if (selectionMode) {
+          onToggleSelect?.();
+        } else {
+          nativeNavigate(router, `/workflows/share.html?workflow_id=${workflow.id}`);
+        }
+      }}
     >
-      <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-        <DropdownMenu>
-          <DropdownMenuTrigger className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground h-7 w-7 cursor-pointer">
-            <MoreVertical className="h-3.5 w-3.5" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => nativeNavigate(router, `/workflows/${workflow.id}`)}>
-              <Pencil className="h-3.5 w-3.5 mr-2" /> {t('card.edit')}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onDuplicate(workflow)}>
-              <Copy className="h-3.5 w-3.5 mr-2" /> {t('card.duplicate')}
-            </DropdownMenuItem>
-            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => onDelete(workflow)}>
-              <Trash2 className="h-3.5 w-3.5 mr-2" /> {t('card.delete')}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+      {selectionMode && (
+        <div className="absolute top-2 right-2 z-10" onClick={(e) => { e.stopPropagation(); onToggleSelect?.(); }}>
+          <Checkbox checked={selected} className="h-4 w-4" />
+        </div>
+      )}
+      {!selectionMode && (
+        <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+          <DropdownMenu>
+            <DropdownMenuTrigger className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground h-7 w-7 cursor-pointer">
+              <MoreVertical className="h-3.5 w-3.5" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => nativeNavigate(router, `/workflows/${workflow.id}`)}>
+                <Pencil className="h-3.5 w-3.5 mr-2" /> {t('card.edit')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onDuplicate(workflow)}>
+                <Copy className="h-3.5 w-3.5 mr-2" /> {t('card.duplicate')}
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => onDelete(workflow)}>
+                <Trash2 className="h-3.5 w-3.5 mr-2" /> {t('card.delete')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
       <CardHeader className="pb-2">
         <div className="flex items-center gap-2">
           {workflow.icon ? (
