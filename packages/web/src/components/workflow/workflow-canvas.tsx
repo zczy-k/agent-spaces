@@ -45,6 +45,7 @@ import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { getWorkflowNodeSize } from './workflow-node-size';
 import type { HandlePositionMode } from './workflow-node-types';
 import { isScopeBoundaryWorkflowNode, resolveNodeCollisions, WORKFLOW_COLLISION_OPTIONS } from './workflow-canvas-utils';
+import { useTheme } from '@/components/layout/theme-provider';
 
 const nodeTypes = { custom: WorkflowNodeComponent };
 const edgeTypes = { custom: WorkflowEdgeComponent };
@@ -504,6 +505,7 @@ export function WorkflowCanvas({
   onNodeDragStateChange,
 }: WorkflowCanvasProps) {
   const t = useTranslations('workflows');
+  const { resolvedTheme } = useTheme();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const connectSourceRef = useRef<{ nodeId: string; handleId: string | null; handleType: string | null } | null>(null);
   const connectSucceededRef = useRef(false);
@@ -538,7 +540,9 @@ export function WorkflowCanvas({
       ? parseWorkflowCanvasCustomTheme(canvasPrefs.canvasCustomThemeCss)
       : canvasThemePreset.style
   ), [canvasPrefs.canvasCustomThemeCss, canvasThemeKey, canvasThemePreset.style]);
-  const canvasThemeColorMode = canvasThemeKey === CUSTOM_WORKFLOW_CANVAS_THEME ? 'system' : canvasThemePreset.colorMode;
+  const canvasThemeColorMode = canvasThemeKey === CUSTOM_WORKFLOW_CANVAS_THEME || canvasThemePreset.colorMode === 'system'
+    ? resolvedTheme
+    : canvasThemePreset.colorMode;
   const bgVariantKey = (canvasPrefs.bgVariant as string) || 'dots';
   const bgVariant = bgVariantKey === 'lines' ? BackgroundVariant.Lines
     : bgVariantKey === 'cross' ? BackgroundVariant.Cross
