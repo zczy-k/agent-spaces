@@ -95,6 +95,67 @@ function buildEnvPath(fieldPath: string): string {
   return `{{ __env__.${fieldPath} }}`;
 }
 
+function unwrapExpressionPath(value: unknown): string {
+  const text = typeof value === 'string' ? value.trim() : '';
+  const match = text.match(/^\{\{\s*(.*?)\s*\}\}$/);
+  return match ? match[1].trim() : text;
+}
+
+function parseVariableExpression(value: unknown): { scope: 'data' | 'inputs' | 'env'; nodeId?: string; fieldPath: string } | null {
+  const expression = unwrapExpressionPath(value);
+  const nodeScoped = expression.match(/^__(data|inputs)__\["([^"]+)"\]\.(.+)$/);
+  if (nodeScoped) {
+    return {
+      scope: nodeScoped[1] === 'data' ? 'data' : 'inputs',
+      nodeId: nodeScoped[2],
+      fieldPath: nodeScoped[3],
+    };
+  }
+  const envScoped = expression.match(/^__env__\.(.+)$/);
+  if (envScoped) return { scope: 'env', fieldPath: envScoped[1] };
+  return null;
+}
+
+function findFieldByPath(fields: OutputField[], fieldPath: string): OutputField | null {
+  const [key, ...rest] = fieldPath.split('.').filter(Boolean);
+  if (!key) return null;
+  const field = fields.find(item => item.key === key);
+  if (!field) return null;
+  if (rest.length === 0) return field;
+  return Array.isArray(field.children) ? findFieldByPath(field.children, rest.join('.')) : null;
+}
+
+function getFieldsForVariableExpression(value: unknown, nodes: WorkflowNode[], variables: OutputField[]): OutputField | null {
+  const parsed = parseVariableExpression(value);
+  if (!parsed) return null;
+  if (parsed.scope === 'env') return findFieldByPath(variables, parsed.fieldPath);
+
+  const node = nodes.find(item => item.id === parsed.nodeId);
+  if (!node) return null;
+  const fields = parsed.scope === 'inputs' ? getNodeInputFields(node) : node.type === 'start' ? getNodeInputFields(node) : getNodeOutputs(node);
+  return findFieldByPath(fields, parsed.fieldPath);
+}
+
+function getArrayItemField(arrayField: OutputField | null): VariableField {
+  if (!arrayField) return { key: 'item', type: 'any', expressionPath: 'item' };
+  if (arrayField.type === 'array') {
+    return {
+      key: 'item',
+      type: arrayField.children?.length ? 'object' : 'any',
+      expressionPath: 'item',
+      children: arrayField.children,
+    };
+  }
+  const itemTypeByArrayType: Partial<Record<OutputField['type'], OutputField['type']>> = {
+    'string[]': 'string',
+    'number[]': 'number',
+    'file[]': 'file',
+    'image[]': 'image',
+    'any[]': 'any',
+  };
+  return { key: 'item', type: itemTypeByArrayType[arrayField.type] ?? 'any', expressionPath: 'item' };
+}
+
 function mapLoopSharedVariables(fields: OutputField[], parentPath = 'vars'): VariableField[] {
   return fields.map((field) => {
     const expressionPath = `${parentPath}.${field.key}`;
@@ -310,13 +371,15 @@ export function WorkflowVariablePicker({
   const loopVariableFields = useMemo<VariableField[]>(() => {
     if (!isInLoopBody || !loopParentNode) return [];
     const fields: VariableField[] = [{ key: 'index', type: 'number', expressionPath: 'index' }];
-    if (loopParentNode.data?.loopType === 'array') fields.push({ key: 'item', type: 'any', expressionPath: 'item' });
+    if (loopParentNode.data?.loopType === 'array') {
+      fields.push(getArrayItemField(getFieldsForVariableExpression(loopParentNode.data?.arrayPath, nodes, variables)));
+    }
     const sharedVariables = Array.isArray(loopParentNode.data?.sharedVariables)
       ? loopParentNode.data.sharedVariables as OutputField[]
       : [];
     fields.push(...mapLoopSharedVariables(sharedVariables));
     return fields;
-  }, [isInLoopBody, loopParentNode]);
+  }, [isInLoopBody, loopParentNode, nodes, variables]);
 
   return (
     <DropdownMenu>

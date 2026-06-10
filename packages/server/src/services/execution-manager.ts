@@ -1427,8 +1427,8 @@ export class ExecutionManager {
     const loopVarMatch = value.match(/^\s*\{\{\s*__loop__\.vars\.([^}]+?)\s*\}\}\s*$/);
     if (loopVarMatch) return this.getLoopVariableValue(session, loopVarMatch[1]) ?? '';
 
-    const loopMetaMatch = value.match(/^\s*\{\{\s*__loop__\.(index|count|item|isFirst|isLast)\s*\}\}\s*$/);
-    if (loopMetaMatch) return this.getLoopMetaValue(session, loopMetaMatch[1]) ?? '';
+    const loopMetaMatch = value.match(/^\s*\{\{\s*__loop__\.((?:index|count|item|isFirst|isLast)(?:\.[^}]+?)?)\s*\}\}\s*$/);
+    if (loopMetaMatch) return this.getLoopMetaPathValue(session, loopMetaMatch[1]) ?? '';
 
     const envMatch = value.match(/^\s*\{\{\s*__env__\.([^}]+?)\s*\}\}\s*$/);
     if (envMatch) return getNestedValue(session.context.__env__ ?? {}, envMatch[1]) ?? '';
@@ -1473,7 +1473,7 @@ export class ExecutionManager {
     // Inline patterns (string replacement)
     let text = value
       .replace(/\{\{\s*__loop__\.vars\.([^}]+?)\s*\}\}/g, (_m, p) => String(this.getLoopVariableValue(session, p) ?? ''))
-      .replace(/\{\{\s*__loop__\.(index|count|item|isFirst|isLast)\s*\}\}/g, (_m, k) => String(this.getLoopMetaValue(session, k) ?? ''))
+      .replace(/\{\{\s*__loop__\.((?:index|count|item|isFirst|isLast)(?:\.[^}]+?)?)\s*\}\}/g, (_m, p) => String(this.getLoopMetaPathValue(session, p) ?? ''))
       .replace(/\{\{\s*__env__\.([^}]+?)\s*\}\}/g, (_m, p) => String(getNestedValue(session.context.__env__ ?? {}, p) ?? ''))
       .replace(/\{\{\s*__data__\[(["'])([^"']+)\1\](?:\.|\[)([^}]+?)\s*\}\}/g, (_m, _q, nid, fp) => {
         const d = this.getNodeExecutionData(session, nid);
@@ -1655,6 +1655,14 @@ export class ExecutionManager {
     const frame = this.getLoopFrame(session);
     if (!frame) return undefined;
     return frame.metadata[key as keyof LoopExecutionFrame['metadata']];
+  }
+
+  private getLoopMetaPathValue(session: ExecutionSession, path: string): unknown {
+    const normalized = normalizeVariablePath(path);
+    const [key, ...rest] = normalized.split('.');
+    const value = this.getLoopMetaValue(session, key);
+    if (rest.length === 0) return value;
+    return getNestedValue(value, rest.join('.'));
   }
 
   // ---- Private: Node execution data ----
