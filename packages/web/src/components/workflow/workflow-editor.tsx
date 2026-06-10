@@ -362,6 +362,7 @@ function WorkflowEditorInner({
                 onEdgesChange={canvas.handleEdgesChange}
                 onConnect={canvas.handleConnect}
                 onConnectionDrop={canvas.handleConnectionDrop}
+                onRectangleDrawNodeSelect={canvas.handleRectangleDrawNodeSelect}
                 onInsertExistingNodeOnEdge={canvas.handleInsertExistingNodeOnEdge}
                 canUndo={state.undoStack.length > 0}
                 canRedo={state.redoStack.length > 0}

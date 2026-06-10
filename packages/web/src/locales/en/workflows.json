@@ -189,6 +189,7 @@
     "exitPreviewTooltip": "Exit execution record preview",
     "undo": "Undo (Ctrl+Z)",
     "redo": "Redo (Ctrl+Shift+Z)",
+    "drawAreaAddNode": "Draw an area to add a node",
     "horizontalLayout": "Horizontal Layout",
     "verticalLayout": "Vertical Layout",
     "hideMinimap": "Hide Minimap",

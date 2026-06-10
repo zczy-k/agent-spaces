@@ -189,6 +189,7 @@
     "exitPreviewTooltip": "退出执行记录预览",
     "undo": "撤销 (Ctrl+Z)",
     "redo": "重做 (Ctrl+Shift+Z)",
+    "drawAreaAddNode": "绘制区域来添加节点",
     "horizontalLayout": "横向布局",
     "verticalLayout": "垂直布局",
     "hideMinimap": "隐藏小地图",

@@ -11,7 +11,7 @@ import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui/tooltip';
 import {
-  EyeOff, LayoutGrid, Map as MapIcon, RotateCcw, RotateCw,
+  EyeOff, LayoutGrid, Map as MapIcon, RotateCcw, RotateCw, SquareDashedMousePointer,
 } from 'lucide-react';
 
 function CanvasToolbarButton({
@@ -34,22 +34,26 @@ export function CanvasToolbar({
   isPreview,
   canUndo,
   canRedo,
+  rectangleDrawActive,
   minimapVisible,
   onUndo,
   onRedo,
   onExitPreview,
   onAutoLayout,
+  onToggleRectangleDraw,
   onToggleMinimap,
 }: {
   workflow: Workflow;
   isPreview: boolean;
   canUndo: boolean;
   canRedo: boolean;
+  rectangleDrawActive: boolean;
   minimapVisible: boolean;
   onUndo?: () => void;
   onRedo?: () => void;
   onExitPreview?: () => void;
   onAutoLayout?: (direction: 'LR' | 'TB') => void;
+  onToggleRectangleDraw?: () => void;
   onToggleMinimap: () => void;
 }) {
   const t = useTranslations("workflows");
@@ -73,6 +77,15 @@ export function CanvasToolbar({
         </CanvasToolbarButton>
         <CanvasToolbarButton tooltip={t('canvasToolbar.redo')} disabled={!canRedo} onClick={onRedo}>
           <RotateCw className="h-3.5 w-3.5" />
+        </CanvasToolbarButton>
+
+        <CanvasToolbarButton
+          tooltip={t('canvasToolbar.drawAreaAddNode')}
+          disabled={isPreview || !onToggleRectangleDraw}
+          className={`h-7 w-7 p-0 ${rectangleDrawActive ? 'text-blue-500' : ''}`}
+          onClick={onToggleRectangleDraw}
+        >
+          <SquareDashedMousePointer className="h-3.5 w-3.5" />
         </CanvasToolbarButton>
 
         <DropdownMenu>

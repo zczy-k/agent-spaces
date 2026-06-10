@@ -49,6 +49,8 @@ interface UseNodeOperationsParams {
   onStageNode?: (nodeId: string) => void;
 }
 
+type NodeSize = { width: number; height: number };
+
 export function useNodeOperations({
   workflow, isReadOnly, setWorkflow, markDirty, pushUndo,
   selectedNodeId, setSelectedNodeId, selectedNodeIds, setSelectedNodeIds,
@@ -58,9 +60,9 @@ export function useNodeOperations({
   const [nodeSelectOpen, setNodeSelectOpen] = useState(false);
   const [nodeSelectContext, setNodeSelectContext] = useState<NodeSelectContext | null>(null);
 
-  const handleNodeAdd = useCallback((type: string, position: { x: number; y: number }) => {
+  const handleNodeAdd = useCallback((type: string, position: { x: number; y: number }, size?: NodeSize) => {
     if (!workflow || isReadOnly) return;
-    const created = createNodesForDefinition(type, position);
+    const created = createNodesForDefinition(type, position, size);
     if (!created) return;
     pushUndo('add node');
     setWorkflow(w => w ? { ...w, nodes: [...w.nodes, ...created.nodes], edges: [...w.edges, ...created.edges] } : null);
@@ -76,6 +78,15 @@ export function useNodeOperations({
   }) => {
     if (isReadOnly) return;
     setNodeSelectContext({ mode: 'connection-drop', ...context });
+    setNodeSelectOpen(true);
+  }, [isReadOnly]);
+
+  const handleRectangleDrawNodeSelect = useCallback((context: {
+    position: { x: number; y: number };
+    size: NodeSize;
+  }) => {
+    if (isReadOnly) return;
+    setNodeSelectContext({ mode: 'rectangle-draw', ...context });
     setNodeSelectOpen(true);
   }, [isReadOnly]);
 
@@ -113,6 +124,22 @@ export function useNodeOperations({
     const def = getNodeDefinition(type);
     if (def?.manualCreate === false) return;
     if (def?.singleton && workflow.nodes.some(node => node.type === type)) return;
+
+    if (nodeSelectContext.mode === 'rectangle-draw') {
+      const created = createNodesForDefinition(type, nodeSelectContext.position, nodeSelectContext.size);
+      if (!created) return;
+
+      pushUndo('add node');
+      setWorkflow(current => current ? {
+        ...current,
+        nodes: [...current.nodes, ...created.nodes],
+        edges: [...current.edges, ...created.edges],
+      } : null);
+      setSelectedNodeId(created.rootNode.id);
+      setSelectedNodeIds([created.rootNode.id]);
+      markDirty();
+      return;
+    }
 
     if (nodeSelectContext.mode === 'connection-drop') {
       const sourceNode = workflow.nodes.find(node => node.id === nodeSelectContext.sourceNodeId);
@@ -533,6 +560,7 @@ export function useNodeOperations({
     handleNodeSelectOpenChange,
     handleNodeSelectFromDialog,
     handleNodeAdd,
+    handleRectangleDrawNodeSelect,
     handleConnectionDrop,
     handleNodeDelete,
     handleBatchDeleteNodes,

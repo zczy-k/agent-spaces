@@ -98,6 +98,7 @@ export function useWorkflowEditorCanvas({
     handleNodesSelect: nodeOps.handleNodesSelect,
     handleNodeDataUpdate: nodeOps.handleNodeDataUpdate,
     handleConnectionDrop: nodeOps.handleConnectionDrop,
+    handleRectangleDrawNodeSelect: nodeOps.handleRectangleDrawNodeSelect,
 
     // Edge operations
     handleConnect: edgeOps.handleConnect,

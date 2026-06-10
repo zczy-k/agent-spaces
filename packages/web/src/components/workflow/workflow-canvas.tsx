@@ -56,6 +56,16 @@ type GroupDragPreview = {
   bounds: { x: number; y: number; width: number; height: number };
   delta: { x: number; y: number };
 };
+type DrawPoint = {
+  clientX: number;
+  clientY: number;
+  x: number;
+  y: number;
+};
+type DrawArea = {
+  position: { x: number; y: number };
+  size: { width: number; height: number };
+};
 
 function WorkflowSelectionConnectionLine({
   fromNode,
@@ -146,6 +156,108 @@ function isConnectionEndOnCanvasNode(position: { x: number; y: number }) {
   );
 }
 
+function RectangleDrawTool({
+  onComplete,
+}: {
+  onComplete: (area: DrawArea) => void;
+}) {
+  const [start, setStart] = useState<DrawPoint | null>(null);
+  const [end, setEnd] = useState<DrawPoint | null>(null);
+  const { screenToFlowPosition } = useReactFlow();
+
+  const getPoint = useCallback((event: React.PointerEvent<HTMLDivElement>): DrawPoint => {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    return {
+      clientX: event.clientX,
+      clientY: event.clientY,
+      x: event.clientX - bounds.left,
+      y: event.clientY - bounds.top,
+    };
+  }, []);
+
+  const reset = useCallback(() => {
+    setStart(null);
+    setEnd(null);
+  }, []);
+
+  const handlePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const point = getPoint(event);
+    setStart(point);
+    setEnd(point);
+  }, [getPoint]);
+
+  const handlePointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (!start || event.buttons !== 1) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setEnd(getPoint(event));
+  }, [getPoint, start]);
+
+  const handlePointerUp = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (!start) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const finalEnd = getPoint(event);
+    const width = Math.abs(finalEnd.x - start.x);
+    const height = Math.abs(finalEnd.y - start.y);
+    reset();
+    if (width < 12 || height < 12) return;
+
+    const minClientX = Math.min(start.clientX, finalEnd.clientX);
+    const minClientY = Math.min(start.clientY, finalEnd.clientY);
+    const maxClientX = Math.max(start.clientX, finalEnd.clientX);
+    const maxClientY = Math.max(start.clientY, finalEnd.clientY);
+    const position = screenToFlowPosition({ x: minClientX, y: minClientY }, { snapToGrid: false });
+    const endPosition = screenToFlowPosition({ x: maxClientX, y: maxClientY }, { snapToGrid: false });
+
+    onComplete({
+      position: {
+        x: Math.round(position.x),
+        y: Math.round(position.y),
+      },
+      size: {
+        width: Math.round(Math.abs(endPosition.x - position.x)),
+        height: Math.round(Math.abs(endPosition.y - position.y)),
+      },
+    });
+  }, [getPoint, onComplete, reset, screenToFlowPosition, start]);
+
+  const rect = start && end
+    ? {
+        left: Math.min(start.x, end.x),
+        top: Math.min(start.y, end.y),
+        width: Math.abs(end.x - start.x),
+        height: Math.abs(end.y - start.y),
+      }
+    : null;
+
+  return (
+    <div
+      className="nopan nodrag absolute inset-0 z-10 cursor-crosshair"
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={reset}
+    >
+      {rect && (
+        <div
+          className="pointer-events-none absolute rounded-md border-2 border-dashed border-primary bg-primary/10 shadow-sm"
+          style={{
+            left: rect.left,
+            top: rect.top,
+            width: rect.width,
+            height: rect.height,
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
 interface WorkflowCanvasProps {
   workflow: Workflow;
   isPreview: boolean;
@@ -154,7 +266,7 @@ interface WorkflowCanvasProps {
   executionLog?: ExecutionLog | null;
   selectedNodeId?: string | null;
   selectedNodeIds?: string[];
-  onNodeAdd: (type: string, position: { x: number; y: number }) => void;
+  onNodeAdd: (type: string, position: { x: number; y: number }, size?: { width: number; height: number }) => void;
   onStagedNodeDrop?: (node: StagedNode, position: { x: number; y: number }) => void;
   onNodeDelete: (id: string) => void;
   onNodeCopy?: (id: string) => void;
@@ -194,6 +306,7 @@ interface WorkflowCanvasProps {
     sourceHandle: string | null;
     position: { x: number; y: number } | null;
   }) => void;
+  onRectangleDrawNodeSelect?: (context: DrawArea) => void;
   onInsertExistingNodeOnEdge?: (edgeId: string, nodeId: string) => void;
   canvasExportRef?: React.RefObject<{ exportCanvas: (format: 'png' | 'jpeg') => void } | null>;
   onNodeDragStateChange?: (dragging: boolean) => void;
@@ -205,6 +318,7 @@ export function WorkflowCanvas({
   onStagedNodeDrop, onNodeDataUpdate, onEdgeDataUpdate, onNodesChange, onEdgesChange, onConnect,
   canUndo = false, canRedo = false, onUndo, onRedo, onExitPreview, onAutoLayout,
   onConnectionDrop,
+  onRectangleDrawNodeSelect,
   onInsertExistingNodeOnEdge,
   onNodeCopy, onNodeClone, onNodeStage,
   onMergeNodesToWorkflow, onMergeNodesToGroup, onBatchDeleteNodes,
@@ -227,10 +341,15 @@ export function WorkflowCanvas({
   const [groupDragPreview, setGroupDragPreview] = useState<GroupDragPreview | null>(null);
   const [dropTargetEdgeId, setDropTargetEdgeId] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [rectangleDrawActive, setRectangleDrawActive] = useState(false);
   const { screenToFlowPosition } = useReactFlow();
   const [helperHorizontal] = useState<number | undefined>();
   const [helperVertical] = useState<number | undefined>();
   const isCanvasLocked = isPreview || isRunning;
+
+  useEffect(() => {
+    if (isCanvasLocked) setRectangleDrawActive(false);
+  }, [isCanvasLocked]);
 
   // --- Canvas preferences (persisted in workflow.layoutSnapshot) ---
   const canvasPrefs = useMemo(() => workflow.layoutSnapshot ?? {}, [workflow.layoutSnapshot]);
@@ -795,6 +914,9 @@ export function WorkflowCanvas({
         {minimapVisible && <MiniMap />}
         <WorkflowHelperLines horizontal={helperHorizontal} vertical={helperVertical} />
       </ReactFlow>
+      {rectangleDrawActive && !isCanvasLocked && onRectangleDrawNodeSelect && (
+        <RectangleDrawTool onComplete={onRectangleDrawNodeSelect} />
+      )}
       {selectionMenu && (
         <div
           data-workflow-selection-menu="true"
@@ -837,11 +959,17 @@ export function WorkflowCanvas({
         isPreview={isPreview}
         canUndo={!isCanvasLocked && canUndo}
         canRedo={!isCanvasLocked && canRedo}
+        rectangleDrawActive={rectangleDrawActive}
         minimapVisible={minimapVisible}
         onUndo={onUndo}
         onRedo={onRedo}
         onExitPreview={onExitPreview}
         onAutoLayout={isCanvasLocked ? undefined : onAutoLayout}
+        onToggleRectangleDraw={
+          isCanvasLocked || !onRectangleDrawNodeSelect
+            ? undefined
+            : () => setRectangleDrawActive(active => !active)
+        }
         onToggleMinimap={toggleMinimap}
       />
     </div>

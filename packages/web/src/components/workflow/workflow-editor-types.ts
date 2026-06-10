@@ -20,4 +20,9 @@ export type NodeSelectContext =
     sourceNodeId: string;
     targetNodeId: string;
     sourceHandle: string | null;
+  }
+  | {
+    mode: 'rectangle-draw';
+    position: { x: number; y: number };
+    size: { width: number; height: number };
   };
