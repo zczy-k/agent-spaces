@@ -6,8 +6,10 @@ import {
   AlertCircle,
   AlertTriangle,
   Check,
+  CheckCheck,
   ChevronDown,
   ChevronUp,
+  Copy,
   Info,
   Loader2,
   X,
@@ -25,6 +27,28 @@ import { cn } from '@/lib/utils';
 import { formatDuration, type WorkflowLogPanelLayout } from './workflow-node-types';
 
 const LOG_SECTION_SCROLL_CLASS = 'nodrag nopan nowheel max-h-[calc(260px/3)] overscroll-contain overflow-auto';
+
+function CopyButton({ data }: { data: unknown }) {
+  const [copied, setCopied] = React.useState(false);
+  const handleClick = React.useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(JSON.stringify(data, null, 2)).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }, [data]);
+  return (
+    <button
+      type="button"
+      className="p-0.5 rounded hover:bg-muted/50 transition-colors"
+      onClick={handleClick}
+    >
+      {copied
+        ? <CheckCheck className="h-2.5 w-2.5 text-green-500" />
+        : <Copy className="h-2.5 w-2.5" />}
+    </button>
+  );
+}
 const LOG_TAB_SECTION_SCROLL_CLASS = 'nodrag nopan nowheel max-h-[110px] overscroll-contain overflow-auto';
 const LOG_TAB_PANEL_SCROLL_CLASS = 'nodrag nopan nowheel max-h-[220px] overscroll-contain overflow-auto';
 
@@ -123,15 +147,24 @@ export function WorkflowNodeExecutionLog({
     </div>
   );
 
+  const filterInputDisplay = React.useCallback((input: unknown): unknown => {
+    if (!input || typeof input !== 'object' || Array.isArray(input)) return input
+    const { sourceHandle: _sourceHandle, sourceNodeId: _sourceNodeId, ...rest } = input as Record<string, unknown>
+    return rest
+  }, [])
+
   const renderInputSection = (step: ExecutionStep, className: string, extraClassName?: string) => (
     <div
       className={cn(className, extraClassName)}
       onWheelCapture={stopWheel}
     >
-      <div className="px-2 py-0.5 text-[9px] font-medium text-muted-foreground/70 uppercase tracking-wider">{t('execution.input')}</div>
+      <div className="flex items-center px-2 py-0.5 text-[9px] font-medium text-muted-foreground/70 uppercase tracking-wider">
+        <span className="flex-1">{t('execution.input')}</span>
+        {step.input != null && <CopyButton data={filterInputDisplay(step.input)} />}
+      </div>
       {step.input != null ? (
         <JsonViewer
-          data={step.input as Parameters<typeof JsonViewer>[0]['data']}
+          data={filterInputDisplay(step.input) as Parameters<typeof JsonViewer>[0]['data']}
           className="border-0 shadow-none rounded-none text-[10px]"
           defaultExpanded={2}
           mini
@@ -194,8 +227,8 @@ export function WorkflowNodeExecutionLog({
       </Tabs>
     ) : (
       <>
-        {renderOutputSection(step, LOG_SECTION_SCROLL_CLASS, 'border-b border-border')}
         {renderInputSection(step, LOG_SECTION_SCROLL_CLASS, 'border-b border-border')}
+        {renderOutputSection(step, LOG_SECTION_SCROLL_CLASS, 'border-b border-border')}
         {renderLogsSection(step, LOG_SECTION_SCROLL_CLASS)}
       </>
     )

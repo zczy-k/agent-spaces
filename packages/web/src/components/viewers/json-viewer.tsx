@@ -19,6 +19,11 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card"
+import {
   jsonThemes,
   type JsonColorTheme,
   type ShikiThemeName,
@@ -167,6 +172,7 @@ interface JsonNodeProps {
   collapsedPaths: Set<string>
   onToggle: (path: string) => void
   isLast: boolean
+  mini?: boolean
 }
 
 function JsonNode({
@@ -179,6 +185,7 @@ function JsonNode({
   collapsedPaths,
   onToggle,
   isLast,
+  mini,
 }: JsonNodeProps) {
   const theme = useThemeColors()
   const type = typeOf(value)
@@ -421,18 +428,38 @@ function JsonNode({
           <TokenSpan token="punctuation">: </TokenSpan>
           <TokenSpan token="punctuation">{openBracket}</TokenSpan>
           {!isExpanded && (
-            <>
-              <span
-                className={cn("mx-1 text-[10px]", !theme && "text-muted-foreground/60")}
-                style={theme ? { color: `${theme.fg}60` } : undefined}
-              >
-                {count} {count === 1 ? "item" : "items"}
-              </span>
-              <TokenSpan token="punctuation">
-                {closeBracket}
-                {comma}
-              </TokenSpan>
-            </>
+            mini ? (
+              <HoverCard>
+                <HoverCardTrigger
+                  className="inline cursor-pointer underline decoration-dotted underline-offset-2"
+                  style={theme ? { color: `${theme.fg}60` } : undefined}
+                >
+                  <span className={cn("text-[10px]", !theme && "text-muted-foreground/60 hover:text-muted-foreground")}>
+                    {count} {count === 1 ? "item" : "items"}
+                  </span>
+                  <TokenSpan token="punctuation">
+                    {closeBracket}
+                    {comma}
+                  </TokenSpan>
+                </HoverCardTrigger>
+                <HoverCardContent side="right" sideOffset={4} align="start" className="max-h-80 max-w-lg overflow-auto p-0">
+                  <JsonViewer data={value} rootName={String(keyName)} defaultExpanded={true} colorTheme={theme ?? undefined} className="border-0 shadow-none" />
+                </HoverCardContent>
+              </HoverCard>
+            ) : (
+              <>
+                <span
+                  className={cn("mx-1 text-[10px]", !theme && "text-muted-foreground/60")}
+                  style={theme ? { color: `${theme.fg}60` } : undefined}
+                >
+                  {count} {count === 1 ? "item" : "items"}
+                </span>
+                <TokenSpan token="punctuation">
+                  {closeBracket}
+                  {comma}
+                </TokenSpan>
+              </>
+            )
           )}
         </span>
         {copyMenu}
@@ -452,6 +479,7 @@ function JsonNode({
               collapsedPaths={collapsedPaths}
               onToggle={onToggle}
               isLast={i === displayEntries.length - 1}
+              mini={mini}
             />
           ))}
           <div
@@ -560,9 +588,9 @@ function JsonViewer({
 
   const [collapsedPaths, setCollapsedPaths] = React.useState<Set<string>>(
     () => {
-      if (mini || defaultExpanded === true) return new Set()
+      if (defaultExpanded === true && !mini) return new Set()
       const collapsed = new Set<string>()
-      collectPaths(data, rootName, defaultExpanded, 0, collapsed)
+      collectPaths(data, rootName, mini ? 1 : defaultExpanded, 0, collapsed)
       return collapsed
     }
   )
@@ -790,6 +818,7 @@ function JsonViewer({
                       collapsedPaths={collapsedPaths}
                       onToggle={togglePath}
                       isLast={i === rootDisplayEntries.length - 1}
+                      mini={mini}
                     />
                   ))}
                   <div
