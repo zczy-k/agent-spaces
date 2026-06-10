@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { BaseEdge, EdgeLabelRenderer, getBezierPath } from '@xyflow/react';
+import { BaseEdge, EdgeLabelRenderer, getBezierPath, getStraightPath, getSmoothStepPath } from '@xyflow/react';
 import type { EdgeProps } from '@xyflow/react';
 import { LOOP_BODY_SOURCE_HANDLE } from '@agent-spaces/shared';
 import { Plus, Trash2 } from 'lucide-react';
@@ -19,11 +19,20 @@ function WorkflowEdgeComponent({
   const isRunning = (data as Record<string, unknown>)?.isRunning === true;
   const canEditEdge = (data as Record<string, unknown>)?.canEditEdge === true;
   const canDeleteEdge = (data as Record<string, unknown>)?.canDeleteEdge === true;
+  const edgePathType = (data as Record<string, unknown>)?.edgePathType as string || 'bezier';
 
-  const [edgePath, labelX, labelY] = getBezierPath({
-    sourceX, sourceY, targetX, targetY,
-    sourcePosition, targetPosition,
-  });
+  const pathParams = { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition };
+
+  let edgePath: string, labelX: number, labelY: number;
+  if (edgePathType === 'straight') {
+    [edgePath, labelX, labelY] = getStraightPath(pathParams);
+  } else if (edgePathType === 'step') {
+    [edgePath, labelX, labelY] = getSmoothStepPath({ ...pathParams, borderRadius: 0 });
+  } else if (edgePathType === 'smoothstep') {
+    [edgePath, labelX, labelY] = getSmoothStepPath(pathParams);
+  } else {
+    [edgePath, labelX, labelY] = getBezierPath(pathParams);
+  }
 
   return (
     <>

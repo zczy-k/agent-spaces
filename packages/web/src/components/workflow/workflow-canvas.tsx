@@ -243,6 +243,7 @@ export function WorkflowCanvas({
     pausedReason,
     partialExecutionStartNodeId,
     handlePosition,
+    edgePathType: (canvasPrefs.edgePathType as string) || 'bezier',
   });
 
   const [canvasNodes, setCanvasNodes] = useState<Node[]>(rfNodes);

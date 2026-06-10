@@ -29,6 +29,7 @@ interface UseCanvasDataParams {
   pausedReason?: string | null;
   partialExecutionStartNodeId?: string | null;
   handlePosition?: HandlePositionMode;
+  edgePathType?: string;
 }
 
 export function useCanvasData({
@@ -46,6 +47,7 @@ export function useCanvasData({
   pausedReason = null,
   partialExecutionStartNodeId = null,
   handlePosition = 'left-right',
+  edgePathType = 'bezier',
 }: UseCanvasDataParams) {
   const selectedNodeIdSet = useMemo(
     () => new Set(selectedNodeIds.length > 0 ? selectedNodeIds : selectedNodeId ? [selectedNodeId] : []),
@@ -150,9 +152,10 @@ export function useCanvasData({
         isRunning: runningEdgeIds.has(e.id),
         canEditEdge: !isCanvasLocked,
         canDeleteEdge: !isCanvasLocked,
+        edgePathType,
       } as Record<string, unknown>,
     })),
-    [workflow.edges, runningEdgeIds, selectedEdgeId, isCanvasLocked],
+    [workflow.edges, runningEdgeIds, selectedEdgeId, isCanvasLocked, edgePathType],
   );
 
   return { rfNodes, rfEdges, selectedNodeIdSet, executionNodeIds, executionStepByNodeId, runningEdgeIds };

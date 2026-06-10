@@ -2,7 +2,7 @@
 
 import { useMemo, useCallback } from 'react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { FieldLabel, FieldDescription } from '@/components/ui/field';
+import { FieldLabel } from '@/components/ui/field';
 
 const BACKGROUND_OPTIONS = [
   { value: 'dots', label: '点阵', description: '默认点阵背景' },
@@ -25,6 +25,13 @@ const HANDLE_POSITION_OPTIONS = [
   { value: 'left-right', label: '左 → 右', description: '从左侧出、右侧入' },
   { value: 'bottom-top', label: '下 → 上', description: '从底部出、顶部入' },
   { value: 'right-left', label: '右 → 左', description: '从右侧出、左侧入' },
+] as const;
+
+const EDGE_PATH_TYPE_OPTIONS = [
+  { value: 'bezier', label: '贝塞尔', description: '平滑曲线' },
+  { value: 'straight', label: '直线', description: '直连两点' },
+  { value: 'step', label: '折线', description: '直角折线' },
+  { value: 'smoothstep', label: '平滑折线', description: '圆角折线' },
 ] as const;
 
 interface WorkflowCanvasStylePanelProps {
@@ -84,7 +91,13 @@ export function WorkflowCanvasStylePanel({
       options: HANDLE_POSITION_OPTIONS,
       onChange: (v) => update({ attributionPosition: v }),
     },
-  ], [bgVariantKey, snapEnabled, layoutEngine, handlePosition, update, handleLayoutEngineChange]);
+    {
+      title: '连线样式',
+      value: (canvasPrefs.edgePathType as string) || 'bezier',
+      options: EDGE_PATH_TYPE_OPTIONS,
+      onChange: (v) => update({ edgePathType: v }),
+    },
+  ], [bgVariantKey, snapEnabled, layoutEngine, handlePosition, canvasPrefs, update, handleLayoutEngineChange]);
 
   return (
     <div className="flex flex-col gap-6 p-4 overflow-y-auto h-full">
@@ -94,18 +107,16 @@ export function WorkflowCanvasStylePanel({
           <RadioGroup
             value={section.value}
             onValueChange={section.onChange}
+            className="flex flex-wrap gap-1.5"
           >
             {section.options.map(option => (
               <FieldLabel
                 key={String(option.value)}
                 htmlFor={`${section.title}-${option.value}`}
-                className="flex items-center justify-between gap-2 cursor-pointer rounded-md px-2 py-1.5 hover:bg-muted"
+                className="flex items-center gap-1.5 cursor-pointer rounded-md border px-2.5 py-1.5 text-sm hover:bg-muted has-[:checked]:bg-primary/10 has-[:checked]:border-primary"
               >
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium">{option.label}</span>
-                  <FieldDescription>{option.description}</FieldDescription>
-                </div>
                 <RadioGroupItem value={String(option.value)} id={`${section.title}-${option.value}`} />
+                {option.label}
               </FieldLabel>
             ))}
           </RadioGroup>
