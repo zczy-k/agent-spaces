@@ -12,6 +12,7 @@ import { Plus, Upload, FileText, Search, Filter } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { WorkflowTemplatesDialog } from '@/components/workflows/workflow-templates-dialog';
 import { WorkflowListDialog } from '@/components/workflow/workflow-list-dialog';
+import { WorkflowInfoDialog } from '@/components/workflow/workflow-info-dialog';
 import { WorkflowCard } from '@/components/workflows/workflow-card';
 import type { WorkflowTemplatePreset } from '@/components/workflows/workflow-templates';
 import { sdk } from '@/lib/sdk';
@@ -25,6 +26,7 @@ export function WorkflowsPage() {
   const { workflows, loadWorkflows, deleteWorkflow, duplicateWorkflow, upsertWorkflow } = useWorkflowStore();
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [listDialogOpen, setListDialogOpen] = useState(false);
+  const [infoDialogOpen, setInfoDialogOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
@@ -180,7 +182,7 @@ export function WorkflowsPage() {
           <Button variant="outline" onClick={handleImport}>
             <Upload className="h-4 w-4 mr-1" /> {t('page.import')}
           </Button>
-          <Button onClick={() => setListDialogOpen(true)}>
+          <Button onClick={() => setInfoDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-1" /> {t('page.create')}
           </Button>
         </div>
@@ -270,6 +272,27 @@ export function WorkflowsPage() {
         open={templatesOpen}
         onOpenChange={setTemplatesOpen}
         onImport={handleImportTemplate}
+      />
+
+      <WorkflowInfoDialog
+        open={infoDialogOpen}
+        onOpenChange={setInfoDialogOpen}
+        workflow={null}
+        onSave={async (updates) => {
+          const created = await workflowApi.create({
+            name: updates.name || t('defaultWorkflow.name'),
+            description: updates.description,
+            icon: updates.icon,
+            tags: updates.tags,
+            nodes: [
+              { id: `node_${Date.now()}_start`, type: 'start', label: t('defaultWorkflow.startLabel'), position: { x: 250, y: 50 }, data: {} },
+              { id: `node_${Date.now()}_end`, type: 'end', label: t('defaultWorkflow.endLabel'), position: { x: 250, y: 400 }, data: {} },
+            ],
+            edges: [],
+          });
+          upsertWorkflow(created);
+          nativeNavigate(router, `/workflows/${created.id}`);
+        }}
       />
 
       <WorkflowListDialog

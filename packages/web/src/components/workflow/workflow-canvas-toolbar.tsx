@@ -41,6 +41,7 @@ export function CanvasToolbar({
   onRedo,
   onExitPreview,
   onAutoLayout,
+  layoutEngine,
   onToggleRectangleDraw,
   onToggleLassoSelection,
   onToggleMinimap,
@@ -55,13 +56,15 @@ export function CanvasToolbar({
   onUndo?: () => void;
   onRedo?: () => void;
   onExitPreview?: () => void;
-  onAutoLayout?: (direction: 'LR' | 'TB') => void;
+  onAutoLayout?: (direction: 'LR' | 'TB', options?: { layoutEngine?: string }) => void;
+  layoutEngine?: string;
   onToggleRectangleDraw?: () => void;
   onToggleLassoSelection?: () => void;
   onToggleMinimap: () => void;
 }) {
   const t = useTranslations("workflows");
   const hasNodes = workflow.nodes.length > 0;
+  const autoLayoutOptions = layoutEngine ? { layoutEngine } : undefined;
 
   return (
     <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-lg border border-border bg-background/90 px-2 py-1 shadow-sm backdrop-blur-sm">
@@ -106,8 +109,8 @@ export function CanvasToolbar({
             <LayoutGrid className="h-3.5 w-3.5" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="center" side="top">
-            <DropdownMenuItem onClick={() => onAutoLayout?.('LR')}>{t('canvasToolbar.horizontalLayout')}</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onAutoLayout?.('TB')}>{t('canvasToolbar.verticalLayout')}</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onAutoLayout?.('LR', autoLayoutOptions)}>{t('canvasToolbar.horizontalLayout')}</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onAutoLayout?.('TB', autoLayoutOptions)}>{t('canvasToolbar.verticalLayout')}</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 

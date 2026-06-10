@@ -515,6 +515,7 @@ export function WorkflowCanvas({
     : bgVariantKey === 'cross' ? BackgroundVariant.Cross
     : BackgroundVariant.Dots;
   const snapEnabled = canvasPrefs.snapGrid !== false;
+  const layoutEngine = (canvasPrefs.layoutEngine as string) || 'dagre';
   const autoMergeNodeOnEdge = canvasPrefs.autoMergeNodeOnEdge !== false;
   const collisionBoxEnabled = canvasPrefs.collisionBoxEnabled !== false;
   const savedAttributionPosition = canvasPrefs.attributionPosition;
@@ -1123,6 +1124,7 @@ export function WorkflowCanvas({
         onRedo={onRedo}
         onExitPreview={onExitPreview}
         onAutoLayout={isCanvasLocked ? undefined : onAutoLayout}
+        layoutEngine={layoutEngine}
         onToggleRectangleDraw={
           isCanvasLocked || !onRectangleDrawNodeSelect
             ? undefined

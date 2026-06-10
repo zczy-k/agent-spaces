@@ -11,6 +11,8 @@ import {
 import { LoopBodyView } from '@/components/workflow/loop-body-view';
 import { RUN_CODE_DEFAULT_CODE } from '../constants';
 
+const UNLIMITED_CONNECTION_COUNT = Number.MAX_SAFE_INTEGER;
+
 export const flowControlNodes: NodeTypeDefinition[] = [
   {
     type: 'start',
@@ -101,6 +103,7 @@ export const flowControlNodes: NodeTypeDefinition[] = [
         ],
       },
     ],
+    handles: { connectionCount: UNLIMITED_CONNECTION_COUNT },
     outputs: [{ key: 'result', type: 'object' }],
   },
   {
