@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { ReactFlowProvider } from '@xyflow/react';
+import { Layout, Model, TabNode, IJsonModel, Actions, Action } from 'flexlayout-react';
 import type { ExecutionStep, StagedNode, WorkflowTemplate } from '@agent-spaces/shared';
 import { WorkflowCanvas } from './workflow-canvas';
 import { WorkflowNodeSidebar } from './workflow-node-sidebar';
@@ -24,9 +25,7 @@ import { FloatingChatPanel } from '@/components/ui/floating-chat-widget';
 import { AgentEditor } from '@/components/sidebar/agent-editor';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ResizablePanel, ResizableHandle, ResizablePanelGroup } from '@/components/ui/resizable';
-import { Tabs, TabsContent } from '@/components/ui/tabs';
-import { ExpandableTabs } from '@/components/ui/expandable-tabs';
-import { Loader2, AlertCircle, Settings2, Trash2, History, Package, Braces, Group } from 'lucide-react';
+import { Loader2, AlertCircle, Settings2, Trash2 } from 'lucide-react';
 import { useEditorShortcuts, useClipboard, useExecutionPanel } from '@/hooks/use-workflow-editor';
 import { Button } from '@/components/ui/button';
 import { useWorkspaceStore } from '@/stores/workspace';
@@ -37,7 +36,59 @@ import { useWorkflowEditorAgentChat } from './use-workflow-editor-agent-chat';
 import { WorkflowAgentTimeline } from './workflow-editor-agent-chat-ui';
 import { WORKFLOW_AGENT_FIXED_VALUES, getWorkflowAgentTimeline } from './workflow-editor-agent-utils';
 import type { WorkflowAgentChatMessage, WorkflowToolCall } from './workflow-editor-agent-utils';
+import { WORKFLOW_LAYOUT_KEY } from './workflow-editor-types';
 import type { DebugResult } from './workflow-editor-types';
+
+// ---- flexlayout-react default model ----
+
+const defaultJson: IJsonModel = {
+  global: {
+    tabSetEnableTabStrip: true,
+    borderEnableDrop: true,
+    tabEnableClose: false,
+    tabEnableRename: false,
+    tabSetEnableMaximize: false,
+  },
+  borders: [
+    {
+      type: 'border',
+      location: 'bottom',
+      children: [
+        { type: 'tab', name: 'Execution', component: 'execution-bar', id: 'execution-bar' },
+      ],
+    },
+  ],
+  layout: {
+    type: 'row',
+    children: [
+      {
+        type: 'tabset',
+        weight: 0.18,
+        children: [
+          { type: 'tab', name: 'Nodes', component: 'node-sidebar', id: 'node-sidebar' },
+        ],
+      },
+      {
+        type: 'tabset',
+        weight: 0.52,
+        children: [
+          { type: 'tab', name: 'Canvas', component: 'canvas', id: 'canvas' },
+        ],
+      },
+      {
+        type: 'tabset',
+        weight: 0.30,
+        children: [
+          { type: 'tab', name: 'Properties', component: 'properties', id: 'properties' },
+          { type: 'tab', name: 'Variables', component: 'variables', id: 'variables' },
+          { type: 'tab', name: 'Groups', component: 'groups', id: 'groups' },
+          { type: 'tab', name: 'History', component: 'history', id: 'history' },
+          { type: 'tab', name: 'Staging', component: 'staging', id: 'staging' },
+        ],
+      },
+    ],
+  },
+};
 
 // ---- Inner editor (needs ReactFlow context) ----
 
@@ -197,6 +248,228 @@ function WorkflowEditorInner({
     state.markDirty();
   }, [state, isWorkflowReadOnly]);
 
+  // ---- flexlayout-react model ----
+  const [model] = useState(() => {
+    try {
+      const saved = localStorage.getItem(WORKFLOW_LAYOUT_KEY);
+      if (saved) return Model.fromJson(JSON.parse(saved));
+    } catch { /* ignore */ }
+    return Model.fromJson(defaultJson);
+  });
+
+  // Sync rightTab when selecting a node → switch to properties tab in flexlayout
+  useEffect(() => {
+    if (!state.selectedNodeId) return;
+    const node = model.getNodeById('properties');
+    if (node && node instanceof TabNode) {
+      model.doAction(Actions.selectTab(node.getId()));
+    }
+  }, [state.selectedNodeId, model]);
+
+  const onModelChange = useCallback((_model: Model, action: Action) => {
+    try {
+      localStorage.setItem(WORKFLOW_LAYOUT_KEY, JSON.stringify(_model.toJson()));
+    } catch { /* quota exceeded */ }
+
+    if (action.type === Actions.SELECT_TAB) {
+      const node = _model.getNodeById(action.data.tabNode);
+      if (node && node instanceof TabNode) {
+        const comp = node.getComponent();
+        if (['properties', 'variables', 'groups', 'history', 'staging'].includes(comp ?? '')) {
+          state.setRightTab(comp!);
+        }
+      }
+    }
+  }, [state]);
+
+  const factory = useCallback((node: TabNode) => {
+    const comp = node.getComponent();
+    const workflow = state.workflow;
+    if (!workflow) return null;
+
+    switch (comp) {
+      case 'node-sidebar':
+        return (
+          <WorkflowNodeSidebar
+            workflow={workflow}
+            onWorkflowChange={state.handleWorkflowMetaChange}
+            onOpenPluginPicker={() => state.setPluginPickerDialogOpen(true)}
+          />
+        );
+      case 'canvas':
+        return (
+          <div className="flex flex-col h-full">
+            <div className="flex-1 min-h-0">
+              <WorkflowCanvas
+                workflow={workflow}
+                isPreview={state.isPreview}
+                execStatus={execution.execStatus}
+                isRunning={isWorkflowRunning}
+                executionLog={execution.executionLog}
+                selectedNodeId={state.selectedNodeId}
+                selectedNodeIds={state.selectedNodeIds}
+                onNodeAdd={canvas.handleNodeAdd}
+                onStagedNodeDrop={addStagedNodeToCanvas}
+                onNodeDelete={canvas.handleNodeDelete}
+                onNodeCopy={canvas.handleNodeCopy}
+                onNodeClone={canvas.handleNodeClone}
+                onNodeStage={canvas.handleNodeStage}
+                onMergeNodesToWorkflow={canvas.handleMergeNodesToWorkflow}
+                onMergeNodesToGroup={canvas.handleMergeNodesToGroup}
+                onBatchDeleteNodes={canvas.handleBatchDeleteNodes}
+                onGroupUpdate={canvas.handleUpdateGroup}
+                onGroupDelete={canvas.handleUngroup}
+                onGroupMove={canvas.handleMoveGroup}
+                debugNodeId={execution.debugNodeId}
+                debugStatus={execution.debugStatus}
+                pausedNodeId={execution.pausedNodeId}
+                pausedReason={execution.pausedReason}
+                partialExecutionStartNodeId={execution.partialExecutionStartNodeId}
+                onNodeDebug={execution.handleDebugNode}
+                onCancelDebug={execution.handleCancelDebug}
+                onExecuteFromNode={(nodeId) => execution.handleExecute(undefined, nodeId)}
+                onResumeExecution={execution.handleResumeExecution}
+                onStopExecution={execution.handleStopExecution}
+                onNodeSelect={canvas.handleNodeSelect}
+                onNodesSelect={canvas.handleNodesSelect}
+                onNodeDataUpdate={canvas.handleNodeDataUpdate}
+                onNodesChange={canvas.handleNodesChange}
+                onNodeDragStateChange={state.setAutoSaveSuspended}
+                onEdgesChange={canvas.handleEdgesChange}
+                onConnect={canvas.handleConnect}
+                onConnectionDrop={canvas.handleConnectionDrop}
+                canUndo={state.undoStack.length > 0}
+                canRedo={state.redoStack.length > 0}
+                onUndo={isWorkflowReadOnly ? undefined : state.handleUndo}
+                onRedo={isWorkflowReadOnly ? undefined : state.handleRedo}
+                onExitPreview={exitExecutionPreview}
+                onAutoLayout={canvas.handleAutoLayout}
+                onCanvasPreferencesChange={canvas.handleCanvasPreferencesChange}
+                canvasExportRef={canvasExportRef}
+              />
+            </div>
+          </div>
+        );
+      case 'properties':
+        return (
+          <WorkflowPropertiesPanel
+            node={state.selectedNode}
+            isPreview={state.isPreview}
+            nodes={workflow.nodes}
+            edges={workflow.edges}
+            enabledPlugins={workflow.enabledPlugins}
+            variables={workflow.variables || []}
+            onUpdateData={canvas.handleNodeDataUpdate}
+            onPreviewUpdateData={handlePreviewNodeDataUpdate}
+            debugNodeId={execution.debugNodeId}
+            debugStatus={execution.debugStatus}
+            debugResult={execution.debugResult}
+            previewResult={previewResult}
+            onDebugNode={execution.handleDebugNode}
+            onCancelDebug={execution.handleCancelDebug}
+          />
+        );
+      case 'variables':
+        return (
+          <WorkflowVariablesForm
+            value={workflow.variables || []}
+            nodes={workflow.nodes}
+            edges={workflow.edges}
+            currentNodeId={state.selectedNodeId}
+            enabledPlugins={workflow.enabledPlugins}
+            variables={workflow.variables || []}
+            onChange={(variables) => {
+              if (isWorkflowReadOnly) return;
+              state.pushUndo('update variables');
+              state.setWorkflow(w => w ? { ...w, variables } : null);
+              state.markDirty();
+            }}
+          />
+        );
+      case 'groups':
+        return (
+          <WorkflowGroupManagePanel
+            groups={workflow.groups || []}
+            isReadOnly={isWorkflowReadOnly}
+            onRenameGroup={canvas.handleRenameGroup}
+            onUngroup={canvas.handleUngroup}
+            onBatchUngroup={canvas.handleBatchUngroup}
+            onFocusGroup={canvas.handleFocusGroup}
+          />
+        );
+      case 'history':
+        return (
+          <ResizablePanelGroup orientation="vertical" className="h-full">
+            <ResizablePanel id="history-versions" defaultSize="50%" minSize="20%">
+              <WorkflowVersionPanel
+                workflowId={workflow.id}
+                nodes={workflow.nodes}
+                edges={workflow.edges}
+                onRestore={(version) => {
+                  if (isWorkflowReadOnly) return;
+                  state.pushUndo('restore version');
+                  state.setWorkflow(w => w ? {
+                    ...w,
+                    nodes: version.snapshot?.nodes || [],
+                    edges: (version.snapshot?.edges || []) as typeof workflow.edges,
+                  } : null);
+                  state.markDirty();
+                }}
+              />
+            </ResizablePanel>
+            <ResizableHandle withHandle />
+            <ResizablePanel id="history-operations" defaultSize="50%" minSize="20%">
+              <WorkflowOperationHistory
+                entries={state.operationLog}
+                currentEntryIndex={isWorkflowReadOnly ? -1 : state.undoStack.length - 1}
+                currentUndoCount={isWorkflowReadOnly ? 0 : state.undoStack.length}
+                currentRedoCount={isWorkflowReadOnly ? 0 : state.redoStack.length}
+                onUndo={isWorkflowReadOnly ? () => {} : state.handleUndo}
+                onRedo={isWorkflowReadOnly ? () => {} : state.handleRedo}
+                onClear={state.clearOperationHistory}
+              />
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        );
+      case 'staging':
+        return (
+          <WorkflowStagingPanel
+            workflowId={workflow.id}
+            onAddFromStaging={(staged) => addStagedNodeToCanvas(staged, { x: 250 + Math.random() * 100, y: 250 + Math.random() * 100 })}
+          />
+        );
+      case 'execution-bar':
+        return (
+          <WorkflowExecutionBar
+            status={execution.execStatus}
+            log={execution.executionLog}
+            logs={execution.executionLogs}
+            selectedLogId={execution.selectedExecutionLogId}
+            startNodes={execution.startNodes}
+            variables={workflow.variables || []}
+            validationError={execution.executionValidationError}
+            isExpanded={execExpanded}
+            workflowId={state.workflowId}
+            onToggle={toggleExec}
+            onExecute={execution.handleExecute}
+            onPause={execution.handlePauseExecution}
+            onResume={execution.handleResumeExecution}
+            onStop={execution.handleStopExecution}
+            onSelectLog={(log) => {
+              execution.handleSelectExecutionLog(log);
+              state.enterPreview(log);
+            }}
+            onDeleteLog={execution.handleDeleteExecutionLog}
+            onClearLogs={execution.handleClearExecutionLogs}
+            onExitPreview={exitExecutionPreview}
+            onUpdateNodeData={canvas.handleNodeDataUpdate}
+          />
+        );
+      default:
+        return null;
+    }
+  }, [state, execution, canvas, isWorkflowRunning, isWorkflowReadOnly, addStagedNodeToCanvas, execExpanded, toggleExec, exitExecutionPreview, handlePreviewNodeDataUpdate, previewResult]);
+
   // ---- Render ----
   if (state.isLoading) {
     return (
@@ -260,204 +533,9 @@ function WorkflowEditorInner({
         }}
       />
 
-      <ResizablePanelGroup orientation="horizontal" defaultLayout={state.workflowLayout} onLayoutChange={state.onWorkflowLayoutChange} className="flex-1 min-h-0 gap-1.5">
-        {/* Node sidebar */}
-        <ResizablePanel id="workflow-node-sidebar" defaultSize="18%" minSize="12%" maxSize="30%">
-          <div className="rounded-xl border bg-background overflow-hidden h-full">
-          <WorkflowNodeSidebar
-            workflow={workflow}
-            onWorkflowChange={state.handleWorkflowMetaChange}
-            onOpenPluginPicker={() => state.setPluginPickerDialogOpen(true)}
-          />
-          </div>
-        </ResizablePanel>
-
-        <ResizableHandle withHandle />
-
-        {/* Canvas + Execution bar */}
-        <ResizablePanel id="workflow-canvas" defaultSize="52%" minSize="30%">
-          <div className="flex flex-col h-full rounded-xl border bg-background overflow-hidden">
-            <div className="flex-1 min-h-0">
-              <WorkflowCanvas
-                workflow={workflow}
-                isPreview={state.isPreview}
-                execStatus={execution.execStatus}
-                isRunning={isWorkflowRunning}
-                executionLog={execution.executionLog}
-                selectedNodeId={state.selectedNodeId}
-                selectedNodeIds={state.selectedNodeIds}
-                onNodeAdd={canvas.handleNodeAdd}
-                onStagedNodeDrop={addStagedNodeToCanvas}
-                onNodeDelete={canvas.handleNodeDelete}
-                onNodeCopy={canvas.handleNodeCopy}
-                onNodeClone={canvas.handleNodeClone}
-                onNodeStage={canvas.handleNodeStage}
-                onMergeNodesToWorkflow={canvas.handleMergeNodesToWorkflow}
-                onMergeNodesToGroup={canvas.handleMergeNodesToGroup}
-                onBatchDeleteNodes={canvas.handleBatchDeleteNodes}
-                onGroupUpdate={canvas.handleUpdateGroup}
-                onGroupDelete={canvas.handleUngroup}
-                onGroupMove={canvas.handleMoveGroup}
-                debugNodeId={execution.debugNodeId}
-                debugStatus={execution.debugStatus}
-                pausedNodeId={execution.pausedNodeId}
-                pausedReason={execution.pausedReason}
-                partialExecutionStartNodeId={execution.partialExecutionStartNodeId}
-                onNodeDebug={execution.handleDebugNode}
-                onCancelDebug={execution.handleCancelDebug}
-                onExecuteFromNode={(nodeId) => execution.handleExecute(undefined, nodeId)}
-                onResumeExecution={execution.handleResumeExecution}
-                onStopExecution={execution.handleStopExecution}
-                onNodeSelect={canvas.handleNodeSelect}
-                onNodesSelect={canvas.handleNodesSelect}
-                onNodeDataUpdate={canvas.handleNodeDataUpdate}
-                onNodesChange={canvas.handleNodesChange}
-                onNodeDragStateChange={state.setAutoSaveSuspended}
-                onEdgesChange={canvas.handleEdgesChange}
-                onConnect={canvas.handleConnect}
-                onConnectionDrop={canvas.handleConnectionDrop}
-                canUndo={state.undoStack.length > 0}
-                canRedo={state.redoStack.length > 0}
-                onUndo={isWorkflowReadOnly ? undefined : state.handleUndo}
-                onRedo={isWorkflowReadOnly ? undefined : state.handleRedo}
-                onExitPreview={exitExecutionPreview}
-                onAutoLayout={canvas.handleAutoLayout}
-                onCanvasPreferencesChange={canvas.handleCanvasPreferencesChange}
-                canvasExportRef={canvasExportRef}
-              />
-            </div>
-            <WorkflowExecutionBar
-              status={execution.execStatus}
-              log={execution.executionLog}
-              logs={execution.executionLogs}
-              selectedLogId={execution.selectedExecutionLogId}
-              startNodes={execution.startNodes}
-              variables={workflow.variables || []}
-              validationError={execution.executionValidationError}
-              isExpanded={execExpanded}
-              workflowId={state.workflowId}
-              onToggle={toggleExec}
-              onExecute={execution.handleExecute}
-              onPause={execution.handlePauseExecution}
-              onResume={execution.handleResumeExecution}
-              onStop={execution.handleStopExecution}
-              onSelectLog={(log) => {
-                execution.handleSelectExecutionLog(log);
-                state.enterPreview(log);
-              }}
-              onDeleteLog={execution.handleDeleteExecutionLog}
-              onClearLogs={execution.handleClearExecutionLogs}
-              onExitPreview={exitExecutionPreview}
-              onUpdateNodeData={canvas.handleNodeDataUpdate}
-            />
-          </div>
-        </ResizablePanel>
-
-        <ResizableHandle withHandle />
-
-        {/* Right panel */}
-        <ResizablePanel id="workflow-right-panel" defaultSize="30%" minSize="15%" maxSize="50%">
-          <div className="rounded-xl border bg-background overflow-hidden h-full">
-          <Tabs value={state.rightTab} onValueChange={state.setRightTab} className="flex flex-col h-full">
-            <ExpandableTabs
-              tabs={[
-                { title: t('editor.properties'), icon: Settings2, value: 'properties' },
-                { title: t('editor.variables'), icon: Braces, value: 'variables' },
-                { title: t('editor.groups'), icon: Group, value: 'groups' },
-                { title: t('editor.history'), icon: History, value: 'history' },
-                { title: t('editor.staging'), icon: Package, value: 'staging' },
-              ]}
-              value={state.rightTab}
-              onValueChange={state.setRightTab}
-              className="border-b border-x-0 border-t-0 rounded-none w-full"
-            />
-            <TabsContent value="properties" className="flex-1 min-h-0 m-0">
-              <WorkflowPropertiesPanel
-                node={state.selectedNode}
-                isPreview={state.isPreview}
-                nodes={workflow.nodes}
-                edges={workflow.edges}
-                enabledPlugins={workflow.enabledPlugins}
-                variables={workflow.variables || []}
-                onUpdateData={canvas.handleNodeDataUpdate}
-                onPreviewUpdateData={handlePreviewNodeDataUpdate}
-                debugNodeId={execution.debugNodeId}
-                debugStatus={execution.debugStatus}
-                debugResult={execution.debugResult}
-                previewResult={previewResult}
-                onDebugNode={execution.handleDebugNode}
-                onCancelDebug={execution.handleCancelDebug}
-              />
-            </TabsContent>
-            <TabsContent value="variables" className="flex-1 min-h-0 m-0">
-              <WorkflowVariablesForm
-                value={workflow.variables || []}
-                nodes={workflow.nodes}
-                edges={workflow.edges}
-                currentNodeId={state.selectedNodeId}
-                enabledPlugins={workflow.enabledPlugins}
-                variables={workflow.variables || []}
-                onChange={(variables) => {
-                  if (isWorkflowReadOnly) return;
-                  state.pushUndo('update variables');
-                  state.setWorkflow(w => w ? { ...w, variables } : null);
-                  state.markDirty();
-                }}
-              />
-            </TabsContent>
-            <TabsContent value="groups" className="flex-1 min-h-0 m-0">
-              <WorkflowGroupManagePanel
-                groups={workflow.groups || []}
-                isReadOnly={isWorkflowReadOnly}
-                onRenameGroup={canvas.handleRenameGroup}
-                onUngroup={canvas.handleUngroup}
-                onBatchUngroup={canvas.handleBatchUngroup}
-                onFocusGroup={canvas.handleFocusGroup}
-              />
-            </TabsContent>
-            <TabsContent value="history" className="flex-1 min-h-0 m-0">
-              <ResizablePanelGroup orientation="vertical" className="h-full">
-                <ResizablePanel id="history-versions" defaultSize="50%" minSize="20%">
-                  <WorkflowVersionPanel
-                    workflowId={workflow.id}
-                    nodes={workflow.nodes}
-                    edges={workflow.edges}
-                    onRestore={(version) => {
-                      if (isWorkflowReadOnly) return;
-                      state.pushUndo('restore version');
-                      state.setWorkflow(w => w ? {
-                        ...w,
-                        nodes: version.snapshot?.nodes || [],
-                        edges: (version.snapshot?.edges || []) as typeof workflow.edges,
-                      } : null);
-                      state.markDirty();
-                    }}
-                  />
-                </ResizablePanel>
-                <ResizableHandle withHandle />
-                <ResizablePanel id="history-operations" defaultSize="50%" minSize="20%">
-                  <WorkflowOperationHistory
-                    entries={state.operationLog}
-                    currentEntryIndex={isWorkflowReadOnly ? -1 : state.undoStack.length - 1}
-                    currentUndoCount={isWorkflowReadOnly ? 0 : state.undoStack.length}
-                    currentRedoCount={isWorkflowReadOnly ? 0 : state.redoStack.length}
-                    onUndo={isWorkflowReadOnly ? () => {} : state.handleUndo}
-                    onRedo={isWorkflowReadOnly ? () => {} : state.handleRedo}
-                    onClear={state.clearOperationHistory}
-                  />
-                </ResizablePanel>
-              </ResizablePanelGroup>
-            </TabsContent>
-            <TabsContent value="staging" className="flex-1 min-h-0 m-0">
-              <WorkflowStagingPanel
-                workflowId={workflow.id}
-                onAddFromStaging={(staged) => addStagedNodeToCanvas(staged, { x: 250 + Math.random() * 100, y: 250 + Math.random() * 100 })}
-              />
-            </TabsContent>
-          </Tabs>
-          </div>
-        </ResizablePanel>
-      </ResizablePanelGroup>
+      <div className="flex-1 min-h-0">
+        <Layout model={model} factory={factory} onModelChange={onModelChange} />
+      </div>
 
       {/* Trigger settings dialog */}
       <WorkflowTriggerDialog

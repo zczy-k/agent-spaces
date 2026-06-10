@@ -6,8 +6,6 @@ import { useWorkflowStore } from '@/stores/workflow';
 import { operationHistoryApi, workflowApi } from '@/lib/workflow-api';
 import { createWorkflowEdgeId } from '@/lib/workflow-edge-id';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
-import { loadWorkflowLayout } from './workflow-editor-types';
-import type { Layout } from 'react-resizable-panels';
 
 type WorkflowSnapshot = Pick<Workflow, 'nodes' | 'edges'> & {
   variables?: Workflow['variables'];
@@ -68,12 +66,6 @@ function normalizeLegacySourceHandle(snapshot: WorkflowSnapshot): WorkflowSnapsh
 
 export function useWorkflowEditorState(template: WorkflowTemplate | null) {
   const store = useWorkflowStore();
-
-  // ---- Panel layout persistence ----
-  const workflowLayout = useMemo(() => loadWorkflowLayout(), []);
-  const onWorkflowLayoutChange = useCallback((layout: Layout) => {
-    try { localStorage.setItem('agent-spaces:workflow-editor-layout', JSON.stringify(layout)); } catch {}
-  }, []);
 
   // ---- Core state ----
   const [workflow, setWorkflow] = useState<Workflow | null>(null);
@@ -353,7 +345,6 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
     pluginPickerDialogOpen, setPluginPickerDialogOpen,
     embeddedEditorOpen, setEmbeddedEditorOpen,
     embeddedSubWorkflowId, setEmbeddedSubWorkflowId,
-    workflowLayout, onWorkflowLayoutChange,
 
     // Actions
     markDirty, pushUndo, handleUndo, handleRedo, clearOperationHistory,

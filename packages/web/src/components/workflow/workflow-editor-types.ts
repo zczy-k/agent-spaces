@@ -1,13 +1,4 @@
-import type { Layout } from 'react-resizable-panels';
-
 export const WORKFLOW_LAYOUT_KEY = 'agent-spaces:workflow-editor-layout';
-
-export function loadWorkflowLayout(): Layout | undefined {
-  try {
-    const raw = localStorage.getItem(WORKFLOW_LAYOUT_KEY);
-    return raw ? JSON.parse(raw) : undefined;
-  } catch { return undefined; }
-}
 
 export type DebugResult = {
   status?: 'completed' | 'error';

@@ -7,10 +7,14 @@ import { cn } from "@/lib/utils";
 type AnimatedTabsProps = {
   tabs: Array<string>;
   variant?: "default" | "underline";
+  activeTab?: string;
+  onTabChange?: (tab: string) => void;
 };
 
-const AnimatedTabs = ({ tabs, variant = "default" }: AnimatedTabsProps) => {
-  const [activeTab, setActiveTab] = useState(tabs[0]);
+const AnimatedTabs = ({ tabs, variant = "default", activeTab: controlledTab, onTabChange }: AnimatedTabsProps) => {
+  const [internalTab, setInternalTab] = useState(tabs[0]);
+  const activeTab = controlledTab ?? internalTab;
+  const setActiveTab = onTabChange ?? setInternalTab;
 
   if (variant === "underline") {
     return (
