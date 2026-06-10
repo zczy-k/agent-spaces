@@ -10,7 +10,6 @@ import type { NodeSelectContext } from './workflow-editor-types';
 import {
   areStringArraysEqual,
   createNodesForDefinition,
-  createWorkflowNodeId,
   getCompositeParentId,
   getCompositeRootId,
   getInsertScopeNode,
@@ -20,6 +19,7 @@ import {
   reconnectEdgesAfterNodeDelete,
   canDeleteWorkflowNode,
   cloneData,
+  resolveWorkflowNodeCollisions,
   syncScopeBoundaryLayout,
 } from './workflow-canvas-utils';
 import { cleanupGroupsOnNodeDelete } from './workflow-canvas-groups';
@@ -232,7 +232,10 @@ export function useNodeOperations({
     pushUndo('insert node');
     setWorkflow(current => {
       if (!current) return null;
-      const nextNodes = [...current.nodes, ...created.nodes];
+      let nextNodes = [...current.nodes, ...created.nodes];
+      if (current.layoutSnapshot?.collisionBoxEnabled !== false) {
+        nextNodes = resolveWorkflowNodeCollisions(nextNodes);
+      }
       if (scopeNode) syncScopeBoundaryLayout(nextNodes, scopeNode.id);
       return {
         ...current,

@@ -43,7 +43,7 @@ import { useCanvasExport } from './use-workflow-canvas-export';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { getWorkflowNodeSize } from './workflow-node-size';
 import type { HandlePositionMode } from './workflow-node-types';
-import { isScopeBoundaryWorkflowNode, resolveNodeCollisions } from './workflow-canvas-utils';
+import { isScopeBoundaryWorkflowNode, resolveNodeCollisions, WORKFLOW_COLLISION_OPTIONS } from './workflow-canvas-utils';
 
 const nodeTypes = { custom: WorkflowNodeComponent };
 const edgeTypes = { custom: WorkflowEdgeComponent };
@@ -946,11 +946,7 @@ export function WorkflowCanvas({
     const nextCanvasNodes = collisionBoxEnabled
       ? (() => {
           const collisionNodes = canvasNodesRef.current.filter(item => !scopeBoundaryNodeIds.has(item.id));
-          const resolvedNodes = resolveNodeCollisions(collisionNodes, {
-            maxIterations: 50,
-            overlapThreshold: 0.5,
-            margin: 15,
-          });
+          const resolvedNodes = resolveNodeCollisions(collisionNodes, WORKFLOW_COLLISION_OPTIONS);
           const resolvedNodeById = new Map(resolvedNodes.map(item => [item.id, item]));
           return canvasNodesRef.current.map(item => resolvedNodeById.get(item.id) ?? item);
         })()

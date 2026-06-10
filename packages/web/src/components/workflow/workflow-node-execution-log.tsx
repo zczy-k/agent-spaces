@@ -34,7 +34,7 @@ export function WorkflowNodeExecutionLog({
 
   return (
     <div
-      className="nodrag nopan mt-1"
+      className="nodrag nopan relative z-10 mt-1"
       style={{ width: nodeWidth }}
       onClick={(e) => e.stopPropagation()}
     >

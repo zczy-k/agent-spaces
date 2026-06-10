@@ -21,6 +21,7 @@ export {
 };
 import { createWorkflowEdgeId } from '@/lib/workflow-edge-id';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
+import { getWorkflowNodeSize } from './workflow-node-size';
 
 // ---- Type guards & helpers ----
 
@@ -234,6 +235,12 @@ export type CollisionAlgorithmOptions = {
   margin: number;
 };
 
+export const WORKFLOW_COLLISION_OPTIONS: CollisionAlgorithmOptions = {
+  maxIterations: 50,
+  overlapThreshold: 0.5,
+  margin: 15,
+};
+
 type CollisionBox = {
   x: number;
   y: number;
@@ -308,6 +315,45 @@ export function resolveNodeCollisions(
         x: box.x + margin,
         y: box.y + margin,
       },
+    };
+  });
+}
+
+export function resolveWorkflowNodeCollisions(
+  nodes: Workflow['nodes'],
+  options: CollisionAlgorithmOptions = WORKFLOW_COLLISION_OPTIONS,
+): Workflow['nodes'] {
+  const collisionNodes = nodes
+    .filter(node => !isHiddenWorkflowNode(node))
+    .filter(node => !isScopeBoundaryWorkflowNode(node));
+  const flowNodes = collisionNodes.map((node) => {
+    const definition = getNodeDefinition(node.type);
+    const { width, height } = getWorkflowNodeSize(definition, node.data);
+    return {
+      id: node.id,
+      position: node.position,
+      width,
+      height,
+      measured: { width, height },
+      data: {},
+    } as Node;
+  });
+  const resolvedNodeById = new Map(
+    resolveNodeCollisions(flowNodes, options).map(node => [node.id, node]),
+  );
+
+  return nodes.map((node) => {
+    const resolvedNode = resolvedNodeById.get(node.id);
+    if (!resolvedNode) return node;
+    if (
+      node.position.x === resolvedNode.position.x
+      && node.position.y === resolvedNode.position.y
+    ) {
+      return node;
+    }
+    return {
+      ...node,
+      position: { ...resolvedNode.position },
     };
   });
 }
