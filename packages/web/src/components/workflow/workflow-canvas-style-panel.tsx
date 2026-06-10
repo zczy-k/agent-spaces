@@ -1,9 +1,15 @@
 'use client';
 
-import { useMemo, useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { FieldLabel } from '@/components/ui/field';
 import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  CUSTOM_WORKFLOW_CANVAS_THEME,
+  WORKFLOW_CANVAS_CUSTOM_THEME_PLACEHOLDER,
+  WORKFLOW_CANVAS_THEME_PRESETS,
+} from './workflow-canvas-theme';
 
 const BACKGROUND_OPTIONS = [
   { value: 'dots', label: '点阵', description: '默认点阵背景' },
@@ -22,10 +28,10 @@ const LAYOUT_ENGINE_OPTIONS = [
 ] as const;
 
 const HANDLE_POSITION_OPTIONS = [
-  { value: 'top-bottom', label: '上 → 下', description: '从顶部出、底部入' },
-  { value: 'left-right', label: '左 → 右', description: '从左侧出、右侧入' },
-  { value: 'bottom-top', label: '下 → 上', description: '从底部出、顶部入' },
-  { value: 'right-left', label: '右 → 左', description: '从右侧出、左侧入' },
+  { value: 'top-bottom', label: '上 -> 下', description: '从顶部出、底部入' },
+  { value: 'left-right', label: '左 -> 右', description: '从左侧出、右侧入' },
+  { value: 'bottom-top', label: '下 -> 上', description: '从底部出、顶部入' },
+  { value: 'right-left', label: '右 -> 左', description: '从右侧出、左侧入' },
 ] as const;
 
 const EDGE_PATH_TYPE_OPTIONS = [
@@ -33,6 +39,15 @@ const EDGE_PATH_TYPE_OPTIONS = [
   { value: 'straight', label: '直线', description: '直连两点' },
   { value: 'step', label: '折线', description: '直角折线' },
   { value: 'smoothstep', label: '平滑折线', description: '圆角折线' },
+] as const;
+
+const THEME_OPTIONS = [
+  ...WORKFLOW_CANVAS_THEME_PRESETS,
+  {
+    value: CUSTOM_WORKFLOW_CANVAS_THEME,
+    label: '自定义',
+    description: '使用 React Flow CSS 变量',
+  },
 ] as const;
 
 interface WorkflowCanvasStylePanelProps {
@@ -56,6 +71,8 @@ export function WorkflowCanvasStylePanel({
   const autoMergeNodeOnEdge = canvasPrefs.autoMergeNodeOnEdge !== false;
   const autoConnectAfterNodeDelete = canvasPrefs.autoConnectAfterNodeDelete !== false;
   const collisionBoxEnabled = canvasPrefs.collisionBoxEnabled !== false;
+  const themeKey = (canvasPrefs.canvasTheme as string) || 'default';
+  const customThemeCss = (canvasPrefs.canvasCustomThemeCss as string) || '';
 
   const update = useCallback((patch: Record<string, unknown>) => {
     onCanvasPreferencesChange({ ...canvasPrefs, ...patch });
@@ -72,6 +89,12 @@ export function WorkflowCanvasStylePanel({
     options: readonly { value: string | boolean; label: string; description: string }[];
     onChange: (value: string) => void;
   }[] = useMemo(() => [
+    {
+      title: '画布主题',
+      value: THEME_OPTIONS.some(o => o.value === themeKey) ? themeKey : 'default',
+      options: THEME_OPTIONS,
+      onChange: (v) => update({ canvasTheme: v }),
+    },
     {
       title: '背景样式',
       value: bgVariantKey,
@@ -102,10 +125,10 @@ export function WorkflowCanvasStylePanel({
       options: EDGE_PATH_TYPE_OPTIONS,
       onChange: (v) => update({ edgePathType: v }),
     },
-  ], [bgVariantKey, snapEnabled, layoutEngine, handlePosition, canvasPrefs, update, handleLayoutEngineChange]);
+  ], [themeKey, bgVariantKey, snapEnabled, layoutEngine, handlePosition, canvasPrefs.edgePathType, update, handleLayoutEngineChange]);
 
   return (
-    <div className="flex flex-col gap-6 p-4 overflow-y-auto h-full">
+    <div className="flex h-full flex-col gap-6 overflow-y-auto p-4">
       {sections.map(section => (
         <div key={section.title} className="space-y-2">
           <h3 className="text-xs font-medium text-muted-foreground">{section.title}</h3>
@@ -118,7 +141,7 @@ export function WorkflowCanvasStylePanel({
               <FieldLabel
                 key={String(option.value)}
                 htmlFor={`${section.title}-${option.value}`}
-                className="flex items-center gap-1.5 cursor-pointer rounded-md border px-2.5 py-1.5 text-sm hover:bg-muted has-[:checked]:bg-primary/10 has-[:checked]:border-primary"
+                className="flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm hover:bg-muted has-[:checked]:border-primary has-[:checked]:bg-primary/10"
               >
                 <RadioGroupItem value={String(option.value)} id={`${section.title}-${option.value}`} />
                 {option.label}
@@ -127,6 +150,20 @@ export function WorkflowCanvasStylePanel({
           </RadioGroup>
         </div>
       ))}
+
+      {themeKey === CUSTOM_WORKFLOW_CANVAS_THEME && (
+        <div className="space-y-2">
+          <h3 className="text-xs font-medium text-muted-foreground">自定义主题变量</h3>
+          <Textarea
+            value={customThemeCss}
+            placeholder={WORKFLOW_CANVAS_CUSTOM_THEME_PLACEHOLDER}
+            onChange={(event) => update({ canvasCustomThemeCss: event.target.value })}
+            className="min-h-40 resize-y font-mono text-xs"
+            spellCheck={false}
+          />
+        </div>
+      )}
+
       <div className="space-y-2">
         <h3 className="text-xs font-medium text-muted-foreground">悬浮 Handle</h3>
         <FieldLabel
@@ -156,7 +193,7 @@ export function WorkflowCanvasStylePanel({
         </FieldLabel>
       </div>
       <div className="space-y-2">
-        <h3 className="text-xs font-medium text-muted-foreground">碰撞箱</h3>
+        <h3 className="text-xs font-medium text-muted-foreground">碰撞管理</h3>
         <FieldLabel
           htmlFor="collision-box-enabled"
           className="flex items-center justify-between gap-3 rounded-md border px-2.5 py-2 text-sm"

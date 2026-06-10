@@ -1,12 +1,12 @@
 import React, { useCallback, useState } from 'react';
-import { domToJpeg, domToPng } from 'modern-screenshot';
-import { useReactFlow } from '@xyflow/react';
+import { toPng, toJpeg } from 'html-to-image';
+import { useReactFlow, getNodesBounds, getViewportForBounds } from '@xyflow/react';
 
 export function useCanvasExport(
   reactFlowWrapper: React.RefObject<HTMLDivElement | null>,
   workflowName: string,
 ) {
-  const { fitView, getViewport, setViewport } = useReactFlow();
+  const { getViewport, setViewport, getNodes } = useReactFlow();
   const [minimapVisible, setMinimapVisible] = useState(() => {
     if (typeof window === 'undefined') return true;
     return localStorage.getItem('agent-spaces:workflow-minimap-visible') !== 'false';
@@ -22,19 +22,31 @@ export function useCanvasExport(
   }, []);
 
   const exportCanvas = useCallback(async (format: 'png' | 'jpeg') => {
-    const flowElement = reactFlowWrapper.current?.querySelector<HTMLElement>('.react-flow');
-    if (!flowElement || isExporting) return;
+    const viewportEl = reactFlowWrapper.current?.querySelector<HTMLElement>('.react-flow__viewport');
+    if (!viewportEl || isExporting) return;
 
     setIsExporting(true);
     const viewport = getViewport();
     try {
-      fitView({ padding: 0.15, duration: 0 });
-      await new Promise(resolve => window.setTimeout(resolve, 150));
+      const nodesBounds = getNodesBounds(getNodes());
+      const imageWidth = 1024;
+      const imageHeight = 768;
+      const { x, y, zoom } = getViewportForBounds(nodesBounds, imageWidth, imageHeight, 0.5, 2, 0.15);
 
       const name = (workflowName || 'workflow').replace(/[^\w一-龥-]+/g, '-');
-      const dataUrl = format === 'jpeg'
-        ? await domToJpeg(flowElement, { quality: 0.95, backgroundColor: '#ffffff', scale: 2 })
-        : await domToPng(flowElement, { backgroundColor: null, scale: 2 });
+      const toImage = format === 'jpeg' ? toJpeg : toPng;
+      const dataUrl = await toImage(viewportEl, {
+        backgroundColor: format === 'jpeg' ? '#ffffff' : undefined,
+        quality: format === 'jpeg' ? 0.95 : undefined,
+        pixelRatio: 2,
+        width: imageWidth,
+        height: imageHeight,
+        style: {
+          width: imageWidth,
+          height: imageHeight,
+          transform: `translate(${x}px, ${y}px) scale(${zoom})`,
+        },
+      });
 
       const link = document.createElement('a');
       link.download = `${name}-${Date.now()}.${format}`;
@@ -46,7 +58,7 @@ export function useCanvasExport(
       void setViewport(viewport);
       setIsExporting(false);
     }
-  }, [fitView, getViewport, isExporting, setViewport, workflowName, reactFlowWrapper]);
+  }, [getNodes, getViewport, isExporting, setViewport, workflowName, reactFlowWrapper]);
 
   return { minimapVisible, isExporting, toggleMinimap, exportCanvas };
 }

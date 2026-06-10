@@ -30,6 +30,11 @@ import { WorkflowNode as WorkflowNodeComponent } from './workflow-node';
 import { WorkflowEdge as WorkflowEdgeComponent } from './workflow-edge';
 import { WorkflowGroupOverlay } from './workflow-group-node';
 import { WorkflowHelperLines } from './workflow-helper-lines';
+import {
+  CUSTOM_WORKFLOW_CANVAS_THEME,
+  getWorkflowCanvasThemePreset,
+  parseWorkflowCanvasCustomTheme,
+} from './workflow-canvas-theme';
 import { useTranslations } from 'next-intl';
 import { CanvasToolbar } from './workflow-canvas-toolbar';
 import { useCanvasData } from './use-workflow-canvas-data';
@@ -223,6 +228,14 @@ export function WorkflowCanvas({
 
   // --- Canvas preferences (persisted in workflow.layoutSnapshot) ---
   const canvasPrefs = useMemo(() => workflow.layoutSnapshot ?? {}, [workflow.layoutSnapshot]);
+  const canvasThemeKey = (canvasPrefs.canvasTheme as string) || 'default';
+  const canvasThemePreset = getWorkflowCanvasThemePreset(canvasThemeKey);
+  const canvasThemeStyle = useMemo(() => (
+    canvasThemeKey === CUSTOM_WORKFLOW_CANVAS_THEME
+      ? parseWorkflowCanvasCustomTheme(canvasPrefs.canvasCustomThemeCss)
+      : canvasThemePreset.style
+  ), [canvasPrefs.canvasCustomThemeCss, canvasThemeKey, canvasThemePreset.style]);
+  const canvasThemeColorMode = canvasThemeKey === CUSTOM_WORKFLOW_CANVAS_THEME ? 'system' : canvasThemePreset.colorMode;
   const bgVariantKey = (canvasPrefs.bgVariant as string) || 'dots';
   const bgVariant = bgVariantKey === 'lines' ? BackgroundVariant.Lines
     : bgVariantKey === 'cross' ? BackgroundVariant.Cross
@@ -687,6 +700,8 @@ export function WorkflowCanvas({
     >
       <ReactFlow
         className="h-full w-full"
+        colorMode={canvasThemeColorMode}
+        style={canvasThemeStyle}
         nodes={canvasNodes}
         edges={displayedEdges}
         onNodesChange={handleNodesChange}
