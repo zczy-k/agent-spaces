@@ -190,6 +190,7 @@
     "undo": "Undo (Ctrl+Z)",
     "redo": "Redo (Ctrl+Shift+Z)",
     "drawAreaAddNode": "Draw an area to add a node",
+    "drawAreaSelectNode": "Draw an area to select nodes",
     "horizontalLayout": "Horizontal Layout",
     "verticalLayout": "Vertical Layout",
     "hideMinimap": "Hide Minimap",
@@ -663,6 +664,61 @@
       "slate": "Slate",
       "red": "Red",
       "indigo": "Indigo"
+    }
+  },
+  "nodeSelect": {
+    "title": "Select Node",
+    "searchPlaceholder": "Search nodes...",
+    "allNodes": "All Nodes",
+    "noMatch": "No matching nodes"
+  },
+  "canvasStyle": {
+    "canvasTheme": "Canvas Theme",
+    "backgroundStyle": "Background Style",
+    "snapToGrid": "Snap to Grid",
+    "layoutEngine": "Layout Engine",
+    "handleDirection": "Handle Direction",
+    "edgeStyle": "Edge Style",
+    "customThemeVars": "Custom Theme Variables",
+    "floatingHandle": "Floating Handles",
+    "floatingHandleDesc": "Show only on hover",
+    "nodeMerge": "Node Merge",
+    "nodeMergeDesc": "Auto-merge nodes dragged onto edges",
+    "collision": "Collision Management",
+    "collisionDesc": "Auto-avoid after drag ends",
+    "deleteReconnect": "Delete & Reconnect",
+    "deleteReconnectDesc": "Auto-connect after node deletion",
+    "background": {
+      "dots": { "label": "Dots", "description": "Default dot pattern" },
+      "lines": { "label": "Lines", "description": "Grid line pattern" },
+      "cross": { "label": "Cross", "description": "Cross pattern" }
+    },
+    "snap": {
+      "on": { "label": "On", "description": "Nodes snap to grid" },
+      "off": { "label": "Off", "description": "Free placement" }
+    },
+    "layout": {
+      "dagre": { "label": "Dagre", "description": "Classic directed graph layout" },
+      "elk": { "label": "ELK", "description": "Eclipse Layout Engine" }
+    },
+    "handle": {
+      "top-bottom": { "label": "Top → Bottom", "description": "Output from top, input from bottom" },
+      "left-right": { "label": "Left → Right", "description": "Output from left, input from right" },
+      "bottom-top": { "label": "Bottom → Top", "description": "Output from bottom, input from top" },
+      "right-left": { "label": "Right → Left", "description": "Output from right, input from left" }
+    },
+    "edge": {
+      "bezier": { "label": "Bezier", "description": "Smooth curves" },
+      "straight": { "label": "Straight", "description": "Direct line between points" },
+      "step": { "label": "Step", "description": "Right-angle steps" },
+      "smoothstep": { "label": "Smooth Step", "description": "Rounded steps" }
+    },
+    "themes": {
+      "default": { "label": "Default", "description": "Follow current UI style" },
+      "graphite": { "label": "Graphite", "description": "Low-contrast dark canvas" },
+      "mint": { "label": "Mint", "description": "Fresh light canvas" },
+      "sunset": { "label": "Sunset", "description": "Warm accent edges" },
+      "custom": { "label": "Custom", "description": "Use React Flow CSS variables" }
     }
   }
 }

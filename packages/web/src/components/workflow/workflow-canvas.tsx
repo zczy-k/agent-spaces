@@ -66,6 +66,7 @@ type DrawArea = {
   position: { x: number; y: number };
   size: { width: number; height: number };
 };
+type LocalPoint = { x: number; y: number };
 
 function WorkflowSelectionConnectionLine({
   fromNode,
@@ -154,6 +155,32 @@ function isConnectionEndOnCanvasNode(position: { x: number; y: number }) {
   return document.elementsFromPoint(position.x, position.y).some(element =>
     element.closest('.react-flow__node, .react-flow__handle')
   );
+}
+
+function isPointInPolygon(point: LocalPoint, polygon: LocalPoint[]) {
+  let inside = false;
+
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const current = polygon[i];
+    const previous = polygon[j];
+    const intersects = ((current.y > point.y) !== (previous.y > point.y))
+      && point.x < ((previous.x - current.x) * (point.y - current.y)) / (previous.y - current.y) + current.x;
+
+    if (intersects) inside = !inside;
+  }
+
+  return inside;
+}
+
+function pointsToSvgPath(points: LocalPoint[]) {
+  if (points.length === 0) return '';
+
+  const [first, ...rest] = points;
+  return [
+    `M ${first.x} ${first.y}`,
+    ...rest.map(point => `L ${point.x} ${point.y}`),
+    points.length > 2 ? 'Z' : '',
+  ].join(' ');
 }
 
 function RectangleDrawTool({
@@ -258,6 +285,124 @@ function RectangleDrawTool({
   );
 }
 
+function LassoSelectionTool({
+  workflow,
+  onSelect,
+}: {
+  workflow: Workflow;
+  onSelect: (ids: string[]) => void;
+}) {
+  const [points, setPoints] = useState<LocalPoint[]>([]);
+  const pointsRef = useRef<LocalPoint[]>([]);
+  const { flowToScreenPosition, getInternalNode } = useReactFlow();
+
+  const getPoint = useCallback((event: React.PointerEvent<HTMLDivElement>): LocalPoint => {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    return {
+      x: event.clientX - bounds.left,
+      y: event.clientY - bounds.top,
+    };
+  }, []);
+
+  const getSelectedNodeIds = useCallback((polygon: LocalPoint[], bounds: DOMRect) => {
+    if (polygon.length < 3) return [];
+
+    return workflow.nodes
+      .filter((node) => {
+        const internalNode = getInternalNode(node.id);
+        if (!internalNode) return false;
+
+        const { x, y } = internalNode.internals.positionAbsolute;
+        const width = internalNode.measured.width ?? 0;
+        const height = internalNode.measured.height ?? 0;
+        if (width <= 0 || height <= 0) return false;
+
+        const corners = [
+          { x, y },
+          { x: x + width, y },
+          { x: x + width, y: y + height },
+          { x, y: y + height },
+        ].map((point) => {
+          const screenPoint = flowToScreenPosition(point);
+          return {
+            x: screenPoint.x - bounds.left,
+            y: screenPoint.y - bounds.top,
+          };
+        });
+
+        return corners.every(point => isPointInPolygon(point, polygon));
+      })
+      .map(node => node.id);
+  }, [flowToScreenPosition, getInternalNode, workflow.nodes]);
+
+  const updateSelection = useCallback((nextPoints: LocalPoint[], bounds: DOMRect) => {
+    onSelect(getSelectedNodeIds(nextPoints, bounds));
+  }, [getSelectedNodeIds, onSelect]);
+
+  const reset = useCallback(() => {
+    pointsRef.current = [];
+    setPoints([]);
+  }, []);
+
+  const handlePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const point = getPoint(event);
+    const nextPoints = [point];
+    pointsRef.current = nextPoints;
+    setPoints(nextPoints);
+  }, [getPoint]);
+
+  const handlePointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.buttons !== 1 || pointsRef.current.length === 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const point = getPoint(event);
+    const previous = pointsRef.current[pointsRef.current.length - 1];
+    if (Math.hypot(point.x - previous.x, point.y - previous.y) < 3) return;
+
+    const nextPoints = [...pointsRef.current, point];
+    pointsRef.current = nextPoints;
+    setPoints(nextPoints);
+    updateSelection(nextPoints, event.currentTarget.getBoundingClientRect());
+  }, [getPoint, updateSelection]);
+
+  const handlePointerUp = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (pointsRef.current.length === 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    updateSelection(pointsRef.current, event.currentTarget.getBoundingClientRect());
+    event.currentTarget.releasePointerCapture(event.pointerId);
+    reset();
+  }, [reset, updateSelection]);
+
+  const path = pointsToSvgPath(points);
+
+  return (
+    <div
+      className="nopan nodrag absolute inset-0 z-10 cursor-crosshair"
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={reset}
+    >
+      <svg className="pointer-events-none h-full w-full">
+        {path && (
+          <path
+            d={path}
+            fill="rgba(59, 130, 246, 0.12)"
+            stroke="rgba(37, 99, 235, 0.9)"
+            strokeDasharray="4 3"
+            strokeWidth={1.5}
+          />
+        )}
+      </svg>
+    </div>
+  );
+}
+
 interface WorkflowCanvasProps {
   workflow: Workflow;
   isPreview: boolean;
@@ -342,13 +487,17 @@ export function WorkflowCanvas({
   const [dropTargetEdgeId, setDropTargetEdgeId] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [rectangleDrawActive, setRectangleDrawActive] = useState(false);
+  const [lassoSelectionActive, setLassoSelectionActive] = useState(false);
   const { screenToFlowPosition } = useReactFlow();
   const [helperHorizontal] = useState<number | undefined>();
   const [helperVertical] = useState<number | undefined>();
   const isCanvasLocked = isPreview || isRunning;
 
   useEffect(() => {
-    if (isCanvasLocked) setRectangleDrawActive(false);
+    if (isCanvasLocked) {
+      setRectangleDrawActive(false);
+      setLassoSelectionActive(false);
+    }
   }, [isCanvasLocked]);
 
   // --- Canvas preferences (persisted in workflow.layoutSnapshot) ---
@@ -715,6 +864,11 @@ export function WorkflowCanvas({
     onNodesSelect?.(ids, { primaryNodeId: ids.length === 1 ? ids[0] : null });
   }, [onNodesSelect, selectedNodeIds]);
 
+  const handleLassoSelect = useCallback((ids: string[]) => {
+    if (ids.length > 0) selectEdge(null);
+    onNodesSelect?.(ids, { primaryNodeId: ids.length === 1 ? ids[0] : null });
+  }, [onNodesSelect, selectEdge]);
+
   const handleConnect = useCallback((connection: Connection) => {
     if (isCanvasLocked) return;
     connectSucceededRef.current = true;
@@ -917,6 +1071,9 @@ export function WorkflowCanvas({
       {rectangleDrawActive && !isCanvasLocked && onRectangleDrawNodeSelect && (
         <RectangleDrawTool onComplete={onRectangleDrawNodeSelect} />
       )}
+      {lassoSelectionActive && !isCanvasLocked && onNodesSelect && (
+        <LassoSelectionTool workflow={workflow} onSelect={handleLassoSelect} />
+      )}
       {selectionMenu && (
         <div
           data-workflow-selection-menu="true"
@@ -960,6 +1117,7 @@ export function WorkflowCanvas({
         canUndo={!isCanvasLocked && canUndo}
         canRedo={!isCanvasLocked && canRedo}
         rectangleDrawActive={rectangleDrawActive}
+        lassoSelectionActive={lassoSelectionActive}
         minimapVisible={minimapVisible}
         onUndo={onUndo}
         onRedo={onRedo}
@@ -968,7 +1126,18 @@ export function WorkflowCanvas({
         onToggleRectangleDraw={
           isCanvasLocked || !onRectangleDrawNodeSelect
             ? undefined
-            : () => setRectangleDrawActive(active => !active)
+            : () => {
+                setLassoSelectionActive(false);
+                setRectangleDrawActive(active => !active);
+              }
+        }
+        onToggleLassoSelection={
+          isCanvasLocked || !onNodesSelect
+            ? undefined
+            : () => {
+                setRectangleDrawActive(false);
+                setLassoSelectionActive(active => !active);
+              }
         }
         onToggleMinimap={toggleMinimap}
       />

@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import type { NodeTypeDefinition, Workflow } from '@agent-spaces/shared';
 import { useLocalizedNodeDefinitionsByCategory, useLocalizedSearchNodeDefinitions } from '@/lib/workflow-nodes';
 import { Button } from '@/components/ui/button';
@@ -35,6 +36,7 @@ export function WorkflowNodeSelectDialog({
 }: WorkflowNodeSelectDialogProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const t = useTranslations('workflows');
 
   const allCategories = useLocalizedNodeDefinitionsByCategory();
   const searchResults = useLocalizedSearchNodeDefinitions(searchQuery);
@@ -73,13 +75,13 @@ export function WorkflowNodeSelectDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[640px] p-0 gap-0 overflow-hidden">
         <DialogHeader className="p-4 pb-3">
-          <DialogTitle className="text-sm">选择节点</DialogTitle>
+          <DialogTitle className="text-sm">{t('nodeSelect.title')}</DialogTitle>
           <div className="relative mt-2">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="搜索节点..."
+              placeholder={t('nodeSelect.searchPlaceholder')}
               className="h-7 pl-8 text-xs"
             />
           </div>
@@ -96,7 +98,7 @@ export function WorkflowNodeSelectDialog({
                   className={`h-7 w-full justify-start px-2.5 text-xs ${selectedCategory === null ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
                   onClick={() => setSelectedCategory(null)}
                 >
-                  全部节点
+                  {t('nodeSelect.allNodes')}
                 </Button>
                 {categories.map(category => (
                   <Button
@@ -135,7 +137,7 @@ export function WorkflowNodeSelectDialog({
                 </div>
               ) : (
                 <div className="flex h-40 items-center justify-center text-xs text-muted-foreground">
-                  暂无匹配节点
+                  {t('nodeSelect.noMatch')}
                 </div>
               )}
             </ScrollArea>

@@ -190,6 +190,7 @@
     "undo": "撤销 (Ctrl+Z)",
     "redo": "重做 (Ctrl+Shift+Z)",
     "drawAreaAddNode": "绘制区域来添加节点",
+    "drawAreaSelectNode": "绘制区域来选中节点",
     "horizontalLayout": "横向布局",
     "verticalLayout": "垂直布局",
     "hideMinimap": "隐藏小地图",
@@ -663,6 +664,61 @@
       "slate": "石板灰",
       "red": "红色",
       "indigo": "靛蓝"
+    }
+  },
+  "nodeSelect": {
+    "title": "选择节点",
+    "searchPlaceholder": "搜索节点...",
+    "allNodes": "全部节点",
+    "noMatch": "暂无匹配节点"
+  },
+  "canvasStyle": {
+    "canvasTheme": "画布主题",
+    "backgroundStyle": "背景样式",
+    "snapToGrid": "网格吸附",
+    "layoutEngine": "布局引擎",
+    "handleDirection": "连接点方向",
+    "edgeStyle": "连线样式",
+    "customThemeVars": "自定义主题变量",
+    "floatingHandle": "悬浮 Handle",
+    "floatingHandleDesc": "仅悬停时显示",
+    "nodeMerge": "节点合并",
+    "nodeMergeDesc": "节点拖拽到线条自动合并",
+    "collision": "碰撞管理",
+    "collisionDesc": "拖拽结束后自动避让",
+    "deleteReconnect": "删除重连",
+    "deleteReconnectDesc": "删除节点后自动连接",
+    "background": {
+      "dots": { "label": "点阵", "description": "默认点阵背景" },
+      "lines": { "label": "线条", "description": "网格线条背景" },
+      "cross": { "label": "十字", "description": "十字交叉背景" }
+    },
+    "snap": {
+      "on": { "label": "开启", "description": "节点自动吸附到网格" },
+      "off": { "label": "关闭", "description": "自由放置节点" }
+    },
+    "layout": {
+      "dagre": { "label": "Dagre", "description": "经典有向图布局" },
+      "elk": { "label": "ELK", "description": "Eclipse Layout 引擎" }
+    },
+    "handle": {
+      "top-bottom": { "label": "上 -> 下", "description": "从顶部出、底部入" },
+      "left-right": { "label": "左 -> 右", "description": "从左侧出、右侧入" },
+      "bottom-top": { "label": "下 -> 上", "description": "从底部出、顶部入" },
+      "right-left": { "label": "右 -> 左", "description": "从右侧出、左侧入" }
+    },
+    "edge": {
+      "bezier": { "label": "贝塞尔", "description": "平滑曲线" },
+      "straight": { "label": "直线", "description": "直连两点" },
+      "step": { "label": "折线", "description": "直角折线" },
+      "smoothstep": { "label": "平滑折线", "description": "圆角折线" }
+    },
+    "themes": {
+      "default": { "label": "默认", "description": "跟随当前界面风格" },
+      "graphite": { "label": "石墨", "description": "低对比深色画布" },
+      "mint": { "label": "薄荷", "description": "清爽浅色画布" },
+      "sunset": { "label": "日落", "description": "暖色重点连线" },
+      "custom": { "label": "自定义", "description": "使用 React Flow CSS 变量" }
     }
   }
 }

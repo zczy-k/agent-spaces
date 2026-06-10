@@ -11,7 +11,7 @@ import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui/tooltip';
 import {
-  EyeOff, LayoutGrid, Map as MapIcon, RotateCcw, RotateCw, SquareDashedMousePointer,
+  EyeOff, LassoSelect, LayoutGrid, Map as MapIcon, RotateCcw, RotateCw, SquareDashedMousePointer,
 } from 'lucide-react';
 
 function CanvasToolbarButton({
@@ -35,12 +35,14 @@ export function CanvasToolbar({
   canUndo,
   canRedo,
   rectangleDrawActive,
+  lassoSelectionActive,
   minimapVisible,
   onUndo,
   onRedo,
   onExitPreview,
   onAutoLayout,
   onToggleRectangleDraw,
+  onToggleLassoSelection,
   onToggleMinimap,
 }: {
   workflow: Workflow;
@@ -48,12 +50,14 @@ export function CanvasToolbar({
   canUndo: boolean;
   canRedo: boolean;
   rectangleDrawActive: boolean;
+  lassoSelectionActive: boolean;
   minimapVisible: boolean;
   onUndo?: () => void;
   onRedo?: () => void;
   onExitPreview?: () => void;
   onAutoLayout?: (direction: 'LR' | 'TB') => void;
   onToggleRectangleDraw?: () => void;
+  onToggleLassoSelection?: () => void;
   onToggleMinimap: () => void;
 }) {
   const t = useTranslations("workflows");
@@ -86,6 +90,15 @@ export function CanvasToolbar({
           onClick={onToggleRectangleDraw}
         >
           <SquareDashedMousePointer className="h-3.5 w-3.5" />
+        </CanvasToolbarButton>
+
+        <CanvasToolbarButton
+          tooltip={t('canvasToolbar.drawAreaSelectNode')}
+          disabled={isPreview || !onToggleLassoSelection}
+          className={`h-7 w-7 p-0 ${lassoSelectionActive ? 'text-blue-500' : ''}`}
+          onClick={onToggleLassoSelection}
+        >
+          <LassoSelect className="h-3.5 w-3.5" />
         </CanvasToolbarButton>
 
         <DropdownMenu>
