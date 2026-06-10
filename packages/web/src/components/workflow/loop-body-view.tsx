@@ -1,6 +1,12 @@
 'use client';
 
 import React, { useCallback } from 'react';
+import { useTranslations } from 'next-intl';
+import { LayoutGrid } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import type { WorkflowCustomViewProps } from './workflow-node-types';
 
 type LoopBodyDragEventDetail = {
@@ -14,10 +20,16 @@ function dispatchLoopBodyDrag(detail: LoopBodyDragEventDetail) {
 }
 
 export function LoopBodyView({ nodeId, data }: WorkflowCustomViewProps) {
+  const t = useTranslations('workflows');
   const outputLabel = typeof data.outputLabel === 'string' ? data.outputLabel : '';
+  const layoutEngine = typeof data.layoutEngine === 'string' ? data.layoutEngine : undefined;
+  const onAutoLayout = typeof data.onAutoLayout === 'function'
+    ? data.onAutoLayout as (direction: 'LR' | 'TB', options?: { layoutEngine?: string; parentId?: string }) => void
+    : undefined;
+  const isLocked = data.isPreview === true || data.isCanvasLocked === true;
+  const autoLayoutOptions = { ...(layoutEngine ? { layoutEngine } : {}), parentId: nodeId };
 
   const handleHeaderPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    const isLocked = data.isPreview === true || data.isCanvasLocked === true;
     if (isLocked) return;
 
     event.preventDefault();
@@ -67,7 +79,7 @@ export function LoopBodyView({ nodeId, data }: WorkflowCustomViewProps) {
     document.addEventListener('pointermove', handlePointerMove);
     document.addEventListener('pointerup', handlePointerUp);
     document.addEventListener('pointercancel', handlePointerCancel);
-  }, [data.isCanvasLocked, data.isPreview, nodeId]);
+  }, [isLocked, nodeId]);
 
   return (
     <div
@@ -80,11 +92,36 @@ export function LoopBodyView({ nodeId, data }: WorkflowCustomViewProps) {
         <div className="flex min-w-0 flex-col gap-0.5">
           <span className="text-[13px] font-semibold text-cyan-900 dark:text-cyan-100">循环体</span>
         </div>
-        {outputLabel ? (
-          <span className="shrink-0 text-[11px] text-cyan-900/85 dark:text-cyan-100/80">
-            输出: {outputLabel}
-          </span>
-        ) : null}
+        <div
+          className="flex shrink-0 items-center gap-2"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
+        >
+          {outputLabel ? (
+            <span className="text-[11px] text-cyan-900/85 dark:text-cyan-100/80">
+              输出: {outputLabel}
+            </span>
+          ) : null}
+          <DropdownMenu>
+            <DropdownMenuTrigger render={(
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 text-cyan-900/80 hover:bg-cyan-100/70 hover:text-cyan-950 dark:text-cyan-100/80 dark:hover:bg-cyan-900/35 dark:hover:text-cyan-50"
+                disabled={isLocked || !onAutoLayout}
+                title={t('canvasToolbar.autoLayout')}
+                aria-label={t('canvasToolbar.autoLayout')}
+              />
+            )}
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" side="bottom">
+              <DropdownMenuItem onClick={() => onAutoLayout?.('LR', autoLayoutOptions)}>{t('canvasToolbar.horizontalLayout')}</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onAutoLayout?.('TB', autoLayoutOptions)}>{t('canvasToolbar.verticalLayout')}</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
     </div>
   );

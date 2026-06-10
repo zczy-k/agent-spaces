@@ -474,7 +474,7 @@ interface WorkflowCanvasProps {
   onUndo?: () => void;
   onRedo?: () => void;
   onExitPreview?: () => void;
-  onAutoLayout?: (direction: 'LR' | 'TB', options?: { layoutEngine?: string }) => void;
+  onAutoLayout?: (direction: 'LR' | 'TB', options?: { layoutEngine?: string; parentId?: string }) => void;
   onConnectionDrop?: (context: {
     sourceNodeId: string;
     sourceHandle: string | null;
@@ -693,6 +693,8 @@ export function WorkflowCanvas({
     logPanelLayout: canvasPrefs.logPanelLayout === 'tabs' ? 'tabs' : 'vertical',
     edgePathType: (canvasPrefs.edgePathType as string) || 'bezier',
     edgeLineStyle: (canvasPrefs.edgeLineStyle as string) || 'solid',
+    onAutoLayout: isCanvasLocked ? undefined : onAutoLayout,
+    layoutEngine,
   });
 
   const displayedEdges = useMemo(() => rfEdges.map(edge => (

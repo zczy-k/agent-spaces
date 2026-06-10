@@ -204,6 +204,7 @@
     "redo": "Redo (Ctrl+Shift+Z)",
     "drawAreaAddNode": "Draw an area to add a node",
     "drawAreaSelectNode": "Draw an area to select nodes",
+    "autoLayout": "Auto Layout",
     "horizontalLayout": "Horizontal Layout",
     "verticalLayout": "Vertical Layout",
     "hideMinimap": "Hide Minimap",

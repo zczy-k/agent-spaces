@@ -204,6 +204,7 @@
     "redo": "重做 (Ctrl+Shift+Z)",
     "drawAreaAddNode": "绘制区域来添加节点",
     "drawAreaSelectNode": "绘制区域来选中节点",
+    "autoLayout": "自动布局",
     "horizontalLayout": "横向布局",
     "verticalLayout": "垂直布局",
     "hideMinimap": "隐藏小地图",

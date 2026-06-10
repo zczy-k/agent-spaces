@@ -413,12 +413,18 @@ export function useEdgeOperations({
     markDirty();
   }, [workflow, isReadOnly, markDirty, setWorkflow]);
 
-  const handleAutoLayout = useCallback(async (direction: 'LR' | 'TB', options?: { layoutEngine?: string }) => {
+  const handleAutoLayout = useCallback(async (direction: 'LR' | 'TB', options?: { layoutEngine?: string; parentId?: string }) => {
     if (!workflow || isReadOnly || workflow.nodes.length === 0) return;
+    const parentId = options?.parentId;
+    const layoutNodes = workflow.nodes.filter(node =>
+      !isHiddenWorkflowNode(node)
+      && (parentId ? getCompositeParentId(node) === parentId : !getCompositeParentId(node))
+    );
+    if (layoutNodes.length === 0) return;
+
     pushUndo('auto layout');
 
     const layoutEngine = options?.layoutEngine || (workflow.layoutSnapshot?.layoutEngine as string) || 'dagre';
-    const layoutNodes = workflow.nodes.filter(node => !isHiddenWorkflowNode(node) && !getCompositeParentId(node));
     const layoutNodeIds = new Set(layoutNodes.map(node => node.id));
     const nodeSizes = new Map<string, { width: number; height: number }>();
 
@@ -493,6 +499,17 @@ export function useEdgeOperations({
       }
     }
 
+    const layoutOffset = parentId && layoutPositions.size > 0
+      ? (() => {
+          const currentMinX = Math.min(...layoutNodes.map(node => node.position.x));
+          const currentMinY = Math.min(...layoutNodes.map(node => node.position.y));
+          const layoutPositionValues = Array.from(layoutPositions.values());
+          const layoutMinX = Math.min(...layoutPositionValues.map(position => position.x));
+          const layoutMinY = Math.min(...layoutPositionValues.map(position => position.y));
+          return { x: currentMinX - layoutMinX, y: currentMinY - layoutMinY };
+        })()
+      : { x: 0, y: 0 };
+
     setWorkflow(current => {
       if (!current) return null;
       const nextNodes = current.nodes.map(node => ({ ...node, position: { ...node.position } }));
@@ -503,18 +520,25 @@ export function useEdgeOperations({
         const nextNode = nodeById.get(node.id);
         const nextPosition = layoutPositions.get(node.id);
         if (!nextNode || !nextPosition) continue;
+        const shiftedPosition = {
+          x: nextPosition.x + layoutOffset.x,
+          y: nextPosition.y + layoutOffset.y,
+        };
 
         if (isScopeBoundaryWorkflowNode(nextNode)) {
-          const dx = nextPosition.x - nextNode.position.x;
-          const dy = nextPosition.y - nextNode.position.y;
+          const dx = shiftedPosition.x - nextNode.position.x;
+          const dy = shiftedPosition.y - nextNode.position.y;
           shiftScopeChildren(nextNodes, nextNode.id, dx, dy, new Set([nextNode.id]));
           touchedScopeNodeIds.add(nextNode.id);
         }
 
-        nextNode.position = nextPosition;
+        nextNode.position = shiftedPosition;
       }
       for (const scopeNodeId of touchedScopeNodeIds) {
         syncScopeBoundaryLayout(nextNodes, scopeNodeId);
+      }
+      if (parentId) {
+        syncScopeBoundaryLayout(nextNodes, parentId);
       }
 
       return { ...current, nodes: nextNodes };

@@ -47,6 +47,8 @@ interface UseCanvasDataParams {
   logPanelLayout?: WorkflowLogPanelLayout;
   edgePathType?: string;
   edgeLineStyle?: string;
+  onAutoLayout?: (direction: 'LR' | 'TB', options?: { layoutEngine?: string; parentId?: string }) => void;
+  layoutEngine?: string;
 }
 
 export function useCanvasData({
@@ -68,6 +70,8 @@ export function useCanvasData({
   logPanelLayout = 'vertical',
   edgePathType = 'bezier',
   edgeLineStyle = 'solid',
+  onAutoLayout,
+  layoutEngine = 'dagre',
 }: UseCanvasDataParams) {
   const selectedNodeIdSet = useMemo(
     () => new Set(selectedNodeIds.length > 0 ? selectedNodeIds : selectedNodeId ? [selectedNodeId] : []),
@@ -158,10 +162,12 @@ export function useCanvasData({
           isFirstConnectedNode: hasOutgoing && !hasIncoming,
           executionStep: executionStepByNodeId.get(n.id),
           executionSteps: executionStepsByNodeId.get(n.id),
+          onAutoLayout,
+          layoutEngine,
         } as Record<string, unknown>,
       };
     }),
-    [workflow.nodes, workflow.edges, selectedNodeIdSet, selectedNodeIds, isPreview, isCanvasLocked, executionNodeIds, execStatus, debugNodeId, debugStatus, pausedNodeId, pausedReason, partialExecutionStartNodeId, handlePosition, floatingHandles, logPanelLayout, executionStepByNodeId, executionStepsByNodeId],
+    [workflow.nodes, workflow.edges, selectedNodeIdSet, selectedNodeIds, isPreview, isCanvasLocked, executionNodeIds, execStatus, debugNodeId, debugStatus, pausedNodeId, pausedReason, partialExecutionStartNodeId, handlePosition, floatingHandles, logPanelLayout, executionStepByNodeId, executionStepsByNodeId, onAutoLayout, layoutEngine],
   );
 
   const runningEdgeIds = useMemo(() => {

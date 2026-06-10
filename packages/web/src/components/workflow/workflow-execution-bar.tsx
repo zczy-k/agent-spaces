@@ -10,13 +10,15 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
+  Popover, PopoverContent, PopoverTrigger,
+} from '@/components/ui/popover';
+import {
   AlertTriangle, Check, CheckCircle, ChevronDown,
   Circle, Clock, Copy, Loader2, MoreHorizontal, Pause, Play, Square, Trash2, XCircle,
 } from 'lucide-react';
 import { JsonViewer } from '@/components/viewers/json-viewer';
 import { cn } from '@/lib/utils';
 import { executionLogApi } from '@/lib/workflow-api';
-import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { ExecutionInputDialog } from './workflow-execution-input-dialog';
 import { SavePresetDialog } from './workflow-save-preset-dialog';
 
@@ -105,21 +107,6 @@ export function WorkflowExecutionBar({
   const errorSteps = steps.filter(s => s.status === 'error').length;
   const progressText = displayLog ? `${completedSteps}/${steps.length}` : '';
   const elapsedText = displayLog ? formatDuration(displayLog.startedAt, displayLog.finishedAt) : '';
-
-  // Find the end node output for the selected log
-  const endStepOutput = useMemo(() => {
-    if (!displayLog || steps.length === 0) return null;
-    // Last completed/errored step that is an "end" type, or just the last step
-    const snapshotNodes = displayLog.snapshot?.nodes || [];
-    for (let i = steps.length - 1; i >= 0; i--) {
-      const step = steps[i];
-      const node = snapshotNodes.find(n => n.id === step.nodeId);
-      const def = node ? getNodeDefinition(node.type) : null;
-      if (def?.type === 'end') return step;
-    }
-    // Fallback: last step
-    return steps[steps.length - 1];
-  }, [displayLog, steps]);
 
   // Build a summary of step statuses per log for the card display
   const logStepSummary = useMemo(() => {
@@ -211,164 +198,163 @@ export function WorkflowExecutionBar({
         </div>
       </div>
 
-      <div className="border-t border-border flex-1 min-h-0 overflow-hidden flex">
-        {/* Left: card list */}
-        <div className="h-full min-h-0 flex flex-col w-[220px] shrink-0 overflow-hidden border-r border-border">
-          <div className="flex items-center justify-between px-2 py-1 border-b border-border">
-            <span className="text-[10px] text-muted-foreground font-medium">{t('execution.history')}</span>
-            {logs.length > 0 && (
-              <Button variant="ghost" size="icon" className="h-5 w-5" onClick={onClearLogs}>
-                <Trash2 className="h-3 w-3 text-muted-foreground" />
-              </Button>
-            )}
-          </div>
-          <ScrollArea className="flex-1 min-h-0 overflow-hidden">
-            <div className="space-y-1.5 p-1.5">
-              {logs.map(item => {
-                const summary = logStepSummary.get(item.id);
-                const statusColor = item.status === 'completed'
-                  ? 'border-green-500/40'
-                  : item.status === 'error'
-                  ? 'border-red-500/40'
-                  : item.status === 'running'
-                  ? 'border-blue-500/40'
-                  : 'border-border';
-
-                return (
-                  <div
-                    key={item.id}
-                    role="button"
-                    tabIndex={0}
-                    className={cn(
-                      'rounded-lg border p-2 text-left transition-colors cursor-pointer',
-                      'hover:bg-muted/50',
-                      selectedLogId === item.id && 'bg-muted ring-1 ring-primary',
-                      statusColor,
-                    )}
-                    onClick={() => onSelectLog(item)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') onSelectLog(item);
-                    }}
-                  >
-                    <div className="flex items-center gap-1.5 mb-1">
-                      {item.status === 'completed' ? <CheckCircle className="h-3.5 w-3.5 text-green-500 shrink-0" /> :
-                        item.status === 'error' ? <XCircle className="h-3.5 w-3.5 text-red-500 shrink-0" /> :
-                        item.status === 'running' ? <Loader2 className="h-3.5 w-3.5 text-blue-500 animate-spin shrink-0" /> :
-                        <Circle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
-                      <span className="text-xs font-medium truncate">{formatTime(item.startedAt)}</span>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          className="ml-auto inline-flex h-5 w-5 items-center justify-center rounded hover:bg-muted"
-                          onClick={event => event.stopPropagation()}
-                        >
-                          <MoreHorizontal className="h-3 w-3" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="min-w-32">
-                          <DropdownMenuItem
-                            className="text-xs"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              copyText(`log-${item.id}`, JSON.stringify(item, null, 2));
-                            }}
-                          >
-                            {copiedKey === `log-${item.id}` ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />} {t('execution.copyLog')}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-xs"
-                            onClick={async (event) => {
-                              event.stopPropagation();
-                              if (!workflowId) return;
-                              try {
-                                const { path } = await executionLogApi.getLogPath(workflowId, item.id);
-                                await navigator.clipboard.writeText(path);
-                                setCopiedKey(`path-${item.id}`);
-                                setTimeout(() => setCopiedKey(null), 1500);
-                              } catch { /* ignore */ }
-                            }}
-                          >
-                            {copiedKey === `path-${item.id}` ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />} {t('execution.copyLogPath')}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            variant="destructive"
-                            className="text-xs"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              onDeleteLog(item.id);
-                            }}
-                          >
-                            <Trash2 className="h-3 w-3" /> {t('execution.deleteLog')}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-
-                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                      <span className="flex items-center gap-0.5">
-                        <Clock className="h-2.5 w-2.5" />
-                        {formatDuration(item.startedAt, item.finishedAt)}
-                      </span>
-                      <span>{t('execution.nodes', { count: item.steps.length })}</span>
-                    </div>
-
-                    {summary && summary.total > 0 && (
-                      <div className="mt-1.5 flex items-center gap-1">
-                        <div className="flex-1 h-1 rounded-full bg-muted overflow-hidden">
-                          <div
-                            className={cn(
-                              'h-full rounded-full transition-all',
-                              item.status === 'error' ? 'bg-red-500' : 'bg-green-500',
-                            )}
-                            style={{ width: `${(summary.completed / summary.total) * 100}%` }}
-                          />
-                        </div>
-                        <span className="text-[9px] text-muted-foreground shrink-0">
-                          {summary.completed}/{summary.total}
-                        </span>
-                        {summary.error > 0 && (
-                          <span className="text-[9px] text-red-500 shrink-0">
-                            {summary.error}✕
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-              {logs.length === 0 && (
-                <div className="text-center text-[10px] text-muted-foreground py-4">{t('execution.noLogs')}</div>
-              )}
-            </div>
-          </ScrollArea>
-        </div>
-
-        {/* Right: end node output via JsonViewer */}
-        <div className="flex-1 min-w-0 min-h-0 overflow-hidden">
-          {endStepOutput ? (
-            <ScrollArea className="h-full min-h-0 overflow-hidden">
-              <div className="p-2">
-                {endStepOutput.error && (
-                  <div className="mb-2 px-2 py-1.5 text-[10px] text-red-500 bg-red-500/10 rounded-md border border-red-500/20 flex items-start gap-1">
-                    <XCircle className="h-3 w-3 shrink-0 mt-0.5" />
-                    <span className="break-all">{endStepOutput.error}</span>
-                  </div>
-                )}
-                {endStepOutput.output != null ? (
-                  <JsonViewer
-                    data={endStepOutput.output as Parameters<typeof JsonViewer>[0]['data']}
-                    className="border border-border rounded-md shadow-none"
-                    defaultExpanded={2}
-                  />
-                ) : (
-                  <div className="text-[10px] text-muted-foreground py-4 text-center">{t('execution.noOutput')}</div>
-                )}
-              </div>
-            </ScrollArea>
-          ) : (
-            <div className="h-full flex items-center justify-center text-[10px] text-muted-foreground">
-              {t('execution.selectLog')}
-            </div>
+      {/* Execution history cards - horizontal layout */}
+      <div className="border-t border-border flex-1 min-h-0 flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between px-3 py-1 border-b border-border shrink-0">
+          <span className="text-[10px] text-muted-foreground font-medium">{t('execution.history')}</span>
+          {logs.length > 0 && (
+            <Button variant="ghost" size="icon" className="h-5 w-5" onClick={onClearLogs}>
+              <Trash2 className="h-3 w-3 text-muted-foreground" />
+            </Button>
           )}
         </div>
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="flex gap-2 p-2 items-stretch" style={{ height: 'calc(100% - 8px)' }}>
+            {logs.map(item => {
+              const summary = logStepSummary.get(item.id);
+              const statusColor = item.status === 'completed'
+                ? 'border-green-500/40'
+                : item.status === 'error'
+                ? 'border-red-500/40'
+                : item.status === 'running'
+                ? 'border-blue-500/40'
+                : 'border-border';
+
+              return (
+                <div
+                  key={item.id}
+                  role="button"
+                  tabIndex={0}
+                  className={cn(
+                    'relative rounded-lg border p-2 text-left transition-colors cursor-pointer shrink-0 w-[180px]',
+                    'hover:bg-muted/50',
+                    selectedLogId === item.id && 'bg-muted ring-1 ring-primary',
+                    statusColor,
+                  )}
+                  onClick={() => onSelectLog(item)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') onSelectLog(item);
+                  }}
+                >
+                  {/* Popover trigger in top-right corner */}
+                  <Popover>
+                    <PopoverTrigger
+                      className="absolute top-1.5 right-1.5 inline-flex h-5 w-5 items-center justify-center rounded hover:bg-muted"
+                      onClick={event => event.stopPropagation()}
+                    >
+                      <MoreHorizontal className="h-3 w-3" />
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-64 p-0">
+                      {/* Output section */}
+                      {(() => {
+                        const lastStep = item.steps[item.steps.length - 1];
+                        return lastStep ? (
+                          <div className="p-2">
+                            <div className="text-[10px] text-muted-foreground font-medium mb-1.5">{t('execution.output')}</div>
+                            {lastStep.error && (
+                              <div className="mb-2 px-2 py-1.5 text-[10px] text-red-500 bg-red-500/10 rounded-md border border-red-500/20 flex items-start gap-1">
+                                <XCircle className="h-3 w-3 shrink-0 mt-0.5" />
+                                <span className="break-all">{lastStep.error}</span>
+                              </div>
+                            )}
+                            {lastStep.output != null ? (
+                              <JsonViewer
+                                data={lastStep.output as Parameters<typeof JsonViewer>[0]['data']}
+                                className="border border-border rounded-md shadow-none max-h-[240px] overflow-auto"
+                                defaultExpanded={2}
+                              />
+                            ) : (
+                              <div className="text-[10px] text-muted-foreground py-2 text-center">{t('execution.noOutput')}</div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="p-2 text-[10px] text-muted-foreground text-center">{t('execution.noOutput')}</div>
+                        );
+                      })()}
+                      {/* Actions */}
+                      <div className="border-t border-border">
+                        <button
+                          className="flex items-center gap-2 w-full px-2 py-1.5 text-xs hover:bg-muted transition-colors"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            copyText(`log-${item.id}`, JSON.stringify(item, null, 2));
+                          }}
+                        >
+                          {copiedKey === `log-${item.id}` ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />} {t('execution.copyLog')}
+                        </button>
+                        <button
+                          className="flex items-center gap-2 w-full px-2 py-1.5 text-xs hover:bg-muted transition-colors"
+                          onClick={async (event) => {
+                            event.stopPropagation();
+                            if (!workflowId) return;
+                            try {
+                              const { path } = await executionLogApi.getLogPath(workflowId, item.id);
+                              await navigator.clipboard.writeText(path);
+                              setCopiedKey(`path-${item.id}`);
+                              setTimeout(() => setCopiedKey(null), 1500);
+                            } catch { /* ignore */ }
+                          }}
+                        >
+                          {copiedKey === `path-${item.id}` ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />} {t('execution.copyLogPath')}
+                        </button>
+                        <button
+                          className="flex items-center gap-2 w-full px-2 py-1.5 text-xs text-red-500 hover:bg-red-500/10 transition-colors"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onDeleteLog(item.id);
+                          }}
+                        >
+                          <Trash2 className="h-3 w-3" /> {t('execution.deleteLog')}
+                        </button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+
+                  <div className="flex items-center gap-1.5 mb-1">
+                    {item.status === 'completed' ? <CheckCircle className="h-3.5 w-3.5 text-green-500 shrink-0" /> :
+                      item.status === 'error' ? <XCircle className="h-3.5 w-3.5 text-red-500 shrink-0" /> :
+                      item.status === 'running' ? <Loader2 className="h-3.5 w-3.5 text-blue-500 animate-spin shrink-0" /> :
+                      <Circle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                    <span className="text-xs font-medium truncate">{formatTime(item.startedAt)}</span>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                    <span className="flex items-center gap-0.5">
+                      <Clock className="h-2.5 w-2.5" />
+                      {formatDuration(item.startedAt, item.finishedAt)}
+                    </span>
+                    <span>{t('execution.nodes', { count: item.steps.length })}</span>
+                  </div>
+
+                  {summary && summary.total > 0 && (
+                    <div className="mt-1.5 flex items-center gap-1">
+                      <div className="flex-1 h-1 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className={cn(
+                            'h-full rounded-full transition-all',
+                            item.status === 'error' ? 'bg-red-500' : 'bg-green-500',
+                          )}
+                          style={{ width: `${(summary.completed / summary.total) * 100}%` }}
+                        />
+                      </div>
+                      <span className="text-[9px] text-muted-foreground shrink-0">
+                        {summary.completed}/{summary.total}
+                      </span>
+                      {summary.error > 0 && (
+                        <span className="text-[9px] text-red-500 shrink-0">
+                          {summary.error}✕
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {logs.length === 0 && (
+              <div className="flex-1 text-center text-[10px] text-muted-foreground py-4">{t('execution.noLogs')}</div>
+            )}
+          </div>
+        </ScrollArea>
       </div>
 
       <ExecutionInputDialog
