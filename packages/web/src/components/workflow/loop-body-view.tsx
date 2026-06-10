@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback } from 'react';
 import type { WorkflowCustomViewProps } from './workflow-node-types';
 
 type LoopBodyDragEventDetail = {
@@ -15,7 +15,6 @@ function dispatchLoopBodyDrag(detail: LoopBodyDragEventDetail) {
 
 export function LoopBodyView({ nodeId, data }: WorkflowCustomViewProps) {
   const outputLabel = typeof data.outputLabel === 'string' ? data.outputLabel : '';
-  const isDraggingRef = useRef(false);
 
   const handleHeaderPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     const isLocked = data.isPreview === true || data.isCanvasLocked === true;
@@ -29,7 +28,6 @@ export function LoopBodyView({ nodeId, data }: WorkflowCustomViewProps) {
     const start = { x: event.clientX, y: event.clientY };
     let frameId: number | null = null;
     let pendingScreenDelta = { x: 0, y: 0 };
-    isDraggingRef.current = true;
     dispatchLoopBodyDrag({ nodeId, phase: 'start', screenDelta: { x: 0, y: 0 } });
     element.setPointerCapture(pointerId);
 
@@ -50,7 +48,6 @@ export function LoopBodyView({ nodeId, data }: WorkflowCustomViewProps) {
     };
 
     const finishDrag = (phase: 'end' | 'cancel') => {
-      isDraggingRef.current = false;
       if (frameId !== null) {
         cancelAnimationFrame(frameId);
         frameId = null;

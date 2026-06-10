@@ -119,7 +119,7 @@ export function useCanvasData({
       const baseZIndex = isLoopBody
         ? LOOP_BODY_NODE_Z_INDEX
         : isScopedChild ? SCOPED_CHILD_NODE_Z_INDEX : DEFAULT_NODE_Z_INDEX;
-      const zIndex = isSelected ? ACTIVE_NODE_Z_INDEX : baseZIndex;
+      const zIndex = isLoopBody ? LOOP_BODY_NODE_Z_INDEX : isSelected ? ACTIVE_NODE_Z_INDEX : baseZIndex;
       return {
         id: n.id,
         type: 'custom',

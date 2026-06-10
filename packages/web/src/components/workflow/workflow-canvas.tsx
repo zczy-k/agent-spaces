@@ -51,15 +51,11 @@ type WorkflowConnectionLineProps =
   NonNullable<React.ComponentProps<typeof ReactFlow>['connectionLineComponent']> extends React.ComponentType<infer Props>
     ? Props
     : never;
-type GroupDragPreview = {
-  groupId: string;
+type DragPreview = {
+  id: string;
   bounds: { x: number; y: number; width: number; height: number };
   delta: { x: number; y: number };
-};
-type LoopBodyDragPreview = {
-  nodeId: string;
-  bounds: { x: number; y: number; width: number; height: number };
-  delta: { x: number; y: number };
+  backgroundColor: string;
 };
 type LoopBodyDragEventDetail = {
   nodeId: string;
@@ -77,6 +73,8 @@ type DrawArea = {
   size: { width: number; height: number };
 };
 type LocalPoint = { x: number; y: number };
+const GROUP_DRAG_PREVIEW_BACKGROUND = 'rgba(59,130,246,0.06)';
+const LOOP_BODY_DRAG_PREVIEW_BACKGROUND = 'rgba(6,182,212,0.06)';
 
 function WorkflowSelectionConnectionLine({
   fromNode,
@@ -164,6 +162,25 @@ function isPositionNodeChange(
 function isConnectionEndOnCanvasNode(position: { x: number; y: number }) {
   return document.elementsFromPoint(position.x, position.y).some(element =>
     element.closest('.react-flow__node, .react-flow__handle')
+  );
+}
+
+function DragPreviewOverlay({ preview }: { preview: DragPreview }) {
+  return (
+    <div
+      className="pointer-events-none absolute"
+      style={{
+        left: preview.bounds.x + preview.delta.x,
+        top: preview.bounds.y + preview.delta.y,
+        width: preview.bounds.width,
+        height: preview.bounds.height,
+        border: '2px solid var(--primary)',
+        borderRadius: 8,
+        backgroundColor: preview.backgroundColor,
+        boxShadow: '0 0 0 1px rgba(255,255,255,0.6)',
+        zIndex: 2,
+      }}
+    />
   );
 }
 
@@ -493,8 +510,7 @@ export function WorkflowCanvas({
   const pendingRangeSelectionRef = useRef<string[] | null>(null);
   const [selectionMenu, setSelectionMenu] = useState<{ x: number; y: number; nodeIds: string[] } | null>(null);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
-  const [groupDragPreview, setGroupDragPreview] = useState<GroupDragPreview | null>(null);
-  const [loopBodyDragPreview, setLoopBodyDragPreview] = useState<LoopBodyDragPreview | null>(null);
+  const [dragPreview, setDragPreview] = useState<DragPreview | null>(null);
   const [dropTargetEdgeId, setDropTargetEdgeId] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [rectangleDrawActive, setRectangleDrawActive] = useState(false);
@@ -735,7 +751,12 @@ export function WorkflowCanvas({
         setDropTargetEdgeId(null);
         onNodeSelect(detail.nodeId);
         onNodeDragStateChange?.(true);
-        setLoopBodyDragPreview({ nodeId: detail.nodeId, bounds, delta: { x: 0, y: 0 } });
+        setDragPreview({
+          id: detail.nodeId,
+          bounds,
+          delta: { x: 0, y: 0 },
+          backgroundColor: LOOP_BODY_DRAG_PREVIEW_BACKGROUND,
+        });
         return;
       }
 
@@ -744,11 +765,16 @@ export function WorkflowCanvas({
 
       const flowDelta = screenDeltaToFlowDelta(detail.screenDelta);
       if (detail.phase === 'move') {
-        setLoopBodyDragPreview({ nodeId: detail.nodeId, bounds: session.bounds, delta: flowDelta });
+        setDragPreview({
+          id: detail.nodeId,
+          bounds: session.bounds,
+          delta: flowDelta,
+          backgroundColor: LOOP_BODY_DRAG_PREVIEW_BACKGROUND,
+        });
         return;
       }
 
-      setLoopBodyDragPreview(null);
+      setDragPreview(null);
       loopBodyDragSessionRef.current = null;
       isNodeDraggingRef.current = false;
       draggedNodeIdsRef.current = new Set();
@@ -1135,42 +1161,20 @@ export function WorkflowCanvas({
               onDelete={(groupId) => onGroupDelete?.(groupId)}
               onUpdate={(groupId, updates) => onGroupUpdate?.(groupId, updates)}
               onMove={(groupId, delta, options) => onGroupMove?.(groupId, delta, options)}
-              onDragPreviewChange={setGroupDragPreview}
+              onDragPreviewChange={(preview) => {
+                setDragPreview(preview
+                  ? {
+                      id: preview.groupId,
+                      bounds: preview.bounds,
+                      delta: preview.delta,
+                      backgroundColor: GROUP_DRAG_PREVIEW_BACKGROUND,
+                    }
+                  : null);
+              }}
               screenDeltaToFlowDelta={screenDeltaToFlowDelta}
             />
           ))}
-          {groupDragPreview && (
-            <div
-              className="pointer-events-none absolute"
-              style={{
-                left: groupDragPreview.bounds.x + groupDragPreview.delta.x,
-                top: groupDragPreview.bounds.y + groupDragPreview.delta.y,
-                width: groupDragPreview.bounds.width,
-                height: groupDragPreview.bounds.height,
-                border: '2px solid var(--primary)',
-                borderRadius: 8,
-                backgroundColor: 'rgba(59,130,246,0.06)',
-                boxShadow: '0 0 0 1px rgba(255,255,255,0.6)',
-                zIndex: 2,
-              }}
-            />
-          )}
-          {loopBodyDragPreview && (
-            <div
-              className="pointer-events-none absolute"
-              style={{
-                left: loopBodyDragPreview.bounds.x + loopBodyDragPreview.delta.x,
-                top: loopBodyDragPreview.bounds.y + loopBodyDragPreview.delta.y,
-                width: loopBodyDragPreview.bounds.width,
-                height: loopBodyDragPreview.bounds.height,
-                border: '2px solid var(--primary)',
-                borderRadius: 8,
-                backgroundColor: 'rgba(6,182,212,0.06)',
-                boxShadow: '0 0 0 1px rgba(255,255,255,0.6)',
-                zIndex: 2,
-              }}
-            />
-          )}
+          {dragPreview ? <DragPreviewOverlay preview={dragPreview} /> : null}
         </ViewportPortal>
         <Background variant={bgVariant} gap={15} size={1} />
         <Controls position="bottom-left" />
