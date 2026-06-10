@@ -36,6 +36,14 @@ export function parseInputValue(field: OutputField, raw: string): unknown {
       const parsed = JSON.parse(raw);
       return isArrayOutputFieldType(field.type) && !Array.isArray(parsed) ? raw : parsed;
     } catch {
+      if (isStructuredOutputFieldType(field.type) || isArrayOutputFieldType(field.type)) {
+        try {
+          const parsed = JSON.parse(raw.replace(/，/g, ','));
+          return isArrayOutputFieldType(field.type) && !Array.isArray(parsed) ? raw : parsed;
+        } catch {
+          return raw;
+        }
+      }
       return raw;
     }
   }

@@ -171,6 +171,13 @@ function VariableFieldMenu({
                 <span className="truncate">{field.key}</span>
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent className="min-w-[180px]">
+                <DropdownMenuItem
+                  className="text-xs"
+                  onClick={() => onSelect(nodeId, path)}
+                >
+                  <span className="mr-1.5 font-mono text-[10px] text-muted-foreground">{field.type}</span>
+                  <span className="truncate">{field.key}</span>
+                </DropdownMenuItem>
                 <VariableFieldMenu
                   fields={field.children}
                   nodeId={nodeId}
