@@ -9,7 +9,12 @@
     "tags": "Tags",
     "clearFilter": "Clear filter",
     "empty": "No workflow templates",
-    "createFirst": "Create your first workflow"
+    "createFirst": "Create your first workflow",
+    "sortBy": "Sort by",
+    "createdAt": "Created time",
+    "updatedAt": "Last updated",
+    "asc": "Ascending",
+    "desc": "Descending"
   },
   "card": {
     "edit": "Edit",

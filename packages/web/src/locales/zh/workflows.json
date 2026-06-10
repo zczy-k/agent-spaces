@@ -9,7 +9,12 @@
     "tags": "标签",
     "clearFilter": "清除筛选",
     "empty": "暂无工作流模板",
-    "createFirst": "创建第一个工作流"
+    "createFirst": "创建第一个工作流",
+    "sortBy": "排序",
+    "createdAt": "创建时间",
+    "updatedAt": "最后更新",
+    "asc": "升序",
+    "desc": "降序"
   },
   "card": {
     "edit": "编辑",

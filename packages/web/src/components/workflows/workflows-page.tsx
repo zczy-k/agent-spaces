@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Plus, Upload, FileText, Search, Filter } from 'lucide-react';
+import { Plus, Upload, FileText, Search, Filter, ArrowUpDown } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { WorkflowTemplatesDialog } from '@/components/workflows/workflow-templates-dialog';
 import { WorkflowListDialog } from '@/components/workflow/workflow-list-dialog';
@@ -29,6 +29,8 @@ export function WorkflowsPage() {
   const [infoDialogOpen, setInfoDialogOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [sortField, setSortField] = useState<'createdAt' | 'updatedAt'>('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
@@ -41,8 +43,11 @@ export function WorkflowsPage() {
       const matchesSearch = !search || wf.name.toLowerCase().includes(search.toLowerCase()) || wf.description?.toLowerCase().includes(search.toLowerCase());
       const matchesTags = selectedTags.length === 0 || selectedTags.some(tag => wf.tags?.includes(tag));
       return matchesSearch && matchesTags;
+    }).sort((a, b) => {
+      const diff = a[sortField] - b[sortField];
+      return sortOrder === 'asc' ? diff : -diff;
     });
-  }, [workflows, search, selectedTags]);
+  }, [workflows, search, selectedTags, sortField, sortOrder]);
 
   useEffect(() => {
     loadWorkflows();
@@ -198,6 +203,46 @@ export function WorkflowsPage() {
             className="pl-8 h-8 text-sm"
           />
         </div>
+        <Popover>
+          <PopoverTrigger className="inline-flex items-center justify-center gap-1.5 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 rounded-md px-3 text-sm font-medium cursor-pointer">
+            <ArrowUpDown className="h-3.5 w-3.5" />
+            {t(`page.${sortField}`)}
+            <span className="text-muted-foreground text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-48 p-2">
+            <div className="flex flex-col gap-1">
+              <button
+                className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted text-left cursor-pointer ${sortField === 'createdAt' ? 'font-medium' : ''}`}
+                onClick={() => setSortField('createdAt')}
+              >
+                {sortField === 'createdAt' && <span className="text-primary">✓</span>}
+                {t('page.createdAt')}
+              </button>
+              <button
+                className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted text-left cursor-pointer ${sortField === 'updatedAt' ? 'font-medium' : ''}`}
+                onClick={() => setSortField('updatedAt')}
+              >
+                {sortField === 'updatedAt' && <span className="text-primary">✓</span>}
+                {t('page.updatedAt')}
+              </button>
+              <div className="border-t my-1" />
+              <button
+                className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted text-left cursor-pointer ${sortOrder === 'asc' ? 'font-medium' : ''}`}
+                onClick={() => setSortOrder('asc')}
+              >
+                {sortOrder === 'asc' && <span className="text-primary">✓</span>}
+                {t('page.asc')}
+              </button>
+              <button
+                className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted text-left cursor-pointer ${sortOrder === 'desc' ? 'font-medium' : ''}`}
+                onClick={() => setSortOrder('desc')}
+              >
+                {sortOrder === 'desc' && <span className="text-primary">✓</span>}
+                {t('page.desc')}
+              </button>
+            </div>
+          </PopoverContent>
+        </Popover>
         {allTags.length > 0 && (
           <Popover>
             <PopoverTrigger className="inline-flex items-center justify-center gap-1.5 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 rounded-md px-3 text-sm font-medium cursor-pointer">
