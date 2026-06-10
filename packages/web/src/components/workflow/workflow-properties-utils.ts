@@ -27,6 +27,7 @@ export const FIELD_TYPES: OutputField['type'][] = [
   'image',
   'audio',
   'video',
+  'select',
   'any',
   'string[]',
   'number[]',
@@ -104,6 +105,8 @@ export function getOutputFields(value: unknown): OutputField[] {
     fileNameFilter: typeof item.fileNameFilter === 'string' ? item.fileNameFilter : undefined,
     description: typeof item.description === 'string' ? item.description : undefined,
     required: typeof item.required === 'boolean' ? item.required : undefined,
+    inputMode: item.inputMode === 'native' ? 'native' : item.inputMode === 'variable' ? 'variable' : undefined,
+    options: Array.isArray(item.options) ? item.options.filter(option => typeof option === 'string') : undefined,
     children: getOutputFields(item.children),
   }));
 }

@@ -17,10 +17,11 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { OutputField } from '@agent-spaces/shared';
+import { TagInput } from '@/components/common/tag-input';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ChevronRight, GripVertical, Plus, Trash2 } from 'lucide-react';
+import { Braces, ChevronRight, GripVertical, ListChecks, Plus, Trash2 } from 'lucide-react';
 import {
 	Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -41,6 +42,10 @@ let outputFieldDragIdCounter = 0;
 
 function patchOutputField(field: OutputField, patch: Partial<OutputField>) {
 	return { ...field, ...patch };
+}
+
+function getSelectOptions(options: OutputField['options']) {
+	return Array.isArray(options) ? options : [];
 }
 
 function SortableOutputField({
@@ -108,9 +113,15 @@ export function OutputFieldsEditor({
 		if (patch.type && !isFileOutputFieldType(patch.type)) {
 			next[index].fileNameFilter = undefined;
 		}
+		if (patch.type && patch.type !== 'select') {
+			next[index].options = undefined;
+		}
 		if (patch.type === 'object' && !next[index].children) {
 			next[index].children = [];
 			next[index].value = undefined;
+		}
+		if (patch.type === 'select' && !next[index].options) {
+			next[index].options = [];
 		}
 		onChange(next);
 	};
@@ -135,6 +146,12 @@ export function OutputFieldsEditor({
 
 	const insertVariable = (index: number, variablePath: string) => {
 		updateField(index, { value: `${stringifyOutputFieldValue(fields[index]?.value)}${variablePath}` });
+	};
+
+	const toggleInputMode = (index: number) => {
+		updateField(index, {
+			inputMode: fields[index]?.inputMode === 'native' ? 'variable' : 'native',
+		});
 	};
 
 	return (
@@ -216,22 +233,50 @@ export function OutputFieldsEditor({
 													className="h-6 text-[11px]"
 												/>
 											) : (
-												<InputGroup className="h-6 min-h-0 rounded-md">
-													<InputGroupInput
-														value={stringifyOutputFieldValue(field.value)}
-														onChange={(e) => updateField(index, { value: parseArrayOutputFieldValue(field.type, e.target.value) })}
-														placeholder={t('defaultValuePlaceholder')}
-														className="h-6 text-[11px]"
-													/>
-													{variableContext?.currentNodeId && (
-														<InputGroupAddon align="inline-end" className="py-0 pr-0.5">
-															<WorkflowVariablePicker
-																{...variableContext}
-																onSelect={(path) => insertVariable(index, path)}
+												<div className="flex items-start gap-1">
+													<button
+														type="button"
+														className={`mt-0.5 rounded p-0.5 transition-colors hover:bg-accent ${field.inputMode === 'native' ? 'text-primary' : 'text-muted-foreground'}`}
+														title={field.inputMode === 'native' ? t('switchToVariableInput') : t('switchToNativeInput')}
+														onClick={() => toggleInputMode(index)}
+													>
+														{field.inputMode === 'native' ? <ListChecks className="h-3.5 w-3.5" /> : <Braces className="h-3.5 w-3.5" />}
+													</button>
+													<div className="min-w-0 flex-1">
+														{field.inputMode === 'native' && field.type === 'select' ? (
+															<TagInput
+																value={getSelectOptions(field.options)}
+																onChange={(options) => updateField(index, { options })}
+																placeholder={t('selectOptionsPlaceholder')}
+																addLabel={t('addOption')}
 															/>
-														</InputGroupAddon>
-													)}
-												</InputGroup>
+														) : field.inputMode === 'native' ? (
+															<Input
+																value={stringifyOutputFieldValue(field.value)}
+																onChange={(e) => updateField(index, { value: parseArrayOutputFieldValue(field.type, e.target.value) })}
+																placeholder={t('defaultValuePlaceholder')}
+																className="h-6 text-[11px]"
+															/>
+														) : (
+															<InputGroup className="h-6 min-h-0 rounded-md">
+																<InputGroupInput
+																	value={stringifyOutputFieldValue(field.value)}
+																	onChange={(e) => updateField(index, { value: parseArrayOutputFieldValue(field.type, e.target.value) })}
+																	placeholder={t('defaultValuePlaceholder')}
+																	className="h-6 text-[11px]"
+																/>
+																{variableContext?.currentNodeId && (
+																	<InputGroupAddon align="inline-end" className="py-0 pr-0.5">
+																		<WorkflowVariablePicker
+																			{...variableContext}
+																			onSelect={(path) => insertVariable(index, path)}
+																		/>
+																	</InputGroupAddon>
+																)}
+															</InputGroup>
+														)}
+													</div>
+												</div>
 											)}
 											<Input
 												value={field.description ?? ''}

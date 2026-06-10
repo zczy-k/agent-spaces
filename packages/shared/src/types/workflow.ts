@@ -164,11 +164,13 @@ export interface Workflow {
 
 export interface OutputField {
   key: string
-  type: 'string' | 'number' | 'boolean' | 'object' | 'file' | 'image' | 'audio' | 'video' | 'any' | 'string[]' | 'number[]' | 'file[]' | 'image[]' | 'any[]'
+  type: 'string' | 'number' | 'boolean' | 'object' | 'file' | 'image' | 'audio' | 'video' | 'select' | 'any' | 'string[]' | 'number[]' | 'file[]' | 'image[]' | 'any[]'
   value?: unknown
   fileNameFilter?: string
   description?: string
   required?: boolean
+  inputMode?: 'variable' | 'native'
+  options?: string[]
   children?: OutputField[]
 }
 

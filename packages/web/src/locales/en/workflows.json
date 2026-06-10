@@ -54,6 +54,10 @@
     "fieldNamePlaceholder": "Field name",
     "fileNameFilterPlaceholder": "File name filter, e.g. *.pdf, .png",
     "defaultValuePlaceholder": "Default value",
+    "selectOptionsPlaceholder": "Enter option",
+    "addOption": "Add",
+    "switchToNativeInput": "Switch to native form",
+    "switchToVariableInput": "Switch to variable form input",
     "descriptionPlaceholder": "Description (optional)",
     "addField": "Add field"
   },

@@ -54,6 +54,10 @@
     "fieldNamePlaceholder": "字段名",
     "fileNameFilterPlaceholder": "文件名过滤，如 *.pdf、.png",
     "defaultValuePlaceholder": "默认值",
+    "selectOptionsPlaceholder": "输入选项",
+    "addOption": "添加",
+    "switchToNativeInput": "切换为原生表单",
+    "switchToVariableInput": "切换为变量表单 input",
     "descriptionPlaceholder": "描述（可选）",
     "addField": "添加字段"
   },

@@ -9,6 +9,9 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { sdk } from '@/lib/sdk';
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { Play } from 'lucide-react';
@@ -130,6 +133,23 @@ function ExecutionInputFields({
               fileNameFilter={field.fileNameFilter}
               disabled={disabled}
             />
+          ) : field.inputMode === 'native' && field.type === 'select' ? (
+            <Select
+              value={getSelectValue(form.values[field.key], field.value)}
+              onValueChange={value => form.setField(field.key, value)}
+              disabled={disabled}
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder={field.key} />
+              </SelectTrigger>
+              <SelectContent>
+                {getSelectOptions(field.options).map(option => (
+                  <SelectItem key={option} value={option} className="text-xs">
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           ) : (
             <Input
               className="h-8 text-xs"
@@ -144,6 +164,15 @@ function ExecutionInputFields({
       ))}
     </div>
   );
+}
+
+function getSelectOptions(options: OutputField['options']) {
+  return Array.isArray(options) ? options : [];
+}
+
+function getSelectValue(value: InputFormValue | undefined, fallback?: unknown): string | undefined {
+  const selected = getStringValue(value, fallback);
+  return selected || undefined;
 }
 
 async function parseInputFormValues(fields: OutputField[], values: Record<string, InputFormValue>) {
