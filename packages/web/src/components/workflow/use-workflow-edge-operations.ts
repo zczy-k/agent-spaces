@@ -32,28 +32,91 @@ interface UseEdgeOperationsParams {
   setWorkflow: React.Dispatch<React.SetStateAction<Workflow | null>>;
   markDirty: () => void;
   pushUndo: (description?: string) => void;
+  selectedNodeId?: string | null;
+  selectedNodeIds?: string[];
 }
 
 export function useEdgeOperations({
-  workflow, isReadOnly, setWorkflow, markDirty, pushUndo,
+  workflow, isReadOnly, setWorkflow, markDirty, pushUndo, selectedNodeId = null, selectedNodeIds = [],
 }: UseEdgeOperationsParams) {
   const rejectedNodeDeleteIdsRef = useRef<Set<string>>(new Set());
 
+  const canUseSourceHandle = useCallback((node: Workflow['nodes'][number], sourceHandle: string | null | undefined) => {
+    const definition = getNodeDefinition(node.type);
+    if (definition?.handles?.source === false) return false;
+
+    const handleId = sourceHandle || 'source';
+    const staticSourceHandles = definition?.handles?.sourceHandles || [];
+    if (staticSourceHandles.length > 0) return staticSourceHandles.some(handle => handle.id === handleId);
+
+    const dynamicSource = definition?.handles?.dynamicSource;
+    if (dynamicSource) {
+      const values = node.data[dynamicSource.dataKey];
+      const conditions = Array.isArray(values) ? values : [];
+      const dynamicHandleIds = [
+        ...conditions.map((_, index) => `case-${index}`),
+        ...(dynamicSource.extraCount ? ['default'] : []),
+      ];
+      return dynamicHandleIds.includes(handleId);
+    }
+
+    return handleId === 'source';
+  }, []);
+
+  const wouldCreateCycle = useCallback((source: string, target: string) => {
+    const visited = new Set<string>();
+    const visit = (nodeId: string): boolean => {
+      if (nodeId === source) return true;
+      if (visited.has(nodeId)) return false;
+      visited.add(nodeId);
+      return workflow?.edges
+        .filter(edge => edge.source === nodeId)
+        .some(edge => visit(edge.target)) || false;
+    };
+
+    return visit(target);
+  }, [workflow?.edges]);
+
   const handleConnect = useCallback((connection: Connection) => {
     if (!workflow || isReadOnly) return;
-    const edgeId = createWorkflowEdgeId(connection);
-    if (workflow.edges.some(e => e.id === edgeId)) return;
+    if (!connection.source || !connection.target) return;
+
+    const selectedIds = selectedNodeIds.length > 0
+      ? selectedNodeIds
+      : selectedNodeId ? [selectedNodeId] : [];
+    const shouldConnectSelection = selectedIds.includes(connection.source);
+    const sourceIdSet = new Set(shouldConnectSelection ? selectedIds : [connection.source]);
+    sourceIdSet.add(connection.source);
+    sourceIdSet.delete(connection.target);
+
+    const edgeIds = new Set(workflow.edges.map(edge => edge.id));
+    const nextEdges = workflow.nodes
+      .filter(node => sourceIdSet.has(node.id))
+      .filter(node => canUseSourceHandle(node, connection.sourceHandle))
+      .filter(node => !wouldCreateCycle(node.id, connection.target!))
+      .map((node): Workflow['edges'][number] => ({
+        id: createWorkflowEdgeId({
+          source: node.id,
+          target: connection.target,
+          sourceHandle: connection.sourceHandle,
+          targetHandle: connection.targetHandle,
+        }),
+        source: node.id,
+        target: connection.target!,
+        sourceHandle: connection.sourceHandle || undefined,
+        targetHandle: connection.targetHandle || undefined,
+      }))
+      .filter(edge => {
+        if (edgeIds.has(edge.id)) return false;
+        edgeIds.add(edge.id);
+        return true;
+      });
+
+    if (nextEdges.length === 0) return;
     pushUndo('connect');
-    const edge: Workflow['edges'][0] = {
-      id: edgeId,
-      source: connection.source,
-      target: connection.target,
-      sourceHandle: connection.sourceHandle || undefined,
-      targetHandle: connection.targetHandle || undefined,
-    };
-    setWorkflow(w => w ? { ...w, edges: [...w.edges, edge] } : null);
+    setWorkflow(w => w ? { ...w, edges: [...w.edges, ...nextEdges] } : null);
     markDirty();
-  }, [workflow, isReadOnly, pushUndo, markDirty]);
+  }, [canUseSourceHandle, isReadOnly, markDirty, pushUndo, selectedNodeId, selectedNodeIds, setWorkflow, workflow, wouldCreateCycle]);
 
   const handleNodesChange = useCallback((changes: NodeChange[]) => {
     if (!workflow || isReadOnly) return;
@@ -215,7 +278,7 @@ export function useEdgeOperations({
       };
     });
     if (hasAllowedDelete || hasDimensionChange || hasPositionChange) markDirty();
-  }, [workflow, isReadOnly, markDirty]);
+  }, [workflow, isReadOnly, markDirty, setWorkflow]);
 
   const handleEdgesChange = useCallback((changes: EdgeChange[]) => {
     if (!workflow || isReadOnly) return;
@@ -242,7 +305,7 @@ export function useEdgeOperations({
 
     setWorkflow(w => w ? { ...w, edges: w.edges.filter(e => remainingIds.has(e.id)) } : null);
     if (hasDelete) markDirty();
-  }, [workflow, isReadOnly, pushUndo, markDirty]);
+  }, [workflow, isReadOnly, pushUndo, markDirty, setWorkflow]);
 
   const handleEdgeDataUpdate = useCallback((edgeId: string, data: Record<string, unknown>) => {
     if (!workflow || isReadOnly) return;
@@ -323,7 +386,7 @@ export function useEdgeOperations({
     if (!workflow || isReadOnly) return;
     setWorkflow(w => w ? { ...w, layoutSnapshot: prefs } : null);
     markDirty();
-  }, [workflow, isReadOnly, markDirty]);
+  }, [workflow, isReadOnly, markDirty, setWorkflow]);
 
   const handleAutoLayout = useCallback(async (direction: 'LR' | 'TB', options?: { layoutEngine?: string }) => {
     if (!workflow || isReadOnly || workflow.nodes.length === 0) return;

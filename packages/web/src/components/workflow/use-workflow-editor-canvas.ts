@@ -59,7 +59,11 @@ export function useWorkflowEditorCanvas({
     onStageNode,
   });
 
-  const edgeOps = useEdgeOperations(sharedParams);
+  const edgeOps = useEdgeOperations({
+    ...sharedParams,
+    selectedNodeId,
+    selectedNodeIds,
+  });
 
   const groupOps = useGroupOperations({
     ...sharedParams,

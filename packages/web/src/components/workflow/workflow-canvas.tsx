@@ -8,7 +8,9 @@ import {
   MiniMap,
   BackgroundVariant,
   ViewportPortal,
+  getSimpleBezierPath,
   getOutgoers,
+  useNodes,
   useReactFlow,
   applyNodeChanges,
   type Node,
@@ -39,11 +41,84 @@ import type { HandlePositionMode } from './workflow-node-types';
 
 const nodeTypes = { custom: WorkflowNodeComponent };
 const edgeTypes = { custom: WorkflowEdgeComponent };
+type WorkflowConnectionLineProps =
+  NonNullable<React.ComponentProps<typeof ReactFlow>['connectionLineComponent']> extends React.ComponentType<infer Props>
+    ? Props
+    : never;
 type GroupDragPreview = {
   groupId: string;
   bounds: { x: number; y: number; width: number; height: number };
   delta: { x: number; y: number };
 };
+
+function WorkflowSelectionConnectionLine({
+  fromNode,
+  fromHandle,
+  toX,
+  toY,
+  toNode,
+  connectionLineStyle,
+}: WorkflowConnectionLineProps) {
+  const { getInternalNode } = useReactFlow();
+  const nodes = useNodes();
+  const selectedNodes = nodes.filter(node => node.selected);
+  const shouldUseSelection = selectedNodes.some(node => node.id === fromNode.id);
+  const sourceNodes = (shouldUseSelection ? selectedNodes : nodes.filter(node => node.id === fromNode.id))
+    .filter(node => node.id !== toNode?.id);
+  const sourceHandleId = fromHandle.id ?? null;
+
+  const handleBounds = sourceNodes.flatMap((userNode) => {
+    const node = getInternalNode(userNode.id);
+    if (!node) return [];
+
+    const sourceBounds = node.internals.handleBounds?.source ?? [];
+
+    return sourceBounds
+      .filter(bounds => (bounds.id ?? null) === sourceHandleId)
+      .map(bounds => ({
+        id: node.id,
+        positionAbsolute: node.internals.positionAbsolute,
+        bounds,
+      }));
+  });
+
+  return (
+    <>
+      {handleBounds.map(({ id, positionAbsolute, bounds }) => {
+        const fromHandleX = bounds.x + bounds.width / 2;
+        const fromHandleY = bounds.y + bounds.height / 2;
+        const fromX = positionAbsolute.x + fromHandleX;
+        const fromY = positionAbsolute.y + fromHandleY;
+        const [path] = getSimpleBezierPath({
+          sourceX: fromX,
+          sourceY: fromY,
+          targetX: toX,
+          targetY: toY,
+        });
+
+        return (
+          <g key={`${id}-${bounds.id ?? 'source'}`}>
+            <path
+              fill="none"
+              strokeWidth={1.5}
+              stroke="var(--muted-foreground)"
+              style={connectionLineStyle}
+              d={path}
+            />
+            <circle
+              cx={toX}
+              cy={toY}
+              r={3}
+              fill="var(--background)"
+              stroke="var(--foreground)"
+              strokeWidth={1.5}
+            />
+          </g>
+        );
+      })}
+    </>
+  );
+}
 
 function areStringArraysEqual(a: string[], b: string[]) {
   return a.length === b.length && a.every((item, index) => item === b[index]);
@@ -217,7 +292,7 @@ export function WorkflowCanvas({
     };
   }, [screenToFlowPosition]);
 
-  const isValidConnection = useCallback((connection: Connection) => {
+  const isValidConnection = useCallback((connection: Connection | Edge) => {
     if (!connection.source || !connection.target) return false;
     if (connection.source === connection.target) return false;
 
@@ -339,9 +414,15 @@ export function WorkflowCanvas({
     workflow.name,
   );
 
-  if (canvasExportRef) {
+  useEffect(() => {
+    if (!canvasExportRef) return;
     canvasExportRef.current = { exportCanvas };
-  }
+    return () => {
+      if (canvasExportRef.current?.exportCanvas === exportCanvas) {
+        canvasExportRef.current = null;
+      }
+    };
+  }, [canvasExportRef, exportCanvas]);
 
   // --- Interaction handlers ---
 
@@ -609,6 +690,7 @@ export function WorkflowCanvas({
         onError={handleReactFlowError}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
+        connectionLineComponent={WorkflowSelectionConnectionLine}
         fitView
         snapToGrid={snapEnabled}
         snapGrid={[15, 15]}
