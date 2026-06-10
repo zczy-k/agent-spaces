@@ -71,6 +71,9 @@ export interface WorkflowEdge {
   target: string
   sourceHandle?: string | null
   targetHandle?: string | null
+  startLabel?: string
+  middleLabel?: string
+  endLabel?: string
   composite?: WorkflowEdgeCompositeMeta
 }
 

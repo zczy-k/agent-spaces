@@ -1,10 +1,43 @@
 'use client';
 
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { BaseEdge, EdgeLabelRenderer, getBezierPath, getStraightPath, getSmoothStepPath } from '@xyflow/react';
 import type { EdgeProps } from '@xyflow/react';
 import { LOOP_BODY_SOURCE_HANDLE } from '@agent-spaces/shared';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Tags, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+
+type EdgeLabelForm = {
+  startLabel: string;
+  middleLabel: string;
+  endLabel: string;
+};
+
+function resolveText(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
+function EdgeLabel({ label, transform }: { label: string; transform: string }) {
+  if (!label) return null;
+  return (
+    <div
+      style={{ position: 'absolute', transform, pointerEvents: 'none' }}
+      className="nodrag nopan max-w-40 truncate rounded-md border border-border bg-background/90 px-2 py-1 text-xs font-medium text-foreground shadow-sm"
+      title={label}
+    >
+      {label}
+    </div>
+  );
+}
 
 function WorkflowEdgeComponent({
   id, source, target,
@@ -21,6 +54,16 @@ function WorkflowEdgeComponent({
   const canDeleteEdge = (data as Record<string, unknown>)?.canDeleteEdge === true;
   const edgePathType = (data as Record<string, unknown>)?.edgePathType as string || 'bezier';
   const edgeColor = (data as Record<string, unknown>)?.edgeColor as string | undefined;
+  const startLabel = resolveText((data as Record<string, unknown>)?.startLabel);
+  const middleLabel = resolveText((data as Record<string, unknown>)?.middleLabel);
+  const endLabel = resolveText((data as Record<string, unknown>)?.endLabel);
+  const [menuPosition, setMenuPosition] = React.useState<{ x: number; y: number } | null>(null);
+  const [labelDialogOpen, setLabelDialogOpen] = React.useState(false);
+  const [labelForm, setLabelForm] = React.useState<EdgeLabelForm>({
+    startLabel,
+    middleLabel,
+    endLabel,
+  });
 
   const pathParams = { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition };
 
@@ -35,6 +78,72 @@ function WorkflowEdgeComponent({
     [edgePath, labelX, labelY] = getBezierPath(pathParams);
   }
 
+  const closeMenu = React.useCallback(() => {
+    setMenuPosition(null);
+  }, []);
+
+  React.useEffect(() => {
+    if (!menuPosition) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof HTMLElement && target.closest('[data-workflow-edge-menu="true"]')) return;
+      closeMenu();
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeMenu();
+    };
+
+    window.addEventListener('pointerdown', handlePointerDown, true);
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDown, true);
+      window.removeEventListener('keydown', handleKeyDown, true);
+    };
+  }, [closeMenu, menuPosition]);
+
+  React.useEffect(() => {
+    if (!labelDialogOpen) return;
+    setLabelForm({ startLabel, middleLabel, endLabel });
+  }, [endLabel, labelDialogOpen, middleLabel, startLabel]);
+
+  const insertNode = React.useCallback(() => {
+    window.dispatchEvent(new CustomEvent('workflow:edge-insert-node', {
+      detail: { edgeId: id, source, target, sourceHandle: edgeSourceHandle },
+    }));
+  }, [edgeSourceHandle, id, source, target]);
+
+  const deleteEdge = React.useCallback(() => {
+    window.dispatchEvent(new CustomEvent('workflow:delete-edge', { detail: { edgeId: id } }));
+  }, [id]);
+
+  const openLabelDialog = React.useCallback(() => {
+    setLabelForm({ startLabel, middleLabel, endLabel });
+    setLabelDialogOpen(true);
+  }, [endLabel, middleLabel, startLabel]);
+
+  const saveLabels = React.useCallback(() => {
+    window.dispatchEvent(new CustomEvent('workflow:update-edge-data', {
+      detail: {
+        edgeId: id,
+        data: {
+          startLabel: labelForm.startLabel.trim(),
+          middleLabel: labelForm.middleLabel.trim(),
+          endLabel: labelForm.endLabel.trim(),
+        },
+      },
+    }));
+    setLabelDialogOpen(false);
+  }, [id, labelForm]);
+
+  const openContextMenu = React.useCallback((event: React.MouseEvent) => {
+    if (isLocked || !canEditEdge) return;
+    event.preventDefault();
+    event.stopPropagation();
+    window.dispatchEvent(new CustomEvent('workflow:select-edge', { detail: { edgeId: id } }));
+    setMenuPosition({ x: event.clientX, y: event.clientY });
+  }, [canEditEdge, id, isLocked]);
+
   return (
     <>
       <path
@@ -47,6 +156,7 @@ function WorkflowEdgeComponent({
           e.stopPropagation();
           window.dispatchEvent(new CustomEvent('workflow:select-edge', { detail: { edgeId: id } }));
         }}
+        onContextMenu={openContextMenu}
       />
       <BaseEdge
         id={id} path={edgePath}
@@ -62,6 +172,73 @@ function WorkflowEdgeComponent({
         <circle r="5" fill={edgeColor || 'var(--primary)'} style={{ pointerEvents: 'none' }}>
           <animateMotion dur="1.4s" repeatCount="indefinite" path={edgePath} />
         </circle>
+      )}
+      {(startLabel || middleLabel || endLabel) && (
+        <EdgeLabelRenderer>
+          <EdgeLabel
+            transform={`translate(-50%, -50%) translate(${sourceX}px,${sourceY}px)`}
+            label={startLabel}
+          />
+          <EdgeLabel
+            transform={`translate(-50%, -50%) translate(${labelX}px,${labelY}px)`}
+            label={middleLabel}
+          />
+          <EdgeLabel
+            transform={`translate(-50%, -50%) translate(${targetX}px,${targetY}px)`}
+            label={endLabel}
+          />
+        </EdgeLabelRenderer>
+      )}
+      {menuPosition && typeof document !== 'undefined' && createPortal(
+        <div
+          data-workflow-edge-menu="true"
+          className="nodrag nopan fixed z-50 min-w-36 rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10"
+          style={{ left: menuPosition.x, top: menuPosition.y }}
+          onContextMenu={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+          }}
+        >
+          <button
+            type="button"
+            className="flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-xs hover:bg-accent hover:text-accent-foreground"
+            onClick={() => {
+              insertNode();
+              closeMenu();
+            }}
+          >
+            <Plus className="h-3 w-3" />
+            添加节点
+          </button>
+          <button
+            type="button"
+            className="flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-xs hover:bg-accent hover:text-accent-foreground"
+            onClick={() => {
+              openLabelDialog();
+              closeMenu();
+            }}
+          >
+            <Tags className="h-3 w-3" />
+            设置label
+          </button>
+          {canDeleteEdge && (
+            <>
+              <div className="-mx-1 my-1 h-px bg-border" />
+              <button
+                type="button"
+                className="flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-xs text-destructive hover:bg-destructive/10"
+                onClick={() => {
+                  deleteEdge();
+                  closeMenu();
+                }}
+              >
+                <Trash2 className="h-3 w-3" />
+                删除线条
+              </button>
+            </>
+          )}
+        </div>,
+        document.body,
       )}
       {!isLocked && canEditEdge && (
         <EdgeLabelRenderer>
@@ -85,9 +262,7 @@ function WorkflowEdgeComponent({
                   cursor-pointer shadow-sm ${selected ? 'opacity-100' : 'opacity-0 hover:opacity-100'}`}
                 onClick={(e: React.MouseEvent) => {
                   e.stopPropagation();
-                  window.dispatchEvent(new CustomEvent('workflow:edge-insert-node', {
-                    detail: { edgeId: id, source, target, sourceHandle: edgeSourceHandle },
-                  }));
+                  insertNode();
                 }}
               >
                 <Plus className="h-3 w-3" />
@@ -104,7 +279,7 @@ function WorkflowEdgeComponent({
                     cursor-pointer shadow-sm ${selected ? 'opacity-100' : 'opacity-0 hover:opacity-100'}`}
                   onClick={(e: React.MouseEvent) => {
                     e.stopPropagation();
-                    window.dispatchEvent(new CustomEvent('workflow:delete-edge', { detail: { edgeId: id } }));
+                    deleteEdge();
                   }}
                 >
                   <Trash2 className="h-3 w-3" />
@@ -114,6 +289,44 @@ function WorkflowEdgeComponent({
           </div>
         </EdgeLabelRenderer>
       )}
+      <Dialog open={labelDialogOpen} onOpenChange={setLabelDialogOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-sm">设置连接线 label</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div className="grid gap-1.5">
+              <label className="text-xs font-medium text-muted-foreground">起点</label>
+              <Input
+                value={labelForm.startLabel}
+                onChange={(event) => setLabelForm(form => ({ ...form, startLabel: event.target.value }))}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <label className="text-xs font-medium text-muted-foreground">中间</label>
+              <Input
+                value={labelForm.middleLabel}
+                onChange={(event) => setLabelForm(form => ({ ...form, middleLabel: event.target.value }))}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <label className="text-xs font-medium text-muted-foreground">终点</label>
+              <Input
+                value={labelForm.endLabel}
+                onChange={(event) => setLabelForm(form => ({ ...form, endLabel: event.target.value }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setLabelDialogOpen(false)}>
+              取消
+            </Button>
+            <Button type="button" size="sm" onClick={saveLabels}>
+              保存
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

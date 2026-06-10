@@ -165,6 +165,9 @@ export function useCanvasData({
         data: {
           composite: e.composite,
           sourceHandle: e.sourceHandle,
+          startLabel: e.startLabel,
+          middleLabel: e.middleLabel,
+          endLabel: e.endLabel,
           edgeColor: sourceNode ? getSourceHandleColor(sourceNode.data, e.sourceHandle) : undefined,
           isRunning: runningEdgeIds.has(e.id),
           canEditEdge: !isCanvasLocked,

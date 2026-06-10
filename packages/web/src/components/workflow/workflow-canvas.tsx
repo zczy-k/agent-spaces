@@ -89,6 +89,7 @@ interface WorkflowCanvasProps {
   onNodeSelect: (id: string | null, multi?: boolean) => void;
   onNodesSelect?: (ids: string[], options?: { primaryNodeId?: string | null }) => void;
   onNodeDataUpdate: (id: string, data: Record<string, unknown>) => void;
+  onEdgeDataUpdate: (id: string, data: Record<string, unknown>) => void;
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
   onConnect: (connection: Connection) => void;
@@ -110,7 +111,7 @@ interface WorkflowCanvasProps {
 export function WorkflowCanvas({
   workflow, isPreview, execStatus = 'idle', isRunning = false, executionLog, selectedNodeId,
   selectedNodeIds = [], onNodeAdd, onNodeDelete, onNodeSelect, onNodesSelect,
-  onStagedNodeDrop, onNodeDataUpdate, onNodesChange, onEdgesChange, onConnect,
+  onStagedNodeDrop, onNodeDataUpdate, onEdgeDataUpdate, onNodesChange, onEdgesChange, onConnect,
   canUndo = false, canRedo = false, onUndo, onRedo, onExitPreview, onAutoLayout,
   onConnectionDrop,
   onNodeCopy, onNodeClone, onNodeStage,
@@ -216,6 +217,7 @@ export function WorkflowCanvas({
     onNodeSelect,
     onNodeDelete,
     onNodeDataUpdate,
+    onEdgeDataUpdate,
     onNodeCopy,
     onNodeClone,
     onNodeStage,

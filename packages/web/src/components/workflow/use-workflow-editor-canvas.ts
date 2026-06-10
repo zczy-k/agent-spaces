@@ -99,6 +99,7 @@ export function useWorkflowEditorCanvas({
     handleConnect: edgeOps.handleConnect,
     handleNodesChange: edgeOps.handleNodesChange,
     handleEdgesChange: edgeOps.handleEdgesChange,
+    handleEdgeDataUpdate: edgeOps.handleEdgeDataUpdate,
     handleAutoLayout: edgeOps.handleAutoLayout,
 
     // Canvas preferences

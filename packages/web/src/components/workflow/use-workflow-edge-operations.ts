@@ -235,6 +235,37 @@ export function useEdgeOperations({
     if (hasDelete) markDirty();
   }, [workflow, isReadOnly, pushUndo, markDirty]);
 
+  const handleEdgeDataUpdate = useCallback((edgeId: string, data: Record<string, unknown>) => {
+    if (!workflow || isReadOnly) return;
+    const edge = workflow.edges.find(item => item.id === edgeId);
+    if (!edge || edge.composite?.locked) return;
+
+    const nextStartLabel = typeof data.startLabel === 'string' ? data.startLabel : edge.startLabel;
+    const nextMiddleLabel = typeof data.middleLabel === 'string' ? data.middleLabel : edge.middleLabel;
+    const nextEndLabel = typeof data.endLabel === 'string' ? data.endLabel : edge.endLabel;
+    if (
+      (edge.startLabel || '') === (nextStartLabel || '')
+      && (edge.middleLabel || '') === (nextMiddleLabel || '')
+      && (edge.endLabel || '') === (nextEndLabel || '')
+    ) {
+      return;
+    }
+
+    pushUndo('update edge label');
+    setWorkflow(w => w ? {
+      ...w,
+      edges: w.edges.map(item => item.id === edgeId
+        ? {
+            ...item,
+            startLabel: nextStartLabel || undefined,
+            middleLabel: nextMiddleLabel || undefined,
+            endLabel: nextEndLabel || undefined,
+          }
+        : item),
+    } : null);
+    markDirty();
+  }, [workflow, isReadOnly, pushUndo, setWorkflow, markDirty]);
+
   const handleCanvasPreferencesChange = useCallback((prefs: Record<string, unknown>) => {
     if (!workflow || isReadOnly) return;
     setWorkflow(w => w ? { ...w, layoutSnapshot: prefs } : null);
@@ -354,6 +385,7 @@ export function useEdgeOperations({
     handleConnect,
     handleNodesChange,
     handleEdgesChange,
+    handleEdgeDataUpdate,
     handleAutoLayout,
     handleCanvasPreferencesChange,
   };

@@ -9,6 +9,7 @@ interface UseCanvasDomEventsParams {
   onNodeSelect: (id: string | null, multi?: boolean) => void;
   onNodeDelete: (id: string) => void;
   onNodeDataUpdate: (id: string, data: Record<string, unknown>) => void;
+  onEdgeDataUpdate: (id: string, data: Record<string, unknown>) => void;
   onNodeCopy?: (id: string) => void;
   onNodeClone?: (id: string) => void;
   onNodeStage?: (id: string) => void;
@@ -34,6 +35,7 @@ export function useCanvasDomEvents({
   onNodeSelect,
   onNodeDelete,
   onNodeDataUpdate,
+  onEdgeDataUpdate,
   onNodeCopy,
   onNodeClone,
   onNodeStage,
@@ -89,6 +91,13 @@ export function useCanvasDomEvents({
     if (!detail?.nodeId || !detail?.data) return;
     onNodeDataUpdate(detail.nodeId, detail.data);
   }, [isCanvasLocked, onNodeDataUpdate]);
+
+  const handleEdgeDataUpdate = useCallback((e: Event) => {
+    if (isCanvasLocked) return;
+    const detail = (e as CustomEvent).detail as { edgeId?: string; data?: Record<string, unknown> } | undefined;
+    if (!detail?.edgeId || !detail?.data) return;
+    onEdgeDataUpdate(detail.edgeId, detail.data);
+  }, [isCanvasLocked, onEdgeDataUpdate]);
 
   const handleNodeCopyEvent = useCallback((e: Event) => {
     if (isCanvasLocked || !onNodeCopy) return;
@@ -159,6 +168,7 @@ export function useCanvasDomEvents({
     window.addEventListener('workflow:delete-edge', handleEdgeDelete);
     window.addEventListener('workflow:delete-node', handleNodeDelete);
     window.addEventListener('workflow:update-node-data', handleNodeDataUpdate);
+    window.addEventListener('workflow:update-edge-data', handleEdgeDataUpdate);
     window.addEventListener('workflow:copy-node', handleNodeCopyEvent);
     window.addEventListener('workflow:clone-node', handleNodeCloneEvent);
     window.addEventListener('workflow:stage-node', handleNodeStageEvent);
@@ -177,6 +187,7 @@ export function useCanvasDomEvents({
       window.removeEventListener('workflow:delete-edge', handleEdgeDelete);
       window.removeEventListener('workflow:delete-node', handleNodeDelete);
       window.removeEventListener('workflow:update-node-data', handleNodeDataUpdate);
+      window.removeEventListener('workflow:update-edge-data', handleEdgeDataUpdate);
       window.removeEventListener('workflow:copy-node', handleNodeCopyEvent);
       window.removeEventListener('workflow:clone-node', handleNodeCloneEvent);
       window.removeEventListener('workflow:stage-node', handleNodeStageEvent);
@@ -190,7 +201,7 @@ export function useCanvasDomEvents({
       window.removeEventListener('workflow:resume-execution', handleResumeExecutionEvent);
       window.removeEventListener('workflow:stop-execution', handleStopExecutionEvent);
     };
-  }, [handleEdgeDelete, handleEdgeInsertNode, handleEdgeSelect, handleNodeDelete, handleNodeDataUpdate, handleNodeCopyEvent, handleNodeCloneEvent, handleNodeStageEvent, handleMergeNodesToWorkflowEvent, handleMergeNodesToGroupEvent, handleBatchDeleteNodesEvent, handleNodeInfoEvent, handleNodeDebugEvent, handleCancelDebugEvent, handleExecuteFromNodeEvent, handleResumeExecutionEvent, handleStopExecutionEvent]);
+  }, [handleEdgeDataUpdate, handleEdgeDelete, handleEdgeInsertNode, handleEdgeSelect, handleNodeDelete, handleNodeDataUpdate, handleNodeCopyEvent, handleNodeCloneEvent, handleNodeStageEvent, handleMergeNodesToWorkflowEvent, handleMergeNodesToGroupEvent, handleBatchDeleteNodesEvent, handleNodeInfoEvent, handleNodeDebugEvent, handleCancelDebugEvent, handleExecuteFromNodeEvent, handleResumeExecutionEvent, handleStopExecutionEvent]);
 
   // Keyboard delete for selected edge
   useEffect(() => {

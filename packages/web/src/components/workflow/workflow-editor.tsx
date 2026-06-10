@@ -356,6 +356,7 @@ function WorkflowEditorInner({
                 onNodeSelect={canvas.handleNodeSelect}
                 onNodesSelect={canvas.handleNodesSelect}
                 onNodeDataUpdate={canvas.handleNodeDataUpdate}
+                onEdgeDataUpdate={canvas.handleEdgeDataUpdate}
                 onNodesChange={canvas.handleNodesChange}
                 onNodeDragStateChange={state.setAutoSaveSuspended}
                 onEdgesChange={canvas.handleEdgesChange}
