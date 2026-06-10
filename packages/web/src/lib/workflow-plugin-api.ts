@@ -21,27 +21,56 @@ function getPluginLocaleQuery(): string {
   return `?locale=${encodeURIComponent(locale)}`;
 }
 
+const pendingWorkflowPluginList = new Map<string, Promise<PluginMeta[]>>();
+const pendingWorkflowNodes = new Map<string, Promise<NodeTypeDefinition[]>>();
+
+function clearPluginRequestCache() {
+  pendingWorkflowPluginList.clear();
+  pendingWorkflowNodes.clear();
+}
+
 export const pluginApi = {
   list(): Promise<PluginMeta[]> {
     return sdk.workflowPlugin.listAll(getPluginLocaleQuery());
   },
   listWorkflowPlugins(): Promise<PluginMeta[]> {
-    return sdk.workflowPlugin.listWorkflow(getPluginLocaleQuery());
+    const localeQuery = getPluginLocaleQuery();
+    const pending = pendingWorkflowPluginList.get(localeQuery);
+    if (pending) return pending;
+
+    const request = sdk.workflowPlugin.listWorkflow(localeQuery).finally(() => {
+      pendingWorkflowPluginList.delete(localeQuery);
+    });
+    pendingWorkflowPluginList.set(localeQuery, request);
+    return request;
   },
   enable(pluginId: string): Promise<PluginMeta> {
+    clearPluginRequestCache();
     return sdk.workflowPlugin.enable(pluginId);
   },
   disable(pluginId: string): Promise<PluginMeta> {
+    clearPluginRequestCache();
     return sdk.workflowPlugin.disable(pluginId);
   },
   uninstall(pluginId: string): Promise<{ success: boolean }> {
+    clearPluginRequestCache();
     return sdk.workflowPlugin.uninstall(pluginId);
   },
   installFromStore(pluginId: string, sourceUrl?: string): Promise<PluginMeta> {
+    clearPluginRequestCache();
     return sdk.workflowPlugin.installFromStore(pluginId, sourceUrl);
   },
   getWorkflowNodes(pluginId: string): Promise<NodeTypeDefinition[]> {
-    return sdk.workflowPlugin.getWorkflowNodes(pluginId, getPluginLocaleQuery());
+    const localeQuery = getPluginLocaleQuery();
+    const cacheKey = `${pluginId}:${localeQuery}`;
+    const pending = pendingWorkflowNodes.get(cacheKey);
+    if (pending) return pending;
+
+    const request = sdk.workflowPlugin.getWorkflowNodes(pluginId, localeQuery).finally(() => {
+      pendingWorkflowNodes.delete(cacheKey);
+    });
+    pendingWorkflowNodes.set(cacheKey, request);
+    return request;
   },
   getConfig(pluginId: string): Promise<Record<string, string>> {
     return sdk.workflowPlugin.getConfig(pluginId);

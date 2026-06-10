@@ -11,8 +11,9 @@ import {
   Info,
   X,
 } from 'lucide-react';
-import type { ExecutionStep } from '@agent-spaces/shared';
+import type { ExecutionStep, OutputField } from '@agent-spaces/shared';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { NodeMediaPreview, type MediaItem } from '@/components/ui/media-gallery';
 import { JsonViewer } from '@/components/viewers/json-viewer';
 import { cn } from '@/lib/utils';
 import { formatDuration, type WorkflowLogPanelLayout } from './workflow-node-types';
@@ -24,6 +25,7 @@ const LOG_TAB_PANEL_SCROLL_CLASS = 'nodrag nopan nowheel max-h-[220px] overscrol
 interface WorkflowNodeExecutionLogProps {
   nodeId: string;
   executionStep: ExecutionStep;
+  outputs: OutputField[];
   nodeWidth: number;
   layout: WorkflowLogPanelLayout;
   isLogExpanded: boolean;
@@ -33,6 +35,7 @@ interface WorkflowNodeExecutionLogProps {
 export function WorkflowNodeExecutionLog({
   nodeId,
   executionStep,
+  outputs,
   nodeWidth,
   layout,
   isLogExpanded,
@@ -46,6 +49,38 @@ export function WorkflowNodeExecutionLog({
   const stopWheel = React.useCallback((event: React.WheelEvent) => {
     event.stopPropagation();
   }, []);
+
+  const mediaItems = React.useMemo(() => {
+    if (executionStep.status !== 'completed' || !executionStep.output) return []
+    const output = executionStep.output as Record<string, unknown>
+    if (!output || typeof output !== 'object') return []
+    const items: MediaItem[] = []
+    const extractMedia = (fields: OutputField[], parent: Record<string, unknown>) => {
+      for (const field of fields) {
+        const val = parent[field.key]
+        if (val == null) continue
+        if (field.type === 'image') {
+          const src = typeof val === 'string' ? val : ''
+          if (src) items.push({ src, type: 'image', alt: field.key })
+        } else if (field.type === 'image[]') {
+          const urls = Array.isArray(val) ? val : []
+          for (const u of urls) {
+            if (typeof u === 'string' && u) items.push({ src: u, type: 'image', alt: field.key })
+          }
+        } else if (field.type === 'audio') {
+          const src = typeof val === 'string' ? val : ''
+          if (src) items.push({ src, type: 'video', alt: field.key })
+        } else if (field.type === 'video') {
+          const src = typeof val === 'string' ? val : ''
+          if (src) items.push({ src, type: 'video', alt: field.key })
+        } else if (field.type === 'object' && field.children && val && typeof val === 'object') {
+          extractMedia(field.children, val as Record<string, unknown>)
+        }
+      }
+    }
+    extractMedia(outputs, output)
+    return items
+  }, [executionStep, outputs])
 
   const renderOutputSection = (className: string, extraClassName?: string) => (
     <div
@@ -177,6 +212,13 @@ export function WorkflowNodeExecutionLog({
               {renderLogsSection(LOG_SECTION_SCROLL_CLASS)}
             </>
           )}
+        </div>
+      )}
+
+      {/* Resource output preview */}
+      {mediaItems.length > 0 && (
+        <div className="border-t border-border/50">
+          <NodeMediaPreview items={mediaItems} />
         </div>
       )}
     </div>

@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import type { ExecutionLog, OperationEntry, Workflow, WorkflowTemplate } from '@agent-spaces/shared';
 import { useWorkflowStore } from '@/stores/workflow';
-import { operationHistoryApi, workflowApi } from '@/lib/workflow-api';
+import { operationHistoryApi } from '@/lib/workflow-api';
 import { createWorkflowEdgeId } from '@/lib/workflow-edge-id';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 
@@ -106,19 +106,12 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
     }
     setIsLoading(true);
     setLoadError(null);
-    workflowApi.get(template.id)
-      .then((wf) => {
-        prePreviewWorkflowRef.current = null;
-        const normalized = normalizeLegacySourceHandle(wf);
-        setWorkflow({ ...wf, nodes: normalized.nodes, edges: normalized.edges });
-        setOperationLog([]);
-        setIsPreview(false);
-        setIsLoading(false);
-      })
-      .catch((err) => {
-        setLoadError(err instanceof Error ? err.message : '加载失败');
-        setIsLoading(false);
-      });
+    prePreviewWorkflowRef.current = null;
+    const normalized = normalizeLegacySourceHandle(template);
+    setWorkflow({ ...template, nodes: normalized.nodes, edges: normalized.edges });
+    setOperationLog([]);
+    setIsPreview(false);
+    setIsLoading(false);
   }, [template]);
 
   // ---- Dirty tracking ----

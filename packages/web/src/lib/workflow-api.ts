@@ -6,6 +6,8 @@ import type {
 import { sdk } from './sdk';
 import { fetchWithAuth } from './auth';
 
+const pendingWorkflowGets = new Map<string, Promise<Workflow>>();
+
 // ---- Workflow CRUD ----
 
 export const workflowApi = {
@@ -14,7 +16,14 @@ export const workflowApi = {
   },
 
   get(id: string): Promise<Workflow> {
-    return sdk.workflow.get(id);
+    const pending = pendingWorkflowGets.get(id);
+    if (pending) return pending;
+
+    const request = sdk.workflow.get(id).finally(() => {
+      pendingWorkflowGets.delete(id);
+    });
+    pendingWorkflowGets.set(id, request);
+    return request;
   },
 
   create(data: Partial<Workflow>): Promise<Workflow> {
@@ -22,10 +31,12 @@ export const workflowApi = {
   },
 
   update(id: string, data: Partial<Workflow>): Promise<Workflow> {
+    pendingWorkflowGets.delete(id);
     return sdk.workflow.update(id, data);
   },
 
   delete(id: string): Promise<void> {
+    pendingWorkflowGets.delete(id);
     return sdk.workflow.delete_(id);
   },
 

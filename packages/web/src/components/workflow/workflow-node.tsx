@@ -18,10 +18,8 @@ import { getPluginNodesVersion, subscribePluginNodesVersion, useLocalizedNodeDef
 import {
   LOOP_BODY_NODE_TYPE,
   LOOP_BODY_SOURCE_HANDLE,
-  type OutputField,
 } from '@agent-spaces/shared';
 import { BorderGlide } from '@/components/ui/border-glide';
-import { NodeMediaPreview, type MediaItem } from '@/components/ui/media-gallery';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { WorkflowNodeDefinitionIcon } from './workflow-node-icon';
@@ -240,46 +238,6 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const stateBackgroundClass = currentNodeState === 'disabled'
     ? 'bg-red-500/10'
     : currentNodeState === 'skipped' ? 'bg-yellow-500/10' : 'bg-background';
-
-  // Extract media items from execution output based on output field definitions
-  const mediaItems = useMemo(() => {
-    if (!executionStep || executionStep.status !== 'completed' || !executionStep.output) return []
-    const outputs = Array.isArray(nodeData.outputs) ? nodeData.outputs as OutputField[] : []
-    if (outputs.length === 0) return []
-
-    const output = executionStep.output as Record<string, unknown> | undefined
-    if (!output || typeof output !== 'object') return []
-
-    const items: MediaItem[] = []
-
-    const extractMedia = (fields: OutputField[], parent: Record<string, unknown>) => {
-      for (const field of fields) {
-        const val = parent[field.key]
-        if (val == null) continue
-
-        if (field.type === 'image') {
-          const src = typeof val === 'string' ? val : ''
-          if (src) items.push({ src, type: 'image', alt: field.key })
-        } else if (field.type === 'image[]') {
-          const urls = Array.isArray(val) ? val : []
-          for (const u of urls) {
-            if (typeof u === 'string' && u) items.push({ src: u, type: 'image', alt: field.key })
-          }
-        } else if (field.type === 'audio') {
-          const src = typeof val === 'string' ? val : ''
-          if (src) items.push({ src, type: 'video', alt: field.key })
-        } else if (field.type === 'video') {
-          const src = typeof val === 'string' ? val : ''
-          if (src) items.push({ src, type: 'video', alt: field.key })
-        } else if (field.type === 'object' && field.children && val && typeof val === 'object') {
-          extractMedia(field.children, val as Record<string, unknown>)
-        }
-      }
-    }
-
-    extractMedia(outputs, output)
-    return items
-  }, [executionStep, nodeData.outputs])
 
   const statusColor = isPausedAtThisNode
     ? 'border-blue-600 ring-2 ring-blue-500 shadow-blue-500/40 shadow-md animate-pulse'
@@ -520,13 +478,6 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         </div>
       ) : null}
 
-      {/* Media preview for executed nodes */}
-      {showFullNode && !hasCustomView && mediaItems.length > 0 && (
-        <div className="border-t border-border/50">
-          <NodeMediaPreview items={mediaItems} />
-        </div>
-      )}
-
       {/* Source handles (static) */}
       {showSourceHandle && !dynamicHandles && (
         staticSourceHandles.length === 0 ? (
@@ -678,6 +629,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         <WorkflowNodeExecutionLog
           nodeId={id}
           executionStep={executionStep}
+          outputs={Array.isArray(nodeData.outputs) ? nodeData.outputs : []}
           nodeWidth={nodeWidth}
           layout={logPanelLayout}
           isLogExpanded={isLogExpanded}
