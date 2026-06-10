@@ -38,6 +38,7 @@ import { useCanvasExport } from './use-workflow-canvas-export';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { getWorkflowNodeSize } from './workflow-node-size';
 import type { HandlePositionMode } from './workflow-node-types';
+import { resolveNodeCollisions } from './workflow-canvas-utils';
 
 const nodeTypes = { custom: WorkflowNodeComponent };
 const edgeTypes = { custom: WorkflowEdgeComponent };
@@ -228,6 +229,7 @@ export function WorkflowCanvas({
     : BackgroundVariant.Dots;
   const snapEnabled = canvasPrefs.snapGrid !== false;
   const autoMergeNodeOnEdge = canvasPrefs.autoMergeNodeOnEdge !== false;
+  const collisionBoxEnabled = canvasPrefs.collisionBoxEnabled !== false;
   const savedAttributionPosition = canvasPrefs.attributionPosition;
   const validPositions = ['top-bottom', 'left-right', 'bottom-top', 'right-left'] as const;
   const handlePosition = validPositions.includes(savedAttributionPosition as typeof validPositions[number])
@@ -628,16 +630,23 @@ export function WorkflowCanvas({
     const edgeId = autoMergeNodeOnEdge && draggedNodeIdsRef.current.size === 1
       ? dropTargetEdgeId
       : null;
-    const canvasNodeById = new Map(canvasNodesRef.current.map(item => [item.id, item]));
+    const nextCanvasNodes = collisionBoxEnabled
+      ? resolveNodeCollisions(canvasNodesRef.current, {
+          maxIterations: 50,
+          overlapThreshold: 0.5,
+          margin: 15,
+        })
+      : canvasNodesRef.current;
+    canvasNodesRef.current = nextCanvasNodes;
+    setCanvasNodes(nextCanvasNodes);
     const workflowNodeById = new Map(workflow.nodes.map(item => [item.id, item]));
-    const positionChanges: NodeChange[] = Array.from(draggedNodeIdsRef.current)
-      .map((nodeId) => {
-        const canvasNode = canvasNodeById.get(nodeId);
-        const workflowNode = workflowNodeById.get(nodeId);
-        if (!canvasNode || !workflowNode) return null;
+    const positionChanges: NodeChange[] = nextCanvasNodes
+      .map((canvasNode) => {
+        const workflowNode = workflowNodeById.get(canvasNode.id);
+        if (!workflowNode) return null;
         if (canvasNode.position.x === workflowNode.position.x && canvasNode.position.y === workflowNode.position.y) return null;
         return {
-          id: nodeId,
+          id: canvasNode.id,
           type: 'position' as const,
           position: canvasNode.position,
           dragging: false,
@@ -654,7 +663,7 @@ export function WorkflowCanvas({
       onInsertExistingNodeOnEdge?.(edgeId, node.id);
     }
     setDropTargetEdgeId(null);
-  }, [autoMergeNodeOnEdge, dropTargetEdgeId, onInsertExistingNodeOnEdge, onNodeDragStateChange, onNodesChange, workflow.nodes]);
+  }, [autoMergeNodeOnEdge, collisionBoxEnabled, dropTargetEdgeId, onInsertExistingNodeOnEdge, onNodeDragStateChange, onNodesChange, workflow.nodes]);
 
   const handleReactFlowError = useCallback((code: string, message: string) => {
     console.warn('[WorkflowCanvas] ReactFlow error', { code, message });

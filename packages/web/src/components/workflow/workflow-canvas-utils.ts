@@ -1,6 +1,7 @@
 'use client';
 
 import type { Workflow } from '@agent-spaces/shared';
+import type { Node } from '@xyflow/react';
 import {
   LOOP_BODY_ROLE,
   LOOP_BODY_NODE_TYPE,
@@ -20,7 +21,6 @@ export {
 };
 import { createWorkflowEdgeId } from '@/lib/workflow-edge-id';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
-import { getWorkflowNodeSize } from './workflow-node-size';
 
 // ---- Type guards & helpers ----
 
@@ -227,6 +227,90 @@ const DEFAULT_SCOPE_CHILD_SIZE = {
   width: 220,
   height: 120,
 };
+
+export type CollisionAlgorithmOptions = {
+  maxIterations: number;
+  overlapThreshold: number;
+  margin: number;
+};
+
+type CollisionBox = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  moved: boolean;
+  node: Node;
+};
+
+function getCollisionBoxesFromNodes(nodes: Node[], margin: number): CollisionBox[] {
+  return nodes.map(node => ({
+    x: node.position.x - margin,
+    y: node.position.y - margin,
+    width: (node.width ?? node.measured?.width ?? 0) + margin * 2,
+    height: (node.height ?? node.measured?.height ?? 0) + margin * 2,
+    node,
+    moved: false,
+  }));
+}
+
+export function resolveNodeCollisions(
+  nodes: Node[],
+  { maxIterations, overlapThreshold, margin }: CollisionAlgorithmOptions,
+): Node[] {
+  const boxes = getCollisionBoxesFromNodes(nodes, margin);
+  const iterationLimit = Number.isFinite(maxIterations) ? maxIterations : 1000;
+
+  for (let iter = 0; iter <= iterationLimit; iter += 1) {
+    let moved = false;
+
+    for (let i = 0; i < boxes.length; i += 1) {
+      for (let j = i + 1; j < boxes.length; j += 1) {
+        const a = boxes[i];
+        const b = boxes[j];
+        const centerAX = a.x + a.width * 0.5;
+        const centerAY = a.y + a.height * 0.5;
+        const centerBX = b.x + b.width * 0.5;
+        const centerBY = b.y + b.height * 0.5;
+        const dx = centerAX - centerBX;
+        const dy = centerAY - centerBY;
+        const px = (a.width + b.width) * 0.5 - Math.abs(dx);
+        const py = (a.height + b.height) * 0.5 - Math.abs(dy);
+
+        if (px > overlapThreshold && py > overlapThreshold) {
+          a.moved = true;
+          b.moved = true;
+          moved = true;
+
+          if (px < py) {
+            const sx = dx > 0 ? 1 : -1;
+            const moveAmount = (px / 2) * sx;
+            a.x += moveAmount;
+            b.x -= moveAmount;
+          } else {
+            const sy = dy > 0 ? 1 : -1;
+            const moveAmount = (py / 2) * sy;
+            a.y += moveAmount;
+            b.y -= moveAmount;
+          }
+        }
+      }
+    }
+
+    if (!moved) break;
+  }
+
+  return boxes.map(box => {
+    if (!box.moved) return box.node;
+    return {
+      ...box.node,
+      position: {
+        x: box.x + margin,
+        y: box.y + margin,
+      },
+    };
+  });
+}
 
 // ---- Scope boundary layout ----
 

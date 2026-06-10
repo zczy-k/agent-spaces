@@ -55,6 +55,7 @@ export function WorkflowCanvasStylePanel({
   const floatingHandles = canvasPrefs.floatingHandles === true;
   const autoMergeNodeOnEdge = canvasPrefs.autoMergeNodeOnEdge !== false;
   const autoConnectAfterNodeDelete = canvasPrefs.autoConnectAfterNodeDelete !== false;
+  const collisionBoxEnabled = canvasPrefs.collisionBoxEnabled !== false;
 
   const update = useCallback((patch: Record<string, unknown>) => {
     onCanvasPreferencesChange({ ...canvasPrefs, ...patch });
@@ -151,6 +152,20 @@ export function WorkflowCanvasStylePanel({
             id="auto-merge-node-on-edge"
             checked={autoMergeNodeOnEdge}
             onCheckedChange={(checked) => update({ autoMergeNodeOnEdge: checked })}
+          />
+        </FieldLabel>
+      </div>
+      <div className="space-y-2">
+        <h3 className="text-xs font-medium text-muted-foreground">碰撞箱</h3>
+        <FieldLabel
+          htmlFor="collision-box-enabled"
+          className="flex items-center justify-between gap-3 rounded-md border px-2.5 py-2 text-sm"
+        >
+          <span>拖拽结束后自动避让</span>
+          <Switch
+            id="collision-box-enabled"
+            checked={collisionBoxEnabled}
+            onCheckedChange={(checked) => update({ collisionBoxEnabled: checked })}
           />
         </FieldLabel>
       </div>
