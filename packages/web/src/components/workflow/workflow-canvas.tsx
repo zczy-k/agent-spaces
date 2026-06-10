@@ -658,6 +658,7 @@ export function WorkflowCanvas({
     handlePosition,
     floatingHandles,
     edgePathType: (canvasPrefs.edgePathType as string) || 'bezier',
+    edgeLineStyle: (canvasPrefs.edgeLineStyle as string) || 'solid',
   });
 
   const displayedEdges = useMemo(() => rfEdges.map(edge => (

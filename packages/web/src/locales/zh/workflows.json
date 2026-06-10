@@ -230,6 +230,8 @@
     "delete": "删除",
     "connect": "连接",
     "deleteEdge": "删除连线",
+    "updateEdgeLabel": "更新连线 Label",
+    "updateEdgeStyle": "更新连线样式",
     "paste": "粘贴",
     "move": "移动节点",
     "updateData": "更新属性",
@@ -678,11 +680,23 @@
     "selectAll": "全选",
     "fitView": "适应画布",
     "autoLayout": "自动布局",
-    "exportJson": "导出 JSON"
+    "exportJson": "导出 JSON",
+    "edgeLineStyle": "线条样式",
+    "edgeLineStyleOptions": {
+      "default": "默认（应用全局）",
+      "solid": "实线",
+      "dashed": "虚线"
+    }
   },
   "edge": {
     "addNode": "添加节点",
     "setLabel": "设置 Label",
+    "lineStyle": "线条样式",
+    "lineStyleOptions": {
+      "default": "默认（应用全局）",
+      "solid": "实线",
+      "dashed": "虚线"
+    },
     "deleteEdge": "删除连线",
     "insertNode": "插入节点",
     "labelDialogTitle": "设置连接线 Label",
@@ -699,6 +713,7 @@
     "layoutEngine": "布局引擎",
     "handleDirection": "连接点方向",
     "edgeStyle": "连线样式",
+    "edgeLineStyle": "线条样式",
     "customThemeVars": "自定义主题变量",
     "floatingHandle": "悬浮 Handle",
     "floatingHandleDesc": "仅悬停时显示",
@@ -732,6 +747,10 @@
       "straight": { "label": "直线", "description": "直连两点" },
       "step": { "label": "折线", "description": "直角折线" },
       "smoothstep": { "label": "平滑折线", "description": "圆角折线" }
+    },
+    "edgeLine": {
+      "solid": { "label": "实线", "description": "连续线条" },
+      "dashed": { "label": "虚线", "description": "间隔线条" }
     },
     "themes": {
       "default": { "label": "默认", "description": "跟随当前界面风格" },

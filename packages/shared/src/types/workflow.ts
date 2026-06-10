@@ -74,6 +74,7 @@ export interface WorkflowEdge {
   startLabel?: string
   middleLabel?: string
   endLabel?: string
+  edgeLineStyle?: 'solid' | 'dashed'
   composite?: WorkflowEdgeCompositeMeta
 }
 

@@ -333,15 +333,21 @@ export function useEdgeOperations({
     const nextStartLabel = typeof data.startLabel === 'string' ? data.startLabel : edge.startLabel;
     const nextMiddleLabel = typeof data.middleLabel === 'string' ? data.middleLabel : edge.middleLabel;
     const nextEndLabel = typeof data.endLabel === 'string' ? data.endLabel : edge.endLabel;
+    const nextEdgeLineStyle = (() => {
+      if (data.edgeLineStyle === 'solid' || data.edgeLineStyle === 'dashed') return data.edgeLineStyle;
+      if (data.edgeLineStyle === 'default') return undefined;
+      return edge.edgeLineStyle;
+    })();
     if (
       (edge.startLabel || '') === (nextStartLabel || '')
       && (edge.middleLabel || '') === (nextMiddleLabel || '')
       && (edge.endLabel || '') === (nextEndLabel || '')
+      && (edge.edgeLineStyle || 'solid') === (nextEdgeLineStyle || 'solid')
     ) {
       return;
     }
 
-    pushUndo('update edge label');
+    pushUndo(typeof data.edgeLineStyle === 'string' ? 'update edge style' : 'update edge label');
     setWorkflow(w => w ? {
       ...w,
       edges: w.edges.map(item => item.id === edgeId
@@ -350,6 +356,7 @@ export function useEdgeOperations({
             startLabel: nextStartLabel || undefined,
             middleLabel: nextMiddleLabel || undefined,
             endLabel: nextEndLabel || undefined,
+            edgeLineStyle: nextEdgeLineStyle,
           }
         : item),
     } : null);

@@ -41,6 +41,7 @@ interface UseCanvasDataParams {
   handlePosition?: HandlePositionMode;
   floatingHandles?: boolean;
   edgePathType?: string;
+  edgeLineStyle?: string;
 }
 
 export function useCanvasData({
@@ -60,6 +61,7 @@ export function useCanvasData({
   handlePosition = 'left-right',
   floatingHandles = false,
   edgePathType = 'bezier',
+  edgeLineStyle = 'solid',
 }: UseCanvasDataParams) {
   const selectedNodeIdSet = useMemo(
     () => new Set(selectedNodeIds.length > 0 ? selectedNodeIds : selectedNodeId ? [selectedNodeId] : []),
@@ -173,10 +175,12 @@ export function useCanvasData({
           canEditEdge: !isCanvasLocked,
           canDeleteEdge: !isCanvasLocked,
           edgePathType,
+          edgeOwnLineStyle: e.edgeLineStyle,
+          edgeLineStyle: e.edgeLineStyle || edgeLineStyle,
         } as Record<string, unknown>,
       };
     });
-  }, [workflow.edges, workflow.nodes, runningEdgeIds, selectedEdgeId, isCanvasLocked, edgePathType]);
+  }, [workflow.edges, workflow.nodes, runningEdgeIds, selectedEdgeId, isCanvasLocked, edgePathType, edgeLineStyle]);
 
   return { rfNodes, rfEdges, selectedNodeIdSet, executionNodeIds, executionStepByNodeId, runningEdgeIds };
 }

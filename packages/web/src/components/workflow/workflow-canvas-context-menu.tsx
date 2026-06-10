@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { useLocalizedNodeDefinitionsByCategory } from '@/lib/workflow-nodes';
 import {
@@ -16,6 +16,7 @@ interface CanvasContextMenuProps {
   onFitView?: () => void;
   onAutoLayout?: () => void;
   onExport?: () => void;
+  onEdgeLineStyleChange?: (lineStyle: 'default' | 'solid' | 'dashed') => void;
   canvasPosition?: { x: number; y: number } | null;
 }
 
@@ -41,6 +42,9 @@ function Layout({ className }: { className?: string }) {
 function Export({ className }: { className?: string }) {
   return <span className={className}>↗</span>;
 }
+function Check({ className }: { className?: string }) {
+  return <span className={className}>✓</span>;
+}
 
 export function WorkflowCanvasContextMenu({
   children,
@@ -50,6 +54,7 @@ export function WorkflowCanvasContextMenu({
   onFitView,
   onAutoLayout,
   onExport,
+  onEdgeLineStyleChange,
   canvasPosition,
 }: CanvasContextMenuProps) {
   const categories = useLocalizedNodeDefinitionsByCategory();
@@ -133,6 +138,29 @@ export function WorkflowCanvasContextMenu({
             <Export className="mr-2 h-3 w-3" />
             {t('contextMenu.exportJson')}
           </ContextMenuItem>
+        )}
+
+        {onEdgeLineStyleChange && (
+          <>
+            <ContextMenuSeparator />
+            <ContextMenuSub>
+              <ContextMenuSubTrigger className="text-xs">
+                {t('contextMenu.edgeLineStyle')}
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent className="w-36">
+                {(['default', 'solid', 'dashed'] as const).map(lineStyle => (
+                  <ContextMenuItem
+                    key={lineStyle}
+                    className="text-xs"
+                    onClick={() => onEdgeLineStyleChange(lineStyle)}
+                  >
+                    <Check className="mr-2 h-3 w-3" />
+                    {t(`contextMenu.edgeLineStyleOptions.${lineStyle}`)}
+                  </ContextMenuItem>
+                ))}
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+          </>
         )}
       </ContextMenuContent>
     </ContextMenu>

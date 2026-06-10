@@ -230,6 +230,8 @@
     "delete": "Delete",
     "connect": "Connect",
     "deleteEdge": "Delete edge",
+    "updateEdgeLabel": "Update edge label",
+    "updateEdgeStyle": "Update edge style",
     "paste": "Paste",
     "move": "Move node",
     "updateData": "Update property",
@@ -678,11 +680,23 @@
     "selectAll": "Select All",
     "fitView": "Fit View",
     "autoLayout": "Auto Layout",
-    "exportJson": "Export JSON"
+    "exportJson": "Export JSON",
+    "edgeLineStyle": "Line Style",
+    "edgeLineStyleOptions": {
+      "default": "Default (use global)",
+      "solid": "Solid",
+      "dashed": "Dashed"
+    }
   },
   "edge": {
     "addNode": "Add Node",
     "setLabel": "Set Label",
+    "lineStyle": "Line Style",
+    "lineStyleOptions": {
+      "default": "Default (use global)",
+      "solid": "Solid",
+      "dashed": "Dashed"
+    },
     "deleteEdge": "Delete Edge",
     "insertNode": "Insert Node",
     "labelDialogTitle": "Set Edge Label",
@@ -699,6 +713,7 @@
     "layoutEngine": "Layout Engine",
     "handleDirection": "Handle Direction",
     "edgeStyle": "Edge Style",
+    "edgeLineStyle": "Line Style",
     "customThemeVars": "Custom Theme Variables",
     "floatingHandle": "Floating Handles",
     "floatingHandleDesc": "Show only on hover",
@@ -732,6 +747,10 @@
       "straight": { "label": "Straight", "description": "Direct line between points" },
       "step": { "label": "Step", "description": "Right-angle steps" },
       "smoothstep": { "label": "Smooth Step", "description": "Rounded steps" }
+    },
+    "edgeLine": {
+      "solid": { "label": "Solid", "description": "Continuous line" },
+      "dashed": { "label": "Dashed", "description": "Segmented line" }
     },
     "themes": {
       "default": { "label": "Default", "description": "Follow current UI style" },

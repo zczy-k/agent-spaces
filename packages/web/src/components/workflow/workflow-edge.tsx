@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { BaseEdge, EdgeLabelRenderer, getBezierPath, getStraightPath, getSmoothStepPath } from '@xyflow/react';
 import type { EdgeProps } from '@xyflow/react';
 import { LOOP_BODY_SOURCE_HANDLE } from '@agent-spaces/shared';
-import { Plus, Tags, Trash2 } from 'lucide-react';
+import { Check, Plus, Tags, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import {
@@ -56,6 +56,8 @@ function WorkflowEdgeComponent({
   const canEditEdge = (data as Record<string, unknown>)?.canEditEdge === true;
   const canDeleteEdge = (data as Record<string, unknown>)?.canDeleteEdge === true;
   const edgePathType = (data as Record<string, unknown>)?.edgePathType as string || 'bezier';
+  const edgeOwnLineStyle = (data as Record<string, unknown>)?.edgeOwnLineStyle;
+  const edgeLineStyle = (data as Record<string, unknown>)?.edgeLineStyle === 'dashed' ? 'dashed' : 'solid';
   const edgeColor = (data as Record<string, unknown>)?.edgeColor as string | undefined;
   const startLabel = resolveText((data as Record<string, unknown>)?.startLabel);
   const middleLabel = resolveText((data as Record<string, unknown>)?.middleLabel);
@@ -139,6 +141,15 @@ function WorkflowEdgeComponent({
     setLabelDialogOpen(false);
   }, [id, labelForm]);
 
+  const updateLineStyle = React.useCallback((nextLineStyle: 'default' | 'solid' | 'dashed') => {
+    window.dispatchEvent(new CustomEvent('workflow:update-edge-data', {
+      detail: {
+        edgeId: id,
+        data: { edgeLineStyle: nextLineStyle },
+      },
+    }));
+  }, [id]);
+
   const openContextMenu = React.useCallback((event: React.MouseEvent) => {
     if (isLocked || !canEditEdge) return;
     event.preventDefault();
@@ -154,7 +165,7 @@ function WorkflowEdgeComponent({
         style={{
           stroke: isNodeDropTarget ? 'var(--foreground)' : selected ? 'var(--ring)' : (isLocked ? 'rgba(74, 144, 164, 0.9)' : edgeColor || 'var(--primary)'),
           strokeWidth: isNodeDropTarget ? 4 : selected ? 3.5 : (isGenerated ? 2 : 2.5),
-          strokeDasharray: isLocked && !isLoopBodyEdge ? '4 2' : 'none',
+          strokeDasharray: isLocked && !isLoopBodyEdge ? '4 2' : edgeLineStyle === 'dashed' ? '6 4' : 'none',
           filter: isNodeDropTarget || selected ? `drop-shadow(0 0 4px ${edgeColor || 'var(--primary)'})` : 'none',
           transition: 'stroke 0.2s ease, stroke-width 0.2s ease, stroke-dasharray 0.3s ease, filter 0.2s ease',
         }}
@@ -224,6 +235,28 @@ function WorkflowEdgeComponent({
             <Tags className="h-3 w-3" />
             {t('edge.setLabel')}
           </button>
+          <div className="-mx-1 my-1 h-px bg-border" />
+          <div className="px-1.5 py-1 text-[11px] font-medium text-muted-foreground">
+            {t('edge.lineStyle')}
+          </div>
+          {(['default', 'solid', 'dashed'] as const).map(lineStyle => (
+            <button
+              key={lineStyle}
+              type="button"
+              className="flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-xs hover:bg-accent hover:text-accent-foreground"
+              onClick={() => {
+                updateLineStyle(lineStyle);
+                closeMenu();
+              }}
+            >
+              <Check className={`h-3 w-3 ${
+                (lineStyle === 'default' ? !edgeOwnLineStyle : edgeOwnLineStyle === lineStyle)
+                  ? 'opacity-100'
+                  : 'opacity-0'
+              }`} />
+              {t(`edge.lineStyleOptions.${lineStyle}`)}
+            </button>
+          ))}
           {canDeleteEdge && (
             <>
               <div className="-mx-1 my-1 h-px bg-border" />

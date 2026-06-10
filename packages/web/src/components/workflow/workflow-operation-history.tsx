@@ -27,6 +27,8 @@ const OPERATION_LABEL_KEYS: Record<string, string> = {
   'delete': 'operationHistory.delete',
   'connect': 'operationHistory.connect',
   'delete edge': 'operationHistory.deleteEdge',
+  'update edge label': 'operationHistory.updateEdgeLabel',
+  'update edge style': 'operationHistory.updateEdgeStyle',
   'paste': 'operationHistory.paste',
   'move': 'operationHistory.move',
   'update data': 'operationHistory.updateData',

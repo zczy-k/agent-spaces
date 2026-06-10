@@ -37,6 +37,7 @@ export function WorkflowCanvasStylePanel({
   const collisionBoxEnabled = canvasPrefs.collisionBoxEnabled !== false;
   const themeKey = (canvasPrefs.canvasTheme as string) || 'default';
   const customThemeCss = (canvasPrefs.canvasCustomThemeCss as string) || '';
+  const edgeLineStyle = (canvasPrefs.edgeLineStyle as string) || 'solid';
 
   const update = useCallback((patch: Record<string, unknown>) => {
     onCanvasPreferencesChange({ ...canvasPrefs, ...patch });
@@ -90,6 +91,11 @@ export function WorkflowCanvasStylePanel({
       label: t(`canvasStyle.edge.${v}.label`),
     }));
 
+    const edgeLineOptions = (['solid', 'dashed'] as const).map(v => ({
+      value: v,
+      label: t(`canvasStyle.edgeLine.${v}.label`),
+    }));
+
     return [
       {
         id: 'canvasTheme',
@@ -133,8 +139,15 @@ export function WorkflowCanvasStylePanel({
         options: edgeOptions,
         onChange: (v: string) => update({ edgePathType: v }),
       },
+      {
+        id: 'edgeLineStyle',
+        title: t('canvasStyle.edgeLineStyle'),
+        value: edgeLineOptions.some(o => o.value === edgeLineStyle) ? edgeLineStyle : 'solid',
+        options: edgeLineOptions,
+        onChange: (v: string) => update({ edgeLineStyle: v }),
+      },
     ];
-  }, [t, themeKey, bgVariantKey, snapEnabled, layoutEngine, handlePosition, canvasPrefs.edgePathType, update, handleLayoutEngineChange]);
+  }, [t, themeKey, bgVariantKey, snapEnabled, layoutEngine, handlePosition, canvasPrefs.edgePathType, edgeLineStyle, update, handleLayoutEngineChange]);
 
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-4">
