@@ -3,6 +3,7 @@
 import { useMemo, useCallback } from 'react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { FieldLabel } from '@/components/ui/field';
+import { Switch } from '@/components/ui/switch';
 
 const BACKGROUND_OPTIONS = [
   { value: 'dots', label: '点阵', description: '默认点阵背景' },
@@ -51,6 +52,7 @@ export function WorkflowCanvasStylePanel({
   const snapEnabled = canvasPrefs.snapGrid !== false;
   const layoutEngine = (canvasPrefs.layoutEngine as string) || 'dagre';
   const handlePosition = (canvasPrefs.attributionPosition as string) || 'top-bottom';
+  const floatingHandles = canvasPrefs.floatingHandles === true;
 
   const update = useCallback((patch: Record<string, unknown>) => {
     onCanvasPreferencesChange({ ...canvasPrefs, ...patch });
@@ -122,6 +124,20 @@ export function WorkflowCanvasStylePanel({
           </RadioGroup>
         </div>
       ))}
+      <div className="space-y-2">
+        <h3 className="text-xs font-medium text-muted-foreground">悬浮 Handle</h3>
+        <FieldLabel
+          htmlFor="floating-handles"
+          className="flex items-center justify-between gap-3 rounded-md border px-2.5 py-2 text-sm"
+        >
+          <span>仅悬停时显示</span>
+          <Switch
+            id="floating-handles"
+            checked={floatingHandles}
+            onCheckedChange={(checked) => update({ floatingHandles: checked })}
+          />
+        </FieldLabel>
+      </div>
     </div>
   );
 }

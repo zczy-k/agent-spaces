@@ -101,6 +101,9 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const staticSourceHandles = definition?.handles?.sourceHandles || [];
   const handlePositionMode = nodeData.handlePosition || 'left-right';
   const handlePositions = HANDLE_POSITION_MAP[handlePositionMode] || HANDLE_POSITION_MAP['left-right'];
+  const floatingHandles = nodeData.floatingHandles === true;
+  const floatingHandleClassName = floatingHandles ? 'workflow-node-floating-handle' : '';
+  const floatingLabelClassName = floatingHandles ? 'workflow-node-floating-handle-label' : '';
 
   // Dynamic handles for switch node
   const dynamicSource = definition?.handles?.dynamicSource;
@@ -251,6 +254,8 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
     <div
       className={`border-2 rounded-lg shadow-sm cursor-pointer transition-colors relative flex flex-col
         ${statusColor} ${selected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background shadow-md' : ''}
+        ${floatingHandles ? 'workflow-node-has-floating-handles' : ''}
+        ${selected ? 'workflow-node-floating-handles-visible' : ''}
         ${stateBackgroundClass}`}
       style={{
         minWidth: nodeMinWidth,
@@ -279,7 +284,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       {showTargetHandle && (
         <Handle
           id="target" type="target" position={handlePositions.target}
-          className="!z-10 !w-3 !h-3 !bg-blue-500 !border-2 !border-blue-300 handle-dot"
+          className={cn('!z-10 !w-3 !h-3 !bg-blue-500 !border-2 !border-blue-300 handle-dot', floatingHandleClassName)}
           style={getHandleStyle(handlePositions.target, 0, 1, handleCtx)}
         />
       )}
@@ -416,7 +421,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           <Handle
             id="source" type="source" position={handlePositions.source}
 
-            className="!z-10 !w-3 !h-3 !bg-emerald-500 !border-2 !border-emerald-300 handle-dot"
+            className={cn('!z-10 !w-3 !h-3 !bg-emerald-500 !border-2 !border-emerald-300 handle-dot', floatingHandleClassName)}
             style={getHandleStyle(handlePositions.source, 0, 1, handleCtx)}
           />
         ) : (
@@ -424,7 +429,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
             {staticSourceHandles.map((h, index) => (
               <React.Fragment key={h.id}>
                 <div
-                  className="source-handle-label"
+                  className={cn('source-handle-label', floatingLabelClassName)}
                   style={getSourceLabelStyle(index, staticSourceHandles.length, handleCtx)}
                 >
                   <span className="text-[9px] text-muted-foreground mr-1 whitespace-nowrap">{h.label || h.id}</span>
@@ -432,7 +437,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
                 <Handle
                   id={h.id} type="source" position={handlePositions.source}
 
-                  className={`!z-10 !w-2.5 !h-2.5 handle-dot ${h.id === LOOP_BODY_SOURCE_HANDLE ? '!bg-blue-500 !border-blue-300' : '!bg-emerald-500 !border-emerald-300'}`}
+                  className={cn('!z-10 !w-2.5 !h-2.5 handle-dot', h.id === LOOP_BODY_SOURCE_HANDLE ? '!bg-blue-500 !border-blue-300' : '!bg-emerald-500 !border-emerald-300', floatingHandleClassName)}
                   style={{ ...getHandleStyle(handlePositions.source, index, staticSourceHandles.length, handleCtx), borderWidth: '2px' }}
                 />
               </React.Fragment>
@@ -447,7 +452,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           {dynamicHandles.map(h => (
             <React.Fragment key={h.id}>
               <div
-                className="source-handle-label"
+                className={cn('source-handle-label', floatingLabelClassName)}
                 style={getSourceLabelStyle(h.index, h.total, handleCtx)}
               >
                 <span className="text-[9px] text-muted-foreground mr-1 whitespace-nowrap">{h.label}</span>
@@ -455,7 +460,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
               <Handle
                 id={h.id} type="source" position={handlePositions.source}
 
-                className={`!z-10 !w-2.5 !h-2.5 handle-dot ${h.id === 'default' ? '!bg-orange-500 !border-orange-300' : '!bg-emerald-500 !border-emerald-300'}`}
+                className={cn('!z-10 !w-2.5 !h-2.5 handle-dot', h.id === 'default' ? '!bg-orange-500 !border-orange-300' : '!bg-emerald-500 !border-emerald-300', floatingHandleClassName)}
                 style={{ ...getHandleStyle(handlePositions.source, h.index, h.total, handleCtx), borderWidth: '2px' }}
               />
             </React.Fragment>
@@ -544,6 +549,17 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       <style>{`
         .handle-dot { transition: scale 0.2s ease, box-shadow 0.2s ease; }
         .handle-dot:hover { scale: 1.6; box-shadow: 0 0 6px currentColor; }
+        .workflow-node-floating-handle,
+        .workflow-node-floating-handle-label {
+          opacity: 0;
+          transition: opacity 0.16s ease, scale 0.2s ease, box-shadow 0.2s ease;
+        }
+        .workflow-node-has-floating-handles:hover .workflow-node-floating-handle,
+        .workflow-node-has-floating-handles:hover .workflow-node-floating-handle-label,
+        .workflow-node-floating-handles-visible .workflow-node-floating-handle,
+        .workflow-node-floating-handles-visible .workflow-node-floating-handle-label {
+          opacity: 1;
+        }
         .workflow-node-resize-icon {
           position: absolute;
           right: 4px;

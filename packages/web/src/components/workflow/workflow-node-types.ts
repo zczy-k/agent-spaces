@@ -25,6 +25,7 @@ export type WorkflowNodeData = Record<string, unknown> & {
   partialExecutionStartNodeId?: string | null;
   isFirstConnectedNode?: boolean;
   handlePosition?: HandlePositionMode;
+  floatingHandles?: boolean;
   executionStep?: import('@agent-spaces/shared').ExecutionStep;
 };
 

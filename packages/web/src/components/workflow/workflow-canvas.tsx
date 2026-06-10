@@ -149,6 +149,7 @@ export function WorkflowCanvas({
   const handlePosition = validPositions.includes(savedAttributionPosition as typeof validPositions[number])
     ? savedAttributionPosition as HandlePositionMode
     : 'left-right';
+  const floatingHandles = canvasPrefs.floatingHandles === true;
 
   const closeSelectionMenu = useCallback(() => {
     setSelectionMenu(null);
@@ -243,6 +244,7 @@ export function WorkflowCanvas({
     pausedReason,
     partialExecutionStartNodeId,
     handlePosition,
+    floatingHandles,
     edgePathType: (canvasPrefs.edgePathType as string) || 'bezier',
   });
 

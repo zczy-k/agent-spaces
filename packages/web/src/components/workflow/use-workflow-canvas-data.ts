@@ -29,6 +29,7 @@ interface UseCanvasDataParams {
   pausedReason?: string | null;
   partialExecutionStartNodeId?: string | null;
   handlePosition?: HandlePositionMode;
+  floatingHandles?: boolean;
   edgePathType?: string;
 }
 
@@ -47,6 +48,7 @@ export function useCanvasData({
   pausedReason = null,
   partialExecutionStartNodeId = null,
   handlePosition = 'left-right',
+  floatingHandles = false,
   edgePathType = 'bezier',
 }: UseCanvasDataParams) {
   const selectedNodeIdSet = useMemo(
@@ -119,12 +121,13 @@ export function useCanvasData({
           pausedReason,
           partialExecutionStartNodeId,
           handlePosition,
+          floatingHandles,
           isFirstConnectedNode: hasOutgoing && !hasIncoming,
           executionStep: executionStepByNodeId.get(n.id),
         } as Record<string, unknown>,
       };
     }),
-    [workflow.nodes, workflow.edges, selectedNodeIdSet, selectedNodeIds, isPreview, isCanvasLocked, executionNodeIds, execStatus, debugNodeId, debugStatus, pausedNodeId, pausedReason, partialExecutionStartNodeId, handlePosition, executionStepByNodeId],
+    [workflow.nodes, workflow.edges, selectedNodeIdSet, selectedNodeIds, isPreview, isCanvasLocked, executionNodeIds, execStatus, debugNodeId, debugStatus, pausedNodeId, pausedReason, partialExecutionStartNodeId, handlePosition, floatingHandles, executionStepByNodeId],
   );
 
   const runningEdgeIds = useMemo(() => {
