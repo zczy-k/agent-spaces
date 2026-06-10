@@ -2,8 +2,8 @@
 
 import React, { useState, useMemo, useCallback, useRef, useSyncExternalStore } from 'react';
 import { useTranslations } from 'next-intl';
-import { Handle, NodeResizeControl, NodeToolbar, Position, useUpdateNodeInternals } from '@xyflow/react';
-import type { NodeProps } from '@xyflow/react';
+import { Handle, NodeResizeControl, NodeToolbar, Position, useStore, useUpdateNodeInternals } from '@xyflow/react';
+import type { NodeProps, ReactFlowState } from '@xyflow/react';
 import {
   Flag,
   Grip,
@@ -54,10 +54,15 @@ const LOOP_BODY_SOURCE_HANDLE_COLOR = '#3b82f6';
 const DEFAULT_DYNAMIC_HANDLE_COLOR = '#10b981';
 const DEFAULT_DYNAMIC_FALLBACK_HANDLE_COLOR = '#f97316';
 const SOURCE_HANDLE_KEY = 'source';
+const COMPACT_NODE_ZOOM_THRESHOLD = 0.65;
+
+const showFullNodeSelector = (state: ReactFlowState) =>
+  state.transform[2] >= COMPACT_NODE_ZOOM_THRESHOLD;
 
 function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const nodeData = data as WorkflowNodeData;
   const t = useTranslations('workflows');
+  const showFullNode = useStore(showFullNodeSelector);
   const workflowNodeType = typeof nodeData.nodeType === 'string' ? nodeData.nodeType : type;
   const updateNodeInternals = useUpdateNodeInternals();
   useSyncExternalStore(
@@ -151,7 +156,10 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
     updateNodeInternals(id);
   }, [id, updateNodeInternals, sourceHandleCount, showTargetHandle, showSourceHandle, nodeHeight, handlePositions.target, handlePositions.source, workflowNodeType]);
 
-  const handleCtx: HandleContext = { isLoopBody, nodeHeight, handlePositions };
+  const handleCtx: HandleContext = useMemo(
+    () => ({ isLoopBody, nodeHeight, handlePositions }),
+    [isLoopBody, nodeHeight, handlePositions],
+  );
 
   const getSourceHandleColor = useCallback((handleId: string, fallback: string) => {
     const colorKey = handleColors[handleId];
@@ -381,7 +389,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         />
       )}
       <div className="absolute -right-1 -top-1 z-30 flex items-center gap-1">
-        {hasCustomView && !isCanvasLocked ? (
+        {showFullNode && hasCustomView && !isCanvasLocked ? (
           <button
             type="button"
             className={cn(
@@ -397,7 +405,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         ) : null}
       </div>
 
-      {stateBadge ? (
+      {showFullNode && stateBadge ? (
         <span
           className={cn(
             'absolute -top-2 left-1/2 z-10 -translate-x-1/2 rounded-full px-1.5 py-0 text-[10px] font-medium text-white',
@@ -408,7 +416,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         </span>
       ) : null}
 
-      {breakpointBadge ? (
+      {showFullNode && breakpointBadge ? (
         <span
           className={cn(
             'absolute -bottom-2 left-2 z-10 inline-flex items-center gap-1 rounded-full px-1.5 py-0 text-[10px] font-medium text-white',
@@ -420,7 +428,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         </span>
       ) : null}
 
-      {isPausedAtThisNode ? (
+      {showFullNode && isPausedAtThisNode ? (
         <div className="nodrag nopan absolute left-2 right-2 -bottom-10 z-40 flex items-center gap-1 rounded border border-blue-500/40 bg-background/95 p-1 shadow-lg">
           <button
             type="button"
@@ -441,8 +449,14 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         </div>
       ) : null}
 
+      {!showFullNode ? (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <WorkflowNodeDefinitionIcon definition={iconDefinition} className="h-8 w-8 text-muted-foreground" />
+        </div>
+      ) : null}
+
       {/* Header */}
-      {!isLoopBody && !hasCustomView && (
+      {showFullNode && !isLoopBody && !hasCustomView && (
         <div className="flex items-center gap-2 px-3 py-2 border-b border-border/50">
           <WorkflowNodeDefinitionIcon definition={iconDefinition} className="h-4 w-4 shrink-0 text-muted-foreground" />
           {isEditing ? (
@@ -482,7 +496,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         </div>
       )}
 
-      {CustomView ? (
+      {showFullNode && CustomView ? (
         <div className={cn(
           'absolute inset-0 overflow-hidden rounded-lg',
           isLoopBody && 'pointer-events-none',
@@ -491,7 +505,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         </div>
       ) : null}
 
-      {pluginCustomView ? (
+      {showFullNode && pluginCustomView ? (
         <div className={cn(
           'absolute inset-0 overflow-hidden rounded-lg',
           isLoopBody && 'pointer-events-none',
@@ -501,7 +515,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       ) : null}
 
       {/* Media preview for executed nodes */}
-      {!hasCustomView && mediaItems.length > 0 && (
+      {showFullNode && !hasCustomView && mediaItems.length > 0 && (
         <div className="border-t border-border/50">
           <NodeMediaPreview items={mediaItems} />
         </div>
@@ -523,12 +537,14 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           <>
             {staticSourceHandles.map((h, index) => (
               <React.Fragment key={h.id}>
-                <div
-                  className={cn('source-handle-label', floatingLabelClassName)}
-                  style={getSourceLabelStyle(index, staticSourceHandles.length, handleCtx)}
-                >
-                  <span className="text-[9px] text-muted-foreground mr-1 whitespace-nowrap">{h.label || h.id}</span>
-                </div>
+                {showFullNode ? (
+                  <div
+                    className={cn('source-handle-label', floatingLabelClassName)}
+                    style={getSourceLabelStyle(index, staticSourceHandles.length, handleCtx)}
+                  >
+                    <span className="text-[9px] text-muted-foreground mr-1 whitespace-nowrap">{h.label || h.id}</span>
+                  </div>
+                ) : null}
                 {renderHandleColorPopover(
                   h.id,
                   <Handle
@@ -555,12 +571,14 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         <>
           {dynamicHandles.map(h => (
             <React.Fragment key={h.id}>
-              <div
-                className={cn('source-handle-label', floatingLabelClassName)}
-                style={getSourceLabelStyle(h.index, h.total, handleCtx)}
-              >
-                <span className="text-[9px] text-muted-foreground mr-1 whitespace-nowrap">{h.label}</span>
-              </div>
+              {showFullNode ? (
+                <div
+                  className={cn('source-handle-label', floatingLabelClassName)}
+                  style={getSourceLabelStyle(h.index, h.total, handleCtx)}
+                >
+                  <span className="text-[9px] text-muted-foreground mr-1 whitespace-nowrap">{h.label}</span>
+                </div>
+              ) : null}
               {renderHandleColorPopover(
                 h.id,
                 <Handle
@@ -585,7 +603,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
 
   return (
     <>
-      {canShowNodeToolbar ? (
+      {showFullNode && canShowNodeToolbar ? (
         <NodeToolbar
           position={Position.Top}
           align="center"
@@ -616,7 +634,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           ) : null}
         </NodeToolbar>
       ) : null}
-      {selected && !isCanvasLocked ? (
+      {showFullNode && selected && !isCanvasLocked ? (
         <NodeResizeControl
           minWidth={nodeMinWidth}
           minHeight={nodeMinHeight}
@@ -650,7 +668,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       </WorkflowNodeContextMenu>
 
       {/* Collapsible execution log card below the node */}
-      {hasExecutionResult && executionStep ? (
+      {showFullNode && hasExecutionResult && executionStep ? (
         <WorkflowNodeExecutionLog
           executionStep={executionStep}
           nodeWidth={nodeWidth}
