@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { OutputField } from '@agent-spaces/shared';
 import { useTranslations } from 'next-intl';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { FileUpload, type FileUploadFile } from '@/components/ui/file-upload';
 import { Input } from '@/components/ui/input';
@@ -54,6 +55,7 @@ export function ExecutionInputForm({ fields, onSubmit, submitLabel, initialValue
 
   const submit = async () => {
     if (isSubmitting || disabled) return;
+    if (!form.validate()) return;
     setIsSubmitting(true);
     try {
       await onSubmit(await form.parse());
@@ -93,13 +95,30 @@ function useExecutionInputFormState(fields: OutputField[], initialValues?: Recor
     return map;
   });
 
+  const [errors, setErrors] = useState<Record<string, boolean>>({});
+
   const setField = (key: string, value: InputFormValue) => {
     setValues(prev => ({ ...prev, [key]: value }));
+    setErrors(prev => ({ ...prev, [key]: false }));
+  };
+
+  const validate = (): boolean => {
+    const next: Record<string, boolean> = {};
+    for (const field of fields) {
+      if (!field.key || !field.required) continue;
+      const val = values[field.key];
+      const empty = isFileOutputFieldType(field.type)
+        ? !Array.isArray(val) || val.length === 0
+        : typeof val !== 'string' || val.trim() === '';
+      if (empty) next[field.key] = true;
+    }
+    setErrors(next);
+    return Object.keys(next).length === 0;
   };
 
   const parse = async () => parseInputFormValues(fields, values);
 
-  return { values, setField, parse };
+  return { values, setField, parse, validate, errors };
 }
 
 function ExecutionInputFields({
@@ -113,55 +132,61 @@ function ExecutionInputFields({
 }) {
   return (
     <div className="space-y-3 py-1 m-1">
-      {fields.map(field => (
-        <label key={field.key} className="block space-y-1.5">
-          <span className="text-xs font-medium">
-            {field.required && <span className="text-destructive mr-0.5">*</span>}
-            {field.key}
-            <span className="text-muted-foreground font-normal ml-1">({field.type})</span>
-          </span>
-          {field.description && (
-            <span className="block text-[10px] text-muted-foreground">{field.description}</span>
-          )}
-          {isFileOutputFieldType(field.type) ? (
-            <FileUpload
-              className="text-xs"
-              maxFiles={field.type === 'file[]' ? undefined : 1}
-              value={getFileValue(form.values[field.key])}
-              onChange={files => form.setField(field.key, files)}
-              placeholder={field.key}
-              fileNameFilter={field.fileNameFilter}
-              disabled={disabled}
-            />
-          ) : field.inputMode === 'native' && field.type === 'select' ? (
-            <Select
-              value={getSelectValue(form.values[field.key], field.value)}
-              onValueChange={value => form.setField(field.key, value)}
-              disabled={disabled}
-            >
-              <SelectTrigger className="h-8 text-xs w-full">
-                <SelectValue placeholder={field.key} />
-              </SelectTrigger>
-              <SelectContent>
-                {getSelectOptions(field.options).map(option => (
-                  <SelectItem key={option} value={option} className="text-xs">
-                    {option}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <Input
-              className="h-8 text-xs"
-              type={field.type === 'number' ? 'number' : 'text'}
-              placeholder={field.type === 'boolean' ? 'true / false' : field.key}
-              value={getStringValue(form.values[field.key], field.value)}
-              onChange={event => form.setField(field.key, event.target.value)}
-              disabled={disabled}
-            />
-          )}
-        </label>
-      ))}
+      {fields.map(field => {
+        const hasError = !!form.errors[field.key];
+        return (
+          <label key={field.key} className="block space-y-1.5">
+            <span className="text-xs font-medium">
+              {field.required && <span className="text-destructive mr-0.5">*</span>}
+              {field.key}
+              <span className="text-muted-foreground font-normal ml-1">({field.type})</span>
+            </span>
+            {field.description && (
+              <span className="block text-[10px] text-muted-foreground">{field.description}</span>
+            )}
+            {isFileOutputFieldType(field.type) ? (
+              <FileUpload
+                className={cn('text-xs', hasError && 'border-destructive')}
+                maxFiles={field.type === 'file[]' ? undefined : 1}
+                value={getFileValue(form.values[field.key])}
+                onChange={files => form.setField(field.key, files)}
+                placeholder={field.key}
+                fileNameFilter={field.fileNameFilter}
+                disabled={disabled}
+              />
+            ) : field.inputMode === 'native' && field.type === 'select' ? (
+              <Select
+                value={getSelectValue(form.values[field.key], field.value)}
+                onValueChange={value => form.setField(field.key, value)}
+                disabled={disabled}
+              >
+                <SelectTrigger className={cn('h-8 text-xs w-full', hasError && 'border-destructive')}>
+                  <SelectValue placeholder={field.key} />
+                </SelectTrigger>
+                <SelectContent>
+                  {getSelectOptions(field.options).map(option => (
+                    <SelectItem key={option} value={option} className="text-xs">
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                className={cn('h-8 text-xs', hasError && 'border-destructive')}
+                type={field.type === 'number' ? 'number' : 'text'}
+                placeholder={field.type === 'boolean' ? 'true / false' : field.key}
+                value={getStringValue(form.values[field.key], field.value)}
+                onChange={event => form.setField(field.key, event.target.value)}
+                disabled={disabled}
+              />
+            )}
+            {hasError && (
+              <span className="text-[10px] text-destructive">This field is required</span>
+            )}
+          </label>
+        );
+      })}
     </div>
   );
 }
@@ -393,6 +418,9 @@ function CombinedExecutionInputForm({
 
   const submit = async () => {
     if (isSubmitting) return;
+    const inputValid = inputForm.validate();
+    const envValid = envForm.validate();
+    if (!inputValid || !envValid) return;
     setIsSubmitting(true);
     try {
       const [values, env] = await Promise.all([inputForm.parse(), envForm.parse()]);
