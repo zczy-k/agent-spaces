@@ -2,6 +2,34 @@ import type { NodeTypeDefinition } from '@agent-spaces/shared';
 
 export const utilsNodes: NodeTypeDefinition[] = [
   {
+    type: 'flatten_array',
+    label: 'nodes.flatten_array.label',
+    category: 'nodes.categories.utilities',
+    icon: 'Layers',
+    description: 'nodes.flatten_array.description',
+    properties: [
+      {
+        key: 'array',
+        label: 'nodes.flatten_array.props.array.label',
+        type: 'array',
+        required: true,
+        inputMode: 'variable',
+        tooltip: 'nodes.flatten_array.props.array.tooltip',
+        default: [],
+        itemTemplate: [],
+        fields: [],
+      },
+      {
+        key: 'key',
+        label: 'nodes.flatten_array.props.key.label',
+        type: 'text',
+        placeholder: 'names',
+        tooltip: 'nodes.flatten_array.props.key.tooltip',
+      },
+    ],
+    outputs: [{ key: 'result', type: 'any[]' }],
+  },
+  {
     type: 'pluck_array_key',
     label: 'nodes.pluck_array_key.label',
     category: 'nodes.categories.utilities',

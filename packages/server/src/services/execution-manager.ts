@@ -625,6 +625,8 @@ export class ExecutionManager {
         const outputKey = this.getFirstObjectOutputKey(resolvedData.outputs) ?? 'result';
         return { [outputKey]: this.executeVariableAggregate(resolvedData.groups || []) };
       }
+      case 'flatten_array':
+        return this.executeFlattenArray(resolvedData);
       case 'pluck_array_key':
         return this.executePluckArrayKey(resolvedData);
       case 'array_text_replace':
@@ -699,6 +701,26 @@ export class ExecutionManager {
         item && typeof item === 'object' && key in item ? item[key] : undefined
       )),
     };
+  }
+
+  private executeFlattenArray(resolvedData: Record<string, any>): Record<string, unknown[]> {
+    const array = Array.isArray(resolvedData.array) ? resolvedData.array : [];
+    const key = String(resolvedData.key || '').trim();
+    const result: unknown[] = [];
+
+    for (const item of array) {
+      const value = key && item && typeof item === 'object' && key in item
+        ? item[key]
+        : item;
+
+      if (Array.isArray(value)) {
+        result.push(...value);
+      } else if (value !== undefined) {
+        result.push(value);
+      }
+    }
+
+    return { result };
   }
 
   private executeArrayTextReplace(resolvedData: Record<string, any>): Record<string, string[]> {

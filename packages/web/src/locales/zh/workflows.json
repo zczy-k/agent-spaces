@@ -405,6 +405,20 @@
         }
       }
     },
+    "flatten_array": {
+      "label": "合并数组",
+      "description": "将数组中的数组成员合并为一个 result 数组，可按字段名读取对象里的数组",
+      "props": {
+        "array": {
+          "label": "数组",
+          "tooltip": "要合并的数组，例如二维数组，或包含数组字段的对象列表"
+        },
+        "key": {
+          "label": "字段名",
+          "tooltip": "可选。填写后从每个对象成员中读取该字段的数组，例如 names"
+        }
+      }
+    },
     "array_text_replace": {
       "label": "数组文本替换",
       "description": "对数组中每个成员执行文本替换，输出 result 字符串数组",

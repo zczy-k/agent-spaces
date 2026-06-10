@@ -405,6 +405,20 @@
         }
       }
     },
+    "flatten_array": {
+      "label": "Flatten Array",
+      "description": "Merge array items into one result array, optionally reading arrays from an object field",
+      "props": {
+        "array": {
+          "label": "Array",
+          "tooltip": "Array to flatten, such as a nested array or an object list with array fields"
+        },
+        "key": {
+          "label": "Field Name",
+          "tooltip": "Optional. Read this field from each object item before flattening, for example names"
+        }
+      }
+    },
     "array_text_replace": {
       "label": "Array Text Replace",
       "description": "Replace text in each array item and output result as a string array",
