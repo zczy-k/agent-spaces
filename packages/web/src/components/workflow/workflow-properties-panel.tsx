@@ -198,8 +198,8 @@ export function WorkflowPropertiesPanel({
         onOpenTestDialog={() => setNodeTestDialogOpen(true)}
       />
 
-      <ScrollArea className="min-h-0 flex-1">
-        <div className="space-y-4 p-3 pt-0">
+      <ScrollArea className="min-h-0 flex-1" viewportClassName="flex flex-col">
+        <div className="flex min-h-full flex-col gap-4 p-3 pt-0">
           {hasDebugOutput && visibleDebugResult && (
             <section className="space-y-2 rounded border bg-muted/20 p-2 mt-2">
               <div className="flex items-center gap-1.5">

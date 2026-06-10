@@ -648,6 +648,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           nodeWidth={nodeWidth}
           layout={logPanelLayout}
           isLogExpanded={isLogExpanded}
+          showOutputPreview={nodeData.outputPreviewEnabled !== false}
           onToggleLog={() => setIsLogExpanded(prev => !prev)}
         />
       ) : null}

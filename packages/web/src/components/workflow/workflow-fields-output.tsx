@@ -21,7 +21,8 @@ import { TagInput } from '@/components/common/tag-input';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Braces, ChevronRight, GripVertical, ListChecks, Plus, Trash2 } from 'lucide-react';
+import { Toggle } from '@/components/ui/toggle';
+import { Braces, ChevronRight, GripVertical, Image as ImageIcon, ListChecks, Plus, Trash2 } from 'lucide-react';
 import {
 	Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -90,12 +91,16 @@ export function OutputFieldsEditor({
 	variableContext,
 	depth = 0,
 	showRequired = false,
+	outputPreviewEnabled,
+	onOutputPreviewEnabledChange,
 }: {
 	value: OutputField[];
 	onChange: (v: OutputField[]) => void;
 	variableContext?: WorkflowVariableContext;
 	depth?: number;
 	showRequired?: boolean;
+	outputPreviewEnabled?: boolean;
+	onOutputPreviewEnabledChange?: (enabled: boolean) => void;
 }) {
 	const t = useTranslations('workflows.outputFields');
 	const fields = getOutputFields(value);
@@ -104,6 +109,7 @@ export function OutputFieldsEditor({
 	const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 	const indent = depth * 16;
 	const fieldIds = fields.map((_, index) => `${editorId}-${index}`);
+	const showOutputPreviewToggle = depth === 0 && !!onOutputPreviewEnabledChange;
 
 	const updateField = (index: number, patch: Partial<OutputField>) => {
 		const next = [...fields];
@@ -156,158 +162,176 @@ export function OutputFieldsEditor({
 	};
 
 	return (
-		<div className="space-y-1">
+		<div className={cn('min-h-0 space-y-1', depth === 0 && 'flex h-full flex-col')}>
 			{depth === 0 && (
-				<div className="grid grid-cols-[1fr_80px] gap-1 text-[10px] font-medium text-muted-foreground">
+				<div className="grid shrink-0 grid-cols-[1fr_80px] gap-1 text-[10px] font-medium text-muted-foreground">
 					<span>{t('name')}</span>
 					<span>{t('type')}</span>
 				</div>
 			)}
-			<DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-				<SortableContext items={fieldIds} strategy={verticalListSortingStrategy}>
-					{fields.map((field, index) => (
-						<SortableOutputField key={fieldIds[index]} id={fieldIds[index]}>
-							{({ attributes, listeners }) => (
-								<>
-									<div className="group/field flex items-center gap-1" style={{ paddingLeft: `${indent}px` }}>
-										<button
-											type="button"
-											{...attributes}
-											{...listeners}
-											className="flex h-5 w-3 shrink-0 cursor-grab touch-none items-center justify-center rounded-sm text-muted-foreground/60 hover:bg-accent hover:text-foreground active:cursor-grabbing"
-											aria-label={t('dragSortField')}
-											title={t('dragSort')}
-										>
-											<GripVertical className="h-3 w-3" />
-										</button>
-										<Button
-											variant="ghost"
-											size="icon"
-											className={`h-5 w-5 shrink-0 ${expandedFields.has(index) ? '' : '-rotate-90'}`}
-											onClick={() => toggleExpand(index)}
-										>
-											<ChevronRight className="h-3 w-3" />
-										</Button>
-										{showRequired && (
-											<Checkbox
-												checked={Boolean(field.required) || false}
-												onCheckedChange={(checked) => updateField(index, { required: checked === true || undefined })}
-												className="h-3.5 w-3.5"
-												title={t('required')}
-											/>
-										)}
-										<Input
-											value={field.key ?? ''}
-											onChange={(e) => updateField(index, { key: e.target.value })}
-											placeholder={t('fieldNamePlaceholder')}
-											className="h-6 min-w-0 flex-1 text-[11px]"
-										/>
-										<Select
-											value={field.type ?? 'string'}
-											onValueChange={(type) => updateField(index, { type: type as OutputField['type'] })}
-										>
-											<SelectTrigger size="sm" className="h-6 w-20 shrink-0 px-2 py-0 text-[11px] [&_svg]:size-3">
-												<SelectValue />
-											</SelectTrigger>
-											<SelectContent>
-												{FIELD_TYPES.map(type => (
-													<SelectItem key={type} value={type} className="text-[11px]">{type}</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-										<Button
-											variant="ghost"
-											size="icon"
-											className="h-5 w-5 shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover/field:opacity-100"
-											onClick={() => onChange(fields.filter((_, i) => i !== index))}
-										>
-											<Trash2 className="h-2.5 w-2.5" />
-										</Button>
-									</div>
-									{expandedFields.has(index) && !isStructuredOutputFieldType(field.type) && (
-										<div className="space-y-0.5" style={{ paddingLeft: `${indent + 20}px` }}>
-											{isFileOutputFieldType(field.type) ? (
-												<Input
-													value={field.fileNameFilter ?? ''}
-													onChange={(e) => updateField(index, { fileNameFilter: e.target.value || undefined })}
-													placeholder={t('fileNameFilterPlaceholder')}
-													className="h-6 text-[11px]"
+			<div className={cn('space-y-1', depth === 0 && 'min-h-0 flex-1 overflow-auto')}>
+				<DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+					<SortableContext items={fieldIds} strategy={verticalListSortingStrategy}>
+						{fields.map((field, index) => (
+							<SortableOutputField key={fieldIds[index]} id={fieldIds[index]}>
+								{({ attributes, listeners }) => (
+									<>
+										<div className="group/field flex items-center gap-1" style={{ paddingLeft: `${indent}px` }}>
+											<button
+												type="button"
+												{...attributes}
+												{...listeners}
+												className="flex h-5 w-3 shrink-0 cursor-grab touch-none items-center justify-center rounded-sm text-muted-foreground/60 hover:bg-accent hover:text-foreground active:cursor-grabbing"
+												aria-label={t('dragSortField')}
+												title={t('dragSort')}
+											>
+												<GripVertical className="h-3 w-3" />
+											</button>
+											<Button
+												variant="ghost"
+												size="icon"
+												className={`h-5 w-5 shrink-0 ${expandedFields.has(index) ? '' : '-rotate-90'}`}
+												onClick={() => toggleExpand(index)}
+											>
+												<ChevronRight className="h-3 w-3" />
+											</Button>
+											{showRequired && (
+												<Checkbox
+													checked={Boolean(field.required) || false}
+													onCheckedChange={(checked) => updateField(index, { required: checked === true || undefined })}
+													className="h-3.5 w-3.5"
+													title={t('required')}
 												/>
-											) : (
-												<div className="flex items-start gap-1">
-													<button
-														type="button"
-														className={`mt-0.5 rounded p-0.5 transition-colors hover:bg-accent ${field.inputMode === 'native' ? 'text-primary' : 'text-muted-foreground'}`}
-														title={field.inputMode === 'native' ? t('switchToVariableInput') : t('switchToNativeInput')}
-														onClick={() => toggleInputMode(index)}
-													>
-														{field.inputMode === 'native' ? <ListChecks className="h-3.5 w-3.5" /> : <Braces className="h-3.5 w-3.5" />}
-													</button>
-													<div className="min-w-0 flex-1">
-														{field.inputMode === 'native' && field.type === 'select' ? (
-															<TagInput
-																value={getSelectOptions(field.options)}
-																onChange={(options) => updateField(index, { options })}
-																placeholder={t('selectOptionsPlaceholder')}
-																addLabel={t('addOption')}
-																className="h-6 text-[11px]"
-															/>
-														) : field.inputMode === 'native' ? (
-															<Input
-																value={stringifyOutputFieldValue(field.value)}
-																onChange={(e) => updateField(index, { value: parseArrayOutputFieldValue(field.type, e.target.value) })}
-																placeholder={t('defaultValuePlaceholder')}
-																className="h-6 text-[11px]"
-															/>
-														) : (
-															<WorkflowVariableInput
-																value={stringifyOutputFieldValue(field.value)}
-																placeholder={t('defaultValuePlaceholder')}
-																variableContext={variableContext}
-																typeFilter={field.type}
-																groupClassName="h-6 min-h-0 rounded-md"
-																inputClassName="h-6 text-[11px]"
-																onChange={(nextValue) => updateField(index, { value: parseArrayOutputFieldValue(field.type, nextValue) })}
-																onSelectVariable={(path) => insertVariable(index, path)}
-															/>
-														)}
-													</div>
-												</div>
 											)}
 											<Input
-												value={field.description ?? ''}
-												onChange={(e) => updateField(index, { description: e.target.value || undefined })}
-												placeholder={t('descriptionPlaceholder')}
-												className="h-6 text-[11px]"
+												value={field.key ?? ''}
+												onChange={(e) => updateField(index, { key: e.target.value })}
+												placeholder={t('fieldNamePlaceholder')}
+												className="h-6 min-w-0 flex-1 text-[11px]"
 											/>
+											<Select
+												value={field.type ?? 'string'}
+												onValueChange={(type) => updateField(index, { type: type as OutputField['type'] })}
+											>
+												<SelectTrigger size="sm" className="h-6 w-20 shrink-0 px-2 py-0 text-[11px] [&_svg]:size-3">
+													<SelectValue />
+												</SelectTrigger>
+												<SelectContent>
+													{FIELD_TYPES.map(type => (
+														<SelectItem key={type} value={type} className="text-[11px]">{type}</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+											<Button
+												variant="ghost"
+												size="icon"
+												className="h-5 w-5 shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover/field:opacity-100"
+												onClick={() => onChange(fields.filter((_, i) => i !== index))}
+											>
+												<Trash2 className="h-2.5 w-2.5" />
+											</Button>
 										</div>
-									)}
-									{isStructuredOutputFieldType(field.type) && depth < 3 && (
-										<div>
-											<OutputFieldsEditor
-												value={getOutputFields(field.children)}
-												onChange={(children) => updateField(index, { children })}
-												variableContext={variableContext}
-												depth={depth + 1}
-											/>
-										</div>
-									)}
-								</>
-							)}
-						</SortableOutputField>
-					))}
-				</SortableContext>
-			</DndContext>
-			<Button
-				variant="ghost"
-				size="sm"
-				className="h-5 w-full gap-0.5 text-[10px] text-muted-foreground hover:text-foreground"
-				style={{ paddingLeft: `${indent}px` }}
-				onClick={() => onChange([...fields, { key: '', type: 'string', value: '' }])}
-			>
-				<Plus className="h-2.5 w-2.5" />
-				{t('addField')}
-			</Button>
+										{expandedFields.has(index) && !isStructuredOutputFieldType(field.type) && (
+											<div className="space-y-0.5" style={{ paddingLeft: `${indent + 20}px` }}>
+												{isFileOutputFieldType(field.type) ? (
+													<Input
+														value={field.fileNameFilter ?? ''}
+														onChange={(e) => updateField(index, { fileNameFilter: e.target.value || undefined })}
+														placeholder={t('fileNameFilterPlaceholder')}
+														className="h-6 text-[11px]"
+													/>
+												) : (
+													<div className="flex items-start gap-1">
+														<button
+															type="button"
+															className={`mt-0.5 rounded p-0.5 transition-colors hover:bg-accent ${field.inputMode === 'native' ? 'text-primary' : 'text-muted-foreground'}`}
+															title={field.inputMode === 'native' ? t('switchToVariableInput') : t('switchToNativeInput')}
+															onClick={() => toggleInputMode(index)}
+														>
+															{field.inputMode === 'native' ? <ListChecks className="h-3.5 w-3.5" /> : <Braces className="h-3.5 w-3.5" />}
+														</button>
+														<div className="min-w-0 flex-1">
+															{field.inputMode === 'native' && field.type === 'select' ? (
+																<TagInput
+																	value={getSelectOptions(field.options)}
+																	onChange={(options) => updateField(index, { options })}
+																	placeholder={t('selectOptionsPlaceholder')}
+																	addLabel={t('addOption')}
+																	className="h-6 text-[11px]"
+																/>
+															) : field.inputMode === 'native' ? (
+																<Input
+																	value={stringifyOutputFieldValue(field.value)}
+																	onChange={(e) => updateField(index, { value: parseArrayOutputFieldValue(field.type, e.target.value) })}
+																	placeholder={t('defaultValuePlaceholder')}
+																	className="h-6 text-[11px]"
+																/>
+															) : (
+																<WorkflowVariableInput
+																	value={stringifyOutputFieldValue(field.value)}
+																	placeholder={t('defaultValuePlaceholder')}
+																	variableContext={variableContext}
+																	typeFilter={field.type}
+																	groupClassName="h-6 min-h-0 rounded-md"
+																	inputClassName="h-6 text-[11px]"
+																	onChange={(nextValue) => updateField(index, { value: parseArrayOutputFieldValue(field.type, nextValue) })}
+																	onSelectVariable={(path) => insertVariable(index, path)}
+																/>
+															)}
+														</div>
+													</div>
+												)}
+												<Input
+													value={field.description ?? ''}
+													onChange={(e) => updateField(index, { description: e.target.value || undefined })}
+													placeholder={t('descriptionPlaceholder')}
+													className="h-6 text-[11px]"
+												/>
+											</div>
+										)}
+										{isStructuredOutputFieldType(field.type) && depth < 3 && (
+											<div>
+												<OutputFieldsEditor
+													value={getOutputFields(field.children)}
+													onChange={(children) => updateField(index, { children })}
+													variableContext={variableContext}
+													depth={depth + 1}
+												/>
+											</div>
+										)}
+									</>
+								)}
+							</SortableOutputField>
+						))}
+					</SortableContext>
+				</DndContext>
+			</div>
+			<div className="shrink-0 border-t border-border/60 pt-1">
+				<Button
+					variant="ghost"
+					size="sm"
+					className="h-5 w-full gap-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+					style={{ paddingLeft: `${indent}px` }}
+					onClick={() => onChange([...fields, { key: '', type: 'string', value: '' }])}
+				>
+					<Plus className="h-2.5 w-2.5" />
+					{t('addField')}
+				</Button>
+				{showOutputPreviewToggle && (
+					<div className="mt-1 flex h-7 items-center justify-start px-1">
+						<Toggle
+							size="sm"
+							pressed={outputPreviewEnabled ?? true}
+							onPressedChange={onOutputPreviewEnabledChange}
+							className="h-6 min-w-6 px-1 text-muted-foreground data-[state=on]:text-primary"
+							title="开启输出预览"
+							aria-label="开启输出预览"
+						>
+							<ImageIcon className="h-3.5 w-3.5" />
+						</Toggle>
+					</div>
+				)}
+			</div>
 		</div>
 	);
 }

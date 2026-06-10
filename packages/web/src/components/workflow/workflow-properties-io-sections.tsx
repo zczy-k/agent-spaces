@@ -64,8 +64,8 @@ export function OutputFieldsSection({
   const t = useTranslations('workflows');
 
   return (
-    <section id="output-fields-section" className="space-y-2 border-t pt-3">
-      <div className="flex items-center gap-1.5">
+    <section id="output-fields-section" className="flex min-h-[180px] flex-1 flex-col gap-2 border-t pt-3">
+      <div className="flex shrink-0 items-center gap-1.5">
         <span className="text-xs font-medium text-muted-foreground">{t('properties.outputFields')}</span>
         <div className="ml-auto flex items-center gap-1">
           <Button
@@ -117,6 +117,8 @@ export function OutputFieldsSection({
         value={getOutputFields(data.outputs)}
         onChange={(value) => onDataChange('outputs', value)}
         variableContext={variableContext}
+        outputPreviewEnabled={data.outputPreviewEnabled !== false}
+        onOutputPreviewEnabledChange={(enabled) => onDataChange('outputPreviewEnabled', enabled)}
       />
     </section>
   );

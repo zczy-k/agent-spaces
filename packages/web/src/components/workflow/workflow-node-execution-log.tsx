@@ -74,6 +74,7 @@ interface WorkflowNodeExecutionLogProps {
   nodeWidth: number;
   layout: WorkflowLogPanelLayout;
   isLogExpanded: boolean;
+  showOutputPreview: boolean;
   onToggleLog: () => void;
 }
 
@@ -88,6 +89,7 @@ export function WorkflowNodeExecutionLog({
   nodeWidth,
   layout,
   isLogExpanded,
+  showOutputPreview,
   onToggleLog,
 }: WorkflowNodeExecutionLogProps) {
   const t = useTranslations('workflows');
@@ -435,13 +437,13 @@ export function WorkflowNodeExecutionLog({
       )}
 
       {/* Resource preview */}
-      {inputMediaItems.length > 0 && (
+      {showOutputPreview && inputMediaItems.length > 0 && (
         <div className="border-t border-border/50">
           <div className="px-2 py-0.5 text-[9px] font-medium text-muted-foreground/70 uppercase tracking-wider">{t('execution.input')}</div>
           <NodeMediaPreview items={inputMediaItems} />
         </div>
       )}
-      {outputMediaItems.length > 0 && (
+      {showOutputPreview && outputMediaItems.length > 0 && (
         <div className="border-t border-border/50">
           <div className="px-2 py-0.5 text-[9px] font-medium text-muted-foreground/70 uppercase tracking-wider">{t('execution.output')}</div>
           <NodeMediaPreview items={outputMediaItems} />
