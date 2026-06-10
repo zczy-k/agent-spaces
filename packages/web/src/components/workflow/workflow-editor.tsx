@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { ReactFlowProvider } from '@xyflow/react';
-import { Layout, Model, TabNode, IJsonModel, Actions, Action } from 'flexlayout-react';
+import { Layout, Model, TabNode, IJsonModel, ITabRenderValues, Actions, Action } from 'flexlayout-react';
 import type { ExecutionStep, StagedNode, WorkflowTemplate } from '@agent-spaces/shared';
 import { WorkflowCanvas } from './workflow-canvas';
 import { WorkflowNodeSidebar } from './workflow-node-sidebar';
@@ -25,7 +25,7 @@ import { FloatingChatPanel } from '@/components/ui/floating-chat-widget';
 import { AgentEditor } from '@/components/sidebar/agent-editor';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ResizablePanel, ResizableHandle, ResizablePanelGroup } from '@/components/ui/resizable';
-import { Loader2, AlertCircle, Settings2, Trash2 } from 'lucide-react';
+import { Loader2, AlertCircle, Settings2, Trash2, Package, Braces, Group, History, Waypoints, Workflow, Play } from 'lucide-react';
 import { useEditorShortcuts, useClipboard, useExecutionPanel } from '@/hooks/use-workflow-editor';
 import { Button } from '@/components/ui/button';
 import { useWorkspaceStore } from '@/stores/workspace';
@@ -88,6 +88,19 @@ const defaultJson: IJsonModel = {
       },
     ],
   },
+};
+
+// ---- Tab icon map ----
+
+const WORKFLOW_TAB_ICONS: Record<string, React.ReactNode> = {
+  'node-sidebar': <Waypoints size={16} />,
+  'canvas': <Workflow size={16} />,
+  'properties': <Settings2 size={16} />,
+  'variables': <Braces size={16} />,
+  'groups': <Group size={16} />,
+  'history': <History size={16} />,
+  'staging': <Package size={16} />,
+  'execution-bar': <Play size={16} />,
 };
 
 // ---- Inner editor (needs ReactFlow context) ----
@@ -281,6 +294,13 @@ function WorkflowEditorInner({
       }
     }
   }, [state]);
+
+  const onRenderTab = useCallback((node: TabNode, renderValues: ITabRenderValues) => {
+    const icon = WORKFLOW_TAB_ICONS[node.getComponent() ?? ''];
+    if (icon) {
+      renderValues.content = <span title={node.getName()} className="flex items-center gap-1.5">{icon}<span className="text-xs">{node.getName()}</span></span>;
+    }
+  }, []);
 
   const factory = useCallback((node: TabNode) => {
     const comp = node.getComponent();
@@ -534,7 +554,7 @@ function WorkflowEditorInner({
       />
 
       <div className="flex-1 min-h-0">
-        <Layout model={model} factory={factory} onModelChange={onModelChange} />
+        <Layout model={model} factory={factory} onRenderTab={onRenderTab} onModelChange={onModelChange} />
       </div>
 
       {/* Trigger settings dialog */}

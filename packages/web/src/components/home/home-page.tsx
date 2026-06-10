@@ -15,7 +15,8 @@ export function HomePage({ initialWorkspaces }: { initialWorkspaces: Workspace[]
   const setWorkspaces = useWorkspaceStore((store) => store.setWorkspaces)
   const router = useRouter()
   const searchParams = useSearchParams()
-  const activeTab = TABS.includes(searchParams.get('tab') ?? '') ? searchParams.get('tab')! : TABS[0]
+  const tabParam = searchParams.get('tab')
+  const activeTab = tabParam ? TABS.find(t => t.toLowerCase() === tabParam) ?? TABS[0] : TABS[0]
 
   useEffect(() => {
     setWorkspaces(initialWorkspaces)
