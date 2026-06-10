@@ -13,7 +13,6 @@ interface GroupOverlayProps {
   group: WorkflowGroup;
   childNodes: Array<{ id: string; position: { x: number; y: number }; width?: number; height?: number }>;
   isSelected: boolean;
-  isPreview: boolean;
   onSelect: (groupId: string) => void;
   onDelete: (groupId: string) => void;
   onUpdate: (groupId: string, updates: Partial<WorkflowGroup>) => void;
@@ -40,7 +39,7 @@ function getGroupColor(color?: string) {
 }
 
 export function WorkflowGroupOverlay({
-  group, childNodes, isSelected, isPreview,
+  group, childNodes, isSelected,
   onSelect, onDelete, onUpdate, onMove, onDragPreviewChange, screenDeltaToFlowDelta,
 }: GroupOverlayProps) {
   const [collapsed, setCollapsed] = useState(false);
@@ -104,7 +103,7 @@ export function WorkflowGroupOverlay({
   }, []);
 
   const handleHeaderPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (isPreview || group.locked || isEditing) return;
+    if (group.locked || isEditing) return;
     const target = event.target as Element;
     if (target.closest('button,input')) return;
 
@@ -170,9 +169,7 @@ export function WorkflowGroupOverlay({
     document.addEventListener('pointermove', handlePointerMove);
     document.addEventListener('pointerup', handlePointerUp);
     document.addEventListener('pointercancel', handlePointerCancel);
-  }, [bounds, group.id, group.locked, isEditing, isPreview, onDragPreviewChange, onMove, onSelect, screenDeltaToFlowDelta]);
-
-  if (isPreview && collapsed) return null;
+  }, [bounds, group.id, group.locked, isEditing, onDragPreviewChange, onMove, onSelect, screenDeltaToFlowDelta]);
 
   return (
     <div
@@ -191,7 +188,7 @@ export function WorkflowGroupOverlay({
       onClick={(e) => { e.stopPropagation(); onSelect(group.id); }}
     >
       <div
-        className={`pointer-events-auto flex h-10 select-none items-center gap-1 px-2 pb-2 backdrop-blur-sm ${group.locked || isPreview ? 'cursor-default' : 'cursor-move'}`}
+        className={`pointer-events-auto flex h-10 select-none items-center gap-1 px-2 pb-2 backdrop-blur-sm ${group.locked ? 'cursor-default' : 'cursor-move'}`}
         style={{ backgroundColor: colors.header }}
         onPointerDown={handleHeaderPointerDown}
         onMouseEnter={() => setIsHovered(true)}
@@ -223,7 +220,7 @@ export function WorkflowGroupOverlay({
           </span>
         )}
 
-        {isHovered && !isPreview && (
+        {isHovered && (
           <div className="flex items-center gap-0.5">
             {GROUP_COLORS.map(c => (
               <button
@@ -248,7 +245,7 @@ export function WorkflowGroupOverlay({
             </button>
           </div>
         )}
-        {group.locked && !isPreview && !isHovered && (
+        {group.locked && !isHovered && (
           <Lock className="h-2.5 w-2.5 text-orange-500 shrink-0" />
         )}
       </div>

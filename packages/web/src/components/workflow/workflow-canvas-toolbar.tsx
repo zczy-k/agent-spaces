@@ -102,7 +102,7 @@ export function CanvasToolbar({
 
         <CanvasToolbarButton
           tooltip={t('canvasToolbar.drawAreaAddNode')}
-          disabled={isPreview || !onToggleRectangleDraw}
+          disabled={!onToggleRectangleDraw}
           className={`h-7 w-7 p-0 ${rectangleDrawActive ? 'text-blue-500' : ''}`}
           onClick={onToggleRectangleDraw}
         >
@@ -111,7 +111,7 @@ export function CanvasToolbar({
 
         <CanvasToolbarButton
           tooltip={t('canvasToolbar.drawAreaSelectNode')}
-          disabled={isPreview || !onToggleLassoSelection}
+          disabled={!onToggleLassoSelection}
           className={`h-7 w-7 p-0 ${lassoSelectionActive ? 'text-blue-500' : ''}`}
           onClick={onToggleLassoSelection}
         >

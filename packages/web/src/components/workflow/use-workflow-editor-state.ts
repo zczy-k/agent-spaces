@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import type { ExecutionLog, OperationEntry, Workflow, WorkflowTemplate } from '@agent-spaces/shared';
 import { useWorkflowStore } from '@/stores/workflow';
-import { operationHistoryApi, workflowApi } from '@/lib/workflow-api';
+import { operationHistoryApi, workflowApi, workflowVersionApi } from '@/lib/workflow-api';
 import { createWorkflowEdgeId } from '@/lib/workflow-edge-id';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 
@@ -80,6 +80,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editingName, setEditingName] = useState('');
   const [isPreview, setIsPreview] = useState(false);
+  const [isPreviewDirty, setIsPreviewDirty] = useState(false);
   const [undoStack, setUndoStack] = useState<string[]>([]);
   const [redoStack, setRedoStack] = useState<string[]>([]);
   const [operationLog, setOperationLog] = useState<OperationEntry[]>([]);
@@ -116,6 +117,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
 
   // ---- Dirty tracking ----
   const markDirty = useCallback(() => setIsDirty(true), []);
+  const markPreviewDirty = useCallback(() => setIsPreviewDirty(true), []);
 
   const cloneWorkflow = useCallback((value: Workflow): Workflow => JSON.parse(JSON.stringify(value)) as Workflow, []);
 
@@ -139,6 +141,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
     });
     setSelectedNodeId(null);
     setSelectedNodeIds([]);
+    setIsPreviewDirty(false);
     setIsPreview(true);
   }, [cloneWorkflow]);
 
@@ -150,8 +153,31 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
     });
     setSelectedNodeId(null);
     setSelectedNodeIds([]);
+    setIsPreviewDirty(false);
     setIsPreview(false);
   }, [cloneWorkflow]);
+
+  const savePreviewEdits = useCallback(async (options?: { createVersion?: boolean; versionName?: string }) => {
+    if (!isPreview || !workflow) return;
+    const workflowToSave = cloneWorkflow(workflow);
+    if (options?.createVersion) {
+      const name = options.versionName?.trim() || `Preview edit ${new Date().toLocaleString()}`;
+      await workflowVersionApi.add(workflowToSave.id, name, workflowToSave.nodes, workflowToSave.edges);
+    }
+
+    const saved = await workflowApi.update(workflowToSave.id, {
+      ...workflowToSave,
+      updatedAt: Date.now(),
+    });
+    prePreviewWorkflowRef.current = null;
+    setIsPreviewDirty(false);
+    setIsPreview(false);
+    setWorkflow(saved);
+    setIsDirty(false);
+    store.upsertWorkflow(saved);
+    setSelectedNodeId(null);
+    setSelectedNodeIds([]);
+  }, [cloneWorkflow, isPreview, store, workflow]);
 
   // ---- Undo / Redo ----
   const workflowId = workflow?.id ?? null;
@@ -332,6 +358,7 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
     isEditingName, setIsEditingName,
     editingName, setEditingName,
     isPreview, setIsPreview,
+    isPreviewDirty,
     undoStack, redoStack, operationLog,
     triggerDialogOpen, setTriggerDialogOpen,
     pluginsDialogOpen, setPluginsDialogOpen,
@@ -340,8 +367,8 @@ export function useWorkflowEditorState(template: WorkflowTemplate | null) {
     embeddedSubWorkflowId, setEmbeddedSubWorkflowId,
 
     // Actions
-    markDirty, pushUndo, handleUndo, handleRedo, clearOperationHistory,
-    enterPreview, exitPreview,
+    markDirty, markPreviewDirty, pushUndo, handleUndo, handleRedo, clearOperationHistory,
+    enterPreview, exitPreview, savePreviewEdits,
     saveWorkflow,
     startEditName, finishEditName,
     handleExport, handleImport,

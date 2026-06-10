@@ -104,7 +104,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const isBoundaryNode = definition?.type === 'start' || definition?.type === 'end';
   const isLoopBody = definition?.type === LOOP_BODY_NODE_TYPE;
   const canDeleteNode = !isBoundaryNode && !isLoopBody;
-  const isCanvasLocked = nodeData.isPreview || nodeData.isCanvasLocked;
+  const isCanvasLocked = nodeData.isCanvasLocked;
   const selectedNodeIds = useMemo(
     () => Array.isArray(nodeData.selectedNodeIds) ? nodeData.selectedNodeIds : [],
     [nodeData.selectedNodeIds],

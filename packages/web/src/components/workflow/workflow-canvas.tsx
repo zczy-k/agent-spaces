@@ -522,7 +522,7 @@ export function WorkflowCanvas({
   const { screenToFlowPosition } = useReactFlow();
   const [helperHorizontal] = useState<number | undefined>();
   const [helperVertical] = useState<number | undefined>();
-  const isCanvasLocked = isPreview || isRunning;
+  const isCanvasLocked = isRunning;
 
   useEffect(() => {
     if (isCanvasLocked) {
@@ -1165,7 +1165,6 @@ export function WorkflowCanvas({
               group={group}
               childNodes={childNodes}
               isSelected={selectedGroupId === group.id}
-              isPreview={isPreview}
               onSelect={setSelectedGroupId}
               onDelete={(groupId) => onGroupDelete?.(groupId)}
               onUpdate={(groupId, updates) => onGroupUpdate?.(groupId, updates)}

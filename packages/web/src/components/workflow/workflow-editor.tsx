@@ -140,15 +140,17 @@ function WorkflowEditorInner({
     workflow: state.workflow,
     workflowId: state.workflowId,
   });
+  const { clearSelectedExecutionLog } = execution;
 
   const isWorkflowRunning = execution.execStatus === 'running' || execution.execStatus === 'paused';
-  const isWorkflowReadOnly = state.isPreview || isWorkflowRunning;
+  const isWorkflowReadOnly = isWorkflowRunning;
+  const markEditorDirty = state.isPreview ? state.markPreviewDirty : state.markDirty;
 
   const canvas = useWorkflowEditorCanvas({
     workflow: state.workflow,
     isReadOnly: isWorkflowReadOnly,
     setWorkflow: state.setWorkflow,
-    markDirty: state.markDirty,
+    markDirty: markEditorDirty,
     pushUndo: state.pushUndo,
     selectedNodeId: state.selectedNodeId,
     setSelectedNodeId: state.setSelectedNodeId,
@@ -185,7 +187,7 @@ function WorkflowEditorInner({
   const chat = useWorkflowEditorAgentChat({
     workflow: state.workflow,
     setWorkflow: state.setWorkflow,
-    markDirty: state.markDirty,
+    markDirty: markEditorDirty,
     pushUndo: state.pushUndo,
     selectedNode: state.selectedNode,
     workspaceId,
@@ -200,7 +202,7 @@ function WorkflowEditorInner({
     return toPreviewDebugResult(step);
   }, [execution.executionLog, state.isPreview, state.selectedNodeId]);
 
-  const { isPreview, setWorkflow } = state;
+  const { enterPreview, exitPreview, isPreview, markPreviewDirty, saveWorkflow, setWorkflow } = state;
   const handlePreviewNodeDataUpdate = useCallback((nodeId: string, data: Record<string, unknown>) => {
     if (!isPreview) return;
     setWorkflow((current) => {
@@ -214,11 +216,24 @@ function WorkflowEditorInner({
         } : node),
       };
     });
-  }, [isPreview, setWorkflow]);
-  const exitExecutionPreview = () => {
-    state.exitPreview();
-    execution.clearSelectedExecutionLog();
-  };
+    markPreviewDirty();
+  }, [isPreview, markPreviewDirty, setWorkflow]);
+  const exitExecutionPreview = useCallback(() => {
+    exitPreview();
+    clearSelectedExecutionLog();
+  }, [clearSelectedExecutionLog, exitPreview]);
+  const autoPreviewLogIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const log = execution.executionLog;
+    const isFinished = execution.execStatus === 'completed' || execution.execStatus === 'error';
+    if (!isFinished || !log?.snapshot) return;
+    if (execution.selectedExecutionLogId !== log.id) return;
+    if (autoPreviewLogIdRef.current === log.id) return;
+
+    autoPreviewLogIdRef.current = log.id;
+    enterPreview(log);
+  }, [enterPreview, execution.execStatus, execution.executionLog, execution.selectedExecutionLogId]);
 
   // ---- Load plugin node definitions at editor level ----
   // Must happen here, not in WorkflowNodeSidebar, so canvas works even when sidebar tab is closed
@@ -255,7 +270,7 @@ function WorkflowEditorInner({
   useEffect(() => {
     if (!isWorkflowRunning || !canvas.nodeSelectOpen) return;
     canvas.handleNodeSelectOpenChange(false);
-  }, [canvas.handleNodeSelectOpenChange, canvas.nodeSelectOpen, isWorkflowRunning]);
+  }, [canvas, isWorkflowRunning]);
 
   // ---- Shortcuts ----
   useEditorShortcuts({
@@ -281,7 +296,7 @@ function WorkflowEditorInner({
         const pastedNodeIds = pasted.nodes.map(node => node.id);
         state.setSelectedNodeIds(pastedNodeIds);
         state.setSelectedNodeId(pastedNodeIds.length === 1 ? pastedNodeIds[0] : null);
-        state.markDirty();
+        markEditorDirty();
       }
     },
   });
@@ -301,8 +316,8 @@ function WorkflowEditorInner({
     state.setWorkflow(w => w ? { ...w, nodes: [...w.nodes, newNode] } : null);
     state.setSelectedNodeId(newNode.id);
     state.setSelectedNodeIds([newNode.id]);
-    state.markDirty();
-  }, [state, isWorkflowReadOnly]);
+    markEditorDirty();
+  }, [isWorkflowReadOnly, markEditorDirty, state]);
 
   // ---- flexlayout-react model ----
   const [model] = useState(() => {
@@ -355,7 +370,10 @@ function WorkflowEditorInner({
         return (
           <WorkflowNodeSidebar
             workflow={workflow}
-            onWorkflowChange={state.handleWorkflowMetaChange}
+            onWorkflowChange={(nextWorkflow) => {
+              state.setWorkflow(nextWorkflow);
+              markEditorDirty();
+            }}
             onOpenPluginPicker={() => state.setPluginPickerDialogOpen(true)}
           />
         );
@@ -456,7 +474,7 @@ function WorkflowEditorInner({
               if (isWorkflowReadOnly) return;
               state.pushUndo('update variables');
               state.setWorkflow(w => w ? { ...w, variables } : null);
-              state.markDirty();
+              markEditorDirty();
             }}
           />
         );
@@ -487,7 +505,7 @@ function WorkflowEditorInner({
                     nodes: version.snapshot?.nodes || [],
                     edges: (version.snapshot?.edges || []) as typeof workflow.edges,
                   } : null);
-                  state.markDirty();
+                  markEditorDirty();
                 }}
               />
             </ResizablePanel>
@@ -539,7 +557,7 @@ function WorkflowEditorInner({
       default:
         return null;
     }
-  }, [state, execution, canvas, isWorkflowRunning, isWorkflowReadOnly, addStagedNodeToCanvas, exitExecutionPreview, handlePreviewNodeDataUpdate, previewResult]);
+  }, [state, execution, canvas, isWorkflowRunning, isWorkflowReadOnly, addStagedNodeToCanvas, exitExecutionPreview, handlePreviewNodeDataUpdate, markEditorDirty, previewResult]);
 
   // ---- Render ----
   if (state.isLoading) {
@@ -579,13 +597,11 @@ function WorkflowEditorInner({
         workflow={workflow}
         isDirty={state.isDirty}
         isPreview={state.isPreview}
-        canUndo={!isWorkflowReadOnly && state.undoStack.length > 0}
-        canRedo={!isWorkflowReadOnly && state.redoStack.length > 0}
+        isPreviewDirty={state.isPreviewDirty}
         onBack={onBack}
         onExitPreview={exitExecutionPreview}
-        onSave={isWorkflowReadOnly ? () => {} : state.saveWorkflow}
-        onUndo={isWorkflowReadOnly ? () => {} : state.handleUndo}
-        onRedo={isWorkflowReadOnly ? () => {} : state.handleRedo}
+        onSave={isWorkflowReadOnly || state.isPreview ? () => {} : state.saveWorkflow}
+        onSavePreviewEdits={state.savePreviewEdits}
         onExport={(format) => canvasExportRef.current?.exportCanvas(format)}
         isExporting={false}
         onImport={isWorkflowReadOnly ? () => {} : state.handleImport}
@@ -599,7 +615,8 @@ function WorkflowEditorInner({
           if (workflow && !isWorkflowReadOnly) {
             const updated = { ...workflow, ...updates };
             state.setWorkflow(updated);
-            state.saveWorkflow(updated);
+            if (state.isPreview) markEditorDirty();
+            else saveWorkflow(updated);
           }
         }}
       />
@@ -616,7 +633,7 @@ function WorkflowEditorInner({
         onSave={(triggers) => {
           if (isWorkflowReadOnly) return;
           state.setWorkflow(w => w ? { ...w, triggers } : null);
-          state.markDirty();
+          markEditorDirty();
         }}
         onClose={() => state.setTriggerDialogOpen(false)}
       />
@@ -645,14 +662,20 @@ function WorkflowEditorInner({
         open={state.pluginsDialogOpen}
         onOpenChange={state.setPluginsDialogOpen}
         workflow={workflow}
-        onWorkflowChange={state.handleWorkflowMetaChange}
+        onWorkflowChange={(nextWorkflow) => {
+          state.setWorkflow(nextWorkflow);
+          markEditorDirty();
+        }}
       />
 
       <WorkflowPluginPickerDialog
         open={state.pluginPickerDialogOpen}
         onOpenChange={state.setPluginPickerDialogOpen}
         workflow={workflow}
-        onWorkflowChange={state.handleWorkflowMetaChange}
+        onWorkflowChange={(nextWorkflow) => {
+          state.setWorkflow(nextWorkflow);
+          markEditorDirty();
+        }}
       />
 
       <WorkflowNodeSelectDialog

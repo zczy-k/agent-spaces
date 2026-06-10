@@ -3,10 +3,14 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import {
-  Save, ArrowLeft,
-  Upload, PackagePlus, MoreVertical, FolderOpen, FileImage, Image,
+  Save, ArrowLeft, Loader2,
+  Upload, PackagePlus, MoreVertical, FolderOpen, FileImage, Image as ImageIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui/tooltip';
@@ -20,9 +24,11 @@ interface EditorToolbarProps {
   workflow: Workflow | null;
   isDirty: boolean;
   isPreview: boolean;
+  isPreviewDirty: boolean;
   onBack: () => void;
   onExitPreview: () => void;
   onSave: () => void;
+  onSavePreviewEdits: (options?: { createVersion?: boolean; versionName?: string }) => Promise<void>;
   onExport: (format: 'png' | 'jpeg') => void;
   isExporting?: boolean;
   onImport: () => void;
@@ -45,13 +51,27 @@ function ToolBtn({ tooltip, children, ...props }: React.ComponentProps<typeof Bu
 }
 
 export function WorkflowEditorToolbar({
-  workflow, isDirty, isPreview,
-  onBack, onExitPreview, onSave,
+  workflow, isDirty, isPreview, isPreviewDirty,
+  onBack, onExitPreview, onSave, onSavePreviewEdits,
   onExport, onImport, isExporting,
   onOpenPluginManager, onOpenWorkflowLocation, onWorkflowInfoChange,
 }: EditorToolbarProps) {
   const [infoOpen, setInfoOpen] = useState(false);
+  const [savePreviewOpen, setSavePreviewOpen] = useState(false);
+  const [versionName, setVersionName] = useState('');
+  const [savingPreview, setSavingPreview] = useState<'save' | 'version' | null>(null);
   const t = useTranslations('workflows');
+
+  const handleSavePreview = async (createVersion: boolean) => {
+    setSavingPreview(createVersion ? 'version' : 'save');
+    try {
+      await onSavePreviewEdits({ createVersion, versionName });
+      setSavePreviewOpen(false);
+      setVersionName('');
+    } finally {
+      setSavingPreview(null);
+    }
+  };
 
   return (
     <div className="flex items-center gap-1 px-3 py-1.5 bg-background border rounded-xl shrink-0">
@@ -100,9 +120,22 @@ export function WorkflowEditorToolbar({
       <div className="w-px h-5 bg-border mx-1" />
 
       {isPreview && (
-        <Button variant="ghost" size="sm" className="h-7 gap-1 text-blue-500" onClick={onExitPreview}>
-          {t('editor.exitPreview')}
-        </Button>
+        <>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 text-blue-500"
+            onClick={() => setSavePreviewOpen(true)}
+            disabled={!workflow || savingPreview !== null}
+          >
+            {savingPreview ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+            {t('editor.savePreviewEdits')}
+            {isPreviewDirty && <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />}
+          </Button>
+          <Button variant="ghost" size="sm" className="h-7 gap-1 text-blue-500" onClick={onExitPreview}>
+            {t('editor.exitPreview')}
+          </Button>
+        </>
       )}
 
       <ToolBtn tooltip={t('editor.save')} variant="ghost" size="icon" className="h-7 w-7" onClick={onSave} disabled={!isDirty}>
@@ -118,7 +151,7 @@ export function WorkflowEditorToolbar({
             {t('editor.exportPng')}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => onExport('jpeg')} disabled={isExporting}>
-            <Image className="h-4 w-4 mr-2" />
+            <ImageIcon className="h-4 w-4 mr-2" />
             {t('editor.exportJpeg')}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={onImport}>
@@ -131,6 +164,36 @@ export function WorkflowEditorToolbar({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <Dialog open={savePreviewOpen} onOpenChange={setSavePreviewOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-sm">{t('editor.savePreviewEditsTitle')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">{t('editor.savePreviewEditsConfirm')}</p>
+            <Input
+              value={versionName}
+              onChange={(event) => setVersionName(event.target.value)}
+              placeholder={t('version.namePlaceholder')}
+              className="h-8 text-sm"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" size="sm" onClick={() => setSavePreviewOpen(false)} disabled={savingPreview !== null}>
+              {t('version.cancel')}
+            </Button>
+            <Button size="sm" onClick={() => handleSavePreview(false)} disabled={savingPreview !== null}>
+              {savingPreview === 'save' && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+              {t('version.save')}
+            </Button>
+            <Button size="sm" onClick={() => handleSavePreview(true)} disabled={savingPreview !== null}>
+              {savingPreview === 'version' && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+              {t('editor.createVersionAndSave')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
