@@ -672,6 +672,26 @@
     "allNodes": "全部节点",
     "noMatch": "暂无匹配节点"
   },
+  "contextMenu": {
+    "addNode": "添加节点",
+    "paste": "粘贴",
+    "selectAll": "全选",
+    "fitView": "适应画布",
+    "autoLayout": "自动布局",
+    "exportJson": "导出 JSON"
+  },
+  "edge": {
+    "addNode": "添加节点",
+    "setLabel": "设置 Label",
+    "deleteEdge": "删除连线",
+    "insertNode": "插入节点",
+    "labelDialogTitle": "设置连接线 Label",
+    "startPoint": "起点",
+    "middlePoint": "中间",
+    "endPoint": "终点",
+    "cancel": "取消",
+    "save": "保存"
+  },
   "canvasStyle": {
     "canvasTheme": "画布主题",
     "backgroundStyle": "背景样式",

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { useLocalizedNodeDefinitionsByCategory } from '@/lib/workflow-nodes';
 import {
   ContextMenu, ContextMenuContent, ContextMenuItem,
@@ -52,6 +53,7 @@ export function WorkflowCanvasContextMenu({
   canvasPosition,
 }: CanvasContextMenuProps) {
   const categories = useLocalizedNodeDefinitionsByCategory();
+  const t = useTranslations('workflows');
 
   const handleAddNode = useCallback((type: string) => {
     const pos = canvasPosition || { x: 250, y: 250 };
@@ -68,7 +70,7 @@ export function WorkflowCanvasContextMenu({
         <ContextMenuSub>
           <ContextMenuSubTrigger className="text-xs">
             <AddNodeIcon className="mr-2 h-3 w-3" />
-            添加节点
+            {t('contextMenu.addNode')}
           </ContextMenuSubTrigger>
           <ContextMenuSubContent className="w-48">
             {Object.entries(categories).map(([category, defs]) => (
@@ -99,14 +101,14 @@ export function WorkflowCanvasContextMenu({
         {onPaste && (
           <ContextMenuItem className="text-xs" onClick={onPaste}>
             <Paste className="mr-2 h-3 w-3" />
-            粘贴
+            {t('contextMenu.paste')}
           </ContextMenuItem>
         )}
 
         {onSelectAll && (
           <ContextMenuItem className="text-xs" onClick={onSelectAll}>
             <SelectAll className="mr-2 h-3 w-3" />
-            全选
+            {t('contextMenu.selectAll')}
           </ContextMenuItem>
         )}
 
@@ -115,21 +117,21 @@ export function WorkflowCanvasContextMenu({
         {onFitView && (
           <ContextMenuItem className="text-xs" onClick={onFitView}>
             <FitView className="mr-2 h-3 w-3" />
-            适应画布
+            {t('contextMenu.fitView')}
           </ContextMenuItem>
         )}
 
         {onAutoLayout && (
           <ContextMenuItem className="text-xs" onClick={onAutoLayout}>
             <Layout className="mr-2 h-3 w-3" />
-            自动布局
+            {t('contextMenu.autoLayout')}
           </ContextMenuItem>
         )}
 
         {onExport && (
           <ContextMenuItem className="text-xs" onClick={onExport}>
             <Export className="mr-2 h-3 w-3" />
-            导出 JSON
+            {t('contextMenu.exportJson')}
           </ContextMenuItem>
         )}
       </ContextMenuContent>

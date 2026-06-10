@@ -672,6 +672,26 @@
     "allNodes": "All Nodes",
     "noMatch": "No matching nodes"
   },
+  "contextMenu": {
+    "addNode": "Add Node",
+    "paste": "Paste",
+    "selectAll": "Select All",
+    "fitView": "Fit View",
+    "autoLayout": "Auto Layout",
+    "exportJson": "Export JSON"
+  },
+  "edge": {
+    "addNode": "Add Node",
+    "setLabel": "Set Label",
+    "deleteEdge": "Delete Edge",
+    "insertNode": "Insert Node",
+    "labelDialogTitle": "Set Edge Label",
+    "startPoint": "Start",
+    "middlePoint": "Middle",
+    "endPoint": "End",
+    "cancel": "Cancel",
+    "save": "Save"
+  },
   "canvasStyle": {
     "canvasTheme": "Canvas Theme",
     "backgroundStyle": "Background Style",

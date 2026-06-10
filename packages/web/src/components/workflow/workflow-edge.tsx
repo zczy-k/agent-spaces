@@ -6,6 +6,7 @@ import { BaseEdge, EdgeLabelRenderer, getBezierPath, getStraightPath, getSmoothS
 import type { EdgeProps } from '@xyflow/react';
 import { LOOP_BODY_SOURCE_HANDLE } from '@agent-spaces/shared';
 import { Plus, Tags, Trash2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -45,6 +46,7 @@ function WorkflowEdgeComponent({
   sourcePosition, targetPosition,
   data, selected,
 }: EdgeProps) {
+  const t = useTranslations('workflows');
   const isLocked = !!(data as Record<string, unknown>)?.composite && ((data as Record<string, unknown>).composite as Record<string, unknown>)?.locked;
   const isGenerated = !!(data as Record<string, unknown>)?.composite && ((data as Record<string, unknown>).composite as Record<string, unknown>)?.generated;
   const isNodeDropTarget = (data as Record<string, unknown>)?.isNodeDropTarget === true;
@@ -209,7 +211,7 @@ function WorkflowEdgeComponent({
             }}
           >
             <Plus className="h-3 w-3" />
-            添加节点
+            {t('edge.addNode')}
           </button>
           <button
             type="button"
@@ -220,7 +222,7 @@ function WorkflowEdgeComponent({
             }}
           >
             <Tags className="h-3 w-3" />
-            设置label
+            {t('edge.setLabel')}
           </button>
           {canDeleteEdge && (
             <>
@@ -234,7 +236,7 @@ function WorkflowEdgeComponent({
                 }}
               >
                 <Trash2 className="h-3 w-3" />
-                删除线条
+                {t('edge.deleteEdge')}
               </button>
             </>
           )}
@@ -254,7 +256,7 @@ function WorkflowEdgeComponent({
             <div className="flex items-center gap-1">
               <button
                 type="button"
-                title="插入节点"
+                title={t('edge.insertNode')}
                 className={`w-5 h-5 rounded-full border border-border bg-background text-muted-foreground
                   flex items-center justify-center leading-none
                   opacity-0 group-hover:opacity-100 transition-all
@@ -271,7 +273,7 @@ function WorkflowEdgeComponent({
               {canDeleteEdge && (
                 <button
                   type="button"
-                  title="删除连线"
+                  title={t('edge.deleteEdge')}
                   className={`w-5 h-5 rounded-full border border-border bg-background text-muted-foreground
                     flex items-center justify-center leading-none
                     opacity-0 group-hover:opacity-100 transition-all
@@ -293,25 +295,25 @@ function WorkflowEdgeComponent({
       <Dialog open={labelDialogOpen} onOpenChange={setLabelDialogOpen}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-sm">设置连接线 label</DialogTitle>
+            <DialogTitle className="text-sm">{t('edge.labelDialogTitle')}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-3">
             <div className="grid gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">起点</label>
+              <label className="text-xs font-medium text-muted-foreground">{t('edge.startPoint')}</label>
               <Input
                 value={labelForm.startLabel}
                 onChange={(event) => setLabelForm(form => ({ ...form, startLabel: event.target.value }))}
               />
             </div>
             <div className="grid gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">中间</label>
+              <label className="text-xs font-medium text-muted-foreground">{t('edge.middlePoint')}</label>
               <Input
                 value={labelForm.middleLabel}
                 onChange={(event) => setLabelForm(form => ({ ...form, middleLabel: event.target.value }))}
               />
             </div>
             <div className="grid gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">终点</label>
+              <label className="text-xs font-medium text-muted-foreground">{t('edge.endPoint')}</label>
               <Input
                 value={labelForm.endLabel}
                 onChange={(event) => setLabelForm(form => ({ ...form, endLabel: event.target.value }))}
@@ -320,10 +322,10 @@ function WorkflowEdgeComponent({
           </div>
           <DialogFooter>
             <Button type="button" variant="ghost" size="sm" onClick={() => setLabelDialogOpen(false)}>
-              取消
+              {t('edge.cancel')}
             </Button>
             <Button type="button" size="sm" onClick={saveLabels}>
-              保存
+              {t('edge.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
