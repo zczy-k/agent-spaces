@@ -17,6 +17,7 @@ import {
   type Connection,
   type OnConnectEnd,
   type OnConnectStart,
+  type OnNodeDrag,
 } from '@xyflow/react';
 import { Group, Trash2, Workflow as WorkflowIcon } from 'lucide-react';
 import '@xyflow/react/dist/style.css';
@@ -48,6 +49,10 @@ type GroupDragPreview = {
 
 function areStringArraysEqual(a: string[], b: string[]) {
   return a.length === b.length && a.every((item, index) => item === b[index]);
+}
+
+function isNonNull<T>(value: T | null): value is T {
+  return value !== null;
 }
 
 function isPositionNodeChange(
@@ -104,6 +109,7 @@ interface WorkflowCanvasProps {
     sourceHandle: string | null;
     position: { x: number; y: number } | null;
   }) => void;
+  onInsertExistingNodeOnEdge?: (edgeId: string, nodeId: string) => void;
   canvasExportRef?: React.RefObject<{ exportCanvas: (format: 'png' | 'jpeg') => void } | null>;
   onNodeDragStateChange?: (dragging: boolean) => void;
 }
@@ -114,6 +120,7 @@ export function WorkflowCanvas({
   onStagedNodeDrop, onNodeDataUpdate, onEdgeDataUpdate, onNodesChange, onEdgesChange, onConnect,
   canUndo = false, canRedo = false, onUndo, onRedo, onExitPreview, onAutoLayout,
   onConnectionDrop,
+  onInsertExistingNodeOnEdge,
   onNodeCopy, onNodeClone, onNodeStage,
   onMergeNodesToWorkflow, onMergeNodesToGroup, onBatchDeleteNodes,
   onGroupUpdate, onGroupDelete, onGroupMove,
@@ -133,6 +140,7 @@ export function WorkflowCanvas({
   const [selectionMenu, setSelectionMenu] = useState<{ x: number; y: number; nodeIds: string[] } | null>(null);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [groupDragPreview, setGroupDragPreview] = useState<GroupDragPreview | null>(null);
+  const [dropTargetEdgeId, setDropTargetEdgeId] = useState<string | null>(null);
   const { screenToFlowPosition } = useReactFlow();
   const [helperHorizontal] = useState<number | undefined>();
   const [helperVertical] = useState<number | undefined>();
@@ -145,6 +153,7 @@ export function WorkflowCanvas({
     : bgVariantKey === 'cross' ? BackgroundVariant.Cross
     : BackgroundVariant.Dots;
   const snapEnabled = canvasPrefs.snapGrid !== false;
+  const autoMergeNodeOnEdge = canvasPrefs.autoMergeNodeOnEdge !== false;
   const savedAttributionPosition = canvasPrefs.attributionPosition;
   const validPositions = ['top-bottom', 'left-right', 'bottom-top', 'right-left'] as const;
   const handlePosition = validPositions.includes(savedAttributionPosition as typeof validPositions[number])
@@ -250,6 +259,12 @@ export function WorkflowCanvas({
     edgePathType: (canvasPrefs.edgePathType as string) || 'bezier',
   });
 
+  const displayedEdges = useMemo(() => rfEdges.map(edge => (
+    edge.id === dropTargetEdgeId
+      ? { ...edge, data: { ...(edge.data as Record<string, unknown>), isNodeDropTarget: true } }
+      : edge
+  )), [dropTargetEdgeId, rfEdges]);
+
   const [canvasNodes, setCanvasNodes] = useState<Node[]>(rfNodes);
   const isNodeDraggingRef = useRef(false);
   const canvasNodesRef = useRef<Node[]>(rfNodes);
@@ -353,6 +368,37 @@ export function WorkflowCanvas({
   const handleEdgeClick = useCallback((_: React.MouseEvent, edge: Edge) => {
     selectEdge(edge.id);
   }, [selectEdge]);
+
+  const getDropTargetEdgeId = useCallback((nodeId: string) => {
+    const nodeDiv = Array.from(
+      reactFlowWrapper.current?.querySelectorAll<HTMLElement>('.react-flow__node') ?? [],
+    ).find(element => element.dataset.id === nodeId);
+    if (!nodeDiv) return null;
+
+    const rect = nodeDiv.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const edgeElement = document
+      .elementsFromPoint(centerX, centerY)
+      .map(element => element.closest<HTMLElement>('.react-flow__edge[data-id]'))
+      .find((element): element is HTMLElement => !!element);
+    const edgeId = edgeElement?.dataset.id;
+    if (!edgeId) return null;
+
+    const edge = workflow.edges.find(item => item.id === edgeId);
+    if (!edge || edge.composite?.locked) return null;
+    if (edge.source === nodeId || edge.target === nodeId) return null;
+    return edgeId;
+  }, [workflow.edges]);
+
+  const handleNodeDrag: OnNodeDrag = useCallback((_, node) => {
+    if (isCanvasLocked || !autoMergeNodeOnEdge || draggedNodeIdsRef.current.size > 1) {
+      if (dropTargetEdgeId) setDropTargetEdgeId(null);
+      return;
+    }
+    const nextEdgeId = getDropTargetEdgeId(node.id);
+    setDropTargetEdgeId(current => current === nextEdgeId ? current : nextEdgeId);
+  }, [autoMergeNodeOnEdge, dropTargetEdgeId, getDropTargetEdgeId, isCanvasLocked]);
 
   const handleNodesChangeWithDebug = useCallback((changes: NodeChange[]) => {
     if (isCanvasLocked) return;
@@ -492,10 +538,14 @@ export function WorkflowCanvas({
     isNodeDraggingRef.current = true;
     draggedNodeIdsRef.current = new Set([node.id]);
     canvasNodesRef.current = canvasNodes;
+    setDropTargetEdgeId(null);
     onNodeDragStateChange?.(true);
   }, [canvasNodes, onNodeDragStateChange]);
 
   const handleNodeDragStop = useCallback((_: React.MouseEvent, node: Node) => {
+    const edgeId = autoMergeNodeOnEdge && draggedNodeIdsRef.current.size === 1
+      ? dropTargetEdgeId
+      : null;
     const canvasNodeById = new Map(canvasNodesRef.current.map(item => [item.id, item]));
     const workflowNodeById = new Map(workflow.nodes.map(item => [item.id, item]));
     const positionChanges: NodeChange[] = Array.from(draggedNodeIdsRef.current)
@@ -511,14 +561,18 @@ export function WorkflowCanvas({
           dragging: false,
         };
       })
-      .filter((change): change is NodeChange => !!change);
+      .filter(isNonNull);
     isNodeDraggingRef.current = false;
     draggedNodeIdsRef.current = new Set();
     onNodeDragStateChange?.(false);
     if (positionChanges.length > 0) {
       onNodesChange(positionChanges);
     }
-  }, [onNodeDragStateChange, onNodesChange, workflow.nodes]);
+    if (edgeId) {
+      onInsertExistingNodeOnEdge?.(edgeId, node.id);
+    }
+    setDropTargetEdgeId(null);
+  }, [autoMergeNodeOnEdge, dropTargetEdgeId, onInsertExistingNodeOnEdge, onNodeDragStateChange, onNodesChange, workflow.nodes]);
 
   const handleReactFlowError = useCallback((code: string, message: string) => {
     console.warn('[WorkflowCanvas] ReactFlow error', {
@@ -538,7 +592,7 @@ export function WorkflowCanvas({
       <ReactFlow
         className="h-full w-full"
         nodes={canvasNodes}
-        edges={rfEdges}
+        edges={displayedEdges}
         onNodesChange={handleNodesChangeWithDebug}
         onEdgesChange={handleEdgesChangeWithLock}
         onConnect={handleConnectWithDebug}
@@ -548,6 +602,7 @@ export function WorkflowCanvas({
         onDrop={handleDrop}
         onNodeClick={handleNodeClick}
         onNodeDragStart={handleNodeDragStart}
+        onNodeDrag={handleNodeDrag}
         onNodeDragStop={handleNodeDragStop}
         onEdgeClick={handleEdgeClick}
         onSelectionStart={handleSelectionStart}

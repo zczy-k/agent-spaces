@@ -53,6 +53,8 @@ export function WorkflowCanvasStylePanel({
   const layoutEngine = (canvasPrefs.layoutEngine as string) || 'dagre';
   const handlePosition = (canvasPrefs.attributionPosition as string) || 'top-bottom';
   const floatingHandles = canvasPrefs.floatingHandles === true;
+  const autoMergeNodeOnEdge = canvasPrefs.autoMergeNodeOnEdge !== false;
+  const autoConnectAfterNodeDelete = canvasPrefs.autoConnectAfterNodeDelete !== false;
 
   const update = useCallback((patch: Record<string, unknown>) => {
     onCanvasPreferencesChange({ ...canvasPrefs, ...patch });
@@ -135,6 +137,34 @@ export function WorkflowCanvasStylePanel({
             id="floating-handles"
             checked={floatingHandles}
             onCheckedChange={(checked) => update({ floatingHandles: checked })}
+          />
+        </FieldLabel>
+      </div>
+      <div className="space-y-2">
+        <h3 className="text-xs font-medium text-muted-foreground">节点合并</h3>
+        <FieldLabel
+          htmlFor="auto-merge-node-on-edge"
+          className="flex items-center justify-between gap-3 rounded-md border px-2.5 py-2 text-sm"
+        >
+          <span>节点拖拽到线条自动合并</span>
+          <Switch
+            id="auto-merge-node-on-edge"
+            checked={autoMergeNodeOnEdge}
+            onCheckedChange={(checked) => update({ autoMergeNodeOnEdge: checked })}
+          />
+        </FieldLabel>
+      </div>
+      <div className="space-y-2">
+        <h3 className="text-xs font-medium text-muted-foreground">删除重连</h3>
+        <FieldLabel
+          htmlFor="auto-connect-after-node-delete"
+          className="flex items-center justify-between gap-3 rounded-md border px-2.5 py-2 text-sm"
+        >
+          <span>删除节点后自动连接</span>
+          <Switch
+            id="auto-connect-after-node-delete"
+            checked={autoConnectAfterNodeDelete}
+            onCheckedChange={(checked) => update({ autoConnectAfterNodeDelete: checked })}
           />
         </FieldLabel>
       </div>

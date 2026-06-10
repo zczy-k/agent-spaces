@@ -44,6 +44,55 @@ export function isSameHandle(a: string | null | undefined, b: string | null | un
   return (a ?? null) === (b ?? null);
 }
 
+function canUseEdgeForDeleteReconnect(edge: Workflow['edges'][0]): boolean {
+  return !edge.composite?.hidden && !edge.composite?.locked;
+}
+
+export function reconnectEdgesAfterNodeDelete(
+  edges: Workflow['edges'],
+  deletedNodeIds: Set<string>,
+): Workflow['edges'] {
+  let nextEdges: Workflow['edges'] = edges.map(edge => ({
+    ...edge,
+    composite: edge.composite ? { ...edge.composite } : undefined,
+  }));
+
+  for (const deletedNodeId of deletedNodeIds) {
+    const incomingEdges = nextEdges.filter(edge =>
+      edge.target === deletedNodeId
+      && edge.source !== deletedNodeId
+      && canUseEdgeForDeleteReconnect(edge)
+    );
+    const outgoingEdges = nextEdges.filter(edge =>
+      edge.source === deletedNodeId
+      && edge.target !== deletedNodeId
+      && canUseEdgeForDeleteReconnect(edge)
+    );
+    nextEdges = nextEdges.filter(edge => edge.source !== deletedNodeId && edge.target !== deletedNodeId);
+
+    for (const incomingEdge of incomingEdges) {
+      for (const outgoingEdge of outgoingEdges) {
+        if (incomingEdge.source === outgoingEdge.target) continue;
+        const nextEdge: Workflow['edges'][0] = {
+          id: createWorkflowEdgeId({
+            source: incomingEdge.source,
+            target: outgoingEdge.target,
+            sourceHandle: incomingEdge.sourceHandle,
+            targetHandle: outgoingEdge.targetHandle,
+          }),
+          source: incomingEdge.source,
+          target: outgoingEdge.target,
+          sourceHandle: incomingEdge.sourceHandle,
+          targetHandle: outgoingEdge.targetHandle,
+        };
+        if (!nextEdges.some(edge => edge.id === nextEdge.id)) nextEdges.push(nextEdge);
+      }
+    }
+  }
+
+  return nextEdges;
+}
+
 export function isGeneratedWorkflowNode(node: Workflow['nodes'][0]): boolean {
   return !!node.composite?.generated;
 }

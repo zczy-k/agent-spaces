@@ -100,6 +100,7 @@ export function useWorkflowEditorCanvas({
     handleNodesChange: edgeOps.handleNodesChange,
     handleEdgesChange: edgeOps.handleEdgesChange,
     handleEdgeDataUpdate: edgeOps.handleEdgeDataUpdate,
+    handleInsertExistingNodeOnEdge: edgeOps.handleInsertExistingNodeOnEdge,
     handleAutoLayout: edgeOps.handleAutoLayout,
 
     // Canvas preferences

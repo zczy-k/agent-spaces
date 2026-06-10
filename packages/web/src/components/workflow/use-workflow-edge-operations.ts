@@ -16,7 +16,9 @@ import {
   isNodePositionOrDimensionChange,
   isScopeBoundaryWorkflowNode,
   cloneWorkflowNodes,
+  getOutgoingSourceHandle,
   getWorkflowNodeDeleteIds,
+  reconnectEdgesAfterNodeDelete,
   syncScopeBoundaryLayout,
   syncAllScopeBoundaryLayouts,
   shiftScopeChildren,
@@ -194,14 +196,21 @@ export function useEdgeOperations({
         syncAllScopeBoundaryLayouts(remainingNodes);
       }
 
+      const nextEdgesAfterDelete = nextEdges.filter(edge =>
+        !removedNodeIds.has(edge.source)
+        && !removedNodeIds.has(edge.target)
+        && (!edge.composite?.rootId || !removedRootIds.has(edge.composite.rootId))
+      );
+      const autoConnectAfterNodeDelete = w.layoutSnapshot?.autoConnectAfterNodeDelete !== false;
+      const remainingEdges = autoConnectAfterNodeDelete
+        ? reconnectEdgesAfterNodeDelete(nextEdges, removedNodeIds)
+          .filter(edge => !edge.composite?.rootId || !removedRootIds.has(edge.composite.rootId))
+        : nextEdgesAfterDelete;
+
       return {
         ...w,
         nodes: remainingNodes,
-        edges: nextEdges.filter(edge =>
-          !removedNodeIds.has(edge.source)
-          && !removedNodeIds.has(edge.target)
-          && (!edge.composite?.rootId || !removedRootIds.has(edge.composite.rootId))
-        ),
+        edges: remainingEdges,
         groups: cleanupGroupsOnNodeDelete(w.groups, removedNodeIds),
       };
     });
@@ -263,6 +272,50 @@ export function useEdgeOperations({
           }
         : item),
     } : null);
+    markDirty();
+  }, [workflow, isReadOnly, pushUndo, setWorkflow, markDirty]);
+
+  const handleInsertExistingNodeOnEdge = useCallback((edgeId: string, nodeId: string) => {
+    if (!workflow || isReadOnly) return;
+    const edge = workflow.edges.find(item => item.id === edgeId);
+    const node = workflow.nodes.find(item => item.id === nodeId);
+    if (!edge || !node || edge.composite?.locked) return;
+    if (edge.source === nodeId || edge.target === nodeId) return;
+
+    const outgoingSourceHandle = getOutgoingSourceHandle(node.type);
+    const firstEdge: Workflow['edges'][0] = {
+      id: createWorkflowEdgeId({
+        source: edge.source,
+        target: nodeId,
+        sourceHandle: edge.sourceHandle,
+      }),
+      source: edge.source,
+      target: nodeId,
+      sourceHandle: edge.sourceHandle,
+      targetHandle: undefined,
+    };
+    const secondEdge: Workflow['edges'][0] = {
+      id: createWorkflowEdgeId({
+        source: nodeId,
+        target: edge.target,
+        sourceHandle: outgoingSourceHandle,
+        targetHandle: edge.targetHandle,
+      }),
+      source: nodeId,
+      target: edge.target,
+      sourceHandle: outgoingSourceHandle,
+      targetHandle: edge.targetHandle,
+    };
+
+    pushUndo('insert existing node');
+    setWorkflow(w => {
+      if (!w) return null;
+      const nextEdges = w.edges.filter(item => item.id !== edgeId);
+      for (const nextEdge of [firstEdge, secondEdge]) {
+        if (!nextEdges.some(item => item.id === nextEdge.id)) nextEdges.push(nextEdge);
+      }
+      return { ...w, edges: nextEdges };
+    });
     markDirty();
   }, [workflow, isReadOnly, pushUndo, setWorkflow, markDirty]);
 
@@ -386,6 +439,7 @@ export function useEdgeOperations({
     handleNodesChange,
     handleEdgesChange,
     handleEdgeDataUpdate,
+    handleInsertExistingNodeOnEdge,
     handleAutoLayout,
     handleCanvasPreferencesChange,
   };

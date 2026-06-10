@@ -17,6 +17,7 @@ import {
   getOutgoingSourceHandle,
   getWorkflowNodeDeleteIds,
   isSameHandle,
+  reconnectEdgesAfterNodeDelete,
   canDeleteWorkflowNode,
   cloneData,
   syncScopeBoundaryLayout,
@@ -245,14 +246,20 @@ export function useNodeOperations({
 
       const nextNodes = w.nodes.filter(node => !deleteNodeIds.has(node.id));
       if (parentId && !deleteNodeIds.has(parentId)) syncScopeBoundaryLayout(nextNodes, parentId);
+      const nextEdgesAfterDelete = w.edges.filter(edge =>
+        !deleteNodeIds.has(edge.source)
+        && !deleteNodeIds.has(edge.target)
+        && (!rootId || edge.composite?.rootId !== rootId)
+      );
+      const autoConnectAfterNodeDelete = w.layoutSnapshot?.autoConnectAfterNodeDelete !== false;
+
       return {
         ...w,
         nodes: nextNodes,
-        edges: w.edges.filter(edge =>
-          !deleteNodeIds.has(edge.source)
-          && !deleteNodeIds.has(edge.target)
-          && (!rootId || edge.composite?.rootId !== rootId)
-        ),
+        edges: autoConnectAfterNodeDelete
+          ? reconnectEdgesAfterNodeDelete(w.edges, deleteNodeIds)
+            .filter(edge => !rootId || edge.composite?.rootId !== rootId)
+          : nextEdgesAfterDelete,
         groups: cleanupGroupsOnNodeDelete(w.groups, deleteNodeIds),
       };
     });
@@ -276,14 +283,20 @@ export function useNodeOperations({
     pushUndo('batch delete nodes');
     setWorkflow(w => {
       if (!w) return null;
+      const nextEdgesAfterDelete = w.edges.filter(edge =>
+        !deleteNodeIds.has(edge.source)
+        && !deleteNodeIds.has(edge.target)
+        && (!edge.composite?.rootId || !deletedRootIds.has(edge.composite.rootId))
+      );
+      const autoConnectAfterNodeDelete = w.layoutSnapshot?.autoConnectAfterNodeDelete !== false;
+
       return {
         ...w,
         nodes: w.nodes.filter(node => !deleteNodeIds.has(node.id)),
-        edges: w.edges.filter(edge =>
-          !deleteNodeIds.has(edge.source)
-          && !deleteNodeIds.has(edge.target)
-          && (!edge.composite?.rootId || !deletedRootIds.has(edge.composite.rootId))
-        ),
+        edges: autoConnectAfterNodeDelete
+          ? reconnectEdgesAfterNodeDelete(w.edges, deleteNodeIds)
+            .filter(edge => !edge.composite?.rootId || !deletedRootIds.has(edge.composite.rootId))
+          : nextEdgesAfterDelete,
         groups: cleanupGroupsOnNodeDelete(w.groups, deleteNodeIds),
       };
     });

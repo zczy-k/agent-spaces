@@ -47,6 +47,7 @@ function WorkflowEdgeComponent({
 }: EdgeProps) {
   const isLocked = !!(data as Record<string, unknown>)?.composite && ((data as Record<string, unknown>).composite as Record<string, unknown>)?.locked;
   const isGenerated = !!(data as Record<string, unknown>)?.composite && ((data as Record<string, unknown>).composite as Record<string, unknown>)?.generated;
+  const isNodeDropTarget = (data as Record<string, unknown>)?.isNodeDropTarget === true;
   const edgeSourceHandle = (data as Record<string, unknown>)?.sourceHandle as string | undefined ?? null;
   const isLoopBodyEdge = edgeSourceHandle === LOOP_BODY_SOURCE_HANDLE;
   const isRunning = (data as Record<string, unknown>)?.isRunning === true;
@@ -146,27 +147,27 @@ function WorkflowEdgeComponent({
 
   return (
     <>
+      <BaseEdge
+        id={id} path={edgePath}
+        style={{
+          stroke: isNodeDropTarget ? 'var(--foreground)' : selected ? 'var(--ring)' : (isLocked ? 'rgba(74, 144, 164, 0.9)' : edgeColor || 'var(--primary)'),
+          strokeWidth: isNodeDropTarget ? 4 : selected ? 3.5 : (isGenerated ? 2 : 2.5),
+          strokeDasharray: isLocked && !isLoopBodyEdge ? '4 2' : 'none',
+          filter: isNodeDropTarget || selected ? `drop-shadow(0 0 4px ${edgeColor || 'var(--primary)'})` : 'none',
+          transition: 'stroke 0.2s ease, stroke-width 0.2s ease, stroke-dasharray 0.3s ease, filter 0.2s ease',
+        }}
+      />
       <path
         d={edgePath}
         fill="none"
         stroke="transparent"
         strokeWidth={16}
-        style={{ cursor: 'pointer' }}
+        style={{ cursor: 'pointer', pointerEvents: 'stroke' }}
         onClick={(e) => {
           e.stopPropagation();
           window.dispatchEvent(new CustomEvent('workflow:select-edge', { detail: { edgeId: id } }));
         }}
         onContextMenu={openContextMenu}
-      />
-      <BaseEdge
-        id={id} path={edgePath}
-        style={{
-          stroke: selected ? 'var(--ring)' : (isLocked ? 'rgba(74, 144, 164, 0.9)' : edgeColor || 'var(--primary)'),
-          strokeWidth: selected ? 3.5 : (isGenerated ? 2 : 2.5),
-          strokeDasharray: isLocked && !isLoopBodyEdge ? '4 2' : 'none',
-          filter: selected ? `drop-shadow(0 0 4px ${edgeColor || 'var(--primary)'})` : 'none',
-          transition: 'stroke 0.2s ease, stroke-width 0.2s ease, stroke-dasharray 0.3s ease, filter 0.2s ease',
-        }}
       />
       {isRunning && (
         <circle r="5" fill={edgeColor || 'var(--primary)'} style={{ pointerEvents: 'none' }}>
@@ -245,7 +246,7 @@ function WorkflowEdgeComponent({
           <div
             style={{
               position: 'absolute',
-              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + (middleLabel ? 28 : 0)}px)`,
               pointerEvents: 'all',
             }}
             className="nodrag nopan"
