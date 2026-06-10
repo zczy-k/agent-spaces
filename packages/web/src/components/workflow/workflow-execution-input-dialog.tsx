@@ -112,7 +112,7 @@ function ExecutionInputFields({
   disabled?: boolean;
 }) {
   return (
-    <div className="space-y-3 py-1">
+    <div className="space-y-3 py-1 m-1">
       {fields.map(field => (
         <label key={field.key} className="block space-y-1.5">
           <span className="text-xs font-medium">

@@ -15,6 +15,7 @@ import { sendNativeNotification } from '@/lib/native-notification';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Loader2, Play, Square, Download } from 'lucide-react';
+import ModernLoader from '@/components/ui/modern-loader';
 import { BackButton } from '@/components/common/back-button';
 import { useTranslations } from 'next-intl';
 
@@ -277,6 +278,37 @@ export default function WorkflowSharePage() {
             )}
             <h1 className="text-lg font-semibold truncate">{workflow.name}</h1>
             <span className="text-sm text-muted-foreground">{t('share.nodes', { count: workflow.nodes.length })}</span>
+            {/* Execution tabs */}
+            {entries.length > 0 && (
+              <div className="flex items-center gap-1.5 shrink-0">
+                {entries.map(entry => (
+                  <button
+                    key={entry.localId}
+                    onClick={() => setActiveLocalId(entry.localId)}
+                    className={cn(
+                      "relative w-7 h-7 rounded-full text-xs font-medium flex items-center justify-center transition-colors shrink-0",
+                      entry.localId === activeLocalId
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted hover:bg-muted-foreground/10 text-muted-foreground"
+                    )}
+                  >
+                    {entry.localId}
+                    {entry.status !== 'running' && (
+                      <span className={cn(
+                        "absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-background",
+                        STATUS_COLORS[entry.status]
+                      )} />
+                    )}
+                    {entry.status === 'running' && (
+                      <span className={cn(
+                        "absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-background",
+                        STATUS_COLORS.running
+                      )} />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           {workflow.description && <p className="text-sm text-muted-foreground mt-0.5 line-clamp-1">{workflow.description}</p>}
         </div>
@@ -285,38 +317,6 @@ export default function WorkflowSharePage() {
       <div className="flex-1 min-h-0 flex gap-3">
         {/* Left: entry tabs + input form */}
         <div className="w-[360px] shrink-0 flex flex-col gap-2">
-          {/* Execution tabs */}
-          {entries.length > 0 && (
-            <div className="flex items-center gap-1.5 px-1 py-1 shrink-0">
-              {entries.map(entry => (
-                <button
-                  key={entry.localId}
-                  onClick={() => setActiveLocalId(entry.localId)}
-                  className={cn(
-                    "relative w-7 h-7 rounded-full text-xs font-medium flex items-center justify-center transition-colors shrink-0",
-                    entry.localId === activeLocalId
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted hover:bg-muted-foreground/10 text-muted-foreground"
-                  )}
-                >
-                  {entry.localId}
-                  {entry.status !== 'running' && (
-                    <span className={cn(
-                      "absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-background",
-                      STATUS_COLORS[entry.status]
-                    )} />
-                  )}
-                  {entry.status === 'running' && (
-                    <span className={cn(
-                      "absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-background",
-                      STATUS_COLORS.running
-                    )} />
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
-
           {/* Input form */}
           <Card className="rounded-lg flex-1 min-h-0 flex flex-col">
             <CardHeader className="p-3 pb-2 shrink-0"><CardTitle className="text-xs">{t('share.params')}</CardTitle></CardHeader>
@@ -348,72 +348,71 @@ export default function WorkflowSharePage() {
         {/* Right: results for active entry */}
         <div className="flex-1 min-w-0 flex flex-col gap-3 overflow-auto">
           {activeEntry ? (
-            hasResult ? (
               <div className="flex gap-3 min-h-0 flex-1">
-                {/* Steps */}
-                <Card size="sm" className="m-px rounded-lg w-[320px] shrink-0 flex flex-col py-0">
-                  <CardHeader className="p-3 pb-1 shrink-0"><CardTitle className="text-xs">Step</CardTitle></CardHeader>
-                  <CardContent className="px-0 pb-0 flex-1 min-h-0 overflow-auto">
-                    <ExecutionChecklist steps={activeEntry.log!.steps} />
-                  </CardContent>
-                </Card>
-
-                {/* JSON + File output */}
-                <div className="flex-1 min-w-0 flex flex-col gap-3">
-                  <Card size="sm" className="m-px rounded-lg flex-1 min-h-0 flex flex-col py-0">
-                    <CardHeader className="p-3 pb-1 shrink-0"><CardTitle className="text-xs">{t('share.jsonOutput')}</CardTitle></CardHeader>
-                    <CardContent className="px-2 pb-2 flex-1 min-h-0 overflow-auto">
-                      {endOutput !== null ? (
-                        <JsonViewer data={endOutput as import('@/components/viewers/json-viewer').JsonValue} rootName="output" defaultExpanded={2} className="border-0 shadow-none" />
-                      ) : (
-                        <div className="flex items-center justify-center h-full text-xs text-muted-foreground">{t('share.noOutput')}</div>
-                      )}
+                {/* Steps - always visible */}
+                {hasResult && (
+                  <Card size="sm" className="m-px rounded-lg w-[320px] shrink-0 flex flex-col py-0">
+                    <CardHeader className="p-3 pb-1 shrink-0"><CardTitle className="text-xs">Step</CardTitle></CardHeader>
+                    <CardContent className="px-0 pb-0 flex-1 min-h-0 overflow-auto">
+                      <ExecutionChecklist steps={activeEntry.log!.steps} />
                     </CardContent>
                   </Card>
+                )}
 
-                  <Card size="sm" className="m-px rounded-lg shrink-0 py-0">
-                    <div className="flex items-center justify-between p-3 pb-1">
-                      <CardTitle className="text-xs">{t('share.fileOutput')}</CardTitle>
-                      {fileOutputs.length > 0 && (
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => fileOutputs.forEach(f => window.open(f.url, '_blank'))}>
-                          <Download className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
-                    </div>
-                    <CardContent className="px-3 pb-3">
-                      {fileOutputs.length > 0 ? (
-                        <div className="flex flex-wrap gap-3">
-                          {fileOutputs.map((f, i) => (
-                            <a key={i} href={f.url} target="_blank" rel="noopener noreferrer" className="group">
-                              <FileCard formatFile={f.format} />
-                              <div className="mt-1 text-[10px] text-muted-foreground text-center max-w-[56px] truncate group-hover:text-foreground transition-colors">
-                                {f.name}
-                              </div>
-                            </a>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center py-6 text-xs text-muted-foreground">{t('share.noFileOutput')}</div>
-                      )}
+                {/* Right content: result / loading / error */}
+                {activeEntry.status === 'completed' && hasResult ? (
+                  <div className="flex-1 min-w-0 flex flex-col gap-3">
+                    <Card size="sm" className="m-px rounded-lg flex-1 min-h-0 flex flex-col py-0">
+                      <CardHeader className="p-3 pb-1 shrink-0"><CardTitle className="text-xs">{t('share.jsonOutput')}</CardTitle></CardHeader>
+                      <CardContent className="px-2 pb-2 flex-1 min-h-0 overflow-auto">
+                        {endOutput !== null ? (
+                          <JsonViewer data={endOutput as import('@/components/viewers/json-viewer').JsonValue} rootName="output" defaultExpanded={2} className="border-0 shadow-none" />
+                        ) : (
+                          <div className="flex items-center justify-center h-full text-xs text-muted-foreground">{t('share.noOutput')}</div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    <Card size="sm" className="m-px rounded-lg shrink-0 py-0">
+                      <div className="flex items-center justify-between p-3 pb-1">
+                        <CardTitle className="text-xs">{t('share.fileOutput')}</CardTitle>
+                        {fileOutputs.length > 0 && (
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => fileOutputs.forEach(f => window.open(f.url, '_blank'))}>
+                            <Download className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                      <CardContent className="px-3 pb-3">
+                        {fileOutputs.length > 0 ? (
+                          <div className="flex flex-wrap gap-3">
+                            {fileOutputs.map((f, i) => (
+                              <a key={i} href={f.url} target="_blank" rel="noopener noreferrer" className="group">
+                                <FileCard formatFile={f.format} />
+                                <div className="mt-1 text-[10px] text-muted-foreground text-center max-w-[56px] truncate group-hover:text-foreground transition-colors">
+                                  {f.name}
+                                </div>
+                              </a>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center py-6 text-xs text-muted-foreground">{t('share.noFileOutput')}</div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+                ) : activeEntry.status === 'running' ? (
+                  <div className="flex-1 min-h-0 flex items-center justify-center">
+                    <ModernLoader words={[t('share.executing')]} />
+                  </div>
+                ) : (
+                  <Card className="rounded-lg flex-1 min-h-0 flex flex-col">
+                    <CardContent className="flex-1 flex flex-col items-center justify-center gap-2">
+                      {activeEntry.status === 'error' && <span className="text-xs text-red-500">{t('share.execError', { id: activeEntry.localId })}</span>}
+                      {activeEntry.status === 'stopped' && <span className="text-xs text-yellow-600">{t('share.execStopped', { id: activeEntry.localId })}</span>}
                     </CardContent>
                   </Card>
-                </div>
+                )}
               </div>
-            ) : activeEntry.status === 'running' ? (
-              <Card className="rounded-lg flex-1 min-h-0 flex flex-col">
-                <CardContent className="flex-1 flex items-center justify-center">
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  <span className="ml-2 text-xs text-muted-foreground">{t('share.executing')}</span>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card className="rounded-lg flex-1 min-h-0 flex flex-col">
-                <CardContent className="flex-1 flex flex-col items-center justify-center gap-2">
-                  {activeEntry.status === 'error' && <span className="text-xs text-red-500">{t('share.execError', { id: activeEntry.localId })}</span>}
-                  {activeEntry.status === 'stopped' && <span className="text-xs text-yellow-600">{t('share.execStopped', { id: activeEntry.localId })}</span>}
-                </CardContent>
-              </Card>
-            )
           ) : (
             <Card className="rounded-lg flex-1 min-h-0 flex flex-col">
               <CardContent className="flex-1 flex items-center justify-center text-xs text-muted-foreground">

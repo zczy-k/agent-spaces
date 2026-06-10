@@ -9,6 +9,7 @@ import {
   ChevronDown,
   ChevronUp,
   Info,
+  Loader2,
   X,
 } from 'lucide-react';
 import {
@@ -214,9 +215,11 @@ export function WorkflowNodeExecutionLog({
         )}
         onClick={onToggleLog}
       >
-        {selectedExecutionStep.status === 'error'
-          ? <X className="h-3 w-3 text-red-500" />
-          : <Check className="h-3 w-3 text-green-500" />}
+        {selectedExecutionStep.status === 'running'
+          ? <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
+          : selectedExecutionStep.status === 'error'
+            ? <X className="h-3 w-3 text-red-500" />
+            : <Check className="h-3 w-3 text-green-500" />}
         <span className="flex-1 truncate text-muted-foreground">
           {selectedExecutionStep.status === 'error' ? selectedExecutionStep.error?.slice(0, 60) || t('nodeUi.executionResult') : t('nodeUi.executionResult')}
         </span>

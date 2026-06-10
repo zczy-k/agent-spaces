@@ -223,8 +223,12 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       || nodeData.pausedReason === 'breakpoint-end'
       || !!currentBreakpoint
     );
-  const hasExecutionResult = !!executionStep
-    && (executionStep.status === 'completed' || executionStep.status === 'error');
+  const canShowExecutionLog = !!executionStep
+    && (
+      executionStep.status === 'running'
+      || executionStep.status === 'completed'
+      || executionStep.status === 'error'
+    );
 
   const stateBadge = currentNodeState === 'disabled'
     ? t('nodeUi.stateBadge.disabled')
@@ -625,7 +629,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       </WorkflowNodeContextMenu>
 
       {/* Collapsible execution log card below the node */}
-      {showFullNode && hasExecutionResult && executionStep ? (
+      {showFullNode && canShowExecutionLog && executionStep ? (
         <WorkflowNodeExecutionLog
           nodeId={id}
           executionStep={executionStep}
