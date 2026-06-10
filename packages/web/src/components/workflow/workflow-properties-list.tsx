@@ -95,6 +95,8 @@ const PropertyItem = memo(function PropertyItem({
   onPreviewDataChange?: (key: string, value: unknown) => void;
 }) {
   const variableValue = useMemo(() => toVariableInputValue(value), [toVariableInputValue, value]);
+  const variableOnly = prop.inputMode === 'variable';
+  const effectiveVariableMode = variableOnly || variableMode;
 
   return (
     <Collapsible
@@ -133,14 +135,16 @@ const PropertyItem = memo(function PropertyItem({
             </Tooltip>
           </TooltipProvider>
         )}
-        <button
-          type="button"
-          className={`rounded p-0.5 transition-colors hover:bg-accent ${variableMode ? 'text-primary' : 'text-muted-foreground'}`}
-          title="切换变量模式"
-          onClick={() => onToggleVariableMode(prop.key, value)}
-        >
-          <Braces className="h-3.5 w-3.5" />
-        </button>
+        {!variableOnly && (
+          <button
+            type="button"
+            className={`rounded p-0.5 transition-colors hover:bg-accent ${effectiveVariableMode ? 'text-primary' : 'text-muted-foreground'}`}
+            title="切换变量模式"
+            onClick={() => onToggleVariableMode(prop.key, value)}
+          >
+            <Braces className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
       <CollapsibleContent>
         <PropertyField
@@ -150,7 +154,7 @@ const PropertyItem = memo(function PropertyItem({
           onPreviewChange={(nextValue) => onPreviewDataChange?.(prop.key, nextValue)}
           previewMode={isPreview}
           variableContext={variableContext}
-          variableMode={variableMode}
+          variableMode={effectiveVariableMode}
           variableValue={variableValue}
           onInsertVariable={(path) => onInsertVariable(prop.key, path)}
         />

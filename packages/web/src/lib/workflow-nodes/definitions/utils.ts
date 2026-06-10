@@ -13,6 +13,7 @@ export const utilsNodes: NodeTypeDefinition[] = [
         label: 'nodes.pluck_array_key.props.array.label',
         type: 'array',
         required: true,
+        inputMode: 'variable',
         tooltip: 'nodes.pluck_array_key.props.array.tooltip',
         default: [],
         itemTemplate: {},

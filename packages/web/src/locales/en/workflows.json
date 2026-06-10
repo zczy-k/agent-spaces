@@ -386,7 +386,7 @@
       "props": {
         "array": {
           "label": "Array",
-          "tooltip": "Object array, for example [{\"name\":\"a\"},{\"name\":\"b\"}]"
+          "tooltip": "Object array, for example a list of objects with a name field"
         },
         "key": {
           "label": "Field Name",

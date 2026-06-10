@@ -386,7 +386,7 @@
       "props": {
         "array": {
           "label": "数组",
-          "tooltip": "对象数组，例如 [{\"name\":\"a\"},{\"name\":\"b\"}]"
+          "tooltip": "对象数组，例如包含 name 字段的对象列表"
         },
         "key": {
           "label": "字段名",

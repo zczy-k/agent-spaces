@@ -597,6 +597,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       ) : null}
       {showFullNode && selected && !isCanvasLocked ? (
         <NodeResizeControl
+          className="workflow-node-resize-control"
           minWidth={nodeMinWidth}
           minHeight={nodeMinHeight}
           onResizeEnd={actions.handleResizeEnd}
@@ -661,12 +662,17 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         }
         .workflow-node-resize-icon {
           position: absolute;
-          right: 4px;
-          bottom: 4px;
+          right: 0;
+          bottom: 0;
           width: 18px;
           height: 18px;
           color: var(--primary);
           filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
+        }
+        .workflow-node-resize-control {
+          right: 4px !important;
+          bottom: 4px !important;
+          z-index: 40;
         }
         .source-handle-label { position: absolute; display: flex; align-items: center; pointer-events: none; }
       `}</style>

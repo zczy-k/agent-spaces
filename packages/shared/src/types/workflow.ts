@@ -200,6 +200,7 @@ export interface NodeProperty {
   options?: { label: string; value: string }[]
   language?: string
   tooltip?: string
+  inputMode?: 'variable' | 'native'
   fields?: ArrayFieldItem[]
   itemTemplate?: Record<string, unknown>
   visibleWhen?: NodePropertyVisibleWhen
