@@ -137,7 +137,7 @@ router.get('/:workflowId/versions', (req: Request<{ workflowId: string }>, res: 
 
 router.post('/:workflowId/versions', (req: Request<{ workflowId: string }>, res: Response) => {
   try {
-    const version = ws.createVersion(req.params.workflowId, req.body?.name);
+    const version = ws.createVersion(req.params.workflowId, req.body);
     res.status(201).json(version);
   } catch (error: any) {
     res.status(400).json({ error: error.message });

@@ -266,17 +266,22 @@ export function listVersions(workflowId: string): WorkflowVersion[] {
   return store.listVersions(workflowId);
 }
 
-export function createVersion(workflowId: string, name?: string): WorkflowVersion {
+export function createVersion(
+  workflowId: string,
+  input?: { name?: string; nodes?: WorkflowNode[]; edges?: WorkflowEdge[] },
+): WorkflowVersion {
   const workflow = store.getWorkflow(workflowId);
   if (!workflow) throw new Error('Workflow not found');
+  const nodes = input?.nodes ?? workflow.nodes;
+  const edges = input?.edges ?? workflow.edges;
 
   const version: WorkflowVersion = {
     id: uuid(),
     workflowId,
-    name: name || `v${store.listVersions(workflowId).length + 1}`,
+    name: input?.name || `v${store.listVersions(workflowId).length + 1}`,
     snapshot: {
-      nodes: JSON.parse(JSON.stringify(workflow.nodes)),
-      edges: JSON.parse(JSON.stringify(workflow.edges)),
+      nodes: JSON.parse(JSON.stringify(nodes)),
+      edges: JSON.parse(JSON.stringify(edges)),
     },
     createdAt: Date.now(),
   };
