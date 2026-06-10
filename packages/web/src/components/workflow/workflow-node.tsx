@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback, useRef, useSyncExternalStore } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef, useSyncExternalStore } from 'react';
 import { useTranslations } from 'next-intl';
 import { Handle, NodeResizeControl, NodeToolbar, Position, useNodeConnections, useStore, useUpdateNodeInternals } from '@xyflow/react';
 import type { NodeProps, ReactFlowState } from '@xyflow/react';
@@ -36,6 +36,7 @@ import {
   type PluginNodeDefinitionMeta,
 } from './workflow-node-types';
 import { WorkflowNodeContextMenu } from './workflow-node-context-menu';
+import { useWorkflowLogsCollapsed } from './workflow-logs-collapsed-context';
 import {
   HANDLE_POSITION_MAP,
   WORKFLOW_NODE_DRAG_HANDLE_CLASS,
@@ -80,7 +81,12 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
     : undefined;
   const hasCustomView = !!CustomView || !!pluginCustomView;
 
+  const { collapsed: logsCollapsed } = useWorkflowLogsCollapsed();
   const [isLogExpanded, setIsLogExpanded] = useState(false);
+  // 全局切换时同步本地状态
+  useEffect(() => {
+    setIsLogExpanded(!logsCollapsed);
+  }, [logsCollapsed]);
   const [isEditing, setIsEditing] = useState(false);
   const [editLabel, setEditLabel] = useState('');
   const [handleColorMenuId, setHandleColorMenuId] = useState<string | null>(null);

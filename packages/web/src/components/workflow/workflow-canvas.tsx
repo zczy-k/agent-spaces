@@ -27,6 +27,7 @@ import '@xyflow/react/dist/style.css';
 import type { ExecutionLog, Workflow, StagedNode } from '@agent-spaces/shared';
 import { WORKFLOW_NODE_DRAG_MIME, WORKFLOW_STAGED_NODE_DRAG_MIME } from './workflow-drag-types';
 import { WorkflowNode as WorkflowNodeComponent } from './workflow-node';
+import { WorkflowLogsCollapsedContext } from './workflow-logs-collapsed-context';
 import { WorkflowEdge as WorkflowEdgeComponent } from './workflow-edge';
 import { WorkflowGroupOverlay } from './workflow-group-node';
 import { WorkflowHelperLines } from './workflow-helper-lines';
@@ -515,6 +516,7 @@ export function WorkflowCanvas({
   const [isConnecting, setIsConnecting] = useState(false);
   const [rectangleDrawActive, setRectangleDrawActive] = useState(false);
   const [lassoSelectionActive, setLassoSelectionActive] = useState(false);
+  const [logsCollapsed, setLogsCollapsed] = useState(true);
   const { screenToFlowPosition } = useReactFlow();
   const [helperHorizontal] = useState<number | undefined>();
   const [helperVertical] = useState<number | undefined>();
@@ -1111,6 +1113,7 @@ export function WorkflowCanvas({
       className={`relative flex-1 h-full w-full ${floatingHandles && isConnecting ? 'workflow-canvas-show-floating-handles' : ''}`}
       onContextMenuCapture={handleSelectionContextMenu}
     >
+      <WorkflowLogsCollapsedContext.Provider value={{ collapsed: logsCollapsed, toggle: () => setLogsCollapsed(c => !c) }}>
       <ReactFlow
         className="h-full w-full"
         colorMode={canvasThemeColorMode}
@@ -1181,6 +1184,7 @@ export function WorkflowCanvas({
         {minimapVisible && <MiniMap />}
         <WorkflowHelperLines horizontal={helperHorizontal} vertical={helperVertical} />
       </ReactFlow>
+      </WorkflowLogsCollapsedContext.Provider>
       {rectangleDrawActive && !isCanvasLocked && onRectangleDrawNodeSelect && (
         <RectangleDrawTool onComplete={onRectangleDrawNodeSelect} />
       )}
@@ -1254,6 +1258,8 @@ export function WorkflowCanvas({
               }
         }
         onToggleMinimap={toggleMinimap}
+        logsCollapsed={logsCollapsed}
+        onToggleLogsCollapsed={() => setLogsCollapsed(c => !c)}
       />
     </div>
   );

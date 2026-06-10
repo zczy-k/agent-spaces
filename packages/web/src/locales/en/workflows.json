@@ -203,7 +203,9 @@
     "horizontalLayout": "Horizontal Layout",
     "verticalLayout": "Vertical Layout",
     "hideMinimap": "Hide Minimap",
-    "showMinimap": "Show Minimap"
+    "showMinimap": "Show Minimap",
+    "expandLogs": "Expand Logs",
+    "collapseLogs": "Collapse Logs"
   },
   "canvas": {
     "mergeToWorkflow": "Merge to Workflow",

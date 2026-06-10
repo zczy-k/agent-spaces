@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/tooltip';
 import {
   EyeOff, LassoSelect, LayoutGrid, Map as MapIcon, RotateCcw, RotateCw, SquareDashedMousePointer,
+  PanelBottomClose, PanelBottomOpen,
 } from 'lucide-react';
 
 function CanvasToolbarButton({
@@ -45,6 +46,8 @@ export function CanvasToolbar({
   onToggleRectangleDraw,
   onToggleLassoSelection,
   onToggleMinimap,
+  logsCollapsed,
+  onToggleLogsCollapsed,
 }: {
   workflow: Workflow;
   isPreview: boolean;
@@ -61,6 +64,8 @@ export function CanvasToolbar({
   onToggleRectangleDraw?: () => void;
   onToggleLassoSelection?: () => void;
   onToggleMinimap: () => void;
+  logsCollapsed: boolean;
+  onToggleLogsCollapsed: () => void;
 }) {
   const t = useTranslations("workflows");
   const hasNodes = workflow.nodes.length > 0;
@@ -79,6 +84,15 @@ export function CanvasToolbar({
           </Tooltip>
         ) : null}
 
+        {isPreview && (
+          <CanvasToolbarButton
+            tooltip={logsCollapsed ? t('canvasToolbar.expandLogs') : t('canvasToolbar.collapseLogs')}
+            className={`h-7 w-7 p-0 ${!logsCollapsed ? 'text-blue-500' : ''}`}
+            onClick={onToggleLogsCollapsed}
+          >
+            {logsCollapsed ? <PanelBottomOpen className="h-3.5 w-3.5" /> : <PanelBottomClose className="h-3.5 w-3.5" />}
+          </CanvasToolbarButton>
+        )}
         <CanvasToolbarButton tooltip={t('canvasToolbar.undo')} disabled={!canUndo} onClick={onUndo}>
           <RotateCcw className="h-3.5 w-3.5" />
         </CanvasToolbarButton>
