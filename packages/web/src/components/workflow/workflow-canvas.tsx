@@ -31,7 +31,6 @@ import { WorkflowHelperLines } from './workflow-helper-lines';
 import { useTranslations } from 'next-intl';
 import { CanvasToolbar } from './workflow-canvas-toolbar';
 import { useCanvasData } from './use-workflow-canvas-data';
-import { useCanvasDebug } from './use-workflow-canvas-debug';
 import { useCanvasDomEvents } from './use-workflow-canvas-dom-events';
 import { useCanvasExport } from './use-workflow-canvas-export';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
@@ -40,8 +39,6 @@ import type { HandlePositionMode } from './workflow-node-types';
 
 const nodeTypes = { custom: WorkflowNodeComponent };
 const edgeTypes = { custom: WorkflowEdgeComponent };
-const DEBUG_WORKFLOW_CANVAS = process.env.NODE_ENV !== 'production';
-
 type GroupDragPreview = {
   groupId: string;
   bounds: { x: number; y: number; width: number; height: number };
@@ -302,8 +299,6 @@ export function WorkflowCanvas({
     canvasNodesRef.current = rfNodes;
   }, [rfNodes]);
 
-  const { getNodeDebugSnapshot } = useCanvasDebug(canvasNodes, reactFlowWrapper, workflow);
-
   const groupOverlayItems = useMemo(() => {
     const groups = workflow.groups || [];
     if (groups.length === 0) return [];
@@ -426,7 +421,7 @@ export function WorkflowCanvas({
     setDropTargetEdgeId(current => current === nextEdgeId ? current : nextEdgeId);
   }, [autoMergeNodeOnEdge, dropTargetEdgeId, getDropTargetEdgeId, isCanvasLocked]);
 
-  const handleNodesChangeWithDebug = useCallback((changes: NodeChange[]) => {
+  const handleNodesChange = useCallback((changes: NodeChange[]) => {
     if (isCanvasLocked) return;
     const positionChanges = changes.filter(isPositionNodeChange);
     const positionCount = positionChanges.length;
@@ -466,7 +461,7 @@ export function WorkflowCanvas({
     if (parentChanges.length > 0) {
       onNodesChange(parentChanges);
     }
-  }, [getNodeDebugSnapshot, isCanvasLocked, onNodesChange, onNodesSelect, selectEdge, selectedNodeIds, workflow.nodes]);
+  }, [isCanvasLocked, onNodesChange, onNodesSelect, selectEdge, selectedNodeIds, workflow.nodes]);
 
   const handleEdgesChangeWithLock = useCallback((changes: EdgeChange[]) => {
     if (isCanvasLocked) return;
@@ -486,18 +481,11 @@ export function WorkflowCanvas({
     onNodesSelect?.(ids, { primaryNodeId: ids.length === 1 ? ids[0] : null });
   }, [onNodesSelect, selectedNodeIds]);
 
-  const handleConnectWithDebug = useCallback((connection: Connection) => {
+  const handleConnect = useCallback((connection: Connection) => {
     if (isCanvasLocked) return;
     connectSucceededRef.current = true;
-    if (DEBUG_WORKFLOW_CANVAS) {
-      console.debug('[WorkflowCanvas] onConnect', {
-        connection,
-        sourceSnapshot: getNodeDebugSnapshot(connection.source),
-        targetSnapshot: getNodeDebugSnapshot(connection.target),
-      });
-    }
     onConnect(connection);
-  }, [getNodeDebugSnapshot, isCanvasLocked, onConnect]);
+  }, [isCanvasLocked, onConnect]);
 
   const handleConnectStart: OnConnectStart = useCallback((_, params) => {
     if (!isCanvasLocked) {
@@ -514,16 +502,7 @@ export function WorkflowCanvas({
       connectSourceRef.current = nodeId ? { nodeId, handleId, handleType } : null;
       connectSucceededRef.current = false;
     }
-
-    if (!DEBUG_WORKFLOW_CANVAS) return;
-    const nodeId = typeof params === 'object' && params && 'nodeId' in params
-      ? String((params as { nodeId?: string | null }).nodeId || '')
-      : null;
-    console.debug('[WorkflowCanvas] onConnectStart', {
-      params,
-      snapshot: getNodeDebugSnapshot(nodeId),
-    });
-  }, [getNodeDebugSnapshot, isCanvasLocked]);
+  }, [isCanvasLocked]);
 
   const handleConnectEnd: OnConnectEnd = useCallback((event) => {
     setIsConnecting(false);
@@ -554,13 +533,7 @@ export function WorkflowCanvas({
 
     connectSourceRef.current = null;
     connectSucceededRef.current = false;
-
-    if (!DEBUG_WORKFLOW_CANVAS) return;
-    console.debug('[WorkflowCanvas] onConnectEnd', {
-      eventType: event.type,
-      snapshot: getNodeDebugSnapshot(),
-    });
-  }, [getNodeDebugSnapshot, isCanvasLocked, onConnectionDrop, screenToFlowPosition]);
+  }, [isCanvasLocked, onConnectionDrop, screenToFlowPosition]);
 
   const handleNodeDragStart = useCallback((_: React.MouseEvent, node: Node) => {
     isNodeDraggingRef.current = true;
@@ -603,12 +576,8 @@ export function WorkflowCanvas({
   }, [autoMergeNodeOnEdge, dropTargetEdgeId, onInsertExistingNodeOnEdge, onNodeDragStateChange, onNodesChange, workflow.nodes]);
 
   const handleReactFlowError = useCallback((code: string, message: string) => {
-    console.warn('[WorkflowCanvas] ReactFlow error', {
-      code,
-      message,
-      snapshot: getNodeDebugSnapshot(),
-    });
-  }, [getNodeDebugSnapshot]);
+    console.warn('[WorkflowCanvas] ReactFlow error', { code, message });
+  }, []);
 
   // --- Render ---
   return (
@@ -621,9 +590,9 @@ export function WorkflowCanvas({
         className="h-full w-full"
         nodes={canvasNodes}
         edges={displayedEdges}
-        onNodesChange={handleNodesChangeWithDebug}
+        onNodesChange={handleNodesChange}
         onEdgesChange={handleEdgesChangeWithLock}
-        onConnect={handleConnectWithDebug}
+        onConnect={handleConnect}
         isValidConnection={isValidConnection}
         onConnectStart={handleConnectStart}
         onConnectEnd={handleConnectEnd}
