@@ -8,6 +8,7 @@ import {
   MiniMap,
   BackgroundVariant,
   ViewportPortal,
+  getOutgoers,
   useReactFlow,
   applyNodeChanges,
   type Node,
@@ -218,6 +219,30 @@ export function WorkflowCanvas({
       y: next.y - origin.y,
     };
   }, [screenToFlowPosition]);
+
+  const isValidConnection = useCallback((connection: Connection) => {
+    if (!connection.source || !connection.target) return false;
+    if (connection.source === connection.target) return false;
+
+    const nodes = workflow.nodes;
+    const edges = workflow.edges;
+    const targetNode = nodes.find(node => node.id === connection.target);
+    if (!targetNode) return false;
+
+    const hasCycle = (node: typeof targetNode, visited = new Set<string>()): boolean => {
+      if (visited.has(node.id)) return false;
+      visited.add(node.id);
+
+      for (const outgoer of getOutgoers(node, nodes, edges)) {
+        if (outgoer.id === connection.source) return true;
+        if (hasCycle(outgoer, visited)) return true;
+      }
+
+      return false;
+    };
+
+    return !hasCycle(targetNode);
+  }, [workflow.edges, workflow.nodes]);
 
   // --- Extracted hooks ---
   const { selectedEdgeId, selectEdge } = useCanvasDomEvents({
@@ -599,6 +624,7 @@ export function WorkflowCanvas({
         onNodesChange={handleNodesChangeWithDebug}
         onEdgesChange={handleEdgesChangeWithLock}
         onConnect={handleConnectWithDebug}
+        isValidConnection={isValidConnection}
         onConnectStart={handleConnectStart}
         onConnectEnd={handleConnectEnd}
         onDragOver={handleDragOver}
