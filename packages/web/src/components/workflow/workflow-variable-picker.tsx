@@ -59,9 +59,11 @@ function getUpstreamNodeIds(edges: WorkflowEdge[], nodeId: string): Set<string> 
   return upstream;
 }
 
-function getNodeLabel(node: WorkflowNode): string {
+function getNodeLabel(node: WorkflowNode, t: (key: string) => string): string {
   const def = getNodeDefinition(node.type);
-  return (node.data?.label as string) || node.label || def?.label || node.type;
+  const resolveLabel = (v: unknown) => { const s = String(v ?? ''); return s && !s.startsWith('nodes.') ? s : ''; };
+  const label = resolveLabel(node.data?.label) || resolveLabel(node.label) || def?.label || node.type;
+  return label.startsWith('nodes.') ? t(label) : label;
 }
 
 function getNodeOutputs(node: WorkflowNode): OutputField[] {
@@ -363,7 +365,7 @@ export function WorkflowVariablePicker({
             ) : inputMenuNodes.map((node) => (
               <DropdownMenuSub key={node.id}>
                 <DropdownMenuSubTrigger className="text-xs">
-                  <span className="truncate">{getNodeLabel(node)}</span>
+                  <span className="truncate">{getNodeLabel(node, t)}</span>
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent className="min-w-[180px]">
                   {getNodeInputFields(node).length > 0 ? (
@@ -389,7 +391,7 @@ export function WorkflowVariablePicker({
             ) : outputMenuNodes.map((node) => (
               <DropdownMenuSub key={node.id}>
                 <DropdownMenuSubTrigger className="text-xs">
-                  <span className="truncate">{getNodeLabel(node)}</span>
+                  <span className="truncate">{getNodeLabel(node, t)}</span>
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent className="min-w-[180px]">
                   {getNodeOutputs(node).length > 0 ? (
@@ -414,7 +416,7 @@ export function WorkflowVariablePicker({
               {loopBodyNodes.map((node) => (
                 <DropdownMenuSub key={node.id}>
                   <DropdownMenuSubTrigger className="text-xs">
-                    <span className="truncate">{getNodeLabel(node)}</span>
+                    <span className="truncate">{getNodeLabel(node, t)}</span>
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent className="min-w-[180px]">
                     {getNodeOutputs(node).length > 0 ? (

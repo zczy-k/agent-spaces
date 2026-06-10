@@ -133,7 +133,10 @@ export function WorkflowNodeExecutionLog({
       className={cn(className, extraClassName)}
       onWheelCapture={stopWheel}
     >
-      <div className="px-2 py-0.5 text-[9px] font-medium text-muted-foreground/70 uppercase tracking-wider">{t('execution.output')}</div>
+      <div className="flex items-center px-2 py-0.5 text-[9px] font-medium text-muted-foreground/70 uppercase tracking-wider">
+        <span className="flex-1">{t('execution.output')}</span>
+        {step.output != null && <CopyButton data={step.output} />}
+      </div>
       {step.output != null ? (
         <JsonViewer
           data={step.output as Parameters<typeof JsonViewer>[0]['data']}
