@@ -33,6 +33,7 @@ export interface WorkflowVariableContext {
 
 interface VariablePickerProps extends WorkflowVariableContext {
   excludeNodeId?: string | null;
+  typeFilter?: OutputField['type'] | OutputField['type'][];
   onSelect: (path: string) => void;
   children?: React.ReactNode;
 }
@@ -172,6 +173,17 @@ function buildFieldPath(field: VariableField, parentPath?: string): string {
   return parentPath ? `${parentPath}.${field.key}` : field.key;
 }
 
+function normalizeTypeFilter(typeFilter: VariablePickerProps['typeFilter']): OutputField['type'][] {
+  if (!typeFilter) return [];
+  return Array.isArray(typeFilter) ? typeFilter : [typeFilter];
+}
+
+function matchesTypeFilter(fieldType: OutputField['type'] | undefined, typeFilter: OutputField['type'][]): boolean {
+  if (!typeFilter.length || !fieldType) return true;
+  if (fieldType === 'any' || typeFilter.includes('any')) return true;
+  return typeFilter.includes(fieldType);
+}
+
 function findLoopParentNode(currentNode: WorkflowNode | null, nodes: WorkflowNode[]): WorkflowNode | null {
   if (!currentNode) return null;
 
@@ -212,11 +224,13 @@ function VariableFieldMenu({
   fields,
   nodeId,
   parentPath,
+  typeFilter,
   onSelect,
 }: {
   fields: VariableField[];
   nodeId: string;
   parentPath?: string;
+  typeFilter: OutputField['type'][];
   onSelect: (nodeId: string, fieldPath: string) => void;
 }) {
   return (
@@ -224,6 +238,7 @@ function VariableFieldMenu({
       {fields.map((field, index) => {
         const path = buildFieldPath(field, parentPath);
         const key = `${path}-${index}`;
+        const selectable = matchesTypeFilter(field.type, typeFilter);
         if (isStructuredOutputFieldType(field.type) && field.children?.length) {
           return (
             <DropdownMenuSub key={key}>
@@ -234,6 +249,7 @@ function VariableFieldMenu({
               <DropdownMenuSubContent className="min-w-[180px]">
                 <DropdownMenuItem
                   className="text-xs"
+                  disabled={!selectable}
                   onClick={() => onSelect(nodeId, path)}
                 >
                   <span className="mr-1.5 font-mono text-[10px] text-muted-foreground">{field.type}</span>
@@ -243,6 +259,7 @@ function VariableFieldMenu({
                   fields={field.children}
                   nodeId={nodeId}
                   parentPath={path}
+                  typeFilter={typeFilter}
                   onSelect={onSelect}
                 />
               </DropdownMenuSubContent>
@@ -262,6 +279,7 @@ function VariableFieldMenu({
                   <DropdownMenuItem
                     key={child.key}
                     className="text-xs"
+                    disabled={!matchesTypeFilter(child.type, typeFilter)}
                     onClick={() => onSelect(nodeId, `${path}.${child.key}`)}
                   >
                     <span className="mr-1.5 font-mono text-[10px] text-muted-foreground">{child.type}</span>
@@ -277,6 +295,7 @@ function VariableFieldMenu({
           <DropdownMenuItem
             key={key}
             className="text-xs"
+            disabled={!selectable}
             onClick={() => onSelect(nodeId, path)}
           >
             <span className="mr-1.5 font-mono text-[10px] text-muted-foreground">{field.type}</span>
@@ -303,10 +322,12 @@ export function WorkflowVariablePicker({
   excludeNodeId,
   enabledPlugins = [],
   variables = [],
+  typeFilter,
   onSelect,
   children,
 }: VariablePickerProps) {
   const t = useTranslations('workflows');
+  const normalizedTypeFilter = useMemo(() => normalizeTypeFilter(typeFilter), [typeFilter]);
   const activeNodeId = currentNodeId || excludeNodeId || null;
   const currentNode = useMemo(
     () => nodes.find((node) => node.id === activeNodeId) ?? null,
@@ -404,6 +425,7 @@ export function WorkflowVariablePicker({
                 <VariableFieldMenu
                   fields={workflowInputFields}
                   nodeId={workflowInputNode.id}
+                  typeFilter={normalizedTypeFilter}
                   onSelect={(nodeId, fieldPath) => onSelect(buildVariablePath(nodeId, fieldPath))}
                 />
               ) : (
@@ -420,6 +442,7 @@ export function WorkflowVariablePicker({
               <VariableFieldMenu
                 fields={variables}
                 nodeId="__env__"
+                typeFilter={normalizedTypeFilter}
                 onSelect={(_nodeId, fieldPath) => onSelect(buildEnvPath(fieldPath))}
               />
             ) : (
@@ -443,6 +466,7 @@ export function WorkflowVariablePicker({
                     <VariableFieldMenu
                       fields={getNodeInputFields(node)}
                       nodeId={node.id}
+                      typeFilter={normalizedTypeFilter}
                       onSelect={(nodeId, fieldPath) => onSelect(buildInputFieldPath(nodeId, fieldPath))}
                     />
                   ) : (
@@ -469,6 +493,7 @@ export function WorkflowVariablePicker({
                     <VariableFieldMenu
                       fields={getNodeOutputs(node)}
                       nodeId={node.id}
+                      typeFilter={normalizedTypeFilter}
                       onSelect={(nodeId, fieldPath) => onSelect(buildVariablePath(nodeId, fieldPath))}
                     />
                   ) : (
@@ -494,6 +519,7 @@ export function WorkflowVariablePicker({
                       <VariableFieldMenu
                         fields={getNodeOutputs(node)}
                         nodeId={node.id}
+                        typeFilter={normalizedTypeFilter}
                         onSelect={(nodeId, fieldPath) => onSelect(buildVariablePath(nodeId, fieldPath))}
                       />
                     ) : (
@@ -513,6 +539,7 @@ export function WorkflowVariablePicker({
               <VariableFieldMenu
                 fields={loopVariableFields}
                 nodeId="__loop__"
+                typeFilter={normalizedTypeFilter}
                 onSelect={(_nodeId, fieldPath) => onSelect(buildLoopVariablePath(fieldPath))}
               />
             </DropdownMenuSubContent>
@@ -533,6 +560,7 @@ export function WorkflowVariablePicker({
                       <DropdownMenuItem
                         key={field.key}
                         className="text-xs"
+                        disabled={!matchesTypeFilter(field.type, normalizedTypeFilter)}
                         onClick={() => onSelect(buildConfigPath(plugin.id, field.key))}
                       >
                         <span className="mr-1 font-mono text-[10px] text-muted-foreground">{field.type}</span>

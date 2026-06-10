@@ -271,6 +271,7 @@ export function OutputFieldsEditor({
 																	<InputGroupAddon align="inline-end" className="py-0 pr-0.5">
 																		<WorkflowVariablePicker
 																			{...variableContext}
+																			typeFilter={field.type}
 																			onSelect={(path) => insertVariable(index, path)}
 																		/>
 																	</InputGroupAddon>
