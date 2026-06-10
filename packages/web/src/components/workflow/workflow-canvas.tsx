@@ -5,7 +5,6 @@ import {
   ReactFlow,
   Background,
   Controls,
-  ControlButton,
   MiniMap,
   BackgroundVariant,
   ViewportPortal,
@@ -19,10 +18,9 @@ import {
   type OnConnectEnd,
   type OnConnectStart,
 } from '@xyflow/react';
-import { Check, Grid3X3, Grip, Group, PanelsTopLeft, Trash2, Waypoints, Workflow as WorkflowIcon } from 'lucide-react';
+import { Group, Trash2, Workflow as WorkflowIcon } from 'lucide-react';
 import '@xyflow/react/dist/style.css';
 import type { ExecutionLog, Workflow, StagedNode } from '@agent-spaces/shared';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { WORKFLOW_NODE_DRAG_MIME, WORKFLOW_STAGED_NODE_DRAG_MIME } from './workflow-drag-types';
 import { WorkflowNode as WorkflowNodeComponent } from './workflow-node';
 import { WorkflowEdge as WorkflowEdgeComponent } from './workflow-edge';
@@ -41,25 +39,6 @@ import type { HandlePositionMode } from './workflow-node-types';
 const nodeTypes = { custom: WorkflowNodeComponent };
 const edgeTypes = { custom: WorkflowEdgeComponent };
 const DEBUG_WORKFLOW_CANVAS = process.env.NODE_ENV !== 'production';
-const BACKGROUND_OPTIONS = [
-  { value: 'dots', label: '点阵' },
-  { value: 'lines', label: '线条' },
-  { value: 'cross', label: '十字' },
-] as const;
-const SNAP_OPTIONS = [
-  { value: true, label: '开启' },
-  { value: false, label: '关闭' },
-] as const;
-const LAYOUT_ENGINE_OPTIONS = [
-  { value: 'dagre', label: 'Dagre' },
-  { value: 'elk', label: 'ELK' },
-] as const;
-const HANDLE_POSITION_OPTIONS = [
-  { value: 'top-bottom', label: 'top-bottom' },
-  { value: 'left-right', label: 'left-right' },
-  { value: 'bottom-top', label: 'bottom-top' },
-  { value: 'right-left', label: 'right-left' },
-] as const satisfies ReadonlyArray<{ value: HandlePositionMode; label: string }>;
 
 type GroupDragPreview = {
   groupId: string;
@@ -75,27 +54,6 @@ function isPositionNodeChange(
   change: NodeChange,
 ): change is NodeChange & { type: 'position'; id: string; position: { x: number; y: number } } {
   return change.type === 'position' && !!change.position;
-}
-
-function CanvasPopoverOption({
-  active,
-  children,
-  onClick,
-}: {
-  active: boolean;
-  children: React.ReactNode;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      className="flex h-8 w-full items-center justify-between rounded px-2 text-left text-xs text-foreground hover:bg-muted"
-      onClick={onClick}
-    >
-      <span>{children}</span>
-      <Check className={`h-3.5 w-3.5 ${active ? 'text-primary' : 'text-transparent'}`} />
-    </button>
-  );
 }
 
 interface WorkflowCanvasProps {
@@ -145,7 +103,6 @@ interface WorkflowCanvasProps {
     sourceHandle: string | null;
     position: { x: number; y: number } | null;
   }) => void;
-  onCanvasPreferencesChange?: (prefs: Record<string, unknown>) => void;
   canvasExportRef?: React.RefObject<{ exportCanvas: (format: 'png' | 'jpeg') => void } | null>;
   onNodeDragStateChange?: (dragging: boolean) => void;
 }
@@ -163,7 +120,6 @@ export function WorkflowCanvas({
   onExecuteFromNode, onResumeExecution, onStopExecution,
   pausedNodeId = null, pausedReason = null,
   partialExecutionStartNodeId = null,
-  onCanvasPreferencesChange,
   canvasExportRef,
   onNodeDragStateChange,
 }: WorkflowCanvasProps) {
@@ -188,15 +144,11 @@ export function WorkflowCanvas({
     : bgVariantKey === 'cross' ? BackgroundVariant.Cross
     : BackgroundVariant.Dots;
   const snapEnabled = canvasPrefs.snapGrid !== false;
-  const layoutEngine = (canvasPrefs.layoutEngine as string) || 'dagre';
   const savedAttributionPosition = canvasPrefs.attributionPosition;
-  const handlePosition = HANDLE_POSITION_OPTIONS.some(option => option.value === savedAttributionPosition)
+  const validPositions = ['top-bottom', 'left-right', 'bottom-top', 'right-left'] as const;
+  const handlePosition = validPositions.includes(savedAttributionPosition as typeof validPositions[number])
     ? savedAttributionPosition as HandlePositionMode
     : 'left-right';
-
-  const updateCanvasPrefs = useCallback((patch: Record<string, unknown>) => {
-    onCanvasPreferencesChange?.({ ...canvasPrefs, ...patch });
-  }, [canvasPrefs, onCanvasPreferencesChange]);
 
   const closeSelectionMenu = useCallback(() => {
     setSelectionMenu(null);
@@ -254,11 +206,6 @@ export function WorkflowCanvas({
       y: next.y - origin.y,
     };
   }, [screenToFlowPosition]);
-
-  const handleLayoutEngineChange = useCallback((next: string) => {
-    updateCanvasPrefs({ layoutEngine: next });
-    if (!isCanvasLocked) onAutoLayout?.('LR', { layoutEngine: next });
-  }, [isCanvasLocked, onAutoLayout, updateCanvasPrefs]);
 
   // --- Extracted hooks ---
   const { selectedEdgeId, selectEdge } = useCanvasDomEvents({
@@ -650,72 +597,7 @@ export function WorkflowCanvas({
           )}
         </ViewportPortal>
         <Background variant={bgVariant} gap={15} size={1} />
-        <Controls position="bottom-left">
-          <Popover>
-            <PopoverTrigger render={<ControlButton title="切换背景" />}>
-              <Grid3X3 size={14} />
-            </PopoverTrigger>
-            <PopoverContent className="w-36 gap-1 p-1.5" side="right" align="start">
-              {BACKGROUND_OPTIONS.map(option => (
-                <CanvasPopoverOption
-                  key={option.value}
-                  active={bgVariantKey === option.value}
-                  onClick={() => updateCanvasPrefs({ bgVariant: option.value })}
-                >
-                  {option.label}
-                </CanvasPopoverOption>
-              ))}
-            </PopoverContent>
-          </Popover>
-          <Popover>
-            <PopoverTrigger render={<ControlButton title={snapEnabled ? '网格吸附: 开' : '网格吸附: 关'} />}>
-              <Grip size={14} className={snapEnabled ? 'text-primary' : 'text-muted-foreground'} />
-            </PopoverTrigger>
-            <PopoverContent className="w-32 gap-1 p-1.5" side="right" align="start">
-              {SNAP_OPTIONS.map(option => (
-                <CanvasPopoverOption
-                  key={String(option.value)}
-                  active={snapEnabled === option.value}
-                  onClick={() => updateCanvasPrefs({ snapGrid: option.value })}
-                >
-                  {option.label}
-                </CanvasPopoverOption>
-              ))}
-            </PopoverContent>
-          </Popover>
-          <Popover>
-            <PopoverTrigger render={<ControlButton title={`布局引擎: ${layoutEngine}`} />}>
-              <Waypoints size={14} />
-            </PopoverTrigger>
-            <PopoverContent className="w-36 gap-1 p-1.5" side="right" align="start">
-              {LAYOUT_ENGINE_OPTIONS.map(option => (
-                <CanvasPopoverOption
-                  key={option.value}
-                  active={layoutEngine === option.value}
-                  onClick={() => handleLayoutEngineChange(option.value)}
-                >
-                  {option.label}
-                </CanvasPopoverOption>
-              ))}
-            </PopoverContent>
-          </Popover>
-          <Popover>
-            <PopoverTrigger render={<ControlButton title="节点连接点位置" />}>
-              <PanelsTopLeft size={14} />
-            </PopoverTrigger>
-            <PopoverContent className="w-36 gap-1 p-1.5" side="right" align="start">
-              {HANDLE_POSITION_OPTIONS.map(option => (
-                <CanvasPopoverOption
-                  key={option.value}
-                  active={handlePosition === option.value}
-                  onClick={() => updateCanvasPrefs({ attributionPosition: option.value })}
-                >
-                  {option.label}
-                </CanvasPopoverOption>
-              ))}
-            </PopoverContent>
-          </Popover>
-        </Controls>
+        <Controls position="bottom-left" />
         {minimapVisible && <MiniMap />}
         <WorkflowHelperLines horizontal={helperHorizontal} vertical={helperVertical} />
       </ReactFlow>

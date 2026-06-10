@@ -21,11 +21,12 @@ import { WorkflowPluginPickerDialog } from './workflow-plugin-picker-dialog';
 import { WorkflowNodeSelectDialog } from './workflow-node-select-dialog';
 import { WorkflowVariablesForm } from './workflow-variables-form';
 import { WorkflowGroupManagePanel } from './workflow-group-manage-panel';
+import { WorkflowCanvasStylePanel } from './workflow-canvas-style-panel';
 import { FloatingChatPanel } from '@/components/ui/floating-chat-widget';
 import { AgentEditor } from '@/components/sidebar/agent-editor';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ResizablePanel, ResizableHandle, ResizablePanelGroup } from '@/components/ui/resizable';
-import { Loader2, AlertCircle, Settings2, Trash2, Package, Braces, Group, History, Waypoints, Workflow, Play } from 'lucide-react';
+import { Loader2, AlertCircle, Settings2, Trash2, Package, Braces, Group, History, Waypoints, Workflow, Play, Palette } from 'lucide-react';
 import { useEditorShortcuts, useClipboard, useExecutionPanel } from '@/hooks/use-workflow-editor';
 import { Button } from '@/components/ui/button';
 import { useWorkspaceStore } from '@/stores/workspace';
@@ -80,6 +81,7 @@ const defaultJson: IJsonModel = {
         weight: 0.30,
         children: [
           { type: 'tab', name: 'Properties', component: 'properties', id: 'properties' },
+          { type: 'tab', name: 'Canvas Style', component: 'canvas-style', id: 'canvas-style' },
           { type: 'tab', name: 'Variables', component: 'variables', id: 'variables' },
           { type: 'tab', name: 'Groups', component: 'groups', id: 'groups' },
           { type: 'tab', name: 'History', component: 'history', id: 'history' },
@@ -96,6 +98,7 @@ const WORKFLOW_TAB_ICONS: Record<string, React.ReactNode> = {
   'node-sidebar': <Waypoints size={16} />,
   'canvas': <Workflow size={16} />,
   'properties': <Settings2 size={16} />,
+  'canvas-style': <Palette size={16} />,
   'variables': <Braces size={16} />,
   'groups': <Group size={16} />,
   'history': <History size={16} />,
@@ -288,7 +291,7 @@ function WorkflowEditorInner({
       const node = _model.getNodeById(action.data.tabNode);
       if (node && node instanceof TabNode) {
         const comp = node.getComponent();
-        if (['properties', 'variables', 'groups', 'history', 'staging'].includes(comp ?? '')) {
+        if (['properties', 'canvas-style', 'variables', 'groups', 'history', 'staging'].includes(comp ?? '')) {
           state.setRightTab(comp!);
         }
       }
@@ -298,7 +301,7 @@ function WorkflowEditorInner({
   const onRenderTab = useCallback((node: TabNode, renderValues: ITabRenderValues) => {
     const icon = WORKFLOW_TAB_ICONS[node.getComponent() ?? ''];
     if (icon) {
-      renderValues.content = <span title={node.getName()} className="flex items-center gap-1.5">{icon}<span className="text-xs">{node.getName()}</span></span>;
+      renderValues.content = <span title={node.getName()} className="flex items-center justify-center">{icon}</span>;
     }
   }, []);
 
@@ -364,7 +367,6 @@ function WorkflowEditorInner({
                 onRedo={isWorkflowReadOnly ? undefined : state.handleRedo}
                 onExitPreview={exitExecutionPreview}
                 onAutoLayout={canvas.handleAutoLayout}
-                onCanvasPreferencesChange={canvas.handleCanvasPreferencesChange}
                 canvasExportRef={canvasExportRef}
               />
             </div>
@@ -387,6 +389,15 @@ function WorkflowEditorInner({
             previewResult={previewResult}
             onDebugNode={execution.handleDebugNode}
             onCancelDebug={execution.handleCancelDebug}
+          />
+        );
+      case 'canvas-style':
+        return (
+          <WorkflowCanvasStylePanel
+            canvasPrefs={workflow.layoutSnapshot ?? {}}
+            onCanvasPreferencesChange={canvas.handleCanvasPreferencesChange}
+            onAutoLayout={isWorkflowReadOnly ? undefined : canvas.handleAutoLayout}
+            isCanvasLocked={isWorkflowReadOnly}
           />
         );
       case 'variables':

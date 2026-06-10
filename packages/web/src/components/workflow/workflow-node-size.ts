@@ -1,6 +1,7 @@
 import { LOOP_BODY_NODE_TYPE, type NodeTypeDefinition } from '@agent-spaces/shared';
 
 const DEFAULT_NODE_MIN_WIDTH = 140;
+const DEFAULT_NODE_WIDTH = 250;
 const DEFAULT_NODE_MIN_HEIGHT = 60;
 const HEADER_HEIGHT = 33;
 const HANDLE_MARGIN = 12;
@@ -52,7 +53,7 @@ export function getWorkflowNodeSize(
   return {
     minWidth,
     minHeight,
-    width: Math.max(minWidth, typeof data.width === 'number' ? data.width : minWidth),
+    width: Math.max(minWidth, typeof data.width === 'number' ? data.width : DEFAULT_NODE_WIDTH),
     height: Math.max(minHeight, typeof data.height === 'number' ? data.height : minHeight),
     sourceHandleCount,
   };
