@@ -380,6 +380,20 @@
         }
       }
     },
+    "pluck_array_key": {
+      "label": "Pluck Array Field",
+      "description": "Extract a field value from each object in an array and output result[]",
+      "props": {
+        "array": {
+          "label": "Array",
+          "tooltip": "Object array, for example [{\"name\":\"a\"},{\"name\":\"b\"}]"
+        },
+        "key": {
+          "label": "Field Name",
+          "tooltip": "Field name to read from each object item, for example name"
+        }
+      }
+    },
     "set_variable": {
       "label": "Set Variable",
       "description": "Write or overwrite workflow runtime variables, set multiple at once",

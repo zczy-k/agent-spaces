@@ -380,6 +380,20 @@
         }
       }
     },
+    "pluck_array_key": {
+      "label": "提取数组字段",
+      "description": "从数组对象成员中提取指定字段值，输出为 result 数组",
+      "props": {
+        "array": {
+          "label": "数组",
+          "tooltip": "对象数组，例如 [{\"name\":\"a\"},{\"name\":\"b\"}]"
+        },
+        "key": {
+          "label": "字段名",
+          "tooltip": "要从每个对象成员中读取的字段名，例如 name"
+        }
+      }
+    },
     "set_variable": {
       "label": "设置变量",
       "description": "写入或覆盖工作流运行时变量，可一次设置多个变量",

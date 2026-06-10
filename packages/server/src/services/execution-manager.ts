@@ -625,6 +625,8 @@ export class ExecutionManager {
         const outputKey = this.getFirstObjectOutputKey(resolvedData.outputs) ?? 'result';
         return { [outputKey]: this.executeVariableAggregate(resolvedData.groups || []) };
       }
+      case 'pluck_array_key':
+        return this.executePluckArrayKey(resolvedData);
       case 'set_variable':
         return this.executeSetVariable(session, resolvedData.variables || [], appendLog);
       case 'get_variable':
@@ -683,6 +685,18 @@ export class ExecutionManager {
     frame.breakRequested = true;
     appendLog('info', 'Loop break requested');
     return { break: true };
+  }
+
+  private executePluckArrayKey(resolvedData: Record<string, any>): Record<string, unknown[]> {
+    const array = Array.isArray(resolvedData.array) ? resolvedData.array : [];
+    const key = String(resolvedData.key || '').trim();
+    if (!key) return { result: [] };
+
+    return {
+      result: array.map((item) => (
+        item && typeof item === 'object' && key in item ? item[key] : undefined
+      )),
+    };
   }
 
   private async executeAgentRun(
