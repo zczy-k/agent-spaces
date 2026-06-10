@@ -15,7 +15,6 @@ import {
   X,
 } from 'lucide-react';
 import {
-  LOOP_BODY_NODE_TYPE,
   LOOP_NODE_TYPE,
   type ExecutionStep,
   type OutputField,
@@ -27,6 +26,14 @@ import { cn } from '@/lib/utils';
 import { formatDuration, type WorkflowLogPanelLayout } from './workflow-node-types';
 
 const LOG_SECTION_SCROLL_CLASS = 'nodrag nopan nowheel max-h-[calc(260px/3)] overscroll-contain overflow-auto';
+const LOG_TAB_TRIGGER_CLASS = 'h-7 rounded-none border-b-2 border-transparent px-2 text-[10px] data-active:border-primary data-active:bg-primary/5 data-active:text-foreground data-active:shadow-none';
+const WORKFLOW_EXECUTION_BATCH_INDEX_EVENT = 'workflow:execution-log-batch-index';
+
+interface WorkflowExecutionBatchIndexEventDetail {
+  scopeId: string;
+  nodeId: string;
+  index: number;
+}
 
 function CopyButton({ data }: { data: unknown }) {
   const [copied, setCopied] = React.useState(false);
@@ -57,6 +64,7 @@ interface WorkflowNodeExecutionLogProps {
   executionStep: ExecutionStep;
   executionSteps?: ExecutionStep[];
   nodeType?: string;
+  loopExecutionScopeId?: string;
   inputFields?: OutputField[];
   outputs: OutputField[];
   nodeWidth: number;
@@ -70,6 +78,7 @@ export function WorkflowNodeExecutionLog({
   executionStep,
   executionSteps,
   nodeType,
+  loopExecutionScopeId,
   inputFields = [],
   outputs,
   nodeWidth,
@@ -79,17 +88,37 @@ export function WorkflowNodeExecutionLog({
 }: WorkflowNodeExecutionLogProps) {
   const t = useTranslations('workflows');
   const batchSteps = React.useMemo(() => {
-    if (nodeType !== LOOP_NODE_TYPE && nodeType !== LOOP_BODY_NODE_TYPE) return [executionStep];
     return Array.isArray(executionSteps) && executionSteps.length > 0
       ? executionSteps
       : [executionStep];
-  }, [executionStep, executionSteps, nodeType]);
+  }, [executionStep, executionSteps]);
   const [selectedBatchIndex, setSelectedBatchIndex] = React.useState(() => Math.max(0, batchSteps.length - 1));
   React.useEffect(() => {
     setSelectedBatchIndex(Math.max(0, batchSteps.length - 1));
   }, [batchSteps.length]);
+  React.useEffect(() => {
+    if (!loopExecutionScopeId) return;
+    const handleBatchIndexChange = (event: Event) => {
+      const detail = (event as CustomEvent<WorkflowExecutionBatchIndexEventDetail>).detail;
+      if (!detail || detail.scopeId !== loopExecutionScopeId || detail.nodeId === nodeId) return;
+      setSelectedBatchIndex(Math.min(Math.max(0, detail.index), Math.max(0, batchSteps.length - 1)));
+    };
+
+    window.addEventListener(WORKFLOW_EXECUTION_BATCH_INDEX_EVENT, handleBatchIndexChange);
+    return () => window.removeEventListener(WORKFLOW_EXECUTION_BATCH_INDEX_EVENT, handleBatchIndexChange);
+  }, [batchSteps.length, loopExecutionScopeId, nodeId]);
   const selectedExecutionStep = batchSteps[selectedBatchIndex] || executionStep;
   const shouldShowBatchTabs = batchSteps.length > 1;
+  const handleBatchIndexChange = React.useCallback((value: string) => {
+    const index = Number(value);
+    if (!Number.isFinite(index)) return;
+    setSelectedBatchIndex(index);
+    if (!loopExecutionScopeId || nodeType !== LOOP_NODE_TYPE) return;
+    window.dispatchEvent(new CustomEvent<WorkflowExecutionBatchIndexEventDetail>(
+      WORKFLOW_EXECUTION_BATCH_INDEX_EVENT,
+      { detail: { scopeId: loopExecutionScopeId, nodeId, index } },
+    ));
+  }, [loopExecutionScopeId, nodeId, nodeType]);
   const handleClick = React.useCallback((event: React.MouseEvent) => {
     event.stopPropagation();
     window.dispatchEvent(new CustomEvent('workflow:select-node', { detail: { nodeId } }));
@@ -248,10 +277,10 @@ export function WorkflowNodeExecutionLog({
     layout === 'tabs' ? (
       <Tabs defaultValue="io" className="flex-col gap-0">
         <TabsList variant="line" className="mx-2 h-7 w-[calc(100%-1rem)] justify-start p-0">
-          <TabsTrigger value="io" className="h-7 px-2 text-[10px]">
+          <TabsTrigger value="io" className={LOG_TAB_TRIGGER_CLASS}>
             {t('execution.input')} / {t('execution.output')}
           </TabsTrigger>
-          <TabsTrigger value="logs" className="h-7 px-2 text-[10px]">
+          <TabsTrigger value="logs" className={LOG_TAB_TRIGGER_CLASS}>
             {t('execution.logs')}
           </TabsTrigger>
         </TabsList>
@@ -313,7 +342,7 @@ export function WorkflowNodeExecutionLog({
           {shouldShowBatchTabs ? (
             <Tabs
               value={String(selectedBatchIndex)}
-              onValueChange={value => setSelectedBatchIndex(Number(value))}
+              onValueChange={handleBatchIndexChange}
               className="flex-col gap-0"
             >
               <TabsList
@@ -324,7 +353,7 @@ export function WorkflowNodeExecutionLog({
                   <TabsTrigger
                     key={`${step.startedAt}-${index}`}
                     value={String(index)}
-                    className="h-7 flex-none px-2 text-[10px]"
+                    className={cn(LOG_TAB_TRIGGER_CLASS, 'flex-none')}
                   >
                     {index + 1}
                   </TabsTrigger>

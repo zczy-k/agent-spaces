@@ -6,7 +6,9 @@ import {
   isScopeBoundaryWorkflowNode,
   getCompositeParentId,
   LOOP_BODY_NODE_TYPE,
+  LOOP_NODE_TYPE,
   type Workflow,
+  type WorkflowNode,
   type ExecutionLog,
   type ExecutionStep,
 } from '@agent-spaces/shared';
@@ -19,6 +21,92 @@ const LOOP_BODY_NODE_Z_INDEX = -100;
 const DEFAULT_NODE_Z_INDEX = 1;
 const SCOPED_CHILD_NODE_Z_INDEX = 1000;
 const ACTIVE_NODE_Z_INDEX = 2000;
+
+function getStepSortTime(step: ExecutionStep): number {
+  return step.finishedAt ?? step.startedAt;
+}
+
+function getAggregateStatus(steps: ExecutionStep[]): ExecutionStep['status'] {
+  if (steps.some(step => step.status === 'error')) return 'error';
+  if (steps.some(step => step.status === 'running')) return 'running';
+  if (steps.length > 0 && steps.every(step => step.status === 'skipped')) return 'skipped';
+  return 'completed';
+}
+
+function createScopeIterationSteps(
+  scopeNode: WorkflowNode,
+  childNodes: WorkflowNode[],
+  executionStepsByNodeId: Map<string, ExecutionStep[]>,
+): ExecutionStep[] {
+  const childStepGroups = childNodes
+    .map(node => ({
+      node,
+      steps: executionStepsByNodeId.get(node.id) || [],
+    }))
+    .filter(group => group.steps.length > 0);
+
+  const iterationCount = Math.max(0, ...childStepGroups.map(group => group.steps.length));
+  if (iterationCount === 0) return [];
+
+  return Array.from({ length: iterationCount }, (_, index) => {
+    const iterationSteps = childStepGroups
+      .map(group => {
+        const step = group.steps[index];
+        return step ? { node: group.node, step } : null;
+      })
+      .filter((item): item is { node: WorkflowNode; step: ExecutionStep } => !!item)
+      .sort((a, b) => getStepSortTime(a.step) - getStepSortTime(b.step));
+
+    const steps = iterationSteps.map(item => item.step);
+    const startedAt = Math.min(...steps.map(step => step.startedAt));
+    const finishedAt = steps.every(step => step.finishedAt != null)
+      ? Math.max(...steps.map(step => step.finishedAt || step.startedAt))
+      : undefined;
+    const failedStep = steps.find(step => step.status === 'error');
+
+    return {
+      nodeId: scopeNode.id,
+      nodeLabel: scopeNode.label || scopeNode.type,
+      startedAt,
+      finishedAt,
+      status: getAggregateStatus(steps),
+      input: Object.fromEntries(iterationSteps.map(({ node, step }) => [
+        node.label || step.nodeLabel || node.id,
+        step.input ?? null,
+      ])),
+      output: Object.fromEntries(iterationSteps.map(({ node, step }) => [
+        node.label || step.nodeLabel || node.id,
+        step.output ?? null,
+      ])),
+      error: failedStep?.error,
+      logs: iterationSteps.flatMap(({ node, step }) =>
+        (step.logs || []).map(entry => ({
+          ...entry,
+          message: `${node.label || step.nodeLabel || node.id}: ${entry.message}`,
+        })),
+      ),
+    };
+  });
+}
+
+function getLoopExecutionScopeId(node: WorkflowNode, nodeById: Map<string, WorkflowNode>): string | undefined {
+  if (node.type === LOOP_NODE_TYPE) return node.id;
+  if (node.composite?.rootId) {
+    const rootNode = nodeById.get(node.composite.rootId);
+    if (rootNode?.type === LOOP_NODE_TYPE) return rootNode.id;
+  }
+
+  let current: WorkflowNode | undefined = node;
+  while (current) {
+    const parentId = getCompositeParentId(current);
+    if (!parentId) return undefined;
+    const parent = nodeById.get(parentId);
+    if (parent?.type === LOOP_NODE_TYPE) return parent.id;
+    current = parent;
+  }
+
+  return undefined;
+}
 
 function getSourceHandleColor(nodeData: Record<string, unknown>, sourceHandle: string | null | undefined): string | undefined {
   const handleColors = nodeData.handleColors;
@@ -91,15 +179,7 @@ export function useCanvasData({
     return { running, completed };
   }, [executionLog]);
 
-  const executionStepByNodeId = useMemo(() => {
-    const steps = new Map<string, ExecutionStep>();
-    for (const step of executionLog?.steps || []) {
-      steps.set(step.nodeId, step);
-    }
-    return steps;
-  }, [executionLog]);
-
-  const executionStepsByNodeId = useMemo(() => {
+  const baseExecutionStepsByNodeId = useMemo(() => {
     const steps = new Map<string, ExecutionStep[]>();
     for (const step of executionLog?.steps || []) {
       const nodeSteps = steps.get(step.nodeId) || [];
@@ -109,8 +189,51 @@ export function useCanvasData({
     return steps;
   }, [executionLog]);
 
+  const executionStepsByNodeId = useMemo(() => {
+    const steps = new Map(baseExecutionStepsByNodeId);
+
+    for (const nodeType of [LOOP_BODY_NODE_TYPE, LOOP_NODE_TYPE]) {
+      for (const node of workflow.nodes) {
+        if (node.type !== nodeType) continue;
+        const childNodes = workflow.nodes.filter(child => getCompositeParentId(child) === node.id);
+        const iterationSteps = createScopeIterationSteps(node, childNodes, steps);
+        if (iterationSteps.length > 0) {
+          steps.set(node.id, iterationSteps);
+        }
+      }
+    }
+
+    return steps;
+  }, [baseExecutionStepsByNodeId, workflow.nodes]);
+
+  const executionStepByNodeId = useMemo(() => {
+    const steps = new Map<string, ExecutionStep>();
+    for (const [nodeId, nodeSteps] of executionStepsByNodeId) {
+      const lastStep = nodeSteps[nodeSteps.length - 1];
+      if (lastStep) steps.set(nodeId, lastStep);
+    }
+    return steps;
+  }, [executionStepsByNodeId]);
+
+  const executionNodeIdsWithScope = useMemo(() => {
+    const running = new Set(executionNodeIds.running);
+    const completed = new Set(executionNodeIds.completed);
+
+    for (const node of workflow.nodes) {
+      if (node.type !== LOOP_BODY_NODE_TYPE && node.type !== LOOP_NODE_TYPE) continue;
+      const step = executionStepByNodeId.get(node.id);
+      if (!step) continue;
+      if (step.status === 'running') running.add(node.id);
+      if (step.status === 'completed') completed.add(node.id);
+    }
+
+    return { running, completed };
+  }, [executionNodeIds, executionStepByNodeId, workflow.nodes]);
+
   const rfNodes: Node[] = useMemo(() =>
-    workflow.nodes.filter(n => !isHiddenWorkflowNode(n)).map(n => {
+    {
+      const nodeById = new Map(workflow.nodes.map(node => [node.id, node]));
+      return workflow.nodes.filter(n => !isHiddenWorkflowNode(n)).map(n => {
       const definition = getNodeDefinition(n.type);
       const { minWidth, minHeight, width, height } = getWorkflowNodeSize(definition, n.data);
       const hasIncoming = workflow.edges.some(edge => edge.target === n.id);
@@ -149,7 +272,7 @@ export function useCanvasData({
           isCanvasLocked,
           width,
           height,
-          isRunning: executionNodeIds.running.has(n.id),
+          isRunning: executionNodeIdsWithScope.running.has(n.id),
           execStatus,
           debugNodeId,
           debugStatus,
@@ -159,6 +282,7 @@ export function useCanvasData({
           handlePosition,
           floatingHandles,
           logPanelLayout,
+          loopExecutionScopeId: getLoopExecutionScopeId(n, nodeById),
           isFirstConnectedNode: hasOutgoing && !hasIncoming,
           executionStep: executionStepByNodeId.get(n.id),
           executionSteps: executionStepsByNodeId.get(n.id),
@@ -166,8 +290,9 @@ export function useCanvasData({
           layoutEngine,
         } as Record<string, unknown>,
       };
-    }),
-    [workflow.nodes, workflow.edges, selectedNodeIdSet, selectedNodeIds, isPreview, isCanvasLocked, executionNodeIds, execStatus, debugNodeId, debugStatus, pausedNodeId, pausedReason, partialExecutionStartNodeId, handlePosition, floatingHandles, logPanelLayout, executionStepByNodeId, executionStepsByNodeId, onAutoLayout, layoutEngine],
+    });
+    },
+    [workflow.nodes, workflow.edges, selectedNodeIdSet, selectedNodeIds, isPreview, isCanvasLocked, executionNodeIdsWithScope, execStatus, debugNodeId, debugStatus, pausedNodeId, pausedReason, partialExecutionStartNodeId, handlePosition, floatingHandles, logPanelLayout, executionStepByNodeId, executionStepsByNodeId, onAutoLayout, layoutEngine],
   );
 
   const runningEdgeIds = useMemo(() => {

@@ -28,6 +28,7 @@ export type WorkflowNodeData = Record<string, unknown> & {
   handlePosition?: HandlePositionMode;
   floatingHandles?: boolean;
   logPanelLayout?: WorkflowLogPanelLayout;
+  loopExecutionScopeId?: string;
   handleColors?: Record<string, string>;
   executionStep?: import('@agent-spaces/shared').ExecutionStep;
   executionSteps?: import('@agent-spaces/shared').ExecutionStep[];
