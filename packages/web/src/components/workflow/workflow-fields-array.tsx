@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { ArrayFieldItem, NodeProperty } from '@agent-spaces/shared';
+import type { ArrayFieldItem, NodeProperty, OutputField } from '@agent-spaces/shared';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
-import { isPlainObject, getOutputFields } from './workflow-properties-utils';
+import { FIELD_TYPES, isPlainObject, getOutputFields } from './workflow-properties-utils';
 import { WorkflowVariablePicker, type WorkflowVariableContext } from './workflow-variable-picker';
 import { OutputFieldsEditor } from './workflow-fields-output';
 
@@ -149,6 +149,8 @@ export function ArrayItemField({
   variableContext?: WorkflowVariableContext;
   onInsertVariable?: (path: string) => void;
 }) {
+  const [variableTypeFilter, setVariableTypeFilter] = useState<OutputField['type']>('any');
+
   if (variableMode) {
     return (
       <InputGroup className="h-6 rounded-md">
@@ -158,9 +160,26 @@ export function ArrayItemField({
           className="text-[11px]"
           onChange={(e) => onChange(e.target.value)}
         />
+        <Select
+          value={variableTypeFilter}
+          onValueChange={(type) => setVariableTypeFilter(type as OutputField['type'])}
+        >
+          <SelectTrigger size="sm" className="h-6 w-20 shrink-0 rounded-none border-y-0 border-r-0 px-2 py-0 text-[11px] [&_svg]:size-3">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {FIELD_TYPES.map(type => (
+              <SelectItem key={type} value={type} className="text-[11px]">{type}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         {variableContext?.currentNodeId && onInsertVariable && (
           <InputGroupAddon align="inline-end">
-            <WorkflowVariablePicker {...variableContext} onSelect={onInsertVariable} />
+            <WorkflowVariablePicker
+              {...variableContext}
+              typeFilter={variableTypeFilter}
+              onSelect={onInsertVariable}
+            />
           </InputGroupAddon>
         )}
       </InputGroup>
