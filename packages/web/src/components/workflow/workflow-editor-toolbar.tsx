@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   Save, ArrowLeft,
-  Upload, Undo2, Redo2, PackagePlus, MoreVertical, FolderOpen, FileImage, Image,
+  Upload, PackagePlus, MoreVertical, FolderOpen, FileImage, Image,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,13 +20,9 @@ interface EditorToolbarProps {
   workflow: Workflow | null;
   isDirty: boolean;
   isPreview: boolean;
-  canUndo: boolean;
-  canRedo: boolean;
   onBack: () => void;
   onExitPreview: () => void;
   onSave: () => void;
-  onUndo: () => void;
-  onRedo: () => void;
   onExport: (format: 'png' | 'jpeg') => void;
   isExporting?: boolean;
   onImport: () => void;
@@ -50,9 +46,8 @@ function ToolBtn({ tooltip, children, ...props }: React.ComponentProps<typeof Bu
 
 export function WorkflowEditorToolbar({
   workflow, isDirty, isPreview,
-  canUndo, canRedo,
   onBack, onExitPreview, onSave,
-  onUndo, onRedo, onExport, onImport, isExporting,
+  onExport, onImport, isExporting,
   onOpenPluginManager, onOpenWorkflowLocation, onWorkflowInfoChange,
 }: EditorToolbarProps) {
   const [infoOpen, setInfoOpen] = useState(false);
@@ -98,12 +93,9 @@ export function WorkflowEditorToolbar({
 
       <div className="flex-1" />
 
-      <ToolBtn tooltip={t('editor.undo')} variant="ghost" size="icon" className="h-7 w-7" onClick={onUndo} disabled={!canUndo}>
-        <Undo2 className="h-4 w-4" />
-      </ToolBtn>
-      <ToolBtn tooltip={t('editor.redo')} variant="ghost" size="icon" className="h-7 w-7" onClick={onRedo} disabled={!canRedo}>
-        <Redo2 className="h-4 w-4" />
-      </ToolBtn>
+      <Button variant="ghost" size="sm" className="h-7 gap-1" disabled={!workflow} onClick={() => window.open(`/workflows/share.html?workflow_id=${workflow!.id}`)}>
+        Preview
+      </Button>
 
       <div className="w-px h-5 bg-border mx-1" />
 

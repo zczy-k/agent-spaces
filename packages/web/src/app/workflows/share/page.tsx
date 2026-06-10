@@ -15,6 +15,7 @@ import { sendNativeNotification } from '@/lib/native-notification';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Loader2, Play, Square, Download } from 'lucide-react';
+import JSZip from 'jszip';
 import ModernLoader from '@/components/ui/modern-loader';
 import { BackButton } from '@/components/common/back-button';
 import { useTranslations } from 'next-intl';
@@ -377,7 +378,23 @@ export default function WorkflowSharePage() {
                       <div className="flex items-center justify-between p-3 pb-1">
                         <CardTitle className="text-xs">{t('share.fileOutput')}</CardTitle>
                         {fileOutputs.length > 0 && (
-                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => fileOutputs.forEach(f => window.open(f.url, '_blank'))}>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={async () => {
+                            try {
+                              const zip = new JSZip();
+                              const fetched = await Promise.all(fileOutputs.map(async f => {
+                                const res = await fetch(f.url);
+                                const blob = await res.blob();
+                                return { name: f.name, blob };
+                              }));
+                              for (const f of fetched) zip.file(f.name, f.blob);
+                              const content = await zip.generateAsync({ type: 'blob' });
+                              const a = document.createElement('a');
+                              a.href = URL.createObjectURL(content);
+                              a.download = `${workflow?.name || 'workflow'}-output.zip`;
+                              a.click();
+                              URL.revokeObjectURL(a.href);
+                            } catch { toast.error('Download failed'); }
+                          }}>
                             <Download className="h-3.5 w-3.5" />
                           </Button>
                         )}
