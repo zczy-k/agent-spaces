@@ -73,6 +73,13 @@ export function useCanvasDomEvents({
     selectEdge(detail?.edgeId ?? null);
   }, [selectEdge]);
 
+  const handleNodeSelectEvent = useCallback((e: Event) => {
+    const detail = (e as CustomEvent).detail as { nodeId?: string | null; multi?: boolean } | undefined;
+    if (!detail?.nodeId) return;
+    setSelectedEdgeId(null);
+    onNodeSelect(detail.nodeId, detail.multi === true);
+  }, [onNodeSelect]);
+
   const handleEdgeDelete = useCallback((e: Event) => {
     const detail = (e as CustomEvent).detail as { edgeId?: string | null } | undefined;
     if (!detail?.edgeId) return;
@@ -165,6 +172,7 @@ export function useCanvasDomEvents({
   useEffect(() => {
     window.addEventListener('workflow:edge-insert-node', handleEdgeInsertNode);
     window.addEventListener('workflow:select-edge', handleEdgeSelect);
+    window.addEventListener('workflow:select-node', handleNodeSelectEvent);
     window.addEventListener('workflow:delete-edge', handleEdgeDelete);
     window.addEventListener('workflow:delete-node', handleNodeDelete);
     window.addEventListener('workflow:update-node-data', handleNodeDataUpdate);
@@ -184,6 +192,7 @@ export function useCanvasDomEvents({
     return () => {
       window.removeEventListener('workflow:edge-insert-node', handleEdgeInsertNode);
       window.removeEventListener('workflow:select-edge', handleEdgeSelect);
+      window.removeEventListener('workflow:select-node', handleNodeSelectEvent);
       window.removeEventListener('workflow:delete-edge', handleEdgeDelete);
       window.removeEventListener('workflow:delete-node', handleNodeDelete);
       window.removeEventListener('workflow:update-node-data', handleNodeDataUpdate);
@@ -201,7 +210,7 @@ export function useCanvasDomEvents({
       window.removeEventListener('workflow:resume-execution', handleResumeExecutionEvent);
       window.removeEventListener('workflow:stop-execution', handleStopExecutionEvent);
     };
-  }, [handleEdgeDataUpdate, handleEdgeDelete, handleEdgeInsertNode, handleEdgeSelect, handleNodeDelete, handleNodeDataUpdate, handleNodeCopyEvent, handleNodeCloneEvent, handleNodeStageEvent, handleMergeNodesToWorkflowEvent, handleMergeNodesToGroupEvent, handleBatchDeleteNodesEvent, handleNodeInfoEvent, handleNodeDebugEvent, handleCancelDebugEvent, handleExecuteFromNodeEvent, handleResumeExecutionEvent, handleStopExecutionEvent]);
+  }, [handleEdgeDataUpdate, handleEdgeDelete, handleEdgeInsertNode, handleEdgeSelect, handleNodeSelectEvent, handleNodeDelete, handleNodeDataUpdate, handleNodeCopyEvent, handleNodeCloneEvent, handleNodeStageEvent, handleMergeNodesToWorkflowEvent, handleMergeNodesToGroupEvent, handleBatchDeleteNodesEvent, handleNodeInfoEvent, handleNodeDebugEvent, handleCancelDebugEvent, handleExecuteFromNodeEvent, handleResumeExecutionEvent, handleStopExecutionEvent]);
 
   // Keyboard delete for selected edge
   useEffect(() => {

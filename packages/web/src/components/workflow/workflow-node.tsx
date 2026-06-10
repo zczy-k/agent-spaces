@@ -675,6 +675,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       {/* Collapsible execution log card below the node */}
       {showFullNode && hasExecutionResult && executionStep ? (
         <WorkflowNodeExecutionLog
+          nodeId={id}
           executionStep={executionStep}
           nodeWidth={nodeWidth}
           isLogExpanded={isLogExpanded}

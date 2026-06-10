@@ -16,7 +16,10 @@ import { JsonViewer } from '@/components/viewers/json-viewer';
 import { cn } from '@/lib/utils';
 import { formatDuration } from './workflow-node-types';
 
+const LOG_SECTION_SCROLL_CLASS = 'nodrag nopan nowheel max-h-[calc(260px/3)] overscroll-contain overflow-auto';
+
 interface WorkflowNodeExecutionLogProps {
+  nodeId: string;
   executionStep: ExecutionStep;
   nodeWidth: number;
   isLogExpanded: boolean;
@@ -24,18 +27,23 @@ interface WorkflowNodeExecutionLogProps {
 }
 
 export function WorkflowNodeExecutionLog({
+  nodeId,
   executionStep,
   nodeWidth,
   isLogExpanded,
   onToggleLog,
 }: WorkflowNodeExecutionLogProps) {
   const t = useTranslations('workflows');
+  const handleClick = React.useCallback((event: React.MouseEvent) => {
+    event.stopPropagation();
+    window.dispatchEvent(new CustomEvent('workflow:select-node', { detail: { nodeId } }));
+  }, [nodeId]);
 
   return (
     <div
       className="nodrag nopan nowheel relative z-10 mt-1"
       style={{ width: nodeWidth }}
-      onClick={(e) => e.stopPropagation()}
+      onClick={handleClick}
     >
       <button
         type="button"
@@ -58,10 +66,7 @@ export function WorkflowNodeExecutionLog({
       </button>
 
       {isLogExpanded && (
-        <div
-          className="nodrag nopan nowheel max-h-[260px] overscroll-contain overflow-auto rounded-b-md border border-t-0 border-border bg-background"
-          onWheelCapture={(e) => e.stopPropagation()}
-        >
+        <div className="nodrag nopan nowheel rounded-b-md border border-t-0 border-border bg-background">
           {/* Error */}
           {executionStep.error && (
             <div className="px-2 py-1.5 text-[10px] text-red-500 bg-red-500/10 border-b border-border flex items-start gap-1">
@@ -71,7 +76,10 @@ export function WorkflowNodeExecutionLog({
           )}
 
           {/* Output section */}
-          <div className="border-b border-border">
+          <div
+            className={cn(LOG_SECTION_SCROLL_CLASS, 'border-b border-border')}
+            onWheelCapture={(e) => e.stopPropagation()}
+          >
             <div className="px-2 py-0.5 text-[9px] font-medium text-muted-foreground/70 uppercase tracking-wider">{t('execution.output')}</div>
             {executionStep.output != null ? (
               <JsonViewer
@@ -86,7 +94,10 @@ export function WorkflowNodeExecutionLog({
           </div>
 
           {/* Input section */}
-          <div className="border-b border-border">
+          <div
+            className={cn(LOG_SECTION_SCROLL_CLASS, 'border-b border-border')}
+            onWheelCapture={(e) => e.stopPropagation()}
+          >
             <div className="px-2 py-0.5 text-[9px] font-medium text-muted-foreground/70 uppercase tracking-wider">{t('execution.input')}</div>
             {executionStep.input != null ? (
               <JsonViewer
@@ -101,7 +112,10 @@ export function WorkflowNodeExecutionLog({
           </div>
 
           {/* Logs section */}
-          <div>
+          <div
+            className={LOG_SECTION_SCROLL_CLASS}
+            onWheelCapture={(e) => e.stopPropagation()}
+          >
             <div className="px-2 py-0.5 text-[9px] font-medium text-muted-foreground/70 uppercase tracking-wider">{t('execution.logs')}</div>
             {executionStep.logs?.length ? (
               <div className="px-1.5 pb-1 space-y-px">
