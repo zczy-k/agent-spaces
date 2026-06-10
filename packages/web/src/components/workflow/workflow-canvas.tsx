@@ -657,6 +657,7 @@ export function WorkflowCanvas({
     partialExecutionStartNodeId,
     handlePosition,
     floatingHandles,
+    logPanelLayout: canvasPrefs.logPanelLayout === 'tabs' ? 'tabs' : 'vertical',
     edgePathType: (canvasPrefs.edgePathType as string) || 'bezier',
     edgeLineStyle: (canvasPrefs.edgeLineStyle as string) || 'solid',
   });

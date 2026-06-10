@@ -36,13 +36,27 @@ interface VariablePickerProps extends WorkflowVariableContext {
   children?: React.ReactNode;
 }
 
-function getConnectedNodeIds(edges: WorkflowEdge[], nodeId: string): Set<string> {
-  const connected = new Set<string>();
+function getUpstreamNodeIds(edges: WorkflowEdge[], nodeId: string): Set<string> {
+  const incomingByTarget = new Map<string, string[]>();
+
   for (const edge of edges) {
-    if (edge.source === nodeId) connected.add(edge.target);
-    if (edge.target === nodeId) connected.add(edge.source);
+    const sources = incomingByTarget.get(edge.target) ?? [];
+    sources.push(edge.source);
+    incomingByTarget.set(edge.target, sources);
   }
-  return connected;
+
+  const upstream = new Set<string>();
+  const pending = [...(incomingByTarget.get(nodeId) ?? [])];
+
+  while (pending.length > 0) {
+    const sourceId = pending.pop();
+    if (!sourceId || upstream.has(sourceId)) continue;
+
+    upstream.add(sourceId);
+    pending.push(...(incomingByTarget.get(sourceId) ?? []));
+  }
+
+  return upstream;
 }
 
 function getNodeLabel(node: WorkflowNode): string {
@@ -256,8 +270,8 @@ export function WorkflowVariablePicker({
   }, [currentNode, nodes]);
 
   const isInLoopBody = Boolean(loopParentNode && currentNode);
-  const connectedNodeIds = useMemo(
-    () => activeNodeId ? getConnectedNodeIds(edges, activeNodeId) : new Set<string>(),
+  const upstreamNodeIds = useMemo(
+    () => activeNodeId ? getUpstreamNodeIds(edges, activeNodeId) : new Set<string>(),
     [activeNodeId, edges],
   );
 
@@ -270,8 +284,8 @@ export function WorkflowVariablePicker({
         if (node.type === 'loop_body' && getCompositeParentId(node) === loopParentNode.id) hidden.add(node.id);
       }
     }
-    return nodes.filter((node) => connectedNodeIds.has(node.id) && !hidden.has(node.id));
-  }, [activeNodeId, connectedNodeIds, isInLoopBody, loopParentNode, nodes]);
+    return nodes.filter((node) => upstreamNodeIds.has(node.id) && !hidden.has(node.id));
+  }, [activeNodeId, upstreamNodeIds, isInLoopBody, loopParentNode, nodes]);
 
   const workflowInputNode = useMemo(
     () => nodes.find((node) => node.type === 'start') ?? null,

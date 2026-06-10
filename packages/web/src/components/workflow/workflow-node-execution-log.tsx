@@ -12,16 +12,20 @@ import {
   X,
 } from 'lucide-react';
 import type { ExecutionStep } from '@agent-spaces/shared';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { JsonViewer } from '@/components/viewers/json-viewer';
 import { cn } from '@/lib/utils';
-import { formatDuration } from './workflow-node-types';
+import { formatDuration, type WorkflowLogPanelLayout } from './workflow-node-types';
 
 const LOG_SECTION_SCROLL_CLASS = 'nodrag nopan nowheel max-h-[calc(260px/3)] overscroll-contain overflow-auto';
+const LOG_TAB_SECTION_SCROLL_CLASS = 'nodrag nopan nowheel max-h-[110px] overscroll-contain overflow-auto';
+const LOG_TAB_PANEL_SCROLL_CLASS = 'nodrag nopan nowheel max-h-[220px] overscroll-contain overflow-auto';
 
 interface WorkflowNodeExecutionLogProps {
   nodeId: string;
   executionStep: ExecutionStep;
   nodeWidth: number;
+  layout: WorkflowLogPanelLayout;
   isLogExpanded: boolean;
   onToggleLog: () => void;
 }
@@ -30,6 +34,7 @@ export function WorkflowNodeExecutionLog({
   nodeId,
   executionStep,
   nodeWidth,
+  layout,
   isLogExpanded,
   onToggleLog,
 }: WorkflowNodeExecutionLogProps) {
@@ -38,6 +43,78 @@ export function WorkflowNodeExecutionLog({
     event.stopPropagation();
     window.dispatchEvent(new CustomEvent('workflow:select-node', { detail: { nodeId } }));
   }, [nodeId]);
+  const stopWheel = React.useCallback((event: React.WheelEvent) => {
+    event.stopPropagation();
+  }, []);
+
+  const renderOutputSection = (className: string, extraClassName?: string) => (
+    <div
+      className={cn(className, extraClassName)}
+      onWheelCapture={stopWheel}
+    >
+      <div className="px-2 py-0.5 text-[9px] font-medium text-muted-foreground/70 uppercase tracking-wider">{t('execution.output')}</div>
+      {executionStep.output != null ? (
+        <JsonViewer
+          data={executionStep.output as Parameters<typeof JsonViewer>[0]['data']}
+          className="border-0 shadow-none rounded-none text-[10px]"
+          defaultExpanded={2}
+          mini
+        />
+      ) : (
+        <div className="px-2 pb-1 text-[10px] text-muted-foreground">{t('execution.noOutput')}</div>
+      )}
+    </div>
+  );
+
+  const renderInputSection = (className: string, extraClassName?: string) => (
+    <div
+      className={cn(className, extraClassName)}
+      onWheelCapture={stopWheel}
+    >
+      <div className="px-2 py-0.5 text-[9px] font-medium text-muted-foreground/70 uppercase tracking-wider">{t('execution.input')}</div>
+      {executionStep.input != null ? (
+        <JsonViewer
+          data={executionStep.input as Parameters<typeof JsonViewer>[0]['data']}
+          className="border-0 shadow-none rounded-none text-[10px]"
+          defaultExpanded={2}
+          mini
+        />
+      ) : (
+        <div className="px-2 pb-1 text-[10px] text-muted-foreground">{t('execution.noInput')}</div>
+      )}
+    </div>
+  );
+
+  const renderLogsSection = (className: string, extraClassName?: string) => (
+    <div
+      className={cn(className, extraClassName)}
+      onWheelCapture={stopWheel}
+    >
+      <div className="px-2 py-0.5 text-[9px] font-medium text-muted-foreground/70 uppercase tracking-wider">{t('execution.logs')}</div>
+      {executionStep.logs?.length ? (
+        <div className="px-1.5 pb-1 space-y-px">
+          {executionStep.logs.map((entry, logIndex) => (
+            <div
+              key={`${entry.timestamp}-${logIndex}`}
+              className={cn(
+                'flex items-start gap-1 text-[10px] px-1.5 py-0.5 rounded',
+                entry.level === 'info' && 'text-blue-600 dark:text-blue-400 bg-blue-500/10',
+                entry.level === 'warning' && 'text-yellow-600 dark:text-yellow-400 bg-yellow-500/10',
+                entry.level === 'error' && 'text-red-600 dark:text-red-400 bg-red-500/10',
+              )}
+            >
+              {entry.level === 'info' ? <Info className="h-2.5 w-2.5 shrink-0 mt-0.5" /> :
+                entry.level === 'warning' ? <AlertTriangle className="h-2.5 w-2.5 shrink-0 mt-0.5" /> :
+                <AlertCircle className="h-2.5 w-2.5 shrink-0 mt-0.5" />}
+              <span className="break-all">{entry.message}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="px-2 pb-1 text-[10px] text-muted-foreground">{t('execution.noLogsContent')}</div>
+      )}
+    </div>
+  );
 
   return (
     <div
@@ -75,71 +152,31 @@ export function WorkflowNodeExecutionLog({
             </div>
           )}
 
-          {/* Output section */}
-          <div
-            className={cn(LOG_SECTION_SCROLL_CLASS, 'border-b border-border')}
-            onWheelCapture={(e) => e.stopPropagation()}
-          >
-            <div className="px-2 py-0.5 text-[9px] font-medium text-muted-foreground/70 uppercase tracking-wider">{t('execution.output')}</div>
-            {executionStep.output != null ? (
-              <JsonViewer
-                data={executionStep.output as Parameters<typeof JsonViewer>[0]['data']}
-                className="border-0 shadow-none rounded-none text-[10px]"
-                defaultExpanded={2}
-                mini
-              />
-            ) : (
-              <div className="px-2 pb-1 text-[10px] text-muted-foreground">{t('execution.noOutput')}</div>
-            )}
-          </div>
-
-          {/* Input section */}
-          <div
-            className={cn(LOG_SECTION_SCROLL_CLASS, 'border-b border-border')}
-            onWheelCapture={(e) => e.stopPropagation()}
-          >
-            <div className="px-2 py-0.5 text-[9px] font-medium text-muted-foreground/70 uppercase tracking-wider">{t('execution.input')}</div>
-            {executionStep.input != null ? (
-              <JsonViewer
-                data={executionStep.input as Parameters<typeof JsonViewer>[0]['data']}
-                className="border-0 shadow-none rounded-none text-[10px]"
-                defaultExpanded={2}
-                mini
-              />
-            ) : (
-              <div className="px-2 pb-1 text-[10px] text-muted-foreground">{t('execution.noInput')}</div>
-            )}
-          </div>
-
-          {/* Logs section */}
-          <div
-            className={LOG_SECTION_SCROLL_CLASS}
-            onWheelCapture={(e) => e.stopPropagation()}
-          >
-            <div className="px-2 py-0.5 text-[9px] font-medium text-muted-foreground/70 uppercase tracking-wider">{t('execution.logs')}</div>
-            {executionStep.logs?.length ? (
-              <div className="px-1.5 pb-1 space-y-px">
-                {executionStep.logs.map((entry, logIndex) => (
-                  <div
-                    key={`${entry.timestamp}-${logIndex}`}
-                    className={cn(
-                      'flex items-start gap-1 text-[10px] px-1.5 py-0.5 rounded',
-                      entry.level === 'info' && 'text-blue-600 dark:text-blue-400 bg-blue-500/10',
-                      entry.level === 'warning' && 'text-yellow-600 dark:text-yellow-400 bg-yellow-500/10',
-                      entry.level === 'error' && 'text-red-600 dark:text-red-400 bg-red-500/10',
-                    )}
-                  >
-                    {entry.level === 'info' ? <Info className="h-2.5 w-2.5 shrink-0 mt-0.5" /> :
-                      entry.level === 'warning' ? <AlertTriangle className="h-2.5 w-2.5 shrink-0 mt-0.5" /> :
-                      <AlertCircle className="h-2.5 w-2.5 shrink-0 mt-0.5" />}
-                    <span className="break-all">{entry.message}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="px-2 pb-1 text-[10px] text-muted-foreground">{t('execution.noLogsContent')}</div>
-            )}
-          </div>
+          {layout === 'tabs' ? (
+            <Tabs defaultValue="io" className="flex-col gap-0">
+              <TabsList variant="line" className="mx-2 h-7 w-[calc(100%-1rem)] justify-start p-0">
+                <TabsTrigger value="io" className="h-7 px-2 text-[10px]">
+                  {t('execution.input')} / {t('execution.output')}
+                </TabsTrigger>
+                <TabsTrigger value="logs" className="h-7 px-2 text-[10px]">
+                  {t('execution.logs')}
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="io" className="m-0">
+                {renderInputSection(LOG_TAB_SECTION_SCROLL_CLASS, 'border-b border-border')}
+                {renderOutputSection(LOG_TAB_SECTION_SCROLL_CLASS)}
+              </TabsContent>
+              <TabsContent value="logs" className="m-0">
+                {renderLogsSection(LOG_TAB_PANEL_SCROLL_CLASS)}
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <>
+              {renderOutputSection(LOG_SECTION_SCROLL_CLASS, 'border-b border-border')}
+              {renderInputSection(LOG_SECTION_SCROLL_CLASS, 'border-b border-border')}
+              {renderLogsSection(LOG_SECTION_SCROLL_CLASS)}
+            </>
+          )}
         </div>
       )}
     </div>

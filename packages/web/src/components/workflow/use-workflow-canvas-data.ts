@@ -12,7 +12,7 @@ import {
 } from '@agent-spaces/shared';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { getWorkflowNodeSize } from './workflow-node-size';
-import { NODE_COLOR_MAP, type HandlePositionMode } from './workflow-node-types';
+import { NODE_COLOR_MAP, type HandlePositionMode, type WorkflowLogPanelLayout } from './workflow-node-types';
 
 const DEFAULT_SOURCE_HANDLE_ID = 'source';
 const LOOP_BODY_NODE_Z_INDEX = -100;
@@ -44,6 +44,7 @@ interface UseCanvasDataParams {
   partialExecutionStartNodeId?: string | null;
   handlePosition?: HandlePositionMode;
   floatingHandles?: boolean;
+  logPanelLayout?: WorkflowLogPanelLayout;
   edgePathType?: string;
   edgeLineStyle?: string;
 }
@@ -64,6 +65,7 @@ export function useCanvasData({
   partialExecutionStartNodeId = null,
   handlePosition = 'left-right',
   floatingHandles = false,
+  logPanelLayout = 'vertical',
   edgePathType = 'bezier',
   edgeLineStyle = 'solid',
 }: UseCanvasDataParams) {
@@ -142,12 +144,13 @@ export function useCanvasData({
           partialExecutionStartNodeId,
           handlePosition,
           floatingHandles,
+          logPanelLayout,
           isFirstConnectedNode: hasOutgoing && !hasIncoming,
           executionStep: executionStepByNodeId.get(n.id),
         } as Record<string, unknown>,
       };
     }),
-    [workflow.nodes, workflow.edges, selectedNodeIdSet, selectedNodeIds, isPreview, isCanvasLocked, executionNodeIds, execStatus, debugNodeId, debugStatus, pausedNodeId, pausedReason, partialExecutionStartNodeId, handlePosition, floatingHandles, executionStepByNodeId],
+    [workflow.nodes, workflow.edges, selectedNodeIdSet, selectedNodeIds, isPreview, isCanvasLocked, executionNodeIds, execStatus, debugNodeId, debugStatus, pausedNodeId, pausedReason, partialExecutionStartNodeId, handlePosition, floatingHandles, logPanelLayout, executionStepByNodeId],
   );
 
   const runningEdgeIds = useMemo(() => {

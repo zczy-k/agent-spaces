@@ -124,6 +124,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const handlePositionMode = nodeData.handlePosition || 'left-right';
   const handlePositions = HANDLE_POSITION_MAP[handlePositionMode] || HANDLE_POSITION_MAP['left-right'];
   const floatingHandles = nodeData.floatingHandles === true;
+  const logPanelLayout = nodeData.logPanelLayout === 'tabs' ? 'tabs' : 'vertical';
   const floatingHandleClassName = floatingHandles ? 'workflow-node-floating-handle' : '';
   const floatingLabelClassName = floatingHandles ? 'workflow-node-floating-handle-label' : '';
 
@@ -678,6 +679,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           nodeId={id}
           executionStep={executionStep}
           nodeWidth={nodeWidth}
+          layout={logPanelLayout}
           isLogExpanded={isLogExpanded}
           onToggleLog={() => setIsLogExpanded(prev => !prev)}
         />

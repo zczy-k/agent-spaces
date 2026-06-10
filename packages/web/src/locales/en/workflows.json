@@ -714,6 +714,7 @@
     "handleDirection": "Handle Direction",
     "edgeStyle": "Edge Style",
     "edgeLineStyle": "Line Style",
+    "logPanelLayout": "Log Panel Layout",
     "customThemeVars": "Custom Theme Variables",
     "floatingHandle": "Floating Handles",
     "floatingHandleDesc": "Show only on hover",
@@ -751,6 +752,10 @@
     "edgeLine": {
       "solid": { "label": "Solid", "description": "Continuous line" },
       "dashed": { "label": "Dashed", "description": "Segmented line" }
+    },
+    "logPanel": {
+      "vertical": { "label": "Vertical", "description": "Stack input, output, and logs" },
+      "tabs": { "label": "Tabs", "description": "Split input/output and logs into tabs" }
     },
     "themes": {
       "default": { "label": "Default", "description": "Follow current UI style" },

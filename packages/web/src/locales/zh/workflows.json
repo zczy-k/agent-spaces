@@ -714,6 +714,7 @@
     "handleDirection": "连接点方向",
     "edgeStyle": "连线样式",
     "edgeLineStyle": "线条样式",
+    "logPanelLayout": "日志面板布局",
     "customThemeVars": "自定义主题变量",
     "floatingHandle": "悬浮 Handle",
     "floatingHandleDesc": "仅悬停时显示",
@@ -751,6 +752,10 @@
     "edgeLine": {
       "solid": { "label": "实线", "description": "连续线条" },
       "dashed": { "label": "虚线", "description": "间隔线条" }
+    },
+    "logPanel": {
+      "vertical": { "label": "垂直", "description": "输入、输出、日志纵向排列" },
+      "tabs": { "label": "标签页", "description": "输入输出和日志分标签展示" }
     },
     "themes": {
       "default": { "label": "默认", "description": "跟随当前界面风格" },
