@@ -1216,6 +1216,10 @@ export class ExecutionManager {
           result[field.key] = build(Array.isArray(field.children) ? field.children : []);
           continue;
         }
+        if (field.type === 'array') {
+          result[field.key] = [];
+          continue;
+        }
         result[field.key] = field.value ?? '';
       }
       return result;
@@ -1697,16 +1701,22 @@ export class ExecutionManager {
     const result: Record<string, any> = {};
     for (const field of outputs) {
       if (!field.key) continue;
-      result[field.key] = field.type === 'object'
-        ? this.buildOutputObject(field.children) ?? {}
-        : field.value ?? '';
+      if (field.type === 'object') {
+        result[field.key] = this.buildOutputObject(field.children) ?? {};
+        continue;
+      }
+      if (field.type === 'array') {
+        result[field.key] = Array.isArray(field.value) ? field.value : [];
+        continue;
+      }
+      result[field.key] = field.value ?? '';
     }
     return result;
   }
 
   private getFirstObjectOutputKey(outputs: OutputField[] | undefined): string | null {
     if (!Array.isArray(outputs)) return null;
-    const field = outputs.find(item => item?.type === 'object' && typeof item.key === 'string' && item.key.trim());
+    const field = outputs.find(item => (item?.type === 'object' || item?.type === 'array') && typeof item.key === 'string' && item.key.trim());
     return field?.key.trim() || null;
   }
 

@@ -23,6 +23,7 @@ export const FIELD_TYPES: OutputField['type'][] = [
   'number',
   'boolean',
   'object',
+  'array',
   'file',
   'image',
   'audio',
@@ -37,7 +38,11 @@ export const FIELD_TYPES: OutputField['type'][] = [
 ];
 
 export function isArrayOutputFieldType(type: OutputField['type'] | undefined) {
-  return type === 'string[]' || type === 'number[]' || type === 'file[]' || type === 'image[]' || type === 'any[]';
+  return type === 'array' || type === 'string[]' || type === 'number[]' || type === 'file[]' || type === 'image[]' || type === 'any[]';
+}
+
+export function isStructuredOutputFieldType(type: OutputField['type'] | undefined) {
+  return type === 'object' || type === 'array';
 }
 
 export function isFileOutputFieldType(type: OutputField['type'] | undefined) {
@@ -73,6 +78,7 @@ export function isPlainObject(value: unknown): value is Record<string, unknown> 
 export function inferType(value: unknown): OutputField['type'] {
   if (value === null || value === undefined) return 'any';
   if (Array.isArray(value)) {
+    if (value.some(item => item && typeof item === 'object')) return 'array';
     if (value.every(item => typeof item === 'string')) return 'string[]';
     if (value.every(item => typeof item === 'number')) return 'number[]';
     return 'any[]';
@@ -91,7 +97,7 @@ export function toOutputFields(value: unknown): OutputField[] {
     return {
       key,
       type,
-      ...(type === 'object' ? { children: toOutputFields(fieldValue) } : {}),
+      ...(isStructuredOutputFieldType(type) ? { children: toOutputFields(Array.isArray(fieldValue) ? fieldValue[0] : fieldValue) } : {}),
     };
   });
 }

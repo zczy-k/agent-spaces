@@ -33,6 +33,7 @@ import {
 	FIELD_TYPES,
 	getOutputFields,
 	isFileOutputFieldType,
+	isStructuredOutputFieldType,
 	parseArrayOutputFieldValue,
 	stringifyOutputFieldValue,
 } from './workflow-properties-utils';
@@ -107,7 +108,7 @@ export function OutputFieldsEditor({
 	const updateField = (index: number, patch: Partial<OutputField>) => {
 		const next = [...fields];
 		next[index] = patchOutputField(next[index], patch);
-		if (patch.type && patch.type !== 'object') {
+		if (patch.type && !isStructuredOutputFieldType(patch.type)) {
 			next[index].children = undefined;
 		}
 		if (patch.type && !isFileOutputFieldType(patch.type)) {
@@ -116,7 +117,7 @@ export function OutputFieldsEditor({
 		if (patch.type && patch.type !== 'select') {
 			next[index].options = undefined;
 		}
-		if (patch.type === 'object' && !next[index].children) {
+		if (patch.type && isStructuredOutputFieldType(patch.type) && !next[index].children) {
 			next[index].children = [];
 			next[index].value = undefined;
 		}
@@ -223,7 +224,7 @@ export function OutputFieldsEditor({
 											<Trash2 className="h-2.5 w-2.5" />
 										</Button>
 									</div>
-									{expandedFields.has(index) && field.type !== 'object' && (
+									{expandedFields.has(index) && !isStructuredOutputFieldType(field.type) && (
 										<div className="space-y-0.5" style={{ paddingLeft: `${indent + 20}px` }}>
 											{isFileOutputFieldType(field.type) ? (
 												<Input
@@ -287,7 +288,7 @@ export function OutputFieldsEditor({
 											/>
 										</div>
 									)}
-									{field.type === 'object' && depth < 3 && (
+									{isStructuredOutputFieldType(field.type) && depth < 3 && (
 										<div>
 											<OutputFieldsEditor
 												value={getOutputFields(field.children)}

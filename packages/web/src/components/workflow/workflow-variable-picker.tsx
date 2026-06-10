@@ -16,6 +16,7 @@ import { Braces } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { pluginApi, type WorkflowPlugin } from '@/lib/workflow-plugin-api';
+import { isStructuredOutputFieldType } from './workflow-properties-utils';
 
 type VariableField = OutputField & {
   expressionPath?: string;
@@ -162,11 +163,11 @@ function VariableFieldMenu({
       {fields.map((field, index) => {
         const path = buildFieldPath(field, parentPath);
         const key = `${path}-${index}`;
-        if (field.type === 'object' && field.children?.length) {
+        if (isStructuredOutputFieldType(field.type) && field.children?.length) {
           return (
             <DropdownMenuSub key={key}>
               <DropdownMenuSubTrigger className="text-xs">
-                <span className="mr-1.5 font-mono text-[10px] text-muted-foreground">object</span>
+                <span className="mr-1.5 font-mono text-[10px] text-muted-foreground">{field.type}</span>
                 <span className="truncate">{field.key}</span>
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent className="min-w-[180px]">

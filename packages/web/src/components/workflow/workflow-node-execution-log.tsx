@@ -186,33 +186,39 @@ export function WorkflowNodeExecutionLog({
     return null
   }, [])
 
-  const extractSchemaMedia = React.useCallback((
-    fields: OutputField[],
-    parent: Record<string, unknown>,
-  ): MediaItem[] => {
-    const items: MediaItem[] = []
-    for (const field of fields) {
-      const val = parent[field.key]
-      if (val == null) continue
+  const extractSchemaMedia = React.useMemo(() => {
+    const extract = (fields: OutputField[], parent: Record<string, unknown>): MediaItem[] => {
+      const items: MediaItem[] = []
+      for (const field of fields) {
+        const val = parent[field.key]
+        if (val == null) continue
 
-      const mediaType = getMediaType(field.type)
-      if (mediaType) {
-        const values = field.type.endsWith('[]')
-          ? Array.isArray(val) ? val : []
-          : [val]
+        const mediaType = getMediaType(field.type)
+        if (mediaType) {
+          const values = field.type.endsWith('[]')
+            ? Array.isArray(val) ? val : []
+            : [val]
 
-        for (const item of values) {
-          const src = toSrc(item)
-          if (src) items.push({ src, type: mediaType, alt: field.key })
+          for (const item of values) {
+            const src = toSrc(item)
+            if (src) items.push({ src, type: mediaType, alt: field.key })
+          }
+          continue
         }
-        continue
-      }
 
-      if (field.type === 'object' && field.children && val && typeof val === 'object' && !Array.isArray(val)) {
-        items.push(...extractSchemaMedia(field.children, val as Record<string, unknown>))
+        if (field.type === 'object' && field.children && val && typeof val === 'object' && !Array.isArray(val)) {
+          items.push(...extract(field.children, val as Record<string, unknown>))
+        } else if (field.type === 'array' && field.children && Array.isArray(val)) {
+          for (const item of val) {
+            if (item && typeof item === 'object' && !Array.isArray(item)) {
+              items.push(...extract(field.children, item as Record<string, unknown>))
+            }
+          }
+        }
       }
+      return items
     }
-    return items
+    return extract
   }, [getMediaType, toSrc])
 
   const getRecord = React.useCallback((value: unknown): Record<string, unknown> | null => {

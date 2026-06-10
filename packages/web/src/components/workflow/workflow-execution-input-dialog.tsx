@@ -19,6 +19,7 @@ import { Play } from 'lucide-react';
 import {
   isArrayOutputFieldType,
   isFileOutputFieldType,
+  isStructuredOutputFieldType,
   stringifyOutputFieldValue,
 } from './workflow-properties-utils';
 
@@ -29,7 +30,7 @@ export function parseInputValue(field: OutputField, raw: string): unknown {
   if (field.type === 'file' || field.type === 'file[]') return field.type === 'file[]' ? [] : null;
   if (field.type === 'number') return raw === '' ? 0 : Number(raw);
   if (field.type === 'boolean') return raw === 'true';
-  if (field.type === 'object' || field.type === 'any' || isArrayOutputFieldType(field.type)) {
+  if (isStructuredOutputFieldType(field.type) || field.type === 'any' || isArrayOutputFieldType(field.type)) {
     if (!raw.trim()) return field.type === 'object' ? {} : isArrayOutputFieldType(field.type) ? [] : '';
     try {
       const parsed = JSON.parse(raw);
