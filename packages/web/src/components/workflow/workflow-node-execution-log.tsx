@@ -1,0 +1,129 @@
+'use client';
+
+import React from 'react';
+import { useTranslations } from 'next-intl';
+import {
+  AlertCircle,
+  AlertTriangle,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Info,
+  X,
+} from 'lucide-react';
+import type { ExecutionStep } from '@agent-spaces/shared';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { JsonViewer } from '@/components/viewers/json-viewer';
+import { cn } from '@/lib/utils';
+import { formatDuration } from './workflow-node-types';
+
+interface WorkflowNodeExecutionLogProps {
+  executionStep: ExecutionStep;
+  nodeWidth: number;
+  isLogExpanded: boolean;
+  onToggleLog: () => void;
+}
+
+export function WorkflowNodeExecutionLog({
+  executionStep,
+  nodeWidth,
+  isLogExpanded,
+  onToggleLog,
+}: WorkflowNodeExecutionLogProps) {
+  const t = useTranslations('workflows');
+
+  return (
+    <div
+      className="nodrag nopan mt-1"
+      style={{ width: nodeWidth }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button
+        type="button"
+        className={cn(
+          'flex items-center gap-1 rounded-t-md border border-border px-2 py-1 text-[10px] w-full text-left transition-colors',
+          isLogExpanded ? 'bg-muted/50' : 'bg-background hover:bg-muted/30 rounded-b-md',
+        )}
+        onClick={onToggleLog}
+      >
+        {executionStep.status === 'error'
+          ? <X className="h-3 w-3 text-red-500" />
+          : <Check className="h-3 w-3 text-green-500" />}
+        <span className="flex-1 truncate text-muted-foreground">
+          {executionStep.status === 'error' ? executionStep.error?.slice(0, 60) || t('nodeUi.executionResult') : t('nodeUi.executionResult')}
+        </span>
+        <span className="text-muted-foreground/70">
+          {executionStep.finishedAt ? formatDuration(executionStep.startedAt, executionStep.finishedAt) : '...'}
+        </span>
+        {isLogExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+      </button>
+
+      {isLogExpanded && (
+        <ScrollArea className="max-h-[260px] border border-t-0 border-border rounded-b-md bg-background">
+          {/* Error */}
+          {executionStep.error && (
+            <div className="px-2 py-1.5 text-[10px] text-red-500 bg-red-500/10 border-b border-border flex items-start gap-1">
+              <AlertCircle className="h-2.5 w-2.5 shrink-0 mt-0.5" />
+              <span className="break-all">{executionStep.error}</span>
+            </div>
+          )}
+
+          {/* Output section */}
+          <div className="border-b border-border">
+            <div className="px-2 py-0.5 text-[9px] font-medium text-muted-foreground/70 uppercase tracking-wider">{t('execution.output')}</div>
+            {executionStep.output != null ? (
+              <JsonViewer
+                data={executionStep.output as Parameters<typeof JsonViewer>[0]['data']}
+                className="border-0 shadow-none rounded-none text-[10px]"
+                defaultExpanded={2}
+              />
+            ) : (
+              <div className="px-2 pb-1 text-[10px] text-muted-foreground">{t('execution.noOutput')}</div>
+            )}
+          </div>
+
+          {/* Input section */}
+          <div className="border-b border-border">
+            <div className="px-2 py-0.5 text-[9px] font-medium text-muted-foreground/70 uppercase tracking-wider">{t('execution.input')}</div>
+            {executionStep.input != null ? (
+              <JsonViewer
+                data={executionStep.input as Parameters<typeof JsonViewer>[0]['data']}
+                className="border-0 shadow-none rounded-none text-[10px]"
+                defaultExpanded={2}
+              />
+            ) : (
+              <div className="px-2 pb-1 text-[10px] text-muted-foreground">{t('execution.noInput')}</div>
+            )}
+          </div>
+
+          {/* Logs section */}
+          <div>
+            <div className="px-2 py-0.5 text-[9px] font-medium text-muted-foreground/70 uppercase tracking-wider">{t('execution.logs')}</div>
+            {executionStep.logs?.length ? (
+              <div className="px-1.5 pb-1 space-y-px">
+                {executionStep.logs.map((entry, logIndex) => (
+                  <div
+                    key={`${entry.timestamp}-${logIndex}`}
+                    className={cn(
+                      'flex items-start gap-1 text-[10px] px-1.5 py-0.5 rounded',
+                      entry.level === 'info' && 'text-blue-600 dark:text-blue-400 bg-blue-500/10',
+                      entry.level === 'warning' && 'text-yellow-600 dark:text-yellow-400 bg-yellow-500/10',
+                      entry.level === 'error' && 'text-red-600 dark:text-red-400 bg-red-500/10',
+                    )}
+                  >
+                    {entry.level === 'info' ? <Info className="h-2.5 w-2.5 shrink-0 mt-0.5" /> :
+                      entry.level === 'warning' ? <AlertTriangle className="h-2.5 w-2.5 shrink-0 mt-0.5" /> :
+                      <AlertCircle className="h-2.5 w-2.5 shrink-0 mt-0.5" />}
+                    <span className="break-all">{entry.message}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="px-2 pb-1 text-[10px] text-muted-foreground">{t('execution.noLogsContent')}</div>
+            )}
+          </div>
+        </ScrollArea>
+      )}
+    </div>
+  );
+}

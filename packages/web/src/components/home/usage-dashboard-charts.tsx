@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Card } from "@/components/ui/card"
 import { cn, textColorClass, textToColor } from "@/lib/utils"
 import { ActivityGraph } from "@/components/viewers/activity-graph"
 import type { AgentUsageDashboard as AgentUsageDashboardData } from "@agent-spaces/shared"
@@ -114,48 +115,52 @@ export function ActivitySection({ daily, days, maxDailyTokens }: {
   const weeks = Math.max(1, Math.ceil(days / 7))
 
   return (
-    <div className="grid border-b lg:grid-cols-2">
+    <div className="grid gap-3 lg:grid-cols-2">
       {daily.length > 0 && (
-        <div className="border-b p-4 lg:border-r lg:border-b-0">
-          <span className="font-medium text-xs">{t('chart.activityHeatmap')}</span>
-          <div className="mt-2">
-            <ActivityGraph
-              weeks={weeks}
-              data={daily.map((item) => ({ date: item.date, count: item.requests }))}
-              formatCount={(count) => `${formatNumber(count)} session${count === 1 ? "" : "s"}`}
-            />
+        <Card className="gap-0 py-0">
+          <div className="p-4">
+            <span className="font-medium text-xs">{t('chart.activityHeatmap')}</span>
+            <div className="mt-2">
+              <ActivityGraph
+                weeks={weeks}
+                data={daily.map((item) => ({ date: item.date, count: item.requests }))}
+                formatCount={(count) => `${formatNumber(count)} session${count === 1 ? "" : "s"}`}
+              />
+            </div>
           </div>
-        </div>
+        </Card>
       )}
-      <div className="p-4">
-        <div className="mb-3 flex items-center justify-between">
-          <span className="font-medium text-xs">{t('chart.dailyTokenUsage')}</span>
-          <div className="flex items-center gap-3">
-            <Legend className="bg-foreground" label={t('chart.input')} />
-            <Legend className="bg-foreground/40" label={t('chart.output')} />
+      <Card className="gap-0 py-0">
+        <div className="p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="font-medium text-xs">{t('chart.dailyTokenUsage')}</span>
+            <div className="flex items-center gap-3">
+              <Legend className="bg-foreground" label={t('chart.input')} />
+              <Legend className="bg-foreground/40" label={t('chart.output')} />
+            </div>
+          </div>
+          <div className="flex h-[132px] items-end gap-2 sm:gap-3">
+            {daily.slice(-14).map((item) => {
+              const inputHeight = Math.max(3, ((item.inputTokens / maxDailyTokens) * 100))
+              const outputHeight = Math.max(3, (((item.inputTokens + item.outputTokens) / maxDailyTokens) * 100))
+              return (
+                <div key={item.date} className="flex min-w-0 flex-1 flex-col items-center gap-1">
+                  <span className="font-mono text-[10px] text-muted-foreground tabular-nums">
+                    {formatTokens(item.totalTokens)}
+                  </span>
+                  <div className="relative h-20 w-full">
+                    <div className="absolute inset-x-0 bottom-0 h-full rounded-sm bg-muted/40" />
+                    <div className="absolute inset-x-0 bottom-0 rounded-t-sm bg-foreground/40" style={{ height: `${outputHeight}%` }} />
+                    <div className="absolute inset-x-0 bottom-0 rounded-t-sm bg-foreground" style={{ height: `${inputHeight}%` }} />
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">{item.label}</span>
+                </div>
+              )
+            })}
+            {daily.length === 0 ? <EmptyBars label={t('chart.noTokenData')} /> : null}
           </div>
         </div>
-        <div className="flex h-[132px] items-end gap-2 sm:gap-3">
-          {daily.slice(-14).map((item) => {
-            const inputHeight = Math.max(3, ((item.inputTokens / maxDailyTokens) * 100))
-            const outputHeight = Math.max(3, (((item.inputTokens + item.outputTokens) / maxDailyTokens) * 100))
-            return (
-              <div key={item.date} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-                <span className="font-mono text-[10px] text-muted-foreground tabular-nums">
-                  {formatTokens(item.totalTokens)}
-                </span>
-                <div className="relative h-20 w-full">
-                  <div className="absolute inset-x-0 bottom-0 h-full rounded-sm bg-muted/40" />
-                  <div className="absolute inset-x-0 bottom-0 rounded-t-sm bg-foreground/40" style={{ height: `${outputHeight}%` }} />
-                  <div className="absolute inset-x-0 bottom-0 rounded-t-sm bg-foreground" style={{ height: `${inputHeight}%` }} />
-                </div>
-                <span className="text-[10px] text-muted-foreground">{item.label}</span>
-              </div>
-            )
-          })}
-          {daily.length === 0 ? <EmptyBars label={t('chart.noTokenData')} /> : null}
-        </div>
-      </div>
+      </Card>
     </div>
   )
 }
@@ -169,7 +174,7 @@ export function CostByModelChart({ byModel, maxModelCost }: {
   const t = useTranslations('home')
 
   return (
-    <div className="border-b p-4 lg:border-r lg:border-b-0">
+    <div className="p-4">
       <span className="font-medium text-xs">{t('chart.costByModel')}</span>
       <div className="mt-3 space-y-2.5">
         {byModel.length === 0 ? (

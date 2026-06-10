@@ -5,14 +5,8 @@ import { useTranslations } from 'next-intl';
 import { Handle, NodeResizeControl, NodeToolbar, Position, useUpdateNodeInternals } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import {
-  AlertCircle,
-  AlertTriangle,
-  Check,
-  ChevronDown,
-  ChevronUp,
   Flag,
   Grip,
-  Info,
   Loader2,
   MoveDiagonal,
   Play,
@@ -23,14 +17,10 @@ import { getPluginNodesVersion, subscribePluginNodesVersion, useLocalizedNodeDef
 import {
   LOOP_BODY_NODE_TYPE,
   LOOP_BODY_SOURCE_HANDLE,
-  type NodeBreakpoint,
-  type NodeRunState,
   type OutputField,
 } from '@agent-spaces/shared';
 import { BorderGlide } from '@/components/ui/border-glide';
 import { NodeMediaPreview, type MediaItem } from '@/components/ui/media-gallery';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { JsonViewer } from '@/components/viewers/json-viewer';
 import { cn } from '@/lib/utils';
 import { WorkflowNodeDefinitionIcon } from './workflow-node-icon';
 import { getWorkflowNodeSize } from './workflow-node-size';
@@ -39,26 +29,23 @@ import {
   PluginWorkflowCustomView,
 } from './plugin-workflow-custom-view';
 import {
-  HEADER_HEIGHT,
-  HANDLE_MARGIN,
   NODE_COLORS,
   NODE_COLOR_MAP,
-  formatDuration,
-  type HandlePositionMode,
   type WorkflowNodeData,
   type WorkflowCustomViewProps,
   type PluginNodeDefinitionMeta,
 } from './workflow-node-types';
 import { WorkflowNodeContextMenu } from './workflow-node-context-menu';
-
-const HANDLE_POSITION_MAP: Record<HandlePositionMode, { target: Position; source: Position }> = {
-  'top-bottom': { target: Position.Top, source: Position.Bottom },
-  'left-right': { target: Position.Left, source: Position.Right },
-  'bottom-top': { target: Position.Bottom, source: Position.Top },
-  'right-left': { target: Position.Right, source: Position.Left },
-};
-
-const WORKFLOW_NODE_DRAG_HANDLE_CLASS = 'workflow-node-drag-handle';
+import {
+  HANDLE_POSITION_MAP,
+  WORKFLOW_NODE_DRAG_HANDLE_CLASS,
+  getHandleStyle,
+  getSourceLabelStyle,
+  type HandleContext,
+} from './workflow-node-handles';
+import { WorkflowNodeExecutionLog } from './workflow-node-execution-log';
+import { useWorkflowNodeActions } from './use-workflow-node-actions';
+import { areWorkflowNodePropsEqual } from './workflow-node-memo';
 
 function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const nodeData = data as WorkflowNodeData;
@@ -148,36 +135,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
     updateNodeInternals(id);
   }, [id, updateNodeInternals, sourceHandleCount, showTargetHandle, showSourceHandle, nodeHeight, handlePositions.target, handlePositions.source, workflowNodeType]);
 
-  function getHandleTop(index: number, total: number): string {
-    if (isLoopBody) return `${((index + 1) / (total + 1)) * 100}%`;
-    return `${HEADER_HEIGHT + HANDLE_MARGIN + ((nodeHeight - HEADER_HEIGHT - HANDLE_MARGIN * 2) / (total + 1)) * (index + 1)}px`;
-  }
-
-  function getHandleOffset(index: number, total: number): string {
-    return `${((index + 1) / (total + 1)) * 100}%`;
-  }
-
-  function getHandleStyle(position: Position, index: number, total: number): React.CSSProperties | undefined {
-    if (isLoopBody) return { top: getHandleTop(index, total) };
-    if (position === Position.Left || position === Position.Right) {
-      return { top: getHandleTop(index, total) };
-    }
-    return { left: getHandleOffset(index, total) };
-  }
-
-  function getSourceLabelStyle(index: number, total: number): React.CSSProperties {
-    const offset = getHandleOffset(index, total);
-    if (handlePositions.source === Position.Left) {
-      return { top: getHandleTop(index, total), left: 10, transform: 'translateY(-50%)' };
-    }
-    if (handlePositions.source === Position.Top) {
-      return { left: offset, top: -16, transform: 'translateX(-50%)' };
-    }
-    if (handlePositions.source === Position.Bottom) {
-      return { left: offset, bottom: -16, transform: 'translateX(-50%)' };
-    }
-    return { top: getHandleTop(index, total), right: 10, transform: 'translateY(-50%)' };
-  }
+  const handleCtx: HandleContext = { isLoopBody, nodeHeight, handlePositions };
 
   const startEdit = useCallback(() => {
     if (isCanvasLocked) return;
@@ -278,104 +236,16 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           ? 'border-yellow-500'
     : NODE_COLORS.find(color => color.value === nodeData.nodeColor)?.borderClassName || 'border-border';
 
-  const dispatchNodeUpdate = useCallback((updates: Record<string, unknown>) => {
-    if (isCanvasLocked) return;
-    window.dispatchEvent(new CustomEvent('workflow:update-node-data', {
-      detail: { nodeId: id, data: updates },
-    }));
-  }, [id, isCanvasLocked]);
-
-  const handleDelete = useCallback(() => {
-    if (isCanvasLocked) return;
-    window.dispatchEvent(new CustomEvent('workflow:delete-node', { detail: { nodeId: id } }));
-  }, [id, isCanvasLocked]);
-
-  const handleCopy = useCallback(() => {
-    if (isCanvasLocked) return;
-    window.dispatchEvent(new CustomEvent('workflow:copy-node', { detail: { nodeId: id } }));
-  }, [id, isCanvasLocked]);
-
-  const handleClone = useCallback(() => {
-    if (isCanvasLocked) return;
-    window.dispatchEvent(new CustomEvent('workflow:clone-node', { detail: { nodeId: id } }));
-  }, [id, isCanvasLocked]);
-
-  const handleStage = useCallback(() => {
-    if (isCanvasLocked) return;
-    window.dispatchEvent(new CustomEvent('workflow:stage-node', { detail: { nodeId: id } }));
-  }, [id, isCanvasLocked]);
-
-  const handleMoveToStage = useCallback(() => {
-    if (isCanvasLocked) return;
-    window.dispatchEvent(new CustomEvent('workflow:stage-node', { detail: { nodeId: id } }));
-    window.dispatchEvent(new CustomEvent('workflow:delete-node', { detail: { nodeId: id } }));
-  }, [id, isCanvasLocked]);
-
-  const handleMergeToWorkflow = useCallback(() => {
-    if (isCanvasLocked || selectedNodeIds.length < 2) return;
-    window.dispatchEvent(new CustomEvent('workflow:merge-nodes-to-workflow', { detail: { nodeIds: selectedNodeIds } }));
-  }, [isCanvasLocked, selectedNodeIds]);
-
-  const handleMergeToGroup = useCallback(() => {
-    if (isCanvasLocked || selectedNodeIds.length < 2) return;
-    window.dispatchEvent(new CustomEvent('workflow:merge-nodes-to-group', { detail: { nodeIds: selectedNodeIds } }));
-  }, [isCanvasLocked, selectedNodeIds]);
-
-  const handleBatchDelete = useCallback(() => {
-    if (isCanvasLocked || selectedNodeIds.length < 1) return;
-    window.dispatchEvent(new CustomEvent('workflow:batch-delete-nodes', { detail: { nodeIds: selectedNodeIds } }));
-  }, [isCanvasLocked, selectedNodeIds]);
-
-  const handleShowInfo = useCallback(() => {
-    window.dispatchEvent(new CustomEvent('workflow:show-node-info', { detail: { nodeId: id } }));
-  }, [id]);
-
-  const handleTestNode = useCallback((event: React.MouseEvent) => {
-    event.stopPropagation();
-    if (isCurrentNodeDebugging) {
-      window.dispatchEvent(new CustomEvent('workflow:cancel-debug-node', { detail: { nodeId: id } }));
-      return;
-    }
-    if (isCanvasLocked || isBoundaryNode) return;
-    window.dispatchEvent(new CustomEvent('workflow:debug-node', { detail: { nodeId: id } }));
-  }, [id, isBoundaryNode, isCanvasLocked, isCurrentNodeDebugging]);
-
-  const handlePartialTest = useCallback((event: React.MouseEvent) => {
-    event.stopPropagation();
-    if (isCanvasLocked || isBoundaryNode || isExecutionBusy) return;
-    window.dispatchEvent(new CustomEvent('workflow:execute-from-node', { detail: { nodeId: id } }));
-  }, [id, isBoundaryNode, isCanvasLocked, isExecutionBusy]);
-
-  const handleResumeFromBreakpoint = useCallback((event: React.MouseEvent) => {
-    event.stopPropagation();
-    window.dispatchEvent(new CustomEvent('workflow:resume-execution', { detail: { nodeId: id } }));
-  }, [id]);
-
-  const handleStopAtBreakpoint = useCallback((event: React.MouseEvent) => {
-    event.stopPropagation();
-    window.dispatchEvent(new CustomEvent('workflow:stop-execution', { detail: { nodeId: id } }));
-  }, [id]);
-
-  const setNodeColor = useCallback((color: string | null) => {
-    dispatchNodeUpdate({ nodeColor: color });
-  }, [dispatchNodeUpdate]);
-
-  const setNodeState = useCallback((state: NodeRunState) => {
-    dispatchNodeUpdate({ nodeState: state });
-  }, [dispatchNodeUpdate]);
-
-  const setNodeBreakpoint = useCallback((breakpoint: NodeBreakpoint | null) => {
-    dispatchNodeUpdate({ breakpoint });
-  }, [dispatchNodeUpdate]);
-
-  const handleResizeEnd = useCallback((_: unknown, params: { width: number; height: number }) => {
-    if (isCanvasLocked) return;
-    const width = Math.max(nodeMinWidth, Math.round(params.width));
-    const height = Math.max(nodeMinHeight, Math.round(params.height));
-    window.dispatchEvent(new CustomEvent('workflow:update-node-data', {
-      detail: { nodeId: id, data: { width, height } },
-    }));
-  }, [id, isCanvasLocked, nodeMinHeight, nodeMinWidth]);
+  const actions = useWorkflowNodeActions({
+    id,
+    isCanvasLocked: !!isCanvasLocked,
+    isBoundaryNode,
+    isCurrentNodeDebugging,
+    isExecutionBusy,
+    selectedNodeIds,
+    nodeMinWidth,
+    nodeMinHeight,
+  });
 
   const nodeBody = (
     <div
@@ -410,7 +280,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         <Handle
           id="target" type="target" position={handlePositions.target}
           className="!z-10 !w-3 !h-3 !bg-blue-500 !border-2 !border-blue-300 handle-dot"
-          style={getHandleStyle(handlePositions.target, 0, 1)}
+          style={getHandleStyle(handlePositions.target, 0, 1, handleCtx)}
         />
       )}
       <div className="absolute -right-1 -top-1 z-30 flex items-center gap-1">
@@ -458,7 +328,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           <button
             type="button"
             className="inline-flex h-6 flex-1 items-center justify-center gap-1 rounded bg-blue-500 px-2 text-[10px] font-medium text-white hover:bg-blue-600"
-            onClick={handleResumeFromBreakpoint}
+            onClick={actions.handleResumeFromBreakpoint}
           >
             <Play className="h-3 w-3" />
             {t('nodeUi.resume')}
@@ -466,7 +336,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           <button
             type="button"
             className="inline-flex h-6 flex-1 items-center justify-center gap-1 rounded bg-destructive px-2 text-[10px] font-medium text-destructive-foreground hover:bg-destructive/90"
-            onClick={handleStopAtBreakpoint}
+            onClick={actions.handleStopAtBreakpoint}
           >
             <Square className="h-3 w-3" />
             {t('nodeUi.abort')}
@@ -506,7 +376,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
               className="nodrag nopan shrink-0 inline-flex items-center gap-1 rounded border border-border bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
               disabled={isExecutionBusy}
               title={t('nodeUi.test.partial')}
-              onClick={handlePartialTest}
+              onClick={actions.handlePartialTest}
             >
               {isPartialTesting ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Play className="h-2.5 w-2.5" />}
               {t('nodeUi.test.partial')}
@@ -547,7 +417,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
             id="source" type="source" position={handlePositions.source}
 
             className="!z-10 !w-3 !h-3 !bg-emerald-500 !border-2 !border-emerald-300 handle-dot"
-            style={getHandleStyle(handlePositions.source, 0, 1)}
+            style={getHandleStyle(handlePositions.source, 0, 1, handleCtx)}
           />
         ) : (
           <>
@@ -555,7 +425,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
               <React.Fragment key={h.id}>
                 <div
                   className="source-handle-label"
-                  style={getSourceLabelStyle(index, staticSourceHandles.length)}
+                  style={getSourceLabelStyle(index, staticSourceHandles.length, handleCtx)}
                 >
                   <span className="text-[9px] text-muted-foreground mr-1 whitespace-nowrap">{h.label || h.id}</span>
                 </div>
@@ -563,7 +433,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
                   id={h.id} type="source" position={handlePositions.source}
 
                   className={`!z-10 !w-2.5 !h-2.5 handle-dot ${h.id === LOOP_BODY_SOURCE_HANDLE ? '!bg-blue-500 !border-blue-300' : '!bg-emerald-500 !border-emerald-300'}`}
-                  style={{ ...getHandleStyle(handlePositions.source, index, staticSourceHandles.length), borderWidth: '2px' }}
+                  style={{ ...getHandleStyle(handlePositions.source, index, staticSourceHandles.length, handleCtx), borderWidth: '2px' }}
                 />
               </React.Fragment>
             ))}
@@ -578,7 +448,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
             <React.Fragment key={h.id}>
               <div
                 className="source-handle-label"
-                style={getSourceLabelStyle(h.index, h.total)}
+                style={getSourceLabelStyle(h.index, h.total, handleCtx)}
               >
                 <span className="text-[9px] text-muted-foreground mr-1 whitespace-nowrap">{h.label}</span>
               </div>
@@ -586,7 +456,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
                 id={h.id} type="source" position={handlePositions.source}
 
                 className={`!z-10 !w-2.5 !h-2.5 handle-dot ${h.id === 'default' ? '!bg-orange-500 !border-orange-300' : '!bg-emerald-500 !border-emerald-300'}`}
-                style={{ ...getHandleStyle(handlePositions.source, h.index, h.total), borderWidth: '2px' }}
+                style={{ ...getHandleStyle(handlePositions.source, h.index, h.total, handleCtx), borderWidth: '2px' }}
               />
             </React.Fragment>
           ))}
@@ -608,7 +478,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
             <button
               type="button"
               className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-green-500 text-white hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-60"
-              onClick={handleTestNode}
+              onClick={actions.handleTestNode}
               title={isCurrentNodeDebugging ? t('nodeUi.test.cancel') : t('nodeUi.test.node')}
               aria-label={isCurrentNodeDebugging ? t('nodeUi.test.cancel') : t('nodeUi.test.node')}
             >
@@ -619,7 +489,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
             <button
               type="button"
               className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/80"
-              onClick={handleDelete}
+              onClick={actions.handleDelete}
               title={t('nodeUi.delete')}
               aria-label={t('nodeUi.delete')}
             >
@@ -632,7 +502,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         <NodeResizeControl
           minWidth={nodeMinWidth}
           minHeight={nodeMinHeight}
-          onResizeEnd={handleResizeEnd}
+          onResizeEnd={actions.handleResizeEnd}
           position="bottom-right"
           style={{ background: 'transparent', border: 'none' }}
         >
@@ -645,116 +515,30 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         isDeleteProtected={!canDeleteNode}
         isCanvasLocked={!!isCanvasLocked}
         style={{ width: nodeWidth, height: nodeHeight }}
-        onSetColor={setNodeColor}
-        onSetState={setNodeState}
-        onSetBreakpoint={setNodeBreakpoint}
-        onShowInfo={handleShowInfo}
-        onCopy={handleCopy}
-        onClone={handleClone}
-        onStage={handleStage}
-        onMoveToStage={handleMoveToStage}
-        onDelete={handleDelete}
-        onMergeToWorkflow={handleMergeToWorkflow}
-        onMergeToGroup={handleMergeToGroup}
-        onBatchDelete={handleBatchDelete}
+        onSetColor={actions.setNodeColor}
+        onSetState={actions.setNodeState}
+        onSetBreakpoint={actions.setNodeBreakpoint}
+        onShowInfo={actions.handleShowInfo}
+        onCopy={actions.handleCopy}
+        onClone={actions.handleClone}
+        onStage={actions.handleStage}
+        onMoveToStage={actions.handleMoveToStage}
+        onDelete={actions.handleDelete}
+        onMergeToWorkflow={actions.handleMergeToWorkflow}
+        onMergeToGroup={actions.handleMergeToGroup}
+        onBatchDelete={actions.handleBatchDelete}
       >
         {nodeBody}
       </WorkflowNodeContextMenu>
 
       {/* Collapsible execution log card below the node */}
       {hasExecutionResult && executionStep ? (
-        <div
-          className="nodrag nopan mt-1"
-          style={{ width: nodeWidth }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            type="button"
-            className={cn(
-              'flex items-center gap-1 rounded-t-md border border-border px-2 py-1 text-[10px] w-full text-left transition-colors',
-              isLogExpanded ? 'bg-muted/50' : 'bg-background hover:bg-muted/30 rounded-b-md',
-            )}
-            onClick={() => setIsLogExpanded(prev => !prev)}
-          >
-            {executionStep.status === 'error'
-              ? <X className="h-3 w-3 text-red-500" />
-              : <Check className="h-3 w-3 text-green-500" />}
-            <span className="flex-1 truncate text-muted-foreground">
-              {executionStep.status === 'error' ? executionStep.error?.slice(0, 60) || t('nodeUi.executionResult') : t('nodeUi.executionResult')}
-            </span>
-            <span className="text-muted-foreground/70">
-              {executionStep.finishedAt ? formatDuration(executionStep.startedAt, executionStep.finishedAt) : '...'}
-            </span>
-            {isLogExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-          </button>
-
-          {isLogExpanded && (
-            <ScrollArea className="max-h-[260px] border border-t-0 border-border rounded-b-md bg-background">
-              {/* Error */}
-              {executionStep.error && (
-                <div className="px-2 py-1.5 text-[10px] text-red-500 bg-red-500/10 border-b border-border flex items-start gap-1">
-                  <AlertCircle className="h-2.5 w-2.5 shrink-0 mt-0.5" />
-                  <span className="break-all">{executionStep.error}</span>
-                </div>
-              )}
-
-              {/* Output section */}
-              <div className="border-b border-border">
-                <div className="px-2 py-0.5 text-[9px] font-medium text-muted-foreground/70 uppercase tracking-wider">{t('execution.output')}</div>
-                {executionStep.output != null ? (
-                  <JsonViewer
-                    data={executionStep.output as Parameters<typeof JsonViewer>[0]['data']}
-                    className="border-0 shadow-none rounded-none text-[10px]"
-                    defaultExpanded={2}
-                  />
-                ) : (
-                  <div className="px-2 pb-1 text-[10px] text-muted-foreground">{t('execution.noOutput')}</div>
-                )}
-              </div>
-
-              {/* Input section */}
-              <div className="border-b border-border">
-                <div className="px-2 py-0.5 text-[9px] font-medium text-muted-foreground/70 uppercase tracking-wider">{t('execution.input')}</div>
-                {executionStep.input != null ? (
-                  <JsonViewer
-                    data={executionStep.input as Parameters<typeof JsonViewer>[0]['data']}
-                    className="border-0 shadow-none rounded-none text-[10px]"
-                    defaultExpanded={2}
-                  />
-                ) : (
-                  <div className="px-2 pb-1 text-[10px] text-muted-foreground">{t('execution.noInput')}</div>
-                )}
-              </div>
-
-              {/* Logs section */}
-              <div>
-                <div className="px-2 py-0.5 text-[9px] font-medium text-muted-foreground/70 uppercase tracking-wider">{t('execution.logs')}</div>
-                {executionStep.logs?.length ? (
-                  <div className="px-1.5 pb-1 space-y-px">
-                    {executionStep.logs.map((entry, logIndex) => (
-                      <div
-                        key={`${entry.timestamp}-${logIndex}`}
-                        className={cn(
-                          'flex items-start gap-1 text-[10px] px-1.5 py-0.5 rounded',
-                          entry.level === 'info' && 'text-blue-600 dark:text-blue-400 bg-blue-500/10',
-                          entry.level === 'warning' && 'text-yellow-600 dark:text-yellow-400 bg-yellow-500/10',
-                          entry.level === 'error' && 'text-red-600 dark:text-red-400 bg-red-500/10',
-                        )}
-                      >
-                        {entry.level === 'info' ? <Info className="h-2.5 w-2.5 shrink-0 mt-0.5" /> :
-                          entry.level === 'warning' ? <AlertTriangle className="h-2.5 w-2.5 shrink-0 mt-0.5" /> :
-                          <AlertCircle className="h-2.5 w-2.5 shrink-0 mt-0.5" />}
-                        <span className="break-all">{entry.message}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="px-2 pb-1 text-[10px] text-muted-foreground">{t('execution.noLogsContent')}</div>
-                )}
-              </div>
-            </ScrollArea>
-          )}
-        </div>
+        <WorkflowNodeExecutionLog
+          executionStep={executionStep}
+          nodeWidth={nodeWidth}
+          isLogExpanded={isLogExpanded}
+          onToggleLog={() => setIsLogExpanded(prev => !prev)}
+        />
       ) : null}
 
       <style>{`
@@ -773,34 +557,6 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       `}</style>
     </>
   );
-}
-
-function areDataValuesEqual(prevValue: unknown, nextValue: unknown): boolean {
-  if (Object.is(prevValue, nextValue)) return true;
-  if (!Array.isArray(prevValue) || !Array.isArray(nextValue)) return false;
-  if (prevValue.length !== nextValue.length) return false;
-  return prevValue.every((item, index) => Object.is(item, nextValue[index]));
-}
-
-function areWorkflowNodeDataEqual(prevData: unknown, nextData: unknown): boolean {
-  if (Object.is(prevData, nextData)) return true;
-  if (!prevData || !nextData || typeof prevData !== 'object' || typeof nextData !== 'object') return false;
-
-  const prevRecord = prevData as Record<string, unknown>;
-  const nextRecord = nextData as Record<string, unknown>;
-  const prevKeys = Object.keys(prevRecord);
-  const nextKeys = Object.keys(nextRecord);
-  if (prevKeys.length !== nextKeys.length) return false;
-
-  return prevKeys.every(key => Object.prototype.hasOwnProperty.call(nextRecord, key)
-    && areDataValuesEqual(prevRecord[key], nextRecord[key]));
-}
-
-function areWorkflowNodePropsEqual(prev: NodeProps, next: NodeProps): boolean {
-  return prev.id === next.id
-    && prev.type === next.type
-    && prev.selected === next.selected
-    && areWorkflowNodeDataEqual(prev.data, next.data);
 }
 
 export const WorkflowNode = React.memo(WorkflowNodeComponent, areWorkflowNodePropsEqual);

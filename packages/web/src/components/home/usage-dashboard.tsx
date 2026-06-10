@@ -72,38 +72,52 @@ export function UsageDashboard() {
   const days = fetchDays()
 
   return (
-    <Card className="col-span-full gap-0 overflow-hidden rounded-lg py-0">
-      <div className="flex items-center gap-3 border-b px-4 py-3">
-        <span className="font-medium text-sm">{t('title')}</span>
-        <PeriodSelector period={period} customRange={customRange} onPeriodChange={handlePeriodChange} />
-      </div>
+    <div className="col-span-full flex flex-col gap-3">
+      {/* Header + Metrics */}
+      <Card className="gap-0 overflow-hidden py-0">
+        <div className="flex items-center gap-3 border-b px-4 py-3">
+          <span className="font-medium text-sm">{t('title')}</span>
+          <PeriodSelector period={period} customRange={customRange} onPeriodChange={handlePeriodChange} />
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4">
+          <Metric label={t('metric.agentRuns')} value={formatNumber(totals.requests)} helper={t('metric.agentRunsHelper')} icon={Zap} totalCostLabel={t('metric.totalCost')} />
+          <Metric label={t('metric.tokensUsed')} value={formatTokens(totals.totalTokens)} helper={`${formatTokens(totals.inputTokens)} ${t('metric.tokensIn')}`} icon={Cpu} totalCostLabel={t('metric.totalCost')} />
+          <Metric label={t('metric.totalCost')} value={formatCurrency(totals.totalCostUsd)} helper={t('metric.totalCostHelper')} icon={DollarSign} totalCostLabel={t('metric.totalCost')} />
+          <Metric label={t('metric.avgDuration')} value={formatDuration(totals.avgDurationMs)} helper={t('metric.avgDurationHelper')} icon={Clock3} last totalCostLabel={t('metric.totalCost')} />
+        </div>
+      </Card>
 
-      <div className="grid grid-cols-2 border-b sm:grid-cols-4">
-        <Metric label={t('metric.agentRuns')} value={formatNumber(totals.requests)} helper={t('metric.agentRunsHelper')} icon={Zap} totalCostLabel={t('metric.totalCost')} />
-        <Metric label={t('metric.tokensUsed')} value={formatTokens(totals.totalTokens)} helper={`${formatTokens(totals.inputTokens)} ${t('metric.tokensIn')}`} icon={Cpu} totalCostLabel={t('metric.totalCost')} />
-        <Metric label={t('metric.totalCost')} value={formatCurrency(totals.totalCostUsd)} helper={t('metric.totalCostHelper')} icon={DollarSign} totalCostLabel={t('metric.totalCost')} />
-        <Metric label={t('metric.avgDuration')} value={formatDuration(totals.avgDurationMs)} helper={t('metric.avgDurationHelper')} icon={Clock3} last totalCostLabel={t('metric.totalCost')} />
-      </div>
-
+      {/* Activity */}
       <ActivitySection daily={daily} days={days} maxDailyTokens={maxDailyTokens} />
 
-      <div className="grid border-b lg:grid-cols-3">
-        <CostByModelChart byModel={byModel} maxModelCost={maxModelCost} />
-        <div className="border-b p-4 lg:border-r lg:border-b-0">
-          <span className="font-medium text-xs">{t('chart.tokenDistribution')}</span>
-          <TokenPieChart inputTokens={totals.inputTokens} outputTokens={totals.outputTokens} />
-        </div>
-        <div className="p-4">
-          <span className="font-medium text-xs">{t('chart.costDistribution')}</span>
-          <CostPieChart byModel={byModel} totalCost={totals.totalCostUsd} />
-        </div>
+      {/* Charts */}
+      <div className="grid gap-3 lg:grid-cols-3">
+        <Card className="gap-0 py-0">
+          <CostByModelChart byModel={byModel} maxModelCost={maxModelCost} />
+        </Card>
+        <Card className="gap-0 py-0">
+          <div className="p-4">
+            <span className="font-medium text-xs">{t('chart.tokenDistribution')}</span>
+            <TokenPieChart inputTokens={totals.inputTokens} outputTokens={totals.outputTokens} />
+          </div>
+        </Card>
+        <Card className="gap-0 py-0">
+          <div className="p-4">
+            <span className="font-medium text-xs">{t('chart.costDistribution')}</span>
+            <CostPieChart byModel={byModel} totalCost={totals.totalCostUsd} />
+          </div>
+        </Card>
       </div>
 
-      <div className="p-4">
+      {/* Subscription */}
+      <Card className="px-4 py-3">
         <SubscriptionPanel />
-      </div>
+      </Card>
 
-      <AgentRunsTable data={recent} formatRelative={formatRelative} />
-    </Card>
+      {/* Recent Runs */}
+      <Card className="gap-0 overflow-hidden py-0">
+        <AgentRunsTable data={recent} formatRelative={formatRelative} />
+      </Card>
+    </div>
   )
 }

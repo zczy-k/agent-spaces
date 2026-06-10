@@ -57,7 +57,7 @@ export function AgentRunsTable({ data, formatRelative }: { data: AgentUsageRecor
 
   return (
     <div className="w-full">
-      <div className="border-b">
+      <div>
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map(hg => (
