@@ -95,6 +95,16 @@ export function useCanvasData({
     return steps;
   }, [executionLog]);
 
+  const executionStepsByNodeId = useMemo(() => {
+    const steps = new Map<string, ExecutionStep[]>();
+    for (const step of executionLog?.steps || []) {
+      const nodeSteps = steps.get(step.nodeId) || [];
+      nodeSteps.push(step);
+      steps.set(step.nodeId, nodeSteps);
+    }
+    return steps;
+  }, [executionLog]);
+
   const rfNodes: Node[] = useMemo(() =>
     workflow.nodes.filter(n => !isHiddenWorkflowNode(n)).map(n => {
       const definition = getNodeDefinition(n.type);
@@ -147,10 +157,11 @@ export function useCanvasData({
           logPanelLayout,
           isFirstConnectedNode: hasOutgoing && !hasIncoming,
           executionStep: executionStepByNodeId.get(n.id),
+          executionSteps: executionStepsByNodeId.get(n.id),
         } as Record<string, unknown>,
       };
     }),
-    [workflow.nodes, workflow.edges, selectedNodeIdSet, selectedNodeIds, isPreview, isCanvasLocked, executionNodeIds, execStatus, debugNodeId, debugStatus, pausedNodeId, pausedReason, partialExecutionStartNodeId, handlePosition, floatingHandles, logPanelLayout, executionStepByNodeId],
+    [workflow.nodes, workflow.edges, selectedNodeIdSet, selectedNodeIds, isPreview, isCanvasLocked, executionNodeIds, execStatus, debugNodeId, debugStatus, pausedNodeId, pausedReason, partialExecutionStartNodeId, handlePosition, floatingHandles, logPanelLayout, executionStepByNodeId, executionStepsByNodeId],
   );
 
   const runningEdgeIds = useMemo(() => {
@@ -193,5 +204,5 @@ export function useCanvasData({
     });
   }, [workflow.edges, workflow.nodes, runningEdgeIds, selectedEdgeId, isCanvasLocked, edgePathType, edgeLineStyle]);
 
-  return { rfNodes, rfEdges, selectedNodeIdSet, executionNodeIds, executionStepByNodeId, runningEdgeIds };
+  return { rfNodes, rfEdges, selectedNodeIdSet, executionNodeIds, executionStepByNodeId, executionStepsByNodeId, runningEdgeIds };
 }

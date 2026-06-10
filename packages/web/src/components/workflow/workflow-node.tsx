@@ -629,6 +629,8 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         <WorkflowNodeExecutionLog
           nodeId={id}
           executionStep={executionStep}
+          executionSteps={Array.isArray(nodeData.executionSteps) ? nodeData.executionSteps : undefined}
+          nodeType={workflowNodeType}
           outputs={Array.isArray(nodeData.outputs) ? nodeData.outputs : []}
           nodeWidth={nodeWidth}
           layout={logPanelLayout}

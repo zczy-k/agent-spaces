@@ -30,6 +30,7 @@ export type WorkflowNodeData = Record<string, unknown> & {
   logPanelLayout?: WorkflowLogPanelLayout;
   handleColors?: Record<string, string>;
   executionStep?: import('@agent-spaces/shared').ExecutionStep;
+  executionSteps?: import('@agent-spaces/shared').ExecutionStep[];
 };
 
 export type WorkflowCustomViewProps = {

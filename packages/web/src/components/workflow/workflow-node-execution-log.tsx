@@ -11,7 +11,12 @@ import {
   Info,
   X,
 } from 'lucide-react';
-import type { ExecutionStep, OutputField } from '@agent-spaces/shared';
+import {
+  LOOP_BODY_NODE_TYPE,
+  LOOP_NODE_TYPE,
+  type ExecutionStep,
+  type OutputField,
+} from '@agent-spaces/shared';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { NodeMediaPreview, type MediaItem } from '@/components/ui/media-gallery';
 import { JsonViewer } from '@/components/viewers/json-viewer';
@@ -25,6 +30,8 @@ const LOG_TAB_PANEL_SCROLL_CLASS = 'nodrag nopan nowheel max-h-[220px] overscrol
 interface WorkflowNodeExecutionLogProps {
   nodeId: string;
   executionStep: ExecutionStep;
+  executionSteps?: ExecutionStep[];
+  nodeType?: string;
   outputs: OutputField[];
   nodeWidth: number;
   layout: WorkflowLogPanelLayout;
@@ -35,6 +42,8 @@ interface WorkflowNodeExecutionLogProps {
 export function WorkflowNodeExecutionLog({
   nodeId,
   executionStep,
+  executionSteps,
+  nodeType,
   outputs,
   nodeWidth,
   layout,
@@ -42,6 +51,18 @@ export function WorkflowNodeExecutionLog({
   onToggleLog,
 }: WorkflowNodeExecutionLogProps) {
   const t = useTranslations('workflows');
+  const batchSteps = React.useMemo(() => {
+    if (nodeType !== LOOP_NODE_TYPE && nodeType !== LOOP_BODY_NODE_TYPE) return [executionStep];
+    return Array.isArray(executionSteps) && executionSteps.length > 0
+      ? executionSteps
+      : [executionStep];
+  }, [executionStep, executionSteps, nodeType]);
+  const [selectedBatchIndex, setSelectedBatchIndex] = React.useState(() => Math.max(0, batchSteps.length - 1));
+  React.useEffect(() => {
+    setSelectedBatchIndex(Math.max(0, batchSteps.length - 1));
+  }, [batchSteps.length]);
+  const selectedExecutionStep = batchSteps[selectedBatchIndex] || executionStep;
+  const shouldShowBatchTabs = batchSteps.length > 1;
   const handleClick = React.useCallback((event: React.MouseEvent) => {
     event.stopPropagation();
     window.dispatchEvent(new CustomEvent('workflow:select-node', { detail: { nodeId } }));
@@ -51,8 +72,8 @@ export function WorkflowNodeExecutionLog({
   }, []);
 
   const mediaItems = React.useMemo(() => {
-    if (executionStep.status !== 'completed' || !executionStep.output) return []
-    const output = executionStep.output as Record<string, unknown>
+    if (selectedExecutionStep.status !== 'completed' || !selectedExecutionStep.output) return []
+    const output = selectedExecutionStep.output as Record<string, unknown>
     if (!output || typeof output !== 'object') return []
     const items: MediaItem[] = []
     const extractMedia = (fields: OutputField[], parent: Record<string, unknown>) => {
@@ -80,17 +101,17 @@ export function WorkflowNodeExecutionLog({
     }
     extractMedia(outputs, output)
     return items
-  }, [executionStep, outputs])
+  }, [selectedExecutionStep, outputs])
 
-  const renderOutputSection = (className: string, extraClassName?: string) => (
+  const renderOutputSection = (step: ExecutionStep, className: string, extraClassName?: string) => (
     <div
       className={cn(className, extraClassName)}
       onWheelCapture={stopWheel}
     >
       <div className="px-2 py-0.5 text-[9px] font-medium text-muted-foreground/70 uppercase tracking-wider">{t('execution.output')}</div>
-      {executionStep.output != null ? (
+      {step.output != null ? (
         <JsonViewer
-          data={executionStep.output as Parameters<typeof JsonViewer>[0]['data']}
+          data={step.output as Parameters<typeof JsonViewer>[0]['data']}
           className="border-0 shadow-none rounded-none text-[10px]"
           defaultExpanded={2}
           mini
@@ -101,15 +122,15 @@ export function WorkflowNodeExecutionLog({
     </div>
   );
 
-  const renderInputSection = (className: string, extraClassName?: string) => (
+  const renderInputSection = (step: ExecutionStep, className: string, extraClassName?: string) => (
     <div
       className={cn(className, extraClassName)}
       onWheelCapture={stopWheel}
     >
       <div className="px-2 py-0.5 text-[9px] font-medium text-muted-foreground/70 uppercase tracking-wider">{t('execution.input')}</div>
-      {executionStep.input != null ? (
+      {step.input != null ? (
         <JsonViewer
-          data={executionStep.input as Parameters<typeof JsonViewer>[0]['data']}
+          data={step.input as Parameters<typeof JsonViewer>[0]['data']}
           className="border-0 shadow-none rounded-none text-[10px]"
           defaultExpanded={2}
           mini
@@ -120,15 +141,15 @@ export function WorkflowNodeExecutionLog({
     </div>
   );
 
-  const renderLogsSection = (className: string, extraClassName?: string) => (
+  const renderLogsSection = (step: ExecutionStep, className: string, extraClassName?: string) => (
     <div
       className={cn(className, extraClassName)}
       onWheelCapture={stopWheel}
     >
       <div className="px-2 py-0.5 text-[9px] font-medium text-muted-foreground/70 uppercase tracking-wider">{t('execution.logs')}</div>
-      {executionStep.logs?.length ? (
+      {step.logs?.length ? (
         <div className="px-1.5 pb-1 space-y-px">
-          {executionStep.logs.map((entry, logIndex) => (
+          {step.logs.map((entry, logIndex) => (
             <div
               key={`${entry.timestamp}-${logIndex}`}
               className={cn(
@@ -151,6 +172,34 @@ export function WorkflowNodeExecutionLog({
     </div>
   );
 
+  const renderStepContent = (step: ExecutionStep) => (
+    layout === 'tabs' ? (
+      <Tabs defaultValue="io" className="flex-col gap-0">
+        <TabsList variant="line" className="mx-2 h-7 w-[calc(100%-1rem)] justify-start p-0">
+          <TabsTrigger value="io" className="h-7 px-2 text-[10px]">
+            {t('execution.input')} / {t('execution.output')}
+          </TabsTrigger>
+          <TabsTrigger value="logs" className="h-7 px-2 text-[10px]">
+            {t('execution.logs')}
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="io" className="m-0">
+          {renderInputSection(step, LOG_TAB_SECTION_SCROLL_CLASS, 'border-b border-border')}
+          {renderOutputSection(step, LOG_TAB_SECTION_SCROLL_CLASS)}
+        </TabsContent>
+        <TabsContent value="logs" className="m-0">
+          {renderLogsSection(step, LOG_TAB_PANEL_SCROLL_CLASS)}
+        </TabsContent>
+      </Tabs>
+    ) : (
+      <>
+        {renderOutputSection(step, LOG_SECTION_SCROLL_CLASS, 'border-b border-border')}
+        {renderInputSection(step, LOG_SECTION_SCROLL_CLASS, 'border-b border-border')}
+        {renderLogsSection(step, LOG_SECTION_SCROLL_CLASS)}
+      </>
+    )
+  );
+
   return (
     <div
       className="nodrag nopan nowheel relative z-10 mt-1"
@@ -165,14 +214,14 @@ export function WorkflowNodeExecutionLog({
         )}
         onClick={onToggleLog}
       >
-        {executionStep.status === 'error'
+        {selectedExecutionStep.status === 'error'
           ? <X className="h-3 w-3 text-red-500" />
           : <Check className="h-3 w-3 text-green-500" />}
         <span className="flex-1 truncate text-muted-foreground">
-          {executionStep.status === 'error' ? executionStep.error?.slice(0, 60) || t('nodeUi.executionResult') : t('nodeUi.executionResult')}
+          {selectedExecutionStep.status === 'error' ? selectedExecutionStep.error?.slice(0, 60) || t('nodeUi.executionResult') : t('nodeUi.executionResult')}
         </span>
         <span className="text-muted-foreground/70">
-          {executionStep.finishedAt ? formatDuration(executionStep.startedAt, executionStep.finishedAt) : '...'}
+          {selectedExecutionStep.finishedAt ? formatDuration(selectedExecutionStep.startedAt, selectedExecutionStep.finishedAt) : '...'}
         </span>
         {isLogExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
       </button>
@@ -180,37 +229,41 @@ export function WorkflowNodeExecutionLog({
       {isLogExpanded && (
         <div className="nodrag nopan nowheel rounded-b-md border border-t-0 border-border bg-background">
           {/* Error */}
-          {executionStep.error && (
+          {selectedExecutionStep.error && (
             <div className="px-2 py-1.5 text-[10px] text-red-500 bg-red-500/10 border-b border-border flex items-start gap-1">
               <AlertCircle className="h-2.5 w-2.5 shrink-0 mt-0.5" />
-              <span className="break-all">{executionStep.error}</span>
+              <span className="break-all">{selectedExecutionStep.error}</span>
             </div>
           )}
 
-          {layout === 'tabs' ? (
-            <Tabs defaultValue="io" className="flex-col gap-0">
-              <TabsList variant="line" className="mx-2 h-7 w-[calc(100%-1rem)] justify-start p-0">
-                <TabsTrigger value="io" className="h-7 px-2 text-[10px]">
-                  {t('execution.input')} / {t('execution.output')}
-                </TabsTrigger>
-                <TabsTrigger value="logs" className="h-7 px-2 text-[10px]">
-                  {t('execution.logs')}
-                </TabsTrigger>
+          {shouldShowBatchTabs ? (
+            <Tabs
+              value={String(selectedBatchIndex)}
+              onValueChange={value => setSelectedBatchIndex(Number(value))}
+              className="flex-col gap-0"
+            >
+              <TabsList
+                variant="line"
+                className="mx-2 h-7 w-[calc(100%-1rem)] justify-start gap-1 overflow-x-auto p-0"
+              >
+                {batchSteps.map((step, index) => (
+                  <TabsTrigger
+                    key={`${step.startedAt}-${index}`}
+                    value={String(index)}
+                    className="h-7 flex-none px-2 text-[10px]"
+                  >
+                    {index + 1}
+                  </TabsTrigger>
+                ))}
               </TabsList>
-              <TabsContent value="io" className="m-0">
-                {renderInputSection(LOG_TAB_SECTION_SCROLL_CLASS, 'border-b border-border')}
-                {renderOutputSection(LOG_TAB_SECTION_SCROLL_CLASS)}
-              </TabsContent>
-              <TabsContent value="logs" className="m-0">
-                {renderLogsSection(LOG_TAB_PANEL_SCROLL_CLASS)}
-              </TabsContent>
+              {batchSteps.map((step, index) => (
+                <TabsContent key={`${step.startedAt}-${index}`} value={String(index)} className="m-0">
+                  {renderStepContent(step)}
+                </TabsContent>
+              ))}
             </Tabs>
           ) : (
-            <>
-              {renderOutputSection(LOG_SECTION_SCROLL_CLASS, 'border-b border-border')}
-              {renderInputSection(LOG_SECTION_SCROLL_CLASS, 'border-b border-border')}
-              {renderLogsSection(LOG_SECTION_SCROLL_CLASS)}
-            </>
+            renderStepContent(selectedExecutionStep)
           )}
         </div>
       )}
