@@ -139,7 +139,7 @@ function ExecutionInputFields({
               onValueChange={value => form.setField(field.key, value)}
               disabled={disabled}
             >
-              <SelectTrigger className="h-8 text-xs">
+              <SelectTrigger className="h-8 text-xs w-full">
                 <SelectValue placeholder={field.key} />
               </SelectTrigger>
               <SelectContent>

@@ -249,6 +249,7 @@ export function OutputFieldsEditor({
 																onChange={(options) => updateField(index, { options })}
 																placeholder={t('selectOptionsPlaceholder')}
 																addLabel={t('addOption')}
+																className="h-6 text-[11px]"
 															/>
 														) : field.inputMode === 'native' ? (
 															<Input

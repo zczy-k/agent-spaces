@@ -5,15 +5,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface TagInputProps {
   value: string[];
   onChange: (tags: string[]) => void;
   placeholder?: string;
   addLabel?: string;
+  className?: string;
 }
 
-export function TagInput({ value, onChange, placeholder, addLabel }: TagInputProps) {
+export function TagInput({ value, onChange, placeholder, addLabel, className }: TagInputProps) {
   const [input, setInput] = useState('');
 
   const add = () => {
@@ -41,9 +43,9 @@ export function TagInput({ value, onChange, placeholder, addLabel }: TagInputPro
             }
           }}
           placeholder={placeholder}
-          className="h-8 text-sm flex-1"
+          className={cn('h-8 flex-1 text-sm', className)}
         />
-        <Button variant="outline" size="sm" className="h-8" onClick={add} disabled={!input.trim()}>
+        <Button variant="outline" size="sm" className={cn('h-8', className)} onClick={add} disabled={!input.trim()}>
           {addLabel}
         </Button>
       </div>
