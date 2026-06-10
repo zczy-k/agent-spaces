@@ -280,7 +280,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         if (!open && handleColorMenuId === handleId) setHandleColorMenuId(null);
       }}
     >
-      <PopoverTrigger render={trigger} />
+      <PopoverTrigger render={trigger} nativeButton={false} />
       <PopoverContent
         side="right"
         align="center"
