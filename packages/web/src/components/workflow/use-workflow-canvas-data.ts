@@ -189,6 +189,15 @@ export function useCanvasData({
     return steps;
   }, [executionLog]);
 
+  const baseExecutionStepByNodeId = useMemo(() => {
+    const steps = new Map<string, ExecutionStep>();
+    for (const [nodeId, nodeSteps] of baseExecutionStepsByNodeId) {
+      const lastStep = nodeSteps[nodeSteps.length - 1];
+      if (lastStep) steps.set(nodeId, lastStep);
+    }
+    return steps;
+  }, [baseExecutionStepsByNodeId]);
+
   const executionStepsByNodeId = useMemo(() => {
     const steps = new Map(baseExecutionStepsByNodeId);
 
@@ -207,13 +216,14 @@ export function useCanvasData({
   }, [baseExecutionStepsByNodeId, workflow.nodes]);
 
   const executionStepByNodeId = useMemo(() => {
-    const steps = new Map<string, ExecutionStep>();
+    const steps = new Map(baseExecutionStepByNodeId);
     for (const [nodeId, nodeSteps] of executionStepsByNodeId) {
+      if (steps.has(nodeId)) continue;
       const lastStep = nodeSteps[nodeSteps.length - 1];
       if (lastStep) steps.set(nodeId, lastStep);
     }
     return steps;
-  }, [executionStepsByNodeId]);
+  }, [baseExecutionStepByNodeId, executionStepsByNodeId]);
 
   const executionNodeIdsWithScope = useMemo(() => {
     const running = new Set(executionNodeIds.running);

@@ -35,6 +35,10 @@ interface WorkflowExecutionBatchIndexEventDetail {
   index: number;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
 function CopyButton({ data }: { data: unknown }) {
   const [copied, setCopied] = React.useState(false);
   const handleClick = React.useCallback((e: React.MouseEvent) => {
@@ -92,10 +96,13 @@ export function WorkflowNodeExecutionLog({
       ? executionSteps
       : [executionStep];
   }, [executionStep, executionSteps]);
-  const [selectedBatchIndex, setSelectedBatchIndex] = React.useState(() => Math.max(0, batchSteps.length - 1));
+  const shouldShowAllTab = nodeType === LOOP_NODE_TYPE && batchSteps.length > 1;
+  const allTabValue = 'all';
+  const initialBatchIndex = shouldShowAllTab ? -1 : Math.max(0, batchSteps.length - 1);
+  const [selectedBatchIndex, setSelectedBatchIndex] = React.useState(initialBatchIndex);
   React.useEffect(() => {
-    setSelectedBatchIndex(Math.max(0, batchSteps.length - 1));
-  }, [batchSteps.length]);
+    setSelectedBatchIndex(shouldShowAllTab ? -1 : Math.max(0, batchSteps.length - 1));
+  }, [batchSteps.length, shouldShowAllTab]);
   React.useEffect(() => {
     if (!loopExecutionScopeId) return;
     const handleBatchIndexChange = (event: Event) => {
@@ -107,9 +114,16 @@ export function WorkflowNodeExecutionLog({
     window.addEventListener(WORKFLOW_EXECUTION_BATCH_INDEX_EVENT, handleBatchIndexChange);
     return () => window.removeEventListener(WORKFLOW_EXECUTION_BATCH_INDEX_EVENT, handleBatchIndexChange);
   }, [batchSteps.length, loopExecutionScopeId, nodeId]);
-  const selectedExecutionStep = batchSteps[selectedBatchIndex] || executionStep;
+  const selectedExecutionStep = selectedBatchIndex === -1
+    ? executionStep
+    : batchSteps[selectedBatchIndex] || executionStep;
   const shouldShowBatchTabs = batchSteps.length > 1;
   const handleBatchIndexChange = React.useCallback((value: string) => {
+    if (value === allTabValue) {
+      setSelectedBatchIndex(-1);
+      return;
+    }
+
     const index = Number(value);
     if (!Number.isFinite(index)) return;
     setSelectedBatchIndex(index);
@@ -119,6 +133,35 @@ export function WorkflowNodeExecutionLog({
       { detail: { scopeId: loopExecutionScopeId, nodeId, index } },
     ));
   }, [loopExecutionScopeId, nodeId, nodeType]);
+  const translateNodeLabel = React.useCallback((label: string): string => {
+    if (!label.startsWith('nodes.')) return label;
+    const boundaryMatch = label.match(/^(nodes\.[^.]+\.label)(开始|结束)$/);
+    if (boundaryMatch) {
+      const [, key, suffix] = boundaryMatch;
+      const suffixKey = suffix === '开始' ? 'defaultWorkflow.startLabel' : 'defaultWorkflow.endLabel';
+      return `${t(key as Parameters<typeof t>[0])} ${t(suffixKey as Parameters<typeof t>[0])}`;
+    }
+    return t(label as Parameters<typeof t>[0]);
+  }, [t]);
+  const translateDisplayValue = React.useCallback((value: unknown): unknown => {
+    const walk = (item: unknown): unknown => {
+      if (Array.isArray(item)) return item.map(child => walk(child));
+      if (!isRecord(item)) return item;
+      return Object.fromEntries(
+        Object.entries(item).map(([key, child]) => [translateNodeLabel(key), walk(child)]),
+      );
+    };
+    return walk(value);
+  }, [translateNodeLabel]);
+  const getDisplayStep = React.useCallback((step: ExecutionStep): ExecutionStep => ({
+    ...step,
+    input: translateDisplayValue(step.input),
+    output: translateDisplayValue(step.output),
+    logs: step.logs?.map(entry => ({
+      ...entry,
+      message: entry.message.replace(/^([^:]+):\s/, (_match, label: string) => `${translateNodeLabel(label)}: `),
+    })),
+  }), [translateDisplayValue, translateNodeLabel]);
   const handleClick = React.useCallback((event: React.MouseEvent) => {
     event.stopPropagation();
     window.dispatchEvent(new CustomEvent('workflow:select-node', { detail: { nodeId } }));
@@ -173,24 +216,22 @@ export function WorkflowNodeExecutionLog({
   }, [getMediaType, toSrc])
 
   const getRecord = React.useCallback((value: unknown): Record<string, unknown> | null => {
-    return value && typeof value === 'object' && !Array.isArray(value)
-      ? value as Record<string, unknown>
-      : null
+    return isRecord(value) ? value : null
   }, [])
 
   const { inputMediaItems, outputMediaItems } = React.useMemo(() => {
-    const input = getRecord(selectedExecutionStep.input)
+    const input = getRecord(getDisplayStep(selectedExecutionStep).input)
     const inputMedia = input ? extractSchemaMedia(inputFields, input) : []
 
     let outputMedia: MediaItem[] = []
     if (selectedExecutionStep.status === 'completed' && selectedExecutionStep.output) {
-      const output = getRecord(selectedExecutionStep.output)
+      const output = getRecord(getDisplayStep(selectedExecutionStep).output)
       const outputFields = nodeType === 'start' ? inputFields : outputs
       outputMedia = output ? extractSchemaMedia(outputFields, output) : []
     }
 
     return { inputMediaItems: inputMedia, outputMediaItems: outputMedia }
-  }, [selectedExecutionStep, nodeType, inputFields, outputs, extractSchemaMedia, getRecord])
+  }, [selectedExecutionStep, nodeType, inputFields, outputs, extractSchemaMedia, getRecord, getDisplayStep])
 
   const renderOutputSection = (step: ExecutionStep, className: string, extraClassName?: string) => (
     <div
@@ -273,7 +314,9 @@ export function WorkflowNodeExecutionLog({
     </div>
   );
 
-  const renderStepContent = (step: ExecutionStep) => (
+  const renderStepContent = (step: ExecutionStep) => {
+    const displayStep = getDisplayStep(step);
+    return (
     layout === 'tabs' ? (
       <Tabs defaultValue="io" className="flex-col gap-0">
         <TabsList variant="line" className="mx-2 h-7 w-[calc(100%-1rem)] justify-start p-0">
@@ -285,21 +328,22 @@ export function WorkflowNodeExecutionLog({
           </TabsTrigger>
         </TabsList>
         <TabsContent value="io" className="m-0">
-          {renderInputSection(step, LOG_TAB_SECTION_SCROLL_CLASS, 'border-b border-border')}
-          {renderOutputSection(step, LOG_TAB_SECTION_SCROLL_CLASS)}
+          {renderInputSection(displayStep, LOG_TAB_SECTION_SCROLL_CLASS, 'border-b border-border')}
+          {renderOutputSection(displayStep, LOG_TAB_SECTION_SCROLL_CLASS)}
         </TabsContent>
         <TabsContent value="logs" className="m-0">
-          {renderLogsSection(step, LOG_TAB_PANEL_SCROLL_CLASS)}
+          {renderLogsSection(displayStep, LOG_TAB_PANEL_SCROLL_CLASS)}
         </TabsContent>
       </Tabs>
     ) : (
       <>
-        {renderInputSection(step, LOG_SECTION_SCROLL_CLASS, 'border-b border-border')}
-        {renderOutputSection(step, LOG_SECTION_SCROLL_CLASS, 'border-b border-border')}
-        {renderLogsSection(step, LOG_SECTION_SCROLL_CLASS)}
+        {renderInputSection(displayStep, LOG_SECTION_SCROLL_CLASS, 'border-b border-border')}
+        {renderOutputSection(displayStep, LOG_SECTION_SCROLL_CLASS, 'border-b border-border')}
+        {renderLogsSection(displayStep, LOG_SECTION_SCROLL_CLASS)}
       </>
     )
-  );
+    );
+  };
 
   return (
     <div
@@ -341,7 +385,7 @@ export function WorkflowNodeExecutionLog({
 
           {shouldShowBatchTabs ? (
             <Tabs
-              value={String(selectedBatchIndex)}
+              value={selectedBatchIndex === -1 ? allTabValue : String(selectedBatchIndex)}
               onValueChange={handleBatchIndexChange}
               className="flex-col gap-0"
             >
@@ -349,6 +393,14 @@ export function WorkflowNodeExecutionLog({
                 variant="line"
                 className="mx-2 h-7 w-[calc(100%-1rem)] justify-start gap-1 overflow-x-auto p-0"
               >
+                {shouldShowAllTab && (
+                  <TabsTrigger
+                    value={allTabValue}
+                    className={cn(LOG_TAB_TRIGGER_CLASS, 'flex-none')}
+                  >
+                    {t('templatesDialog.all')}
+                  </TabsTrigger>
+                )}
                 {batchSteps.map((step, index) => (
                   <TabsTrigger
                     key={`${step.startedAt}-${index}`}
@@ -359,6 +411,11 @@ export function WorkflowNodeExecutionLog({
                   </TabsTrigger>
                 ))}
               </TabsList>
+              {shouldShowAllTab && (
+                <TabsContent value={allTabValue} className="m-0">
+                  {renderStepContent(executionStep)}
+                </TabsContent>
+              )}
               {batchSteps.map((step, index) => (
                 <TabsContent key={`${step.startedAt}-${index}`} value={String(index)} className="m-0">
                   {renderStepContent(step)}

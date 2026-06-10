@@ -11,6 +11,7 @@ import {
   X,
   Clipboard,
   ClipboardCopy,
+  Maximize2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
@@ -23,6 +24,11 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card"
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   jsonThemes,
   type JsonColorTheme,
@@ -597,6 +603,7 @@ function JsonViewer({
   const [searchQuery, setSearchQuery] = React.useState("")
   const [searchOpen, setSearchOpen] = React.useState(false)
   const [copiedAll, setCopiedAll] = React.useState(false)
+  const [fullscreenOpen, setFullscreenOpen] = React.useState(false)
   const searchRef = React.useRef<HTMLInputElement>(null)
 
   const togglePath = React.useCallback((path: string) => {
@@ -803,6 +810,14 @@ function JsonViewer({
                     <TokenSpan token="punctuation">{rootCloseBracket}</TokenSpan>
                   </>
                 )}
+                <button
+                  type="button"
+                  onClick={() => setFullscreenOpen(true)}
+                  aria-label="Fullscreen"
+                  className="ml-auto mr-1 flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
+                >
+                  <Maximize2 className="size-3" />
+                </button>
               </div>
               {!isRootCollapsed && (
                 <>
@@ -845,6 +860,25 @@ function JsonViewer({
           )}
         </div>
       </div>
+
+      {/* Fullscreen Dialog */}
+      <Dialog open={fullscreenOpen} onOpenChange={setFullscreenOpen}>
+        <DialogContent
+          className="sm:max-w-4xl"
+          showCloseButton
+        >
+          <DialogTitle className="sr-only">{title ?? "JSON Viewer"}</DialogTitle>
+          <div className="max-h-[calc(var(--app-content-height)-6rem)] overflow-auto">
+            <JsonViewer
+              data={data}
+              title={title}
+              rootName={rootName}
+              defaultExpanded={true}
+              colorTheme={colorTheme}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </ThemeContext>
   )
 }
