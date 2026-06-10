@@ -140,6 +140,12 @@ function isPositionNodeChange(
   return change.type === 'position' && !!change.position;
 }
 
+function isConnectionEndOnCanvasNode(position: { x: number; y: number }) {
+  return document.elementsFromPoint(position.x, position.y).some(element =>
+    element.closest('.react-flow__node, .react-flow__handle')
+  );
+}
+
 interface WorkflowCanvasProps {
   workflow: Workflow;
   isPreview: boolean;
@@ -319,6 +325,15 @@ export function WorkflowCanvas({
     const edges = workflow.edges;
     const targetNode = nodes.find(node => node.id === connection.target);
     if (!targetNode) return false;
+    const targetDefinition = getNodeDefinition(targetNode.type);
+    const targetConnectionCount = targetDefinition?.handles?.connectionCount ?? 1;
+    const targetHandle = connection.targetHandle || undefined;
+    const existingTargetConnectionCount = edges.filter(edge =>
+      edge.target === connection.target
+      && (edge.targetHandle || undefined) === targetHandle
+      && edge.id !== ('id' in connection ? connection.id : undefined)
+    ).length;
+    if (existingTargetConnectionCount >= targetConnectionCount) return false;
 
     const hasCycle = (node: typeof targetNode, visited = new Set<string>()): boolean => {
       if (visited.has(node.id)) return false;
@@ -621,6 +636,12 @@ export function WorkflowCanvas({
       } else if ('changedTouches' in event && event.changedTouches.length > 0) {
         const touch = event.changedTouches[0];
         clientPosition = { x: touch.clientX, y: touch.clientY };
+      }
+
+      if (clientPosition && isConnectionEndOnCanvasNode(clientPosition)) {
+        connectSourceRef.current = null;
+        connectSucceededRef.current = false;
+        return;
       }
 
       const position = clientPosition ? screenToFlowPosition(clientPosition) : null;

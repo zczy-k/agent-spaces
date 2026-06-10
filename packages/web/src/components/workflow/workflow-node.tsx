@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useCallback, useRef, useSyncExternalStore } from 'react';
 import { useTranslations } from 'next-intl';
-import { Handle, NodeResizeControl, NodeToolbar, Position, useStore, useUpdateNodeInternals } from '@xyflow/react';
+import { Handle, NodeResizeControl, NodeToolbar, Position, useNodeConnections, useStore, useUpdateNodeInternals } from '@xyflow/react';
 import type { NodeProps, ReactFlowState } from '@xyflow/react';
 import {
   Flag,
@@ -117,6 +117,9 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
 
   const showTargetHandle = definition?.handles?.target !== false;
   const showSourceHandle = definition?.handles?.source !== false;
+  const targetConnectionCount = definition?.handles?.connectionCount ?? 1;
+  const targetConnections = useNodeConnections({ id, handleType: 'target', handleId: 'target' });
+  const isTargetConnectable = targetConnections.length < targetConnectionCount;
   const staticSourceHandles = definition?.handles?.sourceHandles || [];
   const handlePositionMode = nodeData.handlePosition || 'left-right';
   const handlePositions = HANDLE_POSITION_MAP[handlePositionMode] || HANDLE_POSITION_MAP['left-right'];
@@ -385,6 +388,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       {showTargetHandle && (
         <Handle
           id="target" type="target" position={handlePositions.target}
+          isConnectable={isTargetConnectable}
           className={cn('!z-10 !w-3 !h-3 !bg-blue-500 !border-2 !border-blue-300 handle-dot', floatingHandleClassName)}
           style={getTargetHandleStyle(handlePositions.target, handleCtx)}
         />

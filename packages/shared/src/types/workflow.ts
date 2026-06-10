@@ -236,6 +236,7 @@ export interface CompoundNodeDefinition {
 export interface NodeHandleConfig {
   source?: boolean
   target?: boolean
+  connectionCount?: number
   sourceHandles?: NodeNamedHandleConfig[]
   dynamicSource?: {
     dataKey: string

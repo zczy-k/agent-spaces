@@ -63,6 +63,11 @@ export function useEdgeOperations({
     return handleId === 'source';
   }, []);
 
+  const getTargetConnectionCount = useCallback((node: Workflow['nodes'][number]) => {
+    const definition = getNodeDefinition(node.type);
+    return definition?.handles?.connectionCount ?? 1;
+  }, []);
+
   const wouldCreateCycle = useCallback((source: string, target: string) => {
     const visited = new Set<string>();
     const visit = (nodeId: string): boolean => {
@@ -90,6 +95,17 @@ export function useEdgeOperations({
     sourceIdSet.delete(connection.target);
 
     const edgeIds = new Set(workflow.edges.map(edge => edge.id));
+    const targetNode = workflow.nodes.find(node => node.id === connection.target);
+    if (!targetNode) return;
+    const targetConnectionCount = getTargetConnectionCount(targetNode);
+    const targetHandle = connection.targetHandle || undefined;
+    const existingTargetConnectionCount = workflow.edges.filter(edge =>
+      edge.target === connection.target
+      && (edge.targetHandle || undefined) === targetHandle
+    ).length;
+    let remainingTargetConnections = Math.max(0, targetConnectionCount - existingTargetConnectionCount);
+    if (remainingTargetConnections === 0) return;
+
     const nextEdges = workflow.nodes
       .filter(node => sourceIdSet.has(node.id))
       .filter(node => canUseSourceHandle(node, connection.sourceHandle))
@@ -104,11 +120,13 @@ export function useEdgeOperations({
         source: node.id,
         target: connection.target!,
         sourceHandle: connection.sourceHandle || undefined,
-        targetHandle: connection.targetHandle || undefined,
+        targetHandle,
       }))
       .filter(edge => {
+        if (remainingTargetConnections === 0) return false;
         if (edgeIds.has(edge.id)) return false;
         edgeIds.add(edge.id);
+        remainingTargetConnections -= 1;
         return true;
       });
 
@@ -116,7 +134,7 @@ export function useEdgeOperations({
     pushUndo('connect');
     setWorkflow(w => w ? { ...w, edges: [...w.edges, ...nextEdges] } : null);
     markDirty();
-  }, [canUseSourceHandle, isReadOnly, markDirty, pushUndo, selectedNodeId, selectedNodeIds, setWorkflow, workflow, wouldCreateCycle]);
+  }, [canUseSourceHandle, getTargetConnectionCount, isReadOnly, markDirty, pushUndo, selectedNodeId, selectedNodeIds, setWorkflow, workflow, wouldCreateCycle]);
 
   const handleNodesChange = useCallback((changes: NodeChange[]) => {
     if (!workflow || isReadOnly) return;
