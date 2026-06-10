@@ -57,6 +57,7 @@ interface WorkflowNodeExecutionLogProps {
   executionStep: ExecutionStep;
   executionSteps?: ExecutionStep[];
   nodeType?: string;
+  inputFields?: OutputField[];
   outputs: OutputField[];
   nodeWidth: number;
   layout: WorkflowLogPanelLayout;
@@ -69,6 +70,7 @@ export function WorkflowNodeExecutionLog({
   executionStep,
   executionSteps,
   nodeType,
+  inputFields = [],
   outputs,
   nodeWidth,
   layout,
@@ -105,82 +107,61 @@ export function WorkflowNodeExecutionLog({
     return ''
   }, [])
 
-  const extractMediaFromObj = React.useCallback((obj: Record<string, unknown>): MediaItem[] => {
+  const getMediaType = React.useCallback((fieldType: OutputField['type']): MediaItem['type'] | null => {
+    if (fieldType === 'image' || fieldType === 'image[]' || fieldType === 'file' || fieldType === 'file[]') return 'image'
+    if (fieldType === 'audio') return 'audio'
+    if (fieldType === 'video') return 'video'
+    return null
+  }, [])
+
+  const extractSchemaMedia = React.useCallback((
+    fields: OutputField[],
+    parent: Record<string, unknown>,
+  ): MediaItem[] => {
     const items: MediaItem[] = []
-    for (const [key, val] of Object.entries(obj)) {
+    for (const field of fields) {
+      const val = parent[field.key]
       if (val == null) continue
-      // Single file object
-      if (isFileObj(val)) {
-        items.push({ src: val.httpPath as string, type: 'image', alt: key })
+
+      const mediaType = getMediaType(field.type)
+      if (mediaType) {
+        const values = field.type.endsWith('[]')
+          ? Array.isArray(val) ? val : []
+          : [val]
+
+        for (const item of values) {
+          const src = toSrc(item)
+          if (src) items.push({ src, type: mediaType, alt: field.key })
+        }
         continue
       }
-      // Array of file objects
-      if (Array.isArray(val) && val.length > 0 && isFileObj(val[0])) {
-        for (const item of val) {
-          if (isFileObj(item)) items.push({ src: item.httpPath as string, type: 'image', alt: key })
-        }
+
+      if (field.type === 'object' && field.children && val && typeof val === 'object' && !Array.isArray(val)) {
+        items.push(...extractSchemaMedia(field.children, val as Record<string, unknown>))
       }
     }
     return items
+  }, [getMediaType, toSrc])
+
+  const getRecord = React.useCallback((value: unknown): Record<string, unknown> | null => {
+    return value && typeof value === 'object' && !Array.isArray(value)
+      ? value as Record<string, unknown>
+      : null
   }, [])
 
   const { inputMediaItems, outputMediaItems } = React.useMemo(() => {
-    const inputMedia: MediaItem[] = []
-    const outputMedia: MediaItem[] = []
+    const input = getRecord(selectedExecutionStep.input)
+    const inputMedia = input ? extractSchemaMedia(inputFields, input) : []
 
-    // Extract from input
-    const input = selectedExecutionStep.input as Record<string, unknown> | null
-    if (input && typeof input === 'object') {
-      inputMedia.push(...extractMediaFromObj(input))
-    }
-
-    // Extract from output via schema
+    let outputMedia: MediaItem[] = []
     if (selectedExecutionStep.status === 'completed' && selectedExecutionStep.output) {
-      const output = selectedExecutionStep.output as Record<string, unknown>
-      if (output && typeof output === 'object') {
-        const extractMedia = (fields: OutputField[], parent: Record<string, unknown>) => {
-          for (const field of fields) {
-            const val = parent[field.key]
-            if (val == null) continue
-            if (field.type === 'image') {
-              const src = toSrc(val) || (typeof val === 'string' ? val : '')
-              if (src) outputMedia.push({ src, type: 'image', alt: field.key })
-            } else if (field.type === 'image[]') {
-              const urls = Array.isArray(val) ? val : []
-              for (const u of urls) {
-                const src = toSrc(u) || (typeof u === 'string' ? u : '')
-                if (src) outputMedia.push({ src, type: 'image', alt: field.key })
-              }
-            } else if (field.type === 'audio') {
-              const src = typeof val === 'string' ? val : ''
-              if (src) outputMedia.push({ src, type: 'video', alt: field.key })
-            } else if (field.type === 'video') {
-              const src = typeof val === 'string' ? val : ''
-              if (src) outputMedia.push({ src, type: 'video', alt: field.key })
-            } else if (field.type === 'object' && field.children && val && typeof val === 'object') {
-              extractMedia(field.children, val as Record<string, unknown>)
-            }
-          }
-        }
-        extractMedia(outputs, output)
-
-        // Fallback: scan output for file arrays not covered by schema
-        const schemaKeys = new Set(outputs.map(f => f.key))
-        for (const [key, val] of Object.entries(output)) {
-          if (schemaKeys.has(key) || !Array.isArray(val) || val.length === 0) continue
-          const firstSrc = toSrc(val[0])
-          if (firstSrc) {
-            for (const item of val) {
-              const s = toSrc(item)
-              if (s) outputMedia.push({ src: s, type: 'image', alt: key })
-            }
-          }
-        }
-      }
+      const output = getRecord(selectedExecutionStep.output)
+      const outputFields = nodeType === 'start' ? inputFields : outputs
+      outputMedia = output ? extractSchemaMedia(outputFields, output) : []
     }
 
     return { inputMediaItems: inputMedia, outputMediaItems: outputMedia }
-  }, [selectedExecutionStep, outputs, extractMediaFromObj, toSrc])
+  }, [selectedExecutionStep, nodeType, inputFields, outputs, extractSchemaMedia, getRecord])
 
   const renderOutputSection = (step: ExecutionStep, className: string, extraClassName?: string) => (
     <div
