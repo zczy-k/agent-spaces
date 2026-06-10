@@ -2,8 +2,8 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import type { NodeTypeDefinition, PluginConfigField, Workflow } from '@agent-spaces/shared';
-import { registerPluginNodeDefinitions, useLocalizedNodeDefinitionsByCategory, useLocalizedSearchNodeDefinitions } from '@/lib/workflow-nodes';
+import type { PluginConfigField, Workflow } from '@agent-spaces/shared';
+import { useLocalizedNodeDefinitionsByCategory, useLocalizedSearchNodeDefinitions } from '@/lib/workflow-nodes';
 import { pluginApi, workflowPluginSchemeApi, type WorkflowPlugin } from '@/lib/workflow-plugin-api';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -70,7 +70,6 @@ export function WorkflowNodeSidebar({
     let cancelled = false;
     async function loadPluginNodes() {
       if (!enabledPlugins.length) {
-        registerPluginNodeDefinitions([]);
         setWorkflowPlugins([]);
         setCategoryPluginMap({});
         setSchemeMap({});
@@ -79,16 +78,10 @@ export function WorkflowNodeSidebar({
       const plugins = await pluginApi.listWorkflowPlugins();
       const enabledSet = new Set(enabledPlugins);
       const activePlugins = plugins.filter(plugin => enabledSet.has(plugin.id));
-      const allNodes: NodeTypeDefinition[] = [];
       const catMap: Record<string, string> = {};
       for (const plugin of activePlugins) {
         try {
           const nodes = await pluginApi.getWorkflowNodes(plugin.id);
-          allNodes.push(...nodes.map(node => ({
-            ...node,
-            pluginId: plugin.id,
-            pluginIconPath: plugin.iconPath,
-          })));
           for (const node of nodes) {
             if (node.category) catMap[node.category] = plugin.id;
           }
@@ -97,7 +90,6 @@ export function WorkflowNodeSidebar({
         }
       }
       if (cancelled) return;
-      registerPluginNodeDefinitions(allNodes);
       setWorkflowPlugins(activePlugins);
       setCategoryPluginMap(catMap);
     }

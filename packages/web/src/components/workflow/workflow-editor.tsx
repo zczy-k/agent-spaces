@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { ReactFlowProvider } from '@xyflow/react';
+import type { NodeTypeDefinition } from '@agent-spaces/shared';
 import { Layout, Model, TabNode, IJsonModel, ITabRenderValues, Actions, Action } from 'flexlayout-react';
 import type { ExecutionStep, StagedNode, WorkflowTemplate } from '@agent-spaces/shared';
 import { WorkflowCanvas } from './workflow-canvas';
@@ -39,6 +40,9 @@ import { WORKFLOW_AGENT_FIXED_VALUES, getWorkflowAgentTimeline } from './workflo
 import type { WorkflowAgentChatMessage, WorkflowToolCall } from './workflow-editor-agent-utils';
 import { WORKFLOW_LAYOUT_KEY } from './workflow-editor-types';
 import type { DebugResult } from './workflow-editor-types';
+import { registerPluginNodeDefinitions } from '@/lib/workflow-nodes';
+import { pluginApi } from '@/lib/workflow-plugin-api';
+import { stagingApi } from '@/lib/workflow-api';
 
 // ---- flexlayout-react default model ----
 
@@ -170,7 +174,11 @@ function WorkflowEditorInner({
         composite: node.composite ? JSON.parse(JSON.stringify(node.composite)) : undefined,
         stagedAt: Date.now(),
       };
-      window.dispatchEvent(new CustomEvent('workflow:node-staged', { detail: { staged } }));
+      stagingApi.load(state.workflowId!).then(existing => {
+        const updated = [...existing, staged];
+        stagingApi.save(state.workflowId!, updated).catch(() => {});
+        window.dispatchEvent(new CustomEvent('workflow:node-staged', { detail: { staged } }));
+      }).catch(() => {});
     },
   });
 
@@ -211,6 +219,38 @@ function WorkflowEditorInner({
     state.exitPreview();
     execution.clearSelectedExecutionLog();
   };
+
+  // ---- Load plugin node definitions at editor level ----
+  // Must happen here, not in WorkflowNodeSidebar, so canvas works even when sidebar tab is closed
+  const enabledPlugins = useMemo(() => state.workflow?.enabledPlugins || [], [state.workflow?.enabledPlugins]);
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      if (!enabledPlugins.length) {
+        registerPluginNodeDefinitions([]);
+        return;
+      }
+      const plugins = await pluginApi.listWorkflowPlugins();
+      const enabledSet = new Set(enabledPlugins);
+      const activePlugins = plugins.filter(p => enabledSet.has(p.id));
+      const allNodes: NodeTypeDefinition[] = [];
+      for (const plugin of activePlugins) {
+        try {
+          const nodes = await pluginApi.getWorkflowNodes(plugin.id);
+          allNodes.push(...nodes.map(node => ({
+            ...node,
+            pluginId: plugin.id,
+            pluginIconPath: plugin.iconPath,
+          })));
+        } catch (error) {
+          console.warn('[WorkflowEditor] failed to load plugin nodes', plugin.id, error);
+        }
+      }
+      if (!cancelled) registerPluginNodeDefinitions(allNodes);
+    }
+    void load();
+    return () => { cancelled = true; };
+  }, [enabledPlugins]);
 
   useEffect(() => {
     if (!isWorkflowRunning || !canvas.nodeSelectOpen) return;

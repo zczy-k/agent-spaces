@@ -82,7 +82,10 @@ function useExecutionInputFormState(fields: OutputField[], initialValues?: Recor
     for (const field of fields) {
       if (!field.key) continue;
       const init = initialValues[field.key];
-      if (init !== undefined) map[field.key] = init;
+      if (init === undefined) continue;
+      map[field.key] = isFileOutputFieldType(field.type)
+        ? restoreFileFieldValue(init, field.type === 'file[]')
+        : init;
     }
     return map;
   });
@@ -169,6 +172,26 @@ function getFileValue(value: InputFormValue | undefined): FileUploadFile[] {
   return Array.isArray(value) ? value : [];
 }
 
+function restoreFileFieldValue(saved: string, isArray: boolean): FileUploadFile[] {
+  try {
+    const parsed = JSON.parse(saved);
+    if (isArray) {
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter(Boolean).map((meta: WorkflowFileInput, i: number) => {
+        const file = new File([], meta.name, { type: meta.type || 'application/octet-stream' }) as File & { __uploaded: WorkflowFileInput };
+        file.__uploaded = meta;
+        return { id: `restored-${i}`, file };
+      });
+    }
+    if (!parsed || typeof parsed !== 'object') return [];
+    const file = new File([], parsed.name, { type: parsed.type || 'application/octet-stream' }) as File & { __uploaded: WorkflowFileInput };
+    file.__uploaded = parsed;
+    return [{ id: 'restored-0', file }];
+  } catch {
+    return [];
+  }
+}
+
 type WorkflowFileInput = {
   path: string;
   relativePath: string;
@@ -190,6 +213,10 @@ type UploadedWorkflowFile = {
 
 async function resolveWorkflowFileInput(file?: File): Promise<WorkflowFileInput | null> {
   if (!file) return null;
+
+  // Restored file with saved upload result — skip re-upload
+  const saved = (file as File & { __uploaded?: WorkflowFileInput }).__uploaded;
+  if (saved) return saved;
 
   const relativePath = getFileRelativePath(file);
   const localPath = getElectronFilePath(file);
