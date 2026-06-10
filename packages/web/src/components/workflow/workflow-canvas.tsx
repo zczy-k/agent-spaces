@@ -141,6 +141,7 @@ export function WorkflowCanvas({
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [groupDragPreview, setGroupDragPreview] = useState<GroupDragPreview | null>(null);
   const [dropTargetEdgeId, setDropTargetEdgeId] = useState<string | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
   const { screenToFlowPosition } = useReactFlow();
   const [helperHorizontal] = useState<number | undefined>();
   const [helperVertical] = useState<number | undefined>();
@@ -475,6 +476,7 @@ export function WorkflowCanvas({
 
   const handleConnectStart: OnConnectStart = useCallback((_, params) => {
     if (!isCanvasLocked) {
+      setIsConnecting(true);
       const nodeId = typeof params === 'object' && params && 'nodeId' in params
         ? String((params as { nodeId?: string | null }).nodeId || '')
         : '';
@@ -499,6 +501,7 @@ export function WorkflowCanvas({
   }, [getNodeDebugSnapshot, isCanvasLocked]);
 
   const handleConnectEnd: OnConnectEnd = useCallback((event) => {
+    setIsConnecting(false);
     const connectSource = connectSourceRef.current;
     if (!isCanvasLocked && connectSource && !connectSucceededRef.current) {
       const isSourceHandle = connectSource.handleType === 'source';
@@ -586,7 +589,7 @@ export function WorkflowCanvas({
   return (
     <div
       ref={reactFlowWrapper}
-      className="relative flex-1 h-full w-full"
+      className={`relative flex-1 h-full w-full ${floatingHandles && isConnecting ? 'workflow-canvas-show-floating-handles' : ''}`}
       onContextMenuCapture={handleSelectionContextMenu}
     >
       <ReactFlow

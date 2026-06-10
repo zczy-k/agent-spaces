@@ -670,7 +670,9 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         .workflow-node-has-floating-handles:hover .workflow-node-floating-handle,
         .workflow-node-has-floating-handles:hover .workflow-node-floating-handle-label,
         .workflow-node-floating-handles-visible .workflow-node-floating-handle,
-        .workflow-node-floating-handles-visible .workflow-node-floating-handle-label {
+        .workflow-node-floating-handles-visible .workflow-node-floating-handle-label,
+        .workflow-canvas-show-floating-handles .workflow-node-floating-handle,
+        .workflow-canvas-show-floating-handles .workflow-node-floating-handle-label {
           opacity: 1;
         }
         .workflow-node-resize-icon {
