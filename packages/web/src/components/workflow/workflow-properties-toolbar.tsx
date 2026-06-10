@@ -73,7 +73,6 @@ export function Toolbar({
         {canEditDelay && (
           <Popover>
             <PopoverTrigger
-              nativeButton={false}
               className={`relative rounded p-1 transition-colors hover:bg-muted ${data._delay ? 'text-primary' : 'text-muted-foreground'}`}
             >
               <Timer className="h-3.5 w-3.5" />
