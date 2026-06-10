@@ -12,7 +12,6 @@ import {
   X,
 } from 'lucide-react';
 import type { ExecutionStep } from '@agent-spaces/shared';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { JsonViewer } from '@/components/viewers/json-viewer';
 import { cn } from '@/lib/utils';
 import { formatDuration } from './workflow-node-types';
@@ -34,7 +33,7 @@ export function WorkflowNodeExecutionLog({
 
   return (
     <div
-      className="nodrag nopan relative z-10 mt-1"
+      className="nodrag nopan nowheel relative z-10 mt-1"
       style={{ width: nodeWidth }}
       onClick={(e) => e.stopPropagation()}
     >
@@ -42,7 +41,7 @@ export function WorkflowNodeExecutionLog({
         type="button"
         className={cn(
           'flex items-center gap-1 rounded-t-md border border-border px-2 py-1 text-[10px] w-full text-left transition-colors',
-          isLogExpanded ? 'bg-muted/50' : 'bg-background hover:bg-muted/30 rounded-b-md',
+          isLogExpanded ? 'bg-muted' : 'bg-background hover:bg-muted rounded-b-md',
         )}
         onClick={onToggleLog}
       >
@@ -59,7 +58,10 @@ export function WorkflowNodeExecutionLog({
       </button>
 
       {isLogExpanded && (
-        <ScrollArea className="max-h-[260px] border border-t-0 border-border rounded-b-md bg-background">
+        <div
+          className="nodrag nopan nowheel max-h-[260px] overscroll-contain overflow-auto rounded-b-md border border-t-0 border-border bg-background"
+          onWheelCapture={(e) => e.stopPropagation()}
+        >
           {/* Error */}
           {executionStep.error && (
             <div className="px-2 py-1.5 text-[10px] text-red-500 bg-red-500/10 border-b border-border flex items-start gap-1">
@@ -76,6 +78,7 @@ export function WorkflowNodeExecutionLog({
                 data={executionStep.output as Parameters<typeof JsonViewer>[0]['data']}
                 className="border-0 shadow-none rounded-none text-[10px]"
                 defaultExpanded={2}
+                mini
               />
             ) : (
               <div className="px-2 pb-1 text-[10px] text-muted-foreground">{t('execution.noOutput')}</div>
@@ -90,6 +93,7 @@ export function WorkflowNodeExecutionLog({
                 data={executionStep.input as Parameters<typeof JsonViewer>[0]['data']}
                 className="border-0 shadow-none rounded-none text-[10px]"
                 defaultExpanded={2}
+                mini
               />
             ) : (
               <div className="px-2 pb-1 text-[10px] text-muted-foreground">{t('execution.noInput')}</div>
@@ -122,7 +126,7 @@ export function WorkflowNodeExecutionLog({
               <div className="px-2 pb-1 text-[10px] text-muted-foreground">{t('execution.noLogsContent')}</div>
             )}
           </div>
-        </ScrollArea>
+        </div>
       )}
     </div>
   );

@@ -15,6 +15,10 @@ import { getWorkflowNodeSize } from './workflow-node-size';
 import { NODE_COLOR_MAP, type HandlePositionMode } from './workflow-node-types';
 
 const DEFAULT_SOURCE_HANDLE_ID = 'source';
+const LOOP_BODY_NODE_Z_INDEX = -100;
+const DEFAULT_NODE_Z_INDEX = 1;
+const SCOPED_CHILD_NODE_Z_INDEX = 1000;
+const ACTIVE_NODE_Z_INDEX = 2000;
 
 function getSourceHandleColor(nodeData: Record<string, unknown>, sourceHandle: string | null | undefined): string | undefined {
   const handleColors = nodeData.handleColors;
@@ -99,13 +103,17 @@ export function useCanvasData({
       const isLoopBody = n.type === LOOP_BODY_NODE_TYPE;
       const isScopedChild = !!parentId && !isScopeBoundaryWorkflowNode(n);
       const hasCustomView = !!definition?.customView;
-      const zIndex = isLoopBody ? -100 : isScopedChild ? 1000 : 1;
+      const isSelected = selectedNodeIdSet.has(n.id);
+      const baseZIndex = isLoopBody
+        ? LOOP_BODY_NODE_Z_INDEX
+        : isScopedChild ? SCOPED_CHILD_NODE_Z_INDEX : DEFAULT_NODE_Z_INDEX;
+      const zIndex = isSelected ? ACTIVE_NODE_Z_INDEX : baseZIndex;
       return {
         id: n.id,
         type: 'custom',
         position: n.position,
         dragHandle: hasCustomView ? '.workflow-node-drag-handle' : undefined,
-        selected: selectedNodeIdSet.has(n.id),
+        selected: isSelected,
         zIndex,
         width,
         height,
