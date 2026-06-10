@@ -1889,14 +1889,29 @@ function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function getNestedValue(obj: any, path: string): any {
-  const parts = normalizeVariablePath(path).split('.');
-  let current = obj;
-  for (const part of parts) {
-    if (current == null) return undefined;
-    current = current[part];
+export function getNestedValue(obj: any, path: string): any {
+  const parts = normalizeVariablePath(path).split('.').filter(Boolean);
+  return getNestedPathValue(obj, parts);
+}
+
+function getNestedPathValue(current: any, parts: string[]): any {
+  if (parts.length === 0) return current;
+  if (current == null) return undefined;
+
+  const [part, ...rest] = parts;
+  if (Array.isArray(current) && !isArrayIndex(part) && part !== 'length') {
+    const values = current
+      .map(item => getNestedPathValue(item, parts))
+      .filter(value => value !== undefined);
+    if (values.length === 0) return undefined;
+    return values.flatMap(value => Array.isArray(value) ? value : [value]);
   }
-  return current;
+
+  return getNestedPathValue(current[part], rest);
+}
+
+function isArrayIndex(part: string): boolean {
+  return /^(0|[1-9]\d*)$/.test(part);
 }
 
 function setNestedValue(obj: Record<string, any>, path: string, value: unknown): void {
@@ -1929,10 +1944,11 @@ function deleteNestedValue(obj: Record<string, any>, path: string): boolean {
 function normalizeVariablePath(path: string): string {
   return path
     .trim()
-    .replace(/^\[\s*/, '')
-    .replace(/\s*\]$/, '')
     .replace(/\]\s*\[\s*/g, '.')
     .replace(/\[\s*(["'])([^"']+)\1\s*\]/g, '.$2')
+    .replace(/\[\s*([^\]"'\s]+)\s*\]/g, '.$1')
+    .replace(/^\[\s*/, '')
+    .replace(/\s*\]$/, '')
     .replace(/^(["'])([^"']+)\1$/, '$2')
     .replace(/(["'])\s*\.\s*(["'])/g, '.')
     .replace(/["']/g, '')
