@@ -38,7 +38,7 @@ import { useCanvasExport } from './use-workflow-canvas-export';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { getWorkflowNodeSize } from './workflow-node-size';
 import type { HandlePositionMode } from './workflow-node-types';
-import { resolveNodeCollisions } from './workflow-canvas-utils';
+import { isScopeBoundaryWorkflowNode, resolveNodeCollisions } from './workflow-canvas-utils';
 
 const nodeTypes = { custom: WorkflowNodeComponent };
 const edgeTypes = { custom: WorkflowEdgeComponent };
@@ -236,6 +236,10 @@ export function WorkflowCanvas({
     ? savedAttributionPosition as HandlePositionMode
     : 'left-right';
   const floatingHandles = canvasPrefs.floatingHandles === true;
+  const scopeBoundaryNodeIds = useMemo(
+    () => new Set(workflow.nodes.filter(isScopeBoundaryWorkflowNode).map(item => item.id)),
+    [workflow.nodes],
+  );
 
   const closeSelectionMenu = useCallback(() => {
     setSelectionMenu(null);
@@ -631,11 +635,16 @@ export function WorkflowCanvas({
       ? dropTargetEdgeId
       : null;
     const nextCanvasNodes = collisionBoxEnabled
-      ? resolveNodeCollisions(canvasNodesRef.current, {
-          maxIterations: 50,
-          overlapThreshold: 0.5,
-          margin: 15,
-        })
+      ? (() => {
+          const collisionNodes = canvasNodesRef.current.filter(item => !scopeBoundaryNodeIds.has(item.id));
+          const resolvedNodes = resolveNodeCollisions(collisionNodes, {
+            maxIterations: 50,
+            overlapThreshold: 0.5,
+            margin: 15,
+          });
+          const resolvedNodeById = new Map(resolvedNodes.map(item => [item.id, item]));
+          return canvasNodesRef.current.map(item => resolvedNodeById.get(item.id) ?? item);
+        })()
       : canvasNodesRef.current;
     canvasNodesRef.current = nextCanvasNodes;
     setCanvasNodes(nextCanvasNodes);
@@ -663,7 +672,7 @@ export function WorkflowCanvas({
       onInsertExistingNodeOnEdge?.(edgeId, node.id);
     }
     setDropTargetEdgeId(null);
-  }, [autoMergeNodeOnEdge, collisionBoxEnabled, dropTargetEdgeId, onInsertExistingNodeOnEdge, onNodeDragStateChange, onNodesChange, workflow.nodes]);
+  }, [autoMergeNodeOnEdge, collisionBoxEnabled, dropTargetEdgeId, onInsertExistingNodeOnEdge, onNodeDragStateChange, onNodesChange, scopeBoundaryNodeIds, workflow.nodes]);
 
   const handleReactFlowError = useCallback((code: string, message: string) => {
     console.warn('[WorkflowCanvas] ReactFlow error', { code, message });
