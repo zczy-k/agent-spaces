@@ -34,6 +34,18 @@ export function getHandleStyle(position: Position, index: number, total: number,
   return { left: getHandleOffset(index, total) };
 }
 
+export function getTargetHandleStyle(position: Position, ctx: HandleContext): CSSProperties | undefined {
+  if (ctx.isLoopBody) {
+    if (position === Position.Left || position === Position.Right) {
+      return { top: `${HEADER_HEIGHT + HANDLE_MARGIN * 2}px` };
+    }
+
+    return { left: getHandleOffset(0, 1) };
+  }
+
+  return getHandleStyle(position, 0, 1, ctx);
+}
+
 export function getSourceLabelStyle(index: number, total: number, ctx: HandleContext): CSSProperties {
   const offset = getHandleOffset(index, total);
   if (ctx.handlePositions.source === Position.Left) {

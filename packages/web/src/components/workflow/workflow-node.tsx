@@ -43,6 +43,7 @@ import {
   WORKFLOW_NODE_DRAG_HANDLE_CLASS,
   getHandleStyle,
   getSourceLabelStyle,
+  getTargetHandleStyle,
   type HandleContext,
 } from './workflow-node-handles';
 import { WorkflowNodeExecutionLog } from './workflow-node-execution-log';
@@ -385,7 +386,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         <Handle
           id="target" type="target" position={handlePositions.target}
           className={cn('!z-10 !w-3 !h-3 !bg-blue-500 !border-2 !border-blue-300 handle-dot', floatingHandleClassName)}
-          style={getHandleStyle(handlePositions.target, 0, 1, handleCtx)}
+          style={getTargetHandleStyle(handlePositions.target, handleCtx)}
         />
       )}
       <div className="absolute -right-1 -top-1 z-30 flex items-center gap-1">
