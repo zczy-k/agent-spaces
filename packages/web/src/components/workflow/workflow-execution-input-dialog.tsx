@@ -22,7 +22,8 @@ import {
   stringifyOutputFieldValue,
 } from './workflow-properties-utils';
 
-type InputFormValue = string | FileUploadFile[];
+type WorkflowUploadFile = FileUploadFile<File | WorkflowFileInput>;
+type InputFormValue = string | WorkflowUploadFile[];
 
 export function parseInputValue(field: OutputField, raw: string): unknown {
   if (field.type === 'file' || field.type === 'file[]') return field.type === 'file[]' ? [] : null;
@@ -222,25 +223,19 @@ function getStringValue(value: InputFormValue | undefined, fallback?: unknown): 
   return typeof value === 'string' ? value : stringifyOutputFieldValue(fallback);
 }
 
-function getFileValue(value: InputFormValue | undefined): FileUploadFile[] {
+function getFileValue(value: InputFormValue | undefined): WorkflowUploadFile[] {
   return Array.isArray(value) ? value : [];
 }
 
-function restoreFileFieldValue(saved: string, isArray: boolean): FileUploadFile[] {
+function restoreFileFieldValue(saved: string, isArray: boolean): WorkflowUploadFile[] {
   try {
     const parsed = JSON.parse(saved);
     if (isArray) {
       if (!Array.isArray(parsed)) return [];
-      return parsed.filter(Boolean).map((meta: WorkflowFileInput, i: number) => {
-        const file = new File([], meta.name, { type: meta.type || 'application/octet-stream' }) as File & { __uploaded: WorkflowFileInput };
-        file.__uploaded = meta;
-        return { id: `restored-${i}`, file };
-      });
+      return parsed.filter(isWorkflowFileInput).map((file: WorkflowFileInput, i: number) => ({ id: `restored-${i}`, file }));
     }
-    if (!parsed || typeof parsed !== 'object') return [];
-    const file = new File([], parsed.name, { type: parsed.type || 'application/octet-stream' }) as File & { __uploaded: WorkflowFileInput };
-    file.__uploaded = parsed;
-    return [{ id: 'restored-0', file }];
+    if (!isWorkflowFileInput(parsed)) return [];
+    return [{ id: 'restored-0', file: parsed }];
   } catch {
     return [];
   }
@@ -265,12 +260,18 @@ type UploadedWorkflowFile = {
   httpPath?: string;
 };
 
-async function resolveWorkflowFileInput(file?: File): Promise<WorkflowFileInput | null> {
-  if (!file) return null;
+function isWorkflowFileInput(value: unknown): value is WorkflowFileInput {
+  if (!value || typeof value !== 'object') return false;
+  const file = value as Partial<WorkflowFileInput>;
+  return typeof file.name === 'string'
+    && typeof file.path === 'string'
+    && typeof file.size === 'number'
+    && typeof file.type === 'string';
+}
 
-  // Restored file with saved upload result — skip re-upload
-  const saved = (file as File & { __uploaded?: WorkflowFileInput }).__uploaded;
-  if (saved) return saved;
+async function resolveWorkflowFileInput(file?: File | WorkflowFileInput): Promise<WorkflowFileInput | null> {
+  if (!file) return null;
+  if (!(file instanceof File)) return file;
 
   const relativePath = getFileRelativePath(file);
   const localPath = getElectronFilePath(file);

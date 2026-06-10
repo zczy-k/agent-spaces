@@ -394,6 +394,33 @@
         }
       }
     },
+    "array_text_replace": {
+      "label": "Array Text Replace",
+      "description": "Replace text in each array item and output result as a string array",
+      "props": {
+        "array": {
+          "label": "Array",
+          "tooltip": "Array to process. Each item is handled as a string"
+        },
+        "findText": {
+          "label": "Find Text",
+          "tooltip": "Text or regular expression to find and replace"
+        },
+        "replaceText": {
+          "label": "Replacement Text",
+          "tooltip": "New text written for each match"
+        },
+        "replaceCount": {
+          "label": "Replacement Count",
+          "tooltip": "Default 0 means unlimited replacements"
+        },
+        "replaceMode": {
+          "label": "Replacement Mode",
+          "literal": "Plain Text",
+          "regex": "Regex"
+        }
+      }
+    },
     "set_variable": {
       "label": "Set Variable",
       "description": "Write or overwrite workflow runtime variables, set multiple at once",

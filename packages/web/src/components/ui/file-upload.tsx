@@ -5,15 +5,23 @@ import { useDropzone, type Accept, type FileRejection } from "react-dropzone";
 import { Upload, X, FileIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export interface FileUploadFile {
+export interface FileUploadFileLike {
+  name: string;
+  size: number;
+  type: string;
+  url?: string;
+  httpPath?: string;
+}
+
+export interface FileUploadFile<TFile extends FileUploadFileLike = File> {
   id: string;
-  file: File;
+  file: TFile;
   preview?: string;
 }
 
-interface FileUploadProps {
-  value?: FileUploadFile[];
-  onChange?: (files: FileUploadFile[]) => void;
+interface FileUploadProps<TFile extends FileUploadFileLike = File> {
+  value?: FileUploadFile<TFile>[];
+  onChange?: (files: FileUploadFile<TFile | File>[]) => void;
   accept?: Accept;
   fileNameFilter?: string;
   maxFiles?: number;
@@ -25,7 +33,7 @@ interface FileUploadProps {
 
 let _fileId = 0;
 
-export function FileUpload({
+export function FileUpload<TFile extends FileUploadFileLike = File>({
   value = [],
   onChange,
   accept,
@@ -35,7 +43,7 @@ export function FileUpload({
   disabled = false,
   className,
   placeholder,
-}: FileUploadProps) {
+}: FileUploadProps<TFile>) {
   const [dragError, setDragError] = useState<string | null>(null);
   const dropzoneAccept = accept ?? getAcceptFromFileNameFilter(fileNameFilter);
 
@@ -131,38 +139,47 @@ export function FileUpload({
       {/* File list */}
       {value.length > 0 && (
         <div className="flex flex-col gap-2">
-          {value.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-center gap-3 rounded-lg border border-border bg-background px-3 py-2 overflow-hidden"
-            >
-              {item.preview ? (
-                <img src={item.preview} alt="" className="size-10 rounded-md object-cover" />
-              ) : (
-                <div className="flex size-10 items-center justify-center rounded-md bg-muted">
-                  <FileIcon className="size-5 text-muted-foreground" />
-                </div>
-              )}
-              <div className="w-0 flex-1">
-                <p className="truncate text-sm">{item.file.name}</p>
-                <p className="text-xs text-muted-foreground">{formatSize(item.file.size)}</p>
-              </div>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  removeFile(item.id);
-                }}
-                className="flex size-7 items-center justify-center rounded-md hover:bg-accent transition-colors"
+          {value.map((item) => {
+            const preview = getFilePreview(item);
+            return (
+              <div
+                key={item.id}
+                className="flex items-center gap-3 rounded-lg border border-border bg-background px-3 py-2 overflow-hidden"
               >
-                <X className="size-4 text-muted-foreground" />
-              </button>
-            </div>
-          ))}
+                {preview ? (
+                  <img src={preview} alt="" className="size-10 rounded-md object-cover" />
+                ) : (
+                  <div className="flex size-10 items-center justify-center rounded-md bg-muted">
+                    <FileIcon className="size-5 text-muted-foreground" />
+                  </div>
+                )}
+                <div className="w-0 flex-1">
+                  <p className="truncate text-sm">{item.file.name}</p>
+                  <p className="text-xs text-muted-foreground">{formatSize(item.file.size)}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeFile(item.id);
+                  }}
+                  className="flex size-7 items-center justify-center rounded-md hover:bg-accent transition-colors"
+                >
+                  <X className="size-4 text-muted-foreground" />
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
   );
+}
+
+function getFilePreview(item: FileUploadFile<FileUploadFileLike>): string | undefined {
+  if (item.preview) return item.preview;
+  if (!item.file.type.startsWith("image/")) return undefined;
+  return item.file.url || item.file.httpPath;
 }
 
 function formatSize(bytes: number): string {

@@ -627,6 +627,8 @@ export class ExecutionManager {
       }
       case 'pluck_array_key':
         return this.executePluckArrayKey(resolvedData);
+      case 'array_text_replace':
+        return this.executeArrayTextReplace(resolvedData);
       case 'set_variable':
         return this.executeSetVariable(session, resolvedData.variables || [], appendLog);
       case 'get_variable':
@@ -697,6 +699,53 @@ export class ExecutionManager {
         item && typeof item === 'object' && key in item ? item[key] : undefined
       )),
     };
+  }
+
+  private executeArrayTextReplace(resolvedData: Record<string, any>): Record<string, string[]> {
+    const array = Array.isArray(resolvedData.array) ? resolvedData.array : [];
+    const findText = String(resolvedData.findText ?? '');
+    const replaceText = String(resolvedData.replaceText ?? '');
+    const replaceMode = resolvedData.replaceMode === 'regex' ? 'regex' : 'literal';
+    const rawReplaceCount = Number(resolvedData.replaceCount);
+    const replaceCount = Number.isFinite(rawReplaceCount) && rawReplaceCount > 0
+      ? Math.floor(rawReplaceCount)
+      : 0;
+
+    if (!findText) return { result: array.map((item) => String(item ?? '')) };
+
+    return {
+      result: array.map((item) => this.replaceTextWithLimit(
+        String(item ?? ''),
+        findText,
+        replaceText,
+        replaceCount,
+        replaceMode,
+      )),
+    };
+  }
+
+  private replaceTextWithLimit(
+    value: string,
+    findText: string,
+    replaceText: string,
+    replaceCount: number,
+    replaceMode: 'literal' | 'regex',
+  ): string {
+    let count = 0;
+    if (replaceMode === 'regex') {
+      const pattern = new RegExp(findText, 'g');
+      return value.replace(pattern, (match) => {
+        if (replaceCount > 0 && count >= replaceCount) return match;
+        count += 1;
+        return replaceText;
+      });
+    }
+
+    return value.replaceAll(findText, (match) => {
+      if (replaceCount > 0 && count >= replaceCount) return match;
+      count += 1;
+      return replaceText;
+    });
   }
 
   private async executeAgentRun(

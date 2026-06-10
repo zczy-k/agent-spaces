@@ -394,6 +394,33 @@
         }
       }
     },
+    "array_text_replace": {
+      "label": "数组文本替换",
+      "description": "对数组中每个成员执行文本替换，输出 result 字符串数组",
+      "props": {
+        "array": {
+          "label": "数组",
+          "tooltip": "要处理的数组，数组成员会按字符串处理"
+        },
+        "findText": {
+          "label": "查找的文本",
+          "tooltip": "需要查找并替换的文本或正则表达式"
+        },
+        "replaceText": {
+          "label": "替换的文本",
+          "tooltip": "匹配后写入的新文本"
+        },
+        "replaceCount": {
+          "label": "替换次数",
+          "tooltip": "默认 0 表示不限次数"
+        },
+        "replaceMode": {
+          "label": "替换模式",
+          "literal": "纯文本",
+          "regex": "正则"
+        }
+      }
+    },
     "set_variable": {
       "label": "设置变量",
       "description": "写入或覆盖工作流运行时变量，可一次设置多个变量",
