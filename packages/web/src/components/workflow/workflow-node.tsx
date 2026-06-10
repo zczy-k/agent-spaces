@@ -353,7 +353,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         />
       )}
       <div className="absolute -right-1 -top-1 z-30 flex items-center gap-1">
-        {showFullNode && hasCustomView && !isCanvasLocked ? (
+        {showFullNode && hasCustomView && !isLoopBody && !isCanvasLocked ? (
           <button
             type="button"
             className={cn(

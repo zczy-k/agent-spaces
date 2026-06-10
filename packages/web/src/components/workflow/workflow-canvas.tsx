@@ -56,6 +56,16 @@ type GroupDragPreview = {
   bounds: { x: number; y: number; width: number; height: number };
   delta: { x: number; y: number };
 };
+type LoopBodyDragPreview = {
+  nodeId: string;
+  bounds: { x: number; y: number; width: number; height: number };
+  delta: { x: number; y: number };
+};
+type LoopBodyDragEventDetail = {
+  nodeId: string;
+  phase: 'start' | 'move' | 'end' | 'cancel';
+  screenDelta: { x: number; y: number };
+};
 type DrawPoint = {
   clientX: number;
   clientY: number;
@@ -484,6 +494,7 @@ export function WorkflowCanvas({
   const [selectionMenu, setSelectionMenu] = useState<{ x: number; y: number; nodeIds: string[] } | null>(null);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [groupDragPreview, setGroupDragPreview] = useState<GroupDragPreview | null>(null);
+  const [loopBodyDragPreview, setLoopBodyDragPreview] = useState<LoopBodyDragPreview | null>(null);
   const [dropTargetEdgeId, setDropTargetEdgeId] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [rectangleDrawActive, setRectangleDrawActive] = useState(false);
@@ -672,12 +683,95 @@ export function WorkflowCanvas({
   const isNodeDraggingRef = useRef(false);
   const canvasNodesRef = useRef<Node[]>(rfNodes);
   const draggedNodeIdsRef = useRef<Set<string>>(new Set());
+  const loopBodyDragSessionRef = useRef<{
+    nodeId: string;
+    position: { x: number; y: number };
+    bounds: { x: number; y: number; width: number; height: number };
+  } | null>(null);
 
   useEffect(() => {
     if (isNodeDraggingRef.current) return;
     setCanvasNodes(rfNodes);
     canvasNodesRef.current = rfNodes;
   }, [rfNodes]);
+
+  useEffect(() => {
+    const handleLoopBodyDrag = (event: Event) => {
+      if (isCanvasLocked || !(event instanceof CustomEvent)) return;
+      const detail = event.detail as Partial<LoopBodyDragEventDetail> | undefined;
+      if (
+        !detail
+        || typeof detail.nodeId !== 'string'
+        || (detail.phase !== 'start' && detail.phase !== 'move' && detail.phase !== 'end' && detail.phase !== 'cancel')
+        || !detail.screenDelta
+        || typeof detail.screenDelta.x !== 'number'
+        || typeof detail.screenDelta.y !== 'number'
+      ) {
+        return;
+      }
+
+      if (detail.phase === 'start') {
+        const canvasNode = canvasNodesRef.current.find(node => node.id === detail.nodeId);
+        if (!canvasNode) return;
+        const width = typeof canvasNode.width === 'number'
+          ? canvasNode.width
+          : typeof canvasNode.measured?.width === 'number' ? canvasNode.measured.width : 0;
+        const height = typeof canvasNode.height === 'number'
+          ? canvasNode.height
+          : typeof canvasNode.measured?.height === 'number' ? canvasNode.measured.height : 0;
+        const bounds = {
+          x: canvasNode.position.x,
+          y: canvasNode.position.y,
+          width,
+          height,
+        };
+        loopBodyDragSessionRef.current = {
+          nodeId: detail.nodeId,
+          position: canvasNode.position,
+          bounds,
+        };
+        isNodeDraggingRef.current = true;
+        draggedNodeIdsRef.current = new Set([detail.nodeId]);
+        setDropTargetEdgeId(null);
+        onNodeSelect(detail.nodeId);
+        onNodeDragStateChange?.(true);
+        setLoopBodyDragPreview({ nodeId: detail.nodeId, bounds, delta: { x: 0, y: 0 } });
+        return;
+      }
+
+      const session = loopBodyDragSessionRef.current;
+      if (!session || session.nodeId !== detail.nodeId) return;
+
+      const flowDelta = screenDeltaToFlowDelta(detail.screenDelta);
+      if (detail.phase === 'move') {
+        setLoopBodyDragPreview({ nodeId: detail.nodeId, bounds: session.bounds, delta: flowDelta });
+        return;
+      }
+
+      setLoopBodyDragPreview(null);
+      loopBodyDragSessionRef.current = null;
+      isNodeDraggingRef.current = false;
+      draggedNodeIdsRef.current = new Set();
+      onNodeDragStateChange?.(false);
+
+      if (detail.phase === 'end' && (flowDelta.x !== 0 || flowDelta.y !== 0)) {
+        onNodesChange([{
+          id: detail.nodeId,
+          type: 'position',
+          position: {
+            x: session.position.x + flowDelta.x,
+            y: session.position.y + flowDelta.y,
+          },
+          dragging: false,
+        }]);
+      }
+    };
+
+    window.addEventListener('workflow:loop-body-drag', handleLoopBodyDrag);
+    return () => {
+      window.removeEventListener('workflow:loop-body-drag', handleLoopBodyDrag);
+    };
+  }, [isCanvasLocked, onNodeDragStateChange, onNodeSelect, onNodesChange, screenDeltaToFlowDelta]);
 
   const groupOverlayItems = useMemo(() => {
     const groups = workflow.groups || [];
@@ -1056,6 +1150,22 @@ export function WorkflowCanvas({
                 border: '2px solid var(--primary)',
                 borderRadius: 8,
                 backgroundColor: 'rgba(59,130,246,0.06)',
+                boxShadow: '0 0 0 1px rgba(255,255,255,0.6)',
+                zIndex: 2,
+              }}
+            />
+          )}
+          {loopBodyDragPreview && (
+            <div
+              className="pointer-events-none absolute"
+              style={{
+                left: loopBodyDragPreview.bounds.x + loopBodyDragPreview.delta.x,
+                top: loopBodyDragPreview.bounds.y + loopBodyDragPreview.delta.y,
+                width: loopBodyDragPreview.bounds.width,
+                height: loopBodyDragPreview.bounds.height,
+                border: '2px solid var(--primary)',
+                borderRadius: 8,
+                backgroundColor: 'rgba(6,182,212,0.06)',
                 boxShadow: '0 0 0 1px rgba(255,255,255,0.6)',
                 zIndex: 2,
               }}
