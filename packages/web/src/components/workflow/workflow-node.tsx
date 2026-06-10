@@ -9,6 +9,7 @@ import {
   Grip,
   Loader2,
   MoveDiagonal,
+  Palette,
   Play,
   Square,
   X,
@@ -21,6 +22,7 @@ import {
 } from '@agent-spaces/shared';
 import { BorderGlide } from '@/components/ui/border-glide';
 import { NodeMediaPreview, type MediaItem } from '@/components/ui/media-gallery';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { WorkflowNodeDefinitionIcon } from './workflow-node-icon';
 import { getWorkflowNodeSize } from './workflow-node-size';
@@ -47,6 +49,12 @@ import { WorkflowNodeExecutionLog } from './workflow-node-execution-log';
 import { useWorkflowNodeActions } from './use-workflow-node-actions';
 import { areWorkflowNodePropsEqual } from './workflow-node-memo';
 
+const DEFAULT_SOURCE_HANDLE_COLOR = '#10b981';
+const LOOP_BODY_SOURCE_HANDLE_COLOR = '#3b82f6';
+const DEFAULT_DYNAMIC_HANDLE_COLOR = '#10b981';
+const DEFAULT_DYNAMIC_FALLBACK_HANDLE_COLOR = '#f97316';
+const SOURCE_HANDLE_KEY = 'source';
+
 function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const nodeData = data as WorkflowNodeData;
   const t = useTranslations('workflows');
@@ -71,6 +79,7 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   const [isLogExpanded, setIsLogExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editLabel, setEditLabel] = useState('');
+  const [handleColorMenuId, setHandleColorMenuId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const displayLabel = useMemo(
@@ -91,6 +100,10 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
     [nodeData.selectedNodeIds],
   );
   const canShowNodeToolbar = !isCanvasLocked && (!isBoundaryNode || canDeleteNode);
+  const handleColors = useMemo(() => {
+    const raw = nodeData.handleColors;
+    return raw && typeof raw === 'object' ? raw : {};
+  }, [nodeData.handleColors]);
 
   React.useEffect(() => {
     if (isCanvasLocked) setIsEditing(false);
@@ -139,6 +152,34 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
   }, [id, updateNodeInternals, sourceHandleCount, showTargetHandle, showSourceHandle, nodeHeight, handlePositions.target, handlePositions.source, workflowNodeType]);
 
   const handleCtx: HandleContext = { isLoopBody, nodeHeight, handlePositions };
+
+  const getSourceHandleColor = useCallback((handleId: string, fallback: string) => {
+    const colorKey = handleColors[handleId];
+    return colorKey ? NODE_COLOR_MAP[colorKey] ?? fallback : fallback;
+  }, [handleColors]);
+
+  const getSourceHandleStyle = useCallback((
+    handleId: string,
+    fallback: string,
+    position: Position,
+    index: number,
+    total: number,
+  ): React.CSSProperties => {
+    const color = getSourceHandleColor(handleId, fallback);
+    return {
+      ...getHandleStyle(position, index, total, handleCtx),
+      backgroundColor: color,
+      borderColor: color,
+      borderWidth: '2px',
+    };
+  }, [getSourceHandleColor, handleCtx]);
+
+  const openHandleColorMenu = useCallback((event: React.MouseEvent, handleId: string) => {
+    if (isCanvasLocked) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setHandleColorMenuId(handleId);
+  }, [isCanvasLocked]);
 
   const startEdit = useCallback(() => {
     if (isCanvasLocked) return;
@@ -249,6 +290,57 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
     nodeMinWidth,
     nodeMinHeight,
   });
+
+  const setHandleColor = useCallback((handleId: string, color: string | null) => {
+    const nextColors = { ...handleColors };
+    if (color) {
+      nextColors[handleId] = color;
+    } else {
+      delete nextColors[handleId];
+    }
+    actions.dispatchNodeUpdate({ handleColors: nextColors });
+    setHandleColorMenuId(null);
+  }, [actions, handleColors]);
+
+  const renderHandleColorPopover = (handleId: string, trigger: React.ReactElement) => (
+    <Popover
+      open={handleColorMenuId === handleId}
+      onOpenChange={(open) => {
+        if (!open && handleColorMenuId === handleId) setHandleColorMenuId(null);
+      }}
+    >
+      <PopoverTrigger render={trigger} />
+      <PopoverContent
+        side="right"
+        align="center"
+        sideOffset={8}
+        className="nodrag nopan w-40 gap-0 p-1"
+        onContextMenu={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+        }}
+      >
+        <div className="flex items-center gap-1.5 px-1.5 py-1 text-xs font-medium text-muted-foreground">
+          <Palette className="h-3 w-3" />
+          颜色
+        </div>
+        {NODE_COLORS.map(color => (
+          <button
+            key={color.value ?? 'default'}
+            type="button"
+            className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left text-xs hover:bg-accent hover:text-accent-foreground"
+            onClick={(event) => {
+              event.stopPropagation();
+              setHandleColor(handleId, color.value);
+            }}
+          >
+            <span className={cn('h-3.5 w-3.5 shrink-0 rounded-sm', color.className)} />
+            {t(color.label)}
+          </button>
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
 
   const nodeBody = (
     <div
@@ -418,12 +510,15 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
       {/* Source handles (static) */}
       {showSourceHandle && !dynamicHandles && (
         staticSourceHandles.length === 0 ? (
-          <Handle
-            id="source" type="source" position={handlePositions.source}
-
-            className={cn('!z-10 !w-3 !h-3 !bg-emerald-500 !border-2 !border-emerald-300 handle-dot', floatingHandleClassName)}
-            style={getHandleStyle(handlePositions.source, 0, 1, handleCtx)}
-          />
+          renderHandleColorPopover(
+            SOURCE_HANDLE_KEY,
+            <Handle
+              id="source" type="source" position={handlePositions.source}
+              className={cn('!z-10 !w-3 !h-3 !border-2 handle-dot', floatingHandleClassName)}
+              style={getSourceHandleStyle(SOURCE_HANDLE_KEY, DEFAULT_SOURCE_HANDLE_COLOR, handlePositions.source, 0, 1)}
+              onContextMenu={(event) => openHandleColorMenu(event, SOURCE_HANDLE_KEY)}
+            />,
+          )
         ) : (
           <>
             {staticSourceHandles.map((h, index) => (
@@ -434,12 +529,21 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
                 >
                   <span className="text-[9px] text-muted-foreground mr-1 whitespace-nowrap">{h.label || h.id}</span>
                 </div>
-                <Handle
-                  id={h.id} type="source" position={handlePositions.source}
-
-                  className={cn('!z-10 !w-2.5 !h-2.5 handle-dot', h.id === LOOP_BODY_SOURCE_HANDLE ? '!bg-blue-500 !border-blue-300' : '!bg-emerald-500 !border-emerald-300', floatingHandleClassName)}
-                  style={{ ...getHandleStyle(handlePositions.source, index, staticSourceHandles.length, handleCtx), borderWidth: '2px' }}
-                />
+                {renderHandleColorPopover(
+                  h.id,
+                  <Handle
+                    id={h.id} type="source" position={handlePositions.source}
+                    className={cn('!z-10 !w-2.5 !h-2.5 !border-2 handle-dot', floatingHandleClassName)}
+                    style={getSourceHandleStyle(
+                      h.id,
+                      h.id === LOOP_BODY_SOURCE_HANDLE ? LOOP_BODY_SOURCE_HANDLE_COLOR : DEFAULT_SOURCE_HANDLE_COLOR,
+                      handlePositions.source,
+                      index,
+                      staticSourceHandles.length,
+                    )}
+                    onContextMenu={(event) => openHandleColorMenu(event, h.id)}
+                  />,
+                )}
               </React.Fragment>
             ))}
           </>
@@ -457,12 +561,21 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
               >
                 <span className="text-[9px] text-muted-foreground mr-1 whitespace-nowrap">{h.label}</span>
               </div>
-              <Handle
-                id={h.id} type="source" position={handlePositions.source}
-
-                className={cn('!z-10 !w-2.5 !h-2.5 handle-dot', h.id === 'default' ? '!bg-orange-500 !border-orange-300' : '!bg-emerald-500 !border-emerald-300', floatingHandleClassName)}
-                style={{ ...getHandleStyle(handlePositions.source, h.index, h.total, handleCtx), borderWidth: '2px' }}
-              />
+              {renderHandleColorPopover(
+                h.id,
+                <Handle
+                  id={h.id} type="source" position={handlePositions.source}
+                  className={cn('!z-10 !w-2.5 !h-2.5 !border-2 handle-dot', floatingHandleClassName)}
+                  style={getSourceHandleStyle(
+                    h.id,
+                    h.id === 'default' ? DEFAULT_DYNAMIC_FALLBACK_HANDLE_COLOR : DEFAULT_DYNAMIC_HANDLE_COLOR,
+                    handlePositions.source,
+                    h.index,
+                    h.total,
+                  )}
+                  onContextMenu={(event) => openHandleColorMenu(event, h.id)}
+                />,
+              )}
             </React.Fragment>
           ))}
         </>

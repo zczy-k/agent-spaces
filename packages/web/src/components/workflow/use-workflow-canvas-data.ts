@@ -12,7 +12,17 @@ import {
 } from '@agent-spaces/shared';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { getWorkflowNodeSize } from './workflow-node-size';
-import type { HandlePositionMode } from './workflow-node-types';
+import { NODE_COLOR_MAP, type HandlePositionMode } from './workflow-node-types';
+
+const DEFAULT_SOURCE_HANDLE_ID = 'source';
+
+function getSourceHandleColor(nodeData: Record<string, unknown>, sourceHandle: string | null | undefined): string | undefined {
+  const handleColors = nodeData.handleColors;
+  if (!handleColors || typeof handleColors !== 'object') return undefined;
+  const handleId = sourceHandle || DEFAULT_SOURCE_HANDLE_ID;
+  const colorKey = (handleColors as Record<string, unknown>)[handleId];
+  return typeof colorKey === 'string' ? NODE_COLOR_MAP[colorKey] : undefined;
+}
 
 interface UseCanvasDataParams {
   workflow: Pick<Workflow, 'nodes' | 'edges'>;
@@ -140,26 +150,30 @@ export function useCanvasData({
     );
   }, [executionLog, executionNodeIds, workflow.edges]);
 
-  const rfEdges: Edge[] = useMemo(() =>
-    workflow.edges.filter(edge => !isHiddenWorkflowEdge(edge)).map(e => ({
-      id: e.id,
-      source: e.source,
-      target: e.target,
-      type: 'custom',
-      sourceHandle: e.sourceHandle || undefined,
-      targetHandle: e.targetHandle || undefined,
-      selected: e.id === selectedEdgeId,
-      data: {
-        composite: e.composite,
-        sourceHandle: e.sourceHandle,
-        isRunning: runningEdgeIds.has(e.id),
-        canEditEdge: !isCanvasLocked,
-        canDeleteEdge: !isCanvasLocked,
-        edgePathType,
-      } as Record<string, unknown>,
-    })),
-    [workflow.edges, runningEdgeIds, selectedEdgeId, isCanvasLocked, edgePathType],
-  );
+  const rfEdges: Edge[] = useMemo(() => {
+    const nodeById = new Map(workflow.nodes.map(node => [node.id, node]));
+    return workflow.edges.filter(edge => !isHiddenWorkflowEdge(edge)).map(e => {
+      const sourceNode = nodeById.get(e.source);
+      return {
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        type: 'custom',
+        sourceHandle: e.sourceHandle || undefined,
+        targetHandle: e.targetHandle || undefined,
+        selected: e.id === selectedEdgeId,
+        data: {
+          composite: e.composite,
+          sourceHandle: e.sourceHandle,
+          edgeColor: sourceNode ? getSourceHandleColor(sourceNode.data, e.sourceHandle) : undefined,
+          isRunning: runningEdgeIds.has(e.id),
+          canEditEdge: !isCanvasLocked,
+          canDeleteEdge: !isCanvasLocked,
+          edgePathType,
+        } as Record<string, unknown>,
+      };
+    });
+  }, [workflow.edges, workflow.nodes, runningEdgeIds, selectedEdgeId, isCanvasLocked, edgePathType]);
 
   return { rfNodes, rfEdges, selectedNodeIdSet, executionNodeIds, executionStepByNodeId, runningEdgeIds };
 }

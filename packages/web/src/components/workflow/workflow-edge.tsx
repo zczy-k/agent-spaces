@@ -20,6 +20,7 @@ function WorkflowEdgeComponent({
   const canEditEdge = (data as Record<string, unknown>)?.canEditEdge === true;
   const canDeleteEdge = (data as Record<string, unknown>)?.canDeleteEdge === true;
   const edgePathType = (data as Record<string, unknown>)?.edgePathType as string || 'bezier';
+  const edgeColor = (data as Record<string, unknown>)?.edgeColor as string | undefined;
 
   const pathParams = { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition };
 
@@ -50,15 +51,15 @@ function WorkflowEdgeComponent({
       <BaseEdge
         id={id} path={edgePath}
         style={{
-          stroke: selected ? 'var(--ring)' : (isLocked ? 'rgba(74, 144, 164, 0.9)' : 'var(--primary)'),
+          stroke: selected ? 'var(--ring)' : (isLocked ? 'rgba(74, 144, 164, 0.9)' : edgeColor || 'var(--primary)'),
           strokeWidth: selected ? 3.5 : (isGenerated ? 2 : 2.5),
           strokeDasharray: isLocked && !isLoopBodyEdge ? '4 2' : 'none',
-          filter: selected ? 'drop-shadow(0 0 4px var(--primary))' : 'none',
+          filter: selected ? `drop-shadow(0 0 4px ${edgeColor || 'var(--primary)'})` : 'none',
           transition: 'stroke 0.2s ease, stroke-width 0.2s ease, stroke-dasharray 0.3s ease, filter 0.2s ease',
         }}
       />
       {isRunning && (
-        <circle r="5" fill="var(--primary)" style={{ pointerEvents: 'none' }}>
+        <circle r="5" fill={edgeColor || 'var(--primary)'} style={{ pointerEvents: 'none' }}>
           <animateMotion dur="1.4s" repeatCount="indefinite" path={edgePath} />
         </circle>
       )}
