@@ -8,6 +8,17 @@ import { fetchWithAuth } from './auth';
 
 const pendingWorkflowGets = new Map<string, Promise<Workflow>>();
 
+function normalizeExecutionLogs(value: unknown): ExecutionLog[] {
+  if (Array.isArray(value)) return value as ExecutionLog[];
+  if (value && typeof value === 'object') {
+    const record = value as { logs?: unknown; data?: unknown; items?: unknown };
+    if (Array.isArray(record.logs)) return record.logs as ExecutionLog[];
+    if (Array.isArray(record.data)) return record.data as ExecutionLog[];
+    if (Array.isArray(record.items)) return record.items as ExecutionLog[];
+  }
+  return [];
+}
+
 // ---- Workflow CRUD ----
 
 export const workflowApi = {
@@ -95,11 +106,11 @@ export const workflowVersionApi = {
 // ---- Execution Logs ----
 
 export const executionLogApi = {
-  listAll(limit = 50): Promise<(ExecutionLog & { workflowName?: string })[]> {
-    return sdk.workflow.listAllExecutionLogs(limit);
+  async listAll(limit = 50): Promise<(ExecutionLog & { workflowName?: string })[]> {
+    return normalizeExecutionLogs(await sdk.workflow.listAllExecutionLogs(limit)) as (ExecutionLog & { workflowName?: string })[];
   },
-  list(workflowId: string): Promise<ExecutionLog[]> {
-    return sdk.workflow.listExecutionLogs(workflowId);
+  async list(workflowId: string): Promise<ExecutionLog[]> {
+    return normalizeExecutionLogs(await sdk.workflow.listExecutionLogs(workflowId));
   },
   get(workflowId: string, logId: string): Promise<ExecutionLog> {
     return sdk.workflow.getExecutionLog(workflowId, logId);

@@ -28,7 +28,7 @@ import { AgentEditor } from '@/components/sidebar/agent-editor';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ResizablePanel, ResizableHandle, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Loader2, AlertCircle, Settings2, Trash2, Package, Braces, Group, History, Waypoints, Workflow, Play, Palette } from 'lucide-react';
-import { useEditorShortcuts, useClipboard, useExecutionPanel } from '@/hooks/use-workflow-editor';
+import { useEditorShortcuts, useClipboard } from '@/hooks/use-workflow-editor';
 import { Button } from '@/components/ui/button';
 import { useWorkspaceStore } from '@/stores/workspace';
 import { useWorkflowEditorState } from './use-workflow-editor-state';
@@ -191,7 +191,6 @@ function WorkflowEditorInner({
     workspaceId,
   });
 
-  const { isExpanded: execExpanded, toggle: toggleExec } = useExecutionPanel();
   const selectedNodeIds = state.selectedNodeIds.length > 0
     ? state.selectedNodeIds
     : state.selectedNodeId ? [state.selectedNodeId] : [];
@@ -200,6 +199,7 @@ function WorkflowEditorInner({
     const step = execution.executionLog?.steps.find(item => item.nodeId === state.selectedNodeId);
     return toPreviewDebugResult(step);
   }, [execution.executionLog, state.isPreview, state.selectedNodeId]);
+
   const { isPreview, setWorkflow } = state;
   const handlePreviewNodeDataUpdate = useCallback((nodeId: string, data: Record<string, unknown>) => {
     if (!isPreview) return;
@@ -522,9 +522,7 @@ function WorkflowEditorInner({
             startNodes={execution.startNodes}
             variables={workflow.variables || []}
             validationError={execution.executionValidationError}
-            isExpanded={execExpanded}
             workflowId={state.workflowId}
-            onToggle={toggleExec}
             onExecute={execution.handleExecute}
             onPause={execution.handlePauseExecution}
             onResume={execution.handleResumeExecution}
@@ -535,14 +533,13 @@ function WorkflowEditorInner({
             }}
             onDeleteLog={execution.handleDeleteExecutionLog}
             onClearLogs={execution.handleClearExecutionLogs}
-            onExitPreview={exitExecutionPreview}
             onUpdateNodeData={canvas.handleNodeDataUpdate}
           />
         );
       default:
         return null;
     }
-  }, [state, execution, canvas, isWorkflowRunning, isWorkflowReadOnly, addStagedNodeToCanvas, execExpanded, toggleExec, exitExecutionPreview, handlePreviewNodeDataUpdate, previewResult]);
+  }, [state, execution, canvas, isWorkflowRunning, isWorkflowReadOnly, addStagedNodeToCanvas, exitExecutionPreview, handlePreviewNodeDataUpdate, previewResult]);
 
   // ---- Render ----
   if (state.isLoading) {
