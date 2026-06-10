@@ -25,7 +25,6 @@ import { Braces, ChevronRight, GripVertical, ListChecks, Plus, Trash2 } from 'lu
 import {
 	Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { JsonViewer, type JsonValue } from '@/components/viewers/json-viewer';
 import { cn } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
@@ -37,7 +36,8 @@ import {
 	parseArrayOutputFieldValue,
 	stringifyOutputFieldValue,
 } from './workflow-properties-utils';
-import { WorkflowVariablePicker, type WorkflowVariableContext } from './workflow-variable-picker';
+import type { WorkflowVariableContext } from './workflow-variable-picker';
+import { WorkflowVariableInput } from './workflow-variable-input';
 
 let outputFieldDragIdCounter = 0;
 
@@ -146,7 +146,7 @@ export function OutputFieldsEditor({
 	};
 
 	const insertVariable = (index: number, variablePath: string) => {
-		updateField(index, { value: `${stringifyOutputFieldValue(fields[index]?.value)}${variablePath}` });
+		updateField(index, { value: variablePath });
 	};
 
 	const toggleInputMode = (index: number) => {
@@ -260,23 +260,16 @@ export function OutputFieldsEditor({
 																className="h-6 text-[11px]"
 															/>
 														) : (
-															<InputGroup className="h-6 min-h-0 rounded-md">
-																<InputGroupInput
-																	value={stringifyOutputFieldValue(field.value)}
-																	onChange={(e) => updateField(index, { value: parseArrayOutputFieldValue(field.type, e.target.value) })}
-																	placeholder={t('defaultValuePlaceholder')}
-																	className="h-6 text-[11px]"
-																/>
-																{variableContext?.currentNodeId && (
-																	<InputGroupAddon align="inline-end" className="py-0 pr-0.5">
-																		<WorkflowVariablePicker
-																			{...variableContext}
-																			typeFilter={field.type}
-																			onSelect={(path) => insertVariable(index, path)}
-																		/>
-																	</InputGroupAddon>
-																)}
-															</InputGroup>
+															<WorkflowVariableInput
+																value={stringifyOutputFieldValue(field.value)}
+																placeholder={t('defaultValuePlaceholder')}
+																variableContext={variableContext}
+																typeFilter={field.type}
+																groupClassName="h-6 min-h-0 rounded-md"
+																inputClassName="h-6 text-[11px]"
+																onChange={(nextValue) => updateField(index, { value: parseArrayOutputFieldValue(field.type, nextValue) })}
+																onSelectVariable={(path) => insertVariable(index, path)}
+															/>
 														)}
 													</div>
 												</div>

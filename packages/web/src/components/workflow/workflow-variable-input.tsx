@@ -101,6 +101,7 @@ export function WorkflowVariableInput({
   placeholder,
   variableContext,
   showTypeFilter = false,
+  typeFilter,
   groupClassName = 'h-7 rounded-md',
   inputClassName = 'text-xs',
   onChange,
@@ -111,6 +112,7 @@ export function WorkflowVariableInput({
   placeholder?: string;
   variableContext?: WorkflowVariableContext;
   showTypeFilter?: boolean;
+  typeFilter?: OutputField['type'];
   groupClassName?: string;
   inputClassName?: string;
   onChange: (value: string) => void;
@@ -158,7 +160,7 @@ export function WorkflowVariableInput({
         <InputGroupAddon align="inline-end">
           <WorkflowVariablePicker
             {...variableContext}
-            typeFilter={showTypeFilter ? variableTypeFilter : undefined}
+            typeFilter={showTypeFilter ? variableTypeFilter : typeFilter}
             onSelect={selectVariable}
           />
         </InputGroupAddon>
