@@ -9,7 +9,6 @@ const shared = require('./shared')
 const {
   postForBuffer,
   postFormData,
-  saveToPublicFile,
   readAudioFile,
   getFormatExt,
   getMimeType,
@@ -128,7 +127,7 @@ module.exports = (t) => [
       })
 
       const ext = getFormatExt(format)
-      const { filePath, httpPath } = saveToPublicFile(buffer, ext)
+      const { filePath, httpPath } = ctx.api.savePublicFile(buffer, ext)
 
       ctx.logger.info(`TTS 完成: ${filePath} (${(buffer.length / 1024).toFixed(1)}KB)`)
 

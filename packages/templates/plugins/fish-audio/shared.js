@@ -248,25 +248,12 @@ async function postFormData(url, options) {
 
 // ---------- 文件工具 ----------
 
-function getDataDir() {
-  return process.env.AGENT_SPACES_DATA_DIR || path.join(os.homedir(), '.agent-spaces-data')
-}
-
 function saveToTempFile(buffer, ext) {
   const tmpDir = path.join(os.tmpdir(), 'workflow-fish-audio')
   if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true })
   const filePath = path.join(tmpDir, `tts_${Date.now()}.${ext}`)
   fs.writeFileSync(filePath, buffer)
   return filePath
-}
-
-function saveToPublicFile(buffer, ext) {
-  const uploadsDir = path.join(getDataDir(), 'public', 'uploads')
-  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true })
-  const filename = `tts_${Date.now()}.${ext}`
-  const filePath = path.join(uploadsDir, filename)
-  fs.writeFileSync(filePath, buffer)
-  return { filePath, httpPath: `/static/uploads/${filename}` }
 }
 
 function readAudioFile(filePath) {
@@ -310,7 +297,6 @@ module.exports = {
   postForBuffer,
   postFormData,
   saveToTempFile,
-  saveToPublicFile,
   readAudioFile,
   getFormatExt,
   getMimeType,

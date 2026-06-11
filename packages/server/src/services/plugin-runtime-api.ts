@@ -3,7 +3,9 @@ import https from 'node:https';
 import net from 'node:net';
 import tls from 'node:tls';
 import fs from 'node:fs/promises';
+import fsSync from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { URL } from 'node:url';
 
 export type FetchOptions = {
@@ -293,6 +295,20 @@ export function createBuiltinPluginApi(): Record<string, any> {
     exists: (filePath: string) => fs.access(filePath).then(() => true).catch(() => false),
     rename: (oldPath: string, newPath: string) => fs.rename(oldPath, newPath),
     copyFile: (src: string, dest: string) => fs.copyFile(src, dest),
+
+    savePublicFile(buffer: Buffer, ext: string): { filePath: string; httpPath: string } {
+      const dataDir = process.env.AGENT_SPACES_DATA_DIR || path.join(os.homedir(), '.agent-spaces-data');
+      const uploadsDir = path.join(dataDir, 'public', 'uploads');
+      if (!fsSync.existsSync(uploadsDir)) fsSync.mkdirSync(uploadsDir, { recursive: true });
+      const filename = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const filePath = path.join(uploadsDir, filename);
+      fsSync.writeFileSync(filePath, buffer);
+      const port = process.env.PORT || '3100';
+      const host = process.env.HOST || 'localhost';
+      const protocol = process.env.HTTPS ? 'https' : 'http';
+      const origin = `${protocol}://${host === '0.0.0.0' ? 'localhost' : host}:${port}`;
+      return { filePath, httpPath: `${origin}/static/uploads/${filename}` };
+    },
   };
 
   return {
