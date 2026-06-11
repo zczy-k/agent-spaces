@@ -122,8 +122,9 @@ module.exports = (t) => [
     properties: [
       { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, tooltip: t('field.apiKey.tooltip', 'OpenAI API Key'), default: CONFIG_APIKEY },
       { key: 'prompt', label: t('field.promptEdit.label', 'Edit Description'), type: 'textarea', required: true, tooltip: t('field.promptEdit.tooltip', 'Describe the editing effect you want.') },
-      { key: 'images', label: t('field.imagesUrl.label', 'Image URLs'), type: 'textarea', dataType: 'object[]', required: true, tooltip: t('field.imagesUrl.tooltip', 'Input image URL array, e.g. [{"image_url":"https://..."}]') },
+      { key: 'images', label: t('field.imagesUrl.label', 'Image URLs'), type: 'textarea', dataType: 'string[]', required: true, tooltip: t('field.imagesUrl.tooltip', 'Input image URL array, e.g. [{"image_url":"https://..."}]') },
       { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'gpt-image-1', options: [
+        { label: 'gpt-image-2', value: 'gpt-image-2' },
         { label: 'gpt-image-1 (Default)', value: 'gpt-image-1' },
         { label: 'gpt-image-1.5', value: 'gpt-image-1.5' },
         { label: 'gpt-image-1-mini', value: 'gpt-image-1-mini' },

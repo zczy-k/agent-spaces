@@ -284,6 +284,7 @@ function formatWorkflowUiPromptContext(context: WorkflowUiPromptContext): string
     '- To execute enabled plugin tools from preview code, call `window.AgentSpaces.callPluginTool(pluginId, toolName, args)`.',
     '- `window.AgentSpaces.callPluginTool` returns the plugin tool result directly, not the HTTP wrapper. For example, read MiniMax TTS audio from `result.data.audioUrl`.',
     '- `window.AgentSpacesAPI.callPluginTool` and `window.AgentSpacesAPI.executePluginTool` are compatibility aliases; prefer `window.AgentSpaces.callPluginTool` in new code.',
+    '- When a plugin tool input schema property has a `default` value, `window.AgentSpaces.callPluginTool` can use that default automatically; do not add extra UI input fields for those properties unless the user explicitly needs to override them.',
     '- Do not build UI or code to read/write API keys, tokens, or account credentials in preview code. `window.AgentSpaces.callPluginTool` injects the plugin default credentials from plugin config at execution time, so omit credential arguments and let the plugin resolve them.',
     '- Preview code can persist JSON configuration with async helpers `await window.AgentSpacesUI.readConfigJson(path)` and `await window.AgentSpacesUI.writeConfigJson(path, value)`. Paths are relative to the Workflow UI project `configs/` directory.',
     '- For remembering the last submitted selection, prefer `await window.AgentSpacesUI.readLastSelection()` and `await window.AgentSpacesUI.writeLastSelection(value)`, which use `configs/last-selection.json`.',

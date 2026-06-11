@@ -379,7 +379,7 @@ function propertyToSchema(property: PluginActionProperty): Record<string, unknow
   if (description) schema.description = description;
   if (property.items) schema.items = property.items;
   if (property.enum) schema.enum = property.enum;
-  if (property.default !== undefined && typeof property.default !== 'string') {
+  if (property.default !== undefined) {
     schema.default = property.default;
   }
 
@@ -395,12 +395,33 @@ function propertyToSchema(property: PluginActionProperty): Record<string, unknow
   return schema;
 }
 
+function applyUiPropertyDefaults(
+  toolProperties: PluginActionProperty[],
+  uiProperties?: PluginActionProperty[],
+): PluginActionProperty[] {
+  if (!uiProperties?.length) return [...toolProperties];
+
+  const defaultByKey = new Map(
+    uiProperties
+      .filter(property => property.default !== undefined)
+      .map(property => [property.key, property.default]),
+  );
+
+  return toolProperties.map((property) => {
+    if (property.default !== undefined || !defaultByKey.has(property.key)) return property;
+    return { ...property, default: defaultByKey.get(property.key) };
+  });
+}
+
 function actionPropertiesToToolInputSchema(
   action: PluginActionDefinition,
 ): { properties: PluginActionProperty[]; inputSchema?: Record<string, unknown> } {
   const baseProperties = action.toolProperties || action.properties || [];
   if (Array.isArray(baseProperties)) {
-    return { properties: [...baseProperties, ...(action.configProperties || [])] };
+    const toolProperties = action.toolProperties
+      ? applyUiPropertyDefaults(baseProperties, action.properties)
+      : [...baseProperties];
+    return { properties: [...toolProperties, ...(action.configProperties || [])] };
   }
 
   if (typeof baseProperties === 'object') {

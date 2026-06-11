@@ -56,9 +56,6 @@ export function WorkflowPluginsDialog({
     const map = new Map<string, boolean>();
     for (const plugin of plugins) {
       const sp = storePluginById.get(plugin.id);
-      if (sp) {
-        console.log(`[plugin-md5] ${plugin.id}: local=${plugin.md5 ?? '(none)'} store=${sp.md5 ?? '(none)'}`);
-      }
       if (sp?.md5 && (!plugin.md5 || sp.md5 !== plugin.md5)) map.set(plugin.id, true);
     }
     return map;
@@ -131,7 +128,6 @@ export function WorkflowPluginsDialog({
     try {
       try {
         const data = await fetchStoreIndex<StoreWorkflowPlugin>(`plugins/index_${locale}.json`);
-        console.log('[store-plugins] sample md5:', data.slice(0, 3).map(p => `${p.id}: ${p.md5 ?? '(none)'}`));
         setStorePlugins(data);
       } catch {
         setStorePlugins(await fetchStoreIndex<StoreWorkflowPlugin>('plugins/index.json'));

@@ -338,11 +338,11 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
         ...nodeColorStyle,
       }}
     >
-      {nodeData.isRunning && (
+      {(nodeData.isRunning || isCurrentNodeDebugging) && (
         <BorderGlide
           className="absolute inset-0 z-20 rounded-lg pointer-events-none"
           duration={2200}
-          color="#3b82f6"
+          color={isCurrentNodeDebugging ? '#22c55e' : '#3b82f6'}
           width="1.75rem"
           height="1.75rem"
           opacity={0.75}
