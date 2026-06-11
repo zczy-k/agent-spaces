@@ -6,9 +6,10 @@ import { useLocalizedNodeDefinition } from '@/lib/workflow-nodes';
 import type { OutputField, WorkflowEdge, WorkflowNode } from '@agent-spaces/shared';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Copy, X } from 'lucide-react';
+import { Copy, Image as ImageIcon, X } from 'lucide-react';
 import { CheckCircle2, XCircle } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Toggle } from '@/components/ui/toggle';
 import {
   getOutputFields,
   getJsonPresets,
@@ -281,7 +282,6 @@ export function WorkflowPropertiesPanel({
 
           <Card>
             <CardContent >
-              <ScrollArea className="max-h-[400px]">
                 <PropertiesList
                   properties={visibleProperties}
                   data={data}
@@ -296,7 +296,6 @@ export function WorkflowPropertiesPanel({
                   onDataChange={handleDataChange}
                   onPreviewDataChange={handlePreviewDataChange}
                 />
-              </ScrollArea>
             </CardContent>
           </Card>
 
@@ -321,6 +320,20 @@ export function WorkflowPropertiesPanel({
 
         </div>
       </ScrollArea>
+
+      {canEditOutputFields && (
+        <div className="shrink-0 border-t px-3 py-2">
+          <Toggle
+            size="sm"
+            pressed={data.outputPreviewEnabled !== false}
+            onPressedChange={(enabled) => handleDataChange('outputPreviewEnabled', enabled)}
+            className="h-6 min-w-6 px-1 text-muted-foreground data-[state=on]:text-primary"
+            aria-label={t('properties.outputPreview')}
+          >
+            <ImageIcon className="h-3.5 w-3.5" />
+          </Toggle>
+        </div>
+      )}
 
       <ImportDialog
         open={importOpen}

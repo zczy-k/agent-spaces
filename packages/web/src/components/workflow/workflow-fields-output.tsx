@@ -21,8 +21,7 @@ import { TagInput } from '@/components/common/tag-input';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Toggle } from '@/components/ui/toggle';
-import { Braces, ChevronRight, GripVertical, Image as ImageIcon, ListChecks, Plus, Trash2 } from 'lucide-react';
+import { Braces, ChevronRight, GripVertical, ListChecks, Plus, Trash2 } from 'lucide-react';
 import {
 	Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -109,7 +108,6 @@ export function OutputFieldsEditor({
 	const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 	const indent = depth * 16;
 	const fieldIds = fields.map((_, index) => `${editorId}-${index}`);
-	const showOutputPreviewToggle = depth === 0 && !!onOutputPreviewEnabledChange;
 
 	const updateField = (index: number, patch: Partial<OutputField>) => {
 		const next = [...fields];
@@ -306,7 +304,7 @@ export function OutputFieldsEditor({
 					</SortableContext>
 				</DndContext>
 			</div>
-			<div className="shrink-0 border-border/60 pt-1 pb-3">
+			<div className="shrink-0 border-border/60 pt-1">
 				<Button
 					variant="ghost"
 					size="sm"
@@ -317,20 +315,6 @@ export function OutputFieldsEditor({
 					<Plus className="h-2.5 w-2.5" />
 					{t('addField')}
 				</Button>
-				{showOutputPreviewToggle && (
-					<div className="mt-1 flex h-7 items-center justify-start px-1">
-						<Toggle
-							size="sm"
-							pressed={outputPreviewEnabled ?? true}
-							onPressedChange={onOutputPreviewEnabledChange}
-							className="h-6 min-w-6 px-1 text-muted-foreground data-[state=on]:text-primary"
-							title="开启输出预览"
-							aria-label="开启输出预览"
-						>
-							<ImageIcon className="h-3.5 w-3.5" />
-						</Toggle>
-					</div>
-				)}
 			</div>
 		</div>
 	);
