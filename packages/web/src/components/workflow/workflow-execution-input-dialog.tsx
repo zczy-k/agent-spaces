@@ -16,6 +16,7 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { Play } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import {
   isArrayOutputFieldType,
   isFileOutputFieldType,
@@ -181,11 +182,23 @@ function ExecutionInputFields({
                   ))}
                 </SelectContent>
               </Select>
+            ) : field.type === 'boolean' ? (
+              <div className="flex items-center gap-2 h-8">
+                <Switch
+                  size="sm"
+                  checked={getBooleanValue(form.values[field.key], field.value)}
+                  onCheckedChange={checked => form.setField(field.key, String(checked))}
+                  disabled={disabled}
+                />
+                <span className="text-xs text-muted-foreground">
+                  {getBooleanValue(form.values[field.key], field.value) ? 'true' : 'false'}
+                </span>
+              </div>
             ) : (
               <Input
                 className={cn('h-8 text-xs', hasError && 'border-destructive')}
                 type={field.type === 'number' ? 'number' : 'text'}
-                placeholder={field.type === 'boolean' ? 'true / false' : field.key}
+                placeholder={field.key}
                 value={getStringValue(form.values[field.key], field.value)}
                 onChange={event => form.setField(field.key, event.target.value)}
                 disabled={disabled}
@@ -230,6 +243,11 @@ async function parseInputFormValues(fields: OutputField[], values: Record<string
 
 function getStringValue(value: InputFormValue | undefined, fallback?: unknown): string {
   return typeof value === 'string' ? value : stringifyOutputFieldValue(fallback);
+}
+
+function getBooleanValue(value: InputFormValue | undefined, fallback?: unknown): boolean {
+  const str = getStringValue(value, fallback);
+  return str === 'true';
 }
 
 function getFileValue(value: InputFormValue | undefined): WorkflowUploadFile[] {

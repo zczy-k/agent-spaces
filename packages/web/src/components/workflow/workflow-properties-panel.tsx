@@ -263,19 +263,19 @@ export function WorkflowPropertiesPanel({
           )}
 
           {canEditInputFields && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-xs font-medium text-muted-foreground">{t('properties.inputFields')}</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <ScrollArea className="max-h-[300px]">
+            <Card className='mt-2'>
+              {node.type !== 'start' && (
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-xs font-medium text-muted-foreground">{t('properties.inputFields')}</CardTitle>
+                </CardHeader>
+              )}
+              <CardContent className={node.type === 'start' ? '' : 'pt-0'}>
                   <InputFieldsSection
                     node={node}
                     data={data}
                     variableContext={variableContext}
                     onDataChange={handleDataChange}
                   />
-                </ScrollArea>
               </CardContent>
             </Card>
           )}
@@ -304,7 +304,6 @@ export function WorkflowPropertiesPanel({
           {canEditOutputFields && (
             <Card className="mt-2">
               <CardContent >
-                <ScrollArea className="max-h-[300px]">
                   <OutputFieldsSection
                     node={node}
                     data={data}
@@ -315,7 +314,6 @@ export function WorkflowPropertiesPanel({
                     onDataChange={handleDataChange}
                     onOpenImport={() => setImportOpen(true)}
                   />
-                </ScrollArea>
               </CardContent>
             </Card>
           )}

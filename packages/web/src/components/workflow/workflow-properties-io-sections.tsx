@@ -37,7 +37,7 @@ export function InputFieldsSection({
   const t = useTranslations('workflows');
 
   return (
-    <section id="input-fields-section" className="mt-2 space-y-2 border-b pb-3">
+    <section id="input-fields-section" className="mt-2 space-y-2">
       <div className="text-xs font-medium text-muted-foreground">
         {node.type === 'sub_workflow' ? t('properties.startNodeInput') : t('properties.inputFields')}
       </div>
