@@ -173,7 +173,7 @@ module.exports = (t) => [
       { key: 'success', type: 'boolean' },
       { key: 'message', type: 'string' },
       { key: 'data', type: 'object', children: [
-        { key: 'videos', type: 'video' },
+        { key: 'videos', type: 'video[]' },
         { key: 'created', type: 'number' },
       ] },
     ],

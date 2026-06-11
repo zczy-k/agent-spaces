@@ -57,6 +57,7 @@ export function WorkflowEditorToolbar({
   onOpenPluginManager, onOpenWorkflowLocation, onWorkflowInfoChange,
 }: EditorToolbarProps) {
   const [infoOpen, setInfoOpen] = useState(false);
+  const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
   const [savePreviewOpen, setSavePreviewOpen] = useState(false);
   const [versionName, setVersionName] = useState('');
   const [savingPreview, setSavingPreview] = useState<'save' | 'version' | null>(null);
@@ -132,9 +133,27 @@ export function WorkflowEditorToolbar({
             {t('editor.savePreviewEdits')}
             {isPreviewDirty && <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />}
           </Button>
-          <Button variant="ghost" size="sm" className="h-7 gap-1 text-blue-500" onClick={onExitPreview}>
+          <Button variant="ghost" size="sm" className="h-7 gap-1 text-blue-500" onClick={() => {
+            if (isPreviewDirty) {
+              setExitConfirmOpen(true);
+            } else {
+              onExitPreview();
+            }
+          }}>
             {t('editor.exitPreview')}
           </Button>
+          <Dialog open={exitConfirmOpen} onOpenChange={setExitConfirmOpen}>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle>{t('editor.unsavedPreviewTitle')}</DialogTitle>
+              </DialogHeader>
+              <p className="text-sm text-muted-foreground">{t('editor.unsavedPreviewDesc')}</p>
+              <DialogFooter className="gap-2">
+                <Button variant="outline" size="sm" onClick={() => setExitConfirmOpen(false)}>{t('editor.cancel')}</Button>
+                <Button variant="destructive" size="sm" onClick={() => { setExitConfirmOpen(false); onExitPreview(); }}>{t('editor.discard')}</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </>
       )}
 
