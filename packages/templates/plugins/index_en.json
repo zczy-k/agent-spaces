@@ -29,7 +29,7 @@
     "hasWorkflow": true,
     "path": "aliyun-ai",
     "iconUrl": "plugins/aliyun-ai/icon.svg",
-    "md5": "c1adcb36b55efd632636b61642aed7ef"
+    "md5": "e1ce9ec47d00045cbef4ff851fdb487c"
   },
   {
     "id": "workflow.aliyun-oss",
@@ -321,6 +321,27 @@
     "path": "openai",
     "iconUrl": "plugins/openai/icon.svg",
     "md5": "e9b22d9ba052947fdcd2bc2f9e27986d"
+  },
+  {
+    "id": "workflow.qianyin",
+    "name": "Qianyin Speech Synthesis",
+    "version": "1.0.0",
+    "description": "Qianyin TTS speech synthesis with multiple speakers, speed and pitch control",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "AI",
+      "Speech Synthesis",
+      "TTS",
+      "Qianyin"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "qianyin",
+    "iconUrl": "plugins/qianyin/icon.png",
+    "md5": "1f060c2c68257d889e1b5e4b5359dc00"
   },
   {
     "id": "workflow.tencent-cos",

@@ -54,7 +54,10 @@ export function WorkflowPluginsDialog({
     const map = new Map<string, boolean>();
     for (const plugin of plugins) {
       const sp = storePluginById.get(plugin.id);
-      if (sp?.md5 && plugin.md5 && sp.md5 !== plugin.md5) map.set(plugin.id, true);
+      if (sp) {
+        console.log(`[plugin-md5] ${plugin.id}: local=${plugin.md5 ?? '(none)'} store=${sp.md5 ?? '(none)'}`);
+      }
+      if (sp?.md5 && (!plugin.md5 || sp.md5 !== plugin.md5)) map.set(plugin.id, true);
     }
     return map;
   }, [plugins, storePluginById]);
@@ -101,7 +104,9 @@ export function WorkflowPluginsDialog({
     setStoreLoading(true);
     try {
       try {
-        setStorePlugins(await fetchStoreIndex<StoreWorkflowPlugin>(`plugins/index_${locale}.json`));
+        const data = await fetchStoreIndex<StoreWorkflowPlugin>(`plugins/index_${locale}.json`);
+        console.log('[store-plugins] sample md5:', data.slice(0, 3).map(p => `${p.id}: ${p.md5 ?? '(none)'}`));
+        setStorePlugins(data);
       } catch {
         setStorePlugins(await fetchStoreIndex<StoreWorkflowPlugin>('plugins/index.json'));
       }
@@ -193,9 +198,22 @@ export function WorkflowPluginsDialog({
     if (sp) installPlugin(sp);
   }
 
+  async function handleUpdateAll() {
+    const toUpdate = plugins.filter(p => needsUpdateMap.has(p.id));
+    for (const plugin of toUpdate) {
+      const sp = storePluginById.get(plugin.id);
+      if (!sp) continue;
+      try {
+        const installed = await pluginApi.installFromStore(plugin.id, resolveStoreUrl(`plugins/${sp.path}`), sp.md5);
+        setPlugins(items => items.map(item => item.id === installed.id ? { ...item, ...installed } : item));
+      } catch { /* continue */ }
+    }
+    toast.success(`已更新 ${toUpdate.length} 个插件`);
+  }
+
   async function handleRefresh() {
     if (activeTab === 'store') await loadStorePlugins();
-    else await loadPlugins();
+    else await Promise.all([loadPlugins(), loadStorePlugins()]);
   }
 
   function clearFilters() {
@@ -241,6 +259,12 @@ export function WorkflowPluginsDialog({
               </Button>
             </div>
             <div className="flex-1" />
+            {needsUpdateMap.size > 0 && (
+              <Button variant="outline" size="sm" className="h-7 gap-1 text-xs text-orange-600 border-orange-300 hover:bg-orange-50" disabled={!!installingId} onClick={handleUpdateAll}>
+                <RefreshCw className="h-3.5 w-3.5" />
+                一键更新({needsUpdateMap.size})
+              </Button>
+            )}
             <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={handleRefresh}>
               <RefreshCw className={`h-3.5 w-3.5 ${currentLoading ? 'animate-spin' : ''}`} />
               刷新

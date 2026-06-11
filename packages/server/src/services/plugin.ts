@@ -875,17 +875,17 @@ async function installStorePlugin(pluginId: string, sourceUrl: string): Promise<
 }
 
 export async function installTemplatePlugin(pluginId: string, sourceUrl?: string, md5?: string): Promise<PluginMeta> {
+  // Save md5 before install so normalizePlugin picks it up
+  if (md5) {
+    const state = readState();
+    if (!state.installedMd5) state.installedMd5 = {};
+    state.installedMd5[pluginId] = md5;
+    writeState(state);
+  }
+
   if (sourceUrl) {
     const plugin = await installStorePlugin(pluginId, sourceUrl);
-    if (plugin) {
-      if (md5) {
-        const state = readState();
-        if (!state.installedMd5) state.installedMd5 = {};
-        state.installedMd5[pluginId] = md5;
-        writeState(state);
-      }
-      return plugin;
-    }
+    if (plugin) return plugin;
   }
 
   const sourceDir = findTemplatePluginDir(pluginId);
@@ -902,7 +902,7 @@ export async function installTemplatePlugin(pluginId: string, sourceUrl?: string
     });
   }
   installPluginDependencies(targetDir);
-  if (md5) {
+  if (md5 && id !== pluginId) {
     const state = readState();
     if (!state.installedMd5) state.installedMd5 = {};
     state.installedMd5[id] = md5;
