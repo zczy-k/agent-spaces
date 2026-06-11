@@ -20,9 +20,10 @@ interface WorkflowUiPreviewProps {
   onError: (error: string | null) => void;
   projectId?: string;
   projectName?: string;
+  hideHeader?: boolean;
 }
 
-export function WorkflowUiPreview({ type, sourceCode, error, onError, projectId, projectName }: WorkflowUiPreviewProps) {
+export function WorkflowUiPreview({ type, sourceCode, error, onError, projectId, projectName, hideHeader }: WorkflowUiPreviewProps) {
   const t = useTranslations('workflows-ui');
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -47,7 +48,7 @@ export function WorkflowUiPreview({ type, sourceCode, error, onError, projectId,
     router.push(`/workflows-ui-preview/${id}`);
   }, [router]);
 
-  const showToolbar = !!projectId;
+  const showToolbar = !!projectId && !hideHeader;
   const handleRendererError = useCallback((nextError: string | null) => {
     onError(nextError === 'React custom view must export a default component.'
       ? t('preview.entryExportError')

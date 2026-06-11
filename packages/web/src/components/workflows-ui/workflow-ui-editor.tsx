@@ -313,6 +313,7 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
             onError={setPreviewError}
             projectId={project.id}
             projectName={project.name}
+            hideHeader={true}
           />
           </div>
         </ResizablePanel>
