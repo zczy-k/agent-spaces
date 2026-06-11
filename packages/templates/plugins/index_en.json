@@ -29,7 +29,8 @@
     "hasWorkflow": true,
     "path": "aliyun-ai",
     "iconUrl": "plugins/aliyun-ai/icon.svg",
-    "md5": "e1ce9ec47d00045cbef4ff851fdb487c"
+    "md5": "e1ce9ec47d00045cbef4ff851fdb487c",
+    "updatedAt": "2026-06-11T03:12:29.708Z"
   },
   {
     "id": "workflow.aliyun-oss",
@@ -49,7 +50,8 @@
     "hasWorkflow": true,
     "path": "aliyun_oss",
     "iconUrl": "plugins/aliyun_oss/icon.png",
-    "md5": "27a610cd72404dff1a5aa4e3d4359b61"
+    "md5": "27a610cd72404dff1a5aa4e3d4359b61",
+    "updatedAt": "2026-06-11T02:03:10.280Z"
   },
   {
     "id": "workflow.custom-view-demo",
@@ -68,7 +70,8 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "custom-view-demo",
-    "md5": "72a6ecc55a88c1ee5d204d7d5c51ed14"
+    "md5": "72a6ecc55a88c1ee5d204d7d5c51ed14",
+    "updatedAt": "2026-06-10T01:14:41.928Z"
   },
   {
     "id": "workflow.desktop-native",
@@ -88,7 +91,8 @@
     "hasWorkflow": true,
     "path": "desktop-native",
     "iconUrl": "plugins/desktop-native/icon.png",
-    "md5": "e9bbe7fd4cf6357cb023e5846c0bc357"
+    "md5": "e9bbe7fd4cf6357cb023e5846c0bc357",
+    "updatedAt": "2026-06-09T02:37:20.633Z"
   },
   {
     "id": "workfox.dingtalk",
@@ -106,7 +110,8 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "dingtalk",
-    "md5": "3910985827d239455cb532f3a321629e"
+    "md5": "3910985827d239455cb532f3a321629e",
+    "updatedAt": "2026-06-11T02:02:50.391Z"
   },
   {
     "id": "workflow.epub-parser",
@@ -126,7 +131,8 @@
     "hasWorkflow": true,
     "path": "epub-parser",
     "iconUrl": "plugins/epub-parser/icon.png",
-    "md5": "210487fb1f3841e03a53b31599cb0d88"
+    "md5": "210487fb1f3841e03a53b31599cb0d88",
+    "updatedAt": "2026-06-09T02:37:20.567Z"
   },
   {
     "id": "workflow.fetch",
@@ -147,7 +153,8 @@
     "hasWorkflow": true,
     "path": "fetch",
     "iconUrl": "plugins/fetch/icon.png",
-    "md5": "e4d1945f6d7854bfdde0c41128ddb64b"
+    "md5": "e4d1945f6d7854bfdde0c41128ddb64b",
+    "updatedAt": "2026-06-09T02:37:20.699Z"
   },
   {
     "id": "workflow.ffmpeg",
@@ -167,7 +174,8 @@
     "hasWorkflow": true,
     "path": "ffmpeg",
     "iconUrl": "plugins/ffmpeg/icon.svg",
-    "md5": "bd52054e2e9d66bd8ddef68f0ad3f1de"
+    "md5": "bd52054e2e9d66bd8ddef68f0ad3f1de",
+    "updatedAt": "2026-06-09T02:37:20.666Z"
   },
   {
     "id": "workflow.file-system",
@@ -187,7 +195,8 @@
     "hasWorkflow": true,
     "path": "file-system",
     "iconUrl": "plugins/file-system/icon.svg",
-    "md5": "635ffa4d73c8de0e1a7192e552ae6616"
+    "md5": "635ffa4d73c8de0e1a7192e552ae6616",
+    "updatedAt": "2026-06-09T02:37:20.828Z"
   },
   {
     "id": "workflow.fish-audio",
@@ -210,7 +219,8 @@
     "hasWorkflow": true,
     "path": "fish-audio",
     "iconUrl": "plugins/fish-audio/icon.png",
-    "md5": "fb349ba5b1e8eaccf079540f1c57907e"
+    "md5": "fb349ba5b1e8eaccf079540f1c57907e",
+    "updatedAt": "2026-06-09T02:37:20.600Z"
   },
   {
     "id": "workflow.jimeng",
@@ -231,7 +241,8 @@
     "hasWorkflow": true,
     "path": "jimeng",
     "iconUrl": "plugins/jimeng/icon.png",
-    "md5": "032cd04b6347ea8a93ec5a06569e823b"
+    "md5": "032cd04b6347ea8a93ec5a06569e823b",
+    "updatedAt": "2026-06-11T02:41:59.689Z"
   },
   {
     "id": "workflow.mail",
@@ -251,7 +262,8 @@
     "hasWorkflow": true,
     "path": "mail",
     "iconUrl": "plugins/mail/icon.png",
-    "md5": "399ff4476e400e77980bb957c4f73736"
+    "md5": "399ff4476e400e77980bb957c4f73736",
+    "updatedAt": "2026-06-11T02:02:52.775Z"
   },
   {
     "id": "workflow.minimax",
@@ -276,7 +288,8 @@
     "hasWorkflow": true,
     "path": "minimax",
     "iconUrl": "plugins/minimax/icon.svg",
-    "md5": "ae0ab5575e27ea1d4dd8392645363e6f"
+    "md5": "ae0ab5575e27ea1d4dd8392645363e6f",
+    "updatedAt": "2026-06-10T07:07:27.253Z"
   },
   {
     "id": "workflow.mira-sdk",
@@ -295,7 +308,8 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "mira-sdk",
-    "md5": "fe3ae213285d68844d0391fdd353ff75"
+    "md5": "fe3ae213285d68844d0391fdd353ff75",
+    "updatedAt": "2026-06-11T02:04:00.831Z"
   },
   {
     "id": "workflow.openai",
@@ -320,7 +334,8 @@
     "hasWorkflow": true,
     "path": "openai",
     "iconUrl": "plugins/openai/icon.svg",
-    "md5": "e9b22d9ba052947fdcd2bc2f9e27986d"
+    "md5": "e9b22d9ba052947fdcd2bc2f9e27986d",
+    "updatedAt": "2026-06-11T02:03:59.057Z"
   },
   {
     "id": "workflow.qianyin",
@@ -341,7 +356,8 @@
     "hasWorkflow": true,
     "path": "qianyin",
     "iconUrl": "plugins/qianyin/icon.png",
-    "md5": "7bc3378d2dd49b54562d6f5d3c6d8dec"
+    "md5": "7bc3378d2dd49b54562d6f5d3c6d8dec",
+    "updatedAt": "2026-06-11T03:47:10.024Z"
   },
   {
     "id": "workflow.tencent-cos",
@@ -361,7 +377,8 @@
     "hasWorkflow": true,
     "path": "tencent_cos",
     "iconUrl": "plugins/tencent_cos/icon.svg",
-    "md5": "660202506eee148bab4ca4cedff78edc"
+    "md5": "660202506eee148bab4ca4cedff78edc",
+    "updatedAt": "2026-06-11T02:02:46.264Z"
   },
   {
     "id": "workflow.test-plugin",
@@ -381,7 +398,8 @@
     "hasWorkflow": false,
     "path": "test-plugin",
     "iconUrl": "https://raw.githubusercontent.com/hunmer/work-fox/refs/heads/master/plugins/test-plugin/icon.png",
-    "md5": "5f20451bfcef41c02eed2ae63809c827"
+    "md5": "5f20451bfcef41c02eed2ae63809c827",
+    "updatedAt": "2026-06-08T01:21:28.138Z"
   },
   {
     "id": "workflow.window-manager",
@@ -401,6 +419,7 @@
     "hasWorkflow": true,
     "path": "window-manager",
     "iconUrl": "plugins/window-manager/icon.png",
-    "md5": "c5d1a0b9bf221eb0f8b4e77fccd7a860"
+    "md5": "c5d1a0b9bf221eb0f8b4e77fccd7a860",
+    "updatedAt": "2026-06-09T02:37:20.859Z"
   }
 ]
