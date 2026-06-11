@@ -195,10 +195,14 @@ export function WorkflowPluginsDialog({
   }
 
   async function uninstallPlugin(plugin: WorkflowPlugin) {
-    await pluginApi.uninstall(plugin.id);
+    try {
+      await pluginApi.uninstall(plugin.id);
+      toast.success(`已卸载 ${plugin.name}`);
+    } catch (error: any) {
+      toast.warning(error?.message || '服务端卸载失败，已从本地列表移除');
+    }
     setPlugins(items => items.filter(item => item.id !== plugin.id));
     updateWorkflowPlugins(plugin.id, false);
-    toast.success(`已卸载 ${plugin.name}`);
   }
 
   async function installPlugin(plugin: StoreWorkflowPlugin) {
