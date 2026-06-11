@@ -15,27 +15,25 @@ interface ErrorBoundaryProps {
 
 interface ErrorBoundaryState {
   error: Error | null;
+  errorDetail: string;
 }
 
 class RenderErrorBoundary extends ReactComponent<ErrorBoundaryProps, ErrorBoundaryState> {
-  state: ErrorBoundaryState = { error: null };
+  state: ErrorBoundaryState = { error: null, errorDetail: '' };
 
   static getDerivedStateFromError(error: Error) {
-    return { error };
+    return { error, errorDetail: error.stack || error.message };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    const detail = error.stack || error.message;
-    this.props.onError(detail);
-    this._errorDetail = `${error.toString()}\n\nComponent stack:${errorInfo.componentStack}`;
+    this.setState({
+      errorDetail: `${error.toString()}\n\nComponent stack:${errorInfo.componentStack}`,
+    });
   }
-
-  _errorDetail = '';
 
   render() {
     if (this.state.error) {
-      const detail = this._errorDetail || this.state.error.message;
-      const handleCopy = () => navigator.clipboard?.writeText(detail);
+      const handleCopy = () => navigator.clipboard?.writeText(this.state.errorDetail);
       return (
         <div className="flex flex-col items-center justify-center h-full p-4 text-destructive text-sm gap-2">
           <div className="flex items-start gap-2 max-w-full">
