@@ -50,7 +50,8 @@
     "fileCount": "{count} files",
     "modified": "Modified",
     "saving": "Saving...",
-    "saved": "Saved"
+    "saved": "Saved",
+    "upload": "Upload files to current folder"
   },
   "preview": {
     "autoPreview": "Auto Preview",

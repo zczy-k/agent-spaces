@@ -124,6 +124,10 @@ export function writeFile(projectId: string, filePath: string, content: string):
   store.writeFile(projectId, filePath, content);
 }
 
+export function writeBinaryFile(projectId: string, filePath: string, buffer: Buffer): number {
+  return store.writeBinaryFile(projectId, filePath, buffer);
+}
+
 export function readConfig(projectId: string, filePath: string): unknown | null {
   return store.readConfig(projectId, filePath);
 }

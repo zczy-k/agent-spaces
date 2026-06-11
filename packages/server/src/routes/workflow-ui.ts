@@ -1,11 +1,13 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
+import multer from 'multer';
 import { existsSync, mkdirSync, writeFileSync, rmSync, createReadStream } from 'node:fs';
-import { join } from 'node:path';
+import { join, basename } from 'node:path';
 import { randomUUID } from 'crypto';
 import * as svc from '../services/workflow-ui.js';
 
 const router = Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 500 * 1024 * 1024 } });
 
 // CRUD
 router.get('/', (_req: Request, res: Response) => {
@@ -57,6 +59,33 @@ router.put('/:id/files/content', (req: Request<{ id: string }>, res: Response) =
     if (!filePath || content === undefined) { res.status(400).json({ error: 'path and content are required' }); return; }
     svc.writeFile(req.params.id, filePath, content);
     res.json({ ok: true });
+  } catch (error: any) { res.status(500).json({ error: error.message }); }
+});
+
+// Upload multiple files (binary) into project src, optionally under a folder.
+// multipart/form-data: field "files" (repeated), optional field "folder".
+router.post('/:id/files/upload', upload.array('files'), (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const files = req.files as Express.Multer.File[] | undefined;
+    if (!files || files.length === 0) { res.status(400).json({ error: 'files is required' }); return; }
+
+    const folder = typeof req.body.folder === 'string' ? req.body.folder.replace(/^\/+|\/+$/g, '') : '';
+
+    // Multer decodes filenames as latin1; re-decode to utf-8 for non-ascii names.
+    const decodeName = (name: string) => {
+      if (!/[-]/.test(name)) return name;
+      const decoded = Buffer.from(name, 'latin1').toString('utf8');
+      return decoded && !decoded.includes('�') ? decoded : name;
+    };
+
+    const written: { path: string; size: number }[] = [];
+    for (const file of files) {
+      const safeName = basename(decodeName(file.originalname)).replace(/[<>:"\\|?*\x00-\x1F]/g, '_') || file.originalname;
+      const relPath = folder ? `${folder}/${safeName}` : safeName;
+      const size = svc.writeBinaryFile(req.params.id, relPath, file.buffer);
+      written.push({ path: relPath, size });
+    }
+    res.json({ ok: true, files: written });
   } catch (error: any) { res.status(500).json({ error: error.message }); }
 });
 

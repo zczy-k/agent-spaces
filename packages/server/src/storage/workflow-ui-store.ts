@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync, rmSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, rmSync, readdirSync, renameSync, statSync } from 'node:fs';
 import { join, dirname, resolve, sep } from 'node:path';
 import { readJsonFile, writeJsonFile, ensureDir, getDataDir } from './json-store.js';
 import { v4 as uuid } from 'uuid';
@@ -193,6 +193,14 @@ export function writeFile(projectId: string, filePath: string, content: string):
   ensureDir(dirname(fullPath));
   writeFileSync(fullPath, content, 'utf-8');
   touchProject(projectId);
+}
+
+export function writeBinaryFile(projectId: string, filePath: string, buffer: Buffer): number {
+  const fullPath = safeSrcPath(projectId, filePath);
+  ensureDir(dirname(fullPath));
+  writeFileSync(fullPath, buffer);
+  touchProject(projectId);
+  return buffer.byteLength;
 }
 
 export function readConfig(projectId: string, filePath: string): unknown | null {

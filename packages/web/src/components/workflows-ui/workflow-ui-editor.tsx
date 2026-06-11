@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Loader2, Check, Pencil, Share2, Puzzle, FolderOpen, Copy } from 'lucide-react';
+import { Loader2, Check, Pencil, Share2, Puzzle, FolderOpen, Copy, Upload } from 'lucide-react';
 import { sdk } from '@/lib/sdk';
 import type { WorkflowUiProject } from '@agent-spaces/sdk';
 import { WorkflowUiPreview } from './workflow-ui-preview';
@@ -329,6 +329,23 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
         }
     }, [projectId, activeFile, sourceCode]);
 
+    const uploadInputRef = useRef<HTMLInputElement | null>(null);
+
+    const handleUploadFiles = useCallback(async (selected: FileList | null) => {
+        if (!selected || selected.length === 0) return;
+        const folder = activeFile.includes('/') ? activeFile.slice(0, activeFile.lastIndexOf('/')) : '';
+        const formData = new FormData();
+        for (const file of Array.from(selected)) formData.append('files', file);
+        if (folder) formData.append('folder', folder);
+        try {
+            await sdk.workflowUi.uploadFiles(projectId, formData);
+            const tree = await refreshFileTree();
+            if (tree) await refreshProjectFiles(tree, { force: true, syncPreview: true });
+        } catch (error) {
+            console.error('Failed to upload files:', error);
+        }
+    }, [projectId, activeFile, refreshFileTree, refreshProjectFiles]);
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-full">
@@ -389,6 +406,25 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
                                     <Copy className="size-3" />
                                 </Button>
                             </div>
+                            <input
+                                ref={uploadInputRef}
+                                type="file"
+                                multiple
+                                className="hidden"
+                                onChange={(e) => {
+                                    handleUploadFiles(e.target.files);
+                                    e.target.value = '';
+                                }}
+                            />
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-6 shrink-0"
+                                title={t('editor.upload')}
+                                onClick={() => uploadInputRef.current?.click()}
+                            >
+                                <Upload className="size-3.5" />
+                            </Button>
                             <Popover>
                                 <PopoverTrigger
                                     render={<Button variant="ghost" size="icon" className="size-6" />}

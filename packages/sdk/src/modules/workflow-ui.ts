@@ -44,6 +44,9 @@ export function createWorkflowUiApi(http: HttpClient) {
     writeFile: (id: string, filePath: string, content: string): Promise<void> =>
       http.putVoid(`/api/workflows-ui/${id}/files/content`, { path: filePath, content }),
 
+    uploadFiles: (id: string, formData: FormData): Promise<{ ok: true; files: { path: string; size: number }[] }> =>
+      http.upload(`/api/workflows-ui/${id}/files/upload`, formData),
+
     readConfig: <T = unknown>(id: string, filePath: string): Promise<{ value: T | null }> =>
       http.get(`/api/workflows-ui/${id}/configs/content?path=${encodeURIComponent(filePath)}`),
 

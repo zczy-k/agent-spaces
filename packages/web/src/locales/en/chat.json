@@ -35,7 +35,8 @@
   "channelType": {
     "general": "General",
     "issue": "Issue",
-    "agent": "Agent"
+    "agent": "Agent",
+    "workflows-ui": "Custom Page"
   },
   "emptyState": "Select a channel to start chatting",
   "status": {
