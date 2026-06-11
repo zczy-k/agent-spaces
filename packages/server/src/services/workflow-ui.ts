@@ -28,6 +28,36 @@ export function createProject(input: {
   tags?: string[];
 }): WorkflowUiProject {
   const mainFile = input.type === 'react' ? 'index.jsx' : 'index.html';
+  const claudeMd = `# ${input.name}
+
+> This file is auto-generated. Keep it up-to-date as the project evolves.
+
+## Project Overview
+
+<!-- Describe what this project does, its purpose and main features. -->
+
+## File Structure
+
+<!-- Keep this in sync with the actual files. Example:
+- \`index.jsx\` — Entry point, main layout
+- \`components/Header.jsx\` — Header component
+- \`hooks/useData.js\` — Data fetching hook
+- \`utils/api.js\` — API helpers
+-->
+
+## Key Design Decisions
+
+<!-- Record important decisions, patterns, and constraints here. -->
+
+## Dependencies
+
+<!-- External resources, plugins, or API integrations used. -->
+
+## Notes
+
+<!-- Anything future-you or the Agent should know before editing. -->
+`;
+
   const defaultFiles: Record<string, string> = input.type === 'react'
     ? {
         'index.jsx': `const { Button, Card, CardContent } = window.AgentSpacesUI;
@@ -44,6 +74,7 @@ function App() {
 
 export default App;
 `,
+        'CLAUDE.md': claudeMd,
       }
     : {
         'index.html': `<!DOCTYPE html>
@@ -56,6 +87,7 @@ export default App;
   </script>
 </body>
 </html>`,
+        'CLAUDE.md': claudeMd,
       };
 
   return store.createProject({

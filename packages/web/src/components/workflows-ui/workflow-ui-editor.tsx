@@ -14,12 +14,76 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/componen
 import { BackButton } from '@/components/common/back-button';
 import { ShareDialog } from '@/components/common/share-dialog';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { FileTree, FileTreeFile } from '@/components/editor/file-tree';
+import { FileTree, FileTreeFile, FileTreeFolder } from '@/components/editor/file-tree';
+import { FileIconImg, FolderIconImg } from '@/components/editor/file-icon';
 import { MonacoCodeEditor as MonacoEditor } from '@/components/editor/monaco-code-editor';
 
 const FILE_POLL_INTERVAL_MS = 2000;
+
+/** Convert flat file paths into a nested tree structure */
+interface TreeNode {
+    name: string;
+    path: string;
+    children: TreeNode[];
+    isFile: boolean;
+}
+
+function buildFileTree(files: string[]): TreeNode[] {
+    const root: TreeNode[] = [];
+    for (const filePath of files) {
+        const parts = filePath.split('/');
+        let current = root;
+        let currentPath = '';
+        for (let i = 0; i < parts.length; i++) {
+            currentPath = currentPath ? `${currentPath}/${parts[i]}` : parts[i];
+            const isFile = i === parts.length - 1;
+            let node = current.find((n) => n.name === parts[i]);
+            if (!node) {
+                node = { name: parts[i], path: currentPath, children: [], isFile };
+                current.push(node);
+            }
+            current = node.children;
+        }
+    }
+    // Sort: folders first, then files; alphabetical within each group
+    const sortNodes = (nodes: TreeNode[]) =>
+        nodes.sort((a, b) => {
+            if (a.isFile !== b.isFile) return a.isFile ? 1 : -1;
+            return a.name.localeCompare(b.name);
+        });
+    const sortRecursive = (nodes: TreeNode[]) => {
+        sortNodes(nodes);
+        nodes.forEach((n) => sortRecursive(n.children));
+    };
+    sortRecursive(root);
+    return root;
+}
+
+/** Collect all folder paths for default-expanded state */
+function collectFolderPaths(nodes: TreeNode[]): string[] {
+    const paths: string[] = [];
+    for (const node of nodes) {
+        if (!node.isFile) {
+            paths.push(node.path);
+            paths.push(...collectFolderPaths(node.children));
+        }
+    }
+    return paths;
+}
+
+/** Recursively render tree nodes with folder/file icons */
+function renderTreeNodes(nodes: TreeNode[]) {
+    return nodes.map((node) =>
+        node.isFile ? (
+            <FileTreeFile key={node.path} path={node.path} name={node.name} icon={<FileIconImg name={node.name} />} />
+        ) : (
+            <FileTreeFolder key={node.path} path={node.path} name={node.name} folderIcon={(isOpen) => <FolderIconImg name={node.name} isOpen={isOpen} />}>
+                {renderTreeNodes(node.children)}
+            </FileTreeFolder>
+        ),
+    );
+}
 
 function areFileListsEqual(left: string[], right: string[]) {
     return left.length === right.length && left.every((file, index) => file === right[index]);
@@ -180,6 +244,7 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
     // Auto-refresh debounce — update files map, preview main entry point
     useEffect(() => {
         if (!autoRefresh) return;
+        if (!localDirtyRef.current) return;
         if (debounceRef.current) clearTimeout(debounceRef.current);
         debounceRef.current = setTimeout(() => {
             // mainFile via ref (avoids React Compiler dep issue)
@@ -232,14 +297,10 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
             loadedFileContentRef.current = content;
             localDirtyRef.current = false;
             setSaveStatus('saved');
-
-            // Preview always renders from the main file
-            // mainFile via ref (avoids React Compiler dep issue)
-            triggerPreview({ ...filesContentRef.current }, mainFileRef.current);
         } catch (error) {
             console.error('Failed to load file:', error);
         }
-    }, [projectId, activeFile, sourceCode, triggerPreview]);
+    }, [projectId, activeFile, sourceCode]);
 
     if (loading) {
         return (
@@ -288,27 +349,25 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
                 {/* Left: file tree + editor */}
                 <ResizablePanel id="workflow-ui-editor" defaultSize="30%" minSize="15%" className="flex flex-col">
                     <div className="flex flex-col h-full rounded-xl border border-border bg-background overflow-hidden">
-                        {/* File tree */}
-                        <div className="border-b border-border p-2 max-h-48 overflow-auto">
-                            <div className="flex items-center justify-between mb-1">
-                                <span className="text-xs font-medium text-muted-foreground">{t('editor.files')}</span>
-                                <span className="text-xs text-muted-foreground">
-                                    {activeFile}
-                                    <span className="ml-1 opacity-60">({files.length})</span>
-                                </span>
-                            </div>
-                            <div className="flex flex-wrap gap-1">
-                                {files.map((file) => (
-                                    <Badge
-                                        key={file}
-                                        variant={file === activeFile ? 'default' : 'secondary'}
-                                        className="cursor-pointer text-xs"
-                                        onClick={() => handleFileSelect(file)}
+                        {/* Toolbar with file picker */}
+                        <div className="flex items-center justify-between px-2 py-1 border-b border-border">
+                            <span className="text-xs text-muted-foreground truncate max-w-[60%]" title={activeFile}>{activeFile}</span>
+                            <Popover>
+                                <PopoverTrigger
+                                    render={<Button variant="ghost" size="icon" className="size-6" />}
+                                >
+                                    <FolderOpen className="size-3.5" />
+                                </PopoverTrigger>
+                                <PopoverContent align="end" className="w-56 p-0 max-h-64 overflow-auto">
+                                    <FileTree
+                                        defaultExpanded={new Set(collectFolderPaths(buildFileTree(files)))}
+                                        selectedPath={activeFile}
+                                        onFileSelect={(path) => { handleFileSelect(path); }}
                                     >
-                                        {file}
-                                    </Badge>
-                                ))}
-                            </div>
+                                        {renderTreeNodes(buildFileTree(files))}
+                                    </FileTree>
+                                </PopoverContent>
+                            </Popover>
                         </div>
                         {/* Code editor */}
                         <div className="flex-1 min-h-0">

@@ -272,6 +272,11 @@ function formatWorkflowUiPromptContext(context: WorkflowUiPromptContext): string
   if (context.activeFilePath) lines.push(`- Current active file: ${context.activeFilePath}`);
 
   lines.push(
+    'CLAUDE.md workflow:',
+    '- Before making any changes to the project, read `src/CLAUDE.md` to understand the project context, file structure, and design decisions.',
+    '- After completing edits, update `src/CLAUDE.md` to reflect any new files, changed architecture, or important decisions.',
+    '- Keep the File Structure section in `src/CLAUDE.md` in sync with the actual files.',
+    '',
     '- If you need available host UI components, call list_agent_spaces_ui_components before creating hand-written equivalents.',
     '- In React mode, prefer components exposed by window.AgentSpacesUI over hand-written UI components. Example: `const { Button, Card, CardContent } = window.AgentSpacesUI;`.',
     '- In React mode, do not import host UI components from source paths; destructure them from window.AgentSpacesUI.',
