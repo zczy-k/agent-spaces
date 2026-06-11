@@ -69,6 +69,7 @@ type PluginActionProperty = Record<string, any> & {
   schemaType?: string;
   items?: Record<string, unknown>;
   enum?: unknown[];
+  options?: unknown[];
   default?: unknown;
 };
 
@@ -386,6 +387,17 @@ function propertyToSchema(property: PluginActionProperty): Record<string, unknow
   if (description) schema.description = description;
   if (property.items) schema.items = property.items;
   if (property.enum) schema.enum = property.enum;
+  if (property.options) {
+    schema.options = property.options;
+    if (!schema.enum) {
+      schema.enum = property.options.map(option => {
+        if (option && typeof option === 'object' && 'value' in option) {
+          return (option as { value: unknown }).value;
+        }
+        return option;
+      });
+    }
+  }
   if (property.default !== undefined) {
     schema.default = property.default;
   }

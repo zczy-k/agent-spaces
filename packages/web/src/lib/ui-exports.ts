@@ -70,3 +70,5 @@ export { ImagesBadge } from '@/components/ui/images-badge';
 export { ImagePickerDialog } from '@/components/ui/image-picker-dialog';
 export { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarInset, SidebarInput, SidebarSeparator, SidebarGroup, SidebarGroupAction, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuAction, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarRail, SidebarTrigger, SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 export { SidebarProvider as SidebarContextProvider, useSidebar as useSidebarContext } from '@/components/ui/sidebar-context';
+export { MediaGallery, openMediaGallery, NodeMediaPreview } from '@/components/ui/media-gallery';
+export type { MediaItem } from '@/components/ui/media-gallery';
