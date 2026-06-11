@@ -10,7 +10,7 @@ interface ColorPickerProps {
   className?: string;
 }
 
-export function ColorPicker({ colors, value, onChange, className }: ColorPickerProps) {
+export function ColorPicker({ colors = [], value, onChange, className }: ColorPickerProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleCustomClick = useCallback(() => {

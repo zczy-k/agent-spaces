@@ -1,13 +1,63 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
-import React from 'react';
+import React, { Component as ReactComponent, useCallback, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
 import * as AgentSpacesUI from '@/lib/ui-exports';
 import { cn } from '@/lib/utils';
 
 export type WorkflowUiRenderType = 'react' | 'html';
+
+interface ErrorBoundaryProps {
+  onError: (error: string | null) => void;
+  children?: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  error: Error | null;
+}
+
+class RenderErrorBoundary extends ReactComponent<ErrorBoundaryProps, ErrorBoundaryState> {
+  state: ErrorBoundaryState = { error: null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    const detail = error.stack || error.message;
+    this.props.onError(detail);
+    this._errorDetail = `${error.toString()}\n\nComponent stack:${errorInfo.componentStack}`;
+  }
+
+  _errorDetail = '';
+
+  render() {
+    if (this.state.error) {
+      const detail = this._errorDetail || this.state.error.message;
+      const handleCopy = () => navigator.clipboard?.writeText(detail);
+      return (
+        <div className="flex flex-col items-center justify-center h-full p-4 text-destructive text-sm gap-2">
+          <div className="flex items-start gap-2 max-w-full">
+            <p className="break-all">{this.state.error.message}</p>
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="shrink-0 p-1 rounded hover:bg-destructive/10 text-destructive/70 hover:text-destructive transition-colors"
+              title="复制完整错误信息"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 interface WorkflowUiRendererProps {
   type: WorkflowUiRenderType;
@@ -65,18 +115,17 @@ export function WorkflowUiRenderer({
 
   useEffect(() => installAgentSpacesUiGlobals(), []);
 
-  const cleanupReactRoot = useCallback(() => {
-    if (!rootRef.current) return;
-    const oldRoot = rootRef.current;
-    rootRef.current = null;
-    queueMicrotask(() => { try { oldRoot.unmount(); } catch { /* ignore */ } });
+  // Cleanup on unmount only — scheduled outside React's render phase
+  useEffect(() => {
+    return () => {
+      const root = rootRef.current;
+      rootRef.current = null;
+      if (root) queueMicrotask(() => { try { root.unmount(); } catch { /* ignore */ } });
+    };
   }, []);
 
   const renderReact = useCallback((code: string) => {
     if (!containerRef.current) return;
-
-    cleanupReactRoot();
-    containerRef.current.innerHTML = '';
 
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -176,18 +225,30 @@ export function WorkflowUiRenderer({
         return;
       }
 
-      rootRef.current = ReactDOM.createRoot(containerRef.current);
-      rootRef.current.render(React.createElement(Component, componentProps));
+      // Reuse existing root or create a new one
+      if (!rootRef.current) {
+        rootRef.current = ReactDOM.createRoot(containerRef.current);
+      }
+      rootRef.current.render(
+        React.createElement(RenderErrorBoundary, { onError },
+          React.createElement(Component, componentProps)
+        )
+      );
       onError(null);
     } catch (err: any) {
       onError(err.message || String(err));
     }
-  }, [cleanupReactRoot, componentProps, onError]);
+  }, [componentProps, onError]);
 
   const renderHtml = useCallback((html: string) => {
     if (!containerRef.current) return;
 
-    cleanupReactRoot();
+    // Destroy react root before HTML mode takes over the container
+    if (rootRef.current) {
+      const oldRoot = rootRef.current;
+      rootRef.current = null;
+      queueMicrotask(() => { try { oldRoot.unmount(); } catch { /* ignore */ } });
+    }
     const container = containerRef.current;
     const scriptRegex = /<script[^>]*>([\s\S]*?)<\/script>/gi;
     const scripts: string[] = [];
@@ -214,15 +275,13 @@ export function WorkflowUiRenderer({
       }
     }
     onError(null);
-  }, [cleanupReactRoot, componentProps, onError]);
+  }, [componentProps, onError]);
 
   useEffect(() => {
     if (!sourceCode) return;
     if (type === 'react') renderReact(sourceCode);
     else renderHtml(sourceCode);
   }, [sourceCode, type, renderReact, renderHtml]);
-
-  useEffect(() => cleanupReactRoot, [cleanupReactRoot]);
 
   return <div ref={containerRef} className={cn('h-full w-full overflow-auto', className)} />;
 }

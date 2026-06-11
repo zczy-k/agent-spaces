@@ -34,7 +34,7 @@ interface AvatarGroupProps {
   size?: AvatarSize;
 }
 
-const AvatarGroup = ({ className, avatarUrls, size = 'md' }: AvatarGroupProps) => {
+const AvatarGroup = ({ className, avatarUrls = [], size = 'md' }: AvatarGroupProps) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const s = sizeMap[size];
