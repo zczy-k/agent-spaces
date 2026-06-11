@@ -1,9 +1,25 @@
 #!/usr/bin/env node
-import { readdirSync, readFileSync, writeFileSync, existsSync, unlinkSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync, existsSync, unlinkSync, statSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 
 const agentsDir = fileURLToPath(new URL('.', import.meta.url));
+
+function folderMD5(dir) {
+  const hashes = [];
+  function walk(d) {
+    for (const file of readdirSync(d)) {
+      if (file === 'node_modules' || file === '.git') continue;
+      const fullPath = join(d, file);
+      const stat = statSync(fullPath);
+      if (stat.isDirectory()) walk(fullPath);
+      else hashes.push(createHash('md5').update(readFileSync(fullPath)).digest('hex'));
+    }
+  }
+  walk(dir);
+  return createHash('md5').update(hashes.sort().join('')).digest('hex');
+}
 
 function scanPromptStore() {
   const dir = join(agentsDir, 'prompt');
@@ -163,8 +179,9 @@ function scanPluginStore() {
     const localManifest = manifestFile ? JSON.parse(readFileSync(join(pluginDir, manifestFile), 'utf-8')) : {};
     const remoteManifest = remoteByDir.get(entry.name) || {};
     const data = { ...remoteManifest, ...localManifest };
-    indexes.get('default').push(buildItem(entry.name, data));
-    for (const locale of locales) indexes.get(locale).push(buildItem(entry.name, data, locale));
+    const md5 = folderMD5(pluginDir);
+    indexes.get('default').push({ ...buildItem(entry.name, data), md5 });
+    for (const locale of locales) indexes.get(locale).push({ ...buildItem(entry.name, data, locale), md5 });
   }
   writeFileSync(join(dir, 'index.json'), JSON.stringify(indexes.get('default'), null, 2), 'utf-8');
   for (const locale of locales) {

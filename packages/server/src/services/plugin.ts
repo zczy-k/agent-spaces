@@ -39,6 +39,7 @@ type PluginTranslator = (key: string, fallback?: string) => string;
 type PluginState = {
   enabled: Record<string, boolean>;
   config: Record<string, Record<string, string>>;
+  installedMd5?: Record<string, string>;
 };
 
 type ExecutablePlugin = {
@@ -248,6 +249,7 @@ function normalizePlugin(dirName: string, manifest: PluginManifest, state: Plugi
     enabled: state.enabled[id] ?? Boolean(manifest.enabled),
     config: Array.isArray(manifest.config) ? manifest.config : [],
     iconPath: manifest.iconPath || (manifest as any).icon || detectIconFile(dirName) || '',
+    md5: state.installedMd5?.[id],
   };
 }
 
@@ -635,6 +637,7 @@ export function uninstallPlugin(pluginId: string): void {
   const state = readState();
   delete state.enabled[pluginId];
   delete state.config[pluginId];
+  if (state.installedMd5) delete state.installedMd5[pluginId];
   writeState(state);
 }
 
@@ -871,10 +874,18 @@ async function installStorePlugin(pluginId: string, sourceUrl: string): Promise<
   return tryInstallStoreCommonFiles(pluginId, sourceUrl);
 }
 
-export async function installTemplatePlugin(pluginId: string, sourceUrl?: string): Promise<PluginMeta> {
+export async function installTemplatePlugin(pluginId: string, sourceUrl?: string, md5?: string): Promise<PluginMeta> {
   if (sourceUrl) {
     const plugin = await installStorePlugin(pluginId, sourceUrl);
-    if (plugin) return plugin;
+    if (plugin) {
+      if (md5) {
+        const state = readState();
+        if (!state.installedMd5) state.installedMd5 = {};
+        state.installedMd5[pluginId] = md5;
+        writeState(state);
+      }
+      return plugin;
+    }
   }
 
   const sourceDir = findTemplatePluginDir(pluginId);
@@ -891,6 +902,12 @@ export async function installTemplatePlugin(pluginId: string, sourceUrl?: string
     });
   }
   installPluginDependencies(targetDir);
+  if (md5) {
+    const state = readState();
+    if (!state.installedMd5) state.installedMd5 = {};
+    state.installedMd5[id] = md5;
+    writeState(state);
+  }
   return setPluginEnabled(id, true);
 }
 

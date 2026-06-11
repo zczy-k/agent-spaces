@@ -49,6 +49,16 @@ export function WorkflowPluginsDialog({
   const workflowStorePlugins = useMemo(() => storePlugins.filter(plugin => plugin.hasWorkflow), [storePlugins]);
   const sourcePlugins = activeTab === 'store' ? workflowStorePlugins : plugins;
 
+  const storePluginById = useMemo(() => new Map(storePlugins.map(p => [p.id, p])), [storePlugins]);
+  const needsUpdateMap = useMemo(() => {
+    const map = new Map<string, boolean>();
+    for (const plugin of plugins) {
+      const sp = storePluginById.get(plugin.id);
+      if (sp?.md5 && plugin.md5 && sp.md5 !== plugin.md5) map.set(plugin.id, true);
+    }
+    return map;
+  }, [plugins, storePluginById]);
+
   const tags = useMemo(() => {
     const set = new Set<string>();
     for (const plugin of sourcePlugins) {
@@ -122,7 +132,35 @@ export function WorkflowPluginsDialog({
       await pluginApi.enable(plugin.id);
       setPlugins(items => items.map(item => item.id === plugin.id ? { ...item, enabled: true } : item));
     }
-    updateWorkflowPlugins(plugin.id, nextEnabled);
+
+    if (!workflow) return;
+
+    const enabledSet = new Set(workflow.enabledPlugins || []);
+    if (nextEnabled) enabledSet.add(plugin.id);
+    else enabledSet.delete(plugin.id);
+
+    let nodes = workflow.nodes;
+    if (nextEnabled) {
+      try {
+        const nodeDefs = await pluginApi.getWorkflowNodes(plugin.id);
+        if (nodeDefs.length) {
+          const defMap = new Map(nodeDefs.map(d => [d.type, d]));
+          nodes = workflow.nodes.map(node => {
+            const def = defMap.get(node.type);
+            if (!def) return node;
+            const newData = { ...node.data };
+            for (const prop of def.properties || []) {
+              if (prop.default !== undefined && !(prop.key in newData)) {
+                newData[prop.key] = prop.default;
+              }
+            }
+            return { ...node, data: newData };
+          });
+        }
+      } catch { /* best-effort */ }
+    }
+
+    onWorkflowChange({ ...workflow, enabledPlugins: Array.from(enabledSet), nodes });
   }
 
   async function uninstallPlugin(plugin: WorkflowPlugin) {
@@ -136,8 +174,11 @@ export function WorkflowPluginsDialog({
     if (installingId) return;
     setInstallingId(plugin.id);
     try {
-      const installed = await pluginApi.installFromStore(plugin.id, resolveStoreUrl(`plugins/${plugin.path}`));
-      setPlugins(items => items.some(item => item.id === installed.id) ? items : [...items, installed]);
+      const installed = await pluginApi.installFromStore(plugin.id, resolveStoreUrl(`plugins/${plugin.path}`), plugin.md5);
+      setPlugins(items => {
+        const idx = items.findIndex(item => item.id === installed.id);
+        return idx >= 0 ? items.map((item, i) => i === idx ? { ...item, ...installed } : item) : [...items, installed];
+      });
       updateWorkflowPlugins(installed.id, true);
       toast.success(`已安装 ${installed.name}`);
     } catch (error: any) {
@@ -145,6 +186,11 @@ export function WorkflowPluginsDialog({
     } finally {
       setInstallingId(null);
     }
+  }
+
+  function handleUpdatePlugin(plugin: WorkflowPlugin) {
+    const sp = storePluginById.get(plugin.id);
+    if (sp) installPlugin(sp);
   }
 
   async function handleRefresh() {
@@ -249,9 +295,11 @@ export function WorkflowPluginsDialog({
                   plugin={plugin}
                   inWorkflow={enabledPluginIds.has(plugin.id)}
                   disabled={!workflow}
+                  needsUpdate={Boolean(needsUpdateMap.get(plugin.id))}
                   onToggleAction={() => togglePlugin(plugin)}
                   onConfigAction={() => setConfigPlugin(plugin)}
                   onUninstallAction={() => uninstallPlugin(plugin)}
+                  onUpdateAction={() => handleUpdatePlugin(plugin)}
                 />
               ))}
 

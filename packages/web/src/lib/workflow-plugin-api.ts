@@ -56,9 +56,9 @@ export const pluginApi = {
     clearPluginRequestCache();
     return sdk.workflowPlugin.uninstall(pluginId);
   },
-  installFromStore(pluginId: string, sourceUrl?: string): Promise<PluginMeta> {
+  installFromStore(pluginId: string, sourceUrl?: string, md5?: string): Promise<PluginMeta> {
     clearPluginRequestCache();
-    return sdk.workflowPlugin.installFromStore(pluginId, sourceUrl);
+    return sdk.workflowPlugin.installFromStore(pluginId, sourceUrl, md5);
   },
   getWorkflowNodes(pluginId: string): Promise<NodeTypeDefinition[]> {
     const localeQuery = getPluginLocaleQuery();

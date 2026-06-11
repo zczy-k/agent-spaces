@@ -13,16 +13,20 @@ export function LocalPluginCard({
   plugin,
   inWorkflow,
   disabled,
+  needsUpdate,
   onToggleAction,
   onConfigAction,
   onUninstallAction,
+  onUpdateAction,
 }: {
   plugin: WorkflowPlugin;
   inWorkflow: boolean;
   disabled: boolean;
+  needsUpdate?: boolean;
   onToggleAction: () => void;
   onConfigAction?: () => void;
   onUninstallAction?: () => void;
+  onUpdateAction?: () => void;
 }) {
   const t = useTranslations('workflows');
   const iconSrc = plugin.iconPath
@@ -49,6 +53,12 @@ export function LocalPluginCard({
           <Settings className="h-3.5 w-3.5" />
         </Button>
       ) : null}
+      {needsUpdate && onUpdateAction && (
+        <Button variant="outline" size="sm" className="h-7 gap-1 text-xs text-orange-500 border-orange-300 hover:bg-orange-50" onClick={onUpdateAction}>
+          <RefreshCw className="h-3.5 w-3.5" />
+          更新
+        </Button>
+      )}
       <Button size="sm" variant={inWorkflow ? 'outline' : 'default'} className="ml-auto h-7 text-xs" disabled={disabled} onClick={onToggleAction}>
         {inWorkflow ? t('pluginCard.remove') : t('pluginCard.addToWorkflow')}
       </Button>
