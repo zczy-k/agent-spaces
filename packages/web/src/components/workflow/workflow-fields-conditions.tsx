@@ -1,7 +1,6 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { GripVertical, Plus, X } from 'lucide-react';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -9,7 +8,8 @@ import {
 import { CONDITION_OPERATORS, NO_VALUE_OPERATORS } from '@/lib/workflow-nodes';
 import { useTranslations } from 'next-intl';
 import { isPlainObject } from './workflow-properties-utils';
-import { WorkflowVariablePicker, type WorkflowVariableContext } from './workflow-variable-picker';
+import type { WorkflowVariableContext } from './workflow-variable-picker';
+import { WorkflowVariableInput } from './workflow-variable-input';
 
 export function ConditionsEditor({
   value,
@@ -38,18 +38,15 @@ export function ConditionsEditor({
             <div className="flex items-center gap-1">
               <GripVertical className="h-3 w-3 shrink-0 text-muted-foreground/50" />
               <span className="w-7 shrink-0 text-[10px] text-muted-foreground">条件 {index + 1}</span>
-              <Input
+              <WorkflowVariableInput
                 value={variable}
-                onChange={(e) => updateCondition(index, { variable: e.target.value, field: e.target.value })}
                 placeholder="变量"
-                className="h-6 flex-1 text-[11px]"
+                variableContext={variableContext}
+                groupClassName="h-6 min-w-0 flex-1 rounded-md"
+                inputClassName="h-6 text-[11px]"
+                onChange={(nextValue) => updateCondition(index, { variable: nextValue, field: nextValue })}
+                onSelectVariable={(path) => updateCondition(index, { variable: path, field: path })}
               />
-              {variableContext?.currentNodeId && (
-                <WorkflowVariablePicker
-                  {...variableContext}
-                  onSelect={(path) => updateCondition(index, { variable: `${variable}${path}`, field: `${variable}${path}` })}
-                />
-              )}
             </div>
             <Select
               value={operator}
@@ -67,11 +64,14 @@ export function ConditionsEditor({
               </SelectContent>
             </Select>
             {!NO_VALUE_OPERATORS.has(operator) && (
-              <Input
+              <WorkflowVariableInput
                 value={String(condition.value ?? '')}
-                onChange={(e) => updateCondition(index, { value: e.target.value })}
                 placeholder="比较值"
-                className="h-6 text-[11px]"
+                variableContext={variableContext}
+                groupClassName="h-6 rounded-md"
+                inputClassName="h-6 text-[11px]"
+                onChange={(nextValue) => updateCondition(index, { value: nextValue })}
+                onSelectVariable={(path) => updateCondition(index, { value: path })}
               />
             )}
             <button

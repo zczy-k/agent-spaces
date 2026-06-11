@@ -230,10 +230,12 @@ function WorkflowEditorInner({
     if (!isFinished || !log?.snapshot) return;
     if (execution.selectedExecutionLogId !== log.id) return;
     if (autoPreviewLogIdRef.current === log.id) return;
+    // Restore scenario (no active execution): only auto-preview if the pref is enabled
+    if (!execution.currentExecutionId && state.workflow?.layoutSnapshot?.autoPreviewLastRun !== true) return;
 
     autoPreviewLogIdRef.current = log.id;
     enterPreview(log);
-  }, [enterPreview, execution.execStatus, execution.executionLog, execution.selectedExecutionLogId]);
+  }, [enterPreview, execution.execStatus, execution.executionLog, execution.selectedExecutionLogId, execution.currentExecutionId, state.workflow?.layoutSnapshot?.autoPreviewLastRun]);
 
   // ---- Load plugin node definitions at editor level ----
   // Must happen here, not in WorkflowNodeSidebar, so canvas works even when sidebar tab is closed

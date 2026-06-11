@@ -799,6 +799,8 @@
     "collisionDesc": "拖拽结束后自动避让",
     "deleteReconnect": "删除重连",
     "deleteReconnectDesc": "删除节点后自动连接",
+    "autoPreviewLastRun": "自动预览上次结果",
+    "autoPreviewLastRunDesc": "打开工作流时自动进入上次运行结果的预览",
     "background": {
       "dots": { "label": "点阵", "description": "默认点阵背景" },
       "lines": { "label": "线条", "description": "网格线条背景" },

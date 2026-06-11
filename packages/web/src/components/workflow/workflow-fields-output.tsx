@@ -306,7 +306,7 @@ export function OutputFieldsEditor({
 					</SortableContext>
 				</DndContext>
 			</div>
-			<div className="shrink-0 border-t border-border/60 pt-1">
+			<div className="shrink-0 border-t border-border/60 pt-1 pb-3">
 				<Button
 					variant="ghost"
 					size="sm"

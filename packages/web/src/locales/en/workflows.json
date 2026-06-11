@@ -799,6 +799,8 @@
     "collisionDesc": "Auto-avoid after drag ends",
     "deleteReconnect": "Delete & Reconnect",
     "deleteReconnectDesc": "Auto-connect after node deletion",
+    "autoPreviewLastRun": "Auto-preview Last Run",
+    "autoPreviewLastRunDesc": "Automatically preview the last execution result when opening a workflow",
     "background": {
       "dots": { "label": "Dots", "description": "Default dot pattern" },
       "lines": { "label": "Lines", "description": "Grid line pattern" },
