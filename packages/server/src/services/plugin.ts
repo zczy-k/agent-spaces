@@ -40,6 +40,7 @@ type PluginState = {
   enabled: Record<string, boolean>;
   config: Record<string, Record<string, string>>;
   installedMd5?: Record<string, string>;
+  installedAt?: Record<string, number>;
 };
 
 type ExecutablePlugin = {
@@ -250,6 +251,7 @@ function normalizePlugin(dirName: string, manifest: PluginManifest, state: Plugi
     config: Array.isArray(manifest.config) ? manifest.config : [],
     iconPath: manifest.iconPath || (manifest as any).icon || detectIconFile(dirName) || '',
     md5: state.installedMd5?.[id],
+    installedAt: state.installedAt?.[id],
   };
 }
 
@@ -638,6 +640,7 @@ export function uninstallPlugin(pluginId: string): void {
   delete state.enabled[pluginId];
   delete state.config[pluginId];
   if (state.installedMd5) delete state.installedMd5[pluginId];
+  if (state.installedAt) delete state.installedAt[pluginId];
   writeState(state);
 }
 
@@ -875,11 +878,15 @@ async function installStorePlugin(pluginId: string, sourceUrl: string): Promise<
 }
 
 export async function installTemplatePlugin(pluginId: string, sourceUrl?: string, md5?: string): Promise<PluginMeta> {
-  // Save md5 before install so normalizePlugin picks it up
-  if (md5) {
+  // Save md5 + installedAt before install so normalizePlugin picks it up
+  {
     const state = readState();
-    if (!state.installedMd5) state.installedMd5 = {};
-    state.installedMd5[pluginId] = md5;
+    if (md5) {
+      if (!state.installedMd5) state.installedMd5 = {};
+      state.installedMd5[pluginId] = md5;
+    }
+    if (!state.installedAt) state.installedAt = {};
+    state.installedAt[pluginId] = Date.now();
     writeState(state);
   }
 
@@ -902,10 +909,15 @@ export async function installTemplatePlugin(pluginId: string, sourceUrl?: string
     });
   }
   installPluginDependencies(targetDir);
-  if (md5 && id !== pluginId) {
+  if (id !== pluginId) {
     const state = readState();
-    if (!state.installedMd5) state.installedMd5 = {};
-    state.installedMd5[id] = md5;
+    if (md5) {
+      if (!state.installedMd5) state.installedMd5 = {};
+      state.installedMd5[id] = md5;
+    }
+    if (!state.installedAt) state.installedAt = {};
+    state.installedAt[id] = state.installedAt?.[pluginId] ?? Date.now();
+    delete state.installedAt?.[pluginId];
     writeState(state);
   }
   return setPluginEnabled(id, true);

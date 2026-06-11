@@ -10,6 +10,7 @@ export type WorkflowPlugin = PluginMeta & {
 export type StoreWorkflowPlugin = Omit<WorkflowPlugin, 'enabled'> & {
   path: string;
   iconUrl?: string;
+  updatedAt?: string;
 };
 
 const LOCALE_STORAGE_KEY = 'agent-spaces-locale';

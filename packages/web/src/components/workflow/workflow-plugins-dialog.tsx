@@ -20,7 +20,7 @@ import { WorkflowPluginConfigDialog } from './workflow-plugin-config-dialog';
 import { useLocale } from '@/components/layout/locale-provider';
 
 type PluginTab = 'local' | 'store';
-type SortBy = 'default' | 'name' | 'status';
+type SortBy = 'default' | 'name' | 'status' | 'time';
 
 export function WorkflowPluginsDialog({
   open,
@@ -72,16 +72,6 @@ export function WorkflowPluginsDialog({
     return Array.from(set).sort();
   }, [sourcePlugins]);
 
-  function applySort<T>(items: T[], getSortKey: (item: T) => [number, string]): T[] {
-    if (sortBy === 'default') return items;
-    return [...items].sort((a, b) => {
-      const [aPri, aName] = getSortKey(a);
-      const [bPri, bName] = getSortKey(b);
-      if (aPri !== bPri) return aPri - bPri;
-      return aName.localeCompare(bName);
-    });
-  }
-
   const filteredLocal = useMemo(() => {
     const q = query.trim().toLowerCase();
     const filtered = plugins.filter((plugin) => {
@@ -92,10 +82,17 @@ export function WorkflowPluginsDialog({
       if (status === 'disabled' && inWorkflow) return false;
       return true;
     });
-    return applySort(filtered, (p) => [
-      sortBy === 'status' ? (enabledPluginIds.has(p.id) ? 0 : 1) : 0,
-      p.name,
-    ]);
+    if (sortBy === 'default') return filtered;
+    return [...filtered].sort((a, b) => {
+      if (sortBy === 'status') {
+        const diff = (enabledPluginIds.has(a.id) ? 0 : 1) - (enabledPluginIds.has(b.id) ? 0 : 1);
+        if (diff !== 0) return diff;
+      }
+      if (sortBy === 'time') {
+        return (b.installedAt ?? 0) - (a.installedAt ?? 0);
+      }
+      return a.name.localeCompare(b.name);
+    });
   }, [plugins, query, tag, status, enabledPluginIds, sortBy]);
 
   const filteredStore = useMemo(() => {
@@ -105,10 +102,19 @@ export function WorkflowPluginsDialog({
       if (tag !== '__all__' && !(plugin.tags || []).includes(tag)) return false;
       return true;
     });
-    return applySort(filtered, (p) => [
-      sortBy === 'status' ? (installedPluginIds.has(p.id) ? 0 : 1) : 0,
-      p.name,
-    ]);
+    if (sortBy === 'default') return filtered;
+    return [...filtered].sort((a, b) => {
+      if (sortBy === 'status') {
+        const diff = (installedPluginIds.has(a.id) ? 0 : 1) - (installedPluginIds.has(b.id) ? 0 : 1);
+        if (diff !== 0) return diff;
+      }
+      if (sortBy === 'time') {
+        const ta = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+        const tb = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+        return tb - ta;
+      }
+      return a.name.localeCompare(b.name);
+    });
   }, [workflowStorePlugins, query, tag, installedPluginIds, sortBy]);
 
   async function loadPlugins() {
@@ -336,6 +342,7 @@ export function WorkflowPluginsDialog({
                   <SelectItem value="default">默认排序</SelectItem>
                   <SelectItem value="name">按名称</SelectItem>
                   <SelectItem value="status">{activeTab === 'local' ? '按添加状态' : '按安装状态'}</SelectItem>
+                  <SelectItem value="time">{activeTab === 'local' ? '按安装时间' : '按更新时间'}</SelectItem>
                 </SelectContent>
               </Select>
               {hasFilters && (

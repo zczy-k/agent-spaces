@@ -64,6 +64,7 @@ export interface PluginMeta {
   config?: PluginConfigField[]
   iconPath?: string
   md5?: string
+  installedAt?: number
 }
 
 // ---- Agent Tool (from plugins) ----
