@@ -1,9 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Loader2, PackagePlus, Play, Wrench } from 'lucide-react';
-import { fetchWithAuth } from '@/lib/auth';
+import { Loader2, PackagePlus, Play, Settings, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -14,13 +13,13 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { sdk } from '@/lib/sdk';
 import { resolveServerAssetUrl } from '@/lib/server';
-import { pluginApi, type WorkflowPlugin } from '@/lib/workflow-plugin-api';
 import { WorkflowPluginsDialog } from '@/components/workflow/workflow-plugins-dialog';
 import { WorkflowUiToolExecuteDialog } from './workflow-ui-tool-execute-dialog';
+import { WorkflowPluginConfigDialog } from '@/components/workflow/workflow-plugin-config-dialog';
 import { PluginIcon } from '@/components/workflow/workflow-plugin-icon';
-import type { Workflow } from '@agent-spaces/shared';
+import { usePluginList } from '@/hooks/use-plugin-list';
+import type { PluginConfigField, Workflow } from '@agent-spaces/shared';
 
 interface PluginTool {
   name: string;
@@ -44,9 +43,7 @@ export function WorkflowUiPluginToolsDialog({
   onEnabledPluginsChange,
 }: WorkflowUiPluginToolsDialogProps) {
   const t = useTranslations('workflows-ui');
-  const [plugins, setPlugins] = useState<WorkflowPlugin[]>([]);
-  const [toolsByPlugin, setToolsByPlugin] = useState<Record<string, PluginTool[]>>({});
-  const [loading, setLoading] = useState(false);
+  const rightScrollRef = useRef<HTMLDivElement>(null);
   const [pluginsDialogOpen, setPluginsDialogOpen] = useState(false);
   const [executeDialog, setExecuteDialog] = useState<{
     pluginId: string;
@@ -54,8 +51,12 @@ export function WorkflowUiPluginToolsDialog({
     pluginIconPath?: string;
     tool: PluginTool;
   } | null>(null);
+  const [configPlugin, setConfigPlugin] = useState<{
+    id: string;
+    name: string;
+    config: PluginConfigField[];
+  } | null>(null);
 
-  // Adapt project enabledPlugins to Workflow shape for WorkflowPluginsDialog
   const adapterWorkflow: Workflow = useMemo(() => ({
     id: projectId,
     name: '',
@@ -67,68 +68,37 @@ export function WorkflowUiPluginToolsDialog({
     enabledPlugins,
   }), [projectId, enabledPlugins]);
 
-  const enabledSet = useMemo(() => new Set(enabledPlugins), [enabledPlugins]);
+  const { plugins, toolsByPlugin, loading, enabledSet, togglePlugin, getPluginConfig, reload } = usePluginList({
+    projectId,
+    enabledPlugins,
+    onEnabledPluginsChange,
+    loadTools: true,
+  });
 
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    async function load() {
-      setLoading(true);
-      try {
-        const allPlugins = await pluginApi.list();
-        if (cancelled) return;
-        setPlugins(allPlugins);
-
-        // load tools for each plugin
-        const map: Record<string, PluginTool[]> = {};
-        await Promise.all(
-          allPlugins.map(async (p) => {
-            try {
-              const resp = await fetchWithAuth(`/api/plugins/${p.id}/tools`);
-              if (resp.ok) {
-                const tools = await resp.json();
-                if (tools.length > 0) map[p.id] = tools;
-              }
-            } catch { /* ignore */ }
-          }),
-        );
-        if (!cancelled) setToolsByPlugin(map);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+  const scrollToPlugin = useCallback((pluginId: string) => {
+    const el = document.getElementById(`plugin-section-${pluginId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-    load();
-    return () => { cancelled = true; };
-  }, [open]);
-
-  const handleTogglePlugin = useCallback(async (pluginId: string) => {
-    const next = new Set(enabledPlugins);
-    const enabling = !next.has(pluginId);
-    if (enabling) {
-      next.add(pluginId);
-      // enable the plugin globally if not already
-      const plugin = plugins.find(p => p.id === pluginId);
-      if (plugin && !plugin.enabled) {
-        await pluginApi.enable(pluginId);
-        setPlugins(items => items.map(item => item.id === pluginId ? { ...item, enabled: true } : item));
-      }
-    } else {
-      next.delete(pluginId);
-    }
-    onEnabledPluginsChange(Array.from(next));
-    await sdk.workflowUi.update(projectId, { enabledPlugins: Array.from(next) });
-  }, [enabledPlugins, plugins, projectId, onEnabledPluginsChange]);
+  }, []);
 
   const handleOpenToolDialog = useCallback((pluginId: string, pluginName: string, pluginIconPath: string | undefined, tool: PluginTool) => {
     setExecuteDialog({ pluginId, pluginName, pluginIconPath, tool });
   }, []);
 
+  const handleOpenConfig = useCallback((pluginId: string) => {
+    const config = getPluginConfig(pluginId);
+    const plugin = plugins.find(p => p.id === pluginId);
+    if (!plugin || !config.length) return;
+    setConfigPlugin({ id: plugin.id, name: plugin.name, config });
+  }, [getPluginConfig, plugins]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="!w-[80vw] !h-[80vh] !max-w-none sm:!max-w-none !flex !flex-col !overflow-hidden"
+        className="!w-[80vw] !h-[80vh] !max-w-none sm:!max-w-none !flex !flex-col !overflow-hidden !p-0"
       >
-        <DialogHeader>
+        <DialogHeader className="px-6 pt-6 pb-2">
           <DialogTitle className="flex items-center gap-2">
             <Wrench className="h-4 w-4" /> {t('pluginTools.title')}
             <div className="flex-1" />
@@ -147,66 +117,136 @@ export function WorkflowUiPluginToolsDialog({
             {t('pluginTools.noPlugins')}
           </div>
         ) : (
-          <ScrollArea className="flex-1 min-h-0">
-            <div className="space-y-4">
-              {plugins.map((plugin) => {
-                const isEnabled = enabledSet.has(plugin.id);
-                const tools = toolsByPlugin[plugin.id] || [];
-                return (
-                  <div key={plugin.id} className="rounded-md border">
-                    {/* Group header */}
-                    <div className="flex items-center gap-2 px-3 py-2 bg-muted/40">
-                      <PluginIcon
-                        source={plugin.iconPath ? { type: 'url', url: resolveServerAssetUrl(`/api/plugins/${plugin.id}/icon`) } : { type: 'builtin', variant: 'local' }}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <span className="text-xs font-medium">{plugin.name}</span>
-                        <span className="ml-1.5 text-[10px] text-muted-foreground">{plugin.version}</span>
-                        {tools.length > 0 && (
-                          <Badge variant="secondary" className="ml-2 text-[10px]">{t('pluginTools.tools', { count: tools.length })}</Badge>
-                        )}
-                      </div>
-                      <Switch
-                        checked={isEnabled}
-                        onCheckedChange={() => handleTogglePlugin(plugin.id)}
-                        className="scale-75"
-                      />
-                    </div>
-                    {/* Plugin description */}
-                    <div className="px-3 py-1 text-[11px] text-muted-foreground">{plugin.description}</div>
-                    {/* Tools cards grid */}
-                    {tools.length > 0 && (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 p-3">
-                        {tools.map((tool) => (
-                          <div
-                            key={tool.name}
-                            className="group flex flex-col gap-1 rounded-md border p-2 hover:bg-muted cursor-pointer transition-colors"
-                            onClick={() => handleOpenToolDialog(plugin.id, plugin.name, plugin.iconPath, tool)}
-                          >
-                            <div className="flex items-center gap-1.5">
-                              <Wrench className="h-3 w-3 shrink-0 text-muted-foreground" />
-                              <span className="font-mono text-xs font-medium truncate">{tool.name}</span>
-                            </div>
-                            {tool.description && (
-                              <span className="text-[11px] text-muted-foreground line-clamp-2">{tool.description}</span>
-                            )}
+          <div className="flex flex-1 min-h-0 overflow-hidden">
+            {/* Left: plugin list */}
+            <div className="w-56 shrink-0 border-r border-border bg-muted/20">
+              <ScrollArea className="h-full">
+                <div className="p-2 space-y-0.5">
+                  {plugins.map((plugin) => {
+                    const isEnabled = enabledSet.has(plugin.id);
+                    const tools = toolsByPlugin[plugin.id] || [];
+                    const hasConfig = (plugin.config?.length ?? 0) > 0;
+                    return (
+                      <div
+                        key={plugin.id}
+                        className="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-muted/60 cursor-pointer transition-colors group"
+                        onClick={() => scrollToPlugin(plugin.id)}
+                      >
+                        <PluginIcon
+                          source={plugin.iconPath
+                            ? { type: 'url', url: resolveServerAssetUrl(`/api/plugins/${plugin.id}/icon`) }
+                            : { type: 'builtin', variant: 'local' }}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs font-medium truncate">{plugin.name}</div>
+                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                            {tools.length > 0 && <span>{tools.length} tools</span>}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {hasConfig && (
                             <Button
                               variant="ghost"
-                              size="sm"
-                              className="mt-auto h-5 self-end opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={(e) => { e.stopPropagation(); handleOpenToolDialog(plugin.id, plugin.name, plugin.iconPath, tool); }}
+                              size="icon"
+                              className="h-5 w-5"
+                              onClick={(e) => { e.stopPropagation(); handleOpenConfig(plugin.id); }}
                             >
-                              <Play className="h-3 w-3" />
+                              <Settings className="h-3 w-3" />
                             </Button>
-                          </div>
-                        ))}
+                          )}
+                        </div>
+                        <Switch
+                          checked={isEnabled}
+                          onCheckedChange={() => togglePlugin(plugin.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="scale-[0.65] shrink-0"
+                        />
                       </div>
-                    )}
-                  </div>
-                );
-              })}
+                    );
+                  })}
+                </div>
+              </ScrollArea>
             </div>
-          </ScrollArea>
+
+            {/* Right: tools grid */}
+            <div className="flex-1 min-w-0" ref={rightScrollRef}>
+              <ScrollArea className="h-full">
+                <div className="space-y-4 p-4">
+                  {plugins.map((plugin) => {
+                    const isEnabled = enabledSet.has(plugin.id);
+                    const tools = toolsByPlugin[plugin.id] || [];
+                    const hasConfig = (plugin.config?.length ?? 0) > 0;
+                    return (
+                      <div key={plugin.id} id={`plugin-section-${plugin.id}`} className="rounded-md border">
+                        {/* Group header */}
+                        <div className="flex items-center gap-2 px-3 py-2 bg-muted/40">
+                          <PluginIcon
+                            source={plugin.iconPath
+                              ? { type: 'url', url: resolveServerAssetUrl(`/api/plugins/${plugin.id}/icon`) }
+                              : { type: 'builtin', variant: 'local' }}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <span className="text-xs font-medium">{plugin.name}</span>
+                            <span className="ml-1.5 text-[10px] text-muted-foreground">{plugin.version}</span>
+                            {tools.length > 0 && (
+                              <Badge variant="secondary" className="ml-2 text-[10px]">{t('pluginTools.tools', { count: tools.length })}</Badge>
+                            )}
+                          </div>
+                          {hasConfig && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5"
+                              onClick={() => handleOpenConfig(plugin.id)}
+                            >
+                              <Settings className="h-3 w-3" />
+                            </Button>
+                          )}
+                          <Switch
+                            checked={isEnabled}
+                            onCheckedChange={() => togglePlugin(plugin.id)}
+                            className="scale-75"
+                          />
+                        </div>
+                        {/* Plugin description */}
+                        <div className="px-3 py-1 text-[11px] text-muted-foreground">{plugin.description}</div>
+                        {/* Tools cards grid */}
+                        {tools.length > 0 ? (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 p-3">
+                            {tools.map((tool) => (
+                              <div
+                                key={tool.name}
+                                className="group flex flex-col gap-1 rounded-md border p-2 hover:bg-muted cursor-pointer transition-colors"
+                                onClick={() => handleOpenToolDialog(plugin.id, plugin.name, plugin.iconPath, tool)}
+                              >
+                                <div className="flex items-center gap-1.5">
+                                  <Wrench className="h-3 w-3 shrink-0 text-muted-foreground" />
+                                  <span className="font-mono text-xs font-medium truncate">{tool.name}</span>
+                                </div>
+                                {tool.description && (
+                                  <span className="text-[11px] text-muted-foreground line-clamp-2">{tool.description}</span>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="mt-auto h-5 self-end opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={(e) => { e.stopPropagation(); handleOpenToolDialog(plugin.id, plugin.name, plugin.iconPath, tool); }}
+                                >
+                                  <Play className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="px-3 pb-3 text-[11px] text-muted-foreground">No tools available</div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            </div>
+          </div>
         )}
 
       </DialogContent>
@@ -220,20 +260,24 @@ export function WorkflowUiPluginToolsDialog({
         tool={executeDialog?.tool ?? null}
       />
 
+      <WorkflowPluginConfigDialog
+        open={Boolean(configPlugin)}
+        onOpenChange={(o) => { if (!o) setConfigPlugin(null); }}
+        pluginId={configPlugin?.id || null}
+        pluginName={configPlugin?.name || ''}
+        config={configPlugin?.config || []}
+      />
+
       <WorkflowPluginsDialog
         open={pluginsDialogOpen}
         onOpenChange={(nextOpen) => {
           setPluginsDialogOpen(nextOpen);
-          if (!nextOpen) {
-            // Reload plugins after closing the store dialog
-            pluginApi.list().then(setPlugins).catch(() => {});
-          }
+          if (!nextOpen) reload();
         }}
         workflow={adapterWorkflow}
         onWorkflowChange={(wf) => {
           const next = wf.enabledPlugins || [];
           onEnabledPluginsChange(next);
-          sdk.workflowUi.update(projectId, { enabledPlugins: next });
         }}
       />
     </Dialog>
