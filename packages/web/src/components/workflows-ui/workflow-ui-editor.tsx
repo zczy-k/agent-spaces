@@ -309,7 +309,6 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
             loadedFileContentRef.current = sourceCode;
             localDirtyRef.current = false;
             setSaveStatus('saved');
-            refreshPreviewFrame();
         }
         try {
             const { content } = await sdk.workflowUi.readFile(projectId, file);
@@ -322,7 +321,7 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
         } catch (error) {
             console.error('Failed to load file:', error);
         }
-    }, [projectId, activeFile, sourceCode, refreshPreviewFrame]);
+    }, [projectId, activeFile, sourceCode]);
 
     const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
