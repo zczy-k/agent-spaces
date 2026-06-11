@@ -6,6 +6,7 @@ import ReactDOM from 'react-dom/client';
 import useEmblaCarousel from 'embla-carousel-react';
 import * as AgentSpacesUI from '@/lib/ui-exports';
 import { cn } from '@/lib/utils';
+import { useTheme } from '@/components/layout/theme-provider';
 
 export type WorkflowUiRenderType = 'react' | 'html';
 
@@ -119,6 +120,7 @@ export function WorkflowUiRenderer({
   const rootRef = useRef<ReactDOM.Root | null>(null);
   const filesRef = useRef<Record<string, string>>(files || {});
   const mainFileRef = useRef<string>(mainFile || 'index.jsx');
+  const { resolvedTheme } = useTheme();
 
   // Keep refs in sync — renderer reads them during compile, avoiding stale closures
   useEffect(() => { filesRef.current = files || {}; }, [files]);
@@ -294,5 +296,11 @@ export function WorkflowUiRenderer({
     else renderHtml(sourceCode);
   }, [sourceCode, type, renderReact, renderHtml]);
 
-  return <div ref={containerRef} className={cn('h-full w-full overflow-auto', className)} />;
+  return (
+    <div
+      ref={containerRef}
+      className={cn('h-full w-full overflow-auto', resolvedTheme, className)}
+      style={{ colorScheme: resolvedTheme }}
+    />
+  );
 }
