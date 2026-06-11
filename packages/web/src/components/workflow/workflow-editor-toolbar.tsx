@@ -122,17 +122,18 @@ export function WorkflowEditorToolbar({
 
       {isPreview && (
         <>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 gap-1 text-blue-500"
-            onClick={() => setSavePreviewOpen(true)}
-            disabled={!workflow || savingPreview !== null}
-          >
-            {savingPreview ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-            {t('editor.savePreviewEdits')}
-            {isPreviewDirty && <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />}
-          </Button>
+          {isPreviewDirty && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 text-blue-500"
+              onClick={() => setSavePreviewOpen(true)}
+              disabled={!workflow || savingPreview !== null}
+            >
+              {savingPreview ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              {t('editor.savePreviewEdits')}
+            </Button>
+          )}
           <Button variant="ghost" size="sm" className="h-7 gap-1 text-blue-500" onClick={() => {
             if (isPreviewDirty) {
               setExitConfirmOpen(true);
