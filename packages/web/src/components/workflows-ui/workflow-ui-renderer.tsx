@@ -3,6 +3,7 @@
 
 import React, { Component as ReactComponent, useCallback, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
+import useEmblaCarousel from 'embla-carousel-react';
 import * as AgentSpacesUI from '@/lib/ui-exports';
 import { cn } from '@/lib/utils';
 
@@ -91,6 +92,18 @@ function installAgentSpacesUiGlobals() {
     else (window as any).AgentSpacesUI = initialAgentSpacesUi;
     initialAgentSpacesUi = undefined;
   };
+}
+
+function resolveExternalModule(id: string) {
+  if (id === 'react') return React;
+  if (id === 'react-dom' || id === 'react-dom/client') return ReactDOM;
+  if (id === 'embla-carousel-react') {
+    return { __esModule: true, default: useEmblaCarousel };
+  }
+  if (id === '@agent-spaces/ui') {
+    return { __esModule: true, ...AgentSpacesUI };
+  }
+  return undefined;
 }
 
 export function WorkflowUiRenderer({
@@ -184,8 +197,8 @@ export function WorkflowUiRenderer({
         }).code;
 
         const localRequire = (id: string) => {
-          if (id === 'react') return React;
-          if (id === 'react-dom' || id === 'react-dom/client') return ReactDOM;
+          const externalModule = resolveExternalModule(id);
+          if (externalModule !== undefined) return externalModule;
           const resolved = resolveLocalPath(filePath, id);
           if (resolved) return compileModule(resolved);
           return undefined;
@@ -200,8 +213,8 @@ export function WorkflowUiRenderer({
       const moduleExports: Record<string, any> = {};
 
       const mainRequire = (id: string) => {
-        if (id === 'react') return React;
-        if (id === 'react-dom' || id === 'react-dom/client') return ReactDOM;
+        const externalModule = resolveExternalModule(id);
+        if (externalModule !== undefined) return externalModule;
         const resolved = resolveLocalPath(entryFile, id);
         if (resolved) return compileModule(resolved);
         return undefined;
