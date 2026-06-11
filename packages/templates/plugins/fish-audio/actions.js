@@ -9,7 +9,7 @@ const shared = require('./shared')
 const {
   postForBuffer,
   postFormData,
-  saveToTempFile,
+  saveToPublicFile,
   readAudioFile,
   getFormatExt,
   getMimeType,
@@ -85,6 +85,7 @@ module.exports = (t) => [
       { key: 'message', type: 'string' },
       { key: 'data', type: 'object', children: [
         { key: 'filePath', type: 'string' },
+        { key: 'httpPath', type: 'string' },
         { key: 'format', type: 'string' },
         { key: 'size', type: 'number' },
         { key: 'mimeType', type: 'string' },
@@ -127,14 +128,14 @@ module.exports = (t) => [
       })
 
       const ext = getFormatExt(format)
-      const filePath = saveToTempFile(buffer, ext)
+      const { filePath, httpPath } = saveToPublicFile(buffer, ext)
 
       ctx.logger.info(`TTS 完成: ${filePath} (${(buffer.length / 1024).toFixed(1)}KB)`)
 
       return {
         success: true,
         message: t('message.ttsSuccess', 'Speech synthesis completed, audio saved ({size}KB)').replace('{size}', (buffer.length / 1024).toFixed(1)),
-        data: { filePath, format, size: buffer.length, mimeType },
+        data: { filePath, httpPath, format, size: buffer.length, mimeType },
       }
     },
   },

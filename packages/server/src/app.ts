@@ -49,6 +49,7 @@ import chatRouter from './routes/chat.js';
 import chatRunRouter from './routes/chat-run.js';
 import workflowUiRouter from './routes/workflow-ui.js';
 import { getUserSettings, setUserAvatarUrl, removeUserAvatarUrl } from './storage/user-settings-store.js';
+import { getDataDir } from './storage/json-store.js';
 import { authMiddleware, verifyToken } from './middleware/auth.js';
 import { handleConnection } from './ws/handler.js';
 import { handleTypeScriptLspConnection } from './ws/typescript-lsp.js';
@@ -103,6 +104,7 @@ app.use('/api', authMiddleware);
 const publicDir = resolveRuntimeDir('public');
 app.use('/public', express.static(publicDir));
 app.use('/static', express.static(publicDir));
+app.use('/static', express.static(join(getDataDir(), 'public')));
 
 // Serve template store resources from packages/templates/
 const agentsDir = resolveRuntimeDir('../templates');
