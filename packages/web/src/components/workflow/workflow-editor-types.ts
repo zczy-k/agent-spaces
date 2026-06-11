@@ -1,3 +1,5 @@
+import type { ExecutionLogEntry } from '@agent-spaces/shared';
+
 export const WORKFLOW_LAYOUT_KEY = 'agent-spaces:workflow-editor-layout';
 
 export type DebugResult = {
@@ -5,6 +7,7 @@ export type DebugResult = {
   output?: unknown;
   error?: string;
   duration?: number;
+  logs?: ExecutionLogEntry[];
 };
 
 export type NodeSelectContext =

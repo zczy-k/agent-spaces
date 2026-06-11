@@ -320,9 +320,10 @@ export function WorkflowPropertiesPanel({
             </Card>
           )}
 
-          {nodeId && executionLog && (() => {
-            const step = executionLog.steps.find(s => s.nodeId === nodeId);
-            if (!step?.logs?.length) return null;
+          {nodeId && (() => {
+            const logs = visibleDebugResult?.logs
+              ?? executionLog?.steps.find(s => s.nodeId === nodeId)?.logs;
+            if (!logs?.length) return null;
             return (
               <Card className="mt-2">
                 <CardHeader className="pb-2">
@@ -330,7 +331,7 @@ export function WorkflowPropertiesPanel({
                 </CardHeader>
                 <CardContent className="pt-0">
                   <div className="max-h-48 overflow-y-auto rounded border bg-background font-mono text-[11px]">
-                    {step.logs.map((entry, i) => (
+                    {logs.map((entry, i) => (
                       <div
                         key={i}
                         className={`flex items-start gap-2 border-b px-2 py-1 last:border-b-0 ${

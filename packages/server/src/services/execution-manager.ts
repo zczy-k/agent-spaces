@@ -188,9 +188,9 @@ export class ExecutionManager {
       const step = [...session.steps].reverse().find(s => s.nodeId === targetNode.id);
 
       if (step?.status === 'error') {
-        return { status: 'error', error: step.error || 'Debug failed', duration: Date.now() - startedAt };
+        return { status: 'error', error: step.error || 'Debug failed', duration: Date.now() - startedAt, logs: step.logs };
       }
-      return { status: 'completed', output: step?.output, duration: Date.now() - startedAt };
+      return { status: 'completed', output: step?.output, duration: Date.now() - startedAt, logs: step?.logs };
     } catch (error) {
       return {
         status: 'error',

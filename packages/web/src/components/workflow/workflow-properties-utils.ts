@@ -1,10 +1,11 @@
-import type { OutputField, NodeProperty, DataType } from '@agent-spaces/shared';
+import type { ExecutionLogEntry, OutputField, NodeProperty, DataType } from '@agent-spaces/shared';
 
 export type DebugResult = {
   status?: 'completed' | 'error';
   output?: unknown;
   error?: string;
   duration?: number;
+  logs?: ExecutionLogEntry[];
 };
 
 export type JsonPreset = {

@@ -119,6 +119,7 @@ function toPreviewDebugResult(step: ExecutionStep | undefined): DebugResult | nu
     output: step.output,
     error: step.error,
     duration: step.finishedAt ? Math.max(0, step.finishedAt - step.startedAt) : undefined,
+    logs: step.logs,
   };
 }
 

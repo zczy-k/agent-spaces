@@ -1,6 +1,7 @@
 import type {
   EngineStatus,
   ExecutionLog,
+  ExecutionLogEntry,
   ExecutionStep,
   OutputField,
   Workflow,
@@ -175,6 +176,7 @@ export interface WorkflowDebugNodeResponse {
   output?: unknown
   error?: string
   duration: number
+  logs?: ExecutionLogEntry[]
 }
 
 // ---- Event Map ----
