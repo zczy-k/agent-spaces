@@ -28,7 +28,8 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "aliyun-ai",
-    "iconUrl": "plugins/aliyun-ai/icon.svg"
+    "iconUrl": "plugins/aliyun-ai/icon.svg",
+    "md5": "c1adcb36b55efd632636b61642aed7ef"
   },
   {
     "id": "workflow.aliyun-oss",
@@ -47,7 +48,8 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "aliyun_oss",
-    "iconUrl": "plugins/aliyun_oss/icon.png"
+    "iconUrl": "plugins/aliyun_oss/icon.png",
+    "md5": "27a610cd72404dff1a5aa4e3d4359b61"
   },
   {
     "id": "workflow.custom-view-demo",
@@ -65,7 +67,8 @@
     "type": "server",
     "hasView": false,
     "hasWorkflow": true,
-    "path": "custom-view-demo"
+    "path": "custom-view-demo",
+    "md5": "72a6ecc55a88c1ee5d204d7d5c51ed14"
   },
   {
     "id": "workflow.desktop-native",
@@ -84,7 +87,8 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "desktop-native",
-    "iconUrl": "plugins/desktop-native/icon.png"
+    "iconUrl": "plugins/desktop-native/icon.png",
+    "md5": "e9bbe7fd4cf6357cb023e5846c0bc357"
   },
   {
     "id": "workfox.dingtalk",
@@ -101,7 +105,8 @@
     "type": "server",
     "hasView": false,
     "hasWorkflow": true,
-    "path": "dingtalk"
+    "path": "dingtalk",
+    "md5": "3910985827d239455cb532f3a321629e"
   },
   {
     "id": "workflow.epub-parser",
@@ -120,7 +125,8 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "epub-parser",
-    "iconUrl": "plugins/epub-parser/icon.png"
+    "iconUrl": "plugins/epub-parser/icon.png",
+    "md5": "210487fb1f3841e03a53b31599cb0d88"
   },
   {
     "id": "workflow.fetch",
@@ -140,7 +146,8 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "fetch",
-    "iconUrl": "plugins/fetch/icon.png"
+    "iconUrl": "plugins/fetch/icon.png",
+    "md5": "e4d1945f6d7854bfdde0c41128ddb64b"
   },
   {
     "id": "workflow.ffmpeg",
@@ -159,7 +166,8 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "ffmpeg",
-    "iconUrl": "plugins/ffmpeg/icon.svg"
+    "iconUrl": "plugins/ffmpeg/icon.svg",
+    "md5": "bd52054e2e9d66bd8ddef68f0ad3f1de"
   },
   {
     "id": "workflow.file-system",
@@ -178,7 +186,8 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "file-system",
-    "iconUrl": "plugins/file-system/icon.svg"
+    "iconUrl": "plugins/file-system/icon.svg",
+    "md5": "635ffa4d73c8de0e1a7192e552ae6616"
   },
   {
     "id": "workflow.fish-audio",
@@ -200,7 +209,8 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "fish-audio",
-    "iconUrl": "plugins/fish-audio/icon.png"
+    "iconUrl": "plugins/fish-audio/icon.png",
+    "md5": "fb349ba5b1e8eaccf079540f1c57907e"
   },
   {
     "id": "workflow.jimeng",
@@ -220,7 +230,8 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "jimeng",
-    "iconUrl": "plugins/jimeng/icon.png"
+    "iconUrl": "plugins/jimeng/icon.png",
+    "md5": "032cd04b6347ea8a93ec5a06569e823b"
   },
   {
     "id": "workflow.mail",
@@ -239,7 +250,8 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "mail",
-    "iconUrl": "plugins/mail/icon.png"
+    "iconUrl": "plugins/mail/icon.png",
+    "md5": "399ff4476e400e77980bb957c4f73736"
   },
   {
     "id": "workflow.minimax",
@@ -263,7 +275,8 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "minimax",
-    "iconUrl": "plugins/minimax/icon.svg"
+    "iconUrl": "plugins/minimax/icon.svg",
+    "md5": "ae0ab5575e27ea1d4dd8392645363e6f"
   },
   {
     "id": "workflow.mira-sdk",
@@ -281,7 +294,8 @@
     "type": "server",
     "hasView": false,
     "hasWorkflow": true,
-    "path": "mira-sdk"
+    "path": "mira-sdk",
+    "md5": "fe3ae213285d68844d0391fdd353ff75"
   },
   {
     "id": "workflow.openai",
@@ -305,7 +319,8 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "openai",
-    "iconUrl": "plugins/openai/icon.svg"
+    "iconUrl": "plugins/openai/icon.svg",
+    "md5": "e9b22d9ba052947fdcd2bc2f9e27986d"
   },
   {
     "id": "workflow.tencent-cos",
@@ -324,7 +339,8 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "tencent_cos",
-    "iconUrl": "plugins/tencent_cos/icon.svg"
+    "iconUrl": "plugins/tencent_cos/icon.svg",
+    "md5": "660202506eee148bab4ca4cedff78edc"
   },
   {
     "id": "workflow.test-plugin",
@@ -343,7 +359,8 @@
     "hasView": true,
     "hasWorkflow": false,
     "path": "test-plugin",
-    "iconUrl": "https://raw.githubusercontent.com/hunmer/work-fox/refs/heads/master/plugins/test-plugin/icon.png"
+    "iconUrl": "https://raw.githubusercontent.com/hunmer/work-fox/refs/heads/master/plugins/test-plugin/icon.png",
+    "md5": "5f20451bfcef41c02eed2ae63809c827"
   },
   {
     "id": "workflow.window-manager",
@@ -362,6 +379,7 @@
     "hasView": false,
     "hasWorkflow": true,
     "path": "window-manager",
-    "iconUrl": "plugins/window-manager/icon.png"
+    "iconUrl": "plugins/window-manager/icon.png",
+    "md5": "c5d1a0b9bf221eb0f8b4e77fccd7a860"
   }
 ]
