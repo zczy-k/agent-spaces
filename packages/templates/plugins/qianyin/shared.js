@@ -6,6 +6,7 @@
  */
 const https = require('https')
 const http = require('http')
+const zlib = require('zlib')
 const crypto = require('crypto')
 const fs = require('fs')
 const path = require('path')
@@ -69,12 +70,21 @@ function request(url, method, headers, body, timeout) {
   return new Promise((resolve, reject) => {
     const req = mod.request(opts, (res) => {
       const chunks = []
-      res.on('data', c => chunks.push(c))
-      res.on('end', () => {
+      let stream = res
+      const encoding = res.headers['content-encoding']
+      if (encoding === 'gzip') {
+        stream = res.pipe(zlib.createGunzip())
+      } else if (encoding === 'deflate') {
+        stream = res.pipe(zlib.createInflate())
+      } else if (encoding === 'br') {
+        stream = res.pipe(zlib.createBrotliDecompress())
+      }
+      stream.on('data', c => chunks.push(c))
+      stream.on('end', () => {
         const buf = Buffer.concat(chunks)
         resolve({ statusCode: res.statusCode, headers: res.headers, body: buf })
       })
-      res.on('error', reject)
+      stream.on('error', reject)
     })
     req.on('error', reject)
     req.on('timeout', () => { req.destroy(); reject(new Error('请求超时')) })

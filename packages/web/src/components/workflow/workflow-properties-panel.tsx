@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useLocalizedNodeDefinition } from '@/lib/workflow-nodes';
-import type { OutputField, WorkflowEdge, WorkflowNode } from '@agent-spaces/shared';
+import type { ExecutionLog, OutputField, WorkflowEdge, WorkflowNode } from '@agent-spaces/shared';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Copy, Image as ImageIcon, X } from 'lucide-react';
@@ -43,6 +43,7 @@ interface PropertiesPanelProps {
   previewResult?: DebugResult | null;
   onDebugNode?: (nodeId: string, inputs?: Record<string, unknown>, properties?: Record<string, unknown>) => void;
   onCancelDebug?: () => void;
+  executionLog?: ExecutionLog | null;
 }
 
 export function WorkflowPropertiesPanel({
@@ -60,6 +61,7 @@ export function WorkflowPropertiesPanel({
   previewResult = null,
   onDebugNode,
   onCancelDebug,
+  executionLog = null,
 }: PropertiesPanelProps) {
   const t = useTranslations('workflows');
   const [importOpen, setImportOpen] = useState(false);
@@ -317,6 +319,37 @@ export function WorkflowPropertiesPanel({
               </CardContent>
             </Card>
           )}
+
+          {nodeId && executionLog && (() => {
+            const step = executionLog.steps.find(s => s.nodeId === nodeId);
+            if (!step?.logs?.length) return null;
+            return (
+              <Card className="mt-2">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-xs font-medium text-muted-foreground">{t('nodeUi.logs')}</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="max-h-48 overflow-y-auto rounded border bg-background font-mono text-[11px]">
+                    {step.logs.map((entry, i) => (
+                      <div
+                        key={i}
+                        className={`flex items-start gap-2 border-b px-2 py-1 last:border-b-0 ${
+                          entry.level === 'error' ? 'bg-red-500/5 text-red-600' :
+                          entry.level === 'warning' ? 'bg-yellow-500/5 text-yellow-600' :
+                          'text-muted-foreground'
+                        }`}
+                      >
+                        <span className="shrink-0 text-[10px] opacity-50">
+                          {new Date(entry.timestamp).toLocaleTimeString()}
+                        </span>
+                        <span className="min-w-0 break-all">{entry.message}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
 
         </div>
       </ScrollArea>

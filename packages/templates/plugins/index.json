@@ -356,8 +356,8 @@
     "hasWorkflow": true,
     "path": "qianyin",
     "iconUrl": "plugins/qianyin/icon.png",
-    "md5": "7bc3378d2dd49b54562d6f5d3c6d8dec",
-    "updatedAt": "2026-06-11T03:47:10.024Z"
+    "md5": "2842a98e03b8c560fea86b247e0e615a",
+    "updatedAt": "2026-06-11T04:19:47.840Z"
   },
   {
     "id": "workflow.tencent-cos",

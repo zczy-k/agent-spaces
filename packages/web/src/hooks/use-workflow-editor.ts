@@ -56,6 +56,7 @@ export function useEditorShortcuts({
 }) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if (!e.key) return;
       const isEditableTarget = isEditableKeyboardTarget(e.target);
       const key = e.key.toLowerCase();
 

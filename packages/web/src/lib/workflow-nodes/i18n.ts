@@ -7,6 +7,7 @@ type TranslateFn = (key: string, fallback?: string) => string;
 function wrapT(t: ReturnType<typeof useTranslations>): TranslateFn {
   return (key: string, fallback?: string) => {
     // Only translate strings that look like our i18n keys
+    if (!key || typeof key !== 'string') return fallback ?? String(key ?? '');
     if (!key.startsWith('nodes.')) return fallback ?? key;
     try {
       return t(key as Parameters<typeof t>[0]);
