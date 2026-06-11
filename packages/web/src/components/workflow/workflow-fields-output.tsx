@@ -162,14 +162,14 @@ export function OutputFieldsEditor({
 	};
 
 	return (
-		<div className={cn('min-h-0 space-y-1', depth === 0 && 'flex h-full flex-col')}>
+		<div className="space-y-1">
 			{depth === 0 && (
 				<div className="grid shrink-0 grid-cols-[1fr_80px] gap-1 text-[10px] font-medium text-muted-foreground">
 					<span>{t('name')}</span>
 					<span>{t('type')}</span>
 				</div>
 			)}
-			<div className={cn('space-y-1', depth === 0 && 'min-h-0 flex-1 overflow-auto')}>
+			<div className="space-y-1">
 				<DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
 					<SortableContext items={fieldIds} strategy={verticalListSortingStrategy}>
 						{fields.map((field, index) => (

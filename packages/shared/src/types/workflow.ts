@@ -174,10 +174,13 @@ export interface OutputField {
   children?: OutputField[]
 }
 
+export type DataType = 'string' | 'number' | 'boolean' | 'string[]' | 'number[]' | 'object[]' | 'object' | 'any'
+
 export interface ArrayFieldItem {
   key: string
   label: string
   type: 'text' | 'number' | 'select' | 'checkbox' | 'output_fields'
+  dataType?: DataType
   required?: boolean
   default?: unknown
   options?: { label: string; value: string }[]
@@ -194,6 +197,7 @@ export interface NodeProperty {
   key: string
   label: string
   type: 'text' | 'textarea' | 'number' | 'select' | 'checkbox' | 'code' | 'conditions' | 'array' | 'output_fields'
+  dataType?: DataType
   required?: boolean
   readonly?: boolean
   default?: unknown

@@ -59,6 +59,7 @@ type PluginActionProperty = Record<string, any> & {
   key: string;
   label?: string;
   type?: string;
+  dataType?: string;
   required?: boolean;
   toolRequired?: boolean;
   tooltip?: string;
@@ -279,7 +280,20 @@ function createRequireStub(): object {
   });
 }
 
-function toJsonSchemaType(type: unknown): string {
+function toJsonSchemaType(type: unknown, dataType?: string): string {
+  if (dataType) {
+    switch (dataType) {
+      case 'string': return 'string';
+      case 'number': return 'number';
+      case 'boolean': return 'boolean';
+      case 'string[]':
+      case 'number[]':
+      case 'object[]': return 'array';
+      case 'object': return 'object';
+      case 'any': return 'string';
+      default: break;
+    }
+  }
   switch (type) {
     case 'textarea':
     case 'select':
@@ -301,7 +315,7 @@ function toJsonSchemaType(type: unknown): string {
 
 function propertyToSchema(property: PluginActionProperty): Record<string, unknown> {
   const schema: Record<string, unknown> = {
-    type: property.schemaType || toJsonSchemaType(property.type),
+    type: property.schemaType || toJsonSchemaType(property.type, property.dataType),
   };
 
   const description = property.description || property.tooltip || property.label;
@@ -311,6 +325,15 @@ function propertyToSchema(property: PluginActionProperty): Record<string, unknow
   if (property.enum) schema.enum = property.enum;
   if (property.default !== undefined && typeof property.default !== 'string') {
     schema.default = property.default;
+  }
+
+  // Auto-derive items for known array dataTypes
+  if (!property.items && property.dataType) {
+    if (property.dataType === 'string[]') {
+      schema.items = { type: 'string' };
+    } else if (property.dataType === 'number[]') {
+      schema.items = { type: 'number' };
+    }
   }
 
   return schema;
