@@ -284,6 +284,20 @@ function formatWorkflowUiPromptContext(context: WorkflowUiPromptContext): string
     '- Preview code can download a remote file into the Workflow UI project `data/` directory with `await window.AgentSpacesUI.downloadFile(url, path?)`.',
     '- The same config and data file helpers are also available on `window.AgentSpaces` and `window.AgentSpacesAPI` for compatibility.',
     '- In HTML mode, window.AgentSpacesUI and window.AgentSpaces are available, but plain HTML/CSS/JS is acceptable when React components are not practical.',
+    '',
+    'Multi-file project layout rules:',
+    '- The preview renderer supports ES module imports between local files. You MUST split large projects into multiple files instead of writing everything in index.jsx.',
+    '- The entry point is defined by manifest.json `mainFile` (default: `index.jsx`). This file MUST export a default React component.',
+    '- Use standard import syntax: `import Foo from "./components/Foo"` or `import { helper } from "./utils"`. The renderer resolves `.jsx`/`.js` extensions and `index.jsx` barrel files automatically.',
+    '- Recommended file structure for non-trivial projects:',
+    '  - `index.jsx` — entry point, composes the top-level layout from sub-components.',
+    '  - `components/` — one file per UI component (e.g. `components/Header.jsx`, `components/VoiceSelector.jsx`).',
+    '  - `hooks/` — custom React hooks shared across components (e.g. `hooks/useTTS.js`).',
+    '  - `utils/` — pure utility functions, constants, configuration helpers (e.g. `utils/providers.js`, `utils/styles.js`).',
+    '- Files under `src/` are auto-discovered. Sub-directories are supported.',
+    '- Each file should have a single responsibility. If a component exceeds ~200 lines, split it.',
+    '- Do NOT use barrel re-export files (index.jsx that only re-exports). Import directly from the target file.',
+    '- All files share the same `window.AgentSpacesUI`, `window.AgentSpaces`, and `window.AgentSpacesAPI` globals. Do not pass them through imports.',
   );
 
   return lines;

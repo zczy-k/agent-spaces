@@ -23,6 +23,15 @@ function areFileListsEqual(left: string[], right: string[]) {
 	return left.length === right.length && left.every((file, index) => file === right[index]);
 }
 
+/** Build preview payload: merge cached files with current editor content */
+function buildPreviewSnapshot(
+	cache: Record<string, string>,
+	activeFile: string,
+	activeContent: string,
+): Record<string, string> {
+	return { ...cache, [activeFile]: activeContent };
+}
+
 interface WorkflowUiEditorProps {
 	projectId: string;
 }
@@ -51,8 +60,18 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
 	const filesRef = useRef<string[]>([]);
 	const previewCodeRef = useRef('');
 	const filesContentRef = useRef<Record<string, string>>({});
+	const mainFileRef = useRef<string>('index.jsx');
 	const [saveStatus, setSaveStatus] = useState<'saved' | 'modified' | 'saving'>('saved');
 	const handleSaveRef = useRef<() => Promise<void>>(async () => {});
+
+	// Helper: trigger preview refresh with the main file as entry point
+	const triggerPreview = useCallback((snapshot: Record<string, string>, mainFile: string) => {
+		const mainContent = snapshot[mainFile] || '';
+		previewCodeRef.current = mainContent;
+		setPreviewCode(mainContent);
+		setPreviewFiles(snapshot);
+		setPreviewRefreshKey((key) => key + 1);
+	}, []);
 
 	// Mount host APIs used by Workflow UI preview code.
 	useWorkflowUiHostApi(projectId);
@@ -68,15 +87,26 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
 				setProject(p);
 				setFiles(tree);
 				filesRef.current = tree;
+				mainFileRef.current = p.mainFile || 'index.jsx';
+
+				// Load ALL file contents for multi-file import resolution
+				const contents: Record<string, string> = {};
+				for (const file of tree) {
+					try {
+						const { content } = await sdk.workflowUi.readFile(projectId, file);
+						contents[file] = content;
+					} catch { /* skip unreadable files */ }
+				}
+				filesContentRef.current = contents;
+
 				if (tree.length > 0) {
 					const mainFile = tree.includes(p.mainFile) ? p.mainFile : tree[0];
 					setActiveFile(mainFile);
-					const { content } = await sdk.workflowUi.readFile(projectId, mainFile);
+					const mainContent = contents[mainFile] || '';
 					if (!cancelled) {
-						setSourceCode(content);
-						setPreviewCode(content);
-						previewCodeRef.current = content;
-						loadedFileContentRef.current = content;
+						setSourceCode(mainContent);
+						triggerPreview(contents, mainFile);
+						loadedFileContentRef.current = mainContent;
 						localDirtyRef.current = false;
 						setSaveStatus('saved');
 					}
@@ -89,7 +119,7 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
 		}
 		load();
 		return () => { cancelled = true; };
-	}, [projectId]);
+	}, [projectId, triggerPreview]);
 
 	const refreshFileTree = useCallback(async () => {
 		try {
@@ -120,19 +150,18 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
 				localDirtyRef.current = false;
 				setSaveStatus('saved');
 				setSourceCode(content);
+				// Update the cache
+				filesContentRef.current[activeFile] = content;
 			}
 
 			if (options?.syncPreview && shouldUpdateEditor) {
-				if (content !== previewCodeRef.current || options.force) {
-					previewCodeRef.current = content;
-					setPreviewCode(content);
-					setPreviewRefreshKey((key) => key + 1);
-				}
+				// mainFile via ref (avoids React Compiler dep issue)
+				triggerPreview(buildPreviewSnapshot(filesContentRef.current, activeFile, content), mainFileRef.current);
 			}
 		} catch (error) {
 			console.error('Failed to refresh file:', error);
 		}
-	}, [projectId, activeFile]);
+	}, [projectId, activeFile, triggerPreview]);
 
 	// Poll latest files written outside this editor, for example by workflow UI agents.
 	useEffect(() => {
@@ -146,21 +175,20 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
 		return () => clearInterval(interval);
 	}, [activeFile, autoRefresh, refreshActiveFile, refreshFileTree]);
 
-	// Auto-refresh debounce
+	// Auto-refresh debounce — update files map, preview main entry point
 	useEffect(() => {
 		if (!autoRefresh) return;
 		if (debounceRef.current) clearTimeout(debounceRef.current);
 		debounceRef.current = setTimeout(() => {
-			if (sourceCode !== previewCodeRef.current) {
-				previewCodeRef.current = sourceCode;
-				setPreviewCode(sourceCode);
-				setPreviewRefreshKey((key) => key + 1);
-			}
+			// mainFile via ref (avoids React Compiler dep issue)
+			const snapshot = buildPreviewSnapshot(filesContentRef.current, activeFile, sourceCode);
+			filesContentRef.current = snapshot;
+			triggerPreview(snapshot, mainFileRef.current);
 		}, 800);
 		return () => {
 			if (debounceRef.current) clearTimeout(debounceRef.current);
 		};
-	}, [sourceCode, autoRefresh]);
+	}, [sourceCode, autoRefresh, activeFile, triggerPreview]);
 
 	const handleSave = useCallback(async () => {
 		if (!activeFile) return;
@@ -186,8 +214,10 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
 	}, [refreshActiveFile, refreshFileTree]);
 
 	const handleFileSelect = useCallback(async (file: string) => {
+		// Save current file and update cache
 		if (activeFile && sourceCode) {
 			await sdk.workflowUi.writeFile(projectId, activeFile, sourceCode).catch(() => {});
+			filesContentRef.current[activeFile] = sourceCode;
 			loadedFileContentRef.current = sourceCode;
 			localDirtyRef.current = false;
 			setSaveStatus('saved');
@@ -196,16 +226,18 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
 			const { content } = await sdk.workflowUi.readFile(projectId, file);
 			setActiveFile(file);
 			setSourceCode(content);
-			setPreviewCode(content);
-			previewCodeRef.current = content;
-			setPreviewRefreshKey((key) => key + 1);
+			filesContentRef.current[file] = content;
 			loadedFileContentRef.current = content;
 			localDirtyRef.current = false;
 			setSaveStatus('saved');
+
+			// Preview always renders from the main file
+			// mainFile via ref (avoids React Compiler dep issue)
+			triggerPreview({ ...filesContentRef.current }, mainFileRef.current);
 		} catch (error) {
 			console.error('Failed to load file:', error);
 		}
-	}, [projectId, activeFile, sourceCode]);
+	}, [projectId, activeFile, sourceCode, triggerPreview]);
 
 	if (loading) {
 		return (
@@ -341,6 +373,8 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
 						projectId={project.id}
 						projectName={project.name}
 						hideHeader={true}
+						files={previewFiles}
+						mainFile={project.mainFile}
 					/>
 					</div>
 				</ResizablePanel>

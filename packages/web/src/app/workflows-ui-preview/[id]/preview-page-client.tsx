@@ -12,6 +12,7 @@ export default function WorkflowUiPreviewPageClient() {
   const params = useParams<{ id: string }>();
   const [project, setProject] = useState<WorkflowUiProject | null>(null);
   const [sourceCode, setSourceCode] = useState('');
+  const [allFiles, setAllFiles] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -21,11 +22,21 @@ export default function WorkflowUiPreviewPageClient() {
     try {
       const p = await sdk.workflowUi.get(params.id);
       setProject(p);
-      const files = await sdk.workflowUi.getFileTree(params.id);
-      const mainFile = files.find(f => f === p.mainFile) ?? files[0];
+
+      // Load ALL files for multi-file import resolution
+      const tree = await sdk.workflowUi.getFileTree(params.id);
+      const files: Record<string, string> = {};
+      for (const file of tree) {
+        try {
+          const { content } = await sdk.workflowUi.readFile(params.id, file);
+          files[file] = content;
+        } catch { /* skip */ }
+      }
+      setAllFiles(files);
+
+      const mainFile = tree.find(f => f === p.mainFile) ?? tree[0];
       if (mainFile) {
-        const { content } = await sdk.workflowUi.readFile(params.id, mainFile);
-        setSourceCode(content);
+        setSourceCode(files[mainFile] || '');
       }
     } catch (err: any) {
       setError(err.message || 'Failed to load project');
@@ -51,7 +62,16 @@ export default function WorkflowUiPreviewPageClient() {
   return (
     <div className="h-screen flex flex-col">
       <div className="flex-1 min-h-0">
-        <WorkflowUiPreview type={project.type} sourceCode={sourceCode} error={error} onError={setError} projectId={project.id} projectName={project.name} />
+        <WorkflowUiPreview
+          type={project.type}
+          sourceCode={sourceCode}
+          error={error}
+          onError={setError}
+          projectId={project.id}
+          projectName={project.name}
+          files={allFiles}
+          mainFile={project.mainFile}
+        />
       </div>
     </div>
   );
