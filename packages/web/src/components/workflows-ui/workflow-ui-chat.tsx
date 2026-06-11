@@ -64,6 +64,7 @@ export function WorkflowUiChat({
     }
     try {
       const channel = await sdk.channel.create(resolvedWorkspaceId, {
+        id: project.id,
         name: t('chat.channelName', { name: project.name }),
         type: 'workflows-ui',
         members: [],

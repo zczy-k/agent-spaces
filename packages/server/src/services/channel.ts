@@ -1,8 +1,8 @@
 import { v4 as uuid } from 'uuid';
 import { join } from 'node:path';
 import { readJsonFile, writeJsonFile, ensureDir, getDataDir } from '../storage/json-store.js';
-import { rmSync } from 'node:fs';
-import type { Channel } from '@agent-spaces/shared';
+import { existsSync, renameSync, rmSync } from 'node:fs';
+import type { Channel, Message } from '@agent-spaces/shared';
 import { getWorkspace } from '../storage/workspace-store.js';
 import * as agentService from '../services/agent.js';
 
@@ -28,15 +28,23 @@ export function getChannel(workspaceId: string, channelId: string): Channel | un
 
 export function createChannel(
   workspaceId: string,
-  data: { name: string; type: Channel['type']; members?: string[]; issueId?: string; overwrite?: boolean },
+  data: { id?: string; name: string; type: Channel['type']; members?: string[]; issueId?: string; overwrite?: boolean },
 ): { channel: Channel; created: boolean } {
   const channels = listChannels(workspaceId);
+  const requestedId = normalizeRequestedId(data.id);
+  if (requestedId) {
+    const existingById = channels.find((c) => c.id === requestedId);
+    if (existingById) return { channel: existingById, created: false };
+  }
   if (!data.overwrite) {
     const existing = channels.find((c) => c.name === data.name && c.type === data.type && !c.archived);
-    if (existing) return { channel: existing, created: false };
+    if (existing) {
+      const channel = requestedId ? migrateChannelId(workspaceId, channels, existing, requestedId) : existing;
+      return { channel, created: false };
+    }
   }
   const channel: Channel = {
-    id: uuid(),
+    id: requestedId ?? uuid(),
     workspaceId,
     name: data.name,
     type: data.type,
@@ -48,6 +56,44 @@ export function createChannel(
   writeJsonFile(channelsPath(workspaceId), channels);
   ensureDir(join(workspaceDir(workspaceId), 'channels', channel.id));
   return { channel, created: true };
+}
+
+function normalizeRequestedId(id: string | undefined): string | undefined {
+  const trimmed = id?.trim();
+  if (!trimmed) return undefined;
+  return /^[A-Za-z0-9_-]+$/.test(trimmed) ? trimmed : undefined;
+}
+
+function migrateChannelId(
+  workspaceId: string,
+  channels: Channel[],
+  channel: Channel,
+  nextId: string,
+): Channel {
+  if (channel.id === nextId) return channel;
+  if (channels.some((item) => item.id === nextId)) return channel;
+
+  const previousId = channel.id;
+  channel.id = nextId;
+  writeJsonFile(channelsPath(workspaceId), channels);
+
+  const previousDir = join(workspaceDir(workspaceId), 'channels', previousId);
+  const nextDir = join(workspaceDir(workspaceId), 'channels', nextId);
+  if (existsSync(previousDir) && !existsSync(nextDir)) {
+    renameSync(previousDir, nextDir);
+  } else {
+    ensureDir(nextDir);
+  }
+
+  const messages = readJsonFile<Message[]>(messagesPath(workspaceId, nextId));
+  if (messages) {
+    writeJsonFile(
+      messagesPath(workspaceId, nextId),
+      messages.map((message) => ({ ...message, channelId: nextId })),
+    );
+  }
+
+  return channel;
 }
 
 export function updateChannel(

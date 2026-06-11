@@ -24,8 +24,9 @@ router.get('/', (req: Request<ChannelParams>, res: Response) => {
 router.post('/', (req: Request<ChannelParams>, res: Response) => {
   const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
   const titlePrompt = typeof req.body.titlePrompt === 'string' ? req.body.titlePrompt.trim() : '';
-  const { type, members, overwrite } = req.body;
-  const { channel, created } = createChannel(req.params.id, { name, type: type || 'general', members, overwrite: overwrite === true });
+  const { id, type, members, overwrite } = req.body;
+  const requestedId = typeof id === 'string' ? id : undefined;
+  const { channel, created } = createChannel(req.params.id, { id: requestedId, name, type: type || 'general', members, overwrite: overwrite === true });
   if (created) {
     broadcastToWorkspace(req.params.id, 'channel.updated', channel);
   }
