@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { sdk } from '@/lib/sdk';
 import type { WorkflowUiProject } from '@agent-spaces/sdk';
 import { WorkflowUiPreview } from '@/components/workflows-ui/workflow-ui-preview';
@@ -10,6 +10,8 @@ import { Loader2 } from 'lucide-react';
 
 export default function WorkflowUiPreviewPageClient() {
   const params = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
+  const embedded = searchParams.get('embedded') === '1';
   const [project, setProject] = useState<WorkflowUiProject | null>(null);
   const [sourceCode, setSourceCode] = useState('');
   const [allFiles, setAllFiles] = useState<Record<string, string>>({});
@@ -69,6 +71,7 @@ export default function WorkflowUiPreviewPageClient() {
           onError={setError}
           projectId={project.id}
           projectName={project.name}
+          hideHeader={embedded}
           files={allFiles}
           mainFile={project.mainFile}
         />

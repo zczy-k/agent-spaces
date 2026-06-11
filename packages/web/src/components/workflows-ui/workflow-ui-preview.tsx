@@ -130,7 +130,7 @@ export function WorkflowUiPreview({ type, sourceCode, error, onError, projectId,
         type={type}
         sourceCode={sourceCode}
         onError={handleRendererError}
-        className="flex-1 p-4"
+        className={hideHeader ? "flex-1" : "flex-1 p-4"}
         files={files}
         mainFile={mainFile}
       />

@@ -1,12 +1,17 @@
 'use client';
 
+import { usePathname } from 'next/navigation';
 import { useCommandPalette } from '@/stores/command-palette';
 import { Terminal } from 'lucide-react';
 import { FloatingBall } from './floating-ball';
+import { isWorkflowUiPreviewPath } from '@/lib/routes';
 
 export function ConsolePanel() {
+  const pathname = usePathname();
   const toggle = useCommandPalette((s) => s.toggle);
   const open = useCommandPalette((s) => s.open);
+
+  if (isWorkflowUiPreviewPath(pathname)) return null;
 
   return (
     <FloatingBall
