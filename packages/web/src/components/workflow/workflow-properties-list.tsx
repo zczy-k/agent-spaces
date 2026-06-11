@@ -39,7 +39,7 @@ export function PropertiesList({
   onPreviewDataChange,
 }: PropertiesListProps) {
   return (
-    <section className="">
+    <section id="properties-section" className="">
       {properties.map((prop) => {
         const value = getPropertyValue(prop, data);
         return (
@@ -130,7 +130,7 @@ const PropertyItem = memo(function PropertyItem({
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-[240px]">
                 <p>{prop.tooltip}</p>
-                <p className="mt-0.5 text-[10px] opacity-60">类型: {prop.type}</p>
+                <p className="mt-0.5 text-[10px] opacity-60">类型: {prop.type}{prop.dataType && prop.dataType !== 'string' ? ` → ${prop.dataType}` : ''}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

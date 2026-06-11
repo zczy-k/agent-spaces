@@ -280,7 +280,7 @@ export function WorkflowPropertiesPanel({
             </Card>
           )}
 
-          <Card>
+          <Card className="mt-2">
             <CardContent >
                 <PropertiesList
                   properties={visibleProperties}

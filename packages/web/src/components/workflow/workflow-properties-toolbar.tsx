@@ -41,7 +41,7 @@ export function Toolbar({
 
   return (
     <div className="flex shrink-0 items-center gap-1 border-b px-3 py-1.5">
-      <Badge variant="secondary" className="h-5 rounded px-2 text-[10px]">{t('editor.properties')}</Badge>
+      <Badge variant="secondary" className="h-5 cursor-pointer rounded px-2 text-[10px]" onClick={() => document.getElementById('properties-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{t('editor.properties')}</Badge>
       {canEditInputFields && <Badge variant="outline" className="h-5 cursor-pointer rounded px-2 text-[10px]" onClick={() => document.getElementById('input-fields-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{t('properties.inputFields')}</Badge>}
       {canEditOutputFields && <Badge variant="outline" className="h-5 cursor-pointer rounded px-2 text-[10px]" onClick={() => document.getElementById('output-fields-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{t('properties.outputFields')}</Badge>}
       <div className="ml-auto flex items-center gap-1">

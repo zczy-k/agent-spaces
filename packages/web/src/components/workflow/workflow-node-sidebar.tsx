@@ -321,6 +321,12 @@ export function WorkflowNodeSidebar({
                                       className="text-[10px] px-1 rounded font-medium"
                                       style={{ backgroundColor: stringToHsl(prop.type, 45, 90), color: stringToHsl(prop.type, 55, 35) }}
                                     >{prop.type}</span>
+                                    {prop.dataType && prop.dataType !== 'string' && (
+                                      <span
+                                        className="text-[10px] px-1 rounded font-medium"
+                                        style={{ backgroundColor: stringToHsl(prop.dataType, 45, 90), color: stringToHsl(prop.dataType, 55, 35) }}
+                                      >{prop.dataType}</span>
+                                    )}
                                     {prop.required && <span className="text-[10px] text-destructive">*</span>}
                                   </div>
                                 ))}
