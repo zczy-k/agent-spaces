@@ -141,6 +141,19 @@ export function WorkflowPropertiesPanel({
     handleDataChange(JSON_PRESETS_KEY, presets);
   }, [handleDataChange]);
 
+  const handleResetToDefaults = useCallback(() => {
+    if (!nodeId) return;
+    const defaults: Record<string, unknown> = {};
+    for (const prop of visibleProperties) {
+      if (prop.default !== undefined) {
+        defaults[prop.key] = prop.default;
+      }
+    }
+    if (Object.keys(defaults).length > 0) {
+      onUpdateData(nodeId, defaults);
+    }
+  }, [nodeId, visibleProperties, onUpdateData]);
+
   const openAddPresetDialog = () => {
     setEditingPreset(null);
     setPresetOpen(true);
@@ -200,6 +213,7 @@ export function WorkflowPropertiesPanel({
         onDebug={onDebugNode ?? (() => {})}
         onCancelDebug={onCancelDebug ?? (() => {})}
         onOpenTestDialog={() => setNodeTestDialogOpen(true)}
+        onResetToDefaults={handleResetToDefaults}
       />
 
       <ScrollArea className="min-h-0 flex-1" viewportClassName="flex flex-col">
@@ -241,6 +255,39 @@ export function WorkflowPropertiesPanel({
               )}
             </section>
           )}
+
+          
+          {nodeId && (() => {
+            const logs = visibleDebugResult?.logs
+              ?? executionLog?.steps.find(s => s.nodeId === nodeId)?.logs;
+            if (!logs?.length) return null;
+            return (
+              <Card className="mt-2">
+                <CardHeader>
+                  <CardTitle className="text-xs font-medium text-muted-foreground">{t('nodeUi.logs')}</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="max-h-48 overflow-y-auto rounded border bg-background font-mono text-[11px]">
+                    {logs.map((entry, i) => (
+                      <div
+                        key={i}
+                        className={`flex items-start gap-2 border-b px-2 py-1 last:border-b-0 ${
+                          entry.level === 'error' ? 'bg-red-500/5 text-red-600' :
+                          entry.level === 'warning' ? 'bg-yellow-500/5 text-yellow-600' :
+                          'text-muted-foreground'
+                        }`}
+                      >
+                        <span className="shrink-0 text-[10px] opacity-50">
+                          {new Date(entry.timestamp).toLocaleTimeString()}
+                        </span>
+                        <span className="min-w-0 break-all">{entry.message}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           {selectedJsonPreset && (
             <div className="space-y-2 rounded border bg-muted/20 p-2">
@@ -319,38 +366,6 @@ export function WorkflowPropertiesPanel({
               </CardContent>
             </Card>
           )}
-
-          {nodeId && (() => {
-            const logs = visibleDebugResult?.logs
-              ?? executionLog?.steps.find(s => s.nodeId === nodeId)?.logs;
-            if (!logs?.length) return null;
-            return (
-              <Card className="mt-2">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-xs font-medium text-muted-foreground">{t('nodeUi.logs')}</CardTitle>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="max-h-48 overflow-y-auto rounded border bg-background font-mono text-[11px]">
-                    {logs.map((entry, i) => (
-                      <div
-                        key={i}
-                        className={`flex items-start gap-2 border-b px-2 py-1 last:border-b-0 ${
-                          entry.level === 'error' ? 'bg-red-500/5 text-red-600' :
-                          entry.level === 'warning' ? 'bg-yellow-500/5 text-yellow-600' :
-                          'text-muted-foreground'
-                        }`}
-                      >
-                        <span className="shrink-0 text-[10px] opacity-50">
-                          {new Date(entry.timestamp).toLocaleTimeString()}
-                        </span>
-                        <span className="min-w-0 break-all">{entry.message}</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })()}
 
         </div>
       </ScrollArea>

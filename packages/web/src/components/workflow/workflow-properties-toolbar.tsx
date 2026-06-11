@@ -5,7 +5,7 @@ import type { WorkflowNode } from '@agent-spaces/shared';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Bug, Loader2, Timer } from 'lucide-react';
+import { Bug, Loader2, RotateCcw, Timer } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface ToolbarProps {
@@ -21,6 +21,7 @@ interface ToolbarProps {
   onDebug: (nodeId: string, inputs?: Record<string, unknown>, properties?: Record<string, unknown>) => void;
   onCancelDebug: () => void;
   onOpenTestDialog: () => void;
+  onResetToDefaults?: () => void;
 }
 
 export function Toolbar({
@@ -36,6 +37,7 @@ export function Toolbar({
   onDebug,
   onCancelDebug,
   onOpenTestDialog,
+  onResetToDefaults,
 }: ToolbarProps) {
   const t = useTranslations('workflows');
 
@@ -45,6 +47,17 @@ export function Toolbar({
       {canEditInputFields && <Badge variant="outline" className="h-5 cursor-pointer rounded px-2 text-[10px]" onClick={() => document.getElementById('input-fields-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{t('properties.inputFields')}</Badge>}
       {canEditOutputFields && <Badge variant="outline" className="h-5 cursor-pointer rounded px-2 text-[10px]" onClick={() => document.getElementById('output-fields-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{t('properties.outputFields')}</Badge>}
       <div className="ml-auto flex items-center gap-1">
+        {onResetToDefaults && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 text-muted-foreground hover:text-foreground"
+            title={t('editor.resetToDefaults')}
+            onClick={onResetToDefaults}
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+          </Button>
+        )}
         {canDebug && (
           <Button
             variant="ghost"

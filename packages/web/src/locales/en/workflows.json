@@ -164,6 +164,7 @@
     "noPreset": "No presets",
     "addPreset": "Add",
     "testScript": "Test Script",
+    "resetToDefaults": "Reset to Defaults",
     "delayExecution": "Delay Execution",
     "delayDescription": "Milliseconds to wait before executing this node",
     "variables": "Variables",

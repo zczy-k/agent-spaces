@@ -164,6 +164,7 @@
     "noPreset": "暂无预设",
     "addPreset": "添加",
     "testScript": "测试脚本",
+    "resetToDefaults": "重置为默认值",
     "delayExecution": "延迟执行",
     "delayDescription": "执行当前节点前等待的毫秒数",
     "variables": "变量",
