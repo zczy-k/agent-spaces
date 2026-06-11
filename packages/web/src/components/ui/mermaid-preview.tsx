@@ -28,11 +28,14 @@ async function renderMermaid(chart: string, theme: MermaidTheme): Promise<string
 }
 
 interface MermaidPreviewProps {
-  chart: string;
+  chart?: string;
+  /** @deprecated Use chart instead */
+  code?: string;
   theme?: string;
 }
 
-export function MermaidPreview({ chart, theme: appTheme = "light" }: MermaidPreviewProps) {
+export function MermaidPreview({ chart, code, theme: appTheme = "light" }: MermaidPreviewProps) {
+  const chartSource = chart ?? code ?? "";
   const [svg, setSvg] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [mermaidTheme, setMermaidTheme] = useState<MermaidTheme>(() =>
@@ -46,13 +49,13 @@ export function MermaidPreview({ chart, theme: appTheme = "light" }: MermaidPrev
   const containerRef = useRef<HTMLDivElement>(null);
 
   const renderChart = useCallback(async () => {
-    if (!chart.trim()) {
+    if (!chartSource.trim()) {
       setSvg("");
       setError(null);
       return;
     }
     try {
-      const rendered = await renderMermaid(chart, mermaidTheme);
+      const rendered = await renderMermaid(chartSource, mermaidTheme);
       setSvg(rendered);
       setError(null);
     } catch (e: unknown) {
@@ -60,7 +63,7 @@ export function MermaidPreview({ chart, theme: appTheme = "light" }: MermaidPrev
       setError(msg.replace(/^Parse error.*?:/, "").trim());
       setSvg("");
     }
-  }, [chart, mermaidTheme]);
+  }, [chartSource, mermaidTheme]);
 
   useEffect(() => { renderChart(); }, [renderChart]);
 
@@ -68,7 +71,7 @@ export function MermaidPreview({ chart, theme: appTheme = "light" }: MermaidPrev
   useEffect(() => {
     setScale(1);
     setTranslate({ x: 0, y: 0 });
-  }, [chart]);
+  }, [chartSource]);
 
   const zoomIn = useCallback(() => setScale((s) => Math.min(s + 0.25, 5)), []);
   const zoomOut = useCallback(() => setScale((s) => Math.max(s - 0.25, 0.25)), []);

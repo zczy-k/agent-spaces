@@ -5,6 +5,8 @@ import { cn } from '@/lib/utils';
 
 const MovingBorder: React.FC<{
   children?: React.ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
   duration?: number;
   rx?: string;
   ry?: string;
@@ -13,6 +15,9 @@ const MovingBorder: React.FC<{
   height?: string;
   opacity?: number;
 }> = ({
+  children,
+  className,
+  style,
   duration = 3000,
   rx = '0.75rem',
   ry = '0.75rem',
@@ -82,7 +87,7 @@ const MovingBorder: React.FC<{
     ? color
     : `radial-gradient(${color} 40%, transparent 60%)`;
 
-  return (
+  const inner = (
     <>
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -101,11 +106,22 @@ const MovingBorder: React.FC<{
       </motion.div>
     </>
   );
+
+  if (children) {
+    return (
+      <div className={cn('relative overflow-hidden rounded-xl', className)} style={style}>
+        <div className="absolute inset-0 pointer-events-none">{inner}</div>
+        <div className="relative rounded-xl overflow-hidden">{children}</div>
+      </div>
+    );
+  }
+  return inner;
 };
 
 interface BorderGlideProps {
   children: React.ReactNode;
   className?: string;
+  style?: React.CSSProperties;
   duration?: number;
   color?: string;
   width?: string;
@@ -118,6 +134,7 @@ interface BorderGlideProps {
 function BorderGlide({
   children,
   className,
+  style,
   duration = 3000,
   color = '#3b82f6',
   width = '6rem',
@@ -127,7 +144,7 @@ function BorderGlide({
   ry = '0.75rem',
 }: BorderGlideProps) {
   return (
-    <div className={cn('relative overflow-hidden rounded-xl', className)}>
+    <div className={cn('relative overflow-hidden rounded-xl', className)} style={style}>
       <div className="absolute inset-0 pointer-events-none">
         <MovingBorder duration={duration} rx={rx} ry={ry} color={color} width={width} height={height} opacity={opacity} />
       </div>
