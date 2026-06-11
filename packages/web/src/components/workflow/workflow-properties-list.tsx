@@ -39,7 +39,7 @@ export function PropertiesList({
   onPreviewDataChange,
 }: PropertiesListProps) {
   return (
-    <section className="space-y-3">
+    <section className="">
       {properties.map((prop) => {
         const value = getPropertyValue(prop, data);
         return (

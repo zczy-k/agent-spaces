@@ -206,7 +206,7 @@ module.exports = (t) => [
     description: t('action.deleteMulti.description', 'Delete multiple files from OSS.'),
     tool: false,
     properties: [
-      { key: 'objectKeys', label: t('field.objectKeys.label', 'Object Key List'), type: 'textarea', required: true, tooltip: t('field.objectKeysJson.tooltip', 'JSON array, e.g. ["a.txt","b.txt"].') },
+      { key: 'objectKeys', label: t('field.objectKeys.label', 'Object Key List'), type: 'textarea', dataType: 'string[]', required: true, tooltip: t('field.objectKeysJson.tooltip', 'JSON array, e.g. ["a.txt","b.txt"].') },
     ],
     configProperties: configProperties(t),
     outputs: [

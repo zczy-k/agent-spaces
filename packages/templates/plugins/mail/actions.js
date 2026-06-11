@@ -31,7 +31,7 @@ module.exports = (t) => [
       { key: 'subject', label: t('field.subject.label', 'Subject'), type: 'text', required: true },
       { key: 'body', label: t('field.body.label', 'Body'), type: 'textarea', required: true, tooltip: t('field.body.tooltip', 'Plain text or HTML (enable the HTML toggle below)') },
       { key: 'html', label: t('field.html.label', 'HTML Body'), type: 'boolean', default: false, tooltip: t('field.html.tooltip', 'Enable to render body as HTML') },
-      { key: 'attachments', label: t('field.attachments.label', 'Attachment Paths'), type: 'textarea', tooltip: t('field.attachments.tooltip', 'JSON array of file paths, e.g. ["/path/to/file.pdf"]') },
+      { key: 'attachments', label: t('field.attachments.label', 'Attachment Paths'), type: 'textarea', dataType: 'string[]', tooltip: t('field.attachments.tooltip', 'JSON array of file paths, e.g. ["/path/to/file.pdf"]') },
     ],
     outputs: [
       { key: 'success', type: 'boolean' },

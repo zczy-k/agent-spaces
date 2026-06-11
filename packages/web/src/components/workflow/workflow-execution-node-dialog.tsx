@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { OutputField, NodeProperty } from '@agent-spaces/shared';
 import { ExecutionInputForm } from './workflow-execution-input-dialog';
+import { getEffectiveDataType } from './workflow-properties-utils';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -45,10 +46,23 @@ export function ExecutionNodeDialog({
       const parsedProps: Record<string, unknown> = {};
       for (const prop of simpleProperties) {
         const raw = propValues[prop.key] ?? stringifyValue(propertyValues[prop.key] ?? prop.default);
-        if (prop.type === 'number') {
+        const dt = getEffectiveDataType(prop);
+        if (dt === 'number') {
           parsedProps[prop.key] = raw === '' ? undefined : Number(raw);
-        } else if (prop.type === 'select') {
-          parsedProps[prop.key] = raw;
+        } else if (dt === 'string[]' || dt === 'number[]' || dt === 'object[]') {
+          if (typeof raw === 'string' && raw.trim().startsWith('[')) {
+            try { parsedProps[prop.key] = JSON.parse(raw); }
+            catch { parsedProps[prop.key] = raw; }
+          } else {
+            parsedProps[prop.key] = raw;
+          }
+        } else if (dt === 'object') {
+          if (typeof raw === 'string' && raw.trim().startsWith('{')) {
+            try { parsedProps[prop.key] = JSON.parse(raw); }
+            catch { parsedProps[prop.key] = raw; }
+          } else {
+            parsedProps[prop.key] = raw;
+          }
         } else {
           parsedProps[prop.key] = raw;
         }

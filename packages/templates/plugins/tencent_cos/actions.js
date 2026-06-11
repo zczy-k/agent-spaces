@@ -371,7 +371,7 @@ module.exports = (t) => {
     description: t('action.deleteMulti.description', 'Delete multiple files from COS'),
     tool: false,
     properties: [
-      { key: 'keys', label: t('field.keys.label', 'Object Path List'), type: 'textarea', required: true, tooltip: t('field.keys.tooltip', 'JSON array format, e.g. ["a.txt","b.txt"]') },
+      { key: 'keys', label: t('field.keys.label', 'Object Path List'), type: 'textarea', dataType: 'string[]', required: true, tooltip: t('field.keys.tooltip', 'JSON array format, e.g. ["a.txt","b.txt"]') },
       ...configProperties,
     ],
     outputs: [

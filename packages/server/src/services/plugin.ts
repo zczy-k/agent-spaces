@@ -280,6 +280,58 @@ function createRequireStub(): object {
   });
 }
 
+export function coerceByDataType(value: unknown, dataType: string | undefined): unknown {
+  if (!dataType) return value;
+  if (value === undefined || value === null || value === '') return value;
+  switch (dataType) {
+    case 'number': {
+      if (typeof value === 'number') return value;
+      const num = Number(value);
+      return Number.isFinite(num) ? num : value;
+    }
+    case 'boolean': {
+      if (typeof value === 'boolean') return value;
+      if (value === 'true' || value === '1') return true;
+      if (value === 'false' || value === '0') return false;
+      return value;
+    }
+    case 'string[]': {
+      if (Array.isArray(value)) return value;
+      if (typeof value === 'string') {
+        try { const parsed = JSON.parse(value); return Array.isArray(parsed) ? parsed : [value]; }
+        catch { return [value]; }
+      }
+      return value;
+    }
+    case 'number[]': {
+      if (Array.isArray(value)) return value;
+      if (typeof value === 'string') {
+        try { const parsed = JSON.parse(value); return Array.isArray(parsed) ? parsed : value; }
+        catch { return value; }
+      }
+      return value;
+    }
+    case 'object[]': {
+      if (Array.isArray(value)) return value;
+      if (typeof value === 'string') {
+        try { const parsed = JSON.parse(value); return Array.isArray(parsed) ? parsed : value; }
+        catch { return value; }
+      }
+      return value;
+    }
+    case 'object': {
+      if (typeof value === 'object' && value !== null) return value;
+      if (typeof value === 'string') {
+        try { return JSON.parse(value); }
+        catch { return value; }
+      }
+      return value;
+    }
+    default:
+      return value;
+  }
+}
+
 function toJsonSchemaType(type: unknown, dataType?: string): string {
   if (dataType) {
     switch (dataType) {

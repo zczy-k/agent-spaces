@@ -86,7 +86,7 @@ module.exports = (t) => [
     properties: [
       { key: 'sessionId', label: t('field.sessionId.label', 'Session Token'), type: 'text', required: true, tooltip: t('field.sessionId.tooltip', 'Jimeng session ID (add prefix us-/hk-/jp-/sg- for international sites)'), default: '{{ __config__["workflow.jimeng"]["sessionId"] }}' },
       { key: 'prompt', label: t('field.promptDirection.label', 'Image Description'), type: 'textarea', required: true, tooltip: t('field.promptDirection.tooltip', 'Describe the generation direction.') },
-      { key: 'images', label: t('field.images.label', 'Image URLs'), type: 'textarea', required: true, tooltip: t('field.images.tooltip', 'Array of input image URLs, e.g. ["https://..."]') },
+      { key: 'images', label: t('field.images.label', 'Image URLs'), type: 'textarea', dataType: 'string[]', required: true, tooltip: t('field.images.tooltip', 'Array of input image URLs, e.g. ["https://..."]') },
       { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'jimeng-4.5', options: [
         { label: 'jimeng-4.5 (默认)', value: 'jimeng-4.5' },
         { label: 'jimeng-5.0', value: 'jimeng-5.0' },
@@ -166,7 +166,7 @@ module.exports = (t) => [
         { label: '21:9', value: '21:9' },
       ] },
       { key: 'duration', label: t('field.duration.label', 'Duration (seconds)'), type: 'number', default: 5, tooltip: t('field.duration.tooltip', '5 or 10 seconds') },
-      { key: 'filePaths', label: t('field.filePaths.label', 'Image URLs'), type: 'textarea', tooltip: t('field.filePaths.tooltip', 'Array of image URLs. 1 image = image-to-video, 2 images = first-last frame.') },
+      { key: 'filePaths', label: t('field.filePaths.label', 'Image URLs'), type: 'textarea', dataType: 'string[]', tooltip: t('field.filePaths.tooltip', 'Array of image URLs. 1 image = image-to-video, 2 images = first-last frame.') },
       { key: 'baseUrl', label: t('field.baseUrl.label', 'API Address'), type: 'text', default: '{{ __config__["workflow.jimeng"]["baseUrl"] }}', tooltip: t('field.baseUrl.tooltip', 'Jimeng API service address.') },
     ],
     outputs: [

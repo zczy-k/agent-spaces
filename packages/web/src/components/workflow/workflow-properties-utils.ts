@@ -1,4 +1,4 @@
-import type { OutputField, NodeProperty } from '@agent-spaces/shared';
+import type { OutputField, NodeProperty, DataType } from '@agent-spaces/shared';
 
 export type DebugResult = {
   status?: 'completed' | 'error';
@@ -36,6 +36,21 @@ export const FIELD_TYPES: OutputField['type'][] = [
   'image[]',
   'any[]',
 ];
+
+export function inferDataType(type: string): DataType {
+  switch (type) {
+    case 'number': return 'number';
+    case 'checkbox': return 'boolean';
+    case 'array':
+    case 'conditions':
+    case 'output_fields': return 'any';
+    default: return 'string';
+  }
+}
+
+export function getEffectiveDataType(prop: { type: string; dataType?: DataType }): DataType {
+  return prop.dataType ?? inferDataType(prop.type);
+}
 
 export function isArrayOutputFieldType(type: OutputField['type'] | undefined) {
   return type === 'array' || type === 'string[]' || type === 'number[]' || type === 'file[]' || type === 'image[]' || type === 'any[]';

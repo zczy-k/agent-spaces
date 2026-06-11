@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { useLocalizedNodeDefinition } from '@/lib/workflow-nodes';
 import type { OutputField, WorkflowEdge, WorkflowNode } from '@agent-spaces/shared';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Copy, X } from 'lucide-react';
 import { CheckCircle2, XCircle } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -199,7 +200,7 @@ export function WorkflowPropertiesPanel({
       />
 
       <ScrollArea className="min-h-0 flex-1" viewportClassName="flex flex-col">
-        <div className="flex min-h-full flex-col gap-4 p-3 pt-0">
+        <div className="flex flex-col gap-3 p-3 pt-0">
           {hasDebugOutput && visibleDebugResult && (
             <section className="space-y-2 rounded border bg-muted/20 p-2 mt-2">
               <div className="flex items-center gap-1.5">
@@ -261,40 +262,61 @@ export function WorkflowPropertiesPanel({
           )}
 
           {canEditInputFields && (
-            <InputFieldsSection
-              node={node}
-              data={data}
-              variableContext={variableContext}
-              onDataChange={handleDataChange}
-            />
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-xs font-medium text-muted-foreground">{t('properties.inputFields')}</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <ScrollArea className="max-h-[300px]">
+                  <InputFieldsSection
+                    node={node}
+                    data={data}
+                    variableContext={variableContext}
+                    onDataChange={handleDataChange}
+                  />
+                </ScrollArea>
+              </CardContent>
+            </Card>
           )}
 
-          <PropertiesList
-            properties={visibleProperties}
-            data={data}
-            isPreview={isPreview}
-            collapsedKeys={collapsedKeys}
-            onCollapsedChange={setCollapsedKeys}
-            variableContext={variableContext}
-            isVariableModeActive={isVariableModeActive}
-            onToggleVariableMode={toggleVariableMode}
-            toVariableInputValue={toVariableInputValue}
-            onInsertVariable={insertVariable}
-            onDataChange={handleDataChange}
-            onPreviewDataChange={handlePreviewDataChange}
-          />
+          <Card>
+            <CardContent >
+              <ScrollArea className="max-h-[400px]">
+                <PropertiesList
+                  properties={visibleProperties}
+                  data={data}
+                  isPreview={isPreview}
+                  collapsedKeys={collapsedKeys}
+                  onCollapsedChange={setCollapsedKeys}
+                  variableContext={variableContext}
+                  isVariableModeActive={isVariableModeActive}
+                  onToggleVariableMode={toggleVariableMode}
+                  toVariableInputValue={toVariableInputValue}
+                  onInsertVariable={insertVariable}
+                  onDataChange={handleDataChange}
+                  onPreviewDataChange={handlePreviewDataChange}
+                />
+              </ScrollArea>
+            </CardContent>
+          </Card>
 
           {canEditOutputFields && (
-            <OutputFieldsSection
-              node={node}
-              data={data}
-              variableContext={variableContext}
-              selectedJsonPreset={selectedJsonPreset}
-              debugResult={debugResult}
-              hasDebugOutput={hasDebugOutput}
-              onDataChange={handleDataChange}
-              onOpenImport={() => setImportOpen(true)}
-            />
+            <Card>
+              <CardContent >
+                <ScrollArea className="max-h-[300px]">
+                  <OutputFieldsSection
+                    node={node}
+                    data={data}
+                    variableContext={variableContext}
+                    selectedJsonPreset={selectedJsonPreset}
+                    debugResult={debugResult}
+                    hasDebugOutput={hasDebugOutput}
+                    onDataChange={handleDataChange}
+                    onOpenImport={() => setImportOpen(true)}
+                  />
+                </ScrollArea>
+              </CardContent>
+            </Card>
           )}
 
         </div>

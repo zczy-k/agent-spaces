@@ -113,7 +113,7 @@ module.exports = (t) => [
     properties: [
       { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, tooltip: t('field.apiKey.tooltip', 'OpenAI API Key'), default: CONFIG_APIKEY },
       { key: 'prompt', label: t('field.promptEdit.label', 'Edit Description'), type: 'textarea', required: true, tooltip: t('field.promptEdit.tooltip', 'Describe the editing effect you want.') },
-      { key: 'images', label: t('field.imagesUrl.label', 'Image URLs'), type: 'textarea', required: true, tooltip: t('field.imagesUrl.tooltip', 'Input image URL array, e.g. [{"image_url":"https://..."}]') },
+      { key: 'images', label: t('field.imagesUrl.label', 'Image URLs'), type: 'textarea', dataType: 'object[]', required: true, tooltip: t('field.imagesUrl.tooltip', 'Input image URL array, e.g. [{"image_url":"https://..."}]') },
       { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'gpt-image-1', options: [
         { label: 'gpt-image-1 (Default)', value: 'gpt-image-1' },
         { label: 'gpt-image-1.5', value: 'gpt-image-1.5' },
@@ -302,7 +302,7 @@ module.exports = (t) => [
     ],
     properties: [
       { key: 'apiKey', label: t('field.apiKey.label', 'API Key'), type: 'text', required: true, tooltip: t('field.apiKey.tooltip', 'OpenAI API Key'), default: CONFIG_APIKEY },
-      { key: 'input', label: t('field.input.label', 'Input Text'), type: 'textarea', required: true, tooltip: t('field.input.tooltip', 'Text or JSON array of texts.') },
+      { key: 'input', label: t('field.input.label', 'Input Text'), type: 'textarea', dataType: 'any', required: true, tooltip: t('field.input.tooltip', 'Text or JSON array of texts.') },
       { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'text-embedding-3-small', options: [
         { label: 'text-embedding-3-small (Default)', value: 'text-embedding-3-small' },
         { label: 'text-embedding-3-large', value: 'text-embedding-3-large' },

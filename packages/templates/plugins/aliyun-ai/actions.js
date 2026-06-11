@@ -322,7 +322,7 @@ module.exports = (t) => {
     properties: [
       API_KEY_PROP,
       PROMPT_PROP(t('field.prompt.label_edit', 'Edit Instruction'), t('field.prompt.tooltip_edit', 'Describe the edit direction, e.g. "change background to seaside"')),
-      { key: 'images', label: t('field.images.label_url', 'Image URL'), type: 'textarea', required: true, tooltip: t('field.images.tooltip_url', 'Input image URL array, e.g. ["https://..."]') },
+      { key: 'images', label: t('field.images.label_url', 'Image URL'), type: 'textarea', dataType: 'string[]', required: true, tooltip: t('field.images.tooltip_url', 'Input image URL array, e.g. ["https://..."]') },
       { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'qwen-image-2.0-pro', options: QWEN_EDIT_MODELS },
       { key: 'size', label: t('field.size.label', 'Resolution'), type: 'select', default: '2048*2048', options: [
         { label: '2048*2048 (默认)', value: '2048*2048' },
@@ -520,7 +520,7 @@ module.exports = (t) => {
     properties: [
       API_KEY_PROP,
       PROMPT_PROP(t('field.prompt.label_image', 'Image Description'), t('field.prompt.tooltip_image', 'Describe the image you want to generate')),
-      { key: 'images', label: t('field.images.label_reference', 'Reference Image URL'), type: 'textarea', tooltip: t('field.images.tooltip_reference', 'Reference image URL array (optional), e.g. ["https://..."]') },
+      { key: 'images', label: t('field.images.label_reference', 'Reference Image URL'), type: 'textarea', dataType: 'string[]', tooltip: t('field.images.tooltip_reference', 'Reference image URL array (optional), e.g. ["https://..."]') },
       { key: 'model', label: t('field.model.label', 'Model'), type: 'select', default: 'kling/kling-v3-image-generation', options: KLING_IMAGE_MODELS },
       { key: 'aspectRatio', label: t('field.aspectRatio.label', 'Aspect Ratio'), type: 'select', default: '1:1', options: ASPECT_RATIO },
       { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', default: '1k', options: [
@@ -585,7 +585,7 @@ module.exports = (t) => {
     properties: [
       API_KEY_PROP,
       PROMPT_PROP(t('field.prompt.label_video', 'Video Description'), t('field.prompt.tooltip_video_optional', 'Describe the video content (optional)')),
-      { key: 'media', label: t('field.media.label_v27', 'Media Assets'), type: 'textarea', required: true, tooltip: t('field.media.tooltip_v27', 'JSON array, e.g. [{"type":"first_frame","url":"https://..."}]. Supports: first_frame, last_frame, driving_audio, first_clip') },
+      { key: 'media', label: t('field.media.label_v27', 'Media Assets'), type: 'textarea', dataType: 'object[]', required: true, tooltip: t('field.media.tooltip_v27', 'JSON array, e.g. [{"type":"first_frame","url":"https://..."}]. Supports: first_frame, last_frame, driving_audio, first_clip') },
       { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', default: '720P', options: [
         { label: '720P', value: '720P' },
         { label: '1080P', value: '1080P' },
@@ -772,7 +772,7 @@ module.exports = (t) => {
     properties: [
       API_KEY_PROP,
       PROMPT_PROP(t('field.prompt.label_reference_video', 'Video Description'), t('field.prompt.tooltip_reference_video', 'Use "image 1" "video 1" to refer to reference materials, describe the video content')),
-      { key: 'media', label: t('field.media.label_reference', 'Reference Assets'), type: 'textarea', required: true, tooltip: t('field.media.tooltip_reference', 'JSON array, e.g. [{"type":"reference_image","url":"https://...","reference_voice":"https://...mp3"}]') },
+      { key: 'media', label: t('field.media.label_reference', 'Reference Assets'), type: 'textarea', dataType: 'object[]', required: true, tooltip: t('field.media.tooltip_reference', 'JSON array, e.g. [{"type":"reference_image","url":"https://...","reference_voice":"https://...mp3"}]') },
       { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', default: '720P', options: [
         { label: '720P', value: '720P' },
         { label: '1080P', value: '1080P' },
@@ -900,7 +900,7 @@ module.exports = (t) => {
       API_KEY_PROP,
       PROMPT_PROP(t('field.prompt.label_edit_video', 'Edit Instruction'), t('field.prompt.tooltip_edit_video', 'E.g. "convert to clay style" or "replace clothes with the reference image"')),
       { key: 'videoUrl', label: t('field.videoUrl.label', 'Video URL'), type: 'text', required: true, tooltip: t('field.videoUrl.tooltip', 'Video URL to edit (mp4/mov, 2-10 seconds)') },
-      { key: 'referenceImages', label: t('field.referenceImages.label', 'Reference Image URL'), type: 'textarea', tooltip: t('field.referenceImages.tooltip', 'Reference image URL array (optional), e.g. ["https://..."], max 4') },
+      { key: 'referenceImages', label: t('field.referenceImages.label', 'Reference Image URL'), type: 'textarea', dataType: 'string[]', tooltip: t('field.referenceImages.tooltip', 'Reference image URL array (optional), e.g. ["https://..."], max 4') },
       { key: 'resolution', label: t('field.resolution.label', 'Resolution'), type: 'select', default: '720P', options: [
         { label: '720P', value: '720P' },
         { label: '1080P', value: '1080P' },
@@ -1152,7 +1152,7 @@ module.exports = (t) => {
         { label: 'fun-asr (中英文)', value: 'fun-asr' },
         { label: 'qwen3-asr-flash-filetrans (千问长音频)', value: 'qwen3-asr-flash-filetrans' },
       ], tooltip: t('field.model.tooltip_asr', 'Supported languages and sample rates vary by model') },
-      { key: 'fileUrls', label: t('field.fileUrls.label', 'Audio File URL'), type: 'textarea', required: true, tooltip: t('field.fileUrls.tooltip', 'FunASR/Paraformer: URL array, e.g. ["https://...mp3"], max 100') },
+      { key: 'fileUrls', label: t('field.fileUrls.label', 'Audio File URL'), type: 'textarea', dataType: 'string[]', required: true, tooltip: t('field.fileUrls.tooltip', 'FunASR/Paraformer: URL array, e.g. ["https://...mp3"], max 100') },
       { key: 'fileUrl', label: t('field.fileUrl.label_qwen', 'Audio File URL (Qwen)'), type: 'text', tooltip: t('field.fileUrl.tooltip_qwen', 'Qwen-Filetrans only: single audio file URL') },
       { key: 'languageHints', label: t('field.languageHints.label', 'Language Hints'), type: 'text', tooltip: t('field.languageHints.tooltip', 'Paraformer-v2 language code array, e.g. ["zh","en"]') },
       { key: 'language', label: t('field.language.label_qwen', 'Language (Qwen)'), type: 'select', default: '', options: [

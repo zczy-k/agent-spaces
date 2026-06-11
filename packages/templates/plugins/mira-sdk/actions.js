@@ -556,7 +556,7 @@ module.exports = (t) => {
       properties: [
         { key: 'clientId', label: 'Client ID', type: 'text', required: true },
         { key: 'libraryId', label: 'Library ID', type: 'text', required: true },
-        { key: 'message', label: 'Message', type: 'textarea', required: true, tooltip: t('field.message.tooltip', 'Message to send. Can be JSON string.') },
+        { key: 'message', label: 'Message', type: 'textarea', dataType: 'object', required: true, tooltip: t('field.message.tooltip', 'Message to send. Can be JSON string.') },
       ],
       configProperties,
       outputs: commonOutputs,
@@ -582,7 +582,7 @@ module.exports = (t) => {
       description: t('action.broadcast.description', 'Broadcast a message to all devices in a library.'),
       properties: [
         { key: 'libraryId', label: 'Library ID', type: 'text', required: true },
-        { key: 'message', label: 'Message', type: 'textarea', required: true },
+        { key: 'message', label: 'Message', type: 'textarea', dataType: 'object', required: true },
       ],
       configProperties,
       outputs: commonOutputs,
