@@ -278,6 +278,7 @@ function formatWorkflowUiPromptContext(context: WorkflowUiPromptContext): string
     '- Keep the File Structure section in `src/CLAUDE.md` in sync with the actual files.',
     '',
     '- If you need available host UI components, call list_agent_spaces_ui_components before creating hand-written equivalents.',
+    '- If a window.AgentSpacesUI component usage, props, composition pattern, or import source is unclear, inspect its implementation at https://github.com/hunmer/agent-spaces/tree/main/packages/web/src/components/ui before using it.',
     '- In React mode, prefer components exposed by window.AgentSpacesUI over hand-written UI components. Example: `const { Button, Card, CardContent } = window.AgentSpacesUI;`.',
     '- In React mode, do not import host UI components from source paths; destructure them from window.AgentSpacesUI.',
     '- To execute enabled plugin tools from preview code, call `window.AgentSpaces.callPluginTool(pluginId, toolName, args)`.',
