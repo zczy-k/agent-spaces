@@ -294,5 +294,5 @@ export function WorkflowUiRenderer({
     else renderHtml(sourceCode);
   }, [sourceCode, type, renderReact, renderHtml]);
 
-  return <div ref={containerRef} className={cn('h-full w-full overflow-auto', className)} />;
+  return <div ref={containerRef} className={cn('relative h-full w-full overflow-auto [transform:translateZ(0)]', className)} />;
 }
