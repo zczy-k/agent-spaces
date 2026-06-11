@@ -224,18 +224,31 @@ function WorkflowEditorInner({
   }, [clearSelectedExecutionLog, exitPreview]);
   const autoPreviewLogIdRef = useRef<string | null>(null);
 
+  // Auto-preview when execution finishes in the current session
   useEffect(() => {
     const log = execution.executionLog;
     const isFinished = execution.execStatus === 'completed' || execution.execStatus === 'error';
     if (!isFinished || !log?.snapshot) return;
     if (execution.selectedExecutionLogId !== log.id) return;
     if (autoPreviewLogIdRef.current === log.id) return;
-    // Restore scenario (no active execution): only auto-preview if the pref is enabled
-    if (!execution.currentExecutionId && state.workflow?.layoutSnapshot?.autoPreviewLastRun !== true) return;
 
     autoPreviewLogIdRef.current = log.id;
     enterPreview(log);
-  }, [enterPreview, execution.execStatus, execution.executionLog, execution.selectedExecutionLogId, execution.currentExecutionId, state.workflow?.layoutSnapshot?.autoPreviewLastRun]);
+  }, [enterPreview, execution.execStatus, execution.executionLog, execution.selectedExecutionLogId]);
+
+  // Restore last run result on open when the pref is enabled
+  useEffect(() => {
+    if (state.workflow?.layoutSnapshot?.autoPreviewLastRun !== true) return;
+    if (!execution.executionLogs.length) return;
+    if (execution.currentExecutionId) return; // active execution, not a restore
+    const log = execution.executionLogs.find(l =>
+      (l.status === 'completed' || l.status === 'error') && l.snapshot
+    );
+    if (!log || autoPreviewLogIdRef.current === log.id) return;
+    autoPreviewLogIdRef.current = log.id;
+    execution.handleSelectExecutionLog(log);
+    enterPreview(log);
+  }, [enterPreview, execution.executionLogs, execution.currentExecutionId, execution.handleSelectExecutionLog, state.workflow?.layoutSnapshot?.autoPreviewLastRun]);
 
   // ---- Load plugin node definitions at editor level ----
   // Must happen here, not in WorkflowNodeSidebar, so canvas works even when sidebar tab is closed
@@ -458,7 +471,13 @@ function WorkflowEditorInner({
         return (
           <WorkflowCanvasStylePanel
             canvasPrefs={workflow.layoutSnapshot ?? {}}
-            onCanvasPreferencesChange={canvas.handleCanvasPreferencesChange}
+            onCanvasPreferencesChange={(prefs) => {
+              if (isWorkflowReadOnly) return;
+              const updated = { ...workflow, layoutSnapshot: prefs };
+              state.setWorkflow(updated);
+              if (state.isPreview) markEditorDirty();
+              else saveWorkflow(updated);
+            }}
             onAutoLayout={isWorkflowReadOnly ? undefined : canvas.handleAutoLayout}
             isCanvasLocked={isWorkflowReadOnly}
           />

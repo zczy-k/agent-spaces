@@ -48,12 +48,6 @@ export function useWorkflowEditorExecution({
     try {
       const logs = await executionLogApi.list(workflowId);
       setExecutionLogs(logs);
-      const restored = logs[0] ?? null;
-      setExecutionLog(current => current ?? restored);
-      setSelectedExecutionLogId(current => current ?? restored?.id ?? null);
-      if (restored && (restored.status === 'completed' || restored.status === 'error')) {
-        setExecStatus(restored.status);
-      }
     } catch {
       setExecutionLogs([]);
     }
