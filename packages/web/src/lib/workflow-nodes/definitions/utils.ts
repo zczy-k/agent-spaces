@@ -16,7 +16,7 @@ export const utilsNodes: NodeTypeDefinition[] = [
         inputMode: 'variable',
         tooltip: 'nodes.flatten_array.props.array.tooltip',
         default: [],
-        itemTemplate: [],
+        itemTemplate: {},
         fields: [],
       },
       {

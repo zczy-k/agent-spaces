@@ -20,7 +20,10 @@
     "field.pitch.tooltip": "音调调节，默认 0",
     "field.baseUrl.label": "API 地址",
     "field.baseUrl.tooltip": "千音 API 基础地址",
-    "message.ttsSuccess": "语音合成完成，音频已保存 ({size}KB)"
+    "message.ttsSuccess": "语音合成完成，音频已保存 ({size}KB)",
+    "action.speakers.label": "获取发音人列表",
+    "action.speakers.description": "从千音获取可用的发音人列表",
+    "message.speakersSuccess": "找到 {count} 个发音人"
   },
   "en": {
     "category": "Qianyin",
@@ -43,6 +46,9 @@
     "field.pitch.tooltip": "Pitch adjustment, default 0",
     "field.baseUrl.label": "API URL",
     "field.baseUrl.tooltip": "Qianyin API base URL",
-    "message.ttsSuccess": "Speech synthesis completed, audio saved ({size}KB)"
+    "message.ttsSuccess": "Speech synthesis completed, audio saved ({size}KB)",
+    "action.speakers.label": "Get Speaker List",
+    "action.speakers.description": "Fetch available speaker list from Qianyin",
+    "message.speakersSuccess": "Found {count} speakers"
   }
 }

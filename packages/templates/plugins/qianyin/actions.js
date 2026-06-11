@@ -8,6 +8,7 @@ const {
   buildAuthHeaders,
   resolveBaseUrl,
   postJSON,
+  getJSON,
   downloadBuffer,
   saveToTempFile,
   getFormatExt,
@@ -119,6 +120,58 @@ module.exports = (t) => [
           size: audioBuffer.length,
           fileUrl,
         },
+      }
+    },
+  },
+
+  // ─── 获取发音人列表 ─────────────────────────
+  {
+    name: 'qianyin_speakers',
+    label: t('action.speakers.label', 'Get Speaker List'),
+    category: t('category', 'Qianyin'),
+    icon: 'Users',
+    description: t('action.speakers.description', 'Fetch available speaker list from Qianyin'),
+    tool: false,
+    properties: [
+      { key: 'baseUrl', label: t('field.baseUrl.label', 'API URL'), type: 'text', default: `${CONFIG_PREFIX}["baseUrl"]}}`, tooltip: t('field.baseUrl.tooltip', 'Qianyin API base URL') },
+    ],
+    outputs: [
+      { key: 'success', type: 'boolean' },
+      { key: 'message', type: 'string' },
+      { key: 'data', type: 'object', children: [
+        { key: 'speakers', type: 'object', children: [] },
+        { key: 'total', type: 'number' },
+      ] },
+    ],
+    run: async (ctx, args) => {
+      const baseUrl = resolveBaseUrl(args)
+
+      ctx.logger.info(`获取千音发音人列表: ${baseUrl}/api/speaker/GetList`)
+
+      const result = await getJSON(`${baseUrl}/api/speaker/GetList`, null, 15000)
+
+      if (result.code !== 200) {
+        throw new Error(`获取发音人列表失败: ${result.message || '未知错误'} (code: ${result.code})`)
+      }
+
+      const list = result.data?.list || []
+      const speakers = list.map((s) => ({
+        id: s.id,
+        name: s.name,
+        gender: s.gender === 1 ? 'male' : 'female',
+        language: s.language,
+        description: s.descr,
+        avatar: s.headUrl,
+        auditionUrl: s.auditionUrl,
+        price: s.price,
+      }))
+
+      ctx.logger.info(`获取到 ${speakers.length} 个发音人`)
+
+      return {
+        success: true,
+        message: t('message.speakersSuccess', 'Found {count} speakers').replace('{count}', speakers.length),
+        data: { speakers, total: speakers.length },
       }
     },
   },

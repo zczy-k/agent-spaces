@@ -168,7 +168,7 @@ function ExecutionInputFields({
             ) : field.inputMode === 'native' && field.type === 'select' ? (
               <Select
                 value={getSelectValue(form.values[field.key], field.value)}
-                onValueChange={value => form.setField(field.key, value)}
+                onValueChange={value => value != null && form.setField(field.key, value)}
                 disabled={disabled}
               >
                 <SelectTrigger className={cn('h-8 text-xs w-full', hasError && 'border-destructive')}>

@@ -1,9 +1,10 @@
 import * as React from "react";
 import { motion } from "framer-motion";
-import { cn } from "@/lib/utils"; // Assuming you have a `cn` utility from shadcn
+import { cn } from "@/lib/utils";
+import type { HTMLMotionProps } from "framer-motion";
 
 // Define the props for the component
-interface AnimatedFeatureCardProps extends React.HTMLAttributes<HTMLDivElement> {
+interface AnimatedFeatureCardProps extends Omit<HTMLMotionProps<"div">, 'title' | 'ref'> {
   /** The numerical index to display, e.g., "001" */
   index: string;
   /** The tag or category label */
@@ -38,7 +39,7 @@ const colorVariants = {
 const AnimatedFeatureCard = React.forwardRef<
   HTMLDivElement,
   AnimatedFeatureCardProps
->(({ className, index, tag, title, imageSrc, color, ...props }, ref) => {
+>(({ className, index, tag, title, imageSrc, color, ...props }: AnimatedFeatureCardProps, ref) => {
   const cardStyle = colorVariants[color] as React.CSSProperties;
 
   return (
@@ -53,7 +54,7 @@ const AnimatedFeatureCard = React.forwardRef<
       initial="initial"
       variants={{
         initial: { y: 0 },
-        hover: { y: -10, shadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)" },
+        hover: { y: -10, boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)" },
       }}
       transition={{ type: "spring", stiffness: 200, damping: 15 }}
       {...props}

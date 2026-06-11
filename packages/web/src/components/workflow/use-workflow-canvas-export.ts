@@ -42,8 +42,8 @@ export function useCanvasExport(
         width: imageWidth,
         height: imageHeight,
         style: {
-          width: imageWidth,
-          height: imageHeight,
+          width: `${imageWidth}px`,
+          height: `${imageHeight}px`,
           transform: `translate(${x}px, ${y}px) scale(${zoom})`,
         },
       });

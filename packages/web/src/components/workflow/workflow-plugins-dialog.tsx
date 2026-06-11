@@ -13,13 +13,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { fetchStoreIndex, resolveStoreUrl } from '@/lib/agent-store';
 import { pluginApi, type StoreWorkflowPlugin, type WorkflowPlugin } from '@/lib/workflow-plugin-api';
 import {
-  PackagePlus, RefreshCw, Search, Store,
+  ArrowDownUp, PackagePlus, RefreshCw, Search, Store,
 } from 'lucide-react';
 import { LocalPluginCard, StorePluginCard } from './workflow-plugin-card';
 import { WorkflowPluginConfigDialog } from './workflow-plugin-config-dialog';
 import { useLocale } from '@/components/layout/locale-provider';
 
 type PluginTab = 'local' | 'store';
+type SortBy = 'default' | 'name' | 'status';
 
 export function WorkflowPluginsDialog({
   open,
@@ -40,6 +41,7 @@ export function WorkflowPluginsDialog({
   const [query, setQuery] = useState('');
   const [tag, setTag] = useState('__all__');
   const [status, setStatus] = useState<'all' | 'enabled' | 'disabled'>('all');
+  const [sortBy, setSortBy] = useState<SortBy>('default');
   const [configPlugin, setConfigPlugin] = useState<WorkflowPlugin | null>(null);
   const [installingId, setInstallingId] = useState<string | null>(null);
   const { locale } = useLocale();
@@ -70,9 +72,19 @@ export function WorkflowPluginsDialog({
     return Array.from(set).sort();
   }, [sourcePlugins]);
 
+  function applySort<T>(items: T[], getSortKey: (item: T) => [number, string]): T[] {
+    if (sortBy === 'default') return items;
+    return [...items].sort((a, b) => {
+      const [aPri, aName] = getSortKey(a);
+      const [bPri, bName] = getSortKey(b);
+      if (aPri !== bPri) return aPri - bPri;
+      return aName.localeCompare(bName);
+    });
+  }
+
   const filteredLocal = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return plugins.filter((plugin) => {
+    const filtered = plugins.filter((plugin) => {
       if (q && !plugin.name.toLowerCase().includes(q) && !plugin.description.toLowerCase().includes(q)) return false;
       if (tag !== '__all__' && !(plugin.tags || []).includes(tag)) return false;
       const inWorkflow = enabledPluginIds.has(plugin.id);
@@ -80,16 +92,24 @@ export function WorkflowPluginsDialog({
       if (status === 'disabled' && inWorkflow) return false;
       return true;
     });
-  }, [plugins, query, tag, status, enabledPluginIds]);
+    return applySort(filtered, (p) => [
+      sortBy === 'status' ? (enabledPluginIds.has(p.id) ? 0 : 1) : 0,
+      p.name,
+    ]);
+  }, [plugins, query, tag, status, enabledPluginIds, sortBy]);
 
   const filteredStore = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return workflowStorePlugins.filter((plugin) => {
+    const filtered = workflowStorePlugins.filter((plugin) => {
       if (q && !plugin.name.toLowerCase().includes(q) && !plugin.description.toLowerCase().includes(q)) return false;
       if (tag !== '__all__' && !(plugin.tags || []).includes(tag)) return false;
       return true;
     });
-  }, [workflowStorePlugins, query, tag]);
+    return applySort(filtered, (p) => [
+      sortBy === 'status' ? (installedPluginIds.has(p.id) ? 0 : 1) : 0,
+      p.name,
+    ]);
+  }, [workflowStorePlugins, query, tag, installedPluginIds, sortBy]);
 
   async function loadPlugins() {
     setLoading(true);
@@ -220,12 +240,14 @@ export function WorkflowPluginsDialog({
     setQuery('');
     setTag('__all__');
     setStatus('all');
+    setSortBy('default');
   }
 
   function switchTab(tab: PluginTab) {
     setActiveTab(tab);
     setTag('__all__');
     setStatus('all');
+    setSortBy('default');
   }
 
   const hasFilters = query || tag !== '__all__' || status !== 'all';
@@ -305,6 +327,17 @@ export function WorkflowPluginsDialog({
                   </SelectContent>
                 </Select>
               )}
+              <Select value={sortBy} onValueChange={(value) => setSortBy((value || 'default') as SortBy)}>
+                <SelectTrigger className="h-7 w-[120px] text-xs">
+                  <ArrowDownUp className="h-3.5 w-3.5 mr-1" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="default">默认排序</SelectItem>
+                  <SelectItem value="name">按名称</SelectItem>
+                  <SelectItem value="status">{activeTab === 'local' ? '按添加状态' : '按安装状态'}</SelectItem>
+                </SelectContent>
+              </Select>
               {hasFilters && (
                 <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" onClick={clearFilters}>清除</Button>
               )}
