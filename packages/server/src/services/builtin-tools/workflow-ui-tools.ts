@@ -199,7 +199,7 @@ export function createWorkflowUiFunctionTools(ctx: WorkflowUiToolContext): Agent
     },
     {
       name: 'execute_plugin_tool',
-      description: '执行指定插件的 tool 并返回结果。执行前必须先调用 get_plugin_tool_detail 确认参数格式。',
+      description: '执行指定插件的 tool 并返回结果。执行前必须先调用 get_plugin_tool_detail 确认参数格式和返回结构。',
       inputSchema: schema({
         pluginId: { type: 'string', description: '插件 ID' },
         toolName: { type: 'string', description: 'Tool 名称' },

@@ -101,15 +101,30 @@ function buildPreviewSnapshot(
     return { ...cache, [activeFile]: activeContent };
 }
 
-async function readProjectFiles(projectId: string, tree: string[]): Promise<Record<string, string>> {
+async function readFiles(projectId: string, files: string[]): Promise<Record<string, string>> {
     const contents: Record<string, string> = {};
-    for (const file of tree) {
+    for (const file of files) {
         try {
             const { content } = await sdk.workflowUi.readFile(projectId, file);
             contents[file] = content;
         } catch { /* skip unreadable files */ }
     }
     return contents;
+}
+
+type FileManifest = { path: string; mtimeMs: number };
+
+/** Files changed between two manifests: added, modified, or removed paths. */
+function diffManifest(prev: Record<string, number>, next: FileManifest[]): { changed: string[]; removed: string[] } {
+    const changed: string[] = [];
+    const removed: string[] = [];
+    for (const entry of next) {
+        if (prev[entry.path] !== entry.mtimeMs) changed.push(entry.path);
+    }
+    for (const path of Object.keys(prev)) {
+        if (!next.some((entry) => entry.path === path)) removed.push(path);
+    }
+    return { changed, removed };
 }
 
 interface WorkflowUiEditorProps {
@@ -140,6 +155,7 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
     const filesRef = useRef<string[]>([]);
     const previewCodeRef = useRef('');
     const filesContentRef = useRef<Record<string, string>>({});
+    const fileMtimeRef = useRef<Record<string, number>>({});
     const mainFileRef = useRef<string>('index.jsx');
     const sourceCodeRef = useRef('');
     const [saveStatus, setSaveStatus] = useState<'saved' | 'modified' | 'saving'>('saved');
@@ -163,15 +179,20 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
         async function load() {
             try {
                 const p = await sdk.workflowUi.get(projectId);
-                const tree = await sdk.workflowUi.getFileTree(projectId);
+                const manifest = await sdk.workflowUi.getFileManifest(projectId);
                 if (cancelled) return;
+                const tree = manifest.map((entry) => entry.path);
                 setProject(p);
                 setFiles(tree);
                 filesRef.current = tree;
                 mainFileRef.current = p.mainFile || 'index.jsx';
 
-                // Load ALL file contents for multi-file import resolution
-                const contents = await readProjectFiles(projectId, tree);
+                // Build mtime baseline + read all contents once (for import resolution).
+                const mtimeMap: Record<string, number> = {};
+                for (const entry of manifest) mtimeMap[entry.path] = entry.mtimeMs;
+                fileMtimeRef.current = mtimeMap;
+
+                const contents = await readFiles(projectId, tree);
                 filesContentRef.current = contents;
 
                 if (tree.length > 0) {
@@ -197,14 +218,15 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
         return () => { cancelled = true; };
     }, [projectId, triggerPreview]);
 
-    const refreshFileTree = useCallback(async () => {
+    const refreshFileTree = useCallback(async (): Promise<FileManifest[] | null> => {
         try {
-            const tree = await sdk.workflowUi.getFileTree(projectId);
+            const manifest = await sdk.workflowUi.getFileManifest(projectId);
+            const tree = manifest.map((entry) => entry.path);
             if (!areFileListsEqual(filesRef.current, tree)) {
                 filesRef.current = tree;
                 setFiles(tree);
             }
-            return tree;
+            return manifest;
         } catch (error) {
             console.error('Failed to refresh file tree:', error);
             return null;
@@ -212,26 +234,47 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
     }, [projectId]);
 
     const refreshProjectFiles = useCallback(async (
-        tree: string[],
+        manifest: FileManifest[],
         options?: { force?: boolean; syncPreview?: boolean },
     ) => {
         if (!activeFile) return;
 
         try {
-            const contents = await readProjectFiles(projectId, tree);
-            const content = contents[activeFile];
+            const nextMtime: Record<string, number> = {};
+            for (const entry of manifest) nextMtime[entry.path] = entry.mtimeMs;
+
+            // force: re-read everything. Otherwise only read files whose mtime changed.
+            const changed = options?.force
+                ? manifest.map((entry) => entry.path)
+                : diffManifest(fileMtimeRef.current, manifest).changed;
+            const removed = options?.force ? [] : diffManifest(fileMtimeRef.current, manifest).removed;
+
+            fileMtimeRef.current = nextMtime;
+
+            // Drop removed files from cache before merging.
+            if (removed.length > 0) {
+                for (const path of removed) delete filesContentRef.current[path];
+            }
+
+            let contentChanged = removed.length > 0;
+
+            if (changed.length > 0) {
+                const fetched = await readFiles(projectId, changed);
+                for (const [file, nextContent] of Object.entries(fetched)) {
+                    if (filesContentRef.current[file] !== nextContent) contentChanged = true;
+                    filesContentRef.current[file] = nextContent;
+                }
+            }
+
+            const content = filesContentRef.current[activeFile];
             if (content === undefined) {
-                filesContentRef.current = contents;
                 if (options?.syncPreview) {
-                    triggerPreview(contents, mainFileRef.current);
+                    triggerPreview(filesContentRef.current, mainFileRef.current);
                 }
                 return;
             }
 
             const fileChanged = content !== loadedFileContentRef.current;
-            const cacheChanged = Object.keys(contents).length !== Object.keys(filesContentRef.current).length
-                || Object.entries(contents).some(([file, nextContent]) => filesContentRef.current[file] !== nextContent);
-
             const shouldUpdateEditor = options?.force || !localDirtyRef.current;
 
             if (shouldUpdateEditor) {
@@ -242,12 +285,13 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
                 sourceCodeRef.current = content;
             }
 
+            // Active file has unsaved local edits — keep them in the preview snapshot.
             const snapshot = shouldUpdateEditor
-                ? contents
-                : buildPreviewSnapshot(contents, activeFile, sourceCodeRef.current);
+                ? filesContentRef.current
+                : { ...filesContentRef.current, [activeFile]: sourceCodeRef.current };
             filesContentRef.current = snapshot;
 
-            if (options?.syncPreview && (cacheChanged || fileChanged || options?.force || localDirtyRef.current)) {
+            if (options?.syncPreview && (contentChanged || fileChanged || options?.force || localDirtyRef.current)) {
                 triggerPreview(snapshot, mainFileRef.current);
             }
         } catch (error) {

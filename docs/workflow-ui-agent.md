@@ -123,7 +123,7 @@ Workflow UI Agent 复用普通 channel Agent 的运行时能力，包括：
 后端会把 `workflowUiContext.projectType` 注入 Agent 提示词：
 
 - React 模式：优先调用 `list_agent_spaces_ui_components` 查询可用宿主组件，并优先通过 `window.AgentSpacesUI` 解构使用，例如 `const { Button, Card, CardContent, Search, Loader2 } = window.AgentSpacesUI;`。lucide-react 图标也按标准图标名暴露在 `window.AgentSpacesUI` 上；不要从宿主源码路径 import 这些组件或图标。
-- 插件工具：预览代码中优先使用 `window.AgentSpaces.callPluginTool(pluginId, toolName, args)` 执行已启用插件工具；该方法直接返回插件 tool 结果，不返回 HTTP 外层 `{ success, result }`，例如 MiniMax TTS 音频地址读取 `result.data.audioUrl`；`window.AgentSpacesAPI.callPluginTool` 和 `window.AgentSpacesAPI.executePluginTool` 是兼容别名。
+- 插件工具：预览代码中优先使用 `window.AgentSpaces.callPluginTool(pluginId, toolName, args)` 执行已启用插件工具；消费返回值前应先按工具详情里的输出结构取字段，不要假设业务数据在顶层 `success` 包装上。若收到 `{ success, result }` 包装结构，则使用内层 `result` 里的插件输出；`window.AgentSpacesAPI.callPluginTool` 和 `window.AgentSpacesAPI.executePluginTool` 是兼容别名。
 - JSON 配置：预览代码可使用异步 helper `await window.AgentSpacesUI.readConfigJson(path)` 和 `await window.AgentSpacesUI.writeConfigJson(path, value)` 读写当前 Workflow UI 项目根目录下的 `configs/`。例如上一次提交选择建议使用 `await window.AgentSpacesUI.readLastSelection()` 和 `await window.AgentSpacesUI.writeLastSelection(value)`，对应 `configs/last-selection.json`。
 - 数据文件：预览代码可使用 `await window.AgentSpacesUI.saveDataFile(path, content)` 将文本或二进制内容保存到当前 Workflow UI 项目根目录下的 `data/`，也可使用 `await window.AgentSpacesUI.downloadFile(url, path?)` 下载远程文件并保存到 `data/`。
 - 兼容别名：配置和数据文件 helper 同时挂载在 `window.AgentSpaces` 与 `window.AgentSpacesAPI` 上。

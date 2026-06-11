@@ -114,6 +114,10 @@ export function getFileTree(projectId: string): string[] {
   return store.getFileTree(projectId);
 }
 
+export function getFileManifest(projectId: string) {
+  return store.getFileManifest(projectId);
+}
+
 export function readFile(projectId: string, filePath: string): string {
   const content = store.readFile(projectId, filePath);
   if (content === null) throw new Error(`File not found: ${filePath}`);

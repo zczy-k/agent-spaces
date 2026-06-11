@@ -38,6 +38,9 @@ export function createWorkflowUiApi(http: HttpClient) {
     getFileTree: (id: string): Promise<string[]> =>
       http.get(`/api/workflows-ui/${id}/files`),
 
+    getFileManifest: (id: string): Promise<{ path: string; mtimeMs: number }[]> =>
+      http.get(`/api/workflows-ui/${id}/files/manifest`),
+
     readFile: (id: string, filePath: string): Promise<{ content: string }> =>
       http.get(`/api/workflows-ui/${id}/files/content?path=${encodeURIComponent(filePath)}`),
 

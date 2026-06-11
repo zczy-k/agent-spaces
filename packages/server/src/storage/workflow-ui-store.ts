@@ -164,17 +164,27 @@ export function deleteProject(projectId: string): void {
 // ---- Files ----
 
 export function getFileTree(projectId: string): string[] {
+  return getFileManifest(projectId).map((entry) => entry.path);
+}
+
+export interface WorkflowUiFileEntry {
+  path: string;
+  mtimeMs: number;
+}
+
+/** Flat file list with mtime, so clients can diff for incremental refresh. */
+export function getFileManifest(projectId: string): WorkflowUiFileEntry[] {
   const dir = srcDir(projectId);
   if (!existsSync(dir)) return [];
 
-  const files: string[] = [];
+  const files: WorkflowUiFileEntry[] = [];
   function walk(d: string, prefix: string) {
     for (const entry of readdirSync(d, { withFileTypes: true })) {
       const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
       if (entry.isDirectory()) {
         walk(join(d, entry.name), rel);
       } else {
-        files.push(rel);
+        files.push({ path: rel, mtimeMs: statSync(join(d, entry.name)).mtimeMs });
       }
     }
   }

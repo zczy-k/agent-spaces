@@ -45,6 +45,12 @@ router.get('/:id/files', (req: Request<{ id: string }>, res: Response) => {
   catch (error: any) { res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message }); }
 });
 
+// Flat file list with mtime — lets clients diff and only fetch changed files.
+router.get('/:id/files/manifest', (req: Request<{ id: string }>, res: Response) => {
+  try { res.json(svc.getFileManifest(req.params.id)); }
+  catch (error: any) { res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message }); }
+});
+
 router.get('/:id/files/content', (req: Request<{ id: string }, any, any, { path?: string }>, res: Response) => {
   try {
     const filePath = req.query.path as string;
