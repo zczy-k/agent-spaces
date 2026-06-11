@@ -98,6 +98,17 @@ function buildPreviewSnapshot(
     return { ...cache, [activeFile]: activeContent };
 }
 
+async function readProjectFiles(projectId: string, tree: string[]): Promise<Record<string, string>> {
+    const contents: Record<string, string> = {};
+    for (const file of tree) {
+        try {
+            const { content } = await sdk.workflowUi.readFile(projectId, file);
+            contents[file] = content;
+        } catch { /* skip unreadable files */ }
+    }
+    return contents;
+}
+
 interface WorkflowUiEditorProps {
     projectId: string;
 }
@@ -127,6 +138,7 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
     const previewCodeRef = useRef('');
     const filesContentRef = useRef<Record<string, string>>({});
     const mainFileRef = useRef<string>('index.jsx');
+    const sourceCodeRef = useRef('');
     const [saveStatus, setSaveStatus] = useState<'saved' | 'modified' | 'saving'>('saved');
     const handleSaveRef = useRef<() => Promise<void>>(async () => { });
 
@@ -156,13 +168,7 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
                 mainFileRef.current = p.mainFile || 'index.jsx';
 
                 // Load ALL file contents for multi-file import resolution
-                const contents: Record<string, string> = {};
-                for (const file of tree) {
-                    try {
-                        const { content } = await sdk.workflowUi.readFile(projectId, file);
-                        contents[file] = content;
-                    } catch { /* skip unreadable files */ }
-                }
+                const contents = await readProjectFiles(projectId, tree);
                 filesContentRef.current = contents;
 
                 if (tree.length > 0) {
@@ -171,6 +177,7 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
                     const mainContent = contents[mainFile] || '';
                     if (!cancelled) {
                         setSourceCode(mainContent);
+                        sourceCodeRef.current = mainContent;
                         triggerPreview(contents, mainFile);
                         loadedFileContentRef.current = mainContent;
                         localDirtyRef.current = false;
@@ -201,13 +208,26 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
         }
     }, [projectId]);
 
-    const refreshActiveFile = useCallback(async (options?: { force?: boolean; syncPreview?: boolean }) => {
+    const refreshProjectFiles = useCallback(async (
+        tree: string[],
+        options?: { force?: boolean; syncPreview?: boolean },
+    ) => {
         if (!activeFile) return;
 
         try {
-            const { content } = await sdk.workflowUi.readFile(projectId, activeFile);
+            const contents = await readProjectFiles(projectId, tree);
+            const content = contents[activeFile];
+            if (content === undefined) {
+                filesContentRef.current = contents;
+                if (options?.syncPreview) {
+                    triggerPreview(contents, mainFileRef.current);
+                }
+                return;
+            }
+
             const fileChanged = content !== loadedFileContentRef.current;
-            if (!fileChanged && !options?.force) return;
+            const cacheChanged = Object.keys(contents).length !== Object.keys(filesContentRef.current).length
+                || Object.entries(contents).some(([file, nextContent]) => filesContentRef.current[file] !== nextContent);
 
             const shouldUpdateEditor = options?.force || !localDirtyRef.current;
 
@@ -216,16 +236,19 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
                 localDirtyRef.current = false;
                 setSaveStatus('saved');
                 setSourceCode(content);
-                // Update the cache
-                filesContentRef.current[activeFile] = content;
+                sourceCodeRef.current = content;
             }
 
-            if (options?.syncPreview && shouldUpdateEditor) {
-                // mainFile via ref (avoids React Compiler dep issue)
-                triggerPreview(buildPreviewSnapshot(filesContentRef.current, activeFile, content), mainFileRef.current);
+            const snapshot = shouldUpdateEditor
+                ? contents
+                : buildPreviewSnapshot(contents, activeFile, sourceCodeRef.current);
+            filesContentRef.current = snapshot;
+
+            if (options?.syncPreview && (cacheChanged || fileChanged || options?.force || localDirtyRef.current)) {
+                triggerPreview(snapshot, mainFileRef.current);
             }
         } catch (error) {
-            console.error('Failed to refresh file:', error);
+            console.error('Failed to refresh workflow UI files:', error);
         }
     }, [projectId, activeFile, triggerPreview]);
 
@@ -234,12 +257,13 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
         if (!activeFile) return;
 
         const interval = setInterval(() => {
-            refreshFileTree();
-            refreshActiveFile({ syncPreview: autoRefresh });
+            refreshFileTree().then((tree) => {
+                if (tree) refreshProjectFiles(tree, { syncPreview: autoRefresh });
+            });
         }, FILE_POLL_INTERVAL_MS);
 
         return () => clearInterval(interval);
-    }, [activeFile, autoRefresh, refreshActiveFile, refreshFileTree]);
+    }, [activeFile, autoRefresh, refreshFileTree, refreshProjectFiles]);
 
     // Auto-refresh debounce — update files map, preview main entry point
     useEffect(() => {
@@ -263,6 +287,8 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
             setSaveStatus('saving');
             await sdk.workflowUi.writeFile(projectId, activeFile, sourceCode);
             loadedFileContentRef.current = sourceCode;
+            sourceCodeRef.current = sourceCode;
+            filesContentRef.current[activeFile] = sourceCode;
             localDirtyRef.current = false;
             setSaveStatus('saved');
         } catch (error) {
@@ -276,9 +302,9 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
     }, [handleSave]);
 
     const handleManualRefresh = useCallback(async () => {
-        await refreshFileTree();
-        await refreshActiveFile({ force: true, syncPreview: true });
-    }, [refreshActiveFile, refreshFileTree]);
+        const tree = await refreshFileTree();
+        if (tree) await refreshProjectFiles(tree, { force: true, syncPreview: true });
+    }, [refreshFileTree, refreshProjectFiles]);
 
     const handleFileSelect = useCallback(async (file: string) => {
         // Save current file and update cache
@@ -293,6 +319,7 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
             const { content } = await sdk.workflowUi.readFile(projectId, file);
             setActiveFile(file);
             setSourceCode(content);
+            sourceCodeRef.current = content;
             filesContentRef.current[file] = content;
             loadedFileContentRef.current = content;
             localDirtyRef.current = false;
@@ -351,15 +378,17 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
                     <div className="flex flex-col h-full rounded-xl border border-border bg-background overflow-hidden">
                         {/* Toolbar with file picker */}
                         <div className="flex items-center justify-between px-2 py-1 border-b border-border">
-                            <span className="text-xs text-muted-foreground truncate max-w-[60%]" title={activeFile}>{activeFile}</span>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="size-5 shrink-0"
-                                onClick={() => navigator.clipboard.writeText(activeFile)}
-                            >
-                                <Copy className="size-3" />
-                            </Button>
+                            <div className="flex items-center gap-0.5 min-w-0 flex-1">
+                                <span className="text-xs text-muted-foreground truncate max-w-[60%]" title={activeFile}>{activeFile}</span>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="size-5 shrink-0"
+                                    onClick={() => navigator.clipboard.writeText(activeFile)}
+                                >
+                                    <Copy className="size-3" />
+                                </Button>
+                            </div>
                             <Popover>
                                 <PopoverTrigger
                                     render={<Button variant="ghost" size="icon" className="size-6" />}
@@ -390,6 +419,7 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
                                     localDirtyRef.current = dirty;
                                     setSaveStatus(dirty ? 'modified' : 'saved');
                                     setSourceCode(nextCode);
+                                    sourceCodeRef.current = nextCode;
                                 }}
                                 options={{
                                     minimap: { enabled: false },
