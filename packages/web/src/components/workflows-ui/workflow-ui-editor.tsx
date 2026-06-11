@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Loader2, Check, Pencil, Share2, Puzzle, FolderOpen } from 'lucide-react';
+import { Loader2, Check, Pencil, Share2, Puzzle, FolderOpen, Copy } from 'lucide-react';
 import { sdk } from '@/lib/sdk';
 import type { WorkflowUiProject } from '@agent-spaces/sdk';
 import { WorkflowUiPreview } from './workflow-ui-preview';
@@ -352,6 +352,14 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
                         {/* Toolbar with file picker */}
                         <div className="flex items-center justify-between px-2 py-1 border-b border-border">
                             <span className="text-xs text-muted-foreground truncate max-w-[60%]" title={activeFile}>{activeFile}</span>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-5 shrink-0"
+                                onClick={() => navigator.clipboard.writeText(activeFile)}
+                            >
+                                <Copy className="size-3" />
+                            </Button>
                             <Popover>
                                 <PopoverTrigger
                                     render={<Button variant="ghost" size="icon" className="size-6" />}
