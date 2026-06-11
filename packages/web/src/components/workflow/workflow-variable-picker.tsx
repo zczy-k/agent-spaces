@@ -454,54 +454,48 @@ export function WorkflowVariablePicker({
         <DropdownMenuSub>
           <DropdownMenuSubTrigger className="text-xs font-medium">{t('variablePicker.nodeInput')}</DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="w-56">
-            {inputMenuNodes.length === 0 ? (
-              <EmptyMenuItem>{t('variablePicker.noConnectedNodes')}</EmptyMenuItem>
-            ) : inputMenuNodes.map((node) => (
-              <DropdownMenuSub key={node.id}>
-                <DropdownMenuSubTrigger className="text-xs">
-                  <span className="truncate">{getNodeLabel(node, t)}</span>
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent className="min-w-[180px]">
-                  {getNodeInputFields(node).length > 0 ? (
+            {(() => {
+              const nodesWithFields = inputMenuNodes.filter((node) => getNodeInputFields(node).length > 0);
+              return nodesWithFields.length > 0 ? nodesWithFields.map((node) => (
+                <DropdownMenuSub key={node.id}>
+                  <DropdownMenuSubTrigger className="text-xs">
+                    <span className="truncate">{getNodeLabel(node, t)}</span>
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="min-w-[180px]">
                     <VariableFieldMenu
                       fields={getNodeInputFields(node)}
                       nodeId={node.id}
                       typeFilter={normalizedTypeFilter}
                       onSelect={(nodeId, fieldPath) => onSelect(buildInputFieldPath(nodeId, fieldPath))}
                     />
-                  ) : (
-                    <EmptyMenuItem>{t('variablePicker.noInputFields')}</EmptyMenuItem>
-                  )}
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-            ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              )) : <EmptyMenuItem>{t('variablePicker.noConnectedNodes')}</EmptyMenuItem>;
+            })()}
           </DropdownMenuSubContent>
         </DropdownMenuSub>
 
         <DropdownMenuSub>
           <DropdownMenuSubTrigger className="text-xs font-medium">{t('variablePicker.nodeOutput')}</DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="w-56">
-            {outputMenuNodes.length === 0 ? (
-              <EmptyMenuItem>{t('variablePicker.noConnectedNodes')}</EmptyMenuItem>
-            ) : outputMenuNodes.map((node) => (
-              <DropdownMenuSub key={node.id}>
-                <DropdownMenuSubTrigger className="text-xs">
-                  <span className="truncate">{getNodeLabel(node, t)}</span>
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent className="min-w-[180px]">
-                  {getNodeOutputs(node).length > 0 ? (
+            {(() => {
+              const nodesWithFields = outputMenuNodes.filter((node) => getNodeOutputs(node).length > 0);
+              return nodesWithFields.length > 0 ? nodesWithFields.map((node) => (
+                <DropdownMenuSub key={node.id}>
+                  <DropdownMenuSubTrigger className="text-xs">
+                    <span className="truncate">{getNodeLabel(node, t)}</span>
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="min-w-[180px]">
                     <VariableFieldMenu
                       fields={getNodeOutputs(node)}
                       nodeId={node.id}
                       typeFilter={normalizedTypeFilter}
                       onSelect={(nodeId, fieldPath) => onSelect(buildVariablePath(nodeId, fieldPath))}
                     />
-                  ) : (
-                    <EmptyMenuItem>{t('variablePicker.noOutputFields')}</EmptyMenuItem>
-                  )}
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-            ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              )) : <EmptyMenuItem>{t('variablePicker.noConnectedNodes')}</EmptyMenuItem>;
+            })()}
           </DropdownMenuSubContent>
         </DropdownMenuSub>
 

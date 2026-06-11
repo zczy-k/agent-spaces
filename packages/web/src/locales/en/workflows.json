@@ -84,7 +84,8 @@
     "testFailed": "Test failed",
     "currentJsonPreset": "Current JSON Preset",
     "copy": "Copy",
-    "node": "Node"
+    "node": "Node",
+    "outputPreview": "Output Preview"
   },
   "execution": {
     "status": {

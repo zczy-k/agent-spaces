@@ -34,6 +34,8 @@ export const FIELD_TYPES: OutputField['type'][] = [
   'number[]',
   'file[]',
   'image[]',
+  'audio[]',
+  'video[]',
   'any[]',
 ];
 

@@ -280,27 +280,29 @@ export function WorkflowPropertiesPanel({
             </Card>
           )}
 
-          <Card className="mt-2">
-            <CardContent >
-                <PropertiesList
-                  properties={visibleProperties}
-                  data={data}
-                  isPreview={isPreview}
-                  collapsedKeys={collapsedKeys}
-                  onCollapsedChange={setCollapsedKeys}
-                  variableContext={variableContext}
-                  isVariableModeActive={isVariableModeActive}
-                  onToggleVariableMode={toggleVariableMode}
-                  toVariableInputValue={toVariableInputValue}
-                  onInsertVariable={insertVariable}
-                  onDataChange={handleDataChange}
-                  onPreviewDataChange={handlePreviewDataChange}
-                />
-            </CardContent>
-          </Card>
+          {visibleProperties.length > 0 && (
+            <Card className="mt-2">
+              <CardContent >
+                  <PropertiesList
+                    properties={visibleProperties}
+                    data={data}
+                    isPreview={isPreview}
+                    collapsedKeys={collapsedKeys}
+                    onCollapsedChange={setCollapsedKeys}
+                    variableContext={variableContext}
+                    isVariableModeActive={isVariableModeActive}
+                    onToggleVariableMode={toggleVariableMode}
+                    toVariableInputValue={toVariableInputValue}
+                    onInsertVariable={insertVariable}
+                    onDataChange={handleDataChange}
+                    onPreviewDataChange={handlePreviewDataChange}
+                  />
+              </CardContent>
+            </Card>
+          )}
 
           {canEditOutputFields && (
-            <Card>
+            <Card className="mt-2">
               <CardContent >
                 <ScrollArea className="max-h-[300px]">
                   <OutputFieldsSection
