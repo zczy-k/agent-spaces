@@ -72,3 +72,4 @@ export { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarInset, Si
 export { SidebarProvider as SidebarContextProvider, useSidebar as useSidebarContext } from '@/components/ui/sidebar-context';
 export { MediaGallery, openMediaGallery, NodeMediaPreview } from '@/components/ui/media-gallery';
 export type { MediaItem } from '@/components/ui/media-gallery';
+export * from 'lucide-react';

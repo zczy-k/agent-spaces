@@ -51,7 +51,26 @@
     "modified": "Modified",
     "saving": "Saving...",
     "saved": "Saved",
-    "upload": "Upload files to current folder"
+    "upload": "Upload files to current folder",
+    "pathDialog": {
+      "newFileTitle": "New File",
+      "newFileDesc": "Enter the file name; subdirectory paths are allowed.",
+      "newFilePlaceholder": "e.g. components/Header.jsx",
+      "newFolderTitle": "New Folder",
+      "newFolderDesc": "Enter the folder name; subdirectory paths are allowed.",
+      "newFolderPlaceholder": "e.g. components/widgets",
+      "renameTitle": "Rename",
+      "renameDesc": "Enter the new name.",
+      "renamePlaceholder": "New name",
+      "moveTitle": "Move",
+      "moveDesc": "Enter the target directory path (empty for root).",
+      "movePlaceholder": "Target directory",
+      "copyTitle": "Copy",
+      "copyDesc": "Enter the target directory path (empty for root).",
+      "copyPlaceholder": "Target directory",
+      "confirm": "Confirm",
+      "cancel": "Cancel"
+    }
   },
   "preview": {
     "autoPreview": "Auto Preview",

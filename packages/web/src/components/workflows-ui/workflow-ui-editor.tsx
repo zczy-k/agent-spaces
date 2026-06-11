@@ -15,6 +15,9 @@ import { BackButton } from '@/components/common/back-button';
 import { ShareDialog } from '@/components/common/share-dialog';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
 import { FileTree, FileTreeFile, FileTreeFolder } from '@/components/editor/file-tree';
 import { FileIconImg, FolderIconImg } from '@/components/editor/file-icon';
 import { MonacoCodeEditor as MonacoEditor } from '@/components/editor/monaco-code-editor';
@@ -346,6 +349,86 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
         }
     }, [projectId, activeFile, refreshFileTree, refreshProjectFiles]);
 
+    // Unified path-input dialog for create file / create folder / rename / move / copy.
+    type PathDialogState = {
+        open: boolean;
+        mode: 'newFile' | 'newFolder' | 'rename' | 'move' | 'copy';
+        baseDir: string;   // target dir for create; source path for rename/move/copy
+        value: string;
+    };
+    const [pathDialog, setPathDialog] = useState<PathDialogState>({ open: false, mode: 'newFile', baseDir: '', value: '' });
+    const pathDialogT = useTranslations('workflows-ui.editor.pathDialog');
+
+    const refreshAfter = useCallback(async () => {
+        const tree = await refreshFileTree();
+        if (tree) await refreshProjectFiles(tree, { force: true, syncPreview: true });
+    }, [refreshFileTree, refreshProjectFiles]);
+
+    const handleDeleteFile = useCallback(async (path: string) => {
+        try {
+            await sdk.workflowUi.deleteFile(projectId, path);
+            await refreshAfter();
+        } catch (error) {
+            console.error('Failed to delete file:', error);
+        }
+    }, [projectId, refreshAfter]);
+
+    const openCreateDialog = useCallback((mode: 'newFile' | 'newFolder', targetDir: string) => {
+        const dir = mode === 'newFolder' && targetDir ? targetDir : targetDir;
+        setPathDialog({ open: true, mode, baseDir: dir, value: '' });
+    }, []);
+
+    const handleCreateFile = useCallback((targetDir: string) => openCreateDialog('newFile', targetDir), [openCreateDialog]);
+    const handleCreateFolder = useCallback((targetDir: string) => openCreateDialog('newFolder', targetDir), [openCreateDialog]);
+
+    const handleRenameFile = useCallback((path: string) => {
+        const name = path.split('/').pop() || '';
+        setPathDialog({ open: true, mode: 'rename', baseDir: path, value: name });
+    }, []);
+
+    const handleMoveFile = useCallback((path: string) => {
+        const dir = path.substring(0, path.lastIndexOf('/'));
+        setPathDialog({ open: true, mode: 'move', baseDir: path, value: dir });
+    }, []);
+
+    const handleCopyFile = useCallback((path: string) => {
+        const dir = path.substring(0, path.lastIndexOf('/'));
+        setPathDialog({ open: true, mode: 'copy', baseDir: path, value: dir });
+    }, []);
+
+    const handlePathDialogConfirm = useCallback(async () => {
+        const { mode, baseDir, value } = pathDialog;
+        const trimmed = value.trim();
+        if (!trimmed) return;
+        try {
+            if (mode === 'newFile') {
+                const rel = baseDir ? `${baseDir}/${trimmed}` : trimmed;
+                await sdk.workflowUi.writeFile(projectId, rel, '');
+            } else if (mode === 'newFolder') {
+                const rel = baseDir ? `${baseDir}/${trimmed}` : trimmed;
+                await sdk.workflowUi.createFolder(projectId, rel);
+            } else if (mode === 'rename') {
+                const dir = baseDir.substring(0, baseDir.lastIndexOf('/'));
+                const newName = trimmed.includes('/') ? trimmed.split('/').pop()! : trimmed;
+                const to = dir ? `${dir}/${newName}` : newName;
+                await sdk.workflowUi.renameFile(projectId, baseDir, to);
+            } else if (mode === 'move') {
+                const name = baseDir.split('/').pop() || '';
+                const to = trimmed ? `${trimmed}/${name}` : name;
+                await sdk.workflowUi.renameFile(projectId, baseDir, to);
+            } else if (mode === 'copy') {
+                const { content } = await sdk.workflowUi.readFile(projectId, baseDir);
+                const name = baseDir.split('/').pop() || '';
+                const to = trimmed ? `${trimmed}/${name}` : name;
+                await sdk.workflowUi.writeFile(projectId, to, content);
+            }
+            await refreshAfter();
+            setPathDialog(s => ({ ...s, open: false }));
+        } catch (error) {
+            console.error('Failed to perform file operation:', error);
+        }
+    }, [pathDialog, projectId, refreshAfter]);
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-full">
@@ -433,9 +516,16 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
                                 </PopoverTrigger>
                                 <PopoverContent align="end" className="w-56 p-0 max-h-64 overflow-auto">
                                     <FileTree
+                                        variant="project"
                                         defaultExpanded={new Set(collectFolderPaths(buildFileTree(files)))}
                                         selectedPath={activeFile}
                                         onFileSelect={(path) => { handleFileSelect(path); }}
+                                        onDelete={handleDeleteFile}
+                                        onRename={handleRenameFile}
+                                        onMove={handleMoveFile}
+                                        onCopyItem={handleCopyFile}
+                                        onCreateFile={handleCreateFile}
+                                        onCreateFolder={handleCreateFolder}
                                     >
                                         {renderTreeNodes(buildFileTree(files))}
                                     </FileTree>
@@ -538,6 +628,30 @@ export function WorkflowUiEditor({ projectId }: WorkflowUiEditorProps) {
                     if (project) setProject({ ...project, enabledPlugins: plugins });
                 }}
             />
+
+            <Dialog open={pathDialog.open} onOpenChange={(open) => setPathDialog(s => ({ ...s, open }))}>
+                <DialogContent className="sm:max-w-[400px]">
+                    <DialogHeader>
+                        <DialogTitle>{pathDialogT(`${pathDialog.mode}Title`)}</DialogTitle>
+                        <DialogDescription>{pathDialogT(`${pathDialog.mode}Desc`)}</DialogDescription>
+                    </DialogHeader>
+                    <Input
+                        autoFocus
+                        value={pathDialog.value}
+                        onChange={(e) => setPathDialog(s => ({ ...s, value: e.target.value }))}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handlePathDialogConfirm(); }}
+                        placeholder={pathDialogT(`${pathDialog.mode}Placeholder`)}
+                    />
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setPathDialog(s => ({ ...s, open: false }))}>
+                            {pathDialogT('cancel')}
+                        </Button>
+                        <Button onClick={handlePathDialogConfirm}>
+                            {pathDialogT('confirm')}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

@@ -47,6 +47,15 @@ export function createWorkflowUiApi(http: HttpClient) {
     uploadFiles: (id: string, formData: FormData): Promise<{ ok: true; files: { path: string; size: number }[] }> =>
       http.upload(`/api/workflows-ui/${id}/files/upload`, formData),
 
+    deleteFile: (id: string, filePath: string): Promise<void> =>
+      http.delete(`/api/workflows-ui/${id}/files?path=${encodeURIComponent(filePath)}`),
+
+    renameFile: (id: string, from: string, to: string): Promise<void> =>
+      http.postVoid(`/api/workflows-ui/${id}/files/rename`, { from, to }),
+
+    createFolder: (id: string, dirPath: string): Promise<void> =>
+      http.postVoid(`/api/workflows-ui/${id}/files/folder`, { path: dirPath }),
+
     readConfig: <T = unknown>(id: string, filePath: string): Promise<{ value: T | null }> =>
       http.get(`/api/workflows-ui/${id}/configs/content?path=${encodeURIComponent(filePath)}`),
 

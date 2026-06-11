@@ -128,6 +128,18 @@ export function writeBinaryFile(projectId: string, filePath: string, buffer: Buf
   return store.writeBinaryFile(projectId, filePath, buffer);
 }
 
+export function deleteFile(projectId: string, filePath: string): void {
+  store.deleteFile(projectId, filePath);
+}
+
+export function renameFile(projectId: string, fromPath: string, toPath: string): void {
+  store.renameFile(projectId, fromPath, toPath);
+}
+
+export function createFolder(projectId: string, dirPath: string): void {
+  store.createFolder(projectId, dirPath);
+}
+
 export function readConfig(projectId: string, filePath: string): unknown | null {
   return store.readConfig(projectId, filePath);
 }

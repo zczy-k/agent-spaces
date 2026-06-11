@@ -15,7 +15,8 @@
       "mcp__codegraph__codegraph_status",
       "mcp__codegraph__codegraph_context",
       "mcp__codegraph__codegraph_search",
-      "mcp__fff__grep"
+      "mcp__fff__grep",
+      "mcp__fff__find_files"
     ]
   },
   "enableAllProjectMcpServers": true,

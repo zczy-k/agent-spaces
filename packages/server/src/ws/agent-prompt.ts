@@ -279,7 +279,7 @@ function formatWorkflowUiPromptContext(context: WorkflowUiPromptContext): string
     '',
     '- If you need available host UI components, call list_agent_spaces_ui_components before creating hand-written equivalents.',
     '- If a window.AgentSpacesUI component usage, props, composition pattern, or import source is unclear, inspect its implementation at https://github.com/hunmer/agent-spaces/tree/main/packages/web/src/components/ui before using it.',
-    '- In React mode, prefer components exposed by window.AgentSpacesUI over hand-written UI components. Example: `const { Button, Card, CardContent } = window.AgentSpacesUI;`.',
+    '- In React mode, prefer components exposed by window.AgentSpacesUI over hand-written UI components. Lucide React icons are also exposed there by their standard names. Example: `const { Button, Card, CardContent, Search, Loader2 } = window.AgentSpacesUI;`.',
     '- In React mode, do not import host UI components from source paths; destructure them from window.AgentSpacesUI.',
     '',
     'Styling rules:',

@@ -9,7 +9,7 @@ import { sdk } from '@/lib/sdk'
 
 interface FileContextMenuProps {
   filePath: string
-  workspaceId: string
+  workspaceId?: string
   boundDir?: string
   onRename?: () => void
   onMove?: () => void
@@ -26,10 +26,11 @@ export function FileContextMenu({ filePath, workspaceId, boundDir, onRename, onM
   }
 
   const handleReveal = () => {
-    sdk.editor.reveal(workspaceId, filePath)
+    if (workspaceId) sdk.editor.reveal(workspaceId, filePath)
   }
 
   const handleDownload = () => {
+    if (!workspaceId) return
     const url = `/api/workspaces/${workspaceId}/files/download?path=${encodeURIComponent(filePath)}`
     const a = document.createElement('a')
     a.href = url
@@ -40,6 +41,7 @@ export function FileContextMenu({ filePath, workspaceId, boundDir, onRename, onM
   }
 
   const handleCopyDownloadUrl = () => {
+    if (!workspaceId) return
     const url = `${window.location.origin}/api/workspaces/${workspaceId}/files/download?path=${encodeURIComponent(filePath)}`
     navigator.clipboard.writeText(url)
   }
@@ -64,43 +66,49 @@ export function FileContextMenu({ filePath, workspaceId, boundDir, onRename, onM
           {t('copyFile')}
         </ContextMenuItem>
       )}
-      <ContextMenuItem onClick={async () => {
-        const fileName = filePath.split('/').pop() || 'file';
-        const dir = filePath.substring(0, filePath.lastIndexOf('/'));
-        const dot = fileName.lastIndexOf('.');
-        let copyName: string;
-        if (dot > 0) {
-          copyName = fileName.substring(0, dot) + ' copy' + fileName.substring(dot);
-        } else {
-          copyName = fileName + ' copy';
-        }
-        const destPath = dir ? `${dir}/${copyName}` : copyName;
-        try {
-          await sdk.editor.copy(workspaceId, filePath, destPath);
-          toast.success(t('duplicateSuccess'));
-        } catch {
-          toast.error(t('duplicateFailed'));
-        }
-      }}>
-        <Files className="size-4" />
-        {t('duplicateFile')}
-      </ContextMenuItem>
+      {workspaceId && (
+        <ContextMenuItem onClick={async () => {
+          const fileName = filePath.split('/').pop() || 'file';
+          const dir = filePath.substring(0, filePath.lastIndexOf('/'));
+          const dot = fileName.lastIndexOf('.');
+          let copyName: string;
+          if (dot > 0) {
+            copyName = fileName.substring(0, dot) + ' copy' + fileName.substring(dot);
+          } else {
+            copyName = fileName + ' copy';
+          }
+          const destPath = dir ? `${dir}/${copyName}` : copyName;
+          try {
+            await sdk.editor.copy(workspaceId, filePath, destPath);
+            toast.success(t('duplicateSuccess'));
+          } catch {
+            toast.error(t('duplicateFailed'));
+          }
+        }}>
+          <Files className="size-4" />
+          {t('duplicateFile')}
+        </ContextMenuItem>
+      )}
       <ContextMenuItem onClick={handleCopyPath}>
         <Copy className="size-4" />
         {t('copyPath')}
       </ContextMenuItem>
-      <ContextMenuItem onClick={handleReveal}>
-        <ExternalLink className="size-4" />
-        {t('revealInFinder')}
-      </ContextMenuItem>
-      <ContextMenuItem onClick={() => {
-        const absPath = boundDir ? boundDir.replace(/\/+$/, '') + '/' + filePath : filePath;
-        const dirPath = absPath.replace(/\/[^/]+$/, '');
-        useTerminalStore.getState().createSession(undefined, dirPath);
-      }}>
-        <Terminal className="size-4" />
-        {t('openInTerminal')}
-      </ContextMenuItem>
+      {workspaceId && (
+        <ContextMenuItem onClick={handleReveal}>
+          <ExternalLink className="size-4" />
+          {t('revealInFinder')}
+        </ContextMenuItem>
+      )}
+      {workspaceId && (
+        <ContextMenuItem onClick={() => {
+          const absPath = boundDir ? boundDir.replace(/\/+$/, '') + '/' + filePath : filePath;
+          const dirPath = absPath.replace(/\/[^/]+$/, '');
+          useTerminalStore.getState().createSession(undefined, dirPath);
+        }}>
+          <Terminal className="size-4" />
+          {t('openInTerminal')}
+        </ContextMenuItem>
+      )}
       {onDelete && (
         <>
           <ContextMenuSeparator />
@@ -110,15 +118,19 @@ export function FileContextMenu({ filePath, workspaceId, boundDir, onRename, onM
           </ContextMenuItem>
         </>
       )}
-      <ContextMenuSeparator />
-      <ContextMenuItem onClick={handleDownload}>
-        <Download className="size-4" />
-        {t('download')}
-      </ContextMenuItem>
-      <ContextMenuItem onClick={handleCopyDownloadUrl}>
-        <Link className="size-4" />
-        {t('copyDownloadUrl')}
-      </ContextMenuItem>
+      {workspaceId && (
+        <>
+          <ContextMenuSeparator />
+          <ContextMenuItem onClick={handleDownload}>
+            <Download className="size-4" />
+            {t('download')}
+          </ContextMenuItem>
+          <ContextMenuItem onClick={handleCopyDownloadUrl}>
+            <Link className="size-4" />
+            {t('copyDownloadUrl')}
+          </ContextMenuItem>
+        </>
+      )}
     </ContextMenuContent>
   )
 }

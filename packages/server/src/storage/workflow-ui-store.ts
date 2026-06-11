@@ -203,6 +203,29 @@ export function writeBinaryFile(projectId: string, filePath: string, buffer: Buf
   return buffer.byteLength;
 }
 
+export function deleteFile(projectId: string, filePath: string): void {
+  const fullPath = safeSrcPath(projectId, filePath);
+  if (!existsSync(fullPath)) return;
+  const isDir = statSync(fullPath).isDirectory();
+  rmSync(fullPath, { recursive: isDir, force: true });
+  touchProject(projectId);
+}
+
+export function renameFile(projectId: string, fromPath: string, toPath: string): void {
+  const from = safeSrcPath(projectId, fromPath);
+  const to = safeSrcPath(projectId, toPath);
+  if (!existsSync(from)) throw new Error(`File not found: ${fromPath}`);
+  ensureDir(dirname(to));
+  renameSync(from, to);
+  touchProject(projectId);
+}
+
+export function createFolder(projectId: string, dirPath: string): void {
+  const fullPath = safeSrcPath(projectId, dirPath);
+  ensureDir(fullPath);
+  touchProject(projectId);
+}
+
 export function readConfig(projectId: string, filePath: string): unknown | null {
   const fullPath = safeProjectSubdirPath(projectId, 'configs', filePath);
   if (!existsSync(fullPath)) return null;

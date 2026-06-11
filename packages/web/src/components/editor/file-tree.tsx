@@ -21,6 +21,7 @@ interface FileTreeContextType {
   selectedPath?: string
   onFileSelect?: (path: string) => void
   workspaceId?: string
+  variant: 'workspace' | 'project'
   onDelete?: (path: string) => void
   onImport?: (targetPath: string) => void
   onCopyPath?: (path: string) => void
@@ -50,6 +51,7 @@ interface FileTreeContextType {
 const FileTreeContext = createContext<FileTreeContextType>({
   expandedPaths: new Set(),
   togglePath: () => undefined,
+  variant: 'workspace',
 })
 
 export type FileTreeProps = HTMLAttributes<HTMLDivElement> & {
@@ -59,6 +61,7 @@ export type FileTreeProps = HTMLAttributes<HTMLDivElement> & {
   onFileSelect?: (path: string) => void
   onExpandedChange?: (expanded: Set<string>) => void
   workspaceId?: string
+  variant?: 'workspace' | 'project'
   onDelete?: (path: string) => void
   onImport?: (targetPath: string) => void
   onCopyPath?: (path: string) => void
@@ -93,6 +96,7 @@ export const FileTree = ({
   onFileSelect,
   onExpandedChange,
   workspaceId,
+  variant = 'workspace',
   onDelete,
   onImport,
   onCopyPath,
@@ -145,7 +149,7 @@ export const FileTree = ({
   }, [refreshInterval, onLoadDirectory, expandedPaths])
 
   return (
-    <FileTreeContext.Provider value={{ expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, onDelete, onImport, onCopyPath, onCreateFile, onCreateFolder, onRename, onMove, onCopyItem, onLoadDirectory, loadingDirs, boundDir, fileSizeMap, ignoredPaths, draggedOverPath, onItemDragStart, onItemDragOver, onItemDragLeave, onItemDrop, onItemDragEnd, rootDropTargetId, onRootDropLineDragOver, onRootDropLineDragEnter, onRootDropLineDragLeave, onRootDropLineDrop }}>
+    <FileTreeContext.Provider value={{ expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, variant, onDelete, onImport, onCopyPath, onCreateFile, onCreateFolder, onRename, onMove, onCopyItem, onLoadDirectory, loadingDirs, boundDir, fileSizeMap, ignoredPaths, draggedOverPath, onItemDragStart, onItemDragOver, onItemDragLeave, onItemDrop, onItemDragEnd, rootDropTargetId, onRootDropLineDragOver, onRootDropLineDragEnter, onRootDropLineDragLeave, onRootDropLineDrop }}>
       <div
         className={cn("flex flex-col bg-background font-mono text-sm h-full", className)}
         role="tree"
@@ -187,7 +191,7 @@ export const FileTreeFolder = ({
   children,
   ...props
 }: FileTreeFolderProps) => {
-  const { expandedPaths, togglePath, selectedPath, onFileSelect: _onFileSelect, workspaceId, onDelete, onImport, onCopyPath: _onCopyPath, onCreateFile, onCreateFolder, onRename, onMove, onCopyItem, onLoadDirectory, loadingDirs, boundDir } = useContext(FileTreeContext)
+  const { expandedPaths, togglePath, selectedPath, onFileSelect: _onFileSelect, workspaceId, variant, onDelete, onImport, onCopyPath: _onCopyPath, onCreateFile, onCreateFolder, onRename, onMove, onCopyItem, onLoadDirectory, loadingDirs, boundDir } = useContext(FileTreeContext)
   const parentFolder = useContext(FileTreeFolderContext)
   const isExpanded = expandedPaths.has(path)
   const isIgnored = ignored || parentFolder.ignored
@@ -240,9 +244,11 @@ export const FileTreeFolder = ({
                   {isLoading && <span className="size-3 border border-muted-foreground border-t-transparent rounded-full animate-spin shrink-0" />}
                 </CollapsibleTrigger>
                 <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1 invisible group-hover/folder:visible" onClick={e => e.stopPropagation()}>
-                  <button onClick={handleReveal} className="p-0.5 rounded hover:bg-accent cursor-pointer" title={t('revealInFinder')}>
-                    <ExternalLink className="size-3 text-muted-foreground" />
-                  </button>
+                  {variant === 'workspace' && (
+                    <button onClick={handleReveal} className="p-0.5 rounded hover:bg-accent cursor-pointer" title={t('revealInFinder')}>
+                      <ExternalLink className="size-3 text-muted-foreground" />
+                    </button>
+                  )}
                   <button onClick={() => setDeleteConfirmOpen(true)} className="p-0.5 rounded hover:bg-accent cursor-pointer" title={tc('delete')}>
                     <Trash2 className="size-3 text-muted-foreground hover:text-destructive" />
                   </button>
@@ -293,17 +299,21 @@ export const FileTreeFolder = ({
             <FolderPlus className="size-4" />
             {t('newFolder')}
           </ContextMenuItem>
-          <ContextMenuItem onClick={handleReveal}>
-            <ExternalLink className="size-4" />
-            {t('revealInFinder')}
-          </ContextMenuItem>
-          <ContextMenuItem onClick={() => {
-            const absPath = boundDir ? boundDir.replace(/\/+$/, '') + '/' + path : path;
-            useTerminalStore.getState().createSession(undefined, absPath);
-          }}>
-            <Terminal className="size-4" />
-            {t('openInTerminal')}
-          </ContextMenuItem>
+          {variant === 'workspace' && (
+            <ContextMenuItem onClick={handleReveal}>
+              <ExternalLink className="size-4" />
+              {t('revealInFinder')}
+            </ContextMenuItem>
+          )}
+          {variant === 'workspace' && (
+            <ContextMenuItem onClick={() => {
+              const absPath = boundDir ? boundDir.replace(/\/+$/, '') + '/' + path : path;
+              useTerminalStore.getState().createSession(undefined, absPath);
+            }}>
+              <Terminal className="size-4" />
+              {t('openInTerminal')}
+            </ContextMenuItem>
+          )}
           <ContextMenuItem onClick={() => setDeleteConfirmOpen(true)} className="text-destructive focus:text-destructive">
             <Trash2 className="size-4" />
             {tc('delete')}
@@ -357,7 +367,7 @@ export const FileTreeFile = ({
   children,
   ...props
 }: FileTreeFileProps) => {
-  const { selectedPath, onFileSelect, workspaceId, onDelete, onRename, onMove, onCopyItem, fileSizeMap, boundDir } = useContext(FileTreeContext)
+  const { selectedPath, onFileSelect, workspaceId, variant, onDelete, onRename, onMove, onCopyItem, fileSizeMap, boundDir } = useContext(FileTreeContext)
   const parentFolder = useContext(FileTreeFolderContext)
   const isIgnored = ignored || parentFolder.ignored
   const isSelected = selectedPath === path
@@ -430,9 +440,11 @@ export const FileTreeFile = ({
                 </FileTreeIcon>
                 <FileTreeName>{name}</FileTreeName>
                 <FileTreeActions>
-                  <button onClick={handleReveal} className="p-0.5 rounded hover:bg-accent cursor-pointer" title={t('revealInFinder')}>
-                    <ExternalLink className="size-3 text-muted-foreground" />
-                  </button>
+                  {variant === 'workspace' && (
+                    <button onClick={handleReveal} className="p-0.5 rounded hover:bg-accent cursor-pointer" title={t('revealInFinder')}>
+                      <ExternalLink className="size-3 text-muted-foreground" />
+                    </button>
+                  )}
                   <button onClick={() => setDeleteConfirmOpen(true)} className="p-0.5 rounded hover:bg-accent cursor-pointer" title={tc('delete')}>
                     <Trash2 className="size-3 text-muted-foreground hover:text-destructive" />
                   </button>
@@ -443,7 +455,7 @@ export const FileTreeFile = ({
         </ContextMenuTrigger>
         <FileContextMenu
           filePath={path}
-          workspaceId={workspaceId!}
+          workspaceId={workspaceId}
           boundDir={boundDir}
           onRename={() => onRename?.(path)}
           onMove={() => onMove?.(path)}

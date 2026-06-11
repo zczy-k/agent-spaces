@@ -62,6 +62,36 @@ router.put('/:id/files/content', (req: Request<{ id: string }>, res: Response) =
   } catch (error: any) { res.status(500).json({ error: error.message }); }
 });
 
+// Delete a file or folder
+router.delete('/:id/files', (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const filePath = typeof req.body?.path === 'string' ? req.body.path : req.query.path as string;
+    if (!filePath) { res.status(400).json({ error: 'path is required' }); return; }
+    svc.deleteFile(req.params.id, filePath);
+    res.json({ ok: true });
+  } catch (error: any) { res.status(500).json({ error: error.message }); }
+});
+
+// Rename / move a file or folder
+router.post('/:id/files/rename', (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const { from, to } = req.body ?? {};
+    if (!from || !to) { res.status(400).json({ error: 'from and to are required' }); return; }
+    svc.renameFile(req.params.id, from, to);
+    res.json({ ok: true });
+  } catch (error: any) { res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message }); }
+});
+
+// Create an empty folder
+router.post('/:id/files/folder', (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const { path: dirPath } = req.body ?? {};
+    if (!dirPath) { res.status(400).json({ error: 'path is required' }); return; }
+    svc.createFolder(req.params.id, dirPath);
+    res.json({ ok: true });
+  } catch (error: any) { res.status(500).json({ error: error.message }); }
+});
+
 // Upload multiple files (binary) into project src, optionally under a folder.
 // multipart/form-data: field "files" (repeated), optional field "folder".
 router.post('/:id/files/upload', upload.array('files'), (req: Request<{ id: string }>, res: Response) => {

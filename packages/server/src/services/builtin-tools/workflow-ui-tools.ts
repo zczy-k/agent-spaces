@@ -111,7 +111,7 @@ export function createWorkflowUiFunctionTools(ctx: WorkflowUiToolContext): Agent
   return [
     {
       name: 'list_agent_spaces_ui_components',
-      description: 'List React UI components exposed on window.AgentSpacesUI for Workflow UI projects. Use this before hand-writing UI controls in React mode.',
+      description: 'List React UI components exposed on window.AgentSpacesUI for Workflow UI projects. Lucide React icons are also exposed on window.AgentSpacesUI by their standard icon names.',
       inputSchema: schema({
         keyword: { type: 'string', description: 'Optional fuzzy filter for component names.' },
       }),
@@ -126,7 +126,7 @@ export function createWorkflowUiFunctionTools(ctx: WorkflowUiToolContext): Agent
           success: true,
           total: components.length,
           usage: {
-            react: 'const { Button, Card, CardContent } = window.AgentSpacesUI;',
+            react: 'const { Button, Card, CardContent, Search, Loader2 } = window.AgentSpacesUI;',
             html: 'window.AgentSpacesUI is available, but React components are primarily intended for React mode.',
           },
           components,

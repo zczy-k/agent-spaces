@@ -51,7 +51,26 @@
     "modified": "已修改",
     "saving": "保存中...",
     "saved": "已保存",
-    "upload": "上传文件到当前文件夹"
+    "upload": "上传文件到当前文件夹",
+    "pathDialog": {
+      "newFileTitle": "新建文件",
+      "newFileDesc": "输入文件名，可包含子目录路径。",
+      "newFilePlaceholder": "例如 components/Header.jsx",
+      "newFolderTitle": "新建文件夹",
+      "newFolderDesc": "输入文件夹名称，可包含子目录路径。",
+      "newFolderPlaceholder": "例如 components/widgets",
+      "renameTitle": "重命名",
+      "renameDesc": "输入新的名称。",
+      "renamePlaceholder": "新名称",
+      "moveTitle": "移动",
+      "moveDesc": "输入目标目录路径（留空表示根目录）。",
+      "movePlaceholder": "目标目录",
+      "copyTitle": "复制",
+      "copyDesc": "输入目标目录路径（留空表示根目录）。",
+      "copyPlaceholder": "目标目录",
+      "confirm": "确定",
+      "cancel": "取消"
+    }
   },
   "preview": {
     "autoPreview": "自动预览",
