@@ -15,6 +15,10 @@ interface WorkflowUiRendererProps {
   onError: (error: string | null) => void;
   componentProps?: Record<string, unknown>;
   className?: string;
+  /** filename -> content map for local import resolution */
+  files?: Record<string, string>;
+  /** entry point filename (used to resolve relative imports from sourceCode) */
+  mainFile?: string;
 }
 
 let agentSpacesUiMountCount = 0;
@@ -47,9 +51,17 @@ export function WorkflowUiRenderer({
   onError,
   componentProps,
   className,
+  files,
+  mainFile,
 }: WorkflowUiRendererProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<ReactDOM.Root | null>(null);
+  const filesRef = useRef<Record<string, string>>(files || {});
+  const mainFileRef = useRef<string>(mainFile || 'index.jsx');
+
+  // Keep refs in sync — renderer reads them during compile, avoiding stale closures
+  useEffect(() => { filesRef.current = files || {}; }, [files]);
+  useEffect(() => { mainFileRef.current = mainFile || 'index.jsx'; }, [mainFile]);
 
   useEffect(() => installAgentSpacesUiGlobals(), []);
 
@@ -69,20 +81,94 @@ export function WorkflowUiRenderer({
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const Babel = require('@babel/standalone');
+      const localFiles = filesRef.current;
+      const entryFile = mainFileRef.current;
+
+      // --- Local module resolution ---
+      const moduleCache = new Map<string, { exports: Record<string, any> }>();
+
+      function resolveLocalPath(fromFile: string, importId: string): string | null {
+        if (!importId.startsWith('.')) return null;
+
+        const dir = fromFile.includes('/') ? fromFile.substring(0, fromFile.lastIndexOf('/')) : '';
+        let resolved = dir ? `${dir}/${importId}` : importId;
+
+        // Normalize ./ and ../
+        const parts = resolved.split('/');
+        const normalized: string[] = [];
+        for (const part of parts) {
+          if (part === '' || part === '.') continue;
+          if (part === '..') { normalized.pop(); continue; }
+          normalized.push(part);
+        }
+        resolved = normalized.join('/');
+
+        // Exact match
+        if (localFiles[resolved] !== undefined) return resolved;
+        // Try extensions
+        for (const ext of ['.jsx', '.js', '.tsx', '.ts']) {
+          const withExt = resolved + ext;
+          if (localFiles[withExt] !== undefined) return withExt;
+        }
+        // Try index files
+        for (const ext of ['.jsx', '.js']) {
+          const idx = resolved + '/index' + ext;
+          if (localFiles[idx] !== undefined) return idx;
+        }
+
+        return null;
+      }
+
+      function compileModule(filePath: string): Record<string, any> {
+        const cached = moduleCache.get(filePath);
+        if (cached) return cached.exports;
+
+        const modExports: Record<string, any> = {};
+        moduleCache.set(filePath, { exports: modExports });
+
+        const source = localFiles[filePath];
+        if (source === undefined) throw new Error(`Module not found: ${filePath}`);
+
+        const compiled = Babel.transform(source, {
+          presets: ['react'],
+          plugins: ['transform-modules-commonjs'],
+          filename: filePath,
+          sourceType: 'module',
+        }).code;
+
+        const localRequire = (id: string) => {
+          if (id === 'react') return React;
+          if (id === 'react-dom' || id === 'react-dom/client') return ReactDOM;
+          const resolved = resolveLocalPath(filePath, id);
+          if (resolved) return compileModule(resolved);
+          return undefined;
+        };
+
+        const fn = new Function('React', 'ReactDOM', 'exports', 'require', compiled!);
+        fn(React, ReactDOM, modExports, localRequire);
+        return modExports;
+      }
+
+      // --- Compile entry point (sourceCode) ---
+      const moduleExports: Record<string, any> = {};
+
+      const mainRequire = (id: string) => {
+        if (id === 'react') return React;
+        if (id === 'react-dom' || id === 'react-dom/client') return ReactDOM;
+        const resolved = resolveLocalPath(entryFile, id);
+        if (resolved) return compileModule(resolved);
+        return undefined;
+      };
+
       const compiled = Babel.transform(code, {
         presets: ['react'],
         plugins: ['transform-modules-commonjs'],
-        filename: 'workflow-ui-renderer.jsx',
+        filename: entryFile,
         sourceType: 'module',
       }).code;
 
-      const moduleExports: Record<string, any> = {};
       const fn = new Function('React', 'ReactDOM', 'exports', 'require', compiled!);
-      fn(React, ReactDOM, moduleExports, (id: string) => {
-        if (id === 'react') return React;
-        if (id === 'react-dom') return ReactDOM;
-        return null;
-      });
+      fn(React, ReactDOM, moduleExports, mainRequire);
 
       const Component = moduleExports.default;
       if (!Component) {

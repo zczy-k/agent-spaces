@@ -21,9 +21,13 @@ interface WorkflowUiPreviewProps {
   projectId?: string;
   projectName?: string;
   hideHeader?: boolean;
+  /** filename -> content map for multi-file import resolution */
+  files?: Record<string, string>;
+  /** entry point filename */
+  mainFile?: string;
 }
 
-export function WorkflowUiPreview({ type, sourceCode, error, onError, projectId, projectName, hideHeader }: WorkflowUiPreviewProps) {
+export function WorkflowUiPreview({ type, sourceCode, error, onError, projectId, projectName, hideHeader, files, mainFile }: WorkflowUiPreviewProps) {
   const t = useTranslations('workflows-ui');
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -127,6 +131,8 @@ export function WorkflowUiPreview({ type, sourceCode, error, onError, projectId,
         sourceCode={sourceCode}
         onError={handleRendererError}
         className="flex-1 p-4"
+        files={files}
+        mainFile={mainFile}
       />
     </div>
   );
