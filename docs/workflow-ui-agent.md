@@ -111,7 +111,7 @@ Workflow UI Agent 复用普通 channel Agent 的运行时能力，包括：
 
 | 工具 | 能力 |
 | --- | --- |
-| `list_agent_spaces_ui_components` | 列出 `window.AgentSpacesUI` 当前暴露的 React UI 组件，Agent 在 React 模式编写 UI 前应优先查询。 |
+| `list_agent_spaces_ui_components` | 按分类列出 `window.AgentSpacesUI` 当前暴露的 React UI 组件，Agent 在 React 模式编写 UI 前应优先查询。 |
 | `list_plugin_tools` | 列出当前 Workflow UI 项目已启用插件注册的 tools。 |
 | `get_plugin_tool_detail` | 查看指定插件 tool 的完整参数 schema 和描述。 |
 | `execute_plugin_tool` | 执行指定插件 tool 并返回结果。 |
@@ -122,7 +122,7 @@ Workflow UI Agent 复用普通 channel Agent 的运行时能力，包括：
 
 后端会把 `workflowUiContext.projectType` 注入 Agent 提示词：
 
-- React 模式：优先调用 `list_agent_spaces_ui_components` 查询可用宿主组件，并优先通过 `window.AgentSpacesUI` 解构使用，例如 `const { Button, Card, CardContent, Search, Loader2 } = window.AgentSpacesUI;`。lucide-react 图标也按标准图标名暴露在 `window.AgentSpacesUI` 上；不要从宿主源码路径 import 这些组件或图标。
+- React 模式：优先按分类调用 `list_agent_spaces_ui_components` 查询可用宿主组件，并优先通过 `window.AgentSpacesUI` 解构使用，例如 `const { Button, Card, CardContent, Search, Loader2 } = window.AgentSpacesUI;`。lucide-react 图标也按标准图标名暴露在 `window.AgentSpacesUI` 上；不要从宿主源码路径 import 这些组件或图标。
 - 插件工具：预览代码中优先使用 `window.AgentSpaces.callPluginTool(pluginId, toolName, args)` 执行已启用插件工具；消费返回值前应先按工具详情里的输出结构取字段，不要假设业务数据在顶层 `success` 包装上。若收到 `{ success, result }` 包装结构，则使用内层 `result` 里的插件输出；`window.AgentSpacesAPI.callPluginTool` 和 `window.AgentSpacesAPI.executePluginTool` 是兼容别名。
 - JSON 配置：预览代码可使用异步 helper `await window.AgentSpacesUI.readConfigJson(path)` 和 `await window.AgentSpacesUI.writeConfigJson(path, value)` 读写当前 Workflow UI 项目根目录下的 `configs/`。例如上一次提交选择建议使用 `await window.AgentSpacesUI.readLastSelection()` 和 `await window.AgentSpacesUI.writeLastSelection(value)`，对应 `configs/last-selection.json`。
 - 数据文件：预览代码可使用 `await window.AgentSpacesUI.saveDataFile(path, content)` 将文本或二进制内容保存到当前 Workflow UI 项目根目录下的 `data/`，也可使用 `await window.AgentSpacesUI.downloadFile(url, path?)` 下载远程文件并保存到 `data/`。

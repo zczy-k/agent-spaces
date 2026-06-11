@@ -4,6 +4,7 @@ import { stripHtml } from './html-utils.js';
 import * as issueService from '../services/issue.js';
 import { getChannel } from '../services/channel.js';
 import { createIssueFunctionTools } from '../services/builtin-tools/index.js';
+import { WORKFLOW_UI_COMPONENT_CATEGORY_DESCRIPTIONS } from '../services/builtin-tools/workflow-ui-tools.js';
 import { prependPersistentAgentContext } from '../services/persistent-agent-context.js';
 
 export interface BuiltInToolContext {
@@ -264,10 +265,14 @@ function formatBuiltInToolContext(workspaceId: string, tools: BuiltInToolContext
 
 function formatWorkflowUiPromptContext(context: WorkflowUiPromptContext): string[] {
   const projectType = context.projectType ?? 'unknown';
+  const componentCategories = WORKFLOW_UI_COMPONENT_CATEGORY_DESCRIPTIONS
+    .map((item) => `${item.category} (${item.description})`)
+    .join(', ');
   const lines = [
     'Workflow UI project rules:',
     `- Current Workflow UI project id: ${context.projectId}`,
     `- Current Workflow UI project mode: ${projectType}`,
+    `- AgentSpacesUI component categories for list_agent_spaces_ui_components: ${componentCategories}.`,
   ];
   if (context.activeFilePath) lines.push(`- Current active file: ${context.activeFilePath}`);
 
@@ -277,7 +282,7 @@ function formatWorkflowUiPromptContext(context: WorkflowUiPromptContext): string
     '- After completing edits, update `src/CLAUDE.md` to reflect any new files, changed architecture, or important decisions.',
     '- Keep the File Structure section in `src/CLAUDE.md` in sync with the actual files.',
     '',
-    '- If you need available host UI components, call list_agent_spaces_ui_components before creating hand-written equivalents.',
+    '- If you need available host UI components, call list_agent_spaces_ui_components with the closest category before creating hand-written equivalents. Omit category only when you need the full categorized inventory.',
     '- If a window.AgentSpacesUI component usage, props, composition pattern, or import source is unclear, inspect its implementation at https://github.com/hunmer/agent-spaces/tree/main/packages/web/src/components/ui before using it.',
     '- In React mode, prefer components exposed by window.AgentSpacesUI over hand-written UI components. Lucide React icons are also exposed there by their standard names. Example: `const { Button, Card, CardContent, Search, Loader2 } = window.AgentSpacesUI;`.',
     '- In React mode, do not import host UI components from source paths; destructure them from window.AgentSpacesUI.',

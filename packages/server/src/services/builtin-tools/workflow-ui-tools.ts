@@ -6,6 +6,134 @@ import { createBuiltinPluginApi } from '../plugin-runtime-api.js';
 
 type JsonRecord = Record<string, unknown>;
 
+export const WORKFLOW_UI_COMPONENT_CATEGORY_DESCRIPTIONS = [
+  { category: 'actions', description: 'Buttons, toggles, and direct action controls.' },
+  { category: 'forms', description: 'Inputs, selectors, labels, uploaders, and editable fields.' },
+  { category: 'layout', description: 'Containers, panels, separators, scroll areas, and structural primitives.' },
+  { category: 'navigation', description: 'Tabs, breadcrumbs, menus, pagination, and navigation controls.' },
+  { category: 'overlays', description: 'Dialogs, popovers, tooltips, sheets, drawers, and contextual menus.' },
+  { category: 'feedback', description: 'Alerts, badges, loading states, progress, empty states, and status indicators.' },
+  { category: 'data-display', description: 'Tables, charts, markdown, avatars, and structured display components.' },
+  { category: 'media', description: 'Image, gallery, carousel, and media preview components.' },
+  { category: 'utilities', description: 'Miscellaneous helpers exposed by the host UI bundle.' },
+] as const;
+
+const WORKFLOW_UI_COMPONENT_CATEGORIES: Array<{
+  category: string;
+  description: string;
+  components: string[];
+}> = [
+  {
+    category: 'actions',
+    description: 'Buttons, toggles, and direct action controls.',
+    components: [
+      'Button', 'CopyButton', 'HoldToConfirm', 'Toggle', 'ToggleGroup', 'ToggleGroupItem',
+    ],
+  },
+  {
+    category: 'forms',
+    description: 'Inputs, selectors, labels, uploaders, and editable fields.',
+    components: [
+      'Calendar', 'CalendarDayButton', 'Checkbox', 'ColorPicker', 'Field', 'FieldDescription',
+      'FieldGroup', 'FieldLabel', 'FieldSeparator', 'FileUpload', 'FolderPicker', 'ImageCropper',
+      'Input', 'InputGroup', 'InputGroupAddon', 'InputGroupButton', 'InputGroupInput',
+      'InputGroupText', 'InputGroupTextarea', 'Label', 'SearchSelect', 'Select', 'SelectContent',
+      'SelectGroup', 'SelectItem', 'SelectLabel', 'SelectTrigger', 'SelectValue', 'Slider',
+      'Switch', 'Textarea', 'VoiceInput',
+    ],
+  },
+  {
+    category: 'layout',
+    description: 'Containers, panels, separators, scroll areas, and structural primitives.',
+    components: [
+      'Accordion', 'AccordionContent', 'AccordionItem', 'AccordionTrigger', 'Card', 'CardContent',
+      'CardDescription', 'CardFooter', 'CardHeader', 'CardTitle', 'Collapsible',
+      'CollapsibleContent', 'CollapsibleTrigger', 'ResizableHandle', 'ResizablePanel',
+      'ResizablePanelGroup', 'ScrollArea', 'ScrollBar', 'Separator', 'Sidebar', 'SidebarContent',
+      'SidebarFooter', 'SidebarGroup', 'SidebarGroupAction', 'SidebarGroupContent',
+      'SidebarGroupLabel', 'SidebarHeader', 'SidebarInset', 'SidebarInput', 'SidebarMenu',
+      'SidebarMenuAction', 'SidebarMenuBadge', 'SidebarMenuButton', 'SidebarMenuItem',
+      'SidebarMenuSkeleton', 'SidebarMenuSub', 'SidebarMenuSubButton', 'SidebarMenuSubItem',
+      'SidebarProvider', 'SidebarRail', 'SidebarSeparator', 'SidebarTrigger',
+      'SidebarContextProvider',
+    ],
+  },
+  {
+    category: 'navigation',
+    description: 'Tabs, breadcrumbs, menus, pagination, and navigation controls.',
+    components: [
+      'Breadcrumb', 'BreadcrumbEllipsis', 'BreadcrumbItem', 'BreadcrumbLink', 'BreadcrumbList',
+      'BreadcrumbPage', 'BreadcrumbSeparator', 'ExpandableTabs', 'NavigationMenu',
+      'NavigationMenuContent', 'NavigationMenuIndicator', 'NavigationMenuItem',
+      'NavigationMenuLink', 'NavigationMenuList', 'NavigationMenuPositioner',
+      'NavigationMenuTrigger', 'Pagination', 'PaginationContent', 'PaginationEllipsis',
+      'PaginationItem', 'PaginationLink', 'PaginationNext', 'PaginationPrevious', 'Tabs',
+      'TabsContent', 'TabsList', 'TabsTrigger',
+    ],
+  },
+  {
+    category: 'overlays',
+    description: 'Dialogs, popovers, tooltips, sheets, drawers, and contextual menus.',
+    components: [
+      'AlertDialog', 'AlertDialogAction', 'AlertDialogCancel', 'AlertDialogContent',
+      'AlertDialogDescription', 'AlertDialogFooter', 'AlertDialogHeader', 'AlertDialogMedia',
+      'AlertDialogOverlay', 'AlertDialogPortal', 'AlertDialogTitle', 'AlertDialogTrigger',
+      'Command', 'CommandDialog', 'CommandEmpty', 'CommandGroup', 'CommandInput',
+      'CommandItem', 'CommandList', 'CommandSeparator', 'CommandShortcut', 'ContextMenu',
+      'ContextMenuCheckboxItem', 'ContextMenuContent', 'ContextMenuGroup', 'ContextMenuItem',
+      'ContextMenuLabel', 'ContextMenuPortal', 'ContextMenuRadioGroup', 'ContextMenuRadioItem',
+      'ContextMenuSeparator', 'ContextMenuShortcut', 'ContextMenuSub', 'ContextMenuSubContent',
+      'ContextMenuSubTrigger', 'ContextMenuTrigger', 'Dialog', 'DialogContent',
+      'DialogDescription', 'DialogFooter', 'DialogHeader', 'DialogTitle', 'DialogTrigger',
+      'Drawer', 'DrawerClose', 'DrawerContent', 'DrawerDescription', 'DrawerFooter',
+      'DrawerHeader', 'DrawerOverlay', 'DrawerPortal', 'DrawerTitle', 'DrawerTrigger',
+      'DropdownMenu', 'DropdownMenuCheckboxItem', 'DropdownMenuContent', 'DropdownMenuGroup',
+      'DropdownMenuItem', 'DropdownMenuLabel', 'DropdownMenuPortal', 'DropdownMenuRadioGroup',
+      'DropdownMenuRadioItem', 'DropdownMenuSeparator', 'DropdownMenuShortcut', 'DropdownMenuSub',
+      'DropdownMenuSubContent', 'DropdownMenuSubTrigger', 'DropdownMenuTrigger', 'HoverCard',
+      'HoverCardContent', 'HoverCardTrigger', 'Popover', 'PopoverContent', 'PopoverTrigger',
+      'Sheet', 'SheetClose', 'SheetContent', 'SheetDescription', 'SheetFooter', 'SheetHeader',
+      'SheetTitle', 'SheetTrigger', 'Tooltip', 'TooltipContent', 'TooltipProvider',
+      'TooltipTrigger',
+    ],
+  },
+  {
+    category: 'feedback',
+    description: 'Alerts, badges, loading states, progress, empty states, and status indicators.',
+    components: [
+      'Alert', 'AlertDescription', 'AlertTitle', 'Badge', 'BorderGlide', 'Empty', 'EmptyContent',
+      'EmptyDescription', 'EmptyHeader', 'EmptyMedia', 'EmptyTitle', 'Loader', 'MorphingSpinner',
+      'MovingBorder', 'Progress', 'Shimmer', 'ShinyBadge', 'Skeleton', 'Status',
+      'StatusIndicator', 'StatusLabel',
+    ],
+  },
+  {
+    category: 'data-display',
+    description: 'Tables, charts, markdown, avatars, and structured display components.',
+    components: [
+      'Avatar', 'AvatarFallback', 'AvatarGroup', 'AvatarImage', 'ChartContainer', 'ChartLegend',
+      'ChartLegendContent', 'ChartStyle', 'ChartTooltip', 'ChartTooltipContent', 'Markdown',
+      'MermaidPreview', 'Table', 'TableBody', 'TableCaption', 'TableCell', 'TableFooter',
+      'TableHead', 'TableHeader', 'TableRow',
+    ],
+  },
+  {
+    category: 'media',
+    description: 'Image, gallery, carousel, and media preview components.',
+    components: [
+      'Carousel', 'CarouselContent', 'CarouselItem', 'CarouselNext', 'CarouselPrevious',
+      'ImagePickerDialog', 'ImagesBadge', 'MediaGallery', 'NodeMediaPreview',
+    ],
+  },
+  {
+    category: 'utilities',
+    description: 'Miscellaneous helpers exposed by the host UI bundle.',
+    components: [
+      'CopyCode',
+    ],
+  },
+];
+
 function schema(properties: Record<string, unknown>, required?: string[]): Record<string, unknown> {
   return { type: 'object', properties, ...(required?.length ? { required } : {}) };
 }
@@ -103,6 +231,30 @@ function listAgentSpacesUiComponents(): string[] {
   return names.size ? [...names].sort((a, b) => a.localeCompare(b)) : FALLBACK_AGENT_SPACES_UI_COMPONENTS;
 }
 
+function listAgentSpacesUiComponentsByCategory(): Array<{ category: string; description: string; components: string[] }> {
+  const components = listAgentSpacesUiComponents();
+  const available = new Set(components);
+  const categorized = new Set<string>();
+  const groups = WORKFLOW_UI_COMPONENT_CATEGORIES
+    .map((group) => {
+      const groupComponents = group.components.filter((name) => available.has(name));
+      groupComponents.forEach((name) => categorized.add(name));
+      return { category: group.category, description: group.description, components: groupComponents };
+    })
+    .filter((group) => group.components.length > 0);
+
+  const uncategorized = components.filter((name) => !categorized.has(name));
+  if (uncategorized.length) {
+    groups.push({
+      category: 'uncategorized',
+      description: 'Newly exported host UI components that have not been assigned to a category yet.',
+      components: uncategorized,
+    });
+  }
+
+  return groups;
+}
+
 export interface WorkflowUiToolContext {
   enabledPlugins: string[];
 }
@@ -111,20 +263,41 @@ export function createWorkflowUiFunctionTools(ctx: WorkflowUiToolContext): Agent
   return [
     {
       name: 'list_agent_spaces_ui_components',
-      description: 'List React UI components exposed on window.AgentSpacesUI for Workflow UI projects. Lucide React icons are also exposed on window.AgentSpacesUI by their standard icon names.',
+      description: 'List React UI components exposed on window.AgentSpacesUI for Workflow UI projects by category. Lucide React icons are also exposed on window.AgentSpacesUI by their standard icon names.',
       inputSchema: schema({
-        keyword: { type: 'string', description: 'Optional fuzzy filter for component names.' },
+        category: {
+          type: 'string',
+          enum: [...WORKFLOW_UI_COMPONENT_CATEGORY_DESCRIPTIONS.map((item) => item.category), 'uncategorized'],
+          description: 'Optional component category to list. Omit to return all categories.',
+        },
       }),
       annotations: { readOnly: true },
       execute: async (input) => {
         const record = asRecord(input);
-        const keyword = stringInput(record, 'keyword')?.toLowerCase();
-        const components = listAgentSpacesUiComponents()
-          .filter((name) => !keyword || name.toLowerCase().includes(keyword));
+        const category = stringInput(record, 'category')?.toLowerCase();
+        const groups = listAgentSpacesUiComponentsByCategory();
+        const selectedGroups = category
+          ? groups.filter((group) => group.category.toLowerCase() === category)
+          : groups;
+        if (category && selectedGroups.length === 0) {
+          return {
+            success: false,
+            message: `Unknown component category "${category}".`,
+            categories: groups.map((group) => group.category),
+          };
+        }
+        const components = selectedGroups.flatMap((group) => group.components);
 
         return {
           success: true,
           total: components.length,
+          selectedCategory: category ?? 'all',
+          categories: groups.map((group) => ({
+            category: group.category,
+            description: group.description,
+            count: group.components.length,
+          })),
+          groups: selectedGroups,
           usage: {
             react: 'const { Button, Card, CardContent, Search, Loader2 } = window.AgentSpacesUI;',
             html: 'window.AgentSpacesUI is available, but React components are primarily intended for React mode.',
