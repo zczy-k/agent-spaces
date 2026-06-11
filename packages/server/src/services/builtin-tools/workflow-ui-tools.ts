@@ -185,7 +185,13 @@ export function createWorkflowUiFunctionTools(ctx: WorkflowUiToolContext): Agent
           if (!tool) {
             return { success: false, message: `Tool "${toolName}" not found in plugin "${pluginId}"` };
           }
-          return { success: true, pluginId, toolName: tool.name, description: tool.description, inputSchema: tool.input_schema };
+          return {
+            success: true,
+            name: tool.name,
+            description: tool.description,
+            input_schema: tool.input_schema,
+            outputs: tool.outputs,
+          };
         } catch (error: any) {
           return { success: false, message: error.message };
         }

@@ -86,6 +86,13 @@ type PluginActionDefinition = Record<string, any> & {
   run: WorkflowNodeHandler;
 };
 
+export type PluginToolDefinition = {
+  name: string;
+  description: string;
+  input_schema: Record<string, unknown>;
+  outputs: unknown[];
+};
+
 const STATE_FILE = () => path.join(pluginsDir(), 'state.json');
 const pluginRuntimeState = new Map<string, PluginRuntimeState>();
 
@@ -473,6 +480,7 @@ function createPluginActions(actions: PluginActionDefinition[]) {
     .map((action) => {
       const tool = action.tool || {};
       const { properties, inputSchema } = actionPropertiesToToolInputSchema(action);
+      const outputs = action.outputs || [];
       const required = properties
         .filter(property => property.required && property.toolRequired !== false)
         .map(property => property.key);
@@ -485,6 +493,7 @@ function createPluginActions(actions: PluginActionDefinition[]) {
           properties: Object.fromEntries(properties.map(property => [property.key, propertyToSchema(property)])),
           required,
         },
+        outputs,
       };
     });
 
@@ -992,7 +1001,7 @@ export function getWorkflowNodes(pluginId: string, locale?: string): NodeTypeDef
   return Array.isArray(payload?.nodes) ? payload.nodes : [];
 }
 
-export function getPluginTools(pluginId: string, locale?: string): Array<{ name: string; description: string; input_schema: Record<string, unknown> }> {
+export function getPluginTools(pluginId: string, locale?: string): PluginToolDefinition[] {
   const plugin = listPlugins().find(item => item.id === pluginId);
   if (!plugin) throw new Error('Plugin not found');
 
