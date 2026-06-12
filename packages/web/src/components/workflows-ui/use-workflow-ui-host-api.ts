@@ -3,6 +3,11 @@ import { fetchWithAuth } from '@/lib/auth';
 import * as AgentSpacesUI from '@/lib/ui-exports';
 import { useEditorStore } from '@/stores/editor';
 import { getWS } from '@/lib/ws';
+import {
+  getNotificationPermission,
+  requestNotificationPermission,
+  sendNativeNotification,
+} from '@/lib/native-notification';
 
 const LAST_SELECTION_CONFIG = 'last-selection.json';
 
@@ -351,7 +356,69 @@ export function useWorkflowUiHostApi(projectId: string) {
       return resp.json();
     };
 
-    // ---- Send notification ----
+    // ---- User settings (localStorage only, per-project, key: workflow_setting_<projectId>) ----
+    // 与服务端 config 不同：这是纯本地、按客户端保存的用户偏好（如通知开关），不跨端同步。
+    const SETTING_STORAGE_KEY = `workflow_setting_${projectId}`;
+    const loadUserSettings = (): Record<string, unknown> => {
+      try {
+        const raw = localStorage.getItem(SETTING_STORAGE_KEY);
+        if (!raw) return {};
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+      } catch {
+        return {};
+      }
+    };
+    const persistUserSettings = (settings: Record<string, unknown>) => {
+      try {
+        localStorage.setItem(SETTING_STORAGE_KEY, JSON.stringify(settings));
+      } catch {
+        /* quota exceeded / private mode — ignore */
+      }
+    };
+    // getUserSetting(k)              -> settings[k] ?? undefined
+    // getUserSetting(k, def)         -> settings[k] ?? def
+    // getUserSetting(k, subKey, def) -> settings[k][subKey] ?? def
+    const getUserSetting = (k: string, ...rest: unknown[]): unknown => {
+      const settings = loadUserSettings();
+      if (rest.length === 0) {
+        return Object.prototype.hasOwnProperty.call(settings, k) ? settings[k] : undefined;
+      }
+      if (rest.length === 1) {
+        return Object.prototype.hasOwnProperty.call(settings, k) ? settings[k] : rest[0];
+      }
+      const subKey = rest[0];
+      const def = rest[1];
+      const sub = settings[k];
+      return sub && typeof sub === 'object' && !Array.isArray(sub)
+          && Object.prototype.hasOwnProperty.call(sub, subKey as PropertyKey)
+        ? (sub as Record<string, unknown>)[subKey as string]
+        : def;
+    };
+    // setUserSetting(k, value)           -> settings[k] = value
+    // setUserSetting(k, subKey, value)   -> settings[k] = { ...settings[k], [subKey]: value }
+    const setUserSetting = (k: string, ...rest: unknown[]): void => {
+      const settings = loadUserSettings();
+      if (rest.length < 2) {
+        settings[k] = rest[0];
+      } else {
+        const subKey = rest[0] as string;
+        const value = rest[1];
+        const prev = settings[k] && typeof settings[k] === 'object' && !Array.isArray(settings[k])
+          ? (settings[k] as Record<string, unknown>)
+          : {};
+        settings[k] = { ...prev, [subKey]: value };
+      }
+      persistUserSettings(settings);
+    };
+    // 批量浅合并写入
+    const saveUserSettings = (obj: Record<string, unknown>): Record<string, unknown> => {
+      const settings = { ...loadUserSettings(), ...(obj || {}) };
+      persistUserSettings(settings);
+      return settings;
+    };
+
+    // ---- Send notification (server-side notification center via REST) ----
     const sendNotification = async (type: string, title: string, description?: string, data?: Record<string, unknown>) => {
       const resp = await fetchWithAuth(`/api/workspaces/${projectId}/notifications`, {
         method: 'POST',
@@ -360,6 +427,28 @@ export function useWorkflowUiHostApi(projectId: string) {
       });
       if (!resp.ok) throw new Error(`Failed to send notification: ${resp.status}`);
       return resp.json();
+    };
+
+    // ---- Native desktop notification (browser Notification API / Flutter bridge) ----
+    // 首次调用自动请求权限；权限被拒绝/不支持时返回 { ok: false, reason }，不抛错。
+    const sendNotifiction = async (
+      title: string,
+      body?: string,
+      options?: { id?: number; ongoing?: boolean },
+    ): Promise<{ ok: boolean; reason?: string }> => {
+      try {
+        let status = await getNotificationPermission();
+        if (status !== 'granted') {
+          status = await requestNotificationPermission();
+        }
+        if (status !== 'granted') {
+          return { ok: false, reason: status };
+        }
+        await sendNativeNotification(title, body || '', options || {});
+        return { ok: true };
+      } catch (err) {
+        return { ok: false, reason: err instanceof Error ? err.message : String(err) };
+      }
     };
 
     const hostUi = {
@@ -372,6 +461,12 @@ export function useWorkflowUiHostApi(projectId: string) {
       uploadFile,
       saveDataFile,
       downloadFile,
+    };
+
+    const settingApi = {
+      getUserSetting,
+      setUserSetting,
+      saveUserSettings,
     };
 
     const pluginApi = {
@@ -395,6 +490,7 @@ export function useWorkflowUiHostApi(projectId: string) {
 
     const notificationApi = {
       sendNotification,
+      sendNotifiction,
     };
 
     (window as any).AgentSpacesUI = hostUi;
@@ -402,6 +498,7 @@ export function useWorkflowUiHostApi(projectId: string) {
       ...pluginApi,
       ...fileApi,
       ...notificationApi,
+      ...settingApi,
       readConfigJson,
       writeConfigJson,
       readLastSelection,
@@ -414,6 +511,7 @@ export function useWorkflowUiHostApi(projectId: string) {
       ...pluginApi,
       ...fileApi,
       ...notificationApi,
+      ...settingApi,
       readConfigJson,
       writeConfigJson,
       readLastSelection,
