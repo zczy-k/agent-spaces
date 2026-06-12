@@ -17,6 +17,17 @@ function pick(obj, keys) {
   return result
 }
 
+// b64_json 落盘后端换 httpPath，url 直接透传
+function toHttpPaths(result, ext, ctx) {
+  return (result.data || []).map(d => {
+    if (d.b64_json) {
+      const { httpPath } = ctx.api.savePublicFile(Buffer.from(d.b64_json, 'base64'), ext)
+      return httpPath
+    }
+    return d.url
+  }).filter(Boolean)
+}
+
 const CONFIG_APIKEY = '{{ __config__["workflow.openai"]["apiKey"] }}'
 const CONFIG_BASEURL = '{{ __config__["workflow.openai"]["baseUrl"] }}'
 
@@ -84,7 +95,7 @@ module.exports = (t) => [
       { key: 'success', type: 'boolean' },
       { key: 'message', type: 'string' },
       { key: 'data', type: 'object', children: [
-        { key: 'images', type: 'object', children: [] },
+        { key: 'images', type: 'image[]' },
         { key: 'created', type: 'number' },
         { key: 'usage', type: 'object', children: [] },
       ] },
@@ -97,7 +108,7 @@ module.exports = (t) => [
         prompt: args.prompt,
         ...pick(args, ['size', 'quality', 'n', 'output_format', 'background']),
       })
-      const images = (result.data || []).map(d => d.b64_json || d.url).filter(Boolean)
+      const images = toHttpPaths(result, args.output_format || 'png', ctx)
       ctx.logger.info(`生成完成，共 ${images.length} 张图片`)
       return { success: true, message: t('message.generatedImages', 'Generated {count} image(s)').replace('{count}', images.length), data: { images, created: result.created, usage: result.usage } }
     },
@@ -154,7 +165,7 @@ module.exports = (t) => [
       { key: 'success', type: 'boolean' },
       { key: 'message', type: 'string' },
       { key: 'data', type: 'object', children: [
-        { key: 'images', type: 'object', children: [] },
+        { key: 'images', type: 'image[]' },
         { key: 'created', type: 'number' },
         { key: 'usage', type: 'object', children: [] },
       ] },
@@ -169,7 +180,7 @@ module.exports = (t) => [
         images,
         ...pick(args, ['size', 'quality', 'n', 'background']),
       })
-      const outputImages = (result.data || []).map(d => d.b64_json || d.url).filter(Boolean)
+      const outputImages = toHttpPaths(result, args.output_format || 'png', ctx)
       ctx.logger.info(`编辑完成，共 ${outputImages.length} 张图片`)
       return { success: true, message: t('message.imageEdited', 'Image editing completed, generated {count} image(s)').replace('{count}', outputImages.length), data: { images: outputImages, created: result.created, usage: result.usage } }
     },

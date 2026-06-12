@@ -41,12 +41,16 @@ export class ClaudeCodeRuntime implements AgentRuntime {
     const additionalDirectories = normalizeAdditionalDirectories(cwd, options?.sandboxDirs);
     const sdkMcpServers = normalizeMcpServers(options?.mcpServers, options?.functionTools);
     const sdkMcpServerNames = Object.keys(sdkMcpServers ?? {});
+    const startupTimeoutMs = readPositiveIntegerEnv('AGENT_SPACES_CLAUDE_STARTUP_TIMEOUT_MS') ?? 60_000;
 
     d(`starting | cwd=${cwd} model=${model ?? 'default'} targetModel=${this.config.model ?? 'default'} provider=${this.config.provider ?? 'default'} baseURL=${baseURL ?? 'default'} permissionMode=${permissionMode} maxTurns=${options?.maxTurns ?? '∞'} tools=claude_code mcpServers=${Object.keys(options?.mcpServers ?? {}).join(',') || '-'} skills=${skillNames.join(',') || '-'} configDir=${configDir ?? 'default'} sandboxDirs=${additionalDirectories.join(',') || '-'} claudeExecutable=${claudeExecutable ?? 'sdk-default'}`);
     d(`prompt: ${prompt.slice(0, 300)}${prompt.length > 300 ? '...' : ''}`);
     d(`sdk mcp servers | ${sdkMcpServerNames.join(',') || '-'}`);
 
     const stderrLines: string[] = [];
+    let startupTimeoutError: string | undefined;
+    let startupWatchdog: ReturnType<typeof setTimeout> | undefined;
+    let sawFirstSdkMessage = false;
     let sessionId = options?.resumeSessionId;
     const emitHook = (event: ClaudeHookEventName, matcher = '*', payload?: unknown) => {
       options?.onEvent?.({ type: 'hook_event', event, matcher, payload });
@@ -106,6 +110,15 @@ export class ClaudeCodeRuntime implements AgentRuntime {
       };
 
       this.activeQuery = query({ prompt, options: queryOptions });
+      d(`sdk query created | startupTimeoutMs=${startupTimeoutMs}`);
+      startupWatchdog = setTimeout(() => {
+        if (sawFirstSdkMessage) return;
+        startupTimeoutError = `Claude Code startup timed out after ${startupTimeoutMs}ms while waiting for the first SDK message. mcpServers=${sdkMcpServerNames.join(',') || '-'}`;
+        d(startupTimeoutError);
+        this.abortController?.abort();
+        this.activeQuery?.close();
+      }, startupTimeoutMs);
+
       let resultText = '';
       let turns = 0;
       let tokenCount = 0;
@@ -118,6 +131,15 @@ export class ClaudeCodeRuntime implements AgentRuntime {
       let waitingForUserAnswer = false;
 
       for await (const message of this.activeQuery) {
+        if (!sawFirstSdkMessage) {
+          sawFirstSdkMessage = true;
+          if (startupWatchdog) {
+            clearTimeout(startupWatchdog);
+            startupWatchdog = undefined;
+          }
+          d(`first sdk message ${Date.now() - startTime}ms | type=${message.type}`);
+        }
+
         for (const hookEvent of extractClaudeHookEvents(message)) {
           emitHook(hookEvent.event, hookEvent.matcher, hookEvent.payload);
         }
@@ -307,7 +329,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
       };
     } catch (err) {
       const elapsed = Date.now() - startTime;
-      const message = err instanceof Error ? err.message : String(err);
+      const message = startupTimeoutError ?? (err instanceof Error ? err.message : String(err));
       const runtimeError = extractRuntimeError([message, ...stderrLines, ...output]) || message;
       d(`failed ${elapsed}ms | ${runtimeError}`);
       if (err instanceof Error && err.stack) console.error(err.stack);
@@ -317,6 +339,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
       appendUnique(output, [runtimeError]);
       return { success: false, summary: 'Claude Code execution failed', artifacts: [], error: runtimeError, output, sessionId: options?.resumeSessionId };
     } finally {
+      if (startupWatchdog) clearTimeout(startupWatchdog);
       emitHook('SessionEnd', '*', { cwd, sessionId });
       this.activeQuery?.close();
       this.activeQuery = null;
@@ -332,6 +355,13 @@ export class ClaudeCodeRuntime implements AgentRuntime {
       this.activeQuery?.close();
     });
   }
+}
+
+function readPositiveIntegerEnv(name: string): number | undefined {
+  const value = process.env[name]?.trim();
+  if (!value) return undefined;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
 }
 
 function readSessionId(message: unknown): string | undefined {

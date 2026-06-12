@@ -334,8 +334,8 @@
     "hasWorkflow": true,
     "path": "openai",
     "iconUrl": "plugins/openai/icon.svg",
-    "md5": "e9b22d9ba052947fdcd2bc2f9e27986d",
-    "updatedAt": "2026-06-11T02:03:59.057Z"
+    "md5": "6143d1847ab79afb339337e8e122608a",
+    "updatedAt": "2026-06-12T02:09:10.593Z"
   },
   {
     "id": "workflow.qianyin",
