@@ -60,6 +60,7 @@
     "infoBranch": "分支",
     "infoPr": "PR",
     "infoDescription": "描述",
+    "description": "描述",
     "addMember": "添加成员",
     "deleteIssue": "删除议题"
   },

@@ -60,6 +60,7 @@
     "infoBranch": "Branch",
     "infoPr": "PR",
     "infoDescription": "Description",
+    "description": "Description",
     "addMember": "Add member",
     "deleteIssue": "Delete Issue"
   },

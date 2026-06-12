@@ -78,9 +78,9 @@ export function NotificationsPopover({ workspaceId }: { workspaceId: string }) {
             )}
           </div>
           <div>
-            <Tabs defaultValue="all" className="gap-0">
+            <Tabs defaultValue="all" className="flex-col gap-0">
               <div className="px-4 py-2 border-b">
-                <TabsList className="h-8 grid grid-cols-2">
+                <TabsList className="h-8 w-full">
                   <TabsTrigger value="all" className="flex-1 text-xs">
                     {t('all')}
                   </TabsTrigger>
