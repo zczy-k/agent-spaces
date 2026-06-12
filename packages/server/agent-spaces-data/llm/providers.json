@@ -1,0 +1,50 @@
+[
+  {
+    "name": "zhipu",
+    "apiBase": "https://open.bigmodel.cn/api/anthropic",
+    "apiKey": "6331b2f6421946eabd50d053c25afe30.soRFcrsOgDtd1uLs",
+    "id": "4b438c30-42c9-409e-b608-9db4355a99d8",
+    "createdAt": "2026-05-04T04:35:45.425Z",
+    "updatedAt": "2026-05-04T04:35:45.425Z"
+  },
+  {
+    "name": "minimax",
+    "apiBase": "https://api.minimaxi.com/anthropic",
+    "apiKey": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJHcm91cE5hbWUiOiLlu5blu7bmnbAiLCJVc2VyTmFtZSI6IuW7luW7tuadsCIsIkFjY291bnQiOiIiLCJTdWJqZWN0SUQiOiIxOTk0NTgwNzY3MDE5MTEwNTI2IiwiUGhvbmUiOiIxOTIyMDQxMzk1NiIsIkdyb3VwSUQiOiIxOTk0NTgwNzY3MDE0OTE2MjIyIiwiUGFnZU5hbWUiOiIiLCJNYWlsIjoiIiwiQ3JlYXRlVGltZSI6IjIwMjUtMTEtMjkgMTU6MDk6MDkiLCJUb2tlblR5cGUiOjQsImlzcyI6Im1pbmltYXgifQ.A4T8_hr3R4hEINIoqRkTMfXkdiZMJGhgp4Qm7P-4Py_-JB4Fe6TdkKT3SLnEZHPvUjsloILmxb8aOXIz4hSGTvEFlcufkuCWGOO-9W1_gFO8YfKCZDT9BhkD7hBpfXYhIBd0Vs3r3Pg79zXZ0fqIHoCYW8jhmTHCDuDBDC4D2oM95GuIcImcEH8bYsoLV0S1B183D-yPFaAWD56aA_0fiK4PEeHFvWV6G9koekTOhXB2JAj5gtjMPKTX1ULL_wZO2AbnWrriCs5WgIEoeMClSbMPDWHR9KiIqCfYeAhcGsG6rFkIlLr4GD3eszsonRbCW43hCUBB80iDAv1OVZbjYw",
+    "id": "971cf2a7-2a4f-4cfb-b519-d67c06385c5e",
+    "createdAt": "2026-05-04T04:36:09.944Z",
+    "updatedAt": "2026-05-04T04:36:09.944Z"
+  },
+  {
+    "name": "aicode",
+    "apiBase": "https://api.claudecode.net.cn/api/codex/backend-api/codex",
+    "apiKey": "sk-ant-api03-WlYCqe47YdpWulGXC2f8aZc6ic6Yz8XUgkRWoImDyx5tcAKYsK_zq2NH7Cw-B5in1jDmff2D7Jfb8svRXl16NA",
+    "id": "4e5b0acb-b924-4047-9669-132e1f71570f",
+    "createdAt": "2026-05-04T05:00:38.333Z",
+    "updatedAt": "2026-05-29T09:54:26.724Z"
+  },
+  {
+    "name": "zhipu-openai",
+    "apiBase": "https://open.bigmodel.cn/api/paas/v4",
+    "apiKey": "6331b2f6421946eabd50d053c25afe30.soRFcrsOgDtd1uLs",
+    "id": "087fecf1-446f-45ac-b7bb-c50c1de44875",
+    "createdAt": "2026-05-22T08:16:27.982Z",
+    "updatedAt": "2026-05-22T08:16:27.982Z"
+  },
+  {
+    "name": "minimax-openai",
+    "apiBase": "https://api.minimaxi.com/v1",
+    "apiKey": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJHcm91cE5hbWUiOiLlu5blu7bmnbAiLCJVc2VyTmFtZSI6IuW7luW7tuadsCIsIkFjY291bnQiOiIiLCJTdWJqZWN0SUQiOiIxOTk0NTgwNzY3MDE5MTEwNTI2IiwiUGhvbmUiOiIxOTIyMDQxMzk1NiIsIkdyb3VwSUQiOiIxOTk0NTgwNzY3MDE0OTE2MjIyIiwiUGFnZU5hbWUiOiIiLCJNYWlsIjoiIiwiQ3JlYXRlVGltZSI6IjIwMjUtMTEtMjkgMTU6MDk6MDkiLCJUb2tlblR5cGUiOjQsImlzcyI6Im1pbmltYXgifQ.A4T8_hr3R4hEINIoqRkTMfXkdiZMJGhgp4Qm7P-4Py_-JB4Fe6TdkKT3SLnEZHPvUjsloILmxb8aOXIz4hSGTvEFlcufkuCWGOO-9W1_gFO8YfKCZDT9BhkD7hBpfXYhIBd0Vs3r3Pg79zXZ0fqIHoCYW8jhmTHCDuDBDC4D2oM95GuIcImcEH8bYsoLV0S1B183D-yPFaAWD56aA_0fiK4PEeHFvWV6G9koekTOhXB2JAj5gtjMPKTX1ULL_wZO2AbnWrriCs5WgIEoeMClSbMPDWHR9KiIqCfYeAhcGsG6rFkIlLr4GD3eszsonRbCW43hCUBB80iDAv1OVZbjYw",
+    "id": "05402c19-d0e0-4b94-87cf-4d099fd5d074",
+    "createdAt": "2026-05-22T12:34:52.155Z",
+    "updatedAt": "2026-05-22T12:34:52.155Z"
+  },
+  {
+    "name": "MiniMax",
+    "apiBase": "https://api.minimaxi.com/anthropic",
+    "apiKey": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJHcm91cE5hbWUiOiLlu5blu7bmnbAiLCJVc2VyTmFtZSI6IuW7luW7tuadsCIsIkFjY291bnQiOiIiLCJTdWJqZWN0SUQiOiIxOTgzODE3NTQxMTc2MjcxMjU2IiwiUGhvbmUiOiIxNTEwNjA4MjQ4NyIsIkdyb3VwSUQiOiIxOTgzODE3NTQxMTY3ODgyNjQ4IiwiUGFnZU5hbWUiOiIiLCJNYWlsIjoiIiwiQ3JlYXRlVGltZSI6IjIwMjUtMTEtMjQgMDk6NDY6MTYiLCJUb2tlblR5cGUiOjQsImlzcyI6Im1pbmltYXgifQ.QbpduVhcwAoDEsNpmVC7nPyyM_GFaNLqKgv9a5onqQS3b8yiZkjRbThUqtZsJ7JYAoTpfaNloNfVPSt5hDrqHnPzaPcBzuDt8Ufwmtw5I6VWi5Y0j4CG9d0m-QHRuNQhOjQgr2Y40hQwWfAF38mBilfYJ4xg02CQr1d9W5iaqYxI7SjLcOBPAjRXh6qEDIsxaGhOP08Fc_x6bkj8EDRQElzQyeu-hVGu8XKBVlHHQzfDP7UBM7ZOmoFwdqEtqL6jgvix4v4dFiDeNZSAyK4C3jVC0b6L0XeSCy1CSfihNuiP0IpLUp-lC-Y2TWAR_Oav_D5rdPpi1uuVaaluP80GYA",
+    "id": "446d1724-6511-4b58-9b40-f20f72e36b66",
+    "createdAt": "2026-06-02T05:52:44.167Z",
+    "updatedAt": "2026-06-02T05:52:44.167Z"
+  }
+]
