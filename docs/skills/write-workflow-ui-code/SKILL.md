@@ -1,6 +1,6 @@
 ---
 name: write-workflow-ui-code
-description: Write, edit, or review Agent Spaces Workflow UI project code from a user-provided project path. Use when an external agent needs to work on Workflow UI React or HTML preview projects, including manifest/mainFile handling, src/ file layout, window.AgentSpacesUI host components, plugin tool calls, config/data helpers, and light/dark theme-safe Tailwind styling.
+description: Write, edit, or review Agent Spaces Workflow UI project code from a user-provided project path while looking up Workflow UI renderer, host component, and plugin source from the current working directory instead of MCP/runtime agent tools. Use when an external agent needs to work on Workflow UI React or HTML preview projects, including manifest/mainFile handling, src/ file layout, window.AgentSpacesUI host components, plugin tool calls, config/data helpers, and light/dark theme-safe Tailwind styling.
 ---
 
 # Write Workflow UI Code
@@ -30,6 +30,23 @@ If the user provides `src/` or a file inside `src/`, normalize to the project ro
 6. If `src/CLAUDE.md` exists, read it before changes and update it after changes when files, architecture, or important decisions changed.
 
 Do not modify files outside the Workflow UI project root unless the user explicitly asks.
+
+## Source Lookup From Current Workspace
+
+This skill is intended to live alongside the Agent Spaces source tree. Do not rely on MCP or runtime-only agent tools to discover Workflow UI internals. Use the current working directory as the source repository and search files directly.
+
+Useful source locations:
+
+- `packages/server/src/ws/agent-prompt.ts`: built-in Workflow UI agent prompt rules.
+- `packages/server/src/services/builtin-tools/workflow-ui-tools.ts`: host UI component category lists and Workflow UI function tool behavior.
+- `packages/web/src/lib/ui-exports.ts`: components and lucide icons exported to `window.AgentSpacesUI` and `@agent-spaces/ui`.
+- `packages/web/src/components/ui/`: host UI component implementations and composition patterns.
+- `packages/web/src/components/workflows-ui/workflow-ui-renderer.tsx`: renderer module allowlist and local import resolution.
+- `packages/web/src/components/workflows-ui/workflow-ui-preview.tsx`: preview container behavior.
+- `packages/web/src/components/workflows-ui/workflow-ui-editor.tsx`: editor file loading and preview refresh behavior.
+- `packages/server/src/services/plugin.ts`: plugin tool lookup and execution behavior.
+
+When a symbol or component location is unclear, search from the current working directory. Prefer structural search when available; otherwise use `rg`.
 
 ## Runtime Model
 
@@ -94,7 +111,11 @@ Lucide React icons are exposed on `window.AgentSpacesUI` by their standard names
 
 Do not import host components or icons from repository source paths such as `@/components/...`.
 
-If the internal tool `list_agent_spaces_ui_components` is available, call it with the closest category before writing a custom component. Omit `category` only when the full categorized inventory is needed.
+Do not call `list_agent_spaces_ui_components` from this local skill workflow. Instead, inspect the source in the current working directory:
+
+- Read `packages/server/src/services/builtin-tools/workflow-ui-tools.ts` for component categories and the categorized component list.
+- Read `packages/web/src/lib/ui-exports.ts` to confirm the actual exports available on `window.AgentSpacesUI`.
+- Read the relevant file under `packages/web/src/components/ui/` when component props or composition are unclear.
 
 Known categories:
 
@@ -109,7 +130,7 @@ Known categories:
 - `utilities`: miscellaneous helpers exposed by the host UI bundle.
 - `uncategorized`: components not mapped to a category.
 
-If `window.AgentSpacesUI` component props or composition are unclear, inspect the host implementation in the Agent Spaces repository, especially `packages/web/src/components/ui` and `packages/web/src/lib/ui-exports.ts`.
+If `window.AgentSpacesUI` component props or composition are unclear, inspect the host implementation in the current working directory, especially `packages/web/src/components/ui` and `packages/web/src/lib/ui-exports.ts`.
 
 `@agent-spaces/ui` is also mapped by the renderer for allowed host UI exports, but destructuring from `window.AgentSpacesUI` is the safest default in preview code.
 
@@ -161,11 +182,12 @@ Compatibility aliases exist:
 
 Prefer `window.AgentSpaces.callPluginTool` in new code.
 
-When internal workflow tools are available:
+Do not call internal agent tools such as `list_plugin_tools`, `get_plugin_tool_detail`, or `execute_plugin_tool` from this local skill workflow. Inspect source and project configuration instead:
 
-1. Call `list_plugin_tools` to find enabled plugin tools.
-2. Call `get_plugin_tool_detail` before execution to inspect the input schema and output shape.
-3. Use `execute_plugin_tool` only for agent-side probing when needed.
+1. Read the Workflow UI project metadata/config files to identify enabled plugin ids when present.
+2. Search the current working directory for the plugin id or tool name.
+3. Inspect the plugin's tool registration source for input schema, defaults, credentials behavior, and output shape.
+4. Inspect `packages/server/src/services/plugin.ts` and `packages/server/src/services/plugin-runtime-api.ts` when runtime wrapping or credential injection behavior is unclear.
 
 In preview code:
 
