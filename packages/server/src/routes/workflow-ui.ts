@@ -5,6 +5,7 @@ import { existsSync, mkdirSync, writeFileSync, rmSync, createReadStream } from '
 import { join, basename } from 'node:path';
 import { randomUUID } from 'crypto';
 import * as svc from '../services/workflow-ui.js';
+import { invokeService } from '../services/workflow-ui-services.js';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 500 * 1024 * 1024 } });
@@ -140,6 +141,20 @@ router.put('/:id/configs/content', (req: Request<{ id: string }>, res: Response)
     svc.writeConfig(req.params.id, filePath, value);
     res.json({ ok: true });
   } catch (error: any) { res.status(500).json({ error: error.message }); }
+});
+
+// Services RPC: invoke a project service handler defined in src/services/*.js.
+// Body: { name, payload } -> { ok, result }. Handler runs server-side as the
+// single writer of configs (ctx.writeConfig/updateConfig broadcast configChanged).
+router.post('/:id/services/invoke', async (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const { name, payload } = req.body ?? {};
+    if (!name) { res.status(400).json({ error: 'name is required' }); return; }
+    const result = await invokeService(req.params.id, name, payload);
+    res.json({ ok: true, result });
+  } catch (error: any) {
+    res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message });
+  }
 });
 
 router.put('/:id/data/content', (req: Request<{ id: string }>, res: Response) => {

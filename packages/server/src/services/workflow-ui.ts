@@ -5,6 +5,7 @@ import yauzl from 'yauzl';
 import { v4 as uuid } from 'uuid';
 import * as store from '../storage/workflow-ui-store.js';
 import type { WorkflowUiProject } from '../storage/workflow-ui-store.js';
+import { unloadServices } from './workflow-ui-services.js';
 
 export { store };
 export type { WorkflowUiProject };
@@ -106,6 +107,7 @@ export function updateProject(
 
 export function deleteProject(projectId: string): void {
   store.deleteProject(projectId);
+  unloadServices(projectId);
 }
 
 // ---- Files ----
@@ -150,6 +152,10 @@ export function readConfig(projectId: string, filePath: string): unknown | null 
 
 export function writeConfig(projectId: string, filePath: string, value: unknown): void {
   store.writeConfig(projectId, filePath, value);
+}
+
+export function listConfigs(projectId: string): Record<string, unknown> {
+  return store.listConfigs(projectId);
 }
 
 export function writeDataFile(projectId: string, filePath: string, content: Buffer | string): number {

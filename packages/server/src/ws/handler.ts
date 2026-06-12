@@ -11,6 +11,7 @@ import * as agentService from '../services/agent.js';
 import { runMentionedAgent, stopChannelRuns, handleAnswerQuestion, ensureScheduler, makeContext } from './agent-runner.js';
 import { stripHtml, extractMentionIds } from './html-utils.js';
 import { listTasks } from '../services/workflow-ui-tasks.js';
+import { listConfigs } from '../services/workflow-ui.js';
 
 type EventHandler = (ws: WebSocket, workspaceId: string, data: unknown) => void;
 
@@ -185,6 +186,9 @@ onClientConnected((clientId) => {
   if (!conn) return;
   const tasks = listTasks(conn.workspaceId);
   sendToClient(clientId, { event: 'workflowUi.taskSnapshot', data: { tasks } });
+  // 配置全量快照：UI 据此建立内存缓存，不再直接 readConfig
+  const configs = listConfigs(conn.workspaceId);
+  sendToClient(clientId, { event: 'workflowUi.configSnapshot', data: { configs } });
 });
 
 export { broadcastToWorkspace } from './connection-manager.js';

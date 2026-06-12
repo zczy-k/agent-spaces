@@ -167,6 +167,8 @@ function WrappedFileUpload(props: any) {
  */
 export function useWorkflowUiHostApi(projectId: string) {
   const executorIdRef = useRef<string>('');
+  const configCacheRef = useRef<Map<string, unknown>>(new Map());
+  const configChangeCallbacksRef = useRef<Set<(path: string, value: unknown) => void>>(new Set());
 
   useEffect(() => {
     if (!executorIdRef.current) {
@@ -206,6 +208,44 @@ export function useWorkflowUiHostApi(projectId: string) {
       const ws = getWS(projectId);
       const offs = TASK_EVENTS.map((evt) => ws.on(evt, (data) => cb(evt, data)));
       return () => offs.forEach((off) => { try { off(); } catch { /* noop */ } });
+    };
+
+    // ---- Config: 服务端为唯一写入方，UI 仅维护内存缓存 + 订阅变更 ----
+    const emitConfigChange = (path: string, value: unknown) => {
+      configCacheRef.current.set(path, value);
+      for (const cb of configChangeCallbacksRef.current) {
+        try { cb(path, value); } catch { /* noop */ }
+      }
+    };
+    const offConfigSnapshot = getWS(projectId).on('workflowUi.configSnapshot', (data: any) => {
+      const configs = (data?.configs ?? {}) as Record<string, unknown>;
+      configCacheRef.current = new Map(Object.entries(configs));
+      for (const [path, value] of Object.entries(configs)) emitConfigChange(path, value);
+    });
+    const offConfigChanged = getWS(projectId).on('workflowUi.configChanged', (data: any) => {
+      if (data?.path) emitConfigChange(data.path, data.value);
+    });
+
+    const getConfig = (path: string): unknown => {
+      const v = configCacheRef.current.get(path);
+      return v === undefined ? null : v;
+    };
+    const getAllConfigs = (): Record<string, unknown> => Object.fromEntries(configCacheRef.current);
+    const onConfigChanged = (cb: (path: string, value: unknown) => void) => {
+      configChangeCallbacksRef.current.add(cb);
+      return () => { configChangeCallbacksRef.current.delete(cb); };
+    };
+
+    // ---- Services RPC: 调用项目 src/services/*.js 里的 handler（服务端执行） ----
+    const invokeService = async (name: string, payload?: unknown) => {
+      const resp = await fetchWithAuth(`/api/workflows-ui/${projectId}/services/invoke`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, payload }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data?.error || `service invoke failed: ${resp.status}`);
+      return data?.result;
     };
 
     const readConfigJson = async <T,>(filePath = LAST_SELECTION_CONFIG): Promise<T | null> => {
@@ -333,6 +373,10 @@ export function useWorkflowUiHostApi(projectId: string) {
       subscribeTaskEvents,
       onTaskEvent: subscribeTaskEvents,
       getExecutorId: () => executorIdRef.current,
+      getConfig,
+      getAllConfigs,
+      onConfigChanged,
+      invokeService,
     };
 
     const fileApi = {
@@ -385,6 +429,10 @@ export function useWorkflowUiHostApi(projectId: string) {
     window.addEventListener('agent-spaces:open-file', handleOpenFile);
 
     return () => {
+      offConfigSnapshot();
+      offConfigChanged();
+      configChangeCallbacksRef.current.clear();
+      configCacheRef.current = new Map();
       window.removeEventListener('agent-spaces:open-file', handleOpenFile);
       delete (window as any).AgentSpacesUI;
       delete (window as any).AgentSpaces;

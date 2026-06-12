@@ -47,7 +47,9 @@ Useful source locations:
 - `packages/server/src/services/plugin.ts`: plugin tool lookup and execution behavior.
 - `packages/server/src/routes/plugin.ts`: `execute` route, including optional `workspaceId`/`executorId`/`taskId`/`meta` task tracking and `workflowUi.*` broadcasting.
 - `packages/server/src/services/workflow-ui-tasks.ts`: in-process task state cache (start/finish/fail/list/prune) backing `workflowUi.*` events.
-- `packages/web/src/components/workflows-ui/use-workflow-ui-host-api.ts`: host API injected into preview globals — `callPluginTool` options, `onTaskEvent`, `getExecutorId`, config/data helpers.
+- `packages/web/src/components/workflows-ui/use-workflow-ui-host-api.ts`: host API injected into preview globals — `callPluginTool` options, `onTaskEvent`, `getExecutorId`, `getConfig`/`onConfigChanged`, `invokeService`, config/data helpers.
+- `packages/server/src/services/workflow-ui-services.ts`: compiles project `src/services/*.js`, caches per projectId, `invokeService`, injects `ctx` (readConfig/writeConfig/updateConfig/broadcast).
+- `packages/server/src/routes/workflow-ui.ts`: workflow-ui REST routes including `POST /:id/services/invoke`.
 
 When a symbol or component location is unclear, search from the current working directory. Prefer structural search when available; otherwise use `rg`.
 
@@ -246,6 +248,8 @@ Do not reimplement task queues, polling state machines, or cross-tab sync inside
 
 ## Config And Data Helpers
 
+For project-local persistence, prefer the server-side [Project Services](#project-services-server-side-writers) channel so a single writer owns `configs/` and changes fan out to every client. The direct helpers below remain available for simple projects, but they do not protect against concurrent multi-client overwrites.
+
 Use async helpers for project-local persistence.
 
 Config files live under the project `configs/` directory:
@@ -270,6 +274,44 @@ await window.AgentSpacesUI.downloadFile(url, "remote-file.bin");
 ```
 
 The same helpers are also available on `window.AgentSpaces` and `window.AgentSpacesAPI` for compatibility.
+
+## Project Services (Server-Side Writers)
+
+When multiple preview instances of the same project can mutate config — or any project must avoid one client's write overwriting another's — do not call `writeConfigJson` from the UI. Register server-side handlers under `src/services/` and call them with `invokeService`. The server is the single writer; every write fans out as `workflowUi.configChanged`.
+
+### Defining handlers
+
+Each `src/services/*.js` default-exports a map of `eventName -> (payload, ctx) => result | Promise<result>`:
+
+```js
+export default {
+  add_results: ({ items }, ctx) => {
+    ctx.updateConfig("history.json", (prev) => merge(prev ?? [], items));
+    return { ok: true };
+  },
+};
+```
+
+- Handlers run in **server Node**, not the browser sandbox. They cannot `import` external modules — all capability comes from `ctx`.
+- `ctx.writeConfig(path, value)` / `ctx.updateConfig(path, updater)` write `configs/<path>` and broadcast `workflowUi.configChanged`.
+- `ctx.updateConfig` is an atomic read-modify-write; use it for append/merge so concurrent calls do not clobber each other.
+
+### Calling from the UI
+
+```js
+// RPC: await the handler's return value
+await window.AgentSpaces.invokeService("add_results", { items });
+
+// Read config from the in-memory cache (server pushes configSnapshot on connect)
+const history = window.AgentSpaces.getConfig("history.json");
+
+// Subscribe to changes (fires for every server write, on every client)
+const unsub = window.AgentSpaces.onConfigChanged((path, value) => {
+  if (path === "history.json") setHistory(value);
+});
+```
+
+Do not also `writeConfigJson` from the initiator after `invokeService` — the server already wrote and broadcast; double-writing reintroduces the overwrite problem.
 
 ## HTML Mode
 
@@ -344,6 +386,7 @@ Before finishing, inspect the changed files for these invariants:
 - Plugin tool responses are read according to their documented output shape.
 - Credentials are not collected, stored, or passed from preview UI unless explicitly required.
 - Config writes go to `configs/`; generated/downloaded data goes to `data/`.
+- Shared/mutable config is written through `invokeService` + server `src/services` handlers (single writer) and read via `getConfig`/`onConfigChanged`; the initiator does not also `writeConfigJson` the same value.
 - Multi-client task state uses `onTaskEvent` + the `callPluginTool` options (`taskId`, `meta`) instead of local-only queues; the initiator does not double-write results that `taskFinished` already persists.
 - `src/CLAUDE.md` was updated if project structure or decisions changed.
 

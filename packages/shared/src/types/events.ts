@@ -203,6 +203,8 @@ export type ServerEventMap = {
   'workflowUi.taskStarted': WorkflowUiTaskEvent;
   'workflowUi.taskFinished': WorkflowUiTaskEvent & { result?: unknown };
   'workflowUi.taskFailed': WorkflowUiTaskEvent & { error: string };
+  'workflowUi.configSnapshot': { configs: Record<string, unknown> };
+  'workflowUi.configChanged': { path: string; value: unknown };
 };
 
 export type ClientEventName = keyof ClientEventMap;

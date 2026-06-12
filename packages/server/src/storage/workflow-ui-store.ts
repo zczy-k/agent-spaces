@@ -249,6 +249,29 @@ export function writeConfig(projectId: string, filePath: string, value: unknown)
   touchProject(projectId);
 }
 
+/** 扫描 configs 目录，返回所有 .json 文件的 { 相对路径: 解析值 }。 */
+export function listConfigs(projectId: string): Record<string, unknown> {
+  const root = join(projectDir(projectId), 'configs');
+  const result: Record<string, unknown> = {};
+  if (!existsSync(root)) return result;
+  function walk(d: string, prefix: string) {
+    for (const entry of readdirSync(d, { withFileTypes: true })) {
+      const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) {
+        walk(join(d, entry.name), rel);
+      } else if (entry.name.endsWith('.json')) {
+        try {
+          result[rel] = JSON.parse(readFileSync(join(d, entry.name), 'utf-8'));
+        } catch {
+          /* skip malformed config */
+        }
+      }
+    }
+  }
+  walk(root, '');
+  return result;
+}
+
 export function writeDataFile(projectId: string, filePath: string, content: Buffer | string): number {
   const fullPath = safeProjectSubdirPath(projectId, 'data', filePath);
   ensureDir(dirname(fullPath));
