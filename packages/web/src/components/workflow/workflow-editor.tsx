@@ -631,7 +631,7 @@ function WorkflowEditorInner({
         onOpenPluginManager={() => state.setPluginsDialogOpen(true)}
         onOpenWorkflowLocation={() => {
           if (workflow?.id) {
-            fetch(`/api/folder/reveal?path=${encodeURIComponent(`~/.agent-spaces-data/workflows/${workflow.id}`)}`, { method: 'POST' });
+            fetch(`/api/folder/reveal?path=${encodeURIComponent(`workflows/${workflow.id}`)}`, { method: 'POST' });
           }
         }}
         onWorkflowInfoChange={(updates) => {

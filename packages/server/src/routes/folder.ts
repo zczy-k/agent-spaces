@@ -1,9 +1,10 @@
 import { Router, type Request, type Response } from 'express';
 import { readdir, stat, mkdir, access, readFile } from 'node:fs/promises';
-import { join, resolve, sep, extname } from 'node:path';
+import { join, resolve, sep, extname, isAbsolute } from 'node:path';
 import { homedir } from 'node:os';
 import { constants } from 'node:fs';
 import { exec } from 'node:child_process';
+import { getDataDir } from '../storage/json-store.js';
 
 const router = Router();
 
@@ -158,7 +159,10 @@ router.post('/reveal', (req: Request, res: Response) => {
     res.status(400).json({ error: 'path is required' });
     return;
   }
-  const dir = resolve(raw.replace(/^~[/\\]/, homedir() + sep));
+  // 绝对路径或 ~ 开头：按原逻辑解析；否则视为数据目录（getDataDir）下的相对子路径
+  const dir = raw.startsWith('~') || isAbsolute(raw)
+    ? resolve(raw.replace(/^~[/\\]/, homedir() + sep))
+    : resolve(join(getDataDir(), raw));
 
   const cmd = process.platform === 'darwin'
     ? `open "${dir}"`

@@ -5,8 +5,8 @@ import tls from 'node:tls';
 import fs from 'node:fs/promises';
 import fsSync from 'node:fs';
 import path from 'node:path';
-import os from 'node:os';
 import { URL } from 'node:url';
+import { getDataDir } from '../storage/json-store.js';
 
 export type FetchOptions = {
   headers?: Record<string, string>;
@@ -297,7 +297,7 @@ export function createBuiltinPluginApi(): Record<string, any> {
     copyFile: (src: string, dest: string) => fs.copyFile(src, dest),
 
     savePublicFile(buffer: Buffer, ext: string): { filePath: string; httpPath: string } {
-      const dataDir = process.env.AGENT_SPACES_DATA_DIR || path.join(os.homedir(), '.agent-spaces-data');
+      const dataDir = getDataDir();
       const uploadsDir = path.join(dataDir, 'public', 'uploads');
       if (!fsSync.existsSync(uploadsDir)) fsSync.mkdirSync(uploadsDir, { recursive: true });
       const filename = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;

@@ -10,9 +10,9 @@ import type {
 } from './agent-runtime-types.js';
 import { appendOutputStyleToPrompt, summarizeResult } from './agent-runtime-types.js';
 import { startCodexFunctionToolBridge, type CodexFunctionToolBridge } from './codex-function-tool-bridge.js';
+import { getDataDir } from '../storage/json-store.js';
 
 const registeredConfiguredSkills = new Set<string>();
-const DEFAULT_DATA_DIR = join(process.env.HOME || '~', '.agent-spaces-data');
 
 /**
  * Runtime backed by @codeany/open-agent-sdk.
@@ -289,10 +289,6 @@ function resolveSkillFile(agentDir: string, skillName: string): string | undefin
   if (existsSync(globalLegacySkillFile) && statSync(globalLegacySkillFile).size > 0) return globalLegacySkillFile;
 
   return undefined;
-}
-
-function getDataDir(): string {
-  return process.env.AGENT_SPACES_DATA_DIR || DEFAULT_DATA_DIR;
 }
 
 function parseSkillMarkdown(source: string): { meta: Record<string, string>; body: string } {

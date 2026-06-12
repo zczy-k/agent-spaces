@@ -1,14 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { readJsonFile, writeJsonFile, ensureDir } from '../storage/json-store.js';
+import { readJsonFile, writeJsonFile, ensureDir, getDataDir } from '../storage/json-store.js';
 import { join } from 'node:path';
 import type { AppNotification, NotificationType } from '@agent-spaces/shared';
 import { broadcastToWorkspace } from '../ws/connection-manager.js';
 
 function notificationsPath(workspaceId: string): string {
-  const dir = join(
-    process.env.AGENT_SPACES_DATA_DIR || join(process.env.HOME || '~', '.agent-spaces-data'),
-    'workspaces', workspaceId,
-  );
+  const dir = join(getDataDir(), 'workspaces', workspaceId);
   ensureDir(dir);
   return join(dir, 'notifications.json');
 }

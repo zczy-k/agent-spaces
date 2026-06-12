@@ -13,8 +13,8 @@ import type {
   AgentRuntimeEvent,
 } from './agent-runtime-types.js';
 import { appendOutputStyleToPrompt, summarizeResult } from './agent-runtime-types.js';
+import { getDataDir } from '../storage/json-store.js';
 
-const DEFAULT_DATA_DIR = join(process.env.HOME || '~', '.agent-spaces-data');
 const MAX_DEBUG_LOG_CHARS = 500;
 const STREAM_EVENT_THROTTLE_MS = 100;
 const STREAM_NO_PROGRESS_TIMEOUT_MS = 30_000;
@@ -350,10 +350,6 @@ function resolveSkillFile(agentDir: string | undefined, skillName: string): stri
   ];
 
   return candidates.find((file) => existsSync(file) && statSync(file).size > 0);
-}
-
-function getDataDir(): string {
-  return process.env.AGENT_SPACES_DATA_DIR || DEFAULT_DATA_DIR;
 }
 
 function parseSkillMarkdown(source: string): { meta: Record<string, string>; body: string } {

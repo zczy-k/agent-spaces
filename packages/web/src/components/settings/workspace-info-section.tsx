@@ -70,7 +70,7 @@ export function WorkspaceInfoSection({ workspace, channelCount, issueCount }: Wo
       <div className="space-y-3">
         <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('info.title')}</h4>
         <InfoRow icon={<FolderOpen size={14} />} label={t('info.path')} value={workspace.boundDirs[0] ?? '-'} onClick={workspace.boundDirs[0] ? () => handleReveal() : undefined} />
-        <InfoRow icon={<Database size={14} />} label={t('info.workspace')} value={`.agent-spaces-data/workspaces/${workspace.id}`} onClick={() => handleReveal('data')} />
+        <InfoRow icon={<Database size={14} />} label={t('info.workspace')} value={`workspaces/${workspace.id}`} onClick={() => handleReveal('data')} />
         <div className="grid grid-cols-2 gap-2">
           <div className="flex items-center gap-2 rounded-md border px-3 py-2">
             <Hash size={14} className="text-muted-foreground shrink-0" />
