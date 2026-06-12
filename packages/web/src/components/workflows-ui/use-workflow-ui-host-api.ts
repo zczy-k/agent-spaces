@@ -2,6 +2,7 @@ import { createElement, useEffect, useRef } from 'react';
 import { fetchWithAuth } from '@/lib/auth';
 import * as AgentSpacesUI from '@/lib/ui-exports';
 import { useEditorStore } from '@/stores/editor';
+import { getWS } from '@/lib/ws';
 
 const LAST_SELECTION_CONFIG = 'last-selection.json';
 
@@ -165,16 +166,46 @@ function WrappedFileUpload(props: any) {
  * for workflow-ui preview code. Cleans up on unmount.
  */
 export function useWorkflowUiHostApi(projectId: string) {
+  const executorIdRef = useRef<string>('');
+
   useEffect(() => {
-    const executePluginTool = async (pluginId: string, toolName: string, args: Record<string, any>) => {
+    if (!executorIdRef.current) {
+      const g = globalThis.crypto as (Crypto & { randomUUID?: () => string }) | undefined;
+      executorIdRef.current = g?.randomUUID?.()
+        ?? `exec-${Math.random().toString(36).slice(2)}-${Date.now().toString(36)}`;
+    }
+    const executorId = executorIdRef.current;
+
+    const executePluginTool = async (
+      pluginId: string,
+      toolName: string,
+      args: Record<string, any>,
+      options?: { taskId?: string; meta?: Record<string, unknown> },
+    ) => {
+      const body: Record<string, unknown> = { name: toolName, args, workspaceId: projectId, executorId };
+      if (options?.taskId) body.taskId = options.taskId;
+      if (options?.meta) body.meta = options.meta;
       const resp = await fetchWithAuth(`/api/plugins/${pluginId}/tools/execute`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: toolName, args }),
+        body: JSON.stringify(body),
       });
       const payload = await resp.json();
       if (!resp.ok) return payload;
       return Object.prototype.hasOwnProperty.call(payload, 'result') ? payload.result : payload;
+    };
+
+    // Workflow UI 任务事件订阅：转发 workflowUi.* WS 事件给沙箱项目代码
+    const TASK_EVENTS = [
+      'workflowUi.taskSnapshot',
+      'workflowUi.taskStarted',
+      'workflowUi.taskFinished',
+      'workflowUi.taskFailed',
+    ] as const;
+    const subscribeTaskEvents = (cb: (event: string, data: any) => void) => {
+      const ws = getWS(projectId);
+      const offs = TASK_EVENTS.map((evt) => ws.on(evt, (data) => cb(evt, data)));
+      return () => offs.forEach((off) => { try { off(); } catch { /* noop */ } });
     };
 
     const readConfigJson = async <T,>(filePath = LAST_SELECTION_CONFIG): Promise<T | null> => {
@@ -299,6 +330,9 @@ export function useWorkflowUiHostApi(projectId: string) {
       executePluginTool,
       getPluginInfo,
       toolExists,
+      subscribeTaskEvents,
+      onTaskEvent: subscribeTaskEvents,
+      getExecutorId: () => executorIdRef.current,
     };
 
     const fileApi = {

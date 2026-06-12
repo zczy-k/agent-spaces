@@ -121,6 +121,33 @@ export type ClientEventMap = {
   'workflow:interaction': InteractionResponse;
 };
 
+// ---- Workflow UI Task Events ----
+
+export type WorkflowUiTaskStatus = 'running' | 'completed' | 'failed';
+
+export interface WorkflowUiTask {
+  taskId: string;
+  projectId: string;
+  pluginId: string;
+  toolName: string;
+  executorId: string;
+  status: WorkflowUiTaskStatus;
+  startedAt: number;
+  finishedAt?: number;
+  result?: unknown;
+  error?: string;
+  /** 前端自定义上下文（mode/provider/modeLabel/prompt 等），后端原样存取与广播 */
+  meta?: Record<string, unknown>;
+}
+
+export interface WorkflowUiTaskEvent {
+  taskId: string;
+  executorId: string;
+  pluginId: string;
+  toolName: string;
+  meta?: Record<string, unknown>;
+}
+
 // ---- Server → Client Event Map ----
 
 export type ServerEventMap = {
@@ -172,6 +199,10 @@ export type ServerEventMap = {
   'workflow:get-execution-recovery:error': { error: string };
   'workflow:interaction': InteractionRequest;
   'interaction:ui_required': unknown;
+  'workflowUi.taskSnapshot': { tasks: WorkflowUiTask[] };
+  'workflowUi.taskStarted': WorkflowUiTaskEvent;
+  'workflowUi.taskFinished': WorkflowUiTaskEvent & { result?: unknown };
+  'workflowUi.taskFailed': WorkflowUiTaskEvent & { error: string };
 };
 
 export type ClientEventName = keyof ClientEventMap;

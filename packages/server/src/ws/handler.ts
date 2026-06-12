@@ -1,6 +1,6 @@
 import type { WebSocket } from 'ws';
 import type { WSEvent, ClientEventName, Message } from '@agent-spaces/shared';
-import { addConnection, broadcastToWorkspace, getClientId, handleInteractionResponse } from './connection-manager.js';
+import { addConnection, broadcastToWorkspace, getClientId, handleInteractionResponse, onClientConnected, getConnectionByClientId, sendToClient } from './connection-manager.js';
 import type { InteractionResponse } from '@agent-spaces/shared';
 import { handleTerminalEvent, sendTerminalSessions } from './terminal-handler.js';
 import { registerChatHandlers } from './chat-handler.js';
@@ -10,6 +10,7 @@ import { scheduleChannelTitleGeneration } from '../services/generated-title.js';
 import * as agentService from '../services/agent.js';
 import { runMentionedAgent, stopChannelRuns, handleAnswerQuestion, ensureScheduler, makeContext } from './agent-runner.js';
 import { stripHtml, extractMentionIds } from './html-utils.js';
+import { listTasks } from '../services/workflow-ui-tasks.js';
 
 type EventHandler = (ws: WebSocket, workspaceId: string, data: unknown) => void;
 
@@ -177,6 +178,14 @@ registerHandler('workflow:interaction', (ws, _workspaceId, data) => {
 
 // Register chat handlers
 registerChatHandlers();
+
+// Workflow UI: 客户端连入即推送当前任务快照（断线/刷新/新标签恢复视图）
+onClientConnected((clientId) => {
+  const conn = getConnectionByClientId(clientId);
+  if (!conn) return;
+  const tasks = listTasks(conn.workspaceId);
+  sendToClient(clientId, { event: 'workflowUi.taskSnapshot', data: { tasks } });
+});
 
 export { broadcastToWorkspace } from './connection-manager.js';
 export { stopChannelRuns, hasActiveChannelRuns, markInactiveChannelRunsStopped } from './agent-runner.js';

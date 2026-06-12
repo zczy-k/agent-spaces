@@ -1,8 +1,11 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 import { dirname, basename } from 'path';
+import { randomUUID } from 'node:crypto';
 import * as pluginService from '../services/plugin.js';
 import { createBuiltinPluginApi } from '../services/plugin-runtime-api.js';
+import { broadcastToWorkspace } from '../ws/connection-manager.js';
+import { startTask, finishTask, failTask } from '../services/workflow-ui-tasks.js';
 
 const router = Router();
 
@@ -119,12 +122,62 @@ router.get('/:pluginId/tools', (req: Request<{ pluginId: string }>, res: Respons
 
 router.post('/:pluginId/tools/execute', async (req: Request<{ pluginId: string }>, res: Response) => {
   try {
-    const { name, args } = req.body;
+    const pluginId = req.params.pluginId;
+    const { name, args, workspaceId, executorId, taskId, meta } = req.body ?? {};
     if (!name) { res.status(400).json({ error: 'name is required' }); return; }
-    const result = await pluginService.executePluginTool(req.params.pluginId, name, args ?? {}, createBuiltinPluginApi(), resolveLocale(req));
-    res.json({ success: true, result });
+
+    // WS 频道编排：仅当调用方提供 workspaceId（= projectId）时启用，向后兼容普通 execute
+    const track = typeof workspaceId === 'string' && workspaceId.length > 0;
+    const effectiveTaskId = track ? (taskId || randomUUID()) : null;
+
+    if (track) {
+      startTask({
+        taskId: effectiveTaskId!,
+        projectId: workspaceId,
+        pluginId,
+        toolName: name,
+        executorId: typeof executorId === 'string' ? executorId : 'unknown',
+        meta: meta && typeof meta === 'object' ? meta : undefined,
+      });
+      broadcastToWorkspace(workspaceId, 'workflowUi.taskStarted', {
+        taskId: effectiveTaskId,
+        executorId: typeof executorId === 'string' ? executorId : 'unknown',
+        pluginId,
+        toolName: name,
+        meta: meta && typeof meta === 'object' ? meta : undefined,
+      });
+    }
+
+    try {
+      const result = await pluginService.executePluginTool(pluginId, name, args ?? {}, createBuiltinPluginApi(), resolveLocale(req));
+      if (track) {
+        finishTask(workspaceId, effectiveTaskId!, result);
+        broadcastToWorkspace(workspaceId, 'workflowUi.taskFinished', {
+          taskId: effectiveTaskId,
+          executorId: typeof executorId === 'string' ? executorId : 'unknown',
+          pluginId,
+          toolName: name,
+          meta: meta && typeof meta === 'object' ? meta : undefined,
+          result,
+        });
+      }
+      res.json({ success: true, result });
+    } catch (error: any) {
+      if (track) {
+        failTask(workspaceId, effectiveTaskId!, error?.message || String(error));
+        broadcastToWorkspace(workspaceId, 'workflowUi.taskFailed', {
+          taskId: effectiveTaskId,
+          executorId: typeof executorId === 'string' ? executorId : 'unknown',
+          pluginId,
+          toolName: name,
+          meta: meta && typeof meta === 'object' ? meta : undefined,
+          error: error?.message || String(error),
+        });
+      }
+      res.status(error?.message?.includes('not found') ? 404 : 500).json({ error: error?.message });
+    }
   } catch (error: any) {
-    res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
