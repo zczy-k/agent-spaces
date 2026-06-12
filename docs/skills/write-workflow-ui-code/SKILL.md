@@ -45,6 +45,9 @@ Useful source locations:
 - `packages/web/src/components/workflows-ui/workflow-ui-preview.tsx`: preview container behavior.
 - `packages/web/src/components/workflows-ui/workflow-ui-editor.tsx`: editor file loading and preview refresh behavior.
 - `packages/server/src/services/plugin.ts`: plugin tool lookup and execution behavior.
+- `packages/server/src/routes/plugin.ts`: `execute` route, including optional `workspaceId`/`executorId`/`taskId`/`meta` task tracking and `workflowUi.*` broadcasting.
+- `packages/server/src/services/workflow-ui-tasks.ts`: in-process task state cache (start/finish/fail/list/prune) backing `workflowUi.*` events.
+- `packages/web/src/components/workflows-ui/use-workflow-ui-host-api.ts`: host API injected into preview globals — `callPluginTool` options, `onTaskEvent`, `getExecutorId`, config/data helpers.
 
 When a symbol or component location is unclear, search from the current working directory. Prefer structural search when available; otherwise use `rg`.
 
@@ -175,6 +178,8 @@ Preview code should execute enabled plugin tools with:
 const result = await window.AgentSpaces.callPluginTool(pluginId, toolName, args);
 ```
 
+An optional 4th argument `{ taskId, meta }` opts the call into backend task tracking and `workflowUi.*` event broadcasting, so task state syncs across every preview instance of the same project. Omit it for one-off calls. See [Task Events And Multi-Client Sync](#task-events-and-multi-client-sync) for when to use it.
+
 Compatibility aliases exist:
 
 - `window.AgentSpacesAPI.callPluginTool`
@@ -196,6 +201,48 @@ In preview code:
 - If an input schema property has a `default`, omit that field unless the user needs an override.
 - Do not build UI for API keys, tokens, account credentials, or secrets.
 - Do not pass credential arguments when plugin default credentials can be injected from plugin config.
+
+## Task Events And Multi-Client Sync
+
+When a Workflow UI project runs long tasks (generation, polling) and should reflect state across multiple preview instances (editor iframe, standalone preview page, multiple tabs of the same project), use the host task-event channel instead of local-only state.
+
+### Initiating a tracked task
+
+Pass an options object as the 4th argument so the backend tracks the execution and broadcasts `workflowUi.*` events to every client on the same project channel:
+
+```js
+const taskId = `task-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+const meta = { mode: 'text_to_image', provider: 'jimeng', prompt };
+await window.AgentSpaces.callPluginTool(pluginId, toolName, args, { taskId, meta });
+```
+
+- `taskId`: client-generated. Reuse the same id across retries or async polling stages so the backend cache stays idempotent and the queue shows one item.
+- `meta`: arbitrary context the backend echoes back in every event (mode/provider/prompt/labels). Other clients that did not initiate the call need it to render queue items and parse results, so include anything the UI needs downstream.
+
+### Subscribing to events
+
+```js
+const unsubscribe = window.AgentSpaces.onTaskEvent((event, data) => {
+  switch (event) {
+    case 'workflowUi.taskSnapshot': // reconnect/refresh recovery — data.tasks
+    case 'workflowUi.taskStarted':  // { taskId, executorId, pluginId, toolName, meta }
+    case 'workflowUi.taskFinished': // { taskId, executorId, meta, result } -> parse, persist
+    case 'workflowUi.taskFailed':   // { taskId, executorId, meta, error }
+  }
+});
+// Call unsubscribe in effect cleanup.
+```
+
+`window.AgentSpaces.getExecutorId()` returns this client's session-stable id; compare it with `data.executorId` to detect tasks the current client initiated (e.g. only the initiator surfaces a global error).
+
+### Patterns
+
+- Treat `taskFinished` as the single source of truth for results: every client (initiator or not) parses `result` and persists via `writeConfigJson`, so history is shared. Do not also write results from the initiator's call site — that double-writes.
+- For async polling (e.g. MiniMax video), reuse the same `taskId` and `meta` on the polling call; the queue shows one item transitioning running -> completed.
+- If `taskFinished` carries no parseable media (intermediate async state, e.g. only an `asyncTaskId`), keep the item `running` instead of marking it completed.
+- Subscribe once in a top-level hook; clean up on unmount.
+
+Do not reimplement task queues, polling state machines, or cross-tab sync inside the project — the host already provides them.
 
 ## Config And Data Helpers
 
@@ -297,6 +344,7 @@ Before finishing, inspect the changed files for these invariants:
 - Plugin tool responses are read according to their documented output shape.
 - Credentials are not collected, stored, or passed from preview UI unless explicitly required.
 - Config writes go to `configs/`; generated/downloaded data goes to `data/`.
+- Multi-client task state uses `onTaskEvent` + the `callPluginTool` options (`taskId`, `meta`) instead of local-only queues; the initiator does not double-write results that `taskFinished` already persists.
 - `src/CLAUDE.md` was updated if project structure or decisions changed.
 
 Return concrete manual verification steps for the user, including which page to open, which controls to click, and what result confirms success.
