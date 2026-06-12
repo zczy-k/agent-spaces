@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { getProjectDir } from '../storage/workflow-ui-store.js';
 import * as workflowUiStore from '../storage/workflow-ui-store.js';
 import { broadcastToWorkspace } from '../ws/connection-manager.js';
+import { listTasks } from './workflow-ui-tasks.js';
 
 export type ServiceHandler = (payload: any, ctx: WorkflowUiServiceContext) => unknown | Promise<unknown>;
 
@@ -14,6 +15,8 @@ export interface WorkflowUiServiceContext {
   writeConfig(path: string, value: unknown): void;
   /** 原子读-改-写：updater(prev) => next；写回后广播 configChanged；返回新值 */
   updateConfig(path: string, updater: (prev: unknown) => unknown): unknown;
+  /** 当前正在进行的任务（含 executorId），供客户端按发起者过滤显示队列 */
+  listRunningTasks(): unknown[];
   /** 向该 projectId 频道广播任意事件 */
   broadcast(event: string, data: unknown): void;
 }
@@ -82,6 +85,7 @@ function makeContext(projectId: string): WorkflowUiServiceContext {
       broadcastToWorkspace(projectId, 'workflowUi.configChanged', { path, value: next });
       return next;
     },
+    listRunningTasks: () => listTasks(projectId).filter((t) => t.status === 'running'),
     broadcast: (event, data) => broadcastToWorkspace(projectId, event, data),
   };
 }

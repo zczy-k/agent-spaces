@@ -102,7 +102,7 @@ project/
 
 ## WS 任务事件与多端同步
 
-同一 workflow-ui 项目的多个预览实例（编辑器 iframe、独立预览页、多标签）连接同一个 workspace WS 频道（`workspaceId = projectId`）。宿主在 `window.AgentSpaces` 上暴露任务事件订阅能力，使任务状态在所有客户端之间实时同步：一个标签发起的生成，其他标签也能看到队列变化与结果。
+同一 workflow-ui 项目的多个预览实例（编辑器 iframe、独立预览页、多标签）连接同一个 workspace WS 频道（`workspaceId = projectId`）。宿主在 `window.AgentSpaces` 上暴露任务事件订阅能力，使任务事件在所有客户端之间实时同步。**任务队列按发起者（executorId）过滤**——每个客户端只显示自己发起的任务（初始化时调 `invokeService('get_queue')` 主动拉取 running 任务，按 `executorId === getExecutorId()` 过滤；`taskSnapshot`/`taskStarted` 等事件同样过滤）；**生成结果（configs 历史）全局共享**，所有客户端都能看到。
 
 ### callPluginTool 的任务编排
 
@@ -171,6 +171,7 @@ export default {
 | `ctx.writeConfig(path, value)` | 写 `configs/<path>`，随后广播 `workflowUi.configChanged { path, value }` |
 | `ctx.updateConfig(path, updater)` | 原子读-改-写（`updater(prev) => next`），写回后广播；返回新值 |
 | `ctx.broadcast(event, data)` | 向该 projectId 频道广播任意事件 |
+| `ctx.listRunningTasks()` | 当前 running 任务列表（每项含 `executorId`），供 `get_queue` 等 handler 让客户端按发起者过滤队列 |
 | `ctx.projectId` | 当前项目 id |
 
 `updateConfig` 在服务端单线程内同步读-改-写，多个 handler 串行不交错 —— 这是消除并发覆盖的关键。

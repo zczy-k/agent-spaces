@@ -295,6 +295,7 @@ export default {
 - Handlers run in **server Node**, not the browser sandbox. They cannot `import` external modules — all capability comes from `ctx`.
 - `ctx.writeConfig(path, value)` / `ctx.updateConfig(path, updater)` write `configs/<path>` and broadcast `workflowUi.configChanged`.
 - `ctx.updateConfig` is an atomic read-modify-write; use it for append/merge so concurrent calls do not clobber each other.
+- `ctx.listRunningTasks()` returns currently running tasks (each carries `executorId`); a handler like `get_queue` returns it so clients can filter the queue to tasks they initiated (`executorId === getExecutorId()`).
 
 ### Calling from the UI
 
