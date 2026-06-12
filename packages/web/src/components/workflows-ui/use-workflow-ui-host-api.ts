@@ -1,9 +1,28 @@
-import { useEffect } from 'react';
+import { createElement, useEffect, useRef } from 'react';
 import { fetchWithAuth } from '@/lib/auth';
 import * as AgentSpacesUI from '@/lib/ui-exports';
 import { useEditorStore } from '@/stores/editor';
 
 const LAST_SELECTION_CONFIG = 'last-selection.json';
+
+type UploadedWorkflowFile = {
+  name: string;
+  path: string;
+  size: number;
+  type: string;
+  url: string;
+  httpPath?: string;
+};
+
+type WorkflowFileUploadItem = {
+  id: string;
+  file: File & Partial<UploadedWorkflowFile> & {
+    uploading?: boolean;
+    uploadError?: string;
+    uploadPromise?: Promise<UploadedWorkflowFile>;
+  };
+  preview?: string;
+};
 
 function normalizeRelativePath(filePath: string, fallback: string) {
   const normalized = (filePath || fallback).trim().replace(/\\/g, '/').replace(/^\/+/, '');
@@ -29,6 +48,102 @@ function blobToBase64(blob: Blob): Promise<string> {
     reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(blob);
+  });
+}
+
+async function uploadWorkflowFile(file: File): Promise<UploadedWorkflowFile> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const resp = await fetchWithAuth('/api/upload', {
+    method: 'POST',
+    body: formData,
+  });
+  const payload = await resp.json().catch(() => null);
+  if (!resp.ok) {
+    throw new Error(payload?.error || `Failed to upload file: ${resp.status} ${resp.statusText}`);
+  }
+  return payload;
+}
+
+function createWorkflowUploadFile(file: File, uploadPromise: Promise<UploadedWorkflowFile>) {
+  return Object.assign(file, {
+    uploading: true,
+    uploadPromise,
+  });
+}
+
+function mergeUploadedFile(file: WorkflowFileUploadItem['file'], uploaded: UploadedWorkflowFile) {
+  return Object.assign(file, {
+    ...uploaded,
+    uploading: false,
+    uploadError: undefined,
+    uploadPromise: Promise.resolve(uploaded),
+  });
+}
+
+function markUploadFailed(file: WorkflowFileUploadItem['file'], error: unknown) {
+  return Object.assign(file, {
+    uploading: false,
+    uploadError: error instanceof Error ? error.message : String(error || 'Upload failed'),
+  });
+}
+
+function WrappedFileUpload(props: any) {
+  const latestValueRef = useRef<WorkflowFileUploadItem[]>(props.value || []);
+
+  useEffect(() => {
+    latestValueRef.current = props.value || [];
+  }, [props.value]);
+
+  const handleChange = (files: WorkflowFileUploadItem[]) => {
+    const next = files.map((item) => {
+      const file = item.file;
+      if (!file || file.path || file.httpPath || file.uploadPromise || !(file instanceof File)) {
+        return item;
+      }
+
+      const uploadPromise = uploadWorkflowFile(file);
+      return {
+        ...item,
+        file: createWorkflowUploadFile(file, uploadPromise),
+      };
+    });
+
+    latestValueRef.current = next;
+    props.onChange?.(next);
+
+    for (const item of next) {
+      const promise = item.file?.uploadPromise;
+      if (!promise || !item.file.uploading) continue;
+
+      promise
+        .then((uploaded) => {
+          const current = latestValueRef.current;
+          const updated = current.map((currentItem) => (
+            currentItem.id === item.id
+              ? { ...currentItem, file: mergeUploadedFile(currentItem.file, uploaded) }
+              : currentItem
+          ));
+          latestValueRef.current = updated;
+          props.onChange?.(updated);
+        })
+        .catch((error) => {
+          const current = latestValueRef.current;
+          const updated = current.map((currentItem) => (
+            currentItem.id === item.id
+              ? { ...currentItem, file: markUploadFailed(currentItem.file, error) }
+              : currentItem
+          ));
+          latestValueRef.current = updated;
+          props.onChange?.(updated);
+        });
+    }
+  };
+
+  return createElement(AgentSpacesUI.FileUpload as any, {
+    ...props,
+    onChange: handleChange,
   });
 }
 
@@ -154,6 +269,7 @@ export function useWorkflowUiHostApi(projectId: string) {
 
     const hostUi = {
       ...AgentSpacesUI,
+      FileUpload: WrappedFileUpload,
       readConfigJson,
       writeConfigJson,
       readLastSelection,
