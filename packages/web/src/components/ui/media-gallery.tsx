@@ -23,7 +23,15 @@ export type MediaItem = {
 function buildDynamicEl(items: MediaItem[]) {
   return items.map(item => {
     if (item.type === 'video') {
-      return { src: item.src, thumb: item.thumb || '', subHtml: item.alt || '', video: { source: [{ src: item.src, type: 'video/mp4' }], attributes: { preload: false, controls: true } } }
+      // HTML5 视频：只用 video 字段强制视频模式。若同时设 src，lightGallery 核心会把它当图片加载并发出 image/* 请求。
+      return {
+        thumb: item.thumb || '',
+        subHtml: item.alt || '',
+        video: {
+          source: [{ src: item.src, type: 'video/mp4' }],
+          attributes: { preload: false, playsinline: true, controls: true },
+        },
+      }
     }
     return { src: item.src, thumb: item.thumb || item.src, subHtml: item.alt || '' }
   }) as Array<Record<string, unknown>>
