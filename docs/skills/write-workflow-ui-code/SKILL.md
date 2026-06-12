@@ -235,7 +235,7 @@ const unsubscribe = window.AgentSpaces.onTaskEvent((event, data) => {
 // Call unsubscribe in effect cleanup.
 ```
 
-`window.AgentSpaces.getExecutorId()` returns this client's session-stable id; compare it with `data.executorId` to detect tasks the current client initiated (e.g. only the initiator surfaces a global error).
+`window.AgentSpaces.getExecutorId()` returns this client's id (persisted in `sessionStorage`, so it survives reload/reconnect within the same tab; different tabs are independent); compare it with `data.executorId` to detect tasks the current client initiated (e.g. only the initiator surfaces a global error).
 
 ### Patterns
 

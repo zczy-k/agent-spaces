@@ -172,9 +172,18 @@ export function useWorkflowUiHostApi(projectId: string) {
 
   useEffect(() => {
     if (!executorIdRef.current) {
-      const g = globalThis.crypto as (Crypto & { randomUUID?: () => string }) | undefined;
-      executorIdRef.current = g?.randomUUID?.()
-        ?? `exec-${Math.random().toString(36).slice(2)}-${Date.now().toString(36)}`;
+      // sessionStorage 标签级持久：同标签刷新/重连 executorId 不变，
+      // 可认领自己之前发起的 running 任务；不同标签各自独立。
+      const STORAGE_KEY = 'as-wfui-executor-id';
+      let id = '';
+      try { id = sessionStorage.getItem(STORAGE_KEY) || ''; } catch { /* noop */ }
+      if (!id) {
+        const g = globalThis.crypto as (Crypto & { randomUUID?: () => string }) | undefined;
+        id = g?.randomUUID?.()
+          ?? `exec-${Math.random().toString(36).slice(2)}-${Date.now().toString(36)}`;
+        try { sessionStorage.setItem(STORAGE_KEY, id); } catch { /* noop */ }
+      }
+      executorIdRef.current = id;
     }
     const executorId = executorIdRef.current;
 

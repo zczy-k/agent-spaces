@@ -136,7 +136,7 @@ const unsubscribe = window.AgentSpaces.onTaskEvent((event, data) => {
 ### 设计要点
 
 - **taskId 对齐**：发起方本地预生成 `taskId`，通过 `options.taskId` 传入；后端 cache 沿用同一 id，广播事件里的 taskId 与前端 UI 项天然匹配，无需额外映射。
-- **executorId**：宿主为每个客户端生成会话级 uuid（`getExecutorId()` 返回），随 execute 上报；用于识别「自己发起的任务」（如失败 error / 完成通知只针对发起者）。
+- **executorId**：宿主为每个客户端生成 uuid 并存入 `sessionStorage`（标签级持久，`getExecutorId()` 返回），随 execute 上报；用于识别「自己发起的任务」。同标签刷新/重连 executorId 不变，可认领自己之前发起的 running 任务；不同标签各自独立。
 - **幂等与异步轮询**：同 `taskId` 的 `startTask` 幂等（running 时保持，已终态时重置为 running）。MiniMax 异步视频的「生成 + 轮询」两次 execute 复用同一 `taskId` 与 `meta`，队列只显示一项，轮询覆盖生成阶段。
 - **断线/刷新恢复**：客户端（重）连入时，服务端 `onClientConnected` 推送 `taskSnapshot`，视图自动重建 running 与最近终态任务。
 - **历史全局共享**：`taskFinished` 事件驱动结果落库（`writeConfigJson`），所有客户端都并入历史；非发起者仅更新队列视图，不重复弹通知。
