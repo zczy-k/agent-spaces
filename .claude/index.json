@@ -1,6 +1,6 @@
 {
-  "version": "1.18.0",
-  "timestamp": "2026-06-09T11:48:01+08:00",
+  "version": "1.19.0",
+  "timestamp": "2026-06-12T09:31:44+08:00",
   "project": {
     "name": "agent-spaces",
     "type": "pnpm-monorepo + flutter",
@@ -29,11 +29,17 @@
       "name": "shared",
       "path": "packages/shared",
       "language": "TypeScript",
-      "sourceFileCount": 28,
+      "sourceFileCount": 29,
       "claudeMd": "packages/shared/CLAUDE.md",
       "claudeDir": "packages/shared/claude/",
       "entry": "src/index.ts",
       "interfaces": [
+        "src/types/index.ts"
+      ],
+      "tests": [],
+      "importantPaths": [
+        "src/index.ts",
+        "src/types/index.ts",
         "src/types/workspace.ts",
         "src/types/issue.ts",
         "src/types/task.ts",
@@ -42,33 +48,33 @@
         "src/types/events.ts",
         "src/types/workflow.ts",
         "src/types/workflow-execution.ts",
-        "src/types/workflow-errors.ts",
         "src/types/workflow-plugin.ts",
         "src/types/workflow-composite.ts",
         "src/types/workflow-shortcut.ts",
-        "src/types/workflow-ws.ts"
-      ],
-      "tests": [],
-      "importantPaths": [
-        "src/index.ts",
-        "src/types/index.ts",
-        "src/types/workspace.ts",
-        "src/types/channel.ts",
-        "src/types/events.ts",
-        "src/types/workflow.ts",
         "src/types/workflow-ws.ts",
+        "src/types/workflow-errors.ts",
         "src/types/tool.ts",
         "src/types/database.ts",
-        "src/types/agent.ts",
-        "src/types/hooks.ts"
+        "src/types/hooks.ts",
+        "src/types/kanban.ts",
+        "src/types/worktree.ts",
+        "src/types/notification.ts",
+        "src/types/speech.ts",
+        "src/types/code-favorites.ts",
+        "src/types/subscription.ts",
+        "src/types/search.ts",
+        "src/types/command.ts",
+        "src/types/file.ts",
+        "src/types/git.ts",
+        "src/types/llm.ts"
       ],
       "coverage": {
         "scanned": true,
         "percentage": 100,
-        "scannedFiles": 28,
-        "totalFiles": 28,
+        "scannedFiles": 29,
+        "totalFiles": 29,
         "gaps": [],
-        "lastScanTimestamp": "2026-06-09T11:35:59+08:00"
+        "lastScanTimestamp": "2026-06-12T09:31:44+08:00"
       }
     },
     {
@@ -145,7 +151,7 @@
         "scannedFiles": 42,
         "totalFiles": 42,
         "gaps": [],
-        "lastScanTimestamp": "2026-06-09T11:48:01+08:00"
+        "lastScanTimestamp": "2026-06-12T09:31:44+08:00"
       }
     },
     {
@@ -164,22 +170,91 @@
       "tests": [],
       "importantPaths": [
         "src/app.ts",
+        "src/middleware/auth.ts",
         "src/services/execution-manager.ts",
         "src/services/agent.ts",
-        "src/ws/agent-runner.ts",
+        "src/services/workflow.ts",
+        "src/services/workflow-ui.ts",
+        "src/services/workflow-trigger-service.ts",
+        "src/services/workflow-command-runner.ts",
         "src/services/plugin.ts",
+        "src/services/plugin-runtime-api.ts",
+        "src/services/hook-engine.ts",
+        "src/services/notification-hub/",
+        "src/services/builtin-tools/",
+        "src/services/chat.ts",
+        "src/services/channel.ts",
+        "src/ws/agent-runner.ts",
+        "src/ws/chat-handler.ts",
+        "src/ws/connection-manager.ts",
+        "src/ws/execution-channels.ts",
+        "src/ws/typescript-lsp.ts",
         "src/agents/issue-task-controller.ts",
+        "src/agents/scheduler-agent.ts",
+        "src/agents/agent-designer.ts",
+        "src/agents/commit-agent.ts",
+        "src/agents/pull-request-agent.ts",
+        "src/adapters/agent-runtime.ts",
         "src/adapters/claude-code-runtime/",
+        "src/adapters/codex-runtime.ts",
         "src/adapters/langchain-runtime.ts",
-        "src/services/notification-hub/"
+        "src/adapters/open-agent-sdk-runtime.ts",
+        "src/adapters/hermes-runtime.ts",
+        "src/adapters/oh-my-pi-runtime.ts"
+      ],
+      "routes": [
+        "src/routes/workspace.ts",
+        "src/routes/file.ts",
+        "src/routes/channel.ts",
+        "src/routes/issue.ts",
+        "src/routes/task.ts",
+        "src/routes/workflow.ts",
+        "src/routes/workflow-ui.ts",
+        "src/routes/workflow-hook.ts",
+        "src/routes/plugin.ts",
+        "src/routes/agent.ts",
+        "src/routes/agent-sse.ts",
+        "src/routes/agent-commands.ts",
+        "src/routes/chat.ts",
+        "src/routes/chat-run.ts",
+        "src/routes/git.ts",
+        "src/routes/llm.ts",
+        "src/routes/auth.ts",
+        "src/routes/folder.ts",
+        "src/routes/command.ts",
+        "src/routes/code-favorites.ts",
+        "src/routes/hooks.ts",
+        "src/routes/skill.ts",
+        "src/routes/prompt-template.ts",
+        "src/routes/output-style.ts",
+        "src/routes/mcp.ts",
+        "src/routes/npm-settings.ts",
+        "src/routes/subscription.ts",
+        "src/routes/search.ts",
+        "src/routes/notification.ts",
+        "src/routes/database.ts",
+        "src/routes/kanban.ts",
+        "src/routes/worktree.ts",
+        "src/routes/speech-recognition.ts",
+        "src/routes/robot-account.ts",
+        "src/routes/version.ts",
+        "src/routes/import.ts",
+        "src/routes/data.ts"
+      ],
+      "detailFiles": [
+        "packages/server/claude/overview.md",
+        "packages/server/claude/route-index.md",
+        "packages/server/claude/architecture.md",
+        "packages/server/claude/changelog.md"
       ],
       "coverage": {
         "scanned": true,
-        "percentage": 90,
+        "percentage": 92,
         "gaps": [
-          "部分辅助工具文件未详细扫描",
-          "workflow-ui 相关路由/服务"
-        ]
+          "src/services/ 部分辅助 service 子目录细节",
+          "src/storage/ 全部 store 文件未逐一抽取字段"
+        ],
+        "lastScanTimestamp": "2026-06-12T09:31:44+08:00"
       }
     },
     {
@@ -197,23 +272,75 @@
       ],
       "tests": [],
       "importantPaths": [
-        "src/stores/workflow-editor.ts",
+        "src/app/layout.tsx",
+        "src/app/page.tsx",
+        "src/lib/sdk.ts",
+        "src/lib/ws.ts",
+        "src/lib/auth.ts",
+        "src/lib/workflow-nodes/",
+        "src/lib/workflow-api.ts",
+        "src/lib/workflow-plugin-api.ts",
+        "src/stores/workflow-editor/",
         "src/stores/chat.ts",
         "src/stores/editor.ts",
         "src/stores/channel.ts",
+        "src/stores/workspace.ts",
+        "src/stores/git.ts",
+        "src/stores/database.ts",
+        "src/stores/issue.ts",
+        "src/stores/kanban.ts",
+        "src/stores/workflow.ts",
         "src/components/sidebar/",
         "src/components/workflow/",
-        "src/components/editor/code-editor.tsx",
-        "src/lib/sdk.ts",
-        "src/lib/ws.ts"
+        "src/components/editor/",
+        "src/components/chat/",
+        "src/components/composer/",
+        "src/components/database/",
+        "src/components/git/",
+        "src/components/kanban/",
+        "src/components/terminal/",
+        "src/components/worktree/"
+      ],
+      "pageRoutes": [
+        "src/app/page.tsx",
+        "src/app/login/page.tsx",
+        "src/app/workspaces/page.tsx",
+        "src/app/workspace/[id]/page.tsx",
+        "src/app/workflows/page.tsx",
+        "src/app/workflows/[id]/page.tsx",
+        "src/app/workflows/share/page.tsx",
+        "src/app/workflows-ui/page.tsx",
+        "src/app/workflows-ui/[id]/page.tsx",
+        "src/app/workflows-ui-preview/[id]/page.tsx",
+        "src/app/chat/page.tsx",
+        "src/app/settings/page.tsx",
+        "src/app/settings/layout.tsx",
+        "src/app/settings/agents/page.tsx",
+        "src/app/settings/mcps/page.tsx",
+        "src/app/settings/models/page.tsx",
+        "src/app/settings/providers/page.tsx",
+        "src/app/settings/skills/page.tsx",
+        "src/app/settings/prompts/page.tsx",
+        "src/app/settings/output-styles/page.tsx",
+        "src/app/settings/tools/page.tsx"
+      ],
+      "detailFiles": [
+        "packages/web/claude/overview.md",
+        "packages/web/claude/conventions.md",
+        "packages/web/claude/stores.md",
+        "packages/web/claude/component-groups.md",
+        "packages/web/claude/lib-index.md",
+        "packages/web/claude/changelog.md"
       ],
       "coverage": {
         "scanned": true,
-        "percentage": 85,
+        "percentage": 88,
         "gaps": [
-          "workflows-ui 子目录部分文件",
-          "部分 shadcn/ui 基础组件"
-        ]
+          "components/ 个别子目录（layout / common / settings）样本未细抽",
+          "stores/workflow-editor/ 12 个子文件未逐一展开",
+          "locales/ 34 个 i18n 命名空间未列名"
+        ],
+        "lastScanTimestamp": "2026-06-12T09:31:44+08:00"
       }
     },
     {
@@ -222,20 +349,43 @@
       "language": "Dart",
       "sourceFileCount": 46,
       "claudeMd": "packages/flutter/CLAUDE.md",
+      "claudeDir": "packages/flutter/claude/",
       "entry": "lib/main.dart",
-      "interfaces": [],
-      "tests": ["test/widget_test.dart"],
+      "interfaces": [
+        "lib/bridge/js_bridge.dart"
+      ],
+      "tests": [],
       "importantPaths": [
         "lib/main.dart",
         "lib/widgets/webview_panel.dart",
         "lib/widgets/webview_instance.dart",
+        "lib/widgets/terminal_instance.dart",
+        "lib/widgets/file_source_tree.dart",
+        "lib/widgets/split_layout.dart",
         "lib/bridge/js_bridge.dart",
-        "lib/services/storage_service.dart"
+        "lib/services/storage_service.dart",
+        "lib/services/webview_service.dart",
+        "lib/services/notification_service.dart",
+        "lib/services/file_sources/"
+      ],
+      "detailFiles": [
+        "packages/flutter/claude/overview.md",
+        "packages/flutter/claude/conventions.md",
+        "packages/flutter/claude/module-responsibilities.md",
+        "packages/flutter/claude/entrypoints.md",
+        "packages/flutter/claude/public-interfaces.md",
+        "packages/flutter/claude/dependencies-and-config.md",
+        "packages/flutter/claude/data-model.md",
+        "packages/flutter/claude/testing-and-quality.md",
+        "packages/flutter/claude/file-map.md",
+        "packages/flutter/claude/faq.md",
+        "packages/flutter/claude/changelog.md"
       ],
       "coverage": {
         "scanned": true,
         "percentage": 95,
-        "gaps": []
+        "gaps": [],
+        "lastScanTimestamp": "2026-06-12T09:31:44+08:00"
       }
     },
     {
@@ -248,19 +398,36 @@
       "interfaces": [],
       "tests": [],
       "importantPaths": [
+        "generate-index.mjs",
         "agents/index.json",
         "chat/index.json",
         "mcps/index.json",
         "plugins/index.json",
         "skills/index.json",
-        "generate-index.mjs"
+        "workflows/index.json",
+        "workflow-ui/index.json",
+        "prompt/index.json",
+        "output-styles/index.json"
+      ],
+      "subTypes": [
+        "agents (184)",
+        "chat (6)",
+        "mcps (9)",
+        "skills (15)",
+        "plugins (107)",
+        "workflows",
+        "workflow-ui (含 minimax_tts 示例)",
+        "prompt",
+        "output-styles"
       ],
       "coverage": {
         "scanned": true,
-        "percentage": 80,
+        "percentage": 82,
         "gaps": [
-          "部分 Plugin 子目录未逐一验证"
-        ]
+          "prompt / output-styles / workflow-ui 模板内容样本未抽取",
+          "agents 15 个分类下 184 个 Agent 模板未逐一展开"
+        ],
+        "lastScanTimestamp": "2026-06-12T09:31:44+08:00"
       }
     },
     {
@@ -268,35 +435,77 @@
       "path": "packages/dom-inspector-hook",
       "language": "TypeScript",
       "sourceFileCount": 2,
-      "claudeMd": null,
+      "claudeMd": "packages/dom-inspector-hook/CLAUDE.md",
+      "claudeDir": null,
       "entry": "src/index.ts",
-      "interfaces": [],
+      "interfaces": [
+        "src/index.ts (createBehavior / bindCaptureListener)",
+        "src/types.ts (InspectorHookOptions / CapturedSourceInfo / ActionMode + postCapture + copyToClipboard)"
+      ],
       "tests": [],
       "importantPaths": [
         "src/index.ts",
-        "src/types.ts"
+        "src/types.ts",
+        "package.json",
+        "tsup.config.ts",
+        "README.md",
+        "examples/react-app/",
+        "examples/vue-app/"
       ],
       "coverage": {
         "scanned": true,
         "percentage": 100,
-        "gaps": []
+        "scannedFiles": 2,
+        "totalFiles": 2,
+        "gaps": [],
+        "lastScanTimestamp": "2026-06-12T09:31:44+08:00",
+        "newlyCreatedClaudeMd": true
       }
     }
   ],
   "ignoreStats": {
-    "ignoredDirectories": ["node_modules", "dist", ".next", "build", ".git"],
-    "ignoredFiles": ["*.lock", "*.log", "*.bin", "*.map"]
+    "ignoredDirectories": [
+      "node_modules",
+      "dist",
+      ".next",
+      "build",
+      ".git",
+      ".agent-spaces-data",
+      "packages/server/web",
+      "packages/server/agent_spaces",
+      "packages/tauri/web",
+      "packages/tauri/src-tauri/target",
+      "packages/flutter/assets/web"
+    ],
+    "ignoredFiles": [
+      "*.tsbuildinfo",
+      ".env",
+      ".env.local",
+      "*.tar",
+      "*.lock",
+      "*.log"
+    ],
+    "source": ".gitignore"
   },
   "scanSummary": {
     "totalEstimatedFiles": 870,
-    "scannedFiles": 740,
-    "coveragePercentage": 85,
+    "scannedFiles": 770,
+    "coveragePercentage": 88,
     "truncated": false,
+    "incrementalFrom": "2026-06-09T11:48:01+08:00",
+    "changesSinceLastScan": [
+      "新建 packages/dom-inspector-hook/CLAUDE.md（此前缺失）",
+      "templates: 新增 workflow-ui 子目录（minimax_tts 示例 + index.json）",
+      "根 CLAUDE.md: 补全 Mermaid click 链接、刷新运行命令、刷新扫描状态",
+      "claude/changelog.md: 增量记录本次更新"
+    ],
     "nextStepRecommendations": [
-      "packages/server/src/services/workflow-ui.ts -- Workflow UI 服务详细扫描",
-      "packages/web/src/components/workflows-ui/ -- Workflow UI 编辑器组件",
-      "packages/web/src/stores/workflow-editor.ts -- 大型 Store 文件详细分析",
-      "packages/server/src/services/workflow-trigger-service.ts -- 触发器服务"
+      "packages/server/src/services/workflow-ui.ts + workflow-trigger-service.ts -- Workflow 引擎细节",
+      "packages/server/src/storage/ -- 全部 store 字段抽取（issue/task/workspace/usage/robot-account/worktree）",
+      "packages/web/src/stores/workflow-editor/ -- 12 子文件大型 Store 拆解",
+      "packages/web/src/locales/ -- 34 i18n 命名空间列名",
+      "packages/templates/{prompt,output-styles,workflow-ui} -- 模板内容样本",
+      "packages/web/src/components/{layout,common,settings,sidebar} -- 组件目录补全"
     ]
   }
 }

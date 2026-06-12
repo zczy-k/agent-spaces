@@ -23,6 +23,7 @@ Express 5 后端服务，173 个 TypeScript 源文件。提供 REST API（37 个
 | [claude/overview.md](claude/overview.md) | 总览、核心架构、大文件列表 |
 | [claude/route-index.md](claude/route-index.md) | 37 个 REST API 路由索引 |
 | [claude/architecture.md](claude/architecture.md) | Agent 运行时架构、Workflow 引擎、Issue 自动化、通知中心 |
+| [claude/storage.md](claude/storage.md) | 存储层 21 个 store 索引、数据目录布局、写入约定 |
 | [claude/changelog.md](claude/changelog.md) | 变更记录 |
 
 ## 入口与启动
