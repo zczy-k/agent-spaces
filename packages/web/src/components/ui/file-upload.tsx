@@ -22,6 +22,7 @@ export interface FileUploadFile<TFile extends FileUploadFileLike = File> {
 interface FileUploadProps<TFile extends FileUploadFileLike = File> {
   value?: FileUploadFile<TFile>[];
   onChange?: (files: FileUploadFile<TFile | File>[]) => void;
+  autoUpload?: boolean;
   accept?: Accept;
   fileNameFilter?: string;
   maxFiles?: number;
@@ -36,6 +37,7 @@ let _fileId = 0;
 export function FileUpload<TFile extends FileUploadFileLike = File>({
   value = [],
   onChange,
+  autoUpload: _autoUpload,
   accept,
   fileNameFilter,
   maxFiles = 0,

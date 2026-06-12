@@ -17,6 +17,9 @@ type UploadedWorkflowFile = {
 type WorkflowFileUploadItem = {
   id: string;
   file: File & Partial<UploadedWorkflowFile> & {
+    uploadedPath?: string;
+    uploadedUrl?: string;
+    uploadedHttpPath?: string;
     uploading?: boolean;
     uploadError?: string;
     uploadPromise?: Promise<UploadedWorkflowFile>;
@@ -75,7 +78,9 @@ function createWorkflowUploadFile(file: File, uploadPromise: Promise<UploadedWor
 
 function mergeUploadedFile(file: WorkflowFileUploadItem['file'], uploaded: UploadedWorkflowFile) {
   return Object.assign(file, {
-    ...uploaded,
+    uploadedPath: uploaded.path,
+    uploadedUrl: uploaded.url,
+    uploadedHttpPath: uploaded.httpPath,
     uploading: false,
     uploadError: undefined,
     uploadPromise: Promise.resolve(uploaded),
@@ -91,15 +96,22 @@ function markUploadFailed(file: WorkflowFileUploadItem['file'], error: unknown) 
 
 function WrappedFileUpload(props: any) {
   const latestValueRef = useRef<WorkflowFileUploadItem[]>(props.value || []);
+  const autoUpload = props.autoUpload === true;
 
   useEffect(() => {
     latestValueRef.current = props.value || [];
   }, [props.value]);
 
   const handleChange = (files: WorkflowFileUploadItem[]) => {
+    if (!autoUpload) {
+      latestValueRef.current = files;
+      props.onChange?.(files);
+      return;
+    }
+
     const next = files.map((item) => {
       const file = item.file;
-      if (!file || file.path || file.httpPath || file.uploadPromise || !(file instanceof File)) {
+      if (!file || file.uploadedPath || file.uploadedHttpPath || file.uploadPromise || !(file instanceof File)) {
         return item;
       }
 
@@ -143,6 +155,7 @@ function WrappedFileUpload(props: any) {
 
   return createElement(AgentSpacesUI.FileUpload as any, {
     ...props,
+    autoUpload: undefined,
     onChange: handleChange,
   });
 }
@@ -223,6 +236,8 @@ export function useWorkflowUiHostApi(projectId: string) {
       return resp.json();
     };
 
+    const uploadFile = async (file: File) => uploadWorkflowFile(file);
+
     // ---- Plugin info ----
     const getPluginInfo = async (pluginId: string) => {
       const resp = await fetchWithAuth(`/api/plugins`);
@@ -274,6 +289,7 @@ export function useWorkflowUiHostApi(projectId: string) {
       writeConfigJson,
       readLastSelection,
       writeLastSelection,
+      uploadFile,
       saveDataFile,
       downloadFile,
     };
@@ -303,6 +319,7 @@ export function useWorkflowUiHostApi(projectId: string) {
       writeConfigJson,
       readLastSelection,
       writeLastSelection,
+      uploadFile,
       saveDataFile,
       downloadFile,
     };
@@ -314,6 +331,7 @@ export function useWorkflowUiHostApi(projectId: string) {
       writeConfigJson,
       readLastSelection,
       writeLastSelection,
+      uploadFile,
       saveDataFile,
       downloadFile,
     };
