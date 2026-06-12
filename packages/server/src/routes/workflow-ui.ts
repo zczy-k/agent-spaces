@@ -167,6 +167,33 @@ router.put('/:id/data/content', (req: Request<{ id: string }>, res: Response) =>
   } catch (error: any) { res.status(500).json({ error: error.message }); }
 });
 
+// DB (SQLite): execute a single statement. Body: { sql, params?, mode: 'all'|'get'|'run'|'exec' }
+router.post('/:id/db/:dbName', (req: Request<{ id: string; dbName: string }>, res: Response) => {
+  try {
+    const { dbName } = req.params;
+    const { sql, params, mode } = req.body ?? {};
+    if (!sql || typeof sql !== 'string') { res.status(400).json({ error: 'sql is required' }); return; }
+    if (!mode || !['all', 'get', 'run', 'exec'].includes(mode)) { res.status(400).json({ error: "mode must be one of all|get|run|exec" }); return; }
+    const result = svc.executeDb(req.params.id, dbName, mode, sql, params);
+    res.json({ ok: true, result });
+  } catch (error: any) {
+    res.status(400).json({ ok: false, error: { code: error?.code ?? 'SQLITE_ERROR', message: error?.message ?? String(error) } });
+  }
+});
+
+// DB transaction: batch statements atomically. Body: { statements: [{ sql, params? }] }
+router.post('/:id/db/:dbName/transaction', (req: Request<{ id: string; dbName: string }>, res: Response) => {
+  try {
+    const { dbName } = req.params;
+    const { statements } = req.body ?? {};
+    if (!Array.isArray(statements) || statements.length === 0) { res.status(400).json({ error: 'statements must be a non-empty array' }); return; }
+    svc.executeDbTransaction(req.params.id, dbName, statements);
+    res.json({ ok: true });
+  } catch (error: any) {
+    res.status(400).json({ ok: false, error: { code: error?.code ?? 'SQLITE_ERROR', message: error?.message ?? String(error) } });
+  }
+});
+
 // Avatar upload
 router.post('/:id/avatar', (req: Request<{ id: string }>, res: Response) => {
   try {

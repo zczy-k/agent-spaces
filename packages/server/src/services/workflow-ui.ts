@@ -6,6 +6,7 @@ import { v4 as uuid } from 'uuid';
 import * as store from '../storage/workflow-ui-store.js';
 import type { WorkflowUiProject } from '../storage/workflow-ui-store.js';
 import { unloadServices } from './workflow-ui-services.js';
+import { executeDb as dbExecuteDb, executeDbTransaction as dbExecuteDbTransaction, closeProjectDbs } from '../storage/workflow-ui-db.js';
 
 export { store };
 export type { WorkflowUiProject };
@@ -106,6 +107,7 @@ export function updateProject(
 }
 
 export function deleteProject(projectId: string): void {
+  closeProjectDbs(projectId);
   store.deleteProject(projectId);
   unloadServices(projectId);
 }
@@ -160,6 +162,28 @@ export function listConfigs(projectId: string): Record<string, unknown> {
 
 export function writeDataFile(projectId: string, filePath: string, content: Buffer | string): number {
   return store.writeDataFile(projectId, filePath, content);
+}
+
+// ---- DB (SQLite via better-sqlite3) ----
+export function executeDb(
+  projectId: string,
+  dbName: string,
+  mode: 'all' | 'get' | 'run' | 'exec',
+  sql: string,
+  params?: unknown[] | Record<string, unknown>,
+): unknown {
+  const result = dbExecuteDb(projectId, dbName, mode, sql, params);
+  store.touchProject(projectId);
+  return result;
+}
+
+export function executeDbTransaction(
+  projectId: string,
+  dbName: string,
+  statements: { sql: string; params?: unknown[] | Record<string, unknown> }[],
+): void {
+  dbExecuteDbTransaction(projectId, dbName, statements);
+  store.touchProject(projectId);
 }
 
 // ---- ZIP Export ----

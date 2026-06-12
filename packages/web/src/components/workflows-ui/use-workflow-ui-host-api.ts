@@ -321,6 +321,40 @@ export function useWorkflowUiHostApi(projectId: string) {
       return resp.json();
     };
 
+    // ---- SQLite db (per-project named databases under data/db/) ----
+    const DB_NAME_RE = /^[a-zA-Z0-9_-]{1,64}$/;
+    const createDbHandle = (dbName: string) => {
+      if (!DB_NAME_RE.test(dbName)) {
+        throw new Error(`Invalid db name: ${dbName}`);
+      }
+      const base = `/api/workflows-ui/${projectId}/db/${encodeURIComponent(dbName)}`;
+      const post = async <T,>(url: string, body: unknown): Promise<T> => {
+        const resp = await fetchWithAuth(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const payload = await resp.json();
+        if (!resp.ok || payload?.ok === false) {
+          throw new Error(payload?.error?.message || `db request failed: ${resp.status} ${resp.statusText}`);
+        }
+        return payload as T;
+      };
+      return {
+        all: (sql: string, params?: unknown[] | Record<string, unknown>) =>
+          post<{ result: unknown[] }>(base, { sql, params, mode: 'all' }).then((p) => p.result),
+        get: (sql: string, params?: unknown[] | Record<string, unknown>) =>
+          post<{ result: unknown }>(base, { sql, params, mode: 'get' }).then((p) => p.result),
+        run: (sql: string, params?: unknown[] | Record<string, unknown>) =>
+          post<{ result: { changes: number; lastInsertRowid: number | bigint } }>(base, { sql, params, mode: 'run' }).then((p) => p.result),
+        exec: (sql: string) =>
+          post<{ result: unknown }>(base, { sql, mode: 'exec' }).then(() => undefined),
+        transaction: (statements: { sql: string; params?: unknown[] | Record<string, unknown> }[]) =>
+          post(`${base}/transaction`, { statements }).then(() => undefined),
+      };
+    };
+    const dbApi = (name: string) => createDbHandle(name);
+
     const uploadFile = async (file: File) => uploadWorkflowFile(file);
 
     // ---- Plugin info ----
@@ -496,6 +530,7 @@ export function useWorkflowUiHostApi(projectId: string) {
     (window as any).AgentSpacesUI = hostUi;
     (window as any).AgentSpaces = {
       ...pluginApi,
+      db: dbApi,
       ...fileApi,
       ...notificationApi,
       ...settingApi,
@@ -509,6 +544,7 @@ export function useWorkflowUiHostApi(projectId: string) {
     };
     (window as any).AgentSpacesAPI = {
       ...pluginApi,
+      db: dbApi,
       ...fileApi,
       ...notificationApi,
       ...settingApi,

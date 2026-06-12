@@ -71,7 +71,7 @@ function safeProjectSubdirPath(projectId: string, dirName: 'configs' | 'data', f
   return target;
 }
 
-function touchProject(projectId: string): void {
+export function touchProject(projectId: string): void {
   const manifest = readJsonFile<WorkflowUiProject>(manifestPath(projectId));
   if (!manifest) return;
 
